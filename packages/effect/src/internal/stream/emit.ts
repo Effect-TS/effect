@@ -1,9 +1,11 @@
 import * as Cause from "../../Cause.js"
 import * as Chunk from "../../Chunk.js"
+import * as Deferred from "../../Deferred.js"
 import * as Effect from "../../Effect.js"
 import * as Exit from "../../Exit.js"
 import { pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
+import type * as Queue from "../../Queue.js"
 import type * as Emit from "../../StreamEmit.js"
 
 /** @internal */
@@ -43,4 +45,67 @@ export const make = <R, E, A, B>(
     }
   }
   return Object.assign(emit, ops)
+}
+
+/** @internal */
+export const pushEOF = Symbol.for("effect/StreamEmit/pushEOF")
+
+/** @internal */
+export const makePush = <E, A>(
+  queue: Queue.Queue<A | typeof pushEOF>,
+  deferred: Deferred.Deferred<void, E>
+): Emit.EmitOpsPush<E, A> => {
+  let finished = false
+  function done(exit: Exit.Exit<A, E>) {
+    if (finished) return
+    finished = true
+    if (exit._tag === "Success") {
+      queue.unsafeOffer(exit.value)
+    }
+    queue.unsafeOffer(pushEOF)
+    Deferred.unsafeDone(deferred, exit._tag === "Success" ? Exit.void : exit)
+  }
+  return {
+    single(value: A) {
+      if (finished) return false
+      return queue.unsafeOffer(value)
+    },
+    chunk(chunk: Chunk.Chunk<A>) {
+      if (finished) return false
+      for (const value of chunk) {
+        if (!queue.unsafeOffer(value)) {
+          return false
+        }
+      }
+      return true
+    },
+    array(arr: ReadonlyArray<A>) {
+      if (finished) return false
+      for (let i = 0; i < arr.length; i++) {
+        if (!queue.unsafeOffer(arr[i])) {
+          return false
+        }
+      }
+      return true
+    },
+    done,
+    end() {
+      if (finished) return
+      finished = true
+      queue.unsafeOffer(pushEOF)
+      Deferred.unsafeDone(deferred, Exit.void)
+    },
+    halt(cause: Cause.Cause<E>) {
+      return done(Exit.failCause(cause))
+    },
+    fail(error: E) {
+      return done(Exit.fail(error))
+    },
+    die<Err>(defect: Err): void {
+      return done(Exit.die(defect))
+    },
+    dieMessage(message: string): void {
+      return done(Exit.die(new Error(message)))
+    }
+  }
 }

@@ -597,13 +597,12 @@ export const asyncEffect = <A, E = never, R = never>(
     fromChannel
   )
 
-const constEofPush = Symbol.for("effect/Stream/constEofPush")
 const queueFromBufferOptionsPush = <A>(
   options?: { bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
-): Effect.Effect<Queue.Queue<A | typeof constEofPush>> => {
+): Effect.Effect<Queue.Queue<A | typeof emit.pushEOF>> => {
   if (options?.bufferSize === "unbounded") {
     return Queue.unbounded()
   }
@@ -612,68 +611,6 @@ const queueFromBufferOptionsPush = <A>(
       return Queue.sliding(options?.bufferSize ?? 16)
     default:
       return Queue.dropping(options?.bufferSize ?? 16)
-  }
-}
-
-const makeEmitPush = <E, A>(
-  queue: Queue.Queue<A | typeof constEofPush>,
-  deferred: Deferred.Deferred<void, E>
-): Emit.EmitOpsPush<E, A> => {
-  let finished = false
-  function single(value: A) {
-    if (finished) return false
-    return queue.unsafeOffer(value)
-  }
-  function done(exit: Exit.Exit<A, E>) {
-    if (finished) {
-      return
-    }
-    finished = true
-    if (exit._tag === "Success") {
-      single(exit.value)
-    }
-    queue.unsafeOffer(constEofPush)
-    Deferred.unsafeDone(deferred, exit._tag === "Success" ? Exit.void : exit)
-  }
-  return {
-    single,
-    chunk(chunk: Chunk.Chunk<A>) {
-      if (finished) return false
-      for (const value of chunk) {
-        if (!queue.unsafeOffer(value)) {
-          return false
-        }
-      }
-      return true
-    },
-    array(arr: ReadonlyArray<A>) {
-      if (finished) return false
-      for (let i = 0; i < arr.length; i++) {
-        if (!queue.unsafeOffer(arr[i])) {
-          return false
-        }
-      }
-      return true
-    },
-    done,
-    end() {
-      if (finished) return
-      finished = true
-      queue.unsafeOffer(constEofPush)
-      Deferred.unsafeDone(deferred, Exit.void)
-    },
-    halt(cause: Cause.Cause<E>) {
-      done(Exit.failCause(cause))
-    },
-    fail(error: E) {
-      done(Exit.fail(error))
-    },
-    die<Err>(defect: Err): void {
-      done(Exit.die(defect))
-    },
-    dieMessage(message: string): void {
-      done(Exit.die(new Error(message)))
-    }
   }
 }
 
@@ -691,7 +628,7 @@ export const asyncPush = <A, E = never, R = never>(
   ).pipe(
     Effect.bindTo("queue"),
     Effect.bind("deferred", () => Deferred.make<void, E>()),
-    Effect.tap(({ deferred, queue }) => register(makeEmitPush(queue, deferred))),
+    Effect.tap(({ deferred, queue }) => register(emit.makePush(queue, deferred))),
     Effect.map(({ deferred, queue }) => {
       const onEnd = channel.zipRight(Deferred.await(deferred), core.void)
       const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(
@@ -700,7 +637,7 @@ export const asyncPush = <A, E = never, R = never>(
           Queue.takeBetween(queue, 1, DefaultChunkSize)
         ),
         (chunk) => {
-          const end = Chunk.unsafeLast(chunk) === constEofPush
+          const end = Chunk.unsafeLast(chunk) === emit.pushEOF
           const items: Chunk.Chunk<A> = end ? Chunk.dropRight(chunk, 1) as any : chunk
           if (end) {
             return channel.zipRight(core.write(items), onEnd)
