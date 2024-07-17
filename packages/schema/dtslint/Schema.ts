@@ -524,9 +524,6 @@ S.Struct({ a: S.String.pipe(S.optional({ exact: true })) })
 // ---------------------------------------------
 
 // @ts-expect-error
-S.Boolean.pipe(S.optional)
-
-// @ts-expect-error
 S.optional(S.String, { as: "Option", default: () => "" })
 
 // @ts-expect-error
@@ -558,6 +555,19 @@ S.optional(S.String, { as: null })
 
 // @ts-expect-error
 S.optional(S.String, { default: null })
+
+// ---------------------------------------------
+// optional() used in a generic context
+// ---------------------------------------------
+
+type TypeWithValue<Value extends S.Schema.Any> = { value: S.optionalWithOptions<Value, { nullable: true }> }
+
+const makeTypeWithValue = <Value extends S.Schema.Any>(value: Value): TypeWithValue<Value> => ({
+  value: S.optional(value, { nullable: true })
+})
+
+// $ExpectType TypeWithValue<typeof String$>
+makeTypeWithValue(S.String)
 
 // ---------------------------------------------
 // optional()
