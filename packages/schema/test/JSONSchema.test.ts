@@ -1866,12 +1866,57 @@ schema (Suspend): <suspended schema>`
       }, false)
     })
 
-    it("refinement of a transformation", () => {
+    it("refinement of a transformation with an override annotation", () => {
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { type: "string", format: "date-time" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "format": "date-time",
         "type": "string"
       }, false)
+      expectJSONSchema(
+        Schema.Date.annotations({
+          jsonSchema: { oneOf: [{ type: "object" }, { type: "array" }] }
+        }),
+        { "$schema": "http://json-schema.org/draft-07/schema#", oneOf: [{ type: "object" }, { type: "array" }] },
+        false
+      )
+      expectJSONSchema(
+        Schema.Date.annotations({
+          jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
+        }),
+        { "$schema": "http://json-schema.org/draft-07/schema#", anyOf: [{ type: "object" }, { type: "array" }] },
+        false
+      )
+      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { $ref: "x" } }), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        $ref: "x"
+      }, false)
+      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { const: 1 } }), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        const: 1
+      }, false)
+      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { enum: [1] } }), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        enum: [1]
+      }, false)
+    })
+
+    it("refinement of a transformation without an override annotation", () => {
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmpty()), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string"
+      }, false)
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmpty({ jsonSchema: { title: "Description" } })), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string"
+      }, false)
+      expectJSONSchema(
+        Schema.Trim.pipe(Schema.nonEmpty()).annotations({ jsonSchema: { title: "Description" } }),
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "string"
+        },
+        false
+      )
     })
   })
 
