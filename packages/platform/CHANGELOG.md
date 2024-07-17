@@ -1,5 +1,21 @@
 # @effect/platform
 
+## 0.59.1
+
+### Patch Changes
+
+- [#3278](https://github.com/Effect-TS/effect/pull/3278) [`fcecff7`](https://github.com/Effect-TS/effect/commit/fcecff7f7e12b295a252f124861b801c73072151) Thanks @tim-smart! - ensure /platform HttpApp.toWebHandler runs Stream's with the current runtime
+
+  Also add runtime options to HttpServerResponse.toWeb
+
+- [#3281](https://github.com/Effect-TS/effect/pull/3281) [`adbf753`](https://github.com/Effect-TS/effect/commit/adbf75340a9db15dc5cadc66e911a8978a195a65) Thanks @tim-smart! - drop path-browserify dependency
+
+- [#3281](https://github.com/Effect-TS/effect/pull/3281) [`adbf753`](https://github.com/Effect-TS/effect/commit/adbf75340a9db15dc5cadc66e911a8978a195a65) Thanks @tim-smart! - drop fast-querystring dependency
+
+- Updated dependencies [[`a9d7800`](https://github.com/Effect-TS/effect/commit/a9d7800f6a253192b653d77778b0674f39b1ca39)]:
+  - effect@3.5.5
+  - @effect/schema@0.68.25
+
 ## 0.59.0
 
 ### Minor Changes

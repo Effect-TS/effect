@@ -1,5 +1,12 @@
 # @effect/schema
 
+## 0.68.25
+
+### Patch Changes
+
+- Updated dependencies [[`a9d7800`](https://github.com/Effect-TS/effect/commit/a9d7800f6a253192b653d77778b0674f39b1ca39)]:
+  - effect@3.5.5
+
 ## 0.68.24
 
 ### Patch Changes
