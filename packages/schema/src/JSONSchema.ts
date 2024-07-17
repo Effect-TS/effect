@@ -268,12 +268,14 @@ const getJsonSchemaAnnotations = (annotated: AST.Annotated): JsonSchemaAnnotatio
     default: AST.getDefaultAnnotation(annotated)
   })
 
-const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST => {
+const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST | undefined => {
   const type = ps.type
-  if (ps.isOptional && AST.isUnion(type) && Option.isNone(AST.getJSONSchemaAnnotation(type))) {
-    return AST.Union.make(type.types.filter((type) => !AST.isUndefinedKeyword(type)), type.annotations)
+  if (AST.isUnion(type) && Option.isNone(AST.getJSONSchemaAnnotation(type))) {
+    const types = type.types.filter((type) => !AST.isUndefinedKeyword(type))
+    if (types.length < type.types.length) {
+      return AST.Union.make(types, type.annotations)
+    }
   }
-  return type
 }
 
 /** @internal */
@@ -473,12 +475,6 @@ const go = (
             throw new Error(errors_.getJSONSchemaUnsupportedParameterErrorMessage(path, parameter))
         }
       }
-      const propertySignatures = ast.propertySignatures.map((ps) => {
-        return merge(
-          go(pruneUndefinedKeyword(ps), $defs, true, path.concat(ps.name)),
-          getJsonSchemaAnnotations(ps)
-        )
-      })
       const output: JsonSchema7Object = {
         type: "object",
         required: [],
@@ -488,14 +484,19 @@ const go = (
       // ---------------------------------------------
       // handle property signatures
       // ---------------------------------------------
-      for (let i = 0; i < propertySignatures.length; i++) {
-        const name = ast.propertySignatures[i].name
+      for (let i = 0; i < ast.propertySignatures.length; i++) {
+        const ps = ast.propertySignatures[i]
+        const name = ps.name
         if (Predicate.isString(name)) {
-          output.properties[name] = propertySignatures[i]
+          const pruned = pruneUndefinedKeyword(ps)
+          output.properties[name] = merge(
+            go(pruned ? pruned : ps.type, $defs, true, path.concat(ps.name)),
+            getJsonSchemaAnnotations(ps)
+          )
           // ---------------------------------------------
           // handle optional property signatures
           // ---------------------------------------------
-          if (!ast.propertySignatures[i].isOptional) {
+          if (!ps.isOptional && pruned === undefined) {
             output.required.push(name)
           }
         } else {
