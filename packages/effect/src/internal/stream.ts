@@ -8385,8 +8385,4 @@ export const fromEventListener = <A = unknown>(
     Effect.acquireRelease(
       Effect.sync(() => target.addEventListener(type, emit.single as any, options)),
       () => Effect.sync(() => target.removeEventListener(type, emit.single, options))
-    ), {
-    bufferSize: typeof options === "object" && options.bufferSize !== undefined
-      ? options.bufferSize
-      : "unbounded"
-  })
+    ), { bufferSize: typeof options === "object" ? options.bufferSize : undefined })
