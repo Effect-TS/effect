@@ -1,5 +1,18 @@
 # @effect/cli
 
+## 0.38.1
+
+### Patch Changes
+
+- [#2755](https://github.com/Effect-TS/effect/pull/2755) [`51e9c5c`](https://github.com/Effect-TS/effect/commit/51e9c5c87f849ef1a013de4b4c35d397acb1e147) Thanks @dpnova! - Allow using the equals (`=`) character inside aliased key value params.
+
+- Updated dependencies [[`a9d7800`](https://github.com/Effect-TS/effect/commit/a9d7800f6a253192b653d77778b0674f39b1ca39), [`fcecff7`](https://github.com/Effect-TS/effect/commit/fcecff7f7e12b295a252f124861b801c73072151), [`adbf753`](https://github.com/Effect-TS/effect/commit/adbf75340a9db15dc5cadc66e911a8978a195a65), [`adbf753`](https://github.com/Effect-TS/effect/commit/adbf75340a9db15dc5cadc66e911a8978a195a65)]:
+  - effect@3.5.5
+  - @effect/platform@0.59.1
+  - @effect/printer@0.33.48
+  - @effect/printer-ansi@0.33.48
+  - @effect/schema@0.68.25
+
 ## 0.38.0
 
 ### Patch Changes

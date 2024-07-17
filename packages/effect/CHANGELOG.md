@@ -1,5 +1,11 @@
 # effect
 
+## 3.5.5
+
+### Patch Changes
+
+- [#3266](https://github.com/Effect-TS/effect/pull/3266) [`a9d7800`](https://github.com/Effect-TS/effect/commit/a9d7800f6a253192b653d77778b0674f39b1ca39) Thanks @tim-smart! - use "unbounded" buffer for Stream.fromEventListener
+
 ## 3.5.4
 
 ### Patch Changes
