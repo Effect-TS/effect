@@ -608,9 +608,9 @@ const queueFromBufferOptionsPush = <A>(
   }
   switch (options?.strategy) {
     case "sliding":
-      return Queue.sliding(options?.bufferSize ?? 16)
+      return Queue.sliding(options?.bufferSize ?? DefaultChunkSize)
     default:
-      return Queue.dropping(options?.bufferSize ?? 16)
+      return Queue.dropping(options?.bufferSize ?? DefaultChunkSize)
   }
 }
 
