@@ -281,22 +281,19 @@ export const DEFINITION_PREFIX = "#/$defs/"
 
 const get$ref = (id: string): string => `${DEFINITION_PREFIX}${id}`
 
-const hasTransformation = (ast: AST.Refinement): boolean => {
+const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefined => {
   switch (ast.from._tag) {
     case "Transformation":
-      return true
+      return ast.from
     case "Refinement":
-      return hasTransformation(ast.from)
-    case "Suspend":
-      {
-        const from = ast.from.f()
-        if (AST.isRefinement(from)) {
-          return hasTransformation(from)
-        }
+      return getRefinementInnerTransformation(ast.from)
+    case "Suspend": {
+      const from = ast.from.f()
+      if (AST.isRefinement(from)) {
+        return getRefinementInnerTransformation(from)
       }
-      break
+    }
   }
-  return false
 }
 
 const isParseJsonTransformation = (ast: AST.AST): boolean =>
@@ -309,6 +306,11 @@ function merge(a: object, b: object): object {
   return { ...a, ...b }
 }
 
+const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
+  return ("type" in jsonSchema) || ("oneOf" in jsonSchema) || ("anyOf" in jsonSchema) || ("const" in jsonSchema) ||
+    ("enum" in jsonSchema) || ("$ref" in jsonSchema)
+}
+
 const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
@@ -318,11 +320,16 @@ const go = (
   const hook = AST.getJSONSchemaAnnotation(ast)
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema7
-    if (AST.isRefinement(ast) && !hasTransformation(ast)) {
-      try {
-        return merge(merge(go(ast.from, $defs, true, path), getJsonSchemaAnnotations(ast)), handler)
-      } catch (e) {
-        return merge(getJsonSchemaAnnotations(ast), handler)
+    if (AST.isRefinement(ast)) {
+      const t = getRefinementInnerTransformation(ast)
+      if (t === undefined) {
+        try {
+          return merge(merge(go(ast.from, $defs, true, path), getJsonSchemaAnnotations(ast)), handler)
+        } catch (e) {
+          return merge(getJsonSchemaAnnotations(ast), handler)
+        }
+      } else if (!isOverrideAnnotation(handler)) {
+        return go(t, $defs, true, path)
       }
     }
     return handler
