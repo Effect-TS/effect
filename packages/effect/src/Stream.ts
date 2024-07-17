@@ -5963,5 +5963,6 @@ export const fromEventListener: <A = unknown>(
     readonly capture?: boolean
     readonly passive?: boolean
     readonly once?: boolean
+    readonly bufferSize?: number | "unbounded" | undefined
   } | undefined
 ) => Stream<A> = internal.fromEventListener
