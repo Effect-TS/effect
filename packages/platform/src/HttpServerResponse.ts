@@ -5,6 +5,7 @@ import type { ParseOptions } from "@effect/schema/AST"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
+import type * as Runtime from "effect/Runtime"
 import type * as Stream from "effect/Stream"
 import type { Cookie, Cookies, CookiesError } from "./Cookies.js"
 import type * as PlatformError from "./Error.js"
@@ -353,4 +354,10 @@ export const setStatus: {
  * @since 1.0.0
  * @category conversions
  */
-export const toWeb: (response: HttpServerResponse, withoutBody?: boolean | undefined) => Response = internal.toWeb
+export const toWeb: (
+  response: HttpServerResponse,
+  options?: {
+    readonly withoutBody?: boolean | undefined
+    readonly runtime?: Runtime.Runtime<never> | undefined
+  }
+) => Response = internal.toWeb
