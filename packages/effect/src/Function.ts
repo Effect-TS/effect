@@ -69,14 +69,22 @@ export const isFunction = (input: unknown): input is Function => typeof input ==
  * @since 2.0.0
  */
 export const dual: {
-  <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
-    arity: Parameters<DataFirst>["length"],
-    body: DataFirst
-  ): DataLast & DataFirst
-  <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
+  <
+    Other extends (...args: ReadonlyArray<any>) => any,
+    Impl extends (...args: ReadonlyArray<any>) => any,
+    Signature extends Impl = Impl & ([Array<any>] extends [Parameters<Other>] ? unknown : Other)
+  >(
+    arity: Parameters<Impl>["length"],
+    body: Impl
+  ): Signature
+  <
+    Other extends (...args: ReadonlyArray<any>) => any,
+    Impl extends (...args: ReadonlyArray<any>) => any,
+    Signature extends Impl = Impl & ([Array<any>] extends [Parameters<Other>] ? unknown : Other)
+  >(
     isDataFirst: (args: IArguments) => boolean,
-    body: DataFirst
-  ): DataLast & DataFirst
+    body: Impl
+  ): Signature
 } = function(arity, body) {
   if (typeof arity === "function") {
     return function() {

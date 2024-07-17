@@ -2246,12 +2246,15 @@ export const optional: {
     self: Schema.All extends S ? "you can't apply optional implicitly, use optional() instead" : S,
     options?: Options
   ): [undefined] extends [Options] ? optional<S> : optionalWithOptions<S, Options>
-} = dual((args) => isSchema(args[0]), (from, options) => {
+} = (dual((args) => isSchema(args[0]), (
+  from,
+  options
+) => {
   // Note: `Schema.All extends S ? "you can't...` is used to prevent the case where `optional` is implicitly applied.
   // For example: `S.String.pipe(S.optional)` would result in `S.String` being inferred as `Schema.All`,
   // which is not the intended behavior. This is mostly an aesthetic consideration, so if it causes issues, we can remove it.
   return new PropertySignatureWithFromImpl(optionalPropertySignatureAST(from, options), from)
-})
+})) as unknown as typeof optional
 
 /**
  * @since 0.67.0
@@ -3073,9 +3076,12 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
 export const extend: {
   <That extends Schema.Any>(that: That): <Self extends Schema.Any>(self: Self) => extend<Self, That>
   <Self extends Schema.Any, That extends Schema.Any>(self: Self, that: That): extend<Self, That>
-} = dual(
+} = dual<
+  typeof extend,
+  <Self extends Schema.Any, That extends Schema.Any>(self: Self, that: That) => extend<Self, That>
+>(
   2,
-  <Self extends Schema.Any, That extends Schema.Any>(self: Self, that: That) => make(extendAST(self.ast, that.ast, []))
+  (self, that) => make(extendAST(self.ast, that.ast, []))
 )
 
 /**

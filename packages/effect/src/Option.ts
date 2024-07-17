@@ -616,7 +616,7 @@ export const map: {
  */
 export const as: {
   <B>(b: B): <X>(self: Option<X>) => Option<B>
-} = dual(2, <X, B>(self: Option<X>, b: B): Option<B> => map(self, () => b))
+} = dual<typeof as, <X, B>(self: Option<X>, b: B) => Option<B>>(2, (self, b) => map(self, () => b))
 
 /**
  * Maps the `Some` value of this `Option` to the `void` constant value.
