@@ -474,12 +474,12 @@ const queueFromBufferOptions = <A, E>(
     return Queue.unbounded()
   }
   switch (options?.strategy) {
+    case "dropping":
+      return Queue.dropping(options.bufferSize ?? 16)
     case "sliding":
       return Queue.sliding(options.bufferSize ?? 16)
-    case "suspend":
-      return Queue.bounded(options.bufferSize ?? 16)
     default:
-      return Queue.dropping(options?.bufferSize ?? 16)
+      return Queue.bounded(options?.bufferSize ?? 16)
   }
 }
 
