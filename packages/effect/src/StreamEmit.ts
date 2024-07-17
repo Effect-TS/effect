@@ -109,6 +109,12 @@ export interface EmitOpsPush<in E, in A> {
   dieMessage(message: string): void
 
   /**
+   * Either emits the specified value if this `Exit` is a `Success` or else
+   * terminates with the specified cause if this `Exit` is a `Failure`.
+   */
+  done(exit: Exit.Exit<A, E>): void
+
+  /**
    * Terminates with an end of stream signal.
    */
   end(): void

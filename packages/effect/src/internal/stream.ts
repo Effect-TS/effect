@@ -600,7 +600,7 @@ export const asyncEffect = <A, E = never, R = never>(
 const constEofPush = Symbol.for("effect/Stream/constEofPush")
 const queueFromBufferOptionsPush = <A>(
   options?: { bufferSize: "unbounded" } | {
-    readonly bufferSize?: number
+    readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
 ): Effect.Effect<Queue.Queue<A | typeof constEofPush>> => {
@@ -615,59 +615,65 @@ const queueFromBufferOptionsPush = <A>(
   }
 }
 
-class EmitOpsPushImpl<E, A> implements Emit.EmitOpsPush<E, A> {
-  constructor(
-    readonly queue: Queue.Queue<A | typeof constEofPush>,
-    readonly deferred: Deferred.Deferred<void, E>
-  ) {}
-  finished = false
-  single(value: A) {
-    if (this.finished) return false
-    return this.queue.unsafeOffer(value)
+const makeEmitPush = <E, A>(
+  queue: Queue.Queue<A | typeof constEofPush>,
+  deferred: Deferred.Deferred<void, E>
+): Emit.EmitOpsPush<E, A> => {
+  let finished = false
+  function single(value: A) {
+    if (finished) return false
+    return queue.unsafeOffer(value)
   }
-  chunk(chunk: Chunk.Chunk<A>) {
-    if (this.finished) return false
-    for (const value of chunk) {
-      if (!this.queue.unsafeOffer(value)) {
-        return false
-      }
-    }
-    return true
-  }
-  array(arr: ReadonlyArray<A>) {
-    if (this.finished) return false
-    for (let i = 0; i < arr.length; i++) {
-      if (!this.queue.unsafeOffer(arr[i])) {
-        return false
-      }
-    }
-    return true
-  }
-  done(exit: Exit.Exit<A, E>) {
-    if (this.finished) {
+  function done(exit: Exit.Exit<A, E>) {
+    if (finished) {
       return
-    } else if (exit._tag === "Success") {
-      this.single(exit.value)
     }
-    this.queue.unsafeOffer(constEofPush)
-    Deferred.unsafeDone(this.deferred, exit._tag === "Success" ? Exit.void : exit)
+    finished = true
+    if (exit._tag === "Success") {
+      single(exit.value)
+    }
+    queue.unsafeOffer(constEofPush)
+    Deferred.unsafeDone(deferred, exit._tag === "Success" ? Exit.void : exit)
   }
-  end() {
-    if (this.finished) return
-    this.queue.unsafeOffer(constEofPush)
-    Deferred.unsafeDone(this.deferred, Exit.void)
-  }
-  halt(cause: Cause.Cause<E>) {
-    this.done(Exit.failCause(cause))
-  }
-  fail(error: E) {
-    this.done(Exit.fail(error))
-  }
-  die<Err>(defect: Err): void {
-    this.done(Exit.die(defect))
-  }
-  dieMessage(message: string): void {
-    this.done(Exit.die(new Error(message)))
+  return {
+    single,
+    chunk(chunk: Chunk.Chunk<A>) {
+      if (finished) return false
+      for (const value of chunk) {
+        if (!queue.unsafeOffer(value)) {
+          return false
+        }
+      }
+      return true
+    },
+    array(arr: ReadonlyArray<A>) {
+      if (finished) return false
+      for (let i = 0; i < arr.length; i++) {
+        if (!queue.unsafeOffer(arr[i])) {
+          return false
+        }
+      }
+      return true
+    },
+    done,
+    end() {
+      if (finished) return
+      finished = true
+      queue.unsafeOffer(constEofPush)
+      Deferred.unsafeDone(deferred, Exit.void)
+    },
+    halt(cause: Cause.Cause<E>) {
+      done(Exit.failCause(cause))
+    },
+    fail(error: E) {
+      done(Exit.fail(error))
+    },
+    die<Err>(defect: Err): void {
+      done(Exit.die(defect))
+    },
+    dieMessage(message: string): void {
+      done(Exit.die(new Error(message)))
+    }
   }
 }
 
@@ -675,7 +681,7 @@ class EmitOpsPushImpl<E, A> implements Emit.EmitOpsPush<E, A> {
 export const asyncPush = <A, E = never, R = never>(
   register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
   options?: { bufferSize: "unbounded" } | {
-    readonly bufferSize?: number
+    readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
 ): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
@@ -685,7 +691,7 @@ export const asyncPush = <A, E = never, R = never>(
   ).pipe(
     Effect.bindTo("queue"),
     Effect.bind("deferred", () => Deferred.make<void, E>()),
-    Effect.tap(({ deferred, queue }) => register(new EmitOpsPushImpl(queue, deferred))),
+    Effect.tap(({ deferred, queue }) => register(makeEmitPush(queue, deferred))),
     Effect.map(({ deferred, queue }) => {
       const onEnd = channel.zipRight(Deferred.await(deferred), core.void)
       const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(
@@ -8435,23 +8441,15 @@ export const fromEventListener = <A = unknown>(
     readonly capture?: boolean
     readonly passive?: boolean
     readonly once?: boolean
+    readonly bufferSize?: number | "unbounded" | undefined
   } | undefined
 ): Stream.Stream<A> =>
-  _async<A>((emit) => {
-    let batch: Array<A> = []
-    let taskRunning = false
-    function cb(e: A) {
-      batch.push(e)
-      if (!taskRunning) {
-        taskRunning = true
-        queueMicrotask(() => {
-          const events = batch
-          batch = []
-          taskRunning = false
-          emit.chunk(Chunk.unsafeFromArray(events))
-        })
-      }
-    }
-    target.addEventListener(type, cb as any, options)
-    return Effect.sync(() => target.removeEventListener(type, cb, options))
-  }, "unbounded")
+  asyncPush<A>((emit) =>
+    Effect.acquireRelease(
+      Effect.sync(() => target.addEventListener(type, emit.single as any, options)),
+      () => Effect.sync(() => target.removeEventListener(type, emit.single, options))
+    ), {
+    bufferSize: typeof options === "object" && options.bufferSize !== undefined
+      ? options.bufferSize
+      : "unbounded"
+  })
