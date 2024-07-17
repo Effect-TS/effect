@@ -791,35 +791,63 @@ details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
       )
     })
 
-    it("should prune `UndefinedKeyword` if the property signature is marked as optional and contains a union that includes `UndefinedKeyword`", () => {
-      expectJSONSchema(
-        Schema.Struct({
-          a: Schema.optional(Schema.String)
-        }),
-        {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "type": "object",
-          "properties": {
-            "a": {
-              "type": "string"
-            }
-          },
-          "required": [],
-          "additionalProperties": false
-        }
-      )
-    })
+    describe("pruning undefined", () => {
+      it("with an annotation the property should remain required", () => {
+        expectJSONSchema(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String).annotations({ jsonSchema: { "type": "number" } })
+          }),
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+              "a": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
 
-    it("should raise an error if the property signature is not marked as optional and contains a union that includes `UndefinedKeyword`", () => {
-      expectError(
-        Schema.Struct({
-          a: Schema.UndefinedOr(Schema.String)
-        }),
-        `Missing annotation
-at path: ["a"]
-details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (UndefinedKeyword): undefined`
-      )
+      it("should prune `UndefinedKeyword` from an optional property signature", () => {
+        expectJSONSchema(
+          Schema.Struct({
+            a: Schema.optional(Schema.String)
+          }),
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("should prune `UndefinedKeyword` from a required property signature type and make the property optional by default", () => {
+        expectJSONSchema(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String)
+          }),
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
     })
   })
 
