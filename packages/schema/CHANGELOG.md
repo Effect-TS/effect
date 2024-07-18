@@ -1,5 +1,116 @@
 # @effect/schema
 
+## 0.68.26
+
+### Patch Changes
+
+- [#3287](https://github.com/Effect-TS/effect/pull/3287) [`f0285d3`](https://github.com/Effect-TS/effect/commit/f0285d3af6a18829123bc1818331c67206becbc4) Thanks @gcanti! - JSON Schema: change default behavior for property signatures containing `undefined`
+
+  Changed the default behavior when encountering a required property signature whose type contains `undefined`. Instead of raising an exception, `undefined` is now pruned and **the field is set as optional**.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema";
+
+  const schema = Schema.Struct({
+    a: Schema.NullishOr(Schema.Number),
+  });
+
+  const jsonSchema = JSONSchema.make(schema);
+  console.log(JSON.stringify(jsonSchema, null, 2));
+  /*
+  throws
+  Error: Missing annotation
+  at path: ["a"]
+  details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
+  schema (UndefinedKeyword): undefined
+  */
+  ```
+
+  Now
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema";
+
+  const schema = Schema.Struct({
+    a: Schema.NullishOr(Schema.Number),
+  });
+
+  const jsonSchema = JSONSchema.make(schema);
+  console.log(JSON.stringify(jsonSchema, null, 2));
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [], // <=== empty
+    "properties": {
+      "a": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "$ref": "#/$defs/null"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "$defs": {
+      "null": {
+        "const": null
+      }
+    }
+  }
+  */
+  ```
+
+- [#3291](https://github.com/Effect-TS/effect/pull/3291) [`8ec4955`](https://github.com/Effect-TS/effect/commit/8ec49555ed3b3c98093fa4d135a4c57a3f16ebd1) Thanks @gcanti! - remove type-level error message from `optional` signature, closes #3290
+
+  This fix eliminates the type-level error message from the `optional` function signature, which was causing issues in generic contexts.
+
+- [#3284](https://github.com/Effect-TS/effect/pull/3284) [`3ac2d76`](https://github.com/Effect-TS/effect/commit/3ac2d76048da09e876cf6c3aee3397febd843fe9) Thanks @gcanti! - Fix: Correct Handling of JSON Schema Annotations in Refinements
+
+  Fixes an issue where the JSON schema annotation set by a refinement after a transformation was mistakenly interpreted as an override annotation. This caused the output to be incorrect, as the annotations were not applied as intended.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema";
+
+  const schema = Schema.Trim.pipe(Schema.nonEmpty());
+
+  const jsonSchema = JSONSchema.make(schema);
+  console.log(JSON.stringify(jsonSchema, null, 2));
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "minLength": 1
+  }
+  */
+  ```
+
+  Now
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema";
+
+  const schema = Schema.Trim.pipe(Schema.nonEmpty());
+
+  const jsonSchema = JSONSchema.make(schema);
+  console.log(JSON.stringify(jsonSchema, null, 2));
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string"
+  }
+  */
+  ```
+
+- Updated dependencies [[`cc327a1`](https://github.com/Effect-TS/effect/commit/cc327a1bccd22a4ee27ec7e58b53205e93b23e2c), [`4bfe4fb`](https://github.com/Effect-TS/effect/commit/4bfe4fb5c82f597c9beea9baa92e772593598b60), [`2b14d18`](https://github.com/Effect-TS/effect/commit/2b14d181462cad8359da4fa6bc6dfda0f742c398)]:
+  - effect@3.5.6
+
 ## 0.68.25
 
 ### Patch Changes
