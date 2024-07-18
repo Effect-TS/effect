@@ -896,6 +896,53 @@ export const SafeDecode = <A, I>(self: Schema.Schema<A, I, never>) => {
 
 - **Encoding**: The encoding process uses the `Forbidden` error to indicate that encoding a `Left` value is not supported. Only `Right` values are successfully encoded.
 
+## Naming Conventions in `@effect/schema`
+
+The naming conventions in `@effect/schema` are designed to be straightforward and logical, focusing primarily on compatibility with JSON serialization. This approach simplifies the understanding and use of schemas, especially for developers who are integrating web technologies where JSON is a standard data interchange format.
+
+### Overview of Naming Strategies:
+
+- **JSON-Compatible Types**: Schemas that naturally serialize to JSON-compatible formats are named directly after their data types. For instance:
+
+  - `Schema.Date` serializes dates to strings, reflecting a common JSON practice.
+  - `Schema.Number` directly corresponds to JSON's number type, thus no transformation is necessary.
+
+- **Non-JSON-Compatible Types**: For data types that do not directly map to JSON, such as `Date` objects that cannot be inherently serialized to JSON, the naming includes additional context to clarify the transformation:
+  - `Schema.DateFromSelf` indicates that the schema handles `Date` objects, transforming them into a format that is not natively JSON-serializable.
+
+### Practical Application:
+
+The primary goal of these schemas is to ensure that domain objects can be easily serialized ("encoded") and deserialized ("decoded") for transmission over network connections, thus facilitating their transfer between different parts of an application or across different applications. This functionality is crucial in distributed systems or applications that rely heavily on data exchange.
+
+Here is an example demonstrating how straightforward naming conventions can be applied:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  sym: Schema.Symbol,
+  optional: Schema.Option(Schema.Date),
+  chunk: Schema.Chunk(Schema.BigInt),
+  createdAt: Schema.Date,
+  updatedAt: Schema.Date
+})
+
+// This approach is preferred over more complex naming conventions like:
+/*
+const schema = Schema.Struct({
+  sym: Schema.SymbolFromString,
+  optional: Schema.OptionFromJson(Schema.DateFromString),
+  chunk: Schema.ChunkFromJson(Schema.BigIntFromString),
+  createdAt: Schema.DateFromString,
+  updatedAt: Schema.DateFromString
+})
+*/
+```
+
+### Rationale:
+
+While JSON's ubiquity justifies its primary consideration in naming, the conventions also accommodate serialization for other types of transport. For instance, converting a `Date` to a string is a universally useful method for various communication protocols, not just JSON. Thus, the selected naming conventions serve as sensible defaults that prioritize clarity and ease of use, facilitating the serialization and deserialization processes across diverse technological environments.
+
 ## Formatting Errors
 
 When you're working with Effect Schema and encounter errors during decoding, or encoding functions, you can format these errors in two different ways: using the `TreeFormatter` or the `ArrayFormatter`.
@@ -6041,18 +6088,16 @@ class Messages extends Context.Tag("Messages")<
   }
 >() {}
 
-const Name = Schema.NonEmpty.annotations(
-  {
-    message: () =>
-      Effect.gen(function*(_) {
-        const service = yield* _(Effect.serviceOption(Messages))
-        return Option.match(service, {
-          onNone: () => "Invalid string",
-          onSome: (messages) => messages.NonEmpty
-        })
+const Name = Schema.NonEmpty.annotations({
+  message: () =>
+    Effect.gen(function* (_) {
+      const service = yield* _(Effect.serviceOption(Messages))
+      return Option.match(service, {
+        onNone: () => "Invalid string",
+        onSome: (messages) => messages.NonEmpty
       })
-  }
-)
+    })
+})
 
 Schema.decodeUnknownSync(Name)("") // => throws "Invalid string"
 
