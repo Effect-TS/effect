@@ -39,6 +39,14 @@ export interface JsonSchema7Unknown extends JsonSchemaAnnotations {
 
 /**
  * @category model
+ * @since 0.69.0
+ */
+export interface JsonSchema7Void extends JsonSchemaAnnotations {
+  $id: "/schemas/void"
+}
+
+/**
+ * @category model
  * @since 0.67.0
  */
 export interface JsonSchema7object extends JsonSchemaAnnotations {
@@ -186,11 +194,12 @@ export interface JsonSchema7Object extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 0.67.0
+ * @since 0.69.0
  */
 export type JsonSchema7 =
   | JsonSchema7Any
   | JsonSchema7Unknown
+  | JsonSchema7Void
   | JsonSchema7object
   | JsonSchema7empty
   | JsonSchema7Ref
@@ -241,6 +250,8 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
 const anyJsonSchema: JsonSchema7 = { $id: "/schemas/any" }
 
 const unknownJsonSchema: JsonSchema7 = { $id: "/schemas/unknown" }
+
+const voidJsonSchema: JsonSchema7 = { $id: "/schemas/void" }
 
 const objectJsonSchema: JsonSchema7 = {
   "$id": "/schemas/object",
@@ -369,7 +380,7 @@ const go = (
     case "UndefinedKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "VoidKeyword":
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+      return merge(voidJsonSchema, getJsonSchemaAnnotations(ast))
     case "NeverKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "UnknownKeyword":

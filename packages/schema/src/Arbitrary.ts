@@ -114,7 +114,6 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
     case "UniqueSymbol":
       return (fc) => fc.constant(ast.symbol)
     case "UndefinedKeyword":
-    case "VoidKeyword":
       return (fc) => fc.constant(undefined)
     case "NeverKeyword":
       return () => {
@@ -122,6 +121,7 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
       }
     case "UnknownKeyword":
     case "AnyKeyword":
+    case "VoidKeyword":
       return (fc) => fc.anything()
     case "StringKeyword":
       return (fc) => {

@@ -120,15 +120,6 @@ schema (UndefinedKeyword): undefined`
       )
     })
 
-    it("Void should raise an error", () => {
-      expectError(
-        Schema.Void,
-        `Missing annotation
-details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (VoidKeyword): void`
-      )
-    })
-
     it("Never should raise an error", () => {
       expectError(
         Schema.Never,
@@ -149,21 +140,21 @@ schema (Literal): 1n`
 
     it("Tuple", () => {
       expectError(
-        Schema.Tuple(Schema.Void),
+        Schema.Tuple(Schema.DateFromSelf),
         `Missing annotation
 at path: [0]
 details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (VoidKeyword): void`
+schema (Declaration): DateFromSelf`
       )
     })
 
     it("Struct", () => {
       expectError(
-        Schema.Struct({ a: Schema.Void }),
+        Schema.Struct({ a: Schema.DateFromSelf }),
         `Missing annotation
 at path: ["a"]
 details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (VoidKeyword): void`
+schema (Declaration): DateFromSelf`
       )
     })
   })
@@ -181,6 +172,14 @@ schema (VoidKeyword): void`
       "$id": "/schemas/unknown",
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "unknown"
+    })
+  })
+
+  it("Void", () => {
+    expectJSONSchema(Schema.Void, {
+      "$id": "/schemas/void",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "void"
     })
   })
 

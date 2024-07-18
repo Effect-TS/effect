@@ -867,12 +867,11 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       return fromRefinement(ast, (u): u is typeof ast.symbol => u === ast.symbol)
     case "UndefinedKeyword":
       return fromRefinement(ast, Predicate.isUndefined)
-    case "VoidKeyword":
-      return fromRefinement(ast, Predicate.isUndefined)
     case "NeverKeyword":
       return fromRefinement(ast, Predicate.isNever)
     case "UnknownKeyword":
     case "AnyKeyword":
+    case "VoidKeyword":
       return Either.right
     case "StringKeyword":
       return fromRefinement(ast, Predicate.isString)
