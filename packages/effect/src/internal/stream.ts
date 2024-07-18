@@ -603,14 +603,14 @@ const queueFromBufferOptionsPush = <A>(
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
 ): Effect.Effect<Queue.Queue<A | typeof emit.pushEOF>> => {
-  if (options?.bufferSize === "unbounded") {
+  if (options?.bufferSize === "unbounded" || (options?.bufferSize === undefined && options?.strategy === undefined)) {
     return Queue.unbounded()
   }
   switch (options?.strategy) {
     case "sliding":
-      return Queue.sliding(options?.bufferSize ?? DefaultChunkSize)
+      return Queue.sliding(options.bufferSize ?? 16)
     default:
-      return Queue.dropping(options?.bufferSize ?? DefaultChunkSize)
+      return Queue.dropping(options?.bufferSize ?? 16)
   }
 }
 

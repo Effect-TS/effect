@@ -382,9 +382,9 @@ export const asyncEffect: <A, E = never, R = never>(
  * You can also use the `emit` helper to signal the end of the stream by
  * using apis such as `emit.end` or `emit.fail`.
  *
- * By default it uses a buffer size of 4096 and a dropping strategy to prevent
- * memory issues. You can customize the buffer size and strategy by passing an
- * object as the second argument with the `bufferSize` and `strategy` fields.
+ * By default it uses an "unbounded" buffer size.
+ * You can customize the buffer size and strategy by passing an object as the
+ * second argument with the `bufferSize` and `strategy` fields.
  *
  * @example
  * import { Effect, Stream } from "effect"
