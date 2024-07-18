@@ -29,7 +29,7 @@ import type * as MetricLabel from "../MetricLabel.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isObject, isPromiseLike, isString, type Predicate, type Refinement } from "../Predicate.js"
+import { hasProperty, isObject, isPromiseLike, type Predicate, type Refinement } from "../Predicate.js"
 import type * as Request from "../Request.js"
 import type * as BlockedRequests from "../RequestBlock.js"
 import type * as RequestResolver from "../RequestResolver.js"
@@ -2186,6 +2186,8 @@ export const YieldableError: new(message?: string, options?: ErrorOptions) => Ca
     [NodeInspectSymbol]() {
       if (this.toString !== globalThis.Error.prototype.toString) {
         return this.stack ? `${this.toString()}\n${this.stack.split("\n").slice(1).join("\n")}` : this.toString()
+      } else if ("Bun" in globalThis) {
+        return internalCause.pretty(internalCause.fail(this), { renderErrorCause: true })
       }
       return this
     }
@@ -2311,12 +2313,14 @@ export const UnknownExceptionTypeId: Cause.UnknownExceptionTypeId = Symbol.for(
 ) as Cause.UnknownExceptionTypeId
 
 /** @internal */
-export const UnknownException: new(error: unknown, message?: string | undefined) => Cause.UnknownException =
+export const UnknownException: new(cause: unknown, message?: string | undefined) => Cause.UnknownException =
   (function() {
     class UnknownException extends YieldableError {
       readonly _tag = "UnknownException"
-      constructor(readonly error: unknown, message?: string) {
-        super(message ?? (hasProperty(error, "message") && isString(error.message) ? error.message : void 0))
+      readonly error: unknown
+      constructor(readonly cause: unknown, message?: string) {
+        super(message ?? "An unknown error occurred", { cause })
+        this.error = cause
       }
     }
     Object.assign(UnknownException.prototype, {
