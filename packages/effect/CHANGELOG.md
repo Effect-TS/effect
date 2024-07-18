@@ -1,5 +1,15 @@
 # effect
 
+## 3.5.6
+
+### Patch Changes
+
+- [#3294](https://github.com/Effect-TS/effect/pull/3294) [`cc327a1`](https://github.com/Effect-TS/effect/commit/cc327a1bccd22a4ee27ec7e58b53205e93b23e2c) Thanks @tim-smart! - correctly exclude symbols from Record.keys
+
+- [#3289](https://github.com/Effect-TS/effect/pull/3289) [`4bfe4fb`](https://github.com/Effect-TS/effect/commit/4bfe4fb5c82f597c9beea9baa92e772593598b60) Thanks @dilame! - Changed `Stream.groupByKey`/`Stream.grouped`/`Stream.groupedWithin` JSDoc category from `utils` to `grouping`
+
+- [#3295](https://github.com/Effect-TS/effect/pull/3295) [`2b14d18`](https://github.com/Effect-TS/effect/commit/2b14d181462cad8359da4fa6bc6dfda0f742c398) Thanks @tim-smart! - fix YieldableError rendering on bun
+
 ## 3.5.5
 
 ### Patch Changes
