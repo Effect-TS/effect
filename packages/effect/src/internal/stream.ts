@@ -597,12 +597,12 @@ export const asyncEffect = <A, E = never, R = never>(
     fromChannel
   )
 
-const queueFromBufferOptionsPush = <A>(
+const queueFromBufferOptionsPush = <A, E>(
   options?: { readonly bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
-): Effect.Effect<Queue.Queue<A | typeof emit.pushEOF>> => {
+): Effect.Effect<Queue.Queue<Array<A> | Exit.Exit<void, E>>> => {
   if (options?.bufferSize === "unbounded" || (options?.bufferSize === undefined && options?.strategy === undefined)) {
     return Queue.unbounded()
   }
@@ -617,35 +617,23 @@ const queueFromBufferOptionsPush = <A>(
 /** @internal */
 export const asyncPush = <A, E = never, R = never>(
   register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
-  options?: { readonly bufferSize: "unbounded" } | {
+  options?: {
+    readonly bufferSize: "unbounded"
+  } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
 ): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
   Effect.acquireRelease(
-    queueFromBufferOptionsPush<A>(options),
+    queueFromBufferOptionsPush<A, E>(options),
     Queue.shutdown
   ).pipe(
-    Effect.bindTo("queue"),
-    Effect.bind("deferred", () => Deferred.make<void, E>()),
-    Effect.tap(({ deferred, queue }) => register(emit.makePush(queue, deferred))),
-    Effect.map(({ deferred, queue }) => {
-      const onEnd = channel.zipRight(Deferred.await(deferred), core.void)
-      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(
-        Effect.zipRight(
-          Effect.yieldNow(), // allow batches to accumulate
-          Queue.takeBetween(queue, 1, Number.MAX_SAFE_INTEGER)
-        ),
-        (chunk) => {
-          const end = Chunk.unsafeLast(chunk) === emit.pushEOF
-          if (end) {
-            return chunk.length > 1
-              ? channel.zipRight(core.write(Chunk.dropRight(chunk, 1) as Chunk.Chunk<A>), onEnd)
-              : onEnd
-          }
-          return channel.zipRight(core.write(chunk as Chunk.Chunk<A>), loop)
-        }
-      )
+    Effect.tap((queue) => register(emit.makePush(queue))),
+    Effect.map((queue) => {
+      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(Queue.take(queue), (item) =>
+        Exit.isExit(item)
+          ? Exit.isSuccess(item) ? core.void : core.failCause(item.cause)
+          : channel.zipRight(core.write(Chunk.unsafeFromArray(item)), loop))
       return loop
     }),
     channel.unwrapScoped,
