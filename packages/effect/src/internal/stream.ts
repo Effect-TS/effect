@@ -6195,6 +6195,23 @@ export const tap: {
 )
 
 /** @internal */
+export const tapStart: {
+  <_, E2, R2>(
+    effect: Effect.Effect<_, E2, R2>
+  ): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>
+  <A, E, R, _, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Stream.Stream<A, E | E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, _, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Stream.Stream<A, E | E2, R | R2> => concat(drain(fromEffect(effect)), self)
+)
+
+/** @internal */
 export const tapBoth: {
   <E, X1, E2, R2, A, X2, E3, R3>(
     options: {
