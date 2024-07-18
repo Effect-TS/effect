@@ -896,6 +896,63 @@ export const SafeDecode = <A, I>(self: Schema.Schema<A, I, never>) => {
 
 - **Encoding**: The encoding process uses the `Forbidden` error to indicate that encoding a `Left` value is not supported. Only `Right` values are successfully encoded.
 
+## Naming Conventions
+
+The naming conventions in `@effect/schema` are designed to be straightforward and logical, **focusing primarily on compatibility with JSON serialization**. This approach simplifies the understanding and use of schemas, especially for developers who are integrating web technologies where JSON is a standard data interchange format.
+
+### Overview of Naming Strategies
+
+**JSON-Compatible Types**
+
+Schemas that naturally serialize to JSON-compatible formats are named directly after their data types.
+
+For instance:
+
+- `Schema.Date`: serializes JavaScript Date objects to ISO-formatted strings, a typical method for representing dates in JSON.
+- `Schema.Number`: used directly as it maps precisely to the JSON number type, requiring no special transformation to remain JSON-compatible.
+
+**Non-JSON-Compatible Types**
+
+When dealing with types that do not have a direct representation in JSON, the naming strategy incorporates additional details to indicate the necessary transformation. This helps in setting clear expectations about the schema's behavior:
+
+For instance:
+
+- `Schema.DateFromSelf`: indicates that the schema handles `Date` objects, which are not natively JSON-serializable.
+- `Schema.NumberFromString`: this naming suggests that the schema processes numbers that are initially represented as strings, emphasizing the transformation from string to number when decoding.
+
+### Practical Application
+
+The primary goal of these schemas is to ensure that domain objects can be easily serialized ("encoded") and deserialized ("decoded") for transmission over network connections, thus facilitating their transfer between different parts of an application or across different applications.
+
+Here is an example demonstrating how straightforward naming conventions can be applied:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  sym: Schema.Symbol,
+  optional: Schema.Option(Schema.Date),
+  chunk: Schema.Chunk(Schema.BigInt),
+  createdAt: Schema.Date,
+  updatedAt: Schema.Date
+})
+
+// This approach is preferred over more complex naming conventions like:
+/*
+const schema = Schema.Struct({
+  sym: Schema.SymbolFromString,
+  optional: Schema.OptionFromJson(Schema.DateFromString),
+  chunk: Schema.ChunkFromJson(Schema.BigIntFromString),
+  createdAt: Schema.DateFromString,
+  updatedAt: Schema.DateFromString
+})
+*/
+```
+
+### Rationale
+
+While JSON's ubiquity justifies its primary consideration in naming, the conventions also accommodate serialization for other types of transport. For instance, converting a `Date` to a string is a universally useful method for various communication protocols, not just JSON. Thus, the selected naming conventions serve as sensible defaults that prioritize clarity and ease of use, facilitating the serialization and deserialization processes across diverse technological environments.
+
 ## Formatting Errors
 
 When you're working with Effect Schema and encounter errors during decoding, or encoding functions, you can format these errors in two different ways: using the `TreeFormatter` or the `ArrayFormatter`.
@@ -1228,648 +1285,6 @@ Error: { readonly name: string; readonly age: number }
 
 // this will not throw an error
 assertsPerson({ name: "Alice", age: 30 })
-```
-
-## Generating Arbitraries
-
-The `make` function within the `@effect/schema/Arbitrary` module allows for the creation of random values that align with a specific `Schema<A, I, R>`. This utility returns an `Arbitrary<A>` from the [fast-check](https://github.com/dubzzz/fast-check) library, which is particularly useful for generating random test data that adheres to the defined schema constraints.
-
-```ts
-import { Arbitrary, FastCheck, Schema } from "@effect/schema"
-
-const Person = Schema.Struct({
-  name: Schema.NonEmptyString,
-  age: Schema.NumberFromString.pipe(Schema.int(), Schema.between(0, 200))
-})
-
-/*
-FastCheck.Arbitrary<{
-    readonly name: string;
-    readonly age: number;
-}>
-*/
-const PersonArbitraryType = Arbitrary.make(Person)
-
-console.log(FastCheck.sample(PersonArbitraryType, 2))
-/*
-Example Output:
-[ { name: 'q r', age: 1 }, { name: '&|', age: 133 } ]
-*/
-
-/*
-Arbitrary for the "Encoded" type:
-FastCheck.Arbitrary<{
-    readonly name: string;
-    readonly age: string;
-}>
-*/
-const PersonArbitraryEncoded = Arbitrary.make(Schema.encodedSchema(Person))
-
-console.log(FastCheck.sample(PersonArbitraryEncoded, 2))
-/*
-Example Output:
-[ { name: 'key', age: '' }, { name: 'Gm', age: 'q' } ]
-*/
-```
-
-### Understanding Schema Transformations and Arbitrary Generation
-
-The generation of arbitrary data requires a clear understanding of how transformations and filters are applied within a schema:
-
-- **Transformations and Filters**: Only the filters applied after the last transformation in the transformation chain are considered during arbitrary generation.
-
-```ts
-import { Arbitrary, FastCheck, Schema } from "@effect/schema"
-
-const schema1 = Schema.compose(Schema.NonEmptyString, Schema.Trim).pipe(
-  Schema.maxLength(500)
-)
-// Might output empty strings despite `NonEmpty` due to filter order.
-console.log(FastCheck.sample(Arbitrary.make(schema1), 10))
-
-const schema2 = Schema.Trim.pipe(Schema.nonEmptyString(), Schema.maxLength(500))
-// Ensures no empty strings, correctly applying `nonEmpty()`.
-console.log(FastCheck.sample(Arbitrary.make(schema2), 10))
-```
-
-**Explanation:**
-
-- **Schema 1**: Considers the `Schema.maxLength(500)` because it follows the `Schema.Trim` transformation but disregards `Schema.NonEmptyString` as it comes before any transformations.
-- **Schema 2**: Properly adheres to all applied filters by ensuring they follow transformations, thus avoiding the generation of undesired data.
-
-**Best Practices**
-
-Organize transformations and filters to ensure clarity and effectiveness in data generation. Follow the pattern: `(I filters) -> (transformations) -> (A filters)` where "I" and "A" stand for the initial and transformed types in the schema.
-
-"I" and "A" represent the initial and final types in the schema, ensuring that each stage of data processing is clearly defined.
-
-Instead of indiscriminately combining transformations and filters:
-
-```ts
-import { Schema } from "@effect/schema"
-
-// Less optimal mixing of transformations and filters
-const schema = Schema.compose(
-  // transformation + filter
-  Schema.Lowercase,
-  // transformation + filter
-  Schema.Trim
-)
-```
-
-Prefer separating transformation steps from filter applications:
-
-```ts
-import { Schema } from "@effect/schema"
-
-// Recommended approach: Separate transformations from filters
-const schema = Schema.transform(
-  Schema.String,
-  Schema.String.pipe(Schema.trimmed(), Schema.lowercased()),
-  {
-    strict: true,
-    decode: (s) => s.trim().toLowerCase(),
-    encode: (s) => s
-  }
-)
-```
-
-### Customizations
-
-You can customize the output by using the `arbitrary` annotation:
-
-```ts
-import { Arbitrary, FastCheck, Schema } from "@effect/schema"
-
-const schema = Schema.Number.annotations({
-  arbitrary: () => (fc) => fc.nat()
-})
-
-const arb = Arbitrary.make(schema)
-
-console.log(FastCheck.sample(arb, 2))
-// Output: [ 1139348969, 749305462 ]
-```
-
-> [!WARNING]
-> Customizing a schema can disrupt previously applied filters. Filters set after the customization will remain effective, while those applied before will be disregarded.
-
-**Example**
-
-```ts
-import { Arbitrary, FastCheck, Schema } from "@effect/schema"
-
-// Here, the 'positive' filter is overridden by the custom arbitrary definition
-const problematic = Schema.Number.pipe(Schema.positive()).annotations({
-  arbitrary: () => (fc) => fc.integer()
-})
-
-console.log(FastCheck.sample(Arbitrary.make(problematic), 2))
-// Example Output: [ -1600163302, -6 ]
-
-// Here, the 'positive' filter is applied after the arbitrary customization, ensuring it is considered
-const improved = Schema.Number.annotations({
-  arbitrary: () => (fc) => fc.integer()
-}).pipe(Schema.positive())
-
-console.log(FastCheck.sample(Arbitrary.make(improved), 2))
-// Example Output: [ 7, 1518247613 ]
-```
-
-## Pretty print
-
-The `make` function provided by the `@effect/schema/Pretty` module represents a way of pretty-printing values that conform to a given `Schema`.
-
-You can use the `make` function to create a human-readable string representation of a value that conforms to a `Schema`. This can be useful for debugging or logging purposes, as it allows you to easily inspect the structure and data types of the value.
-
-```ts
-import { Pretty, Schema } from "@effect/schema"
-
-const Person = Schema.Struct({
-  name: Schema.String,
-  age: Schema.Number
-})
-
-const PersonPretty = Pretty.make(Person)
-
-// returns a string representation of the object
-console.log(PersonPretty({ name: "Alice", age: 30 }))
-/*
-Output:
-'{ "name": "Alice", "age": 30 }'
-*/
-```
-
-### Customizations
-
-You can customize the output using the `pretty` annotation:
-
-```ts
-import { Pretty, Schema } from "@effect/schema"
-
-const schema = Schema.Number.annotations({
-  pretty: () => (n) => `my format: ${n}`
-})
-
-console.log(Pretty.make(schema)(1)) // my format: 1
-```
-
-## Generating JSON Schemas
-
-The `make` function from the `@effect/schema/JSONSchema` module enables you to create a JSON Schema based on a defined schema:
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-
-const Person = Schema.Struct({
-  name: Schema.NonEmptyString,
-  age: Schema.Number
-})
-
-const jsonSchema = JSONSchema.make(Person)
-
-console.log(JSON.stringify(jsonSchema, null, 2))
-/*
-Output:
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": [
-    "age",
-    "name"
-  ],
-  "properties": {
-    "age": {
-      "type": "number",
-      "description": "a number",
-      "title": "number"
-    },
-    "name": {
-      "type": "string",
-      "description": "a non empty string",
-      "title": "NonEmpty",
-      "minLength": 1
-    }
-  },
-  "additionalProperties": false
-}
-*/
-```
-
-In this example, we have created a schema for a "Person" with a name (a non-empty string) and an age (a number). We then use the `JSONSchema.make` function to generate the corresponding JSON Schema.
-
-Note that `JSONSchema.make` attempts to produce the optimal JSON Schema for the input part of the decoding phase. This means that starting from the most nested schema, it traverses the chain, including each refinement, and stops at the first transformation found.
-
-For instance, if we modify the schema of the `age` field:
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-
-const Person = Schema.Struct({
-  name: Schema.NonEmptyString,
-  age: Schema.Number.pipe(
-    // refinement, will be included in the generated JSON Schema
-    Schema.int(),
-    // transformation, will be excluded in the generated JSON Schema
-    Schema.clamp(1, 10)
-  )
-})
-
-const jsonSchema = JSONSchema.make(Person)
-
-console.log(JSON.stringify(jsonSchema, null, 2))
-```
-
-We can see that the new JSON Schema generated for the `age` field is of type `"integer"`, retaining the useful refinement (being an integer) and excluding the transformation (clamping between `1` and `10`):
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": ["name", "age"],
-  "properties": {
-    "name": {
-      "type": "string",
-      "description": "a non empty string",
-      "title": "NonEmpty",
-      "minLength": 1
-    },
-    "age": {
-      "type": "integer",
-      "description": "an integer",
-      "title": "integer"
-    }
-  },
-  "additionalProperties": false
-}
-```
-
-### Identifier Annotations
-
-You can enhance your schemas with `identifier` annotations. If you do, your schema will be included within a "definitions" object property on the root and referenced from there:
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-
-const Name = Schema.String.annotations({ identifier: "Name" })
-const Age = Schema.Number.annotations({ identifier: "Age" })
-const Person = Schema.Struct({
-  name: Name,
-  age: Age
-})
-
-const jsonSchema = JSONSchema.make(Person)
-
-console.log(JSON.stringify(jsonSchema, null, 2))
-/*
-Output:
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": [
-    "name",
-    "age"
-  ],
-  "properties": {
-    "name": {
-      "$ref": "#/$defs/Name"
-    },
-    "age": {
-      "$ref": "#/$defs/Age"
-    }
-  },
-  "additionalProperties": false,
-  "$defs": {
-    "Name": {
-      "type": "string",
-      "description": "a string",
-      "title": "string"
-    },
-    "Age": {
-      "type": "number",
-      "description": "a number",
-      "title": "number"
-    }
-  }
-}
-*/
-```
-
-This technique helps organize your JSON Schema by creating separate definitions for each identifier annotated schema, making it more readable and maintainable.
-
-### Standard JSON Schema Annotations
-
-Standard JSON Schema annotations such as `title`, `description`, `default`, and `Examples` are supported:
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-
-const schema = Schema.Struct({
-  foo: Schema.optional(
-    Schema.String.annotations({
-      description: "an optional string field",
-      title: "foo",
-      examples: ["a", "b"]
-    }).pipe(Schema.compose(Schema.Trim)),
-    {
-      default: () => ""
-    }
-  ).annotations({ description: "a required, trimmed string field" })
-})
-
-// Generate a JSON Schema for the input part
-console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
-/*
-Output:
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": [],
-  "properties": {
-    "foo": {
-      "type": "string",
-      "description": "an optional string field",
-      "title": "foo",
-      "examples": [
-        "a",
-        "b"
-      ]
-    }
-  },
-  "additionalProperties": false,
-  "title": "Struct (Encoded side)"
-}
-*/
-
-// Generate a JSON Schema for the output part
-console.log(JSON.stringify(JSONSchema.make(Schema.typeSchema(schema)), null, 2))
-/*
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": [
-    "foo"
-  ],
-  "properties": {
-    "foo": {
-      "type": "string",
-      "description": "a required string field",
-      "title": "Trimmed",
-      "pattern": "^.*[a-zA-Z0-9]+.*$"
-    }
-  },
-  "additionalProperties": false,
-  "title": "Struct (Type side)"
-}
-*/
-```
-
-### Recursive and Mutually Recursive Schemas
-
-Recursive and mutually recursive schemas are supported, but in these cases, identifier annotations are **required**:
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-
-interface Category {
-  readonly name: string
-  readonly categories: ReadonlyArray<Category>
-}
-
-const schema = Schema.Struct({
-  name: Schema.String,
-  categories: Schema.Array(
-    Schema.suspend((): Schema.Schema<Category> => schema)
-  )
-}).annotations({ identifier: "Category" })
-
-const jsonSchema = JSONSchema.make(schema)
-
-console.log(JSON.stringify(jsonSchema, null, 2))
-/*
-Output:
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/$defs/Category",
-  "$defs": {
-    "Category": {
-      "type": "object",
-      "required": [
-        "name",
-        "categories"
-      ],
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "a string",
-          "title": "string"
-        },
-        "categories": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Category"
-          }
-        }
-      },
-      "additionalProperties": false
-    }
-  }
-}
-*/
-```
-
-In the example above, we define a schema for a "Category" that can contain a "name" (a string) and an array of nested "categories." To support recursive definitions, we use the `S.suspend` function and identifier annotations to name our schema.
-
-This ensures that the JSON Schema properly handles the recursive structure and creates distinct definitions for each annotated schema, improving readability and maintainability.
-
-### Custom JSON Schema Annotations
-
-When working with JSON Schema in the `@effect/schema` library, certain data types, such as `bigint`, lack a direct representation because JSON Schema does not natively support them. This absence typically leads to an error when the schema is generated:
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-
-const schema = Schema.Struct({
-  a_bigint_field: Schema.BigIntFromSelf
-})
-
-// Attempt to generate JSON Schema throws an error due to unsupported type
-console.log("%o", JSONSchema.make(schema))
-/*
-throws:
-Error: cannot build a JSON Schema for `bigint` without a JSON Schema annotation (path ["a_bigint_field"])
-*/
-```
-
-To address this, you can enhance the schema with a custom annotation, defining how you intend to represent such types in JSON Schema:
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-
-const schema = Schema.Struct({
-  a_bigint_field: Schema.BigIntFromSelf.annotations({
-    jsonSchema: { type: "some custom way to encode a bigint in JSON Schema" }
-  })
-})
-
-// Now the JSON Schema generation will include the custom representation
-console.log("%o", JSONSchema.make(schema))
-/*
-Output:
-{
-  '$schema': 'http://json-schema.org/draft-07/schema#',
-  type: 'object',
-  required: [ 'a_bigint_field', [length]: 1 ],
-  properties: {
-    a_bigint_field: { type: 'some custom way to encode a bigint in JSON Schema' }
-  },
-  additionalProperties: false
-}
-*/
-```
-
-When defining a **refinement** (e.g., through the `filter` function), you can attach a JSON Schema annotation to your schema containing a JSON Schema "fragment" related to this particular refinement. This fragment will be used to generate the corresponding JSON Schema. Note that if the schema consists of more than one refinement, the corresponding annotations will be merged.
-
-> Note:
->
-> The `jsonSchema` property is intentionally defined as a generic object. This allows it to describe non-standard extensions.
-> As a result, the responsibility of enforcing type constraints is left to you, the user.
-> If you prefer stricter type enforcement or need to support non-standard extensions, you can introduce a `satisfies` constraint on the object literal. This constraint should be used in conjunction with the typing library of your choice.
->
-> In the following example, we've used the `@types/json-schema` package to provide TypeScript definitions for JSON Schema. This approach not only ensures type correctness but also enables autocomplete suggestions in your IDE.
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-import type { JSONSchema7 } from "json-schema"
-
-// Simulate one or more refinements
-const Positive = Schema.Number.pipe(
-  Schema.filter((n) => n > 0, {
-    jsonSchema: { minimum: 0 } // `jsonSchema` is a generic object; you can add any key-value pair without type errors or autocomplete suggestions.
-  })
-)
-
-const schema = Positive.pipe(
-  Schema.filter((n) => n <= 10, {
-    jsonSchema: { maximum: 10 } satisfies JSONSchema7 //  Now `jsonSchema` is constrained to fulfill the JSONSchema7 type; incorrect properties will trigger type errors, and you'll get autocomplete suggestions.
-  })
-)
-
-const jsonSchema = JSONSchema.make(schema)
-
-console.log(JSON.stringify(jsonSchema, null, 2))
-/*
-Output:
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "number",
-  "description": "a number",
-  "title": "number",
-  "minimum": 0,
-  "maximum": 10
-}
-*/
-```
-
-For all other types of schema that are not refinements, the content of the annotation is used and overrides anything the system would have generated by default:
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-
-const schema = Schema.Struct({ foo: Schema.String }).annotations({
-  jsonSchema: { type: "object" }
-})
-
-const jsonSchema = JSONSchema.make(schema)
-
-console.log(JSON.stringify(jsonSchema, null, 2))
-/*
-Output
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object"
-}
-the default would be:
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": [
-    "foo"
-  ],
-  "properties": {
-    "foo": {
-      "type": "string",
-      "description": "a string",
-      "title": "string"
-    }
-  },
-  "additionalProperties": false
-}
-*/
-```
-
-### Understanding `Schema.parseJson` in JSON Schema Generation
-
-When utilizing `Schema.parseJson` within the `@effect/schema` library, JSON Schema generation follows a specialized approach. Instead of merely generating a JSON Schema for a string—which would be the default output representing the "from" side of the transformation defined by `Schema.parseJson`—it specifically generates the JSON Schema for the actual schema provided as an argument.
-
-**Example of Generating JSON Schema with `Schema.parseJson`**
-
-```ts
-import { JSONSchema, Schema } from "@effect/schema"
-
-// Define a schema that parses a JSON string into a structured object
-const schema = Schema.parseJson(
-  Schema.Struct({
-    a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
-  })
-)
-
-console.log(JSONSchema.make(schema))
-/*
-{
-  '$schema': 'http://json-schema.org/draft-07/schema#',
-  type: 'object',
-  required: [ 'a' ],
-  properties: { a: { type: 'string', description: 'a string', title: 'string' } },
-  additionalProperties: false
-}
-*/
-```
-
-## Generating Equivalences
-
-The `make` function, which is part of the `@effect/schema/Equivalence` module, allows you to generate an [Equivalence](https://effect-ts.github.io/effect/schema/Equivalence.ts.html) based on a schema definition:
-
-```ts
-import { Equivalence, Schema } from "@effect/schema"
-
-const Person = Schema.Struct({
-  name: Schema.String,
-  age: Schema.Number
-})
-
-// $ExpectType Equivalence<{ readonly name: string; readonly age: number; }>
-const PersonEquivalence = Equivalence.make(Person)
-
-const john = { name: "John", age: 23 }
-const alice = { name: "Alice", age: 30 }
-
-console.log(PersonEquivalence(john, { name: "John", age: 23 })) // Output: true
-console.log(PersonEquivalence(john, alice)) // Output: false
-```
-
-### Customizations
-
-You can customize the output using the `equivalence` annotation:
-
-```ts
-import { Equivalence, Schema } from "@effect/schema"
-
-const schema = Schema.String.annotations({
-  equivalence: () => (a, b) => a.at(0) === b.at(0)
-})
-
-console.log(Equivalence.make(schema)("aaa", "abb")) // Output: true
 ```
 
 # Basic Usage
@@ -4301,6 +3716,83 @@ In the provided example:
 - **Initial Schema**: The schema for `foo` includes a refinement to ensure strings have a minimum length of three characters and a transformation to trim the string.
 - **Resulting Schema**: `resultingEncodedBoundSchema` maintains the `minLength(3)` condition, ensuring that this validation persists. However, it excludes the trimming transformation, focusing solely on the length requirement without altering the string's formatting.
 
+## Useful Examples
+
+### Email
+
+Since there are various different definitions of what constitutes a valid email address depending on the environment and use case, `@effect/schema` does not provide a built-in combinator for parsing email addresses. However, it is easy to define a custom combinator that can be used to parse email addresses.
+
+```ts
+import { Schema } from "@effect/schema"
+
+// see https://stackoverflow.com/questions/46155/how-can-i-validate-an-email-address-in-javascript/46181#46181
+const Email = Schema.pattern(
+  /^(?!\.)(?!.*\.\.)([A-Z0-9_+-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i
+)
+```
+
+### Url
+
+Multiple environments like the Browser or Node provide a built-in `URL` class that can be used to validate URLs. Here we demonstrate how to leverage it to validate if a string is a valid URL.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const UrlString = Schema.String.pipe(
+  Schema.filter((value) => {
+    try {
+      new URL(value)
+      return true
+    } catch (_) {
+      return false
+    }
+  })
+)
+
+const decode = Schema.decodeUnknownSync(UrlString)
+
+console.log(decode("https://www.effect.website")) // https://www.effect.website
+```
+
+In case you prefer to normalize URLs you can combine `transformOrFail` with `URL`:
+
+```ts
+import { ParseResult, Schema } from "@effect/schema"
+
+const NormalizedUrlString = Schema.String.pipe(
+  Schema.filter((value) => {
+    try {
+      return new URL(value).toString() === value
+    } catch (_) {
+      return false
+    }
+  })
+)
+
+const NormalizeUrlString = Schema.transformOrFail(
+  Schema.String,
+  NormalizedUrlString,
+  {
+    strict: true,
+    decode: (value, _, ast) =>
+      ParseResult.try({
+        try: () => new URL(value).toString(),
+        catch: (err) =>
+          new ParseResult.Type(
+            ast,
+            value,
+            err instanceof Error ? err.message : undefined
+          )
+      }),
+    encode: ParseResult.succeed
+  }
+)
+
+const decode = Schema.decodeUnknownSync(NormalizeUrlString)
+
+console.log(decode("https://www.effect.website")) // "https://www.effect.website/"
+```
+
 # Declaring New Data Types
 
 Creating schemas for new data types is crucial to defining the expected structure of information in your application. This guide explores how to declare schemas for new data types. We'll cover two important concepts: declaring schemas for primitive data types and type constructors.
@@ -6098,7 +5590,7 @@ class Messages extends Context.Tag("Messages")<
   }
 >() {}
 
-const Name = Schema.NonEmptyString.annotations({
+const Name = Schema.NonEmpty.annotations({
   message: () =>
     Effect.gen(function* (_) {
       const service = yield* _(Effect.serviceOption(Messages))
@@ -8394,107 +7886,649 @@ Output:
 */
 ```
 
-## Communication and Serialization with Schema and Serializable Traits
+# Generating Arbitraries
 
-This section outlines a streamlined client-server interaction using the `Serializable` and `WithResult` traits from the `@effect/schema` library to manage serialization and processing of data objects across network communications.
+The `make` function within the `@effect/schema/Arbitrary` module allows for the creation of random values that align with a specific `Schema<A, I, R>`. This utility returns an `Arbitrary<A>` from the [fast-check](https://github.com/dubzzz/fast-check) library, which is particularly useful for generating random test data that adheres to the defined schema constraints.
 
-**Client-Side Operations:**
+```ts
+import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
-1. **Initialization**: Start with an object of type `A`, which implements `Serializable.SerializableWithResult`.
-2. **Serialization**: Serialize the object `A` using `Serializable.serialize`, which employs the schema retrieved from the `Serializable` interface tied to `A`.
-3. **Transmission**: Send the serialized data of type `I` to the server and wait for a response.
+const Person = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.NumberFromString.pipe(Schema.int(), Schema.between(0, 200))
+})
 
-**Server-Side Operations:**
+/*
+FastCheck.Arbitrary<{
+    readonly name: string;
+    readonly age: number;
+}>
+*/
+const PersonArbitraryType = Arbitrary.make(Person)
 
-1. **Reception**: Receive the serialized data `I`.
-2. **Deserialization**: Convert the serialized data `I` back into an object of type `A` using a predefined union schema `Schema<A | B | ..., I | IB | ...>`.
-3. **Processing**: Handle the message of type `A` to derive an outcome as `Exit<Success, Failure>`.
-4. **Result Serialization**: Serialize the result `Exit<Success, Failure>` to `Exit<SuccessEncoded, FailureEncoded>` utilizing the schema obtained from `A`'s `WithResult` interface.
-5. **Response**: Send the serialized response `Exit<SuccessEncoded, FailureEncoded>` back to the client.
+console.log(FastCheck.sample(PersonArbitraryType, 2))
+/*
+Example Output:
+[ { name: 'q r', age: 1 }, { name: '&|', age: 133 } ]
+*/
 
-**Client-Side Response Handling:**
+/*
+Arbitrary for the "Encoded" type:
+FastCheck.Arbitrary<{
+    readonly name: string;
+    readonly age: string;
+}>
+*/
+const PersonArbitraryEncoded = Arbitrary.make(Schema.encodedSchema(Person))
 
-1. **Reception**: Receive the response `Exit<SuccessEncoded, FailureEncoded>`.
-2. **Final Deserialization**: Convert `Exit<SuccessEncoded, FailureEncoded>` back to `Exit<Success, Failure>` using the original object `A` and the schema from the `WithResult` interface.
+console.log(FastCheck.sample(PersonArbitraryEncoded, 2))
+/*
+Example Output:
+[ { name: 'key', age: '' }, { name: 'Gm', age: 'q' } ]
+*/
+```
 
-# Useful Examples
+## Understanding Schema Transformations and Arbitrary Generation
 
-## Email
+The generation of arbitrary data requires a clear understanding of how transformations and filters are applied within a schema:
 
-Since there are various different definitions of what constitutes a valid email address depending on the environment and use case, `@effect/schema` does not provide a built-in combinator for parsing email addresses. However, it is easy to define a custom combinator that can be used to parse email addresses.
+- **Transformations and Filters**: Only the filters applied after the last transformation in the transformation chain are considered during arbitrary generation.
+
+```ts
+import { Arbitrary, FastCheck, Schema } from "@effect/schema"
+
+const schema1 = Schema.compose(Schema.NonEmpty, Schema.Trim).pipe(
+  Schema.maxLength(500)
+)
+// Might output empty strings despite `NonEmpty` due to filter order.
+console.log(FastCheck.sample(Arbitrary.make(schema1), 10))
+
+const schema2 = Schema.Trim.pipe(Schema.nonEmpty(), Schema.maxLength(500))
+// Ensures no empty strings, correctly applying `nonEmpty()`.
+console.log(FastCheck.sample(Arbitrary.make(schema2), 10))
+```
+
+**Explanation:**
+
+- **Schema 1**: Considers the `Schema.maxLength(500)` because it follows the `Schema.Trim` transformation but disregards `Schema.NonEmpty` as it comes before any transformations.
+- **Schema 2**: Properly adheres to all applied filters by ensuring they follow transformations, thus avoiding the generation of undesired data.
+
+**Best Practices**
+
+Organize transformations and filters to ensure clarity and effectiveness in data generation. Follow the pattern: `(I filters) -> (transformations) -> (A filters)` where "I" and "A" stand for the initial and transformed types in the schema.
+
+"I" and "A" represent the initial and final types in the schema, ensuring that each stage of data processing is clearly defined.
+
+Instead of indiscriminately combining transformations and filters:
 
 ```ts
 import { Schema } from "@effect/schema"
 
-// see https://stackoverflow.com/questions/46155/how-can-i-validate-an-email-address-in-javascript/46181#46181
-const Email = Schema.pattern(
-  /^(?!\.)(?!.*\.\.)([A-Z0-9_+-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i
+// Less optimal mixing of transformations and filters
+const schema = Schema.compose(
+  // transformation + filter
+  Schema.Lowercase,
+  // transformation + filter
+  Schema.Trim
 )
 ```
 
-## Url
-
-Multiple environments like the Browser or Node provide a built-in `URL` class that can be used to validate URLs. Here we demonstrate how to leverage it to validate if a string is a valid URL.
+Prefer separating transformation steps from filter applications:
 
 ```ts
 import { Schema } from "@effect/schema"
 
-const UrlString = Schema.String.pipe(
-  Schema.filter((value) => {
-    try {
-      new URL(value)
-      return true
-    } catch (_) {
-      return false
-    }
-  })
-)
-
-const decode = Schema.decodeUnknownSync(UrlString)
-
-console.log(decode("https://www.effect.website")) // https://www.effect.website
-```
-
-In case you prefer to normalize URLs you can combine `transformOrFail` with `URL`:
-
-```ts
-import { ParseResult, Schema } from "@effect/schema"
-
-const NormalizedUrlString = Schema.String.pipe(
-  Schema.filter((value) => {
-    try {
-      return new URL(value).toString() === value
-    } catch (_) {
-      return false
-    }
-  })
-)
-
-const NormalizeUrlString = Schema.transformOrFail(
+// Recommended approach: Separate transformations from filters
+const schema = Schema.transform(
   Schema.String,
-  NormalizedUrlString,
+  Schema.String.pipe(Schema.trimmed(), Schema.lowercased()),
   {
     strict: true,
-    decode: (value, _, ast) =>
-      ParseResult.try({
-        try: () => new URL(value).toString(),
-        catch: (err) =>
-          new ParseResult.Type(
-            ast,
-            value,
-            err instanceof Error ? err.message : undefined
-          )
-      }),
-    encode: ParseResult.succeed
+    decode: (s) => s.trim().toLowerCase(),
+    encode: (s) => s
   }
 )
-
-const decode = Schema.decodeUnknownSync(NormalizeUrlString)
-
-console.log(decode("https://www.effect.website")) // "https://www.effect.website/"
 ```
 
-# Technical overview: Understanding Schemas
+## Customizations
+
+You can customize the output by using the `arbitrary` annotation:
+
+```ts
+import { Arbitrary, FastCheck, Schema } from "@effect/schema"
+
+const schema = Schema.Number.annotations({
+  arbitrary: () => (fc) => fc.nat()
+})
+
+const arb = Arbitrary.make(schema)
+
+console.log(FastCheck.sample(arb, 2))
+// Output: [ 1139348969, 749305462 ]
+```
+
+> [!WARNING]
+> Customizing a schema can disrupt previously applied filters. Filters set after the customization will remain effective, while those applied before will be disregarded.
+
+**Example**
+
+```ts
+import { Arbitrary, FastCheck, Schema } from "@effect/schema"
+
+// Here, the 'positive' filter is overridden by the custom arbitrary definition
+const problematic = Schema.Number.pipe(Schema.positive()).annotations({
+  arbitrary: () => (fc) => fc.integer()
+})
+
+console.log(FastCheck.sample(Arbitrary.make(problematic), 2))
+// Example Output: [ -1600163302, -6 ]
+
+// Here, the 'positive' filter is applied after the arbitrary customization, ensuring it is considered
+const improved = Schema.Number.annotations({
+  arbitrary: () => (fc) => fc.integer()
+}).pipe(Schema.positive())
+
+console.log(FastCheck.sample(Arbitrary.make(improved), 2))
+// Example Output: [ 7, 1518247613 ]
+```
+
+# Generating JSON Schemas
+
+The `make` function from the `@effect/schema/JSONSchema` module enables you to create a JSON Schema based on a defined schema:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const Person = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number
+})
+
+const jsonSchema = JSONSchema.make(Person)
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "age",
+    "name"
+  ],
+  "properties": {
+    "age": {
+      "type": "number",
+      "description": "a number",
+      "title": "number"
+    },
+    "name": {
+      "type": "string",
+      "description": "a non empty string",
+      "title": "NonEmpty",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
+*/
+```
+
+In this example, we have created a schema for a "Person" with a name (a non-empty string) and an age (a number). We then use the `JSONSchema.make` function to generate the corresponding JSON Schema.
+
+Note that `JSONSchema.make` attempts to produce the optimal JSON Schema for the input part of the decoding phase. This means that starting from the most nested schema, it traverses the chain, including each refinement, and stops at the first transformation found.
+
+For instance, if we modify the schema of the `age` field:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const Person = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    // refinement, will be included in the generated JSON Schema
+    Schema.int(),
+    // transformation, will be excluded in the generated JSON Schema
+    Schema.clamp(1, 10)
+  )
+})
+
+const jsonSchema = JSONSchema.make(Person)
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+```
+
+We can see that the new JSON Schema generated for the `age` field is of type `"integer"`, retaining the useful refinement (being an integer) and excluding the transformation (clamping between `1` and `10`):
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["name", "age"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "a non empty string",
+      "title": "NonEmpty",
+      "minLength": 1
+    },
+    "age": {
+      "type": "integer",
+      "description": "an integer",
+      "title": "integer"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+## Identifier Annotations
+
+You can enhance your schemas with `identifier` annotations. If you do, your schema will be included within a "definitions" object property on the root and referenced from there:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const Name = Schema.String.annotations({ identifier: "Name" })
+const Age = Schema.Number.annotations({ identifier: "Age" })
+const Person = Schema.Struct({
+  name: Name,
+  age: Age
+})
+
+const jsonSchema = JSONSchema.make(Person)
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "name",
+    "age"
+  ],
+  "properties": {
+    "name": {
+      "$ref": "#/$defs/Name"
+    },
+    "age": {
+      "$ref": "#/$defs/Age"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "Name": {
+      "type": "string",
+      "description": "a string",
+      "title": "string"
+    },
+    "Age": {
+      "type": "number",
+      "description": "a number",
+      "title": "number"
+    }
+  }
+}
+*/
+```
+
+This technique helps organize your JSON Schema by creating separate definitions for each identifier annotated schema, making it more readable and maintainable.
+
+## Standard JSON Schema Annotations
+
+Standard JSON Schema annotations such as `title`, `description`, `default`, and `Examples` are supported:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  foo: Schema.optional(
+    Schema.String.annotations({
+      description: "an optional string field",
+      title: "foo",
+      examples: ["a", "b"]
+    }).pipe(Schema.compose(Schema.Trim)),
+    {
+      default: () => ""
+    }
+  ).annotations({ description: "a required, trimmed string field" })
+})
+
+// Generate a JSON Schema for the input part
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [],
+  "properties": {
+    "foo": {
+      "type": "string",
+      "description": "an optional string field",
+      "title": "foo",
+      "examples": [
+        "a",
+        "b"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "title": "Struct (Encoded side)"
+}
+*/
+
+// Generate a JSON Schema for the output part
+console.log(JSON.stringify(JSONSchema.make(Schema.typeSchema(schema)), null, 2))
+/*
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "foo"
+  ],
+  "properties": {
+    "foo": {
+      "type": "string",
+      "description": "a required string field",
+      "title": "Trimmed",
+      "pattern": "^.*[a-zA-Z0-9]+.*$"
+    }
+  },
+  "additionalProperties": false,
+  "title": "Struct (Type side)"
+}
+*/
+```
+
+## Recursive and Mutually Recursive Schemas
+
+Recursive and mutually recursive schemas are supported, but in these cases, identifier annotations are **required**:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+interface Category {
+  readonly name: string
+  readonly categories: ReadonlyArray<Category>
+}
+
+const schema = Schema.Struct({
+  name: Schema.String,
+  categories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category> => schema)
+  )
+}).annotations({ identifier: "Category" })
+
+const jsonSchema = JSONSchema.make(schema)
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/$defs/Category",
+  "$defs": {
+    "Category": {
+      "type": "object",
+      "required": [
+        "name",
+        "categories"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "a string",
+          "title": "string"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Category"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+*/
+```
+
+In the example above, we define a schema for a "Category" that can contain a "name" (a string) and an array of nested "categories." To support recursive definitions, we use the `S.suspend` function and identifier annotations to name our schema.
+
+This ensures that the JSON Schema properly handles the recursive structure and creates distinct definitions for each annotated schema, improving readability and maintainability.
+
+## Custom JSON Schema Annotations
+
+When working with JSON Schema in the `@effect/schema` library, certain data types, such as `bigint`, lack a direct representation because JSON Schema does not natively support them. This absence typically leads to an error when the schema is generated:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a_bigint_field: Schema.BigIntFromSelf
+})
+
+// Attempt to generate JSON Schema throws an error due to unsupported type
+console.log("%o", JSONSchema.make(schema))
+/*
+throws:
+Error: cannot build a JSON Schema for `bigint` without a JSON Schema annotation (path ["a_bigint_field"])
+*/
+```
+
+To address this, you can enhance the schema with a custom annotation, defining how you intend to represent such types in JSON Schema:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a_bigint_field: Schema.BigIntFromSelf.annotations({
+    jsonSchema: { type: "some custom way to encode a bigint in JSON Schema" }
+  })
+})
+
+// Now the JSON Schema generation will include the custom representation
+console.log("%o", JSONSchema.make(schema))
+/*
+Output:
+{
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  required: [ 'a_bigint_field', [length]: 1 ],
+  properties: {
+    a_bigint_field: { type: 'some custom way to encode a bigint in JSON Schema' }
+  },
+  additionalProperties: false
+}
+*/
+```
+
+When defining a **refinement** (e.g., through the `filter` function), you can attach a JSON Schema annotation to your schema containing a JSON Schema "fragment" related to this particular refinement. This fragment will be used to generate the corresponding JSON Schema. Note that if the schema consists of more than one refinement, the corresponding annotations will be merged.
+
+> Note:
+>
+> The `jsonSchema` property is intentionally defined as a generic object. This allows it to describe non-standard extensions.
+> As a result, the responsibility of enforcing type constraints is left to you, the user.
+> If you prefer stricter type enforcement or need to support non-standard extensions, you can introduce a `satisfies` constraint on the object literal. This constraint should be used in conjunction with the typing library of your choice.
+>
+> In the following example, we've used the `@types/json-schema` package to provide TypeScript definitions for JSON Schema. This approach not only ensures type correctness but also enables autocomplete suggestions in your IDE.
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+import type { JSONSchema7 } from "json-schema"
+
+// Simulate one or more refinements
+const Positive = Schema.Number.pipe(
+  Schema.filter((n) => n > 0, {
+    jsonSchema: { minimum: 0 } // `jsonSchema` is a generic object; you can add any key-value pair without type errors or autocomplete suggestions.
+  })
+)
+
+const schema = Positive.pipe(
+  Schema.filter((n) => n <= 10, {
+    jsonSchema: { maximum: 10 } satisfies JSONSchema7 //  Now `jsonSchema` is constrained to fulfill the JSONSchema7 type; incorrect properties will trigger type errors, and you'll get autocomplete suggestions.
+  })
+)
+
+const jsonSchema = JSONSchema.make(schema)
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "number",
+  "description": "a number",
+  "title": "number",
+  "minimum": 0,
+  "maximum": 10
+}
+*/
+```
+
+For all other types of schema that are not refinements, the content of the annotation is used and overrides anything the system would have generated by default:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({ foo: Schema.String }).annotations({
+  jsonSchema: { type: "object" }
+})
+
+const jsonSchema = JSONSchema.make(schema)
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object"
+}
+the default would be:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "foo"
+  ],
+  "properties": {
+    "foo": {
+      "type": "string",
+      "description": "a string",
+      "title": "string"
+    }
+  },
+  "additionalProperties": false
+}
+*/
+```
+
+## Understanding `Schema.parseJson` in JSON Schema Generation
+
+When utilizing `Schema.parseJson` within the `@effect/schema` library, JSON Schema generation follows a specialized approach. Instead of merely generating a JSON Schema for a string—which would be the default output representing the "from" side of the transformation defined by `Schema.parseJson`—it specifically generates the JSON Schema for the actual schema provided as an argument.
+
+**Example of Generating JSON Schema with `Schema.parseJson`**
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+// Define a schema that parses a JSON string into a structured object
+const schema = Schema.parseJson(
+  Schema.Struct({
+    a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
+  })
+)
+
+console.log(JSONSchema.make(schema))
+/*
+{
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  required: [ 'a' ],
+  properties: { a: { type: 'string', description: 'a string', title: 'string' } },
+  additionalProperties: false
+}
+*/
+```
+
+# Generating Equivalences
+
+The `make` function, which is part of the `@effect/schema/Equivalence` module, allows you to generate an [Equivalence](https://effect-ts.github.io/effect/schema/Equivalence.ts.html) based on a schema definition:
+
+```ts
+import { Equivalence, Schema } from "@effect/schema"
+
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+// $ExpectType Equivalence<{ readonly name: string; readonly age: number; }>
+const PersonEquivalence = Equivalence.make(Person)
+
+const john = { name: "John", age: 23 }
+const alice = { name: "Alice", age: 30 }
+
+console.log(PersonEquivalence(john, { name: "John", age: 23 })) // Output: true
+console.log(PersonEquivalence(john, alice)) // Output: false
+```
+
+## Customizations
+
+You can customize the output using the `equivalence` annotation:
+
+```ts
+import { Equivalence, Schema } from "@effect/schema"
+
+const schema = Schema.String.annotations({
+  equivalence: () => (a, b) => a.at(0) === b.at(0)
+})
+
+console.log(Equivalence.make(schema)("aaa", "abb")) // Output: true
+```
+
+# Generating Pretty Printers
+
+The `make` function provided by the `@effect/schema/Pretty` module represents a way of pretty-printing values that conform to a given `Schema`.
+
+You can use the `make` function to create a human-readable string representation of a value that conforms to a `Schema`. This can be useful for debugging or logging purposes, as it allows you to easily inspect the structure and data types of the value.
+
+```ts
+import { Pretty, Schema } from "@effect/schema"
+
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+const PersonPretty = Pretty.make(Person)
+
+// returns a string representation of the object
+console.log(PersonPretty({ name: "Alice", age: 30 }))
+/*
+Output:
+'{ "name": "Alice", "age": 30 }'
+*/
+```
+
+## Customizations
+
+You can customize the output using the `pretty` annotation:
+
+```ts
+import { Pretty, Schema } from "@effect/schema"
+
+const schema = Schema.Number.annotations({
+  pretty: () => (n) => `my format: ${n}`
+})
+
+console.log(Pretty.make(schema)(1)) // my format: 1
+```
+
+# Technical overview
 
 A schema is a description of a data structure that can be used to generate various artifacts from a single declaration.
 
