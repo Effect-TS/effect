@@ -598,7 +598,7 @@ export const asyncEffect = <A, E = never, R = never>(
   )
 
 const queueFromBufferOptionsPush = <A>(
-  options?: { bufferSize: "unbounded" } | {
+  options?: { readonly bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
@@ -617,7 +617,7 @@ const queueFromBufferOptionsPush = <A>(
 /** @internal */
 export const asyncPush = <A, E = never, R = never>(
   register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
-  options?: { bufferSize: "unbounded" } | {
+  options?: { readonly bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
@@ -634,7 +634,7 @@ export const asyncPush = <A, E = never, R = never>(
       const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(
         Effect.zipRight(
           Effect.yieldNow(), // allow batches to accumulate
-          Queue.takeBetween(queue, 1, DefaultChunkSize)
+          Queue.takeBetween(queue, 1, Number.MAX_SAFE_INTEGER)
         ),
         (chunk) => {
           const end = Chunk.unsafeLast(chunk) === emit.pushEOF

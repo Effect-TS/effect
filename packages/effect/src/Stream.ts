@@ -407,8 +407,8 @@ export const asyncEffect: <A, E = never, R = never>(
  */
 export const asyncPush: <A, E = never, R = never>(
   register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
-  options?: { bufferSize: "unbounded" } | {
-    readonly bufferSize?: number
+  options?: { readonly bufferSize: "unbounded" } | {
+    readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
 ) => Stream<A, E, Exclude<R, Scope.Scope>> = internal.asyncPush
