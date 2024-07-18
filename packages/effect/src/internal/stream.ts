@@ -6208,7 +6208,7 @@ export const tapStart: {
   <A, E, R, _, E2, R2>(
     self: Stream.Stream<A, E, R>,
     effect: Effect.Effect<_, E2, R2>
-  ): Stream.Stream<A, E | E2, R | R2> => concat(drain(fromEffect(effect)), self)
+  ): Stream.Stream<A, E | E2, R | R2> => unwrap(Effect.as(effect, self))
 )
 
 /** @internal */
