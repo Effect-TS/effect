@@ -895,7 +895,8 @@ export const partition: {
  *
  * @since 2.0.0
  */
-export const keys = <K extends string, A>(self: ReadonlyRecord<K, A>): Array<K> => Object.keys(self) as Array<K>
+export const keys = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): Array<K & string> =>
+  Object.keys(self) as Array<K & string>
 
 /**
  * Retrieve the values of a given record as an array.
