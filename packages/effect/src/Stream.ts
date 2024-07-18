@@ -2129,7 +2129,7 @@ export const groupBy: {
  * ```
  *
  * @since 2.0.0
- * @category utils
+ * @category grouping
  */
 export const groupByKey: {
   <A, K>(
@@ -2167,7 +2167,7 @@ export const groupByKey: {
  * // }
  *
  * @since 2.0.0
- * @category utils
+ * @category grouping
  */
 export const grouped: {
   (chunkSize: number): <A, E, R>(self: Stream<A, E, R>) => Stream<Chunk.Chunk<A>, E, R>
@@ -2216,7 +2216,7 @@ export const grouped: {
  * // ]
  *
  * @since 2.0.0
- * @category utils
+ * @category grouping
  */
 export const groupedWithin: {
   (
