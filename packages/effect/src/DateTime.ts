@@ -255,6 +255,13 @@ export const unsafeSetZoneNamed: {
 
 /**
  * @since 3.6.0
+ * @category time zones
+ */
+export const setZoneCurrent = (self: DateTime): Effect.Effect<DateTime, never, CurrentTimeZone> =>
+  Effect.map(CurrentTimeZone, (zone) => setZone(self, zone))
+
+/**
+ * @since 3.6.0
  * @category conversions
  */
 export const toEpochMillis = (self: DateTime): number =>
@@ -291,5 +298,36 @@ export const matchUtc: {
  * @since 3.6.0
  * @category time zones
  */
-export const withCurrentZone = (self: DateTime): Effect.Effect<DateTime, never, CurrentTimeZone> =>
-  Effect.map(CurrentTimeZone, (zone) => setZone(self, zone))
+export const withZone: {
+  (zone: TimeZone): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, zone: TimeZone): Effect.Effect<A, E, R>
+} = dual(
+  2,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, zone: TimeZone): Effect.Effect<A, E, R> =>
+    Effect.provideService(effect, CurrentTimeZone, zone)
+)
+
+/**
+ * @since 3.6.0
+ * @category time zones
+ */
+export const withZoneNamed: {
+  (zone: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | IllegalArgumentException, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, zone: string): Effect.Effect<A, E | IllegalArgumentException, R>
+} = dual(
+  2,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, zone: string): Effect.Effect<A, E | IllegalArgumentException, R> =>
+    Effect.flatMap(
+      Effect.try({
+        try: () => unsafeMakeZoneNamed(zone),
+        catch: (e) => e as IllegalArgumentException
+      }),
+      (zone) => withZone(effect, zone)
+    )
+)
+
+/**
+ * @since 3.6.0
+ * @category constructors
+ */
+export const nowInCurrentZone: Effect.Effect<DateTime, never, CurrentTimeZone> = Effect.flatMap(now, setZoneCurrent)
