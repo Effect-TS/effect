@@ -4117,6 +4117,23 @@ export const mkString = <E, R>(self: Stream.Stream<string, E, R>): Effect.Effect
 export const never: Stream.Stream<never> = fromEffect(Effect.never)
 
 /** @internal */
+export const onEnd: {
+  <_, E2, R2>(
+    effect: Effect.Effect<_, E2, R2>
+  ): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>
+  <A, E, R, _, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Stream.Stream<A, E | E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, _, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Stream.Stream<A, E | E2, R | R2> => concat(self, drain(fromEffect(effect)))
+)
+
+/** @internal */
 export const onError = dual<
   <E, X, R2>(
     cleanup: (cause: Cause.Cause<E>) => Effect.Effect<X, never, R2>
