@@ -268,12 +268,14 @@ const getJsonSchemaAnnotations = (annotated: AST.Annotated): JsonSchemaAnnotatio
     default: AST.getDefaultAnnotation(annotated)
   })
 
-const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST => {
+const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST | undefined => {
   const type = ps.type
-  if (ps.isOptional && AST.isUnion(type) && Option.isNone(AST.getJSONSchemaAnnotation(type))) {
-    return AST.Union.make(type.types.filter((type) => !AST.isUndefinedKeyword(type)), type.annotations)
+  if (AST.isUnion(type) && Option.isNone(AST.getJSONSchemaAnnotation(type))) {
+    const types = type.types.filter((type) => !AST.isUndefinedKeyword(type))
+    if (types.length < type.types.length) {
+      return AST.Union.make(types, type.annotations)
+    }
   }
-  return type
 }
 
 /** @internal */
@@ -281,22 +283,19 @@ export const DEFINITION_PREFIX = "#/$defs/"
 
 const get$ref = (id: string): string => `${DEFINITION_PREFIX}${id}`
 
-const hasTransformation = (ast: AST.Refinement): boolean => {
+const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefined => {
   switch (ast.from._tag) {
     case "Transformation":
-      return true
+      return ast.from
     case "Refinement":
-      return hasTransformation(ast.from)
-    case "Suspend":
-      {
-        const from = ast.from.f()
-        if (AST.isRefinement(from)) {
-          return hasTransformation(from)
-        }
+      return getRefinementInnerTransformation(ast.from)
+    case "Suspend": {
+      const from = ast.from.f()
+      if (AST.isRefinement(from)) {
+        return getRefinementInnerTransformation(from)
       }
-      break
+    }
   }
-  return false
 }
 
 const isParseJsonTransformation = (ast: AST.AST): boolean =>
@@ -309,6 +308,11 @@ function merge(a: object, b: object): object {
   return { ...a, ...b }
 }
 
+const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
+  return ("type" in jsonSchema) || ("oneOf" in jsonSchema) || ("anyOf" in jsonSchema) || ("const" in jsonSchema) ||
+    ("enum" in jsonSchema) || ("$ref" in jsonSchema)
+}
+
 const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
@@ -318,11 +322,16 @@ const go = (
   const hook = AST.getJSONSchemaAnnotation(ast)
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema7
-    if (AST.isRefinement(ast) && !hasTransformation(ast)) {
-      try {
-        return merge(merge(go(ast.from, $defs, true, path), getJsonSchemaAnnotations(ast)), handler)
-      } catch (e) {
-        return merge(getJsonSchemaAnnotations(ast), handler)
+    if (AST.isRefinement(ast)) {
+      const t = getRefinementInnerTransformation(ast)
+      if (t === undefined) {
+        try {
+          return merge(merge(go(ast.from, $defs, true, path), getJsonSchemaAnnotations(ast)), handler)
+        } catch (e) {
+          return merge(getJsonSchemaAnnotations(ast), handler)
+        }
+      } else if (!isOverrideAnnotation(handler)) {
+        return go(t, $defs, true, path)
       }
     }
     return handler
@@ -466,12 +475,6 @@ const go = (
             throw new Error(errors_.getJSONSchemaUnsupportedParameterErrorMessage(path, parameter))
         }
       }
-      const propertySignatures = ast.propertySignatures.map((ps) => {
-        return merge(
-          go(pruneUndefinedKeyword(ps), $defs, true, path.concat(ps.name)),
-          getJsonSchemaAnnotations(ps)
-        )
-      })
       const output: JsonSchema7Object = {
         type: "object",
         required: [],
@@ -481,14 +484,19 @@ const go = (
       // ---------------------------------------------
       // handle property signatures
       // ---------------------------------------------
-      for (let i = 0; i < propertySignatures.length; i++) {
-        const name = ast.propertySignatures[i].name
+      for (let i = 0; i < ast.propertySignatures.length; i++) {
+        const ps = ast.propertySignatures[i]
+        const name = ps.name
         if (Predicate.isString(name)) {
-          output.properties[name] = propertySignatures[i]
+          const pruned = pruneUndefinedKeyword(ps)
+          output.properties[name] = merge(
+            go(pruned ? pruned : ps.type, $defs, true, path.concat(ps.name)),
+            getJsonSchemaAnnotations(ps)
+          )
           // ---------------------------------------------
           // handle optional property signatures
           // ---------------------------------------------
-          if (!ast.propertySignatures[i].isOptional) {
+          if (!ps.isOptional && pruned === undefined) {
             output.required.push(name)
           }
         } else {

@@ -7,6 +7,19 @@ import * as internal from "./internal/workerRunner.js"
 
 /**
  * @since 1.0.0
+ * @category constructors
+ */
+export const make: (self: MessagePort | Window) => Runner.PlatformRunner = internal.make
+
+/**
+ * @since 1.0.0
  * @category layers
  */
 export const layer: Layer.Layer<Runner.PlatformRunner> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerMessagePort: (port: MessagePort | Window) => Layer.Layer<Runner.PlatformRunner> =
+  internal.layerMessagePort

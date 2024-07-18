@@ -1,4 +1,5 @@
 name: Snapshot
+
 on:
   issue_comment:
     types: [created]
@@ -25,14 +26,14 @@ jobs:
         env:
           COMMENT: ${{ github.event.comment.body }}
         run: |
-          if [[ $COMMENT =~ ^/snapshot([[:space:]]([a-z]{3,12}))?$ ]]; then
+          if [[ $COMMENT == "/snapshot" ]]; then
             snapshot="${BASH_REMATCH[2]:-snapshot}"
             echo "snapshot=$snapshot" >> $GITHUB_OUTPUT
           else
             exit 1
           fi
 
-      - name: Initial comment
+      - name: Create initial comment
         id: comment
         uses: peter-evans/create-or-update-comment@v4
         env:
@@ -63,25 +64,20 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
 
-      - name: Version snapshot
-        run: pnpm changeset version --snapshot ${{ steps.command.outputs.snapshot }} | grep -q "All files have been updated"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build snapshot
+      - name: Build package
         run: pnpm build
 
-      - name: Set registry config
-        run: pnpm config set --location project "//registry.npmjs.org/:_authToken" "${{ secrets.NPM_TOKEN }}"
-
-      - name: Publish snapshot
+      - name: Create snapshot
         id: snapshot
         run: |
-          # Publish and extract published tags from stdout.
-          output=$(pnpm changeset publish --tag ${{ steps.command.outputs.snapshot }} --no-git-tag)
-          output=$(echo "$output" | awk '/packages published successfully:/{flag=1; next} flag')
-          output=$(echo "$output" | grep -o '[^ ]*@[^ ]*' | awk '{print "\"" $0 "\""}' | paste -sd ',')
-          echo "tags=[$output]" >> $GITHUB_OUTPUT
+          snapshots=$(pnpx pkg-pr-new@0.0.17 publish --pnpm --comment=off ./packages/*)
+          echo "${snapshots}"
+          snapshots=$(echo "${snapshots}" | awk '
+            /⚡️ Your npm packages are published./ \
+            { found=1; next } found \
+            { sub(/npm i/, "pnpm add"); print "\"" $0 "\"" }
+          ' | paste -sd ',')
+          echo "snapshots=[$snapshots]" >> $GITHUB_OUTPUT
 
       - name: Update comment (success)
         uses: actions/github-script@v7
@@ -89,7 +85,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           script: |
-            const commands = ${{ steps.snapshot.outputs.tags }}.map(tag => '```sh\n' + `pnpm add ${tag}` + '\n```')
+            const commands = ${{ steps.snapshot.outputs.snapshots }}.map((snapshot) => {
+              const [package, installer] = snapshot.split(": ")
+              const [, sha] = installer.split(/@(?=[^@]*$)/)
+              const header = `<details><summary><b>${package} (${sha})</b></summary><p>`
+              const content = "\n```sh\n" + installer + "\n```\n"
+              const footer = `</p></details>`
+              return [header, content, footer].join("\n")
+            })
             const header = `**Good news @${{ github.actor }}, your snapshot has been published!**`
             const footer = `You can review the build log [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).`
 
@@ -97,7 +100,7 @@ jobs:
               comment_id: ${{ steps.comment.outputs.comment-id }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `${header}\n\n${commands.join('\n')}\n\n${footer}`
+              body: `${header}\n\n${commands.join("\n")}\n\n${footer}`
             })
 
       - name: Update comment (failure)

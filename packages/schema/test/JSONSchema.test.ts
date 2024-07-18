@@ -791,35 +791,63 @@ details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
       )
     })
 
-    it("should prune `UndefinedKeyword` if the property signature is marked as optional and contains a union that includes `UndefinedKeyword`", () => {
-      expectJSONSchema(
-        Schema.Struct({
-          a: Schema.optional(Schema.String)
-        }),
-        {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "type": "object",
-          "properties": {
-            "a": {
-              "type": "string"
-            }
-          },
-          "required": [],
-          "additionalProperties": false
-        }
-      )
-    })
+    describe("pruning undefined", () => {
+      it("with an annotation the property should remain required", () => {
+        expectJSONSchema(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String).annotations({ jsonSchema: { "type": "number" } })
+          }),
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+              "a": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
 
-    it("should raise an error if the property signature is not marked as optional and contains a union that includes `UndefinedKeyword`", () => {
-      expectError(
-        Schema.Struct({
-          a: Schema.UndefinedOr(Schema.String)
-        }),
-        `Missing annotation
-at path: ["a"]
-details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (UndefinedKeyword): undefined`
-      )
+      it("should prune `UndefinedKeyword` from an optional property signature", () => {
+        expectJSONSchema(
+          Schema.Struct({
+            a: Schema.optional(Schema.String)
+          }),
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("should prune `UndefinedKeyword` from a required property signature type and make the property optional by default", () => {
+        expectJSONSchema(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String)
+          }),
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
     })
   })
 
@@ -1863,12 +1891,57 @@ schema (Suspend): <suspended schema>`
       }, false)
     })
 
-    it("refinement of a transformation", () => {
+    it("refinement of a transformation with an override annotation", () => {
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { type: "string", format: "date-time" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "format": "date-time",
         "type": "string"
       }, false)
+      expectJSONSchema(
+        Schema.Date.annotations({
+          jsonSchema: { oneOf: [{ type: "object" }, { type: "array" }] }
+        }),
+        { "$schema": "http://json-schema.org/draft-07/schema#", oneOf: [{ type: "object" }, { type: "array" }] },
+        false
+      )
+      expectJSONSchema(
+        Schema.Date.annotations({
+          jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
+        }),
+        { "$schema": "http://json-schema.org/draft-07/schema#", anyOf: [{ type: "object" }, { type: "array" }] },
+        false
+      )
+      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { $ref: "x" } }), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        $ref: "x"
+      }, false)
+      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { const: 1 } }), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        const: 1
+      }, false)
+      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { enum: [1] } }), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        enum: [1]
+      }, false)
+    })
+
+    it("refinement of a transformation without an override annotation", () => {
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmpty()), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string"
+      }, false)
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmpty({ jsonSchema: { title: "Description" } })), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string"
+      }, false)
+      expectJSONSchema(
+        Schema.Trim.pipe(Schema.nonEmpty()).annotations({ jsonSchema: { title: "Description" } }),
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "string"
+        },
+        false
+      )
     })
   })
 

@@ -138,12 +138,12 @@ export const withPreResponseHandler = dual<
  */
 export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   const run = Runtime.runFork(runtime)
-  return <E>(self: Default<E, R | Scope.Scope>, middleware: HttpMiddleware | undefined) =>
+  return <E>(self: Default<E, R | Scope.Scope>, middleware?: HttpMiddleware | undefined) =>
   (request: Request): Promise<Response> =>
     new Promise((resolve) => {
       const fiber = run(Effect.provideService(
         toHandled(self, (request, response) => {
-          resolve(ServerResponse.toWeb(response, request.method === "HEAD"))
+          resolve(ServerResponse.toWeb(response, { withoutBody: request.method === "HEAD", runtime }))
           return Effect.void
         }, middleware),
         ServerRequest.HttpServerRequest,

@@ -1,5 +1,27 @@
 # @effect/platform-browser
 
+## 0.38.3
+
+### Patch Changes
+
+- Updated dependencies [[`cc327a1`](https://github.com/Effect-TS/effect/commit/cc327a1bccd22a4ee27ec7e58b53205e93b23e2c), [`4bfe4fb`](https://github.com/Effect-TS/effect/commit/4bfe4fb5c82f597c9beea9baa92e772593598b60), [`2b14d18`](https://github.com/Effect-TS/effect/commit/2b14d181462cad8359da4fa6bc6dfda0f742c398)]:
+  - effect@3.5.6
+  - @effect/platform@0.59.2
+
+## 0.38.2
+
+### Patch Changes
+
+- Updated dependencies [[`a9d7800`](https://github.com/Effect-TS/effect/commit/a9d7800f6a253192b653d77778b0674f39b1ca39), [`fcecff7`](https://github.com/Effect-TS/effect/commit/fcecff7f7e12b295a252f124861b801c73072151), [`adbf753`](https://github.com/Effect-TS/effect/commit/adbf75340a9db15dc5cadc66e911a8978a195a65), [`adbf753`](https://github.com/Effect-TS/effect/commit/adbf75340a9db15dc5cadc66e911a8978a195a65)]:
+  - effect@3.5.5
+  - @effect/platform@0.59.1
+
+## 0.38.1
+
+### Patch Changes
+
+- [#3263](https://github.com/Effect-TS/effect/pull/3263) [`1d51d1b`](https://github.com/Effect-TS/effect/commit/1d51d1b627cd277a1defea81b4b58fd81bf76f32) Thanks @tim-smart! - allow creating browser WorkerRunner from a MessagePort
+
 ## 0.38.0
 
 ### Minor Changes
