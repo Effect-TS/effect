@@ -51,13 +51,13 @@ export const makePush = <E, A>(queue: Queue.Queue<Array<A> | Exit.Exit<void, E>>
   let finished = false
   let buffer: Array<A> = []
   let running = false
-  function offerAll(items: Iterable<A>) {
+  function array(items: ReadonlyArray<A>) {
     if (finished) return false
-    if (Array.isArray(items) && items.length <= 50_000) {
-      buffer.push.apply(buffer, items)
+    if (items.length <= 50_000) {
+      buffer.push.apply(buffer, items as Array<A>)
     } else {
-      for (const item of items) {
-        buffer.push(item)
+      for (let i = 0; i < items.length; i++) {
+        buffer.push(items[0])
       }
     }
     if (!running) {
@@ -92,8 +92,10 @@ export const makePush = <E, A>(queue: Queue.Queue<Array<A> | Exit.Exit<void, E>>
       }
       return true
     },
-    chunk: offerAll,
-    array: offerAll,
+    array,
+    chunk(chunk) {
+      return array(Chunk.toReadonlyArray(chunk))
+    },
     done,
     end() {
       if (finished) return
