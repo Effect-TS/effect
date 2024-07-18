@@ -4155,6 +4155,23 @@ export const onDone = dual<
 )
 
 /** @internal */
+export const onStart: {
+  <_, E2, R2>(
+    effect: Effect.Effect<_, E2, R2>
+  ): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>
+  <A, E, R, _, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Stream.Stream<A, E | E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, _, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Stream.Stream<A, E | E2, R | R2> => unwrap(Effect.as(effect, self))
+)
+
+/** @internal */
 export const orDie = <A, E, R>(self: Stream.Stream<A, E, R>): Stream.Stream<A, never, R> =>
   pipe(self, orDieWith(identity))
 
@@ -6192,23 +6209,6 @@ export const tap: {
     self: Stream.Stream<A, E, R>,
     f: (a: NoInfer<A>) => Effect.Effect<X, E2, R2>
   ): Stream.Stream<A, E | E2, R | R2> => mapEffectSequential(self, (a) => Effect.as(f(a), a))
-)
-
-/** @internal */
-export const tapStart: {
-  <_, E2, R2>(
-    effect: Effect.Effect<_, E2, R2>
-  ): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>
-  <A, E, R, _, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    effect: Effect.Effect<_, E2, R2>
-  ): Stream.Stream<A, E | E2, R | R2>
-} = dual(
-  2,
-  <A, E, R, _, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    effect: Effect.Effect<_, E2, R2>
-  ): Stream.Stream<A, E | E2, R | R2> => unwrap(Effect.as(effect, self))
 )
 
 /** @internal */

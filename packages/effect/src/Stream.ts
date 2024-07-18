@@ -2919,6 +2919,38 @@ export const onDone: {
 } = internal.onDone
 
 /**
+ * Adds an effect to be executed at the start of the stream.
+ *
+ * @example
+ * import { Console, Effect, Stream } from "effect"
+ *
+ * const stream = Stream.make(1, 2, 3).pipe(
+ *   Stream.onStart(Console.log("Stream started")),
+ *   Stream.map((n) => n * 2),
+ *   Stream.tap((n) => Console.log(`after mapping: ${n}`))
+ * )
+ *
+ * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * // Stream started
+ * // after mapping: 2
+ * // after mapping: 4
+ * // after mapping: 6
+ * // { _id: 'Chunk', values: [ 2, 4, 6 ] }
+ *
+ * @since 3.6.0
+ * @category sequencing
+ */
+export const onStart: {
+  <_, E2, R2>(
+    effect: Effect.Effect<_, E2, R2>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
+  <A, E, R, _, E2, R2>(
+    self: Stream<A, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Stream<A, E | E2, R | R2>
+} = internal.onStart
+
+/**
  * Translates any failure into a stream termination, making the stream
  * infallible and all failures unchecked.
  *
@@ -4535,38 +4567,6 @@ export const tapSink: {
   <A, E2, R2>(sink: Sink.Sink<unknown, A, unknown, E2, R2>): <E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
   <A, E, R, E2, R2>(self: Stream<A, E, R>, sink: Sink.Sink<unknown, A, unknown, E2, R2>): Stream<A, E | E2, R | R2>
 } = internal.tapSink
-
-/**
- * Adds an effect to be executed at the start of the stream.
- *
- * @example
- * import { Console, Effect, Stream } from "effect"
- *
- * const stream = Stream.make(1, 2, 3).pipe(
- *   Stream.tapStart(Console.log("Stream started")),
- *   Stream.map((n) => n * 2),
- *   Stream.tap((n) => Console.log(`after mapping: ${n}`))
- * )
- *
- * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
- * // Stream started
- * // after mapping: 2
- * // after mapping: 4
- * // after mapping: 6
- * // { _id: 'Chunk', values: [ 2, 4, 6 ] }
- *
- * @since 3.6.0
- * @category sequencing
- */
-export const tapStart: {
-  <_, E2, R2>(
-    effect: Effect.Effect<_, E2, R2>
-  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
-  <A, E, R, _, E2, R2>(
-    self: Stream<A, E, R>,
-    effect: Effect.Effect<_, E2, R2>
-  ): Stream<A, E | E2, R | R2>
-} = internal.tapStart
 
 /**
  * Delays the chunks of this stream according to the given bandwidth

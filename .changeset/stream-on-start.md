@@ -2,13 +2,13 @@
 "effect": minor
 ---
 
-Implement `Stream.tapStart` that adds an effect to be executed at the start of the stream.
+Implement `Stream.onStart` that adds an effect to be executed at the start of the stream.
 
 ```ts
 import { Console, Effect, Stream } from "effect";
 
 const stream = Stream.make(1, 2, 3).pipe(
-  Stream.tapStart(Console.log("Stream started")),
+  Stream.onStart(Console.log("Stream started")),
   Stream.map((n) => n * 2),
   Stream.tap((n) => Console.log(`after mapping: ${n}`))
 ) 

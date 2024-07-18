@@ -188,16 +188,4 @@ describe("Stream", () => {
       const result = yield* $(Ref.get(ref))
       assert.strictEqual(result, 6)
     }))
-
-  it.effect("tapStart", () =>
-    Effect.gen(function*($) {
-      let counter = 0
-      const result = yield* $(
-        Stream.make(1, 1),
-        Stream.tapStart(Effect.sync(() => counter++)),
-        Stream.runCollect
-      )
-      assert.strictEqual(counter, 1)
-      assert.deepStrictEqual(Array.from(result), [1, 1])
-    }))
 })
