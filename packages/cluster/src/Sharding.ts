@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Serializable from "@effect/schema/Serializable"
 import type * as Effect from "effect/Effect"
 import type * as HashSet from "effect/HashSet"
 import type * as Scope from "effect/Scope"
@@ -58,13 +59,21 @@ export interface Sharding {
   ) => <R>(
     behaviour: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
-  ) => Effect.Effect<void, never, Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>>
+  ) => Effect.Effect<
+    void,
+    never,
+    Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext> | Serializable.SerializableWithResult.Context<Msg>
+  >
   readonly registerTopic: <Msg extends Envelope.AnyMessage>(
     entity: Entity.Clustered<Msg>
   ) => <R>(
     behaviour: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
-  ) => Effect.Effect<void, never, Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>>
+  ) => Effect.Effect<
+    void,
+    never,
+    Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext> | Serializable.SerializableWithResult.Context<Msg>
+  >
   readonly getShardingRegistrationEvents: Stream.Stream<ShardingRegistrationEvent.ShardingRegistrationEvent>
   readonly registerSingleton: <R>(name: string, run: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>
   readonly assign: (shards: HashSet.HashSet<ShardId.ShardId>) => Effect.Effect<void>

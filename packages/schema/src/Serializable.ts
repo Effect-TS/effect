@@ -201,9 +201,7 @@ export declare namespace SerializableWithResult {
   /**
    * @since 0.67.0
    */
-  export type Context<T> = T extends
-    SerializableWithResult<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
-    : never
+  export type Context<T> = Serializable.Context<T> | WithResult.Context<T>
 }
 
 /**

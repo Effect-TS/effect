@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { WithResult } from "@effect/schema/Serializable"
+import type { SerializableWithResult, WithResult } from "@effect/schema/Serializable"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
@@ -27,11 +27,12 @@ export interface Broadcaster<Msg extends Envelope.AnyMessage> {
     HashMap<
       PodAddress,
       Either<
-        ShardingException | WithResult.Error<Msg>,
-        WithResult.Success<Msg>
+        WithResult.Success<Msg>,
+        ShardingException | WithResult.Error<Msg>
       >
     >,
-    ShardingException
+    ShardingException,
+    SerializableWithResult.Context<Msg>
   >
 
   /**
@@ -42,6 +43,7 @@ export interface Broadcaster<Msg extends Envelope.AnyMessage> {
    */
   readonly broadcastAndForget: (topicId: string, message: Msg) => Effect<
     void,
-    ShardingException
+    ShardingException,
+    SerializableWithResult.Context<Msg>
   >
 }

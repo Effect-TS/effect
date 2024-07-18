@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { WithResult } from "@effect/schema/Serializable"
+import type { SerializableWithResult, WithResult } from "@effect/schema/Serializable"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
@@ -46,7 +46,7 @@ export interface RecipientBehaviour<Msg extends Envelope.AnyMessage, R> extends
       ShardingException.ExceptionWhileOfferingMessageException
     >,
     never,
-    R | RecipientBehaviourContext.RecipientBehaviourContext | Scope.Scope
+    R | SerializableWithResult.Context<Msg> | RecipientBehaviourContext.RecipientBehaviourContext | Scope.Scope
   >
 {}
 

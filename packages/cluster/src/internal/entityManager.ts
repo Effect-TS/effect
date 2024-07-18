@@ -71,7 +71,14 @@ export function make<Msg extends Envelope.Envelope.AnyMessage, R>(
 ) {
   return Effect.gen(function*(_) {
     const entityMaxIdle = options.entityMaxIdleTime || Option.none()
-    const env = yield* _(Effect.context<Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>>())
+    const env = yield* _(
+      Effect.context<
+        Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>
+      >()
+    )
+    const serializationEnv = yield* _(
+      Effect.context<Serializable.Serializable.Context<Msg> | Serializable.WithResult.Context<Msg>>()
+    )
     const entityStates = yield* _(
       RefSynchronized.make<
         HashMap.HashMap<RecipientAddress, EntityState.EntityState>
@@ -230,21 +237,30 @@ export function make<Msg extends Envelope.Envelope.AnyMessage, R>(
                     const forkShutdown = pipe(forkEntityTermination(recipientAddress), Effect.asVoid)
                     const shardId = sharding.getShardId(recipientAddress)
 
-                    const sendAndGetState = yield* _(pipe(
-                      recipientBehaviour,
-                      Effect.map((offer) => (envelope: SerializedEnvelope.SerializedEnvelope) =>
-                        pipe(
-                          serialization.decode(entity.schema, envelope.message.body),
-                          Effect.flatMap((message) =>
-                            pipe(
-                              offer(Envelope.map(envelope, () => message)),
-                              Effect.flatMap((_) =>
-                                MessageState.mapEffect(
-                                  _,
-                                  (value) => serialization.encode(Serializable.exitSchema(message as any), value)
+                    const sendAndGetState: (
+                      envelope: SerializedEnvelope.SerializedEnvelope
+                    ) => Effect.Effect<
+                      MessageState.MessageState<SerializedValue.SerializedValue>,
+                      | ShardingException.ExceptionWhileOfferingMessageException
+                      | ShardingException.SerializationException
+                    > = yield* _(
+                      pipe(
+                        recipientBehaviour,
+                        Effect.map((offer) => (envelope: SerializedEnvelope.SerializedEnvelope) =>
+                          pipe(
+                            serialization.decode(entity.schema, envelope.message.body),
+                            Effect.flatMap((message) =>
+                              pipe(
+                                offer(Envelope.map(envelope, () => message)),
+                                Effect.flatMap((_) =>
+                                  MessageState.mapEffect(
+                                    _,
+                                    (value) => serialization.encode(Serializable.exitSchema(message), value)
+                                  )
                                 )
                               )
-                            )
+                            ),
+                            Effect.provide(serializationEnv)
                           )
                         )
                       ),
@@ -259,8 +275,7 @@ export function make<Msg extends Envelope.Envelope.AnyMessage, R>(
                         })
                       ),
                       Effect.provide(env)
-                    ))
-
+                    )
                     const entityState = EntityState.make({
                       sendAndGetState,
                       expirationFiber,

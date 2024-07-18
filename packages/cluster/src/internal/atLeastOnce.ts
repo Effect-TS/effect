@@ -44,13 +44,13 @@ export function atLeastOnceRecipientBehaviour<Msg extends Envelope.AnyMessage, R
     const offer = yield* _(fa)
     return <A extends Msg>(envelope: Envelope<A>) =>
       pipe(
-        storage.upsert(recipientType as any, shardId, entityId, envelope),
+        storage.upsert<A>(recipientType as any, shardId, entityId, envelope),
         Effect.zipRight(
           pipe(
             offer(envelope),
             Effect.tap(MessageState.match({
               onAcknowledged: () => Effect.void,
-              onProcessed: () => storage.markAsProcessed(recipientType as any, shardId, entityId, envelope)
+              onProcessed: () => storage.markAsProcessed<A>(recipientType as any, shardId, entityId, envelope)
             }))
           )
         )

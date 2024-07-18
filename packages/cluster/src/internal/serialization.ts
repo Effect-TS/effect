@@ -20,7 +20,7 @@ export const SerializationTypeId: Serialization.SerializationTypeId = Symbol.for
 export const serializationTag = Context.GenericTag<Serialization.Serialization>(SerializationSymbolKey)
 
 /** @internal */
-function jsonStringify<A, I>(value: A, schema: Schema.Schema<A, I>) {
+function jsonStringify<A, I, R>(value: A, schema: Schema.Schema<A, I, R>) {
   return pipe(
     value,
     Schema.encode(schema),
@@ -30,7 +30,7 @@ function jsonStringify<A, I>(value: A, schema: Schema.Schema<A, I>) {
 }
 
 /** @internal */
-function jsonParse<A, I>(value: string, schema: Schema.Schema<A, I>) {
+function jsonParse<A, I, R>(value: string, schema: Schema.Schema<A, I, R>) {
   return pipe(
     Effect.sync(() => JSON.parse(value)),
     Effect.flatMap(Schema.decode(schema)),

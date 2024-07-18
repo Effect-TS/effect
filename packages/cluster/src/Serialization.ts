@@ -36,19 +36,19 @@ export interface Serialization {
    * Transforms the given message into binary
    * @since 1.0.0
    */
-  readonly encode: <A, I>(
-    schema: Schema.Schema<A, I>,
+  readonly encode: <A, I, R>(
+    schema: Schema.Schema<A, I, R>,
     message: A
-  ) => Effect.Effect<SerializedValue.SerializedValue, ShardingException.SerializationException>
+  ) => Effect.Effect<SerializedValue.SerializedValue, ShardingException.SerializationException, R>
 
   /**
    * Transform binary back into the given type
    * @since 1.0.0
    */
-  readonly decode: <A, I>(
-    schema: Schema.Schema<A, I>,
+  readonly decode: <A, I, R>(
+    schema: Schema.Schema<A, I, R>,
     bytes: SerializedValue.SerializedValue
-  ) => Effect.Effect<A, ShardingException.SerializationException>
+  ) => Effect.Effect<A, ShardingException.SerializationException, R>
 }
 
 /**

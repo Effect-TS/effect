@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { WithResult } from "@effect/schema/Serializable"
+import type { SerializableWithResult, WithResult } from "@effect/schema/Serializable"
 import type { Effect } from "effect/Effect"
 import type { Envelope } from "./Envelope.js"
 import type { ShardingException } from "./ShardingException.js"
@@ -22,7 +22,8 @@ export interface Messenger<Msg extends Envelope.AnyMessage> {
    */
   ask(entityId: string, message: Msg): Effect<
     WithResult.Success<Msg>,
-    ShardingException | WithResult.Error<Msg>
+    ShardingException | WithResult.Error<Msg>,
+    SerializableWithResult.Context<Msg>
   >
   /**
    * Sends a message to an entity without waiting for the response.
@@ -32,6 +33,7 @@ export interface Messenger<Msg extends Envelope.AnyMessage> {
    */
   fireAndForget(entityId: string, message: Msg): Effect<
     void,
-    ShardingException | WithResult.Error<Msg>
+    ShardingException | WithResult.Error<Msg>,
+    SerializableWithResult.Context<Msg>
   >
 }

@@ -494,7 +494,8 @@ function make(
       message: A
     ): Effect.Effect<
       MessageState.MessageState<SerializedValue.SerializedValue>,
-      ShardingException.ShardingException
+      ShardingException.ShardingException,
+      Serializable.SerializableWithResult.Context<A>
     > {
       const recipientAddress = new RecipientAddress({ recipientType: entity.name, entityId })
       const shardId = getShardId(recipientAddress)
@@ -574,7 +575,8 @@ function make(
           ShardingException.ShardingException
         >
       >,
-      ShardingException.ShardingException
+      ShardingException.ShardingException,
+      Serializable.SerializableWithResult.Context<A>
     > {
       return Effect.flatMap(serialization.encode(entity.schema, message), (body) =>
         pipe(
@@ -661,7 +663,11 @@ function make(
     return <R>(
       behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
       options?: RecipientBehaviour.EntityBehaviourOptions
-    ): Effect.Effect<void, never, Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>> =>
+    ): Effect.Effect<
+      void,
+      never,
+      Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext> | Serializable.SerializableWithResult.Context<Msg>
+    > =>
       pipe(
         registerRecipient(entity, behavior, options),
         Effect.zipRight(PubSub.publish(eventsHub, ShardingRegistrationEvent.EntityRegistered(entity))),
@@ -675,7 +681,11 @@ function make(
     return <R>(
       behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
       options?: RecipientBehaviour.EntityBehaviourOptions
-    ): Effect.Effect<void, never, Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>> =>
+    ): Effect.Effect<
+      void,
+      never,
+      Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext> | Serializable.SerializableWithResult.Context<Msg>
+    > =>
       pipe(
         registerRecipient(entity, behavior, options),
         Effect.zipRight(PubSub.publish(eventsHub, ShardingRegistrationEvent.TopicRegistered(entity))),
@@ -690,7 +700,12 @@ function make(
     entity: Entity.Entity<Msg>,
     behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
-  ) {
+  ): Effect.Effect<
+    void,
+    never,
+    | Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>
+    | Serializable.SerializableWithResult.Context<Msg>
+  > {
     return Effect.gen(function*($) {
       const entityManager = yield* $(
         EntityManager.make(

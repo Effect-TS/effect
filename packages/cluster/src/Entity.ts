@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { Schema } from "@effect/schema/Schema"
+import type * as Serializable from "@effect/schema/Serializable"
 import * as Data from "effect/Data"
 import * as Predicate from "effect/Predicate"
 import type { Envelope } from "./Envelope.js"
@@ -53,7 +54,7 @@ export declare namespace Entity {
      * The schema definition for messages that the entity is capable of
      * processing.
      */
-    readonly schema: Schema<Msg, any>
+    readonly schema: Schema<Msg, Serializable.Serializable.Encoded<Msg>, Serializable.Serializable.Context<Msg>>
   }
 }
 

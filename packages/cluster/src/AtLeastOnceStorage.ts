@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Serializable from "@effect/schema/Serializable"
 import type { SqlClient } from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
 import type { Tag } from "effect/Context"
@@ -40,7 +41,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
     shardId: ShardId,
     entityId: string,
     message: Envelope<Msg>
-  ): Effect<void>
+  ): Effect<void, never, Serializable.SerializableWithResult.Context<Msg>>
 
   /**
    * Marks the specified message as processed to prevent additional attempts to
@@ -51,7 +52,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
     shardId: ShardId,
     entityId: string,
     message: Envelope<Msg>
-  ): Effect<void>
+  ): Effect<void, never, Serializable.SerializableWithResult.Context<Msg>>
 
   /**
    * Returns a stream of messages that will be sent to the local pod as a second
