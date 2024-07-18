@@ -97,7 +97,11 @@ describe("Stream", () => {
       const result = yield* $(
         Stream.make(1, 2, 3),
         Stream.tapBoth({
-          onSuccess: (n) => pipe(Effect.fail("error"), Effect.when(() => n === 3)),
+          onSuccess: (n) =>
+            pipe(
+              Effect.fail("error"),
+              Effect.when(() => n === 3)
+            ),
           onFailure: () => Effect.void
         }),
         Stream.either,
