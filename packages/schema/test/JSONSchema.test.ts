@@ -1926,16 +1926,16 @@ schema (Suspend): <suspended schema>`
     })
 
     it("refinement of a transformation without an override annotation", () => {
-      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmpty()), {
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString()), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string"
       }, false)
-      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmpty({ jsonSchema: { title: "Description" } })), {
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string"
       }, false)
       expectJSONSchema(
-        Schema.Trim.pipe(Schema.nonEmpty()).annotations({ jsonSchema: { title: "Description" } }),
+        Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "string"
