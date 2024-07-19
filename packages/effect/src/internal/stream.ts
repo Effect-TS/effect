@@ -10,6 +10,7 @@ import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
+import * as FiberRef from "../FiberRef.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
 import * as Layer from "../Layer.js"
@@ -593,6 +594,51 @@ export const asyncEffect = <A, E = never, R = never>(
         )
       )
     ),
+    channel.unwrapScoped,
+    fromChannel
+  )
+
+const queueFromBufferOptionsPush = <A, E>(
+  options?: { readonly bufferSize: "unbounded" } | {
+    readonly bufferSize?: number | undefined
+    readonly strategy?: "dropping" | "sliding" | undefined
+  } | undefined
+): Effect.Effect<Queue.Queue<Array<A> | Exit.Exit<void, E>>> => {
+  if (options?.bufferSize === "unbounded" || (options?.bufferSize === undefined && options?.strategy === undefined)) {
+    return Queue.unbounded()
+  }
+  switch (options?.strategy) {
+    case "sliding":
+      return Queue.sliding(options.bufferSize ?? 16)
+    default:
+      return Queue.dropping(options?.bufferSize ?? 16)
+  }
+}
+
+/** @internal */
+export const asyncPush = <A, E = never, R = never>(
+  register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
+  options?: {
+    readonly bufferSize: "unbounded"
+  } | {
+    readonly bufferSize?: number | undefined
+    readonly strategy?: "dropping" | "sliding" | undefined
+  } | undefined
+): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
+  Effect.acquireRelease(
+    queueFromBufferOptionsPush<A, E>(options),
+    Queue.shutdown
+  ).pipe(
+    Effect.tap((queue) =>
+      FiberRef.getWith(FiberRef.currentScheduler, (scheduler) => register(emit.makePush(queue, scheduler)))
+    ),
+    Effect.map((queue) => {
+      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(Queue.take(queue), (item) =>
+        Exit.isExit(item)
+          ? Exit.isSuccess(item) ? core.void : core.failCause(item.cause)
+          : channel.zipRight(core.write(Chunk.unsafeFromArray(item)), loop))
+      return loop
+    }),
     channel.unwrapScoped,
     fromChannel
   )
@@ -8341,23 +8387,11 @@ export const fromEventListener = <A = unknown>(
     readonly capture?: boolean
     readonly passive?: boolean
     readonly once?: boolean
+    readonly bufferSize?: number | "unbounded" | undefined
   } | undefined
 ): Stream.Stream<A> =>
-  _async<A>((emit) => {
-    let batch: Array<A> = []
-    let taskRunning = false
-    function cb(e: A) {
-      batch.push(e)
-      if (!taskRunning) {
-        taskRunning = true
-        queueMicrotask(() => {
-          const events = batch
-          batch = []
-          taskRunning = false
-          emit.chunk(Chunk.unsafeFromArray(events))
-        })
-      }
-    }
-    target.addEventListener(type, cb as any, options)
-    return Effect.sync(() => target.removeEventListener(type, cb, options))
-  }, "unbounded")
+  asyncPush<A>((emit) =>
+    Effect.acquireRelease(
+      Effect.sync(() => target.addEventListener(type, emit.single as any, options)),
+      () => Effect.sync(() => target.removeEventListener(type, emit.single, options))
+    ), { bufferSize: typeof options === "object" ? options.bufferSize : undefined })
