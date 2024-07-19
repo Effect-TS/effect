@@ -1481,6 +1481,29 @@ S.String.pipe(S.transform(S.Number, (s) => s, (n) => String(n)))
 // @ts-expect-error
 S.String.pipe(S.transform(S.Number, (s) => s.length, (n) => n))
 
+// should receive the fromI value other than the fromA value
+S.transform(
+  S.Struct({
+    a: S.String,
+    b: S.NumberFromString
+  }),
+  S.Struct({
+    a: S.NumberFromString
+  }),
+  {
+    strict: true,
+    decode: ({
+      a, // $ExpectType string
+      b: _b // $ExpectType number
+    }, i // $ExpectType { readonly a: string; readonly b: string; }
+    ) => ({ a: a + i.b }),
+    encode: (
+      i, // $ExpectType { readonly a: string; }
+      a // $ExpectType { readonly a: number; }
+    ) => ({ ...i, b: a.a * 2 })
+  }
+)
+
 // ---------------------------------------------
 // transformOrFail
 // ---------------------------------------------
@@ -1529,6 +1552,35 @@ S.String.pipe(
 S.String.pipe(
   // @ts-expect-error
   S.transformOrFail(S.Number, (s) => ParseResult.succeed(s.length), (n) => ParseResult.succeed(n))
+)
+
+// should receive the fromI value other than the fromA value
+S.transformOrFail(
+  S.Struct({
+    a: S.String,
+    b: S.NumberFromString
+  }),
+  S.Struct({
+    a: S.NumberFromString
+  }),
+  {
+    strict: true,
+    decode: (
+      {
+        a, // $ExpectType string
+        b: _b // $ExpectType number
+      },
+      _options,
+      _ast,
+      i // $ExpectType { readonly a: string; readonly b: string; }
+    ) => ParseResult.succeed({ a: a + i.b }),
+    encode: (
+      i, // $ExpectType { readonly a: string; }
+      _options,
+      _ast,
+      a // $ExpectType { readonly a: number; }
+    ) => ParseResult.succeed({ ...i, b: a.a * 2 })
+  }
 )
 
 // ---------------------------------------------

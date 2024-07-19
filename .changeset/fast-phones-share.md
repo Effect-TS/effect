@@ -69,6 +69,7 @@ TODO: change to minor before merging
 - make `CauseFromSelf` and `Cause` more general by accepting a generic schema as the `defect` argument instead of `Schema<unknown, unknown, DR>`
 - make `ExitFromSelf` and `Exit` more general by accepting a generic schema as the `defect` argument instead of `Schema<unknown, unknown, DR>`
 - fix `Schema.Void` behavior: now accepts any value instead of only validating `undefined`, closes #3297
+- pass the input of the transformation to `transform` and `transformOrFail` APIs
 
 ### Serializable
 

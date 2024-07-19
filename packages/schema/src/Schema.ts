@@ -3457,24 +3457,28 @@ export const transformOrFail: {
       readonly decode: (
         fromA: Schema.Type<From>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        fromI: Schema.Encoded<From>
       ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>
       readonly encode: (
         toI: Schema.Encoded<To>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        toA: Schema.Type<To>
       ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
       readonly strict?: true
     } | {
       readonly decode: (
         fromA: Schema.Type<From>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        fromI: Schema.Encoded<From>
       ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>
       readonly encode: (
         toI: Schema.Encoded<To>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        toA: Schema.Type<To>
       ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>
       readonly strict: false
     }
@@ -3486,24 +3490,28 @@ export const transformOrFail: {
       readonly decode: (
         fromA: Schema.Type<From>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        fromI: Schema.Encoded<From>
       ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>
       readonly encode: (
         toI: Schema.Encoded<To>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        toA: Schema.Type<To>
       ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
       readonly strict?: true
     } | {
       readonly decode: (
         fromA: Schema.Type<From>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        fromI: Schema.Encoded<From>
       ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>
       readonly encode: (
         toI: Schema.Encoded<To>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        toA: Schema.Type<To>
       ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>
       readonly strict: false
     }
@@ -3515,12 +3523,14 @@ export const transformOrFail: {
     readonly decode: (
       fromA: FromA,
       options: ParseOptions,
-      ast: AST.Transformation
+      ast: AST.Transformation,
+      fromI: FromI
     ) => Effect.Effect<ToI, ParseResult.ParseIssue, RD>
     readonly encode: (
       toI: ToI,
       options: ParseOptions,
-      ast: AST.Transformation
+      ast: AST.Transformation,
+      toA: ToA
     ) => Effect.Effect<FromA, ParseResult.ParseIssue, RE>
   }
 ): Schema<ToA, FromI, FromR | ToR | RD | RE> =>
@@ -3553,12 +3563,12 @@ export const transform: {
   <To extends Schema.Any, From extends Schema.Any>(
     to: To,
     options: {
-      readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
-      readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+      readonly decode: (fromA: Schema.Type<From>, fromI: Schema.Encoded<From>) => Schema.Encoded<To>
+      readonly encode: (toI: Schema.Encoded<To>, toA: Schema.Type<To>) => Schema.Type<From>
       readonly strict?: true
     } | {
-      readonly decode: (fromA: Schema.Type<From>) => unknown
-      readonly encode: (toI: Schema.Encoded<To>) => unknown
+      readonly decode: (fromA: Schema.Type<From>, fromI: Schema.Encoded<From>) => unknown
+      readonly encode: (toI: Schema.Encoded<To>, toA: Schema.Type<To>) => unknown
       readonly strict: false
     }
   ): (from: From) => transform<From, To>
@@ -3566,12 +3576,12 @@ export const transform: {
     from: From,
     to: To,
     options: {
-      readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
-      readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+      readonly decode: (fromA: Schema.Type<From>, fromI: Schema.Encoded<From>) => Schema.Encoded<To>
+      readonly encode: (toI: Schema.Encoded<To>, toA: Schema.Type<To>) => Schema.Type<From>
       readonly strict?: true
     } | {
-      readonly decode: (fromA: Schema.Type<From>) => unknown
-      readonly encode: (toI: Schema.Encoded<To>) => unknown
+      readonly decode: (fromA: Schema.Type<From>, fromI: Schema.Encoded<From>) => unknown
+      readonly encode: (toI: Schema.Encoded<To>, toA: Schema.Type<To>) => unknown
       readonly strict: false
     }
   ): transform<From, To>
@@ -3581,8 +3591,8 @@ export const transform: {
     from: Schema<FromA, FromI, FromR>,
     to: Schema<ToA, ToI, ToR>,
     options: {
-      readonly decode: (fromA: FromA) => ToI
-      readonly encode: (toI: ToI) => FromA
+      readonly decode: (fromA: FromA, fromI: FromI) => ToI
+      readonly encode: (toI: ToI, toA: ToA) => FromA
     }
   ): Schema<ToA, FromI, FromR | ToR> =>
     transformOrFail(
@@ -3590,8 +3600,8 @@ export const transform: {
       to,
       {
         strict: true,
-        decode: (fromA) => ParseResult.succeed(options.decode(fromA)),
-        encode: (toI) => ParseResult.succeed(options.encode(toI))
+        decode: (fromA, _options, _ast, toA) => ParseResult.succeed(options.decode(fromA, toA)),
+        encode: (toI, _options, _ast, toA) => ParseResult.succeed(options.encode(toI, toA))
       }
     )
 )
@@ -7333,7 +7343,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
       ) => Effect.Effect<Struct.Type<Fields>, ParseResult.ParseIssue, R3>
     },
     annotations?: Annotations.Schema<Transformed>
-  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
+  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformOrFail">
     : Class<
       Transformed,
       Fields & newFields,
@@ -7363,7 +7373,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
       ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
     },
     annotations?: Annotations.Schema<Transformed>
-  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformFrom">
+  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformOrFailFrom">
     : Class<
       Transformed,
       Fields & newFields,

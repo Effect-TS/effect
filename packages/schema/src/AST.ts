@@ -1834,8 +1834,13 @@ export class FinalTransformation {
    */
   readonly _tag = "FinalTransformation"
   constructor(
-    readonly decode: (input: any, options: ParseOptions, self: Transformation) => Effect<any, ParseIssue, any>,
-    readonly encode: (input: any, options: ParseOptions, self: Transformation) => Effect<any, ParseIssue, any>
+    readonly decode: (
+      fromA: any,
+      options: ParseOptions,
+      self: Transformation,
+      fromI: any
+    ) => Effect<any, ParseIssue, any>,
+    readonly encode: (toI: any, options: ParseOptions, self: Transformation, toA: any) => Effect<any, ParseIssue, any>
   ) {}
 }
 
