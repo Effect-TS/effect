@@ -652,10 +652,7 @@ export const diffDuration: {
 export const toDateUtc = (self: DateTime.Input): Date => new Date(toEpochMillis(self))
 
 /**
- * Convert a `DateTime` to a `Date`, applying the time zone first if necessary.
- *
- * The returned Date will be offset by the time zone if the `DateTime` is a
- * `DateTime.WithZone`.
+ * Convert a `DateTime` to a `Date`, applying the time zone first.
  *
  * @since 3.6.0
  * @category conversions
@@ -712,7 +709,7 @@ export const toEpochMillis = (self: DateTime.Input): number => {
 /**
  * Get the different parts of a `DateTime` as an object.
  *
- * The parts will be time zone adjusted if necessary.
+ * The parts will be time zone adjusted.
  *
  * @since 3.6.0
  * @category conversions
@@ -762,7 +759,7 @@ export const toPartUtc: {
 /**
  * Get a part of a `DateTime` as a number.
  *
- * The part will be time zone adjusted if necessary.
+ * The part will be time zone adjusted.
  *
  * @since 3.6.0
  * @category conversions
@@ -877,9 +874,9 @@ const calculateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
 }
 
 /**
- * Modify a `DateTime` by applying a function to the underlying adjusted `Date`.
+ * Modify a `DateTime` by applying a function to the underlying `Date`.
  *
- * The `Date` will first have the time zone applied if necessary, and then be
+ * The `Date` will first have the time zone applied if possible, and then be
  * converted back to a `DateTime` within the same time zone.
  *
  * @since 3.6.0
