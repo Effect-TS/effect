@@ -1009,8 +1009,8 @@ export const concatAll: <A, E, R>(streams: Chunk.Chunk<Stream<A, E, R>>) => Stre
 
 /**
  * Composes this stream with the specified stream to create a cartesian
- * product of elements. The `that` stream would be run multiple times, for
- * every element in the `this` stream.
+ * product of elements. The `right` stream would be run multiple times, for
+ * every element in the `left` stream.
  *
  * See also `Stream.zip` for the more common point-wise variant.
  *
@@ -1034,14 +1034,14 @@ export const concatAll: <A, E, R>(streams: Chunk.Chunk<Stream<A, E, R>>) => Stre
  * @category utils
  */
 export const cross: {
-  <A2, E2, R2>(that: Stream<A2, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<[A, A2], E2 | E, R2 | R>
-  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<[A, A2], E | E2, R | R2>
+  <AR, EL, RL>(right: Stream<AR, EL, RL>): <AL, ER, RR>(left: Stream<AL, ER, RR>) => Stream<[AL, AR], ER | EL, RR | RL>
+  <AL, ER, RR, AR, EL, RL>(left: Stream<AL, ER, RR>, right: Stream<AR, EL, RL>): Stream<[AL, AR], ER | EL, RR | RL>
 } = internal.cross
 
 /**
  * Composes this stream with the specified stream to create a cartesian
- * product of elements, but keeps only elements from this stream. The `that`
- * stream would be run multiple times, for every element in the `this` stream.
+ * product of elements, but keeps only elements from `left` stream. The `right`
+ * stream would be run multiple times, for every element in the `left` stream.
  *
  * See also `Stream.zipLeft` for the more common point-wise variant.
  *
@@ -1049,14 +1049,14 @@ export const cross: {
  * @category utils
  */
 export const crossLeft: {
-  <A2, E2, R2>(that: Stream<A2, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
-  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A, E | E2, R | R2>
+  <AR, ER, RR>(right: Stream<AR, ER, RR>): <AL, EL, RL>(left: Stream<AL, EL, RL>) => Stream<AL, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(left: Stream<AL, EL, RL>, right: Stream<AR, ER, RR>): Stream<AL, EL | ER, RL | RR>
 } = internal.crossLeft
 
 /**
  * Composes this stream with the specified stream to create a cartesian
- * product of elements, but keeps only elements from the other stream. The
- * `that` stream would be run multiple times, for every element in the `this`
+ * product of elements, but keeps only elements from the `right` stream. The
+ * `left` stream would be run multiple times, for every element in the `right`
  * stream.
  *
  * See also `Stream.zipRight` for the more common point-wise variant.
@@ -1065,8 +1065,8 @@ export const crossLeft: {
  * @category utils
  */
 export const crossRight: {
-  <A2, E2, R2>(that: Stream<A2, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A2, E2 | E, R2 | R>
-  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A2, E | E2, R | R2>
+  <AR, ER, RR>(right: Stream<AR, ER, RR>): <AL, EL, RL>(left: Stream<AL, EL, RL>) => Stream<AR, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(left: Stream<AL, EL, RL>, right: Stream<AR, ER, RR>): Stream<AR, EL | ER, RL | RR>
 } = internal.crossRight
 
 /**
