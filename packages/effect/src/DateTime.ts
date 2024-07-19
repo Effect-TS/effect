@@ -203,6 +203,7 @@ const Proto = {
     return toDateUtc(this).toJSON()
   }
 }
+
 const ProtoUtc = {
   ...Proto,
   _tag: "Utc",
@@ -220,6 +221,7 @@ const ProtoUtc = {
     })
   }
 }
+
 const ProtoWithZone = {
   ...Proto,
   _tag: "WithZone",
@@ -658,16 +660,13 @@ export const toDateUtc = (self: DateTime.Input): Date => new Date(toEpochMillis(
  * @since 3.6.0
  * @category conversions
  */
-export const toDateAdjusted = (self: DateTime.Input): Date => {
-  const dt = fromInput(self)
-  if (dt._tag === "Utc") {
-    return new Date(dt.epochMillis)
-  } else if (dt.zone._tag === "Offset") {
-    return new Date(dt.utc.epochMillis + dt.zone.offset)
-  } else if (dt.adjustedEpochMillis !== undefined) {
-    return new Date(dt.adjustedEpochMillis)
+export const toDateAdjusted = (self: DateTime.WithZone): Date => {
+  if (self.zone._tag === "Offset") {
+    return new Date(self.utc.epochMillis + self.zone.offset)
+  } else if (self.adjustedEpochMillis !== undefined) {
+    return new Date(self.adjustedEpochMillis)
   }
-  const parts = dt.zone.format.formatToParts(dt.utc.epochMillis)
+  const parts = self.zone.format.formatToParts(self.utc.epochMillis)
   const date = new Date(0)
   date.setUTCFullYear(
     Number(parts[4].value),
@@ -680,7 +679,7 @@ export const toDateAdjusted = (self: DateTime.Input): Date => {
     Number(parts[10].value),
     Number(parts[12].value)
   )
-  dt.adjustedEpochMillis = date.getTime()
+  self.adjustedEpochMillis = date.getTime()
   return date
 }
 
@@ -718,13 +717,12 @@ export const toEpochMillis = (self: DateTime.Input): number => {
  * @since 3.6.0
  * @category conversions
  */
-export const toPartsAdjusted = (self: DateTime.Input): DateTime.Parts => {
-  const dt = fromInput(self)
-  if (dt.partsAdjusted !== undefined) {
-    return dt.partsAdjusted
+export const toPartsAdjusted = (self: DateTime.WithZone): DateTime.Parts => {
+  if (self.partsAdjusted !== undefined) {
+    return self.partsAdjusted
   }
-  dt.partsAdjusted = withAdjustedDate(self, dateToParts)
-  return dt.partsAdjusted
+  self.partsAdjusted = withAdjustedDate(self, dateToParts)
+  return self.partsAdjusted
 }
 
 /**
@@ -770,9 +768,9 @@ export const toPartUtc: {
  * @category conversions
  */
 export const toPartAdjusted: {
-  (part: keyof DateTime.Parts): (self: DateTime.Input) => number
-  (self: DateTime.Input, part: keyof DateTime.Parts): number
-} = dual(2, (self: DateTime.Input, part: keyof DateTime.Parts): number => toPartsAdjusted(self)[part])
+  (part: keyof DateTime.Parts): (self: DateTime.WithZone) => number
+  (self: DateTime.WithZone, part: keyof DateTime.Parts): number
+} = dual(2, (self: DateTime.WithZone, part: keyof DateTime.Parts): number => toPartsAdjusted(self)[part])
 
 // =============================================================================
 // current time zone
@@ -859,11 +857,11 @@ export const nowInCurrentZone: Effect.Effect<DateTime.WithZone, never, CurrentTi
 // mapping
 // =============================================================================
 
-const calcutateOffset = (date: Date, zone: TimeZone): number =>
-  zone._tag === "Offset" ? zone.offset : calcutateNamedOffset(date, zone)
+const calculateOffset = (date: Date, zone: TimeZone): number =>
+  zone._tag === "Offset" ? zone.offset : calculateNamedOffset(date, zone)
 
 const gmtOffsetRegex = /^GMT([+-])(\d{2}):(\d{2})$/
-const calcutateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
+const calculateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
   const parts = zone.format.formatToParts(date)
   const offset = parts[14].value
   if (offset === "GMT") {
@@ -871,7 +869,7 @@ const calcutateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
   }
   const match = gmtOffsetRegex.exec(offset)
   if (match === null) {
-    // fallback to using the plain date
+    // fallback to using the adjusted date
     return zoneOffset(setZone(date, zone))
   }
   const [, sign, hours, minutes] = match
@@ -879,10 +877,10 @@ const calcutateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
 }
 
 /**
- * Modify a `DateTime` by applying a function to the underlying plain `Date`.
+ * Modify a `DateTime` by applying a function to the underlying adjusted `Date`.
  *
  * The `Date` will first have the time zone applied if necessary, and then be
- * converted back to a `DateTime` with the same time zone.
+ * converted back to a `DateTime` within the same time zone.
  *
  * @since 3.6.0
  * @category mapping
@@ -892,13 +890,15 @@ export const mutate: {
   <A extends DateTime.Input>(self: A, f: (plainDate: Date) => void): DateTime.PreserveZone<A>
 } = dual(2, (self: DateTime.Input, f: (plainDate: Date) => void): DateTime => {
   const dt = fromInput(self)
+  if (dt._tag === "Utc") {
+    const date = toDateUtc(dt)
+    f(date)
+    return fromEpochMillis(date.getTime())
+  }
   const adjustedDate = toDateAdjusted(dt)
   const newAdjustedDate = new Date(adjustedDate.getTime())
   f(newAdjustedDate)
-  if (dt._tag === "Utc") {
-    return fromEpochMillis(newAdjustedDate.getTime())
-  }
-  const offset = calcutateOffset(newAdjustedDate, dt.zone)
+  const offset = calculateOffset(newAdjustedDate, dt.zone)
   return setZone(fromEpochMillis(newAdjustedDate.getTime() - offset), dt.zone)
 })
 
@@ -926,9 +926,9 @@ export const mapEpochMillis: {
  * @category mapping
  */
 export const withAdjustedDate: {
-  <A>(f: (date: Date) => A): (self: DateTime.Input) => A
+  <A>(f: (date: Date) => A): (self: DateTime.WithZone) => A
   <A>(self: DateTime.Input, f: (date: Date) => A): A
-} = dual(2, <A>(self: DateTime.Input, f: (date: Date) => A): A => f(toDateAdjusted(self)))
+} = dual(2, <A>(self: DateTime.WithZone, f: (date: Date) => A): A => f(toDateAdjusted(self)))
 
 /**
  * Using the time zone adjusted `Date`, apply a function to the `Date` and
