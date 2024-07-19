@@ -1734,19 +1734,19 @@ export const crossRight: {
 export const crossWith: {
   <AR, ER, RR, AL, A>(
     right: Stream.Stream<AR, ER, RR>,
-    f: (a: AL, b: AR) => A
+    f: (left: AL, right: AR) => A
   ): <EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<A, EL | ER, RL | RR>
   <AL, EL, RL, AR, ER, RR, A>(
     left: Stream.Stream<AL, EL, RL>,
     right: Stream.Stream<AR, ER, RR>,
-    f: (a: AL, b: AR) => A
+    f: (left: AL, right: AR) => A
   ): Stream.Stream<A, EL | ER, RL | RR>
 } = dual(
   3,
   <AL, EL, RL, AR, ER, RR, A>(
     left: Stream.Stream<AL, EL, RL>,
     right: Stream.Stream<AR, ER, RR>,
-    f: (a: AL, b: AR) => A
+    f: (left: AL, right: AR) => A
   ): Stream.Stream<A, EL | ER, RL | RR> => pipe(left, flatMap((a) => pipe(right, map((b) => f(a, b)))))
 )
 

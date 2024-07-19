@@ -1082,12 +1082,12 @@ export const crossRight: {
 export const crossWith: {
   <AR, ER, RR, AL, A>(
     right: Stream<AR, ER, RR>,
-    f: (a: AL, b: AR) => A
+    f: (left: AL, right: AR) => A
   ): <EL, RL>(left: Stream<AL, EL, RL>) => Stream<A, EL | ER, RL | RR>
   <AL, EL, RL, AR, ER, RR, A>(
     left: Stream<AL, EL, RL>,
     right: Stream<AR, ER, RR>,
-    f: (a: AL, b: AR) => A
+    f: (left: AL, right: AR) => A
   ): Stream<A, EL | ER, RL | RR>
 } = internal.crossWith
 
