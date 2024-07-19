@@ -1109,7 +1109,11 @@ export const add: {
       }
       case "months":
       case "month": {
-        date.setUTCMonth(date.getUTCMonth() + amount)
+        const day = date.getUTCDate()
+        date.setUTCMonth(date.getUTCMonth() + amount + 1, 0)
+        if (day < date.getUTCDate()) {
+          date.setUTCDate(day)
+        }
         return date
       }
       case "years":

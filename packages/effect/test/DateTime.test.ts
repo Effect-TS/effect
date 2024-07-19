@@ -43,6 +43,16 @@ describe("DateTime", () => {
         assert.deepStrictEqual(diff, Either.right(Duration.decode("1 day")))
       }))
 
+    it("to month with less days", () => {
+      const jan = DateTime.fromParts({ year: 2023, month: 1, day: 31 })
+      let feb = DateTime.add(jan, 1, "month")
+      assert.strictEqual(feb.toJSON(), "2023-02-28T00:00:00.000Z")
+
+      const mar = DateTime.fromParts({ year: 2023, month: 3, day: 31 })
+      feb = DateTime.add(mar, -1, "month")
+      assert.strictEqual(feb.toJSON(), "2023-02-28T00:00:00.000Z")
+    })
+
     it.effect("correctly preserves the time zone", () =>
       Effect.gen(function*() {
         yield* setTo2024NZ
