@@ -73,7 +73,23 @@ TODO: change to minor before merging
 ### AST
 
 - pass the input of the transformation to `transform` and `transformOrFail` APIs
-- fix `TemplateLiteralSpan.toString` implementation
+- fix `TemplateLiteralSpan.toString` implementation by returning both its type and its literal
+
+  Before
+
+  ```ts
+  import { AST } from "@effect/schema"
+
+  console.log(String(new AST.TemplateLiteralSpan(AST.stringKeyword, "a"))) // ${string}
+  ```
+
+  Now
+
+  ```ts
+  import { AST } from "@effect/schema"
+
+  console.log(String(new AST.TemplateLiteralSpan(AST.stringKeyword, "a"))) // ${string}a
+  ```
 
 ### Serializable
 
