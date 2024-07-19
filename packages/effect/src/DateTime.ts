@@ -7,12 +7,14 @@ import * as Context from "./Context.js"
 import * as Effect from "./Effect.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
+import * as Equivalence_ from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
 import { dual, pipe } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as Hash from "./Hash.js"
 import * as Inspectable from "./Inspectable.js"
 import * as Option from "./Option.js"
+import * as Order_ from "./Order.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 
@@ -271,13 +273,22 @@ const ProtoTimeZoneOffset = {
   }
 }
 
+// =============================================================================
+// guards
+// =============================================================================
+
 /**
  * @since 3.6.0
  * @category guards
  */
 export const isDateTime = (u: unknown): u is DateTime => Predicate.hasProperty(u, TypeId)
 
-const isDateTimeInput = (u: unknown): u is DateTime.Input => isDateTime(u) || u instanceof Date || typeof u === "number"
+/**
+ * @since 3.6.0
+ * @category guards
+ */
+export const isDateTimeInput = (u: unknown): u is DateTime.Input =>
+  isDateTime(u) || u instanceof Date || typeof u === "number"
 
 /**
  * @since 3.6.0
@@ -296,6 +307,28 @@ export const isUtc = (self: DateTime): self is DateTime.Utc => self._tag === "Ut
  * @category guards
  */
 export const isWithZone = (self: DateTime): self is DateTime.WithZone => self._tag === "WithZone"
+
+// =============================================================================
+// instances
+// =============================================================================
+
+/**
+ * @since 3.6.0
+ * @category instances
+ */
+export const Equivalence: Equivalence_.Equivalence<DateTime> = Equivalence_.make((a, b) =>
+  toEpochMillis(a) === toEpochMillis(b)
+)
+
+/**
+ * @since 3.6.0
+ * @category instances
+ */
+export const Order: Order_.Order<DateTime> = Order_.make((a, b) => {
+  const aMillis = toEpochMillis(a)
+  const bMillis = toEpochMillis(b)
+  return aMillis < bMillis ? -1 : aMillis > bMillis ? 1 : 0
+})
 
 // =============================================================================
 // constructors
@@ -530,11 +563,7 @@ export const unsafeSetZoneNamed: {
 export const diff: {
   (other: DateTime.Input): (self: DateTime.Input) => number
   (self: DateTime.Input, other: DateTime.Input): number
-} = dual(2, (self: DateTime.Input, other: DateTime.Input): number => {
-  const selfEpochMillis = toEpochMillis(self)
-  const otherEpochMillis = toEpochMillis(other)
-  return otherEpochMillis - selfEpochMillis
-})
+} = dual(2, (self: DateTime.Input, other: DateTime.Input): number => toEpochMillis(other) - toEpochMillis(self))
 
 /**
  * Calulate the difference between two `DateTime` values.
@@ -548,7 +577,7 @@ export const diff: {
  * @since 3.6.0
  * @category constructors
  */
-export const diffDuration: {
+export const diffDurationEither: {
   (other: DateTime.Input): (self: DateTime.Input) => Either.Either<Duration.Duration, Duration.Duration>
   (self: DateTime.Input, other: DateTime.Input): Either.Either<Duration.Duration, Duration.Duration>
 } = dual(2, (self: DateTime.Input, other: DateTime.Input): Either.Either<Duration.Duration, Duration.Duration> => {
@@ -557,6 +586,20 @@ export const diffDuration: {
     ? Either.right(Duration.millis(diffMillis))
     : Either.left(Duration.millis(-diffMillis))
 })
+
+/**
+ * Calulate the distance between two `DateTime` values.
+ *
+ * @since 3.6.0
+ * @category constructors
+ */
+export const diffDuration: {
+  (other: DateTime.Input): (self: DateTime.Input) => Duration.Duration
+  (self: DateTime.Input, other: DateTime.Input): Duration.Duration
+} = dual(
+  2,
+  (self: DateTime.Input, other: DateTime.Input): Duration.Duration => Duration.millis(Math.abs(diff(self, other)))
+)
 
 // =============================================================================
 // conversions
