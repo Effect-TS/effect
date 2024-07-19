@@ -1,9 +1,9 @@
 /**
  * @since 3.6.0
  */
-import { Duration } from "effect"
 import { IllegalArgumentException } from "./Cause.js"
 import * as Context from "./Context.js"
+import * as Duration from "./Duration.js"
 import * as Effect from "./Effect.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
