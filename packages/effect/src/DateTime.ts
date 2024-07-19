@@ -679,19 +679,32 @@ export const toDateAdjusted = (self: DateTime.WithZone): Date => {
 }
 
 /**
- * Calculate the time zone offset of a `DateTime` in milliseconds.
+ * Calculate the time zone offset of a `DateTime.WithZone` in milliseconds.
  *
  * @since 3.6.0
  * @category conversions
  */
-export const zoneOffset = (self: DateTime.Input): number => {
-  const dt = fromInput(self)
-  if (dt._tag === "Utc") {
-    return 0
-  }
-  const plainDate = toDateAdjusted(dt)
-  return plainDate.getTime() - toEpochMillis(dt)
+export const zoneOffset = (self: DateTime.WithZone): number => {
+  const plainDate = toDateAdjusted(self)
+  return plainDate.getTime() - toEpochMillis(self)
 }
+
+const offsetToString = (offset: number): string => {
+  const abs = Math.abs(offset)
+  const hours = Math.floor(abs / (60 * 60 * 1000))
+  const minutes = Math.round((abs % (60 * 60 * 1000)) / (60 * 1000))
+  return `${offset < 0 ? "-" : "+"}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+}
+
+/**
+ * Calculate the time zone offset of a `DateTime` in milliseconds.
+ *
+ * The offset is formatted as "±HH:MM".
+ *
+ * @since 3.6.0
+ * @category conversions
+ */
+export const zoneOffsetString = (self: DateTime.WithZone): string => offsetToString(zoneOffset(self))
 
 /**
  * Get the milliseconds since the Unix epoch of a `DateTime`.
@@ -1243,16 +1256,11 @@ export const formatIntl: {
   (self: DateTime.Input, format: Intl.DateTimeFormat): string
 } = dual(2, (self: DateTime.Input, format: Intl.DateTimeFormat): string => format.format(toEpochMillis(self)))
 
-const timeZoneOffset = (self: TimeZone): string => {
+const intlTimeZone = (self: TimeZone): string => {
   if (self._tag === "Named") {
     return self.id
   }
-  const abs = Math.abs(self.offset)
-  const offsetHours = Math.floor(abs / (60 * 60 * 1000))
-  const offsetMinutes = Math.round((abs % (60 * 60 * 1000)) / (60 * 1000))
-  return `${self.offset < 0 ? "-" : "+"}${String(offsetHours).padStart(2, "0")}:${
-    String(`${offsetMinutes}`).padStart(2, "0")
-  }`
+  return offsetToString(self.offset)
 }
 
 /**
@@ -1293,7 +1301,7 @@ export const formatWithZone: {
   try {
     return new Intl.DateTimeFormat(options?.locale, {
       ...options,
-      timeZone: timeZoneOffset(self.zone)
+      timeZone: intlTimeZone(self.zone)
     }).format(toEpochMillis(self))
   } catch (_) {
     return new Intl.DateTimeFormat(options?.locale, {
@@ -1302,3 +1310,22 @@ export const formatWithZone: {
     }).format(toDateAdjusted(self))
   }
 })
+
+/**
+ * Format a `DateTime` as a UTC ISO string.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const formatIso = (self: DateTime.Input): string => toDateUtc(self).toISOString()
+
+/**
+ * Format a `DateTime.WithZone` as a ISO string with an offset.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const formatIsoOffset = (self: DateTime.WithZone): string => {
+  const date = toDateAdjusted(self)
+  return `${date.toISOString().slice(0, 19)}${zoneOffsetString(self)}`
+}
