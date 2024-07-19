@@ -1015,12 +1015,8 @@ export class TemplateLiteralSpan {
    * @since 0.67.0
    */
   toString() {
-    switch (this.type._tag) {
-      case "StringKeyword":
-        return "${string}"
-      case "NumberKeyword":
-        return "${number}"
-    }
+    const type = "${" + String(this.type) + "}"
+    return type + this.literal
   }
   /**
    * @since 0.67.0
@@ -1067,7 +1063,7 @@ export class TemplateLiteral implements Annotated {
 }
 
 const formatTemplateLiteral = (ast: TemplateLiteral): string =>
-  "`" + ast.head + ast.spans.map((span) => String(span) + span.literal).join("") +
+  "`" + ast.head + ast.spans.map((span) => String(span)).join("") +
   "`"
 
 /**
