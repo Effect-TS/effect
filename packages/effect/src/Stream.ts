@@ -5575,15 +5575,15 @@ export const zipLatestAll: <T extends ReadonlyArray<Stream<any, any, any>>>(
  * @category zipping
  */
 export const zipLatestWith: {
-  <A2, E2, R2, A, A3>(
-    that: Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ): <E, R>(self: Stream<A, E, R>) => Stream<A3, E2 | E, R2 | R>
-  <A, E, R, A2, E2, R2, A3>(
-    self: Stream<A, E, R>,
-    that: Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ): Stream<A3, E | E2, R | R2>
+  <AR, ER, RR, AL, A>(
+    right: Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): <EL, RL>(left: Stream<AL, EL, RL>) => Stream<A, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream<AL, EL, RL>,
+    right: Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream<A, EL | ER, RL | RR>
 } = internal.zipLatestWith
 
 /**

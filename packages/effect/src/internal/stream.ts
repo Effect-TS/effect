@@ -7929,34 +7929,34 @@ export const zipLatestAll = <T extends ReadonlyArray<Stream.Stream<any, any, any
 }
 
 /** @internal */
-export const zipLatestWith = dual<
-  <A2, E2, R2, A, A3>(
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A3, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2, A3>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ) => Stream.Stream<A3, E2 | E, R2 | R>
->(
+export const zipLatestWith: {
+  <AR, ER, RR, AL, A>(
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): <EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<A, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR>
+} = dual(
   3,
-  <A, E, R, A2, E2, R2, A3>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ): Stream.Stream<A3, E2 | E, R2 | R> => {
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR> => {
     const pullNonEmpty = <_R, _E, _A>(
       pull: Effect.Effect<Chunk.Chunk<_A>, Option.Option<_E>, _R>
     ): Effect.Effect<Chunk.Chunk<_A>, Option.Option<_E>, _R> =>
       pipe(pull, Effect.flatMap((chunk) => Chunk.isEmpty(chunk) ? pullNonEmpty(pull) : Effect.succeed(chunk)))
     return pipe(
-      toPull(self),
+      toPull(left),
       Effect.map(pullNonEmpty),
-      Effect.zip(pipe(toPull(that), Effect.map(pullNonEmpty))),
+      Effect.zip(pipe(toPull(right), Effect.map(pullNonEmpty))),
       Effect.flatMap(([left, right]) =>
         pipe(
-          fromEffectOption<readonly [Chunk.Chunk<A>, Chunk.Chunk<A2>, boolean], E | E2, R | R2>(
+          fromEffectOption<readonly [Chunk.Chunk<AL>, Chunk.Chunk<AR>, boolean], EL | ER, RL | RR>(
             Effect.raceWith(left, right, {
               onSelfDone: (leftDone, rightFiber) =>
                 pipe(
