@@ -58,4 +58,72 @@ describe("DateTime", () => {
         assert.strictEqual(DateTime.toPlainDate(minusOne).toISOString(), "2024-07-01T00:00:00.000Z")
       }))
   })
+
+  describe("endOf", () => {
+    it("month", () => {
+      const mar = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const end = DateTime.endOf(mar, "month")
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-03-31T23:59:59.999Z")
+    })
+
+    it("feb leap year", () => {
+      const feb = DateTime.unsafeFromString("2024-02-15T12:00:00.000Z")
+      const end = DateTime.endOf(feb, "month")
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-02-29T23:59:59.999Z")
+    })
+
+    it("week", () => {
+      const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const end = DateTime.endOf(start, "week")
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-03-16T23:59:59.999Z")
+    })
+
+    it("week last day", () => {
+      const start = DateTime.unsafeFromString("2024-03-16T12:00:00.000Z")
+      const end = DateTime.endOf(start, "week")
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-03-16T23:59:59.999Z")
+    })
+
+    it("week with options", () => {
+      const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const end = DateTime.endOf(start, "week", {
+        weekStartsOn: 1
+      })
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-03-17T23:59:59.999Z")
+    })
+  })
+
+  describe("startOf", () => {
+    it("month", () => {
+      const mar = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const end = DateTime.startOf(mar, "month")
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-03-01T00:00:00.000Z")
+    })
+
+    it("feb leap year", () => {
+      const feb = DateTime.unsafeFromString("2024-02-15T12:00:00.000Z")
+      const end = DateTime.startOf(feb, "month")
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-02-01T00:00:00.000Z")
+    })
+
+    it("week", () => {
+      const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const end = DateTime.startOf(start, "week")
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-03-10T00:00:00.000Z")
+    })
+
+    it("week first day", () => {
+      const start = DateTime.unsafeFromString("2024-03-10T12:00:00.000Z")
+      const end = DateTime.startOf(start, "week")
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-03-10T00:00:00.000Z")
+    })
+
+    it("week with options", () => {
+      const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const end = DateTime.startOf(start, "week", {
+        weekStartsOn: 1
+      })
+      assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-03-11T00:00:00.000Z")
+    })
+  })
 })

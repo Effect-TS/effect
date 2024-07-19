@@ -80,6 +80,16 @@ export declare namespace DateTime {
    * @since 3.6.0
    * @category models
    */
+  export type DatePart =
+    | "day"
+    | "week"
+    | "month"
+    | "year"
+
+  /**
+   * @since 3.6.0
+   * @category models
+   */
   export interface Proto extends Pipeable, Inspectable.Inspectable {
     readonly [TypeId]: TypeId
   }
@@ -342,6 +352,16 @@ export const fromDate: (date: Date) => Option.Option<DateTime.Utc> = Option.lift
  * @category constructors
  */
 export const fromString = (input: string): Option.Option<DateTime.Utc> => fromDate(new Date(input))
+
+/**
+ * Parse a string into a `DateTime`, using `Date.parse`.
+ *
+ * If the string is invalid, an `IllegalArgumentException` will be thrown.
+ *
+ * @since 3.6.0
+ * @category constructors
+ */
+export const unsafeFromString = (input: string): DateTime.Utc => unsafeFromDate(new Date(input))
 
 /**
  * Get the current time using the `Clock` service and convert it to a
@@ -808,6 +828,98 @@ export const add: {
  * @category math
  */
 export const subtract: {
-  (amount: number, unit: DateTime.Unit): (self: DateTime.Input) => DateTime
-  (self: DateTime.Input, amount: number, unit: DateTime.Unit): DateTime
+  (amount: number, unit: DateTime.Unit): <A extends DateTime.Input>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime.Input>(self: A, amount: number, unit: DateTime.Unit): DateTime.PreserveZone<A>
 } = dual(3, (self: DateTime.Input, amount: number, unit: DateTime.Unit): DateTime => add(self, -amount, unit))
+
+/**
+ * Converts a `DateTime` to the start of the given `part`.
+ *
+ * If the part is `week`, the `weekStartsOn` option can be used to specify the
+ * day of the week that the week starts on. The default is 0 (Sunday).
+ *
+ * @since 3.6.0
+ * @category math
+ */
+export const startOf: {
+  (part: DateTime.DatePart, options?: {
+    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+  }): <A extends DateTime.Input>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime.Input>(self: A, part: DateTime.DatePart, options?: {
+    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+  }): DateTime.PreserveZone<A>
+} = dual((args) => typeof args[1] === "string", (self: DateTime.Input, part: DateTime.DatePart, options?: {
+  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+}): DateTime =>
+  mutate(self, (date) => {
+    switch (part) {
+      case "day": {
+        date.setUTCHours(0, 0, 0, 0)
+        break
+      }
+      case "week": {
+        const weekStartsOn = options?.weekStartsOn ?? 0
+        const day = date.getUTCDay()
+        const diff = (day - weekStartsOn + 7) % 7
+        date.setUTCDate(date.getUTCDate() - diff)
+        date.setUTCHours(0, 0, 0, 0)
+        break
+      }
+      case "month": {
+        date.setUTCDate(1)
+        date.setUTCHours(0, 0, 0, 0)
+        break
+      }
+      case "year": {
+        date.setUTCMonth(0, 1)
+        date.setUTCHours(0, 0, 0, 0)
+        break
+      }
+    }
+  }))
+
+/**
+ * Converts a `DateTime` to the end of the given `part`.
+ *
+ * If the part is `week`, the `weekStartsOn` option can be used to specify the
+ * day of the week that the week starts on. The default is 0 (Sunday).
+ *
+ * @since 3.6.0
+ * @category math
+ */
+export const endOf: {
+  (part: DateTime.DatePart, options?: {
+    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+  }): <A extends DateTime.Input>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime.Input>(self: A, part: DateTime.DatePart, options?: {
+    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+  }): DateTime.PreserveZone<A>
+} = dual((args) => typeof args[1] === "string", (self: DateTime.Input, part: DateTime.DatePart, options?: {
+  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+}): DateTime =>
+  mutate(self, (date) => {
+    switch (part) {
+      case "day": {
+        date.setUTCHours(23, 59, 59, 999)
+        break
+      }
+      case "week": {
+        const weekStartsOn = options?.weekStartsOn ?? 0
+        const day = date.getUTCDay()
+        const diff = (day - weekStartsOn + 7) % 7
+        date.setUTCDate(date.getUTCDate() - diff + 6)
+        date.setUTCHours(23, 59, 59, 999)
+        break
+      }
+      case "month": {
+        date.setUTCMonth(date.getUTCMonth() + 1, 0)
+        date.setUTCHours(23, 59, 59, 999)
+        break
+      }
+      case "year": {
+        date.setUTCMonth(11, 31)
+        date.setUTCHours(23, 59, 59, 999)
+        break
+      }
+    }
+  }))
