@@ -15,7 +15,7 @@ import * as Hash from "./Hash.js"
 import * as Inspectable from "./Inspectable.js"
 import * as Layer from "./Layer.js"
 import * as Option from "./Option.js"
-import * as Order_ from "./Order.js"
+import * as order from "./Order.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 
@@ -330,18 +330,49 @@ export const isWithZone = (self: DateTime): self is DateTime.WithZone => self._t
  * @category instances
  */
 export const Equivalence: Equivalence_.Equivalence<DateTime> = Equivalence_.make((a, b) =>
-  toEpochMillis(a) === toEpochMillis(b)
+  a.epochMillis === b.epochMillis
 )
 
 /**
  * @since 3.6.0
  * @category instances
  */
-export const Order: Order_.Order<DateTime> = Order_.make((a, b) => {
+export const OrderInput: order.Order<DateTime.Input> = order.make((a, b) => {
   const aMillis = toEpochMillis(a)
   const bMillis = toEpochMillis(b)
   return aMillis < bMillis ? -1 : aMillis > bMillis ? 1 : 0
 })
+
+/**
+ * @since 3.6.0
+ * @category instances
+ */
+export const Order: order.Order<DateTime> = OrderInput
+
+/**
+ * @since 3.6.0
+ */
+export const clamp: {
+  (options: {
+    minimum: DateTime.Input
+    maximum: DateTime.Input
+  }): (self: DateTime.Input) => DateTime
+  (self: DateTime.Input, options: {
+    minimum: DateTime.Input
+    maximum: DateTime.Input
+  }): DateTime
+} = dual(
+  2,
+  (self: DateTime.Input, options: {
+    minimum: DateTime.Input
+    maximum: DateTime.Input
+  }): DateTime =>
+    _clamp(fromInput(self), {
+      minimum: fromInput(options.minimum),
+      maximum: fromInput(options.maximum)
+    })
+)
+const _clamp = order.clamp(Order)
 
 // =============================================================================
 // constructors
@@ -668,6 +699,83 @@ export const diffDuration: {
   2,
   (self: DateTime.Input, other: DateTime.Input): Duration.Duration => Duration.millis(Math.abs(diff(self, other)))
 )
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const min: {
+  (that: DateTime.Input): (self: DateTime.Input) => DateTime
+  (self: DateTime.Input, that: DateTime.Input): DateTime
+} = dual(2, (self: DateTime.Input, that: DateTime.Input): DateTime => _min(fromInput(self), fromInput(that)))
+const _min = order.min(Order)
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const max: {
+  (that: DateTime.Input): (self: DateTime.Input) => DateTime
+  (self: DateTime.Input, that: DateTime.Input): DateTime
+} = dual(2, (self: DateTime.Input, that: DateTime.Input): DateTime => _max(fromInput(self), fromInput(that)))
+const _max = order.max(Order)
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const greaterThan: {
+  (that: DateTime.Input): (self: DateTime.Input) => boolean
+  (self: DateTime.Input, that: DateTime.Input): boolean
+} = order.greaterThan(OrderInput)
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const greaterThanOrEqualTo: {
+  (that: DateTime.Input): (self: DateTime.Input) => boolean
+  (self: DateTime.Input, that: DateTime.Input): boolean
+} = order.greaterThanOrEqualTo(OrderInput)
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const lessThan: {
+  (that: DateTime.Input): (self: DateTime.Input) => boolean
+  (self: DateTime.Input, that: DateTime.Input): boolean
+} = order.lessThan(OrderInput)
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const lessThanOrEqualTo: {
+  (that: DateTime.Input): (self: DateTime.Input) => boolean
+  (self: DateTime.Input, that: DateTime.Input): boolean
+} = order.lessThanOrEqualTo(OrderInput)
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const between: {
+  (options: { minimum: DateTime.Input; maximum: DateTime.Input }): (self: DateTime.Input) => boolean
+  (self: DateTime.Input, options: { minimum: DateTime.Input; maximum: DateTime.Input }): boolean
+} = order.between(OrderInput)
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const isFuture = (self: DateTime.Input): Effect.Effect<boolean> => Effect.map(now, lessThan(self))
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const isPast = (self: DateTime.Input): Effect.Effect<boolean> => Effect.map(now, greaterThan(self))
 
 // =============================================================================
 // conversions
