@@ -10,6 +10,7 @@ import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
+import * as FiberRef from "../FiberRef.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
 import * as Layer from "../Layer.js"
@@ -628,7 +629,9 @@ export const asyncPush = <A, E = never, R = never>(
     queueFromBufferOptionsPush<A, E>(options),
     Queue.shutdown
   ).pipe(
-    Effect.tap((queue) => register(emit.makePush(queue))),
+    Effect.tap((queue) =>
+      FiberRef.getWith(FiberRef.currentScheduler, (scheduler) => register(emit.makePush(queue, scheduler)))
+    ),
     Effect.map((queue) => {
       const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(Queue.take(queue), (item) =>
         Exit.isExit(item)

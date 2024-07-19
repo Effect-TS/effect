@@ -5,6 +5,7 @@ import * as Exit from "../../Exit.js"
 import { pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
 import type * as Queue from "../../Queue.js"
+import type * as Scheduler from "../../Scheduler.js"
 import type * as Emit from "../../StreamEmit.js"
 
 /** @internal */
@@ -47,7 +48,10 @@ export const make = <R, E, A, B>(
 }
 
 /** @internal */
-export const makePush = <E, A>(queue: Queue.Queue<Array<A> | Exit.Exit<void, E>>): Emit.EmitOpsPush<E, A> => {
+export const makePush = <E, A>(
+  queue: Queue.Queue<Array<A> | Exit.Exit<void, E>>,
+  scheduler: Scheduler.Scheduler
+): Emit.EmitOpsPush<E, A> => {
   let finished = false
   let buffer: Array<A> = []
   let running = false
@@ -62,7 +66,7 @@ export const makePush = <E, A>(queue: Queue.Queue<Array<A> | Exit.Exit<void, E>>
     }
     if (!running) {
       running = true
-      queueMicrotask(flush)
+      scheduler.scheduleTask(flush, 0)
     }
     return true
   }
@@ -88,7 +92,7 @@ export const makePush = <E, A>(queue: Queue.Queue<Array<A> | Exit.Exit<void, E>>
       buffer.push(value)
       if (!running) {
         running = true
-        queueMicrotask(flush)
+        scheduler.scheduleTask(flush, 0)
       }
       return true
     },
