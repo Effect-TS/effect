@@ -5588,7 +5588,7 @@ export const zipLatestWith: {
 
 /**
  * Zips this stream with another point-wise, but keeps only the outputs of
- * this stream.
+ * `left` stream.
  *
  * The new stream will end when one of the sides ends.
  *
@@ -5596,13 +5596,13 @@ export const zipLatestWith: {
  * @category zipping
  */
 export const zipLeft: {
-  <A2, E2, R2>(that: Stream<A2, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
-  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A, E | E2, R | R2>
+  <AR, ER, RR>(right: Stream<AR, ER, RR>): <AL, EL, RL>(left: Stream<AL, EL, RL>) => Stream<AL, ER | EL, RR | RL>
+  <AL, EL, RL, AR, ER, RR>(left: Stream<AL, EL, RL>, right: Stream<AR, ER, RR>): Stream<AL, EL | ER, RL | RR>
 } = internal.zipLeft
 
 /**
  * Zips this stream with another point-wise, but keeps only the outputs of the
- * other stream.
+ * `right` stream.
  *
  * The new stream will end when one of the sides ends.
  *
@@ -5610,8 +5610,8 @@ export const zipLeft: {
  * @category zipping
  */
 export const zipRight: {
-  <A2, E2, R2>(that: Stream<A2, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A2, E2 | E, R2 | R>
-  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A2, E | E2, R | R2>
+  <AR, ER, RR>(right: Stream<AR, ER, RR>): <AL, EL, RL>(left: Stream<AL, EL, RL>) => Stream<AR, ER | EL, RR | RL>
+  <AL, EL, RL, AR, ER, RR>(left: Stream<AL, EL, RL>, right: Stream<AR, ER, RR>): Stream<AR, EL | ER, RL | RR>
 } = internal.zipRight
 
 /**
