@@ -7844,6 +7844,17 @@ export interface TaggedRequestClass<
       Schema.Context<Success> | Schema.Context<Failure>
     >,
     {}
+  >,
+  TaggedRequest<
+    Tag,
+    Self,
+    Struct.Encoded<Fields>,
+    Struct.Context<Fields>,
+    Schema.Type<Success>,
+    Schema.Encoded<Success>,
+    Schema.Type<Failure>,
+    Schema.Encoded<Failure>,
+    Schema.Context<Success> | Schema.Context<Failure>
   >
 {
   readonly _tag: Tag

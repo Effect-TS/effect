@@ -1,10 +1,10 @@
 import * as AtLeastOnce from "@effect/cluster/AtLeastOnce"
 import * as AtLeastOnceStorage from "@effect/cluster/AtLeastOnceStorage"
+import * as Entity from "@effect/cluster/Entity"
 import * as MessageState from "@effect/cluster/MessageState"
 import * as Pods from "@effect/cluster/Pods"
 import * as PodsHealth from "@effect/cluster/PodsHealth"
 import * as RecipientBehaviour from "@effect/cluster/RecipientBehaviour"
-import * as RecipientType from "@effect/cluster/RecipientType"
 import * as Serialization from "@effect/cluster/Serialization"
 import * as Sharding from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
@@ -39,7 +39,10 @@ class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
   }
 }
 
-const SampleEntity = RecipientType.makeEntityType("SampleEntity", SampleMessage)
+const SampleEntity = new Entity.Standard({
+  name: "SampleEntity",
+  schema: SampleMessage
+})
 type SampleEntity = SampleMessage
 
 const makeSqlClient = Effect.gen(function*(_) {
@@ -103,7 +106,7 @@ describe("AtLeastOnce", () => {
 
       const messenger = yield* Sharding.messenger(SampleEntity)
       const message = new SampleMessage({ id: "a", value: 42 })
-      yield* messenger.sendDiscard("entity1")(message)
+      yield* messenger.fireAndForget("entity1", message)
 
       const rows = yield* sql<{ message_id: string }>`
         SELECT message_id
@@ -128,7 +131,7 @@ describe("AtLeastOnce", () => {
 
       const messenger = yield* Sharding.messenger(SampleEntity)
       const message = new SampleMessage({ id: "a", value: 42 })
-      yield* messenger.sendDiscard("entity1")(message)
+      yield* messenger.fireAndForget("entity1", message)
 
       const rows = yield* sql<{ message_id: string }>`
         SELECT message_id
@@ -156,7 +159,7 @@ describe("AtLeastOnce", () => {
 
       const messenger = yield* Sharding.messenger(SampleEntity)
       const message = new SampleMessage({ id: "a", value: 42 })
-      yield* messenger.sendDiscard("entity1")(message)
+      yield* messenger.fireAndForget("entity1", message)
 
       const rows = yield* sql<{ message_id: string }>`
         SELECT message_id

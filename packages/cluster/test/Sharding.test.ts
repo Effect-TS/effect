@@ -1,9 +1,9 @@
+import * as Entity from "@effect/cluster/Entity"
 import * as MessageState from "@effect/cluster/MessageState"
 import * as Pods from "@effect/cluster/Pods"
 import * as PodsHealth from "@effect/cluster/PodsHealth"
 import * as PoisonPill from "@effect/cluster/PoisonPill"
 import * as RecipientBehaviour from "@effect/cluster/RecipientBehaviour"
-import * as RecipientType from "@effect/cluster/RecipientType"
 import * as Serialization from "@effect/cluster/Serialization"
 import * as Sharding from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
@@ -79,10 +79,10 @@ class FailableMessageWithResult extends Schema.TaggedRequest<FailableMessageWith
 
 type SampleEntity = SampleMessage | SampleMessageWithResult | FailableMessageWithResult
 
-const SampleEntity = RecipientType.makeEntityType(
-  "Sample",
-  Schema.Union(SampleMessage, SampleMessageWithResult, FailableMessageWithResult)
-)
+const SampleEntity = new Entity.Standard({
+  name: "Sample",
+  schema: Schema.Union(SampleMessage, SampleMessageWithResult, FailableMessageWithResult)
+})
 
 describe.concurrent("SampleTests", () => {
   const inMemorySharding = pipe(
@@ -119,7 +119,7 @@ describe.concurrent("SampleTests", () => {
 
       const messenger = yield* _(Sharding.messenger(SampleEntity))
       const msg = new SampleMessage({ id: "a", value: 42 })
-      yield* _(messenger.sendDiscard("entity1")(msg))
+      yield* _(messenger.fireAndForget("entity1", msg))
 
       expect(yield* _(Ref.get(received))).toBe(true)
     }).pipe(withTestEnv, Effect.runPromise)
@@ -131,7 +131,7 @@ describe.concurrent("SampleTests", () => {
 
       const messenger = yield* _(Sharding.messenger(SampleEntity))
       const msg = new SampleMessage({ id: "a", value: 42 })
-      const exit = yield* _(messenger.sendDiscard("entity1")(msg).pipe(Effect.exit))
+      const exit = yield* _(messenger.fireAndForget("entity1", msg).pipe(Effect.exit))
 
       expect(Exit.isFailure(exit)).toBe(true)
 
@@ -167,10 +167,10 @@ describe.concurrent("SampleTests", () => {
       const messenger = yield* _(Sharding.messenger(SampleEntity))
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.sendDiscard("entity1")(msg1))
+      yield* _(messenger.fireAndForget("entity1", msg1))
 
       const msg2 = new SampleMessage({ id: "b", value: 2 })
-      yield* _(messenger.sendDiscard("entity2")(msg2))
+      yield* _(messenger.fireAndForget("entity2", msg2))
 
       expect(yield* _(Ref.get(result1))).toBe(1)
       expect(yield* _(Ref.get(result2))).toBe(2)
@@ -191,7 +191,7 @@ describe.concurrent("SampleTests", () => {
 
       const messenger = yield* _(Sharding.messenger(SampleEntity))
       const msg = new SampleMessageWithResult({ id: "a", value: 42 })
-      const result = yield* _(messenger.send("entity1")(msg))
+      const result = yield* _(messenger.ask("entity1", msg))
 
       expect(result).toEqual(42)
     }).pipe(withTestEnv, Effect.runPromise)
@@ -215,7 +215,7 @@ describe.concurrent("SampleTests", () => {
 
       const messenger = yield* _(Sharding.messenger(SampleEntity))
       const msg = new FailableMessageWithResult({ id: "a", value: 42 })
-      const result = yield* _(messenger.send("entity1")(msg), Effect.exit)
+      const result = yield* _(messenger.ask("entity1", msg), Effect.exit)
 
       expect(result).toEqual(Exit.fail("custom-error"))
     }).pipe(withTestEnv, Effect.runPromise)
@@ -254,7 +254,10 @@ describe.concurrent("SampleTests", () => {
         GetIncrement
       )
 
-      const SampleTopic = RecipientType.makeTopicType("Sample", SampleProtocol)
+      const SampleTopic = new Entity.Clustered({
+        name: "Sample",
+        schema: SampleProtocol
+      })
 
       const ref = yield* _(Ref.make(0))
 
@@ -276,12 +279,12 @@ describe.concurrent("SampleTests", () => {
       const broadcaster = yield* _(Sharding.broadcaster(SampleTopic))
 
       const msg1 = new BroadcastIncrement({ id: "a" })
-      yield* _(broadcaster.broadcastDiscard("c1")(msg1))
+      yield* _(broadcaster.broadcastAndForget("c1", msg1))
 
       yield* _(Effect.sleep(Duration.seconds(2)))
 
       const msg2 = new GetIncrement({ id: "b" })
-      const c1 = yield* _(broadcaster.broadcast("c1")(msg2))
+      const c1 = yield* _(broadcaster.broadcast("c1", msg2))
 
       expect(HashMap.size(c1)).toBe(1) // Here we have just one pod, so there will be just one incrementer
     }).pipe(withTestEnv, Effect.runPromise)
@@ -322,7 +325,7 @@ describe.concurrent("SampleTests", () => {
       const messenger = yield* _(Sharding.messenger(SampleEntity))
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.sendDiscard("entity1")(msg1))
+      yield* _(messenger.fireAndForget("entity1", msg1))
       yield* _(Deferred.await(entityStarted))
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(entityInterrupted).toBe(true))
   })
@@ -366,7 +369,7 @@ describe.concurrent("SampleTests", () => {
       const messenger = yield* _(Sharding.messenger(SampleEntity))
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.sendDiscard("entity1")(msg1))
+      yield* _(messenger.fireAndForget("entity1", msg1))
 
       yield* _(Deferred.await(entityStarted))
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(shutdownCompleted).toBe(true))
@@ -415,7 +418,7 @@ describe.concurrent("SampleTests", () => {
       const messenger = yield* _(Sharding.messenger(SampleEntity))
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.sendDiscard("entity1")(msg1))
+      yield* _(messenger.fireAndForget("entity1", msg1))
 
       yield* _(Deferred.await(entityStarted))
       yield* _(Deferred.await(shutdownReceived))
@@ -495,7 +498,7 @@ describe.concurrent("SampleTests", () => {
 
       const msg = new SampleMessageWithResult({ id: "a", value: 42 })
       const replyFiber = yield* _(
-        messenger.send("entity1")(msg),
+        messenger.ask("entity1", msg),
         Effect.timeoutFail({
           onTimeout: () => "timeout",
           duration: Duration.millis(1000)

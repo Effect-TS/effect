@@ -1,9 +1,9 @@
+import * as Entity from "@effect/cluster/Entity"
 import * as Envelope from "@effect/cluster/Envelope"
 import * as PoisonPill from "@effect/cluster/PoisonPill"
 import { RecipientAddress } from "@effect/cluster/RecipientAddress"
 import * as RecipientBehaviour from "@effect/cluster/RecipientBehaviour"
 import * as RecipientBehaviourContext from "@effect/cluster/RecipientBehaviourContext"
-import * as RecipientType from "@effect/cluster/RecipientType"
 import * as ShardId from "@effect/cluster/ShardId"
 import * as Schema from "@effect/schema/Schema"
 import * as Deferred from "effect/Deferred"
@@ -48,7 +48,10 @@ describe.concurrent("RecipientBehaviour", () => {
           }),
           forkShutdown: Effect.void,
           shardId: ShardId.make(1),
-          entity: RecipientType.makeEntityType("Sample", SampleMessage) as any
+          entity: new Entity.Standard({
+            name: "Sample",
+            schema: SampleMessage
+          }) as any
         })
       ),
       Scope.extend(scope)

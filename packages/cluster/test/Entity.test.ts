@@ -1,4 +1,4 @@
-import * as RecipientType from "@effect/cluster/RecipientType"
+import * as Entity from "@effect/cluster/Entity"
 import * as Schema from "@effect/schema/Schema"
 import { equals } from "effect/Equal"
 import * as Hash from "effect/Hash"
@@ -31,11 +31,11 @@ class SampleMessage2 extends Schema.TaggedRequest<SampleMessage2>()(
   }
 }
 
-describe.concurrent("RecipientType", () => {
+describe.concurrent("Entity", () => {
   it("Expect equals to work as expected", () => {
-    const User = RecipientType.makeEntityType("User", SampleMessage)
-    const User2 = RecipientType.makeEntityType("User", SampleMessage2)
-    const Notifications = RecipientType.makeTopicType("Notifications", SampleMessage)
+    const User = new Entity.Standard({ name: "User", schema: SampleMessage })
+    const User2 = new Entity.Standard({ name: "User", schema: SampleMessage2 })
+    const Notifications = new Entity.Clustered({ name: "Notifications", schema: SampleMessage })
 
     expect(equals(User, User)).toBe(true)
     expect(equals(User, User2)).toBe(true)
@@ -43,9 +43,9 @@ describe.concurrent("RecipientType", () => {
   })
 
   it("Expect hash to work as expected", () => {
-    const User = RecipientType.makeEntityType("User", SampleMessage)
-    const User2 = RecipientType.makeEntityType("User", SampleMessage2)
-    const Notifications = RecipientType.makeTopicType("Notifications", SampleMessage)
+    const User = new Entity.Standard({ name: "User", schema: SampleMessage })
+    const User2 = new Entity.Standard({ name: "User", schema: SampleMessage2 })
+    const Notifications = new Entity.Clustered({ name: "Notifications", schema: SampleMessage })
 
     expect(Hash.hash(User)).toBe(Hash.hash(User))
     expect(Hash.hash(User)).toBe(Hash.hash(User2))

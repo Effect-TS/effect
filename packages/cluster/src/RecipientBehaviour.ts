@@ -43,10 +43,11 @@ export interface RecipientBehaviour<Msg extends Envelope.AnyMessage, R> extends
           WithResult.Error<Msg>
         >
       >,
-      ShardingException.ExceptionWhileOfferingMessageException
+      ShardingException.ExceptionWhileOfferingMessageException,
+      SerializableWithResult.Context<Msg>
     >,
     never,
-    R | SerializableWithResult.Context<Msg> | RecipientBehaviourContext.RecipientBehaviourContext | Scope.Scope
+    R | RecipientBehaviourContext.RecipientBehaviourContext | Scope.Scope
   >
 {}
 
