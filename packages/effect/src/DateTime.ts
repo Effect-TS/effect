@@ -98,6 +98,7 @@ export declare namespace DateTime {
     readonly minutes: number
     readonly hours: number
     readonly day: number
+    readonly weekDay: number
     readonly month: number
     readonly year: number
   }
@@ -117,6 +118,10 @@ export declare namespace DateTime {
   export interface Utc extends Proto {
     readonly _tag: "Utc"
     readonly epochMillis: number
+    /** @internal */
+    partsAdjusted?: Parts
+    /** @internal */
+    partsUtc?: Parts
   }
 
   /**
@@ -129,6 +134,10 @@ export declare namespace DateTime {
     readonly zone: TimeZone
     /** @internal */
     adjustedEpochMillis?: number
+    /** @internal */
+    partsAdjusted?: Parts
+    /** @internal */
+    partsUtc?: Parts
   }
 }
 
@@ -189,7 +198,10 @@ const Proto = {
   pipe() {
     return pipeArguments(this, arguments)
   },
-  ...Inspectable.BaseProto
+  ...Inspectable.BaseProto,
+  toJSON(this: DateTime) {
+    return toDateUtc(this).toJSON()
+  }
 }
 const ProtoUtc = {
   ...Proto,
@@ -200,12 +212,12 @@ const ProtoUtc = {
   [Equal.symbol](this: DateTime.Utc, that: unknown) {
     return isDateTime(that) && that._tag === "Utc" && this.epochMillis === that.epochMillis
   },
-  toJSON(this: DateTime.Utc) {
-    return {
+  toString(this: DateTime.Utc) {
+    return Inspectable.format({
       _op: "DateTime",
       _tag: this._tag,
       epochMillis: this.epochMillis
-    }
+    })
   }
 }
 const ProtoWithZone = {
@@ -222,13 +234,13 @@ const ProtoWithZone = {
     return isDateTime(that) && that._tag === "WithZone" && Equal.equals(this.utc, that.utc) &&
       Equal.equals(this.zone, that.zone)
   },
-  toJSON(this: DateTime.WithZone) {
-    return {
+  toString(this: DateTime.WithZone) {
+    return Inspectable.format({
       _id: "DateTime",
       _tag: this._tag,
       utc: this.utc.toJSON(),
       zone: this.zone
-    }
+    })
   }
 }
 
@@ -390,6 +402,30 @@ export const fromInput = <A extends DateTime.Input>(input: A): DateTime.Preserve
  * @category constructors
  */
 export const fromDate: (date: Date) => Option.Option<DateTime.Utc> = Option.liftThrowable(unsafeFromDate)
+
+/**
+ * Convert a partial `DateTime.Parts` into a `DateTime`.
+ *
+ * If a part is missing, it will default to `0`.
+ *
+ * @since 3.6.0
+ * @category constructors
+ */
+export const fromParts = (parts: Partial<Exclude<DateTime.Parts, "weekDay">>): DateTime.Utc => {
+  const date = new Date(0)
+  date.setUTCFullYear(
+    parts.year ?? 0,
+    parts.month ? parts.month - 1 : 0,
+    parts.day ?? 0
+  )
+  date.setUTCHours(
+    parts.hours ?? 0,
+    parts.minutes ?? 0,
+    parts.seconds ?? 0,
+    parts.millis ?? 0
+  )
+  return fromEpochMillis(date.getTime())
+}
 
 /**
  * Parse a string into a `DateTime`, using `Date.parse`.
@@ -682,7 +718,14 @@ export const toEpochMillis = (self: DateTime.Input): number => {
  * @since 3.6.0
  * @category conversions
  */
-export const toPartsAdjusted = (self: DateTime.Input): DateTime.Parts => withAdjustedDate(self, dateToParts)
+export const toPartsAdjusted = (self: DateTime.Input): DateTime.Parts => {
+  const dt = fromInput(self)
+  if (dt.partsAdjusted !== undefined) {
+    return dt.partsAdjusted
+  }
+  dt.partsAdjusted = withAdjustedDate(self, dateToParts)
+  return dt.partsAdjusted
+}
 
 /**
  * Get the different parts of a `DateTime` as an object.
@@ -692,7 +735,44 @@ export const toPartsAdjusted = (self: DateTime.Input): DateTime.Parts => withAdj
  * @since 3.6.0
  * @category conversions
  */
-export const toPartsUtc = (self: DateTime.Input): DateTime.Parts => withUtcDate(self, dateToParts)
+export const toPartsUtc = (self: DateTime.Input): DateTime.Parts => {
+  const dt = fromInput(self)
+  if (dt.partsUtc !== undefined) {
+    return dt.partsUtc
+  }
+  dt.partsUtc = withUtcDate(self, dateToParts)
+  return dt.partsUtc
+}
+
+/**
+ * Get a part of a `DateTime` as a number.
+ *
+ * The part will be in the UTC time zone.
+ *
+ * @since 3.6.0
+ * @category conversions
+ * @example
+ * import { DataTime } from "effect"
+ *
+ * const now =
+ */
+export const toPartUtc: {
+  (part: keyof DateTime.Parts): (self: DateTime.Input) => number
+  (self: DateTime.Input, part: keyof DateTime.Parts): number
+} = dual(2, (self: DateTime.Input, part: keyof DateTime.Parts): number => toPartsUtc(self)[part])
+
+/**
+ * Get a part of a `DateTime` as a number.
+ *
+ * The part will be time zone adjusted if necessary.
+ *
+ * @since 3.6.0
+ * @category conversions
+ */
+export const toPartAdjusted: {
+  (part: keyof DateTime.Parts): (self: DateTime.Input) => number
+  (self: DateTime.Input, part: keyof DateTime.Parts): number
+} = dual(2, (self: DateTime.Input, part: keyof DateTime.Parts): number => toPartsAdjusted(self)[part])
 
 // =============================================================================
 // current time zone
@@ -1078,6 +1158,7 @@ const dateToParts = (date: Date): DateTime.Parts => ({
   minutes: date.getUTCMinutes(),
   hours: date.getUTCHours(),
   day: date.getUTCDate(),
+  weekDay: date.getUTCDay(),
   month: date.getUTCMonth() + 1,
   year: date.getUTCFullYear()
 })
