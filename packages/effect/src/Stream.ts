@@ -1071,8 +1071,8 @@ export const crossRight: {
 
 /**
  * Composes this stream with the specified stream to create a cartesian
- * product of elements with a specified function. The `that` stream would be
- * run multiple times, for every element in the `this` stream.
+ * product of elements with a specified function. The `right` stream would be
+ * run multiple times, for every element in the `left` stream.
  *
  * See also `Stream.zipWith` for the more common point-wise variant.
  *
@@ -1080,15 +1080,15 @@ export const crossRight: {
  * @category utils
  */
 export const crossWith: {
-  <B, E2, R2, A, C>(
-    that: Stream<B, E2, R2>,
-    f: (a: A, b: B) => C
-  ): <E, R>(self: Stream<A, E, R>) => Stream<C, E2 | E, R2 | R>
-  <A, E, R, B, E2, R2, C>(
-    self: Stream<A, E, R>,
-    that: Stream<B, E2, R2>,
-    f: (a: A, b: B) => C
-  ): Stream<C, E | E2, R | R2>
+  <AR, ER, RR, AL, A>(
+    right: Stream<AR, ER, RR>,
+    f: (a: AL, b: AR) => A
+  ): <EL, RL>(left: Stream<AL, EL, RL>) => Stream<A, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream<AL, EL, RL>,
+    right: Stream<AR, ER, RR>,
+    f: (a: AL, b: AR) => A
+  ): Stream<A, EL | ER, RL | RR>
 } = internal.crossWith
 
 /**

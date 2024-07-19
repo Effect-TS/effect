@@ -1731,23 +1731,23 @@ export const crossRight: {
 )
 
 /** @internal */
-export const crossWith = dual<
-  <B, E2, R2, A, C>(
-    that: Stream.Stream<B, E2, R2>,
-    f: (a: A, b: B) => C
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<C, E2 | E, R2 | R>,
-  <A, E, R, B, E2, R2, C>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<B, E2, R2>,
-    f: (a: A, b: B) => C
-  ) => Stream.Stream<C, E2 | E, R2 | R>
->(
+export const crossWith: {
+  <AR, ER, RR, AL, A>(
+    right: Stream.Stream<AR, ER, RR>,
+    f: (a: AL, b: AR) => A
+  ): <EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<A, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (a: AL, b: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR>
+} = dual(
   3,
-  <A, E, R, B, E2, R2, C>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<B, E2, R2>,
-    f: (a: A, b: B) => C
-  ): Stream.Stream<C, E2 | E, R2 | R> => pipe(self, flatMap((a) => pipe(that, map((b) => f(a, b)))))
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (a: AL, b: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR> => pipe(left, flatMap((a) => pipe(right, map((b) => f(a, b)))))
 )
 
 /** @internal */
