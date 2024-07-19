@@ -372,9 +372,7 @@ export const unsafeFromDate = (date: Date): DateTime.Utc => {
   if (isNaN(epochMillis)) {
     throw new IllegalArgumentException("Invalid date")
   }
-  const self = Object.create(ProtoUtc)
-  self.epochMillis = epochMillis
-  return self
+  return fromEpochMillis(epochMillis)
 }
 
 /**
@@ -468,6 +466,14 @@ export const unsafeNow: LazyArg<DateTime.Utc> = () => fromEpochMillis(Date.now()
 // time zones
 // =============================================================================
 
+const makeWithZone = (epochMillis: number, zone: TimeZone, partsUtc?: DateTime.Parts): DateTime.WithZone => {
+  const self = Object.create(ProtoWithZone)
+  self.epochMillis = epochMillis
+  self.zone = zone
+  self.partsUtc = partsUtc
+  return self
+}
+
 /**
  * Set the time zone of a `DateTime`, returning a new `DateTime.WithZone`.
  *
@@ -479,11 +485,7 @@ export const setZone: {
   (self: DateTime.Input, zone: TimeZone): DateTime.WithZone
 } = dual(2, (self: DateTime.Input, zone: TimeZone): DateTime.WithZone => {
   const dt = fromInput(self)
-  const selfWithZone = Object.create(ProtoWithZone)
-  selfWithZone.epochMillis = dt.epochMillis
-  selfWithZone.zone = zone
-  selfWithZone.partsUtc = dt.partsUtc
-  return selfWithZone
+  return makeWithZone(dt.epochMillis, zone, dt.partsUtc)
 })
 
 /**
@@ -517,6 +519,18 @@ const formatOptions: Intl.DateTimeFormatOptions = {
   hourCycle: "h23"
 }
 
+const makeZoneIntl = (format: Intl.DateTimeFormat): TimeZone.Named => {
+  const zoneId = format.resolvedOptions().timeZone
+  if (validZoneCache.has(zoneId)) {
+    return validZoneCache.get(zoneId)!
+  }
+  const zone = Object.create(ProtoTimeZoneNamed)
+  zone.id = zoneId
+  zone.format = format
+  validZoneCache.set(zoneId, zone)
+  return zone
+}
+
 /**
  * Attempt to create a named time zone from a IANA time zone identifier.
  *
@@ -530,15 +544,12 @@ export const unsafeMakeZoneNamed = (zoneId: string): TimeZone.Named => {
     return validZoneCache.get(zoneId)!
   }
   try {
-    const format = new Intl.DateTimeFormat("en-US", {
-      ...formatOptions,
-      timeZone: zoneId
-    })
-    const zone = Object.create(ProtoTimeZoneNamed)
-    zone.id = format.resolvedOptions().timeZone
-    zone.format = format
-    validZoneCache.set(zoneId, zone)
-    return zone
+    return makeZoneIntl(
+      new Intl.DateTimeFormat("en-US", {
+        ...formatOptions,
+        timeZone: zoneId
+      })
+    )
   } catch (_) {
     throw new IllegalArgumentException(`Invalid time zone: ${zoneId}`)
   }
@@ -574,14 +585,7 @@ export const makeZoneNamedEffect = (zoneId: string): Effect.Effect<TimeZone.Name
  * @since 3.6.0
  * @category time zones
  */
-export const makeZoneLocal = (): TimeZone.Named => {
-  const format = new Intl.DateTimeFormat(undefined, formatOptions)
-  const zone = Object.create(ProtoTimeZoneNamed)
-  zone.id = format.resolvedOptions().timeZone
-  zone.format = format
-  validZoneCache.set(zone.id, zone)
-  return zone
-}
+export const makeZoneLocal = (): TimeZone.Named => makeZoneIntl(new Intl.DateTimeFormat("en-US", formatOptions))
 
 /**
  * Set the time zone of a `DateTime` from an IANA time zone identifier. If the
@@ -938,7 +942,7 @@ const calculateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
   const match = gmtOffsetRegex.exec(offset)
   if (match === null) {
     // fallback to using the adjusted date
-    return zoneOffset(setZone(date, zone))
+    return zoneOffset(makeWithZone(date.getTime(), zone))
   }
   const [, sign, hours, minutes] = match
   return (sign === "+" ? 1 : -1) * (Number(hours) * 60 + Number(minutes)) * 60 * 1000
@@ -967,7 +971,7 @@ export const mutate: {
   const newAdjustedDate = new Date(adjustedDate.getTime())
   f(newAdjustedDate)
   const offset = calculateOffset(newAdjustedDate, dt.zone)
-  return setZone(fromEpochMillis(newAdjustedDate.getTime() - offset), dt.zone)
+  return makeWithZone(newAdjustedDate.getTime() - offset, dt.zone)
 })
 
 /**
@@ -982,8 +986,8 @@ export const mapEpochMillis: {
   (self: DateTime.Input, f: (millis: number) => number): DateTime
 } = dual(2, (self: DateTime.Input, f: (millis: number) => number): DateTime => {
   const dt = fromInput(self)
-  const newUtc = fromEpochMillis(f(toEpochMillis(dt)))
-  return dt._tag === "Utc" ? newUtc : setZone(newUtc, dt.zone)
+  const millis = f(toEpochMillis(dt))
+  return dt._tag === "Utc" ? fromEpochMillis(millis) : makeWithZone(millis, dt.zone)
 })
 
 /**
