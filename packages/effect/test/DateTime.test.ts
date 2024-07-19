@@ -1,6 +1,8 @@
 import { DateTime, Duration, Effect, Either, TestClock } from "effect"
 import { assert, describe, it } from "./utils/extend.js"
 
+const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
+
 describe("DateTime", () => {
   describe("mutate", () => {
     it.effect("should mutate the date", () =>
@@ -15,7 +17,7 @@ describe("DateTime", () => {
 
     it.effect("correctly preserves the time zone", () =>
       Effect.gen(function*() {
-        yield* TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
+        yield* setTo2024NZ
         const now = yield* DateTime.nowInCurrentZone.pipe(
           DateTime.withCurrentZoneNamed("Pacific/Auckland")
         )
@@ -43,7 +45,7 @@ describe("DateTime", () => {
 
     it.effect("correctly preserves the time zone", () =>
       Effect.gen(function*() {
-        yield* TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
+        yield* setTo2024NZ
         const now = yield* DateTime.nowInCurrentZone.pipe(
           DateTime.withCurrentZoneNamed("Pacific/Auckland")
         )
@@ -92,6 +94,17 @@ describe("DateTime", () => {
       })
       assert.strictEqual(end.toJSON(), "2024-03-17T23:59:59.999Z")
     })
+
+    it.effect("correctly preserves the time zone", () =>
+      Effect.gen(function*() {
+        yield* setTo2024NZ
+        const now = yield* DateTime.nowInCurrentZone.pipe(
+          DateTime.withCurrentZoneNamed("Pacific/Auckland")
+        )
+        const future = DateTime.endOf(now, "month")
+        assert.strictEqual(DateTime.toDateUtc(future).toISOString(), "2024-01-31T10:59:59.999Z")
+        assert.strictEqual(DateTime.toDateAdjusted(future).toISOString(), "2024-01-31T23:59:59.999Z")
+      }))
   })
 
   describe("startOf", () => {
