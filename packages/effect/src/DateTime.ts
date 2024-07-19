@@ -429,7 +429,7 @@ export const unsafeMakeZoneNamed = (zoneId: string): TimeZone.Named => {
       timeZone: zoneId
     })
     const zone = Object.create(ProtoTimeZoneNamed)
-    zone.id = zoneId
+    zone.id = format.resolvedOptions().timeZone
     zone.format = format
     validZoneCache.set(zoneId, zone)
     return zone
@@ -556,8 +556,11 @@ export const zoneOffset = (self: DateTime.Input): number => {
   return plainDate.getTime() - toEpochMillis(dt)
 }
 
-const gmtOffsetRegex = /GMT([+-])(\d{2}):(\d{2})/
-const calcutateOffset = (date: Date, zone: TimeZone.Named): number => {
+const calcutateOffset = (date: Date, zone: TimeZone): number =>
+  zone._tag === "Offset" ? zone.offset : calcutateNamedOffset(date, zone)
+
+const gmtOffsetRegex = /^GMT([+-])(\d{2}):(\d{2})$/
+const calcutateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
   const parts = zone.format.formatToParts(date)
   const offset = parts[14].value
   if (offset === "GMT") {
@@ -565,6 +568,7 @@ const calcutateOffset = (date: Date, zone: TimeZone.Named): number => {
   }
   const match = gmtOffsetRegex.exec(offset)
   if (match === null) {
+    // fallback to using the plain date
     return zoneOffset(setZone(date, zone))
   }
   const [, sign, hours, minutes] = match
@@ -590,8 +594,6 @@ export const mutate: {
   f(newPlainDate)
   if (dt._tag === "Utc") {
     return fromEpochMillis(newPlainDate.getTime())
-  } else if (dt.zone._tag === "Offset") {
-    return setZone(fromEpochMillis(newPlainDate.getTime() - dt.zone.offset), dt.zone)
   }
   const offset = calcutateOffset(newPlainDate, dt.zone)
   return setZone(fromEpochMillis(newPlainDate.getTime() - offset), dt.zone)
