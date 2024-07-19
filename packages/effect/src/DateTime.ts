@@ -126,7 +126,7 @@ export declare namespace DateTime {
     readonly utc: Utc
     readonly zone: TimeZone
     /** @internal */
-    plainDateCache?: number
+    adjustedEpochMillis?: number
   }
 }
 
@@ -542,7 +542,7 @@ export const toEpochMillis = (self: DateTime.Input): number => {
  * @since 3.6.0
  * @category conversions
  */
-export const toUtcDate = (self: DateTime.Input): Date => new Date(toEpochMillis(self))
+export const toDateUtc = (self: DateTime.Input): Date => new Date(toEpochMillis(self))
 
 /**
  * Convert a `DateTime` to a `Date`, applying the time zone first if necessary.
@@ -553,14 +553,14 @@ export const toUtcDate = (self: DateTime.Input): Date => new Date(toEpochMillis(
  * @since 3.6.0
  * @category conversions
  */
-export const toAdjustedDate = (self: DateTime.Input): Date => {
+export const toDateAdjusted = (self: DateTime.Input): Date => {
   const dt = fromInput(self)
   if (dt._tag === "Utc") {
     return new Date(dt.epochMillis)
   } else if (dt.zone._tag === "Offset") {
     return new Date(dt.utc.epochMillis + dt.zone.offset)
-  } else if (dt.plainDateCache !== undefined) {
-    return new Date(dt.plainDateCache)
+  } else if (dt.adjustedEpochMillis !== undefined) {
+    return new Date(dt.adjustedEpochMillis)
   }
   const parts = dt.zone.format.formatToParts(dt.utc.epochMillis)
   const date = new Date(0)
@@ -575,7 +575,7 @@ export const toAdjustedDate = (self: DateTime.Input): Date => {
     Number(parts[10].value),
     Number(parts[12].value)
   )
-  dt.plainDateCache = date.getTime()
+  dt.adjustedEpochMillis = date.getTime()
   return date
 }
 
@@ -590,7 +590,7 @@ export const zoneOffset = (self: DateTime.Input): number => {
   if (dt._tag === "Utc") {
     return 0
   }
-  const plainDate = toAdjustedDate(dt)
+  const plainDate = toDateAdjusted(dt)
   return plainDate.getTime() - toEpochMillis(dt)
 }
 
@@ -627,8 +627,8 @@ export const mutate: {
   <A extends DateTime.Input>(self: A, f: (plainDate: Date) => void): DateTime.PreserveZone<A>
 } = dual(2, (self: DateTime.Input, f: (plainDate: Date) => void): DateTime => {
   const dt = fromInput(self)
-  const plainDate = toAdjustedDate(dt)
-  const newAdjustedDate = new Date(plainDate.getTime())
+  const adjustedDate = toDateAdjusted(dt)
+  const newAdjustedDate = new Date(adjustedDate.getTime())
   f(newAdjustedDate)
   if (dt._tag === "Utc") {
     return fromEpochMillis(newAdjustedDate.getTime())
@@ -649,8 +649,7 @@ export const mapEpochMillis: {
   (self: DateTime.Input, f: (millis: number) => number): DateTime
 } = dual(2, (self: DateTime.Input, f: (millis: number) => number): DateTime => {
   const dt = fromInput(self)
-  const prevEpochMillis = toEpochMillis(dt)
-  const newUtc = fromEpochMillis(f(prevEpochMillis))
+  const newUtc = fromEpochMillis(f(toEpochMillis(dt)))
   return dt._tag === "Utc" ? newUtc : setZone(newUtc, dt.zone)
 })
 
@@ -664,7 +663,7 @@ export const mapEpochMillis: {
 export const withAdjustedDate: {
   <A>(f: (date: Date) => A): (self: DateTime.Input) => A
   <A>(self: DateTime.Input, f: (date: Date) => A): A
-} = dual(2, <A>(self: DateTime.Input, f: (date: Date) => A): A => f(toAdjustedDate(self)))
+} = dual(2, <A>(self: DateTime.Input, f: (date: Date) => A): A => f(toDateAdjusted(self)))
 
 /**
  * Using the time zone adjusted `Date`, apply a function to the `Date` and
@@ -676,7 +675,7 @@ export const withAdjustedDate: {
 export const withUtcDate: {
   <A>(f: (date: Date) => A): (self: DateTime.Input) => A
   <A>(self: DateTime.Input, f: (date: Date) => A): A
-} = dual(2, <A>(self: DateTime.Input, f: (date: Date) => A): A => f(toUtcDate(self)))
+} = dual(2, <A>(self: DateTime.Input, f: (date: Date) => A): A => f(toDateUtc(self)))
 
 /**
  * @since 3.6.0
@@ -758,6 +757,24 @@ export const nowInCurrentZone: Effect.Effect<DateTime.WithZone, never, CurrentTi
 )
 
 /**
+ * Calulate the difference between two `DateTime` values, returning the number
+ * of milliseconds the `other` DateTime is from `self`.
+ *
+ * If `other` is *after* `self`, the result will be a positive number.
+ *
+ * @since 3.6.0
+ * @category constructors
+ */
+export const diff: {
+  (other: DateTime.Input): (self: DateTime.Input) => number
+  (self: DateTime.Input, other: DateTime.Input): number
+} = dual(2, (self: DateTime.Input, other: DateTime.Input): number => {
+  const selfEpochMillis = toEpochMillis(self)
+  const otherEpochMillis = toEpochMillis(other)
+  return otherEpochMillis - selfEpochMillis
+})
+
+/**
  * Calulate the difference between two `DateTime` values.
  *
  * If the `other` DateTime is before `self`, the result will be a negative
@@ -769,13 +786,11 @@ export const nowInCurrentZone: Effect.Effect<DateTime.WithZone, never, CurrentTi
  * @since 3.6.0
  * @category constructors
  */
-export const diff: {
+export const diffDuration: {
   (other: DateTime.Input): (self: DateTime.Input) => Either.Either<Duration.Duration, Duration.Duration>
   (self: DateTime.Input, other: DateTime.Input): Either.Either<Duration.Duration, Duration.Duration>
 } = dual(2, (self: DateTime.Input, other: DateTime.Input): Either.Either<Duration.Duration, Duration.Duration> => {
-  const selfEpochMillis = toEpochMillis(self)
-  const otherEpochMillis = toEpochMillis(other)
-  const diffMillis = otherEpochMillis - selfEpochMillis
+  const diffMillis = diff(self, other)
   return diffMillis > 0
     ? Either.right(Duration.millis(diffMillis))
     : Either.left(Duration.millis(-diffMillis))
@@ -984,7 +999,7 @@ const dateToParts = (date: Date): DateTime.Parts => ({
  * @since 3.6.0
  * @category accessors
  */
-export const toAdjustedParts = (self: DateTime.Input): DateTime.Parts => withAdjustedDate(self, dateToParts)
+export const toPartsAdjusted = (self: DateTime.Input): DateTime.Parts => withAdjustedDate(self, dateToParts)
 
 /**
  * Get the different parts of a `DateTime` as an object.
@@ -994,7 +1009,7 @@ export const toAdjustedParts = (self: DateTime.Input): DateTime.Parts => withAdj
  * @since 3.6.0
  * @category accessors
  */
-export const toUtcParts = (self: DateTime.Input): DateTime.Parts => withUtcDate(self, dateToParts)
+export const toPartsUtc = (self: DateTime.Input): DateTime.Parts => withUtcDate(self, dateToParts)
 
 /**
  * Format a `DateTime` as a string using the `DateTimeFormat` API.
@@ -1088,8 +1103,12 @@ const timeZoneOffset = (self: TimeZone): string => {
 }
 
 /**
- * Format a `DateTime` as a string using the `DateTimeFormat` API, using the
- * embedded time zone.
+ * Format a `DateTime` as a string using the `DateTimeFormat` API.
+ *
+ * The `timeZone` option is set to the offset of the time zone.
+ *
+ * Note: On Node versions < 22, fixed "Offset" zones will set the time zone to
+ * "UTC" and use the adjusted `Date`.
  *
  * @since 3.6.0
  * @category formatting
@@ -1117,8 +1136,16 @@ export const formatWithZone: {
       readonly locale?: string | undefined
     }
     | undefined
-): string =>
-  new Intl.DateTimeFormat(options?.locale, {
-    ...options,
-    timeZone: timeZoneOffset(self.zone)
-  }).format(toEpochMillis(self)))
+): string => {
+  try {
+    return new Intl.DateTimeFormat(options?.locale, {
+      ...options,
+      timeZone: timeZoneOffset(self.zone)
+    }).format(toEpochMillis(self))
+  } catch (_) {
+    return new Intl.DateTimeFormat(options?.locale, {
+      ...options,
+      timeZone: "UTC"
+    }).format(toDateAdjusted(self))
+  }
+})
