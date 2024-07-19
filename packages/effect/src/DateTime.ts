@@ -397,8 +397,7 @@ export const fromInput = <A extends DateTime.Input>(input: A): DateTime.Preserve
 }
 
 /**
- * Safely create a `DateTime` from a `Date`, returning `None` if the `Date` is
- * invalid.
+ * Safely create a `DateTime` from a `Date`, returning `None` if the `Date` is invalid.
  *
  * @since 3.6.0
  * @category constructors
@@ -408,7 +407,7 @@ export const fromDate: (date: Date) => Option.Option<DateTime.Utc> = Option.lift
 /**
  * Convert a partial `DateTime.Parts` into a `DateTime`.
  *
- * If a part is missing, it will default to `0`.
+ * If a part is missing, it will default to the smallest possible value. (months will start at 1, days at 1, hours at 0 etc.)
  *
  * @since 3.6.0
  * @category constructors
@@ -418,7 +417,7 @@ export const fromParts = (parts: Partial<Exclude<DateTime.Parts, "weekDay">>): D
   date.setUTCFullYear(
     parts.year ?? 0,
     parts.month ? parts.month - 1 : 0,
-    parts.day ?? 0
+    parts.day ?? 1
   )
   date.setUTCHours(
     parts.hours ?? 0,
@@ -448,8 +447,7 @@ export const fromString = (input: string): Option.Option<DateTime.Utc> => fromDa
 export const unsafeFromString = (input: string): DateTime.Utc => unsafeFromDate(new Date(input))
 
 /**
- * Get the current time using the `Clock` service and convert it to a
- * `DateTime`.
+ * Get the current time using the `Clock` service and convert it to a `DateTime`.
  *
  * @since 3.6.0
  * @category constructors
@@ -747,11 +745,13 @@ export const toPartsUtc = (self: DateTime.Input): DateTime.Parts => {
  * @since 3.6.0
  * @category conversions
  * @example
- * import { DataTime } from "effect"
+ * import { DateTime } from "effect"
  *
- * const now =
+ * const now = DateTime.fromParts({ year: 2024 })
+ * const year = DateTime.getPartUtc(now, "year")
+ * assert.strictEqual(year, 2024)
  */
-export const toPartUtc: {
+export const getPartUtc: {
   (part: keyof DateTime.Parts): (self: DateTime.Input) => number
   (self: DateTime.Input, part: keyof DateTime.Parts): number
 } = dual(2, (self: DateTime.Input, part: keyof DateTime.Parts): number => toPartsUtc(self)[part])
@@ -764,7 +764,7 @@ export const toPartUtc: {
  * @since 3.6.0
  * @category conversions
  */
-export const toPartAdjusted: {
+export const getPartAdjusted: {
   (part: keyof DateTime.Parts): (self: DateTime.WithZone) => number
   (self: DateTime.WithZone, part: keyof DateTime.Parts): number
 } = dual(2, (self: DateTime.WithZone, part: keyof DateTime.Parts): number => toPartsAdjusted(self)[part])

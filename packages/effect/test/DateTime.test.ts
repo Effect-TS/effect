@@ -76,7 +76,7 @@ describe("DateTime", () => {
       const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
       const end = DateTime.endOf(start, "week")
       assert.strictEqual(end.toJSON(), "2024-03-16T23:59:59.999Z")
-      assert.strictEqual(DateTime.toPartUtc(end, "weekDay"), 6)
+      assert.strictEqual(DateTime.getPartUtc(end, "weekDay"), 6)
     })
 
     it("week last day", () => {
@@ -111,7 +111,7 @@ describe("DateTime", () => {
       const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
       const end = DateTime.startOf(start, "week")
       assert.strictEqual(end.toJSON(), "2024-03-10T00:00:00.000Z")
-      assert.strictEqual(DateTime.toPartUtc(end, "weekDay"), 0)
+      assert.strictEqual(DateTime.getPartUtc(end, "weekDay"), 0)
     })
 
     it("week first day", () => {
@@ -185,7 +185,12 @@ describe("DateTime", () => {
         month: 12,
         day: 25
       })
-      console.log(DateTime.toDateUtc(date))
+      assert.strictEqual(date.toJSON(), "2024-12-25T00:00:00.000Z")
+    })
+
+    it("month is set correctly", () => {
+      const date = DateTime.fromParts({ year: 2024 })
+      assert.strictEqual(date.toJSON(), "2024-01-01T00:00:00.000Z")
     })
   })
 })
