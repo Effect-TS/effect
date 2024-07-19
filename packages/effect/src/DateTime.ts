@@ -90,6 +90,20 @@ export declare namespace DateTime {
    * @since 3.6.0
    * @category models
    */
+  export interface Parts {
+    readonly millis: number
+    readonly seconds: number
+    readonly minutes: number
+    readonly hours: number
+    readonly day: number
+    readonly month: number
+    readonly year: number
+  }
+
+  /**
+   * @since 3.6.0
+   * @category models
+   */
   export interface Proto extends Pipeable, Inspectable.Inspectable {
     readonly [TypeId]: TypeId
   }
@@ -232,6 +246,7 @@ const ProtoTimeZone = {
 
 const ProtoTimeZoneNamed = {
   ...ProtoTimeZone,
+  _tag: "Named",
   [Hash.symbol](this: TimeZone.Named) {
     return Hash.cached(this, Hash.string(`Named:${this.id}`))
   },
@@ -249,6 +264,7 @@ const ProtoTimeZoneNamed = {
 
 const ProtoTimeZoneOffset = {
   ...ProtoTimeZone,
+  _tag: "Offset",
   [Hash.symbol](this: TimeZone.Offset) {
     return Hash.cached(this, Hash.string(`Offset:${this.offset}`))
   },
@@ -269,6 +285,8 @@ const ProtoTimeZoneOffset = {
  * @category guards
  */
 export const isDateTime = (u: unknown): u is DateTime => Predicate.hasProperty(u, TypeId)
+
+const isDateTimeInput = (u: unknown): u is DateTime.Input => isDateTime(u) || u instanceof Date || typeof u === "number"
 
 /**
  * @since 3.6.0
@@ -535,7 +553,7 @@ export const toUtcDate = (self: DateTime.Input): Date => new Date(toEpochMillis(
  * @since 3.6.0
  * @category conversions
  */
-export const toPlainDate = (self: DateTime.Input): Date => {
+export const toAdjustedDate = (self: DateTime.Input): Date => {
   const dt = fromInput(self)
   if (dt._tag === "Utc") {
     return new Date(dt.epochMillis)
@@ -572,7 +590,7 @@ export const zoneOffset = (self: DateTime.Input): number => {
   if (dt._tag === "Utc") {
     return 0
   }
-  const plainDate = toPlainDate(dt)
+  const plainDate = toAdjustedDate(dt)
   return plainDate.getTime() - toEpochMillis(dt)
 }
 
@@ -609,14 +627,14 @@ export const mutate: {
   <A extends DateTime.Input>(self: A, f: (plainDate: Date) => void): DateTime.PreserveZone<A>
 } = dual(2, (self: DateTime.Input, f: (plainDate: Date) => void): DateTime => {
   const dt = fromInput(self)
-  const plainDate = toPlainDate(dt)
-  const newPlainDate = new Date(plainDate.getTime())
-  f(newPlainDate)
+  const plainDate = toAdjustedDate(dt)
+  const newAdjustedDate = new Date(plainDate.getTime())
+  f(newAdjustedDate)
   if (dt._tag === "Utc") {
-    return fromEpochMillis(newPlainDate.getTime())
+    return fromEpochMillis(newAdjustedDate.getTime())
   }
-  const offset = calcutateOffset(newPlainDate, dt.zone)
-  return setZone(fromEpochMillis(newPlainDate.getTime() - offset), dt.zone)
+  const offset = calcutateOffset(newAdjustedDate, dt.zone)
+  return setZone(fromEpochMillis(newAdjustedDate.getTime() - offset), dt.zone)
 })
 
 /**
@@ -635,6 +653,30 @@ export const mapEpochMillis: {
   const newUtc = fromEpochMillis(f(prevEpochMillis))
   return dt._tag === "Utc" ? newUtc : setZone(newUtc, dt.zone)
 })
+
+/**
+ * Using the time zone adjusted `Date`, apply a function to the `Date` and
+ * return the result.
+ *
+ * @since 3.6.0
+ * @category mapping
+ */
+export const withAdjustedDate: {
+  <A>(f: (date: Date) => A): (self: DateTime.Input) => A
+  <A>(self: DateTime.Input, f: (date: Date) => A): A
+} = dual(2, <A>(self: DateTime.Input, f: (date: Date) => A): A => f(toAdjustedDate(self)))
+
+/**
+ * Using the time zone adjusted `Date`, apply a function to the `Date` and
+ * return the result.
+ *
+ * @since 3.6.0
+ * @category mapping
+ */
+export const withUtcDate: {
+  <A>(f: (date: Date) => A): (self: DateTime.Input) => A
+  <A>(self: DateTime.Input, f: (date: Date) => A): A
+} = dual(2, <A>(self: DateTime.Input, f: (date: Date) => A): A => f(toUtcDate(self)))
 
 /**
  * @since 3.6.0
@@ -923,3 +965,160 @@ export const endOf: {
       }
     }
   }))
+
+const dateToParts = (date: Date): DateTime.Parts => ({
+  millis: date.getUTCMilliseconds(),
+  seconds: date.getUTCSeconds(),
+  minutes: date.getUTCMinutes(),
+  hours: date.getUTCHours(),
+  day: date.getUTCDate(),
+  month: date.getUTCMonth() + 1,
+  year: date.getUTCFullYear()
+})
+
+/**
+ * Get the different parts of a `DateTime` as an object.
+ *
+ * The parts will be time zone adjusted if necessary.
+ *
+ * @since 3.6.0
+ * @category accessors
+ */
+export const toAdjustedParts = (self: DateTime.Input): DateTime.Parts => withAdjustedDate(self, dateToParts)
+
+/**
+ * Get the different parts of a `DateTime` as an object.
+ *
+ * The parts will be in UTC.
+ *
+ * @since 3.6.0
+ * @category accessors
+ */
+export const toUtcParts = (self: DateTime.Input): DateTime.Parts => withUtcDate(self, dateToParts)
+
+/**
+ * Format a `DateTime` as a string using the `DateTimeFormat` API.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const format: {
+  (
+    options?:
+      | Intl.DateTimeFormatOptions & {
+        readonly locale?: string | undefined
+      }
+      | undefined
+  ): (self: DateTime.Input) => string
+  (
+    self: DateTime.Input,
+    options?:
+      | Intl.DateTimeFormatOptions & {
+        readonly locale?: string | undefined
+      }
+      | undefined
+  ): string
+} = dual((args) => isDateTimeInput(args[0]), (
+  self: DateTime.Input,
+  options?:
+    | Intl.DateTimeFormatOptions & {
+      readonly locale?: string | undefined
+    }
+    | undefined
+): string => new Intl.DateTimeFormat(options?.locale, options).format(toEpochMillis(self)))
+
+/**
+ * Format a `DateTime` as a string using the `DateTimeFormat` API.
+ *
+ * This forces the time zone to be UTC.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const formatUtc: {
+  (
+    options?:
+      | Intl.DateTimeFormatOptions & {
+        readonly locale?: string | undefined
+      }
+      | undefined
+  ): (self: DateTime.Input) => string
+  (
+    self: DateTime.Input,
+    options?:
+      | Intl.DateTimeFormatOptions & {
+        readonly locale?: string | undefined
+      }
+      | undefined
+  ): string
+} = dual((args) => isDateTimeInput(args[0]), (
+  self: DateTime.Input,
+  options?:
+    | Intl.DateTimeFormatOptions & {
+      readonly locale?: string | undefined
+    }
+    | undefined
+): string =>
+  new Intl.DateTimeFormat(options?.locale, {
+    ...options,
+    timeZone: "UTC"
+  }).format(toEpochMillis(self)))
+
+/**
+ * Format a `DateTime` as a string using the `DateTimeFormat` API.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const formatIntl: {
+  (format: Intl.DateTimeFormat): (self: DateTime.Input) => string
+  (self: DateTime.Input, format: Intl.DateTimeFormat): string
+} = dual(2, (self: DateTime.Input, format: Intl.DateTimeFormat): string => format.format(toEpochMillis(self)))
+
+const timeZoneOffset = (self: TimeZone): string => {
+  if (self._tag === "Named") {
+    return self.id
+  }
+  const abs = Math.abs(self.offset)
+  const offsetHours = Math.floor(abs / (60 * 60 * 1000))
+  const offsetMinutes = Math.round((abs % (60 * 60 * 1000)) / (60 * 1000))
+  return `${self.offset < 0 ? "-" : "+"}${String(offsetHours).padStart(2, "0")}:${
+    String(`${offsetMinutes}`).padStart(2, "0")
+  }`
+}
+
+/**
+ * Format a `DateTime` as a string using the `DateTimeFormat` API, using the
+ * embedded time zone.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const formatWithZone: {
+  (
+    options?:
+      | Intl.DateTimeFormatOptions & {
+        readonly locale?: string | undefined
+      }
+      | undefined
+  ): (self: DateTime.WithZone) => string
+  (
+    self: DateTime.WithZone,
+    options?:
+      | Intl.DateTimeFormatOptions & {
+        readonly locale?: string | undefined
+      }
+      | undefined
+  ): string
+} = dual((args) => isDateTime(args[0]), (
+  self: DateTime.WithZone,
+  options?:
+    | Intl.DateTimeFormatOptions & {
+      readonly locale?: string | undefined
+    }
+    | undefined
+): string =>
+  new Intl.DateTimeFormat(options?.locale, {
+    ...options,
+    timeZone: timeZoneOffset(self.zone)
+  }).format(toEpochMillis(self)))

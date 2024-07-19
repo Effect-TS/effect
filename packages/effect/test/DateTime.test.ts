@@ -23,12 +23,12 @@ describe("DateTime", () => {
           date.setUTCMonth(date.getUTCMonth() + 6)
         })
         assert.strictEqual(DateTime.toUtcDate(future).toISOString(), "2024-06-30T12:00:00.000Z")
-        assert.strictEqual(DateTime.toPlainDate(future).toISOString(), "2024-07-01T00:00:00.000Z")
+        assert.strictEqual(DateTime.toAdjustedDate(future).toISOString(), "2024-07-01T00:00:00.000Z")
         const plusOne = DateTime.mutate(future, (date) => {
           date.setUTCDate(date.getUTCDate() + 1)
         })
         assert.strictEqual(DateTime.toUtcDate(plusOne).toISOString(), "2024-07-01T12:00:00.000Z")
-        assert.strictEqual(DateTime.toPlainDate(plusOne).toISOString(), "2024-07-02T00:00:00.000Z")
+        assert.strictEqual(DateTime.toAdjustedDate(plusOne).toISOString(), "2024-07-02T00:00:00.000Z")
       }))
   })
 
@@ -49,13 +49,13 @@ describe("DateTime", () => {
         )
         const future = DateTime.add(now, 6, "months")
         assert.strictEqual(DateTime.toUtcDate(future).toISOString(), "2024-06-30T12:00:00.000Z")
-        assert.strictEqual(DateTime.toPlainDate(future).toISOString(), "2024-07-01T00:00:00.000Z")
+        assert.strictEqual(DateTime.toAdjustedDate(future).toISOString(), "2024-07-01T00:00:00.000Z")
         const plusOne = DateTime.add(future, 1, "day")
         assert.strictEqual(DateTime.toUtcDate(plusOne).toISOString(), "2024-07-01T12:00:00.000Z")
-        assert.strictEqual(DateTime.toPlainDate(plusOne).toISOString(), "2024-07-02T00:00:00.000Z")
+        assert.strictEqual(DateTime.toAdjustedDate(plusOne).toISOString(), "2024-07-02T00:00:00.000Z")
         const minusOne = DateTime.add(plusOne, -1, "day")
         assert.strictEqual(DateTime.toUtcDate(minusOne).toISOString(), "2024-06-30T12:00:00.000Z")
-        assert.strictEqual(DateTime.toPlainDate(minusOne).toISOString(), "2024-07-01T00:00:00.000Z")
+        assert.strictEqual(DateTime.toAdjustedDate(minusOne).toISOString(), "2024-07-01T00:00:00.000Z")
       }))
   })
 
@@ -125,5 +125,56 @@ describe("DateTime", () => {
       })
       assert.strictEqual(DateTime.toUtcDate(end).toISOString(), "2024-03-11T00:00:00.000Z")
     })
+  })
+
+  describe("format", () => {
+    it.effect("full", () =>
+      Effect.gen(function*() {
+        const now = yield* DateTime.now
+        assert.strictEqual(
+          DateTime.format(now, {
+            dateStyle: "full",
+            timeStyle: "full",
+            timeZone: "UTC"
+          }),
+          "Thursday, January 1, 1970 at 12:00:00 AM Coordinated Universal Time"
+        )
+      }))
+  })
+
+  describe("formatUtc", () => {
+    it.effect("full", () =>
+      Effect.gen(function*() {
+        const now = yield* DateTime.now
+        assert.strictEqual(
+          DateTime.formatUtc(now, { dateStyle: "full", timeStyle: "full" }),
+          "Thursday, January 1, 1970 at 12:00:00 AM Coordinated Universal Time"
+        )
+      }))
+  })
+
+  describe("formatWithZone", () => {
+    it.effect("full", () =>
+      Effect.gen(function*() {
+        const now = yield* DateTime.now.pipe(
+          Effect.flatMap(DateTime.setZoneNamed("Pacific/Auckland"))
+        )
+        assert.strictEqual(
+          DateTime.formatWithZone(now, { dateStyle: "full", timeStyle: "full" }),
+          "Thursday, January 1, 1970 at 12:00:00 PM New Zealand Standard Time"
+        )
+      }))
+
+    // only works on node v22
+    it.effect.skip("full with offset", () =>
+      Effect.gen(function*() {
+        const now = yield* DateTime.now.pipe(
+          Effect.map(DateTime.setZoneOffset(10 * 60 * 60 * 1000))
+        )
+        assert.strictEqual(
+          DateTime.formatWithZone(now, { dateStyle: "full", timeStyle: "full" }),
+          ""
+        )
+      }))
   })
 })
