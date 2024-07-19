@@ -7891,20 +7891,20 @@ export const zipAllWith = dual<
 )
 
 /** @internal */
-export const zipLatest = dual<
-  <A2, E2, R2>(
-    that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<[A, A2], E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<[A, A2], E2 | E, R2 | R>
->(
+export const zipLatest: {
+  <AR, EL, RL>(
+    right: Stream.Stream<AR, EL, RL>
+  ): <AL, ER, RR>(left: Stream.Stream<AL, ER, RR>) => Stream.Stream<[AL, AR], EL | ER, RL | RR>
+  <AL, ER, RR, AR, EL, RL>(
+    left: Stream.Stream<AL, ER, RR>,
+    right: Stream.Stream<AR, EL, RL>
+  ): Stream.Stream<[AL, AR], EL | ER, RL | RR>
+} = dual(
   2,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<[A, A2], E2 | E, R2 | R> => pipe(self, zipLatestWith(that, (a, a2) => [a, a2]))
+  <AL, ER, RR, AR, EL, RL>(
+    left: Stream.Stream<AL, ER, RR>,
+    right: Stream.Stream<AR, EL, RL>
+  ): Stream.Stream<[AL, AR], EL | ER, RL | RR> => pipe(left, zipLatestWith(right, (a, a2) => [a, a2]))
 )
 
 export const zipLatestAll = <T extends ReadonlyArray<Stream.Stream<any, any, any>>>(
