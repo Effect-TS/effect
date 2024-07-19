@@ -119,9 +119,7 @@ export declare namespace DateTime {
     readonly _tag: "Utc"
     readonly epochMillis: number
     /** @internal */
-    partsAdjusted?: Parts
-    /** @internal */
-    partsUtc?: Parts
+    partsUtc: Parts
   }
 
   /**
@@ -130,7 +128,7 @@ export declare namespace DateTime {
    */
   export interface WithZone extends Proto {
     readonly _tag: "WithZone"
-    readonly utc: Utc
+    readonly epochMillis: number
     readonly zone: TimeZone
     /** @internal */
     adjustedEpochMillis?: number
@@ -227,20 +225,20 @@ const ProtoWithZone = {
   _tag: "WithZone",
   [Hash.symbol](this: DateTime.WithZone) {
     return pipe(
-      Hash.hash(this.utc),
+      Hash.number(this.epochMillis),
       Hash.combine(Hash.hash(this.zone)),
       Hash.cached(this)
     )
   },
   [Equal.symbol](this: DateTime.WithZone, that: unknown) {
-    return isDateTime(that) && that._tag === "WithZone" && Equal.equals(this.utc, that.utc) &&
+    return isDateTime(that) && that._tag === "WithZone" && this.epochMillis === that.epochMillis &&
       Equal.equals(this.zone, that.zone)
   },
   toString(this: DateTime.WithZone) {
     return Inspectable.format({
       _id: "DateTime",
       _tag: this._tag,
-      utc: this.utc.toJSON(),
+      epochMillis: this.epochMillis,
       zone: this.zone
     })
   }
@@ -481,8 +479,9 @@ export const setZone: {
 } = dual(2, (self: DateTime.Input, zone: TimeZone): DateTime.WithZone => {
   const dt = fromInput(self)
   const selfWithZone = Object.create(ProtoWithZone)
-  selfWithZone.utc = dt._tag === "Utc" ? dt : dt.utc
+  selfWithZone.epochMillis = dt.epochMillis
   selfWithZone.zone = zone
+  selfWithZone.partsUtc = dt.partsUtc
   return selfWithZone
 })
 
@@ -657,11 +656,11 @@ export const toDateUtc = (self: DateTime.Input): Date => new Date(toEpochMillis(
  */
 export const toDateAdjusted = (self: DateTime.WithZone): Date => {
   if (self.zone._tag === "Offset") {
-    return new Date(self.utc.epochMillis + self.zone.offset)
+    return new Date(self.epochMillis + self.zone.offset)
   } else if (self.adjustedEpochMillis !== undefined) {
     return new Date(self.adjustedEpochMillis)
   }
-  const parts = self.zone.format.formatToParts(self.utc.epochMillis)
+  const parts = self.zone.format.formatToParts(self.epochMillis)
   const date = new Date(0)
   date.setUTCFullYear(
     Number(parts[4].value),
@@ -712,10 +711,7 @@ export const zoneOffsetString = (self: DateTime.WithZone): string => offsetToStr
  * @since 3.6.0
  * @category conversions
  */
-export const toEpochMillis = (self: DateTime.Input): number => {
-  const dt = fromInput(self)
-  return dt._tag === "WithZone" ? dt.utc.epochMillis : dt.epochMillis
-}
+export const toEpochMillis = (self: DateTime.Input): number => fromInput(self).epochMillis
 
 /**
  * Get the different parts of a `DateTime` as an object.
