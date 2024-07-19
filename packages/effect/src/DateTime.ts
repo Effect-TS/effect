@@ -182,15 +182,6 @@ export declare namespace TimeZone {
   }
 }
 
-/**
- * @since 3.6.0
- * @category time zones
- */
-export class CurrentTimeZone extends Context.Tag("effect/DateTime/CurrentTimeZone")<
-  CurrentTimeZone,
-  TimeZone
->() {}
-
 const Proto = {
   [TypeId]: TypeId,
   pipe() {
@@ -306,6 +297,10 @@ export const isUtc = (self: DateTime): self is DateTime.Utc => self._tag === "Ut
  */
 export const isWithZone = (self: DateTime): self is DateTime.WithZone => self._tag === "WithZone"
 
+// =============================================================================
+// constructors
+// =============================================================================
+
 /**
  * Create a `DateTime` from the number of milliseconds since the Unix epoch.
  *
@@ -400,6 +395,10 @@ export const now: Effect.Effect<DateTime.Utc> = Effect.map(
  * @category constructors
  */
 export const unsafeNow: LazyArg<DateTime.Utc> = () => fromEpochMillis(Date.now())
+
+// =============================================================================
+// time zones
+// =============================================================================
 
 /**
  * Set the time zone of a `DateTime`, returning a new `DateTime.WithZone`.
@@ -515,26 +514,53 @@ export const unsafeSetZoneNamed: {
   (self: DateTime.Input, zoneId: string): DateTime.WithZone
 } = dual(2, (self: DateTime.Input, zoneId: string): DateTime.WithZone => setZone(self, unsafeMakeZoneNamed(zoneId)))
 
-/**
- * Set the time zone of a `DateTime` to the current time zone, which is
- * determined by the `CurrentTimeZone` service.
- *
- * @since 3.6.0
- * @category time zones
- */
-export const setZoneCurrent = (self: DateTime.Input): Effect.Effect<DateTime.WithZone, never, CurrentTimeZone> =>
-  Effect.map(CurrentTimeZone, (zone) => setZone(self, zone))
+// =============================================================================
+// comparisons
+// =============================================================================
 
 /**
- * Get the milliseconds since the Unix epoch of a `DateTime`.
+ * Calulate the difference between two `DateTime` values, returning the number
+ * of milliseconds the `other` DateTime is from `self`.
+ *
+ * If `other` is *after* `self`, the result will be a positive number.
  *
  * @since 3.6.0
- * @category conversions
+ * @category comparisons
  */
-export const toEpochMillis = (self: DateTime.Input): number => {
-  const dt = fromInput(self)
-  return dt._tag === "WithZone" ? dt.utc.epochMillis : dt.epochMillis
-}
+export const diff: {
+  (other: DateTime.Input): (self: DateTime.Input) => number
+  (self: DateTime.Input, other: DateTime.Input): number
+} = dual(2, (self: DateTime.Input, other: DateTime.Input): number => {
+  const selfEpochMillis = toEpochMillis(self)
+  const otherEpochMillis = toEpochMillis(other)
+  return otherEpochMillis - selfEpochMillis
+})
+
+/**
+ * Calulate the difference between two `DateTime` values.
+ *
+ * If the `other` DateTime is before `self`, the result will be a negative
+ * `Duration`, returned as a `Left`.
+ *
+ * If the `other` DateTime is after `self`, the result will be a positive
+ * `Duration`, returned as a `Right`.
+ *
+ * @since 3.6.0
+ * @category constructors
+ */
+export const diffDuration: {
+  (other: DateTime.Input): (self: DateTime.Input) => Either.Either<Duration.Duration, Duration.Duration>
+  (self: DateTime.Input, other: DateTime.Input): Either.Either<Duration.Duration, Duration.Duration>
+} = dual(2, (self: DateTime.Input, other: DateTime.Input): Either.Either<Duration.Duration, Duration.Duration> => {
+  const diffMillis = diff(self, other)
+  return diffMillis > 0
+    ? Either.right(Duration.millis(diffMillis))
+    : Either.left(Duration.millis(-diffMillis))
+})
+
+// =============================================================================
+// conversions
+// =============================================================================
 
 /**
  * Get the UTC `Date` of a `DateTime`.
@@ -593,6 +619,122 @@ export const zoneOffset = (self: DateTime.Input): number => {
   const plainDate = toDateAdjusted(dt)
   return plainDate.getTime() - toEpochMillis(dt)
 }
+
+/**
+ * Get the milliseconds since the Unix epoch of a `DateTime`.
+ *
+ * @since 3.6.0
+ * @category conversions
+ */
+export const toEpochMillis = (self: DateTime.Input): number => {
+  const dt = fromInput(self)
+  return dt._tag === "WithZone" ? dt.utc.epochMillis : dt.epochMillis
+}
+
+/**
+ * Get the different parts of a `DateTime` as an object.
+ *
+ * The parts will be time zone adjusted if necessary.
+ *
+ * @since 3.6.0
+ * @category conversions
+ */
+export const toPartsAdjusted = (self: DateTime.Input): DateTime.Parts => withAdjustedDate(self, dateToParts)
+
+/**
+ * Get the different parts of a `DateTime` as an object.
+ *
+ * The parts will be in UTC.
+ *
+ * @since 3.6.0
+ * @category conversions
+ */
+export const toPartsUtc = (self: DateTime.Input): DateTime.Parts => withUtcDate(self, dateToParts)
+
+// =============================================================================
+// current time zone
+// =============================================================================
+
+/**
+ * @since 3.6.0
+ * @category current time zone
+ */
+export class CurrentTimeZone extends Context.Tag("effect/DateTime/CurrentTimeZone")<
+  CurrentTimeZone,
+  TimeZone
+>() {}
+
+/**
+ * Set the time zone of a `DateTime` to the current time zone, which is
+ * determined by the `CurrentTimeZone` service.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ */
+export const setZoneCurrent = (self: DateTime.Input): Effect.Effect<DateTime.WithZone, never, CurrentTimeZone> =>
+  Effect.map(CurrentTimeZone, (zone) => setZone(self, zone))
+
+/**
+ * Provide the `CurrentTimeZone` to an effect.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ */
+export const withCurrentZone: {
+  (zone: TimeZone): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, CurrentTimeZone>>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, zone: TimeZone): Effect.Effect<A, E, Exclude<R, CurrentTimeZone>>
+} = dual(
+  2,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, zone: TimeZone): Effect.Effect<A, E, Exclude<R, CurrentTimeZone>> =>
+    Effect.provideService(effect, CurrentTimeZone, zone)
+)
+
+/**
+ * Provide the `CurrentTimeZone` to an effect using an IANA time zone
+ * identifier.
+ *
+ * If the time zone is invalid, it will fail with an `IllegalArgumentException`.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ */
+export const withCurrentZoneNamed: {
+  (zone: string): <A, E, R>(
+    effect: Effect.Effect<A, E, R>
+  ) => Effect.Effect<A, E | IllegalArgumentException, Exclude<R, CurrentTimeZone>>
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    zone: string
+  ): Effect.Effect<A, E | IllegalArgumentException, Exclude<R, CurrentTimeZone>>
+} = dual(
+  2,
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    zone: string
+  ): Effect.Effect<A, E | IllegalArgumentException, Exclude<R, CurrentTimeZone>> =>
+    Effect.flatMap(
+      Effect.try({
+        try: () => unsafeMakeZoneNamed(zone),
+        catch: (e) => e as IllegalArgumentException
+      }),
+      (zone) => withCurrentZone(effect, zone)
+    )
+)
+
+/**
+ * Get the current time as a `DateTime.WithZone`, using the `CurrentTimeZone`.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ */
+export const nowInCurrentZone: Effect.Effect<DateTime.WithZone, never, CurrentTimeZone> = Effect.flatMap(
+  now,
+  setZoneCurrent
+)
+
+// =============================================================================
+// mapping
+// =============================================================================
 
 const calcutateOffset = (date: Date, zone: TimeZone): number =>
   zone._tag === "Offset" ? zone.offset : calcutateNamedOffset(date, zone)
@@ -679,7 +821,7 @@ export const withUtcDate: {
 
 /**
  * @since 3.6.0
- * @category pattern matching
+ * @category mapping
  */
 export const match: {
   <A, B>(options: {
@@ -698,103 +840,9 @@ export const match: {
   return dt._tag === "Utc" ? options.onUtc(dt) : options.onWithZone(dt)
 })
 
-/**
- * Provide the `CurrentTimeZone` to an effect.
- *
- * @since 3.6.0
- * @category time zones
- */
-export const withCurrentZone: {
-  (zone: TimeZone): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, CurrentTimeZone>>
-  <A, E, R>(effect: Effect.Effect<A, E, R>, zone: TimeZone): Effect.Effect<A, E, Exclude<R, CurrentTimeZone>>
-} = dual(
-  2,
-  <A, E, R>(effect: Effect.Effect<A, E, R>, zone: TimeZone): Effect.Effect<A, E, Exclude<R, CurrentTimeZone>> =>
-    Effect.provideService(effect, CurrentTimeZone, zone)
-)
-
-/**
- * Provide the `CurrentTimeZone` to an effect using an IANA time zone
- * identifier.
- *
- * If the time zone is invalid, it will fail with an `IllegalArgumentException`.
- *
- * @since 3.6.0
- * @category time zones
- */
-export const withCurrentZoneNamed: {
-  (zone: string): <A, E, R>(
-    effect: Effect.Effect<A, E, R>
-  ) => Effect.Effect<A, E | IllegalArgumentException, Exclude<R, CurrentTimeZone>>
-  <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
-    zone: string
-  ): Effect.Effect<A, E | IllegalArgumentException, Exclude<R, CurrentTimeZone>>
-} = dual(
-  2,
-  <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
-    zone: string
-  ): Effect.Effect<A, E | IllegalArgumentException, Exclude<R, CurrentTimeZone>> =>
-    Effect.flatMap(
-      Effect.try({
-        try: () => unsafeMakeZoneNamed(zone),
-        catch: (e) => e as IllegalArgumentException
-      }),
-      (zone) => withCurrentZone(effect, zone)
-    )
-)
-
-/**
- * Get the current time as a `DateTime.WithZone`, using the `CurrentTimeZone`.
- *
- * @since 3.6.0
- * @category constructors
- */
-export const nowInCurrentZone: Effect.Effect<DateTime.WithZone, never, CurrentTimeZone> = Effect.flatMap(
-  now,
-  setZoneCurrent
-)
-
-/**
- * Calulate the difference between two `DateTime` values, returning the number
- * of milliseconds the `other` DateTime is from `self`.
- *
- * If `other` is *after* `self`, the result will be a positive number.
- *
- * @since 3.6.0
- * @category constructors
- */
-export const diff: {
-  (other: DateTime.Input): (self: DateTime.Input) => number
-  (self: DateTime.Input, other: DateTime.Input): number
-} = dual(2, (self: DateTime.Input, other: DateTime.Input): number => {
-  const selfEpochMillis = toEpochMillis(self)
-  const otherEpochMillis = toEpochMillis(other)
-  return otherEpochMillis - selfEpochMillis
-})
-
-/**
- * Calulate the difference between two `DateTime` values.
- *
- * If the `other` DateTime is before `self`, the result will be a negative
- * `Duration`, returned as a `Left`.
- *
- * If the `other` DateTime is after `self`, the result will be a positive
- * `Duration`, returned as a `Right`.
- *
- * @since 3.6.0
- * @category constructors
- */
-export const diffDuration: {
-  (other: DateTime.Input): (self: DateTime.Input) => Either.Either<Duration.Duration, Duration.Duration>
-  (self: DateTime.Input, other: DateTime.Input): Either.Either<Duration.Duration, Duration.Duration>
-} = dual(2, (self: DateTime.Input, other: DateTime.Input): Either.Either<Duration.Duration, Duration.Duration> => {
-  const diffMillis = diff(self, other)
-  return diffMillis > 0
-    ? Either.right(Duration.millis(diffMillis))
-    : Either.left(Duration.millis(-diffMillis))
-})
+// =============================================================================
+// math
+// =============================================================================
 
 /**
  * Add the given `Duration` to a `DateTime`.
@@ -991,25 +1039,9 @@ const dateToParts = (date: Date): DateTime.Parts => ({
   year: date.getUTCFullYear()
 })
 
-/**
- * Get the different parts of a `DateTime` as an object.
- *
- * The parts will be time zone adjusted if necessary.
- *
- * @since 3.6.0
- * @category accessors
- */
-export const toPartsAdjusted = (self: DateTime.Input): DateTime.Parts => withAdjustedDate(self, dateToParts)
-
-/**
- * Get the different parts of a `DateTime` as an object.
- *
- * The parts will be in UTC.
- *
- * @since 3.6.0
- * @category accessors
- */
-export const toPartsUtc = (self: DateTime.Input): DateTime.Parts => withUtcDate(self, dateToParts)
+// =============================================================================
+// formatting
+// =============================================================================
 
 /**
  * Format a `DateTime` as a string using the `DateTimeFormat` API.
