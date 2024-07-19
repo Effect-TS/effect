@@ -1034,8 +1034,8 @@ export const concatAll: <A, E, R>(streams: Chunk.Chunk<Stream<A, E, R>>) => Stre
  * @category utils
  */
 export const cross: {
-  <AR, EL, RL>(right: Stream<AR, EL, RL>): <AL, ER, RR>(left: Stream<AL, ER, RR>) => Stream<[AL, AR], ER | EL, RR | RL>
-  <AL, ER, RR, AR, EL, RL>(left: Stream<AL, ER, RR>, right: Stream<AR, EL, RL>): Stream<[AL, AR], ER | EL, RR | RL>
+  <AR, EL, RL>(right: Stream<AR, EL, RL>): <AL, ER, RR>(left: Stream<AL, ER, RR>) => Stream<[AL, AR], EL | ER, RL | RR>
+  <AL, ER, RR, AR, EL, RL>(left: Stream<AL, ER, RR>, right: Stream<AR, EL, RL>): Stream<[AL, AR], EL | ER, RL | RR>
 } = internal.cross
 
 /**

@@ -1683,17 +1683,17 @@ export const concatAll = <A, E, R>(streams: Chunk.Chunk<Stream.Stream<A, E, R>>)
 export const cross: {
   <AR, EL, RL>(
     right: Stream.Stream<AR, EL, RL>
-  ): <AL, ER, RR>(left: Stream.Stream<AL, ER, RR>) => Stream.Stream<[AL, AR], ER | EL, RR | RL>
+  ): <AL, ER, RR>(left: Stream.Stream<AL, ER, RR>) => Stream.Stream<[AL, AR], EL | ER, RL | RR>
   <AL, ER, RR, AR, EL, RL>(
     left: Stream.Stream<AL, ER, RR>,
     right: Stream.Stream<AR, EL, RL>
-  ): Stream.Stream<[AL, AR], ER | EL, RR | RL>
+  ): Stream.Stream<[AL, AR], EL | ER, RL | RR>
 } = dual(
   2,
   <AL, ER, RR, AR, EL, RL>(
     left: Stream.Stream<AL, ER, RR>,
     right: Stream.Stream<AR, EL, RL>
-  ): Stream.Stream<[AL, AR], ER | EL, RR | RL> => pipe(left, crossWith(right, (a, a2) => [a, a2]))
+  ): Stream.Stream<[AL, AR], EL | ER, RL | RR> => pipe(left, crossWith(right, (a, a2) => [a, a2]))
 )
 
 /** @internal */
