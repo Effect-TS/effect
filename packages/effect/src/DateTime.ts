@@ -13,6 +13,7 @@ import { dual, pipe } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as Hash from "./Hash.js"
 import * as Inspectable from "./Inspectable.js"
+import * as Layer from "./Layer.js"
 import * as Option from "./Option.js"
 import * as Order_ from "./Order.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
@@ -555,6 +556,34 @@ export const makeZoneNamed: (zoneId: string) => Option.Option<TimeZone.Named> = 
 )
 
 /**
+ * Create a named time zone from a IANA time zone identifier. If the time zone
+ * is invalid, it will fail with an `IllegalArgumentException`.
+ *
+ * @since 3.6.0
+ * @category time zones
+ */
+export const makeZoneNamedEffect = (zoneId: string): Effect.Effect<TimeZone.Named, IllegalArgumentException> =>
+  Effect.try({
+    try: () => unsafeMakeZoneNamed(zoneId),
+    catch: (e) => e as IllegalArgumentException
+  })
+
+/**
+ * Create a named time zone from the system's local time zone.
+ *
+ * @since 3.6.0
+ * @category time zones
+ */
+export const makeZoneLocal = (): TimeZone.Named => {
+  const format = new Intl.DateTimeFormat(undefined, formatOptions)
+  const zone = Object.create(ProtoTimeZoneNamed)
+  zone.id = format.resolvedOptions().timeZone
+  zone.format = format
+  validZoneCache.set(zone.id, zone)
+  return zone
+}
+
+/**
  * Set the time zone of a `DateTime` from an IANA time zone identifier. If the
  * time zone is invalid, `None` will be returned.
  *
@@ -817,6 +846,17 @@ export const withCurrentZone: {
 )
 
 /**
+ * Provide the `CurrentTimeZone` to an effect.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ */
+export const withCurrentZoneLocal = <A, E, R>(
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, Exclude<R, CurrentTimeZone>> =>
+  Effect.provideServiceEffect(effect, CurrentTimeZone, Effect.sync(makeZoneLocal))
+
+/**
  * Provide the `CurrentTimeZone` to an effect using an IANA time zone
  * identifier.
  *
@@ -839,13 +879,7 @@ export const withCurrentZoneNamed: {
     effect: Effect.Effect<A, E, R>,
     zone: string
   ): Effect.Effect<A, E | IllegalArgumentException, Exclude<R, CurrentTimeZone>> =>
-    Effect.flatMap(
-      Effect.try({
-        try: () => unsafeMakeZoneNamed(zone),
-        catch: (e) => e as IllegalArgumentException
-      }),
-      (zone) => withCurrentZone(effect, zone)
-    )
+    Effect.provideServiceEffect(effect, CurrentTimeZone, makeZoneNamedEffect(zone))
 )
 
 /**
@@ -857,6 +891,34 @@ export const withCurrentZoneNamed: {
 export const nowInCurrentZone: Effect.Effect<DateTime.WithZone, never, CurrentTimeZone> = Effect.flatMap(
   now,
   setZoneCurrent
+)
+
+/**
+ * Create a Layer from the given time zone.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ */
+export const layerCurrentZone = (zone: TimeZone): Layer.Layer<CurrentTimeZone> => Layer.succeed(CurrentTimeZone, zone)
+
+/**
+ * Create a Layer from the given IANA time zone identifier.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ */
+export const layerCurrentZoneNamed = (zoneId: string): Layer.Layer<CurrentTimeZone, IllegalArgumentException> =>
+  Layer.effect(CurrentTimeZone, makeZoneNamedEffect(zoneId))
+
+/**
+ * Create a Layer from the given IANA time zone identifier.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ */
+export const layerCurrentZoneLocal: Layer.Layer<CurrentTimeZone> = Layer.sync(
+  CurrentTimeZone,
+  makeZoneLocal
 )
 
 // =============================================================================
