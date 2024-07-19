@@ -374,6 +374,46 @@ export const asyncEffect: <A, E = never, R = never>(
 ) => Stream<A, E, R> = internal.asyncEffect
 
 /**
+ * Creates a stream from an external push-based resource.
+ *
+ * You can use the `emit` helper to emit values to the stream. The `emit` helper
+ * returns a boolean indicating whether the value was emitted or not.
+ *
+ * You can also use the `emit` helper to signal the end of the stream by
+ * using apis such as `emit.end` or `emit.fail`.
+ *
+ * By default it uses an "unbounded" buffer size.
+ * You can customize the buffer size and strategy by passing an object as the
+ * second argument with the `bufferSize` and `strategy` fields.
+ *
+ * @example
+ * import { Effect, Stream } from "effect"
+ *
+ * Stream.asyncPush<string>((emit) =>
+ *   Effect.acquireRelease(
+ *     Effect.gen(function*() {
+ *       yield* Effect.log("subscribing")
+ *       return setInterval(() => emit.single("tick"), 1000)
+ *     }),
+ *     (handle) =>
+ *       Effect.gen(function*() {
+ *         yield* Effect.log("unsubscribing")
+ *         clearInterval(handle)
+ *       })
+ *   ), { bufferSize: 16, strategy: "dropping" })
+ *
+ * @since 3.6.0
+ * @category constructors
+ */
+export const asyncPush: <A, E = never, R = never>(
+  register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
+  options?: { readonly bufferSize: "unbounded" } | {
+    readonly bufferSize?: number | undefined
+    readonly strategy?: "dropping" | "sliding" | undefined
+  } | undefined
+) => Stream<A, E, Exclude<R, Scope.Scope>> = internal.asyncPush
+
+/**
  * Creates a stream from an asynchronous callback that can be called multiple
  * times. The registration of the callback itself returns an a scoped
  * resource. The optionality of the error type `E` can be used to signal the
@@ -5955,5 +5995,6 @@ export const fromEventListener: <A = unknown>(
     readonly capture?: boolean
     readonly passive?: boolean
     readonly once?: boolean
+    readonly bufferSize?: number | "unbounded" | undefined
   } | undefined
 ) => Stream<A> = internal.fromEventListener
