@@ -8084,24 +8084,24 @@ export const zipRight: {
 )
 
 /** @internal */
-export const zipWith = dual<
-  <A2, E2, R2, A, A3>(
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A3, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2, A3>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ) => Stream.Stream<A3, E2 | E, R2 | R>
->(
+export const zipWith: {
+  <AR, ER, RR, AL, A>(
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): <EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<A, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR>
+} = dual(
   3,
-  <A, E, R, A2, E2, R2, A3>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ): Stream.Stream<A3, E2 | E, R2 | R> =>
-    pipe(self, zipWithChunks(that, (leftChunk, rightChunk) => zipChunks(leftChunk, rightChunk, f)))
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR> =>
+    pipe(left, zipWithChunks(right, (leftChunk, rightChunk) => zipChunks(leftChunk, rightChunk, f)))
 )
 
 /** @internal */
