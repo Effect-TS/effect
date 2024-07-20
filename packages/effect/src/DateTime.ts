@@ -2,6 +2,7 @@
  * @since 3.6.0
  */
 import { IllegalArgumentException } from "./Cause.js"
+import * as Clock from "./Clock.js"
 import * as Context from "./Context.js"
 import * as Duration from "./Duration.js"
 import * as Effect from "./Effect.js"
@@ -532,10 +533,7 @@ export const makeZonedFromString = (input: string): Option.Option<Zoned> => {
  *   const now = yield* DateTime.now
  * })
  */
-export const now: Effect.Effect<Utc> = Effect.map(
-  Effect.clock,
-  (clock) => makeUtc(clock.unsafeCurrentTimeMillis())
-)
+export const now: Effect.Effect<Utc> = Effect.map(Clock.currentTimeMillis, makeUtc)
 
 /**
  * Get the current time using `Date.now`.
