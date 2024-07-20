@@ -12,6 +12,7 @@ import * as chunk_ from "effect/Chunk"
 import * as config_ from "effect/Config"
 import * as configError_ from "effect/ConfigError"
 import * as data_ from "effect/Data"
+import * as dateTime from "effect/DateTime"
 import * as duration_ from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as either_ from "effect/Either"
@@ -5918,6 +5919,27 @@ export class DateFromNumber extends transform(
   DateFromSelf,
   { strict: true, decode: (n) => new Date(n), encode: (d) => d.getTime() }
 ).annotations({ identifier: "DateFromNumber" }) {}
+
+/**
+ * Describes a schema that represents a `DateTime.Utc` instance.
+ *
+ * @category DateTime constructors
+ * @since 0.67.0
+ */
+export class DateTimeUtcFromSelf extends declare(
+  (u) => dateTime.isDateTime(u) && dateTime.isUtc(u),
+  {
+    identifier: "DateTimeUtcFromSelf",
+    description: "a DateTime.Utc instance",
+    pretty: (): pretty_.Pretty<dateTime.DateTime.Utc> => (dateTime) => `DateTime.Utc(${JSON.stringify(dateTime)})`,
+    arbitrary: (): LazyArbitrary<dateTime.DateTime.Utc> => (fc) =>
+      fc.date().map((date) => dateTime.unsafeFromDate(date)),
+    equivalence: () => dateTime.Equivalence
+  }
+) {
+  static override annotations: (annotations: Annotations.Schema<dateTime.DateTime.Utc>) => typeof DateTimeUtcFromSelf =
+    super.annotations
+}
 
 /**
  * @category Option utils
