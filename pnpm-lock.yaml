@@ -23,6 +23,9 @@ patchedDependencies:
   '@changesets/get-github-info@0.6.0':
     hash: 4nwpuevfciovsbhi25hd4g5r7y
     path: patches/@changesets__get-github-info@0.6.0.patch
+  babel-plugin-annotate-pure-calls@0.4.0:
+    hash: lz2aochwly4t7pzapzh4fqay4m
+    path: patches/babel-plugin-annotate-pure-calls@0.4.0.patch
 
 importers:
 
@@ -87,7 +90,7 @@ importers:
         version: 1.6.0(vitest@1.6.0(@edge-runtime/vm@4.0.1)(@types/node@20.14.11)(@vitest/browser@1.6.0)(happy-dom@14.12.3)(terser@5.31.3))
       babel-plugin-annotate-pure-calls:
         specifier: ^0.4.0
-        version: 0.4.0(@babel/core@7.24.9)
+        version: 0.4.0(patch_hash=lz2aochwly4t7pzapzh4fqay4m)(@babel/core@7.24.9)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -9248,7 +9251,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.24.9
 
-  babel-plugin-annotate-pure-calls@0.4.0(@babel/core@7.24.9):
+  babel-plugin-annotate-pure-calls@0.4.0(patch_hash=lz2aochwly4t7pzapzh4fqay4m)(@babel/core@7.24.9):
     dependencies:
       '@babel/core': 7.24.9
 
