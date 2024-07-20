@@ -1,0 +1,13 @@
+diff --git a/lib/index.js b/lib/index.js
+index 2182884e21874ebb37261e2375eec08ad956fc9a..ef5630199121c2830756e00c7cc48cf1078c8207 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -78,7 +78,7 @@ const isInAssignmentContext = path => {
+ 
+     parentPath = _ref.parentPath;
+ 
+-    if (parentPath.isVariableDeclaration() || parentPath.isAssignmentExpression()) {
++    if (parentPath.isVariableDeclaration() || parentPath.isAssignmentExpression() || parentPath.isClassDeclaration()) {
+       return true;
+     }
+   } while (parentPath !== statement);
