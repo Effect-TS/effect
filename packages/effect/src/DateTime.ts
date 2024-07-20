@@ -381,14 +381,29 @@ const _clamp = order.clamp(Order)
 /**
  * Create a `DateTime` from the number of milliseconds since the Unix epoch.
  *
+ * If the number is invalid, an `IllegalArgumentException` will be thrown.
+ *
  * @since 3.6.0
  * @category constructors
  */
-export const fromEpochMillis = (epochMillis: number): DateTime.Utc => {
+export const unsafeFromEpochMillis = (epochMillis: number): DateTime.Utc => {
+  if (Number.isNaN(epochMillis) || !Number.isFinite(epochMillis)) {
+    throw new IllegalArgumentException("Invalid date")
+  }
   const self = Object.create(ProtoUtc)
   self.epochMillis = epochMillis
   return self
 }
+
+/**
+ * Create a `DateTime` from the number of milliseconds since the Unix epoch.
+ *
+ * @since 3.6.0
+ * @category constructors
+ */
+export const fromEpochMillis: (epochMillis: number) => Option.Option<DateTime.Utc> = Option.liftThrowable(
+  unsafeFromEpochMillis
+)
 
 /**
  * Create a `DateTime` from a `Date`.
@@ -398,13 +413,7 @@ export const fromEpochMillis = (epochMillis: number): DateTime.Utc => {
  * @since 3.6.0
  * @category constructors
  */
-export const unsafeFromDate = (date: Date): DateTime.Utc => {
-  const epochMillis = date.getTime()
-  if (isNaN(epochMillis)) {
-    throw new IllegalArgumentException("Invalid date")
-  }
-  return fromEpochMillis(epochMillis)
-}
+export const unsafeFromDate = (date: Date): DateTime.Utc => unsafeFromEpochMillis(date.getTime())
 
 /**
  * Create a `DateTime` from one of the following:
@@ -419,7 +428,7 @@ export const fromInput = <A extends DateTime.Input>(input: A): DateTime.Preserve
   if (isDateTime(input)) {
     return input as DateTime.PreserveZone<A>
   } else if (typeof input === "number") {
-    return fromEpochMillis(input) as DateTime.PreserveZone<A>
+    return unsafeFromEpochMillis(input) as DateTime.PreserveZone<A>
   }
   return unsafeFromDate(input) as DateTime.PreserveZone<A>
 }
@@ -453,7 +462,7 @@ export const fromParts = (parts: Partial<Exclude<DateTime.Parts, "weekDay">>): D
     parts.seconds ?? 0,
     parts.millis ?? 0
   )
-  return fromEpochMillis(date.getTime())
+  return unsafeFromEpochMillis(date.getTime())
 }
 
 /**
@@ -482,7 +491,7 @@ export const unsafeFromString = (input: string): DateTime.Utc => unsafeFromDate(
  */
 export const now: Effect.Effect<DateTime.Utc> = Effect.map(
   Effect.clock,
-  (clock) => fromEpochMillis(clock.unsafeCurrentTimeMillis())
+  (clock) => unsafeFromEpochMillis(clock.unsafeCurrentTimeMillis())
 )
 
 /**
@@ -491,7 +500,7 @@ export const now: Effect.Effect<DateTime.Utc> = Effect.map(
  * @since 3.6.0
  * @category constructors
  */
-export const unsafeNow: LazyArg<DateTime.Utc> = () => fromEpochMillis(Date.now())
+export const unsafeNow: LazyArg<DateTime.Utc> = () => unsafeFromEpochMillis(Date.now())
 
 // =============================================================================
 // time zones
@@ -1132,7 +1141,7 @@ export const mutateAdjusted: {
   if (dt._tag === "Utc") {
     const date = toDateUtc(dt)
     f(date)
-    return fromEpochMillis(date.getTime())
+    return unsafeFromEpochMillis(date.getTime())
   }
   const adjustedDate = toDateAdjusted(dt)
   const newAdjustedDate = new Date(adjustedDate.getTime())
@@ -1170,7 +1179,7 @@ export const mapEpochMillis: {
 } = dual(2, (self: DateTime.Input, f: (millis: number) => number): DateTime => {
   const dt = fromInput(self)
   const millis = f(toEpochMillis(dt))
-  return dt._tag === "Utc" ? fromEpochMillis(millis) : makeWithZone(millis, dt.zone)
+  return dt._tag === "Utc" ? unsafeFromEpochMillis(millis) : makeWithZone(millis, dt.zone)
 })
 
 /**

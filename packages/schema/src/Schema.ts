@@ -5942,6 +5942,58 @@ export class DateTimeUtcFromSelf extends declare(
 }
 
 /**
+ * Defines a schema that attempts to convert a `number` to a `DateTime.Utc` instance using the `DateTime.unsafeFromEpochMillis` constructor.
+ *
+ * @category DateTime transformations
+ * @since 0.67.0
+ */
+export class DateTimeUtcFromNumber extends transformOrFail(
+  Number$,
+  DateTimeUtcFromSelf,
+  {
+    strict: true,
+    decode: (n, _, ast) => {
+      try {
+        return ParseResult.succeed(dateTime.unsafeFromEpochMillis(n))
+      } catch (_) {
+        return ParseResult.fail(new ParseResult.Type(ast, n))
+      }
+    },
+    encode: (dt) => ParseResult.succeed(dateTime.toEpochMillis(dt))
+  }
+).annotations({ identifier: "DateTimeUtcFromNumber" }) {
+  static override annotations: (
+    annotations: Annotations.Schema<dateTime.DateTime.Utc>
+  ) => typeof DateTimeUtcFromNumber = super.annotations
+}
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `DateTime.Utc` instance using the `DateTime.unsafeFromString` constructor.
+ *
+ * @category DateTime transformations
+ * @since 0.67.0
+ */
+export class DateTimeUtcFromString extends transformOrFail(
+  String$,
+  DateTimeUtcFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) => {
+      try {
+        return ParseResult.succeed(dateTime.unsafeFromString(s))
+      } catch (_) {
+        return ParseResult.fail(new ParseResult.Type(ast, s))
+      }
+    },
+    encode: (dt) => ParseResult.succeed(dateTime.formatIso(dt))
+  }
+).annotations({ identifier: "DateTimeUtcFromString" }) {
+  static override annotations: (
+    annotations: Annotations.Schema<dateTime.DateTime.Utc>
+  ) => typeof DateTimeUtcFromString = super.annotations
+}
+
+/**
  * @category Option utils
  * @since 0.67.0
  */
