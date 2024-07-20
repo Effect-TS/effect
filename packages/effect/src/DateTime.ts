@@ -198,7 +198,9 @@ const Proto = {
   pipe() {
     return pipeArguments(this, arguments)
   },
-  ...Inspectable.BaseProto,
+  [Inspectable.NodeInspectSymbol](this: DateTime) {
+    return this.toString()
+  },
   toJSON(this: DateTime) {
     return toDateUtc(this).toJSON()
   }
@@ -428,9 +430,11 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
  *
  * DateTime.unsafeMakeZoned(new Date(), "Europe/London")
  */
-export const unsafeMakeZoned = (input: DateTime.Input, zone: number | string): Zoned => {
+export const unsafeMakeZoned = (input: DateTime.Input, zone: number | string | TimeZone): Zoned => {
   const self = unsafeMake(input)
-  if (typeof zone === "number") {
+  if (isTimeZone(zone)) {
+    return setZone(self, zone)
+  } else if (typeof zone === "number") {
     return setZoneOffset(self, zone)
   }
   const parsedZone = zoneFromString(zone)
@@ -454,13 +458,8 @@ export const unsafeMakeZoned = (input: DateTime.Input, zone: number | string): Z
  *
  * DateTime.makeZoned(new Date(), "Europe/London")
  */
-export const makeZoned = (input: DateTime.Input, zone: number | string): Option.Option<Zoned> =>
-  Option.flatMap(make(input), (dt) => {
-    if (typeof zone === "number") {
-      return Option.some(setZoneOffset(dt, zone))
-    }
-    return Option.map(zoneFromString(zone), (zone) => setZone(dt, zone))
-  })
+export const makeZoned: (input: DateTime.Input, zone: string | number | TimeZone) => Option.Option<Zoned> = Option
+  .liftThrowable(unsafeMakeZoned)
 
 /**
  * Create a `DateTime` from one of the following:
@@ -554,9 +553,7 @@ export const unsafeNow: LazyArg<Utc> = () => makeUtc(Date.now())
 export const setZone: {
   (zone: TimeZone): (self: DateTime) => Zoned
   (self: DateTime, zone: TimeZone): Zoned
-} = dual(2, (self: DateTime, zone: TimeZone): Zoned => {
-  return makeZonedProto(self.epochMillis, zone, self.partsUtc)
-})
+} = dual(2, (self: DateTime, zone: TimeZone): Zoned => makeZonedProto(self.epochMillis, zone, self.partsUtc))
 
 /**
  * Add a fixed offset time zone to a `DateTime`.

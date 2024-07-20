@@ -6129,9 +6129,7 @@ export class DateTimeZonedFromSelf extends declare(
     description: "a DateTime.Zoned instance",
     pretty: (): pretty_.Pretty<dateTime.Zoned> => (dateTime) => dateTime.toString(),
     arbitrary: (): LazyArbitrary<dateTime.Zoned> => (fc) =>
-      fc.date().chain((date) =>
-        timeZoneArbitrary(fc).map((zone) => dateTime.setZone(dateTime.unsafeFromDate(date), zone))
-      ),
+      fc.date().chain((date) => timeZoneArbitrary(fc).map((zone) => dateTime.unsafeMakeZoned(date, zone))),
     equivalence: () => dateTime.Equivalence
   }
 ) {
