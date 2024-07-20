@@ -5947,7 +5947,7 @@ const decodeDateTime = <A extends dateTime.DateTime.Input>(input: A, _: ParseOpt
   })
 
 /**
- * Defines a schema that attempts to convert a `number` to a `DateTime.Utc` instance using the `DateTime.unsafeFromEpochMillis` constructor.
+ * Defines a schema that attempts to convert a `number` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
  *
  * @category DateTime.Utc transformations
  * @since 0.68.26
@@ -5967,7 +5967,7 @@ export class DateTimeUtcFromNumber extends transformOrFail(
 }
 
 /**
- * Defines a schema that attempts to convert a `string` to a `DateTime.Utc` instance using the `DateTime.unsafeFromString` constructor.
+ * Defines a schema that attempts to convert a `string` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
  *
  * @category DateTime.Utc transformations
  * @since 0.68.26
@@ -6010,7 +6010,7 @@ export class TimeZoneOffsetFromSelf extends declare(
 }
 
 /**
- * Defines a schema that attempts to convert a `number` to a `TimeZone.Offset` instance using the `DateTime.makeZoneOffset` constructor.
+ * Defines a schema that attempts to convert a `number` to a `TimeZone.Offset` instance using the `DateTime.zoneMakeOffset` constructor.
  *
  * @category TimeZone transformations
  * @since 0.68.26
@@ -6049,7 +6049,7 @@ export class TimeZoneNamedFromSelf extends declare(
 }
 
 /**
- * Defines a schema that attempts to convert a `string` to a `TimeZone.Named` instance using the `DateTime.unsafeMakeZoneNamed` constructor.
+ * Defines a schema that attempts to convert a `string` to a `TimeZone.Named` instance using the `DateTime.zoneUnsafeMakeNamed` constructor.
  *
  * @category TimeZone transformations
  * @since 0.68.26
@@ -6087,7 +6087,7 @@ export interface TimeZoneFromSelf extends Union<[typeof TimeZoneOffsetFromSelf, 
 export const TimeZoneFromSelf: TimeZoneFromSelf = Union(TimeZoneOffsetFromSelf, TimeZoneNamedFromSelf)
 
 /**
- * Defines a schema that attempts to convert a `string` to a `TimeZone` using the `DateTime.makeZoneFromString` constructor.
+ * Defines a schema that attempts to convert a `string` to a `TimeZone` using the `DateTime.zoneFromString` constructor.
  *
  * @category TimeZone transformations
  * @since 0.68.26
@@ -6097,10 +6097,11 @@ export class TimeZone extends transformOrFail(
   TimeZoneFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) => {
-      const zone = dateTime.zoneFromString(s)
-      return zone._tag === "Some" ? ParseResult.succeed(zone.value) : ParseResult.fail(new ParseResult.Type(ast, s))
-    },
+    decode: (s, _, ast) =>
+      option_.match(dateTime.zoneFromString(s), {
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+        onSome: ParseResult.succeed
+      }),
     encode: (tz) => ParseResult.succeed(dateTime.zoneToString(tz))
   }
 ).annotations({ identifier: "TimeZone" }) {
@@ -6150,12 +6151,11 @@ export class DateTimeZoned extends transformOrFail(
   DateTimeZonedFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) => {
-      const dateTimeZoned = dateTime.makeZonedFromString(s)
-      return dateTimeZoned._tag === "Some"
-        ? ParseResult.succeed(dateTimeZoned.value)
-        : ParseResult.fail(new ParseResult.Type(ast, s))
-    },
+    decode: (s, _, ast) =>
+      option_.match(dateTime.makeZonedFromString(s), {
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+        onSome: ParseResult.succeed
+      }),
     encode: (dt) => ParseResult.succeed(dateTime.toStringZoned(dt))
   }
 ).annotations({ identifier: "DateTime.Zoned" }) {

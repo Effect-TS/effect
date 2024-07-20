@@ -32,9 +32,7 @@ describe("DateTime.Utc", () => {
 
 describe("DateTime.Zoned", () => {
   const schema = S.DateTimeZoned
-  const dt = DateTime.unsafeMake(0).pipe(
-    DateTime.unsafeSetZoneNamed("Europe/London")
-  )
+  const dt = DateTime.unsafeMakeZoned(0, "Europe/London")
 
   it("property tests", () => {
     Util.roundtrip(schema)

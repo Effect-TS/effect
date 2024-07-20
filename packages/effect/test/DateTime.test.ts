@@ -11,7 +11,7 @@ describe("DateTime", () => {
         const tomorrow = DateTime.mutateAdjusted(now, (date) => {
           date.setUTCDate(date.getUTCDate() + 1)
         })
-        const diff = DateTime.diffDurationEither(now, tomorrow)
+        const diff = DateTime.distanceDurationEither(now, tomorrow)
         assert.deepStrictEqual(diff, Either.right(Duration.decode("1 day")))
       }))
 
@@ -39,7 +39,7 @@ describe("DateTime", () => {
       Effect.gen(function*() {
         const now = yield* DateTime.now
         const tomorrow = DateTime.add(now, 1, "day")
-        const diff = DateTime.diffDurationEither(now, tomorrow)
+        const diff = DateTime.distanceDurationEither(now, tomorrow)
         assert.deepStrictEqual(diff, Either.right(Duration.decode("1 day")))
       }))
 

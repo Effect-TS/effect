@@ -277,6 +277,14 @@ const ProtoTimeZoneOffset = {
   }
 }
 
+const makeZonedProto = (epochMillis: number, zone: TimeZone, partsUtc?: DateTime.Parts): Zoned => {
+  const self = Object.create(ProtoZoned)
+  self.epochMillis = epochMillis
+  self.zone = zone
+  self.partsUtc = partsUtc
+  return self
+}
+
 // =============================================================================
 // guards
 // =============================================================================
@@ -382,6 +390,17 @@ export const unsafeFromDate = (date: Date): Utc => {
  *
  * @since 3.6.0
  * @category constructors
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // from Date
+ * DateTime.unsafeMake(new Date())
+ *
+ * // from parts
+ * DateTime.unsafeMake({ year: 2024 })
+ *
+ * // from string
+ * DateTime.unsafeMake("2024-01-01")
  */
 export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.PreserveZone<A> => {
   if (isDateTime(input)) {
@@ -411,6 +430,50 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
 }
 
 /**
+ * Create a `DateTime.Zoned` using `DateTime.unsafeMake` and a time zone.
+ *
+ * The input is treated as UTC and then the time zone is applied.
+ *
+ * @since 3.6.0
+ * @category constructors
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * DateTime.unsafeMakeZoned(new Date(), "Europe/London")
+ */
+export const unsafeMakeZoned = (input: DateTime.Input, zone: number | string): Zoned => {
+  const self = unsafeMake(input)
+  if (typeof zone === "number") {
+    return setZoneOffset(self, zone)
+  }
+  const parsedZone = zoneFromString(zone)
+  if (Option.isNone(parsedZone)) {
+    throw new IllegalArgumentException(`Invalid time zone: ${zone}`)
+  }
+  return setZone(self, parsedZone.value)
+}
+
+/**
+ * Create a `DateTime.Zoned` using `DateTime.make` and a time zone.
+ *
+ * If the date time input or time zone is invalid, `None` will be returned.
+ *
+ * @since 3.6.0
+ * @category constructors
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * DateTime.makeZoned(new Date(), "Europe/London")
+ */
+export const makeZoned = (input: DateTime.Input, zone: number | string): Option.Option<Zoned> =>
+  Option.flatMap(make(input), (dt) => {
+    if (typeof zone === "number") {
+      return Option.some(setZoneOffset(dt, zone))
+    }
+    return Option.map(zoneFromString(zone), (zone) => setZone(dt, zone))
+  })
+
+/**
  * Create a `DateTime` from one of the following:
  *
  * - A `DateTime`
@@ -423,6 +486,17 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
  *
  * @since 3.6.0
  * @category constructors
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // from Date
+ * DateTime.make(new Date())
+ *
+ * // from parts
+ * DateTime.make({ year: 2024 })
+ *
+ * // from string
+ * DateTime.make("2024-01-01")
  */
 export const make: <A extends DateTime.Input>(input: A) => Option.Option<DateTime.PreserveZone<A>> = Option
   .liftThrowable(unsafeMake)
@@ -451,6 +525,12 @@ export const makeZonedFromString = (input: string): Option.Option<Zoned> => {
  *
  * @since 3.6.0
  * @category constructors
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.now
+ * })
  */
 export const now: Effect.Effect<Utc> = Effect.map(
   Effect.clock,
@@ -469,25 +549,27 @@ export const unsafeNow: LazyArg<Utc> = () => makeUtc(Date.now())
 // time zones
 // =============================================================================
 
-const makeZoned = (epochMillis: number, zone: TimeZone, partsUtc?: DateTime.Parts): Zoned => {
-  const self = Object.create(ProtoZoned)
-  self.epochMillis = epochMillis
-  self.zone = zone
-  self.partsUtc = partsUtc
-  return self
-}
-
 /**
  * Set the time zone of a `DateTime`, returning a new `DateTime.Zoned`.
  *
  * @since 3.6.0
  * @category time zones
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.now
+ *   const zone = DateTime.zoneUnsafeMakeNamed("Europe/London")
+ *
+ *   // set the time zone
+ *   const zoned: DateTime.Zoned = DateTime.setZone(now, zone)
+ * })
  */
 export const setZone: {
   (zone: TimeZone): (self: DateTime) => Zoned
   (self: DateTime, zone: TimeZone): Zoned
 } = dual(2, (self: DateTime, zone: TimeZone): Zoned => {
-  return makeZoned(self.epochMillis, zone, self.partsUtc)
+  return makeZonedProto(self.epochMillis, zone, self.partsUtc)
 })
 
 /**
@@ -497,6 +579,15 @@ export const setZone: {
  *
  * @since 3.6.0
  * @category time zones
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.now
+ *
+ *   // set the offset time zone in milliseconds
+ *   const zoned: DateTime.Zoned = DateTime.setZoneOffset(now, 3 * 60 * 60 * 1000)
+ * })
  */
 export const setZoneOffset: {
   (offset: number): (self: DateTime) => Zoned
@@ -597,6 +688,8 @@ export const zoneMakeNamedEffect = (zoneId: string): Effect.Effect<TimeZone.Name
  */
 export const zoneMakeLocal = (): TimeZone.Named => zoneMakeIntl(new Intl.DateTimeFormat("en-US", formatOptions))
 
+const offsetZoneRegex = /^(?:GMT|[+-])/
+
 /**
  * Try parse a TimeZone from a string
  *
@@ -604,8 +697,8 @@ export const zoneMakeLocal = (): TimeZone.Named => zoneMakeIntl(new Intl.DateTim
  * @category time zones
  */
 export const zoneFromString = (zone: string): Option.Option<TimeZone> => {
-  if (zone.startsWith("GMT")) {
-    const offset = parseGmtOffset(zone)
+  if (offsetZoneRegex.test(zone)) {
+    const offset = parseOffset(zone)
     return offset === null ? Option.none() : Option.some(zoneMakeOffset(offset))
   }
   return zoneMakeNamed(zone)
@@ -616,10 +709,18 @@ export const zoneFromString = (zone: string): Option.Option<TimeZone> => {
  *
  * @since 3.6.0
  * @category time zones
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * // Outputs "+03:00"
+ * DateTime.zoneToString(DateTime.zoneMakeOffset(3 * 60 * 60 * 1000))
+ *
+ * // Outputs "Europe/London"
+ * DateTime.zoneToString(DateTime.zoneUnsafeMakeNamed("Europe/London"))
  */
 export const zoneToString = (self: TimeZone): string => {
   if (self._tag === "Offset") {
-    return `GMT${offsetToString(self.offset)}`
+    return offsetToString(self.offset)
   }
   return self.id
 }
@@ -630,6 +731,14 @@ export const zoneToString = (self: TimeZone): string => {
  *
  * @since 3.6.0
  * @category time zones
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.now
+ *   // set the time zone, returns an Option
+ *   DateTime.setZoneNamed(now, "Europe/London")
+ * })
  */
 export const setZoneNamed: {
   (zoneId: string): (self: DateTime) => Option.Option<Zoned>
@@ -646,6 +755,14 @@ export const setZoneNamed: {
  *
  * @since 3.6.0
  * @category time zones
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.now
+ *   // set the time zone
+ *   DateTime.unsafeSetZoneNamed(now, "Europe/London")
+ * })
  */
 export const unsafeSetZoneNamed: {
   (zoneId: string): (self: DateTime) => Zoned
@@ -664,8 +781,18 @@ export const unsafeSetZoneNamed: {
  *
  * @since 3.6.0
  * @category comparisons
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.now
+ *   const other = DateTime.add(now, 1, "minute")
+ *
+ *   // returns 60000
+ *   DateTime.distance(now, other)
+ * })
  */
-export const diff: {
+export const distance: {
   (other: DateTime): (self: DateTime) => number
   (self: DateTime, other: DateTime): number
 } = dual(2, (self: DateTime, other: DateTime): number => toEpochMillis(other) - toEpochMillis(self))
@@ -681,12 +808,24 @@ export const diff: {
  *
  * @since 3.6.0
  * @category constructors
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.now
+ *   const other = DateTime.add(now, 1, "minute")
+ *
+ *   // returns Either.right(Duration.minutes(1))
+ *   DateTime.distanceDurationEither(now, other)
+ *
+ *   // returns Either.left(Duration.minutes(1))
+ *   DateTime.distanceDurationEither(other, now)
+ * })
  */
-export const diffDurationEither: {
+export const distanceDurationEither: {
   (other: DateTime): (self: DateTime) => Either.Either<Duration.Duration, Duration.Duration>
   (self: DateTime, other: DateTime): Either.Either<Duration.Duration, Duration.Duration>
 } = dual(2, (self: DateTime, other: DateTime): Either.Either<Duration.Duration, Duration.Duration> => {
-  const diffMillis = diff(self, other)
+  const diffMillis = distance(self, other)
   return diffMillis > 0
     ? Either.right(Duration.millis(diffMillis))
     : Either.left(Duration.millis(-diffMillis))
@@ -697,13 +836,22 @@ export const diffDurationEither: {
  *
  * @since 3.6.0
  * @category constructors
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.now
+ *   const other = DateTime.add(now, 1, "minute")
+ *
+ *   // returns Duration.minutes(1)
+ *   DateTime.distanceDuration(now, other)
+ * })
  */
-export const diffDuration: {
+export const distanceDuration: {
   (other: DateTime): (self: DateTime) => Duration.Duration
   (self: DateTime, other: DateTime): Duration.Duration
 } = dual(
   2,
-  (self: DateTime, other: DateTime): Duration.Duration => Duration.millis(Math.abs(diff(self, other)))
+  (self: DateTime, other: DateTime): Duration.Duration => Duration.millis(Math.abs(distance(self, other)))
 )
 
 /**
@@ -829,8 +977,8 @@ export const toDateAdjusted = (self: Zoned): Date => {
  * @category conversions
  */
 export const zoneOffset = (self: Zoned): number => {
-  const plainDate = toDateAdjusted(self)
-  return plainDate.getTime() - toEpochMillis(self)
+  const date = toDateAdjusted(self)
+  return date.getTime() - toEpochMillis(self)
 }
 
 const offsetToString = (offset: number): string => {
@@ -852,6 +1000,8 @@ export const zoneOffsetISOString = (self: Zoned): string => offsetToString(zoneO
 
 /**
  * Format a `DateTime.Zoned` as a string.
+ *
+ * It uses the format: `YYYY-MM-DDTHH:mm:ss.sssZ IANA/TimeZone`.
  *
  * @since 3.6.0
  * @category conversions
@@ -878,7 +1028,7 @@ export const toPartsAdjusted = (self: Zoned): DateTime.Parts => {
   if (self.partsAdjusted !== undefined) {
     return self.partsAdjusted
   }
-  self.partsAdjusted = withAdjustedDate(self, dateToParts)
+  self.partsAdjusted = withDateAdjusted(self, dateToParts)
   return self.partsAdjusted
 }
 
@@ -894,7 +1044,7 @@ export const toPartsUtc = (self: DateTime): DateTime.Parts => {
   if (self.partsUtc !== undefined) {
     return self.partsUtc
   }
-  self.partsUtc = withUtcDate(self, dateToParts)
+  self.partsUtc = withDateUtc(self, dateToParts)
   return self.partsUtc
 }
 
@@ -924,6 +1074,12 @@ export const getPartUtc: {
  *
  * @since 3.6.0
  * @category conversions
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * const now = DateTime.unsafeMakeZoned({ year: 2024 }, "Europe/London")
+ * const year = DateTime.getPartAdjusted(now, "year")
+ * assert.strictEqual(year, 2024)
  */
 export const getPartAdjusted: {
   (part: keyof DateTime.Parts): (self: Zoned) => number
@@ -1007,6 +1163,15 @@ export class CurrentTimeZone extends Context.Tag("effect/DateTime/CurrentTimeZon
  *
  * @since 3.6.0
  * @category current time zone
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.now
+ *
+ *   // set the time zone to "Europe/London"
+ *   const zoned = yield* DateTime.setZoneCurrent(now)
+ * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))
  */
 export const setZoneCurrent = (self: DateTime): Effect.Effect<Zoned, never, CurrentTimeZone> =>
   Effect.map(CurrentTimeZone, (zone) => setZone(self, zone))
@@ -1016,6 +1181,14 @@ export const setZoneCurrent = (self: DateTime): Effect.Effect<Zoned, never, Curr
  *
  * @since 3.6.0
  * @category current time zone
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * const zone = DateTime.zoneUnsafeMakeNamed("Europe/London")
+ *
+ * Effect.gen(function* () {
+ *   const now = yield* DateTime.nowInCurrentZone
+ * }).pipe(DateTime.withCurrentZone(zone))
  */
 export const withCurrentZone: {
   (zone: TimeZone): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, CurrentTimeZone>>
@@ -1027,10 +1200,18 @@ export const withCurrentZone: {
 )
 
 /**
- * Provide the `CurrentTimeZone` to an effect.
+ * Provide the `CurrentTimeZone` to an effect, using the system's local time
+ * zone.
  *
  * @since 3.6.0
  * @category current time zone
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   // will use the system's local time zone
+ *   const now = yield* DateTime.nowInCurrentZone
+ * }).pipe(DateTime.withCurrentZoneLocal)
  */
 export const withCurrentZoneLocal = <A, E, R>(
   effect: Effect.Effect<A, E, R>
@@ -1045,6 +1226,13 @@ export const withCurrentZoneLocal = <A, E, R>(
  *
  * @since 3.6.0
  * @category current time zone
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   // will use the "Europe/London" time zone
+ *   const now = yield* DateTime.nowInCurrentZone
+ * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))
  */
 export const withCurrentZoneNamed: {
   (zone: string): <A, E, R>(
@@ -1068,6 +1256,13 @@ export const withCurrentZoneNamed: {
  *
  * @since 3.6.0
  * @category current time zone
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   // will use the "Europe/London" time zone
+ *   const now = yield* DateTime.nowInCurrentZone
+ * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))
  */
 export const nowInCurrentZone: Effect.Effect<Zoned, never, CurrentTimeZone> = Effect.flatMap(
   now,
@@ -1109,9 +1304,9 @@ export const layerCurrentZoneLocal: Layer.Layer<CurrentTimeZone> = Layer.sync(
 const calculateOffset = (date: Date, zone: TimeZone): number =>
   zone._tag === "Offset" ? zone.offset : calculateNamedOffset(date, zone)
 
-const gmtOffsetRegex = /^GMT([+-])(\d{2}):(\d{2})$/
-const parseGmtOffset = (offset: string): number | null => {
-  const match = gmtOffsetRegex.exec(offset)
+const offsetRegex = /([+-])(\d{2}):(\d{2})$/
+const parseOffset = (offset: string): number | null => {
+  const match = offsetRegex.exec(offset)
   if (match === null) {
     return null
   }
@@ -1125,10 +1320,10 @@ const calculateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
   if (offset === "GMT") {
     return 0
   }
-  const result = parseGmtOffset(offset)
+  const result = parseOffset(offset)
   if (result === null) {
     // fallback to using the adjusted date
-    return zoneOffset(makeZoned(date.getTime(), zone))
+    return zoneOffset(makeZonedProto(date.getTime(), zone))
   }
   return result
 }
@@ -1155,7 +1350,7 @@ export const mutateAdjusted: {
   const newAdjustedDate = new Date(adjustedDate.getTime())
   f(newAdjustedDate)
   const offset = calculateOffset(newAdjustedDate, self.zone)
-  return makeZoned(newAdjustedDate.getTime() - offset, self.zone)
+  return makeZonedProto(newAdjustedDate.getTime() - offset, self.zone)
 })
 
 /**
@@ -1180,13 +1375,20 @@ export const mutateUtc: {
  *
  * @since 3.6.0
  * @category mapping
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // add 10 milliseconds
+ * DateTime.unsafeMake(0).pipe(
+ *   DateTime.mapEpochMillis((millis) => millis + 10)
+ * )
  */
 export const mapEpochMillis: {
   (f: (millis: number) => number): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
   <A extends DateTime>(self: A, f: (millis: number) => number): DateTime.PreserveZone<A>
 } = dual(2, (self: DateTime, f: (millis: number) => number): DateTime => {
   const millis = f(toEpochMillis(self))
-  return self._tag === "Utc" ? makeUtc(millis) : makeZoned(millis, self.zone)
+  return self._tag === "Utc" ? makeUtc(millis) : makeZonedProto(millis, self.zone)
 })
 
 /**
@@ -1195,8 +1397,15 @@ export const mapEpochMillis: {
  *
  * @since 3.6.0
  * @category mapping
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // get the time zone adjusted date in milliseconds
+ * DateTime.unsafeMakeZoned(0, "Pacific/Auckland").pipe(
+ *   DateTime.withDateAdjusted((date) => date.getTime())
+ * )
  */
-export const withAdjustedDate: {
+export const withDateAdjusted: {
   <A>(f: (date: Date) => A): (self: Zoned) => A
   <A>(self: Zoned, f: (date: Date) => A): A
 } = dual(2, <A>(self: Zoned, f: (date: Date) => A): A => f(toDateAdjusted(self)))
@@ -1207,8 +1416,15 @@ export const withAdjustedDate: {
  *
  * @since 3.6.0
  * @category mapping
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // get the date in milliseconds
+ * DateTime.unsafeMake(0).pipe(
+ *   DateTime.withDateUtc((date) => date.getTime())
+ * )
  */
-export const withUtcDate: {
+export const withDateUtc: {
   <A>(f: (date: Date) => A): (self: DateTime) => A
   <A>(self: DateTime, f: (date: Date) => A): A
 } = dual(2, <A>(self: DateTime, f: (date: Date) => A): A => f(toDateUtc(self)))
@@ -1240,6 +1456,13 @@ export const match: {
  *
  * @since 3.6.0
  * @category math
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // add 5 minutes
+ * DateTime.unsafeMake(0).pipe(
+ *   DateTime.addDuration("5 minutes")
+ * )
  */
 export const addDuration: {
   (duration: Duration.DurationInput): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1255,6 +1478,13 @@ export const addDuration: {
  *
  * @since 3.6.0
  * @category math
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // subtract 5 minutes
+ * DateTime.unsafeMake(0).pipe(
+ *   DateTime.subtractDuration("5 minutes")
+ * )
  */
 export const subtractDuration: {
   (duration: Duration.DurationInput): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1270,8 +1500,18 @@ const addMillis = (date: DateTime, amount: number): DateTime => mapEpochMillis(d
 /**
  * Add the given `amount` of `unit`'s to a `DateTime`.
  *
+ * The time zone is taken into account when adding days, weeks, months, and
+ * years.
+ *
  * @since 3.6.0
  * @category math
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // add 5 minutes
+ * DateTime.unsafeMake(0).pipe(
+ *   DateTime.add(5, "minutes")
+ * )
  */
 export const add: {
   (amount: number, unit: DateTime.Unit): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1326,6 +1566,13 @@ export const add: {
  *
  * @since 3.6.0
  * @category math
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // subtract 5 minutes
+ * DateTime.unsafeMake(0).pipe(
+ *   DateTime.subtract(5, "minutes")
+ * )
  */
 export const subtract: {
   (amount: number, unit: DateTime.Unit): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1340,6 +1587,14 @@ export const subtract: {
  *
  * @since 3.6.0
  * @category math
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // returns "2024-01-01T00:00:00Z"
+ * DateTime.unsafeMake("2024-01-01T12:00:00Z").pipe(
+ *   DateTime.startOf("day"),
+ *   DateTime.formatIso
+ * )
  */
 export const startOf: {
   (part: DateTime.DatePart, options?: {
@@ -1386,6 +1641,14 @@ export const startOf: {
  *
  * @since 3.6.0
  * @category math
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // returns "2024-01-01T23:59:59.999Z"
+ * DateTime.unsafeMake("2024-01-01T12:00:00Z").pipe(
+ *   DateTime.endOf("day"),
+ *   DateTime.formatIso
+ * )
  */
 export const endOf: {
   (part: DateTime.DatePart, options?: {
