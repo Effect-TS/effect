@@ -410,21 +410,7 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
     return unsafeFromDate(input) as DateTime.PreserveZone<A>
   } else if (typeof input === "object") {
     const date = new Date(0)
-    date.setUTCFullYear(
-      input.year ?? 0,
-      input.month ? input.month - 1 : 0,
-      input.day ?? 1
-    )
-    date.setUTCHours(
-      input.hours ?? 0,
-      input.minutes ?? 0,
-      input.seconds ?? 0,
-      input.millis ?? 0
-    )
-    if (input.weekDay !== undefined) {
-      const diff = input.weekDay - date.getUTCDay()
-      date.setUTCDate(date.getUTCDate() + diff)
-    }
+    setParts(date, input)
     return unsafeFromDate(date) as DateTime.PreserveZone<A>
   }
   return unsafeFromDate(new Date(input)) as DateTime.PreserveZone<A>
@@ -433,7 +419,7 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
 /**
  * Create a `DateTime.Zoned` using `DateTime.unsafeMake` and a time zone.
  *
- * The input is treated as UTC and then the time zone is applied.
+ * The input is treated as UTC and then the time zone is attached.
  *
  * @since 3.6.0
  * @category constructors
@@ -456,6 +442,8 @@ export const unsafeMakeZoned = (input: DateTime.Input, zone: number | string): Z
 
 /**
  * Create a `DateTime.Zoned` using `DateTime.make` and a time zone.
+ *
+ * The input is treated as UTC and then the time zone is attached.
  *
  * If the date time input or time zone is invalid, `None` will be returned.
  *
