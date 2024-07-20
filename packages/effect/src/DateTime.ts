@@ -421,7 +421,9 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
 /**
  * Create a `DateTime.Zoned` using `DateTime.unsafeMake` and a time zone.
  *
- * The input is treated as UTC and then the time zone is attached.
+ * The input is treated as UTC and then the time zone is attached, unless
+ * `inputInTimeZone` is set to `true`. In that case, the input is treated as
+ * already in the time zone.
  *
  * @since 3.6.0
  * @category constructors
@@ -430,18 +432,29 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
  *
  * DateTime.unsafeMakeZoned(new Date(), "Europe/London")
  */
-export const unsafeMakeZoned = (input: DateTime.Input, zone: number | string | TimeZone): Zoned => {
+export const unsafeMakeZoned = (input: DateTime.Input, options: {
+  readonly timeZone: number | string | TimeZone
+  readonly inputInTimeZone?: boolean | undefined
+}): Zoned => {
   const self = unsafeMake(input)
-  if (isTimeZone(zone)) {
-    return setZone(self, zone)
-  } else if (typeof zone === "number") {
-    return setZoneOffset(self, zone)
+  let zone: TimeZone
+  if (isTimeZone(options.timeZone)) {
+    zone = options.timeZone
+  } else if (typeof options.timeZone === "number") {
+    zone = zoneMakeOffset(options.timeZone)
+  } else {
+    const parsedZone = zoneFromString(options.timeZone)
+    if (Option.isNone(parsedZone)) {
+      throw new IllegalArgumentException(`Invalid time zone: ${options.timeZone}`)
+    }
+    zone = parsedZone.value
   }
-  const parsedZone = zoneFromString(zone)
-  if (Option.isNone(parsedZone)) {
-    throw new IllegalArgumentException(`Invalid time zone: ${zone}`)
+  if (options.inputInTimeZone !== true) {
+    return makeZonedProto(self.epochMillis, zone, self.partsUtc)
   }
-  return setZone(self, parsedZone.value)
+  const date = toDateUtc(self)
+  const offset = calculateOffset(date, zone)
+  return makeZonedProto(date.getTime() - offset, zone)
 }
 
 /**
@@ -458,7 +471,13 @@ export const unsafeMakeZoned = (input: DateTime.Input, zone: number | string | T
  *
  * DateTime.makeZoned(new Date(), "Europe/London")
  */
-export const makeZoned: (input: DateTime.Input, zone: string | number | TimeZone) => Option.Option<Zoned> = Option
+export const makeZoned: (
+  input: DateTime.Input,
+  options: {
+    readonly timeZone: number | string | TimeZone
+    readonly inputInTimeZone?: boolean | undefined
+  }
+) => Option.Option<Zoned> = Option
   .liftThrowable(unsafeMakeZoned)
 
 /**
