@@ -1270,7 +1270,7 @@ export const layerCurrentZoneNamed = (zoneId: string): Layer.Layer<CurrentTimeZo
   Layer.effect(CurrentTimeZone, zoneMakeNamedEffect(zoneId))
 
 /**
- * Create a Layer from the given IANA time zone identifier.
+ * Create a Layer from the systems local time zone.
  *
  * @since 3.6.0
  * @category current time zone
