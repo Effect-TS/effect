@@ -49,7 +49,7 @@ export declare namespace DateTime {
    * @since 3.6.0
    * @category models
    */
-  export type Input = DateTime | Date | number
+  export type Input = DateTime | Date | number | string
 
   /**
    * @since 3.6.0
@@ -301,7 +301,7 @@ export const isDateTime = (u: unknown): u is DateTime => Predicate.hasProperty(u
  * @category guards
  */
 export const isDateTimeInput = (u: unknown): u is DateTime.Input =>
-  isDateTime(u) || u instanceof Date || typeof u === "number"
+  isDateTime(u) || u instanceof Date || typeof u === "number" || typeof u === "string"
 
 /**
  * @since 3.6.0
@@ -386,14 +386,7 @@ const _clamp = order.clamp(Order)
  * @since 3.6.0
  * @category constructors
  */
-export const unsafeFromEpochMillis = (epochMillis: number): DateTime.Utc => {
-  if (Number.isNaN(epochMillis) || !Number.isFinite(epochMillis)) {
-    throw new IllegalArgumentException("Invalid date")
-  }
-  const self = Object.create(ProtoUtc)
-  self.epochMillis = epochMillis
-  return self
-}
+export const unsafeFromEpochMillis = (epochMillis: number): DateTime.Utc => unsafeFromDate(new Date(epochMillis))
 
 /**
  * Create a `DateTime` from the number of milliseconds since the Unix epoch.
@@ -413,7 +406,15 @@ export const fromEpochMillis: (epochMillis: number) => Option.Option<DateTime.Ut
  * @since 3.6.0
  * @category constructors
  */
-export const unsafeFromDate = (date: Date): DateTime.Utc => unsafeFromEpochMillis(date.getTime())
+export const unsafeFromDate = (date: Date): DateTime.Utc => {
+  const epochMillis = date.getTime()
+  if (Number.isNaN(epochMillis)) {
+    throw new IllegalArgumentException("Invalid date")
+  }
+  const self = Object.create(ProtoUtc)
+  self.epochMillis = epochMillis
+  return self
+}
 
 /**
  * Create a `DateTime` from one of the following:
@@ -427,10 +428,10 @@ export const unsafeFromDate = (date: Date): DateTime.Utc => unsafeFromEpochMilli
 export const fromInput = <A extends DateTime.Input>(input: A): DateTime.PreserveZone<A> => {
   if (isDateTime(input)) {
     return input as DateTime.PreserveZone<A>
-  } else if (typeof input === "number") {
-    return unsafeFromEpochMillis(input) as DateTime.PreserveZone<A>
+  } else if (input instanceof Date) {
+    return unsafeFromDate(input) as DateTime.PreserveZone<A>
   }
-  return unsafeFromDate(input) as DateTime.PreserveZone<A>
+  return unsafeFromDate(new Date(input)) as DateTime.PreserveZone<A>
 }
 
 /**
