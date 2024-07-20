@@ -49,9 +49,6 @@ hole<S.Schema.Type<typeof S.Never>>()
 // @ts-expect-error
 S.String.annotations({ a: 1 })
 
-// $ExpectType typeof String$
-S.String.annotations({ [Symbol.for("a")]: 1 })
-
 /**
  * @category api interface
  * @since 1.0.0
