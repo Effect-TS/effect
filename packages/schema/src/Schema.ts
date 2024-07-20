@@ -5923,74 +5923,245 @@ export class DateFromNumber extends transform(
 /**
  * Describes a schema that represents a `DateTime.Utc` instance.
  *
- * @category DateTime constructors
- * @since 0.67.0
+ * @category DateTime.Utc constructors
+ * @since 0.68.26
  */
 export class DateTimeUtcFromSelf extends declare(
   (u) => dateTime.isDateTime(u) && dateTime.isUtc(u),
   {
     identifier: "DateTimeUtcFromSelf",
     description: "a DateTime.Utc instance",
-    pretty: (): pretty_.Pretty<dateTime.DateTime.Utc> => (dateTime) => `DateTime.Utc(${JSON.stringify(dateTime)})`,
-    arbitrary: (): LazyArbitrary<dateTime.DateTime.Utc> => (fc) =>
-      fc.date().map((date) => dateTime.unsafeFromDate(date)),
+    pretty: (): pretty_.Pretty<dateTime.Utc> => (dateTime) => dateTime.toString(),
+    arbitrary: (): LazyArbitrary<dateTime.Utc> => (fc) => fc.date().map((date) => dateTime.unsafeFromDate(date)),
     equivalence: () => dateTime.Equivalence
   }
 ) {
-  static override annotations: (annotations: Annotations.Schema<dateTime.DateTime.Utc>) => typeof DateTimeUtcFromSelf =
-    super.annotations
+  static override annotations: (annotations: Annotations.Schema<dateTime.Utc>) => typeof DateTimeUtcFromSelf = super
+    .annotations
 }
+
+const decodeDateTime = <A extends dateTime.DateTime.Input>(input: A, _: ParseOptions, ast: AST.AST) =>
+  ParseResult.try({
+    try: () => dateTime.unsafeMake(input),
+    catch: () => new ParseResult.Type(ast, input)
+  })
 
 /**
  * Defines a schema that attempts to convert a `number` to a `DateTime.Utc` instance using the `DateTime.unsafeFromEpochMillis` constructor.
  *
- * @category DateTime transformations
- * @since 0.67.0
+ * @category DateTime.Utc transformations
+ * @since 0.68.26
  */
 export class DateTimeUtcFromNumber extends transformOrFail(
   Number$,
   DateTimeUtcFromSelf,
   {
     strict: true,
-    decode: (n, _, ast) => {
-      try {
-        return ParseResult.succeed(dateTime.unsafeFromEpochMillis(n))
-      } catch (_) {
-        return ParseResult.fail(new ParseResult.Type(ast, n))
-      }
-    },
+    decode: decodeDateTime,
     encode: (dt) => ParseResult.succeed(dateTime.toEpochMillis(dt))
   }
 ).annotations({ identifier: "DateTimeUtcFromNumber" }) {
   static override annotations: (
-    annotations: Annotations.Schema<dateTime.DateTime.Utc>
+    annotations: Annotations.Schema<dateTime.Utc>
   ) => typeof DateTimeUtcFromNumber = super.annotations
 }
 
 /**
  * Defines a schema that attempts to convert a `string` to a `DateTime.Utc` instance using the `DateTime.unsafeFromString` constructor.
  *
- * @category DateTime transformations
- * @since 0.67.0
+ * @category DateTime.Utc transformations
+ * @since 0.68.26
  */
-export class DateTimeUtcFromString extends transformOrFail(
+export class DateTimeUtc extends transformOrFail(
   String$,
   DateTimeUtcFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) => {
-      try {
-        return ParseResult.succeed(dateTime.unsafeFromString(s))
-      } catch (_) {
-        return ParseResult.fail(new ParseResult.Type(ast, s))
-      }
-    },
+    decode: decodeDateTime,
     encode: (dt) => ParseResult.succeed(dateTime.formatIso(dt))
   }
-).annotations({ identifier: "DateTimeUtcFromString" }) {
+).annotations({ identifier: "DateTime.Utc" }) {
   static override annotations: (
-    annotations: Annotations.Schema<dateTime.DateTime.Utc>
-  ) => typeof DateTimeUtcFromString = super.annotations
+    annotations: Annotations.Schema<dateTime.Utc>
+  ) => typeof DateTimeUtc = super.annotations
+}
+
+const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (fc) =>
+  fc.integer({ min: -12 * 60 * 60 * 1000, max: 12 * 60 * 60 * 1000 }).map((offset) => dateTime.zoneMakeOffset(offset))
+
+/**
+ * Describes a schema that represents a `TimeZone.Offset` instance.
+ *
+ * @category TimeZone constructors
+ * @since 0.68.26
+ */
+export class TimeZoneOffsetFromSelf extends declare(
+  dateTime.isTimeZoneOffset,
+  {
+    identifier: "TimeZoneOffsetFromSelf",
+    description: "a TimeZone.Offset instance",
+    pretty: (): pretty_.Pretty<dateTime.TimeZone.Offset> => (zone) => `TimeZone.Offset(${zone.offset})`,
+    arbitrary: timeZoneOffsetArbitrary
+  }
+) {
+  static override annotations: (
+    annotations: Annotations.Schema<dateTime.TimeZone.Offset>
+  ) => typeof TimeZoneOffsetFromSelf = super.annotations
+}
+
+/**
+ * Defines a schema that attempts to convert a `number` to a `TimeZone.Offset` instance using the `DateTime.makeZoneOffset` constructor.
+ *
+ * @category TimeZone transformations
+ * @since 0.68.26
+ */
+export class TimeZoneOffset extends transform(
+  Number$,
+  TimeZoneOffsetFromSelf,
+  { strict: true, decode: (n) => dateTime.zoneMakeOffset(n), encode: (tz) => tz.offset }
+).annotations({ identifier: "TimeZoneOffset" }) {
+  static override annotations: (
+    annotations: Annotations.Schema<dateTime.TimeZone.Offset>
+  ) => typeof TimeZoneOffset = super.annotations
+}
+
+const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc) =>
+  fc.constantFrom(...Intl.supportedValuesOf("timeZone")).map((id) => dateTime.zoneUnsafeMakeNamed(id))
+
+/**
+ * Describes a schema that represents a `TimeZone.Named` instance.
+ *
+ * @category TimeZone constructors
+ * @since 0.68.26
+ */
+export class TimeZoneNamedFromSelf extends declare(
+  dateTime.isTimeZoneNamed,
+  {
+    identifier: "TimeZoneNamedFromSelf",
+    description: "a TimeZone.Named instance",
+    pretty: (): pretty_.Pretty<dateTime.TimeZone.Named> => (zone) => `TimeZone.Named(${zone.id})`,
+    arbitrary: timeZoneNamedArbitrary
+  }
+) {
+  static override annotations: (
+    annotations: Annotations.Schema<dateTime.TimeZone.Named>
+  ) => typeof TimeZoneNamedFromSelf = super.annotations
+}
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `TimeZone.Named` instance using the `DateTime.unsafeMakeZoneNamed` constructor.
+ *
+ * @category TimeZone transformations
+ * @since 0.68.26
+ */
+export class TimeZoneNamed extends transformOrFail(
+  String$,
+  TimeZoneNamedFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      ParseResult.try({
+        try: () => dateTime.zoneUnsafeMakeNamed(s),
+        catch: () => new ParseResult.Type(ast, s)
+      }),
+    encode: (tz) => ParseResult.succeed(tz.id)
+  }
+).annotations({ identifier: "TimeZoneNamed" }) {
+  static override annotations: (
+    annotations: Annotations.Schema<dateTime.TimeZone.Named>
+  ) => typeof TimeZoneNamed = super.annotations
+}
+
+/**
+ * @category api interface
+ * @since 0.68.26
+ */
+export interface TimeZoneFromSelf extends Union<[typeof TimeZoneOffsetFromSelf, typeof TimeZoneNamedFromSelf]> {
+  annotations(annotations: Annotations.Schema<dateTime.TimeZone>): TimeZoneFromSelf
+}
+
+/**
+ * @category TimeZone constructors
+ * @since 0.68.26
+ */
+export const TimeZoneFromSelf: TimeZoneFromSelf = Union(TimeZoneOffsetFromSelf, TimeZoneNamedFromSelf)
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `TimeZone` using the `DateTime.makeZoneFromString` constructor.
+ *
+ * @category TimeZone transformations
+ * @since 0.68.26
+ */
+export class TimeZone extends transformOrFail(
+  String$,
+  TimeZoneFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) => {
+      const zone = dateTime.zoneFromString(s)
+      return zone._tag === "Some" ? ParseResult.succeed(zone.value) : ParseResult.fail(new ParseResult.Type(ast, s))
+    },
+    encode: (tz) => ParseResult.succeed(dateTime.zoneToString(tz))
+  }
+).annotations({ identifier: "TimeZone" }) {
+  static override annotations: (
+    annotations: Annotations.Schema<dateTime.TimeZone>
+  ) => typeof TimeZone = super.annotations
+}
+
+const timeZoneArbitrary: LazyArbitrary<dateTime.TimeZone> = (fc) =>
+  fc.oneof(
+    timeZoneOffsetArbitrary()(fc),
+    timeZoneNamedArbitrary()(fc)
+  )
+
+/**
+ * Describes a schema that represents a `DateTime.Zoned` instance.
+ *
+ * @category DateTime.Zoned constructors
+ * @since 0.68.26
+ */
+export class DateTimeZonedFromSelf extends declare(
+  (u) => dateTime.isDateTime(u) && dateTime.isZoned(u),
+  {
+    identifier: "DateTimeZonedFromSelf",
+    description: "a DateTime.Zoned instance",
+    pretty: (): pretty_.Pretty<dateTime.Zoned> => (dateTime) => dateTime.toString(),
+    arbitrary: (): LazyArbitrary<dateTime.Zoned> => (fc) =>
+      fc.date().chain((date) =>
+        timeZoneArbitrary(fc).map((zone) => dateTime.setZone(dateTime.unsafeFromDate(date), zone))
+      ),
+    equivalence: () => dateTime.Equivalence
+  }
+) {
+  static override annotations: (
+    annotations: Annotations.Schema<dateTime.Zoned>
+  ) => typeof DateTimeZonedFromSelf = super.annotations
+}
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `DateTime.Zoned` instance.
+ *
+ * @category DateTime.Zoned transformations
+ * @since 0.68.26
+ */
+export class DateTimeZoned extends transformOrFail(
+  String$,
+  DateTimeZonedFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) => {
+      const dateTimeZoned = dateTime.makeZonedFromString(s)
+      return dateTimeZoned._tag === "Some"
+        ? ParseResult.succeed(dateTimeZoned.value)
+        : ParseResult.fail(new ParseResult.Type(ast, s))
+    },
+    encode: (dt) => ParseResult.succeed(dateTime.toStringZoned(dt))
+  }
+).annotations({ identifier: "DateTime.Zoned" }) {
+  static override annotations: (
+    annotations: Annotations.Schema<dateTime.Zoned>
+  ) => typeof DateTimeZoned = super.annotations
 }
 
 /**

@@ -44,11 +44,11 @@ describe("DateTime", () => {
       }))
 
     it("to month with less days", () => {
-      const jan = DateTime.fromParts({ year: 2023, month: 1, day: 31 })
+      const jan = DateTime.unsafeMake({ year: 2023, month: 1, day: 31 })
       let feb = DateTime.add(jan, 1, "month")
       assert.strictEqual(feb.toJSON(), "2023-02-28T00:00:00.000Z")
 
-      const mar = DateTime.fromParts({ year: 2023, month: 3, day: 31 })
+      const mar = DateTime.unsafeMake({ year: 2023, month: 3, day: 31 })
       feb = DateTime.add(mar, -1, "month")
       assert.strictEqual(feb.toJSON(), "2023-02-28T00:00:00.000Z")
     })
@@ -73,32 +73,32 @@ describe("DateTime", () => {
 
   describe("endOf", () => {
     it("month", () => {
-      const mar = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const mar = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
       const end = DateTime.endOf(mar, "month")
       assert.strictEqual(end.toJSON(), "2024-03-31T23:59:59.999Z")
     })
 
     it("feb leap year", () => {
-      const feb = DateTime.unsafeFromString("2024-02-15T12:00:00.000Z")
+      const feb = DateTime.unsafeMake("2024-02-15T12:00:00.000Z")
       const end = DateTime.endOf(feb, "month")
       assert.strictEqual(end.toJSON(), "2024-02-29T23:59:59.999Z")
     })
 
     it("week", () => {
-      const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const start = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
       const end = DateTime.endOf(start, "week")
       assert.strictEqual(end.toJSON(), "2024-03-16T23:59:59.999Z")
       assert.strictEqual(DateTime.getPartUtc(end, "weekDay"), 6)
     })
 
     it("week last day", () => {
-      const start = DateTime.unsafeFromString("2024-03-16T12:00:00.000Z")
+      const start = DateTime.unsafeMake("2024-03-16T12:00:00.000Z")
       const end = DateTime.endOf(start, "week")
       assert.strictEqual(end.toJSON(), "2024-03-16T23:59:59.999Z")
     })
 
     it("week with options", () => {
-      const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const start = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
       const end = DateTime.endOf(start, "week", {
         weekStartsOn: 1
       })
@@ -119,32 +119,32 @@ describe("DateTime", () => {
 
   describe("startOf", () => {
     it("month", () => {
-      const mar = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const mar = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
       const end = DateTime.startOf(mar, "month")
       assert.strictEqual(end.toJSON(), "2024-03-01T00:00:00.000Z")
     })
 
     it("feb leap year", () => {
-      const feb = DateTime.unsafeFromString("2024-02-15T12:00:00.000Z")
+      const feb = DateTime.unsafeMake("2024-02-15T12:00:00.000Z")
       const end = DateTime.startOf(feb, "month")
       assert.strictEqual(end.toJSON(), "2024-02-01T00:00:00.000Z")
     })
 
     it("week", () => {
-      const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const start = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
       const end = DateTime.startOf(start, "week")
       assert.strictEqual(end.toJSON(), "2024-03-10T00:00:00.000Z")
       assert.strictEqual(DateTime.getPartUtc(end, "weekDay"), 0)
     })
 
     it("week first day", () => {
-      const start = DateTime.unsafeFromString("2024-03-10T12:00:00.000Z")
+      const start = DateTime.unsafeMake("2024-03-10T12:00:00.000Z")
       const end = DateTime.startOf(start, "week")
       assert.strictEqual(end.toJSON(), "2024-03-10T00:00:00.000Z")
     })
 
     it("week with options", () => {
-      const start = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const start = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
       const end = DateTime.startOf(start, "week", {
         weekStartsOn: 1
       })
@@ -185,7 +185,7 @@ describe("DateTime", () => {
           DateTime.withCurrentZoneNamed("Pacific/Auckland")
         )
         assert.strictEqual(
-          DateTime.formatWithZone(now, { dateStyle: "full", timeStyle: "full" }),
+          DateTime.formatZoned(now, { dateStyle: "full", timeStyle: "full" }),
           "Thursday, January 1, 1970 at 12:00:00 PM New Zealand Standard Time"
         )
       }))
@@ -195,7 +195,7 @@ describe("DateTime", () => {
         const now = yield* DateTime.now
         const formatted = now.pipe(
           DateTime.setZoneOffset(10 * 60 * 60 * 1000),
-          DateTime.formatWithZone({ dateStyle: "long", timeStyle: "short" })
+          DateTime.formatZoned({ dateStyle: "long", timeStyle: "short" })
         )
         assert.strictEqual(formatted, "January 1, 1970 at 10:00 AM")
       }))
@@ -203,7 +203,7 @@ describe("DateTime", () => {
 
   describe("fromParts", () => {
     it("partial", () => {
-      const date = DateTime.fromParts({
+      const date = DateTime.unsafeMake({
         year: 2024,
         month: 12,
         day: 25
@@ -212,14 +212,14 @@ describe("DateTime", () => {
     })
 
     it("month is set correctly", () => {
-      const date = DateTime.fromParts({ year: 2024 })
+      const date = DateTime.unsafeMake({ year: 2024 })
       assert.strictEqual(date.toJSON(), "2024-01-01T00:00:00.000Z")
     })
   })
 
   describe("setPartsUtc", () => {
     it("partial", () => {
-      const date = DateTime.fromParts({
+      const date = DateTime.unsafeMake({
         year: 2024,
         month: 12,
         day: 25
@@ -234,7 +234,7 @@ describe("DateTime", () => {
     })
 
     it("ignores time zones", () => {
-      const date = DateTime.fromParts({
+      const date = DateTime.unsafeMake({
         year: 2024,
         month: 12,
         day: 25
@@ -251,7 +251,7 @@ describe("DateTime", () => {
 
   describe("setPartsAdjusted", () => {
     it("partial", () => {
-      const date = DateTime.fromParts({
+      const date = DateTime.unsafeMake({
         year: 2024,
         month: 12,
         day: 25
@@ -266,7 +266,7 @@ describe("DateTime", () => {
     })
 
     it("accounts for time zone", () => {
-      const date = DateTime.fromParts({
+      const date = DateTime.unsafeMake({
         year: 2024,
         month: 12,
         day: 25
@@ -284,7 +284,7 @@ describe("DateTime", () => {
 
   describe("formatIso", () => {
     it("full", () => {
-      const now = DateTime.unsafeFromString("2024-03-15T12:00:00.000Z")
+      const now = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
       assert.strictEqual(DateTime.formatIso(now), "2024-03-15T12:00:00.000Z")
     })
   })
