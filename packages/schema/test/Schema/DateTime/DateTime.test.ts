@@ -42,6 +42,13 @@ describe("DateTime.Zoned", () => {
     await Util.expectDecodeUnknownSuccess(schema, "1970-01-01T00:00:00.000Z Europe/London", dt)
     await Util.expectDecodeUnknownFailure(
       schema,
+      "1970-01-01T00:00:00.000Z",
+      `DateTime.Zoned
+└─ Transformation process failure
+   └─ Expected DateTime.Zoned, actual "1970-01-01T00:00:00.000Z"`
+    )
+    await Util.expectDecodeUnknownFailure(
+      schema,
       "a",
       `DateTime.Zoned
 └─ Transformation process failure
