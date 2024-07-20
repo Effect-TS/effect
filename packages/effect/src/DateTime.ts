@@ -959,7 +959,7 @@ export const toDateAdjusted = (self: Zoned): Date => {
  * @since 3.6.0
  * @category conversions
  */
-export const zoneOffset = (self: Zoned): number => {
+export const zonedOffset = (self: Zoned): number => {
   const date = toDateAdjusted(self)
   return date.getTime() - toEpochMillis(self)
 }
@@ -979,7 +979,7 @@ const offsetToString = (offset: number): string => {
  * @since 3.6.0
  * @category conversions
  */
-export const zoneOffsetISOString = (self: Zoned): string => offsetToString(zoneOffset(self))
+export const zonedOffsetISOString = (self: Zoned): string => offsetToString(zonedOffset(self))
 
 /**
  * Format a `DateTime.Zoned` as a string.
@@ -1261,6 +1261,15 @@ export const nowInCurrentZone: Effect.Effect<Zoned, never, CurrentTimeZone> = Ef
 export const layerCurrentZone = (zone: TimeZone): Layer.Layer<CurrentTimeZone> => Layer.succeed(CurrentTimeZone, zone)
 
 /**
+ * Create a Layer from the given time zone offset.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ */
+export const layerCurrentZoneOffset = (offset: number): Layer.Layer<CurrentTimeZone> =>
+  Layer.succeed(CurrentTimeZone, zoneMakeOffset(offset))
+
+/**
  * Create a Layer from the given IANA time zone identifier.
  *
  * @since 3.6.0
@@ -1306,7 +1315,7 @@ const calculateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
   const result = parseOffset(offset)
   if (result === null) {
     // fallback to using the adjusted date
-    return zoneOffset(makeZonedProto(date.getTime(), zone))
+    return zonedOffset(makeZonedProto(date.getTime(), zone))
   }
   return result
 }
@@ -1835,5 +1844,5 @@ export const formatIso = (self: DateTime): string => toDateUtc(self).toISOString
  */
 export const formatIsoOffset = (self: Zoned): string => {
   const date = toDateAdjusted(self)
-  return `${date.toISOString().slice(0, 19)}${zoneOffsetISOString(self)}`
+  return `${date.toISOString().slice(0, 19)}${zonedOffsetISOString(self)}`
 }
