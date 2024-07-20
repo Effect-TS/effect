@@ -919,6 +919,65 @@ export const getPartAdjusted: {
   (self: DateTime.WithZone, part: keyof DateTime.Parts): number
 } = dual(2, (self: DateTime.WithZone, part: keyof DateTime.Parts): number => toPartsAdjusted(self)[part])
 
+const setParts = (date: Date, parts: Partial<DateTime.Parts>): void => {
+  if (parts.year !== undefined) {
+    date.setUTCFullYear(parts.year)
+  }
+  if (parts.month !== undefined) {
+    date.setUTCMonth(parts.month - 1)
+  }
+  if (parts.day !== undefined) {
+    date.setUTCDate(parts.day)
+  }
+  if (parts.weekDay !== undefined) {
+    const diff = parts.weekDay - date.getUTCDay()
+    date.setUTCDate(date.getUTCDate() + diff)
+  }
+  if (parts.hours !== undefined) {
+    date.setUTCHours(parts.hours)
+  }
+  if (parts.minutes !== undefined) {
+    date.setUTCMinutes(parts.minutes)
+  }
+  if (parts.seconds !== undefined) {
+    date.setUTCSeconds(parts.seconds)
+  }
+  if (parts.millis !== undefined) {
+    date.setUTCMilliseconds(parts.millis)
+  }
+}
+
+/**
+ * Set the different parts of a `DateTime` as an object.
+ *
+ * The Date will be time zone adjusted.
+ *
+ * @since 3.6.0
+ * @category conversions
+ */
+export const setPartsAdjusted: {
+  (parts: Partial<DateTime.Parts>): <A extends DateTime.Input>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime.Input>(self: A, parts: Partial<DateTime.Parts>): DateTime.PreserveZone<A>
+} = dual(
+  2,
+  (self: DateTime.Input, parts: Partial<DateTime.Parts>): DateTime =>
+    mutateAdjusted(self, (date) => setParts(date, parts))
+)
+
+/**
+ * Set the different parts of a `DateTime` as an object.
+ *
+ * @since 3.6.0
+ * @category conversions
+ */
+export const setPartsUtc: {
+  (parts: Partial<DateTime.Parts>): <A extends DateTime.Input>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime.Input>(self: A, parts: Partial<DateTime.Parts>): DateTime.PreserveZone<A>
+} = dual(
+  2,
+  (self: DateTime.Input, parts: Partial<DateTime.Parts>): DateTime => mutateUtc(self, (date) => setParts(date, parts))
+)
+
 // =============================================================================
 // current time zone
 // =============================================================================
@@ -1065,10 +1124,10 @@ const calculateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
  * @since 3.6.0
  * @category mapping
  */
-export const mutate: {
-  (f: (plainDate: Date) => void): <A extends DateTime.Input>(self: A) => DateTime.PreserveZone<A>
-  <A extends DateTime.Input>(self: A, f: (plainDate: Date) => void): DateTime.PreserveZone<A>
-} = dual(2, (self: DateTime.Input, f: (plainDate: Date) => void): DateTime => {
+export const mutateAdjusted: {
+  (f: (date: Date) => void): <A extends DateTime.Input>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime.Input>(self: A, f: (date: Date) => void): DateTime.PreserveZone<A>
+} = dual(2, (self: DateTime.Input, f: (date: Date) => void): DateTime => {
   const dt = fromInput(self)
   if (dt._tag === "Utc") {
     const date = toDateUtc(dt)
@@ -1081,6 +1140,22 @@ export const mutate: {
   const offset = calculateOffset(newAdjustedDate, dt.zone)
   return makeWithZone(newAdjustedDate.getTime() - offset, dt.zone)
 })
+
+/**
+ * Modify a `DateTime` by applying a function to the underlying UTC `Date`.
+ *
+ * @since 3.6.0
+ * @category mapping
+ */
+export const mutateUtc: {
+  (f: (date: Date) => void): <A extends DateTime.Input>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime.Input>(self: A, f: (date: Date) => void): DateTime.PreserveZone<A>
+} = dual(2, (self: DateTime.Input, f: (date: Date) => void): DateTime =>
+  mapEpochMillis(self, (millis) => {
+    const date = new Date(millis)
+    f(date)
+    return date.getTime()
+  }))
 
 /**
  * Transform a `DateTime` by applying a function to the number of milliseconds
@@ -1203,7 +1278,7 @@ export const add: {
     case "hour":
       return addMillis(self, amount * 60 * 60 * 1000)
   }
-  return mutate(self, (date) => {
+  return mutateAdjusted(self, (date) => {
     switch (unit) {
       case "days":
       case "day": {
@@ -1263,7 +1338,7 @@ export const startOf: {
 } = dual((args) => typeof args[1] === "string", (self: DateTime.Input, part: DateTime.DatePart, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime =>
-  mutate(self, (date) => {
+  mutateAdjusted(self, (date) => {
     switch (part) {
       case "day": {
         date.setUTCHours(0, 0, 0, 0)
@@ -1309,7 +1384,7 @@ export const endOf: {
 } = dual((args) => typeof args[1] === "string", (self: DateTime.Input, part: DateTime.DatePart, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime =>
-  mutate(self, (date) => {
+  mutateAdjusted(self, (date) => {
     switch (part) {
       case "day": {
         date.setUTCHours(23, 59, 59, 999)
