@@ -908,7 +908,7 @@ export const toPartsUtc = (self: DateTime): DateTime.Parts => {
  * @example
  * import { DateTime } from "effect"
  *
- * const now = DateTime.fromParts({ year: 2024 })
+ * const now = DateTime.unsafeMake({ year: 2024 })
  * const year = DateTime.getPartUtc(now, "year")
  * assert.strictEqual(year, 2024)
  */

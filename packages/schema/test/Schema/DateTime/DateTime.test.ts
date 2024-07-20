@@ -30,7 +30,7 @@ describe("DateTime.Utc", () => {
   })
 })
 
-describe("DateTime.WithZone", () => {
+describe("DateTime.Zoned", () => {
   const schema = S.DateTimeZoned
   const dt = DateTime.unsafeMake(0).pipe(
     DateTime.unsafeSetZoneNamed("Europe/London")
@@ -45,9 +45,9 @@ describe("DateTime.WithZone", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "a",
-      `DateTime.WithZone
+      `DateTime.Zoned
 └─ Transformation process failure
-   └─ Expected DateTime.WithZone, actual "a"`
+   └─ Expected DateTime.Zoned, actual "a"`
     )
   })
 
