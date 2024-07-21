@@ -4,6 +4,8 @@
 import type { Schema } from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Data from "effect/Data"
+import * as Equal from "effect/Equal"
+import * as Hash from "effect/Hash"
 import * as Predicate from "effect/Predicate"
 import type { Envelope } from "./Envelope.js"
 
@@ -71,7 +73,24 @@ export class Standard<
   /**
    * @since 1.0.0
    */
-  readonly [TypeId] = TypeId
+  readonly [TypeId] = TypeId;
+
+  /**
+   * @since 1.0.0
+   */
+  [Hash.symbol](): number {
+    return Hash.structure({ _tag: this._tag, name: this.name })
+  }
+
+  /**
+   * @since 1.0.0
+   */
+  [Equal.symbol](this: Standard<Msg>, that: Equal.Equal): boolean {
+    if (isEntity(that)) {
+      return this._tag === that._tag && this.name === that.name
+    }
+    return false
+  }
 }
 
 /**
@@ -87,7 +106,24 @@ export class Clustered<
   /**
    * @since 1.0.0
    */
-  readonly [TypeId] = TypeId
+  readonly [TypeId] = TypeId;
+
+  /**
+   * @since 1.0.0
+   */
+  [Hash.symbol](): number {
+    return Hash.structure({ _tag: this._tag, name: this.name })
+  }
+
+  /**
+   * @since 1.0.0
+   */
+  [Equal.symbol](this: Clustered<Msg>, that: Equal.Equal): boolean {
+    if (isEntity(that)) {
+      return this._tag === that._tag && this.name === that.name
+    }
+    return false
+  }
 }
 
 /**
