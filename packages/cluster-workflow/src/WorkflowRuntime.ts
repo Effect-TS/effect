@@ -21,12 +21,12 @@ import * as WorkflowContext from "./WorkflowContext.js"
 import * as WorkflowRuntimeMessage from "./WorkflowRuntimeMessage.js"
 import * as WorkflowRuntimeState from "./WorkflowRuntimeState.js"
 
-function handleReplayPhase<A, E>(
+function handleReplayPhase<A, E, R>(
   wrs: WorkflowRuntimeState.WorkflowRuntimeState<A, E>,
   sa: DurableExecutionEvent.DurableExecutionEvent<A, E>,
-  executionEffect: (version: string) => Effect.Effect<A, E, never>,
+  executionEffect: (version: string) => Effect.Effect<A, E, R>,
   mailbox: Queue.Queue<WorkflowRuntimeMessage.WorkflowRuntimeMessage<A, E>>
-): Effect.Effect<WorkflowRuntimeState.WorkflowRuntimeState<A, E>, never, Scope.Scope> {
+): Effect.Effect<WorkflowRuntimeState.WorkflowRuntimeState<A, E>, never, R | Scope.Scope> {
   return WorkflowRuntimeState.match(wrs, {
     onNotStarted: () => {
       // we expect that the first event into the journal should be an "attempted"
@@ -190,19 +190,19 @@ function handleReplayPhase<A, E>(
   })
 }
 
-function handleExecutionPhase<A, E>(
+function handleExecutionPhase<A, E, R>(
   appendToJournal: (
     event: DurableExecutionEvent.DurableExecutionEvent<A, E>
   ) => Effect.Effect<void, never, DurableExecutionJournal.DurableExecutionJournal>,
   wrs: WorkflowRuntimeState.WorkflowRuntimeState<A, E>,
   ms: WorkflowRuntimeMessage.WorkflowRuntimeMessage<A, E>,
-  executionEffect: (version: string) => Effect.Effect<A, E, never>,
+  executionEffect: (version: string) => Effect.Effect<A, E, R>,
   executionVersion: string,
   mailbox: Queue.Queue<WorkflowRuntimeMessage.WorkflowRuntimeMessage<A, E>>
 ): Effect.Effect<
   WorkflowRuntimeState.WorkflowRuntimeState<A, E>,
   never,
-  Scope.Scope | DurableExecutionJournal.DurableExecutionJournal
+  R | Scope.Scope | DurableExecutionJournal.DurableExecutionJournal
 > {
   return WorkflowRuntimeState.match(wrs, {
     // workflow never started, we start the fiber than process again this message
