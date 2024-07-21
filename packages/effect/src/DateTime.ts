@@ -939,7 +939,7 @@ export const isPast = (self: DateTime): Effect.Effect<boolean> => Effect.map(now
  * @since 3.6.0
  * @category conversions
  */
-export const toDateUtc = (self: DateTime): Date => new Date(toEpochMillis(self))
+export const toDateUtc = (self: DateTime): Date => new Date(self.epochMillis)
 
 /**
  * Convert a `DateTime` to a `Date`, applying the time zone first.
@@ -947,8 +947,10 @@ export const toDateUtc = (self: DateTime): Date => new Date(toEpochMillis(self))
  * @since 3.6.0
  * @category conversions
  */
-export const toDateAdjusted = (self: Zoned): Date => {
-  if (self.zone._tag === "Offset") {
+export const toDateAdjusted = (self: DateTime): Date => {
+  if (self._tag === "Utc") {
+    return new Date(self.epochMillis)
+  } else if (self.zone._tag === "Offset") {
     return new Date(self.epochMillis + self.zone.offset)
   } else if (self.adjustedEpochMillis !== undefined) {
     return new Date(self.adjustedEpochMillis)
@@ -1035,8 +1037,10 @@ const dateToParts = (date: Date): DateTime.Parts => ({
  * @since 3.6.0
  * @category conversions
  */
-export const toPartsAdjusted = (self: Zoned): DateTime.Parts => {
-  if (self.partsAdjusted !== undefined) {
+export const toPartsAdjusted = (self: DateTime): DateTime.Parts => {
+  if (self._tag === "Utc") {
+    return toPartsUtc(self)
+  } else if (self.partsAdjusted !== undefined) {
     return self.partsAdjusted
   }
   self.partsAdjusted = withDateAdjusted(self, dateToParts)
@@ -1093,9 +1097,9 @@ export const getPartUtc: {
  * assert.strictEqual(year, 2024)
  */
 export const getPartAdjusted: {
-  (part: keyof DateTime.Parts): (self: Zoned) => number
-  (self: Zoned, part: keyof DateTime.Parts): number
-} = dual(2, (self: Zoned, part: keyof DateTime.Parts): number => toPartsAdjusted(self)[part])
+  (part: keyof DateTime.Parts): (self: DateTime) => number
+  (self: DateTime, part: keyof DateTime.Parts): number
+} = dual(2, (self: DateTime, part: keyof DateTime.Parts): number => toPartsAdjusted(self)[part])
 
 const setParts = (date: Date, parts: Partial<DateTime.Parts>): void => {
   if (parts.year !== undefined) {
@@ -1427,9 +1431,9 @@ export const mapEpochMillis: {
  * )
  */
 export const withDateAdjusted: {
-  <A>(f: (date: Date) => A): (self: Zoned) => A
-  <A>(self: Zoned, f: (date: Date) => A): A
-} = dual(2, <A>(self: Zoned, f: (date: Date) => A): A => f(toDateAdjusted(self)))
+  <A>(f: (date: Date) => A): (self: DateTime) => A
+  <A>(self: DateTime, f: (date: Date) => A): A
+} = dual(2, <A>(self: DateTime, f: (date: Date) => A): A => f(toDateAdjusted(self)))
 
 /**
  * Using the time zone adjusted `Date`, apply a function to the `Date` and
@@ -1675,7 +1679,7 @@ export const floorTimeUtc = (self: DateTime): Utc =>
   })
 
 /**
- * Remove the time aspect of a `DateTime.WithZone`, first adjusting for the time
+ * Remove the time aspect of a `DateTime.Zoned`, first adjusting for the time
  * zone.
  *
  * @since 3.6.0
@@ -1684,7 +1688,7 @@ export const floorTimeUtc = (self: DateTime): Utc =>
  * import { DateTime } from "effect"
  *
  * // returns "2024-01-01T00:00:00Z"
- * DateTime.unsafeMakeZoned("2024-01-01T00:00:00Z", {
+ * DateTime.unsafeMakeZoned("2024-01-01T05:00:00Z", {
  *   timeZone: "Pacific/Auckland",
  *   inputInTimeZone: true
  * }).pipe(
@@ -1692,7 +1696,7 @@ export const floorTimeUtc = (self: DateTime): Utc =>
  *   DateTime.formatIso
  * )
  */
-export const floorTimeAdjusted = (self: Zoned): Utc =>
+export const floorTimeAdjusted = (self: DateTime): Utc =>
   withDateAdjusted(self, (date) => {
     date.setUTCHours(0, 0, 0, 0)
     return makeUtc(date.getTime())
@@ -1904,7 +1908,7 @@ export const formatIso = (self: DateTime): string => toDateUtc(self).toISOString
  * @since 3.6.0
  * @category formatting
  */
-export const formatIsoOffset = (self: Zoned): string => {
+export const formatIsoOffset = (self: DateTime): string => {
   const date = toDateAdjusted(self)
-  return `${date.toISOString().slice(0, 19)}${zonedOffsetIso(self)}`
+  return self._tag === "Utc" ? date.toISOString() : `${date.toISOString().slice(0, 19)}${zonedOffsetIso(self)}`
 }
