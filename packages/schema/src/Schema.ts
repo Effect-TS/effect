@@ -5989,13 +5989,13 @@ export class TimeZoneOffsetFromSelf extends declare(
   {
     identifier: "TimeZoneOffsetFromSelf",
     description: "a TimeZone.Offset instance",
-    pretty: (): pretty_.Pretty<dateTime.TimeZone.Offset> => (zone) => `TimeZone.Offset(${zone.offset})`,
+    pretty: (): pretty_.Pretty<dateTime.TimeZone.Offset> => (zone) => zone.toString(),
     arbitrary: timeZoneOffsetArbitrary
   }
 ) {}
 
 /**
- * Defines a schema that attempts to convert a `number` to a `TimeZone.Offset` instance using the `DateTime.zoneMakeOffset` constructor.
+ * Defines a schema that converts a `number` to a `TimeZone.Offset` instance using the `DateTime.zoneMakeOffset` constructor.
  *
  * @category TimeZone transformations
  * @since 0.68.26
@@ -6003,11 +6003,11 @@ export class TimeZoneOffsetFromSelf extends declare(
 export class TimeZoneOffset extends transform(
   Number$,
   TimeZoneOffsetFromSelf,
-  { strict: true, decode: (n) => dateTime.zoneMakeOffset(n), encode: (tz) => tz.offset }
-).annotations({ identifier: "TimeZoneOffset" }) {}
+  { strict: true, decode: dateTime.zoneMakeOffset, encode: (tz) => tz.offset }
+).annotations({ identifier: "TimeZone.Offset" }) {}
 
 const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc) =>
-  fc.constantFrom(...Intl.supportedValuesOf("timeZone")).map((id) => dateTime.zoneUnsafeMakeNamed(id))
+  fc.constantFrom(...Intl.supportedValuesOf("timeZone")).map(dateTime.zoneUnsafeMakeNamed)
 
 /**
  * Describes a schema that represents a `TimeZone.Named` instance.
@@ -6020,7 +6020,7 @@ export class TimeZoneNamedFromSelf extends declare(
   {
     identifier: "TimeZoneNamedFromSelf",
     description: "a TimeZone.Named instance",
-    pretty: (): pretty_.Pretty<dateTime.TimeZone.Named> => (zone) => `TimeZone.Named(${zone.id})`,
+    pretty: (): pretty_.Pretty<dateTime.TimeZone.Named> => (zone) => zone.toString(),
     arbitrary: timeZoneNamedArbitrary
   }
 ) {}
@@ -6043,7 +6043,7 @@ export class TimeZoneNamed extends transformOrFail(
       }),
     encode: (tz) => ParseResult.succeed(tz.id)
   }
-).annotations({ identifier: "TimeZoneNamed" }) {}
+).annotations({ identifier: "TimeZone.Named" }) {}
 
 /**
  * @category api interface

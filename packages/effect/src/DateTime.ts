@@ -241,7 +241,9 @@ const ProtoZoned = {
 
 const ProtoTimeZone = {
   [TimeZoneTypeId]: TimeZoneTypeId,
-  ...Inspectable.BaseProto
+  [Inspectable.NodeInspectSymbol](this: TimeZone) {
+    return this.toString()
+  }
 }
 
 const ProtoTimeZoneNamed = {
@@ -252,6 +254,9 @@ const ProtoTimeZoneNamed = {
   },
   [Equal.symbol](this: TimeZone.Named, that: unknown) {
     return isTimeZone(that) && that._tag === "Named" && this.id === that.id
+  },
+  toString(this: TimeZone.Named) {
+    return `TimeZone.Named(${this.id})`
   },
   toJSON(this: TimeZone.Named) {
     return {
@@ -270,6 +275,9 @@ const ProtoTimeZoneOffset = {
   },
   [Equal.symbol](this: TimeZone.Offset, that: unknown) {
     return isTimeZone(that) && that._tag === "Offset" && this.offset === that.offset
+  },
+  toString(this: TimeZone.Offset) {
+    return `TimeZone.Offset(${offsetToString(this.offset)})`
   },
   toJSON(this: TimeZone.Offset) {
     return {
