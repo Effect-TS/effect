@@ -5973,7 +5973,7 @@ export class DateTimeUtc extends transformOrFail(
     decode: decodeDateTime,
     encode: (dt) => ParseResult.succeed(dateTime.formatIso(dt))
   }
-).annotations({ identifier: "DateTime.Utc" }) {}
+).annotations({ identifier: "DateTimeUtc" }) {}
 
 const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (fc) =>
   fc.integer({ min: -12 * 60 * 60 * 1000, max: 12 * 60 * 60 * 1000 }).map((offset) => dateTime.zoneMakeOffset(offset))
@@ -6004,7 +6004,7 @@ export class TimeZoneOffset extends transform(
   Number$,
   TimeZoneOffsetFromSelf,
   { strict: true, decode: dateTime.zoneMakeOffset, encode: (tz) => tz.offset }
-).annotations({ identifier: "TimeZone.Offset" }) {}
+).annotations({ identifier: "TimeZoneOffset" }) {}
 
 const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc) =>
   fc.constantFrom(...Intl.supportedValuesOf("timeZone")).map(dateTime.zoneUnsafeMakeNamed)
@@ -6043,7 +6043,7 @@ export class TimeZoneNamed extends transformOrFail(
       }),
     encode: (tz) => ParseResult.succeed(tz.id)
   }
-).annotations({ identifier: "TimeZone.Named" }) {}
+).annotations({ identifier: "TimeZoneNamed" }) {}
 
 /**
  * @category api interface
@@ -6121,7 +6121,7 @@ export class DateTimeZoned extends transformOrFail(
       }),
     encode: (dt) => ParseResult.succeed(dateTime.zonedToString(dt))
   }
-).annotations({ identifier: "DateTime.Zoned" }) {}
+).annotations({ identifier: "DateTimeZoned" }) {}
 
 /**
  * @category Option utils

@@ -19,9 +19,9 @@ describe("DateTime.Utc", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "a",
-      `DateTime.Utc
+      `DateTimeUtc
 └─ Transformation process failure
-   └─ Expected DateTime.Utc, actual "a"`
+   └─ Expected DateTimeUtc, actual "a"`
     )
   })
 
@@ -43,16 +43,16 @@ describe("DateTime.Zoned", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "1970-01-01T00:00:00.000Z",
-      `DateTime.Zoned
+      `DateTimeZoned
 └─ Transformation process failure
-   └─ Expected DateTime.Zoned, actual "1970-01-01T00:00:00.000Z"`
+   └─ Expected DateTimeZoned, actual "1970-01-01T00:00:00.000Z"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "a",
-      `DateTime.Zoned
+      `DateTimeZoned
 └─ Transformation process failure
-   └─ Expected DateTime.Zoned, actual "a"`
+   └─ Expected DateTimeZoned, actual "a"`
     )
   })
 
