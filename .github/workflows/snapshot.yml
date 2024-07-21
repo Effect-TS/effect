@@ -88,19 +88,20 @@ jobs:
             const commands = ${{ steps.snapshot.outputs.snapshots }}.map((snapshot) => {
               const [package, installer] = snapshot.split(": ")
               const [, sha] = installer.split(/@(?=[^@]*$)/)
-              const header = `<details><summary><b>${package} (${sha})</b></summary><p>`
+              const header = `<b>${package} (${sha}):<br />`
               const content = "\n```sh\n" + installer + "\n```\n"
-              const footer = `</p></details>`
-              return [header, content, footer].join("\n")
+              return [header, content].join("\n")
             })
-            const header = `**Good news @${{ github.actor }}, your snapshot has been published!**`
-            const footer = `You can review the build log [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).`
+            const header = `**Good news @${{ github.actor }}, your snapshot has been published!**\n\n`
+              + `You can review the build log [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).`
+
+            const packages = `<details><summary><b>Packages:</b></summary>\n\n${commands.join("\n")}\n\n</details>`
 
             await github.rest.issues.updateComment({
               comment_id: ${{ steps.comment.outputs.comment-id }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `${header}\n\n${commands.join("\n")}\n\n${footer}`
+              body: `${header}\n\n${packages}`
             })
 
       - name: Update comment (failure)
