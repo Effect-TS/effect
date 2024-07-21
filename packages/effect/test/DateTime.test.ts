@@ -295,7 +295,7 @@ describe("DateTime", () => {
         const now = yield* DateTime.nowInCurrentZone.pipe(
           DateTime.withCurrentZoneNamed("Pacific/Auckland")
         )
-        assert.strictEqual(DateTime.formatIsoOffset(now), "1970-01-01T12:00:00+12:00")
+        assert.strictEqual(DateTime.formatIsoOffset(now), "1970-01-01T12:00:00.000+12:00")
       }))
   })
 
@@ -303,7 +303,7 @@ describe("DateTime", () => {
     it.effect("correctly adds offset", () =>
       Effect.gen(function*() {
         const now = yield* DateTime.nowInCurrentZone
-        assert.strictEqual(DateTime.formatIsoOffset(now), "1970-01-01T12:00:00+12:00")
+        assert.strictEqual(DateTime.formatIsoOffset(now), "1970-01-01T12:00:00.000+12:00")
       }).pipe(
         Effect.provide(DateTime.layerCurrentZoneNamed("Pacific/Auckland"))
       ))
