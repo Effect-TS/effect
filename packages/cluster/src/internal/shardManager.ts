@@ -321,10 +321,10 @@ function make(
         yield* _(
           Effect.logDebug(
             "Failed to rebalance pods: " +
-              (failedPods) +
-              " failed pinged: " + (failedPingedPods) +
-              " failed assigned: " + (failedAssignedPods) +
-              " failed unassigned: " + (failedUnassignedPods)
+              failedPods +
+              " failed pinged: " + failedPingedPods +
+              " failed assigned: " + failedAssignedPods +
+              " failed unassigned: " + failedUnassignedPods
           )
         )
       }

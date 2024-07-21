@@ -200,7 +200,7 @@ function make(
   }
 
   const register: Effect.Effect<void> = pipe(
-    Effect.logDebug(`Registering pod ${(address)} to Shard Manager`),
+    Effect.logDebug(`Registering pod ${address} to Shard Manager`),
     Effect.zipRight(pipe(isShuttingDownRef, Ref.set(false))),
     Effect.zipRight(shardManager.register(address))
   )
@@ -232,7 +232,7 @@ function make(
             )
           ),
           Effect.zipRight(
-            Effect.logDebug(`Unregistering pod ${(address)} to Shard Manager`)
+            Effect.logDebug(`Unregistering pod ${address} to Shard Manager`)
           ),
           Effect.zipRight(shardManager.unregister(address))
         )
@@ -327,7 +327,7 @@ function make(
     return pipe(
       Ref.update(shardAssignments, (_) => HashSet.reduce(shards, _, (_, shardId) => HashMap.set(_, shardId, address))),
       Effect.zipRight(startSingletonsIfNeeded),
-      Effect.zipLeft(Effect.logDebug("Assigned shards: " + (shards))),
+      Effect.zipLeft(Effect.logDebug("Assigned shards: " + shards)),
       Effect.unlessEffect(isShuttingDown),
       Effect.asVoid
     )
@@ -344,7 +344,7 @@ function make(
           return _
         })),
       Effect.zipRight(stopSingletonsIfNeeded),
-      Effect.zipLeft(Effect.logDebug("Unassigning shards: " + (shards)))
+      Effect.zipLeft(Effect.logDebug("Unassigning shards: " + shards))
     )
   }
 

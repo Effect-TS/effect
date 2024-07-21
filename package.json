@@ -45,7 +45,7 @@
     "@effect/build-utils": "^0.7.7",
     "@effect/docgen": "^0.4.3",
     "@effect/dtslint": "^0.1.0",
-    "@effect/eslint-plugin": "^0.1.2",
+    "@effect/eslint-plugin": "^0.2.0",
     "@effect/language-service": "^0.1.0",
     "@types/node": "^20.14.10",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
