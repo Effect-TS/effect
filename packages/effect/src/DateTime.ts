@@ -816,7 +816,8 @@ export const distance: {
  * `Duration`, returned as a `Right`.
  *
  * @since 3.6.0
- * @category constructors
+ * @category comparisons
+ * @example
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -844,7 +845,8 @@ export const distanceDurationEither: {
  * Calulate the distance between two `DateTime` values.
  *
  * @since 3.6.0
- * @category constructors
+ * @category comparisons
+ * @example
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -1028,6 +1030,34 @@ export const zonedToString = (self: Zoned): string =>
  */
 export const toEpochMillis = (self: DateTime): number => self.epochMillis
 
+/**
+ * Remove the time aspect of a `DateTime`, first adjusting for the time
+ * zone. It will return a `DateTime.Utc` only containing the date.
+ *
+ * @since 3.6.0
+ * @category conversions
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // returns "2024-01-01T00:00:00Z"
+ * DateTime.unsafeMakeZoned("2024-01-01T05:00:00Z", {
+ *   timeZone: "Pacific/Auckland",
+ *   inputInTimeZone: true
+ * }).pipe(
+ *   DateTime.removeTime,
+ *   DateTime.formatIso
+ * )
+ */
+export const removeTime = (self: DateTime): Utc =>
+  withDate(self, (date) => {
+    date.setUTCHours(0, 0, 0, 0)
+    return makeUtc(date.getTime())
+  })
+
+// =============================================================================
+// parts
+// =============================================================================
+
 const dateToParts = (date: Date): DateTime.Parts => ({
   millis: date.getUTCMilliseconds(),
   seconds: date.getUTCSeconds(),
@@ -1045,7 +1075,7 @@ const dateToParts = (date: Date): DateTime.Parts => ({
  * The parts will be time zone adjusted.
  *
  * @since 3.6.0
- * @category conversions
+ * @category parts
  */
 export const toParts = (self: DateTime): DateTime.Parts => {
   if (self._tag === "Utc") {
@@ -1063,7 +1093,7 @@ export const toParts = (self: DateTime): DateTime.Parts => {
  * The parts will be in UTC.
  *
  * @since 3.6.0
- * @category conversions
+ * @category parts
  */
 export const toPartsUtc = (self: DateTime): DateTime.Parts => {
   if (self.partsUtc !== undefined) {
@@ -1079,7 +1109,7 @@ export const toPartsUtc = (self: DateTime): DateTime.Parts => {
  * The part will be in the UTC time zone.
  *
  * @since 3.6.0
- * @category conversions
+ * @category parts
  * @example
  * import { DateTime } from "effect"
  *
@@ -1098,7 +1128,7 @@ export const getPartUtc: {
  * The part will be time zone adjusted.
  *
  * @since 3.6.0
- * @category conversions
+ * @category parts
  * @example
  * import { DateTime } from "effect"
  *
@@ -1145,7 +1175,7 @@ const setPartsDate = (date: Date, parts: Partial<DateTime.Parts>): void => {
  * The Date will be time zone adjusted.
  *
  * @since 3.6.0
- * @category conversions
+ * @category parts
  */
 export const setParts: {
   (parts: Partial<DateTime.Parts>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1159,7 +1189,7 @@ export const setParts: {
  * Set the different parts of a `DateTime` as an object.
  *
  * @since 3.6.0
- * @category conversions
+ * @category parts
  */
 export const setPartsUtc: {
   (parts: Partial<DateTime.Parts>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1168,30 +1198,6 @@ export const setPartsUtc: {
   2,
   (self: DateTime, parts: Partial<DateTime.Parts>): DateTime => mutateUtc(self, (date) => setPartsDate(date, parts))
 )
-
-/**
- * Remove the time aspect of a `DateTime`, first adjusting for the time
- * zone. It will return a `DateTime.Utc` only containing the date.
- *
- * @since 3.6.0
- * @category conversions
- * @example
- * import { DateTime } from "effect"
- *
- * // returns "2024-01-01T00:00:00Z"
- * DateTime.unsafeMakeZoned("2024-01-01T05:00:00Z", {
- *   timeZone: "Pacific/Auckland",
- *   inputInTimeZone: true
- * }).pipe(
- *   DateTime.removeTime,
- *   DateTime.formatIso
- * )
- */
-export const removeTime = (self: DateTime): Utc =>
-  withDate(self, (date) => {
-    date.setUTCHours(0, 0, 0, 0)
-    return makeUtc(date.getTime())
-  })
 
 // =============================================================================
 // current time zone
@@ -1266,6 +1272,30 @@ export const withCurrentZoneLocal = <A, E, R>(
   effect: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, Exclude<R, CurrentTimeZone>> =>
   Effect.provideServiceEffect(effect, CurrentTimeZone, Effect.sync(zoneMakeLocal))
+
+/**
+ * Provide the `CurrentTimeZone` to an effect, using a offset.
+ *
+ * @since 3.6.0
+ * @category current time zone
+ * @example
+ * import { DateTime, Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   // will use the system's local time zone
+ *   const now = yield* DateTime.nowInCurrentZone
+ * }).pipe(DateTime.withCurrentZoneOffset(3 * 60 * 60 * 1000))
+ */
+export const withCurrentZoneOffset: {
+  (offset: number): <A, E, R>(
+    effect: Effect.Effect<A, E, R>
+  ) => Effect.Effect<A, E, Exclude<R, CurrentTimeZone>>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, offset: number): Effect.Effect<A, E, Exclude<R, CurrentTimeZone>>
+} = dual(
+  2,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, offset: number): Effect.Effect<A, E, Exclude<R, CurrentTimeZone>> =>
+    Effect.provideService(effect, CurrentTimeZone, zoneMakeOffset(offset))
+)
 
 /**
  * Provide the `CurrentTimeZone` to an effect using an IANA time zone
