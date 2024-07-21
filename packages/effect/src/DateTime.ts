@@ -514,7 +514,7 @@ export const makeZoned: (
 export const make: <A extends DateTime.Input>(input: A) => Option.Option<DateTime.PreserveZone<A>> = Option
   .liftThrowable(unsafeMake)
 
-const zonedStringRegex = /^(.{24,35})\[(.+)\]$/
+const zonedStringRegex = /^(.{17,35})\[(.+)\]$/
 
 /**
  * Create a `DateTime.Zoned` from a string.
