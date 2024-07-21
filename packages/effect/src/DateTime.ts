@@ -1411,7 +1411,7 @@ export const mapEpochMillis: {
  * import { DateTime } from "effect"
  *
  * // get the time zone adjusted date in milliseconds
- * DateTime.unsafeMakeZoned(0, { timeZone: "Europe/London" })
+ * DateTime.unsafeMakeZoned(0, { timeZone: "Europe/London" }).pipe(
  *   DateTime.withDateAdjusted((date) => date.getTime())
  * )
  */
