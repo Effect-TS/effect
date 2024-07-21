@@ -235,7 +235,7 @@ const ProtoZoned = {
       Equal.equals(this.zone, that.zone)
   },
   toString(this: Zoned) {
-    return `DateTime.Zoned(${toDateUtc(this).toJSON()}, ${zoneToString(this.zone)})`
+    return `DateTime.Zoned(${zonedToString(this)})`
   }
 }
 
@@ -420,7 +420,7 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
     return unsafeFromDate(input) as DateTime.PreserveZone<A>
   } else if (typeof input === "object") {
     const date = new Date(0)
-    setParts(date, input)
+    setPartsDate(date, input)
     return unsafeFromDate(date) as DateTime.PreserveZone<A>
   }
   return unsafeFromDate(new Date(input)) as DateTime.PreserveZone<A>
@@ -956,7 +956,7 @@ export const toDateUtc = (self: DateTime): Date => new Date(self.epochMillis)
  * @since 3.6.0
  * @category conversions
  */
-export const toDateAdjusted = (self: DateTime): Date => {
+export const toDate = (self: DateTime): Date => {
   if (self._tag === "Utc") {
     return new Date(self.epochMillis)
   } else if (self.zone._tag === "Offset") {
@@ -988,7 +988,7 @@ export const toDateAdjusted = (self: DateTime): Date => {
  * @category conversions
  */
 export const zonedOffset = (self: Zoned): number => {
-  const date = toDateAdjusted(self)
+  const date = toDate(self)
   return date.getTime() - toEpochMillis(self)
 }
 
@@ -1047,13 +1047,13 @@ const dateToParts = (date: Date): DateTime.Parts => ({
  * @since 3.6.0
  * @category conversions
  */
-export const toPartsAdjusted = (self: DateTime): DateTime.Parts => {
+export const toParts = (self: DateTime): DateTime.Parts => {
   if (self._tag === "Utc") {
     return toPartsUtc(self)
   } else if (self.partsAdjusted !== undefined) {
     return self.partsAdjusted
   }
-  self.partsAdjusted = withDateAdjusted(self, dateToParts)
+  self.partsAdjusted = withDate(self, dateToParts)
   return self.partsAdjusted
 }
 
@@ -1103,15 +1103,15 @@ export const getPartUtc: {
  * import { DateTime } from "effect"
  *
  * const now = DateTime.unsafeMakeZoned({ year: 2024 }, { timeZone: "Europe/London" })
- * const year = DateTime.getPartAdjusted(now, "year")
+ * const year = DateTime.getPart(now, "year")
  * assert.strictEqual(year, 2024)
  */
-export const getPartAdjusted: {
+export const getPart: {
   (part: keyof DateTime.Parts): (self: DateTime) => number
   (self: DateTime, part: keyof DateTime.Parts): number
-} = dual(2, (self: DateTime, part: keyof DateTime.Parts): number => toPartsAdjusted(self)[part])
+} = dual(2, (self: DateTime, part: keyof DateTime.Parts): number => toParts(self)[part])
 
-const setParts = (date: Date, parts: Partial<DateTime.Parts>): void => {
+const setPartsDate = (date: Date, parts: Partial<DateTime.Parts>): void => {
   if (parts.year !== undefined) {
     date.setUTCFullYear(parts.year)
   }
@@ -1147,12 +1147,12 @@ const setParts = (date: Date, parts: Partial<DateTime.Parts>): void => {
  * @since 3.6.0
  * @category conversions
  */
-export const setPartsAdjusted: {
+export const setParts: {
   (parts: Partial<DateTime.Parts>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
   <A extends DateTime>(self: A, parts: Partial<DateTime.Parts>): DateTime.PreserveZone<A>
 } = dual(
   2,
-  (self: DateTime, parts: Partial<DateTime.Parts>): DateTime => mutateAdjusted(self, (date) => setParts(date, parts))
+  (self: DateTime, parts: Partial<DateTime.Parts>): DateTime => mutate(self, (date) => setPartsDate(date, parts))
 )
 
 /**
@@ -1166,8 +1166,32 @@ export const setPartsUtc: {
   <A extends DateTime>(self: A, parts: Partial<DateTime.Parts>): DateTime.PreserveZone<A>
 } = dual(
   2,
-  (self: DateTime, parts: Partial<DateTime.Parts>): DateTime => mutateUtc(self, (date) => setParts(date, parts))
+  (self: DateTime, parts: Partial<DateTime.Parts>): DateTime => mutateUtc(self, (date) => setPartsDate(date, parts))
 )
+
+/**
+ * Remove the time aspect of a `DateTime`, first adjusting for the time
+ * zone. It will return a `DateTime.Utc` only containing the date.
+ *
+ * @since 3.6.0
+ * @category conversions
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // returns "2024-01-01T00:00:00Z"
+ * DateTime.unsafeMakeZoned("2024-01-01T05:00:00Z", {
+ *   timeZone: "Pacific/Auckland",
+ *   inputInTimeZone: true
+ * }).pipe(
+ *   DateTime.removeTime,
+ *   DateTime.formatIso
+ * )
+ */
+export const removeTime = (self: DateTime): Utc =>
+  withDate(self, (date) => {
+    date.setUTCHours(0, 0, 0, 0)
+    return makeUtc(date.getTime())
+  })
 
 // =============================================================================
 // current time zone
@@ -1373,7 +1397,7 @@ const calculateNamedOffset = (adjustedMillis: number, zone: TimeZone.Named): num
  * @since 3.6.0
  * @category mapping
  */
-export const mutateAdjusted: {
+export const mutate: {
   (f: (date: Date) => void): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
   <A extends DateTime>(self: A, f: (date: Date) => void): DateTime.PreserveZone<A>
 } = dual(2, (self: DateTime, f: (date: Date) => void): DateTime => {
@@ -1382,7 +1406,7 @@ export const mutateAdjusted: {
     f(date)
     return makeUtc(date.getTime())
   }
-  const adjustedDate = toDateAdjusted(self)
+  const adjustedDate = toDate(self)
   const newAdjustedDate = new Date(adjustedDate.getTime())
   f(newAdjustedDate)
   return makeZonedFromAdjusted(newAdjustedDate.getTime(), self.zone)
@@ -1437,13 +1461,13 @@ export const mapEpochMillis: {
  *
  * // get the time zone adjusted date in milliseconds
  * DateTime.unsafeMakeZoned(0, { timeZone: "Europe/London" }).pipe(
- *   DateTime.withDateAdjusted((date) => date.getTime())
+ *   DateTime.withDate((date) => date.getTime())
  * )
  */
-export const withDateAdjusted: {
+export const withDate: {
   <A>(f: (date: Date) => A): (self: DateTime) => A
   <A>(self: DateTime, f: (date: Date) => A): A
-} = dual(2, <A>(self: DateTime, f: (date: Date) => A): A => f(toDateAdjusted(self)))
+} = dual(2, <A>(self: DateTime, f: (date: Date) => A): A => f(toDate(self)))
 
 /**
  * Using the time zone adjusted `Date`, apply a function to the `Date` and
@@ -1566,7 +1590,7 @@ export const add: {
     case "hour":
       return addMillis(self, amount * 60 * 60 * 1000)
   }
-  return mutateAdjusted(self, (date) => {
+  return mutate(self, (date) => {
     switch (unit) {
       case "days":
       case "day": {
@@ -1641,7 +1665,7 @@ export const startOf: {
 } = dual((args) => typeof args[1] === "string", (self: DateTime, part: DateTime.DatePart, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime =>
-  mutateAdjusted(self, (date) => {
+  mutate(self, (date) => {
     switch (part) {
       case "day": {
         date.setUTCHours(0, 0, 0, 0)
@@ -1667,50 +1691,6 @@ export const startOf: {
       }
     }
   }))
-
-/**
- * Remove the time aspect of a `DateTime`.
- *
- * @since 3.6.0
- * @category math
- * @example
- * import { DateTime } from "effect"
- *
- * // returns "2024-01-01T00:00:00Z"
- * DateTime.unsafeMake("2024-01-01T12:00:00Z").pipe(
- *   DateTime.floorTimeUtc,
- *   DateTime.formatIso
- * )
- */
-export const floorTimeUtc = (self: DateTime): Utc =>
-  withDateUtc(self, (date) => {
-    date.setUTCHours(0, 0, 0, 0)
-    return makeUtc(date.getTime())
-  })
-
-/**
- * Remove the time aspect of a `DateTime.Zoned`, first adjusting for the time
- * zone.
- *
- * @since 3.6.0
- * @category math
- * @example
- * import { DateTime } from "effect"
- *
- * // returns "2024-01-01T00:00:00Z"
- * DateTime.unsafeMakeZoned("2024-01-01T05:00:00Z", {
- *   timeZone: "Pacific/Auckland",
- *   inputInTimeZone: true
- * }).pipe(
- *   DateTime.floorTimeAdjusted,
- *   DateTime.formatIso
- * )
- */
-export const floorTimeAdjusted = (self: DateTime): Utc =>
-  withDateAdjusted(self, (date) => {
-    date.setUTCHours(0, 0, 0, 0)
-    return makeUtc(date.getTime())
-  })
 
 /**
  * Converts a `DateTime` to the end of the given `part`.
@@ -1739,7 +1719,7 @@ export const endOf: {
 } = dual((args) => typeof args[1] === "string", (self: DateTime, part: DateTime.DatePart, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime =>
-  mutateAdjusted(self, (date) => {
+  mutate(self, (date) => {
     switch (part) {
       case "day": {
         date.setUTCHours(23, 59, 59, 999)
@@ -1900,7 +1880,7 @@ export const formatZoned: {
     return new Intl.DateTimeFormat(options?.locale, {
       ...options,
       timeZone: "UTC"
-    }).format(toDateAdjusted(self))
+    }).format(toDate(self))
   }
 })
 
@@ -1919,6 +1899,6 @@ export const formatIso = (self: DateTime): string => toDateUtc(self).toISOString
  * @category formatting
  */
 export const formatIsoOffset = (self: DateTime): string => {
-  const date = toDateAdjusted(self)
+  const date = toDate(self)
   return self._tag === "Utc" ? date.toISOString() : `${date.toISOString().slice(0, -1)}${zonedOffsetIso(self)}`
 }

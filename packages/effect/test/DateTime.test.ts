@@ -4,11 +4,11 @@ import { assert, describe, it } from "./utils/extend.js"
 const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
 
 describe("DateTime", () => {
-  describe("mutateAdjusted", () => {
+  describe("mutate", () => {
     it.effect("should mutate the date", () =>
       Effect.gen(function*() {
         const now = yield* DateTime.now
-        const tomorrow = DateTime.mutateAdjusted(now, (date) => {
+        const tomorrow = DateTime.mutate(now, (date) => {
           date.setUTCDate(date.getUTCDate() + 1)
         })
         const diff = DateTime.distanceDurationEither(now, tomorrow)
@@ -21,16 +21,16 @@ describe("DateTime", () => {
         const now = yield* DateTime.nowInCurrentZone.pipe(
           DateTime.withCurrentZoneNamed("Pacific/Auckland")
         )
-        const future = DateTime.mutateAdjusted(now, (date) => {
+        const future = DateTime.mutate(now, (date) => {
           date.setUTCMonth(date.getUTCMonth() + 6)
         })
         assert.strictEqual(DateTime.toDateUtc(future).toISOString(), "2024-06-30T12:00:00.000Z")
-        assert.strictEqual(DateTime.toDateAdjusted(future).toISOString(), "2024-07-01T00:00:00.000Z")
-        const plusOne = DateTime.mutateAdjusted(future, (date) => {
+        assert.strictEqual(DateTime.toDate(future).toISOString(), "2024-07-01T00:00:00.000Z")
+        const plusOne = DateTime.mutate(future, (date) => {
           date.setUTCDate(date.getUTCDate() + 1)
         })
         assert.strictEqual(DateTime.toDateUtc(plusOne).toISOString(), "2024-07-01T12:00:00.000Z")
-        assert.strictEqual(DateTime.toDateAdjusted(plusOne).toISOString(), "2024-07-02T00:00:00.000Z")
+        assert.strictEqual(DateTime.toDate(plusOne).toISOString(), "2024-07-02T00:00:00.000Z")
       }))
   })
 
@@ -61,13 +61,13 @@ describe("DateTime", () => {
         )
         const future = DateTime.add(now, 6, "months")
         assert.strictEqual(DateTime.toDateUtc(future).toISOString(), "2024-06-30T12:00:00.000Z")
-        assert.strictEqual(DateTime.toDateAdjusted(future).toISOString(), "2024-07-01T00:00:00.000Z")
+        assert.strictEqual(DateTime.toDate(future).toISOString(), "2024-07-01T00:00:00.000Z")
         const plusOne = DateTime.add(future, 1, "day")
         assert.strictEqual(DateTime.toDateUtc(plusOne).toISOString(), "2024-07-01T12:00:00.000Z")
-        assert.strictEqual(DateTime.toDateAdjusted(plusOne).toISOString(), "2024-07-02T00:00:00.000Z")
+        assert.strictEqual(DateTime.toDate(plusOne).toISOString(), "2024-07-02T00:00:00.000Z")
         const minusOne = DateTime.add(plusOne, -1, "day")
         assert.strictEqual(DateTime.toDateUtc(minusOne).toISOString(), "2024-06-30T12:00:00.000Z")
-        assert.strictEqual(DateTime.toDateAdjusted(minusOne).toISOString(), "2024-07-01T00:00:00.000Z")
+        assert.strictEqual(DateTime.toDate(minusOne).toISOString(), "2024-07-01T00:00:00.000Z")
       }))
   })
 
@@ -113,7 +113,7 @@ describe("DateTime", () => {
         )
         const future = DateTime.endOf(now, "month")
         assert.strictEqual(DateTime.toDateUtc(future).toISOString(), "2024-01-31T10:59:59.999Z")
-        assert.strictEqual(DateTime.toDateAdjusted(future).toISOString(), "2024-01-31T23:59:59.999Z")
+        assert.strictEqual(DateTime.toDate(future).toISOString(), "2024-01-31T23:59:59.999Z")
       }))
   })
 
@@ -249,7 +249,7 @@ describe("DateTime", () => {
     })
   })
 
-  describe("setPartsAdjusted", () => {
+  describe("setParts", () => {
     it("partial", () => {
       const date = DateTime.unsafeMake({
         year: 2024,
@@ -258,7 +258,7 @@ describe("DateTime", () => {
       })
       assert.strictEqual(date.toJSON(), "2024-12-25T00:00:00.000Z")
 
-      const updated = DateTime.setPartsAdjusted(date, {
+      const updated = DateTime.setParts(date, {
         year: 2023,
         month: 1
       })
@@ -273,7 +273,7 @@ describe("DateTime", () => {
       }).pipe(DateTime.unsafeSetZoneNamed("Pacific/Auckland"))
       assert.strictEqual(date.toJSON(), "2024-12-25T00:00:00.000Z")
 
-      const updated = DateTime.setPartsAdjusted(date, {
+      const updated = DateTime.setParts(date, {
         year: 2023,
         month: 6,
         hours: 12
@@ -309,12 +309,12 @@ describe("DateTime", () => {
       ))
   })
 
-  describe("floorTimeAdjusted", () => {
+  describe("removeTime", () => {
     it("removes time", () => {
       const dt = DateTime.unsafeMakeZoned("2024-01-01T01:00:00Z", {
         timeZone: "Pacific/Auckland",
         inputInTimeZone: true
-      }).pipe(DateTime.floorTimeAdjusted)
+      }).pipe(DateTime.removeTime)
       assert.strictEqual(dt.toJSON(), "2024-01-01T00:00:00.000Z")
     })
   })
