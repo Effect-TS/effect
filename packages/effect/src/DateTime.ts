@@ -452,9 +452,7 @@ export const unsafeMakeZoned = (input: DateTime.Input, options: {
   if (options.inputInTimeZone !== true) {
     return makeZonedProto(self.epochMillis, zone, self.partsUtc)
   }
-  const date = toDateUtc(self)
-  const offset = calculateOffset(date, zone)
-  return makeZonedProto(date.getTime() - offset, zone)
+  return makeZonedFromAdjusted(self.epochMillis, zone)
 }
 
 /**
@@ -1312,8 +1310,10 @@ export const layerCurrentZoneLocal: Layer.Layer<CurrentTimeZone> = Layer.sync(
 // mapping
 // =============================================================================
 
-const calculateOffset = (date: Date, zone: TimeZone): number =>
-  zone._tag === "Offset" ? zone.offset : calculateNamedOffset(date, zone)
+const makeZonedFromAdjusted = (adjustedMillis: number, zone: TimeZone): Zoned => {
+  const offset = zone._tag === "Offset" ? zone.offset : calculateNamedOffset(adjustedMillis, zone)
+  return makeZonedProto(adjustedMillis - offset, zone)
+}
 
 const offsetRegex = /([+-])(\d{2}):(\d{2})$/
 const parseOffset = (offset: string): number | null => {
@@ -1325,8 +1325,8 @@ const parseOffset = (offset: string): number | null => {
   return (sign === "+" ? 1 : -1) * (Number(hours) * 60 + Number(minutes)) * 60 * 1000
 }
 
-const calculateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
-  const parts = zone.format.formatToParts(date)
+const calculateNamedOffset = (adjustedMillis: number, zone: TimeZone.Named): number => {
+  const parts = zone.format.formatToParts(adjustedMillis)
   const offset = parts[14].value
   if (offset === "GMT") {
     return 0
@@ -1334,7 +1334,7 @@ const calculateNamedOffset = (date: Date, zone: TimeZone.Named): number => {
   const result = parseOffset(offset)
   if (result === null) {
     // fallback to using the adjusted date
-    return zonedOffset(makeZonedProto(date.getTime(), zone))
+    return zonedOffset(makeZonedProto(adjustedMillis, zone))
   }
   return result
 }
@@ -1360,8 +1360,7 @@ export const mutateAdjusted: {
   const adjustedDate = toDateAdjusted(self)
   const newAdjustedDate = new Date(adjustedDate.getTime())
   f(newAdjustedDate)
-  const offset = calculateOffset(newAdjustedDate, self.zone)
-  return makeZonedProto(newAdjustedDate.getTime() - offset, self.zone)
+  return makeZonedFromAdjusted(newAdjustedDate.getTime(), self.zone)
 })
 
 /**
