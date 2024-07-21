@@ -430,7 +430,7 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
  * @example
  * import { DateTime } from "effect"
  *
- * DateTime.unsafeMakeZoned(new Date(), "Europe/London")
+ * DateTime.unsafeMakeZoned(new Date(), { timeZone: "Europe/London" })
  */
 export const unsafeMakeZoned = (input: DateTime.Input, options: {
   readonly timeZone: number | string | TimeZone
@@ -467,7 +467,7 @@ export const unsafeMakeZoned = (input: DateTime.Input, options: {
  * @example
  * import { DateTime } from "effect"
  *
- * DateTime.makeZoned(new Date(), "Europe/London")
+ * DateTime.makeZoned(new Date(), { timeZone: "Europe/London" })
  */
 export const makeZoned: (
   input: DateTime.Input,
@@ -1077,7 +1077,7 @@ export const getPartUtc: {
  * @example
  * import { DateTime } from "effect"
  *
- * const now = DateTime.unsafeMakeZoned({ year: 2024 }, "Europe/London")
+ * const now = DateTime.unsafeMakeZoned({ year: 2024 }, { timeZone: "Europe/London" })
  * const year = DateTime.getPartAdjusted(now, "year")
  * assert.strictEqual(year, 2024)
  */
@@ -1411,7 +1411,7 @@ export const mapEpochMillis: {
  * import { DateTime } from "effect"
  *
  * // get the time zone adjusted date in milliseconds
- * DateTime.unsafeMakeZoned(0, "Pacific/Auckland").pipe(
+ * DateTime.unsafeMakeZoned(0, { timeZone: "Europe/London" })
  *   DateTime.withDateAdjusted((date) => date.getTime())
  * )
  */
