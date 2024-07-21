@@ -506,6 +506,8 @@ export const makeZoned: (
 export const make: <A extends DateTime.Input>(input: A) => Option.Option<DateTime.PreserveZone<A>> = Option
   .liftThrowable(unsafeMake)
 
+const zonedStringRegex = /^(.{24,35})\[(.+)\]$/
+
 /**
  * Create a `DateTime.Zoned` from a string.
  *
@@ -515,14 +517,13 @@ export const make: <A extends DateTime.Input>(input: A) => Option.Option<DateTim
  * @category constructors
  */
 export const makeZonedFromString = (input: string): Option.Option<Zoned> => {
-  const parts = input.split(" ")
-  if (parts.length !== 2) {
-    return Option.none()
+  const match = zonedStringRegex.exec(input)
+  if (match === null) {
+    const offset = parseOffset(input)
+    return offset ? makeZoned(input, { timeZone: offset }) : Option.none()
   }
-  return Option.flatMap(
-    make(parts[0]),
-    (dt) => Option.map(zoneFromString(parts[1]), (zone) => setZone(dt, zone))
-  )
+  const [, isoString, timeZone] = match
+  return makeZoned(isoString, { timeZone })
 }
 
 /**
@@ -1003,12 +1004,13 @@ export const zonedOffsetIso = (self: Zoned): string => offsetToString(zonedOffse
 /**
  * Format a `DateTime.Zoned` as a string.
  *
- * It uses the format: `YYYY-MM-DDTHH:mm:ss.sssZ IANA/TimeZone`.
+ * It uses the format: `YYYY-MM-DDTHH:mm:ss.sss+HH:MM[Time/Zone]`.
  *
  * @since 3.6.0
  * @category conversions
  */
-export const toStringZoned = (self: Zoned): string => `${formatIso(self)} ${zoneToString(self.zone)}`
+export const zonedToString = (self: Zoned): string =>
+  self.zone._tag === "Offset" ? formatIsoOffset(self) : `${formatIsoOffset(self)}[${self.zone.id}]`
 
 /**
  * Get the milliseconds since the Unix epoch of a `DateTime`.
@@ -1910,5 +1912,5 @@ export const formatIso = (self: DateTime): string => toDateUtc(self).toISOString
  */
 export const formatIsoOffset = (self: DateTime): string => {
   const date = toDateAdjusted(self)
-  return self._tag === "Utc" ? date.toISOString() : `${date.toISOString().slice(0, 19)}${zonedOffsetIso(self)}`
+  return self._tag === "Utc" ? date.toISOString() : `${date.toISOString().slice(0, -1)}${zonedOffsetIso(self)}`
 }

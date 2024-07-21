@@ -39,7 +39,7 @@ describe("DateTime.Zoned", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "1970-01-01T00:00:00.000Z Europe/London", dt)
+    await Util.expectDecodeUnknownSuccess(schema, "1970-01-01T01:00:00.000+01:00[Europe/London]", dt)
     await Util.expectDecodeUnknownFailure(
       schema,
       "1970-01-01T00:00:00.000Z",
@@ -57,6 +57,6 @@ describe("DateTime.Zoned", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, dt, "1970-01-01T00:00:00.000Z Europe/London")
+    await Util.expectEncodeSuccess(schema, dt, "1970-01-01T01:00:00.000+01:00[Europe/London]")
   })
 })

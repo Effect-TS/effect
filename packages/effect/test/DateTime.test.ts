@@ -1,4 +1,4 @@
-import { DateTime, Duration, Effect, Either, TestClock } from "effect"
+import { DateTime, Duration, Effect, Either, Option, TestClock } from "effect"
 import { assert, describe, it } from "./utils/extend.js"
 
 const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
@@ -317,5 +317,30 @@ describe("DateTime", () => {
       }).pipe(DateTime.floorTimeAdjusted)
       assert.strictEqual(dt.toJSON(), "2024-01-01T00:00:00.000Z")
     })
+  })
+
+  describe("makeZonedFromString", () => {
+    it.effect("parses time + zone", () =>
+      Effect.gen(function*() {
+        const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00[Pacific/Auckland]")
+        assert.strictEqual(dt.toJSON(), "2024-07-21T08:12:34.112Z")
+      }))
+
+    it.effect("only offset", () =>
+      Effect.gen(function*() {
+        const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00")
+        assert.strictEqual(dt.zone._tag, "Offset")
+        assert.strictEqual(dt.toJSON(), "2024-07-21T08:12:34.112Z")
+      }))
+
+    it.effect("roundtrip", () =>
+      Effect.gen(function*() {
+        const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00[Pacific/Auckland]").pipe(
+          Option.map(DateTime.zonedToString),
+          Option.flatMap(DateTime.makeZonedFromString)
+        )
+        assert.deepStrictEqual(dt.zone, DateTime.zoneUnsafeMakeNamed("Pacific/Auckland"))
+        assert.strictEqual(dt.toJSON(), "2024-07-21T08:12:34.112Z")
+      }))
   })
 })
