@@ -996,7 +996,7 @@ const offsetToString = (offset: number): string => {
  * @since 3.6.0
  * @category conversions
  */
-export const zonedOffsetISOString = (self: Zoned): string => offsetToString(zonedOffset(self))
+export const zonedOffsetIso = (self: Zoned): string => offsetToString(zonedOffset(self))
 
 /**
  * Format a `DateTime.Zoned` as a string.
@@ -1015,6 +1015,17 @@ export const toStringZoned = (self: Zoned): string => `${formatIso(self)} ${zone
  * @category conversions
  */
 export const toEpochMillis = (self: DateTime): number => self.epochMillis
+
+const dateToParts = (date: Date): DateTime.Parts => ({
+  millis: date.getUTCMilliseconds(),
+  seconds: date.getUTCSeconds(),
+  minutes: date.getUTCMinutes(),
+  hours: date.getUTCHours(),
+  day: date.getUTCDate(),
+  weekDay: date.getUTCDay(),
+  month: date.getUTCMonth() + 1,
+  year: date.getUTCFullYear()
+})
 
 /**
  * Get the different parts of a `DateTime` as an object.
@@ -1644,6 +1655,50 @@ export const startOf: {
   }))
 
 /**
+ * Remove the time aspect of a `DateTime`.
+ *
+ * @since 3.6.0
+ * @category math
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // returns "2024-01-01T00:00:00Z"
+ * DateTime.unsafeMake("2024-01-01T12:00:00Z").pipe(
+ *   DateTime.floorTimeUtc,
+ *   DateTime.formatIso
+ * )
+ */
+export const floorTimeUtc = (self: DateTime): Utc =>
+  withDateUtc(self, (date) => {
+    date.setUTCHours(0, 0, 0, 0)
+    return makeUtc(date.getTime())
+  })
+
+/**
+ * Remove the time aspect of a `DateTime.WithZone`, first adjusting for the time
+ * zone.
+ *
+ * @since 3.6.0
+ * @category math
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // returns "2024-01-01T00:00:00Z"
+ * DateTime.unsafeMakeZoned("2024-01-01T00:00:00Z", {
+ *   timeZone: "Pacific/Auckland",
+ *   inputInTimeZone: true
+ * }).pipe(
+ *   DateTime.floorTimeAdjusted,
+ *   DateTime.formatIso
+ * )
+ */
+export const floorTimeAdjusted = (self: Zoned): Utc =>
+  withDateAdjusted(self, (date) => {
+    date.setUTCHours(0, 0, 0, 0)
+    return makeUtc(date.getTime())
+  })
+
+/**
  * Converts a `DateTime` to the end of the given `part`.
  *
  * If the part is `week`, the `weekStartsOn` option can be used to specify the
@@ -1696,17 +1751,6 @@ export const endOf: {
       }
     }
   }))
-
-const dateToParts = (date: Date): DateTime.Parts => ({
-  millis: date.getUTCMilliseconds(),
-  seconds: date.getUTCSeconds(),
-  minutes: date.getUTCMinutes(),
-  hours: date.getUTCHours(),
-  day: date.getUTCDate(),
-  weekDay: date.getUTCDay(),
-  month: date.getUTCMonth() + 1,
-  year: date.getUTCFullYear()
-})
 
 // =============================================================================
 // formatting
@@ -1862,5 +1906,5 @@ export const formatIso = (self: DateTime): string => toDateUtc(self).toISOString
  */
 export const formatIsoOffset = (self: Zoned): string => {
   const date = toDateAdjusted(self)
-  return `${date.toISOString().slice(0, 19)}${zonedOffsetISOString(self)}`
+  return `${date.toISOString().slice(0, 19)}${zonedOffsetIso(self)}`
 }
