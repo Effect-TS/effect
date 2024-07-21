@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type * as Array from "./Array.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
@@ -102,6 +103,22 @@ export const nextIntBetween: (min: number, max: number) => Effect.Effect<number>
  * @category constructors
  */
 export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>> = defaultServices.shuffle
+
+/**
+ * Get a random element from a non-empty array.
+ *
+ * @example
+ * import { Effect, Random } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   const randomItem = yield* Random.choice([1, 2, 3])
+ *   console.log(randomItem)
+ * })
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const choice: <A>(elements: Array.NonEmptyReadonlyArray<A>) => Effect.Effect<A> = defaultServices.choice
 
 /**
  * Retreives the `Random` service from the context and uses it to run the

@@ -1,12 +1,12 @@
 import { Array, Chunk, Data, Effect, Random } from "effect"
-import * as it from "effect/test/utils/extend"
+import { expect, it } from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe("Random", () => {
   it.effect("shuffle", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const start = Array.range(0, 100)
-      const end = yield* $(Random.shuffle(start))
+      const end = yield* Random.shuffle(start)
       assert.isTrue(Chunk.every(end, (n) => n !== undefined))
       assert.deepStrictEqual(start.sort(), Array.fromIterable(end).sort())
     }).pipe(Effect.repeatN(100)))
@@ -24,5 +24,11 @@ describe("Random", () => {
       assert.strictEqual(n0, n1)
       assert.strictEqual(n2, n3)
       assert.notStrictEqual(n0, n2)
+    }))
+
+  it.live("choice", () =>
+    Effect.gen(function*() {
+      expect(yield* Random.choice([1])).toEqual(1)
+      expect(yield* Random.choice([1, 2, 3])).oneOf([1, 2, 3])
     }))
 })
