@@ -16,7 +16,7 @@ export const enabled = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): number => (
 
 /** @internal */
 export const make = (active: number, enabled: number): RuntimeFlagsPatch.RuntimeFlagsPatch =>
-  (((active) & BIT_MASK) + (((enabled & active) & BIT_MASK) << BIT_SHIFT)) as RuntimeFlagsPatch.RuntimeFlagsPatch
+  ((active & BIT_MASK) + (((enabled & active) & BIT_MASK) << BIT_SHIFT)) as RuntimeFlagsPatch.RuntimeFlagsPatch
 
 /** @internal */
 export const empty = make(0, 0)

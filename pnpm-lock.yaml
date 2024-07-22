@@ -23,6 +23,9 @@ patchedDependencies:
   '@changesets/get-github-info@0.6.0':
     hash: 4nwpuevfciovsbhi25hd4g5r7y
     path: patches/@changesets__get-github-info@0.6.0.patch
+  babel-plugin-annotate-pure-calls@0.4.0:
+    hash: lz2aochwly4t7pzapzh4fqay4m
+    path: patches/babel-plugin-annotate-pure-calls@0.4.0.patch
 
 importers:
 
@@ -59,8 +62,8 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0(typescript@5.5.3)
       '@effect/eslint-plugin':
-        specifier: ^0.1.2
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
       '@effect/language-service':
         specifier: ^0.1.0
         version: 0.1.0
@@ -87,7 +90,7 @@ importers:
         version: 1.6.0(vitest@1.6.0(@edge-runtime/vm@4.0.1)(@types/node@20.14.11)(@vitest/browser@1.6.0)(happy-dom@14.12.3)(terser@5.31.3))
       babel-plugin-annotate-pure-calls:
         specifier: ^0.4.0
-        version: 0.4.0(@babel/core@7.24.9)
+        version: 0.4.0(patch_hash=lz2aochwly4t7pzapzh4fqay4m)(@babel/core@7.24.9)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -1676,11 +1679,11 @@ packages:
     resolution: {integrity: sha512-KrkT6qO5NxqNfy68sBl6CTSoJ4SNDIS5iQArkibhlbGU4LaDukZ3q2HIkh8aUKDio6o4itU4xDR7t82Y2eP1Bg==}
     engines: {node: '>=14'}
 
-  '@dprint/formatter@0.2.1':
-    resolution: {integrity: sha512-GCzgRt2o4mhZLy8L47k2A+q9EMG/jWhzZebE29EqKsxmjDrSfv2VisEj/Q+39OOf04jTkEfB/TRO+IZSyxHdYg==}
+  '@dprint/formatter@0.4.1':
+    resolution: {integrity: sha512-IB/GXdlMOvi0UhQQ9mcY15Fxcrc2JPadmo6tqefCNV0bptFq7YBpggzpqYXldBXDa04CbKJ+rDwO2eNRPE2+/g==}
 
-  '@dprint/typescript@0.85.1':
-    resolution: {integrity: sha512-rPwwm/RrFIolz6xHa8Kzpshuwpe+xu/XcEw9iUmRF2tnyIwxxaW7XoFKaQ+GfPju81cKpH4vJeq7/2IizKvyjg==}
+  '@dprint/typescript@0.91.4':
+    resolution: {integrity: sha512-je/T8JF07xehOVS7rx6Xo7T8Aa1Sd/p/+e/b/J2RE8yJHu09O+L0aHBSvec+usjR8/QwCu23AuDLl47zFSey5Q==}
 
   '@edge-runtime/primitives@5.0.1':
     resolution: {integrity: sha512-qjqqCa9v3IE7Fo9OnmkIWg9l0WUu3uOfUYomuOVxaaHqlIvNI75E5IB0XNNDypz249ObRSmjRj8jLjkBUmFYYw==}
@@ -1709,8 +1712,8 @@ packages:
     peerDependencies:
       typescript: ^5.x
 
-  '@effect/eslint-plugin@0.1.2':
-    resolution: {integrity: sha512-spBoeM9kF0rTM1JP8dfaubVUqUrkfijIUKqE6bh4gDw9qMYweT1HV9iXLzF5Dsj589wwVfk6sx5uqO09C4+w2w==}
+  '@effect/eslint-plugin@0.2.0':
+    resolution: {integrity: sha512-PC/hEDGctYGYIjZyhM6kbD4FyHxLgoYNoQNjGkCXcFEzi71vQc3PJKe2JnCgzcUDvr/Nc2qgTVU4ONYwjHzQGA==}
 
   '@effect/language-service@0.1.0':
     resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
@@ -3414,10 +3417,6 @@ packages:
     resolution: {integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==}
     engines: {node: '>=0.3.1'}
 
-  diff@5.2.0:
-    resolution: {integrity: sha512-uIFDxqpRZGZ6ThOk84hEfqWoHx2devRFvpTZcTHur85vImfaxUbTW9Ryh4CpCuDnToOP1CEtXKIgytHBPVff5A==}
-    engines: {node: '>=0.3.1'}
-
   dir-glob@3.0.1:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
     engines: {node: '>=8'}
@@ -3805,6 +3804,9 @@ packages:
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
+
+  fast-diff@1.3.0:
+    resolution: {integrity: sha512-VxPP4NqbUjj6MaAOafWeUn2cXWLcCtljklUtZf0Ind4XQ+QPtmA0b18zZy0jIQx+ExRVCR/ZQpBmik5lXshNsw==}
 
   fast-fifo@1.3.2:
     resolution: {integrity: sha512-/d9sfos4yxzpwkDkuN7k2SqFKtYNmCTzgfEpz82x34IM9/zc8KGxQoXg1liNC/izpRM/MBdt44Nmx41ZWqk+FQ==}
@@ -5380,6 +5382,10 @@ packages:
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
+
+  prettier-linter-helpers@1.0.0:
+    resolution: {integrity: sha512-GbK2cP9nraSSUF9N2XwUwqfzlAFlMNYYl+ShE/V+H8a9uNl/oUqB1w2EL54Jh0OlyRSd8RfWYJ3coVS4TROP2w==}
+    engines: {node: '>=6.0.0'}
 
   prettier@2.8.8:
     resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
@@ -7834,9 +7840,9 @@ snapshots:
       gonzales-pe: 4.3.0
       node-source-walk: 6.0.2
 
-  '@dprint/formatter@0.2.1': {}
+  '@dprint/formatter@0.4.1': {}
 
-  '@dprint/typescript@0.85.1': {}
+  '@dprint/typescript@0.91.4': {}
 
   '@edge-runtime/primitives@5.0.1': {}
 
@@ -7861,11 +7867,11 @@ snapshots:
       tslint: 6.1.3(typescript@5.5.3)
       typescript: 5.5.3
 
-  '@effect/eslint-plugin@0.1.2':
+  '@effect/eslint-plugin@0.2.0':
     dependencies:
-      '@dprint/formatter': 0.2.1
-      '@dprint/typescript': 0.85.1
-      diff: 5.2.0
+      '@dprint/formatter': 0.4.1
+      '@dprint/typescript': 0.91.4
+      prettier-linter-helpers: 1.0.0
 
   '@effect/language-service@0.1.0': {}
 
@@ -9248,7 +9254,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.24.9
 
-  babel-plugin-annotate-pure-calls@0.4.0(@babel/core@7.24.9):
+  babel-plugin-annotate-pure-calls@0.4.0(patch_hash=lz2aochwly4t7pzapzh4fqay4m)(@babel/core@7.24.9):
     dependencies:
       '@babel/core': 7.24.9
 
@@ -9783,8 +9789,6 @@ snapshots:
 
   diff@4.0.2: {}
 
-  diff@5.2.0: {}
-
   dir-glob@3.0.1:
     dependencies:
       path-type: 4.0.0
@@ -10252,6 +10256,8 @@ snapshots:
       pure-rand: 6.1.0
 
   fast-deep-equal@3.1.3: {}
+
+  fast-diff@1.3.0: {}
 
   fast-fifo@1.3.2: {}
 
@@ -12028,6 +12034,10 @@ snapshots:
       which-pm: 2.2.0
 
   prelude-ls@1.2.1: {}
+
+  prettier-linter-helpers@1.0.0:
+    dependencies:
+      fast-diff: 1.3.0
 
   prettier@2.8.8: {}
 
