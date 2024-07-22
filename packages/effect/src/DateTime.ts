@@ -1867,6 +1867,39 @@ export const format: {
 /**
  * Format a `DateTime` as a string using the `DateTimeFormat` API.
  *
+ * It will use the system's local time zone.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const formatLocal: {
+  (
+    options?:
+      | Intl.DateTimeFormatOptions & {
+        readonly locale?: string | undefined
+      }
+      | undefined
+  ): (self: DateTime) => string
+  (
+    self: DateTime,
+    options?:
+      | Intl.DateTimeFormatOptions & {
+        readonly locale?: string | undefined
+      }
+      | undefined
+  ): string
+} = dual(isDateTimeArgs, (
+  self: DateTime,
+  options?:
+    | Intl.DateTimeFormatOptions & {
+      readonly locale?: string | undefined
+    }
+    | undefined
+): string => new Intl.DateTimeFormat(options?.locale, options).format(self.epochMillis))
+
+/**
+ * Format a `DateTime` as a string using the `DateTimeFormat` API.
+ *
  * This forces the time zone to be UTC.
  *
  * @since 3.6.0

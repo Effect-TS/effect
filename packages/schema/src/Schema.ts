@@ -5924,7 +5924,7 @@ export class DateFromNumber extends transform(
  * Describes a schema that represents a `DateTime.Utc` instance.
  *
  * @category DateTime.Utc constructors
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class DateTimeUtcFromSelf extends declare(
   (u) => dateTime.isDateTime(u) && dateTime.isUtc(u),
@@ -5947,7 +5947,7 @@ const decodeDateTime = <A extends dateTime.DateTime.Input>(input: A, _: ParseOpt
  * Defines a schema that attempts to convert a `number` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
  *
  * @category DateTime.Utc transformations
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class DateTimeUtcFromNumber extends transformOrFail(
   Number$,
@@ -5963,7 +5963,7 @@ export class DateTimeUtcFromNumber extends transformOrFail(
  * Defines a schema that attempts to convert a `string` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
  *
  * @category DateTime.Utc transformations
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class DateTimeUtc extends transformOrFail(
   String$,
@@ -5982,7 +5982,7 @@ const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (
  * Describes a schema that represents a `TimeZone.Offset` instance.
  *
  * @category TimeZone constructors
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class TimeZoneOffsetFromSelf extends declare(
   dateTime.isTimeZoneOffset,
@@ -5998,7 +5998,7 @@ export class TimeZoneOffsetFromSelf extends declare(
  * Defines a schema that converts a `number` to a `TimeZone.Offset` instance using the `DateTime.zoneMakeOffset` constructor.
  *
  * @category TimeZone transformations
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class TimeZoneOffset extends transform(
   Number$,
@@ -6013,7 +6013,7 @@ const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc
  * Describes a schema that represents a `TimeZone.Named` instance.
  *
  * @category TimeZone constructors
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class TimeZoneNamedFromSelf extends declare(
   dateTime.isTimeZoneNamed,
@@ -6029,7 +6029,7 @@ export class TimeZoneNamedFromSelf extends declare(
  * Defines a schema that attempts to convert a `string` to a `TimeZone.Named` instance using the `DateTime.zoneUnsafeMakeNamed` constructor.
  *
  * @category TimeZone transformations
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class TimeZoneNamed extends transformOrFail(
   String$,
@@ -6047,7 +6047,7 @@ export class TimeZoneNamed extends transformOrFail(
 
 /**
  * @category api interface
- * @since 0.68.26
+ * @since 0.68.27
  */
 export interface TimeZoneFromSelf extends Union<[typeof TimeZoneOffsetFromSelf, typeof TimeZoneNamedFromSelf]> {
   annotations(annotations: Annotations.Schema<dateTime.TimeZone>): TimeZoneFromSelf
@@ -6055,7 +6055,7 @@ export interface TimeZoneFromSelf extends Union<[typeof TimeZoneOffsetFromSelf, 
 
 /**
  * @category TimeZone constructors
- * @since 0.68.26
+ * @since 0.68.27
  */
 export const TimeZoneFromSelf: TimeZoneFromSelf = Union(TimeZoneOffsetFromSelf, TimeZoneNamedFromSelf)
 
@@ -6063,7 +6063,7 @@ export const TimeZoneFromSelf: TimeZoneFromSelf = Union(TimeZoneOffsetFromSelf, 
  * Defines a schema that attempts to convert a `string` to a `TimeZone` using the `DateTime.zoneFromString` constructor.
  *
  * @category TimeZone transformations
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class TimeZone extends transformOrFail(
   String$,
@@ -6089,7 +6089,7 @@ const timeZoneArbitrary: LazyArbitrary<dateTime.TimeZone> = (fc) =>
  * Describes a schema that represents a `DateTime.Zoned` instance.
  *
  * @category DateTime.Zoned constructors
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class DateTimeZonedFromSelf extends declare(
   (u) => dateTime.isDateTime(u) && dateTime.isZoned(u),
@@ -6107,7 +6107,7 @@ export class DateTimeZonedFromSelf extends declare(
  * Defines a schema that attempts to convert a `string` to a `DateTime.Zoned` instance.
  *
  * @category DateTime.Zoned transformations
- * @since 0.68.26
+ * @since 0.68.27
  */
 export class DateTimeZoned extends transformOrFail(
   String$,
