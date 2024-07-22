@@ -51,18 +51,6 @@ jobs:
         if: ${{ steps.branch.outputs.branch == 'changeset-release/main' }}
         run: git checkout origin/main
 
-      - name: Create initial comment
-        id: comment
-        uses: peter-evans/create-or-update-comment@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          issue-number: ${{ github.event.issue.number }}
-          body: |
-            **Alright @${{ github.actor }}, I'm working on the snapshot!**
-
-            You can follow the progress [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
-
       - name: Checkout default branch
         uses: actions/checkout@v4
 
