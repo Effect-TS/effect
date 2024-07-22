@@ -62,6 +62,7 @@ export declare namespace Envelope {
   export interface Proto<Msg extends AnyMessage> {
     readonly [TypeId]: TypeId
     readonly address: RecipientAddress
+    readonly messageId: string
     readonly message: Msg
   }
 
@@ -71,6 +72,7 @@ export declare namespace Envelope {
    */
   export interface Encoded<IA> {
     readonly address: RecipientAddress.Encoded
+    readonly messageId: string
     readonly message: IA
   }
 
@@ -78,16 +80,17 @@ export declare namespace Envelope {
    * @since 1.0.0
    * @category models
    */
-  export type AnyMessage = Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey
+  export type AnyMessage = Schema.TaggedRequest.Any
 }
 
 const Proto = Data.unsafeStruct({
   address: undefined,
   message: undefined,
+  messageId: undefined,
   [TypeId]: TypeId,
   [PrimaryKey.symbol](this: Envelope<any>) {
     return (
-      PrimaryKey.value(this.message) +
+      this.messageId +
       "@" +
       this.address.recipientType +
       "#" +
@@ -111,10 +114,12 @@ const Proto = Data.unsafeStruct({
  */
 export const make = <Msg extends Envelope.AnyMessage>(
   address: RecipientAddress,
+  messageId: string,
   message: Msg
 ): Envelope<Msg> => {
   const envelope = Object.create(Proto)
   envelope.address = address
+  envelope.messageId = messageId
   envelope.message = message
   return envelope
 }
@@ -141,7 +146,7 @@ export const map = dual<
     self: Envelope<A>,
     f: (value: A) => B
   ) => Envelope<B>
->(2, (self, f) => make(self.address, f(self.message)))
+>(2, (self, f) => make(self.address, self.messageId, f(self.message)))
 
 const envelopeParse = <A extends Envelope.AnyMessage, R>(
   decodeUnknown: ParseResult.DecodeUnknown<Envelope.Encoded<A>, R>
@@ -150,7 +155,7 @@ const envelopeParse = <A extends Envelope.AnyMessage, R>(
   isEnvelope(u) ?
     ParseResult.mapBoth(decodeUnknown(u, options), {
       onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: (e) => make(e.address, e.message)
+      onSuccess: (e) => make(e.address, e.messageId, e.message)
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
@@ -183,6 +188,7 @@ export interface EnvelopeFromSelf<Value extends Schema.Schema.Any> extends
 const Envelope$ = <A extends Schema.Schema.Any>(message: A) =>
   Schema.Struct({
     address: RecipientAddress,
+    messageId: Schema.String,
     message
   })
 
@@ -213,7 +219,7 @@ export const schema = <A extends Schema.Schema.Any>(message: A): Envelope$<A> =>
     EnvelopeFromSelf(Schema.typeSchema(message)),
     {
       strict: true,
-      decode: (_) => make(_.address, _.message),
-      encode: (_) => ({ address: _.address, message: _.message })
+      decode: (_) => make(_.address, _.messageId, _.message),
+      encode: (_) => ({ address: _.address, messageId: _.messageId, message: _.message })
     }
   )

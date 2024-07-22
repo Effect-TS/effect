@@ -7,7 +7,6 @@ import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 import * as FiberMap from "effect/FiberMap"
 import { pipe } from "effect/Function"
-import * as PrimaryKey from "effect/PrimaryKey"
 import type * as Scope from "effect/Scope"
 import type * as DurableExecutionJournal from "./DurableExecutionJournal.js"
 import type * as Workflow from "./Workflow.js"
@@ -38,7 +37,7 @@ export function makeScoped<T extends Envelope.Envelope.AnyMessage, R>(
     const getOrStartFiber = <A extends T>(
       request: A
     ): Effect.Effect<Fiber.Fiber<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>>> => {
-      const executionId = PrimaryKey.value(request)
+      const executionId = workflow.executionId(request)
 
       return FiberMap.run(
         fiberMap,

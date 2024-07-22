@@ -30,8 +30,8 @@ describe("Envelope", () => {
       const address2 = new RecipientAddress({ recipientType: "User", entityId: "1" })
       const sample1 = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
       const sample2 = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
-      const a = Envelope.make(address1, sample1)
-      const b = Envelope.make(address2, sample2)
+      const a = Envelope.make(address1, "1", sample1)
+      const b = Envelope.make(address2, "1",sample2)
       assert.isTrue(Equal.equals(a, b))
     })
 
@@ -40,8 +40,8 @@ describe("Envelope", () => {
       const address2 = new RecipientAddress({ recipientType: "User", entityId: "1" })
       const sample1 = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
       const sample2 = new SampleMessage({ id: 2, name: "sample-1", date: new Date() })
-      const a = Envelope.make(address1, sample1)
-      const b = Envelope.make(address2, sample2)
+      const a = Envelope.make(address1, "1", sample1)
+      const b = Envelope.make(address2, "2", sample2)
       assert.isFalse(Equal.equals(a, b))
     })
   })
@@ -52,10 +52,11 @@ describe("Envelope", () => {
         const date = new Date()
         const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
         const sample = new SampleMessage({ id: 1, name: "sample-1", date })
-        const envelope = Envelope.make(address, sample)
+        const envelope = Envelope.make(address, "1", sample)
         const serialized = yield* Serializable.serialize(envelope)
         assert.deepStrictEqual(serialized, {
           address: { entityId: "1", recipientType: "User" },
+          messageId: "1",
           message: { _tag: "SampleMessage", id: 1, name: "sample-1", date: date.toISOString() }
         })
       }))
@@ -64,7 +65,7 @@ describe("Envelope", () => {
       Effect.gen(function*() {
         const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
         const sample = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
-        const envelope = Envelope.make(address, sample)
+        const envelope = Envelope.make(address, "1", sample)
         const serialized = yield* Serializable.serialize(envelope)
         const deserialized = yield* Serializable.deserialize(envelope, serialized)
         assert.deepStrictEqual(deserialized, envelope)
@@ -74,7 +75,7 @@ describe("Envelope", () => {
       Effect.gen(function*() {
         const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
         const sample = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
-        const envelope = Envelope.make(address, sample)
+        const envelope = Envelope.make(address, "1", sample)
         const serialized = yield* Serializable.serializeSuccess(envelope, 1)
         assert.strictEqual(serialized, 1)
       }))
@@ -83,7 +84,7 @@ describe("Envelope", () => {
       Effect.gen(function*() {
         const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
         const sample = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
-        const envelope = Envelope.make(address, sample)
+        const envelope = Envelope.make(address, "1", sample)
         const serialized = yield* Serializable.serializeFailure(envelope, "fail")
         assert.strictEqual(serialized, "fail")
       }))
@@ -92,7 +93,7 @@ describe("Envelope", () => {
       Effect.gen(function*() {
         const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
         const sample = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
-        const envelope = Envelope.make(address, sample)
+        const envelope = Envelope.make(address, "1", sample)
         const serialized = yield* Serializable.serializeSuccess(envelope, 1)
         const deserialized = yield* Serializable.deserializeSuccess(envelope, serialized)
         assert.strictEqual(deserialized, 1)
@@ -102,7 +103,7 @@ describe("Envelope", () => {
       Effect.gen(function*() {
         const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
         const sample = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
-        const envelope = Envelope.make(address, sample)
+        const envelope = Envelope.make(address, "1", sample)
         const serialized = yield* Serializable.serializeFailure(envelope, "fail")
         const deserialized = yield* Serializable.deserializeFailure(envelope, serialized)
         assert.strictEqual(deserialized, "fail")
@@ -112,7 +113,7 @@ describe("Envelope", () => {
       Effect.gen(function*() {
         const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
         const sample = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
-        const envelope = Envelope.make(address, sample)
+        const envelope = Envelope.make(address, "1", sample)
         const serialized = yield* Serializable.serialize(envelope)
         const deserialized = yield* Schema.decode(Envelope.schema(SampleMessage))(serialized)
         assert.isTrue(Equal.equals(envelope, deserialized))

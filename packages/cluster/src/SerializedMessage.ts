@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
-import * as PrimaryKey from "effect/PrimaryKey"
 import * as SerializedValue from "./SerializedValue.js"
 
 const SerializedMessageSymbolKey = "@effect/cluster/SerializedMessage"
@@ -15,22 +14,16 @@ export class SerializedMessage extends Schema.TaggedRequest<SerializedMessage>()
   SerializedMessageSymbolKey,
   SerializedValue.schema,
   SerializedValue.schema,
-  { body: SerializedValue.schema, messageId: Schema.String }
+  { body: SerializedValue.schema }
 ) {
-  /**
-   * @since 1.0.0
-   */
-  [PrimaryKey.symbol]() {
-    return this.messageId
-  }
 }
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export function make(messageId: string, body: SerializedValue.SerializedValue) {
-  return new SerializedMessage({ messageId, body })
+export function make(body: SerializedValue.SerializedValue) {
+  return new SerializedMessage({ body })
 }
 
 /**

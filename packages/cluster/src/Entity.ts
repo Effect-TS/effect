@@ -57,6 +57,10 @@ export declare namespace Entity {
      * processing.
      */
     readonly schema: Schema<Msg, Serializable.Serializable.Encoded<Msg>, Serializable.Serializable.Context<Msg>>
+    /**
+     * A function that given a message, determines a messageId for that message.
+     */
+    readonly messageId: (message: Msg) => string
   }
 }
 

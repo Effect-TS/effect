@@ -10,7 +10,6 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as PrimaryKey from "effect/PrimaryKey"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -351,7 +350,7 @@ export function attempt<A extends Envelope.Envelope.AnyMessage, R>(workflow: Wor
     R | DurableExecutionJournal.DurableExecutionJournal
   > => {
     return Effect.gen(function*($) {
-      const persistenceId = PrimaryKey.value(request)
+      const persistenceId = workflow.executionId(request)
       const successSchema = Serializable.successSchema(request)
       const failureSchema = Serializable.failureSchema(request)
       const durableExecutionJournal = yield* $(DurableExecutionJournal.DurableExecutionJournal)

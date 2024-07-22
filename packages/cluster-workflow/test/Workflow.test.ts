@@ -48,7 +48,7 @@ describe.concurrent("Workflow", () => {
         Activity.make("activity", Schema.Number, Schema.Never)
       )
 
-      const workflow = Workflow.make(StartWorkflowRequest, () => activity)
+      const workflow = Workflow.make(StartWorkflowRequest, PrimaryKey.value, () => activity)
       const engine = yield* _(WorkflowEngine.makeScoped(workflow))
 
       const exit = yield* _(
@@ -70,7 +70,7 @@ describe.concurrent("Workflow", () => {
         Activity.make("activity", Schema.Number, Schema.String)
       )
 
-      const workflow = Workflow.make(StartWorkflowRequest, () => activity)
+      const workflow = Workflow.make(StartWorkflowRequest, PrimaryKey.value, () => activity)
       const engine = yield* _(WorkflowEngine.makeScoped(workflow))
 
       const exit = yield* _(
@@ -95,7 +95,7 @@ describe.concurrent("Workflow", () => {
       }
     }
 
-    const firstWorkflow = Workflow.make(FirstWorkflow, () => firstActivity.activity)
+    const firstWorkflow = Workflow.make(FirstWorkflow, PrimaryKey.value, () => firstActivity.activity)
 
     class SecondWorkflow extends Schema.TaggedRequest<SecondWorkflow>()("SecondWorkflow", Schema.Never, Schema.Number, {
       id: Schema.String
@@ -105,7 +105,7 @@ describe.concurrent("Workflow", () => {
       }
     }
 
-    const secondWorkflow = Workflow.make(SecondWorkflow, () => secondActivity.activity)
+    const secondWorkflow = Workflow.make(SecondWorkflow, PrimaryKey.value, () => secondActivity.activity)
 
     const mergedWorkflow = Workflow.union(firstWorkflow, secondWorkflow)
 
@@ -131,7 +131,7 @@ describe.concurrent("Workflow", () => {
 
       const activity = pipe(mocked.effect, Activity.make("activity", Schema.Number, Schema.Never))
 
-      const workflow = Workflow.make(StartWorkflowRequest, () => activity)
+      const workflow = Workflow.make(StartWorkflowRequest, PrimaryKey.value, () => activity)
       const engine = yield* _(WorkflowEngine.makeScoped(workflow))
 
       const exit1 = yield* _(
@@ -157,7 +157,7 @@ describe.concurrent("Workflow", () => {
       const executeAttempt = (shouldCrash: boolean) =>
         CrashableRuntime.runWithCrash((crash) =>
           Effect.gen(function*(_) {
-            const workflow = Workflow.make(StartWorkflowRequest, () =>
+            const workflow = Workflow.make(StartWorkflowRequest, PrimaryKey.value, () =>
               Effect.acquireUseRelease(
                 mockedAcquire.activity,
                 () => mockedUse.activityWithBody(shouldCrash ? crash : Effect.succeed(2)),
@@ -201,7 +201,7 @@ describe.concurrent("Workflow", () => {
       const executeAttempt = (shouldCrash: boolean) =>
         CrashableRuntime.runWithCrash((crash) =>
           Effect.gen(function*(_) {
-            const workflow = Workflow.make(StartWorkflowRequest, () =>
+            const workflow = Workflow.make(StartWorkflowRequest, PrimaryKey.value, () =>
               Effect.acquireUseRelease(
                 mockedAcquire.activity,
                 () => mockedUse.activity,
@@ -263,7 +263,7 @@ describe.concurrent("Workflow", () => {
                 Activity.make("activity", Schema.Number, Schema.Never)
               )
 
-              const workflow = Workflow.make(StartWorkflowRequest, () => activity)
+              const workflow = Workflow.make(StartWorkflowRequest, PrimaryKey.value, () => activity)
               const engine = yield* _(WorkflowEngine.makeScoped(workflow))
 
               return yield* _(engine.send(new StartWorkflowRequest({ executionId: "wf" })))
@@ -287,7 +287,7 @@ describe.concurrent("Workflow", () => {
       const persistenceIdRef = yield* _(Ref.make(""))
 
       const workflow = Workflow.make(
-        StartWorkflowRequest,
+        StartWorkflowRequest, PrimaryKey.value,
         () =>
           mockedActivity.activityWithBody(
             Effect.acquireUseRelease(Effect.succeed(1), () =>
@@ -353,7 +353,7 @@ describe.concurrent("Workflow", () => {
           const activity2 = utils.mockActivity("activity2", Schema.Number, Schema.Never, () => Exit.succeed(1))
             .activityWithBody(pipe(Effect.sleep(!firstFastest ? 0 : 1000), Effect.as(2)))
 
-          const workflow = Workflow.make(StartWorkflowRequest, () => Effect.race(activity1, activity2))
+          const workflow = Workflow.make(StartWorkflowRequest, PrimaryKey.value, () => Effect.race(activity1, activity2))
 
           const engine = yield* _(WorkflowEngine.makeScoped(workflow))
 

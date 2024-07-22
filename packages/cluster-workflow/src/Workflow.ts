@@ -17,7 +17,7 @@ import * as WorkflowContext from "./WorkflowContext.js"
  * @since 1.0.0
  */
 export interface Workflow<T extends Envelope.Envelope.AnyMessage, R> {
-  schema: Schema.Schema<T, unknown>
+  schema: Schema.Schema<T, Serializable.Serializable.Encoded<T>, Serializable.Serializable.Context<T>>
   execute: (
     input: T
   ) => Effect.Effect<
@@ -25,6 +25,7 @@ export interface Workflow<T extends Envelope.Envelope.AnyMessage, R> {
     Serializable.WithResult.Error<T>,
     R | WorkflowContext.WorkflowContext
   >
+  executionId: (input: T) => string
   version: (input: T) => string
 }
 
@@ -40,26 +41,28 @@ export namespace Workflow {
   /**
    * @since 1.0.0
    */
-  export type Context<A> = A extends Workflow<any, infer R> ? R : never
+  export type Context<A> = A extends Workflow<infer _T, infer R> ? R : never
 
   /**
    * @since 1.0.0
    */
-  export type Request<A> = A extends Workflow<infer T, any> ? T : never
+  export type Request<A> = A extends Workflow<infer T, infer _R> ? T : never
 }
 
 /**
  * @since 1.0.0
  */
-export function make<T extends Envelope.Envelope.AnyMessage, R = never, I = unknown>(
-  schema: Schema.Schema<T, I>,
+export function make<T extends Envelope.Envelope.AnyMessage, R>(
+  schema: Schema.Schema<T, Serializable.Serializable.Encoded<T>, Serializable.Serializable.Context<T>>,
+  messageId: (input: T) => string,
   execute: (
     input: T
   ) => Effect.Effect<Serializable.WithResult.Success<T>, Serializable.WithResult.Error<T>, R>,
   version?: (input: T) => string
 ): Workflow<T, Exclude<R, WorkflowContext.WorkflowContext>> {
   return ({
-    schema: schema as Schema.Schema<T, unknown>,
+    schema: schema as any,
+    executionId: messageId,
     execute: execute as any,
     version: version || (() => "")
   })
@@ -72,7 +75,14 @@ export function union<WFs extends ReadonlyArray<Workflow.Any>>(
   ...wfs: WFs
 ) {
   return make<Workflow.Request<WFs[number]>, Workflow.Context<WFs[number]>>(
-    Schema.Union(...wfs.map((_) => _.schema)),
+    Schema.Union(...wfs.map((_) => _.schema)) as any,
+    (request) =>
+      pipe(
+        wfs,
+        Array.findFirst((_) => Schema.is(_.schema)(request)),
+        Option.map((_) => _.executionId(request)),
+        Option.getOrElse(() => "")
+      ),
     (request) =>
       pipe(
         wfs,
@@ -84,7 +94,7 @@ export function union<WFs extends ReadonlyArray<Workflow.Any>>(
       pipe(
         wfs,
         Array.findFirst((_) => Schema.is(_.schema)(request)),
-        Option.map((_) => _.version(request) as string),
+        Option.map((_) => _.version(request)),
         Option.getOrElse(() => "")
       )
   )

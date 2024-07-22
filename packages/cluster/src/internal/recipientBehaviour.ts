@@ -5,7 +5,6 @@ import type * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
-import * as PrimaryKey from "effect/PrimaryKey"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import type { Envelope } from "../Envelope.js"
@@ -98,14 +97,14 @@ export function fromInMemoryQueue<Msg extends Envelope.AnyMessage, R>(
     const entityId = yield* _(RecipientBehaviourContext.entityId)
     const envelopeStates = yield* _(Ref.make(HashMap.empty<string, MessageState.MessageState<any>>()))
 
-    function updateEnvelopeState<A extends Msg>(message: Envelope<A>, state: MessageState.MessageState<any>) {
-      return pipe(Ref.update(envelopeStates, HashMap.set(PrimaryKey.value(message), state)), Effect.as(state))
+    function updateEnvelopeState<A extends Msg>(envelope: Envelope<A>, state: MessageState.MessageState<any>) {
+      return pipe(Ref.update(envelopeStates, HashMap.set(envelope.messageId, state)), Effect.as(state))
     }
 
-    function getMessageState<A extends Msg>(message: Envelope<A>) {
+    function getMessageState<A extends Msg>(envelope: Envelope<A>) {
       return pipe(
         Ref.get(envelopeStates),
-        Effect.map(HashMap.get(PrimaryKey.value(message)))
+        Effect.map(HashMap.get(envelope.messageId))
       )
     }
 

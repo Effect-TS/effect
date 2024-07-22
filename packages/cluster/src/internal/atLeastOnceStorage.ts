@@ -5,7 +5,6 @@ import * as SqlResolver from "@effect/sql/SqlResolver"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as PrimaryKey from "effect/PrimaryKey"
 import * as Stream from "effect/Stream"
 import type * as AtLeastOnceStorage from "../AtLeastOnceStorage.js"
 import * as Envelope from "../Envelope.js"
@@ -168,7 +167,7 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
                 recipient_name: entity.name,
                 shard_id: shardId.value,
                 entity_id: entityId,
-                message_id: PrimaryKey.value(envelope.message),
+                message_id: (envelope.messageId),
                 message_body: message_body.value
               })
           ),
@@ -187,7 +186,7 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
           sql.and([
             sql`recipient_name = ${entity.name}`,
             sql`entity_id = ${entityId}`,
-            sql`message_id = ${PrimaryKey.value(envelope)}`
+            sql`message_id = ${(envelope.messageId)}`
           ])
         }`.pipe(Effect.catchAllCause(Effect.logError))
       },
@@ -206,7 +205,8 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
                 recipientType: entry.recipient_name,
                 entityId: entry.entity_id
               }),
-              SerializedMessage.make(entry.message_id, SerializedValue.make(entry.message_body))
+              entry.message_id,
+              SerializedMessage.make(SerializedValue.make(entry.message_body))
             )
           )
         )

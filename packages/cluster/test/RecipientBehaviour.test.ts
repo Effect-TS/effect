@@ -13,7 +13,6 @@ import * as FiberId from "effect/FiberId"
 import { pipe } from "effect/Function"
 import * as Logger from "effect/Logger"
 import * as LogLevel from "effect/LogLevel"
-import * as PrimaryKey from "effect/PrimaryKey"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import { describe, expect, it } from "vitest"
@@ -24,9 +23,6 @@ class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
   Schema.Number,
   { id: Schema.String }
 ) {
-  [PrimaryKey.symbol]() {
-    return this.id
-  }
 }
 
 describe.concurrent("RecipientBehaviour", () => {
@@ -50,7 +46,8 @@ describe.concurrent("RecipientBehaviour", () => {
           shardId: ShardId.make(1),
           entity: new Entity.Standard({
             name: "Sample",
-            schema: SampleMessage
+            schema: SampleMessage,
+            messageId: _ => _.id
           }) as any
         })
       ),
@@ -72,7 +69,7 @@ describe.concurrent("RecipientBehaviour", () => {
       const scope = yield* _(Scope.make())
       const offer = yield* _(makeTestActor(behaviour, scope))
       const msg = new SampleMessage({ id: "1" })
-      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a" }), msg)))
+      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a" }), msg.id, msg)))
       yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
 
       expect(yield* _(Deferred.await(received))).toBe(true)
@@ -102,7 +99,7 @@ describe.concurrent("RecipientBehaviour", () => {
       const scope = yield* _(Scope.make())
       const offer = yield* _(makeTestActor(behaviour, scope))
       const msg = new SampleMessage({ id: "1" })
-      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a" }), msg)))
+      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a" }), msg.id, msg)))
       yield* _(Deferred.await(started))
       yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(interrupted).toBe(true))

@@ -20,7 +20,6 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as PrimaryKey from "effect/PrimaryKey"
 import { describe, expect, it } from "vitest"
 
 class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
@@ -34,14 +33,12 @@ class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
     }
   }
 ) {
-  [PrimaryKey.symbol]() {
-    return this.id
-  }
 }
 
 const SampleEntity = new Entity.Standard({
   name: "SampleEntity",
-  schema: SampleMessage
+  schema: SampleMessage,
+  messageId: _ => _.id
 })
 type SampleEntity = SampleMessage
 

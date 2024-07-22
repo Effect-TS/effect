@@ -44,9 +44,6 @@ class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
     value: Schema.Number
   }
 ) {
-  [PrimaryKey.symbol]() {
-    return this.id
-  }
 }
 
 class SampleMessageWithResult extends Schema.TaggedRequest<SampleMessageWithResult>()(
@@ -58,9 +55,6 @@ class SampleMessageWithResult extends Schema.TaggedRequest<SampleMessageWithResu
     value: Schema.Number
   }
 ) {
-  [PrimaryKey.symbol]() {
-    return this.id
-  }
 }
 
 class FailableMessageWithResult extends Schema.TaggedRequest<FailableMessageWithResult>()(
@@ -72,16 +66,14 @@ class FailableMessageWithResult extends Schema.TaggedRequest<FailableMessageWith
     value: Schema.Number
   }
 ) {
-  [PrimaryKey.symbol]() {
-    return this.id
-  }
 }
 
 type SampleEntity = SampleMessage | SampleMessageWithResult | FailableMessageWithResult
 
 const SampleEntity = new Entity.Standard({
   name: "Sample",
-  schema: Schema.Union(SampleMessage, SampleMessageWithResult, FailableMessageWithResult)
+  schema: Schema.Union(SampleMessage, SampleMessageWithResult, FailableMessageWithResult),
+  messageId: _ => _.id
 })
 
 describe.concurrent("SampleTests", () => {
@@ -256,7 +248,8 @@ describe.concurrent("SampleTests", () => {
 
       const SampleTopic = new Entity.Clustered({
         name: "Sample",
-        schema: SampleProtocol
+        schema: SampleProtocol,
+        messageId:  _ => _.id
       })
 
       const ref = yield* _(Ref.make(0))

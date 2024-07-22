@@ -13,7 +13,6 @@ import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Option from "effect/Option"
-import * as PrimaryKey from "effect/PrimaryKey"
 import * as PubSub from "effect/PubSub"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
@@ -513,8 +512,8 @@ function make(
               pod,
               Envelope.make(
                 recipientAddress,
+                entity.messageId(message),
                 SerializedMessage.make(
-                  PrimaryKey.value(message),
                   body
                 )
               )
@@ -590,7 +589,8 @@ function make(
                     pod,
                     Envelope.make(
                       new RecipientAddress({ recipientType: entity.name, entityId: topicId }),
-                      SerializedMessage.make(PrimaryKey.value(message), body)
+                      entity.messageId(message),
+                      SerializedMessage.make(body)
                     )
                   ),
                   Effect.retry(pipe(
