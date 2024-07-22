@@ -306,6 +306,8 @@ const makeZonedProto = (epochMillis: number, zone: TimeZone, partsUtc?: DateTime
  */
 export const isDateTime = (u: unknown): u is DateTime => Predicate.hasProperty(u, TypeId)
 
+const isDateTimeArgs = (args: IArguments) => isDateTime(args[0])
+
 /**
  * @since 3.6.0
  * @category guards
@@ -583,7 +585,7 @@ export const setZone: {
   (self: DateTime, zone: TimeZone, options?: {
     readonly adjustForTimeZone?: boolean | undefined
   }): Zoned
-} = dual(2, (self: DateTime, zone: TimeZone, options?: {
+} = dual(isDateTimeArgs, (self: DateTime, zone: TimeZone, options?: {
   readonly adjustForTimeZone?: boolean | undefined
 }): Zoned =>
   options?.adjustForTimeZone === true
@@ -614,7 +616,7 @@ export const setZoneOffset: {
   (self: DateTime, offset: number, options?: {
     readonly adjustForTimeZone?: boolean | undefined
   }): Zoned
-} = dual(2, (self: DateTime, offset: number, options?: {
+} = dual(isDateTimeArgs, (self: DateTime, offset: number, options?: {
   readonly adjustForTimeZone?: boolean | undefined
 }): Zoned => setZone(self, zoneMakeOffset(offset), options))
 
@@ -772,7 +774,7 @@ export const setZoneNamed: {
     readonly adjustForTimeZone?: boolean | undefined
   }): Option.Option<Zoned>
 } = dual(
-  2,
+  isDateTimeArgs,
   (self: DateTime, zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
   }): Option.Option<Zoned> => Option.map(zoneMakeNamed(zoneId), (zone) => setZone(self, zone, options))
@@ -800,7 +802,7 @@ export const unsafeSetZoneNamed: {
   (self: DateTime, zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
   }): Zoned
-} = dual(2, (self: DateTime, zoneId: string, options?: {
+} = dual(isDateTimeArgs, (self: DateTime, zoneId: string, options?: {
   readonly adjustForTimeZone?: boolean | undefined
 }): Zoned => setZone(self, zoneUnsafeMakeNamed(zoneId), options))
 
@@ -1719,7 +1721,7 @@ export const startOf: {
   <A extends DateTime>(self: A, part: DateTime.DatePart, options?: {
     readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
   }): DateTime.PreserveZone<A>
-} = dual((args) => typeof args[1] === "string", (self: DateTime, part: DateTime.DatePart, options?: {
+} = dual(isDateTimeArgs, (self: DateTime, part: DateTime.DatePart, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime =>
   mutate(self, (date) => {
@@ -1773,7 +1775,7 @@ export const endOf: {
   <A extends DateTime>(self: A, part: DateTime.DatePart, options?: {
     readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
   }): DateTime.PreserveZone<A>
-} = dual((args) => typeof args[1] === "string", (self: DateTime, part: DateTime.DatePart, options?: {
+} = dual(isDateTimeArgs, (self: DateTime, part: DateTime.DatePart, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime =>
   mutate(self, (date) => {
@@ -1841,7 +1843,7 @@ export const format: {
       }
       | undefined
   ): string
-} = dual((args) => isDateTime(args[0]), (
+} = dual(isDateTimeArgs, (
   self: DateTime,
   options?:
     | Intl.DateTimeFormatOptions & {
@@ -1886,7 +1888,7 @@ export const formatUtc: {
       }
       | undefined
   ): string
-} = dual((args) => isDateTime(args[0]), (
+} = dual(isDateTimeArgs, (
   self: DateTime,
   options?:
     | Intl.DateTimeFormatOptions & {
