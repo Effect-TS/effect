@@ -30,5 +30,5 @@ Effect.gen(function* () {
   const sydneyTime = tomorrow.pipe(
     DateTime.unsafeSetZoneNamed("Australia/Sydney"),
   );
-}).pipe(Effect.withCurrentZoneNamed("America/New_York"));
+}).pipe(DateTime.withCurrentZoneNamed("America/New_York"));
 ```
