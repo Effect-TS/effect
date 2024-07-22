@@ -519,7 +519,7 @@ const zonedStringRegex = /^(.{17,35})\[(.+)\]$/
 /**
  * Create a `DateTime.Zoned` from a string.
  *
- * It uses the format: `YYYY-MM-DDTHH:mm:ss.sssZ IANA/TimeZone`.
+ * It uses the format: `YYYY-MM-DDTHH:mm:ss.sss+HH:MM[Time/Zone]`.
  *
  * @since 3.6.0
  * @category constructors
@@ -577,9 +577,18 @@ export const unsafeNow: LazyArg<Utc> = () => makeUtc(Date.now())
  * })
  */
 export const setZone: {
-  (zone: TimeZone): (self: DateTime) => Zoned
-  (self: DateTime, zone: TimeZone): Zoned
-} = dual(2, (self: DateTime, zone: TimeZone): Zoned => makeZonedProto(self.epochMillis, zone, self.partsUtc))
+  (zone: TimeZone, options?: {
+    readonly inputInTimeZone?: boolean | undefined
+  }): (self: DateTime) => Zoned
+  (self: DateTime, zone: TimeZone, options?: {
+    readonly inputInTimeZone?: boolean | undefined
+  }): Zoned
+} = dual(2, (self: DateTime, zone: TimeZone, options?: {
+  readonly inputInTimeZone?: boolean | undefined
+}): Zoned =>
+  options?.inputInTimeZone === true
+    ? makeZonedFromAdjusted(self.epochMillis, zone)
+    : makeZonedProto(self.epochMillis, zone, self.partsUtc))
 
 /**
  * Add a fixed offset time zone to a `DateTime`.
@@ -599,9 +608,15 @@ export const setZone: {
  * })
  */
 export const setZoneOffset: {
-  (offset: number): (self: DateTime) => Zoned
-  (self: DateTime, offset: number): Zoned
-} = dual(2, (self: DateTime, offset: number): Zoned => setZone(self, zoneMakeOffset(offset)))
+  (offset: number, options?: {
+    readonly inputInTimeZone?: boolean | undefined
+  }): (self: DateTime) => Zoned
+  (self: DateTime, offset: number, options?: {
+    readonly inputInTimeZone?: boolean | undefined
+  }): Zoned
+} = dual(2, (self: DateTime, offset: number, options?: {
+  readonly inputInTimeZone?: boolean | undefined
+}): Zoned => setZone(self, zoneMakeOffset(offset), options))
 
 const validZoneCache = globalValue("effect/DateTime/validZoneCache", () => new Map<string, TimeZone.Named>())
 
@@ -750,12 +765,17 @@ export const zoneToString = (self: TimeZone): string => {
  * })
  */
 export const setZoneNamed: {
-  (zoneId: string): (self: DateTime) => Option.Option<Zoned>
-  (self: DateTime, zoneId: string): Option.Option<Zoned>
+  (zoneId: string, options?: {
+    readonly inputInTimeZone?: boolean | undefined
+  }): (self: DateTime) => Option.Option<Zoned>
+  (self: DateTime, zoneId: string, options?: {
+    readonly inputInTimeZone?: boolean | undefined
+  }): Option.Option<Zoned>
 } = dual(
   2,
-  (self: DateTime, zoneId: string): Option.Option<Zoned> =>
-    Option.map(zoneMakeNamed(zoneId), (zone) => setZone(self, zone))
+  (self: DateTime, zoneId: string, options?: {
+    readonly inputInTimeZone?: boolean | undefined
+  }): Option.Option<Zoned> => Option.map(zoneMakeNamed(zoneId), (zone) => setZone(self, zone, options))
 )
 
 /**
@@ -774,9 +794,15 @@ export const setZoneNamed: {
  * })
  */
 export const unsafeSetZoneNamed: {
-  (zoneId: string): (self: DateTime) => Zoned
-  (self: DateTime, zoneId: string): Zoned
-} = dual(2, (self: DateTime, zoneId: string): Zoned => setZone(self, zoneUnsafeMakeNamed(zoneId)))
+  (zoneId: string, options?: {
+    readonly inputInTimeZone?: boolean | undefined
+  }): (self: DateTime) => Zoned
+  (self: DateTime, zoneId: string, options?: {
+    readonly inputInTimeZone?: boolean | undefined
+  }): Zoned
+} = dual(2, (self: DateTime, zoneId: string, options?: {
+  readonly inputInTimeZone?: boolean | undefined
+}): Zoned => setZone(self, zoneUnsafeMakeNamed(zoneId), options))
 
 // =============================================================================
 // comparisons
