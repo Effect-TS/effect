@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import type * as Array from "./Array.js"
+import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
@@ -118,7 +119,11 @@ export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>
  * @since 2.0.0
  * @category constructors
  */
-export const choice: <A>(elements: Array.NonEmptyReadonlyArray<A>) => Effect.Effect<A> = defaultServices.choice
+export const choice: <Self extends ReadonlyArray<unknown>>(
+  elements: Self
+) => Self extends Array.NonEmptyReadonlyArray<infer A> ? Effect.Effect<A>
+  : Self extends ReadonlyArray<infer A> ? Effect.Effect<A, Cause.NoSuchElementException>
+  : never = defaultServices.choice
 
 /**
  * Retreives the `Random` service from the context and uses it to run the

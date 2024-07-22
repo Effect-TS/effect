@@ -1,4 +1,4 @@
-import { Array, Chunk, Data, Effect, Random } from "effect"
+import { Array, Cause, Chunk, Data, Effect, Random } from "effect"
 import { expect, it } from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
@@ -28,7 +28,10 @@ describe("Random", () => {
 
   it.live("choice", () =>
     Effect.gen(function*() {
+      expect(yield* Random.choice([]).pipe(Effect.flip)).toEqual(new Cause.NoSuchElementException())
       expect(yield* Random.choice([1])).toEqual(1)
-      expect(yield* Random.choice([1, 2, 3])).oneOf([1, 2, 3])
+
+      const randomItems = yield* Random.choice([1, 2, 3]).pipe(Array.replicate(100), Effect.all)
+      expect(Array.intersection(randomItems, [1, 2, 3]).length).toEqual(randomItems.length)
     }))
 })
