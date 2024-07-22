@@ -964,7 +964,19 @@ export const isFuture = (self: DateTime): Effect.Effect<boolean> => Effect.map(n
  * @since 3.6.0
  * @category comparisons
  */
+export const unsafeIsFuture = (self: DateTime): boolean => lessThan(unsafeNow(), self)
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
 export const isPast = (self: DateTime): Effect.Effect<boolean> => Effect.map(now, greaterThan(self))
+
+/**
+ * @since 3.6.0
+ * @category comparisons
+ */
+export const unsafeIsPast = (self: DateTime): boolean => greaterThan(unsafeNow(), self)
 
 // =============================================================================
 // conversions
