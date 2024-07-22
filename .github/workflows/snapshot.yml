@@ -9,7 +9,7 @@ on:
 jobs:
   snapshot:
     name: Snapshot
-    if: ${{ github.repository_owner == 'Effect-Ts' && github.event.issue.pull_request }}
+    if: ${{ github.repository_owner == 'Effect-Ts' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
