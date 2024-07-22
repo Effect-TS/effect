@@ -178,14 +178,14 @@ describe("DateTime", () => {
       }))
   })
 
-  describe("formatWithZone", () => {
+  describe("format zoned", () => {
     it.effect("full", () =>
       Effect.gen(function*() {
         const now = yield* DateTime.nowInCurrentZone.pipe(
           DateTime.withCurrentZoneNamed("Pacific/Auckland")
         )
         assert.strictEqual(
-          DateTime.formatZoned(now, { dateStyle: "full", timeStyle: "full" }),
+          DateTime.format(now, { dateStyle: "full", timeStyle: "full" }),
           "Thursday, January 1, 1970 at 12:00:00 PM New Zealand Standard Time"
         )
       }))
@@ -195,7 +195,7 @@ describe("DateTime", () => {
         const now = yield* DateTime.now
         const formatted = now.pipe(
           DateTime.setZoneOffset(10 * 60 * 60 * 1000),
-          DateTime.formatZoned({ dateStyle: "long", timeStyle: "short" })
+          DateTime.format({ dateStyle: "long", timeStyle: "short" })
         )
         assert.strictEqual(formatted, "January 1, 1970 at 10:00 AM")
       }))
@@ -336,7 +336,7 @@ describe("DateTime", () => {
     it.effect("roundtrip", () =>
       Effect.gen(function*() {
         const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00[Pacific/Auckland]").pipe(
-          Option.map(DateTime.zonedToString),
+          Option.map(DateTime.formatIsoZoned),
           Option.flatMap(DateTime.makeZonedFromString)
         )
         assert.deepStrictEqual(dt.zone, DateTime.zoneUnsafeMakeNamed("Pacific/Auckland"))

@@ -6119,7 +6119,7 @@ export class DateTimeZoned extends transformOrFail(
         onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
         onSome: ParseResult.succeed
       }),
-    encode: (dt) => ParseResult.succeed(dateTime.zonedToString(dt))
+    encode: (dt) => ParseResult.succeed(dateTime.formatIsoZoned(dt))
   }
 ).annotations({ identifier: "DateTimeZoned" }) {}
 

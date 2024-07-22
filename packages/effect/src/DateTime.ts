@@ -235,7 +235,7 @@ const ProtoZoned = {
       Equal.equals(this.zone, that.zone)
   },
   toString(this: Zoned) {
-    return `DateTime.Zoned(${zonedToString(this)})`
+    return `DateTime.Zoned(${formatIsoZoned(this)})`
   }
 }
 
@@ -1012,17 +1012,6 @@ const offsetToString = (offset: number): string => {
 export const zonedOffsetIso = (self: Zoned): string => offsetToString(zonedOffset(self))
 
 /**
- * Format a `DateTime.Zoned` as a string.
- *
- * It uses the format: `YYYY-MM-DDTHH:mm:ss.sss+HH:MM[Time/Zone]`.
- *
- * @since 3.6.0
- * @category conversions
- */
-export const zonedToString = (self: Zoned): string =>
-  self.zone._tag === "Offset" ? formatIsoOffset(self) : `${formatIsoOffset(self)}[${self.zone.id}]`
-
-/**
  * Get the milliseconds since the Unix epoch of a `DateTime`.
  *
  * @since 3.6.0
@@ -1780,8 +1769,20 @@ export const endOf: {
 // formatting
 // =============================================================================
 
+const intlTimeZone = (self: TimeZone): string => {
+  if (self._tag === "Named") {
+    return self.id
+  }
+  return offsetToString(self.offset)
+}
+
 /**
  * Format a `DateTime` as a string using the `DateTimeFormat` API.
+ *
+ * The `timeZone` option is set to the offset of the time zone.
+ *
+ * Note: On Node versions < 22, fixed "Offset" zones will set the time zone to
+ * "UTC" and use the adjusted `Date`.
  *
  * @since 3.6.0
  * @category formatting
@@ -1809,7 +1810,19 @@ export const format: {
       readonly locale?: string | undefined
     }
     | undefined
-): string => new Intl.DateTimeFormat(options?.locale, options).format(toEpochMillis(self)))
+): string => {
+  try {
+    return new Intl.DateTimeFormat(options?.locale, {
+      timeZone: self._tag === "Utc" ? "UTC" : intlTimeZone(self.zone),
+      ...options
+    }).format(self.epochMillis)
+  } catch (_) {
+    return new Intl.DateTimeFormat(options?.locale, {
+      timeZone: "UTC",
+      ...options
+    }).format(toDate(self))
+  }
+})
 
 /**
  * Format a `DateTime` as a string using the `DateTimeFormat` API.
@@ -1846,7 +1859,7 @@ export const formatUtc: {
   new Intl.DateTimeFormat(options?.locale, {
     ...options,
     timeZone: "UTC"
-  }).format(toEpochMillis(self)))
+  }).format(self.epochMillis))
 
 /**
  * Format a `DateTime` as a string using the `DateTimeFormat` API.
@@ -1857,62 +1870,7 @@ export const formatUtc: {
 export const formatIntl: {
   (format: Intl.DateTimeFormat): (self: DateTime) => string
   (self: DateTime, format: Intl.DateTimeFormat): string
-} = dual(2, (self: DateTime, format: Intl.DateTimeFormat): string => format.format(toEpochMillis(self)))
-
-const intlTimeZone = (self: TimeZone): string => {
-  if (self._tag === "Named") {
-    return self.id
-  }
-  return offsetToString(self.offset)
-}
-
-/**
- * Format a `DateTime` as a string using the `DateTimeFormat` API.
- *
- * The `timeZone` option is set to the offset of the time zone.
- *
- * Note: On Node versions < 22, fixed "Offset" zones will set the time zone to
- * "UTC" and use the adjusted `Date`.
- *
- * @since 3.6.0
- * @category formatting
- */
-export const formatZoned: {
-  (
-    options?:
-      | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
-      }
-      | undefined
-  ): (self: Zoned) => string
-  (
-    self: Zoned,
-    options?:
-      | Intl.DateTimeFormatOptions & {
-        readonly locale?: string | undefined
-      }
-      | undefined
-  ): string
-} = dual((args) => isDateTime(args[0]), (
-  self: Zoned,
-  options?:
-    | Intl.DateTimeFormatOptions & {
-      readonly locale?: string | undefined
-    }
-    | undefined
-): string => {
-  try {
-    return new Intl.DateTimeFormat(options?.locale, {
-      ...options,
-      timeZone: intlTimeZone(self.zone)
-    }).format(toEpochMillis(self))
-  } catch (_) {
-    return new Intl.DateTimeFormat(options?.locale, {
-      ...options,
-      timeZone: "UTC"
-    }).format(toDate(self))
-  }
-})
+} = dual(2, (self: DateTime, format: Intl.DateTimeFormat): string => format.format(self.epochMillis))
 
 /**
  * Format a `DateTime` as a UTC ISO string.
@@ -1932,3 +1890,14 @@ export const formatIsoOffset = (self: DateTime): string => {
   const date = toDate(self)
   return self._tag === "Utc" ? date.toISOString() : `${date.toISOString().slice(0, -1)}${zonedOffsetIso(self)}`
 }
+
+/**
+ * Format a `DateTime.Zoned` as a string.
+ *
+ * It uses the format: `YYYY-MM-DDTHH:mm:ss.sss+HH:MM[Time/Zone]`.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const formatIsoZoned = (self: Zoned): string =>
+  self.zone._tag === "Offset" ? formatIsoOffset(self) : `${formatIsoOffset(self)}[${self.zone.id}]`
