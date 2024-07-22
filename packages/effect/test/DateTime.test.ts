@@ -124,6 +124,14 @@ describe("DateTime", () => {
       assert.strictEqual(end.toJSON(), "2024-03-01T00:00:00.000Z")
     })
 
+    it("month duplicated", () => {
+      const mar = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
+      const end = DateTime.startOf(mar, "month").pipe(
+        DateTime.startOf("month")
+      )
+      assert.strictEqual(end.toJSON(), "2024-03-01T00:00:00.000Z")
+    })
+
     it("feb leap year", () => {
       const feb = DateTime.unsafeMake("2024-02-15T12:00:00.000Z")
       const end = DateTime.startOf(feb, "month")
@@ -159,8 +167,7 @@ describe("DateTime", () => {
         assert.strictEqual(
           DateTime.format(now, {
             dateStyle: "full",
-            timeStyle: "full",
-            timeZone: "UTC"
+            timeStyle: "full"
           }),
           "Thursday, January 1, 1970 at 12:00:00 AM Coordinated Universal Time"
         )

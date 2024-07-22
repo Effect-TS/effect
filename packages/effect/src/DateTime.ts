@@ -1919,6 +1919,22 @@ export const formatIntl: {
 export const formatIso = (self: DateTime): string => toDateUtc(self).toISOString()
 
 /**
+ * Format a `DateTime` as a time zone adjusted ISO date string.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const formatIsoDate = (self: DateTime): string => toDate(self).toISOString().slice(0, 10)
+
+/**
+ * Format a `DateTime` as a UTC ISO date string.
+ *
+ * @since 3.6.0
+ * @category formatting
+ */
+export const formatIsoDateUtc = (self: DateTime): string => toDateUtc(self).toISOString().slice(0, 10)
+
+/**
  * Format a `DateTime.Zoned` as a ISO string with an offset.
  *
  * @since 3.6.0
