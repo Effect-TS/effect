@@ -83,7 +83,7 @@ jobs:
             })
             const header = `**Good news @${{ github.actor }}, your snapshot has been published!**\n\n`
               + `You can review the build log [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).`
-              + "\n"
+              + "\n\n"
               + "Commit: ${{ github.event.pull_request.head.sha }}"
 
             const packages = `<details><summary><b>Packages:</b></summary>\n\n${commands.join("\n")}\n\n</details>`
