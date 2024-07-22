@@ -55,3 +55,8 @@ it.scopedLive.skip(
   "scopedLive skipped",
   () => Effect.acquireRelease(Effect.die("skipped anyway"), () => Effect.void)
 )
+
+// skipIf
+
+it.effect.skipIf(true)("effect skipIf (true)", () => Effect.die("skipped anyway"))
+it.effect.skipIf(false)("effect skipIf (false)", () => Effect.sync(() => expect(1).toEqual(1)))
