@@ -102,7 +102,7 @@ describe("pluck", () => {
   })
 
   it("struct with exact optional key", async () => {
-    const origin = S.Struct({ a: S.optional(S.String, { exact: true }) })
+    const origin = S.Struct({ a: S.optionalWith(S.String, { exact: true }) })
     const schema = S.pluck(origin, "a")
     await Util.expectEncodeSuccess(schema, undefined, {})
     await Util.expectEncodeSuccess(schema, "a", { a: "a" })

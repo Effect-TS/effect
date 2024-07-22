@@ -126,7 +126,7 @@ describe("extend", () => {
     it(`extend TypeLiteralTransformation`, async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
         Schema.extend(
-          Schema.Struct({ b: Schema.String, c: Schema.optional(Schema.String, { exact: true, default: () => "" }) })
+          Schema.Struct({ b: Schema.String, c: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }) })
         )
       )
       expect(String(schema)).toBe(
@@ -262,7 +262,7 @@ describe("extend", () => {
   describe("TypeLiteralTransformation", () => {
     it("extend struct", async () => {
       const schema = Schema.Struct({
-        a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
+        a: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }),
         b: Schema.String
       }).pipe(Schema.extend(Schema.Struct({ c: Schema.Number })))
       expect(String(schema)).toBe(
@@ -273,7 +273,7 @@ describe("extend", () => {
     it("extend union", async () => {
       const schema = Schema.extend(
         Schema.Struct({
-          a: Schema.optional(Schema.String, { default: () => "default" })
+          a: Schema.optionalWith(Schema.String, { default: () => "default" })
         }),
         Schema.Union(
           Schema.Struct({ b: Schema.String }),
@@ -288,7 +288,7 @@ describe("extend", () => {
     it("extend refinement", async () => {
       const schema = Schema.extend(
         Schema.Struct({
-          a: Schema.optional(Schema.String, { default: () => "default" })
+          a: Schema.optionalWith(Schema.String, { default: () => "default" })
         }),
         Schema.Struct({ b: Schema.String }).pipe(Schema.filter(() => true))
       )
@@ -301,7 +301,7 @@ describe("extend", () => {
       const suspend = Schema.suspend(() => Schema.Struct({ b: Schema.String }))
       const schema = Schema.extend(
         Schema.Struct({
-          a: Schema.optional(Schema.String, { default: () => "default" })
+          a: Schema.optionalWith(Schema.String, { default: () => "default" })
         }),
         suspend
       )
@@ -312,12 +312,12 @@ describe("extend", () => {
 
     it("extend TypeLiteralTransformation", async () => {
       const schema = Schema.Struct({
-        a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
+        a: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }),
         b: Schema.String
       }).pipe(
         Schema.extend(
           Schema.Struct({
-            c: Schema.optional(Schema.Number, { exact: true, default: () => 0 }),
+            c: Schema.optionalWith(Schema.Number, { exact: true, default: () => 0 }),
             d: Schema.Boolean
           })
         )
@@ -340,22 +340,22 @@ describe("extend", () => {
     it("with defaults extend union with defaults", async () => {
       const schema = Schema.Union(
         Schema.Struct({
-          a: Schema.optional(Schema.String, { exact: true, default: () => "a" }),
+          a: Schema.optionalWith(Schema.String, { exact: true, default: () => "a" }),
           b: Schema.String
         }),
         Schema.Struct({
-          c: Schema.optional(Schema.String, { exact: true, default: () => "c" }),
+          c: Schema.optionalWith(Schema.String, { exact: true, default: () => "c" }),
           d: Schema.String
         })
       ).pipe(
         Schema.extend(
           Schema.Union(
             Schema.Struct({
-              e: Schema.optional(Schema.String, { exact: true, default: () => "e" }),
+              e: Schema.optionalWith(Schema.String, { exact: true, default: () => "e" }),
               f: Schema.String
             }),
             Schema.Struct({
-              g: Schema.optional(Schema.String, { exact: true, default: () => "g" }),
+              g: Schema.optionalWith(Schema.String, { exact: true, default: () => "g" }),
               h: Schema.String
             })
           )

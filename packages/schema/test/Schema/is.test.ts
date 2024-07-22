@@ -289,8 +289,8 @@ describe("is", () => {
       expect(is({ a: "a" })).toEqual(false)
     })
 
-    it("optional property signature", () => {
-      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
+    it("exact optional property signature", () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       const is = P.is(schema)
       expect(is({})).toEqual(true)
       expect(is({ a: 1 })).toEqual(true)
@@ -301,8 +301,8 @@ describe("is", () => {
       expect(is({ a: undefined })).toEqual(false)
     })
 
-    it("optional property signature with undefined", () => {
-      const schema = S.Struct({ a: S.optional(S.Union(S.Number, S.Undefined), { exact: true }) })
+    it("exact optional property signature with undefined", () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true }) })
       const is = P.is(schema)
       expect(is({})).toEqual(true)
       expect(is({ a: 1 })).toEqual(true)

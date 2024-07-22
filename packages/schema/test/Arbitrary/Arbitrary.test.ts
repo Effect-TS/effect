@@ -345,12 +345,12 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     })
 
     it("optional property signature", () => {
-      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
+      const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       expectValidArbitrary(schema)
     })
 
     it("optional property signature with undefined", () => {
-      const schema = S.Struct({ a: S.optional(S.Union(S.Number, S.Undefined), { exact: true }) })
+      const schema = S.Struct({ a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true }) })
       expectValidArbitrary(schema)
     })
 

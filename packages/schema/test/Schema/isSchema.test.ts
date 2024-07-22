@@ -13,7 +13,7 @@ describe("isSchema", () => {
 
   it("PropertySignature", () => {
     expect(S.isSchema(S.propertySignature(S.String))).toBe(false)
-    expect(S.isSchema(S.optional(S.String, { exact: true }))).toBe(false)
-    expect(S.isSchema(S.optional(S.String, { default: () => "" }))).toBe(false)
+    expect(S.isSchema(S.optionalWith(S.String, { exact: true }))).toBe(false)
+    expect(S.isSchema(S.optionalWith(S.String, { default: () => "" }))).toBe(false)
   })
 })

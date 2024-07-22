@@ -115,10 +115,10 @@ describe("`onExcessProperty` option", () => {
 
     it("structs", async () => {
       const a = S.Struct({
-        a: S.optional(S.Number, { exact: true }),
-        b: S.optional(S.String, { exact: true })
+        a: S.optionalWith(S.Number, { exact: true }),
+        b: S.optionalWith(S.String, { exact: true })
       })
-      const b = S.Struct({ a: S.optional(S.Number, { exact: true }) })
+      const b = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       const schema = S.Union(a, b)
       await Util.expectDecodeUnknownFailure(
         schema,

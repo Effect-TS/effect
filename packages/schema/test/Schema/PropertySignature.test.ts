@@ -65,9 +65,9 @@ describe("PropertySignature", () => {
       })
     })
 
-    it("optional(S.string, { default })", () => {
+    it("optionalWith(S.string, { default })", () => {
       const schema = S.Struct({
-        a: S.optional(S.String, { default: () => "" }).annotations({ description: "a description" }).annotations({
+        a: S.optionalWith(S.String, { default: () => "" }).annotations({ description: "a description" }).annotations({
           title: "a title"
         })
       })
@@ -79,9 +79,9 @@ describe("PropertySignature", () => {
       })
     })
 
-    it("optional(S.NumberFromString, { default })", () => {
+    it("optionalWith(S.NumberFromString, { default })", () => {
       const schema = S.Struct({
-        a: S.optional(S.NumberFromString, { default: () => 0 }).annotations({ description: "a description" })
+        a: S.optionalWith(S.NumberFromString, { default: () => 0 }).annotations({ description: "a description" })
           .annotations({ title: "a title" })
       })
       const ast = schema.ast as AST.Transformation

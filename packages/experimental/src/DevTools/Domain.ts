@@ -206,7 +206,7 @@ export const metric = <Tag extends string, S, IS, R>(tag: Tag, state: Schema.Sch
   Schema.Struct({
     _tag: Schema.Literal(tag),
     name: Schema.String,
-    description: Schema.optional(Schema.String, { as: "Option" }),
+    description: Schema.optionalWith(Schema.String, { as: "Option" }),
     tags: Schema.Array(MetricLabel),
     state
   })

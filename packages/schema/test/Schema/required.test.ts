@@ -10,7 +10,7 @@ describe("required", () => {
 
   it("Struct", async () => {
     const schema = S.required(S.Struct({
-      a: S.optional(S.NumberFromString.pipe(S.greaterThan(0)), { exact: true })
+      a: S.optionalWith(S.NumberFromString.pipe(S.greaterThan(0)), { exact: true })
     }))
 
     await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
@@ -137,8 +137,8 @@ describe("required", () => {
 
   it("Union", async () => {
     const schema = S.required(S.Union(
-      S.Struct({ a: S.optional(S.String, { exact: true }) }),
-      S.Struct({ b: S.optional(S.Number, { exact: true }) })
+      S.Struct({ a: S.optionalWith(S.String, { exact: true }) }),
+      S.Struct({ b: S.optionalWith(S.Number, { exact: true }) })
     ))
     await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
     await Util.expectDecodeUnknownSuccess(schema, { b: 1 })
@@ -162,7 +162,7 @@ describe("required", () => {
     const schema: S.Schema<A> = S.required(S.suspend( // intended outer suspend
       () =>
         S.Struct({
-          a: S.optional(S.Union(schema, S.Null), { exact: true })
+          a: S.optionalWith(S.Union(schema, S.Null), { exact: true })
         })
     ))
     await Util.expectDecodeUnknownSuccess(schema, { a: null })

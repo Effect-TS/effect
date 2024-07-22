@@ -52,8 +52,8 @@ describe("make", () => {
   it("props transformations with defaults (data last)", () => {
     const b = Symbol.for("b")
     const schema = S.Struct({
-      a: S.String.pipe(S.optional({ default: () => "-" }), S.withConstructorDefault(() => "")),
-      [b]: S.Number.pipe(S.optional({ default: () => -1 }), S.withConstructorDefault(() => 0))
+      a: S.String.pipe(S.optionalWith({ default: () => "-" }), S.withConstructorDefault(() => "")),
+      [b]: S.Number.pipe(S.optionalWith({ default: () => -1 }), S.withConstructorDefault(() => 0))
     })
     Util.expectConstructorSuccess(schema, { a: "a", [b]: 2 })
     Util.expectConstructorSuccess(schema, { a: "a" }, { a: "a", [b]: 0 })

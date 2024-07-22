@@ -498,10 +498,10 @@ schema (NeverKeyword): never`)
       // propertyType(schema)
     })
 
-    it("optional property signature", () => {
+    it("exact optional property signature", () => {
       const schema = S.Struct({
-        a: S.optional(MyString, { exact: true }),
-        b: S.optional(S.Union(MyNumber, S.Undefined), { exact: true })
+        a: S.optionalWith(MyString, { exact: true }),
+        b: S.optionalWith(S.Union(MyNumber, S.Undefined), { exact: true })
       })
       const equivalence = E.make(schema)
 

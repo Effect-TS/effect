@@ -189,8 +189,8 @@ schema (Declaration): <declaration schema>`)
       )
     })
 
-    it("should not output optional property signatures", () => {
-      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
+    it("should not output exact optional property signatures", () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       const pretty = Pretty.make(schema)
       expect(pretty({})).toEqual("{}")
       expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -219,8 +219,8 @@ schema (Declaration): <declaration schema>`)
       expect(pretty(x)).toEqual(`{ "a": 1 }`)
     })
 
-    it("optional property signature", () => {
-      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
+    it("exact optional property signature", () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       const pretty = Pretty.make(schema)
       expect(pretty({})).toEqual(`{}`)
       expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -228,8 +228,8 @@ schema (Declaration): <declaration schema>`)
       expect(pretty(x)).toEqual(`{ "a": 1 }`)
     })
 
-    it("optional property signature with undefined", () => {
-      const schema = S.Struct({ a: S.optional(S.Union(S.Number, S.Undefined), { exact: true }) })
+    it("exact optional property signature with undefined", () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true }) })
       const pretty = Pretty.make(schema)
       expect(pretty({})).toEqual(`{}`)
       expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -537,7 +537,7 @@ schema (Declaration): <declaration schema>`)
   })
 
   it("no matching schema error", () => {
-    const A = S.Struct({ a: S.optional(S.String, { exact: true }) })
+    const A = S.Struct({ a: S.optionalWith(S.String, { exact: true }) })
     const schema = S.Union(A, S.Number)
     const x: {} = { a: undefined }
     const input: typeof A.Type = x

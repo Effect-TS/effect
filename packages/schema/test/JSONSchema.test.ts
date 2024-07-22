@@ -733,10 +733,10 @@ schema (Declaration): DateFromSelf`
       expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
     })
 
-    it("optional property signature", () => {
+    it("exact optional property signature", () => {
       const schema = Schema.Struct({
         a: Schema.String,
-        b: Schema.optional(JsonNumber, { exact: true })
+        b: Schema.optionalWith(JsonNumber, { exact: true })
       })
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1993,7 +1993,7 @@ schema (Suspend): <suspended schema>`
     describe("optional", () => {
       it("annotations", () => {
         const schema = Schema.Struct({
-          a: Schema.optional(Schema.NonEmptyString.annotations({ description: "an optional field" }), {
+          a: Schema.optionalWith(Schema.NonEmptyString.annotations({ description: "an optional field" }), {
             default: () => ""
           })
             .annotations({ description: "a required field" })
@@ -2046,7 +2046,7 @@ schema (Suspend): <suspended schema>`
       it("with default", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.optional(Schema.NonEmptyString, { default: () => "" })
+            a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2069,7 +2069,7 @@ schema (Suspend): <suspended schema>`
       it("as Option", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.optional(Schema.NonEmptyString, { as: "Option" })
+            a: Schema.optionalWith(Schema.NonEmptyString, { as: "Option" })
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",

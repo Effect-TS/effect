@@ -31,9 +31,9 @@ describe("pick", () => {
     )
   })
 
-  it("struct with optionals", async () => {
+  it("struct with exact optionals", async () => {
     const schema = S.Struct({
-      a: S.optional(S.String, { exact: true }),
+      a: S.optionalWith(S.String, { exact: true }),
       b: S.NumberFromString,
       c: S.Boolean
     })
@@ -88,7 +88,7 @@ describe("pick", () => {
 
   it("struct with property signature transformations", async () => {
     const schema = S.Struct({
-      a: S.optional(S.String, { exact: true, default: () => "" }),
+      a: S.optionalWith(S.String, { exact: true, default: () => "" }),
       b: S.NumberFromString,
       c: S.Boolean
     }).pipe(

@@ -13,7 +13,7 @@ class Person extends S.Class<Person>("Person")({
   }
 }
 
-const Thing = S.optional(S.Struct({ id: S.Number }), { exact: true, as: "Option" })
+const Thing = S.optionalWith(S.Struct({ id: S.Number }), { exact: true, as: "Option" })
 
 class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>("PersonWithTransform")(
   {

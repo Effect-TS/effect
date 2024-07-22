@@ -166,9 +166,9 @@ describe("Union", () => {
       await Util.expectEncodeSuccess(schema, 1, "1")
     })
 
-    it("union/ optional property signatures", async () => {
-      const ab = S.Struct({ a: S.String, b: S.optional(S.Number, { exact: true }) })
-      const ac = S.Struct({ a: S.String, c: S.optional(S.Number, { exact: true }) })
+    it("union/ exact optional property signatures", async () => {
+      const ab = S.Struct({ a: S.String, b: S.optionalWith(S.Number, { exact: true }) })
+      const ac = S.Struct({ a: S.String, c: S.optionalWith(S.Number, { exact: true }) })
       const schema = S.Union(ab, ac)
       await Util.expectEncodeSuccess(
         schema,

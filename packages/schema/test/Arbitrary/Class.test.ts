@@ -17,16 +17,16 @@ describe("class", () => {
     expectValidArbitrary(Class)
   })
 
-  it("optional property signature", () => {
+  it("exact optional property signature", () => {
     class Class extends S.Class<Class>("Class")({
-      a: S.optional(S.Number, { exact: true })
+      a: S.optionalWith(S.Number, { exact: true })
     }) {}
     expectValidArbitrary(Class)
   })
 
-  it("optional property signature with undefined", () => {
+  it("exact optional property signature with undefined", () => {
     class Class extends S.Class<Class>("Class")({
-      a: S.optional(S.Union(S.Number, S.Undefined), { exact: true })
+      a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true })
     }) {}
     expectValidArbitrary(Class)
   })
