@@ -1,13 +1,15 @@
 name: Snapshot
 
 on:
-  issue_comment:
-    types: [created]
+  pull_request:
+    branches: [main, next-minor, next-major]
+  push:
+    branches: [main, next-minor, next-major]
 
 jobs:
   snapshot:
     name: Snapshot
-    if: ${{ github.repository_owner == 'Effect-Ts' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/snapshot') }}
+    if: ${{ github.repository_owner == 'Effect-Ts' && github.event.issue.pull_request }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -21,19 +23,7 @@ jobs:
         with:
           permission: write
 
-      - name: Extract snapshot command
-        id: command
-        env:
-          COMMENT: ${{ github.event.comment.body }}
-        run: |
-          if [[ $COMMENT == "/snapshot" ]]; then
-            snapshot="${BASH_REMATCH[2]:-snapshot}"
-            echo "snapshot=$snapshot" >> $GITHUB_OUTPUT
-          else
-            exit 1
-          fi
-
-      - name: Create initial comment
+      - name: Initial comment
         id: comment
         uses: peter-evans/create-or-update-comment@v4
         env:
@@ -57,7 +47,7 @@ jobs:
         id: branch
         run: echo "branch=$(git branch --show-current)" >> $GITHUB_OUTPUT
 
-      - name: Retrieve changeset entries
+      - name: Checkout main branch for changeset release
         if: ${{ steps.branch.outputs.branch == 'changeset-release/main' }}
         run: git checkout origin/main
 
@@ -87,13 +77,14 @@ jobs:
           script: |
             const commands = ${{ steps.snapshot.outputs.snapshots }}.map((snapshot) => {
               const [package, installer] = snapshot.split(": ")
-              const [, sha] = installer.split(/@(?=[^@]*$)/)
-              const header = `<b>${package} (${sha}):</b><br />`
+              const header = `<b>${package}:</b><br />`
               const content = "\n```sh\n" + installer + "\n```\n"
               return [header, content].join("\n")
             })
             const header = `**Good news @${{ github.actor }}, your snapshot has been published!**\n\n`
               + `You can review the build log [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).`
+              + "\n"
+              + "Commit: ${{ github.event.head.sha }}"
 
             const packages = `<details><summary><b>Packages:</b></summary>\n\n${commands.join("\n")}\n\n</details>`
 
