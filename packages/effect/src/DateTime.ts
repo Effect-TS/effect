@@ -430,7 +430,7 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
  * Create a `DateTime.Zoned` using `DateTime.unsafeMake` and a time zone.
  *
  * The input is treated as UTC and then the time zone is attached, unless
- * `inputInTimeZone` is set to `true`. In that case, the input is treated as
+ * `adjustForTimeZone` is set to `true`. In that case, the input is treated as
  * already in the time zone.
  *
  * @since 3.6.0
@@ -442,7 +442,7 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
  */
 export const unsafeMakeZoned = (input: DateTime.Input, options: {
   readonly timeZone: number | string | TimeZone
-  readonly inputInTimeZone?: boolean | undefined
+  readonly adjustForTimeZone?: boolean | undefined
 }): Zoned => {
   const self = unsafeMake(input)
   let zone: TimeZone
@@ -457,7 +457,7 @@ export const unsafeMakeZoned = (input: DateTime.Input, options: {
     }
     zone = parsedZone.value
   }
-  if (options.inputInTimeZone !== true) {
+  if (options.adjustForTimeZone !== true) {
     return makeZonedProto(self.epochMillis, zone, self.partsUtc)
   }
   return makeZonedFromAdjusted(self.epochMillis, zone)
@@ -481,7 +481,7 @@ export const makeZoned: (
   input: DateTime.Input,
   options: {
     readonly timeZone: number | string | TimeZone
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }
 ) => Option.Option<Zoned> = Option
   .liftThrowable(unsafeMakeZoned)
@@ -578,15 +578,15 @@ export const unsafeNow: LazyArg<Utc> = () => makeUtc(Date.now())
  */
 export const setZone: {
   (zone: TimeZone, options?: {
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }): (self: DateTime) => Zoned
   (self: DateTime, zone: TimeZone, options?: {
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }): Zoned
 } = dual(2, (self: DateTime, zone: TimeZone, options?: {
-  readonly inputInTimeZone?: boolean | undefined
+  readonly adjustForTimeZone?: boolean | undefined
 }): Zoned =>
-  options?.inputInTimeZone === true
+  options?.adjustForTimeZone === true
     ? makeZonedFromAdjusted(self.epochMillis, zone)
     : makeZonedProto(self.epochMillis, zone, self.partsUtc))
 
@@ -609,13 +609,13 @@ export const setZone: {
  */
 export const setZoneOffset: {
   (offset: number, options?: {
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }): (self: DateTime) => Zoned
   (self: DateTime, offset: number, options?: {
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }): Zoned
 } = dual(2, (self: DateTime, offset: number, options?: {
-  readonly inputInTimeZone?: boolean | undefined
+  readonly adjustForTimeZone?: boolean | undefined
 }): Zoned => setZone(self, zoneMakeOffset(offset), options))
 
 const validZoneCache = globalValue("effect/DateTime/validZoneCache", () => new Map<string, TimeZone.Named>())
@@ -766,15 +766,15 @@ export const zoneToString = (self: TimeZone): string => {
  */
 export const setZoneNamed: {
   (zoneId: string, options?: {
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }): (self: DateTime) => Option.Option<Zoned>
   (self: DateTime, zoneId: string, options?: {
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }): Option.Option<Zoned>
 } = dual(
   2,
   (self: DateTime, zoneId: string, options?: {
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }): Option.Option<Zoned> => Option.map(zoneMakeNamed(zoneId), (zone) => setZone(self, zone, options))
 )
 
@@ -795,13 +795,13 @@ export const setZoneNamed: {
  */
 export const unsafeSetZoneNamed: {
   (zoneId: string, options?: {
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }): (self: DateTime) => Zoned
   (self: DateTime, zoneId: string, options?: {
-    readonly inputInTimeZone?: boolean | undefined
+    readonly adjustForTimeZone?: boolean | undefined
   }): Zoned
 } = dual(2, (self: DateTime, zoneId: string, options?: {
-  readonly inputInTimeZone?: boolean | undefined
+  readonly adjustForTimeZone?: boolean | undefined
 }): Zoned => setZone(self, zoneUnsafeMakeNamed(zoneId), options))
 
 // =============================================================================
@@ -1057,7 +1057,7 @@ export const toEpochMillis = (self: DateTime): number => self.epochMillis
  * // returns "2024-01-01T00:00:00Z"
  * DateTime.unsafeMakeZoned("2024-01-01T05:00:00Z", {
  *   timeZone: "Pacific/Auckland",
- *   inputInTimeZone: true
+ *   adjustForTimeZone: true
  * }).pipe(
  *   DateTime.removeTime,
  *   DateTime.formatIso

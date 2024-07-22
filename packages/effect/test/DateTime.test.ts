@@ -313,7 +313,7 @@ describe("DateTime", () => {
     it("removes time", () => {
       const dt = DateTime.unsafeMakeZoned("2024-01-01T01:00:00Z", {
         timeZone: "Pacific/Auckland",
-        inputInTimeZone: true
+        adjustForTimeZone: true
       }).pipe(DateTime.removeTime)
       assert.strictEqual(dt.toJSON(), "2024-01-01T00:00:00.000Z")
     })
