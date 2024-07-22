@@ -68,7 +68,7 @@ describe("partial", () => {
     it("struct", () => {
       // type A = { readonly a: string }
       // type B = Partial<A>
-      const schema = S.partial(S.Struct({ a: S.String }), { exact: true })
+      const schema = S.partialWith(S.Struct({ a: S.String }), { exact: true })
       const expected = S.Struct({ a: S.optionalWith(S.String, { exact: true }) })
       expect(schema.ast).toStrictEqual(expected.ast)
     })

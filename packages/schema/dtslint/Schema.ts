@@ -906,14 +906,8 @@ S.asSchema(pipe(S.NumberFromString, S.int(), S.brand("Int")))
 pipe(S.NumberFromString, S.int(), S.brand("Int"))
 
 // ---------------------------------------------
-// Partial
+// partial
 // ---------------------------------------------
-
-// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, never>
-S.partial(S.Struct({ a: S.String, b: S.Number }), { exact: true })
-
-// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: string; }, never>
-S.partial(S.Struct({ a: S.String, b: S.NumberFromString }), { exact: true })
 
 // $ExpectType SchemaClass<{ readonly a?: string | undefined; readonly b?: number | undefined; }, { readonly a?: string | undefined; readonly b?: number | undefined; }, never>
 S.partial(S.Struct({ a: S.String, b: S.Number }))
@@ -921,11 +915,21 @@ S.partial(S.Struct({ a: S.String, b: S.Number }))
 // $ExpectType SchemaClass<{ readonly a?: string | undefined; readonly b?: number | undefined; }, { readonly a?: string | undefined; readonly b?: string | undefined; }, never>
 S.partial(S.Struct({ a: S.String, b: S.NumberFromString }))
 
-// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, never>
-S.Struct({ a: S.String, b: S.Number }).pipe(S.partial({ exact: true }))
-
 // $ExpectType SchemaClass<{ readonly a?: string | undefined; readonly b?: number | undefined; }, { readonly a?: string | undefined; readonly b?: number | undefined; }, never>
-S.Struct({ a: S.String, b: S.Number }).pipe(S.partial())
+S.Struct({ a: S.String, b: S.Number }).pipe(S.partial)
+
+// ---------------------------------------------
+// partialWith
+// ---------------------------------------------
+
+// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, never>
+S.partialWith(S.Struct({ a: S.String, b: S.Number }), { exact: true })
+
+// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: string; }, never>
+S.partialWith(S.Struct({ a: S.String, b: S.NumberFromString }), { exact: true })
+
+// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, never>
+S.Struct({ a: S.String, b: S.Number }).pipe(S.partialWith({ exact: true }))
 
 // ---------------------------------------------
 // Required + optionalWith

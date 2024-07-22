@@ -2852,29 +2852,28 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
 
 /**
  * @category combinators
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const partial: {
-  <const Options extends { readonly exact: true } | undefined>(
-    options?: Options
-  ): <A, I, R>(
+export const partial = <A, I, R>(
+  self: Schema<A, I, R>
+): SchemaClass<{ [K in keyof A]?: A[K] | undefined }, { [K in keyof I]?: I[K] | undefined }, R> =>
+  make(AST.partial(self.ast))
+
+/**
+ * @category combinators
+ * @since 0.69.0
+ */
+export const partialWith: {
+  <const Options extends { readonly exact: true }>(options: Options): <A, I, R>(
     self: Schema<A, I, R>
-  ) => SchemaClass<
-    { [K in keyof A]?: A[K] | ([undefined] extends [Options] ? undefined : never) },
-    { [K in keyof I]?: I[K] | ([undefined] extends [Options] ? undefined : never) },
-    R
-  >
+  ) => SchemaClass<{ [K in keyof A]?: A[K] }, { [K in keyof I]?: I[K] }, R>
   <A, I, R, const Options extends { readonly exact: true } | undefined>(
     self: Schema<A, I, R>,
-    options?: Options
-  ): SchemaClass<
-    { [K in keyof A]?: A[K] | ([undefined] extends [Options] ? undefined : never) },
-    { [K in keyof I]?: I[K] | ([undefined] extends [Options] ? undefined : never) },
-    R
-  >
+    options: Options
+  ): SchemaClass<{ [K in keyof A]?: A[K] }, { [K in keyof I]?: I[K] }, R>
 } = dual((args) => isSchema(args[0]), <A, I, R>(
   self: Schema<A, I, R>,
-  options?: { readonly exact: true }
+  options: { readonly exact: true }
 ): SchemaClass<Partial<A>, Partial<I>, R> => make(AST.partial(self.ast, options)))
 
 /**

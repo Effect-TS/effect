@@ -71,6 +71,7 @@ TODO: change to minor before merging
 - fix `Schema.Void` behavior: now accepts any value instead of only validating `undefined`, closes #3297
 - rename `optionalWithOptions` interface to `optionalWith`
 - split `optional` API into `optional` (without options) and `optionalWith` (with options)
+- split `partial` API into `partial` (without options) and `partialWith` (with options)
 
 ### AST
 

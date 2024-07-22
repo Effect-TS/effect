@@ -230,18 +230,18 @@ S.Struct({ a: aContext, b: bContext }).pipe(S.omit("b"))
 aContext.pipe(S.brand("a"))
 
 // ---------------------------------------------
-// partial
+// partialWith
 // ---------------------------------------------
 
 // $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, "aContext" | "bContext">
-S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true })
+S.partialWith(S.Struct({ a: aContext, b: bContext }), { exact: true })
 
 // ---------------------------------------------
 // required
 // ---------------------------------------------
 
 // $ExpectType SchemaClass<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
-S.required(S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true }))
+S.required(S.partialWith(S.Struct({ a: aContext, b: bContext }), { exact: true }))
 
 // ---------------------------------------------
 // mutable
