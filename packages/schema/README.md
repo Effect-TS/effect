@@ -132,7 +132,7 @@ Let's delve into this with an example.
 import { Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.optional(Schema.String.pipe(Schema.nonEmptyString()), {
+  name: Schema.optionalWith(Schema.String.pipe(Schema.nonEmptyString()), {
     exact: true
   })
 })
@@ -163,7 +163,7 @@ If, for some reason, you can't enable the `exactOptionalPropertyTypes` option (p
 import { Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.optional(Schema.String.pipe(Schema.nonEmptyString()), {
+  name: Schema.optionalWith(Schema.String.pipe(Schema.nonEmptyString()), {
     exact: true
   })
 })
@@ -1309,7 +1309,7 @@ assertsPerson({ name: "Alice", age: 30 })
 | `a${string}`                                 | template literals                        | `S.TemplateLiteral("a", S.String)`                                         |
 | `{ readonly a: string, readonly b: number }` | structs                                  | `S.Struct({ a: S.String, b: S.Number })`                                   |
 | `{ readonly a?: string \| undefined }`       | optional fields                          | `S.Struct({ a: S.optional(S.String) })`                                    |
-| `{ readonly a?: string }`                    | optional fields                          | `S.Struct({ a: S.optional(S.String, { exact: true }) })`                   |
+| `{ readonly a?: string }`                    | optional fields                          | `S.Struct({ a: S.optionalWith(S.String, { exact: true }) })`               |
 | `Record<A, B>`                               | records                                  | `S.Record({ key: A, value: B })`                                           |
 | `readonly [string, number]`                  | tuples                                   | `S.Tuple(S.String, S.Number)`                                              |
 | `ReadonlyArray<string>`                      | arrays                                   | `S.Array(S.String)`                                                        |
@@ -2301,8 +2301,8 @@ const schema = Schema.asSchema(opaque)
 ```ts
 import { Schema } from "@effect/schema"
 
-// Schema.NonEmptyStringArray<typeof Schema.Number>
-const opaque = Schema.NonEmptyStringArray(Schema.Number)
+// Schema.NonEmptyArray<typeof Schema.Number>
+const opaque = Schema.NonEmptyArray(Schema.Number)
 
 // Schema.Schema<readonly [number, ...number[]], readonly [number, ...number[]], never>
 const schema = Schema.asSchema(opaque)
@@ -2315,7 +2315,7 @@ You can access the value of a non-empty array schema:
 ```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.NonEmptyStringArray(Schema.String)
+const schema = Schema.NonEmptyArray(Schema.String)
 
 // Accesses the value
 const value = schema.value // typeof Schema.String
@@ -2329,16 +2329,16 @@ const value = schema.value // typeof Schema.String
 import { Schema } from "@effect/schema"
 
 // Schema.Record$<typeof Schema.String, typeof Schema.Number>
-const opaque1 = Schema.Record(Schema.String, Schema.Number)
+const opaque1 = Schema.Record({ key: Schema.String, value: Schema.Number })
 
 // Schema.Schema<{ readonly [x: string]: number; }>
 const schema1 = Schema.asSchema(opaque1)
 
 // Schema.Record$<Schema.Union<[Schema.Literal<["a"]>, Schema.Literal<["b"]>]>, typeof Schema.Number>
-const opaque2 = Schema.Record(
-  Schema.Union(Schema.Literal("a"), Schema.Literal("b")),
-  Schema.Number
-)
+const opaque2 = Schema.Record({
+  key: Schema.Union(Schema.Literal("a"), Schema.Literal("b")),
+  value: Schema.Number
+})
 
 // Schema.Schema<{ readonly a: number; readonly b: number; }>
 const schema2 = Schema.asSchema(opaque2)
@@ -2350,10 +2350,10 @@ const schema2 = Schema.asSchema(opaque2)
 import { Schema } from "@effect/schema"
 
 // Schema.Record$<Schema.filter<Schema.Schema<string, string, never>>, typeof Schema.Number>
-const opaque = Schema.Record(
-  Schema.String.pipe(Schema.minLength(2)),
-  Schema.Number
-)
+const opaque = Schema.Record({
+  key: Schema.String.pipe(Schema.minLength(2)),
+  value: Schema.Number
+})
 
 // Schema.Schema<{ readonly [x: string]: number; }>
 const schema = Schema.asSchema(opaque)
@@ -2365,7 +2365,10 @@ const schema = Schema.asSchema(opaque)
 import { Schema } from "@effect/schema"
 
 // Schema.Record$<typeof Schema.SymbolFromSelf, typeof Schema.Number>
-const opaque = Schema.Record(Schema.SymbolFromSelf, Schema.Number)
+const opaque = Schema.Record({
+  key: Schema.SymbolFromSelf,
+  value: Schema.Number
+})
 
 // Schema.Schema<{ readonly [x: symbol]: number; }>
 const schema = Schema.asSchema(opaque)
@@ -2377,10 +2380,10 @@ const schema = Schema.asSchema(opaque)
 import { Schema } from "@effect/schema"
 
 // Schema.Record$<Schema.Schema<`a${string}`, `a${string}`, never>, typeof Schema.Number>
-const opaque = Schema.Record(
-  Schema.TemplateLiteral(Schema.Literal("a"), Schema.String),
-  Schema.Number
-)
+const opaque = Schema.Record({
+  key: Schema.TemplateLiteral(Schema.Literal("a"), Schema.String),
+  value: Schema.Number
+})
 
 // Schema.Schema<{ readonly [x: `a${string}`]: number; }>
 const schema = Schema.asSchema(opaque)
@@ -2394,7 +2397,9 @@ By default, when you use `S.Record`, it generates a type marked as readonly. The
 import { Schema } from "@effect/schema"
 
 // Schema.mutable<Schema.Record$<typeof Schema.String, typeof Schema.Number>>
-const opaque = Schema.mutable(Schema.Record(Schema.String, Schema.Number))
+const opaque = Schema.mutable(
+  Schema.Record({ key: Schema.String, value: Schema.Number })
+)
 
 // Schema.Schema<{ [x: string]: number; }>
 const schema = Schema.asSchema(opaque)
@@ -2407,7 +2412,7 @@ You can access the key and the value of a record schema:
 ```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.Record(Schema.String, Schema.Number)
+const schema = Schema.Record({ key: Schema.String, value: Schema.Number })
 
 // Accesses the key
 const key = schema.key // typeof Schema.String
@@ -2499,7 +2504,7 @@ Schema.TypeLiteral<{
 */
 const opaque = Schema.Struct(
   { a: Schema.Number },
-  Schema.Record(Schema.String, Schema.Number)
+  Schema.Record({ key: Schema.String, value: Schema.Number })
 )
 
 /*
@@ -2523,7 +2528,7 @@ import { Schema } from "@effect/schema"
 
 const schema = Schema.Struct(
   { a: Schema.Number },
-  Schema.Record(Schema.String, Schema.Number)
+  Schema.Record({ key: Schema.String, value: Schema.Number })
 )
 
 // Accesses the fields
@@ -2691,7 +2696,7 @@ console.log(Schema.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
   - `undefined` -> `undefined`
   - `a` -> `i`
 
-#### optional(schema, { nullable: true })
+#### optionalWith(schema, { nullable: true })
 
 - decoding
   - `<missing value>` -> `<missing value>`
@@ -2703,7 +2708,7 @@ console.log(Schema.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
   - `undefined` -> `undefined`
   - `a` -> `i`
 
-#### optional(schema, { exact: true })
+#### optionalWith(schema, { exact: true })
 
 - decoding
   - `<missing value>` -> `<missing value>`
@@ -2712,7 +2717,7 @@ console.log(Schema.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
   - `<missing value>` -> `<missing value>`
   - `a` -> `i`
 
-#### optional(schema, { exact: true, nullable: true })
+#### optionalWith(schema, { exact: true, nullable: true })
 
 - decoding
   - `<missing value>` -> `<missing value>`
@@ -2736,7 +2741,7 @@ import { Schema } from "@effect/schema"
 const Product = Schema.Struct({
   name: Schema.String,
   price: Schema.NumberFromString,
-  quantity: Schema.optional(Schema.NumberFromString, { default: () => 1 })
+  quantity: Schema.optionalWith(Schema.NumberFromString, { default: () => 1 })
 })
 
 // Applying defaults in the decoding phase
@@ -2761,7 +2766,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 | `optional` | `Schema<A, I, R>`, `{ nullable: true, default: () => A }`              | `PropertySignature<":", string, never, "?:", string \| null \| undefined, never>` |
 | `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<":", string, never, "?:", string \| null, never>`              |
 
-#### optional(schema, { default: () => A })
+#### optionalWith(schema, { default: () => A })
 
 - decoding
   - `<missing value>` -> `<default value>`
@@ -2770,7 +2775,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 - encoding
   - `a` -> `i`
 
-#### optional(schema, { exact: true, default: () => A })
+#### optionalWith(schema, { exact: true, default: () => A })
 
 - decoding
   - `<missing value>` -> `<default value>`
@@ -2778,7 +2783,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 - encoding
   - `a` -> `i`
 
-#### optional(schema, { nullable: true, default: () => A })
+#### optionalWith(schema, { nullable: true, default: () => A })
 
 - decoding
   - `<missing value>` -> `<default value>`
@@ -2788,7 +2793,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 - encoding
   - `a` -> `i`
 
-#### optional(schema, { exact: true, nullable: true, default: () => A })
+#### optionalWith(schema, { exact: true, nullable: true, default: () => A })
 
 - decoding
   - `<missing value>` -> `<default value>`
@@ -2806,7 +2811,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 | `optional` | `Schema<A, I, R>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<":", Option<string>, never, "?:", string \| null \| undefined, never>` |
 | `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<":", Option<string>, never, "?:", string \| null, never>`              |
 
-#### optional(schema, { as: "Option" })
+#### optionalWith(schema, { as: "Option" })
 
 - decoding
   - `<missing value>` -> `Option.none()`
@@ -2816,7 +2821,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
   - `Option.none()` -> `<missing value>`
   - `Option.some(a)` -> `i`
 
-#### optional(schema, { exact: true, as: "Option" })
+#### optionalWith(schema, { exact: true, as: "Option" })
 
 - decoding
   - `<missing value>` -> `Option.none()`
@@ -2825,7 +2830,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
   - `Option.none()` -> `<missing value>`
   - `Option.some(a)` -> `i`
 
-#### optional(schema, { nullable: true, as: "Option" })
+#### optionalWith(schema, { nullable: true, as: "Option" })
 
 - decoding
   - `<missing value>` -> `Option.none()`
@@ -2836,7 +2841,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
   - `Option.none()` -> `<missing value>`
   - `Option.some(a)` -> `i`
 
-#### optional(schema, { exact: true, nullable: true, as: "Option" })
+#### optionalWith(schema, { exact: true, nullable: true, as: "Option" })
 
 - decoding
   - `<missing value>` -> `Option.none()`
@@ -3351,7 +3356,7 @@ Schema.Schema<{
     readonly a?: string;
 }, never>
 */
-const exactSchema = Schema.partial(Schema.Struct({ a: Schema.String }), {
+const exactSchema = Schema.partialWith(Schema.Struct({ a: Schema.String }), {
   exact: true
 })
 
@@ -3375,8 +3380,8 @@ import { Schema } from "@effect/schema"
 // Schema<{ readonly a: string; readonly b: number; }>
 Schema.required(
   Schema.Struct({
-    a: Schema.optional(Schema.String, { exact: true }),
-    b: Schema.optional(Schema.Number, { exact: true })
+    a: Schema.optionalWith(Schema.String, { exact: true }),
+    b: Schema.optionalWith(Schema.Number, { exact: true })
   })
 )
 ```
@@ -3419,7 +3424,7 @@ const Extended = Schema.Struct(
   {
     ...Struct.fields
   },
-  Schema.Record(Schema.String, Schema.String)
+  Schema.Record({ key: Schema.String, value: Schema.String })
 )
 ```
 
@@ -3441,31 +3446,6 @@ const Struct2 = Schema.Struct({
 const Extended = Schema.Struct({
   ...Struct1.fields,
   ...Struct2.fields
-})
-```
-
-**Example: Using Pick and Omit**
-
-The `fields` property being a plain object allows for flexible manipulations such as picking or omitting specific fields using utility functions like `pick` and `omit`.
-
-```ts
-import { Schema } from "@effect/schema"
-import { Struct } from "effect"
-
-const Struct1 = Schema.Struct({
-  a: Schema.String,
-  b: Schema.String
-})
-
-const Struct2 = Schema.Struct({
-  c: Schema.String,
-  d: Schema.String,
-  e: Schema.String
-})
-
-const Extended = Schema.Struct({
-  ...Struct.pick(Struct1.fields, "a"),
-  ...Struct.omit(Struct2.fields, "d")
 })
 ```
 
@@ -5590,7 +5570,7 @@ class Messages extends Context.Tag("Messages")<
   }
 >() {}
 
-const Name = Schema.NonEmpty.annotations({
+const Name = Schema.NonEmptyString.annotations({
   message: () =>
     Effect.gen(function* (_) {
       const service = yield* _(Effect.serviceOption(Messages))
@@ -6064,7 +6044,7 @@ export class PersonWithTransform extends Person.transformOrFail<PersonWithTransf
   "PersonWithTransform"
 )(
   {
-    age: Schema.optional(Schema.Number, { exact: true, as: "Option" })
+    age: Schema.optionalWith(Schema.Number, { exact: true, as: "Option" })
   },
   {
     decode: (input) =>
@@ -6094,7 +6074,7 @@ export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWi
   "PersonWithTransformFrom"
 )(
   {
-    age: Schema.optional(Schema.Number, { exact: true, as: "Option" })
+    age: Schema.optionalWith(Schema.Number, { exact: true, as: "Option" })
   },
   {
     decode: (input) =>
@@ -6177,7 +6157,10 @@ Example (`Record`)
 ```ts
 import { Schema } from "@effect/schema"
 
-const Record = Schema.Record(Schema.String, Schema.NonEmptyString)
+const Record = Schema.Record({
+  key: Schema.String,
+  value: Schema.NonEmptyString
+})
 
 Record.make({ a: "a", b: "b" }) // ok
 Record.make({ a: "a", b: "" })
@@ -6610,9 +6593,9 @@ Schema.Array(Schema.String).value
 // ------------------------
 
 // key: typeof Schema.String
-Schema.Record(Schema.String, Schema.Number).key
+Schema.Record({ key: Schema.String, value: Schema.Number }).key
 // value: typeof Schema.Number
-Schema.Record(Schema.String, Schema.Number).value
+Schema.Record({ key: Schema.String, value: Schema.Number }).value
 
 // ------------------------
 // union members
@@ -7886,6 +7869,29 @@ Output:
 */
 ```
 
+## Communication and Serialization with Schema and Serializable Traits
+
+This section outlines a streamlined client-server interaction using the `Serializable` and `WithResult` traits from the `@effect/schema` library to manage serialization and processing of data objects across network communications.
+
+**Client-Side Operations:**
+
+1. **Initialization**: Start with an object of type `A`, which implements `Serializable.SerializableWithResult`.
+2. **Serialization**: Serialize the object `A` using `Serializable.serialize`, which employs the schema retrieved from the `Serializable` interface tied to `A`.
+3. **Transmission**: Send the serialized data of type `I` to the server and wait for a response.
+
+**Server-Side Operations:**
+
+1. **Reception**: Receive the serialized data `I`.
+2. **Deserialization**: Convert the serialized data `I` back into an object of type `A` using a predefined union schema `Schema<A | B | ..., I | IB | ...>`.
+3. **Processing**: Handle the message of type `A` to derive an outcome as `Exit<Success, Failure>`.
+4. **Result Serialization**: Serialize the result `Exit<Success, Failure>` to `Exit<SuccessEncoded, FailureEncoded>` utilizing the schema obtained from `A`'s `WithResult` interface.
+5. **Response**: Send the serialized response `Exit<SuccessEncoded, FailureEncoded>` back to the client.
+
+**Client-Side Response Handling:**
+
+1. **Reception**: Receive the response `Exit<SuccessEncoded, FailureEncoded>`.
+2. **Final Deserialization**: Convert `Exit<SuccessEncoded, FailureEncoded>` back to `Exit<Success, Failure>` using the original object `A` and the schema from the `WithResult` interface.
+
 # Generating Arbitraries
 
 The `make` function within the `@effect/schema/Arbitrary` module allows for the creation of random values that align with a specific `Schema<A, I, R>`. This utility returns an `Arbitrary<A>` from the [fast-check](https://github.com/dubzzz/fast-check) library, which is particularly useful for generating random test data that adheres to the defined schema constraints.
@@ -7894,7 +7900,7 @@ The `make` function within the `@effect/schema/Arbitrary` module allows for the 
 import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.NumberFromString.pipe(Schema.int(), Schema.between(0, 200))
 })
 
@@ -7937,20 +7943,20 @@ The generation of arbitrary data requires a clear understanding of how transform
 ```ts
 import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
-const schema1 = Schema.compose(Schema.NonEmpty, Schema.Trim).pipe(
+const schema1 = Schema.compose(Schema.NonEmptyString, Schema.Trim).pipe(
   Schema.maxLength(500)
 )
 // Might output empty strings despite `NonEmpty` due to filter order.
 console.log(FastCheck.sample(Arbitrary.make(schema1), 10))
 
-const schema2 = Schema.Trim.pipe(Schema.nonEmpty(), Schema.maxLength(500))
+const schema2 = Schema.Trim.pipe(Schema.nonEmptyString(), Schema.maxLength(500))
 // Ensures no empty strings, correctly applying `nonEmpty()`.
 console.log(FastCheck.sample(Arbitrary.make(schema2), 10))
 ```
 
 **Explanation:**
 
-- **Schema 1**: Considers the `Schema.maxLength(500)` because it follows the `Schema.Trim` transformation but disregards `Schema.NonEmpty` as it comes before any transformations.
+- **Schema 1**: Considers the `Schema.maxLength(500)` because it follows the `Schema.Trim` transformation but disregards `Schema.NonEmptyString` as it comes before any transformations.
 - **Schema 2**: Properly adheres to all applied filters by ensuring they follow transformations, thus avoiding the generation of undesired data.
 
 **Best Practices**
@@ -8952,7 +8958,6 @@ S.String.pipe(S.endsWith(string))
 // S.string().time() // No equivalent
 // S.string().duration() // No equivalent
 // S.string().ip() // No equivalent
-S.Base64
 
 // transforms
 S.Trim // trim whitespace
