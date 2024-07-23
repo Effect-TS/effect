@@ -131,6 +131,7 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
     Effect.forkScoped,
     Effect.uninterruptible
   )
+  yield* Effect.addFinalizer(() => Queue.offer(requests, { _tag: "PoisonPill" }))
   yield* _(
     Queue.offer(requests, { _tag: "Ping" }),
     Effect.delay("3 seconds"),
