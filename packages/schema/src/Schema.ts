@@ -85,6 +85,10 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
   readonly Type: A
   readonly Encoded: I
   readonly ast: AST.AST
+  /**
+   * Merges a set of new annotations with existing ones, potentially overwriting
+   * any duplicates.
+   */
   annotations(annotations: Annotations.Schema<A>): Schema<A, I, R>
 }
 
@@ -3768,6 +3772,9 @@ export declare namespace Annotations {
 }
 
 /**
+ * Merges a set of new annotations with existing ones, potentially overwriting
+ * any duplicates.
+ *
  * @category annotations
  * @since 0.67.0
  */
