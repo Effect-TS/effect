@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { TaggedRequest } from "@effect/schema/Schema"
 import type { SerializableWithResult, WithResult } from "@effect/schema/Serializable"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
@@ -32,7 +33,7 @@ import type * as ShardingException from "./ShardingException.js"
  * @since 1.0.0
  * @category models
  */
-export interface RecipientBehaviour<Msg extends Envelope.AnyMessage, R> extends
+export interface RecipientBehaviour<Msg extends TaggedRequest.Any, R> extends
   Effect.Effect<
     <A extends Msg>(
       envelope: Envelope<A>
@@ -72,7 +73,7 @@ export type EntityBehaviourOptions = {
  * @since 1.0.0
  * @category utils
  */
-export const fromFunctionEffect: <Msg extends Envelope.AnyMessage, R>(
+export const fromFunctionEffect: <Msg extends TaggedRequest.Any, R>(
   handler: <A extends Msg>(
     entityId: string,
     envelope: Envelope<A>
@@ -96,7 +97,7 @@ export const fromFunctionEffect: <Msg extends Envelope.AnyMessage, R>(
  * @since 1.0.0
  * @category utils
  */
-export const fromFunctionEffectStateful: <S, R, Msg extends Envelope.AnyMessage, R2>(
+export const fromFunctionEffectStateful: <S, R, Msg extends TaggedRequest.Any, R2>(
   initialState: (entityId: string) => Effect.Effect<S, never, R>,
   handler: <A extends Msg>(
     entityId: string,
@@ -122,7 +123,7 @@ export const fromFunctionEffectStateful: <S, R, Msg extends Envelope.AnyMessage,
  * @since 1.0.0
  * @category utils
  */
-export const fromInMemoryQueue: <Msg extends Envelope.AnyMessage, R>(
+export const fromInMemoryQueue: <Msg extends TaggedRequest.Any, R>(
   handler: (
     entityId: string,
     dequeue: Queue.Dequeue<Envelope<Msg> | PoisonPill.PoisonPill>,

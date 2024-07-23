@@ -34,7 +34,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Envelope<Msg extends Envelope.AnyMessage>
+export interface Envelope<Msg extends Schema.TaggedRequest.Any>
   extends
     Equal.Equal,
     PrimaryKey.PrimaryKey,
@@ -59,7 +59,7 @@ export declare namespace Envelope {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto<Msg extends AnyMessage> {
+  export interface Proto<Msg extends Schema.TaggedRequest.Any> {
     readonly [TypeId]: TypeId
     readonly address: RecipientAddress
     readonly messageId: string
@@ -75,12 +75,6 @@ export declare namespace Envelope {
     readonly messageId: string
     readonly message: IA
   }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type AnyMessage = Schema.TaggedRequest.Any
 }
 
 const Proto = Data.unsafeStruct({
@@ -112,7 +106,7 @@ const Proto = Data.unsafeStruct({
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Msg extends Envelope.AnyMessage>(
+export const make = <Msg extends Schema.TaggedRequest.Any>(
   address: RecipientAddress,
   messageId: string,
   message: Msg
@@ -129,7 +123,7 @@ export const make = <Msg extends Envelope.AnyMessage>(
  * @category refinements
  */
 export const isEnvelope = (u: unknown): u is Envelope<
-  Envelope.AnyMessage
+  Schema.TaggedRequest.Any
 > => Predicate.isObject(u) && Predicate.hasProperty(u, TypeId)
 
 /**
@@ -137,18 +131,18 @@ export const isEnvelope = (u: unknown): u is Envelope<
  * @category mapping
  */
 export const map = dual<
-  <A extends Envelope.AnyMessage, B extends Envelope.AnyMessage>(
+  <A extends Schema.TaggedRequest.Any, B extends Schema.TaggedRequest.Any>(
     f: (value: A) => B
   ) => (
     self: Envelope<A>
   ) => Envelope<B>,
-  <A extends Envelope.AnyMessage, B extends Envelope.AnyMessage>(
+  <A extends Schema.TaggedRequest.Any, B extends Schema.TaggedRequest.Any>(
     self: Envelope<A>,
     f: (value: A) => B
   ) => Envelope<B>
 >(2, (self, f) => make(self.address, self.messageId, f(self.message)))
 
-const envelopeParse = <A extends Envelope.AnyMessage, R>(
+const envelopeParse = <A extends Schema.TaggedRequest.Any, R>(
   decodeUnknown: ParseResult.DecodeUnknown<Envelope.Encoded<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<Envelope<A>, R> =>
 (u, options, ast) =>

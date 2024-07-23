@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type * as Envelope from "@effect/cluster/Envelope"
+import type * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
@@ -15,7 +15,7 @@ import * as WorkflowRuntime from "./WorkflowRuntime.js"
 /**
  * @since 1.0.0
  */
-export interface WorkflowEngine<T extends Envelope.Envelope.AnyMessage> {
+export interface WorkflowEngine<T extends Schema.TaggedRequest.Any> {
   sendDiscard: (request: T) => Effect.Effect<void>
   send: <A extends T>(request: A) => Effect.Effect<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>>
 }
@@ -23,7 +23,7 @@ export interface WorkflowEngine<T extends Envelope.Envelope.AnyMessage> {
 /**
  * @since 1.0.0
  */
-export function makeScoped<T extends Envelope.Envelope.AnyMessage, R>(
+export function makeScoped<T extends Schema.TaggedRequest.Any, R>(
   workflow: Workflow.Workflow<T, R>
 ): Effect.Effect<
   WorkflowEngine<T>,

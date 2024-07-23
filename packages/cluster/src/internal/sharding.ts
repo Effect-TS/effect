@@ -1,3 +1,4 @@
+import type * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
@@ -90,7 +91,7 @@ export function registerSingleton<R>(
 /**
  * @internal
  */
-export function registerEntity<Msg extends Envelope.Envelope.AnyMessage>(
+export function registerEntity<Msg extends Schema.TaggedRequest.Any>(
   entity: Entity.Standard<Msg>
 ) {
   return <R>(
@@ -103,7 +104,7 @@ export function registerEntity<Msg extends Envelope.Envelope.AnyMessage>(
 /**
  * @internal
  */
-export function registerTopic<Msg extends Envelope.Envelope.AnyMessage>(
+export function registerTopic<Msg extends Schema.TaggedRequest.Any>(
   entity: Entity.Clustered<Msg>
 ) {
   return <R>(
@@ -116,7 +117,7 @@ export function registerTopic<Msg extends Envelope.Envelope.AnyMessage>(
 /**
  * @internal
  */
-export function messenger<Msg extends Envelope.Envelope.AnyMessage>(
+export function messenger<Msg extends Schema.TaggedRequest.Any>(
   entity: Entity.Standard<Msg>
 ): Effect.Effect<Messenger<Msg>, never, Sharding.Sharding> {
   return Effect.map(shardingTag, (_) => _.messenger(entity))
@@ -125,7 +126,7 @@ export function messenger<Msg extends Envelope.Envelope.AnyMessage>(
 /**
  * @internal
  */
-export function broadcaster<Msg extends Envelope.Envelope.AnyMessage>(
+export function broadcaster<Msg extends Schema.TaggedRequest.Any>(
   entity: Entity.Clustered<Msg>
 ): Effect.Effect<Broadcaster.Broadcaster<Msg>, never, Sharding.Sharding> {
   return Effect.map(shardingTag, (_) => _.broadcaster(entity))
@@ -485,7 +486,7 @@ function make(
       : sendMessageToRemotePodWithoutRetries(pod, envelope)
   }
 
-  function messenger<Msg extends Envelope.Envelope.AnyMessage>(
+  function messenger<Msg extends Schema.TaggedRequest.Any>(
     entity: Entity.Standard<Msg>
   ): Messenger<Msg> {
     function sendMessage<A extends Msg>(
@@ -560,7 +561,7 @@ function make(
     return { ask, fireAndForget }
   }
 
-  function broadcaster<Msg extends Envelope.Envelope.AnyMessage>(
+  function broadcaster<Msg extends Schema.TaggedRequest.Any>(
     entity: Entity.Clustered<Msg>
   ): Broadcaster.Broadcaster<Msg> {
     function sendMessage<A extends Msg>(
@@ -657,7 +658,7 @@ function make(
     return { broadcast, broadcastAndForget }
   }
 
-  function registerEntity<Msg extends Envelope.Envelope.AnyMessage>(
+  function registerEntity<Msg extends Schema.TaggedRequest.Any>(
     entity: Entity.Standard<Msg>
   ) {
     return <R>(
@@ -675,7 +676,7 @@ function make(
       )
   }
 
-  function registerTopic<Msg extends Envelope.Envelope.AnyMessage>(
+  function registerTopic<Msg extends Schema.TaggedRequest.Any>(
     entity: Entity.Clustered<Msg>
   ) {
     return <R>(
@@ -696,7 +697,7 @@ function make(
   const getShardingRegistrationEvents: Stream.Stream<ShardingRegistrationEvent.ShardingRegistrationEvent> = Stream
     .fromPubSub(eventsHub)
 
-  function registerRecipient<Msg extends Envelope.Envelope.AnyMessage, R>(
+  function registerRecipient<Msg extends Schema.TaggedRequest.Any, R>(
     entity: Entity.Entity<Msg>,
     behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions

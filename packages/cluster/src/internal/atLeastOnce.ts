@@ -1,3 +1,4 @@
+import type * as Schema from "@effect/schema/Schema"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -33,7 +34,7 @@ export function runPendingMessageSweeperScoped(
 }
 
 /** @internal */
-export function atLeastOnceRecipientBehaviour<Msg extends Envelope.AnyMessage, R>(
+export function atLeastOnceRecipientBehaviour<Msg extends Schema.TaggedRequest.Any, R>(
   fa: RecipientBehaviour.RecipientBehaviour<Msg, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R | AtLeastOnceStorage.AtLeastOnceStorage> {
   return Effect.gen(function*(_) {

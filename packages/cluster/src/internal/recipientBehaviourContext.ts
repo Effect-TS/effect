@@ -1,7 +1,7 @@
+import type * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Entity from "../Entity.js"
-import type { Envelope } from "../Envelope.js"
 import type { RecipientAddress } from "../RecipientAddress.js"
 import type * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 import type * as ShardId from "../ShardId.js"
@@ -54,7 +54,7 @@ export const shardId: Effect.Effect<ShardId.ShardId, never, RecipientBehaviourCo
 
 /** @internal */
 export const entity: Effect.Effect<
-  Entity.Entity<Envelope.AnyMessage>,
+  Entity.Entity<Schema.TaggedRequest.Any>,
   never,
   RecipientBehaviourContext.RecipientBehaviourContext
 > = Effect.map(

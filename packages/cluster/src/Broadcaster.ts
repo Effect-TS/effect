@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
+import type { TaggedRequest } from "@effect/schema/Schema"
 import type { SerializableWithResult, WithResult } from "@effect/schema/Serializable"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
-import type { Envelope } from "./Envelope.js"
 import type { PodAddress } from "./PodAddress.js"
 import type { ShardingException } from "./ShardingException.js"
 
@@ -16,7 +16,7 @@ import type { ShardingException } from "./ShardingException.js"
  * @since 1.0.0
  * @category models
  */
-export interface Broadcaster<Msg extends Envelope.AnyMessage> {
+export interface Broadcaster<Msg extends TaggedRequest.Any> {
   /**
    * Broadcast a message and wait for a response from each entity.
    *

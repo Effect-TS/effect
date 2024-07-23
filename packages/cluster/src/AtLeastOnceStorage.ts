@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import type { SqlClient } from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
@@ -36,7 +37,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
    * Upserts a message into the storage, eventually returning the already
    * existing message state as result in the storage.
    */
-  upsert<Msg extends Envelope.AnyMessage>(
+  upsert<Msg extends Schema.TaggedRequest.Any>(
     entity: Entity<Msg>,
     shardId: ShardId,
     entityId: string,
@@ -47,7 +48,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
    * Marks the specified message as processed to prevent additional attempts to
    * send the message.
    */
-  markAsProcessed<Msg extends Envelope.AnyMessage>(
+  markAsProcessed<Msg extends Schema.TaggedRequest.Any>(
     entity: Entity<Msg>,
     shardId: ShardId,
     entityId: string,

@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
+import type { TaggedRequest } from "@effect/schema/Schema"
 import type { Clustered, Standard } from "./Entity.js"
-import type { Envelope } from "./Envelope.js"
 
-interface EntityRegistered<Msg extends Envelope.AnyMessage> {
+interface EntityRegistered<Msg extends TaggedRequest.Any> {
   readonly _tag: "EntityRegistered"
   readonly entity: Standard<Msg>
 }
@@ -15,7 +15,7 @@ interface EntityRegistered<Msg extends Envelope.AnyMessage> {
  * @since 1.0.0
  * @category constructors
  */
-export function EntityRegistered<Msg extends Envelope.AnyMessage>(
+export function EntityRegistered<Msg extends TaggedRequest.Any>(
   entity: Standard<Msg>
 ): ShardingRegistrationEvent {
   return ({ _tag: "EntityRegistered", entity })
@@ -36,7 +36,7 @@ export function SingletonRegistered(name: string): ShardingRegistrationEvent {
   return ({ _tag: "SingletonRegistered", name })
 }
 
-interface TopicRegistered<Msg extends Envelope.AnyMessage> {
+interface TopicRegistered<Msg extends TaggedRequest.Any> {
   _tag: "TopicRegistered"
   entity: Clustered<Msg>
 }
@@ -46,7 +46,7 @@ interface TopicRegistered<Msg extends Envelope.AnyMessage> {
  * @since 1.0.0
  * @category constructors
  */
-export function TopicRegistered<Msg extends Envelope.AnyMessage>(
+export function TopicRegistered<Msg extends TaggedRequest.Any>(
   entity: Clustered<Msg>
 ): ShardingRegistrationEvent {
   return ({ _tag: "TopicRegistered", entity })

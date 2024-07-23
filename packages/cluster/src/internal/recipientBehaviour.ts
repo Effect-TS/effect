@@ -1,4 +1,5 @@
-import type { WithResult } from "@effect/schema/Serializable"
+import type * as Schema from "@effect/schema/Schema"
+import type * as Serializable from "@effect/schema/Serializable"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
@@ -14,15 +15,15 @@ import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 
 /** @internal  */
-export function fromFunctionEffect<Msg extends Envelope.AnyMessage, R>(
+export function fromFunctionEffect<Msg extends Schema.TaggedRequest.Any, R>(
   handler: <A extends Msg>(
     entityId: string,
     envelope: Envelope<A>
   ) => Effect.Effect<
     MessageState.MessageState<
       Exit.Exit<
-        WithResult.Success<Msg>,
-        WithResult.Error<Msg>
+        Serializable.WithResult.Success<Msg>,
+        Serializable.WithResult.Error<Msg>
       >
     >,
     never,
@@ -42,7 +43,7 @@ export function fromFunctionEffect<Msg extends Envelope.AnyMessage, R>(
 }
 
 /** @internal  */
-export function fromFunctionEffectStateful<S, R, Msg extends Envelope.AnyMessage, R2>(
+export function fromFunctionEffectStateful<S, R, Msg extends Schema.TaggedRequest.Any, R2>(
   initialState: (entityId: string) => Effect.Effect<S, never, R>,
   handler: <A extends Msg>(
     entityId: string,
@@ -51,8 +52,8 @@ export function fromFunctionEffectStateful<S, R, Msg extends Envelope.AnyMessage
   ) => Effect.Effect<
     MessageState.MessageState<
       Exit.Exit<
-        WithResult.Success<Msg>,
-        WithResult.Error<Msg>
+        Serializable.WithResult.Success<Msg>,
+        Serializable.WithResult.Error<Msg>
       >
     >,
     never,
@@ -78,7 +79,7 @@ export function fromFunctionEffectStateful<S, R, Msg extends Envelope.AnyMessage
 }
 
 /** @internal */
-export function fromInMemoryQueue<Msg extends Envelope.AnyMessage, R>(
+export function fromInMemoryQueue<Msg extends Schema.TaggedRequest.Any, R>(
   handler: (
     entityId: string,
     dequeue: Queue.Dequeue<Envelope<Msg> | PoisonPill.PoisonPill>,
@@ -86,8 +87,8 @@ export function fromInMemoryQueue<Msg extends Envelope.AnyMessage, R>(
       envelope: Envelope<A>,
       value: Option.Option<
         Exit.Exit<
-          WithResult.Success<Msg>,
-          WithResult.Error<Msg>
+          Serializable.WithResult.Success<Msg>,
+          Serializable.WithResult.Error<Msg>
         >
       >
     ) => Effect.Effect<void>
@@ -112,8 +113,8 @@ export function fromInMemoryQueue<Msg extends Envelope.AnyMessage, R>(
       message: Envelope<A>,
       reply: Option.Option<
         Exit.Exit<
-          WithResult.Success<Msg>,
-          WithResult.Error<Msg>
+          Serializable.WithResult.Success<Msg>,
+          Serializable.WithResult.Error<Msg>
         >
       >
     ) {

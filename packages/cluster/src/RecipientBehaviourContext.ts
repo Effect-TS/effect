@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
+import type { TaggedRequest } from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type { Entity } from "./Entity.js"
-import type { Envelope } from "./Envelope.js"
 import * as Internal from "./internal/recipientBehaviourContext.js"
 import type { RecipientAddress } from "./RecipientAddress.js"
 import type { ShardId } from "./ShardId.js"
@@ -32,7 +32,7 @@ export interface RecipientBehaviourContext {
   readonly [RecipientBehaviourContextTypeId]: RecipientBehaviourContextTypeId
   readonly address: RecipientAddress
   readonly shardId: ShardId
-  readonly entity: Entity<Envelope.AnyMessage>
+  readonly entity: Entity<TaggedRequest.Any>
   readonly forkShutdown: Effect.Effect<void>
 }
 
@@ -87,7 +87,7 @@ export const shardId: Effect.Effect<ShardId, never, RecipientBehaviourContext> =
  * @category utils
  */
 export const entity: Effect.Effect<
-  Entity<Envelope.AnyMessage>,
+  Entity<TaggedRequest.Any>,
   never,
   RecipientBehaviourContext
 > = Internal.entity

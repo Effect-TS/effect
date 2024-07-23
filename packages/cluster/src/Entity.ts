@@ -1,13 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type { Schema } from "@effect/schema/Schema"
+import type { Schema, TaggedRequest } from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
 import * as Predicate from "effect/Predicate"
-import type { Envelope } from "./Envelope.js"
 
 /**
  * @since 1.0.0
@@ -35,7 +34,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export type Entity<Msg extends Envelope.AnyMessage> =
+export type Entity<Msg extends TaggedRequest.Any> =
   | Standard<Msg>
   | Clustered<Msg>
 
@@ -47,7 +46,7 @@ export declare namespace Entity {
    * @since 1.0.0
    * @category models
    */
-  export interface CommonProps<Msg extends Envelope.AnyMessage> {
+  export interface CommonProps<Msg extends TaggedRequest.Any> {
     /**
      * The name to give to the entity.
      */
@@ -72,7 +71,7 @@ export declare namespace Entity {
  * @category models
  */
 export class Standard<
-  Msg extends Envelope.AnyMessage
+  Msg extends TaggedRequest.Any
 > extends Data.TaggedClass("Standard")<Entity.CommonProps<Msg>> {
   /**
    * @since 1.0.0
@@ -105,7 +104,7 @@ export class Standard<
  * @category models
  */
 export class Clustered<
-  Msg extends Envelope.AnyMessage
+  Msg extends TaggedRequest.Any
 > extends Data.TaggedClass("Clustered")<Entity.CommonProps<Msg>> {
   /**
    * @since 1.0.0
@@ -134,5 +133,5 @@ export class Clustered<
  * @since 1.0.0
  * @category refinements
  */
-export const isEntity = (u: unknown): u is Entity<Envelope.AnyMessage> =>
+export const isEntity = (u: unknown): u is Entity<TaggedRequest.Any> =>
   Predicate.isObject(u) && Predicate.hasProperty(u, TypeId)

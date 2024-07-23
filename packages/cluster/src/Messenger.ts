@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
+import type { TaggedRequest } from "@effect/schema/Schema"
 import type { SerializableWithResult, WithResult } from "@effect/schema/Serializable"
 import type { Effect } from "effect/Effect"
-import type { Envelope } from "./Envelope.js"
 import type { ShardingException } from "./ShardingException.js"
 
 /**
@@ -13,7 +13,7 @@ import type { ShardingException } from "./ShardingException.js"
  * @since 1.0.0
  * @category models
  */
-export interface Messenger<Msg extends Envelope.AnyMessage> {
+export interface Messenger<Msg extends TaggedRequest.Any> {
   /**
    * Sends a message to an entity and waits for the response.
    *

@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Envelope from "@effect/cluster/Envelope"
 import * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Array from "effect/Array"
@@ -16,7 +15,7 @@ import * as WorkflowContext from "./WorkflowContext.js"
 /**
  * @since 1.0.0
  */
-export interface Workflow<T extends Envelope.Envelope.AnyMessage, R> {
+export interface Workflow<T extends Schema.TaggedRequest.Any, R> {
   schema: Schema.Schema<T, Serializable.Serializable.Encoded<T>, Serializable.Serializable.Context<T>>
   execute: (
     input: T
@@ -52,7 +51,7 @@ export namespace Workflow {
 /**
  * @since 1.0.0
  */
-export function make<T extends Envelope.Envelope.AnyMessage, R>(
+export function make<T extends Schema.TaggedRequest.Any, R>(
   schema: Schema.Schema<T, Serializable.Serializable.Encoded<T>, Serializable.Serializable.Context<T>>,
   messageId: (input: T) => string,
   execute: (

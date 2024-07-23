@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type * as Envelope from "@effect/cluster/Envelope"
+import type * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Data from "effect/Data"
 import type * as Exit from "effect/Exit"
@@ -94,5 +94,5 @@ export function match<A, E, B, C = B, D = C, F = D, G = F>(fa: WorkflowRuntimeSt
 /**
  * @since 1.0.0
  */
-export const initialState = <A extends Envelope.Envelope.AnyMessage>() =>
+export const initialState = <A extends Schema.TaggedRequest.Any>() =>
   new NotStarted() as WorkflowRuntimeState<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>>

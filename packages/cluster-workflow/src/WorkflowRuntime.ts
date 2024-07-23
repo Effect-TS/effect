@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type * as Envelope from "@effect/cluster/Envelope"
+import type * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Array from "effect/Array"
 import * as Deferred from "effect/Deferred"
@@ -341,7 +341,7 @@ function handleExecutionPhase<A, E, R>(
 /**
  * @since 1.0.0
  */
-export function attempt<A extends Envelope.Envelope.AnyMessage, R>(workflow: Workflow.Workflow<A, R>) {
+export function attempt<A extends Schema.TaggedRequest.Any, R>(workflow: Workflow.Workflow<A, R>) {
   return (
     request: A
   ): Effect.Effect<

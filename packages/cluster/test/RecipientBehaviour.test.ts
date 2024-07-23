@@ -29,7 +29,7 @@ describe.concurrent("RecipientBehaviour", () => {
   const withTestEnv = <R, E, A>(fa: Effect.Effect<R, E, A>) =>
     pipe(fa, Effect.scoped, Logger.withMinimumLogLevel(LogLevel.Info))
 
-  const makeTestActor = <Msg extends Envelope.Envelope.AnyMessage, R>(
+  const makeTestActor = <Msg extends Schema.TaggedRequest.Any, R>(
     fa: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     scope: Scope.Scope
   ) =>
@@ -47,7 +47,7 @@ describe.concurrent("RecipientBehaviour", () => {
           entity: new Entity.Standard({
             name: "Sample",
             schema: SampleMessage,
-            messageId: _ => _.id
+            messageId: (_) => _.id
           }) as any
         })
       ),

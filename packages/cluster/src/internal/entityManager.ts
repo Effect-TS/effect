@@ -1,3 +1,4 @@
+import type * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
@@ -61,7 +62,7 @@ export interface EntityManager {
 }
 
 /** @internal */
-export function make<Msg extends Envelope.Envelope.AnyMessage, R>(
+export function make<Msg extends Schema.TaggedRequest.Any, R>(
   entity: Entity.Entity<Msg>,
   recipientBehaviour: RecipientBehaviour.RecipientBehaviour<Msg, R>,
   sharding: Sharding.Sharding,
