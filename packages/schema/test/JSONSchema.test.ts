@@ -120,15 +120,6 @@ schema (UndefinedKeyword): undefined`
       )
     })
 
-    it("Void should raise an error", () => {
-      expectError(
-        Schema.Void,
-        `Missing annotation
-details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (VoidKeyword): void`
-      )
-    })
-
     it("Never should raise an error", () => {
       expectError(
         Schema.Never,
@@ -149,21 +140,21 @@ schema (Literal): 1n`
 
     it("Tuple", () => {
       expectError(
-        Schema.Tuple(Schema.Void),
+        Schema.Tuple(Schema.DateFromSelf),
         `Missing annotation
 at path: [0]
 details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (VoidKeyword): void`
+schema (Declaration): DateFromSelf`
       )
     })
 
     it("Struct", () => {
       expectError(
-        Schema.Struct({ a: Schema.Void }),
+        Schema.Struct({ a: Schema.DateFromSelf }),
         `Missing annotation
 at path: ["a"]
 details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (VoidKeyword): void`
+schema (Declaration): DateFromSelf`
       )
     })
   })
@@ -181,6 +172,14 @@ schema (VoidKeyword): void`
       "$id": "/schemas/unknown",
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "unknown"
+    })
+  })
+
+  it("Void", () => {
+    expectJSONSchema(Schema.Void, {
+      "$id": "/schemas/void",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "void"
     })
   })
 
@@ -734,10 +733,10 @@ schema (VoidKeyword): void`
       expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
     })
 
-    it("optional property signature", () => {
+    it("exact optional property signature", () => {
       const schema = Schema.Struct({
         a: Schema.String,
-        b: Schema.optional(JsonNumber, { exact: true })
+        b: Schema.optionalWith(JsonNumber, { exact: true })
       })
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -854,7 +853,7 @@ details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
   describe("Record", () => {
     it("Record(symbol, number)", () => {
       expectError(
-        Schema.Record(Schema.SymbolFromSelf, JsonNumber),
+        Schema.Record({ key: Schema.SymbolFromSelf, value: JsonNumber }),
         `Unsupported index signature parameter
 schema (SymbolKeyword): symbol`
       )
@@ -862,7 +861,7 @@ schema (SymbolKeyword): symbol`
 
     it("record(refinement, number)", () => {
       expectJSONSchema(
-        Schema.Record(Schema.String.pipe(Schema.minLength(1)), JsonNumber),
+        Schema.Record({ key: Schema.String.pipe(Schema.minLength(1)), value: JsonNumber }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           type: "object",
@@ -883,7 +882,7 @@ schema (SymbolKeyword): symbol`
     })
 
     it("Record(string, number)", () => {
-      expectJSONSchema(Schema.Record(Schema.String, JsonNumber), {
+      expectJSONSchema(Schema.Record({ key: Schema.String, value: JsonNumber }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {},
@@ -899,8 +898,7 @@ schema (SymbolKeyword): symbol`
     it("Record('a' | 'b', number)", () => {
       expectJSONSchema(
         Schema.Record(
-          Schema.Union(Schema.Literal("a"), Schema.Literal("b")),
-          JsonNumber
+          { key: Schema.Union(Schema.Literal("a"), Schema.Literal("b")), value: JsonNumber }
         ),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -921,8 +919,7 @@ schema (SymbolKeyword): symbol`
 
     it("Record(${string}-${string}, number)", () => {
       const schema = Schema.Record(
-        Schema.TemplateLiteral(Schema.String, Schema.Literal("-"), Schema.String),
-        JsonNumber
+        { key: Schema.TemplateLiteral(Schema.String, Schema.Literal("-"), Schema.String), value: JsonNumber }
       )
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -950,8 +947,7 @@ schema (SymbolKeyword): symbol`
 
     it("Record(pattern, number)", () => {
       const schema = Schema.Record(
-        Schema.String.pipe(Schema.pattern(new RegExp("^.*-.*$"))),
-        JsonNumber
+        { key: Schema.String.pipe(Schema.pattern(new RegExp("^.*-.*$"))), value: JsonNumber }
       )
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -983,7 +979,7 @@ schema (SymbolKeyword): symbol`
   })
 
   it("Struct Record", () => {
-    const schema = Schema.Struct({ a: Schema.String }, Schema.Record(Schema.String, Schema.String))
+    const schema = Schema.Struct({ a: Schema.String }, Schema.Record({ key: Schema.String, value: Schema.String }))
     const jsonSchema: JSONSchema.JsonSchema7Root = {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
@@ -1929,16 +1925,16 @@ schema (Suspend): <suspended schema>`
     })
 
     it("refinement of a transformation without an override annotation", () => {
-      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmpty()), {
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString()), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string"
       }, false)
-      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmpty({ jsonSchema: { title: "Description" } })), {
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string"
       }, false)
       expectJSONSchema(
-        Schema.Trim.pipe(Schema.nonEmpty()).annotations({ jsonSchema: { title: "Description" } }),
+        Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "string"
@@ -1973,7 +1969,7 @@ schema (Suspend): <suspended schema>`
     it("compose", () => {
       expectJSONSchema(
         Schema.Struct({
-          a: Schema.NonEmpty.pipe(Schema.compose(Schema.NumberFromString))
+          a: Schema.NonEmptyString.pipe(Schema.compose(Schema.NumberFromString))
         }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1985,7 +1981,7 @@ schema (Suspend): <suspended schema>`
             "a": {
               "type": "string",
               "description": "a non empty string",
-              "title": "NonEmpty",
+              "title": "NonEmptyString",
               "minLength": 1
             }
           },
@@ -1997,7 +1993,9 @@ schema (Suspend): <suspended schema>`
     describe("optional", () => {
       it("annotations", () => {
         const schema = Schema.Struct({
-          a: Schema.optional(Schema.NonEmpty.annotations({ description: "an optional field" }), { default: () => "" })
+          a: Schema.optionalWith(Schema.NonEmptyString.annotations({ description: "an optional field" }), {
+            default: () => ""
+          })
             .annotations({ description: "a required field" })
         })
         expectJSONSchema(schema, {
@@ -2008,7 +2006,7 @@ schema (Suspend): <suspended schema>`
             "a": {
               "type": "string",
               "description": "an optional field",
-              "title": "NonEmpty",
+              "title": "NonEmptyString",
               "minLength": 1
             }
           },
@@ -2025,7 +2023,7 @@ schema (Suspend): <suspended schema>`
             "a": {
               "type": "string",
               "description": "a required field",
-              "title": "NonEmpty",
+              "title": "NonEmptyString",
               "minLength": 1
             }
           },
@@ -2048,7 +2046,7 @@ schema (Suspend): <suspended schema>`
       it("with default", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.optional(Schema.NonEmpty, { default: () => "" })
+            a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2058,7 +2056,7 @@ schema (Suspend): <suspended schema>`
               "a": {
                 "type": "string",
                 "description": "a non empty string",
-                "title": "NonEmpty",
+                "title": "NonEmptyString",
                 "minLength": 1
               }
             },
@@ -2071,7 +2069,7 @@ schema (Suspend): <suspended schema>`
       it("as Option", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.optional(Schema.NonEmpty, { as: "Option" })
+            a: Schema.optionalWith(Schema.NonEmptyString, { as: "Option" })
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2081,7 +2079,7 @@ schema (Suspend): <suspended schema>`
               "a": {
                 "type": "string",
                 "description": "a non empty string",
-                "title": "NonEmpty",
+                "title": "NonEmptyString",
                 "minLength": 1
               }
             },
@@ -2094,7 +2092,7 @@ schema (Suspend): <suspended schema>`
       it("fromKey", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.NonEmpty.pipe(Schema.propertySignature, Schema.fromKey("b"))
+            a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b"))
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2106,7 +2104,7 @@ schema (Suspend): <suspended schema>`
               "b": {
                 "type": "string",
                 "description": "a non empty string",
-                "title": "NonEmpty",
+                "title": "NonEmptyString",
                 "minLength": 1
               }
             },
@@ -2119,7 +2117,7 @@ schema (Suspend): <suspended schema>`
       it("OptionFromNullOr", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.OptionFromNullOr(Schema.NonEmpty)
+            a: Schema.OptionFromNullOr(Schema.NonEmptyString)
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2133,7 +2131,7 @@ schema (Suspend): <suspended schema>`
                   {
                     "type": "string",
                     "description": "a non empty string",
-                    "title": "NonEmpty",
+                    "title": "NonEmptyString",
                     "minLength": 1
                   },
                   {

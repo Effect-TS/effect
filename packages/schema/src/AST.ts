@@ -1015,12 +1015,8 @@ export class TemplateLiteralSpan {
    * @since 0.67.0
    */
   toString() {
-    switch (this.type._tag) {
-      case "StringKeyword":
-        return "${string}"
-      case "NumberKeyword":
-        return "${number}"
-    }
+    const type = "${" + String(this.type) + "}"
+    return type + this.literal
   }
   /**
    * @since 0.67.0
@@ -1067,7 +1063,7 @@ export class TemplateLiteral implements Annotated {
 }
 
 const formatTemplateLiteral = (ast: TemplateLiteral): string =>
-  "`" + ast.head + ast.spans.map((span) => String(span) + span.literal).join("") +
+  "`" + ast.head + ast.spans.map((span) => String(span)).join("") +
   "`"
 
 /**
@@ -1834,8 +1830,13 @@ export class FinalTransformation {
    */
   readonly _tag = "FinalTransformation"
   constructor(
-    readonly decode: (input: any, options: ParseOptions, self: Transformation) => Effect<any, ParseIssue, any>,
-    readonly encode: (input: any, options: ParseOptions, self: Transformation) => Effect<any, ParseIssue, any>
+    readonly decode: (
+      fromA: any,
+      options: ParseOptions,
+      self: Transformation,
+      fromI: any
+    ) => Effect<any, ParseIssue, any>,
+    readonly encode: (toI: any, options: ParseOptions, self: Transformation, toA: any) => Effect<any, ParseIssue, any>
   ) {}
 }
 
@@ -1947,7 +1948,8 @@ export const isTypeLiteralTransformation: (ast: TransformationKind) => ast is Ty
 // -------------------------------------------------------------------------------------
 
 /**
- * Adds a group of annotations, potentially overwriting existing annotations.
+ * Merges a set of new annotations with existing ones, potentially overwriting
+ * any duplicates.
  *
  * @since 0.67.0
  */
@@ -2421,7 +2423,7 @@ export const typeAST = (ast: AST): AST => {
 }
 
 /** @internal */
-export const preserveAnnotations =
+export const whiteListAnnotations =
   (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
     let out: { [_: symbol]: unknown } | undefined = undefined
     for (const id of annotationIds) {
@@ -2431,6 +2433,16 @@ export const preserveAnnotations =
         }
         out[id] = annotated.annotations[id]
       }
+    }
+    return out
+  }
+
+/** @internal */
+export const blackListAnnotations =
+  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
+    const out = { ...annotated.annotations }
+    for (const id of annotationIds) {
+      delete out[id]
     }
     return out
   }

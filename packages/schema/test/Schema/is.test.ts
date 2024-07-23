@@ -289,8 +289,8 @@ describe("is", () => {
       expect(is({ a: "a" })).toEqual(false)
     })
 
-    it("optional property signature", () => {
-      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
+    it("exact optional property signature", () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       const is = P.is(schema)
       expect(is({})).toEqual(true)
       expect(is({ a: 1 })).toEqual(true)
@@ -301,8 +301,8 @@ describe("is", () => {
       expect(is({ a: undefined })).toEqual(false)
     })
 
-    it("optional property signature with undefined", () => {
-      const schema = S.Struct({ a: S.optional(S.Union(S.Number, S.Undefined), { exact: true }) })
+    it("exact optional property signature with undefined", () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true }) })
       const is = P.is(schema)
       expect(is({})).toEqual(true)
       expect(is({ a: 1 })).toEqual(true)
@@ -316,7 +316,7 @@ describe("is", () => {
 
   it("record(string, string)", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.Record(S.String, S.String)
+    const schema = S.Record({ key: S.String, value: S.String })
     const is = P.is(schema)
     expect(is(null)).toEqual(false)
     expect(is({})).toEqual(true)
@@ -331,7 +331,7 @@ describe("is", () => {
   it("record(symbol, string)", () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
-    const schema = S.Record(S.SymbolFromSelf, S.String)
+    const schema = S.Record({ key: S.SymbolFromSelf, value: S.String })
     const is = P.is(schema)
     expect(is(null)).toEqual(false)
     expect(is({})).toEqual(true)
@@ -344,14 +344,14 @@ describe("is", () => {
   })
 
   it("record(never, number)", () => {
-    const schema = S.Record(S.Never, S.Number)
+    const schema = S.Record({ key: S.Never, value: S.Number })
     const is = P.is(schema)
     expect(is({})).toEqual(true)
     expect(is({ a: 1 })).toEqual(true)
   })
 
   it("record('a' | 'b', number)", () => {
-    const schema = S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.Number)
+    const schema = S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.Number })
     const is = P.is(schema)
     expect(is({ a: 1, b: 2 })).toEqual(true)
 
@@ -361,7 +361,7 @@ describe("is", () => {
   })
 
   it("record(keyof struct({ a, b }), number)", () => {
-    const schema = S.Record(S.keyof(S.Struct({ a: S.String, b: S.String })), S.Number)
+    const schema = S.Record({ key: S.keyof(S.Struct({ a: S.String, b: S.String })), value: S.Number })
     const is = P.is(schema)
     expect(is({ a: 1, b: 2 })).toEqual(true)
 
@@ -374,7 +374,7 @@ describe("is", () => {
   it("record(Symbol('a') | Symbol('b'), number)", () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
-    const schema = S.Record(S.Union(S.UniqueSymbolFromSelf(a), S.UniqueSymbolFromSelf(b)), S.Number)
+    const schema = S.Record({ key: S.Union(S.UniqueSymbolFromSelf(a), S.UniqueSymbolFromSelf(b)), value: S.Number })
     const is = P.is(schema)
     expect(is({ [a]: 1, [b]: 2 })).toEqual(true)
 
@@ -384,7 +384,7 @@ describe("is", () => {
   })
 
   it("record(${string}-${string}, number)", () => {
-    const schema = S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number)
+    const schema = S.Record({ key: S.TemplateLiteral(S.String, S.Literal("-"), S.String), value: S.Number })
     const is = P.is(schema)
     expect(is({})).toEqual(true)
     expect(is({ "-": 1 })).toEqual(true)
@@ -402,7 +402,7 @@ describe("is", () => {
   })
 
   it("record(minLength(2), number)", () => {
-    const schema = S.Record(S.String.pipe(S.minLength(2)), S.Number)
+    const schema = S.Record({ key: S.String.pipe(S.minLength(2)), value: S.Number })
     const is = P.is(schema)
     expect(is({})).toEqual(true)
     expect(is({ "a": 1 })).toEqual(true)
@@ -416,8 +416,8 @@ describe("is", () => {
   it("record(${string}-${string}, number) & record(string, string | number)", () => {
     const schema = S.Struct(
       {},
-      S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number),
-      S.Record(S.String, S.Union(S.String, S.Number))
+      S.Record({ key: S.TemplateLiteral(S.String, S.Literal("-"), S.String), value: S.Number }),
+      S.Record({ key: S.String, value: S.Union(S.String, S.Number) })
     )
     const is = P.is(schema)
     expect(is({})).toEqual(true)
@@ -522,7 +522,7 @@ describe("is", () => {
     })
 
     it("record(string, string)", () => {
-      const schema = S.Struct({ a: S.String }, S.Record(S.String, S.String))
+      const schema = S.Struct({ a: S.String }, S.Record({ key: S.String, value: S.String }))
       const is = P.is(schema)
       expect(is({ a: "a" })).toEqual(true)
       expect(is({ a: "a", b: "b" })).toEqual(true)
@@ -534,8 +534,8 @@ describe("is", () => {
     })
   })
 
-  it("nonEmpty", () => {
-    const schema = S.String.pipe(S.nonEmpty())
+  it("nonEmptyString", () => {
+    const schema = S.String.pipe(S.nonEmptyString())
     const is = P.is(schema)
     expect(is("a")).toEqual(true)
     expect(is("aa")).toEqual(true)

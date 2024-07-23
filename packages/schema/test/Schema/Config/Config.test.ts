@@ -42,7 +42,7 @@ const assertSuccess = <A>(
 
 describe("Config", () => {
   it("should validate the configuration schema correctly", () => {
-    const config = Schema.Config("A", Schema.NonEmpty)
+    const config = Schema.Config("A", Schema.NonEmptyString)
     assertSuccess(config, [["A", "a"]], "a")
     assertFailure(config, [], ConfigError.MissingData(["A"], `Expected A to exist in the provided map`))
     assertFailure(
@@ -50,9 +50,9 @@ describe("Config", () => {
       [["A", ""]],
       ConfigError.InvalidData(
         ["A"],
-        `NonEmpty
+        `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmpty, actual ""`
+   └─ Expected NonEmptyString, actual ""`
       )
     )
   })

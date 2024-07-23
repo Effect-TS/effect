@@ -2,17 +2,17 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, it } from "vitest"
 
-describe("nonEmpty", () => {
-  const schema = S.NonEmpty
+describe("nonEmptyString", () => {
+  const schema = S.NonEmptyString
 
   it("make", () => {
-    Util.expectConstructorSuccess(S.NonEmpty, "a")
+    Util.expectConstructorSuccess(S.NonEmptyString, "a")
     Util.expectConstructorFailure(
-      S.NonEmpty,
+      S.NonEmptyString,
       "",
-      `NonEmpty
+      `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmpty, actual ""`
+   └─ Expected NonEmptyString, actual ""`
     )
   })
 
@@ -23,9 +23,9 @@ describe("nonEmpty", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "",
-      `NonEmpty
+      `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmpty, actual ""`
+   └─ Expected NonEmptyString, actual ""`
     )
   })
 })

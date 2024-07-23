@@ -119,7 +119,7 @@ describe(".annotations()", () => {
         // add an error message for non-string values
         .annotations({ message: () => "not a string" }).pipe(
           // add a constraint to the schema, only non-empty strings are valid
-          S.nonEmpty({ message: () => "required" }),
+          S.nonEmptyString({ message: () => "required" }),
           // add a constraint to the schema, only strings with a length less or equal than 10 are valid
           S.maxLength(10, { message: (issue) => `${issue.actual} is too long` })
         )

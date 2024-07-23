@@ -13,11 +13,11 @@ describe("toString", () => {
   })
 
   it("Record (immutable)", () => {
-    expect(S.Record(S.String, S.Number).ast.toString()).toBe(`{ readonly [x: string]: number }`)
+    expect(S.Record({ key: S.String, value: S.Number }).ast.toString()).toBe(`{ readonly [x: string]: number }`)
   })
 
   it("Record (mutable)", () => {
-    expect(S.mutable(S.Record(S.String, S.Number)).ast.toString()).toBe(
+    expect(S.mutable(S.Record({ key: S.String, value: S.Number })).ast.toString()).toBe(
       `{ [x: string]: number }`
     )
   })

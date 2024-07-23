@@ -26,56 +26,80 @@ class Post extends S.Class<Post>("Post")({
   body: S.String
 }) {}
 
-class CreatePost extends S.TaggedRequest<CreatePost>()("CreatePost", S.Never, Post, {
-  body: S.String
+class CreatePost extends S.TaggedRequest<CreatePost>()("CreatePost", {
+  failure: S.Never,
+  success: Post,
+  payload: {
+    body: S.String
+  }
 }) {}
 
 const posts = Router.make(
   Rpc.effect(CreatePost, ({ body }) => Effect.succeed(new Post({ id: 1, body })))
 )
 
-class Greet extends S.TaggedRequest<Greet>()("Greet", S.Never, S.String, {
-  name: S.String
+class Greet extends S.TaggedRequest<Greet>()("Greet", {
+  failure: S.Never,
+  success: S.String,
+  payload: {
+    name: S.String
+  }
 }) {}
 
-class Fail extends S.TaggedRequest<Fail>()("Fail", SomeError, S.Void, {
-  name: S.String
+class Fail extends S.TaggedRequest<Fail>()("Fail", {
+  failure: SomeError,
+  success: S.Void,
+  payload: {
+    name: S.String
+  }
 }) {}
 
-class FailNoInput extends S.TaggedRequest<FailNoInput>()("FailNoInput", SomeError, S.Void, {}) {}
-
-class EncodeInput extends S.TaggedRequest<EncodeInput>()("EncodeInput", S.Never, S.Date, {
-  date: S.Date
-}) {}
-
-class EncodeDate extends S.TaggedRequest<EncodeDate>()("EncodeDate", SomeError, S.Date, {
-  date: S.String
-}) {}
-
-class Refined extends S.TaggedRequest<Refined>()("Refined", S.Never, S.Number, {
-  number: pipe(S.Number, S.int(), S.greaterThan(10))
-}) {}
-
-class SpanName extends S.TaggedRequest<SpanName>()("SpanName", S.Never, S.String, {}) {}
-
-class GetName extends S.TaggedRequest<GetName>()("GetName", S.Never, S.String, {}) {}
-
-class EchoHeaders
-  extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.Never, S.Record(S.String, S.Union(S.String, S.Undefined)), {})
+class FailNoInput
+  extends S.TaggedRequest<FailNoInput>()("FailNoInput", { failure: SomeError, success: S.Void, payload: {} })
 {}
+
+class EncodeInput extends S.TaggedRequest<EncodeInput>()("EncodeInput", {
+  failure: S.Never,
+  success: S.Date,
+  payload: {
+    date: S.Date
+  }
+}) {}
+
+class EncodeDate extends S.TaggedRequest<EncodeDate>()("EncodeDate", {
+  failure: SomeError,
+  success: S.Date,
+  payload: {
+    date: S.String
+  }
+}) {}
+
+class Refined extends S.TaggedRequest<Refined>()("Refined", {
+  failure: S.Never,
+  success: S.Number,
+  payload: {
+    number: pipe(S.Number, S.int(), S.greaterThan(10))
+  }
+}) {}
+
+class SpanName extends S.TaggedRequest<SpanName>()("SpanName", { failure: S.Never, success: S.String, payload: {} }) {}
+
+class GetName extends S.TaggedRequest<GetName>()("GetName", { failure: S.Never, success: S.String, payload: {} }) {}
+
+class EchoHeaders extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", {
+  failure: S.Never,
+  success: S.Record({ key: S.String, value: S.Union(S.String, S.Undefined) }),
+  payload: {}
+}) {}
 
 class Counts extends Rpc.StreamRequest<Counts>()(
   "Counts",
-  S.Never,
-  S.Number,
-  {}
+  { failure: S.Never, success: S.Number, payload: {} }
 ) {}
 
 class FailStream extends Rpc.StreamRequest<FailStream>()(
   "FailStream",
-  SomeError,
-  S.Number,
-  {}
+  { failure: SomeError, success: S.Number, payload: {} }
 ) {}
 
 const router = Router.make(
@@ -131,7 +155,7 @@ const handlerArray = (u: ReadonlyArray<unknown>) =>
     Effect.map(flow(
       Array.fromIterable,
       Array.map(([, response]) => response),
-      Array.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false)
+      Array.filter((_): _ is S.ExitEncoded<any, any, unknown> => Array.isArray(_) === false)
     ))
   )
 const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
@@ -142,7 +166,7 @@ const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
     sampled: true,
     headers: {}
   }))).pipe(
-    Effect.map(Array.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false))
+    Effect.map(Array.filter((_): _ is S.ExitEncoded<any, any, unknown> => Array.isArray(_) === false))
   )
 const resolver = Resolver.make(handler)<typeof router>()
 const resolverEffect = ResolverNoStream.make(handlerEffect)<typeof router>()

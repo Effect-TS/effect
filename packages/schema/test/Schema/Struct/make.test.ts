@@ -52,8 +52,8 @@ describe("make", () => {
   it("props transformations with defaults (data last)", () => {
     const b = Symbol.for("b")
     const schema = S.Struct({
-      a: S.String.pipe(S.optional({ default: () => "-" }), S.withConstructorDefault(() => "")),
-      [b]: S.Number.pipe(S.optional({ default: () => -1 }), S.withConstructorDefault(() => 0))
+      a: S.String.pipe(S.optionalWith({ default: () => "-" }), S.withConstructorDefault(() => "")),
+      [b]: S.Number.pipe(S.optionalWith({ default: () => -1 }), S.withConstructorDefault(() => 0))
     })
     Util.expectConstructorSuccess(schema, { a: "a", [b]: 2 })
     Util.expectConstructorSuccess(schema, { a: "a" }, { a: "a", [b]: 0 })
@@ -62,20 +62,20 @@ describe("make", () => {
   })
 
   it("the constructor should validate the input by default", () => {
-    const schema = S.Struct({ a: S.NonEmpty })
+    const schema = S.Struct({ a: S.NonEmptyString })
     Util.expectConstructorFailure(
       schema,
       { a: "" },
-      `{ readonly a: NonEmpty }
+      `{ readonly a: NonEmptyString }
 └─ ["a"]
-   └─ NonEmpty
+   └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmpty, actual ""`
+         └─ Expected NonEmptyString, actual ""`
     )
   })
 
   it("the constructor validation can be disabled", () => {
-    const schema = S.Struct({ a: S.NonEmpty })
+    const schema = S.Struct({ a: S.NonEmptyString })
     expect(schema.make({ a: "" }, true)).toStrictEqual({ a: "" })
     expect(schema.make({ a: "" }, { disableValidation: true })).toStrictEqual({ a: "" })
   })

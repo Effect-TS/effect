@@ -126,8 +126,8 @@ describe("Struct", () => {
       )
     })
 
-    it("optional property signature", async () => {
-      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
+    it("exact optional property signature", async () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
 
@@ -160,8 +160,8 @@ describe("Struct", () => {
       )
     })
 
-    it("optional property signature with undefined", async () => {
-      const schema = S.Struct({ a: S.optional(S.Union(S.Number, S.Undefined), { exact: true }) })
+    it("exact optional property signature with undefined", async () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true }) })
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
@@ -192,8 +192,8 @@ describe("Struct", () => {
 
     it("should not add optional keys", async () => {
       const schema = S.Struct({
-        a: S.optional(S.String, { exact: true }),
-        b: S.optional(S.Number, { exact: true })
+        a: S.optionalWith(S.String, { exact: true }),
+        b: S.optionalWith(S.Number, { exact: true })
       })
       await Util.expectDecodeUnknownSuccess(schema, {})
     })
@@ -203,7 +203,7 @@ describe("Struct", () => {
       const schema = S.Struct({
         a: S.Literal("a"),
         [b]: S.Array(S.String),
-        c: S.Record(S.String, S.Number),
+        c: S.Record({ key: S.String, value: S.Number }),
         d: S.NumberFromString,
         e: S.Boolean
       })
@@ -256,8 +256,8 @@ describe("Struct", () => {
       )
     })
 
-    it("optional property signature", async () => {
-      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
+    it("exact optional property signature", async () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       await Util.expectEncodeSuccess(schema, {}, {})
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeFailure(
@@ -270,8 +270,8 @@ describe("Struct", () => {
       )
     })
 
-    it("optional property signature with undefined", async () => {
-      const schema = S.Struct({ a: S.optional(S.Union(S.Number, S.Undefined), { exact: true }) })
+    it("exact optional property signature with undefined", async () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true }) })
       await Util.expectEncodeSuccess(schema, {}, {})
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })

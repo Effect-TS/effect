@@ -9,7 +9,7 @@ describe("`preserveKeyOrder` option", () => {
   const Sync = S.Struct({
     a: S.Literal("a"),
     [b]: S.Array(S.String),
-    c: S.Record(S.String, S.Number),
+    c: S.Record({ key: S.String, value: S.Number }),
     d: S.NumberFromString,
     e: S.Boolean,
     f: S.optional(S.String),

@@ -119,7 +119,7 @@ export type DurableExecutionEventFrom<IE, IA> = {
 } | {
   readonly _tag: typeof COMPLETED
   readonly sequence: number
-  readonly exit: Schema.ExitEncoded<IE, IA>
+  readonly exit: Schema.ExitEncoded<IE, IA, unknown>
 } | {
   readonly _tag: typeof FORKED
   readonly sequence: number
@@ -150,7 +150,11 @@ export function schema<A, IA, E, IE>(success: Schema.Schema<A, IA>, failure: Sch
     Schema.Struct({
       _tag: Schema.Literal(COMPLETED),
       sequence: Schema.Number,
-      exit: Schema.Exit<Schema.Schema<A, IA, never>, Schema.Schema<E, IE, never>, never>({ failure, success })
+      exit: Schema.Exit({
+        failure,
+        success,
+        defect: Schema.Defect
+      })
     }),
     Schema.Struct({
       _tag: Schema.Literal(FORKED),

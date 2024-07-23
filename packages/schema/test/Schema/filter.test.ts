@@ -34,19 +34,19 @@ describe("filter", () => {
   })
 
   it("the constructor should validate the input by default", () => {
-    const schema = S.NonEmpty
+    const schema = S.NonEmptyString
     Util.expectConstructorSuccess(schema, "a")
     Util.expectConstructorFailure(
       schema,
       "",
-      `NonEmpty
+      `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmpty, actual ""`
+   └─ Expected NonEmptyString, actual ""`
     )
   })
 
   it("the constructor validation can be disabled", () => {
-    const schema = S.NonEmpty
+    const schema = S.NonEmptyString
     expect(schema.make("", true)).toStrictEqual("")
     expect(schema.make("", { disableValidation: true })).toStrictEqual("")
   })

@@ -31,76 +31,78 @@ export const make = <HR, E>(
   const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
   const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
 
-  return RequestResolver.makeBatched((requests: Arr.NonEmptyArray<Rpc.Request<Schema.TaggedRequest.Any>>) => {
-    const [effectRequests, streamRequests] = Arr.partition(
-      requests,
-      (_): _ is Rpc.Request<Rpc.StreamRequest.Any> => StreamRequestTypeId in _.request
-    )
+  return RequestResolver.makeBatched(
+    (requests: Arr.NonEmptyArray<Rpc.Request<Schema.TaggedRequest.All>>) => {
+      const [effectRequests, streamRequests] = Arr.partition(
+        requests,
+        (_): _ is Rpc.Request<Rpc.StreamRequest.Any> => StreamRequestTypeId in _.request
+      )
 
-    const processEffects = pipe(
-      Effect.forEach(effectRequests, (_) =>
-        Effect.map(
-          Serializable.serialize(_.request),
-          (request) => ({ ..._, request })
-        )),
-      Effect.flatMap((payload) =>
-        Stream.runForEach(
-          Stream.filter(
-            handler(payload),
-            (_): _ is Router.Router.Response => Arr.isArray(_) && _.length === 2
-          ),
-          ([index, response]): Effect.Effect<void, ParseError, any> => {
-            const request = effectRequests[index]
-            return Effect.matchCauseEffect(Effect.orDie(getDecode(request.request)(response)), {
-              onFailure: (cause) => Request.failCause(request, cause as any),
-              onSuccess: (exit) => Request.complete(request, exit as any)
-            })
-          }
-        )
-      ),
-      Effect.orDie,
-      Effect.catchAllCause((cause) =>
-        Effect.forEach(
-          effectRequests,
-          (request) => Request.failCause(request, cause),
-          { discard: true }
+      const processEffects = pipe(
+        Effect.forEach(effectRequests, (_) =>
+          Effect.map(
+            Serializable.serialize(_.request),
+            (request) => ({ ..._, request })
+          )),
+        Effect.flatMap((payload) =>
+          Stream.runForEach(
+            Stream.filter(
+              handler(payload),
+              (_): _ is Router.Router.Response => Arr.isArray(_) && _.length === 2
+            ),
+            ([index, response]): Effect.Effect<void, ParseError, any> => {
+              const request = effectRequests[index]
+              return Effect.matchCauseEffect(Effect.orDie(getDecode(request.request)(response)), {
+                onFailure: (cause) => Request.failCause(request, cause as any),
+                onSuccess: (exit) => Request.complete(request, exit as any)
+              })
+            }
+          )
+        ),
+        Effect.orDie,
+        Effect.catchAllCause((cause) =>
+          Effect.forEach(
+            effectRequests,
+            (request) => Request.failCause(request, cause),
+            { discard: true }
+          )
         )
       )
-    )
 
-    const processStreams = pipe(
-      Effect.forEach(streamRequests, (request) => {
-        const decode = getDecodeChunk(request.request)
-        const stream = pipe(
-          Serializable.serialize(request.request),
-          Effect.map((_) => ({ ...request, request: _ })),
-          Effect.map((payload) =>
-            pipe(
-              handler([payload]),
-              Stream.mapEffect((_) => Effect.orDie(decode((_ as Router.Router.Response)[1]))),
-              Stream.flattenChunks,
-              Stream.flatMap(Exit.match({
-                onFailure: (cause) => Cause.isEmptyType(cause) ? Stream.empty : Stream.failCause(cause),
-                onSuccess: Stream.succeed
-              }))
-            )
-          ),
-          Effect.orDie,
-          Stream.unwrap
-        )
-        return Request.succeed(request, stream as any)
-      }, { discard: true }),
-      Effect.catchAllCause((cause) =>
-        Effect.forEach(
-          streamRequests,
-          (request) => Request.failCause(request, cause),
-          { discard: true }
+      const processStreams = pipe(
+        Effect.forEach(streamRequests, (request) => {
+          const decode = getDecodeChunk(request.request)
+          const stream = pipe(
+            Serializable.serialize(request.request),
+            Effect.map((_) => ({ ...request, request: _ })),
+            Effect.map((payload) =>
+              pipe(
+                handler([payload]),
+                Stream.mapEffect((_) => Effect.orDie(decode((_ as Router.Router.Response)[1]))),
+                Stream.flattenChunks,
+                Stream.flatMap(Exit.match({
+                  onFailure: (cause) => Cause.isEmptyType(cause) ? Stream.empty : Stream.failCause(cause),
+                  onSuccess: Stream.succeed
+                }))
+              )
+            ),
+            Effect.orDie,
+            Stream.unwrap
+          )
+          return Request.succeed(request, stream as any)
+        }, { discard: true }),
+        Effect.catchAllCause((cause) =>
+          Effect.forEach(
+            streamRequests,
+            (request) => Request.failCause(request, cause),
+            { discard: true }
+          )
         )
       )
-    )
 
-    return Effect.zipRight(processStreams, processEffects)
-  })
+      return Effect.zipRight(processStreams, processEffects)
+    }
+  )
 }
 
 /**
@@ -110,14 +112,14 @@ export const make = <HR, E>(
 export const annotateHeaders: {
   (
     headers: Headers.Input
-  ): <Req extends Schema.TaggedRequest.Any, R>(
+  ): <Req extends Schema.TaggedRequest.All, R>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>
   ) => RequestResolver.RequestResolver<Rpc.Request<Req>, R>
-  <Req extends Schema.TaggedRequest.Any, R>(
+  <Req extends Schema.TaggedRequest.All, R>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
     headers: Headers.Input
   ): RequestResolver.RequestResolver<Rpc.Request<Req>, R>
-} = dual(2, <Req extends Schema.TaggedRequest.Any, R>(
+} = dual(2, <Req extends Schema.TaggedRequest.All, R>(
   self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
   headers: Headers.Input
 ): RequestResolver.RequestResolver<Rpc.Request<Req>, R> => {
@@ -139,14 +141,14 @@ export const annotateHeaders: {
 export const annotateHeadersEffect: {
   <E, R2>(
     headers: Effect.Effect<Headers.Input, E, R2>
-  ): <Req extends Schema.TaggedRequest.Any, R>(
+  ): <Req extends Schema.TaggedRequest.All, R>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>
   ) => RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2>
-  <Req extends Schema.TaggedRequest.Any, R, E, R2>(
+  <Req extends Schema.TaggedRequest.All, R, E, R2>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
     headers: Effect.Effect<Headers.Input, E, R2>
   ): RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2>
-} = dual(2, <Req extends Schema.TaggedRequest.Any, R, E, R2>(
+} = dual(2, <Req extends Schema.TaggedRequest.All, R, E, R2>(
   self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
   headers: Effect.Effect<Headers.Input, E, R2>
 ): RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2> =>
@@ -200,4 +202,4 @@ export const toClient = <
   options?: {
     readonly spanPrefix?: string
   }
-): Client<R> => ((request: Schema.TaggedRequest.Any) => Rpc.call(request, resolver, options)) as any
+): Client<R> => ((request: Schema.TaggedRequest.All) => Rpc.call(request, resolver, options)) as any

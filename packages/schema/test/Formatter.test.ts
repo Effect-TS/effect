@@ -546,7 +546,7 @@ describe("Formatter", () => {
     it("custom message (kind=To, override=false)", async () => {
       const schema = S.transform(
         S.String,
-        S.NonEmpty,
+        S.NonEmptyString,
         {
           strict: true,
           decode: identity,
@@ -557,23 +557,23 @@ describe("Formatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        `(string <-> NonEmpty)
+        `(string <-> NonEmptyString)
 └─ Type side transformation failure
-   └─ NonEmpty
+   └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmpty, actual ""`
+         └─ Expected NonEmptyString, actual ""`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected NonEmpty, actual ""`
+        message: `Expected NonEmptyString, actual ""`
       }])
     })
 
     it("custom message (kind=To, override=true)", async () => {
       const schema = S.transform(
         S.String,
-        S.NonEmpty,
+        S.NonEmptyString,
         {
           strict: true,
           decode: identity,
@@ -596,7 +596,7 @@ describe("Formatter", () => {
     it("custom message with inner custom message (kind=To, override=false)", async () => {
       const schema = S.transform(
         S.String,
-        S.NonEmpty.annotations({ message: () => "inner custom message" }),
+        S.NonEmptyString.annotations({ message: () => "inner custom message" }),
         {
           strict: true,
           decode: identity,
@@ -619,7 +619,7 @@ describe("Formatter", () => {
     it("custom message with inner custom message (kind=To, override=true)", async () => {
       const schema = S.transform(
         S.String,
-        S.NonEmpty.annotations({ message: () => "inner custom message" }),
+        S.NonEmptyString.annotations({ message: () => "inner custom message" }),
         {
           strict: true,
           decode: identity,
@@ -1264,7 +1264,7 @@ it("Effect as message", () => {
     translations: typeof translations
   }>() {}
 
-  const Name = S.NonEmpty.annotations({
+  const Name = S.NonEmptyString.annotations({
     message: () =>
       Effect.gen(function*(_) {
         const service = yield* _(Effect.serviceOption(Translator))

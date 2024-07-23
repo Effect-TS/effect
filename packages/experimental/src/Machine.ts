@@ -99,8 +99,8 @@ export type SerializableTypeId = typeof SerializableTypeId
  */
 export interface SerializableMachine<
   State,
-  Public extends Schema.TaggedRequest.Any,
-  Private extends Schema.TaggedRequest.Any,
+  Public extends Schema.TaggedRequest.All,
+  Private extends Schema.TaggedRequest.All,
   Input,
   InitErr,
   R,
@@ -137,7 +137,7 @@ export type ActorTypeId = typeof ActorTypeId
  * @category errors
  */
 export class MachineDefect extends Schema.TaggedError<MachineDefect>()("MachineDefect", {
-  cause: Schema.CauseDefectUnknown
+  cause: Schema.Defect
 }) {
   /**
    * @since 1.0.0
@@ -199,8 +199,8 @@ export declare namespace Machine {
   export type InitializeSerializable<
     Input,
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Schema.TaggedRequest.All,
+    Private extends Schema.TaggedRequest.All,
     R,
     E,
     InitR
@@ -308,7 +308,7 @@ const ActorProto = {
  */
 export interface SerializableActor<M extends Machine.Any> extends Actor<M> {
   readonly sendUnknown: (request: unknown) => Effect.Effect<
-    Schema.ExitEncoded<unknown, unknown>,
+    Schema.ExitEncoded<unknown, unknown, unknown>,
     ParseResult.ParseError
   >
 }
@@ -355,7 +355,15 @@ export const makeWith = <State, Input = void>(): {
  * @category constructors
  */
 export const makeSerializable: {
-  <State, IS, RS, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, InitErr, R>(
+  <
+    State,
+    IS,
+    RS,
+    Public extends Schema.TaggedRequest.All,
+    Private extends Schema.TaggedRequest.All,
+    InitErr,
+    R
+  >(
     options: {
       readonly state: Schema.Schema<State, IS, RS>
       readonly input?: undefined
@@ -371,8 +379,8 @@ export const makeSerializable: {
     Input,
     II,
     RI,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Schema.TaggedRequest.All,
+    Private extends Schema.TaggedRequest.All,
     InitErr,
     R
   >(
@@ -389,8 +397,8 @@ export const makeSerializable: {
   Input,
   II,
   RI,
-  Public extends Schema.TaggedRequest.Any,
-  Private extends Schema.TaggedRequest.Any,
+  Public extends Schema.TaggedRequest.All,
+  Private extends Schema.TaggedRequest.All,
   InitErr,
   R
 >(
@@ -583,7 +591,7 @@ export const boot = <
           ),
           Effect.provide(context)
         )
-      ) as Effect.Effect<Schema.ExitEncoded<unknown, unknown>, ParseResult.ParseError>
+      ) as Effect.Effect<Schema.ExitEncoded<unknown, unknown, unknown>, ParseResult.ParseError>
 
     const publishState = (newState: Machine.State<M>) => {
       if (currentState !== newState) {
@@ -834,8 +842,8 @@ export const boot = <
  */
 export const snapshot = <
   State,
-  Public extends Schema.TaggedRequest.Any,
-  Private extends Schema.TaggedRequest.Any,
+  Public extends Schema.TaggedRequest.All,
+  Private extends Schema.TaggedRequest.All,
   Input,
   InitErr,
   R,
@@ -864,8 +872,8 @@ export const snapshot = <
  */
 export const restore = <
   State,
-  Public extends Schema.TaggedRequest.Any,
-  Private extends Schema.TaggedRequest.Any,
+  Public extends Schema.TaggedRequest.All,
+  Private extends Schema.TaggedRequest.All,
   Input,
   InitErr,
   R,

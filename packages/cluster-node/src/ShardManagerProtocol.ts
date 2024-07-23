@@ -12,10 +12,12 @@ import * as Schema from "@effect/schema/Schema"
  */
 export class Register extends Schema.TaggedRequest<Register>()(
   "@effect/cluster-node/ShardManagerProtocolRpc/Register",
-  Schema.Never,
-  Schema.Void,
   {
-    pod: Pod.schema
+    failure: Schema.Never,
+    success: Schema.Void,
+    payload: {
+      pod: Pod.schema
+    }
   }
 ) {}
 
@@ -25,10 +27,12 @@ export class Register extends Schema.TaggedRequest<Register>()(
  */
 export class Unregister extends Schema.TaggedRequest<Unregister>()(
   "@effect/cluster-node/ShardManagerProtocolRpc/Unregister",
-  Schema.Never,
-  Schema.Void,
   {
-    podAddress: PodAddress.schema
+    failure: Schema.Never,
+    success: Schema.Void,
+    payload: {
+      podAddress: PodAddress.schema
+    }
   }
 ) {}
 
@@ -38,10 +42,12 @@ export class Unregister extends Schema.TaggedRequest<Unregister>()(
  */
 export class NotifyUnhealthyPod extends Schema.TaggedRequest<NotifyUnhealthyPod>()(
   "@effect/cluster-node/ShardManagerProtocolRpc/NotifyUnhealthyPod",
-  Schema.Never,
-  Schema.Void,
   {
-    podAddress: PodAddress.schema
+    failure: Schema.Never,
+    success: Schema.Void,
+    payload: {
+      podAddress: PodAddress.schema
+    }
   }
 ) {}
 
@@ -51,10 +57,12 @@ export class NotifyUnhealthyPod extends Schema.TaggedRequest<NotifyUnhealthyPod>
  */
 export class GetAssignements extends Schema.TaggedRequest<GetAssignements>()(
   "@effect/cluster-node/ShardManagerProtocolRpc/GetAssignements",
-  Schema.Never,
-  Schema.HashMap({
-    key: ShardId.schema,
-    value: Schema.Option(PodAddress.schema)
-  }),
-  {}
+  {
+    failure: Schema.Never,
+    success: Schema.HashMap({
+      key: ShardId.schema,
+      value: Schema.Option(PodAddress.schema)
+    }),
+    payload: {}
+  }
 ) {}

@@ -193,7 +193,7 @@ hole<S.Schema.Encoded<typeof ExtendedFromTaggedClassFields>>()
 // $ExpectType "a" | "c"
 hole<S.Schema.Context<typeof ExtendedFromTaggedClassFields>>()
 
-// $ExpectType { readonly _tag: PropertySignature<":", "ExtendedFromTaggedClassFields", never, ":", "ExtendedFromTaggedClassFields", true, never>; readonly b: typeof String$; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
+// $ExpectType { readonly _tag: tag<"ExtendedFromTaggedClassFields">; readonly b: typeof String$; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
 ExtendedFromTaggedClassFields.fields
 
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, options?: MakeOptions | undefined]

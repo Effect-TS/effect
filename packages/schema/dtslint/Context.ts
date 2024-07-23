@@ -230,18 +230,18 @@ S.Struct({ a: aContext, b: bContext }).pipe(S.omit("b"))
 aContext.pipe(S.brand("a"))
 
 // ---------------------------------------------
-// partial
+// partialWith
 // ---------------------------------------------
 
 // $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, "aContext" | "bContext">
-S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true })
+S.partialWith(S.Struct({ a: aContext, b: bContext }), { exact: true })
 
 // ---------------------------------------------
 // required
 // ---------------------------------------------
 
 // $ExpectType SchemaClass<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
-S.required(S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true }))
+S.required(S.partialWith(S.Struct({ a: aContext, b: bContext }), { exact: true }))
 
 // ---------------------------------------------
 // mutable
@@ -258,10 +258,10 @@ S.mutable(S.Struct({ a: aContext, b: bContext }))
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: number; }, "aContext" | "bContext">
-S.asSchema(S.Record(aContext, bContext))
+S.asSchema(S.Record({ key: aContext, value: bContext }))
 
 // $ExpectType Record$<aContext, bContext>
-S.Record(aContext, bContext)
+S.Record({ key: aContext, value: bContext })
 
 // ---------------------------------------------
 // extend
@@ -394,17 +394,21 @@ MyClassWithTransformFrom.fields
 // TaggedRequest
 // ---------------------------------------------
 
-class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", bContext, cContext, {
-  a: aContext
+class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", {
+  failure: bContext,
+  success: cContext,
+  payload: {
+    a: aContext
+  }
 }) {}
 
 // $ExpectType "aContext"
 hole<S.Schema.Context<typeof MyRequest>>()
 
-// $ExpectType { readonly _tag: PropertySignature<":", "MyRequest", never, ":", "MyRequest", true, never>; readonly a: aContext; }
+// $ExpectType { readonly _tag: tag<"MyRequest">; readonly a: aContext; }
 MyRequest.fields
 
 declare const myRequest: MyRequest
 
-// $ExpectType Schema<Exit<boolean, number>, ExitEncoded<boolean, number>, "bContext" | "cContext">
+// $ExpectType Schema<Exit<boolean, number>, ExitEncoded<boolean, number, unknown>, "bContext" | "cContext">
 Serializable.exitSchema(myRequest)

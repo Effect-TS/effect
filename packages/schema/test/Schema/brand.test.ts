@@ -5,19 +5,19 @@ import { describe, expect, it } from "vitest"
 
 describe("brand", () => {
   it("the constructor should validate the input by default", () => {
-    const schema = S.NonEmpty.pipe(S.brand("A"))
+    const schema = S.NonEmptyString.pipe(S.brand("A"))
     Util.expectConstructorSuccess(schema, "a")
     Util.expectConstructorFailure(
       schema,
       "",
-      `NonEmpty
+      `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmpty, actual ""`
+   └─ Expected NonEmptyString, actual ""`
     )
   })
 
   it("the constructor validation can be disabled", () => {
-    const schema = S.NonEmpty.pipe(S.brand("A"))
+    const schema = S.NonEmptyString.pipe(S.brand("A"))
     expect(schema.make("", true)).toStrictEqual("")
     expect(schema.make("", { disableValidation: true })).toStrictEqual("")
   })

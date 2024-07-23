@@ -12,10 +12,10 @@ const B = Schema.optional(Schema.Number)
 // $ExpectType optional<typeof Number$>
 const BB = B.annotations({})
 
-// $ExpectType optionalWithOptions<typeof Boolean$, { exact: true; }>
-const C = Schema.optional(Schema.Boolean, { exact: true })
+// $ExpectType optionalWith<typeof Boolean$, { exact: true; }>
+const C = Schema.optionalWith(Schema.Boolean, { exact: true })
 
-// $ExpectType optionalWithOptions<typeof Boolean$, { exact: true; }>
+// $ExpectType optionalWith<typeof Boolean$, { exact: true; }>
 const CC = C.annotations({})
 
 const schema = Schema.Struct({

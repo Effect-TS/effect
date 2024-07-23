@@ -87,7 +87,7 @@ export const SpanEvent: Schema.Schema<
   spanId: Schema.String,
   name: Schema.String,
   startTime: Schema.BigInt,
-  attributes: Schema.Record(Schema.String, Schema.Unknown)
+  attributes: Schema.Record({ key: Schema.String, value: Schema.Unknown })
 })
 
 /**
@@ -206,7 +206,7 @@ export const metric = <Tag extends string, S, IS, R>(tag: Tag, state: Schema.Sch
   Schema.Struct({
     _tag: Schema.Literal(tag),
     name: Schema.String,
-    description: Schema.optional(Schema.String, { as: "Option" }),
+    description: Schema.optionalWith(Schema.String, { as: "Option" }),
     tags: Schema.Array(MetricLabel),
     state
   })
@@ -229,7 +229,7 @@ export const Counter = metric(
 export const Frequency = metric(
   "Frequency",
   Schema.Struct({
-    occurrences: Schema.Record(Schema.String, Schema.Number)
+    occurrences: Schema.Record({ key: Schema.String, value: Schema.Number })
   })
 )
 

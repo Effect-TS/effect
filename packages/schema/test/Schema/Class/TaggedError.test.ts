@@ -111,7 +111,7 @@ describe("TaggedError", () => {
 
   it("cause", () => {
     class MyError extends S.TaggedError<MyError>()("MyError", {
-      cause: Schema.CauseDefectUnknown
+      cause: Schema.Defect
     }) {}
 
     const err = new MyError({ cause: new Error("child") })
