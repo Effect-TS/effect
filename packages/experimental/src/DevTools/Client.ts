@@ -48,7 +48,7 @@ interface PoisonPill {
  */
 export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket> = Effect.gen(function*(_) {
   const socket = yield* _(Socket.Socket)
-  const requests = yield* _(Queue.sliding<Domain.Request | PoisonPill>(1024))
+  const requests = yield* _(Queue.unbounded<Domain.Request | PoisonPill>())
 
   function metricsSnapshot(): Domain.MetricsSnapshot {
     const snapshot = Metric.unsafeSnapshot()
@@ -127,7 +127,6 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
       }
     }),
     Effect.retry(Schedule.spaced("3 seconds")),
-    Effect.ensuring(Queue.offer(requests, { _tag: "PoisonPill" })),
     Effect.catchAllCause(Effect.logDebug),
     Effect.forkScoped,
     Effect.uninterruptible
