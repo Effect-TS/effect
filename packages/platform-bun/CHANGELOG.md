@@ -1,5 +1,16 @@
 # @effect/platform-bun
 
+## 0.39.3
+
+### Patch Changes
+
+- [#3310](https://github.com/Effect-TS/effect/pull/3310) [`99bddcf`](https://github.com/Effect-TS/effect/commit/99bddcfb3d6eab4d489d055404e26ad81afe52fc) Thanks @fubhy! - Added additional pure annotations to improve tree-shakeability
+
+- Updated dependencies [[`3afcc93`](https://github.com/Effect-TS/effect/commit/3afcc93413a3d910beb69e4ce9ae120e4adaffd5), [`99bddcf`](https://github.com/Effect-TS/effect/commit/99bddcfb3d6eab4d489d055404e26ad81afe52fc)]:
+  - effect@3.5.7
+  - @effect/platform@0.59.3
+  - @effect/platform-node-shared@0.9.3
+
 ## 0.39.2
 
 ### Patch Changes
