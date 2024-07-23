@@ -1,5 +1,18 @@
 # @effect/schema
 
+## 0.68.27
+
+### Patch Changes
+
+- [#3310](https://github.com/Effect-TS/effect/pull/3310) [`99bddcf`](https://github.com/Effect-TS/effect/commit/99bddcfb3d6eab4d489d055404e26ad81afe52fc) Thanks @fubhy! - Added additional pure annotations to improve tree-shakeability
+
+- [#3311](https://github.com/Effect-TS/effect/pull/3311) [`6921c4f`](https://github.com/Effect-TS/effect/commit/6921c4fb8c45badff09b493043b85ca71302b560) Thanks @gcanti! - Remove incorrect static override type annotations in class definitions.
+
+  This will also improve tree-shakeability.
+
+- Updated dependencies [[`3afcc93`](https://github.com/Effect-TS/effect/commit/3afcc93413a3d910beb69e4ce9ae120e4adaffd5), [`99bddcf`](https://github.com/Effect-TS/effect/commit/99bddcfb3d6eab4d489d055404e26ad81afe52fc)]:
+  - effect@3.5.7
+
 ## 0.68.26
 
 ### Patch Changes
