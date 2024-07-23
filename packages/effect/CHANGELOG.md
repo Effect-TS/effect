@@ -1,5 +1,13 @@
 # effect
 
+## 3.5.7
+
+### Patch Changes
+
+- [#3288](https://github.com/Effect-TS/effect/pull/3288) [`3afcc93`](https://github.com/Effect-TS/effect/commit/3afcc93413a3d910beb69e4ce9ae120e4adaffd5) Thanks @mikearnaldi! - Forbid usage of property "name" in Effect.Tag
+
+- [#3310](https://github.com/Effect-TS/effect/pull/3310) [`99bddcf`](https://github.com/Effect-TS/effect/commit/99bddcfb3d6eab4d489d055404e26ad81afe52fc) Thanks @fubhy! - Added additional pure annotations to improve tree-shakeability
+
 ## 3.5.6
 
 ### Patch Changes
