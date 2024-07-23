@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.20.1
+
+### Patch Changes
+
+- [#3325](https://github.com/Effect-TS/effect/pull/3325) [`b2b02cb`](https://github.com/Effect-TS/effect/commit/b2b02cbd0268478e856b0976aa4aa20f6918171f) Thanks @IMax153! - ensure `DevTools` client flushes requests on interrupt
+
 ## 0.20.0
 
 ### Patch Changes
