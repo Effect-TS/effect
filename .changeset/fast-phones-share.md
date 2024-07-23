@@ -4,6 +4,18 @@
 
 TODO: change to minor before merging
 
+## Codemod
+
+For some of the breking changes, a code-mod has been released to make migration as easy as possible.
+
+You can run it by executing:
+
+```bash
+npx @effect/codemod schema-0.69 src/**/*
+```
+
+It might not be perfect - if you encounter issues, let us know! Also make sure you commit any changes before running it, in case you need to revert anything.
+
 ## Breaking Changes
 
 ### Schema
