@@ -79,6 +79,13 @@ TODO: change to minor before merging
 
 - split `partial` API into `partial` (without options) and `partialWith` (with options)
 
+### ParseResult
+
+- `Missing`: change `ast` field from `AST.Annotated` to `AST.Type`
+- `Composite`: change `ast` field from `AST.Annotated` to `AST.AST`
+- `Type`: change `ast` field from `AST.Annotated` to `AST.AST`
+- `Forbidden`: change `ast` field from `AST.Annotated` to `AST.AST`
+
 ### AST
 
 - pass the input of the transformation to `transform` and `transformOrFail` APIs

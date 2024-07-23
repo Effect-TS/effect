@@ -103,7 +103,7 @@ export class Missing {
     /**
      * @since 0.68.0
      */
-    readonly ast: AST.Annotated,
+    readonly ast: AST.Type,
     /**
      * @since 0.68.0
      */
@@ -123,7 +123,7 @@ export class Composite {
    */
   readonly _tag = "Composite"
   constructor(
-    readonly ast: AST.Annotated,
+    readonly ast: AST.AST,
     readonly actual: unknown,
     readonly issues: SingleOrNonEmpty<ParseIssue>,
     readonly output?: unknown
@@ -189,7 +189,7 @@ export class Type {
    */
   readonly _tag = "Type"
   constructor(
-    readonly ast: AST.Annotated,
+    readonly ast: AST.AST,
     readonly actual: unknown,
     readonly message?: string
   ) {}
@@ -207,7 +207,7 @@ export class Forbidden {
    */
   readonly _tag = "Forbidden"
   constructor(
-    readonly ast: AST.Annotated,
+    readonly ast: AST.AST,
     readonly actual: unknown,
     readonly message?: string
   ) {}
