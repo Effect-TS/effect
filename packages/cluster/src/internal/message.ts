@@ -55,7 +55,7 @@ export const TaggedMessage_ = <Self>() =>
   IA,
   A
 > => {
-  return class extends (Schema.TaggedRequest<{}>()(tag, failure, success, fields) as any) {
+  return class extends (Schema.TaggedRequest<{}>()(tag, { failure, success, payload: fields }) as any) {
     constructor(props: any, disableValidation?: boolean) {
       super(props, disableValidation)
       ;(this as any)[PrimaryKey.symbol] = () => messageToId(this as any)

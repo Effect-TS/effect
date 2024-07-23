@@ -61,12 +61,12 @@ describe("encodedBoundAST", () => {
     })
 
     it("record (true)", () => {
-      const schema = S.Record(S.String, S.Number)
+      const schema = S.Record({ key: S.String, value: S.Number })
       expect(AST.encodedBoundAST(schema.ast) === schema.ast).toBe(true)
     })
 
     it("record (false)", () => {
-      const schema = S.Record(S.String, S.NumberFromString)
+      const schema = S.Record({ key: S.String, value: S.NumberFromString })
       expect(AST.encodedBoundAST(schema.ast) === schema.ast).toBe(false)
     })
   })

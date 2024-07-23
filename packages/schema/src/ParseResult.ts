@@ -103,7 +103,7 @@ export class Missing {
     /**
      * @since 0.68.0
      */
-    readonly ast: AST.Annotated,
+    readonly ast: AST.Type,
     /**
      * @since 0.68.0
      */
@@ -123,7 +123,7 @@ export class Composite {
    */
   readonly _tag = "Composite"
   constructor(
-    readonly ast: AST.Annotated,
+    readonly ast: AST.AST,
     readonly actual: unknown,
     readonly issues: SingleOrNonEmpty<ParseIssue>,
     readonly output?: unknown
@@ -189,7 +189,7 @@ export class Type {
    */
   readonly _tag = "Type"
   constructor(
-    readonly ast: AST.Annotated,
+    readonly ast: AST.AST,
     readonly actual: unknown,
     readonly message?: string
   ) {}
@@ -207,7 +207,7 @@ export class Forbidden {
    */
   readonly _tag = "Forbidden"
   constructor(
-    readonly ast: AST.Annotated,
+    readonly ast: AST.AST,
     readonly actual: unknown,
     readonly message?: string
   ) {}
@@ -830,28 +830,28 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       const transform = getFinalTransformation(ast.transformation, isDecoding)
       const from = isDecoding ? goMemo(ast.from, true) : goMemo(ast.to, false)
       const to = isDecoding ? goMemo(ast.to, true) : goMemo(ast.from, false)
-      return (i1, options) =>
+      return (i, options) =>
         handleForbidden(
           flatMap(
             mapError(
-              from(i1, options),
-              (e) => new Transformation(ast, i1, isDecoding ? "Encoded" : "Type", e)
+              from(i, options),
+              (e) => new Transformation(ast, i, isDecoding ? "Encoded" : "Type", e)
             ),
             (a) =>
               flatMap(
                 mapError(
-                  transform(a, options ?? AST.defaultParseOption, ast),
-                  (e) => new Transformation(ast, i1, "Transformation", e)
+                  transform(a, options ?? AST.defaultParseOption, ast, i),
+                  (e) => new Transformation(ast, i, "Transformation", e)
                 ),
                 (i2) =>
                   mapError(
                     to(i2, options),
-                    (e) => new Transformation(ast, i1, isDecoding ? "Type" : "Encoded", e)
+                    (e) => new Transformation(ast, i, isDecoding ? "Type" : "Encoded", e)
                   )
               )
           ),
           ast,
-          i1,
+          i,
           options
         )
     }
@@ -867,12 +867,11 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       return fromRefinement(ast, (u): u is typeof ast.symbol => u === ast.symbol)
     case "UndefinedKeyword":
       return fromRefinement(ast, Predicate.isUndefined)
-    case "VoidKeyword":
-      return fromRefinement(ast, Predicate.isUndefined)
     case "NeverKeyword":
       return fromRefinement(ast, Predicate.isNever)
     case "UnknownKeyword":
     case "AnyKeyword":
+    case "VoidKeyword":
       return Either.right
     case "StringKeyword":
       return fromRefinement(ast, Predicate.isString)
@@ -1650,9 +1649,10 @@ export const getFinalTransformation = (
   transformation: AST.TransformationKind,
   isDecoding: boolean
 ): (
-  input: any,
+  fromA: any,
   options: AST.ParseOptions,
-  self: AST.Transformation
+  self: AST.Transformation,
+  fromI: any
 ) => Effect.Effect<any, ParseIssue, any> => {
   switch (transformation._tag) {
     case "FinalTransformation":

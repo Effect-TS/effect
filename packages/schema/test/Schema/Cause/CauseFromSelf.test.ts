@@ -7,15 +7,15 @@ import { describe, expect, it } from "vitest"
 
 describe("CauseFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.CauseFromSelf({ error: S.NumberFromString }))
+    Util.expectArbitrary(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
   })
 
   it("property tests", () => {
-    Util.roundtrip(S.CauseFromSelf({ error: S.NumberFromString }))
+    Util.roundtrip(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
   })
 
   it("decoding", async () => {
-    const schema = S.CauseFromSelf({ error: S.NumberFromString })
+    const schema = S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown })
 
     await Util.expectDecodeUnknownSuccess(schema, Cause.fail("1"), Cause.fail(1))
 
@@ -52,13 +52,13 @@ describe("CauseFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.CauseFromSelf({ error: S.NumberFromString })
+    const schema = S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown })
 
     await Util.expectEncodeSuccess(schema, Cause.fail(1), Cause.fail("1"))
   })
 
   it("pretty", () => {
-    const schema = S.CauseFromSelf({ error: S.String })
+    const schema = S.CauseFromSelf({ error: S.String, defect: S.Unknown })
     const pretty = Pretty.make(schema)
     expect(pretty(Cause.die("error"))).toEqual(`Cause.die(Error: error)`)
     expect(pretty(Cause.empty)).toEqual(`Cause.empty`)

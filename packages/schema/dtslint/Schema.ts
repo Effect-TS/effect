@@ -14,7 +14,7 @@ declare const aContext: S.Schema<string, string, "a">
 declare const bContext: S.Schema<number, number, "b">
 declare const cContext: S.Schema<boolean, boolean, "c">
 
-class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
 
 const ServiceA = Context.GenericTag<"ServiceA", string>("ServiceA")
 
@@ -489,85 +489,7 @@ S.asSchema(S.Struct({ a: anyNeverPropertySignature }))
 S.asSchema(S.Struct({ a: neverAnyPropertySignature }))
 
 // ---------------------------------------------
-// optional { exact: true }
-// ---------------------------------------------
-
-// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean; }, { readonly a: string; readonly b: number; readonly c?: boolean; }, never>
-S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true }) }))
-
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof Boolean$, { exact: true; }>; }>
-S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true }) })
-
-// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: number; }, { readonly a: string; readonly b: number; readonly c?: string; }, never>
-S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { exact: true }) }))
-
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof NumberFromString, { exact: true; }>; }>
-S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { exact: true }) })
-
-// $ExpectType Schema<{ readonly a?: never; }, { readonly a?: never; }, never>
-S.asSchema(S.Struct({ a: S.optional(S.Never, { exact: true }) }))
-
-// $ExpectType Struct<{ a: optionalWithOptions<typeof Never, { exact: true; }>; }>
-S.Struct({ a: S.optional(S.Never, { exact: true }) })
-
-// $ExpectType Schema<{ readonly a?: string; }, { readonly a?: string; }, never>
-S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ exact: true })) }))
-
-// $ExpectType Struct<{ a: optionalWithOptions<typeof String$, { exact: true; }>; }>
-S.Struct({ a: S.String.pipe(S.optional({ exact: true })) })
-
-// ---------------------------------------------
-// optional - Errors
-// ---------------------------------------------
-
-// @ts-expect-error
-S.optional(S.String, { as: "Option", default: () => "" })
-
-// @ts-expect-error
-S.optional(S.String, { as: "Option", exact: true, onNoneEncoding: () => Option.some(null) })
-
-// @ts-expect-error
-S.String.pipe(S.optional({ as: "Option", exact: true, onNoneEncoding: () => Option.some(null) }))
-
-// @ts-expect-error
-S.optional(S.String, { as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) })
-
-// @ts-expect-error
-S.optional(S.String, { as: "Option", onNoneEncoding: () => Option.some(null) })
-
-// @ts-expect-error
-S.String.pipe(S.optional({ as: "Option", onNoneEncoding: () => Option.some(null) }))
-
-// @ts-expect-error
-S.String.pipe(S.optional({ as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) }))
-
-// @ts-expect-error
-S.optional(S.String, { as: "Option", nullable: true, onNoneEncoding: () => Option.some(1) })
-
-// @ts-expect-error
-S.String.pipe(S.optional({ as: "Option", nullable: true, onNoneEncoding: () => Option.some(1) }))
-
-// @ts-expect-error
-S.optional(S.String, { as: null })
-
-// @ts-expect-error
-S.optional(S.String, { default: null })
-
-// ---------------------------------------------
-// optional() used in a generic context
-// ---------------------------------------------
-
-type TypeWithValue<Value extends S.Schema.Any> = { value: S.optionalWithOptions<Value, { nullable: true }> }
-
-const makeTypeWithValue = <Value extends S.Schema.Any>(value: Value): TypeWithValue<Value> => ({
-  value: S.optional(value, { nullable: true })
-})
-
-// $ExpectType TypeWithValue<typeof String$>
-makeTypeWithValue(S.String)
-
-// ---------------------------------------------
-// optional()
+// optional
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
@@ -582,202 +504,280 @@ S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString
 // $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optional<typeof NumberFromString>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString) })
 
-// $ExpectType Schema<{ readonly a?: undefined; }, { readonly a?: undefined; }, never>
-S.asSchema(S.Struct({ a: S.optional(S.Never) }))
-
-// $ExpectType Struct<{ a: optional<typeof Never>; }>
-S.Struct({ a: S.optional(S.Never) })
-
 // $ExpectType Schema<{ readonly a?: string | undefined; }, { readonly a?: string | undefined; }, never>
-S.asSchema(S.Struct({ a: S.String.pipe(S.optional()) }))
+S.asSchema(S.Struct({ a: S.String.pipe(S.optional) }))
 
 // $ExpectType Struct<{ a: optional<typeof String$>; }>
-S.Struct({ a: S.String.pipe(S.optional()) })
+S.Struct({ a: S.String.pipe(S.optional) })
 
 // ---------------------------------------------
-// optional { exact: true, default: () => A }
+// optionalWith { exact: true }
+// ---------------------------------------------
+
+// $ExpectType Schema<{ readonly a?: never; }, { readonly a?: never; }, never>
+S.asSchema(S.Struct({ a: S.optionalWith(S.Never, { exact: true }) }))
+
+// $ExpectType Struct<{ a: optionalWith<typeof Never, { exact: true; }>; }>
+S.Struct({ a: S.optionalWith(S.Never, { exact: true }) })
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean; }, { readonly a: string; readonly b: number; readonly c?: boolean; }, never>
+S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.Boolean, { exact: true }) }))
+
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof Boolean$, { exact: true; }>; }>
+S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.Boolean, { exact: true }) })
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: number; }, { readonly a: string; readonly b: number; readonly c?: string; }, never>
+S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.NumberFromString, { exact: true }) }))
+
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof NumberFromString, { exact: true; }>; }>
+S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.NumberFromString, { exact: true }) })
+
+// $ExpectType Schema<{ readonly a?: never; }, { readonly a?: never; }, never>
+S.asSchema(S.Struct({ a: S.optionalWith(S.Never, { exact: true }) }))
+
+// $ExpectType Struct<{ a: optionalWith<typeof Never, { exact: true; }>; }>
+S.Struct({ a: S.optionalWith(S.Never, { exact: true }) })
+
+// $ExpectType Schema<{ readonly a?: string; }, { readonly a?: string; }, never>
+S.asSchema(S.Struct({ a: S.String.pipe(S.optionalWith({ exact: true })) }))
+
+// $ExpectType Struct<{ a: optionalWith<typeof String$, { exact: true; }>; }>
+S.Struct({ a: S.String.pipe(S.optionalWith({ exact: true })) })
+
+// ---------------------------------------------
+// optionalWith - Errors
+// ---------------------------------------------
+
+// @ts-expect-error
+S.optionalWith(S.String, { as: "Option", default: () => "" })
+
+// @ts-expect-error
+S.optionalWith(S.String, { as: "Option", exact: true, onNoneEncoding: () => Option.some(null) })
+
+// @ts-expect-error
+S.String.pipe(S.optionalWith({ as: "Option", exact: true, onNoneEncoding: () => Option.some(null) }))
+
+// @ts-expect-error
+S.optionalWith(S.String, { as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) })
+
+// @ts-expect-error
+S.optionalWith(S.String, { as: "Option", onNoneEncoding: () => Option.some(null) })
+
+// @ts-expect-error
+S.String.pipe(S.optionalWith({ as: "Option", onNoneEncoding: () => Option.some(null) }))
+
+// @ts-expect-error
+S.String.pipe(S.optionalWith({ as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) }))
+
+// @ts-expect-error
+S.optionalWith(S.String, { as: "Option", nullable: true, onNoneEncoding: () => Option.some(1) })
+
+// @ts-expect-error
+S.String.pipe(S.optionalWith({ as: "Option", nullable: true, onNoneEncoding: () => Option.some(1) }))
+
+// @ts-expect-error
+S.optionalWith(S.String, { as: null })
+
+// @ts-expect-error
+S.optionalWith(S.String, { default: null })
+
+// ---------------------------------------------
+// optionalWith used in a generic context
+// ---------------------------------------------
+
+type TypeWithValue<Value extends S.Schema.Any> = { value: S.optionalWith<Value, { nullable: true }> }
+
+const makeTypeWithValue = <Value extends S.Schema.Any>(value: Value): TypeWithValue<Value> => ({
+  value: S.optionalWith(value, { nullable: true })
+})
+
+// $ExpectType TypeWithValue<typeof String$>
+makeTypeWithValue(S.String)
+
+// ---------------------------------------------
+// optionalWith { exact: true, default: () => A }
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: boolean; }, { readonly a: string; readonly b: number; readonly c?: boolean; }, never>
 S.asSchema(S.Struct({
   a: S.String,
   b: S.Number,
-  c: S.optional(S.Boolean, { exact: true, default: () => false })
+  c: S.optionalWith(S.Boolean, { exact: true, default: () => false })
 }))
 
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof Boolean$, { exact: true; default: () => false; }>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof Boolean$, { exact: true; default: () => false; }>; }>
 S.Struct({
   a: S.String,
   b: S.Number,
-  c: S.optional(S.Boolean, { exact: true, default: () => false })
+  c: S.optionalWith(S.Boolean, { exact: true, default: () => false })
 })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: number; }, { readonly a: string; readonly b: number; readonly c?: string; }, never>
 S.asSchema(S.Struct({
   a: S.String,
   b: S.Number,
-  c: S.optional(S.NumberFromString, { exact: true, default: () => 0 })
+  c: S.optionalWith(S.NumberFromString, { exact: true, default: () => 0 })
 }))
 
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof NumberFromString, { exact: true; default: () => number; }>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof NumberFromString, { exact: true; default: () => number; }>; }>
 S.Struct({
   a: S.String,
   b: S.Number,
-  c: S.optional(S.NumberFromString, { exact: true, default: () => 0 })
+  c: S.optionalWith(S.NumberFromString, { exact: true, default: () => 0 })
 })
 
-// $ExpectType Struct<{ a: optionalWithOptions<Literal<["a", "b"]>, { default: () => "a"; exact: true; }>; }>
-S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a", exact: true }) })
+// $ExpectType Struct<{ a: optionalWith<Literal<["a", "b"]>, { default: () => "a"; exact: true; }>; }>
+S.Struct({ a: S.optionalWith(S.Literal("a", "b"), { default: () => "a", exact: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b"; }, never>
-S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a", exact: true })) }))
+S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optionalWith({ default: () => "a", exact: true })) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<Literal<["a", "b"]>, { default: () => "a"; exact: true; }>; }>
-S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a", exact: true })) })
+// $ExpectType Struct<{ a: optionalWith<Literal<["a", "b"]>, { default: () => "a"; exact: true; }>; }>
+S.Struct({ a: S.Literal("a", "b").pipe(S.optionalWith({ default: () => "a", exact: true })) })
 
 // ---------------------------------------------
-// optional { default: () => A }
+// optionalWith { default: () => A }
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: boolean; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
-S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { default: () => false }) }))
+S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.Boolean, { default: () => false }) }))
 
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof Boolean$, { default: () => false; }>; }>
-S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { default: () => false }) })
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof Boolean$, { default: () => false; }>; }>
+S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.Boolean, { default: () => false }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: number; }, { readonly a: string; readonly b: number; readonly c?: string | undefined; }, never>
-S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { default: () => 0 }) }))
+S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.NumberFromString, { default: () => 0 }) }))
 
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof NumberFromString, { default: () => number; }>; }>
-S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { default: () => 0 }) })
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof NumberFromString, { default: () => number; }>; }>
+S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.NumberFromString, { default: () => 0 }) })
 
-// $ExpectType Struct<{ a: optionalWithOptions<Literal<["a", "b"]>, { default: () => "a"; }>; }>
-S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a" }) })
+// $ExpectType Struct<{ a: optionalWith<Literal<["a", "b"]>, { default: () => "a"; }>; }>
+S.Struct({ a: S.optionalWith(S.Literal("a", "b"), { default: () => "a" }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b" | undefined; }, never>
-S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" })) }))
+S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optionalWith({ default: () => "a" })) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<Literal<["a", "b"]>, { default: () => "a"; }>; }>
-S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" })) })
+// $ExpectType Struct<{ a: optionalWith<Literal<["a", "b"]>, { default: () => "a"; }>; }>
+S.Struct({ a: S.Literal("a", "b").pipe(S.optionalWith({ default: () => "a" })) })
 
 // ---------------------------------------------
-// optional { exact: true, nullable: true, default: () => A }
+// optionalWith { exact: true, nullable: true, default: () => A }
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: number; }, { readonly a?: string | null; }, never>
-S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) }))
+S.asSchema(S.Struct({ a: S.optionalWith(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<typeof NumberFromString, { exact: true; nullable: true; default: () => number; }>; }>
-S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) })
+// $ExpectType Struct<{ a: optionalWith<typeof NumberFromString, { exact: true; nullable: true; default: () => number; }>; }>
+S.Struct({ a: S.optionalWith(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) })
 
 // ---------------------------------------------
-// optional { nullable: true, default: () => A }
+// optionalWith { nullable: true, default: () => A }
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: number; }, { readonly a?: string | null | undefined; }, never>
-S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { nullable: true, default: () => 0 }) }))
+S.asSchema(S.Struct({ a: S.optionalWith(S.NumberFromString, { nullable: true, default: () => 0 }) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<typeof NumberFromString, { nullable: true; default: () => number; }>; }>
-S.Struct({ a: S.optional(S.NumberFromString, { nullable: true, default: () => 0 }) })
+// $ExpectType Struct<{ a: optionalWith<typeof NumberFromString, { nullable: true; default: () => number; }>; }>
+S.Struct({ a: S.optionalWith(S.NumberFromString, { nullable: true, default: () => 0 }) })
 
 // $ExpectType Schema<{ readonly a: number; }, { readonly a?: string | null; }, never>
-S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) }))
+S.asSchema(S.Struct({ a: S.optionalWith(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<typeof NumberFromString, { exact: true; nullable: true; default: () => number; }>; }>
-S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) })
+// $ExpectType Struct<{ a: optionalWith<typeof NumberFromString, { exact: true; nullable: true; default: () => number; }>; }>
+S.Struct({ a: S.optionalWith(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) })
 
-// $ExpectType Struct<{ a: optionalWithOptions<Literal<["a", "b"]>, { default: () => "a"; nullable: true; }>; }>
-S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a", nullable: true }) })
+// $ExpectType Struct<{ a: optionalWith<Literal<["a", "b"]>, { default: () => "a"; nullable: true; }>; }>
+S.Struct({ a: S.optionalWith(S.Literal("a", "b"), { default: () => "a", nullable: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b" | null | undefined; }, never>
-S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a", nullable: true })) }))
+S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optionalWith({ default: () => "a", nullable: true })) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<Literal<["a", "b"]>, { default: () => "a"; nullable: true; }>; }>
-S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a", nullable: true })) })
+// $ExpectType Struct<{ a: optionalWith<Literal<["a", "b"]>, { default: () => "a"; nullable: true; }>; }>
+S.Struct({ a: S.Literal("a", "b").pipe(S.optionalWith({ default: () => "a", nullable: true })) })
 
 // ---------------------------------------------
-// optional { exact: true, as: "Option" }
+// optionalWith { exact: true, as: "Option" }
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<boolean>; }, { readonly a: string; readonly b: number; readonly c?: boolean; }, never>
-S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true, as: "Option" }) }))
+S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.Boolean, { exact: true, as: "Option" }) }))
 
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof Boolean$, { exact: true; as: "Option"; }>; }>
-S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true, as: "Option" }) })
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof Boolean$, { exact: true; as: "Option"; }>; }>
+S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.Boolean, { exact: true, as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<number>; }, { readonly a: string; readonly b: number; readonly c?: string; }, never>
 S.asSchema(S.Struct({
   a: S.String,
   b: S.Number,
-  c: S.optional(S.NumberFromString, { exact: true, as: "Option" })
+  c: S.optionalWith(S.NumberFromString, { exact: true, as: "Option" })
 }))
 
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof NumberFromString, { exact: true; as: "Option"; }>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof NumberFromString, { exact: true; as: "Option"; }>; }>
 S.Struct({
   a: S.String,
   b: S.Number,
-  c: S.optional(S.NumberFromString, { exact: true, as: "Option" })
+  c: S.optionalWith(S.NumberFromString, { exact: true, as: "Option" })
 })
 
 // $ExpectType Schema<{ readonly a: Option<string>; }, { readonly a?: string; }, never>
-S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ exact: true, as: "Option" })) }))
+S.asSchema(S.Struct({ a: S.String.pipe(S.optionalWith({ exact: true, as: "Option" })) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<typeof String$, { exact: true; as: "Option"; }>; }>
-S.Struct({ a: S.String.pipe(S.optional({ exact: true, as: "Option" })) })
+// $ExpectType Struct<{ a: optionalWith<typeof String$, { exact: true; as: "Option"; }>; }>
+S.Struct({ a: S.String.pipe(S.optionalWith({ exact: true, as: "Option" })) })
 
 // ---------------------------------------------
-// optional { as: "Option" }
+// optionalWith { as: "Option" }
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<boolean>; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
-S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { as: "Option" }) }))
+S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.Boolean, { as: "Option" }) }))
 
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof Boolean$, { as: "Option"; }>; }>
-S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { as: "Option" }) })
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof Boolean$, { as: "Option"; }>; }>
+S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.Boolean, { as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<number>; }, { readonly a: string; readonly b: number; readonly c?: string | undefined; }, never>
-S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { as: "Option" }) }))
+S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.NumberFromString, { as: "Option" }) }))
 
-// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWithOptions<typeof NumberFromString, { as: "Option"; }>; }>
-S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { as: "Option" }) })
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: optionalWith<typeof NumberFromString, { as: "Option"; }>; }>
+S.Struct({ a: S.String, b: S.Number, c: S.optionalWith(S.NumberFromString, { as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: Option<string>; }, { readonly a?: string | undefined; }, never>
-S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ as: "Option" })) }))
+S.asSchema(S.Struct({ a: S.String.pipe(S.optionalWith({ as: "Option" })) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<typeof String$, { as: "Option"; }>; }>
-S.Struct({ a: S.String.pipe(S.optional({ as: "Option" })) })
+// $ExpectType Struct<{ a: optionalWith<typeof String$, { as: "Option"; }>; }>
+S.Struct({ a: S.String.pipe(S.optionalWith({ as: "Option" })) })
 
 // ---------------------------------------------
-// optional { nullable: true, as: "Option" }
+// optionalWith { nullable: true, as: "Option" }
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: Option<number>; }, { readonly a?: string | null | undefined; }, never>
-S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { nullable: true, as: "Option" }) }))
+S.asSchema(S.Struct({ a: S.optionalWith(S.NumberFromString, { nullable: true, as: "Option" }) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<typeof NumberFromString, { nullable: true; as: "Option"; }>; }>
-S.Struct({ a: S.optional(S.NumberFromString, { nullable: true, as: "Option" }) })
+// $ExpectType Struct<{ a: optionalWith<typeof NumberFromString, { nullable: true; as: "Option"; }>; }>
+S.Struct({ a: S.optionalWith(S.NumberFromString, { nullable: true, as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: Option<string>; }, { readonly a?: string | null | undefined; }, never>
-S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ nullable: true, as: "Option" })) }))
+S.asSchema(S.Struct({ a: S.String.pipe(S.optionalWith({ nullable: true, as: "Option" })) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<typeof String$, { nullable: true; as: "Option"; }>; }>
-S.Struct({ a: S.String.pipe(S.optional({ nullable: true, as: "Option" })) })
+// $ExpectType Struct<{ a: optionalWith<typeof String$, { nullable: true; as: "Option"; }>; }>
+S.Struct({ a: S.String.pipe(S.optionalWith({ nullable: true, as: "Option" })) })
 
 // ---------------------------------------------
-// optional { exact: true, nullable: true, as: "Option" }
+// optionalWith { exact: true, nullable: true, as: "Option" }
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: Option<number>; }, { readonly a?: string | null; }, never>
-S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, as: "Option" }) }))
+S.asSchema(S.Struct({ a: S.optionalWith(S.NumberFromString, { exact: true, nullable: true, as: "Option" }) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<typeof NumberFromString, { exact: true; nullable: true; as: "Option"; }>; }>
-S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, as: "Option" }) })
+// $ExpectType Struct<{ a: optionalWith<typeof NumberFromString, { exact: true; nullable: true; as: "Option"; }>; }>
+S.Struct({ a: S.optionalWith(S.NumberFromString, { exact: true, nullable: true, as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: Option<string>; }, { readonly a?: string | null; }, never>
-S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ exact: true, nullable: true, as: "Option" })) }))
+S.asSchema(S.Struct({ a: S.String.pipe(S.optionalWith({ exact: true, nullable: true, as: "Option" })) }))
 
-// $ExpectType Struct<{ a: optionalWithOptions<typeof String$, { exact: true; nullable: true; as: "Option"; }>; }>
-S.Struct({ a: S.String.pipe(S.optional({ exact: true, nullable: true, as: "Option" })) })
+// $ExpectType Struct<{ a: optionalWith<typeof String$, { exact: true; nullable: true; as: "Option"; }>; }>
+S.Struct({ a: S.String.pipe(S.optionalWith({ exact: true, nullable: true, as: "Option" })) })
 
 // ---------------------------------------------
 // pick
@@ -793,25 +793,25 @@ pipe(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }), S.pick("a", "b"))
 pipe(S.Struct({ a: S.String, b: S.NumberFromString, c: S.Boolean }), S.pick("a", "b"))
 
 // ---------------------------------------------
-// pick - optional
+// pick - optionalWith
 // ---------------------------------------------
 
 // $ExpectType SchemaClass<{ readonly a?: string; readonly b: number; }, { readonly a?: string; readonly b: number; }, never>
 pipe(
-  S.Struct({ a: S.optional(S.String, { exact: true }), b: S.Number, c: S.Boolean }),
+  S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number, c: S.Boolean }),
   S.pick("a", "b")
 )
 
 // $ExpectType SchemaClass<{ readonly a?: string; readonly b: number; }, { readonly a?: string; readonly b: string; }, never>
 pipe(
-  S.Struct({ a: S.optional(S.String, { exact: true }), b: S.NumberFromString, c: S.Boolean }),
+  S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.NumberFromString, c: S.Boolean }),
   S.pick("a", "b")
 )
 
 // $ExpectType SchemaClass<{ readonly a: string; readonly b: number; }, { readonly a?: string; readonly b: string; }, never>
 pipe(
   S.Struct({
-    a: S.optional(S.String, { exact: true, default: () => "" }),
+    a: S.optionalWith(S.String, { exact: true, default: () => "" }),
     b: S.NumberFromString,
     c: S.Boolean
   }),
@@ -845,22 +845,22 @@ pipe(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }), S.omit("c"))
 pipe(S.Struct({ a: S.String, b: S.NumberFromString, c: S.Boolean }), S.omit("c"))
 
 // ---------------------------------------------
-// omit - optional
+// omit - optionalWith
 // ---------------------------------------------
 
 // $ExpectType SchemaClass<{ readonly a?: string; readonly b: number; }, { readonly a?: string; readonly b: number; }, never>
-pipe(S.Struct({ a: S.optional(S.String, { exact: true }), b: S.Number, c: S.Boolean }), S.omit("c"))
+pipe(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number, c: S.Boolean }), S.omit("c"))
 
 // $ExpectType SchemaClass<{ readonly a?: string; readonly b: number; }, { readonly a?: string; readonly b: string; }, never>
 pipe(
-  S.Struct({ a: S.optional(S.String, { exact: true }), b: S.NumberFromString, c: S.Boolean }),
+  S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.NumberFromString, c: S.Boolean }),
   S.omit("c")
 )
 
 // $ExpectType SchemaClass<{ readonly a: string; readonly b: number; }, { readonly a?: string; readonly b: string; }, never>
 pipe(
   S.Struct({
-    a: S.optional(S.String, { exact: true, default: () => "" }),
+    a: S.optionalWith(S.String, { exact: true, default: () => "" }),
     b: S.NumberFromString,
     c: S.Boolean
   }),
@@ -903,14 +903,8 @@ S.asSchema(pipe(S.NumberFromString, S.int(), S.brand("Int")))
 pipe(S.NumberFromString, S.int(), S.brand("Int"))
 
 // ---------------------------------------------
-// Partial
+// partial
 // ---------------------------------------------
-
-// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, never>
-S.partial(S.Struct({ a: S.String, b: S.Number }), { exact: true })
-
-// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: string; }, never>
-S.partial(S.Struct({ a: S.String, b: S.NumberFromString }), { exact: true })
 
 // $ExpectType SchemaClass<{ readonly a?: string | undefined; readonly b?: number | undefined; }, { readonly a?: string | undefined; readonly b?: number | undefined; }, never>
 S.partial(S.Struct({ a: S.String, b: S.Number }))
@@ -918,27 +912,37 @@ S.partial(S.Struct({ a: S.String, b: S.Number }))
 // $ExpectType SchemaClass<{ readonly a?: string | undefined; readonly b?: number | undefined; }, { readonly a?: string | undefined; readonly b?: string | undefined; }, never>
 S.partial(S.Struct({ a: S.String, b: S.NumberFromString }))
 
-// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, never>
-S.Struct({ a: S.String, b: S.Number }).pipe(S.partial({ exact: true }))
-
 // $ExpectType SchemaClass<{ readonly a?: string | undefined; readonly b?: number | undefined; }, { readonly a?: string | undefined; readonly b?: number | undefined; }, never>
-S.Struct({ a: S.String, b: S.Number }).pipe(S.partial())
+S.Struct({ a: S.String, b: S.Number }).pipe(S.partial)
 
 // ---------------------------------------------
-// Required
+// partialWith
+// ---------------------------------------------
+
+// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, never>
+S.partialWith(S.Struct({ a: S.String, b: S.Number }), { exact: true })
+
+// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: string; }, never>
+S.partialWith(S.Struct({ a: S.String, b: S.NumberFromString }), { exact: true })
+
+// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, never>
+S.Struct({ a: S.String, b: S.Number }).pipe(S.partialWith({ exact: true }))
+
+// ---------------------------------------------
+// Required + optionalWith
 // ---------------------------------------------
 
 // $ExpectType SchemaClass<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, never>
 S.required(
-  S.Struct({ a: S.optional(S.String, { exact: true }), b: S.optional(S.Number, { exact: true }) })
+  S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.optionalWith(S.Number, { exact: true }) })
 )
 
 // $ExpectType SchemaClass<{ readonly a: string; readonly b: number; readonly c: number; }, { readonly b: string; readonly a: string; readonly c: string; }, never>
 S.required(
   S.Struct({
-    a: S.optional(S.String, { exact: true }),
+    a: S.optionalWith(S.String, { exact: true }),
     b: S.NumberFromString,
-    c: S.optional(S.NumberFromString, { exact: true })
+    c: S.optionalWith(S.NumberFromString, { exact: true })
   })
 )
 
@@ -947,64 +951,64 @@ S.required(
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, never>
-S.asSchema(S.Record(S.String, S.String).key)
+S.asSchema(S.Record({ key: S.String, value: S.String }).key)
 
 // $ExpectType typeof String$
-S.Record(S.String, S.String).key
+S.Record({ key: S.String, value: S.String }).key
 
 // $ExpectType Schema<string, string, never>
-S.asSchema(S.Record(S.String, S.String).value)
+S.asSchema(S.Record({ key: S.String, value: S.String }).value)
 
 // $ExpectType typeof String$
-S.Record(S.String, S.String).value
+S.Record({ key: S.String, value: S.String }).value
 
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(S.String, S.String))
+S.asSchema(S.Record({ key: S.String, value: S.String }))
 
 // $ExpectType Record$<typeof String$, typeof String$>
-S.Record(S.String, S.String)
+S.Record({ key: S.String, value: S.String })
 
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(S.String, S.NumberFromString))
+S.asSchema(S.Record({ key: S.String, value: S.NumberFromString }))
 
 // $ExpectType Record$<typeof String$, typeof NumberFromString>
-S.Record(S.String, S.NumberFromString)
+S.Record({ key: S.String, value: S.NumberFromString })
 
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(pipe(S.String, S.minLength(2)), S.String))
+S.asSchema(S.Record({ key: pipe(S.String, S.minLength(2)), value: S.String }))
 
 // $ExpectType Record$<filter<Schema<string, string, never>>, typeof String$>
-S.Record(pipe(S.String, S.minLength(2)), S.String)
+S.Record({ key: pipe(S.String, S.minLength(2)), value: S.String })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; }, { readonly a: string; readonly b: string; }, never>
-S.asSchema(S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String))
+S.asSchema(S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.String }))
 
 // $ExpectType Record$<Union<[Literal<["a"]>, Literal<["b"]>]>, typeof String$>
-S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String)
+S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.String })
 
 // $ExpectType Schema<{ readonly [x: symbol]: string; }, { readonly [x: symbol]: string; }, never>
-S.asSchema(S.Record(S.SymbolFromSelf, S.String))
+S.asSchema(S.Record({ key: S.SymbolFromSelf, value: S.String }))
 
 // $ExpectType Record$<typeof SymbolFromSelf, typeof String$>
-S.Record(S.SymbolFromSelf, S.String)
+S.Record(S.Record({ key: S.SymbolFromSelf, value: S.String }))
 
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }, { readonly [x: `a${string}`]: string; }, never>
-S.asSchema(S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String))
+S.asSchema(S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.String }))
 
 // $ExpectType Record$<TemplateLiteral<`a${string}`>, typeof String$>
-S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String)
+S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.String })
 
 // $ExpectType Schema<{ readonly [x: string & Brand<"UserId">]: string; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(S.String.pipe(S.brand("UserId")), S.String))
+S.asSchema(S.Record({ key: S.String.pipe(S.brand("UserId")), value: S.String }))
 
 // $ExpectType Record$<brand<typeof String$, "UserId">, typeof String$>
-S.Record(S.String.pipe(S.brand("UserId")), S.String)
+S.Record({ key: S.String.pipe(S.brand("UserId")), value: S.String })
 
 // $ExpectType Schema<{ readonly [x: string & Brand<symbol>]: string; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(S.String.pipe(S.brand(Symbol.for("UserId"))), S.String))
+S.asSchema(S.Record({ key: S.String.pipe(S.brand(Symbol.for("UserId"))), value: S.String }))
 
 // $ExpectType Record$<brand<typeof String$, symbol>, typeof String$>
-S.Record(S.String.pipe(S.brand(Symbol.for("UserId"))), S.String)
+S.Record({ key: S.String.pipe(S.brand(Symbol.for("UserId"))), value: S.String })
 
 // ---------------------------------------------
 // extend
@@ -1038,14 +1042,14 @@ S.extend(S.Struct({ a: S.String }), S.Union(S.Struct({ b: S.Number }), S.Struct(
 S.asSchema(pipe(
   S.Struct({ a: S.String, b: S.String }),
   S.extend(S.Struct({ c: S.String })),
-  S.extend(S.Record(S.String, S.String))
+  S.extend(S.Record({ key: S.String, value: S.String }))
 ))
 
 // $ExpectType extend<extend<Struct<{ a: typeof String$; b: typeof String$; }>, Struct<{ c: typeof String$; }>>, Record$<typeof String$, typeof String$>>
 pipe(
   S.Struct({ a: S.String, b: S.String }),
   S.extend(S.Struct({ c: S.String })),
-  S.extend(S.Record(S.String, S.String))
+  S.extend(S.Record({ key: S.String, value: S.String }))
 )
 
 // ---------------------------------------------
@@ -1231,8 +1235,8 @@ const FromFilter = S.Union(S.String, S.Number)
 pipe(FromFilter, S.filter(predicateFilter1))
 
 const FromRefinement = S.Struct({
-  a: S.optional(S.String, { exact: true }),
-  b: S.optional(S.Number, { exact: true })
+  a: S.optionalWith(S.String, { exact: true }),
+  b: S.optionalWith(S.Number, { exact: true })
 })
 
 // $ExpectType refine<{ readonly a?: string; readonly b?: number; } & { readonly b: number; }, Schema<unknown, { readonly a?: string; readonly b?: number; }, never>>
@@ -1403,10 +1407,10 @@ S.asSchema(S.mutable(S.Struct({ a: S.Number })))
 S.mutable(S.Struct({ a: S.Number }))
 
 // $ExpectType Schema<{ [x: string]: number; }, { [x: string]: number; }, never>
-S.asSchema(S.mutable(S.Record(S.String, S.Number)))
+S.asSchema(S.mutable(S.Record({ key: S.String, value: S.Number })))
 
 // $ExpectType mutable<Record$<typeof String$, typeof Number$>>
-S.mutable(S.Record(S.String, S.Number))
+S.mutable(S.Record({ key: S.String, value: S.Number }))
 
 // $ExpectType Schema<string[], string[], never>
 S.asSchema(S.mutable(S.Array(S.String)))
@@ -1442,10 +1446,10 @@ S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.mutable(S.Struct({ b
 S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Struct({ b: S.Number })))
 
 // $ExpectType Schema<{ a: string; } & { [x: string]: string; }, { a: string; } & { [x: string]: string; }, never>
-S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.mutable(S.Record(S.String, S.String))))
+S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.mutable(S.Record({ key: S.String, value: S.String }))))
 
 // $ExpectType Schema<{ a: string; } & { readonly [x: string]: string; }, { a: string; } & { readonly [x: string]: string; }, never>
-S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Record(S.String, S.String)))
+S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Record({ key: S.String, value: S.String })))
 
 // ---------------------------------------------
 // transform
@@ -1477,6 +1481,29 @@ S.String.pipe(S.transform(S.Number, (s) => s, (n) => String(n)))
 
 // @ts-expect-error
 S.String.pipe(S.transform(S.Number, (s) => s.length, (n) => n))
+
+// should receive the fromI value other than the fromA value
+S.transform(
+  S.Struct({
+    a: S.String,
+    b: S.NumberFromString
+  }),
+  S.Struct({
+    a: S.NumberFromString
+  }),
+  {
+    strict: true,
+    decode: ({
+      a, // $ExpectType string
+      b: _b // $ExpectType number
+    }, i // $ExpectType { readonly a: string; readonly b: string; }
+    ) => ({ a: a + i.b }),
+    encode: (
+      i, // $ExpectType { readonly a: string; }
+      a // $ExpectType { readonly a: number; }
+    ) => ({ ...i, b: a.a * 2 })
+  }
+)
 
 // ---------------------------------------------
 // transformOrFail
@@ -1526,6 +1553,35 @@ S.String.pipe(
 S.String.pipe(
   // @ts-expect-error
   S.transformOrFail(S.Number, (s) => ParseResult.succeed(s.length), (n) => ParseResult.succeed(n))
+)
+
+// should receive the fromI value other than the fromA value
+S.transformOrFail(
+  S.Struct({
+    a: S.String,
+    b: S.NumberFromString
+  }),
+  S.Struct({
+    a: S.NumberFromString
+  }),
+  {
+    strict: true,
+    decode: (
+      {
+        a, // $ExpectType string
+        b: _b // $ExpectType number
+      },
+      _options,
+      _ast,
+      i // $ExpectType { readonly a: string; readonly b: string; }
+    ) => ParseResult.succeed({ a: a + i.b }),
+    encode: (
+      i, // $ExpectType { readonly a: string; }
+      _options,
+      _ast,
+      a // $ExpectType { readonly a: number; }
+    ) => ParseResult.succeed({ ...i, b: a.a * 2 })
+  }
 )
 
 // ---------------------------------------------
@@ -1712,8 +1768,12 @@ hole<Parameters<S.Struct<typeof MyTaggedError.fields>["make"]>>()
 // TaggedRequest
 // ---------------------------------------------
 
-class MyTaggedRequest extends S.TaggedRequest<MyTaggedRequest>()("MyTaggedRequest", S.String, S.Number, {
-  a: S.String
+class MyTaggedRequest extends S.TaggedRequest<MyTaggedRequest>()("MyTaggedRequest", {
+  failure: S.String,
+  success: S.Number,
+  payload: {
+    a: S.String
+  }
 }) {}
 
 // $ExpectType Schema<{ readonly a: string; readonly _tag: "MyTaggedRequest"; }, { readonly a: string; readonly _tag: "MyTaggedRequest"; }, never>
@@ -2181,64 +2241,92 @@ S.List(S.NumberFromString)
 // ---------------------------------------------
 
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, never>
-S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String }))
+S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: S.Unknown }))
 
-// $ExpectType ExitFromSelf<typeof Number$, typeof String$, never>
-S.ExitFromSelf({ success: S.Number, failure: S.String })
+// $ExpectType ExitFromSelf<typeof Number$, typeof String$, typeof Unknown>
+S.ExitFromSelf({ success: S.Number, failure: S.String, defect: S.Unknown })
 
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, "a">
 S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType ExitFromSelf<typeof Number$, typeof String$, "a">
+// $ExpectType ExitFromSelf<typeof Number$, typeof String$, Schema<unknown, unknown, "a">>
 S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
+
+// $ExpectType Schema<{ readonly a: Exit<number, string>; }, { readonly a: Exit<number, string>; }, never>
+S.asSchema(S.Struct({
+  a: S.ExitFromSelf({
+    success: S.Number,
+    failure: S.String,
+    defect: S.Unknown
+  })
+}))
 
 // ---------------------------------------------
 // Exit
 // ---------------------------------------------
 
-// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, never>
-S.asSchema(S.Exit({ success: S.Number, failure: S.String }))
+// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string, unknown>, never>
+S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: S.Defect }))
 
-// $ExpectType Exit<typeof Number$, typeof String$, never>
-S.Exit({ success: S.Number, failure: S.String })
+// $ExpectType Exit<typeof Number$, typeof String$, Defect>
+S.Exit({ success: S.Number, failure: S.String, defect: S.Defect })
 
-// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, "a">
+// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string, unknown>, "a">
 S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType Exit<typeof Number$, typeof String$, "a">
+// $ExpectType Exit<typeof Number$, typeof String$, Schema<unknown, unknown, "a">>
 S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
+
+// $ExpectType Schema<{ readonly a: Exit<number, string>; }, { readonly a: ExitEncoded<number, string, unknown>; }, never>
+S.asSchema(S.Struct({
+  a: S.Exit({
+    success: S.Number,
+    failure: S.String,
+    defect: S.Defect
+  })
+}))
 
 // ---------------------------------------------
 // CauseFromSelf
 // ---------------------------------------------
 
 // $ExpectType Schema<Cause<string>, Cause<string>, never>
-S.asSchema(S.CauseFromSelf({ error: S.String }))
+S.asSchema(S.CauseFromSelf({ error: S.String, defect: S.Unknown }))
 
-// $ExpectType CauseFromSelf<typeof String$, never>
-S.CauseFromSelf({ error: S.String })
+// $ExpectType CauseFromSelf<typeof String$, typeof Unknown>
+S.CauseFromSelf({ error: S.String, defect: S.Unknown })
 
 // $ExpectType Schema<Cause<string>, Cause<string>, "a">
 S.asSchema(S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType CauseFromSelf<typeof String$, "a">
+// $ExpectType CauseFromSelf<typeof String$, Schema<unknown, unknown, "a">>
 S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
+
+// $ExpectType Schema<{ readonly a: Cause<string>; }, { readonly a: Cause<string>; }, never>
+S.asSchema(S.Struct({
+  a: S.CauseFromSelf({ error: S.String, defect: S.Unknown })
+}))
 
 // ---------------------------------------------
 // Cause
 // ---------------------------------------------
 
-// $ExpectType Schema<Cause<string>, CauseEncoded<string>, never>
-S.asSchema(S.Cause({ error: S.String }))
+// $ExpectType Schema<Cause<string>, CauseEncoded<string, unknown>, never>
+S.asSchema(S.Cause({ error: S.String, defect: S.Defect }))
 
-// $ExpectType Cause<typeof String$, never>
-S.Cause({ error: S.String })
+// $ExpectType Cause<typeof String$, Defect>
+S.Cause({ error: S.String, defect: S.Defect })
 
-// $ExpectType Schema<Cause<string>, CauseEncoded<string>, "a">
+// $ExpectType Schema<Cause<string>, CauseEncoded<string, unknown>, "a">
 S.asSchema(S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType Cause<typeof String$, "a">
+// $ExpectType Cause<typeof String$, Schema<unknown, unknown, "a">>
 S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
+
+// $ExpectType Schema<{ readonly a: Cause<string>; }, { readonly a: CauseEncoded<string, unknown>; }, never>
+S.asSchema(S.Struct({
+  a: S.Cause({ error: S.String, defect: S.Defect })
+}))
 
 // ---------------------------------------------
 // TypeLiteral

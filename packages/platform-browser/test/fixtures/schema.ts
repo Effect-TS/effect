@@ -6,8 +6,12 @@ export class User extends Schema.Class<User>("User")({
   name: Schema.String
 }) {}
 
-export class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserById", Schema.Never, User, {
-  id: Schema.Number
+export class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserById", {
+  failure: Schema.Never,
+  success: User,
+  payload: {
+    id: Schema.Number
+  }
 }) {}
 
 export class Person extends Schema.Class<Person>("Person")({
@@ -16,34 +20,44 @@ export class Person extends Schema.Class<Person>("Person")({
   data: Transferable.Uint8Array
 }) {}
 
-export class GetPersonById extends Schema.TaggedRequest<GetPersonById>()("GetPersonById", Schema.Never, Person, {
-  id: Schema.Number
+export class GetPersonById extends Schema.TaggedRequest<GetPersonById>()("GetPersonById", {
+  failure: Schema.Never,
+  success: Person,
+  payload: {
+    id: Schema.Number
+  }
 }) {}
 
-export class RunnerInterrupt
-  extends Schema.TaggedRequest<RunnerInterrupt>()("RunnerInterrupt", Schema.Never, Schema.Void, {})
-{}
+export class RunnerInterrupt extends Schema.TaggedRequest<RunnerInterrupt>()("RunnerInterrupt", {
+  failure: Schema.Never,
+  success: Schema.Void,
+  payload: {}
+}) {}
 
-export class InitialMessage
-  extends Schema.TaggedRequest<InitialMessage>()("InitialMessage", Schema.Never, Schema.Void, {
+export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()("InitialMessage", {
+  failure: Schema.Never,
+  success: Schema.Void,
+  payload: {
     name: Schema.String,
     data: Transferable.Uint8Array
-  })
-{}
+  }
+}) {}
 
 export class GetSpan extends Schema.TaggedRequest<GetSpan>()(
   "GetSpan",
-  Schema.Never,
-  Schema.Struct({
-    name: Schema.String,
-    traceId: Schema.String,
-    spanId: Schema.String,
-    parent: Schema.Option(Schema.Struct({
+  {
+    failure: Schema.Never,
+    success: Schema.Struct({
+      name: Schema.String,
       traceId: Schema.String,
-      spanId: Schema.String
-    }))
-  }),
-  {}
+      spanId: Schema.String,
+      parent: Schema.Option(Schema.Struct({
+        traceId: Schema.String,
+        spanId: Schema.String
+      }))
+    }),
+    payload: {}
+  }
 ) {}
 
 export const WorkerMessage = Schema.Union(GetUserById, GetPersonById, InitialMessage, GetSpan, RunnerInterrupt)

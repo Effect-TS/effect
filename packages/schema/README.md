@@ -132,7 +132,7 @@ Let's delve into this with an example.
 import { Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.optional(Schema.String.pipe(Schema.nonEmpty()), {
+  name: Schema.optionalWith(Schema.String.pipe(Schema.nonEmptyString()), {
     exact: true
   })
 })
@@ -163,7 +163,7 @@ If, for some reason, you can't enable the `exactOptionalPropertyTypes` option (p
 import { Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.optional(Schema.String.pipe(Schema.nonEmpty()), {
+  name: Schema.optionalWith(Schema.String.pipe(Schema.nonEmptyString()), {
     exact: true
   })
 })
@@ -829,7 +829,7 @@ import { Schema } from "@effect/schema"
 const Age = Schema.NumberFromString
 
 const Person = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Age
 })
 
@@ -1291,35 +1291,35 @@ assertsPerson({ name: "Alice", age: 30 })
 
 ## Cheatsheet
 
-| Typescript Type                              | Description / Notes                      | Schema / Combinator                                       |
-| -------------------------------------------- | ---------------------------------------- | --------------------------------------------------------- |
-| `null`                                       |                                          | `S.Null`                                                  |
-| `undefined`                                  |                                          | `S.Undefined`                                             |
-| `string`                                     |                                          | `S.String`                                                |
-| `number`                                     |                                          | `S.Number`                                                |
-| `boolean`                                    |                                          | `S.Boolean`                                               |
-| `symbol`                                     |                                          | `S.SymbolFromSelf` / `S.Symbol`                           |
-| `BigInt`                                     |                                          | `S.BigIntFromSelf` / `S.BigInt`                           |
-| `unknown`                                    |                                          | `S.Unknown`                                               |
-| `any`                                        |                                          | `S.Any`                                                   |
-| `never`                                      |                                          | `S.Never`                                                 |
-| `object`                                     |                                          | `S.Object`                                                |
-| `unique symbol`                              |                                          | `S.UniqueSymbolFromSelf`                                  |
-| `"a"`, `1`, `true`                           | type literals                            | `S.Literal("a")`, `S.Literal(1)`, `S.Literal(true)`       |
-| `a${string}`                                 | template literals                        | `S.TemplateLiteral("a", S.String)`                        |
-| `{ readonly a: string, readonly b: number }` | structs                                  | `S.Struct({ a: S.String, b: S.Number })`                  |
-| `{ readonly a?: string \| undefined }`       | optional fields                          | `S.Struct({ a: S.optional(S.String) })`                   |
-| `{ readonly a?: string }`                    | optional fields                          | `S.Struct({ a: S.optional(S.String, { exact: true }) })`  |
-| `Record<A, B>`                               | records                                  | `S.Record(A, B)`                                          |
-| `readonly [string, number]`                  | tuples                                   | `S.Tuple(S.String, S.Number)`                             |
-| `ReadonlyArray<string>`                      | arrays                                   | `S.Array(S.String)`                                       |
-| `A \| B`                                     | unions                                   | `S.Union(A, B)`                                           |
-| `A & B`                                      | intersections of non-overlapping structs | `S.extend(A, B)`                                          |
-| `Record<A, B> & Record<C, D>`                | intersections of non-overlapping records | `S.extend(S.Record(A, B), S.Record(C, D))`                |
-| `type A = { readonly a: A \| null }`         | recursive types                          | `S.Struct({ a: S.Union(S.Null, S.suspend(() => self)) })` |
-| `keyof A`                                    |                                          | `S.keyof(A)`                                              |
-| `partial<A>`                                 |                                          | `S.partial(A)`                                            |
-| `required<A>`                                |                                          | `S.required(A)`                                           |
+| Typescript Type                              | Description / Notes                      | Schema / Combinator                                                        |
+| -------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------- |
+| `null`                                       |                                          | `S.Null`                                                                   |
+| `undefined`                                  |                                          | `S.Undefined`                                                              |
+| `string`                                     |                                          | `S.String`                                                                 |
+| `number`                                     |                                          | `S.Number`                                                                 |
+| `boolean`                                    |                                          | `S.Boolean`                                                                |
+| `symbol`                                     |                                          | `S.SymbolFromSelf` / `S.Symbol`                                            |
+| `BigInt`                                     |                                          | `S.BigIntFromSelf` / `S.BigInt`                                            |
+| `unknown`                                    |                                          | `S.Unknown`                                                                |
+| `any`                                        |                                          | `S.Any`                                                                    |
+| `never`                                      |                                          | `S.Never`                                                                  |
+| `object`                                     |                                          | `S.Object`                                                                 |
+| `unique symbol`                              |                                          | `S.UniqueSymbolFromSelf`                                                   |
+| `"a"`, `1`, `true`                           | type literals                            | `S.Literal("a")`, `S.Literal(1)`, `S.Literal(true)`                        |
+| `a${string}`                                 | template literals                        | `S.TemplateLiteral("a", S.String)`                                         |
+| `{ readonly a: string, readonly b: number }` | structs                                  | `S.Struct({ a: S.String, b: S.Number })`                                   |
+| `{ readonly a?: string \| undefined }`       | optional fields                          | `S.Struct({ a: S.optional(S.String) })`                                    |
+| `{ readonly a?: string }`                    | optional fields                          | `S.Struct({ a: S.optionalWith(S.String, { exact: true }) })`               |
+| `Record<A, B>`                               | records                                  | `S.Record({ key: A, value: B })`                                           |
+| `readonly [string, number]`                  | tuples                                   | `S.Tuple(S.String, S.Number)`                                              |
+| `ReadonlyArray<string>`                      | arrays                                   | `S.Array(S.String)`                                                        |
+| `A \| B`                                     | unions                                   | `S.Union(A, B)`                                                            |
+| `A & B`                                      | intersections of non-overlapping structs | `S.extend(A, B)`                                                           |
+| `Record<A, B> & Record<C, D>`                | intersections of non-overlapping records | `S.extend(S.Record({ key: A, value: B }), S.Record({ key: C, value: D }))` |
+| `type A = { readonly a: A \| null }`         | recursive types                          | `S.Struct({ a: S.Union(S.Null, S.suspend(() => self)) })`                  |
+| `keyof A`                                    |                                          | `S.keyof(A)`                                                               |
+| `partial<A>`                                 |                                          | `S.partial(A)`                                                             |
+| `required<A>`                                |                                          | `S.required(A)`                                                            |
 
 ## Primitives
 
@@ -1693,7 +1693,7 @@ import { Schema } from "@effect/schema"
 
 Schema.String.pipe(Schema.maxLength(5)) // Specifies maximum length of a string
 Schema.String.pipe(Schema.minLength(5)) // Specifies minimum length of a string
-Schema.NonEmpty // Equivalent to ensuring the string has a minimum length of 1
+Schema.NonEmptyString // Equivalent to ensuring the string has a minimum length of 1
 Schema.String.pipe(Schema.length(5)) // Specifies exact length of a string
 Schema.String.pipe(Schema.length({ min: 2, max: 4 })) // Specifies a range for the length of a string
 Schema.String.pipe(Schema.pattern(regex)) // Matches a string against a regular expression pattern
@@ -2329,16 +2329,16 @@ const value = schema.value // typeof Schema.String
 import { Schema } from "@effect/schema"
 
 // Schema.Record$<typeof Schema.String, typeof Schema.Number>
-const opaque1 = Schema.Record(Schema.String, Schema.Number)
+const opaque1 = Schema.Record({ key: Schema.String, value: Schema.Number })
 
 // Schema.Schema<{ readonly [x: string]: number; }>
 const schema1 = Schema.asSchema(opaque1)
 
 // Schema.Record$<Schema.Union<[Schema.Literal<["a"]>, Schema.Literal<["b"]>]>, typeof Schema.Number>
-const opaque2 = Schema.Record(
-  Schema.Union(Schema.Literal("a"), Schema.Literal("b")),
-  Schema.Number
-)
+const opaque2 = Schema.Record({
+  key: Schema.Union(Schema.Literal("a"), Schema.Literal("b")),
+  value: Schema.Number
+})
 
 // Schema.Schema<{ readonly a: number; readonly b: number; }>
 const schema2 = Schema.asSchema(opaque2)
@@ -2350,10 +2350,10 @@ const schema2 = Schema.asSchema(opaque2)
 import { Schema } from "@effect/schema"
 
 // Schema.Record$<Schema.filter<Schema.Schema<string, string, never>>, typeof Schema.Number>
-const opaque = Schema.Record(
-  Schema.String.pipe(Schema.minLength(2)),
-  Schema.Number
-)
+const opaque = Schema.Record({
+  key: Schema.String.pipe(Schema.minLength(2)),
+  value: Schema.Number
+})
 
 // Schema.Schema<{ readonly [x: string]: number; }>
 const schema = Schema.asSchema(opaque)
@@ -2365,7 +2365,10 @@ const schema = Schema.asSchema(opaque)
 import { Schema } from "@effect/schema"
 
 // Schema.Record$<typeof Schema.SymbolFromSelf, typeof Schema.Number>
-const opaque = Schema.Record(Schema.SymbolFromSelf, Schema.Number)
+const opaque = Schema.Record({
+  key: Schema.SymbolFromSelf,
+  value: Schema.Number
+})
 
 // Schema.Schema<{ readonly [x: symbol]: number; }>
 const schema = Schema.asSchema(opaque)
@@ -2377,10 +2380,10 @@ const schema = Schema.asSchema(opaque)
 import { Schema } from "@effect/schema"
 
 // Schema.Record$<Schema.Schema<`a${string}`, `a${string}`, never>, typeof Schema.Number>
-const opaque = Schema.Record(
-  Schema.TemplateLiteral(Schema.Literal("a"), Schema.String),
-  Schema.Number
-)
+const opaque = Schema.Record({
+  key: Schema.TemplateLiteral(Schema.Literal("a"), Schema.String),
+  value: Schema.Number
+})
 
 // Schema.Schema<{ readonly [x: `a${string}`]: number; }>
 const schema = Schema.asSchema(opaque)
@@ -2394,7 +2397,9 @@ By default, when you use `S.Record`, it generates a type marked as readonly. The
 import { Schema } from "@effect/schema"
 
 // Schema.mutable<Schema.Record$<typeof Schema.String, typeof Schema.Number>>
-const opaque = Schema.mutable(Schema.Record(Schema.String, Schema.Number))
+const opaque = Schema.mutable(
+  Schema.Record({ key: Schema.String, value: Schema.Number })
+)
 
 // Schema.Schema<{ [x: string]: number; }>
 const schema = Schema.asSchema(opaque)
@@ -2407,7 +2412,7 @@ You can access the key and the value of a record schema:
 ```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.Record(Schema.String, Schema.Number)
+const schema = Schema.Record({ key: Schema.String, value: Schema.Number })
 
 // Accesses the key
 const key = schema.key // typeof Schema.String
@@ -2499,7 +2504,7 @@ Schema.TypeLiteral<{
 */
 const opaque = Schema.Struct(
   { a: Schema.Number },
-  Schema.Record(Schema.String, Schema.Number)
+  Schema.Record({ key: Schema.String, value: Schema.Number })
 )
 
 /*
@@ -2523,7 +2528,7 @@ import { Schema } from "@effect/schema"
 
 const schema = Schema.Struct(
   { a: Schema.Number },
-  Schema.Record(Schema.String, Schema.Number)
+  Schema.Record({ key: Schema.String, value: Schema.Number })
 )
 
 // Accesses the fields
@@ -2691,7 +2696,7 @@ console.log(Schema.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
   - `undefined` -> `undefined`
   - `a` -> `i`
 
-#### optional(schema, { nullable: true })
+#### optionalWith(schema, { nullable: true })
 
 - decoding
   - `<missing value>` -> `<missing value>`
@@ -2703,7 +2708,7 @@ console.log(Schema.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
   - `undefined` -> `undefined`
   - `a` -> `i`
 
-#### optional(schema, { exact: true })
+#### optionalWith(schema, { exact: true })
 
 - decoding
   - `<missing value>` -> `<missing value>`
@@ -2712,7 +2717,7 @@ console.log(Schema.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
   - `<missing value>` -> `<missing value>`
   - `a` -> `i`
 
-#### optional(schema, { exact: true, nullable: true })
+#### optionalWith(schema, { exact: true, nullable: true })
 
 - decoding
   - `<missing value>` -> `<missing value>`
@@ -2736,7 +2741,7 @@ import { Schema } from "@effect/schema"
 const Product = Schema.Struct({
   name: Schema.String,
   price: Schema.NumberFromString,
-  quantity: Schema.optional(Schema.NumberFromString, { default: () => 1 })
+  quantity: Schema.optionalWith(Schema.NumberFromString, { default: () => 1 })
 })
 
 // Applying defaults in the decoding phase
@@ -2761,7 +2766,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 | `optional` | `Schema<A, I, R>`, `{ nullable: true, default: () => A }`              | `PropertySignature<":", string, never, "?:", string \| null \| undefined, never>` |
 | `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<":", string, never, "?:", string \| null, never>`              |
 
-#### optional(schema, { default: () => A })
+#### optionalWith(schema, { default: () => A })
 
 - decoding
   - `<missing value>` -> `<default value>`
@@ -2770,7 +2775,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 - encoding
   - `a` -> `i`
 
-#### optional(schema, { exact: true, default: () => A })
+#### optionalWith(schema, { exact: true, default: () => A })
 
 - decoding
   - `<missing value>` -> `<default value>`
@@ -2778,7 +2783,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 - encoding
   - `a` -> `i`
 
-#### optional(schema, { nullable: true, default: () => A })
+#### optionalWith(schema, { nullable: true, default: () => A })
 
 - decoding
   - `<missing value>` -> `<default value>`
@@ -2788,7 +2793,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 - encoding
   - `a` -> `i`
 
-#### optional(schema, { exact: true, nullable: true, default: () => A })
+#### optionalWith(schema, { exact: true, nullable: true, default: () => A })
 
 - decoding
   - `<missing value>` -> `<default value>`
@@ -2806,7 +2811,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 | `optional` | `Schema<A, I, R>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<":", Option<string>, never, "?:", string \| null \| undefined, never>` |
 | `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<":", Option<string>, never, "?:", string \| null, never>`              |
 
-#### optional(schema, { as: "Option" })
+#### optionalWith(schema, { as: "Option" })
 
 - decoding
   - `<missing value>` -> `Option.none()`
@@ -2816,7 +2821,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
   - `Option.none()` -> `<missing value>`
   - `Option.some(a)` -> `i`
 
-#### optional(schema, { exact: true, as: "Option" })
+#### optionalWith(schema, { exact: true, as: "Option" })
 
 - decoding
   - `<missing value>` -> `Option.none()`
@@ -2825,7 +2830,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
   - `Option.none()` -> `<missing value>`
   - `Option.some(a)` -> `i`
 
-#### optional(schema, { nullable: true, as: "Option" })
+#### optionalWith(schema, { nullable: true, as: "Option" })
 
 - decoding
   - `<missing value>` -> `Option.none()`
@@ -2836,7 +2841,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
   - `Option.none()` -> `<missing value>`
   - `Option.some(a)` -> `i`
 
-#### optional(schema, { exact: true, nullable: true, as: "Option" })
+#### optionalWith(schema, { exact: true, nullable: true, as: "Option" })
 
 - decoding
   - `<missing value>` -> `Option.none()`
@@ -3351,7 +3356,7 @@ Schema.Schema<{
     readonly a?: string;
 }, never>
 */
-const exactSchema = Schema.partial(Schema.Struct({ a: Schema.String }), {
+const exactSchema = Schema.partialWith(Schema.Struct({ a: Schema.String }), {
   exact: true
 })
 
@@ -3375,8 +3380,8 @@ import { Schema } from "@effect/schema"
 // Schema<{ readonly a: string; readonly b: number; }>
 Schema.required(
   Schema.Struct({
-    a: Schema.optional(Schema.String, { exact: true }),
-    b: Schema.optional(Schema.Number, { exact: true })
+    a: Schema.optionalWith(Schema.String, { exact: true }),
+    b: Schema.optionalWith(Schema.Number, { exact: true })
   })
 )
 ```
@@ -3419,7 +3424,7 @@ const Extended = Schema.Struct(
   {
     ...Struct.fields
   },
-  Schema.Record(Schema.String, Schema.String)
+  Schema.Record({ key: Schema.String, value: Schema.String })
 )
 ```
 
@@ -3444,40 +3449,23 @@ const Extended = Schema.Struct({
 })
 ```
 
-**Example: Using Pick and Omit**
-
-The `fields` property being a plain object allows for flexible manipulations such as picking or omitting specific fields using utility functions like `pick` and `omit`.
-
-```ts
-import { Schema } from "@effect/schema"
-import { Struct } from "effect"
-
-const Struct1 = Schema.Struct({
-  a: Schema.String,
-  b: Schema.String
-})
-
-const Struct2 = Schema.Struct({
-  c: Schema.String,
-  d: Schema.String,
-  e: Schema.String
-})
-
-const Extended = Schema.Struct({
-  ...Struct.pick(Struct1.fields, "a"),
-  ...Struct.omit(Struct2.fields, "d")
-})
-```
-
 ### The extend combinator
 
 The `extend` combinator offers a structured way to extend schemas, particularly useful when direct field spreading is insufficient—for instance, when you need to extend a struct with a union of structs.
 
 > [!NOTE]
-> Note that there are strict limitations on the schemas that can be handled by `extend`:
+> Note that not all extensions are supported, and their support depends on the nature of the involved schemas:
 
-1. It only supports structs, refinements of structs, unions of structs, suspensions of structs (informally `Supported = Struct | Refinement of Supported | Union of Supported | suspend(() => Supported)`)
-2. It requires that the combined schemas represent **disjoint types** to avoid type conflicts.
+Possible extensions include:
+
+- `Schema.String` with another `Schema.String` refinement or a string literal
+- `Schema.Number` with another `Schema.Number` refinement or a number literal
+- `Schema.Boolean` with another `Schema.Boolean` refinement or a boolean literal
+- A struct with another struct where overlapping fields support extension
+- A struct with in index signature
+- A struct with a union of supported schemas
+- A refinement of a struct with a supported schema
+- A suspend of a struct with a supported schema
 
 **Example: Extending a Struct with a Union of Structs**
 
@@ -3519,26 +3507,34 @@ details: cannot extend string with number
 */
 ```
 
-**Example: Merging Compatible Structs**
-
-However, schemas can be merged if they are structurally disjoint, even if they share the same top-level key:
+**Example: Extending a refinement of Schema.String with another refinement**
 
 ```ts
 import { Schema } from "@effect/schema"
 
-const Struct1 = Schema.Struct({
-  a: Schema.Struct({
-    b: Schema.String
-  })
-})
+const Integer = Schema.Int.pipe(Schema.brand("Int"))
+const Positive = Schema.Positive.pipe(Schema.brand("Positive"))
 
-const Struct2 = Schema.Struct({
-  a: Schema.Struct({
-    c: Schema.String // Different inner key under the same top-level 'a'
-  })
-})
+// Schema.Schema<number & Brand<"Positive"> & Brand<"Int">, number, never>
+const PositiveInteger = Schema.asSchema(Schema.extend(Positive, Integer))
 
-const Extended = Schema.extend(Struct1, Struct2)
+Schema.decodeUnknownSync(PositiveInteger)(-1)
+/*
+throws
+ParseError: Int & Brand<"Int">
+└─ From side refinement failure
+  └─ Positive & Brand<"Positive">
+      └─ Predicate refinement failure
+        └─ Expected Positive & Brand<"Positive">, actual -1
+*/
+
+Schema.decodeUnknownSync(PositiveInteger)(1.1)
+/*
+throws
+ParseError: Int & Brand<"Int">
+└─ Predicate refinement failure
+  └─ Expected Int & Brand<"Int">, actual 1.1
+*/
 ```
 
 ## Composition
@@ -4504,6 +4500,47 @@ const schema = Schema.parseJson(Schema.Struct({ a: Schema.Number }))
 
 In this example, we've used `parseJson` with a struct schema to ensure that the parsed result has a specific structure, including an object with a numeric property "a". This helps in handling JSON data with predefined shapes.
 
+### StringFromBase64
+
+Decodes a base64 (RFC4648) encoded string into a UTF-8 string.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const decode = Schema.decodeUnknownSync(Schema.StringFromBase64)
+
+console.log(decode("Zm9vYmFy")) // "foobar"
+```
+
+### StringFromBase64Url
+
+Decodes a base64 (URL) encoded string into a UTF-8 string.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const decode = Schema.decodeUnknownSync(Schema.StringFromBase64Url)
+
+console.log(decode("Zm9vYmFy")) // "foobar"
+```
+
+### StringFromHex
+
+Decodes a hex encoded string into a UTF-8 string.
+
+```ts
+import { Schema } from "@effect/schema"
+import * as assert from "node:assert"
+
+const decode = Schema.decodeUnknownSync(Schema.StringFromHex)
+
+const decoder = new TextDecoder("utf-8")
+assert.deepStrictEqual(
+  decode("0001020304050607"),
+  decoder.decode(Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7]))
+)
+```
+
 ## Number Transformations
 
 ### NumberFromString
@@ -4796,7 +4833,7 @@ const Password =
     .pipe(
       // add a constraint to the schema, only non-empty strings are valid
       // and add an error message for empty strings
-      Schema.nonEmpty({ message: () => "required" }),
+      Schema.nonEmptyString({ message: () => "required" }),
       // add a constraint to the schema, only strings with a length less or equal than 10 are valid
       // and add an error message for strings that are too long
       Schema.maxLength(10, { message: (s) => `${s} is too long` })
@@ -5136,7 +5173,7 @@ When a refinement fails, the default error message indicates whether the failure
 ```ts
 import { Schema } from "@effect/schema"
 
-const Name = Schema.NonEmpty.annotations({ identifier: "Name" }) // refinement
+const Name = Schema.NonEmptyString.annotations({ identifier: "Name" }) // refinement
 
 const Age = Schema.Positive.pipe(Schema.int({ identifier: "Age" })) // refinement
 
@@ -5533,7 +5570,7 @@ class Messages extends Context.Tag("Messages")<
   }
 >() {}
 
-const Name = Schema.NonEmpty.annotations({
+const Name = Schema.NonEmptyString.annotations({
   message: () =>
     Effect.gen(function* (_) {
       const service = yield* _(Effect.serviceOption(Messages))
@@ -5631,7 +5668,7 @@ import { Schema } from "@effect/schema"
 // Define your schema by providing the type, a unique identifier and the desired fields
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {}
 ```
 
@@ -5658,7 +5695,7 @@ import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {}
 
 const john = new Person({ id: 1, name: "John" })
@@ -5709,7 +5746,7 @@ import { Equal } from "effect"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {}
 
 const john1 = new Person({ id: 1, name: "John" })
@@ -5726,7 +5763,7 @@ import { Equal } from "effect"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty()),
+  name: Schema.String.pipe(Schema.nonEmptyString()),
   hobbies: Schema.Array(Schema.String)
 }) {}
 
@@ -5752,7 +5789,7 @@ import { Data, Equal } from "effect"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty()),
+  name: Schema.String.pipe(Schema.nonEmptyString()),
   hobbies: Schema.Data(Schema.Array(Schema.String))
 }) {}
 
@@ -5781,7 +5818,7 @@ import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {
   // Custom getter to return the name in uppercase
   get upperName() {
@@ -5803,7 +5840,7 @@ import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {}
 
 // Person can be used as a normal schema
@@ -5964,7 +6001,7 @@ import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {
   get upperName() {
     return this.name.toUpperCase()
@@ -6007,7 +6044,7 @@ export class PersonWithTransform extends Person.transformOrFail<PersonWithTransf
   "PersonWithTransform"
 )(
   {
-    age: Schema.optional(Schema.Number, { exact: true, as: "Option" })
+    age: Schema.optionalWith(Schema.Number, { exact: true, as: "Option" })
   },
   {
     decode: (input) =>
@@ -6037,7 +6074,7 @@ export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWi
   "PersonWithTransformFrom"
 )(
   {
-    age: Schema.optional(Schema.Number, { exact: true, as: "Option" })
+    age: Schema.optionalWith(Schema.Number, { exact: true, as: "Option" })
   },
   {
     decode: (input) =>
@@ -6092,7 +6129,7 @@ Example (`Struct`)
 import { Schema } from "@effect/schema"
 
 const Struct = Schema.Struct({
-  name: Schema.NonEmpty
+  name: Schema.NonEmptyString
 })
 
 Struct.make({ name: "a" }) // ok
@@ -6120,7 +6157,10 @@ Example (`Record`)
 ```ts
 import { Schema } from "@effect/schema"
 
-const Record = Schema.Record(Schema.String, Schema.NonEmpty)
+const Record = Schema.Record({
+  key: Schema.String,
+  value: Schema.NonEmptyString
+})
 
 Record.make({ a: "a", b: "b" }) // ok
 Record.make({ a: "a", b: "" })
@@ -6219,7 +6259,7 @@ Example Without Default
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number
 })
 
@@ -6233,7 +6273,7 @@ Example With Default
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number.pipe(
     Schema.propertySignature,
     Schema.withConstructorDefault(() => 0)
@@ -6252,7 +6292,7 @@ Defaults are **lazily evaluated**, meaning that a new instance of the default is
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number.pipe(
     Schema.propertySignature,
     Schema.withConstructorDefault(() => 0)
@@ -6275,7 +6315,7 @@ Default values are also "portable", meaning that if you reuse the same property 
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number.pipe(
     Schema.propertySignature,
     Schema.withConstructorDefault(() => 0)
@@ -6300,7 +6340,7 @@ Defaults can also be applied using the `Class` API:
 import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number.pipe(
     Schema.propertySignature,
     Schema.withConstructorDefault(() => 0)
@@ -6553,9 +6593,9 @@ Schema.Array(Schema.String).value
 // ------------------------
 
 // key: typeof Schema.String
-Schema.Record(Schema.String, Schema.Number).key
+Schema.Record({ key: Schema.String, value: Schema.Number }).key
 // value: typeof Schema.Number
-Schema.Record(Schema.String, Schema.Number).value
+Schema.Record({ key: Schema.String, value: Schema.Number }).value
 
 // ------------------------
 // union members
@@ -7498,9 +7538,17 @@ It's important to note that when successfully decoding a `Redacted`, the output 
 
 # Serializable
 
+The `Serializable` module enables objects to have self-contained schema(s) for serialization. This functionality is particularly beneficial in scenarios where objects need to be consistently serialized and deserialized across various runtime environments or sent over network communications.
+
 ## Serializable trait
 
-The `Serializable` trait, part of the `@effect/schema/Serializable` module, enables objects to have self-contained schema(s) for serialization. This functionality is particularly beneficial in scenarios where objects need to be consistently serialized and deserialized across various runtime environments or sent over network communications.
+The `Serializable` trait equips objects with the capability to define their serialization logic explicitly.
+
+```ts
+interface Serializable<A, I, R> {
+  readonly [symbol]: Schema.Schema<A, I, R>
+}
+```
 
 **Example: Implementing the Serializable Trait**
 
@@ -7515,6 +7563,7 @@ class Person {
     readonly createdAt: Date
   ) {}
 
+  // Define the schema for serialization
   static FromEncoded = Schema.transform(
     Schema.Struct({
       id: Schema.Number,
@@ -7528,6 +7577,7 @@ class Person {
     }
   )
 
+  // Implementing the Serializable trait using the static schema
   get [Serializable.symbol]() {
     return Person.FromEncoded
   }
@@ -7535,23 +7585,53 @@ class Person {
 
 const person = new Person(1, "John", new Date(0))
 
-// ----------------
-// serialization
-// ----------------
+// Example serialization
+const serialized = Effect.runSync(Serializable.serialize(person))
+console.log(serialized)
+// { id: 1, name: 'John', createdAt: '1970-01-01T00:00:00.000Z' }
+
+// Deserialization
+const deserialized = Schema.decodeUnknownSync(Person.FromEncoded)(serialized)
+console.log(deserialized)
+// Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
+
+// Deserialization using an instance:
+// if you have access to a Person instance you can use `Serializable.deserialize` to deserialize
+const deserializedUsingAnInstance = Effect.runSync(
+  Serializable.deserialize(person, serialized)
+)
+console.log(deserializedUsingAnInstance)
+// Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
+```
+
+## Streamlining Code with Schema.Class
+
+While the above example provides a comprehensive view of serialization processes, using the `Schema.Class` API can significantly reduce boilerplate and simplify class modeling.
+
+```ts
+import { Schema, Serializable } from "@effect/schema"
+import { Effect } from "effect"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.Date
+}) {
+  get [Serializable.symbol]() {
+    return Person
+  }
+}
+
+const person = new Person({ id: 1, name: "John", createdAt: new Date(0) })
 
 const serialized = Effect.runSync(Serializable.serialize(person))
 console.log(serialized)
 // { id: 1, name: 'John', createdAt: '1970-01-01T00:00:00.000Z' }
 
-// ----------------
-// deserialization
-// ----------------
-
-const deserialized = Schema.decodeUnknownSync(Person.FromEncoded)(serialized)
+const deserialized = Schema.decodeUnknownSync(Person)(serialized)
 console.log(deserialized)
 // Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
 
-// if you have access to a Person instance you can use `Serializable.deserialize` to deserialize
 const deserializedUsingAnInstance = Effect.runSync(
   Serializable.deserialize(person, serialized)
 )
@@ -7563,28 +7643,59 @@ console.log(deserializedUsingAnInstance)
 
 The `WithResult` trait is designed to encapsulate the outcome of an operation, distinguishing between success and failure cases. Each case is associated with a schema that defines the structure and types of the success or failure data.
 
-The primary aim of this trait is to model and serialize the function signature:
-
 ```ts
-(arg: A): Exit<Success, Failure>
+interface WithResult<
+  Success,
+  SuccessEncoded,
+  Failure,
+  FailureEncoded,
+  ResultR
+> {
+  readonly [symbolResult]: {
+    readonly success: Schema.Schema<Success, SuccessEncoded, ResultR>
+    readonly failure: Schema.Schema<Failure, FailureEncoded, ResultR>
+  }
+}
 ```
 
-To achieve this, schemas need to be defined for the following:
+## SerializableWithResult trait
 
-- **The Argument**: Represented as `Schema<A, I, R>`, this schema handles the input data type `A`, its serialized form `I`, and the associated context `R`.
-- **The Success Case**: This is defined by `Schema<Success, SuccessEncoded, SuccessAndFailureR>`, specifying the structure for a successful outcome along with its encoded form for serialization.
-- **The Failure Case**: Similar to the success schema but for failures, represented by `Schema<Failure, FailureEncoded, SuccessAndFailureR>`.
+The `SerializableWithResult` trait is specifically designed to model remote procedures that require serialization of their input and output, managing both successful and failed outcomes.
 
-The process for using `WithResult` in a practical scenario involves a series of steps, encapsulating a full roundtrip communication:
+This trait combines functionality from both the `Serializable` and `WithResult` traits to handle data serialization and the bifurcation of operation results into success or failure categories.
 
-1. **Start with a Value of Type `A`**: Begin with your initial value which is of type `A`.
-2. **Serialize to `I`**: Convert the initial value `A` into its serialized form `I`.
-3. **Send Over the Wire**: The serialized value `I` is sent to a receiving end through network communication.
-4. **Deserialization to `A`**: Upon receipt, the value `I` is deserialized back to type `A`.
-5. **Process and Determine Outcome**: The receiver processes the deserialized value `A` and determines the result as either a success or failure, represented as `Exit<Success, Failure>`.
-6. **Serialize the Result**: The outcome is then serialized into `Exit<SuccessEncoded, FailureEncoded>` for transmission.
-7. **Send Back Over the Wire**: This serialized result is sent back to the original sender.
-8. **Final Deserialization**: The sender deserializes the received result back into its original detailed types `Exit<Success, Failure>`.
+**Definition**
+
+```ts
+interface SerializableWithResult<
+  A,
+  I,
+  R,
+  Success,
+  SuccessEncoded,
+  Failure,
+  FailureEncoded,
+  ResultR
+> extends Serializable<A, I, R>,
+    WithResult<Success, SuccessEncoded, Failure, FailureEncoded, ResultR> {}
+```
+
+**Components**
+
+- **Payload (`A, I, R`)**: The payload is described using the `Serializable<A, I, R>` trait, which includes the type of the payload (`A`), its serialized form (`I`), and any relevant runtime context (`R`).
+- **Success Case (`Success, SuccessEncoded, ResultR`)**: Defined by `Schema<Success, SuccessEncoded, ResultR>`, this outlines the structure and type of the data upon a successful operation, along with its serialized form.
+- **Failure Case (`Failure, FailureEncoded, ResultR`)**: This is analogous to the Success Case but caters to scenarios where the operation fails. It is described by `Schema<Failure, FailureEncoded, ResultR>`.
+
+**Workflow**
+
+1. **Initialization**: Begin with data of type `A`.
+2. **Serialization**: Convert this data into its serialized format `I`.
+3. **Transmission**: Send this serialized data over the network.
+4. **Reception and Deserialization**: Upon receiving, convert the data back from type `I` to `A`.
+5. **Processing**: The deserialized data is then processed to determine the outcome as either success (`Success`) or failure (`Failure`).
+6. **Result Serialization**: Depending on the outcome, serialize the result into `Exit<SuccessEncoded, FailureEncoded>`.
+7. **Response Transmission**: Send the serialized outcome back over the network.
+8. **Final Deserialization**: Deserialize the received outcome back into `Exit<Success, Failure>` for final use.
 
 ```mermaid
 sequenceDiagram
@@ -7603,28 +7714,13 @@ import type { ParseResult } from "@effect/schema"
 import { Schema, Serializable } from "@effect/schema"
 import { Effect, Exit } from "effect"
 
-class Person {
-  constructor(
-    readonly id: number,
-    readonly name: string,
-    readonly createdAt: Date
-  ) {}
-
-  static FromEncoded = Schema.transform(
-    Schema.Struct({
-      id: Schema.Number,
-      name: Schema.String,
-      createdAt: Schema.Date
-    }),
-    Schema.instanceOf(Person),
-    {
-      decode: ({ createdAt, id, name }) => new Person(id, name, createdAt),
-      encode: ({ createdAt, id, name }) => ({ id, name, createdAt })
-    }
-  )
-
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.Date
+}) {
   get [Serializable.symbol]() {
-    return Person.FromEncoded
+    return Person
   }
 }
 
@@ -7644,11 +7740,10 @@ class GetPersonById {
     return GetPersonById.FromEncoded
   }
 
-  // WithResult implementation
   get [Serializable.symbolResult]() {
     return {
-      Success: Person.FromEncoded,
-      Failure: Schema.String
+      success: Person,
+      failure: Schema.String
     }
   }
 }
@@ -7664,7 +7759,9 @@ function handleGetPersonById(
       req,
       req.id === 0
         ? Exit.fail("User not found")
-        : Exit.succeed(new Person(req.id, "John", new Date()))
+        : Exit.succeed(
+            new Person({ id: req.id, name: "John", createdAt: new Date() })
+          )
     )
   })
 }
@@ -7699,29 +7796,33 @@ Output:
 */
 ```
 
-## Streamlining Code with Schema.Class and Schema.TaggedRequest
+## Streamlining Code with Schema.TaggedRequest
 
-The previous example, although illustrative of the underlying mechanisms, involves considerable boilerplate code. To simplify development, we can utilize two specifically designed APIs: `Schema.Class` for modeling the `Person` class and `Schema.TaggedRequest` for modeling the `GetPersonById` operation.
+While the previous example effectively demonstrates the mechanisms involved, it does require a significant amount of boilerplate code. To streamline development, the `Schema.TaggedRequest` API is specifically designed to reduce complexity and increase readability.
 
 ```ts
 import type { ParseResult } from "@effect/schema"
 import { Schema, Serializable } from "@effect/schema"
 import { Effect, Exit } from "effect"
 
+// Define a simple person class using Schema.Class for ease of serialization
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.Date
 }) {}
 
-// Represents the serializable function: `(arg: { readonly id: number }) => Exit<Person, string>`
+// Represents a serializable function: `(payload: { readonly id: number }) => Exit<Person, string>`
 class GetPersonById extends Schema.TaggedRequest<GetPersonById>()(
   "GetPersonById",
-  Schema.String, // Failure schema
-  Person, // Success schema
-  { id: Schema.Number } // Argument schema
+  {
+    payload: { id: Schema.Number }, // Define the schema for the payload,
+    success: Person, // Schema for successful outcome
+    failure: Schema.String // Schema for failure outcome
+  }
 ) {}
 
+// Function to handle the GetPersonById request and process the response
 function handleGetPersonById(serializedReq: typeof GetPersonById.Encoded) {
   return Effect.gen(function* () {
     const req = yield* Schema.decodeUnknown(GetPersonById)(serializedReq)
@@ -7736,6 +7837,7 @@ function handleGetPersonById(serializedReq: typeof GetPersonById.Encoded) {
   })
 }
 
+// Simulates a roundtrip serialization and deserialization process
 const roundtrip = (
   req: GetPersonById
 ): Effect.Effect<Exit.Exit<Person, string>, ParseResult.ParseError> =>
@@ -7745,6 +7847,7 @@ const roundtrip = (
     return yield* Serializable.deserializeExit(req, exit)
   })
 
+// Example outputs from invoking the roundtrip function
 console.log(Effect.runSync(roundtrip(new GetPersonById({ id: 1 }))))
 /*
 Output:
@@ -7766,6 +7869,29 @@ Output:
 */
 ```
 
+## Communication and Serialization with Schema and Serializable Traits
+
+This section outlines a streamlined client-server interaction using the `Serializable` and `WithResult` traits from the `@effect/schema` library to manage serialization and processing of data objects across network communications.
+
+**Client-Side Operations:**
+
+1. **Initialization**: Start with an object of type `A`, which implements `Serializable.SerializableWithResult`.
+2. **Serialization**: Serialize the object `A` using `Serializable.serialize`, which employs the schema retrieved from the `Serializable` interface tied to `A`.
+3. **Transmission**: Send the serialized data of type `I` to the server and wait for a response.
+
+**Server-Side Operations:**
+
+1. **Reception**: Receive the serialized data `I`.
+2. **Deserialization**: Convert the serialized data `I` back into an object of type `A` using a predefined union schema `Schema<A | B | ..., I | IB | ...>`.
+3. **Processing**: Handle the message of type `A` to derive an outcome as `Exit<Success, Failure>`.
+4. **Result Serialization**: Serialize the result `Exit<Success, Failure>` to `Exit<SuccessEncoded, FailureEncoded>` utilizing the schema obtained from `A`'s `WithResult` interface.
+5. **Response**: Send the serialized response `Exit<SuccessEncoded, FailureEncoded>` back to the client.
+
+**Client-Side Response Handling:**
+
+1. **Reception**: Receive the response `Exit<SuccessEncoded, FailureEncoded>`.
+2. **Final Deserialization**: Convert `Exit<SuccessEncoded, FailureEncoded>` back to `Exit<Success, Failure>` using the original object `A` and the schema from the `WithResult` interface.
+
 # Generating Arbitraries
 
 The `make` function within the `@effect/schema/Arbitrary` module allows for the creation of random values that align with a specific `Schema<A, I, R>`. This utility returns an `Arbitrary<A>` from the [fast-check](https://github.com/dubzzz/fast-check) library, which is particularly useful for generating random test data that adheres to the defined schema constraints.
@@ -7774,7 +7900,7 @@ The `make` function within the `@effect/schema/Arbitrary` module allows for the 
 import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.NumberFromString.pipe(Schema.int(), Schema.between(0, 200))
 })
 
@@ -7817,20 +7943,20 @@ The generation of arbitrary data requires a clear understanding of how transform
 ```ts
 import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
-const schema1 = Schema.compose(Schema.NonEmpty, Schema.Trim).pipe(
+const schema1 = Schema.compose(Schema.NonEmptyString, Schema.Trim).pipe(
   Schema.maxLength(500)
 )
 // Might output empty strings despite `NonEmpty` due to filter order.
 console.log(FastCheck.sample(Arbitrary.make(schema1), 10))
 
-const schema2 = Schema.Trim.pipe(Schema.nonEmpty(), Schema.maxLength(500))
+const schema2 = Schema.Trim.pipe(Schema.nonEmptyString(), Schema.maxLength(500))
 // Ensures no empty strings, correctly applying `nonEmpty()`.
 console.log(FastCheck.sample(Arbitrary.make(schema2), 10))
 ```
 
 **Explanation:**
 
-- **Schema 1**: Considers the `Schema.maxLength(500)` because it follows the `Schema.Trim` transformation but disregards `Schema.NonEmpty` as it comes before any transformations.
+- **Schema 1**: Considers the `Schema.maxLength(500)` because it follows the `Schema.Trim` transformation but disregards `Schema.NonEmptyString` as it comes before any transformations.
 - **Schema 2**: Properly adheres to all applied filters by ensuring they follow transformations, thus avoiding the generation of undesired data.
 
 **Best Practices**
@@ -8832,7 +8958,6 @@ S.String.pipe(S.endsWith(string))
 // S.string().time() // No equivalent
 // S.string().duration() // No equivalent
 // S.string().ip() // No equivalent
-S.Base64
 
 // transforms
 S.Trim // trim whitespace
@@ -9392,7 +9517,7 @@ const person = S.Struct(
   {
     name: S.String
   },
-  S.Record(S.String, S.String)
+  S.Record({ key: S.String, value: S.String })
 )
 
 S.decodeUnknownSync(person)({
@@ -9573,7 +9698,7 @@ Schema
 ```ts
 const User = S.Struct({ name: S.String })
 
-const UserStore = S.Record(S.String, User)
+const UserStore = S.Record({ key: S.String, value: User })
 type UserStore = S.Schema.Type<typeof UserStore>
 // => type UserStore = { readonly [x: string]: { readonly name: string; }; }
 ```

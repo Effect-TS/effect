@@ -105,7 +105,7 @@ describe("parseJson", () => {
 
     describe("roundtrip", () => {
       it("Exit", async () => {
-        const schema = S.parseJson(S.Exit({ failure: S.Never, success: S.Void }))
+        const schema = S.parseJson(S.Exit({ failure: S.Never, success: S.Void, defect: S.Defect }))
         const encoding = S.encodeSync(schema)(Exit.void)
         await Util.expectDecodeUnknownSuccess(schema, encoding, Exit.void)
       })

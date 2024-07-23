@@ -14,10 +14,12 @@ import * as Schema from "@effect/schema/Schema"
  */
 export class AssignShards extends Schema.TaggedRequest<AssignShards>()(
   "@effect/cluster-node/ShardingProtocol/AssignShards",
-  Schema.Never,
-  Schema.Void,
   {
-    shards: Schema.HashSet(ShardId.schema)
+    failure: Schema.Never,
+    success: Schema.Void,
+    payload: {
+      shards: Schema.HashSet(ShardId.schema)
+    }
   }
 ) {
 }
@@ -28,10 +30,12 @@ export class AssignShards extends Schema.TaggedRequest<AssignShards>()(
  */
 export class UnassignShards extends Schema.TaggedRequest<UnassignShards>()(
   "@effect/cluster-node/ShardingProtocol/UnassignShards",
-  Schema.Never,
-  Schema.Void,
   {
-    shards: Schema.HashSet(ShardId.schema)
+    failure: Schema.Never,
+    success: Schema.Void,
+    payload: {
+      shards: Schema.HashSet(ShardId.schema)
+    }
   }
 ) {
 }
@@ -42,10 +46,12 @@ export class UnassignShards extends Schema.TaggedRequest<UnassignShards>()(
  */
 export class Send extends Schema.TaggedRequest<Send>()(
   "@effect/cluster-node/ShardingProtocol/Send",
-  ShardingException.schema,
-  MessageState.schema(SerializedMessage.schema),
   {
-    envelope: SerializedEnvelope.schema
+    failure: ShardingException.schema,
+    success: MessageState.schema(SerializedMessage.schema),
+    payload: {
+      envelope: SerializedEnvelope.schema
+    }
   }
 ) {}
 
@@ -55,7 +61,5 @@ export class Send extends Schema.TaggedRequest<Send>()(
  */
 export class PingShard extends Schema.TaggedRequest<PingShard>()(
   "@effect/cluster-node/ShardingProtocol/PingShard",
-  Schema.Never,
-  Schema.Boolean,
-  {}
+  { failure: Schema.Never, success: Schema.Boolean, payload: {} }
 ) {}

@@ -30,7 +30,7 @@ export const isWorkerError = (u: unknown): u is WorkerError => Predicate.hasProp
  */
 export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError", {
   reason: Schema.Literal("spawn", "decode", "send", "unknown", "encode"),
-  cause: Schema.CauseDefectUnknown
+  cause: Schema.Defect
 }) {
   /**
    * @since 1.0.0
@@ -42,19 +42,19 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
    */
   static readonly Cause: Schema.Schema<
     Cause.Cause<WorkerError>,
-    Schema.CauseEncoded<WorkerErrorFrom>
-  > = Schema.Cause({ error: this })
+    Schema.CauseEncoded<WorkerErrorFrom, unknown>
+  > = Schema.Cause({ error: this, defect: Schema.Defect })
 
   /**
    * @since 1.0.0
    */
-  static readonly encodeCause: (a: Cause.Cause<WorkerError>) => Schema.CauseEncoded<WorkerErrorFrom> = Schema
+  static readonly encodeCause: (a: Cause.Cause<WorkerError>) => Schema.CauseEncoded<WorkerErrorFrom, unknown> = Schema
     .encodeSync(this.Cause)
 
   /**
    * @since 1.0.0
    */
-  static readonly decodeCause: (u: Schema.CauseEncoded<WorkerErrorFrom>) => Cause.Cause<WorkerError> = Schema
+  static readonly decodeCause: (u: Schema.CauseEncoded<WorkerErrorFrom, unknown>) => Cause.Cause<WorkerError> = Schema
     .decodeSync(this.Cause)
 
   /**

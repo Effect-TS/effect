@@ -2,9 +2,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, it } from "vitest"
 
-describe("Base64Url", () => {
-  const schema = S.Base64Url
-  const encoder = new TextEncoder()
+describe("StringFromBase64", () => {
+  const schema = S.StringFromBase64
 
   it("property tests", () => {
     Util.roundtrip(schema)
@@ -14,39 +13,36 @@ describe("Base64Url", () => {
     await Util.expectDecodeUnknownSuccess(
       schema,
       "Zm9vYmFy",
-      encoder.encode("foobar")
-    )
-    await Util.expectDecodeUnknownSuccess(
-      schema,
-      "Pj8-ZD_Dnw",
-      encoder.encode(">?>d?ß")
+      "foobar"
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "Zm9vY",
-      `Base64Url
+      `StringFromBase64
 └─ Transformation process failure
-   └─ Length should be a multiple of 4, but is 5`
+   └─ Length must be a multiple of 4, but is 5`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
-      "Pj8/ZD+Dnw",
-      `Base64Url
+      "Zm9vYmF-",
+      `StringFromBase64
 └─ Transformation process failure
-   └─ Invalid input`
+   └─ Invalid character -`
+    )
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      "=Zm9vYmF",
+      `StringFromBase64
+└─ Transformation process failure
+   └─ Found a '=' character, but it is not at the end`
     )
   })
 
   it("encoding", async () => {
     await Util.expectEncodeSuccess(
       schema,
-      encoder.encode("foobar"),
+      "foobar",
       "Zm9vYmFy"
-    )
-    await Util.expectEncodeSuccess(
-      schema,
-      encoder.encode(">?>d?ß"),
-      "Pj8-ZD_Dnw"
     )
   })
 })

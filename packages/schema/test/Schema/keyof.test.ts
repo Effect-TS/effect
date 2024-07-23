@@ -5,14 +5,14 @@ import { describe, expect, it } from "vitest"
 
 describe("keyof", () => {
   it("should unify string literals with string", () => {
-    const schema = S.Struct({ a: S.String }, S.Record(S.String, S.String))
+    const schema = S.Struct({ a: S.String }, S.Record({ key: S.String, value: S.String }))
     const keyof = S.keyof(schema)
     expect(keyof.ast).toEqual(S.String.ast)
   })
 
   it("should unify symbol literals with symbol", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.Struct({ [a]: S.String }, S.Record(S.SymbolFromSelf, S.String))
+    const schema = S.Struct({ [a]: S.String }, S.Record({ key: S.SymbolFromSelf, value: S.String }))
     const keyof = S.keyof(schema)
     expect(keyof.ast).toEqual(S.SymbolFromSelf.ast)
   })
@@ -49,19 +49,19 @@ describe("keyof", () => {
 
   describe("record", () => {
     it("string", () => {
-      const schema = S.Record(S.String, S.Number)
+      const schema = S.Record({ key: S.String, value: S.Number })
       // type K = keyof S.Schema.Type<typeof schema> // string
       expect(AST.keyof(schema.ast)).toEqual(S.String.ast)
     })
 
     it("symbol", () => {
-      const schema = S.Record(S.SymbolFromSelf, S.Number)
+      const schema = S.Record({ key: S.SymbolFromSelf, value: S.Number })
       // type K = keyof S.Schema.Type<typeof schema> // symbol
       expect(AST.keyof(schema.ast)).toEqual(S.SymbolFromSelf.ast)
     })
 
     it("template literal", () => {
-      const schema = S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.Number)
+      const schema = S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.Number })
       // type K = keyof S.Schema.Type<typeof schema> // `a${string}`
       expect(AST.keyof(schema.ast)).toEqual(S.TemplateLiteral(S.Literal("a"), S.String).ast)
     })
@@ -90,15 +90,18 @@ describe("keyof", () => {
     })
 
     it("union of records", () => {
-      const schema = S.Union(S.Record(S.String, S.Number), S.Record(S.String, S.Boolean))
+      const schema = S.Union(
+        S.Record({ key: S.String, value: S.Number }),
+        S.Record({ key: S.String, value: S.Boolean })
+      )
       // type K = keyof S.Schema.Type<typeof schema> // string
       expect(AST.keyof(schema.ast)).toEqual(S.String.ast)
     })
 
     it("union of structs and records", () => {
       const schema = S.Union(
-        S.Struct({ a: S.String }, S.Record(S.String, S.Number)),
-        S.Struct({ a: S.Number }, S.Record(S.String, S.Boolean))
+        S.Struct({ a: S.String }, S.Record({ key: S.String, value: S.Number })),
+        S.Struct({ a: S.Number }, S.Record({ key: S.String, value: S.Boolean }))
       )
       // type K = keyof S.Schema.Type<typeof schema> // string
       expect(AST.keyof(schema.ast)).toEqual(S.String.ast)

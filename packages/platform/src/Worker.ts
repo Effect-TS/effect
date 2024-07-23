@@ -154,7 +154,7 @@ export declare namespace Worker {
     | readonly [id: number, end: 1]
     | readonly [id: number, end: 1, ReadonlyArray<O>]
     | readonly [id: number, error: 2, E]
-    | readonly [id: number, defect: 3, Schema.CauseEncoded<WorkerErrorFrom>]
+    | readonly [id: number, defect: 3, Schema.CauseEncoded<WorkerErrorFrom, unknown>]
 }
 
 /**
@@ -256,7 +256,7 @@ export const makePoolLayer: <Tag, I, O, E>(
  * @since 1.0.0
  * @category models
  */
-export interface SerializedWorker<I extends Schema.TaggedRequest.Any> {
+export interface SerializedWorker<I extends Schema.TaggedRequest.All> {
   readonly id: number
   readonly execute: <Req extends I>(
     message: Req
@@ -291,7 +291,7 @@ export declare namespace SerializedWorker {
  * @since 1.0.0
  * @category models
  */
-export interface SerializedWorkerPool<I extends Schema.TaggedRequest.Any> {
+export interface SerializedWorkerPool<I extends Schema.TaggedRequest.All> {
   readonly backing: Pool.Pool<SerializedWorker<I>, WorkerError>
   readonly broadcast: <Req extends I>(
     message: Req
@@ -340,7 +340,7 @@ export declare namespace SerializedWorkerPool {
  * @since 1.0.0
  * @category constructors
  */
-export const makeSerialized: <I extends Schema.TaggedRequest.Any>(
+export const makeSerialized: <I extends Schema.TaggedRequest.All>(
   options: SerializedWorker.Options<I>
 ) => Effect.Effect<SerializedWorker<I>, WorkerError, WorkerManager | Spawner | Scope.Scope> = internal.makeSerialized
 
@@ -348,7 +348,7 @@ export const makeSerialized: <I extends Schema.TaggedRequest.Any>(
  * @since 1.0.0
  * @category constructors
  */
-export const makePoolSerialized: <I extends Schema.TaggedRequest.Any>(
+export const makePoolSerialized: <I extends Schema.TaggedRequest.All>(
   options: SerializedWorkerPool.Options<I>
 ) => Effect.Effect<SerializedWorkerPool<I>, WorkerError, WorkerManager | Spawner | Scope.Scope> =
   internal.makePoolSerialized
@@ -357,7 +357,7 @@ export const makePoolSerialized: <I extends Schema.TaggedRequest.Any>(
  * @since 1.0.0
  * @category layers
  */
-export const makePoolSerializedLayer: <Tag, I extends Schema.TaggedRequest.Any>(
+export const makePoolSerializedLayer: <Tag, I extends Schema.TaggedRequest.All>(
   tag: Context.Tag<Tag, SerializedWorkerPool<I>>,
   options: SerializedWorkerPool.Options<I>
 ) => Layer.Layer<Tag, WorkerError, WorkerManager | Spawner> = internal.makePoolSerializedLayer

@@ -13,26 +13,24 @@ class SendError extends Schema.TaggedError<SendError>()(
 
 class SendEmail extends Schema.TaggedRequest<SendEmail>()(
   "SendEmail",
-  SendError,
-  Schema.Void,
   {
-    email: Schema.String,
-    message: Schema.String
+    failure: SendError,
+    success: Schema.Void,
+    payload: {
+      email: Schema.String,
+      message: Schema.String
+    }
   }
 ) {}
 
 class ProcessEmail extends Schema.TaggedRequest<ProcessEmail>()(
   "ProcessEmail",
-  Schema.Never,
-  Schema.Void,
-  {}
+  { failure: Schema.Never, success: Schema.Void, payload: {} }
 ) {}
 
 class Shutdown extends Schema.TaggedRequest<Shutdown>()(
   "Shutdown",
-  Schema.Never,
-  Schema.Void,
-  {}
+  { failure: Schema.Never, success: Schema.Void, payload: {} }
 ) {}
 
 const mailer = Machine.makeSerializable({

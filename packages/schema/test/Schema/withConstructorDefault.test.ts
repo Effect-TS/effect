@@ -8,7 +8,7 @@ describe("withConstructorDefault", () => {
   })
 
   it("annotating a PropertySignatureTransformation should repect existing defaultValues", () => {
-    const prop: any = S.optional(S.String, { nullable: true }).pipe(S.withConstructorDefault(() => "")).annotations(
+    const prop: any = S.optionalWith(S.String, { nullable: true }).pipe(S.withConstructorDefault(() => "")).annotations(
       {}
     )
     expect(prop.ast.to.defaultValue()).toBe("")

@@ -73,7 +73,7 @@ describe("`onExcessProperty` option", () => {
     })
 
     it("record of struct", async () => {
-      const schema = S.Record(S.String, S.Struct({ b: S.Number }))
+      const schema = S.Record({ key: S.String, value: S.Struct({ b: S.Number }) })
       await Util.expectDecodeUnknownSuccess(
         schema,
         { a: { b: 1, c: "c" } },
@@ -115,10 +115,10 @@ describe("`onExcessProperty` option", () => {
 
     it("structs", async () => {
       const a = S.Struct({
-        a: S.optional(S.Number, { exact: true }),
-        b: S.optional(S.String, { exact: true })
+        a: S.optionalWith(S.Number, { exact: true }),
+        b: S.optionalWith(S.String, { exact: true })
       })
-      const b = S.Struct({ a: S.optional(S.Number, { exact: true }) })
+      const b = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       const schema = S.Union(a, b)
       await Util.expectDecodeUnknownFailure(
         schema,

@@ -268,4 +268,12 @@ schema (SymbolKeyword): symbol`)
       )
     })
   })
+
+  it("toString", () => {
+    expect(String(S.TemplateLiteral("a").ast)).toBe(`"a"`)
+    expect(String(S.TemplateLiteral(S.Literal("a", "b")).ast)).toBe(`"a" | "b"`)
+    expect(String(S.TemplateLiteral(S.Union(S.String, S.Literal(1)), S.Union(S.Number, S.Literal(true))).ast)).toBe(
+      "`${string}${number}` | `${string}true` | `1${number}` | \"1true\""
+    )
+  })
 })

@@ -18,7 +18,7 @@ describe("mutable", () => {
   })
 
   it("record", () => {
-    const schema = S.mutable(S.Record(S.String, S.Number))
+    const schema = S.mutable(S.Record({ key: S.String, value: S.Number }))
     expect(schema.ast).toEqual(
       new AST.TypeLiteral([], [new AST.IndexSignature(S.String.ast, S.Number.ast, false)])
     )

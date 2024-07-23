@@ -301,7 +301,7 @@ export const makePoolLayer = <Tag, I, O, E>(
 
 /** @internal */
 export const makeSerialized = <
-  I extends Schema.TaggedRequest.Any
+  I extends Schema.TaggedRequest.All
 >(
   options: Worker.SerializedWorker.Options<I>
 ): Effect.Effect<Worker.SerializedWorker<I>, WorkerError, Worker.WorkerManager | Worker.Spawner | Scope.Scope> =>
@@ -341,7 +341,7 @@ export const makeSerialized = <
   })
 
 /** @internal */
-export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
+export const makePoolSerialized = <I extends Schema.TaggedRequest.All>(
   options: Worker.SerializedWorkerPool.Options<I>
 ) =>
   Effect.gen(function*() {
@@ -393,7 +393,7 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
   })
 
 /** @internal */
-export const makePoolSerializedLayer = <Tag, I extends Schema.TaggedRequest.Any>(
+export const makePoolSerializedLayer = <Tag, I extends Schema.TaggedRequest.All>(
   tag: Context.Tag<Tag, Worker.SerializedWorkerPool<I>>,
   options: Worker.SerializedWorkerPool.Options<I>
 ) => Layer.scoped(tag, makePoolSerialized(options))

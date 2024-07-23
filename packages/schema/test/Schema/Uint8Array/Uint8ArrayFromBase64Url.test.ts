@@ -2,8 +2,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, it } from "vitest"
 
-describe("Hex", () => {
-  const schema = S.Hex
+describe("Uint8ArrayFromBase64Url", () => {
+  const schema = S.Uint8ArrayFromBase64Url
   const encoder = new TextEncoder()
 
   it("property tests", () => {
@@ -13,37 +13,25 @@ describe("Hex", () => {
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(
       schema,
-      "0001020304050607",
-      Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7])
+      "Zm9vYmFy",
+      encoder.encode("foobar")
     )
     await Util.expectDecodeUnknownSuccess(
       schema,
-      "f0f1f2f3f4f5f6f7",
-      Uint8Array.from([0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7])
-    )
-    await Util.expectDecodeUnknownSuccess(
-      schema,
-      "67",
-      encoder.encode("g")
+      "Pj8-ZD_Dnw",
+      encoder.encode(">?>d?ß")
     )
     await Util.expectDecodeUnknownFailure(
       schema,
-      "0",
-      `Hex
+      "Zm9vY",
+      `Uint8ArrayFromBase64Url
 └─ Transformation process failure
-   └─ Length must be a multiple of 2, but is 1`
+   └─ Length should be a multiple of 4, but is 5`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
-      "zd4aa",
-      `Hex
-└─ Transformation process failure
-   └─ Length must be a multiple of 2, but is 5`
-    )
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      "0\x01",
-      `Hex
+      "Pj8/ZD+Dnw",
+      `Uint8ArrayFromBase64Url
 └─ Transformation process failure
    └─ Invalid input`
     )
@@ -52,8 +40,13 @@ describe("Hex", () => {
   it("encoding", async () => {
     await Util.expectEncodeSuccess(
       schema,
-      Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7]),
-      "0001020304050607"
+      encoder.encode("foobar"),
+      "Zm9vYmFy"
+    )
+    await Util.expectEncodeSuccess(
+      schema,
+      encoder.encode(">?>d?ß"),
+      "Pj8-ZD_Dnw"
     )
   })
 })

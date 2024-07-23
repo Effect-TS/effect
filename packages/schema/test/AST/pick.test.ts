@@ -21,7 +21,7 @@ describe("pick", () => {
 
     describe("TypeLiteralTransformation", () => {
       it("picking keys with associated PropertySignatureTransformations", async () => {
-        const schema = S.Struct({ a: S.optional(S.NumberFromString, { default: () => 0 }), b: S.Number })
+        const schema = S.Struct({ a: S.optionalWith(S.NumberFromString, { default: () => 0 }), b: S.Number })
         const pick = schema.pipe(S.pick("a"))
         const ast = pick.ast as AST.Transformation
         expect(ast.from).toStrictEqual(S.Struct({ a: S.optional(S.NumberFromString) }).ast)
@@ -31,7 +31,7 @@ describe("pick", () => {
       })
 
       it("picking keys without associated PropertySignatureTransformations", async () => {
-        const schema = S.Struct({ a: S.optional(S.NumberFromString, { default: () => 0 }), b: S.NumberFromString })
+        const schema = S.Struct({ a: S.optionalWith(S.NumberFromString, { default: () => 0 }), b: S.NumberFromString })
         const pick = schema.pipe(S.pick("b"))
         const ast = pick.ast as AST.TypeLiteral
         expect(ast.propertySignatures).toStrictEqual([

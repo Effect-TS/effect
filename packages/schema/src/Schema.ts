@@ -85,6 +85,10 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
   readonly Type: A
   readonly Encoded: I
   readonly ast: AST.AST
+  /**
+   * Merges a set of new annotations with existing ones, potentially overwriting
+   * any duplicates.
+   */
   annotations(annotations: Annotations.Schema<A>): Schema<A, I, R>
 }
 
@@ -844,7 +848,7 @@ export const declare: {
     is: (input: unknown) => input is A,
     annotations?: Annotations.Schema<A>
   ): SchemaClass<A>
-  <const P extends ReadonlyArray<Schema.Any>, I, A>(
+  <const P extends ReadonlyArray<Schema.All>, I, A>(
     typeParameters: P,
     options: {
       readonly decode: (
@@ -2056,9 +2060,9 @@ export interface optional<S extends Schema.All> extends
 
 /**
  * @category api interface
- * @since 0.67.10
+ * @since 0.69.0
  */
-export interface optionalWithOptions<S extends Schema.All, Options> extends
+export interface optionalWith<S extends Schema.All, Options> extends
   PropertySignature<
     Types.Has<Options, "as" | "default"> extends true ? ":" : "?:",
     | (Types.Has<Options, "as"> extends true ? option_.Option<Schema.Type<S>> : Schema.Type<S>)
@@ -2078,11 +2082,11 @@ export interface optionalWithOptions<S extends Schema.All, Options> extends
       | (Types.Has<Options, "as"> extends true ? option_.Option<Schema.Type<S>> : Schema.Type<S>)
       | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined)
     >
-  ): optionalWithOptions<S, Options>
+  ): optionalWith<S, Options>
 }
 
 const optionalPropertySignatureAST = <A, I, R>(
-  from: Schema<A, I, R>,
+  self: Schema<A, I, R>,
   options?: {
     readonly exact?: true
     readonly default?: () => A
@@ -2102,8 +2106,8 @@ const optionalPropertySignatureAST = <A, I, R>(
       if (isNullable) {
         return withConstructorDefault(
           optionalToRequired(
-            NullOr(from),
-            typeSchema(from),
+            NullOr(self),
+            typeSchema(self),
             {
               decode: option_.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
               encode: option_.some
@@ -2114,8 +2118,8 @@ const optionalPropertySignatureAST = <A, I, R>(
       } else {
         return withConstructorDefault(
           optionalToRequired(
-            from,
-            typeSchema(from),
+            self,
+            typeSchema(self),
             { decode: option_.match({ onNone: defaultValue, onSome: identity }), encode: option_.some }
           ),
           defaultValue
@@ -2124,8 +2128,8 @@ const optionalPropertySignatureAST = <A, I, R>(
     } else if (asOption) {
       if (isNullable) {
         return optionalToRequired(
-          NullOr(from),
-          OptionFromSelf(typeSchema(from)),
+          NullOr(self),
+          OptionFromSelf(typeSchema(self)),
           {
             decode: option_.filter(Predicate.isNotNull<A | null>),
             encode: asOptionEncode
@@ -2133,20 +2137,20 @@ const optionalPropertySignatureAST = <A, I, R>(
         ).ast
       } else {
         return optionalToRequired(
-          from,
-          OptionFromSelf(typeSchema(from)),
+          self,
+          OptionFromSelf(typeSchema(self)),
           { decode: identity, encode: identity }
         ).ast
       }
     } else {
       if (isNullable) {
         return optionalToOptional(
-          NullOr(from),
-          typeSchema(from),
+          NullOr(self),
+          typeSchema(self),
           { decode: option_.filter(Predicate.isNotNull<A | null>), encode: identity }
         ).ast
       } else {
-        return new PropertySignatureDeclaration(from.ast, true, true, {}, undefined)
+        return new PropertySignatureDeclaration(self.ast, true, true, {}, undefined)
       }
     }
   } else {
@@ -2154,8 +2158,8 @@ const optionalPropertySignatureAST = <A, I, R>(
       if (isNullable) {
         return withConstructorDefault(
           optionalToRequired(
-            NullishOr(from),
-            typeSchema(from),
+            NullishOr(self),
+            typeSchema(self),
             {
               decode: option_.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
               encode: option_.some
@@ -2166,8 +2170,8 @@ const optionalPropertySignatureAST = <A, I, R>(
       } else {
         return withConstructorDefault(
           optionalToRequired(
-            UndefinedOr(from),
-            typeSchema(from),
+            UndefinedOr(self),
+            typeSchema(self),
             {
               decode: option_.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
               encode: option_.some
@@ -2179,8 +2183,8 @@ const optionalPropertySignatureAST = <A, I, R>(
     } else if (asOption) {
       if (isNullable) {
         return optionalToRequired(
-          NullishOr(from),
-          OptionFromSelf(typeSchema(from)),
+          NullishOr(self),
+          OptionFromSelf(typeSchema(self)),
           {
             decode: option_.filter<A | null | undefined, A>((a): a is A => a != null),
             encode: asOptionEncode
@@ -2188,8 +2192,8 @@ const optionalPropertySignatureAST = <A, I, R>(
         ).ast
       } else {
         return optionalToRequired(
-          UndefinedOr(from),
-          OptionFromSelf(typeSchema(from)),
+          UndefinedOr(self),
+          OptionFromSelf(typeSchema(self)),
           {
             decode: option_.filter(Predicate.isNotUndefined<A | undefined>),
             encode: asOptionEncode
@@ -2199,12 +2203,12 @@ const optionalPropertySignatureAST = <A, I, R>(
     } else {
       if (isNullable) {
         return optionalToOptional(
-          NullishOr(from),
-          UndefinedOr(typeSchema(from)),
+          NullishOr(self),
+          UndefinedOr(typeSchema(self)),
           { decode: option_.filter(Predicate.isNotNull<A | null | undefined>), encode: identity }
         ).ast
       } else {
-        return new PropertySignatureDeclaration(UndefinedOr(from).ast, true, true, {}, undefined)
+        return new PropertySignatureDeclaration(UndefinedOr(self).ast, true, true, {}, undefined)
       }
     }
   }
@@ -2212,18 +2216,28 @@ const optionalPropertySignatureAST = <A, I, R>(
 
 /**
  * @category PropertySignature
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const optional: {
+export const optional = <S extends Schema.Any>(self: S): optional<S> =>
+  new PropertySignatureWithFromImpl(
+    new PropertySignatureDeclaration(UndefinedOr(self).ast, true, true, {}, undefined),
+    self
+  )
+
+/**
+ * @category PropertySignature
+ * @since 0.69.0
+ */
+export const optionalWith: {
   <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(
-    options?: Options
-  ): (self: S) => [undefined] extends [Options] ? optional<S> : optionalWithOptions<S, Options>
+    options: Options
+  ): (self: S) => optionalWith<S, Options>
   <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(
     self: S,
-    options?: Options
-  ): [undefined] extends [Options] ? optional<S> : optionalWithOptions<S, Options>
-} = dual((args) => isSchema(args[0]), (from, options) => {
-  return new PropertySignatureWithFromImpl(optionalPropertySignatureAST(from, options), from)
+    options: Options
+  ): optionalWith<S, Options>
+} = dual((args) => isSchema(args[0]), (self, options) => {
+  return new PropertySignatureWithFromImpl(optionalPropertySignatureAST(self, options), self)
 })
 
 /**
@@ -2667,8 +2681,9 @@ const makeRecordClass = <K extends Schema.All, V extends Schema.All>(key: K, val
  * @category constructors
  * @since 0.67.0
  */
-export const Record = <K extends Schema.All, V extends Schema.All>(key: K, value: V): Record$<K, V> =>
-  makeRecordClass(key, value)
+export const Record = <K extends Schema.All, V extends Schema.All>(
+  options: { readonly key: K; readonly value: V }
+): Record$<K, V> => makeRecordClass(options.key, options.value)
 
 /**
  * @category struct transformations
@@ -2817,29 +2832,28 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
 
 /**
  * @category combinators
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const partial: {
-  <const Options extends { readonly exact: true } | undefined>(
-    options?: Options
-  ): <A, I, R>(
+export const partial = <A, I, R>(
+  self: Schema<A, I, R>
+): SchemaClass<{ [K in keyof A]?: A[K] | undefined }, { [K in keyof I]?: I[K] | undefined }, R> =>
+  make(AST.partial(self.ast))
+
+/**
+ * @category combinators
+ * @since 0.69.0
+ */
+export const partialWith: {
+  <const Options extends { readonly exact: true }>(options: Options): <A, I, R>(
     self: Schema<A, I, R>
-  ) => SchemaClass<
-    { [K in keyof A]?: A[K] | ([undefined] extends [Options] ? undefined : never) },
-    { [K in keyof I]?: I[K] | ([undefined] extends [Options] ? undefined : never) },
-    R
-  >
+  ) => SchemaClass<{ [K in keyof A]?: A[K] }, { [K in keyof I]?: I[K] }, R>
   <A, I, R, const Options extends { readonly exact: true } | undefined>(
     self: Schema<A, I, R>,
-    options?: Options
-  ): SchemaClass<
-    { [K in keyof A]?: A[K] | ([undefined] extends [Options] ? undefined : never) },
-    { [K in keyof I]?: I[K] | ([undefined] extends [Options] ? undefined : never) },
-    R
-  >
+    options: Options
+  ): SchemaClass<{ [K in keyof A]?: A[K] }, { [K in keyof I]?: I[K] }, R>
 } = dual((args) => isSchema(args[0]), <A, I, R>(
   self: Schema<A, I, R>,
-  options?: { readonly exact: true }
+  options: { readonly exact: true }
 ): SchemaClass<Partial<A>, Partial<I>, R> => make(AST.partial(self.ast, options)))
 
 /**
@@ -2903,7 +2917,9 @@ const intersectTypeLiterals = (
   throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
 }
 
-const preserveRefinementAnnotations = AST.preserveAnnotations([AST.MessageAnnotationId, AST.JSONSchemaAnnotationId])
+const preserveRefinementAnnotations = AST.blackListAnnotations([
+  AST.IdentifierAnnotationId
+])
 
 const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
   asts.map((ast) => new AST.Refinement(ast, refinement.filter, preserveRefinementAnnotations(refinement)))
@@ -2923,31 +2939,77 @@ const intersectUnionMembers = (
 ): Array<AST.AST> =>
   array_.flatMap(xs, (x) =>
     array_.flatMap(ys, (y) => {
-      switch (x._tag) {
+      switch (y._tag) {
+        case "Literal": {
+          if (
+            (Predicate.isString(y.literal) && AST.isStringKeyword(x) ||
+              (Predicate.isNumber(y.literal) && AST.isNumberKeyword(x)) ||
+              (Predicate.isBoolean(y.literal) && AST.isBooleanKeyword(x)))
+          ) {
+            return [y]
+          }
+          break
+        }
+        case "StringKeyword": {
+          if (y === AST.stringKeyword) {
+            if (AST.isStringKeyword(x) || (AST.isLiteral(x) && Predicate.isString(x.literal))) {
+              return [x]
+            } else if (AST.isRefinement(x)) {
+              return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
+            }
+          } else if (x === AST.stringKeyword) {
+            return [y]
+          }
+          break
+        }
+        case "NumberKeyword": {
+          if (y === AST.numberKeyword) {
+            if (AST.isNumberKeyword(x) || (AST.isLiteral(x) && Predicate.isNumber(x.literal))) {
+              return [x]
+            } else if (AST.isRefinement(x)) {
+              return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
+            }
+          } else if (x === AST.numberKeyword) {
+            return [y]
+          }
+          break
+        }
+        case "BooleanKeyword": {
+          if (y === AST.booleanKeyword) {
+            if (AST.isBooleanKeyword(x) || (AST.isLiteral(x) && Predicate.isBoolean(x.literal))) {
+              return [x]
+            } else if (AST.isRefinement(x)) {
+              return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
+            }
+          } else if (x === AST.booleanKeyword) {
+            return [y]
+          }
+          break
+        }
         case "Union":
-          return intersectUnionMembers(x.types, getTypes(y), path)
+          return intersectUnionMembers(getTypes(x), y.types, path)
         case "Suspend":
-          return [new AST.Suspend(() => extendAST(x.f(), y, path))]
+          return [new AST.Suspend(() => extendAST(x, y.f(), path))]
         case "Refinement":
-          return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), getTypes(y), path))
+          return addRefinementToMembers(y, intersectUnionMembers(getTypes(x), getTypes(y.from), path))
         case "TypeLiteral": {
-          switch (y._tag) {
+          switch (x._tag) {
             case "Union":
-              return intersectUnionMembers([x], y.types, path)
+              return intersectUnionMembers(x.types, [y], path)
             case "Suspend":
-              return [new AST.Suspend(() => extendAST(x, y.f(), path))]
+              return [new AST.Suspend(() => extendAST(x.f(), y, path))]
             case "Refinement":
-              return addRefinementToMembers(y, intersectUnionMembers([x], getTypes(y.from), path))
+              return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
             case "TypeLiteral":
               return [intersectTypeLiterals(x, y, path)]
             case "Transformation": {
-              if (AST.isTypeLiteralTransformation(y.transformation)) {
+              if (AST.isTypeLiteralTransformation(x.transformation)) {
                 return [
                   new AST.Transformation(
-                    intersectTypeLiterals(x, y.from, path),
-                    intersectTypeLiterals(AST.typeAST(x), y.to, path),
+                    intersectTypeLiterals(x.from, y, path),
+                    intersectTypeLiterals(x.to, AST.typeAST(y), path),
                     new AST.TypeLiteralTransformation(
-                      y.transformation.propertySignatureTransformations
+                      x.transformation.propertySignatureTransformations
                     )
                   )
                 ]
@@ -2958,34 +3020,34 @@ const intersectUnionMembers = (
           break
         }
         case "Transformation": {
-          if (AST.isTypeLiteralTransformation(x.transformation)) {
-            switch (y._tag) {
+          if (AST.isTypeLiteralTransformation(y.transformation)) {
+            switch (x._tag) {
               case "Union":
-                return intersectUnionMembers([x], y.types, path)
+                return intersectUnionMembers(x.types, [y], path)
               case "Suspend":
-                return [new AST.Suspend(() => extendAST(x, y.f(), path))]
+                return [new AST.Suspend(() => extendAST(x.f(), y, path))]
               case "Refinement":
-                return addRefinementToMembers(y, intersectUnionMembers([x], getTypes(y.from), path))
+                return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
               case "TypeLiteral":
                 return [
                   new AST.Transformation(
-                    intersectTypeLiterals(x.from, y, path),
-                    intersectTypeLiterals(x.to, AST.typeAST(y), path),
+                    intersectTypeLiterals(x, y.from, path),
+                    intersectTypeLiterals(AST.typeAST(x), y.to, path),
                     new AST.TypeLiteralTransformation(
-                      x.transformation.propertySignatureTransformations
+                      y.transformation.propertySignatureTransformations
                     )
                   )
                 ]
               case "Transformation":
                 {
-                  if (AST.isTypeLiteralTransformation(y.transformation)) {
+                  if (AST.isTypeLiteralTransformation(x.transformation)) {
                     return [
                       new AST.Transformation(
                         intersectTypeLiterals(x.from, y.from, path),
                         intersectTypeLiterals(x.to, y.to, path),
                         new AST.TypeLiteralTransformation(
-                          x.transformation.propertySignatureTransformations.concat(
-                            y.transformation.propertySignatureTransformations
+                          y.transformation.propertySignatureTransformations.concat(
+                            x.transformation.propertySignatureTransformations
                           )
                         )
                       )
@@ -3015,11 +3077,19 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
 {}
 
 /**
- * Extends a schema by adding additional fields or index signatures.
+ * Extends a schema with another schema.
  *
- * 1) It only supports **structs**, refinements of structs, unions of structs, suspensions of structs
- * (informally `Supported = Struct | Refinement of Supported | Union of Supported | suspend(() => Supported)`)
- * 2) The arguments must represent disjoint types (e.g., `extend(Struct({ a: String }), Struct({ a: String })))` raises an error)
+ * Not all extensions are supported, and their support depends on the nature of the involved schemas.
+ *
+ * Possible extensions include:
+ * - `Schema.String` with another `Schema.String` refinement or a string literal
+ * - `Schema.Number` with another `Schema.Number` refinement or a number literal
+ * - `Schema.Boolean` with another `Schema.Boolean` refinement or a boolean literal
+ * - A struct with another struct where overlapping fields support extension
+ * - A struct with in index signature
+ * - A struct with a union of supported schemas
+ * - A refinement of a struct with a supported schema
+ * - A suspend of a struct with a supported schema
  *
  * @example
  * import * as Schema from "@effect/schema/Schema"
@@ -3029,15 +3099,19 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
  *   b: Schema.String
  * })
  *
- * // const extended: S.Schema<{
- * //     readonly [x: string]: string;
- * //     readonly a: string;
- * //     readonly b: string;
- * //     readonly c: string;
- * // }>
+ * // const extended: Schema.Schema<
+ * //   {
+ * //     readonly a: string
+ * //     readonly b: string
+ * //   } & {
+ * //     readonly c: string
+ * //   } & {
+ * //     readonly [x: string]: string
+ * //   }
+ * // >
  * const extended = Schema.asSchema(schema.pipe(
  *   Schema.extend(Schema.Struct({ c: Schema.String })), // <= you can add more fields
- *   Schema.extend(Schema.Record(Schema.String, Schema.String)) // <= you can add index signatures
+ *   Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String })) // <= you can add index signatures
  * ))
  *
  * @category combinators
@@ -3372,24 +3446,28 @@ export const transformOrFail: {
       readonly decode: (
         fromA: Schema.Type<From>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        fromI: Schema.Encoded<From>
       ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>
       readonly encode: (
         toI: Schema.Encoded<To>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        toA: Schema.Type<To>
       ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
       readonly strict?: true
     } | {
       readonly decode: (
         fromA: Schema.Type<From>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        fromI: Schema.Encoded<From>
       ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>
       readonly encode: (
         toI: Schema.Encoded<To>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        toA: Schema.Type<To>
       ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>
       readonly strict: false
     }
@@ -3401,24 +3479,28 @@ export const transformOrFail: {
       readonly decode: (
         fromA: Schema.Type<From>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        fromI: Schema.Encoded<From>
       ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>
       readonly encode: (
         toI: Schema.Encoded<To>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        toA: Schema.Type<To>
       ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
       readonly strict?: true
     } | {
       readonly decode: (
         fromA: Schema.Type<From>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        fromI: Schema.Encoded<From>
       ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>
       readonly encode: (
         toI: Schema.Encoded<To>,
         options: ParseOptions,
-        ast: AST.Transformation
+        ast: AST.Transformation,
+        toA: Schema.Type<To>
       ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>
       readonly strict: false
     }
@@ -3430,12 +3512,14 @@ export const transformOrFail: {
     readonly decode: (
       fromA: FromA,
       options: ParseOptions,
-      ast: AST.Transformation
+      ast: AST.Transformation,
+      fromI: FromI
     ) => Effect.Effect<ToI, ParseResult.ParseIssue, RD>
     readonly encode: (
       toI: ToI,
       options: ParseOptions,
-      ast: AST.Transformation
+      ast: AST.Transformation,
+      toA: ToA
     ) => Effect.Effect<FromA, ParseResult.ParseIssue, RE>
   }
 ): Schema<ToA, FromI, FromR | ToR | RD | RE> =>
@@ -3468,12 +3552,12 @@ export const transform: {
   <To extends Schema.Any, From extends Schema.Any>(
     to: To,
     options: {
-      readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
-      readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+      readonly decode: (fromA: Schema.Type<From>, fromI: Schema.Encoded<From>) => Schema.Encoded<To>
+      readonly encode: (toI: Schema.Encoded<To>, toA: Schema.Type<To>) => Schema.Type<From>
       readonly strict?: true
     } | {
-      readonly decode: (fromA: Schema.Type<From>) => unknown
-      readonly encode: (toI: Schema.Encoded<To>) => unknown
+      readonly decode: (fromA: Schema.Type<From>, fromI: Schema.Encoded<From>) => unknown
+      readonly encode: (toI: Schema.Encoded<To>, toA: Schema.Type<To>) => unknown
       readonly strict: false
     }
   ): (from: From) => transform<From, To>
@@ -3481,12 +3565,12 @@ export const transform: {
     from: From,
     to: To,
     options: {
-      readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
-      readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+      readonly decode: (fromA: Schema.Type<From>, fromI: Schema.Encoded<From>) => Schema.Encoded<To>
+      readonly encode: (toI: Schema.Encoded<To>, toA: Schema.Type<To>) => Schema.Type<From>
       readonly strict?: true
     } | {
-      readonly decode: (fromA: Schema.Type<From>) => unknown
-      readonly encode: (toI: Schema.Encoded<To>) => unknown
+      readonly decode: (fromA: Schema.Type<From>, fromI: Schema.Encoded<From>) => unknown
+      readonly encode: (toI: Schema.Encoded<To>, toA: Schema.Type<To>) => unknown
       readonly strict: false
     }
   ): transform<From, To>
@@ -3496,8 +3580,8 @@ export const transform: {
     from: Schema<FromA, FromI, FromR>,
     to: Schema<ToA, ToI, ToR>,
     options: {
-      readonly decode: (fromA: FromA) => ToI
-      readonly encode: (toI: ToI) => FromA
+      readonly decode: (fromA: FromA, fromI: FromI) => ToI
+      readonly encode: (toI: ToI, toA: ToA) => FromA
     }
   ): Schema<ToA, FromI, FromR | ToR> =>
     transformOrFail(
@@ -3505,8 +3589,8 @@ export const transform: {
       to,
       {
         strict: true,
-        decode: (fromA) => ParseResult.succeed(options.decode(fromA)),
-        encode: (toI) => ParseResult.succeed(options.encode(toI))
+        decode: (fromA, _options, _ast, toA) => ParseResult.succeed(options.decode(fromA, toA)),
+        encode: (toI, _options, _ast, toA) => ParseResult.succeed(options.encode(toI, toA))
       }
     )
 )
@@ -3688,6 +3772,9 @@ export declare namespace Annotations {
 }
 
 /**
+ * Merges a set of new annotations with existing ones, potentially overwriting
+ * any duplicates.
+ *
  * @category annotations
  * @since 0.67.0
  */
@@ -4126,9 +4213,9 @@ export class Char extends String$.pipe(length(1, { identifier: "Char" })) {}
 
 /**
  * @category string filters
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const nonEmpty = <A extends string>(
+export const nonEmptyString = <A extends string>(
   annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => filter<Schema<A, I, R>> =>
   minLength(1, {
@@ -4278,10 +4365,10 @@ export const parseJson: {
 
 /**
  * @category string constructors
- * @since 0.67.0
+ * @since 0.69.0
  */
-export class NonEmpty extends String$.pipe(
-  nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
+export class NonEmptyString extends String$.pipe(
+  nonEmptyString({ identifier: "NonEmptyString", title: "NonEmptyString" })
 ) {}
 
 /**
@@ -5426,7 +5513,7 @@ const Uint8Array$: Schema<Uint8Array, ReadonlyArray<number>> = transform(
 
 export {
   /**
-   * A schema that transforms a `number` array into a `Uint8Array`.
+   * A schema that transforms an array of numbers into a `Uint8Array`.
    *
    * @category Uint8Array transformations
    * @since 0.67.0
@@ -5434,11 +5521,11 @@ export {
   Uint8Array$ as Uint8Array
 }
 
-const makeEncodingTransformation = (
+const makeUint8ArrayTransformation = (
   id: string,
   decode: (s: string) => either_.Either<Uint8Array, Encoding.DecodeException>,
   encode: (u: Uint8Array) => string
-): Schema<Uint8Array, string> =>
+) =>
   transformOrFail(
     String$,
     Uint8ArrayFromSelf,
@@ -5454,32 +5541,93 @@ const makeEncodingTransformation = (
   ).annotations({ identifier: id })
 
 /**
- * @category Encoding transformations
+ * Decodes a base64 (RFC4648) encoded string into a `Uint8Array`.
+ *
+ * @category Uint8Array transformations
  * @since 0.67.0
  */
-export const Base64: Schema<Uint8Array, string> = makeEncodingTransformation(
-  "Base64",
+export const Uint8ArrayFromBase64: Schema<Uint8Array, string> = makeUint8ArrayTransformation(
+  "Uint8ArrayFromBase64",
   Encoding.decodeBase64,
   Encoding.encodeBase64
 )
 
 /**
- * @category Encoding transformations
+ * Decodes a base64 (URL) encoded string into a `Uint8Array`.
+ *
+ * @category Uint8Array transformations
  * @since 0.67.0
  */
-export const Base64Url: Schema<Uint8Array, string> = makeEncodingTransformation(
-  "Base64Url",
+export const Uint8ArrayFromBase64Url: Schema<Uint8Array, string> = makeUint8ArrayTransformation(
+  "Uint8ArrayFromBase64Url",
   Encoding.decodeBase64Url,
   Encoding.encodeBase64Url
 )
 
 /**
- * @category Encoding transformations
+ * Decodes a hex encoded string into a `Uint8Array`.
+ *
+ * @category Uint8Array transformations
  * @since 0.67.0
  */
-export const Hex: Schema<Uint8Array, string> = makeEncodingTransformation(
-  "Hex",
+export const Uint8ArrayFromHex: Schema<Uint8Array, string> = makeUint8ArrayTransformation(
+  "Uint8ArrayFromHex",
   Encoding.decodeHex,
+  Encoding.encodeHex
+)
+
+const makeStringTransformation = (
+  id: string,
+  decode: (s: string) => either_.Either<string, Encoding.DecodeException>,
+  encode: (u: string) => string
+) =>
+  transformOrFail(
+    String$,
+    String$,
+    {
+      strict: true,
+      decode: (s, _, ast) =>
+        either_.mapLeft(
+          decode(s),
+          (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
+        ),
+      encode: (u) => ParseResult.succeed(encode(u))
+    }
+  ).annotations({ identifier: id })
+
+/**
+ * Decodes a base64 (RFC4648) encoded string into a UTF-8 string.
+ *
+ * @category string transformations
+ * @since 0.67.0
+ */
+export const StringFromBase64: Schema<string> = makeStringTransformation(
+  "StringFromBase64",
+  Encoding.decodeBase64String,
+  Encoding.encodeBase64
+)
+
+/**
+ * Decodes a base64 (URL) encoded string into a UTF-8 string.
+ *
+ * @category string transformations
+ * @since 0.67.0
+ */
+export const StringFromBase64Url: Schema<string> = makeStringTransformation(
+  "StringFromBase64Url",
+  Encoding.decodeBase64UrlString,
+  Encoding.encodeBase64Url
+)
+
+/**
+ * Decodes a hex encoded string into a UTF-8 string.
+ *
+ * @category string transformations
+ * @since 0.67.0
+ */
+export const StringFromHex: Schema<string> = makeStringTransformation(
+  "StringFromHex",
+  Encoding.decodeHexString,
   Encoding.encodeHex
 )
 
@@ -6345,7 +6493,7 @@ export const ReadonlyMapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
   key: Schema<KA, string, KR>
   value: Schema<VA, VI, VR>
 }): Schema<ReadonlyMap<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
-  transform(Record(encodedBoundSchema(key), value), ReadonlyMapFromSelf({ key, value: typeSchema(value) }), {
+  transform(Record({ key: encodedBoundSchema(key), value }), ReadonlyMapFromSelf({ key, value: typeSchema(value) }), {
     strict: true,
     decode: (record) => new Map(Object.entries(record)),
     encode: record_.fromEntries
@@ -6359,7 +6507,7 @@ export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
   key: Schema<KA, string, KR>
   value: Schema<VA, VI, VR>
 }): Schema<Map<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
-  transform(Record(encodedBoundSchema(key), value), MapFromSelf({ key, value: typeSchema(value) }), {
+  transform(Record({ key: encodedBoundSchema(key), value }), MapFromSelf({ key, value: typeSchema(value) }), {
     strict: true,
     decode: (record) => new Map(Object.entries(record)),
     encode: record_.fromEntries
@@ -7101,7 +7249,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
       ) => Effect.Effect<Struct.Type<Fields>, ParseResult.ParseIssue, R3>
     },
     annotations?: Annotations.Schema<Transformed>
-  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
+  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformOrFail">
     : Class<
       Transformed,
       Fields & newFields,
@@ -7131,7 +7279,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
       ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
     },
     annotations?: Annotations.Schema<Transformed>
-  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformFrom">
+  ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformOrFailFrom">
     : Class<
       Transformed,
       Fields & newFields,
@@ -7220,7 +7368,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   fieldsOr: Fields | HasFields<Fields>,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
-  : TaggedClass<Self, Tag, { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields> =>
+  : TaggedClass<Self, Tag, { readonly _tag: tag<Tag> } & Fields> =>
 {
   const fields = getFieldsFromFieldsOr(fieldsOr)
   const schema = getSchemaFromFieldsOr(fieldsOr)
@@ -7269,7 +7417,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   : TaggedErrorClass<
     Self,
     Tag,
-    { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields
+    { readonly _tag: tag<Tag> } & Fields
   > =>
 {
   class Base extends data_.Error {}
@@ -7298,7 +7446,6 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 }
 
 /**
- * @category classes
  * @since 0.67.0
  */
 export interface TaggedRequest<
@@ -7310,7 +7457,7 @@ export interface TaggedRequest<
   SuccessEncoded,
   FailureType,
   FailureEncoded,
-  SuccessAndFailureR
+  ResultR
 > extends
   Request.Request<SuccessType, FailureType>,
   Serializable.SerializableWithResult<
@@ -7321,24 +7468,26 @@ export interface TaggedRequest<
     SuccessEncoded,
     FailureType,
     FailureEncoded,
-    SuccessAndFailureR
+    ResultR
   >
 {
   readonly _tag: Tag
 }
 
 /**
- * @category classes
  * @since 0.67.0
  */
 export declare namespace TaggedRequest {
   /**
-   * @category classes
-   * @since 0.67.0
+   * @since 0.69.0
    */
-  export type Any =
-    | TaggedRequest<string, any, any, any, any, any, any, any, any>
-    | TaggedRequest<string, any, any, any, any, any, never, never, any>
+  export type Any = TaggedRequest<string, any, any, any, any, any, any, any, unknown>
+  /**
+   * @since 0.69.0
+   */
+  export type All =
+    | Any
+    | TaggedRequest<string, any, any, any, any, any, never, never, unknown>
 }
 
 /**
@@ -7348,21 +7497,21 @@ export declare namespace TaggedRequest {
 export interface TaggedRequestClass<
   Self,
   Tag extends string,
-  Fields extends Struct.Fields,
-  Failure extends Schema.All,
-  Success extends Schema.All
+  Payload extends Struct.Fields,
+  Success extends Schema.All,
+  Failure extends Schema.All
 > extends
   Class<
     Self,
-    Fields,
-    Struct.Encoded<Fields>,
-    Struct.Context<Fields>,
-    Struct.Constructor<Omit<Fields, "_tag">>,
+    Payload,
+    Struct.Encoded<Payload>,
+    Struct.Context<Payload>,
+    Struct.Constructor<Omit<Payload, "_tag">>,
     TaggedRequest<
       Tag,
       Self,
-      Struct.Encoded<Fields>,
-      Struct.Context<Fields>,
+      Struct.Encoded<Payload>,
+      Struct.Context<Payload>,
       Schema.Type<Success>,
       Schema.Encoded<Success>,
       Schema.Type<Failure>,
@@ -7381,22 +7530,24 @@ export interface TaggedRequestClass<
  */
 export const TaggedRequest =
   <Self = never>(identifier?: string) =>
-  <Tag extends string, Fields extends Struct.Fields, Failure extends Schema.All, Success extends Schema.All>(
+  <Tag extends string, Payload extends Struct.Fields, Success extends Schema.All, Failure extends Schema.All>(
     tag: Tag,
-    Failure: Failure,
-    Success: Success,
-    fields: Fields,
+    options: {
+      failure: Failure
+      success: Success
+      payload: Payload
+    },
     annotations?: Annotations.Schema<Self>
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
     : TaggedRequestClass<
       Self,
       Tag,
-      { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
-      Failure,
-      Success
+      { readonly _tag: tag<Tag> } & Payload,
+      Success,
+      Failure
     > =>
   {
-    const taggedFields = extendFields({ _tag: getClassTag(tag) }, fields)
+    const taggedFields = extendFields({ _tag: getClassTag(tag) }, options.payload)
     return class TaggedRequestClass extends makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
@@ -7410,7 +7561,10 @@ export const TaggedRequest =
         return this.constructor
       }
       get [serializable_.symbolResult]() {
-        return { Failure, Success }
+        return {
+          failure: options.failure,
+          success: options.success
+        }
       }
     } as any
   }
@@ -7728,9 +7882,9 @@ export class FiberId extends transform(
 
 /**
  * @category Cause utils
- * @since 0.67.0
+ * @since 0.69.0
  */
-export type CauseEncoded<E> =
+export type CauseEncoded<E, D> =
   | {
     readonly _tag: "Empty"
   }
@@ -7740,7 +7894,7 @@ export type CauseEncoded<E> =
   }
   | {
     readonly _tag: "Die"
-    readonly defect: unknown
+    readonly defect: D
   }
   | {
     readonly _tag: "Interrupt"
@@ -7748,16 +7902,16 @@ export type CauseEncoded<E> =
   }
   | {
     readonly _tag: "Sequential"
-    readonly left: CauseEncoded<E>
-    readonly right: CauseEncoded<E>
+    readonly left: CauseEncoded<E, D>
+    readonly right: CauseEncoded<E, D>
   }
   | {
     readonly _tag: "Parallel"
-    readonly left: CauseEncoded<E>
-    readonly right: CauseEncoded<E>
+    readonly left: CauseEncoded<E, D>
+    readonly right: CauseEncoded<E, D>
   }
 
-const causeDieEncoded = <R>(defect: Schema<unknown, unknown, R>) =>
+const causeDieEncoded = <D, DI, R>(defect: Schema<D, DI, R>) =>
   Struct({
     _tag: Literal("Die"),
     defect
@@ -7778,33 +7932,33 @@ const CauseInterruptEncoded = Struct({
   fiberId: FiberIdEncoded
 })
 
-const causeParallelEncoded = <E, EI, R>(causeEncoded: Schema<CauseEncoded<E>, CauseEncoded<EI>, R>) =>
+const causeParallelEncoded = <E, EI, D, DI, R>(causeEncoded: Schema<CauseEncoded<E, D>, CauseEncoded<EI, DI>, R>) =>
   Struct({
     _tag: Literal("Parallel"),
     left: causeEncoded,
     right: causeEncoded
   })
 
-const causeSequentialEncoded = <E, EI, R>(causeEncoded: Schema<CauseEncoded<E>, CauseEncoded<EI>, R>) =>
+const causeSequentialEncoded = <E, EI, D, DI, R>(causeEncoded: Schema<CauseEncoded<E, D>, CauseEncoded<EI, DI>, R>) =>
   Struct({
     _tag: Literal("Sequential"),
     left: causeEncoded,
     right: causeEncoded
   })
 
-const causeEncoded = <E, EI, R1, R2>(
+const causeEncoded = <E, EI, D, DI, R1, R2>(
   error: Schema<E, EI, R1>,
-  defect: Schema<unknown, unknown, R2>
-): Schema<CauseEncoded<E>, CauseEncoded<EI>, R1 | R2> => {
+  defect: Schema<D, DI, R2>
+): Schema<CauseEncoded<E, D>, CauseEncoded<EI, DI>, R1 | R2> => {
   const recur = suspend(() => out)
-  const out: Schema<CauseEncoded<E>, CauseEncoded<EI>, R1 | R2> = Union(
+  const out: Schema<CauseEncoded<E, D>, CauseEncoded<EI, DI>, R1 | R2> = Union(
     CauseEmptyEncoded,
     causeFailEncoded(error),
     causeDieEncoded(defect),
     CauseInterruptEncoded,
     causeSequentialEncoded(recur),
     causeParallelEncoded(recur)
-  ).annotations({ description: `CauseEncoded<${format(error)}>` })
+  ).annotations({ title: `CauseEncoded<${format(error)}>` })
   return out
 }
 
@@ -7850,8 +8004,8 @@ const causePretty = <E>(error: pretty_.Pretty<E>): pretty_.Pretty<cause_.Cause<E
   return f(cause)
 }
 
-const causeParse = <A, R>(
-  decodeUnknown: ParseResult.DecodeUnknown<CauseEncoded<A>, R>
+const causeParse = <A, D, R>(
+  decodeUnknown: ParseResult.DecodeUnknown<CauseEncoded<A, D>, R>
 ): ParseResult.DeclarationDecodeUnknown<cause_.Cause<A>, R> =>
 (u, options, ast) =>
   cause_.isCause(u) ?
@@ -7860,25 +8014,25 @@ const causeParse = <A, R>(
 
 /**
  * @category api interface
- * @since 0.67.0
+ * @since 0.69.0
  */
-export interface CauseFromSelf<E extends Schema.Any, DR> extends
+export interface CauseFromSelf<E extends Schema.All, D extends Schema.All> extends
   AnnotableClass<
-    CauseFromSelf<E, DR>,
+    CauseFromSelf<E, D>,
     cause_.Cause<Schema.Type<E>>,
     cause_.Cause<Schema.Encoded<E>>,
-    Schema.Context<E> | DR
+    Schema.Context<E> | Schema.Context<D>
   >
 {}
 
 /**
  * @category Cause transformations
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const CauseFromSelf = <E extends Schema.Any, DR = never>({ defect = Unknown, error }: {
+export const CauseFromSelf = <E extends Schema.All, D extends Schema.All>({ defect, error }: {
   readonly error: E
-  readonly defect?: Schema<unknown, unknown, DR> | undefined
-}): CauseFromSelf<E, DR> => {
+  readonly defect: D
+}): CauseFromSelf<E, D> => {
   return declare(
     [error, defect],
     {
@@ -7886,14 +8040,14 @@ export const CauseFromSelf = <E extends Schema.Any, DR = never>({ defect = Unkno
       encode: (error, defect) => causeParse(ParseResult.encodeUnknown(causeEncoded(error, defect)))
     },
     {
-      description: `Cause<${format(error)}>`,
+      title: `Cause<${error.ast}>`,
       pretty: causePretty,
       arbitrary: causeArbitrary
     }
   )
 }
 
-function causeDecode<E>(cause: CauseEncoded<E>): cause_.Cause<E> {
+function causeDecode<E>(cause: CauseEncoded<E, unknown>): cause_.Cause<E> {
   switch (cause._tag) {
     case "Empty":
       return cause_.empty
@@ -7910,7 +8064,7 @@ function causeDecode<E>(cause: CauseEncoded<E>): cause_.Cause<E> {
   }
 }
 
-function causeEncode<E>(cause: cause_.Cause<E>): CauseEncoded<E> {
+function causeEncode<E>(cause: cause_.Cause<E>): CauseEncoded<E, unknown> {
   switch (cause._tag) {
     case "Empty":
       return { _tag: "Empty" }
@@ -7936,10 +8090,55 @@ function causeEncode<E>(cause: cause_.Cause<E>): CauseEncoded<E> {
 }
 
 /**
- * @category Cause transformations
- * @since 0.67.0
+ * @category api interface
+ * @since 0.69.0
  */
-export const CauseDefectUnknown = transform(
+export interface Cause<E extends Schema.All, D extends Schema.All> extends
+  AnnotableClass<
+    Cause<E, D>,
+    cause_.Cause<Schema.Type<E>>,
+    CauseEncoded<Schema.Encoded<E>, Schema.Encoded<D>>,
+    Schema.Context<E> | Schema.Context<D>
+  >
+{}
+
+/**
+ * @category Cause transformations
+ * @since 0.69.0
+ */
+export const Cause = <E extends Schema.All, D extends Schema.All>({ defect, error }: {
+  readonly error: E
+  readonly defect: D
+}): Cause<E, D> => {
+  const error_ = asSchema(error)
+  const defect_ = asSchema(defect)
+  return transform(
+    causeEncoded(error_, defect_),
+    CauseFromSelf({ error: typeSchema(error_), defect: Unknown }),
+    { strict: false, decode: causeDecode, encode: causeEncode }
+  )
+}
+
+/**
+ * @category api interface
+ * @since 0.69.0
+ */
+export interface Defect extends transform<typeof Unknown, typeof Unknown> {}
+
+/**
+ * Defines a schema for handling JavaScript errors (`Error` instances) and other types of defects.
+ * It decodes objects into Error instances if they match the expected structure (i.e., have a `message` and optionally a `name` and `stack`),
+ * or converts other values to their string representations.
+ *
+ * When encoding, it converts `Error` instances back into plain objects containing only the error's name and message,
+ * or other values into their string forms.
+ *
+ * This is useful for serializing and deserializing errors across network boundaries where error objects do not natively serialize.
+ *
+ * @category defect
+ * @since 0.69.0
+ */
+export const Defect: Defect = transform(
   Unknown,
   Unknown,
   {
@@ -7960,64 +8159,36 @@ export const CauseDefectUnknown = transform(
         return {
           name: defect.name,
           message: defect.message
+          // no stack because of security reasons
         }
       }
       return String(defect)
     }
   }
-)
-
-/**
- * @category api interface
- * @since 0.67.0
- */
-export interface Cause<E extends Schema.All, DR> extends
-  AnnotableClass<
-    Cause<E, DR>,
-    cause_.Cause<Schema.Type<E>>,
-    CauseEncoded<Schema.Encoded<E>>,
-    Schema.Context<E> | DR
-  >
-{}
-
-/**
- * @category Cause transformations
- * @since 0.67.0
- */
-export const Cause = <E extends Schema.All, DR = never>({ defect = CauseDefectUnknown, error }: {
-  readonly error: E
-  readonly defect?: Schema<unknown, unknown, DR> | undefined
-}): Cause<E, DR> => {
-  const error_ = asSchema(error)
-  return transform(
-    causeEncoded(error_, defect),
-    CauseFromSelf({ error: typeSchema(error_), defect: typeSchema(defect) }),
-    { strict: true, decode: causeDecode, encode: causeEncode }
-  )
-}
+).annotations({ identifier: "Defect" })
 
 /**
  * @category Exit utils
- * @since 0.67.0
+ * @since 0.69.0
  */
-export type ExitEncoded<A, E> =
+export type ExitEncoded<A, E, D> =
   | {
     readonly _tag: "Failure"
-    readonly cause: CauseEncoded<E>
+    readonly cause: CauseEncoded<E, D>
   }
   | {
     readonly _tag: "Success"
     readonly value: A
   }
 
-const exitFailureEncoded = <E, EI, ER, DR>(
+const exitFailureEncoded = <E, EI, ER, D, DI, DR>(
   error: Schema<E, EI, ER>,
-  defect: Schema<unknown, unknown, DR>
+  defect: Schema<D, DI, DR>
 ) =>
   Struct({
     _tag: Literal("Failure"),
     cause: causeEncoded(error, defect)
-  }).annotations({ description: `FailureEncoded<${format(error)}>` })
+  })
 
 const exitSuccessEncoded = <A, I, R>(
   value: Schema<A, I, R>
@@ -8025,21 +8196,21 @@ const exitSuccessEncoded = <A, I, R>(
   Struct({
     _tag: Literal("Success"),
     value
-  }).annotations({ description: `SuccessEncoded<${format(value)}>` })
+  })
 
-const exitEncoded = <A, I, R, E, EI, ER, DR>(
+const exitEncoded = <A, I, R, E, EI, ER, D, DI, DR>(
   value: Schema<A, I, R>,
   error: Schema<E, EI, ER>,
-  defect: Schema<unknown, unknown, DR>
-): Schema<ExitEncoded<A, E>, ExitEncoded<I, EI>, ER | R | DR> =>
+  defect: Schema<D, DI, DR>
+): Schema<ExitEncoded<A, E, D>, ExitEncoded<I, EI, DI>, R | ER | DR> =>
   Union(
     exitFailureEncoded(error, defect),
     exitSuccessEncoded(value)
   ).annotations({
-    description: `ExitEncoded<${format(value)}, ${format(error)}>`
+    title: `ExitEncoded<${format(value)}, ${format(error)}, ${format(defect)}>`
   })
 
-const exitDecode = <A, E>(input: ExitEncoded<A, E>): exit_.Exit<A, E> => {
+const exitDecode = <A, E>(input: ExitEncoded<A, E, unknown>): exit_.Exit<A, E> => {
   switch (input._tag) {
     case "Failure":
       return exit_.failCause(causeDecode(input.cause))
@@ -8079,28 +8250,28 @@ const exitParse = <A, R, E, ER>(
 
 /**
  * @category api interface
- * @since 0.67.0
+ * @since 0.69.0
  */
-export interface ExitFromSelf<A extends Schema.Any, E extends Schema.Any, DR> extends
+export interface ExitFromSelf<A extends Schema.All, E extends Schema.All, D extends Schema.All> extends
   AnnotableClass<
-    ExitFromSelf<A, E, DR>,
+    ExitFromSelf<A, E, D>,
     exit_.Exit<Schema.Type<A>, Schema.Type<E>>,
     exit_.Exit<Schema.Encoded<A>, Schema.Encoded<E>>,
-    Schema.Context<A> | Schema.Context<E> | DR
+    Schema.Context<A> | Schema.Context<E> | Schema.Context<D>
   >
 {}
 
 /**
  * @category Exit transformations
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const ExitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = never>(
-  { defect = Unknown, failure, success }: {
+export const ExitFromSelf = <A extends Schema.All, E extends Schema.All, D extends Schema.All>(
+  { defect, failure, success }: {
     readonly failure: E
     readonly success: A
-    readonly defect?: Schema<unknown, unknown, DR> | undefined
+    readonly defect: D
   }
-): ExitFromSelf<A, E, DR> =>
+): ExitFromSelf<A, E, D> =>
   declare(
     [success, failure, defect],
     {
@@ -8116,7 +8287,7 @@ export const ExitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = ne
         )
     },
     {
-      description: `Exit<${format(success)}, ${format(failure)}>`,
+      title: `Exit<${success.ast}, ${failure.ast}>`,
       pretty: exitPretty,
       arbitrary: exitArbitrary
     }
@@ -8124,35 +8295,36 @@ export const ExitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = ne
 
 /**
  * @category api interface
- * @since 0.67.0
+ * @since 0.69.0
  */
-export interface Exit<A extends Schema.All, E extends Schema.All, DR> extends
+export interface Exit<A extends Schema.All, E extends Schema.All, D extends Schema.All> extends
   AnnotableClass<
-    Exit<A, E, DR>,
+    Exit<A, E, D>,
     exit_.Exit<Schema.Type<A>, Schema.Type<E>>,
-    ExitEncoded<Schema.Encoded<A>, Schema.Encoded<E>>,
-    Schema.Context<A> | Schema.Context<E> | DR
+    ExitEncoded<Schema.Encoded<A>, Schema.Encoded<E>, Schema.Encoded<D>>,
+    Schema.Context<A> | Schema.Context<E> | Schema.Context<D>
   >
 {}
 
 /**
  * @category Exit transformations
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const Exit = <A extends Schema.All, E extends Schema.All, DR = never>(
-  { defect = CauseDefectUnknown, failure, success }: {
+export const Exit = <A extends Schema.All, E extends Schema.All, D extends Schema.All>(
+  { defect, failure, success }: {
     readonly failure: E
     readonly success: A
-    readonly defect?: Schema<unknown, unknown, DR> | undefined
+    readonly defect: D
   }
-): Exit<A, E, DR> => {
+): Exit<A, E, D> => {
   const success_ = asSchema(success)
   const failure_ = asSchema(failure)
+  const defect_ = asSchema(defect)
   return transform(
-    exitEncoded(success_, failure_, defect),
-    ExitFromSelf({ failure: typeSchema(failure_), success: typeSchema(success_), defect: typeSchema(defect) }),
+    exitEncoded(success_, failure_, defect_),
+    ExitFromSelf({ failure: typeSchema(failure_), success: typeSchema(success_), defect: Unknown }),
     {
-      strict: true,
+      strict: false,
       decode: exitDecode,
       encode: (exit) =>
         exit._tag === "Failure"

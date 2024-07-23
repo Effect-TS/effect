@@ -30,7 +30,7 @@ export const f2 = <T extends Model>(schema: Schema.Schema<T>) => {
 
   const patch: Schema.Schema<Patch> = schema.pipe(
     Schema.pick("id"),
-    Schema.extend(schema.pipe(Schema.omit("id"), Schema.partial()))
+    Schema.extend(schema.pipe(Schema.omit("id"), Schema.partial))
   )
 
   return patch

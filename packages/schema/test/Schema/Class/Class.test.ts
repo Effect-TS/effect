@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
-  name: S.String.pipe(S.nonEmpty())
+  name: S.String.pipe(S.nonEmptyString())
 }) {
   get upperName() {
     return this.name.toUpperCase()
@@ -19,7 +19,7 @@ class Person extends S.Class<Person>("Person")({
 
 const Name = Context.GenericTag<"Name", string>("Name")
 const NameString = S.String.pipe(
-  S.nonEmpty(),
+  S.nonEmptyString(),
   S.transformOrFail(
     S.String,
     {
@@ -82,25 +82,25 @@ describe("Class", () => {
   })
 
   it("the constructor should validate the input by default", () => {
-    class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+    class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
     expect(() => new A({ a: "" })).toThrow(
       new Error(`A (Constructor)
 └─ ["a"]
-   └─ NonEmpty
+   └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmpty, actual ""`)
+         └─ Expected NonEmptyString, actual ""`)
     )
     expect(() => A.make({ a: "" })).toThrow(
       new Error(`A (Constructor)
 └─ ["a"]
-   └─ NonEmpty
+   └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmpty, actual ""`)
+         └─ Expected NonEmptyString, actual ""`)
     )
   })
 
   it("the constructor validation can be disabled", () => {
-    class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+    class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
     expect(new A({ a: "" }, true).a).toStrictEqual("")
     expect(new A({ a: "" }, { disableValidation: true }).a).toStrictEqual("")
 
@@ -213,7 +213,7 @@ describe("Class", () => {
   })
 
   it("decoding", async () => {
-    class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+    class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
     await Util.expectDecodeUnknownSuccess(A, { a: "a" }, new A({ a: "a" }))
     await Util.expectDecodeUnknownFailure(
       A,
@@ -222,14 +222,14 @@ describe("Class", () => {
 └─ Encoded side transformation failure
    └─ A (Encoded side)
       └─ ["a"]
-         └─ NonEmpty
+         └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmpty, actual ""`
+               └─ Expected NonEmptyString, actual ""`
     )
   })
 
   it("encoding", async () => {
-    class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+    class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
     await Util.expectEncodeSuccess(A, new A({ a: "a" }), { a: "a" })
     await Util.expectEncodeSuccess(A, { a: "a" }, { a: "a" })
     await Util.expectEncodeFailure(
@@ -239,9 +239,9 @@ describe("Class", () => {
 └─ Encoded side transformation failure
    └─ A (Encoded side)
       └─ ["a"]
-         └─ NonEmpty
+         └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmpty, actual ""`
+               └─ Expected NonEmptyString, actual ""`
     )
   })
 

@@ -1,11 +1,122 @@
 import * as Arbitrary from "@effect/schema/Arbitrary"
-import type * as AST from "@effect/schema/AST"
+import * as AST from "@effect/schema/AST"
 import * as FastCheck from "@effect/schema/FastCheck"
 import * as Schema from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("extend", () => {
+  describe("String", () => {
+    it("String and String", () => {
+      const schema = Schema.extend(Schema.String, Schema.String)
+      expect(schema.ast).toStrictEqual(Schema.String.ast)
+    })
+
+    it("String and Literal", () => {
+      const literal = Schema.Literal("a")
+      const schema = Schema.extend(Schema.String, literal)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("Literal and String", () => {
+      const literal = Schema.Literal("a")
+      const schema = Schema.extend(literal, Schema.String)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("(String and annotations) and String", () => {
+      const A = Schema.String.annotations({ identifier: "A" })
+      const schema = Schema.extend(A, Schema.String)
+      expect(schema.ast === A.ast).toBe(true)
+    })
+
+    it("String and Refinement", () => {
+      const schema = Schema.extend(
+        Schema.String,
+        Schema.String.pipe(Schema.startsWith("start:"))
+      )
+      expect(schema.ast._tag).toBe("Refinement")
+      expect((schema.ast as AST.Refinement).from === AST.stringKeyword).toBe(true)
+    })
+
+    it("should support two refined brands", () => {
+      const startsWith = Schema.String.pipe(Schema.startsWith("start:"), Schema.brand("start:"))
+      const endsWith = Schema.String.pipe(Schema.endsWith(":end"), Schema.brand(":end"))
+      const schema = Schema.extend(startsWith, endsWith)
+      expect(String(schema.ast)).toBe(`a string ending with ":end" & Brand<":end">`)
+      expect(schema.ast.annotations[AST.BrandAnnotationId]).toStrictEqual([":end"])
+      const from = (schema.ast as AST.Refinement).from
+      expect(from.annotations[AST.BrandAnnotationId]).toStrictEqual(["start:"])
+      const fromfrom = (from as AST.Refinement).from
+      expect(fromfrom === AST.stringKeyword).toBe(true)
+    })
+  })
+
+  describe("Number", () => {
+    it("Number and Number", () => {
+      const schema = Schema.extend(Schema.Number, Schema.Number)
+      expect(schema.ast).toStrictEqual(Schema.Number.ast)
+    })
+
+    it("Number and Literal", () => {
+      const literal = Schema.Literal(1)
+      const schema = Schema.extend(Schema.Number, literal)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("Literal and Number", () => {
+      const literal = Schema.Literal(1)
+      const schema = Schema.extend(literal, Schema.Number)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("(Number and annotations) and Number", () => {
+      const A = Schema.Number.annotations({ identifier: "A" })
+      const schema = Schema.extend(A, Schema.Number)
+      expect(schema.ast === A.ast).toBe(true)
+    })
+
+    it("Number and Refinement", () => {
+      const schema = Schema.extend(
+        Schema.Number,
+        Schema.Number.pipe(Schema.greaterThan(0))
+      )
+      expect(schema.ast._tag).toBe("Refinement")
+      expect((schema.ast as AST.Refinement).from === AST.numberKeyword).toBe(true)
+    })
+
+    it("should support two refined brands", () => {
+      const gt0 = Schema.Number.pipe(Schema.greaterThan(0), Schema.brand("> 0"))
+      const lt2 = Schema.Number.pipe(Schema.lessThan(2), Schema.brand("< 2"))
+      const schema = Schema.extend(gt0, lt2)
+      expect(String(schema.ast)).toBe(`a number less than 2 & Brand<"< 2">`)
+      expect(schema.ast.annotations[AST.BrandAnnotationId]).toStrictEqual(["< 2"])
+      const from = (schema.ast as AST.Refinement).from
+      expect(from.annotations[AST.BrandAnnotationId]).toStrictEqual(["> 0"])
+      const fromfrom = (from as AST.Refinement).from
+      expect(fromfrom === AST.numberKeyword).toBe(true)
+    })
+  })
+
+  describe("Boolean", () => {
+    it("Boolean and Boolean", () => {
+      const schema = Schema.extend(Schema.Boolean, Schema.Boolean)
+      expect(schema.ast).toStrictEqual(Schema.Boolean.ast)
+    })
+
+    it("Boolean and Literal", () => {
+      const literal = Schema.Literal(true)
+      const schema = Schema.extend(Schema.Boolean, literal)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("Literal and Boolean", () => {
+      const literal = Schema.Literal(true)
+      const schema = Schema.extend(literal, Schema.Boolean)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+  })
+
   describe("struct", () => {
     it("extend struct", async () => {
       const schema = Schema.extend(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.Number }))
@@ -15,7 +126,7 @@ describe("extend", () => {
     it(`extend TypeLiteralTransformation`, async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
         Schema.extend(
-          Schema.Struct({ b: Schema.String, c: Schema.optional(Schema.String, { exact: true, default: () => "" }) })
+          Schema.Struct({ b: Schema.String, c: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }) })
         )
       )
       expect(String(schema)).toBe(
@@ -35,7 +146,7 @@ describe("extend", () => {
 
     it("extend record(string, string)", async () => {
       const schema = Schema.Struct({ a: Schema.String }).pipe(
-        Schema.extend(Schema.Record(Schema.String, Schema.String))
+        Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String }))
       )
       expect(String(schema)).toBe(`{ readonly a: string; readonly [x: string]: string }`)
     })
@@ -43,12 +154,14 @@ describe("extend", () => {
     it("extend record(templateLiteral, string)", async () => {
       const schema = Schema.Struct({ a: Schema.String }).pipe(
         Schema.extend(Schema.Record(
-          Schema.TemplateLiteral(
-            Schema.String,
-            Schema.Literal("-"),
-            Schema.Number
-          ),
-          Schema.String
+          {
+            key: Schema.TemplateLiteral(
+              Schema.String,
+              Schema.Literal("-"),
+              Schema.Number
+            ),
+            value: Schema.String
+          }
         ))
       )
       // type A = {
@@ -61,30 +174,95 @@ describe("extend", () => {
 
     it("extend record(string, NumberFromChar)", async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
-        Schema.extend(Schema.Record(Schema.String, Util.NumberFromChar))
+        Schema.extend(Schema.Record({ key: Schema.String, value: Util.NumberFromChar }))
       )
       expect(String(schema)).toBe(`{ readonly a: number; readonly [x: string]: NumberFromChar }`)
     })
 
     it("extend record(symbol, NumberFromChar)", async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
-        Schema.extend(Schema.Record(Schema.SymbolFromSelf, Util.NumberFromChar))
+        Schema.extend(Schema.Record({ key: Schema.SymbolFromSelf, value: Util.NumberFromChar }))
       )
       expect(String(schema)).toBe(`{ readonly a: number; readonly [x: symbol]: NumberFromChar }`)
     })
 
-    it(`nested extend nested struct`, async () => {
+    it("nested extend nested struct", async () => {
       const A = Schema.Struct({ a: Schema.Struct({ b: Schema.String }) })
       const B = Schema.Struct({ a: Schema.Struct({ c: Schema.Number }) })
       const schema = Schema.extend(A, B)
       expect(String(schema)).toBe(`{ readonly a: { readonly b: string; readonly c: number } }`)
+    })
+
+    it("nested with refinements extend nested struct with refinements", async () => {
+      const A = Schema.Struct({
+        nested: Schema.Struct({
+          same: Schema.String.pipe(Schema.startsWith("start:")),
+          different1: Schema.String
+        })
+      })
+      const B = Schema.Struct({
+        nested: Schema.Struct({
+          same: Schema.String.pipe(Schema.endsWith(":end")),
+          different2: Schema.String
+        })
+      })
+      const schema = Schema.extend(A, B)
+      expect(String(schema)).toBe(
+        `{ readonly nested: { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" } }`
+      )
+      await Util.expectDecodeUnknownSuccess(
+        schema,
+        {
+          nested: {
+            same: "start:5:end",
+            different1: "",
+            different2: ""
+          }
+        }
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        {
+          nested: {
+            same: "",
+            different1: "",
+            different2: ""
+          }
+        },
+        `{ readonly nested: { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" } }
+└─ ["nested"]
+   └─ { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" }
+      └─ ["same"]
+         └─ a string ending with ":end"
+            └─ From side refinement failure
+               └─ a string starting with "start:"
+                  └─ Predicate refinement failure
+                     └─ Expected a string starting with "start:", actual ""`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        {
+          nested: {
+            same: "start:5",
+            different1: "",
+            different2: ""
+          }
+        },
+        `{ readonly nested: { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" } }
+└─ ["nested"]
+   └─ { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" }
+      └─ ["same"]
+         └─ a string ending with ":end"
+            └─ Predicate refinement failure
+               └─ Expected a string ending with ":end", actual "start:5"`
+      )
     })
   })
 
   describe("TypeLiteralTransformation", () => {
     it("extend struct", async () => {
       const schema = Schema.Struct({
-        a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
+        a: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }),
         b: Schema.String
       }).pipe(Schema.extend(Schema.Struct({ c: Schema.Number })))
       expect(String(schema)).toBe(
@@ -95,7 +273,7 @@ describe("extend", () => {
     it("extend union", async () => {
       const schema = Schema.extend(
         Schema.Struct({
-          a: Schema.optional(Schema.String, { default: () => "default" })
+          a: Schema.optionalWith(Schema.String, { default: () => "default" })
         }),
         Schema.Union(
           Schema.Struct({ b: Schema.String }),
@@ -110,7 +288,7 @@ describe("extend", () => {
     it("extend refinement", async () => {
       const schema = Schema.extend(
         Schema.Struct({
-          a: Schema.optional(Schema.String, { default: () => "default" })
+          a: Schema.optionalWith(Schema.String, { default: () => "default" })
         }),
         Schema.Struct({ b: Schema.String }).pipe(Schema.filter(() => true))
       )
@@ -123,7 +301,7 @@ describe("extend", () => {
       const suspend = Schema.suspend(() => Schema.Struct({ b: Schema.String }))
       const schema = Schema.extend(
         Schema.Struct({
-          a: Schema.optional(Schema.String, { default: () => "default" })
+          a: Schema.optionalWith(Schema.String, { default: () => "default" })
         }),
         suspend
       )
@@ -134,12 +312,12 @@ describe("extend", () => {
 
     it("extend TypeLiteralTransformation", async () => {
       const schema = Schema.Struct({
-        a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
+        a: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }),
         b: Schema.String
       }).pipe(
         Schema.extend(
           Schema.Struct({
-            c: Schema.optional(Schema.Number, { exact: true, default: () => 0 }),
+            c: Schema.optionalWith(Schema.Number, { exact: true, default: () => 0 }),
             d: Schema.Boolean
           })
         )
@@ -162,22 +340,22 @@ describe("extend", () => {
     it("with defaults extend union with defaults", async () => {
       const schema = Schema.Union(
         Schema.Struct({
-          a: Schema.optional(Schema.String, { exact: true, default: () => "a" }),
+          a: Schema.optionalWith(Schema.String, { exact: true, default: () => "a" }),
           b: Schema.String
         }),
         Schema.Struct({
-          c: Schema.optional(Schema.String, { exact: true, default: () => "c" }),
+          c: Schema.optionalWith(Schema.String, { exact: true, default: () => "c" }),
           d: Schema.String
         })
       ).pipe(
         Schema.extend(
           Schema.Union(
             Schema.Struct({
-              e: Schema.optional(Schema.String, { exact: true, default: () => "e" }),
+              e: Schema.optionalWith(Schema.String, { exact: true, default: () => "e" }),
               f: Schema.String
             }),
             Schema.Struct({
-              g: Schema.optional(Schema.String, { exact: true, default: () => "g" }),
+              g: Schema.optionalWith(Schema.String, { exact: true, default: () => "g" }),
               h: Schema.String
             })
           )
@@ -426,51 +604,28 @@ describe("extend", () => {
 details: cannot extend string with number`)
     )
     expect(() =>
-      Schema.Record(Schema.String, Schema.Number).pipe(
-        Schema.extend(Schema.Record(Schema.String, Schema.Boolean))
+      Schema.Record({ key: Schema.String, value: Schema.Number }).pipe(
+        Schema.extend(Schema.Record({ key: Schema.String, value: Schema.Boolean }))
       )
     ).toThrow(
       new Error(`Duplicate index signature
 details: string index signature`)
     )
     expect(() =>
-      Schema.Record(Schema.SymbolFromSelf, Schema.Number).pipe(
-        Schema.extend(Schema.Record(Schema.SymbolFromSelf, Schema.Boolean))
+      Schema.Record({ key: Schema.SymbolFromSelf, value: Schema.Number }).pipe(
+        Schema.extend(Schema.Record({ key: Schema.SymbolFromSelf, value: Schema.Boolean }))
       )
     ).toThrow(
       new Error(`Duplicate index signature
 details: symbol index signature`)
     )
     expect(() =>
-      Schema.Record(Schema.String, Schema.Number).pipe(
-        Schema.extend(Schema.Record(Schema.String.pipe(Schema.minLength(2)), Schema.Boolean))
+      Schema.Record({ key: Schema.String, value: Schema.Number }).pipe(
+        Schema.extend(Schema.Record({ key: Schema.String.pipe(Schema.minLength(2)), value: Schema.Boolean }))
       )
     ).toThrow(
       new Error(`Duplicate index signature
 details: string index signature`)
-    )
-    expect(() =>
-      Schema.Struct({ a: Schema.Literal("a") }).pipe(
-        Schema.extend(Schema.Struct({ a: Schema.String }))
-      )
-    ).toThrow(
-      new Error(`Unsupported schema or overlapping types
-at path: ["a"]
-details: cannot extend "a" with string`)
-    )
-    expect(() =>
-      Schema.Struct({ a: Schema.Literal("a") }).pipe(
-        Schema.extend(
-          Schema.Union(
-            Schema.Struct({ a: Schema.String }),
-            Schema.Struct({ b: Schema.Number })
-          )
-        )
-      )
-    ).toThrow(
-      new Error(`Unsupported schema or overlapping types
-at path: ["a"]
-details: cannot extend "a" with string`)
     )
     expect(() =>
       Schema.extend(

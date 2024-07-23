@@ -6,14 +6,14 @@ import { describe, expect, it } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
-  name: S.String.pipe(S.nonEmpty())
+  name: S.String.pipe(S.nonEmptyString())
 }) {
   get upperName() {
     return this.name.toUpperCase()
   }
 }
 
-const Thing = S.optional(S.Struct({ id: S.Number }), { exact: true, as: "Option" })
+const Thing = S.optionalWith(S.Struct({ id: S.Number }), { exact: true, as: "Option" })
 
 class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>("PersonWithTransform")(
   {

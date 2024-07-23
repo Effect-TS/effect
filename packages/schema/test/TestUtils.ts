@@ -20,9 +20,19 @@ const doRoundtrip = false
 export const sleep = Effect.sleep(Duration.millis(10))
 
 const effectifyDecode = <R>(
-  decode: (input: any, options: ParseOptions, self: AST.Transformation) => Effect.Effect<any, ParseResult.ParseIssue, R>
-): (input: any, options: ParseOptions, self: AST.Transformation) => Effect.Effect<any, ParseResult.ParseIssue, R> =>
-(input, options, ast) => ParseResult.flatMap(sleep, () => decode(input, options, ast))
+  decode: (
+    fromA: any,
+    options: ParseOptions,
+    self: AST.Transformation,
+    fromI: any
+  ) => Effect.Effect<any, ParseResult.ParseIssue, R>
+): (
+  fromA: any,
+  options: ParseOptions,
+  self: AST.Transformation,
+  fromI: any
+) => Effect.Effect<any, ParseResult.ParseIssue, R> =>
+(fromA, options, ast, fromI) => ParseResult.flatMap(sleep, () => decode(fromA, options, ast, fromI))
 
 const effectifyAST = (ast: AST.AST): AST.AST => {
   switch (ast._tag) {
@@ -366,4 +376,10 @@ export const BooleanFromLiteral = S.transform(S.Literal("true", "false"), S.Bool
   strict: true,
   decode: (l) => l === "true",
   encode: (b) => b ? "true" : "false"
+})
+
+export const Defect = S.transform(S.String, S.Object, {
+  strict: true,
+  decode: (s) => ({ input: s }),
+  encode: (u) => JSON.stringify(u)
 })

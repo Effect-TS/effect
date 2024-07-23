@@ -25,11 +25,13 @@ import { describe, expect, it } from "vitest"
 
 class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
   "SampleMessage",
-  Schema.Never,
-  Schema.Void,
   {
-    id: Schema.String,
-    value: Schema.Number
+    failure: Schema.Never,
+    success: Schema.Void,
+    payload: {
+      id: Schema.String,
+      value: Schema.Number
+    }
   }
 ) {
   [PrimaryKey.symbol]() {

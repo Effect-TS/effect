@@ -85,7 +85,10 @@ export interface TaggedMessageConstructor<Tag extends string, Self, R, IS, S, IE
   new(
     props: Types.Equals<S, {}> extends true ? void : S,
     disableValidation?: boolean
-  ): Schema.TaggedRequest<Tag, S, IS & { readonly _tag: Tag }, never, A, IA, E, IE, never> & S & PrimaryKey.PrimaryKey
+  ):
+    & Schema.TaggedRequest<Tag, S, IS & { readonly _tag: Tag }, never, A, IA, E, IE, never>
+    & S
+    & PrimaryKey.PrimaryKey
 }
 
 /**

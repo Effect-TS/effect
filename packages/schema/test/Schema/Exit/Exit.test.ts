@@ -5,11 +5,11 @@ import { describe, it } from "vitest"
 
 describe("Exit", () => {
   it("property tests", () => {
-    Util.roundtrip(S.Exit({ failure: S.String, success: S.Number }))
+    Util.roundtrip(S.Exit({ failure: S.String, success: S.Number, defect: S.Defect }))
   })
 
   it("decoding", async () => {
-    const schema = S.Exit({ failure: S.String, success: S.Number })
+    const schema = S.Exit({ failure: S.String, success: S.Number, defect: S.Defect })
     await Util.expectDecodeUnknownSuccess(
       schema,
       { _tag: "Failure", cause: { _tag: "Fail", error: "error" } },
@@ -23,27 +23,27 @@ describe("Exit", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { _tag: "Success", value: null },
-      `(ExitEncoded<number, string> <-> Exit<number, string>)
+      `(ExitEncoded<number, string, Defect> <-> Exit<number, string>)
 └─ Encoded side transformation failure
-   └─ ExitEncoded<number, string>
-      └─ SuccessEncoded<number>
+   └─ ExitEncoded<number, string, Defect>
+      └─ { readonly _tag: "Success"; readonly value: number }
          └─ ["value"]
             └─ Expected number, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { _tag: "Failure", cause: null },
-      `(ExitEncoded<number, string> <-> Exit<number, string>)
+      `(ExitEncoded<number, string, Defect> <-> Exit<number, string>)
 └─ Encoded side transformation failure
-   └─ ExitEncoded<number, string>
-      └─ FailureEncoded<string>
+   └─ ExitEncoded<number, string, Defect>
+      └─ { readonly _tag: "Failure"; readonly cause: CauseEncoded<string> }
          └─ ["cause"]
             └─ Expected CauseEncoded<string>, actual null`
     )
   })
 
   it("encoding", async () => {
-    const schema = S.Exit({ failure: S.String, success: S.Number })
+    const schema = S.Exit({ failure: S.String, success: S.Number, defect: S.Defect })
     await Util.expectEncodeSuccess(schema, Exit.fail("error"), {
       _tag: "Failure",
       cause: { _tag: "Fail", error: "error" }
