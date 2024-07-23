@@ -2,6 +2,7 @@
 
 Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged functional effect system with a rich standard library.
 
+
 # Requirements
 
 - TypeScript 5.4 or newer
