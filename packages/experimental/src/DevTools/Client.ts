@@ -38,13 +38,17 @@ export interface Client {
  */
 export const Client = Context.GenericTag<Client, ClientImpl>("@effect/experimental/DevTools/Client")
 
+interface PoisonPill {
+  readonly _tag: "PoisonPill"
+}
+
 /**
  * @since 1.0.0
  * @category constructors
  */
 export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket> = Effect.gen(function*(_) {
   const socket = yield* _(Socket.Socket)
-  const requests = yield* _(Queue.sliding<Domain.Request>(1024))
+  const requests = yield* _(Queue.sliding<Domain.Request | PoisonPill>(1024))
 
   function metricsSnapshot(): Domain.MetricsSnapshot {
     const snapshot = Metric.unsafeSnapshot()
@@ -105,6 +109,7 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
 
   yield* _(
     Stream.fromQueue(requests),
+    Stream.takeWhile((request) => request._tag !== "PoisonPill"),
     Stream.pipeThroughChannel(
       Ndjson.duplexSchema(Socket.toChannel(socket), {
         inputSchema: Domain.Request,
@@ -122,9 +127,10 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
       }
     }),
     Effect.retry(Schedule.spaced("3 seconds")),
+    Effect.ensuring(Queue.offer(requests, { _tag: "PoisonPill" })),
     Effect.catchAllCause(Effect.logDebug),
     Effect.forkScoped,
-    Effect.interruptible
+    Effect.uninterruptible
   )
   yield* _(
     Queue.offer(requests, { _tag: "Ping" }),
