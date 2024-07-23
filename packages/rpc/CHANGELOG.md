@@ -1,5 +1,48 @@
 # @effect/rpc
 
+## 0.33.0
+
+### Minor Changes
+
+- [#3227](https://github.com/Effect-TS/effect/pull/3227) [`20807a4`](https://github.com/Effect-TS/effect/commit/20807a45edeb4334e903dca5d708cd62a71702d8) Thanks @gcanti! - ## Breaking Changes
+
+  ### Rpc
+
+  - align `StreamRequest` signature to `Schema.TaggedRequest` signature (`options` argument)
+
+    from
+
+    ```ts
+    import * as Rpc from "@effect/rpc/Rpc";
+    import { Schema } from "@effect/schema";
+
+    export class Counts extends Rpc.StreamRequest<Counts>()(
+      "Counts",
+      Schema.Never, // Indicates that no errors are expected
+      Schema.Number, // Specifies that the response is a number
+      {},
+    ) {}
+    ```
+
+    to
+
+    ```ts
+    import * as Rpc from "@effect/rpc/Rpc";
+    import { Schema } from "@effect/schema";
+
+    export class Counts extends Rpc.StreamRequest<Counts>()("Counts", {
+      failure: Schema.Never, // Indicates that no errors are expected
+      success: Schema.Number, // Specifies that the response is a number
+      payload: {},
+    }) {}
+    ```
+
+### Patch Changes
+
+- Updated dependencies [[`20807a4`](https://github.com/Effect-TS/effect/commit/20807a45edeb4334e903dca5d708cd62a71702d8)]:
+  - @effect/schema@0.69.0
+  - @effect/platform@0.60.0
+
 ## 0.32.3
 
 ### Patch Changes
