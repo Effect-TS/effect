@@ -1,8 +1,6 @@
 ---
-"@effect/rpc": patch
+"@effect/rpc": minor
 ---
-
-TODO: change to minor before merging
 
 ## Breaking Changes
 

@@ -1,8 +1,6 @@
 ---
-"@effect/schema": patch
+"@effect/schema": minor
 ---
-
-TODO: change to minor before merging
 
 ## Codemod
 
@@ -20,20 +18,20 @@ It might not be perfect - if you encounter issues, let us know! Also make sure y
 
 ### Schema
 
-- change `TaggedRequest` signature (**codmod**), closes #3144
+- We've improved the `TaggedRequest` API to make it more intuitive by grouping parameters into a single object (**codmod**), closes #3144
 
-  from
+  Before Update
 
   ```ts
   class Sample extends Schema.TaggedRequest<Sample>()(
     "Sample",
-    Schema.String,
-    Schema.Number,
-    { id: Schema.String, foo: Schema.Number }
+    Schema.String, // Failure Schema
+    Schema.Number, // Success Schema
+    { id: Schema.String, foo: Schema.Number } // Payload Schema
   ) {}
   ```
 
-  to
+  After Update
 
   ```ts
   class Sample extends Schema.TaggedRequest<Sample>()("Sample", {
@@ -48,10 +46,10 @@ It might not be perfect - if you encounter issues, let us know! Also make sure y
 
 - change `TaggedRequestClass` type parameters order (swap `Success` with `Failure`)
 - simplify `TaggedRequest.Any`, use `TaggedRequest.All` instead
-- rename `nonEmpty` filter to `nonEmptyString` and `NonEmpty` schema to `NonEmptyString` (**codmod**), closes #3115
-- aligned `Record` constructor to consistently accept object argument (like `Map`, `HashMap`, etc...) (**codmod**), closes #2793
+- To improve clarity, we have renamed `nonEmpty` filter to `nonEmptyString` and `NonEmpty` schema to `NonEmptyString` (**codmod**), closes #3115
+- The `Record` constructor now consistently accepts an object argument, aligning it with similar constructors such as `Map` and `HashMap` (**codmod**), closes #2793
 
-  Before
+  Before Update
 
   ```ts
   import { Schema } from "@effect/schema"
@@ -59,7 +57,7 @@ It might not be perfect - if you encounter issues, let us know! Also make sure y
   const schema = Schema.Record(Schema.String, Schema.Number)
   ```
 
-  Now
+  After Update
 
   ```ts
   import { Schema } from "@effect/schema"
@@ -67,7 +65,6 @@ It might not be perfect - if you encounter issues, let us know! Also make sure y
   const schema = Schema.Record({ key: Schema.String, value: Schema.Number })
   ```
 
-- add support for refinements to `extend`
 - rename `Base64` to `Uint8ArrayFromBase64` (**codmod**)
 - rename `Base64Url` to `Uint8ArrayFromBase64Url` (**codmod**)
 - rename `Hex` to `Uint8ArrayFromHex` (**codmod**)
@@ -80,14 +77,11 @@ It might not be perfect - if you encounter issues, let us know! Also make sure y
 - rename `CauseDefectUnknown` to `Defect` (**codmod**)
 - fix `Schema.Void` behavior: now accepts any value instead of only validating `undefined`, closes #3297
 - rename `optionalWithOptions` interface to `optionalWith`
-- split `optional` API into `optional` (without options) and `optionalWith` (with options) (**codmod**)
-  This change addresses issues caused by the previous signature when used tacitly with `pipe`:
+- We've refined the `optional` and `partial` APIs by splitting them into two distinct methods: one without options (`optional` and `partial`) and another with options (`optionalWith` and `partialWith`). This change resolves issues with previous implementations when used with the `pipe` method:
 
   ```ts
   Schema.String.pipe(Schema.optional)
   ```
-
-- split `partial` API into `partial` (without options) and `partialWith` (with options) (**codmod**)
 
 ### ParseResult
 
@@ -126,11 +120,11 @@ It might not be perfect - if you encounter issues, let us know! Also make sure y
 
 ### Schema
 
-- add `StringFromBase64`
-- add `StringFromBase64Url`
-- add `StringFromHex`
+- add `StringFromBase64` transformation
+- add `StringFromBase64Url` transformation
+- add `StringFromHex` transformation
 - add `TaggedRequest.All`
-- add support for `Schema.String`/`Schema.Number`/`Schema.Boolean` refinements to `extend`
+- Support for extending `Schema.String`, `Schema.Number`, and `Schema.Boolean` with refinements has been added:
 
   ```ts
   import { Schema } from "@effect/schema"
