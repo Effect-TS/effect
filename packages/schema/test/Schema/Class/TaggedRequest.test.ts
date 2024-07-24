@@ -43,7 +43,7 @@ const IdNumber = S.Number.pipe(
 )
 
 describe("TaggedRequest", () => {
-  it("should expose the fields and the tag", () => {
+  it("should expose the fields, the tag, the success and the failure schema", () => {
     class TRA extends S.TaggedRequest<TRA>()("TRA", {
       failure: S.String,
       success: S.Number,
@@ -56,6 +56,8 @@ describe("TaggedRequest", () => {
       id: S.Number
     })
     expect(TRA._tag).toBe("TRA")
+    expect(TRA.success).toBe(S.Number)
+    expect(TRA.failure).toBe(S.String)
   })
 
   it("should expose the identifier", () => {
