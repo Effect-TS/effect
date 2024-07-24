@@ -18,7 +18,7 @@ const bench = new Bench({ time: 1000 })
 const schema = S.Struct({
   a: S.Struct({
     b: S.Struct({
-      c: S.NonEmpty
+      c: S.NonEmptyString
     })
   })
 })
