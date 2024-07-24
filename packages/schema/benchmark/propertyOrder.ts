@@ -18,7 +18,7 @@ const bench = new Bench({ time: 1000 })
 const schema = S.Struct({
   a: S.Literal("a"),
   b: S.Array(S.String),
-  c: S.Record(S.String, S.Number),
+  c: S.Record({ key: S.String, value: S.Number }),
   d: S.NumberFromString,
   e: S.Boolean
 })
