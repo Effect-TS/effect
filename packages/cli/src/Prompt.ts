@@ -463,8 +463,21 @@ export declare namespace All {
   /**
    * @since 1.0.0
    */
-  export type Return<Arg extends Iterable<PromptAny>> = [Arg] extends [ReadonlyArray<PromptAny>] ? ReturnTuple<Arg>
+  export type ReturnObject<T> = [T] extends [{ [K: string]: PromptAny }] ? Prompt<
+      {
+        -readonly [K in keyof T]: [T[K]] extends [Prompt.Variance<infer _A>] ? _A : never
+      }
+    >
+    : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type Return<
+    Arg extends Iterable<PromptAny> | Record<string, PromptAny>
+  > = [Arg] extends [ReadonlyArray<PromptAny>] ? ReturnTuple<Arg>
     : [Arg] extends [Iterable<PromptAny>] ? ReturnIterable<Arg>
+    : [Arg] extends [Record<string, PromptAny>] ? ReturnObject<Arg>
     : never
 }
 
@@ -478,9 +491,8 @@ export declare namespace All {
  * @since 1.0.0
  * @category collecting & elements
  */
-export const all: <
-  const Arg extends Iterable<Prompt<any>>
->(arg: Arg) => All.Return<Arg> = InternalPrompt.all
+export const all: <const Arg extends Iterable<Prompt<any>> | Record<string, Prompt<any>>>(arg: Arg) => All.Return<Arg> =
+  InternalPrompt.all
 
 /**
  * @since 1.0.0
