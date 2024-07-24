@@ -254,8 +254,6 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
 /**
  * Converts a `Either` to an `Option` discarding the error.
  *
- * Alias of {@link fromEither}.
- *
  * @example
  * import { Option, Either } from "effect"
  *
