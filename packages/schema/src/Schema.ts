@@ -7522,6 +7522,10 @@ export interface TaggedRequestClass<
   >
 {
   readonly _tag: Tag
+  /** @since 0.69.1 */
+  readonly success: Success
+  /** @since 0.69.1 */
+  readonly failure: Failure
 }
 
 /**
@@ -7557,6 +7561,8 @@ export const TaggedRequest =
       annotations
     }) {
       static _tag = tag
+      static success = options.success
+      static failure = options.failure
       get [serializable_.symbol]() {
         return this.constructor
       }
