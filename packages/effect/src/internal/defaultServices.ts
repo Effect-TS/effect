@@ -1,3 +1,4 @@
+import * as Array from "../Array.js"
 import type * as Chunk from "../Chunk.js"
 import type * as Clock from "../Clock.js"
 import type * as Config from "../Config.js"
@@ -134,15 +135,17 @@ export const shuffle = <A>(elements: Iterable<A>): Effect.Effect<Chunk.Chunk<A>>
   randomWith((random) => random.shuffle(elements))
 
 /** @internal */
-export const choice = <Self extends ReadonlyArray<unknown>>(
+export const choice = <Self extends Iterable<unknown>>(
   elements: Self
-) =>
-  core.map(
-    elements.length === 0
+) => {
+  const array = Array.fromIterable(elements)
+  return core.map(
+    array.length === 0
       ? core.fail(new core.NoSuchElementException("Cannot select a random element from an empty array"))
-      : randomWith((random) => random.nextIntBetween(0, elements.length)),
-    (i) => elements[i]
+      : randomWith((random) => random.nextIntBetween(0, array.length)),
+    (i) => array[i]
   ) as any
+}
 
 // circular with Tracer
 

@@ -106,7 +106,7 @@ export const nextIntBetween: (min: number, max: number) => Effect.Effect<number>
 export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>> = defaultServices.shuffle
 
 /**
- * Get a random element from a non-empty array.
+ * Get a random element from an iterable.
  *
  * @example
  * import { Effect, Random } from "effect"
@@ -119,10 +119,10 @@ export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>
  * @since 2.0.0
  * @category constructors
  */
-export const choice: <Self extends ReadonlyArray<unknown>>(
+export const choice: <Self extends Iterable<unknown>>(
   elements: Self
 ) => Self extends Array.NonEmptyReadonlyArray<infer A> ? Effect.Effect<A>
-  : Self extends ReadonlyArray<infer A> ? Effect.Effect<A, Cause.NoSuchElementException>
+  : Self extends Iterable<infer A> ? Effect.Effect<A, Cause.NoSuchElementException>
   : never = defaultServices.choice
 
 /**

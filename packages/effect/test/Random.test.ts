@@ -33,5 +33,7 @@ describe("Random", () => {
 
       const randomItems = yield* Random.choice([1, 2, 3]).pipe(Array.replicate(100), Effect.all)
       expect(Array.intersection(randomItems, [1, 2, 3]).length).toEqual(randomItems.length)
+
+      expect(yield* Random.choice(Chunk.fromIterable([1, 2, 3]))).oneOf([1, 2, 3])
     }))
 })
