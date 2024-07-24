@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.69.1
+
+### Patch Changes
+
+- [#3333](https://github.com/Effect-TS/effect/pull/3333) [`f241154`](https://github.com/Effect-TS/effect/commit/f241154added5d91e95866c39481f09cdb13bd4d) Thanks @gcanti! - Expose success and failure schemas on `TaggedRequestClass` interface, closes #3331
+
 ## 0.69.0
 
 ### Minor Changes
