@@ -27,6 +27,18 @@
       "@effect/platform/*": [
         "../../../platform/src/*.js"
       ],
+      "@effect/platform-node": [
+        "../../../platform-node/src/index.js"
+      ],
+      "@effect/platform-node/*": [
+        "../../../platform-node/src/*.js"
+      ],
+      "@effect/platform-node-shared": [
+        "../../../platform-node-shared/src/index.js"
+      ],
+      "@effect/platform-node-shared/*": [
+        "../../../platform-node-shared/src/*.js"
+      ],
       "@effect/printer": [
         "../../../printer/src/index.js"
       ],

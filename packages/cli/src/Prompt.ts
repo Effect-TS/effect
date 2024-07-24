@@ -485,8 +485,30 @@ export declare namespace All {
  * Runs all the provided prompts in sequence respecting the structure provided
  * in input.
  *
- * Supports multiple arguments, a single argument tuple / array or record /
- * struct.
+ * Supports either a tuple / iterable of prompts or a record / struct of prompts
+ * as an argument.
+ *
+ * @example
+ * import * as Prompt from "@effect/cli/Prompt"
+ * import * as NodeContext from "@effect/platform-node/NodeContext"
+ * import * as Runtime from "@effect/platform-node/NodeRuntime"
+ * import * as Effect from "effect/Effect"
+ *
+ * const username = Prompt.text({
+ *   message: "Enter your username: "
+ * })
+ *
+ * const password = Prompt.password({
+ *   message: "Enter your password: ",
+ *   validate: (value) =>
+ *     value.length === 0
+ *       ? Effect.fail("Password cannot be empty")
+ *       : Effect.succeed(value)
+ * })
+ *
+ * const allWithTuple = Prompt.all([username, password])
+ *
+ * const allWithRecord = Prompt.all({ username, password })
  *
  * @since 1.0.0
  * @category collecting & elements
