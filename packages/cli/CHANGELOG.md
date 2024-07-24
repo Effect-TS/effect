@@ -1,5 +1,46 @@
 # @effect/cli
 
+## 0.39.1
+
+### Patch Changes
+
+- [#3329](https://github.com/Effect-TS/effect/pull/3329) [`b8e3ab6`](https://github.com/Effect-TS/effect/commit/b8e3ab6739d122c31fb9b91ea5cbfc1afff1180b) Thanks @IMax153! - The `Prompt.all` method now supports taking in a record of `Prompt`s to be more
+  consistent with other `all` APIs throughout the Effect ecosystem.
+
+  You can now do:
+
+  ```ts
+  import * as Prompt from "@effect/cli/Prompt"
+  import * as NodeContext from "@effect/platform-node/NodeContext"
+  import * as Runtime from "@effect/platform-node/NodeRuntime"
+  import * as Effect from "effect/Effect"
+
+  const program = Prompt.all({
+    username: Prompt.text({
+      message: "Enter your username"
+    }),
+    password: Prompt.password({
+      message: "Enter your password: ",
+      validate: (value) =>
+        value.length === 0
+          ? Effect.fail("Password cannot be empty")
+          : Effect.succeed(value)
+    })
+  })
+
+  program.pipe(
+    Effect.flatMap(({ username, password }) => /* Your logic here */ ),
+    Effect.provide(NodeContext.layer),
+    NodeRuntime.runMain
+  )
+  ```
+
+- [#3332](https://github.com/Effect-TS/effect/pull/3332) [`c8f8690`](https://github.com/Effect-TS/effect/commit/c8f86905859c39ed2735890eebe8d73ceb2eb12e) Thanks @IMax153! - improve the `Prompt.all` JSDoc and add example
+
+- Updated dependencies [[`f241154`](https://github.com/Effect-TS/effect/commit/f241154added5d91e95866c39481f09cdb13bd4d)]:
+  - @effect/schema@0.69.1
+  - @effect/platform@0.60.1
+
 ## 0.39.0
 
 ### Patch Changes

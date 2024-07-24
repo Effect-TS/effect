@@ -1,5 +1,12 @@
 # @effect/sql-drizzle
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/sql@0.6.1
+
 ## 0.4.0
 
 ### Patch Changes
