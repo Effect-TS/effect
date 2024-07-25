@@ -27,7 +27,7 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
     MetricHook.MetricHook.Root
   >()
 
-  snapshot(): ReadonlyArray<MetricPair.MetricPair.Untyped> {
+  snapshot(): Array<MetricPair.MetricPair.Untyped> {
     const result: Array<MetricPair.MetricPair.Untyped> = []
     for (const [key, hook] of this.map) {
       result.push(metricPair.unsafeMake(key, hook.get()))
