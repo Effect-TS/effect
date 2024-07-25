@@ -1006,18 +1006,18 @@ export const toDate = (self: DateTime): Date => {
   } else if (self.adjustedEpochMillis !== undefined) {
     return new Date(self.adjustedEpochMillis)
   }
-  const parts = self.zone.format.formatToParts(self.epochMillis)
+  const parts = self.zone.format.formatToParts(self.epochMillis).filter((_) => _.type !== "literal")
   const date = new Date(0)
   date.setUTCFullYear(
-    Number(parts[4].value),
+    Number(parts[2].value),
     Number(parts[0].value) - 1,
-    Number(parts[2].value)
+    Number(parts[1].value)
   )
   date.setUTCHours(
-    Number(parts[6].value),
-    Number(parts[8].value),
-    Number(parts[10].value),
-    Number(parts[12].value)
+    Number(parts[3].value),
+    Number(parts[4].value),
+    Number(parts[5].value),
+    Number(parts[6].value)
   )
   self.adjustedEpochMillis = date.getTime()
   return date
@@ -1434,8 +1434,7 @@ const parseOffset = (offset: string): number | null => {
 }
 
 const calculateNamedOffset = (adjustedMillis: number, zone: TimeZone.Named): number => {
-  const parts = zone.format.formatToParts(adjustedMillis)
-  const offset = parts[14].value
+  const offset = zone.format.formatToParts(adjustedMillis).find((_) => _.type === "timeZoneName")?.value ?? ""
   if (offset === "GMT") {
     return 0
   }
