@@ -5958,13 +5958,13 @@ export declare namespace Tag {
    * @category models
    */
   export interface ProhibitedType {
-    _op?: `propety "_op" is forbidden`
-    _tag?: `propety "_tag" is forbidden`
-    of?: `propety "of" is forbidden`
-    context?: `propety "context" is forbidden`
-    key?: `propety "key" is forbidden`
-    stack?: `propety "stack" is forbidden`
-    name?: `propety "name" is forbidden`
+    _op?: `property "_op" is forbidden`
+    _tag?: `property "_tag" is forbidden`
+    of?: `property "of" is forbidden`
+    context?: `property "context" is forbidden`
+    key?: `property "key" is forbidden`
+    stack?: `property "stack" is forbidden`
+    name?: `property "name" is forbidden`
   }
 
   /**
