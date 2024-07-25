@@ -1272,18 +1272,21 @@ export const tap = dual<
       : [X] extends [PromiseLike<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
   }
->(2, (self, f) =>
-  flatMap(self, (a) => {
-    const b = typeof f === "function" ? (f as any)(a) : f
-    if (isEffect(b)) {
-      return as(b, a)
-    } else if (isPromiseLike(b)) {
-      return async<any, Cause.UnknownException>((resume) => {
-        b.then((_) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
-      })
-    }
-    return succeed(a)
-  }))
+>(
+  (args) => args.length === 3 || args.length === 2 && !(isObject(args[1]) && "onlyEffect" in args[1]),
+  (self, f) =>
+    flatMap(self, (a) => {
+      const b = typeof f === "function" ? (f as any)(a) : f
+      if (isEffect(b)) {
+        return as(b, a)
+      } else if (isPromiseLike(b)) {
+        return async<any, Cause.UnknownException>((resume) => {
+          b.then((_) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
+        })
+      }
+      return succeed(a)
+    })
+)
 
 /* @internal */
 export const transplant = <A, E, R>(
