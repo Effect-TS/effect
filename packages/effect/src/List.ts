@@ -29,6 +29,7 @@ import * as Equivalence from "./Equivalence.js"
 import { dual, identity, unsafeCoerce } from "./Function.js"
 import * as Hash from "./Hash.js"
 import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
+import type { nonEmpty, NonEmptyIterable } from "./NonEmptyIterable.js"
 import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -72,7 +73,7 @@ export interface Nil<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspecta
  * @since 2.0.0
  * @category models
  */
-export interface Cons<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Cons<out A> extends NonEmptyIterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Cons"
   readonly head: A
@@ -96,7 +97,7 @@ export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equ
 
 const _equivalence = getEquivalence(Equal.equals)
 
-const ConsProto: Omit<Cons<unknown>, "head" | "tail"> = {
+const ConsProto: Omit<Cons<unknown>, "head" | "tail" | typeof nonEmpty> = {
   [TypeId]: TypeId,
   _tag: "Cons",
   toString(this: Cons<unknown>) {
