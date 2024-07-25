@@ -81,7 +81,7 @@ export declare namespace ConfigProvider {
       path: ReadonlyArray<string>,
       config: Config.Config.Primitive<A>,
       split?: boolean
-    ): Effect.Effect<ReadonlyArray<A>, ConfigError.ConfigError>
+    ): Effect.Effect<Array<A>, ConfigError.ConfigError>
     enumerateChildren(
       path: ReadonlyArray<string>
     ): Effect.Effect<HashSet.HashSet<string>, ConfigError.ConfigError>
@@ -162,7 +162,7 @@ export const makeFlat: (options: {
     path: ReadonlyArray<string>,
     config: Config.Config.Primitive<A>,
     split: boolean
-  ) => Effect.Effect<ReadonlyArray<A>, ConfigError.ConfigError>
+  ) => Effect.Effect<Array<A>, ConfigError.ConfigError>
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
   ) => Effect.Effect<HashSet.HashSet<string>, ConfigError.ConfigError>

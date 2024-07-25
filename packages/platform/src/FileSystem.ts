@@ -137,7 +137,7 @@ export interface FileSystem {
   readonly readDirectory: (
     path: string,
     options?: ReadDirectoryOptions
-  ) => Effect.Effect<ReadonlyArray<string>, PlatformError>
+  ) => Effect.Effect<Array<string>, PlatformError>
   /**
    * Read the contents of a file.
    */
