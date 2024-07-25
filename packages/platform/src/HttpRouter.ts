@@ -250,7 +250,7 @@ export const schemaJson: <
     readonly cookies: Readonly<Record<string, string | undefined>>
     readonly headers: Readonly<Record<string, string | undefined>>
     readonly pathParams: Readonly<Record<string, string | undefined>>
-    readonly searchParams: Readonly<Record<string, string | Array<string> | undefined>>
+    readonly searchParams: Readonly<Record<string, string | ReadonlyArray<string> | undefined>>
     readonly body: any
   }>,
   A
@@ -276,7 +276,7 @@ export const schemaNoBody: <
       readonly cookies: Readonly<Record<string, string | undefined>>
       readonly headers: Readonly<Record<string, string | undefined>>
       readonly pathParams: Readonly<Record<string, string | undefined>>
-      readonly searchParams: Readonly<Record<string, string | Array<string> | undefined>>
+      readonly searchParams: Readonly<Record<string, string | ReadonlyArray<string> | undefined>>
     }
   >,
   A
@@ -293,7 +293,7 @@ export const schemaNoBody: <
  * @since 1.0.0
  * @category route context
  */
-export const schemaParams: <A, I extends Readonly<Record<string, string | Array<string> | undefined>>, R>(
+export const schemaParams: <A, I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, R | RouteContext | ServerRequest.ParsedSearchParams> =
