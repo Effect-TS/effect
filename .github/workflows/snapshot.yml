@@ -1,15 +1,12 @@
 name: Snapshot
-
 on:
   pull_request:
-    branches: [main, next-minor, next-major]
-  push:
     branches: [main, next-minor, next-major]
 
 jobs:
   snapshot:
     name: Snapshot
-    if: ${{ github.repository_owner == 'Effect-Ts' && github.event.pull_request }}
+    if: github.repository_owner == 'Effect-Ts'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
