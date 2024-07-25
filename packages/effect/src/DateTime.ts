@@ -90,33 +90,35 @@ export declare namespace DateTime {
    * @since 3.6.0
    * @category models
    */
-  export type Unit =
-    | "milli"
-    | "millis"
-    | "second"
-    | "seconds"
-    | "minute"
-    | "minutes"
-    | "hour"
-    | "hours"
-    | "day"
-    | "days"
-    | "week"
-    | "weeks"
-    | "month"
-    | "months"
-    | "year"
-    | "years"
+  export type Unit = UnitSingular | UnitPlural
 
   /**
    * @since 3.6.0
    * @category models
    */
-  export type DatePart =
+  export type UnitSingular =
+    | "milli"
+    | "second"
+    | "minute"
+    | "hour"
     | "day"
     | "week"
     | "month"
     | "year"
+
+  /**
+   * @since 3.6.0
+   * @category models
+   */
+  export type UnitPlural =
+    | "millis"
+    | "seconds"
+    | "minutes"
+    | "hours"
+    | "days"
+    | "weeks"
+    | "months"
+    | "years"
 
   /**
    * @since 3.6.0
@@ -1750,17 +1752,29 @@ export const subtract: {
  * )
  */
 export const startOf: {
-  (part: DateTime.DatePart, options?: {
+  (part: DateTime.UnitSingular, options?: {
     readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
   }): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
-  <A extends DateTime>(self: A, part: DateTime.DatePart, options?: {
+  <A extends DateTime>(self: A, part: DateTime.UnitSingular, options?: {
     readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
   }): DateTime.PreserveZone<A>
-} = dual(isDateTimeArgs, (self: DateTime, part: DateTime.DatePart, options?: {
+} = dual(isDateTimeArgs, (self: DateTime, part: DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime =>
   mutate(self, (date) => {
     switch (part) {
+      case "second": {
+        date.setUTCMilliseconds(0)
+        break
+      }
+      case "minute": {
+        date.setUTCSeconds(0, 0)
+        break
+      }
+      case "hour": {
+        date.setUTCMinutes(0, 0, 0)
+        break
+      }
       case "day": {
         date.setUTCHours(0, 0, 0, 0)
         break
@@ -1804,17 +1818,29 @@ export const startOf: {
  * )
  */
 export const endOf: {
-  (part: DateTime.DatePart, options?: {
+  (part: DateTime.UnitSingular, options?: {
     readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
   }): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
-  <A extends DateTime>(self: A, part: DateTime.DatePart, options?: {
+  <A extends DateTime>(self: A, part: DateTime.UnitSingular, options?: {
     readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
   }): DateTime.PreserveZone<A>
-} = dual(isDateTimeArgs, (self: DateTime, part: DateTime.DatePart, options?: {
+} = dual(isDateTimeArgs, (self: DateTime, part: DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime =>
   mutate(self, (date) => {
     switch (part) {
+      case "second": {
+        date.setUTCMilliseconds(999)
+        break
+      }
+      case "minute": {
+        date.setUTCSeconds(59, 999)
+        break
+      }
+      case "hour": {
+        date.setUTCMinutes(59, 59, 999)
+        break
+      }
       case "day": {
         date.setUTCHours(23, 59, 59, 999)
         break
