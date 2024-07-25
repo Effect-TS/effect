@@ -713,7 +713,7 @@ export interface TemplateLiteral<A> extends SchemaClass<A> {}
 type TemplateLiteralParameter = Schema.AnyNoContext | AST.LiteralValue
 
 /**
- * @category constructors
+ * @category template literal
  * @since 0.67.0
  */
 export const TemplateLiteral = <
@@ -779,6 +779,34 @@ const getTemplateLiterals = (
       return array_.flatMap(ast.types, getTemplateLiterals)
   }
   throw new Error(errors_.getSchemaUnsupportedLiteralSpanErrorMessage(ast))
+}
+
+type TemplateLiteralParserParameters = Schema<any, string> | AST.LiteralValue
+
+type TemplateLiteralParserParametersType<T> = T extends [infer Head, ...infer Tail] ?
+  readonly [Head extends Schema<infer A, infer _I, infer _R> ? A : Head, ...TemplateLiteralParserParametersType<Tail>]
+  : []
+
+type TemplateLiteralParserParametersEncoded<T> = T extends [infer Head, ...infer Tail] ? `${
+    & (Head extends Schema<infer _A, infer I> ? I : Head)
+    & (AST.LiteralValue)}${TemplateLiteralParserParametersEncoded<Tail>}`
+  : ""
+
+/**
+ * @category template literal
+ * @since 0.69.2
+ */
+export const TemplateLiteralParser = <
+  T extends readonly [TemplateLiteralParserParameters, ...Array<TemplateLiteralParserParameters>]
+>(...params: T): Schema<TemplateLiteralParserParametersType<T>, TemplateLiteralParserParametersEncoded<T>> => {
+  const from = TemplateLiteral(...params.map((p) => isSchema(p) ? encodedSchema(p) : p) as any)
+  const to = Tuple(...params.map((p) => isSchema(p) ? p : Literal(p as any)))
+  const re = AST.getTemplateLiteralCapturingRegExp(from.ast as any)
+  return transform(from, to, {
+    strict: false,
+    decode: (s) => re.exec(s)?.slice(1, params.length + 1),
+    encode: (tuple) => tuple.join("")
+  }) as any
 }
 
 const declareConstructor = <

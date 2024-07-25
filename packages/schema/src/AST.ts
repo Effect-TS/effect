@@ -1989,6 +1989,30 @@ export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
 }
 
 /**
+ * @since 0.69.2
+ */
+export const getTemplateLiteralCapturingRegExp = (ast: TemplateLiteral): RegExp => {
+  let pattern = `^`
+  if (ast.head !== "") {
+    pattern += `(${regexp.escape(ast.head)})`
+  }
+
+  for (const span of ast.spans) {
+    if (isStringKeyword(span.type)) {
+      pattern += `(${STRING_KEYWORD_PATTERN})`
+    } else if (isNumberKeyword(span.type)) {
+      pattern += `(${NUMBER_KEYWORD_PATTERN})`
+    }
+    if (span.literal !== "") {
+      pattern += `(${regexp.escape(span.literal)})`
+    }
+  }
+
+  pattern += "$"
+  return new RegExp(pattern)
+}
+
+/**
  * @since 0.67.0
  */
 export const getPropertySignatures = (ast: AST): Array<PropertySignature> => {
