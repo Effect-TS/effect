@@ -152,7 +152,7 @@ export const schemaHeaders: <A, I extends Readonly<Record<string, string | undef
  * @since 1.0.0
  * @category schema
  */
-export const schemaSearchParams: <A, I extends Readonly<Record<string, string | Array<string> | undefined>>, R>(
+export const schemaSearchParams: <A, I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, ParsedSearchParams | R> = internal.schemaSearchParams
