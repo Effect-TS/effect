@@ -178,6 +178,7 @@ const toASTAnnotations = <A, TypeParameters extends ReadonlyArray<any>>(
   move("batching", AST.BatchingAnnotationId)
   move("parseIssueTitle", AST.ParseIssueTitleAnnotationId)
   move("parseOptions", AST.ParseOptionsAnnotationId)
+  move("decodingFallback", AST.DecodingFallbackAnnotationId)
 
   return out
 }
@@ -3763,6 +3764,7 @@ export declare namespace Annotations {
     readonly batching?: AST.BatchingAnnotation
     readonly parseIssueTitle?: AST.ParseIssueTitleAnnotation
     readonly parseOptions?: AST.ParseOptions
+    readonly decodingFallback?: AST.DecodingFallbackAnnotation<A>
   }
 
   /**
