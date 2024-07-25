@@ -19,6 +19,7 @@ import * as Option from "./Option.js"
 import * as order from "./Order.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
+import type { Mutable } from "./Types.js"
 
 /**
  * @since 3.6.0
@@ -49,7 +50,7 @@ export interface Utc extends DateTime.Proto {
   readonly _tag: "Utc"
   readonly epochMillis: number
   /** @internal */
-  partsUtc: DateTime.Parts
+  partsUtc: DateTime.PartsWithWeekday
 }
 
 /**
@@ -63,9 +64,9 @@ export interface Zoned extends DateTime.Proto {
   /** @internal */
   adjustedEpochMillis?: number
   /** @internal */
-  partsAdjusted?: DateTime.Parts
+  partsAdjusted?: DateTime.PartsWithWeekday
   /** @internal */
-  partsUtc?: DateTime.Parts
+  partsUtc?: DateTime.PartsWithWeekday
 }
 
 /**
@@ -121,7 +122,7 @@ export declare namespace DateTime {
    * @since 3.6.0
    * @category models
    */
-  export interface Parts {
+  export interface PartsWithWeekday {
     readonly millis: number
     readonly seconds: number
     readonly minutes: number
@@ -130,6 +131,35 @@ export declare namespace DateTime {
     readonly weekDay: number
     readonly month: number
     readonly year: number
+  }
+
+  /**
+   * @since 3.6.0
+   * @category models
+   */
+  export interface Parts {
+    readonly millis: number
+    readonly seconds: number
+    readonly minutes: number
+    readonly hours: number
+    readonly day: number
+    readonly month: number
+    readonly year: number
+  }
+
+  /**
+   * @since 3.6.0
+   * @category models
+   */
+  export interface PartsForMath {
+    readonly millis: number
+    readonly seconds: number
+    readonly minutes: number
+    readonly hours: number
+    readonly days: number
+    readonly weeks: number
+    readonly months: number
+    readonly years: number
   }
 
   /**
@@ -288,7 +318,7 @@ const ProtoTimeZoneOffset = {
   }
 }
 
-const makeZonedProto = (epochMillis: number, zone: TimeZone, partsUtc?: DateTime.Parts): Zoned => {
+const makeZonedProto = (epochMillis: number, zone: TimeZone, partsUtc?: DateTime.PartsWithWeekday): Zoned => {
   const self = Object.create(ProtoZoned)
   self.epochMillis = epochMillis
   self.zone = zone
@@ -823,7 +853,7 @@ export const unsafeSetZoneNamed: {
  *
  * Effect.gen(function* () {
  *   const now = yield* DateTime.now
- *   const other = DateTime.add(now, 1, "minute")
+ *   const other = DateTime.add(now, { minutes: 1 })
  *
  *   // returns 60000
  *   DateTime.distance(now, other)
@@ -850,7 +880,7 @@ export const distance: {
  *
  * Effect.gen(function* () {
  *   const now = yield* DateTime.now
- *   const other = DateTime.add(now, 1, "minute")
+ *   const other = DateTime.add(now, { minutes: 1 })
  *
  *   // returns Either.right(Duration.minutes(1))
  *   DateTime.distanceDurationEither(now, other)
@@ -879,7 +909,7 @@ export const distanceDurationEither: {
  *
  * Effect.gen(function* () {
  *   const now = yield* DateTime.now
- *   const other = DateTime.add(now, 1, "minute")
+ *   const other = DateTime.add(now, { minutes: 1 })
  *
  *   // returns Duration.minutes(1)
  *   DateTime.distanceDuration(now, other)
@@ -1087,7 +1117,7 @@ export const removeTime = (self: DateTime): Utc =>
 // parts
 // =============================================================================
 
-const dateToParts = (date: Date): DateTime.Parts => ({
+const dateToParts = (date: Date): DateTime.PartsWithWeekday => ({
   millis: date.getUTCMilliseconds(),
   seconds: date.getUTCSeconds(),
   minutes: date.getUTCMinutes(),
@@ -1106,7 +1136,7 @@ const dateToParts = (date: Date): DateTime.Parts => ({
  * @since 3.6.0
  * @category parts
  */
-export const toParts = (self: DateTime): DateTime.Parts => {
+export const toParts = (self: DateTime): DateTime.PartsWithWeekday => {
   if (self._tag === "Utc") {
     return toPartsUtc(self)
   } else if (self.partsAdjusted !== undefined) {
@@ -1124,7 +1154,7 @@ export const toParts = (self: DateTime): DateTime.Parts => {
  * @since 3.6.0
  * @category parts
  */
-export const toPartsUtc = (self: DateTime): DateTime.Parts => {
+export const toPartsUtc = (self: DateTime): DateTime.PartsWithWeekday => {
   if (self.partsUtc !== undefined) {
     return self.partsUtc
   }
@@ -1147,9 +1177,9 @@ export const toPartsUtc = (self: DateTime): DateTime.Parts => {
  * assert.strictEqual(year, 2024)
  */
 export const getPartUtc: {
-  (part: keyof DateTime.Parts): (self: DateTime) => number
-  (self: DateTime, part: keyof DateTime.Parts): number
-} = dual(2, (self: DateTime, part: keyof DateTime.Parts): number => toPartsUtc(self)[part])
+  (part: keyof DateTime.PartsWithWeekday): (self: DateTime) => number
+  (self: DateTime, part: keyof DateTime.PartsWithWeekday): number
+} = dual(2, (self: DateTime, part: keyof DateTime.PartsWithWeekday): number => toPartsUtc(self)[part])
 
 /**
  * Get a part of a `DateTime` as a number.
@@ -1166,11 +1196,11 @@ export const getPartUtc: {
  * assert.strictEqual(year, 2024)
  */
 export const getPart: {
-  (part: keyof DateTime.Parts): (self: DateTime) => number
-  (self: DateTime, part: keyof DateTime.Parts): number
-} = dual(2, (self: DateTime, part: keyof DateTime.Parts): number => toParts(self)[part])
+  (part: keyof DateTime.PartsWithWeekday): (self: DateTime) => number
+  (self: DateTime, part: keyof DateTime.PartsWithWeekday): number
+} = dual(2, (self: DateTime, part: keyof DateTime.PartsWithWeekday): number => toParts(self)[part])
 
-const setPartsDate = (date: Date, parts: Partial<DateTime.Parts>): void => {
+const setPartsDate = (date: Date, parts: Partial<DateTime.PartsWithWeekday>): void => {
   if (parts.year !== undefined) {
     date.setUTCFullYear(parts.year)
   }
@@ -1207,11 +1237,12 @@ const setPartsDate = (date: Date, parts: Partial<DateTime.Parts>): void => {
  * @category parts
  */
 export const setParts: {
-  (parts: Partial<DateTime.Parts>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
-  <A extends DateTime>(self: A, parts: Partial<DateTime.Parts>): DateTime.PreserveZone<A>
+  (parts: Partial<DateTime.PartsWithWeekday>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime>(self: A, parts: Partial<DateTime.PartsWithWeekday>): DateTime.PreserveZone<A>
 } = dual(
   2,
-  (self: DateTime, parts: Partial<DateTime.Parts>): DateTime => mutate(self, (date) => setPartsDate(date, parts))
+  (self: DateTime, parts: Partial<DateTime.PartsWithWeekday>): DateTime =>
+    mutate(self, (date) => setPartsDate(date, parts))
 )
 
 /**
@@ -1221,11 +1252,12 @@ export const setParts: {
  * @category parts
  */
 export const setPartsUtc: {
-  (parts: Partial<DateTime.Parts>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
-  <A extends DateTime>(self: A, parts: Partial<DateTime.Parts>): DateTime.PreserveZone<A>
+  (parts: Partial<DateTime.PartsWithWeekday>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime>(self: A, parts: Partial<DateTime.PartsWithWeekday>): DateTime.PreserveZone<A>
 } = dual(
   2,
-  (self: DateTime, parts: Partial<DateTime.Parts>): DateTime => mutateUtc(self, (date) => setPartsDate(date, parts))
+  (self: DateTime, parts: Partial<DateTime.PartsWithWeekday>): DateTime =>
+    mutateUtc(self, (date) => setPartsDate(date, parts))
 )
 
 // =============================================================================
@@ -1447,7 +1479,7 @@ const calculateNamedOffset = (adjustedMillis: number, zone: TimeZone.Named): num
 }
 
 /**
- * Modify a `DateTime` by applying a function to the underlying `Date`.
+ * Modify a `DateTime` by applying a function to a cloned `Date` instance.
  *
  * The `Date` will first have the time zone applied if possible, and then be
  * converted back to a `DateTime` within the same time zone.
@@ -1471,7 +1503,7 @@ export const mutate: {
 })
 
 /**
- * Modify a `DateTime` by applying a function to the underlying UTC `Date`.
+ * Modify a `DateTime` by applying a function to a cloned UTC `Date` instance.
  *
  * @since 3.6.0
  * @category mapping
@@ -1612,7 +1644,9 @@ export const subtractDuration: {
     mapEpochMillis(self, (millis) => millis - Duration.toMillis(duration))
 )
 
-const addMillis = (date: DateTime, amount: number): DateTime => mapEpochMillis(date, (millis) => millis + amount)
+const addMillis = (date: Date, amount: number): void => {
+  date.setTime(date.getTime() + amount)
+}
 
 /**
  * Add the given `amount` of `unit`'s to a `DateTime`.
@@ -1627,56 +1661,52 @@ const addMillis = (date: DateTime, amount: number): DateTime => mapEpochMillis(d
  *
  * // add 5 minutes
  * DateTime.unsafeMake(0).pipe(
- *   DateTime.add(5, "minutes")
+ *   DateTime.add({ minutes: 5 })
  * )
  */
 export const add: {
-  (amount: number, unit: DateTime.Unit): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
-  <A extends DateTime>(self: A, amount: number, unit: DateTime.Unit): DateTime.PreserveZone<A>
-} = dual(3, (self: DateTime, amount: number, unit: DateTime.Unit): DateTime => {
-  switch (unit) {
-    case "millis":
-    case "milli":
-      return addMillis(self, amount)
-    case "seconds":
-    case "second":
-      return addMillis(self, amount * 1000)
-    case "minutes":
-    case "minute":
-      return addMillis(self, amount * 60 * 1000)
-    case "hours":
-    case "hour":
-      return addMillis(self, amount * 60 * 60 * 1000)
-  }
-  return mutate(self, (date) => {
-    switch (unit) {
-      case "days":
-      case "day": {
-        date.setUTCDate(date.getUTCDate() + amount)
-        return date
-      }
-      case "weeks":
-      case "week": {
-        date.setUTCDate(date.getUTCDate() + amount * 7)
-        return date
-      }
-      case "months":
-      case "month": {
-        const day = date.getUTCDate()
-        date.setUTCMonth(date.getUTCMonth() + amount + 1, 0)
-        if (day < date.getUTCDate()) {
-          date.setUTCDate(day)
-        }
-        return date
-      }
-      case "years":
-      case "year": {
-        date.setUTCFullYear(date.getUTCFullYear() + amount)
-        return date
+  (parts: Partial<DateTime.PartsForMath>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime>(self: A, parts: Partial<DateTime.PartsForMath>): DateTime.PreserveZone<A>
+} = dual(2, (self: DateTime, parts: Partial<DateTime.PartsForMath>): DateTime =>
+  mutate(self, (date) => {
+    if (parts.millis) {
+      addMillis(date, parts.millis)
+    }
+    if (parts.seconds) {
+      addMillis(date, parts.seconds * 1000)
+    }
+    if (parts.minutes) {
+      addMillis(date, parts.minutes * 60 * 1000)
+    }
+    if (parts.hours) {
+      addMillis(date, parts.hours * 60 * 60 * 1000)
+    }
+    if (parts.days) {
+      date.setUTCDate(date.getUTCDate() + parts.days)
+    }
+    if (parts.weeks) {
+      date.setUTCDate(date.getUTCDate() + parts.weeks * 7)
+    }
+    if (parts.months) {
+      const day = date.getUTCDate()
+      date.setUTCMonth(date.getUTCMonth() + parts.months + 1, 0)
+      if (day < date.getUTCDate()) {
+        date.setUTCDate(day)
       }
     }
-  })
-})
+    if (parts.years) {
+      const day = date.getUTCDate()
+      const month = date.getUTCMonth()
+      date.setUTCFullYear(
+        date.getUTCFullYear() + parts.years,
+        month + 1,
+        0
+      )
+      if (day < date.getUTCDate()) {
+        date.setUTCDate(day)
+      }
+    }
+  }))
 
 /**
  * Subtract the given `amount` of `unit`'s from a `DateTime`.
@@ -1688,13 +1718,19 @@ export const add: {
  *
  * // subtract 5 minutes
  * DateTime.unsafeMake(0).pipe(
- *   DateTime.subtract(5, "minutes")
+ *   DateTime.subtract({ minutes: 5 })
  * )
  */
 export const subtract: {
-  (amount: number, unit: DateTime.Unit): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
-  <A extends DateTime>(self: A, amount: number, unit: DateTime.Unit): DateTime.PreserveZone<A>
-} = dual(3, (self: DateTime, amount: number, unit: DateTime.Unit): DateTime => add(self, -amount, unit))
+  (parts: Partial<DateTime.PartsForMath>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime>(self: A, parts: Partial<DateTime.PartsForMath>): DateTime.PreserveZone<A>
+} = dual(2, (self: DateTime, parts: Partial<DateTime.PartsForMath>): DateTime => {
+  const newParts = {} as Partial<Mutable<DateTime.PartsForMath>>
+  for (const key in parts) {
+    newParts[key as keyof DateTime.PartsForMath] = -1 * parts[key as keyof DateTime.PartsForMath]!
+  }
+  return add(self, newParts)
+})
 
 /**
  * Converts a `DateTime` to the start of the given `part`.

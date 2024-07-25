@@ -38,18 +38,18 @@ describe("DateTime", () => {
     it.effect("utc", () =>
       Effect.gen(function*() {
         const now = yield* DateTime.now
-        const tomorrow = DateTime.add(now, 1, "day")
+        const tomorrow = DateTime.add(now, { days: 1 })
         const diff = DateTime.distanceDurationEither(now, tomorrow)
         assert.deepStrictEqual(diff, Either.right(Duration.decode("1 day")))
       }))
 
     it("to month with less days", () => {
       const jan = DateTime.unsafeMake({ year: 2023, month: 1, day: 31 })
-      let feb = DateTime.add(jan, 1, "month")
+      let feb = DateTime.add(jan, { months: 1 })
       assert.strictEqual(feb.toJSON(), "2023-02-28T00:00:00.000Z")
 
       const mar = DateTime.unsafeMake({ year: 2023, month: 3, day: 31 })
-      feb = DateTime.add(mar, -1, "month")
+      feb = DateTime.subtract(mar, { months: 1 })
       assert.strictEqual(feb.toJSON(), "2023-02-28T00:00:00.000Z")
     })
 
@@ -59,15 +59,23 @@ describe("DateTime", () => {
         const now = yield* DateTime.nowInCurrentZone.pipe(
           DateTime.withCurrentZoneNamed("Pacific/Auckland")
         )
-        const future = DateTime.add(now, 6, "months")
+        const future = DateTime.add(now, { months: 6 })
         assert.strictEqual(DateTime.toDateUtc(future).toISOString(), "2024-06-30T12:00:00.000Z")
         assert.strictEqual(DateTime.toDate(future).toISOString(), "2024-07-01T00:00:00.000Z")
-        const plusOne = DateTime.add(future, 1, "day")
+        const plusOne = DateTime.add(future, { days: 1 })
         assert.strictEqual(DateTime.toDateUtc(plusOne).toISOString(), "2024-07-01T12:00:00.000Z")
         assert.strictEqual(DateTime.toDate(plusOne).toISOString(), "2024-07-02T00:00:00.000Z")
-        const minusOne = DateTime.add(plusOne, -1, "day")
+        const minusOne = DateTime.subtract(plusOne, { days: 1 })
         assert.strictEqual(DateTime.toDateUtc(minusOne).toISOString(), "2024-06-30T12:00:00.000Z")
         assert.strictEqual(DateTime.toDate(minusOne).toISOString(), "2024-07-01T00:00:00.000Z")
+      }))
+
+    it.effect("leap years", () =>
+      Effect.gen(function*() {
+        yield* setTo2024NZ
+        const now = yield* DateTime.make({ year: 2024, month: 2, day: 29 })
+        const future = DateTime.add(now, { years: 1 })
+        assert.strictEqual(DateTime.formatIso(future), "2025-02-28T00:00:00.000Z")
       }))
   })
 
