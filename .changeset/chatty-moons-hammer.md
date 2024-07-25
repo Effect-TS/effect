@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
 make List.Cons extend NonEmptyIterable
