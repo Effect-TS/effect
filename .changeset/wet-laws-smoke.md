@@ -1,6 +1,6 @@
 ---
 "@effect/platform": patch
-"effect": patch
+"effect": minor
 "@effect/cli": patch
 "@effect/rpc": patch
 ---
