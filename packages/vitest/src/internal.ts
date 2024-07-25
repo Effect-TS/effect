@@ -67,11 +67,13 @@ const makeTester = <R>(
   const f: Vitest.Vitest.Test<R> = (name, self, timeout) => V.it(name, run(self), timeout)
 
   const skip: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) => V.it.skip(name, run(self), timeout)
+  const skipIf: Vitest.Vitest.Tester<R>["skipIf"] = (condition) => (name, self, timeout) =>
+    V.it.skipIf(condition)(name, run(self), timeout)
   const only: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) => V.it.only(name, run(self), timeout)
   const each: Vitest.Vitest.Tester<R>["each"] = (cases) => (name, self, timeout) =>
     V.it.each(cases)(name, run(self), timeout)
 
-  return Object.assign(f, { skip, only, each })
+  return Object.assign(f, { skip, skipIf, only, each })
 }
 
 /** @internal */
