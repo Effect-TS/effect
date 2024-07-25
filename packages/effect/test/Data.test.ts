@@ -279,5 +279,24 @@ describe("Data", () => {
       expect(e.message).toStrictEqual("Oh no!")
       expect(e.a).toStrictEqual(1)
     })
+
+    it("toJSON includes all args", () => {
+      class MyError extends Data.Error<{ message: string; a: number; cause: string }> {}
+      const e = new MyError({ message: "Oh no!", a: 1, cause: "Boom" })
+      assert.deepStrictEqual(e.toJSON(), { message: "Oh no!", a: 1, cause: "Boom" })
+    })
+  })
+
+  describe("TaggedError", () => {
+    it("toJSON includes all args", () => {
+      class MyError extends Data.TaggedError("MyError")<{ message: string; a: number; cause: string }> {}
+      const e = new MyError({ message: "Oh no!", a: 1, cause: "Boom" })
+      assert.deepStrictEqual(e.toJSON(), {
+        _tag: "MyError",
+        message: "Oh no!",
+        a: 1,
+        cause: "Boom"
+      })
+    })
   })
 })
