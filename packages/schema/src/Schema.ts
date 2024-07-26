@@ -794,7 +794,7 @@ type TemplateLiteralParserParametersEncoded<T> = T extends [infer Head, ...infer
 
 /**
  * @category template literal
- * @since 0.69.2
+ * @since 0.69.3
  */
 export const TemplateLiteralParser = <
   T extends readonly [TemplateLiteralParserParameters, ...Array<TemplateLiteralParserParameters>]

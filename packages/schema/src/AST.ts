@@ -1989,7 +1989,7 @@ export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
 }
 
 /**
- * @since 0.69.2
+ * @since 0.69.3
  */
 export const getTemplateLiteralCapturingRegExp = (ast: TemplateLiteral): RegExp => {
   let pattern = `^`
