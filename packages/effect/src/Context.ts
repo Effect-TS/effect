@@ -30,6 +30,8 @@ export type TagTypeId = typeof TagTypeId
 export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
   readonly _tag: "Tag"
   readonly _op: "Tag"
+  readonly Service: Value
+  readonly Identifier: Id
   readonly [TagTypeId]: {
     readonly _Service: Types.Invariant<Value>
     readonly _Identifier: Types.Invariant<Id>
