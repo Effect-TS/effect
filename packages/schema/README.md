@@ -6927,6 +6927,25 @@ console.log(encode(Option.none())) // undefined
 console.log(encode(Option.some(1))) // "1"
 ```
 
+### OptionFromNonEmptyTrimmedString
+
+- **Decoding**
+
+  - `s` is converted to `Option.some(s)`, if `s.trim().length > 0`.
+  - `Option.none()` otherwise.
+
+- **Encoding**
+  - `Option.none()` is converted to `""`.
+  - `Option.some(s)` is converted to `s`.
+
+```ts
+import { Schema } from "@effect/schema"
+
+console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("")) // Option.none()
+console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)(" a ")) // Option.some("a")
+console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("a")) // Option.some("a")
+```
+
 ## Either
 
 ### Either
