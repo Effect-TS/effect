@@ -1,5 +1,15 @@
 # effect
 
+## 3.5.8
+
+### Patch Changes
+
+- [#3345](https://github.com/Effect-TS/effect/pull/3345) [`1ba640c`](https://github.com/Effect-TS/effect/commit/1ba640c702f187a866023bf043c26e25cce941ef) Thanks @mikearnaldi! - Fix typo propety to property
+
+- [#3349](https://github.com/Effect-TS/effect/pull/3349) [`c8c71bd`](https://github.com/Effect-TS/effect/commit/c8c71bd20eb87d23133dac6156b83bb08941597c) Thanks @tim-smart! - ensure all Data.Error arguments are preserved in .toJSON
+
+- [#3355](https://github.com/Effect-TS/effect/pull/3355) [`a26ce58`](https://github.com/Effect-TS/effect/commit/a26ce581ca7d407e1e81439b58c8045b3fa65231) Thanks @tim-smart! - fix Hash.number not returning unique values
+
 ## 3.5.7
 
 ### Patch Changes

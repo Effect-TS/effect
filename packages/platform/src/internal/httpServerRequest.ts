@@ -81,7 +81,11 @@ export const schemaHeaders = <A, I extends Readonly<Record<string, string | unde
 }
 
 /** @internal */
-export const schemaSearchParams = <A, I extends Readonly<Record<string, string | Array<string> | undefined>>, R>(
+export const schemaSearchParams = <
+  A,
+  I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>,
+  R
+>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {

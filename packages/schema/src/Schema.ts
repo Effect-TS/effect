@@ -84,6 +84,8 @@ export type TypeId = typeof TypeId
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly Type: A
   readonly Encoded: I
+  /** @since 0.69.3 */
+  readonly Context: R
   readonly ast: AST.AST
   /**
    * Merges a set of new annotations with existing ones, potentially overwriting
@@ -107,6 +109,7 @@ export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
     [TypeId] = variance
     static Type: A
     static Encoded: I
+    static Context: R
     static [TypeId] = variance
     static ast = ast
     static annotations(annotations: Annotations.Schema<A>) {
@@ -7249,6 +7252,9 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
     props: RequiredKeys<C> extends never ? void | Simplify<C> : Simplify<C>,
     options?: MakeOptions
   ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
+
+  /** @since 0.69.3 */
+  readonly ast: AST.Transformation
 
   make<Args extends Array<any>, X>(this: { new(...args: Args): X }, ...args: Args): X
 

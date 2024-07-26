@@ -530,12 +530,17 @@ export const Error: new<A extends Record<string, any> = {}>(
   args: Types.Equals<A, {}> extends true ? void
     : { readonly [P in keyof A]: A[P] }
 ) => Cause.YieldableError & Readonly<A> = (function() {
+  const plainArgsSymbol = Symbol.for("effect/Data/Error/plainArgs")
   return class Base extends core.YieldableError {
     constructor(args: any) {
       super(args?.message, args?.cause ? { cause: args.cause } : undefined)
       if (args) {
         Object.assign(this, args)
+        Object.defineProperty(this, plainArgsSymbol, { value: args, enumerable: false })
       }
+    }
+    toJSON() {
+      return { ...(this as any)[plainArgsSymbol], ...this }
     }
   } as any
 })()
