@@ -454,23 +454,23 @@ export const as = dual<
 >(2, <A, E, R, B>(self: Stream.Stream<A, E, R>, value: B): Stream.Stream<B, E, R> => map(self, () => value))
 
 const queueFromBufferOptions = <A, E>(
-  bufferSize?: number | "unbounded" | {
+  options?: {
+    readonly bufferSize: "unbounded"
+  } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   } | undefined
 ): Effect.Effect<Queue.Queue<Take.Take<A, E>>> => {
-  if (bufferSize === "unbounded") {
+  if (options?.bufferSize === "unbounded") {
     return Queue.unbounded()
-  } else if (typeof bufferSize === "number" || bufferSize === undefined) {
-    return Queue.bounded(bufferSize ?? 16)
   }
-  switch (bufferSize.strategy) {
+  switch (options?.strategy) {
     case "dropping":
-      return Queue.dropping(bufferSize.bufferSize ?? 16)
+      return Queue.dropping(options.bufferSize ?? 16)
     case "sliding":
-      return Queue.sliding(bufferSize.bufferSize ?? 16)
+      return Queue.sliding(options.bufferSize ?? 16)
     default:
-      return Queue.bounded(bufferSize.bufferSize ?? 16)
+      return Queue.bounded(options?.bufferSize ?? 16)
   }
 }
 
@@ -479,13 +479,15 @@ export const _async = <A, E = never, R = never>(
   register: (
     emit: Emit.Emit<R, E, A, void>
   ) => Effect.Effect<void, never, R> | void,
-  bufferSize?: number | "unbounded" | {
+  options?: {
+    readonly bufferSize: "unbounded"
+  } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   } | undefined
 ): Stream.Stream<A, E, R> =>
   Effect.acquireRelease(
-    queueFromBufferOptions<A, E>(bufferSize),
+    queueFromBufferOptions<A, E>(options),
     (queue) => Queue.shutdown(queue)
   ).pipe(
     Effect.flatMap((output) =>
@@ -534,14 +536,16 @@ export const _async = <A, E = never, R = never>(
 /** @internal */
 export const asyncEffect = <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R>,
-  bufferSize?: number | "unbounded" | {
+  options?: {
+    readonly bufferSize: "unbounded"
+  } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   } | undefined
 ): Stream.Stream<A, E, R> =>
   pipe(
     Effect.acquireRelease(
-      queueFromBufferOptions<A, E>(bufferSize),
+      queueFromBufferOptions<A, E>(options),
       (queue) => Queue.shutdown(queue)
     ),
     Effect.flatMap((output) =>
@@ -637,14 +641,16 @@ export const asyncPush = <A, E = never, R = never>(
 /** @internal */
 export const asyncScoped = <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R | Scope.Scope>,
-  bufferSize?: number | "unbounded" | {
+  options?: {
+    readonly bufferSize: "unbounded"
+  } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   } | undefined
 ): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
   pipe(
     Effect.acquireRelease(
-      queueFromBufferOptions<A, E>(bufferSize),
+      queueFromBufferOptions<A, E>(options),
       (queue) => Queue.shutdown(queue)
     ),
     Effect.flatMap((output) =>
