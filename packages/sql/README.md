@@ -198,7 +198,7 @@ export const make = (limit: number) =>
 ### Unsafe interpolation
 
 ```ts
-import { Effect } from "effect/Effect"
+import { Effect } from "effect"
 import { SqlClient } from "@effect/sql"
 
 type OrderBy = "id" | "created_at" | "updated_at"
