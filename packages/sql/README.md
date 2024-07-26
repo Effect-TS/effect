@@ -6,7 +6,6 @@ A SQL toolkit for Effect.
 
 ```ts
 import { Config, Effect, Struct, pipe } from "effect"
-import * as Sql from "@effect/sql"
 import { PgClient } from "@effect/sql-pg"
 import { SqlClient } from "@effect/sql"
 
