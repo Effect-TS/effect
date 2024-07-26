@@ -36,6 +36,7 @@ export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
     readonly _Service: Types.Invariant<Value>
     readonly _Identifier: Types.Invariant<Id>
   }
+  readonly Service: Value
   of(self: Value): Value
   context(self: Value): Context<Id>
   readonly stack?: string | undefined
@@ -51,7 +52,7 @@ export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
  */
 export interface TagClassShape<Id, Shape> {
   readonly [TagTypeId]: TagTypeId
-  readonly Type: Shape
+  readonly Shape: Shape
   readonly Id: Id
 }
 
@@ -75,7 +76,7 @@ export interface TagUnify<A extends { [Unify.typeSymbol]?: any }> {
  * @category models
  * @since 2.0.0
  */
-export interface TagUnifyIgnore {}
+export interface TagUnifyIgnore { }
 
 /**
  * @since 2.0.0

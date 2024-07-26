@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as Error from "../Error.js"
-import type { File, IFileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem.js"
+import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem.js"
 
 /** @internal */
 export const Size = (bytes: SizeInput) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_
@@ -31,8 +31,8 @@ export const PiB = (n: number) => Size(BigInt(n) * bigintPiB)
 
 /** @internal */
 export const make = (
-  impl: Omit<IFileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
-): IFileSystem => {
+  impl: Omit<typeof FileSystem.Service, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
+): typeof FileSystem.Service => {
   return {
     ...impl,
     exists: (path) =>
