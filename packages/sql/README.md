@@ -17,12 +17,10 @@ const SqlLive = PgClient.layer({
 const program = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
 
-  const people = yield* _(
-    sql<{
-      readonly id: number
-      readonly name: string
-    }>`SELECT id, name FROM people`
-  )
+  const people = yield* sql<{
+    readonly id: number
+    readonly name: string
+  }>`SELECT id, name FROM people`
 
   yield* Effect.log(`Got ${people.length} results!`)
 })
@@ -258,10 +256,10 @@ export const make = (names: string[], cursor: Date) =>
 
 ```ts
 import { Effect } from "effect"
-import { SqlClient } from '@effect/sql'
+import { SqlClient } from "@effect/sql"
 
 export const make = (names: string[], afterCursor: Date, beforeCursor: Date) =>
-  Effect.gen(function* _) {
+  Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
 
     const statement = sql`SELECT * FROM people WHERE ${sql.or([
