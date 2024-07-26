@@ -1,17 +1,12 @@
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
-import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity, pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as Error from "../Error.js"
-import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem.js"
-
-/** @internal */
-export const tag = GenericTag<FileSystem>("@effect/platform/FileSystem")
+import type { File, IFileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem.js"
 
 /** @internal */
 export const Size = (bytes: SizeInput) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_
@@ -36,9 +31,9 @@ export const PiB = (n: number) => Size(BigInt(n) * bigintPiB)
 
 /** @internal */
 export const make = (
-  impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
-): FileSystem => {
-  return tag.of({
+  impl: Omit<IFileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
+): IFileSystem => {
+  return {
     ...impl,
     exists: (path) =>
       pipe(
@@ -84,7 +79,7 @@ export const make = (
         }),
         (_) => impl.writeFile(path, _, options)
       )
-  })
+  }
 }
 
 const notFound = (method: string, path: string) =>
@@ -98,8 +93,8 @@ const notFound = (method: string, path: string) =>
 
 /** @internal */
 export const makeNoop = (
-  fileSystem: Partial<FileSystem>
-): FileSystem => {
+  fileSystem: Partial<IFileSystem>
+): IFileSystem => {
   return {
     access(path) {
       return Effect.fail(notFound("access", path))
@@ -191,11 +186,6 @@ export const makeNoop = (
     ...fileSystem
   }
 }
-
-/** @internal */
-export const layerNoop = (
-  fileSystem: Partial<FileSystem>
-): Layer.Layer<FileSystem> => Layer.succeed(tag, makeNoop(fileSystem))
 
 /** @internal */
 const stream = (file: File, {

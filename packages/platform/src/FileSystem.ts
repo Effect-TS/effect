@@ -2,11 +2,10 @@
  * @since 1.0.0
  */
 import * as Brand from "effect/Brand"
-import type { Tag } from "effect/Context"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
-import type * as Effect from "effect/Effect"
-import type { Layer } from "effect/Layer"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import type { Option } from "effect/Option"
 import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
@@ -18,7 +17,7 @@ import * as internal from "./internal/fileSystem.js"
  * @since 1.0.0
  * @category model
  */
-export interface FileSystem {
+export interface IFileSystem {
   /**
    * Check if a file can be accessed.
    * You can optionally specify the level of access to check for.
@@ -252,6 +251,15 @@ export interface FileSystem {
 }
 
 /**
+ * @since 1.0.0
+ * @category tag
+ */
+export class FileSystem extends Effect.Tag("@effect/platform/FileSystem")<
+  FileSystem,
+  IFileSystem
+>() {}
+
+/**
  * Represents a size in bytes.
  *
  * @since 1.0.0
@@ -436,15 +444,14 @@ export interface WriteFileStringOptions {
  * @since 1.0.0
  * @category tag
  */
-export const FileSystem: Tag<FileSystem, FileSystem> = internal.tag
 
 /**
  * @since 1.0.0
  * @category constructor
  */
 export const make: (
-  impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
-) => FileSystem = internal.make
+  impl: Omit<IFileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
+) => IFileSystem = internal.make
 
 /**
  * Create a no-op file system that can be used for testing.
@@ -452,7 +459,7 @@ export const make: (
  * @since 1.0.0
  * @category constructor
  */
-export const makeNoop: (fileSystem: Partial<FileSystem>) => FileSystem = internal.makeNoop
+export const makeNoop: (fileSystem: Partial<IFileSystem>) => IFileSystem = internal.makeNoop
 
 /**
  * Create a no-op file system that can be used for testing.
@@ -460,7 +467,8 @@ export const makeNoop: (fileSystem: Partial<FileSystem>) => FileSystem = interna
  * @since 1.0.0
  * @category layers
  */
-export const layerNoop: (fileSystem: Partial<FileSystem>) => Layer<FileSystem> = internal.layerNoop
+export const layerNoop = (fileSystem: Partial<IFileSystem>): Layer.Layer<FileSystem> =>
+  Layer.succeed(FileSystem, makeNoop(fileSystem))
 
 /**
  * @since 1.0.0

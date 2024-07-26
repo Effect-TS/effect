@@ -1,4 +1,4 @@
-import * as FileSystem from "@effect/platform/FileSystem"
+import { FileSystem } from "@effect/platform/FileSystem"
 import * as Schema from "@effect/schema/Schema"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
@@ -238,20 +238,12 @@ export const validate = dual<
   (
     value: Option.Option<string>,
     config: CliConfig.CliConfig
-  ) => <A>(self: Primitive.Primitive<A>) => Effect.Effect<
-    A,
-    string,
-    FileSystem.FileSystem
-  >,
+  ) => <A>(self: Primitive.Primitive<A>) => Effect.Effect<A, string, FileSystem>,
   <A>(
     self: Primitive.Primitive<A>,
     value: Option.Option<string>,
     config: CliConfig.CliConfig
-  ) => Effect.Effect<
-    A,
-    string,
-    FileSystem.FileSystem
-  >
+  ) => Effect.Effect<A, string, FileSystem>
 >(3, (self, value, config) => validateInternal(self as Instruction, value, config))
 
 /** @internal */
@@ -395,7 +387,7 @@ const validateInternal = (
   self: Instruction,
   value: Option.Option<string>,
   config: CliConfig.CliConfig
-): Effect.Effect<any, string, FileSystem.FileSystem> => {
+): Effect.Effect<any, string, FileSystem> => {
   switch (self._tag) {
     case "Bool": {
       return Option.map(value, (str) => InternalCliConfig.normalizeCase(config, str)).pipe(
@@ -443,24 +435,22 @@ const validateInternal = (
       return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(intFromString))
     }
     case "Path": {
-      return Effect.flatMap(FileSystem.FileSystem, (fileSystem) => {
-        const errorMsg = "Path options do not have a default value"
-        return Effect.orElseFail(value, () => errorMsg).pipe(
-          Effect.tap((path) =>
-            Effect.orDie(fileSystem.exists(path)).pipe(
-              Effect.tap((pathExists) =>
-                validatePathExistence(path, self.pathExists, pathExists).pipe(
-                  Effect.zipRight(
-                    validatePathType(path, self.pathType, fileSystem).pipe(
-                      Effect.when(() => self.pathExists !== "no" && pathExists)
-                    )
+      const errorMsg = "Path options do not have a default value"
+      return Effect.orElseFail(value, () => errorMsg).pipe(
+        Effect.tap((path) =>
+          Effect.orDie(FileSystem.exists(path)).pipe(
+            Effect.tap((pathExists) =>
+              validatePathExistence(path, self.pathExists, pathExists).pipe(
+                Effect.zipRight(
+                  validatePathType(path, self.pathType).pipe(
+                    Effect.when(() => self.pathExists !== "no" && pathExists)
                   )
                 )
               )
             )
           )
         )
-      })
+      )
     }
     case "Redacted": {
       return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.String)).pipe(
@@ -511,12 +501,11 @@ const validatePathExistence = (
 
 const validatePathType = (
   path: string,
-  pathType: Primitive.Primitive.PathType,
-  fileSystem: FileSystem.FileSystem
-): Effect.Effect<void, string> => {
+  pathType: Primitive.Primitive.PathType
+): Effect.Effect<void, string, FileSystem> => {
   switch (pathType) {
     case "file": {
-      const checkIsFile = fileSystem.stat(path).pipe(
+      const checkIsFile = FileSystem.stat(path).pipe(
         Effect.map((info) => info.type === "File"),
         Effect.orDie
       )
@@ -526,7 +515,7 @@ const validatePathType = (
       )
     }
     case "directory": {
-      const checkIsDirectory = fileSystem.stat(path).pipe(
+      const checkIsDirectory = FileSystem.stat(path).pipe(
         Effect.map((info) => info.type === "Directory"),
         Effect.orDie
       )

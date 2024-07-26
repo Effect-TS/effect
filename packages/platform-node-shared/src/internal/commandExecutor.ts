@@ -51,7 +51,7 @@ const ProcessProto = {
 }
 
 const runCommand =
-  (fileSystem: FileSystem.FileSystem) =>
+  (fileSystem: FileSystem.IFileSystem) =>
   (command: Command.Command): Effect.Effect<CommandExecutor.Process, Error.PlatformError, Scope.Scope> => {
     switch (command._tag) {
       case "StandardCommand": {
