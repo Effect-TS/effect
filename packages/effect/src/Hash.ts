@@ -111,7 +111,7 @@ export const number = (n: number) => {
   while (n > 0xffffffff) {
     h ^= n /= 0xffffffff
   }
-  return optimize(n)
+  return optimize(h)
 }
 
 /**

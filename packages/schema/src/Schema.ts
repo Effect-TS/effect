@@ -7242,6 +7242,9 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
     options?: MakeOptions
   ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
 
+  /** @since 0.69.3 */
+  readonly ast: AST.Transformation
+
   make<Args extends Array<any>, X>(this: { new(...args: Args): X }, ...args: Args): X
 
   annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Simplify<I>, R>
