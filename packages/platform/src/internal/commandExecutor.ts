@@ -1,41 +1,35 @@
 import * as Brand from "effect/Brand"
 import * as Chunk from "effect/Chunk"
-import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import type * as _CommandExecutor from "../CommandExecutor.js"
+import type * as CommandExecutor from "../CommandExecutor.js"
 
 /** @internal */
-export const TypeId: _CommandExecutor.TypeId = Symbol.for("@effect/platform/CommandExecutor") as _CommandExecutor.TypeId
-
-/** @internal */
-export const ProcessTypeId: _CommandExecutor.ProcessTypeId = Symbol.for(
+export const ProcessTypeId: CommandExecutor.ProcessTypeId = Symbol.for(
   "@effect/platform/Process"
-) as _CommandExecutor.ProcessTypeId
+) as CommandExecutor.ProcessTypeId
 
 /** @internal */
-export const ExitCode = Brand.nominal<_CommandExecutor.ExitCode>()
+export const ExitCode = Brand.nominal<CommandExecutor.ExitCode>()
 
 /** @internal */
-export const ProcessId = Brand.nominal<_CommandExecutor.Process.Id>()
+export const ProcessId = Brand.nominal<CommandExecutor.Process.Id>()
 
 /** @internal */
-export const CommandExecutor = GenericTag<_CommandExecutor.CommandExecutor>("@effect/platform/CommandExecutor")
-
-/** @internal */
-export const makeExecutor = (start: _CommandExecutor.CommandExecutor["start"]): _CommandExecutor.CommandExecutor => {
-  const stream: _CommandExecutor.CommandExecutor["stream"] = (command) =>
+export const makeExecutor = (
+  start: typeof CommandExecutor.CommandExecutor.Service["start"]
+): typeof CommandExecutor.CommandExecutor.Service => {
+  const stream: typeof CommandExecutor.CommandExecutor.Service["stream"] = (command) =>
     Stream.unwrapScoped(Effect.map(start(command), (process) => process.stdout))
-  const streamLines: _CommandExecutor.CommandExecutor["streamLines"] = (command, encoding) => {
+  const streamLines: typeof CommandExecutor.CommandExecutor.Service["streamLines"] = (command, encoding) => {
     const decoder = new TextDecoder(encoding)
     return Stream.splitLines(
       Stream.mapChunks(stream(command), Chunk.map((bytes) => decoder.decode(bytes)))
     )
   }
   return {
-    [TypeId]: TypeId,
     start,
     exitCode: (command) => Effect.scoped(Effect.flatMap(start(command), (process) => process.exitCode)),
     stream,

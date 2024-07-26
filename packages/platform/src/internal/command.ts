@@ -1,6 +1,6 @@
 import type * as ReadonlyArray from "effect/Array"
 import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import type * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Inspectable from "effect/Inspectable"
@@ -9,9 +9,9 @@ import { pipeArguments } from "effect/Pipeable"
 import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as Command from "../Command.js"
-import type * as CommandExecutor from "../CommandExecutor.js"
+import type { ExitCode, Process } from "../CommandExecutor.js"
+import { CommandExecutor } from "../CommandExecutor.js"
 import type { PlatformError } from "../Error.js"
-import * as commandExecutor from "./commandExecutor.js"
 
 /** @internal */
 export const CommandTypeId: Command.CommandTypeId = Symbol.for("@effect/platform/Command") as Command.CommandTypeId
@@ -46,8 +46,7 @@ export const env: {
 /** @internal */
 export const exitCode = (
   self: Command.Command
-): Effect.Effect<CommandExecutor.ExitCode, PlatformError, CommandExecutor.CommandExecutor> =>
-  Effect.flatMap(commandExecutor.CommandExecutor, (executor) => executor.exitCode(self))
+): Effect.Effect<ExitCode, PlatformError, CommandExecutor> => CommandExecutor.exitCode(self)
 
 /** @internal */
 export const feed = dual<
@@ -98,8 +97,7 @@ export const runInShell = dual<
 export const lines = (
   command: Command.Command,
   encoding = "utf-8"
-): Effect.Effect<ReadonlyArray<string>, PlatformError, CommandExecutor.CommandExecutor> =>
-  Effect.flatMap(commandExecutor.CommandExecutor, (executor) => executor.lines(command, encoding))
+): Effect.Effect<ReadonlyArray<string>, PlatformError, CommandExecutor> => CommandExecutor.lines(command, encoding)
 
 const Proto = {
   [CommandTypeId]: CommandTypeId,
@@ -234,31 +232,27 @@ export const stdout: {
 /** @internal */
 export const start = (
   command: Command.Command
-): Effect.Effect<CommandExecutor.Process, PlatformError, CommandExecutor.CommandExecutor | Scope> =>
-  Effect.flatMap(commandExecutor.CommandExecutor, (executor) => executor.start(command))
+): Effect.Effect<Process, PlatformError, CommandExecutor | Scope> => CommandExecutor.start(command)
 
 /** @internal */
 export const stream = (
   command: Command.Command
-): Stream.Stream<Uint8Array, PlatformError, CommandExecutor.CommandExecutor> =>
-  Stream.flatMap(commandExecutor.CommandExecutor, (process) => process.stream(command))
+): Stream.Stream<Uint8Array, PlatformError, CommandExecutor> => Stream.unwrap(CommandExecutor.stream(command))
 
 /** @internal */
 export const streamLines = (
   command: Command.Command
-): Stream.Stream<string, PlatformError, CommandExecutor.CommandExecutor> =>
-  Stream.flatMap(commandExecutor.CommandExecutor, (process) => process.streamLines(command))
+): Stream.Stream<string, PlatformError, CommandExecutor> => Stream.unwrap(CommandExecutor.streamLines(command))
 
 /** @internal */
 export const string = dual<
   (
     encoding?: string
-  ) => (command: Command.Command) => Effect.Effect<string, PlatformError, CommandExecutor.CommandExecutor>,
-  (command: Command.Command, encoding?: string) => Effect.Effect<string, PlatformError, CommandExecutor.CommandExecutor>
+  ) => (command: Command.Command) => Effect.Effect<string, PlatformError, CommandExecutor>,
+  (command: Command.Command, encoding?: string) => Effect.Effect<string, PlatformError, CommandExecutor>
 >(
   (args) => isCommand(args[0]),
-  (command, encoding) =>
-    Effect.flatMap(commandExecutor.CommandExecutor, (executor) => executor.string(command, encoding))
+  (command, encoding) => CommandExecutor.string(command, encoding)
 )
 
 /** @internal */

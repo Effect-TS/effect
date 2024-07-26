@@ -1,7 +1,7 @@
 import * as Command from "@effect/platform/Command"
 import * as CommandExecutor from "@effect/platform/CommandExecutor"
 import type * as Error from "@effect/platform/Error"
-import * as FileSystem from "@effect/platform/FileSystem"
+import { FileSystem } from "@effect/platform/FileSystem"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import { constUndefined, identity, pipe } from "effect/Function"
@@ -51,7 +51,7 @@ const ProcessProto = {
 }
 
 const runCommand =
-  (fileSystem: FileSystem.IFileSystem) =>
+  (fileSystem: typeof FileSystem.Service) =>
   (command: Command.Command): Effect.Effect<CommandExecutor.Process, Error.PlatformError, Scope.Scope> => {
     switch (command._tag) {
       case "StandardCommand": {
@@ -204,10 +204,9 @@ const runCommand =
   }
 
 /** @internal */
-export const layer: Layer.Layer<CommandExecutor.CommandExecutor, never, FileSystem.FileSystem> = Layer.effect(
+export const layer: Layer.Layer<CommandExecutor.CommandExecutor, never, FileSystem> = Layer.effect(
   CommandExecutor.CommandExecutor,
-  pipe(
-    FileSystem.FileSystem,
+  FileSystem.pipe(
     Effect.map((fileSystem) => CommandExecutor.makeExecutor(runCommand(fileSystem)))
   )
 )
