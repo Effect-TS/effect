@@ -81,15 +81,15 @@ Or you can rename the `sqlfx_migrations` table to `effect_sql_migrations`.
 
 #### The resolver & schema apis have moved
 
-- `sql.resolver` -> `Sql.SqlResolver.ordered`
-- `sql.resolverVoid` -> `Sql.SqlResolver.void`
-- `sql.resolverId` -> `Sql.SqlResolver.findById`
-- `sql.resolverIdMany` -> `Sql.SqlResolver.grouped`
+- `sql.resolver` -> `SqlResolver.ordered`
+- `sql.resolverVoid` -> `SqlResolver.void`
+- `sql.resolverId` -> `SqlResolver.findById`
+- `sql.resolverIdMany` -> `SqlResolver.grouped`
 - `sql.resolverSingle*` has been removed in favour of using the `effect/Cache` module with the schema apis
-- `sql.schema` -> `Sql.SqlShema.findAll`
-- `sql.schemaSingle` -> `Sql.SqlSchema.single`
-- `sql.schemaSingleOption` -> `Sql.SqlSchema.findOne`
-- `sql.schemaVoid` -> `Sql.SqlSchema.void`
+- `sql.schema` -> `SqlSchema.findAll`
+- `sql.schemaSingle` -> `SqlSchema.single`
+- `sql.schemaSingleOption` -> `SqlSchema.findOne`
+- `sql.schemaVoid` -> `SqlSchema.void`
 
 #### The array helper has moved
 
