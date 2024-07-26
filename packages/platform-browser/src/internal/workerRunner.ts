@@ -136,4 +136,4 @@ export const make = (self: MessagePort | Window) =>
 export const layerMessagePort = (port: MessagePort | Window) => Layer.succeed(Runner.PlatformRunner, make(port))
 
 /** @internal */
-export const layer = Layer.succeed(Runner.PlatformRunner, make(self))
+export const layer = Layer.sync(Runner.PlatformRunner, () => make(self))
