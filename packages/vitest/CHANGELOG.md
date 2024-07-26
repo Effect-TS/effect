@@ -1,5 +1,14 @@
 # @effect/vitest
 
+## 0.6.12
+
+### Patch Changes
+
+- [#3319](https://github.com/Effect-TS/effect/pull/3319) [`068e322`](https://github.com/Effect-TS/effect/commit/068e322ee1d3e110e82aa275359e5cd15c04ab81) Thanks @sukovanej! - Add `it.{method}.skipIf`.
+
+- Updated dependencies [[`1ba640c`](https://github.com/Effect-TS/effect/commit/1ba640c702f187a866023bf043c26e25cce941ef), [`c8c71bd`](https://github.com/Effect-TS/effect/commit/c8c71bd20eb87d23133dac6156b83bb08941597c), [`a26ce58`](https://github.com/Effect-TS/effect/commit/a26ce581ca7d407e1e81439b58c8045b3fa65231)]:
+  - effect@3.5.8
+
 ## 0.6.11
 
 ### Patch Changes
