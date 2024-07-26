@@ -220,6 +220,8 @@ export const makeManager = Effect.gen(function*() {
             executeRelease
           )
 
+        yield* Deferred.await(readyLatch)
+
         if (initialMessage) {
           yield* Effect.sync(initialMessage).pipe(
             Effect.flatMap(executeEffect),
