@@ -35,12 +35,28 @@ new S.String()
 // $ExpectType never
 hole<S.Schema.Encoded<typeof S.Never>>()
 
+// $ExpectType string
+hole<S.Schema.Encoded<typeof S.NumberFromString>>()
+
 // ---------------------------------------------
 // Schema.Type
 // ---------------------------------------------
 
 // $ExpectType never
 hole<S.Schema.Type<typeof S.Never>>()
+
+// $ExpectType number
+hole<S.Schema.Type<typeof S.NumberFromString>>()
+
+// ---------------------------------------------
+// Schema.Context
+// ---------------------------------------------
+
+// $ExpectType never
+hole<S.Schema.Context<typeof S.Never>>()
+
+// $ExpectType "ctx"
+hole<S.Schema.Context<S.Schema<number, string, "ctx">>>()
 
 // ---------------------------------------------
 // S.annotations

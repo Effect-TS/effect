@@ -84,6 +84,8 @@ export type TypeId = typeof TypeId
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly Type: A
   readonly Encoded: I
+  /** @since 0.69.3 */
+  readonly Context: R
   readonly ast: AST.AST
   /**
    * Merges a set of new annotations with existing ones, potentially overwriting
@@ -107,6 +109,7 @@ export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
     [TypeId] = variance
     static Type: A
     static Encoded: I
+    static Context: R
     static [TypeId] = variance
     static ast = ast
     static annotations(annotations: Annotations.Schema<A>) {
@@ -4314,6 +4317,24 @@ export class Trimmed extends String$.pipe(
 ) {}
 
 /**
+ * Useful for validating strings that must contain meaningful characters without
+ * leading or trailing whitespace.
+ *
+ * @example
+ * import { Schema } from "@effect/schema"
+ *
+ * console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("")) // Option.none()
+ * console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)(" a ")) // Option.none()
+ * console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("a")) // Option.some("a")
+ *
+ * @category string constructors
+ * @since 0.69.3
+ */
+export class NonEmptyTrimmedString extends Trimmed.pipe(
+  nonEmptyString({ identifier: "NonEmptyTrimmedString", title: "NonEmptyTrimmedString" })
+) {}
+
+/**
  * This schema allows removing whitespaces from the beginning and end of a string.
  *
  * @category string transformations
@@ -6147,6 +6168,30 @@ export const OptionFromUndefinedOr = <Value extends Schema.Any>(
     encode: option_.getOrUndefined
   })
 }
+
+/**
+ * Transforms strings into an Option type, effectively filtering out empty or
+ * whitespace-only strings by trimming them and checking their length. Returns
+ * `none` for invalid inputs and `some` for valid non-empty strings.
+ *
+ * @example
+ * import { Schema } from "@effect/schema"
+ *
+ * console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("")) // Option.none()
+ * console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)(" a ")) // Option.some("a")
+ * console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("a")) // Option.some("a")
+ *
+ * @category Option transformations
+ * @since 0.69.3
+ */
+export const OptionFromNonEmptyTrimmedString = transform(String$, OptionFromSelf(NonEmptyTrimmedString), {
+  strict: true,
+  decode: (s) => {
+    const out = s.trim()
+    return out.length === 0 ? option_.none() : option_.some(out)
+  },
+  encode: option_.getOrElse(() => "")
+})
 
 /**
  * @category Either utils
