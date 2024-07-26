@@ -8,6 +8,7 @@ import type * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/random.js"
+import type * as NonEmptyIterable from "./NonEmptyIterable.js"
 
 /**
  * @since 2.0.0
@@ -121,7 +122,8 @@ export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>
  */
 export const choice: <Self extends Iterable<unknown>>(
   elements: Self
-) => Self extends Array.NonEmptyReadonlyArray<infer A> ? Effect.Effect<A>
+) => Self extends NonEmptyIterable.NonEmptyIterable<infer A> ? Effect.Effect<A>
+  : Self extends Array.NonEmptyReadonlyArray<infer A> ? Effect.Effect<A, never>
   : Self extends Iterable<infer A> ? Effect.Effect<A, Cause.NoSuchElementException>
   : never = defaultServices.choice
 
