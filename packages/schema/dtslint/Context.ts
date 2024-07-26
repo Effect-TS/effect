@@ -412,3 +412,10 @@ declare const myRequest: MyRequest
 
 // $ExpectType Schema<Exit<boolean, number>, ExitEncoded<boolean, number, unknown>, "bContext" | "cContext">
 Serializable.exitSchema(myRequest)
+
+// ---------------------------------------------
+// TemplateLiteralParser
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly [string, "a", string], `${string}a${string}`, "a" | "b">
+S.TemplateLiteralParser(hole<S.Schema<string, string, "a">>(), "a", hole<S.Schema<string, string, "b">>())
