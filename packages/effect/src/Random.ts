@@ -117,13 +117,13 @@ export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>
  *   console.log(randomItem)
  * })
  *
- * @since 2.0.0
+ * @since 3.6.0
  * @category constructors
  */
 export const choice: <Self extends Iterable<unknown>>(
   elements: Self
 ) => Self extends NonEmptyIterable.NonEmptyIterable<infer A> ? Effect.Effect<A>
-  : Self extends Array.NonEmptyReadonlyArray<infer A> ? Effect.Effect<A, never>
+  : Self extends Array.NonEmptyReadonlyArray<infer A> ? Effect.Effect<A>
   : Self extends Iterable<infer A> ? Effect.Effect<A, Cause.NoSuchElementException>
   : never = defaultServices.choice
 
