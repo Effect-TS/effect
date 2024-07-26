@@ -37,9 +37,9 @@ For example, to create the client Layer, instead of:
 
 ```ts
 import { Config } from "effect"
-import * as Pg from "@sqlfx/pg"
+import { PgClient } from "@sqlfx/pg"
 
-const SqlLive = Pg.makeLayer({
+const SqlLive = PgClient.makeLayer({
   database: Config.succeed("effect_pg_dev")
 })
 ```
@@ -198,7 +198,7 @@ export const make = (limit: number) =>
 ### Unsafe interpolation
 
 ```ts
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { SqlClient } from "@effect/sql"
 
 type OrderBy = "id" | "created_at" | "updated_at"
