@@ -4291,7 +4291,7 @@ export class Trimmed extends String$.pipe(
  * console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("a")) // Option.some("a")
  *
  * @category string constructors
- * @since 0.69.2
+ * @since 0.69.3
  */
 export class NonEmptyTrimmedString extends Trimmed.pipe(
   nonEmptyString({ identifier: "NonEmptyTrimmedString", title: "NonEmptyTrimmedString" })
@@ -6145,7 +6145,7 @@ export const OptionFromUndefinedOr = <Value extends Schema.Any>(
  * console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("a")) // Option.some("a")
  *
  * @category Option transformations
- * @since 0.69.2
+ * @since 0.69.3
  */
 export const OptionFromNonEmptyTrimmedString = transform(String$, OptionFromSelf(NonEmptyTrimmedString), {
   strict: true,
