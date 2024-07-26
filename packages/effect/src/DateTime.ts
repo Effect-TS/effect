@@ -1734,6 +1734,47 @@ export const subtract: {
   return add(self, newParts)
 })
 
+function startOfDate(date: Date, part: DateTime.UnitSingular, options?: {
+  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+}) {
+  switch (part) {
+    case "second": {
+      date.setUTCMilliseconds(0)
+      break
+    }
+    case "minute": {
+      date.setUTCSeconds(0, 0)
+      break
+    }
+    case "hour": {
+      date.setUTCMinutes(0, 0, 0)
+      break
+    }
+    case "day": {
+      date.setUTCHours(0, 0, 0, 0)
+      break
+    }
+    case "week": {
+      const weekStartsOn = options?.weekStartsOn ?? 0
+      const day = date.getUTCDay()
+      const diff = (day - weekStartsOn + 7) % 7
+      date.setUTCDate(date.getUTCDate() - diff)
+      date.setUTCHours(0, 0, 0, 0)
+      break
+    }
+    case "month": {
+      date.setUTCDate(1)
+      date.setUTCHours(0, 0, 0, 0)
+      break
+    }
+    case "year": {
+      date.setUTCMonth(0, 1)
+      date.setUTCHours(0, 0, 0, 0)
+      break
+    }
+  }
+}
+
 /**
  * Converts a `DateTime` to the start of the given `part`.
  *
@@ -1760,45 +1801,48 @@ export const startOf: {
   }): DateTime.PreserveZone<A>
 } = dual(isDateTimeArgs, (self: DateTime, part: DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}): DateTime =>
-  mutate(self, (date) => {
-    switch (part) {
-      case "second": {
-        date.setUTCMilliseconds(0)
-        break
-      }
-      case "minute": {
-        date.setUTCSeconds(0, 0)
-        break
-      }
-      case "hour": {
-        date.setUTCMinutes(0, 0, 0)
-        break
-      }
-      case "day": {
-        date.setUTCHours(0, 0, 0, 0)
-        break
-      }
-      case "week": {
-        const weekStartsOn = options?.weekStartsOn ?? 0
-        const day = date.getUTCDay()
-        const diff = (day - weekStartsOn + 7) % 7
-        date.setUTCDate(date.getUTCDate() - diff)
-        date.setUTCHours(0, 0, 0, 0)
-        break
-      }
-      case "month": {
-        date.setUTCDate(1)
-        date.setUTCHours(0, 0, 0, 0)
-        break
-      }
-      case "year": {
-        date.setUTCMonth(0, 1)
-        date.setUTCHours(0, 0, 0, 0)
-        break
-      }
+}): DateTime => mutate(self, (date) => startOfDate(date, part, options)))
+
+function endOfDate(date: Date, part: DateTime.UnitSingular, options?: {
+  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+}) {
+  switch (part) {
+    case "second": {
+      date.setUTCMilliseconds(999)
+      break
     }
-  }))
+    case "minute": {
+      date.setUTCSeconds(59, 999)
+      break
+    }
+    case "hour": {
+      date.setUTCMinutes(59, 59, 999)
+      break
+    }
+    case "day": {
+      date.setUTCHours(23, 59, 59, 999)
+      break
+    }
+    case "week": {
+      const weekStartsOn = options?.weekStartsOn ?? 0
+      const day = date.getUTCDay()
+      const diff = (day - weekStartsOn + 7) % 7
+      date.setUTCDate(date.getUTCDate() - diff + 6)
+      date.setUTCHours(23, 59, 59, 999)
+      break
+    }
+    case "month": {
+      date.setUTCMonth(date.getUTCMonth() + 1, 0)
+      date.setUTCHours(23, 59, 59, 999)
+      break
+    }
+    case "year": {
+      date.setUTCMonth(11, 31)
+      date.setUTCHours(23, 59, 59, 999)
+      break
+    }
+  }
+}
 
 /**
  * Converts a `DateTime` to the end of the given `part`.
@@ -1826,43 +1870,50 @@ export const endOf: {
   }): DateTime.PreserveZone<A>
 } = dual(isDateTimeArgs, (self: DateTime, part: DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+}): DateTime => mutate(self, (date) => endOfDate(date, part, options)))
+
+/**
+ * Converts a `DateTime` to the nearest given `part`.
+ *
+ * If the part is `week`, the `weekStartsOn` option can be used to specify the
+ * day of the week that the week starts on. The default is 0 (Sunday).
+ *
+ * @since 3.6.0
+ * @category math
+ * @example
+ * import { DateTime } from "effect"
+ *
+ * // returns "2024-01-02T00:00:00Z"
+ * DateTime.unsafeMake("2024-01-01T12:01:00Z").pipe(
+ *   DateTime.nearest("day"),
+ *   DateTime.formatIso
+ * )
+ */
+export const nearest: {
+  (part: DateTime.UnitSingular, options?: {
+    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+  }): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
+  <A extends DateTime>(self: A, part: DateTime.UnitSingular, options?: {
+    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+  }): DateTime.PreserveZone<A>
+} = dual(isDateTimeArgs, (self: DateTime, part: DateTime.UnitSingular, options?: {
+  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
 }): DateTime =>
   mutate(self, (date) => {
-    switch (part) {
-      case "second": {
-        date.setUTCMilliseconds(999)
-        break
-      }
-      case "minute": {
-        date.setUTCSeconds(59, 999)
-        break
-      }
-      case "hour": {
-        date.setUTCMinutes(59, 59, 999)
-        break
-      }
-      case "day": {
-        date.setUTCHours(23, 59, 59, 999)
-        break
-      }
-      case "week": {
-        const weekStartsOn = options?.weekStartsOn ?? 0
-        const day = date.getUTCDay()
-        const diff = (day - weekStartsOn + 7) % 7
-        date.setUTCDate(date.getUTCDate() - diff + 6)
-        date.setUTCHours(23, 59, 59, 999)
-        break
-      }
-      case "month": {
-        date.setUTCMonth(date.getUTCMonth() + 1, 0)
-        date.setUTCHours(23, 59, 59, 999)
-        break
-      }
-      case "year": {
-        date.setUTCMonth(11, 31)
-        date.setUTCHours(23, 59, 59, 999)
-        break
-      }
+    if (part === "milli") return
+    const millis = date.getTime()
+    const start = new Date(millis)
+    startOfDate(start, part, options)
+    const startMillis = start.getTime()
+    const end = new Date(millis)
+    endOfDate(end, part, options)
+    const endMillis = end.getTime() + 1
+    const diffStart = millis - startMillis
+    const diffEnd = endMillis - millis
+    if (diffStart < diffEnd) {
+      date.setTime(startMillis)
+    } else {
+      date.setTime(endMillis)
     }
   }))
 

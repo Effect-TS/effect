@@ -168,6 +168,32 @@ describe("DateTime", () => {
     })
   })
 
+  describe("nearest", () => {
+    it("month up", () => {
+      const mar = DateTime.unsafeMake("2024-03-16T12:00:00.000Z")
+      const end = DateTime.nearest(mar, "month")
+      assert.strictEqual(end.toJSON(), "2024-04-01T00:00:00.000Z")
+    })
+
+    it("month down", () => {
+      const mar = DateTime.unsafeMake("2024-03-16T11:00:00.000Z")
+      const end = DateTime.nearest(mar, "month")
+      assert.strictEqual(end.toJSON(), "2024-03-01T00:00:00.000Z")
+    })
+
+    it("second up", () => {
+      const mar = DateTime.unsafeMake("2024-03-20T12:00:00.500Z")
+      const end = DateTime.nearest(mar, "second")
+      assert.strictEqual(end.toJSON(), "2024-03-20T12:00:01.000Z")
+    })
+
+    it("second down", () => {
+      const mar = DateTime.unsafeMake("2024-03-20T12:00:00.400Z")
+      const end = DateTime.nearest(mar, "second")
+      assert.strictEqual(end.toJSON(), "2024-03-20T12:00:00.000Z")
+    })
+  })
+
   describe("format", () => {
     it.effect("full", () =>
       Effect.gen(function*() {
