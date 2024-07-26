@@ -93,8 +93,8 @@ const notFound = (method: string, path: string) =>
 
 /** @internal */
 export const makeNoop = (
-  fileSystem: Partial<IFileSystem>
-): IFileSystem => {
+  fileSystem: Partial<typeof FileSystem.Service>
+): typeof FileSystem.Service => {
   return {
     access(path) {
       return Effect.fail(notFound("access", path))
