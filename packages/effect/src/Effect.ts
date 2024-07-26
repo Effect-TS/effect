@@ -5958,6 +5958,8 @@ export declare namespace Tag {
    * @category models
    */
   export interface ProhibitedType {
+    Service?: `property "Service" is forbidden`
+    Identifier?: `property "Identifier" is forbidden`
     _op?: `property "_op" is forbidden`
     _tag?: `property "_tag" is forbidden`
     of?: `property "of" is forbidden`
