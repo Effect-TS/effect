@@ -784,7 +784,7 @@ const getTemplateLiterals = (
   throw new Error(errors_.getSchemaUnsupportedLiteralSpanErrorMessage(ast))
 }
 
-type TemplateLiteralParserParameters = Schema<any, string, any> | AST.LiteralValue
+type TemplateLiteralParserParameters = Schema<any, string, any> | Schema<any, number, any> | AST.LiteralValue
 
 type TemplateLiteralParserParametersType<T> = T extends [infer Head, ...infer Tail] ?
   readonly [Head extends Schema<infer A, infer _I, infer _R> ? A : Head, ...TemplateLiteralParserParametersType<Tail>]
@@ -808,12 +808,36 @@ export const TemplateLiteralParser = <
   TemplateLiteralParserParametersEncoded<T>,
   Schema.Context<T[number]>
 > => {
-  const from = TemplateLiteral(...params.map((p) => isSchema(p) ? encodedSchema(p) : p) as any)
-  const to = Tuple(...params.map((p) => isSchema(p) ? p : Literal(p as any)))
-  const re = AST.getTemplateLiteralCapturingRegExp(from.ast as any)
-  return transform(from, to, {
+  const encodedSchemas: Array<Schema.Any> = []
+  const typeSchemas: Array<Schema.Any> = []
+  const numbers: Array<number> = []
+  for (let i = 0; i < params.length; i++) {
+    const p = params[i]
+    if (isSchema(p)) {
+      const encoded = encodedSchema(p)
+      if (AST.isNumberKeyword(encoded.ast)) {
+        numbers.push(i)
+      }
+      encodedSchemas.push(encoded)
+      typeSchemas.push(p)
+    } else {
+      const literal = Literal(p as AST.LiteralValue)
+      encodedSchemas.push(literal)
+      typeSchemas.push(literal)
+    }
+  }
+  const from = TemplateLiteral(...encodedSchemas as any)
+  const re = AST.getTemplateLiteralCapturingRegExp(from.ast as AST.TemplateLiteral)
+  return transform(from, Tuple(...typeSchemas), {
     strict: false,
-    decode: (s) => re.exec(s)?.slice(1, params.length + 1),
+    decode: (s) => {
+      const out: Array<number | string> = re.exec(s)!.slice(1, params.length + 1)
+      for (let i = 0; i < numbers.length; i++) {
+        const index = numbers[i]
+        out[index] = Number(out[index])
+      }
+      return out
+    },
     encode: (tuple) => tuple.join("")
   }) as any
 }

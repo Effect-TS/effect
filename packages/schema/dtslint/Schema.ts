@@ -2655,3 +2655,13 @@ S.asSchema(S.Array(S.String).pipe(S.minItems(2), S.maxItems(3)))
 
 // $ExpectType filter<Schema<readonly string[], readonly string[], never>>
 S.Array(S.String).pipe(S.minItems(1), S.maxItems(2))
+
+// ---------------------------------------------
+// TemplateLiteralParser
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly [number, "a"], `${number}a`, never>
+S.TemplateLiteralParser(S.Int, "a")
+
+// $ExpectType Schema<readonly [number, "a", string], `${string}a${string}`, never>
+S.TemplateLiteralParser(S.NumberFromString, "a", S.NonEmptyString)

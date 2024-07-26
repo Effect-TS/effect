@@ -3,6 +3,51 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, it } from "vitest"
 
 describe("TemplateLiteralParser", () => {
+  describe("number based schemas", () => {
+    it("decoding", async () => {
+      const schema = Schema.TemplateLiteralParser(Schema.Int, "a")
+      await Util.expectDecodeUnknownSuccess(schema, "1a", [1, "a"])
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        "1.1a",
+        `(\`\${number}a\` <-> readonly [Int, "a"])
+└─ Type side transformation failure
+   └─ readonly [Int, "a"]
+      └─ [0]
+         └─ Int
+            └─ Predicate refinement failure
+               └─ Expected Int, actual 1.1`
+      )
+    })
+
+    it("encoding", async () => {
+      const schema = Schema.TemplateLiteralParser(Schema.Int, "a", Schema.Char)
+      await Util.expectEncodeSuccess(schema, [1, "a", "b"], "1ab")
+      await Util.expectEncodeFailure(
+        schema,
+        [1.1, "a", ""],
+        `(\`\${number}a\${string}\` <-> readonly [Int, "a", Char])
+└─ Type side transformation failure
+   └─ readonly [Int, "a", Char]
+      └─ [0]
+         └─ Int
+            └─ Predicate refinement failure
+               └─ Expected Int, actual 1.1`
+      )
+      await Util.expectEncodeFailure(
+        schema,
+        [1, "a", ""],
+        `(\`\${number}a\${string}\` <-> readonly [Int, "a", Char])
+└─ Type side transformation failure
+   └─ readonly [Int, "a", Char]
+      └─ [2]
+         └─ Char
+            └─ Predicate refinement failure
+               └─ Expected Char, actual ""`
+      )
+    })
+  })
+
   describe("string based schemas", () => {
     it("decoding", async () => {
       const schema = Schema.TemplateLiteralParser(Schema.NumberFromString, "a", Schema.NonEmptyString)

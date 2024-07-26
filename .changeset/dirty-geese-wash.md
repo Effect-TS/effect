@@ -16,7 +16,7 @@ To address these limitations and eliminate the need for manual post-validation p
 
 This new approach enhances developer productivity by reducing boilerplate code and simplifying the process of working with complex string inputs.
 
-**Example**
+**Example** (string based schemas)
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -28,9 +28,24 @@ const schema = Schema.TemplateLiteralParser(
   Schema.NonEmptyString
 )
 
-console.log(Schema.decodeEither(schema)("100afoo"))
-// { _id: 'Either', _tag: 'Right', right: [ 100, 'a', 'foo' ] }
+console.log(Schema.decodeEither(schema)("100ab"))
+// { _id: 'Either', _tag: 'Right', right: [ 100, 'a', 'b' ] }
 
-console.log(Schema.encode(schema)([100, "a", "foo"]))
-// { _id: 'Either', _tag: 'Right', right: '100afoo' }
+console.log(Schema.encode(schema)([100, "a", "b"]))
+// { _id: 'Either', _tag: 'Right', right: '100ab' }
+```
+
+**Example** (number based schemas)
+
+```ts
+import { Schema } from "@effect/schema"
+
+// const schema: Schema.Schema<readonly [number, "a"], `${number}a`, never>
+const schema = Schema.TemplateLiteralParser(Schema.Int, "a")
+
+console.log(Schema.decodeEither(schema)("1a"))
+// { _id: 'Either', _tag: 'Right', right: [ 1, 'a' ] }
+
+console.log(Schema.encode(schema)([1, "a"]))
+// { _id: 'Either', _tag: 'Right', right: '1a' }
 ```
