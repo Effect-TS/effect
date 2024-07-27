@@ -70,6 +70,7 @@ export interface PgClientConfig {
   readonly maxConnections?: number | undefined
   readonly connectionTTL?: Duration.DurationInput | undefined
 
+  readonly applicationName?: string | undefined
   readonly spanAttributes?: Record<string, unknown> | undefined
 
   readonly transformResultNames?: ((str: string) => string) | undefined
@@ -129,7 +130,10 @@ export const make = (
       fetch_types: options.fetchTypes ?? true,
       prepare: options.prepare ?? true,
       types: options.types,
-      debug: options.debug
+      debug: options.debug,
+      connection: {
+        application_name: options.applicationName ?? "postgres.js"
+      }
     }
 
     const client = options.url
