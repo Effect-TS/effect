@@ -1560,6 +1560,13 @@ export const PropertySignatureTypeId: unique symbol = Symbol.for("@effect/schema
 export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
 /**
+ * @since 0.69.3
+ * @category guards
+ */
+export const isPropertySignature = (u: unknown): u is PropertySignature.All =>
+  Predicate.hasProperty(u, PropertySignatureTypeId)
+
+/**
  * @category PropertySignature
  * @since 0.67.0
  */
@@ -2424,9 +2431,6 @@ export interface TypeLiteral<
     options?: MakeOptions
   ): Simplify<TypeLiteral.Type<Fields, Records>>
 }
-
-const isPropertySignature = (u: unknown): u is PropertySignature.All =>
-  Predicate.hasProperty(u, PropertySignatureTypeId)
 
 const getDefaultTypeLiteralAST = <
   Fields extends Struct.Fields,
