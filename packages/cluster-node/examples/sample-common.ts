@@ -36,5 +36,5 @@ export type CounterMsg = Schema.Schema.Type<typeof CounterMsg>
 export const CounterEntity = new Entity.Standard({
   name: "Counter",
   schema: CounterMsg,
-  messageId: _ => _.messageId
+  messageId: (_) => _.messageId
 })

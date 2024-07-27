@@ -21,10 +21,8 @@ export function fromFunctionEffect<Msg extends Schema.TaggedRequest.Any, R>(
     envelope: Envelope<A>
   ) => Effect.Effect<
     MessageState.MessageState<
-      Exit.Exit<
-        Serializable.WithResult.Success<Msg>,
-        Serializable.WithResult.Error<Msg>
-      >
+      Serializable.WithResult.Success<Msg>,
+      Serializable.WithResult.Error<Msg>
     >,
     never,
     R
@@ -51,10 +49,8 @@ export function fromFunctionEffectStateful<S, R, Msg extends Schema.TaggedReques
     stateRef: Ref.Ref<S>
   ) => Effect.Effect<
     MessageState.MessageState<
-      Exit.Exit<
-        Serializable.WithResult.Success<Msg>,
-        Serializable.WithResult.Error<Msg>
-      >
+      Serializable.WithResult.Success<Msg>,
+      Serializable.WithResult.Error<Msg>
     >,
     never,
     R2
@@ -85,20 +81,18 @@ export function fromInMemoryQueue<Msg extends Schema.TaggedRequest.Any, R>(
     dequeue: Queue.Dequeue<Envelope<Msg> | PoisonPill.PoisonPill>,
     processed: <A extends Msg>(
       envelope: Envelope<A>,
-      value: Option.Option<
-        Exit.Exit<
-          Serializable.WithResult.Success<Msg>,
-          Serializable.WithResult.Error<Msg>
-        >
+      value: Exit.Exit<
+        Serializable.WithResult.Success<Msg>,
+        Serializable.WithResult.Error<Msg>
       >
     ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R> {
   return Effect.gen(function*(_) {
     const entityId = yield* _(RecipientBehaviourContext.entityId)
-    const envelopeStates = yield* _(Ref.make(HashMap.empty<string, MessageState.MessageState<any>>()))
+    const envelopeStates = yield* _(Ref.make(HashMap.empty<string, MessageState.MessageState<any, any>>()))
 
-    function updateEnvelopeState<A extends Msg>(envelope: Envelope<A>, state: MessageState.MessageState<any>) {
+    function updateEnvelopeState<A extends Msg>(envelope: Envelope<A>, state: MessageState.MessageState<any, any>) {
       return pipe(Ref.update(envelopeStates, HashMap.set(envelope.messageId, state)), Effect.as(state))
     }
 
@@ -111,11 +105,9 @@ export function fromInMemoryQueue<Msg extends Schema.TaggedRequest.Any, R>(
 
     function reply<A extends Msg>(
       message: Envelope<A>,
-      reply: Option.Option<
-        Exit.Exit<
-          Serializable.WithResult.Success<Msg>,
-          Serializable.WithResult.Error<Msg>
-        >
+      reply: Exit.Exit<
+        Serializable.WithResult.Success<Msg>,
+        Serializable.WithResult.Error<Msg>
       >
     ) {
       return updateEnvelopeState(message, MessageState.Processed(reply))

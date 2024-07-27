@@ -38,12 +38,7 @@ export interface RecipientBehaviour<Msg extends TaggedRequest.Any, R> extends
     <A extends Msg>(
       envelope: Envelope<A>
     ) => Effect.Effect<
-      MessageState.MessageState<
-        Exit.Exit<
-          WithResult.Success<Msg>,
-          WithResult.Error<Msg>
-        >
-      >,
+      MessageState.MessageState<WithResult.Success<A>, WithResult.Error<A>>,
       ShardingException.ExceptionWhileOfferingMessageException,
       SerializableWithResult.Context<Msg>
     >,
@@ -79,10 +74,8 @@ export const fromFunctionEffect: <Msg extends TaggedRequest.Any, R>(
     envelope: Envelope<A>
   ) => Effect.Effect<
     MessageState.MessageState<
-      Exit.Exit<
-        WithResult.Success<Msg>,
-        WithResult.Error<Msg>
-      >
+      WithResult.Success<Msg>,
+      WithResult.Error<Msg>
     >,
     never,
     R
@@ -105,10 +98,8 @@ export const fromFunctionEffectStateful: <S, R, Msg extends TaggedRequest.Any, R
     stateRef: Ref.Ref<S>
   ) => Effect.Effect<
     MessageState.MessageState<
-      Exit.Exit<
-        WithResult.Success<Msg>,
-        WithResult.Error<Msg>
-      >
+      WithResult.Success<Msg>,
+      WithResult.Error<Msg>
     >,
     never,
     R2
@@ -129,11 +120,9 @@ export const fromInMemoryQueue: <Msg extends TaggedRequest.Any, R>(
     dequeue: Queue.Dequeue<Envelope<Msg> | PoisonPill.PoisonPill>,
     processed: <A extends Msg>(
       message: Envelope<A>,
-      value: Option.Option<
-        Exit.Exit<
-          WithResult.Success<Msg>,
-          WithResult.Error<Msg>
-        >
+      value: Exit.Exit<
+        WithResult.Success<Msg>,
+        WithResult.Error<Msg>
       >
     ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>

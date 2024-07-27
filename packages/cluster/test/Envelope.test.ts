@@ -31,7 +31,7 @@ describe("Envelope", () => {
       const sample1 = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
       const sample2 = new SampleMessage({ id: 1, name: "sample-1", date: new Date() })
       const a = Envelope.make(address1, "1", sample1)
-      const b = Envelope.make(address2, "1",sample2)
+      const b = Envelope.make(address2, "1", sample2)
       assert.isTrue(Equal.equals(a, b))
     })
 

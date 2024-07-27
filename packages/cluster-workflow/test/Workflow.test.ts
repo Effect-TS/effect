@@ -287,7 +287,8 @@ describe.concurrent("Workflow", () => {
       const persistenceIdRef = yield* _(Ref.make(""))
 
       const workflow = Workflow.make(
-        StartWorkflowRequest, PrimaryKey.value,
+        StartWorkflowRequest,
+        PrimaryKey.value,
         () =>
           mockedActivity.activityWithBody(
             Effect.acquireUseRelease(Effect.succeed(1), () =>
@@ -353,7 +354,11 @@ describe.concurrent("Workflow", () => {
           const activity2 = utils.mockActivity("activity2", Schema.Number, Schema.Never, () => Exit.succeed(1))
             .activityWithBody(pipe(Effect.sleep(!firstFastest ? 0 : 1000), Effect.as(2)))
 
-          const workflow = Workflow.make(StartWorkflowRequest, PrimaryKey.value, () => Effect.race(activity1, activity2))
+          const workflow = Workflow.make(
+            StartWorkflowRequest,
+            PrimaryKey.value,
+            () => Effect.race(activity1, activity2)
+          )
 
           const engine = yield* _(WorkflowEngine.makeScoped(workflow))
 

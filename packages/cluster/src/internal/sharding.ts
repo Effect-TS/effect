@@ -146,7 +146,7 @@ export const getPods: Effect.Effect<HashSet.HashSet<PodAddress.PodAddress>, neve
 export const sendMessageToLocalEntityManagerWithoutRetries: (
   message: SerializedEnvelope.SerializedEnvelope
 ) => Effect.Effect<
-  MessageState.MessageState<SerializedValue.SerializedValue>,
+  MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
   ShardingException.ShardingException,
   Sharding.Sharding
 > = (message) => Effect.flatMap(shardingTag, (_) => _.sendMessageToLocalEntityManagerWithoutRetries(message))
@@ -424,7 +424,7 @@ function make(
   function sendMessageToLocalEntityManagerWithoutRetries(
     envelope: SerializedEnvelope.SerializedEnvelope
   ): Effect.Effect<
-    MessageState.MessageState<SerializedValue.SerializedValue>,
+    MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
     ShardingException.ShardingException
   > {
     return pipe(
@@ -438,7 +438,7 @@ function make(
     pod: PodAddress.PodAddress,
     envelope: SerializedEnvelope.SerializedEnvelope
   ): Effect.Effect<
-    MessageState.MessageState<SerializedValue.SerializedValue>,
+    MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
     ShardingException.ShardingException
   > {
     return pipe(
@@ -478,7 +478,7 @@ function make(
     pod: PodAddress.PodAddress,
     envelope: SerializedEnvelope.SerializedEnvelope
   ): Effect.Effect<
-    MessageState.MessageState<SerializedValue.SerializedValue>,
+    MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
     ShardingException.ShardingException
   > {
     return equals(pod, address)
@@ -493,7 +493,7 @@ function make(
       entityId: string,
       message: A
     ): Effect.Effect<
-      MessageState.MessageState<SerializedValue.SerializedValue>,
+      MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
       ShardingException.ShardingException,
       Serializable.SerializableWithResult.Context<A>
     > {
@@ -534,7 +534,12 @@ function make(
       return pipe(
         sendMessage(entityId, message),
         Effect.flatMap((state) =>
-          MessageState.mapEffect(state, (body) => serialization.decode(Serializable.exitSchema(message), body))
+          MessageState.mapBothEffect(
+            state,
+            (value) => serialization.decode(Serializable.successSchema(message), value),
+            (failure) => serialization.decode(Serializable.failureSchema(message), failure),
+            (defect) => Effect.succeed(defect)
+          )
         ),
         Effect.flatMap((state) =>
           Unify.unify(pipe(
@@ -571,7 +576,7 @@ function make(
       HashMap.HashMap<
         PodAddress.PodAddress,
         Either.Either<
-          MessageState.MessageState<SerializedValue.SerializedValue>,
+          MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
           ShardingException.ShardingException
         >
       >,
@@ -620,9 +625,11 @@ function make(
               pipe(
                 eitherResult,
                 Effect.flatMap((state) =>
-                  MessageState.mapEffect(
+                  MessageState.mapBothEffect(
                     state,
-                    (body) => serialization.decode(Serializable.exitSchema(message), body)
+                    (success) => serialization.decode(Serializable.successSchema(message), success),
+                    (failure) => serialization.decode(Serializable.failureSchema(message), failure),
+                    (defect) => Effect.succeed(defect)
                   )
                 ),
                 Effect.flatMap((state) =>

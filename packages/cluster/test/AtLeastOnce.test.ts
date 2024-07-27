@@ -38,7 +38,7 @@ class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
 const SampleEntity = new Entity.Standard({
   name: "SampleEntity",
   schema: SampleMessage,
-  messageId: _ => _.id
+  messageId: (_) => _.id
 })
 type SampleEntity = SampleMessage
 

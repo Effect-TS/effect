@@ -45,7 +45,7 @@ export interface EntityManager {
   readonly sendAndGetState: (
     envelope: SerializedEnvelope.SerializedEnvelope
   ) => Effect.Effect<
-    MessageState.MessageState<SerializedValue.SerializedValue>,
+    MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
     | ShardingException.EntityNotManagedByThisPodException
     | ShardingException.PodUnavailableException
     | ShardingException.ExceptionWhileOfferingMessageException
@@ -241,7 +241,7 @@ export function make<Msg extends Schema.TaggedRequest.Any, R>(
                     const sendAndGetState: (
                       envelope: SerializedEnvelope.SerializedEnvelope
                     ) => Effect.Effect<
-                      MessageState.MessageState<SerializedValue.SerializedValue>,
+                      MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
                       | ShardingException.ExceptionWhileOfferingMessageException
                       | ShardingException.SerializationException
                     > = yield* _(
@@ -254,9 +254,11 @@ export function make<Msg extends Schema.TaggedRequest.Any, R>(
                               pipe(
                                 offer(Envelope.map(envelope, () => message)),
                                 Effect.flatMap((_) =>
-                                  MessageState.mapEffect(
+                                  MessageState.mapBothEffect(
                                     _,
-                                    (value) => serialization.encode(Serializable.exitSchema(message), value)
+                                    (success) => serialization.encode(Serializable.successSchema(message), success),
+                                    (failure) => serialization.encode(Serializable.failureSchema(message), failure),
+                                    (defect) => Effect.succeed(defect)
                                   )
                                 )
                               )
@@ -303,7 +305,7 @@ export function make<Msg extends Schema.TaggedRequest.Any, R>(
     function sendAndGetState(
       envelope: SerializedEnvelope.SerializedEnvelope
     ): Effect.Effect<
-      MessageState.MessageState<SerializedValue.SerializedValue>,
+      MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
       | ShardingException.EntityNotManagedByThisPodException
       | ShardingException.PodUnavailableException
       | ShardingException.ExceptionWhileOfferingMessageException

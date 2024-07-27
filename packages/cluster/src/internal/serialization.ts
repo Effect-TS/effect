@@ -54,6 +54,9 @@ export const json: Layer.Layer<Serialization.Serialization> = Layer.succeed(
         jsonStringify(message, schema),
         Effect.map(SerializedValue.make)
       ),
-    decode: (schema, body) => jsonParse(body.value, schema)
+    decode: (schema, body) => {
+      console.log("parsing", body.value, body)
+      return jsonParse(body.value, schema)
+    }
   })
 )

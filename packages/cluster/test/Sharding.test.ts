@@ -73,7 +73,7 @@ type SampleEntity = SampleMessage | SampleMessageWithResult | FailableMessageWit
 const SampleEntity = new Entity.Standard({
   name: "Sample",
   schema: Schema.Union(SampleMessage, SampleMessageWithResult, FailableMessageWithResult),
-  messageId: _ => _.id
+  messageId: (_) => _.id
 })
 
 describe.concurrent("SampleTests", () => {
@@ -249,7 +249,7 @@ describe.concurrent("SampleTests", () => {
       const SampleTopic = new Entity.Clustered({
         name: "Sample",
         schema: SampleProtocol,
-        messageId:  _ => _.id
+        messageId: (_) => _.id
       })
 
       const ref = yield* _(Ref.make(0))
