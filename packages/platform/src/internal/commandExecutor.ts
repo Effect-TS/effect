@@ -7,6 +7,11 @@ import * as Stream from "effect/Stream"
 import type * as CommandExecutor from "../CommandExecutor.js"
 
 /** @internal */
+export const TypeId: CommandExecutor.TypeId = Symbol.for(
+  "@effect/platform/CommandExecutor"
+) as CommandExecutor.TypeId
+
+/** @internal */
 export const ProcessTypeId: CommandExecutor.ProcessTypeId = Symbol.for(
   "@effect/platform/Process"
 ) as CommandExecutor.ProcessTypeId
@@ -30,6 +35,7 @@ export const makeExecutor = (
     )
   }
   return {
+    [TypeId]: TypeId,
     start,
     exitCode: (command) => Effect.scoped(Effect.flatMap(start(command), (process) => process.exitCode)),
     stream,
@@ -50,7 +56,7 @@ export const makeExecutor = (
       )
     },
     streamLines
-  }
+  } as const
 }
 
 const collectUint8Array: Sink.Sink<Uint8Array, Uint8Array> = Sink.foldLeftChunks(

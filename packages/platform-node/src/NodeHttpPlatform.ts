@@ -12,7 +12,11 @@ import * as internal from "./internal/httpPlatform.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<Platform.HttpPlatform, never, FileSystem.FileSystem | Etag.Generator> = internal.make
+export const make: Effect.Effect<
+  typeof Platform.HttpPlatform.Service,
+  never,
+  FileSystem.FileSystem | Etag.Generator
+> = internal.make
 
 /**
  * @since 1.0.0

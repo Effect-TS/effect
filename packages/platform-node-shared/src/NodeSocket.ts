@@ -38,7 +38,7 @@ const EOF = Symbol.for("@effect/experimental/Socket/Node/EOF")
  */
 export const makeNet = (
   options: Net.NetConnectOpts
-): Effect.Effect<Socket.Socket, Socket.SocketError> =>
+): Effect.Effect<typeof Socket.Socket.Service, Socket.SocketError> =>
   fromDuplex(
     Effect.acquireRelease(
       Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
@@ -74,7 +74,7 @@ export const makeNet = (
  */
 export const fromDuplex = <RO>(
   open: Effect.Effect<Duplex, Socket.SocketError, RO>
-): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
+): Effect.Effect<typeof Socket.Socket.Service, never, Exclude<RO, Scope.Scope>> =>
   FiberRef.get(Socket.currentSendQueueCapacity).pipe(
     Effect.flatMap((sendQueueCapacity) =>
       Queue.dropping<Uint8Array | string | Socket.CloseEvent | typeof EOF>(

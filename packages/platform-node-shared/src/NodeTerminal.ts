@@ -6,12 +6,16 @@ import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import type { Scope } from "effect/Scope"
 import * as InternalTerminal from "./internal/terminal.js"
+
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Terminal, never, Scope> =
-  InternalTerminal.make
+export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<
+  typeof Terminal.Service,
+  never,
+  Scope
+> = InternalTerminal.make
 
 /**
  * @since 1.0.0

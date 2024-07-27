@@ -36,28 +36,23 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category tags
  */
-export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
-  "@effect/platform/Socket"
-)
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Socket {
-  readonly [TypeId]: TypeId
-  readonly run: <_, E, R>(
-    handler: (_: Uint8Array) => Effect.Effect<_, E, R>
-  ) => Effect.Effect<void, SocketError | E, R>
-  readonly runRaw: <_, E, R>(
-    handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>
-  ) => Effect.Effect<void, SocketError | E, R>
-  readonly writer: Effect.Effect<
-    (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<boolean>,
-    never,
-    Scope.Scope
-  >
-}
+export class Socket extends Effect.Tag("@effect/platform/Socket")<
+  Socket,
+  {
+    readonly [TypeId]: TypeId
+    readonly run: <_, E, R>(
+      handler: (_: Uint8Array) => Effect.Effect<_, E, R>
+    ) => Effect.Effect<void, SocketError | E, R>
+    readonly runRaw: <_, E, R>(
+      handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>
+    ) => Effect.Effect<void, SocketError | E, R>
+    readonly writer: Effect.Effect<
+      (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<boolean>,
+      never,
+      Scope.Scope
+    >
+  }
+>() {}
 
 /**
  * @since 1.0.0
@@ -172,7 +167,7 @@ export class SocketCloseError extends TypeIdError(SocketErrorTypeId, "SocketErro
  * @category combinators
  */
 export const toChannel = <IE>(
-  self: Socket
+  self: typeof Socket.Service
 ): Channel.Channel<
   Chunk.Chunk<Uint8Array>,
   Chunk.Chunk<Uint8Array | string | CloseEvent>,
@@ -239,7 +234,7 @@ export const toChannel = <IE>(
  */
 export const toChannelWith = <IE = never>() =>
 (
-  self: Socket
+  self: typeof Socket.Service
 ): Channel.Channel<
   Chunk.Chunk<Uint8Array>,
   Chunk.Chunk<Uint8Array | string | CloseEvent>,
@@ -315,7 +310,7 @@ export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> 
 export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
   readonly openTimeout?: DurationInput
-}): Effect.Effect<Socket, never, WebSocketConstructor> =>
+}): Effect.Effect<typeof Socket.Service, never, WebSocketConstructor> =>
   fromWebSocket(
     Effect.acquireRelease(
       (typeof url === "string" ? Effect.succeed(url) : url).pipe(
@@ -343,8 +338,8 @@ export const fromWebSocket = <R>(
     readonly closeCodeIsError?: (code: number) => boolean
     readonly openTimeout?: DurationInput
   }
-): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
-  Effect.withFiberRuntime<Socket, never, Exclude<R, Scope.Scope>>((fiber) =>
+): Effect.Effect<typeof Socket.Service, never, Exclude<R, Scope.Scope>> =>
+  Effect.withFiberRuntime<typeof Socket.Service, never, Exclude<R, Scope.Scope>>((fiber) =>
     Effect.map(
       Queue.dropping<Uint8Array | string | CloseEvent>(fiber.getFiberRef(currentSendQueueCapacity)),
       (sendQueue) => {
@@ -528,9 +523,9 @@ export interface InputTransformStream {
  */
 export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStream, SocketError, R>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
-}): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> => {
+}): Effect.Effect<typeof Socket.Service, never, Exclude<R, Scope.Scope>> => {
   const EOF = Symbol()
-  return Effect.withFiberRuntime<Socket, never, Exclude<R, Scope.Scope>>((fiber) =>
+  return Effect.withFiberRuntime<typeof Socket.Service, never, Exclude<R, Scope.Scope>>((fiber) =>
     Effect.map(
       Queue.dropping<Uint8Array | string | CloseEvent | typeof EOF>(fiber.getFiberRef(currentSendQueueCapacity)),
       (sendQueue) => {

@@ -36,7 +36,11 @@ export const parsedSearchParamsTag = Context.GenericTag<
 >("@effect/platform/HttpServerRequest/ParsedSearchParams")
 
 /** @internal */
-export const upgrade = Effect.flatMap(serverRequestTag, (request) => request.upgrade)
+export const upgrade: Effect.Effect<
+  typeof Socket.Socket.Service,
+  Error.RequestError,
+  ServerRequest.HttpServerRequest
+> = Effect.flatMap(serverRequestTag, (request) => request.upgrade)
 
 /** @internal */
 export const upgradeChannel = <IE = never>() => Channel.unwrap(Effect.map(upgrade, Socket.toChannelWith<IE>()))
@@ -337,7 +341,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return this.arrayBufferEffect
   }
 
-  get upgrade(): Effect.Effect<Socket.Socket, Error.RequestError> {
+  get upgrade(): Effect.Effect<typeof Socket.Socket.Service, Error.RequestError> {
     return Effect.fail(
       new Error.RequestError({
         request: this,

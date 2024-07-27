@@ -207,7 +207,7 @@ class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> impl
   constructor(
     readonly source: Http.IncomingMessage,
     readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>,
-    private upgradeEffect?: Effect.Effect<Socket.Socket, Error.RequestError>,
+    private upgradeEffect?: Effect.Effect<typeof Socket.Socket.Service, Error.RequestError>,
     readonly url = source.url!,
     private headersOverride?: Headers.Headers,
     remoteAddressOverride?: string
@@ -288,7 +288,7 @@ class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> impl
     return MultipartNode.stream(this.source, this.source.headers)
   }
 
-  get upgrade(): Effect.Effect<Socket.Socket, Error.RequestError> {
+  get upgrade(): Effect.Effect<typeof Socket.Socket.Service, Error.RequestError> {
     return this.upgradeEffect ?? Effect.fail(
       new Error.RequestError({
         request: this,

@@ -13,11 +13,24 @@ import * as internal from "./internal/commandExecutor.js"
 
 /**
  * @since 1.0.0
+ * @category type ids
+ */
+export const TypeId: unique symbol = internal.TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
  * @category tags
  */
 export class CommandExecutor extends Effect.Tag("@effect/platform/CommandExecutor")<
   CommandExecutor,
   {
+    readonly [TypeId]: TypeId
     /**
      * Returns the exit code of the command after the process has completed
      * execution.

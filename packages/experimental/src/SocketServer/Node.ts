@@ -48,7 +48,7 @@ export const make = (
     const semaphore = yield* _(Effect.makeSemaphore(1))
     let serverDeferred = yield* _(Deferred.make<Net.Server>())
 
-    const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
+    const run = <R, E, _>(handler: (socket: typeof Socket.Socket.Service) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const runtime = yield* _(Effect.runtime<R>())
         const run = Runtime.runFork(runtime)
@@ -149,7 +149,7 @@ export const makeWebSocket = (
     const semaphore = yield* _(Effect.makeSemaphore(1))
 
     let serverDeferred = yield* _(Deferred.make<WS.WebSocketServer>())
-    const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
+    const run = <R, E, _>(handler: (socket: typeof Socket.Socket.Service) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const runtime = yield* _(Effect.runtime<R>())
         const run = Runtime.runFork(runtime)

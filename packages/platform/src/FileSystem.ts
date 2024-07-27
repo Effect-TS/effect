@@ -15,11 +15,24 @@ import * as internal from "./internal/fileSystem.js"
 
 /**
  * @since 1.0.0
+ * @category type ids
+ */
+export const TypeId: unique symbol = internal.TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
  * @category tag
  */
 export class FileSystem extends Effect.Tag("@effect/platform/FileSystem")<
   FileSystem,
   {
+    readonly [TypeId]: TypeId
     /**
      * Check if a file can be accessed.
      * You can optionally specify the level of access to check for.
@@ -444,7 +457,10 @@ export interface WriteFileStringOptions {
  * @category constructor
  */
 export const make: (
-  impl: Omit<typeof FileSystem.Service, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
+  impl: Omit<
+    typeof FileSystem.Service,
+    typeof TypeId | "exists" | "readFileString" | "stream" | "sink" | "writeFileString"
+  >
 ) => typeof FileSystem.Service = internal.make
 
 /**
