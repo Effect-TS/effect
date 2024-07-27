@@ -418,4 +418,4 @@ Serializable.exitSchema(myRequest)
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, "a", string], `${string}a${string}`, "a" | "b">
-S.TemplateLiteralParser(hole<S.Schema<string, string, "a">>(), "a", hole<S.Schema<string, string, "b">>())
+S.asSchema(S.TemplateLiteralParser(hole<S.Schema<string, string, "a">>(), "a", hole<S.Schema<string, string, "b">>()))

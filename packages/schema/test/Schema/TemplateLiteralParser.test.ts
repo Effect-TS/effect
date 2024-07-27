@@ -1,8 +1,14 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("TemplateLiteralParser", () => {
+  it("should expose the params", () => {
+    const params = ["/", Schema.Int, "/", Schema.String] as const
+    const schema = Schema.TemplateLiteralParser(...params)
+    expect(schema.params).toStrictEqual(params)
+  })
+
   describe("number based schemas", () => {
     it("decoding", async () => {
       const schema = Schema.TemplateLiteralParser(Schema.Int, "a")
