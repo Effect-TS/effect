@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest"
 
 describe("DecodingFallbackAnnotation", () => {
   it("using Either", async () => {
-    const schema = S.String.annotations({ decodingFallback: () => Either.right("<default>") })
+    const schema = S.String.annotations({ decodingFallback: () => Either.right("<fallback value>") })
     await Util.expectDecodeUnknownSuccess(
       schema,
       null,
-      "<default>"
+      "<fallback value>"
     )
   })
 
@@ -19,13 +19,13 @@ describe("DecodingFallbackAnnotation", () => {
       decodingFallback: (issue) =>
         Effect.gen(function*() {
           log.push(issue.actual)
-          return yield* Effect.succeed("<default>")
+          return yield* Effect.succeed("<fallback value>")
         })
     })
     await Util.expectDecodeUnknownSuccess(
       schema,
       null,
-      "<default>"
+      "<fallback value>"
     )
     expect(log).toEqual([null])
   })
@@ -37,13 +37,13 @@ describe("DecodingFallbackAnnotation", () => {
         Effect.gen(function*() {
           log.push(issue.actual)
           yield* Effect.sleep(10)
-          return yield* Effect.succeed("<default>")
+          return yield* Effect.succeed("<fallback value>")
         })
     })
     await Util.expectDecodeUnknownSuccess(
       schema,
       null,
-      "<default>"
+      "<fallback value>"
     )
     expect(log).toEqual([null])
     expect(() => S.decodeUnknownSync(schema)(null)).toThrowError(

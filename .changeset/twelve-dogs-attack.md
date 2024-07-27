@@ -21,11 +21,11 @@ import { Effect, Either } from "effect"
 // Basic Fallback
 
 const schema = Schema.String.annotations({
-  decodingFallback: () => Either.right("<default>")
+  decodingFallback: () => Either.right("<fallback>")
 })
 
-console.log(Schema.decodeUnknownSync(schema)("foo")) // foo
-console.log(Schema.decodeUnknownSync(schema)(null)) // <default>
+console.log(Schema.decodeUnknownSync(schema)("valid input")) // Output: valid input
+console.log(Schema.decodeUnknownSync(schema)(null)) // Output: <fallback value>
 
 // Advanced Fallback with Logging
 
@@ -34,13 +34,14 @@ const schemaWithLog = Schema.String.annotations({
     Effect.gen(function* () {
       yield* Effect.log(issue._tag)
       yield* Effect.sleep(10)
-      return yield* Effect.succeed("<default2>")
+      return yield* Effect.succeed("<fallback2>")
     })
 })
 
 Effect.runPromise(Schema.decodeUnknown(schemaWithLog)(null)).then(console.log)
 /*
+Output:
 timestamp=2024-07-25T13:22:37.706Z level=INFO fiber=#0 message=Type
-<default2>
+<fallback2>
 */
 ```
