@@ -101,7 +101,7 @@ export interface PgClientConfig {
   readonly prepare?: boolean | undefined
   readonly types?: Record<string, postgres.PostgresType> | undefined
 
-  readonly debug?: PostgresOptions["debug"] | undefined
+  readonly debug?: postgres.Options<{}>["debug"] | undefined
 }
 
 type PartialWithUndefined<T> = { [K in keyof T]?: T[K] | undefined }
