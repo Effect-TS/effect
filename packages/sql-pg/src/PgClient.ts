@@ -132,7 +132,7 @@ export const make = (
       types: options.types,
       debug: options.debug,
       connection: {
-        application_name: options.applicationName ?? "postgres.js"
+        application_name: options.applicationName ?? "@effect/sql-pg"
       }
     }
 
