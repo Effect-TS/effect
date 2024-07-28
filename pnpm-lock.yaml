@@ -670,6 +670,9 @@ importers:
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
+      '@types/node':
+        specifier: ^20.14.10
+        version: 20.14.11
       effect:
         specifier: workspace:^
         version: link:../effect/dist

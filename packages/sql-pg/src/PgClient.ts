@@ -17,7 +17,7 @@ import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type { PendingQuery, PendingValuesQuery } from "postgres"
+import type * as NodeStream from "node:stream"
 import postgres from "postgres"
 
 /**
@@ -64,6 +64,27 @@ export interface PgClientConfig {
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | undefined
 
+  /**
+   * A function returning a custom socket to use. This parameter is not documented
+   * in the postgres.js's type signature. See their
+   * [readme](https://github.com/porsager/postgres?tab=readme-ov-file#connection-details) instead.
+   *
+   * @example
+   * import { AuthTypes, Connector } from "@google-cloud/cloud-sql-connector";
+   * import { PgClient } from "@effect/sql-pg";
+   * import { Config, Effect, Layer } from "effect"
+   *
+   * const layer = Effect.gen(function*() {
+   *   const connector = new Connector();
+   *   const clientOpts = yield* Effect.promise(() => connector.getOptions({
+   *     instanceConnectionName: "project:region:instance",
+   *     authType: AuthTypes.IAM,
+   *   }));
+   *   return PgClient.layer({ socket: Config.succeed(clientOpts.stream), username: Config.succeed("iam-user") });
+   * }).pipe(Layer.unwrapEffect)
+   */
+  readonly socket?: (() => NodeStream.Duplex) | undefined
+
   readonly idleTimeout?: Duration.DurationInput | undefined
   readonly connectTimeout?: Duration.DurationInput | undefined
 
@@ -85,6 +106,10 @@ export interface PgClientConfig {
 
 type PartialWithUndefined<T> = { [K in keyof T]?: T[K] | undefined }
 
+interface PostgresOptions extends postgres.Options<{}> {
+  readonly socket?: (() => NodeStream.Duplex) | undefined
+}
+
 /**
  * @category constructors
  * @since 1.0.0
@@ -102,7 +127,7 @@ export const make = (
       options.transformJson
     ).array
 
-    const opts: PartialWithUndefined<postgres.Options<{}>> = {
+    const opts: PartialWithUndefined<PostgresOptions> = {
       max: options.maxConnections ?? 10,
       max_lifetime: options.connectionTTL
         ? Math.round(
@@ -133,7 +158,8 @@ export const make = (
       debug: options.debug,
       connection: {
         application_name: options.applicationName ?? "@effect/sql-pg"
-      }
+      },
+      socket: options.socket
     }
 
     const client = options.url
@@ -145,7 +171,7 @@ export const make = (
     class ConnectionImpl implements Connection {
       constructor(private readonly pg: postgres.Sql<{}>) {}
 
-      private run(query: PendingQuery<any> | PendingValuesQuery<any>) {
+      private run(query: postgres.PendingQuery<any> | postgres.PendingValuesQuery<any>) {
         return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
           query.then(
             (_) => resume(Effect.succeed(_)),
@@ -155,7 +181,7 @@ export const make = (
         })
       }
 
-      private runTransform(query: PendingQuery<any>) {
+      private runTransform(query: postgres.PendingQuery<any>) {
         return options.transformResultNames
           ? Effect.map(this.run(query), transformRows)
           : this.run(query)

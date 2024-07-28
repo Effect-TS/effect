@@ -41,6 +41,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
+    "@types/node": "^20.14.10",
     "effect": "workspace:^"
   },
   "peerDependencies": {
