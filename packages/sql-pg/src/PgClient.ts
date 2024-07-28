@@ -72,7 +72,7 @@ export interface PgClientConfig {
    * @example
    * import { AuthTypes, Connector } from "@google-cloud/cloud-sql-connector";
    * import { PgClient } from "@effect/sql-pg";
-   * import { Effect, Layer } from "effect"
+   * import { Config, Effect, Layer } from "effect"
    *
    * const layer = Effect.gen(function*() {
    *   const connector = new Connector();
@@ -80,7 +80,7 @@ export interface PgClientConfig {
    *     instanceConnectionName: "project:region:instance",
    *     authType: AuthTypes.IAM,
    *   }));
-   *   return PgClient.layer({ socket: clientOpts.stream, user: "iam-user" });
+   *   return PgClient.layer({ socket: Config.succeed(clientOpts.stream), username: Config.succeed("iam-user") });
    * }).pipe(Layer.unwrapEffect)
    */
   readonly socket?: (() => NodeStream.Duplex) | undefined
