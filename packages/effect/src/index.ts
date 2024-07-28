@@ -188,6 +188,11 @@ export * as Cron from "./Cron.js"
 export * as Data from "./Data.js"
 
 /**
+ * @since 3.6.0
+ */
+export * as DateTime from "./DateTime.js"
+
+/**
  * @since 2.0.0
  */
 export * as DefaultServices from "./DefaultServices.js"
