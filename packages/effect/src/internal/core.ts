@@ -1250,6 +1250,12 @@ export const tap = dual<
     ) => [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
       : [X] extends [PromiseLike<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
+    <A, X, E1, R1>(
+      f: (a: NoInfer<A>) => Effect.Effect<X, E1, R1>,
+      options: { onlyEffect: true }
+    ): <E, R>(
+      self: Effect.Effect<A, E, R>
+    ) => Effect.Effect<A, E | E1, R | R1>
     <X>(
       f: NotFunction<X>
     ): <A, E, R>(
@@ -1257,6 +1263,12 @@ export const tap = dual<
     ) => [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
       : [X] extends [PromiseLike<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
+    <X, E1, R1>(
+      f: Effect.Effect<X, E1, R1>,
+      options: { onlyEffect: true }
+    ): <A, E, R>(
+      self: Effect.Effect<A, E, R>
+    ) => Effect.Effect<A, E | E1, R | R1>
   },
   {
     <A, E, R, X>(
@@ -1265,25 +1277,38 @@ export const tap = dual<
     ): [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
       : [X] extends [PromiseLike<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
+    <A, E, R, X, E1, R1>(
+      self: Effect.Effect<A, E, R>,
+      f: (a: NoInfer<A>) => Effect.Effect<X, E1, R1>,
+      options: { onlyEffect: true }
+    ): Effect.Effect<A, E | E1, R | R1>
     <A, E, R, X>(
       self: Effect.Effect<A, E, R>,
       f: NotFunction<X>
     ): [X] extends [Effect.Effect<infer _A1, infer E1, infer R1>] ? Effect.Effect<A, E | E1, R | R1>
       : [X] extends [PromiseLike<infer _A1>] ? Effect.Effect<A, E | Cause.UnknownException, R>
       : Effect.Effect<A, E, R>
+    <A, E, R, X, E1, R1>(
+      self: Effect.Effect<A, E, R>,
+      f: Effect.Effect<X, E1, R1>,
+      options: { onlyEffect: true }
+    ): Effect.Effect<A, E | E1, R | R1>
   }
->(2, (self, f) =>
-  flatMap(self, (a) => {
-    const b = typeof f === "function" ? (f as any)(a) : f
-    if (isEffect(b)) {
-      return as(b, a)
-    } else if (isPromiseLike(b)) {
-      return async<any, Cause.UnknownException>((resume) => {
-        b.then((_) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
-      })
-    }
-    return succeed(a)
-  }))
+>(
+  (args) => args.length === 3 || args.length === 2 && !(isObject(args[1]) && "onlyEffect" in args[1]),
+  <A, E, R, X>(self: Effect.Effect<A, E, R>, f: X) =>
+    flatMap(self, (a) => {
+      const b = typeof f === "function" ? (f as any)(a) : f
+      if (isEffect(b)) {
+        return as(b, a)
+      } else if (isPromiseLike(b)) {
+        return async<any, Cause.UnknownException>((resume) => {
+          b.then((_) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
+        })
+      }
+      return succeed(a)
+    })
+)
 
 /* @internal */
 export const transplant = <A, E, R>(
