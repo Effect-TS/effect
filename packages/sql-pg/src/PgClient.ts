@@ -17,6 +17,7 @@ import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
+import type * as NodeStream from "node:stream"
 import postgres from "postgres"
 
 /**
@@ -82,7 +83,7 @@ export interface PgClientConfig {
    *   return PgClient.layer({ socket: clientOpts.stream, user: "iam-user" });
    * }).pipe(Layer.unwrapEffect)
    */
-  readonly socket?: (() => unknown) | undefined
+  readonly socket?: (() => NodeStream.Duplex) | undefined
 
   readonly idleTimeout?: Duration.DurationInput | undefined
   readonly connectTimeout?: Duration.DurationInput | undefined
@@ -106,7 +107,7 @@ export interface PgClientConfig {
 type PartialWithUndefined<T> = { [K in keyof T]?: T[K] | undefined }
 
 interface PostgresOptions extends postgres.Options<{}> {
-  readonly socket?: (() => unknown) | undefined
+  readonly socket?: (() => NodeStream.Duplex) | undefined
 }
 
 /**
