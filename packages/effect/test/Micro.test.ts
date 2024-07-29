@@ -180,8 +180,8 @@ describe.concurrent("Micro", () => {
           Micro.sync(() => {
             done.push(i)
             return i
-          }).pipe(Micro.delay(200))).pipe(Micro.fork)
-        yield* Micro.sleep(550)
+          }).pipe(Micro.delay(300))).pipe(Micro.fork)
+        yield* Micro.sleep(800)
         yield* handle.interrupt
         const result = yield* handle.await
         assert.deepStrictEqual(result, Micro.exitInterrupt)
@@ -210,8 +210,8 @@ describe.concurrent("Micro", () => {
           Micro.sync(() => {
             done.push(i)
             return i
-          }).pipe(Micro.delay(50)), { concurrency: 2 }).pipe(Micro.fork)
-        yield* Micro.sleep(75)
+          }).pipe(Micro.delay(100)), { concurrency: 2 }).pipe(Micro.fork)
+        yield* Micro.sleep(150)
         yield* handle.interrupt
         const result = yield* handle.await
         assert.deepStrictEqual(result, Micro.exitInterrupt)
