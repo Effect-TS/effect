@@ -41,6 +41,7 @@ export namespace Vitest {
   export interface Tester<R> extends Vitest.Test<R> {
     skip: Vitest.Test<R>
     skipIf: (condition: unknown) => Vitest.Test<R>
+    runIf: (condition: unknown) => Vitest.Test<R>
     only: Vitest.Test<R>
     each: <T>(
       cases: ReadonlyArray<T>
