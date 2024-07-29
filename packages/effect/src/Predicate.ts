@@ -735,11 +735,11 @@ export const productMany = <A>(
 export const tuple: {
   <T extends ReadonlyArray<Predicate.Any>>(
     ...elements: T
-  ): true extends { [K in keyof T]: T[K] extends Refinement.Any ? true : false }[number] ? Refinement<
-      Readonly<{ [I in keyof T]: T[I] extends Refinement.Any ? Refinement.In<T[I]> : Predicate.In<T[I]> }>,
-      Readonly<{ [I in keyof T]: T[I] extends Refinement.Any ? Refinement.Out<T[I]> : Predicate.In<T[I]> }>
+  ): [Extract<T[number], Refinement.Any>] extends [never] ? Predicate<{ readonly [I in keyof T]: Predicate.In<T[I]> }>
+    : Refinement<
+      { readonly [I in keyof T]: T[I] extends Refinement.Any ? Refinement.In<T[I]> : Predicate.In<T[I]> },
+      { readonly [I in keyof T]: T[I] extends Refinement.Any ? Refinement.Out<T[I]> : Predicate.In<T[I]> }
     >
-    : Predicate<Readonly<{ [I in keyof T]: Predicate.In<T[I]> }>>
 } = (...elements: ReadonlyArray<Predicate.Any>) => all(elements) as any
 
 /**
@@ -754,11 +754,12 @@ export const tuple: {
 export const struct: {
   <R extends Record<string, Predicate.Any>>(
     fields: R
-  ): true extends { [K in keyof R]: R[K] extends Refinement.Any ? true : false }[keyof R] ? Refinement<
+  ): [Extract<R[keyof R], Refinement.Any>] extends [never] ?
+    Predicate<{ readonly [K in keyof R]: Predicate.In<R[K]> }> :
+    Refinement<
       { readonly [K in keyof R]: R[K] extends Refinement.Any ? Refinement.In<R[K]> : Predicate.In<R[K]> },
       { readonly [K in keyof R]: R[K] extends Refinement.Any ? Refinement.Out<R[K]> : Predicate.In<R[K]> }
-    > :
-    Predicate<{ readonly [K in keyof R]: Predicate.In<R[K]> }>
+    >
 } = (<R extends Record<string, Predicate.Any>>(fields: R) => {
   const keys = Object.keys(fields)
   return (a: Record<string, unknown>) => {

@@ -289,6 +289,15 @@ Predicate.tuple(isTrue, isOdd)
 // $ExpectType Predicate<readonly [number, number]>
 Predicate.tuple(isOdd, isOdd)
 
+// $ExpectType Predicate<readonly number[]>
+Predicate.tuple(...hole<Array<Predicate.Predicate<number>>>())
+
+// $ExpectType Refinement<readonly never[], readonly never[]>
+Predicate.tuple(...hole<Array<Predicate.Predicate<number> | Predicate.Refinement<boolean, true>>>())
+
+// $ExpectType Refinement<readonly boolean[], readonly true[]>
+Predicate.tuple(...hole<Array<Predicate.Refinement<boolean, true>>>())
+
 // -------------------------------------------------------------------------------------
 // struct
 // -------------------------------------------------------------------------------------
