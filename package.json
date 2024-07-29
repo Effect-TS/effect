@@ -50,10 +50,10 @@
     "@types/node": "^20.14.10",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
-    "@vitest/browser": "^1.6.0",
-    "@vitest/coverage-v8": "^1.6.0",
-    "@vitest/expect": "^1.6.0",
-    "@vitest/web-worker": "^1.6.0",
+    "@vitest/browser": "^2.0.4",
+    "@vitest/coverage-v8": "^2.0.4",
+    "@vitest/expect": "^2.0.4",
+    "@vitest/web-worker": "^2.0.4",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "eslint": "^8.57.0",
     "eslint-import-resolver-typescript": "^3.6.1",
@@ -71,9 +71,12 @@
     "tsx": "^4.16.2",
     "typescript": "^5.5.4",
     "vite": "^5.3.3",
-    "vitest": "^1.6.0"
+    "vitest": "^2.0.4"
   },
   "pnpm": {
+    "overrides": {
+      "vitest": "^2.0.4"
+    },
     "patchedDependencies": {
       "@changesets/get-github-info@0.6.0": "patches/@changesets__get-github-info@0.6.0.patch",
       "@changesets/assemble-release-plan@6.0.3": "patches/@changesets__assemble-release-plan@6.0.3.patch",

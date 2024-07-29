@@ -29,10 +29,10 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
-    "vitest": "^1.4.0"
+    "vitest": "^2.0"
   },
   "devDependencies": {
     "effect": "workspace:^",
-    "vitest": "^1.6.0"
+    "vitest": "^2.0.4"
   }
 }
