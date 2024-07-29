@@ -771,12 +771,18 @@ export class MicroSchedulerDefault implements MicroScheduler {
     }
   }
 
-  private afterScheduled = () => {
+  /**
+   * @since 3.5.9
+   */
+  afterScheduled = () => {
     this.running = false
     this.runTasks()
   }
 
-  private runTasks() {
+  /**
+   * @since 3.5.9
+   */
+  runTasks() {
     const tasks = this.tasks
     this.tasks = []
     for (let i = 0, len = tasks.length; i < len; i++) {
