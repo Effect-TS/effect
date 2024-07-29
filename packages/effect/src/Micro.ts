@@ -744,8 +744,7 @@ export const provideServiceEffect: {
  * @category scheduler
  */
 export interface MicroScheduler {
-  readonly scheduleTask: (task: () => void) => void
-  readonly runTasks: () => void
+  readonly scheduleTask: (task: () => void, priority: number) => void
   readonly shouldYield: (env: Env<unknown>) => boolean
   readonly flush: () => void
 }
@@ -764,7 +763,7 @@ export class MicroSchedulerDefault implements MicroScheduler {
   /**
    * @since 3.5.9
    */
-  scheduleTask(task: () => void) {
+  scheduleTask(task: () => void, _priority: number) {
     this.tasks.push(task)
     if (!this.running) {
       this.running = true
@@ -959,7 +958,7 @@ const unsafeMakeOptions = <R, A, E>(
     }
     const scheduler = env.refs[currentScheduler.key] as MicroScheduler
     if (microDepthState.depth >= microDepthState.maxDepthBeforeYield || scheduler.shouldYield(env)) {
-      scheduler.scheduleTask(() => execute(env, onExit))
+      scheduler.scheduleTask(() => execute(env, onExit), 0)
     } else {
       try {
         run(env, onExit)
@@ -1283,13 +1282,27 @@ export const tryPromise = <A, E>(options: {
  * Pause the execution of the current `Micro` effect, and resume it on the next
  * iteration of the event loop.
  *
+ * You can specify a priority for the task, which will determine when it is
+ * executed relative to other tasks.
+ *
  * @since 3.4.0
  * @experimental
  * @category constructors
  */
-export const yieldNow: Micro<void> = make(function(env, onExit) {
-  envGet(env, currentScheduler).scheduleTask(() => onExit(exitVoid))
-})
+export const yieldWithPriority = (priority: number): Micro<void> =>
+  make(function(env, onExit) {
+    envGet(env, currentScheduler).scheduleTask(() => onExit(exitVoid), priority)
+  })
+
+/**
+ * Pause the execution of the current `Micro` effect, and resume it on the next
+ * iteration of the event loop.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
+ */
+export const yieldNow: Micro<void> = yieldWithPriority(0)
 
 /**
  * Flush any yielded effects that are waiting to be executed.
@@ -3740,7 +3753,7 @@ export const fork = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, 
       self[runSymbol](nextEnv, (exit) => {
         handle.emit(exit)
       })
-    })
+    }, 0)
     onExit(Either.right(handle))
   })
 
@@ -3767,7 +3780,7 @@ export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
       self[runSymbol](nextEnv, (exit) => {
         handle.emit(exit)
       })
-    })
+    }, 0)
     onExit(Either.right(handle))
   })
 
