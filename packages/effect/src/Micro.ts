@@ -562,6 +562,7 @@ export const envUnsafeMakeEmpty = (): Env<never> => {
   const refs = Object.create(null)
   refs[currentAbortController.key] = controller
   refs[currentAbortSignal.key] = controller.signal
+  refs[currentScheduler.key] = new MicroSchedulerDefault()
   return envMake(refs)
 }
 
@@ -733,6 +734,73 @@ export const provideServiceEffect: {
   ): Micro<A, E | E2, Exclude<R, I> | R2> => flatMap(acquire, (service) => provideService(self, tag, service))
 )
 
+// ----------------------------------------------------------------------------
+// scheduler
+// ----------------------------------------------------------------------------
+
+/**
+ * @since 3.5.9
+ * @experimental
+ * @category scheduler
+ */
+export interface MicroScheduler {
+  readonly scheduleTask: (task: () => void) => void
+  readonly runTasks: () => void
+  readonly shouldYield: (env: Env<unknown>) => boolean
+  readonly flush: () => void
+}
+
+const setImmediate = "setImmediate" in globalThis ? globalThis.setImmediate : (f: () => void) => setTimeout(f, 0)
+
+/**
+ * @since 3.5.9
+ * @experimental
+ * @category scheduler
+ */
+export class MicroSchedulerDefault implements MicroScheduler {
+  private tasks: Array<() => void> = []
+  private running = false
+
+  /**
+   * @since 3.5.9
+   */
+  scheduleTask(task: () => void) {
+    this.tasks.push(task)
+    if (!this.running) {
+      this.running = true
+      setImmediate(this.runTasks)
+    }
+  }
+
+  /**
+   * @since 3.5.9
+   */
+  runTasks = () => {
+    const tasks = this.tasks
+    this.tasks = []
+    this.running = false
+    for (let i = 0, len = tasks.length; i < len; i++) {
+      tasks[i]()
+    }
+  }
+
+  /**
+   * @since 3.5.9
+   */
+  shouldYield(_env: Env<unknown>) {
+    return false
+  }
+
+  /**
+   * @since 3.5.9
+   */
+  flush() {
+    while (this.tasks.length > 0) {
+      this.runTasks()
+    }
+  }
+}
+
 // ========================================================================
 // Env refs
 // ========================================================================
@@ -810,6 +878,16 @@ const currentInterruptible: EnvRef<boolean> = envRefMake(
 )
 
 /**
+ * @since 3.4.0
+ * @experimental
+ * @category environment refs
+ */
+export const currentScheduler: EnvRef<MicroScheduler> = envRefMake(
+  "effect/Micro/currentScheduler",
+  () => new MicroSchedulerDefault()
+)
+
+/**
  * If you have a `Micro` that uses `concurrency: "inherit"`, you can use this
  * api to control the concurrency of that `Micro` when it is run.
  *
@@ -879,8 +957,9 @@ const unsafeMakeOptions = <R, A, E>(
     if (microDepthState.depth === 1) {
       microDepthState.maxDepthBeforeYield = envGet(env, currentMaxDepthBeforeYield)
     }
-    if (microDepthState.depth >= microDepthState.maxDepthBeforeYield) {
-      yieldAdd(() => execute(env, onExit))
+    const scheduler = env.refs[currentScheduler.key] as MicroScheduler
+    if (microDepthState.depth >= microDepthState.maxDepthBeforeYield || scheduler.shouldYield(env)) {
+      scheduler.scheduleTask(() => execute(env, onExit))
     } else {
       try {
         run(env, onExit)
@@ -1200,35 +1279,6 @@ export const tryPromise = <A, E>(options: {
     }
   })
 
-const yieldState: {
-  tasks: Array<() => void>
-  working: boolean
-} = globalValue("effect/Micro/yieldState", () => ({
-  tasks: [],
-  working: false
-}))
-
-const yieldRunTasks = () => {
-  const tasks = yieldState.tasks
-  yieldState.tasks = []
-  for (let i = 0, len = tasks.length; i < len; i++) {
-    tasks[i]()
-  }
-}
-
-const setImmediate = "setImmediate" in globalThis ? globalThis.setImmediate : (f: () => void) => setTimeout(f, 0)
-
-const yieldAdd = (task: () => void) => {
-  yieldState.tasks.push(task)
-  if (!yieldState.working) {
-    yieldState.working = true
-    setImmediate(() => {
-      yieldState.working = false
-      yieldRunTasks()
-    })
-  }
-}
-
 /**
  * Pause the execution of the current `Micro` effect, and resume it on the next
  * iteration of the event loop.
@@ -1237,8 +1287,8 @@ const yieldAdd = (task: () => void) => {
  * @experimental
  * @category constructors
  */
-export const yieldNow: Micro<void> = make(function(_env, onExit) {
-  yieldAdd(() => onExit(exitVoid))
+export const yieldNow: Micro<void> = make(function(env, onExit) {
+  envGet(env, currentScheduler).scheduleTask(() => onExit(exitVoid))
 })
 
 /**
@@ -1248,10 +1298,9 @@ export const yieldNow: Micro<void> = make(function(_env, onExit) {
  * @experimental
  * @category constructors
  */
-export const yieldFlush: Micro<void> = sync(function() {
-  while (yieldState.tasks.length > 0) {
-    yieldRunTasks()
-  }
+export const yieldFlush: Micro<void> = make(function(env, onExit) {
+  envGet(env, currentScheduler).flush()
+  onExit(exitVoid)
 })
 
 /**
@@ -3687,7 +3736,7 @@ export const fork = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, 
       map[currentAbortSignal.key] = handle._controller.signal
       return map
     })
-    yieldAdd(() => {
+    envGet(env, currentScheduler).scheduleTask(() => {
       self[runSymbol](nextEnv, (exit) => {
         handle.emit(exit)
       })
@@ -3714,7 +3763,7 @@ export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
       map[currentAbortSignal.key] = controller.signal
       return map
     })
-    yieldAdd(() => {
+    envGet(env, currentScheduler).scheduleTask(() => {
       self[runSymbol](nextEnv, (exit) => {
         handle.emit(exit)
       })
@@ -3790,12 +3839,14 @@ export const runFork = <A, E>(
   effect: Micro<A, E>,
   options?: {
     readonly signal?: AbortSignal | undefined
+    readonly scheduler?: MicroScheduler | undefined
   } | undefined
 ): Handle<A, E> => {
   const controller = new AbortController()
   const refs = Object.create(null)
   refs[currentAbortController.key] = controller
   refs[currentAbortSignal.key] = controller.signal
+  refs[currentScheduler.key] = options?.scheduler ?? new MicroSchedulerDefault()
   const env = envMake(refs)
   const handle = new HandleImpl<A, E>(controller.signal, controller)
   effect[runSymbol](envSet(env, currentAbortSignal, handle._controller.signal), (exit) => {
@@ -3826,6 +3877,7 @@ export const runPromiseExit = <A, E>(
   effect: Micro<A, E>,
   options?: {
     readonly signal?: AbortSignal | undefined
+    readonly scheduler?: MicroScheduler | undefined
   } | undefined
 ): Promise<MicroExit<A, E>> =>
   new Promise((resolve, _reject) => {
@@ -3845,6 +3897,7 @@ export const runPromise = <A, E>(
   effect: Micro<A, E>,
   options?: {
     readonly signal?: AbortSignal | undefined
+    readonly scheduler?: MicroScheduler | undefined
   } | undefined
 ): Promise<A> =>
   runPromiseExit(effect, options).then((exit) => {
@@ -3865,10 +3918,9 @@ export const runPromise = <A, E>(
  * @category execution
  */
 export const runSyncExit = <A, E>(effect: Micro<A, E>): MicroExit<A, E> => {
-  const handle = runFork(effect)
-  while (yieldState.tasks.length > 0) {
-    yieldRunTasks()
-  }
+  const scheduler = new MicroSchedulerDefault()
+  const handle = runFork(effect, { scheduler })
+  scheduler.flush()
   const exit = handle.unsafePoll()
   if (exit === null) {
     return exitDie(handle)

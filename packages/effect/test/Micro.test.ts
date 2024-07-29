@@ -4,7 +4,7 @@ import { assert, describe, it } from "effect/test/utils/extend"
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 class TestError extends Micro.TaggedError("TestError") {}
 
-describe.sequential("Micro", () => {
+describe.concurrent("Micro", () => {
   describe("tracing", () => {
     it.effect("Micro.TaggedError", () =>
       Micro.gen(function*() {
