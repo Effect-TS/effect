@@ -180,8 +180,8 @@ describe.concurrent("Micro", () => {
           Micro.sync(() => {
             done.push(i)
             return i
-          }).pipe(Micro.delay(100))).pipe(Micro.fork)
-        yield* Micro.sleep(280)
+          }).pipe(Micro.delay(200))).pipe(Micro.fork)
+        yield* Micro.sleep(550)
         yield* handle.interrupt
         const result = yield* handle.await
         assert.deepStrictEqual(result, Micro.exitInterrupt)
@@ -225,7 +225,7 @@ describe.concurrent("Micro", () => {
           Micro.suspend(() => {
             done.push(i)
             return i === 3 ? Micro.fail("error") : Micro.succeed(i)
-          }).pipe(Micro.delay(i * 10)), {
+          }).pipe(Micro.delay(i * 100)), {
           concurrency: "unbounded"
         }).pipe(Micro.fork)
         const result = yield* handle.await
