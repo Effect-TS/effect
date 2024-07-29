@@ -271,3 +271,51 @@ pipe(Predicate.isString, Predicate.or(Predicate.isNumber))
 
 // $ExpectType Refinement<unknown, string | number>
 Predicate.or(Predicate.isString, Predicate.isNumber)
+
+// -------------------------------------------------------------------------------------
+// tuple
+// -------------------------------------------------------------------------------------
+
+const isA = hole<Predicate.Refinement<string, "a">>()
+const isTrue = hole<Predicate.Refinement<boolean, true>>()
+const isOdd = hole<Predicate.Predicate<number>>()
+
+// $ExpectType Refinement<readonly [boolean, string], readonly [true, "a"]>
+Predicate.tuple(isTrue, isA)
+
+// $ExpectType Refinement<readonly [boolean, number], readonly [true, number]>
+Predicate.tuple(isTrue, isOdd)
+
+// $ExpectType Predicate<readonly [number, number]>
+Predicate.tuple(isOdd, isOdd)
+
+// $ExpectType Predicate<readonly number[]>
+Predicate.tuple(...hole<Array<Predicate.Predicate<number>>>())
+
+// $ExpectType Refinement<readonly never[], readonly never[]>
+Predicate.tuple(...hole<Array<Predicate.Predicate<number> | Predicate.Refinement<boolean, true>>>())
+
+// $ExpectType Refinement<readonly boolean[], readonly true[]>
+Predicate.tuple(...hole<Array<Predicate.Refinement<boolean, true>>>())
+
+// -------------------------------------------------------------------------------------
+// struct
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Refinement<{ readonly a: string; readonly true: boolean; }, { readonly a: "a"; readonly true: true; }>
+Predicate.struct({
+  a: isA,
+  true: isTrue
+})
+
+// $ExpectType Refinement<{ readonly odd: number; readonly true: boolean; }, { readonly odd: number; readonly true: true; }>
+Predicate.struct({
+  odd: isOdd,
+  true: isTrue
+})
+
+// $ExpectType Predicate<{ readonly odd: number; readonly odd1: number; }>
+Predicate.struct({
+  odd: isOdd,
+  odd1: isOdd
+})
