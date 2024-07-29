@@ -41,6 +41,7 @@ describe("Hash", () => {
     const set: HashSet.HashSet<number> = HashSet.make(Infinity)
     expect(HashSet.has(set, Infinity)).toBe(true)
     expect(HashSet.has(set, -Infinity)).toBe(false)
+    expect(Hash.number(0.1)).not.toBe(Hash.number(0))
   })
 
   it("bigint", () => {
