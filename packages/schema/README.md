@@ -993,7 +993,16 @@ In this example, the tree error message is structured as follows:
 - `["name"]` points to the problematic property, in this case, the `"name"` property.
 - `is missing` details the specific error for the `"name"` property.
 
-**Example of customizing the type output**
+#### Customizing the Output
+
+The default error message represents the involved schemas in a TypeScript-like syntax:
+
+```ts
+{ readonly name: string; readonly age: number }
+```
+
+You can customize this output by adding annotations such as `identifier`, `title`, or `description`.
+These annotations are applied in this order of priority and allow for a more concise and clear representation in error messages.
 
 ```ts
 import { Schema, TreeFormatter } from "@effect/schema"
@@ -1015,7 +1024,7 @@ Person
 */
 ```
 
-In this adjusted example, adding the `title` annotation changes how the schema is represented in the error message.
+In this modified example, by adding a `title` annotation, the schema representation in the error message changes to "Person", providing a simpler and more understandable output. This helps in identifying the schema involved more quickly and improves the readability of the error messages.
 
 **Handling Multiple Errors**
 
