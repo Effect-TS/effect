@@ -767,17 +767,18 @@ export class MicroSchedulerDefault implements MicroScheduler {
     this.tasks.push(task)
     if (!this.running) {
       this.running = true
-      setImmediate(this.runTasks)
+      setImmediate(this.afterScheduled)
     }
   }
 
-  /**
-   * @since 3.5.9
-   */
-  runTasks = () => {
+  private afterScheduled = () => {
+    this.running = false
+    this.runTasks()
+  }
+
+  private runTasks() {
     const tasks = this.tasks
     this.tasks = []
-    this.running = false
     for (let i = 0, len = tasks.length; i < len; i++) {
       tasks[i]()
     }
