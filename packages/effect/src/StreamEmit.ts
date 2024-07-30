@@ -81,3 +81,56 @@ export interface EmitOps<in R, in E, in A, out B> {
    */
   single(value: A): Promise<B>
 }
+
+/**
+ * @since 3.6.0
+ * @category models
+ */
+export interface EmitOpsPush<in E, in A> {
+  /**
+   * Emits a chunk containing the specified values.
+   */
+  chunk(chunk: Chunk.Chunk<A>): boolean
+
+  /**
+   * Emits a chunk containing the specified values.
+   */
+  array(chunk: ReadonlyArray<A>): boolean
+
+  /**
+   * Terminates with a cause that dies with the specified defect.
+   */
+  die<Err>(defect: Err): void
+
+  /**
+   * Terminates with a cause that dies with a `Throwable` with the specified
+   * message.
+   */
+  dieMessage(message: string): void
+
+  /**
+   * Either emits the specified value if this `Exit` is a `Success` or else
+   * terminates with the specified cause if this `Exit` is a `Failure`.
+   */
+  done(exit: Exit.Exit<A, E>): void
+
+  /**
+   * Terminates with an end of stream signal.
+   */
+  end(): void
+
+  /**
+   * Terminates with the specified error.
+   */
+  fail(error: E): void
+
+  /**
+   * Terminates the stream with the specified cause.
+   */
+  halt(cause: Cause.Cause<E>): void
+
+  /**
+   * Emits a chunk containing the specified value.
+   */
+  single(value: A): boolean
+}

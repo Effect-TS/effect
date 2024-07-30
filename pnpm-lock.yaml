@@ -610,10 +610,42 @@ importers:
         version: 10.10.3
       drizzle-orm:
         specifier: ^0.31.0
-        version: 0.31.4(@cloudflare/workers-types@4.20240725.0)(@op-engineering/op-sqlite@6.1.4(react-native@0.74.3(@babel/core@7.24.9)(@babel/preset-env@7.25.0(@babel/core@7.24.9))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.1.2)(bun-types@1.1.20)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1)
+        version: 0.31.4(@cloudflare/workers-types@4.20240725.0)(@op-engineering/op-sqlite@6.1.4(react-native@0.74.3(@babel/core@7.24.9)(@babel/preset-env@7.25.0(@babel/core@7.24.9))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.1.2)(bun-types@1.1.20)(kysely@0.27.3)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1)
       effect:
         specifier: workspace:^
         version: link:../effect/dist
+    publishDirectory: dist
+
+  packages/sql-kysely:
+    dependencies:
+      '@opentelemetry/semantic-conventions':
+        specifier: ^1.24.1
+        version: 1.25.1
+    devDependencies:
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      '@testcontainers/mssqlserver':
+        specifier: ^10.9.0
+        version: 10.10.0
+      '@testcontainers/mysql':
+        specifier: ^10.9.0
+        version: 10.10.0
+      '@testcontainers/postgresql':
+        specifier: ^10.9.0
+        version: 10.10.0
+      '@types/better-sqlite3':
+        specifier: ^7.6.10
+        version: 7.6.10
+      better-sqlite3:
+        specifier: ^11.0.0
+        version: 11.1.2
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+      kysely:
+        specifier: ^0.27.3
+        version: 0.27.3
     publishDirectory: dist
 
   packages/sql-mssql:
@@ -922,6 +954,10 @@ packages:
 
   '@babel/helper-hoist-variables@7.24.7':
     resolution: {integrity: sha512-MJJwhkoGy5c4ehfoRyrJ/owKeMl19U54h27YYftT0o2teQ3FJ3nQUf/I3LlJsX4l3qlw7WRXUmiyajvHXoTubQ==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/helper-member-expression-to-functions@7.24.7':
+    resolution: {integrity: sha512-LGeMaf5JN4hAT471eJdBs/GK1DoYIJ5GCtZN/EsL6KUiiDZOvO/eKE11AMZJa2zP4zk4qe9V2O/hxAmkRc8p6w==}
     engines: {node: '>=6.9.0'}
 
   '@babel/helper-member-expression-to-functions@7.24.8':
@@ -2592,8 +2628,17 @@ packages:
     resolution: {integrity: sha512-10s/u/Main1RGO+jjzK+mgC/zh1ls1CEnq3Dujr03TwvzLg+j4FAohOmlYkQj8KQOj1vGR9cuB9F8tVBTwVGVA==}
     hasBin: true
 
+  '@testcontainers/mssqlserver@10.10.0':
+    resolution: {integrity: sha512-zuofGTErmJREWeznYZw//U8K4v5sR8irIlu/iNfso/m6ZXBIGW0COm1oaYd6GMjR9ypo54MsOXJX3lRRyaDzYg==}
+
+  '@testcontainers/mysql@10.10.0':
+    resolution: {integrity: sha512-D1GFS1ugM9nL1NPGO5A5t9MyBgs9/Vwy1MIk5xX1lTCNLzjtoudL+fb3yK4h7krFX/B3lbn9/uoDSWui3yn4QQ==}
+
   '@testcontainers/mysql@10.10.3':
     resolution: {integrity: sha512-8mJzCBkl78VNpAlB0tBIzXCI3YgeGWssyPr7LUOH4229KoS1Fs8cdP3G8OOZByuD89YAQNi8EDMUH91G4mTy+w==}
+
+  '@testcontainers/postgresql@10.10.0':
+    resolution: {integrity: sha512-cgzYnhzsYPVwN370bjJCuyAkkjLhGD6EBoQi4j+xKomMU4e6FWu0SYDolP+tiFGKWaS95SsIY3CPp6bnuxBh/A==}
 
   '@testcontainers/postgresql@10.10.3':
     resolution: {integrity: sha512-k887VJjbbSyHr4eTRVhoBit9A+7WDYx/EU8XdwJ0swuECB1hOjMuvpCX/AlXLk+bD6dNrE/0lvKW6SwqFTXo1A==}
@@ -2610,6 +2655,9 @@ packages:
 
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
+
+  '@types/better-sqlite3@7.6.10':
+    resolution: {integrity: sha512-TZBjD+yOsyrUJGmcUj6OS3JADk3+UZcNv3NOBqGkM09bZdi28fNZw8ODqbMOLfKCu7RYCO62/ldq1iHbzxqoPw==}
 
   '@types/better-sqlite3@7.6.11':
     resolution: {integrity: sha512-i8KcD3PgGtGBLl3+mMYA8PdKkButvPyARxA7IQAd6qeslht13qxb1zzO8dRCtE7U3IoJS782zDBAeoKiM695kg==}
@@ -4776,6 +4824,10 @@ packages:
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
+
+  kysely@0.27.3:
+    resolution: {integrity: sha512-lG03Ru+XyOJFsjH3OMY6R/9U38IjDPfnOfDgO3ynhbDr+Dz8fak+X6L62vqu3iybQnj+lG84OttBuU9KY3L9kA==}
+    engines: {node: '>=14.0.0'}
 
   lazy-cache@2.0.2:
     resolution: {integrity: sha512-7vp2Acd2+Kz4XkzxGxaB1FWOi8KjWIWsgdfD5MCb86DWvlLqhRPM+d6Pro3iNEL5VT9mstz5hKAlcd+QR6H3aA==}
@@ -7072,6 +7124,13 @@ snapshots:
     dependencies:
       '@babel/types': 7.24.9
 
+  '@babel/helper-member-expression-to-functions@7.24.7':
+    dependencies:
+      '@babel/traverse': 7.24.8
+      '@babel/types': 7.24.9
+    transitivePeerDependencies:
+      - supports-color
+
   '@babel/helper-member-expression-to-functions@7.24.8':
     dependencies:
       '@babel/traverse': 7.24.8
@@ -7126,7 +7185,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.24.9
       '@babel/helper-environment-visitor': 7.24.7
-      '@babel/helper-member-expression-to-functions': 7.24.8
+      '@babel/helper-member-expression-to-functions': 7.24.7
       '@babel/helper-optimise-call-expression': 7.24.7
     transitivePeerDependencies:
       - supports-color
@@ -9135,7 +9194,28 @@ snapshots:
 
   '@sqlite.org/sqlite-wasm@3.46.0-build2': {}
 
+  '@testcontainers/mssqlserver@10.10.0':
+    dependencies:
+      testcontainers: 10.10.3
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+
+  '@testcontainers/mysql@10.10.0':
+    dependencies:
+      testcontainers: 10.10.3
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+
   '@testcontainers/mysql@10.10.3':
+    dependencies:
+      testcontainers: 10.10.3
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+
+  '@testcontainers/postgresql@10.10.0':
     dependencies:
       testcontainers: 10.10.3
     transitivePeerDependencies:
@@ -9165,6 +9245,10 @@ snapshots:
       '@testing-library/dom': 10.4.0
 
   '@types/aria-query@5.0.4': {}
+
+  '@types/better-sqlite3@7.6.10':
+    dependencies:
+      '@types/node': 20.14.11
 
   '@types/better-sqlite3@7.6.11':
     dependencies:
@@ -10308,7 +10392,7 @@ snapshots:
 
   dotenv@8.6.0: {}
 
-  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20240725.0)(@op-engineering/op-sqlite@6.1.4(react-native@0.74.3(@babel/core@7.24.9)(@babel/preset-env@7.25.0(@babel/core@7.24.9))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.1.2)(bun-types@1.1.20)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1):
+  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20240725.0)(@op-engineering/op-sqlite@6.1.4(react-native@0.74.3(@babel/core@7.24.9)(@babel/preset-env@7.25.0(@babel/core@7.24.9))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.1.2)(bun-types@1.1.20)(kysely@0.27.3)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20240725.0
       '@op-engineering/op-sqlite': 6.1.4(react-native@0.74.3(@babel/core@7.24.9)(@babel/preset-env@7.25.0(@babel/core@7.24.9))(react@18.3.1))(react@18.3.1)
@@ -10316,6 +10400,7 @@ snapshots:
       '@types/better-sqlite3': 7.6.11
       better-sqlite3: 11.1.2
       bun-types: 1.1.20
+      kysely: 0.27.3
       mysql2: 3.11.0
       postgres: 3.4.4
       react: 18.3.1
@@ -11615,6 +11700,8 @@ snapshots:
   kind-of@6.0.3: {}
 
   kleur@3.0.3: {}
+
+  kysely@0.27.3: {}
 
   lazy-cache@2.0.2:
     dependencies:
