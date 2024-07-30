@@ -361,7 +361,7 @@ export const set: {
  * @since 2.0.0
  * @category getters
  */
-export const snapshot: Effect.Effect<ReadonlyArray<MetricPair.MetricPair.Untyped>> = internal.snapshot
+export const snapshot: Effect.Effect<Array<MetricPair.MetricPair.Untyped>> = internal.snapshot
 
 /**
  * Creates a metric that ignores input and produces constant output.
