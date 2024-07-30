@@ -4827,9 +4827,9 @@ console.log(decode("3")) // { _id: 'BigDecimal', value: '1', scale: 0 }
 ## Annotations
 
 One of the fundamental requirements in the design of `@effect/schema` is that it is extensible and customizable. Customizations are achieved through "annotations". Each node contained in the AST of `@effect/schema/AST` contains an `annotations: Record<symbol, unknown>` field that can be used to attach additional information to the schema.
-You can manage these annotations using the `annotations` method.
+You can manage these annotations using the `annotations` method ot the `Schema.annotations` API.
 
-Let's see some examples:
+**Example of Using Annotations**
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -4863,9 +4863,91 @@ const Password =
     })
 ```
 
-The example shows some built-in combinators to add meta information, but users can easily add their own meta information by defining a custom annotation.
+This example demonstrates the use of built-in annotations to add metadata like error messages, identifiers, and descriptions to enhance the schema's functionality and documentation.
 
-Here's an example of how to add a `deprecated` annotation:
+### Built-in Annotations
+
+The following table provides an overview of common built-in annotations and their uses:
+
+| Annotation        | Description                                                                                                                                                                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `identifier`      | Uniquely identifies the schema, suitable for TypeScript identifiers and useful in code generation. Examples: `"Person"`, `"Product"`. Often used in conjunction with tools like [TreeFormatter](#customizing-the-output) for clear output.                                                 |
+| `title`           | Provides a concise title for the schema, akin to the title in JSON Schema. This is useful for brief labels or headings in documentation or UIs. Examples: `"@mycompany/shared-domain/Product"`. Also utilized by [TreeFormatter](#customizing-the-output) for more readable error outputs. |
+| `description`     | Offers a detailed explanation of the schema's purpose, similar to the description in JSON Schema. This too is used by [TreeFormatter](#customizing-the-output) to enrich error messages.                                                                                                   |
+| `documentation`   | Provides additional, detailed documentation for the schema, useful for developers or for generating comprehensive documentation.                                                                                                                                                           |
+| `examples`        | Lists examples of valid values, mirroring the JSON Schema examples attribute, which helps in validation tests or documentation.                                                                                                                                                            |
+| `default`         | Specifies a default value for the schema, paralleling the default attribute in JSON Schema, ensuring schemas come with predefined values where needed.                                                                                                                                     |
+| `message`         | Sets a custom error message for validation errors, enhancing the clarity of output from [TreeFormatter](#customizing-the-output) and [ArrayFromatter](#arrayformatter) during failures.                                                                                                    |
+| `jsonSchema`      | Contains specific annotations that influence the [JSON Schema](#generating-json-schemas) output, tailoring how schemas are represented in JSON Schema documents.                                                                                                                           |
+| `arbitrary`       | Custom settings for generating [Arbitrary](#generating-arbitraries) data for tests.                                                                                                                                                                                                        |
+| `pretty`          | Custom settings for generating [Pretty](#generating-pretty-printers) output.                                                                                                                                                                                                               |
+| `equivalence`     | Custom settings for checking data [Equivalence](#generating-equivalences).                                                                                                                                                                                                                 |
+| `concurrency`     | Relates to settings that manage concurrency behavior, ensuring that schemas function correctly under concurrent usage scenarios.                                                                                                                                                           |
+| `batching`        | Involves settings that handle batching operations, optimizing performance for operations that can be grouped and processed together.                                                                                                                                                       |
+| `parseIssueTitle` | Custom title for parse issues (see [ParseIssueTitle Annotation](#parseissuetitle-annotation) for more details). Used by [TreeFormatter](#customizing-the-output).                                                                                                                          |
+| `parseOptions`    | Overrides the parse options at this schema, see [Customizing Parsing Behavior at the Schema Level](#customizing-parsing-behavior-at-the-schema-level).                                                                                                                                     |
+
+### Concurrency Annotation
+
+For complex schemas like `Struct`, `Array`, or `Union` that contain multiple nested schemas, the `concurrency` annotation provides a way to manage how validations are executed concurrently:
+
+```ts
+import { Schema } from "@effect/schema"
+import type { Duration } from "effect"
+import { Effect } from "effect"
+
+// Simulates an async task
+const item = (id: number, duration: Duration.DurationInput) =>
+  Schema.String.pipe(
+    Schema.filterEffect(() =>
+      Effect.gen(function* () {
+        yield* Effect.sleep(duration)
+        console.log(`Task ${id} done`)
+        return true
+      })
+    )
+  )
+```
+
+**Sequential Execution**
+
+```ts
+const Sequential = Schema.Tuple(
+  item(1, "30 millis"),
+  item(2, "10 millis"),
+  item(3, "20 millis")
+)
+
+Effect.runPromise(Schema.decode(Sequential)(["a", "b", "c"]))
+/*
+Output
+Task 1 done
+Task 2 done
+Task 3 done
+*/
+```
+
+**Concurrent Execution**
+
+```ts
+const Concurrent = Sequential.annotations({
+  concurrency: "unbounded"
+})
+
+Effect.runPromise(Schema.decode(Concurrent)(["a", "b", "c"]))
+/*
+Output
+Task 2 done
+Task 3 done
+Task 1 done
+*/
+```
+
+This configuration allows developers to specify whether validations within a schema should be processed sequentially or concurrently, offering flexibility based on the performance needs and the dependencies between validations.
+
+### Custom Annotations
+
+You can also define your own custom annotations for specific needs. Here's how you can create a `deprecated` annotation:
 
 ```ts
 import { AST, Schema } from "@effect/schema"
