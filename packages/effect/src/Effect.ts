@@ -4029,12 +4029,6 @@ export const tap: {
   ) => [X] extends [Effect<infer _A1, infer E1, infer R1>] ? Effect<A, E | E1, R | R1>
     : [X] extends [PromiseLike<infer _A1>] ? Effect<A, E | Cause.UnknownException, R>
     : Effect<A, E, R>
-  <A, X, E1, R1>(
-    f: (a: NoInfer<A>) => Effect<X, E1, R1>,
-    options: { onlyEffect: true }
-  ): <E, R>(
-    self: Effect<A, E, R>
-  ) => Effect<A, E | E1, R | R1>
   <X>(
     f: NotFunction<X>
   ): <A, E, R>(
@@ -4042,34 +4036,18 @@ export const tap: {
   ) => [X] extends [Effect<infer _A1, infer E1, infer R1>] ? Effect<A, E | E1, R | R1>
     : [X] extends [PromiseLike<infer _A1>] ? Effect<A, E | Cause.UnknownException, R>
     : Effect<A, E, R>
-  <X, E1, R1>(
-    f: Effect<X, E1, R1>,
-    options: { onlyEffect: true }
-  ): <A, E, R>(
-    self: Effect<A, E, R>
-  ) => Effect<A, E | E1, R | R1>
   <A, E, R, X>(
     self: Effect<A, E, R>,
     f: (a: NoInfer<A>) => X
   ): [X] extends [Effect<infer _A1, infer E1, infer R1>] ? Effect<A, E | E1, R | R1>
     : [X] extends [PromiseLike<infer _A1>] ? Effect<A, E | Cause.UnknownException, R>
     : Effect<A, E, R>
-  <A, E, R, X, E1, R1>(
-    self: Effect<A, E, R>,
-    f: (a: NoInfer<A>) => Effect<X, E1, R1>,
-    options: { onlyEffect: true }
-  ): Effect<A, E | E1, R | R1>
   <A, E, R, X>(
     self: Effect<A, E, R>,
     f: NotFunction<X>
   ): [X] extends [Effect<infer _A1, infer E1, infer R1>] ? Effect<A, E | E1, R | R1>
     : [X] extends [PromiseLike<infer _A1>] ? Effect<A, E | Cause.UnknownException, R>
     : Effect<A, E, R>
-  <A, E, R, X, E1, R1>(
-    self: Effect<A, E, R>,
-    f: Effect<X, E1, R1>,
-    options: { onlyEffect: true }
-  ): Effect<A, E | E1, R | R1>
 } = core.tap
 
 /**

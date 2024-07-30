@@ -52,7 +52,7 @@ export interface CommandExecutor {
    *
    * If an encoding is not specified, the encoding will default to `utf-8`.
    */
-  readonly lines: (command: Command, encoding?: string) => Effect<Array<string>, PlatformError>
+  readonly lines: (command: Command, encoding?: string) => Effect<ReadonlyArray<string>, PlatformError>
   /**
    * Runs the command returning the output as a `Stream`.
    */

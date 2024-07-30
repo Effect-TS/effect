@@ -98,7 +98,7 @@ export const runInShell = dual<
 export const lines = (
   command: Command.Command,
   encoding = "utf-8"
-): Effect.Effect<Array<string>, PlatformError, CommandExecutor.CommandExecutor> =>
+): Effect.Effect<ReadonlyArray<string>, PlatformError, CommandExecutor.CommandExecutor> =>
   Effect.flatMap(commandExecutor.CommandExecutor, (executor) => executor.lines(command, encoding))
 
 const Proto = {
