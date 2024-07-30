@@ -1,5 +1,16 @@
 # @effect/sql
 
+## 0.8.0
+
+### Minor Changes
+
+- [#3387](https://github.com/Effect-TS/effect/pull/3387) [`42d0706`](https://github.com/Effect-TS/effect/commit/42d07067e9823ceb8977eff9672d9a290941dad5) Thanks @tim-smart! - allow sql Statement transformers to be effectful
+
+### Patch Changes
+
+- Updated dependencies [[`11223bf`](https://github.com/Effect-TS/effect/commit/11223bf9cbf5b822e0bf9a9fb2b35b2ad88af692)]:
+  - @effect/platform@0.61.1
+
 ## 0.7.0
 
 ### Patch Changes
