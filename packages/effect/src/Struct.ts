@@ -179,25 +179,3 @@ export const evolve: {
 export const get =
   <K extends PropertyKey>(key: K) => <S extends { [P in K]?: any }>(s: S): MatchRecord<S, S[K] | undefined, S[K]> =>
     s[key]
-
-/**
- * Retrieves the object keys that are strings in a typed manner
- *
- * @example
- * import { Struct } from "effect"
- *
- * const symbol: unique symbol = Symbol()
- *
- * const value = {
- *   a: 1,
- *   b: 2,
- *   [symbol]: 3
- * }
- *
- * const keys: Array<"a" | "b"> = Struct.keys(value)
- *
- * assert.deepStrictEqual(keys, ["a", "b"])
- *
- * @since 3.6.0
- */
-export const keys = <T extends {}>(o: T): Array<(keyof T) & string> => Object.keys(o) as Array<(keyof T) & string>

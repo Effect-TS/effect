@@ -512,7 +512,7 @@ const parseInternal = (
     case "Standard": {
       const parseCommandLine = (
         args: ReadonlyArray<string>
-      ): Effect.Effect<Array<string>, ValidationError.ValidationError> =>
+      ): Effect.Effect<ReadonlyArray<string>, ValidationError.ValidationError> =>
         Arr.matchLeft(args, {
           onEmpty: () => {
             const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
