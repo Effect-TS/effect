@@ -1,8 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
 import type * as Error from "./Error.js"
 import type * as Etag from "./Etag.js"
 import type * as FileSystem from "./FileSystem.js"
@@ -13,37 +12,23 @@ import * as internal from "./internal/httpPlatform.js"
 
 /**
  * @since 1.0.0
- * @category type ids
- */
-export const TypeId: unique symbol = internal.TypeId
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type TypeId = typeof TypeId
-
-/**
- * @since 1.0.0
  * @category tags
  */
-export const HttpPlatform: Context.Tag<HttpPlatform, HttpPlatform> = internal.tag
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface HttpPlatform {
-  readonly [TypeId]: TypeId
-  readonly fileResponse: (
-    path: string,
-    options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
-  ) => Effect.Effect<ServerResponse.HttpServerResponse, Error.PlatformError>
-  readonly fileWebResponse: (
-    file: Body.HttpBody.FileLike,
-    options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
-  ) => Effect.Effect<ServerResponse.HttpServerResponse>
-}
+// export const HttpPlatform: Context.Tag<HttpPlatform, HttpPlatform> = internal.tag
+export class HttpPlatform extends Effect.Tag("@effect/platform/HttpPlatform")<
+  HttpPlatform,
+  {
+    // readonly [TypeId]: TypeId
+    readonly fileResponse: (
+      path: string,
+      options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
+    ) => Effect.Effect<ServerResponse.HttpServerResponse, Error.PlatformError>
+    readonly fileWebResponse: (
+      file: Body.HttpBody.FileLike,
+      options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
+    ) => Effect.Effect<ServerResponse.HttpServerResponse>
+  }
+>() {}
 
 /**
  * @since 1.0.0
@@ -68,4 +53,8 @@ export const make: (
       options?: FileSystem.StreamOptions | undefined
     ) => ServerResponse.HttpServerResponse
   }
-) => Effect.Effect<HttpPlatform, never, FileSystem.FileSystem | Etag.Generator> = internal.make
+) => Effect.Effect<
+  typeof HttpPlatform.Service,
+  never,
+  FileSystem.FileSystem | Etag.Generator
+> = internal.make

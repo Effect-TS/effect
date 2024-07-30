@@ -2,9 +2,8 @@
  * @since 1.0.0
  */
 
-import type { Tag } from "effect/Context"
-import type { Effect } from "effect/Effect"
-import type { Layer } from "effect/Layer"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import type { BadArgument } from "./Error.js"
 import * as internal from "./internal/path.js"
 
@@ -22,25 +21,28 @@ export type TypeId = typeof TypeId
 
 /**
  * @since 1.0.0
- * @category model
+ * @category tag
  */
-export interface Path {
-  readonly [TypeId]: TypeId
-  readonly sep: string
-  readonly basename: (path: string, suffix?: string) => string
-  readonly dirname: (path: string) => string
-  readonly extname: (path: string) => string
-  readonly format: (pathObject: Partial<Path.Parsed>) => string
-  readonly fromFileUrl: (url: URL) => Effect<string, BadArgument>
-  readonly isAbsolute: (path: string) => boolean
-  readonly join: (...paths: ReadonlyArray<string>) => string
-  readonly normalize: (path: string) => string
-  readonly parse: (path: string) => Path.Parsed
-  readonly relative: (from: string, to: string) => string
-  readonly resolve: (...pathSegments: ReadonlyArray<string>) => string
-  readonly toFileUrl: (path: string) => Effect<URL, BadArgument>
-  readonly toNamespacedPath: (path: string) => string
-}
+export class Path extends Effect.Tag("@effect/platform/Path")<
+  Path,
+  {
+    readonly [TypeId]: TypeId
+    readonly sep: string
+    readonly basename: (path: string, suffix?: string) => string
+    readonly dirname: (path: string) => string
+    readonly extname: (path: string) => string
+    readonly format: (pathObject: Partial<Path.Parsed>) => string
+    readonly fromFileUrl: (url: URL) => Effect.Effect<string, BadArgument>
+    readonly isAbsolute: (path: string) => boolean
+    readonly join: (...paths: ReadonlyArray<string>) => string
+    readonly normalize: (path: string) => string
+    readonly parse: (path: string) => Path.Parsed
+    readonly relative: (from: string, to: string) => string
+    readonly resolve: (...pathSegments: ReadonlyArray<string>) => string
+    readonly toFileUrl: (path: string) => Effect.Effect<URL, BadArgument>
+    readonly toNamespacedPath: (path: string) => string
+  }
+>() {}
 
 /**
  * @since 1.0.0
@@ -60,12 +62,6 @@ export declare namespace Path {
 }
 
 /**
- * @since 1.0.0
- * @category tag
- */
-export const Path: Tag<Path, Path> = internal.Path
-
-/**
  * An implementation of the Path interface that can be used in all environments
  * (including browsers).
  *
@@ -74,4 +70,4 @@ export const Path: Tag<Path, Path> = internal.Path
  * @since 1.0.0
  * @category layer
  */
-export const layer: Layer<Path> = internal.layer
+export const layer: Layer.Layer<Path> = Layer.succeed(Path, internal.posixImpl)

@@ -11,7 +11,7 @@ const defaultShouldQuit = (input: Terminal.UserInput): boolean =>
 /** @internal */
 export const make = (
   shouldQuit: (input: Terminal.UserInput) => boolean = defaultShouldQuit
-) =>
+): Effect.Effect<typeof Terminal.Terminal.Service> =>
   Effect.gen(function*(_) {
     const input = yield* _(Effect.sync(() => globalThis.process.stdin))
     const output = yield* _(Effect.sync(() => globalThis.process.stdout))
@@ -108,6 +108,7 @@ export const make = (
       )
 
     return Terminal.Terminal.of({
+      [Terminal.TypeId]: Terminal.TypeId,
       // The columns property can be undefined if stdout was redirected
       columns: Effect.sync(() => output.columns || 0),
       readInput,

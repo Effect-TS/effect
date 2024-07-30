@@ -364,7 +364,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return this.arrayBufferEffect
   }
 
-  get upgrade(): Effect.Effect<Socket.Socket, Error.RequestError> {
+  get upgrade(): Effect.Effect<typeof Socket.Socket.Service, Error.RequestError> {
     return Effect.flatMap(
       Effect.all([
         Deferred.make<ServerWebSocket<WebSocketContext>>(),
@@ -372,7 +372,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
         Effect.makeSemaphore(1)
       ]),
       ([deferred, closeDeferred, semaphore]) =>
-        Effect.async<Socket.Socket, Error.RequestError>((resume) => {
+        Effect.async<typeof Socket.Socket.Service, Error.RequestError>((resume) => {
           const success = this.bunServer.upgrade<WebSocketContext>(this.source, {
             data: {
               deferred,

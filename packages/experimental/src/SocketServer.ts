@@ -34,7 +34,7 @@ export interface SocketServer {
   readonly [SocketServerTypeId]: SocketServerTypeId
   readonly address: Effect.Effect<Address>
   readonly run: <R, E, _>(
-    handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>
+    handler: (socket: typeof Socket.Socket.Service) => Effect.Effect<_, E, R>
   ) => Effect.Effect<never, SocketServerError, R>
 }
 

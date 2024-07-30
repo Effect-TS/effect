@@ -61,7 +61,7 @@ export interface HttpServerRequest extends IncomingMessage.HttpIncomingMessage<E
   >
   readonly multipartStream: Stream.Stream<Multipart.Part, Multipart.MultipartError>
 
-  readonly upgrade: Effect.Effect<Socket.Socket, Error.RequestError>
+  readonly upgrade: Effect.Effect<typeof Socket.Socket.Service, Error.RequestError>
 
   readonly modify: (
     options: {
@@ -114,7 +114,8 @@ export const persistedMultipart: Effect.Effect<
  * @since 1.0.0
  * @category accessors
  */
-export const upgrade: Effect.Effect<Socket.Socket, Error.RequestError, HttpServerRequest> = internal.upgrade
+export const upgrade: Effect.Effect<typeof Socket.Socket.Service, Error.RequestError, HttpServerRequest> =
+  internal.upgrade
 
 /**
  * @since 1.0.0

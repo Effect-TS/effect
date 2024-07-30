@@ -1,4 +1,3 @@
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Etag from "../Etag.js"
@@ -7,12 +6,6 @@ import * as Headers from "../Headers.js"
 import type * as Body from "../HttpBody.js"
 import type * as Platform from "../HttpPlatform.js"
 import type * as ServerResponse from "../HttpServerResponse.js"
-
-/** @internal */
-export const TypeId: Platform.TypeId = Symbol.for("@effect/platform/HttpPlatform") as Platform.TypeId
-
-/** @internal */
-export const tag = Context.GenericTag<Platform.HttpPlatform>("@effect/platform/HttpPlatform")
 
 /** @internal */
 export const make = (impl: {
@@ -32,13 +25,12 @@ export const make = (impl: {
     headers: Headers.Headers,
     options?: FileSystem.StreamOptions
   ) => ServerResponse.HttpServerResponse
-}): Effect.Effect<Platform.HttpPlatform, never, FileSystem.FileSystem | Etag.Generator> =>
+}): Effect.Effect<typeof Platform.HttpPlatform.Service, never, FileSystem.FileSystem | Etag.Generator> =>
   Effect.gen(function*(_) {
     const fs = yield* _(FileSystem.FileSystem)
     const etagGen = yield* _(Etag.Generator)
 
-    return tag.of({
-      [TypeId]: TypeId,
+    return {
       fileResponse(path, options) {
         return pipe(
           Effect.bindTo(fs.stat(path), "info"),
@@ -81,5 +73,5 @@ export const make = (impl: {
           )
         })
       }
-    })
+    } as const
   })

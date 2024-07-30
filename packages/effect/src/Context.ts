@@ -51,7 +51,7 @@ export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
  */
 export interface TagClassShape<Id, Shape> {
   readonly [TagTypeId]: TagTypeId
-  readonly Type: Shape
+  readonly Shape: Shape
   readonly Id: Id
 }
 

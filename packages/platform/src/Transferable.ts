@@ -3,38 +3,31 @@
  */
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 
 /**
  * @since 1.0.0
- * @category models
- */
-export interface CollectorService {
-  readonly addAll: (_: Iterable<globalThis.Transferable>) => Effect.Effect<void>
-  readonly unsafeAddAll: (_: Iterable<globalThis.Transferable>) => void
-  readonly read: Effect.Effect<ReadonlyArray<globalThis.Transferable>>
-  readonly unsafeRead: () => ReadonlyArray<globalThis.Transferable>
-  readonly unsafeClear: () => void
-  readonly clear: Effect.Effect<void>
-}
-
-/**
- * @since 1.0.0
  * @category tags
  */
-export class Collector extends Context.Tag("@effect/platform/Transferable/Collector")<
+export class Collector extends Effect.Tag("@effect/platform/Transferable/Collector")<
   Collector,
-  CollectorService
+  {
+    readonly addAll: (_: Iterable<globalThis.Transferable>) => Effect.Effect<void>
+    readonly unsafeAddAll: (_: Iterable<globalThis.Transferable>) => void
+    readonly read: Effect.Effect<ReadonlyArray<globalThis.Transferable>>
+    readonly unsafeRead: () => ReadonlyArray<globalThis.Transferable>
+    readonly unsafeClear: () => void
+    readonly clear: Effect.Effect<void>
+  }
 >() {}
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const unsafeMakeCollector = (): CollectorService => {
+export const unsafeMakeCollector = (): typeof Collector.Service => {
   const tranferables: Array<globalThis.Transferable> = []
   const unsafeAddAll = (transfers: Iterable<globalThis.Transferable>): void => {
     for (const transfer of transfers) {
@@ -59,7 +52,7 @@ export const unsafeMakeCollector = (): CollectorService => {
  * @since 1.0.0
  * @category constructors
  */
-export const makeCollector: Effect.Effect<CollectorService> = Effect.sync(unsafeMakeCollector)
+export const makeCollector: Effect.Effect<typeof Collector.Service> = Effect.sync(unsafeMakeCollector)
 
 /**
  * @since 1.0.0

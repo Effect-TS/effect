@@ -1,15 +1,10 @@
-import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
-import * as Layer from "effect/Layer"
 import { BadArgument } from "../Error.js"
 import type * as Api from "../Path.js"
 
 /** @internal */
 export const TypeId: Api.TypeId = Symbol.for("@effect/platform/Path") as Api.TypeId
-
-/** @internal */
-export const Path = GenericTag<Api.Path>("@effect/platform/Path")
 
 /**
  * The following functions are adapted from the Node.js source code:
@@ -133,7 +128,7 @@ function fromFileUrl(url: URL): Effect.Effect<string, BadArgument> {
   return Effect.succeed(decodeURIComponent(pathname))
 }
 
-const resolve: Api.Path["resolve"] = function resolve() {
+const resolve: typeof Api.Path.Service["resolve"] = function resolve() {
   let resolvedPath = ""
   let resolvedAbsolute = false
   let cwd: string | undefined = undefined
@@ -225,7 +220,8 @@ function encodePathChars(filepath: string) {
   return filepath
 }
 
-const posixImpl = Path.of({
+/** @internal */
+export const posixImpl: typeof Api.Path.Service = {
   [TypeId]: TypeId,
   resolve,
   normalize(path) {
@@ -595,7 +591,4 @@ const posixImpl = Path.of({
   fromFileUrl,
   toFileUrl,
   toNamespacedPath: identity
-})
-
-/** @internal */
-export const layer = Layer.succeed(Path, posixImpl)
+}

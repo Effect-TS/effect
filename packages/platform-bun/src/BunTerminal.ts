@@ -11,7 +11,11 @@ import type { Scope } from "effect/Scope"
  * @since 1.0.0
  * @category constructors
  */
-export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Terminal, never, Scope> = NodeTerminal.make
+export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<
+  typeof Terminal.Service,
+  never,
+  Scope
+> = NodeTerminal.make
 
 /**
  * @since 1.0.0

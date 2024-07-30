@@ -1,14 +1,9 @@
 import * as Schema from "@effect/schema/Schema"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type { LazyArg } from "effect/Function"
-import { dual, pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
+import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import * as PlatformError from "../Error.js"
-import * as FileSystem from "../FileSystem.js"
 import type * as KeyValueStore from "../KeyValueStore.js"
-import * as Path from "../Path.js"
 
 /** @internal */
 export const TypeId: KeyValueStore.TypeId = Symbol.for(
@@ -16,37 +11,36 @@ export const TypeId: KeyValueStore.TypeId = Symbol.for(
 ) as KeyValueStore.TypeId
 
 /** @internal */
-export const keyValueStoreTag = Context.GenericTag<KeyValueStore.KeyValueStore>("@effect/platform/KeyValueStore")
-
-/** @internal */
 export const make: (
   impl:
-    & Omit<KeyValueStore.KeyValueStore, KeyValueStore.TypeId | "has" | "modify" | "isEmpty" | "forSchema">
-    & Partial<KeyValueStore.KeyValueStore>
-) => KeyValueStore.KeyValueStore = (impl) =>
-  keyValueStoreTag.of({
-    [TypeId]: TypeId,
-    has: (key) => Effect.map(impl.get(key), Option.isSome),
-    isEmpty: Effect.map(impl.size, (size) => size === 0),
-    modify: (key, f) =>
-      Effect.flatMap(
-        impl.get(key),
-        (o) => {
-          if (Option.isNone(o)) {
-            return Effect.succeedNone
-          }
-          const newValue = f(o.value)
-          return Effect.as(
-            impl.set(key, newValue),
-            Option.some(newValue)
-          )
+    & Omit<
+      typeof KeyValueStore.KeyValueStore.Service,
+      typeof KeyValueStore.TypeId | "has" | "modify" | "isEmpty" | "forSchema"
+    >
+    & Partial<typeof KeyValueStore.KeyValueStore.Service>
+) => typeof KeyValueStore.KeyValueStore.Service = (impl) => ({
+  [TypeId]: TypeId,
+  has: (key) => Effect.map(impl.get(key), Option.isSome),
+  isEmpty: Effect.map(impl.size, (size) => size === 0),
+  modify: (key, f) =>
+    Effect.flatMap(
+      impl.get(key),
+      (o) => {
+        if (Option.isNone(o)) {
+          return Effect.succeedNone
         }
-      ),
-    forSchema(schema) {
-      return makeSchemaStore(this, schema)
-    },
-    ...impl
-  })
+        const newValue = f(o.value)
+        return Effect.as(
+          impl.set(key, newValue),
+          Option.some(newValue)
+        )
+      }
+    ),
+  forSchema(schema) {
+    return makeSchemaStore(this, schema)
+  },
+  ...impl
+} as const)
 
 /** @internal */
 export const prefix = dual<
@@ -54,7 +48,7 @@ export const prefix = dual<
   <S extends KeyValueStore.KeyValueStore.AnyStore>(self: S, prefix: string) => S
 >(
   2,
-  ((self: KeyValueStore.KeyValueStore, prefix: string): KeyValueStore.KeyValueStore => ({
+  ((self: typeof KeyValueStore.KeyValueStore.Service, prefix: string): typeof KeyValueStore.KeyValueStore.Service => ({
     ...self,
     get: (key) => self.get(`${prefix}${key}`),
     set: (key, value) => self.set(`${prefix}${key}`, value),
@@ -71,7 +65,7 @@ export const SchemaStoreTypeId: KeyValueStore.SchemaStoreTypeId = Symbol.for(
 
 /** @internal */
 const makeSchemaStore = <A, I, R>(
-  store: KeyValueStore.KeyValueStore,
+  store: typeof KeyValueStore.KeyValueStore.Service,
   schema: Schema.Schema<A, I, R>
 ): KeyValueStore.SchemaStore<A, R> => {
   const jsonSchema = Schema.parseJson(schema)
@@ -118,129 +112,9 @@ const makeSchemaStore = <A, I, R>(
 }
 
 /** @internal */
-export const layerMemory = Layer.sync(keyValueStoreTag, () => {
-  const store = new Map<string, string>()
-
-  return make({
-    get: (key: string) => Effect.sync(() => Option.fromNullable(store.get(key))),
-    set: (key: string, value: string) => Effect.sync(() => store.set(key, value)),
-    remove: (key: string) => Effect.sync(() => store.delete(key)),
-    clear: Effect.sync(() => store.clear()),
-    size: Effect.sync(() => store.size)
-  })
-})
-
-/** @internal */
-export const layerFileSystem = (directory: string) =>
-  Layer.effect(
-    keyValueStoreTag,
-    Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const path = yield* _(Path.Path)
-      const keyPath = (key: string) => path.join(directory, encodeURIComponent(key))
-
-      if (!(yield* _(fs.exists(directory)))) {
-        yield* _(fs.makeDirectory(directory, { recursive: true }))
-      }
-
-      return make({
-        get: (key: string) =>
-          pipe(
-            Effect.map(fs.readFileString(keyPath(key)), Option.some),
-            Effect.catchTag(
-              "SystemError",
-              (sysError) => sysError.reason === "NotFound" ? Effect.succeed(Option.none()) : Effect.fail(sysError)
-            )
-          ),
-        set: (key: string, value: string) => fs.writeFileString(keyPath(key), value),
-        remove: (key: string) => fs.remove(keyPath(key)),
-        has: (key: string) => fs.exists(keyPath(key)),
-        clear: Effect.zipRight(
-          fs.remove(directory, { recursive: true }),
-          fs.makeDirectory(directory, { recursive: true })
-        ),
-        size: Effect.map(
-          fs.readDirectory(directory),
-          (files) => files.length
-        )
-      })
-    })
-  )
-
-/** @internal */
-export const layerSchema = <A, I, R>(
-  schema: Schema.Schema<A, I, R>,
-  tagIdentifier: string
-) => {
-  const tag = Context.GenericTag<KeyValueStore.SchemaStore<A, R>>(tagIdentifier)
-  const layer = Layer.effect(tag, Effect.map(keyValueStoreTag, (store) => store.forSchema(schema)))
-  return { tag, layer } as const
-}
-
-/** @internal */
-const storageError = (props: Omit<Parameters<typeof PlatformError.SystemError>[0], "reason" | "module">) =>
+export const storageError = (props: Omit<Parameters<typeof PlatformError.SystemError>[0], "reason" | "module">) =>
   PlatformError.SystemError({
     reason: "PermissionDenied",
     module: "KeyValueStore",
     ...props
-  })
-
-/** @internal */
-export const layerStorage = (evaluate: LazyArg<Storage>) =>
-  Layer.sync(keyValueStoreTag, () => {
-    const storage = evaluate()
-    return make({
-      get: (key: string) =>
-        Effect.try({
-          try: () => Option.fromNullable(storage.getItem(key)),
-          catch: () =>
-            storageError({
-              pathOrDescriptor: key,
-              method: "get",
-              message: `Unable to get item with key ${key}`
-            })
-        }),
-
-      set: (key: string, value: string) =>
-        Effect.try({
-          try: () => storage.setItem(key, value),
-          catch: () =>
-            storageError({
-              pathOrDescriptor: key,
-              method: "set",
-              message: `Unable to set item with key ${key}`
-            })
-        }),
-
-      remove: (key: string) =>
-        Effect.try({
-          try: () => storage.removeItem(key),
-          catch: () =>
-            storageError({
-              pathOrDescriptor: key,
-              method: "remove",
-              message: `Unable to remove item with key ${key}`
-            })
-        }),
-
-      clear: Effect.try({
-        try: () => storage.clear(),
-        catch: () =>
-          storageError({
-            pathOrDescriptor: "clear",
-            method: "clear",
-            message: `Unable to clear storage`
-          })
-      }),
-
-      size: Effect.try({
-        try: () => storage.length,
-        catch: () =>
-          storageError({
-            pathOrDescriptor: "size",
-            method: "size",
-            message: `Unable to get size`
-          })
-      })
-    })
   })

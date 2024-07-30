@@ -1,20 +1,23 @@
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
-import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity, pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as Error from "../Error.js"
-import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem.js"
+import type * as Api from "../FileSystem.js"
 
 /** @internal */
-export const tag = GenericTag<FileSystem>("@effect/platform/FileSystem")
+export const TypeId: Api.TypeId = Symbol.for(
+  "@effect/platform/FileSystem"
+) as Api.TypeId
 
 /** @internal */
-export const Size = (bytes: SizeInput) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_
+export const Size = (bytes: Api.SizeInput) =>
+  typeof bytes === "bigint"
+    ? bytes as Api.Size :
+    BigInt(bytes) as Api.Size
 
 /** @internal */
 export const KiB = (n: number) => Size(n * 1024)
@@ -36,10 +39,14 @@ export const PiB = (n: number) => Size(BigInt(n) * bigintPiB)
 
 /** @internal */
 export const make = (
-  impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
-): FileSystem => {
-  return tag.of({
+  impl: Omit<
+    typeof Api.FileSystem.Service,
+    typeof Api.TypeId | "exists" | "readFileString" | "stream" | "sink" | "writeFileString"
+  >
+): typeof Api.FileSystem.Service => {
+  return {
     ...impl,
+    [TypeId]: TypeId,
     exists: (path) =>
       pipe(
         impl.access(path),
@@ -84,7 +91,7 @@ export const make = (
         }),
         (_) => impl.writeFile(path, _, options)
       )
-  })
+  }
 }
 
 const notFound = (method: string, path: string) =>
@@ -98,9 +105,10 @@ const notFound = (method: string, path: string) =>
 
 /** @internal */
 export const makeNoop = (
-  fileSystem: Partial<FileSystem>
-): FileSystem => {
+  fileSystem: Partial<typeof Api.FileSystem.Service>
+): typeof Api.FileSystem.Service => {
   return {
+    [TypeId]: TypeId,
     access(path) {
       return Effect.fail(notFound("access", path))
     },
@@ -193,16 +201,11 @@ export const makeNoop = (
 }
 
 /** @internal */
-export const layerNoop = (
-  fileSystem: Partial<FileSystem>
-): Layer.Layer<FileSystem> => Layer.succeed(tag, makeNoop(fileSystem))
-
-/** @internal */
-const stream = (file: File, {
+const stream = (file: Api.File, {
   bufferSize = 16,
   bytesToRead: bytesToRead_,
   chunkSize: chunkSize_ = Size(64 * 1024)
-}: StreamOptions = {}) => {
+}: Api.StreamOptions = {}) => {
   const bytesToRead = bytesToRead_ !== undefined ? Size(bytesToRead_) : undefined
   const chunkSize = Size(chunkSize_)
 
