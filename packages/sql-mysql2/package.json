@@ -41,6 +41,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
+    "@testcontainers/mysql": "^10.11.0",
     "effect": "workspace:^"
   },
   "peerDependencies": {
