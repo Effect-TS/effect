@@ -1,5 +1,62 @@
 # @effect/schema
 
+## 0.69.3
+
+### Patch Changes
+
+- [#3359](https://github.com/Effect-TS/effect/pull/3359) [`7c0da50`](https://github.com/Effect-TS/effect/commit/7c0da5050d30cb804f4eacb15995d0fb7f3a28d2) Thanks @gcanti! - Add `Context` field to `Schema` interface, closes #3356
+
+- [#3363](https://github.com/Effect-TS/effect/pull/3363) [`2fc0ff4`](https://github.com/Effect-TS/effect/commit/2fc0ff4c59c25977018f6ac70ced99b04a8c7b2b) Thanks @gcanti! - export `isPropertySignature` guard
+
+- [#3357](https://github.com/Effect-TS/effect/pull/3357) [`f262665`](https://github.com/Effect-TS/effect/commit/f262665c2773492c01e5dd0e8d6db235aafaaad8) Thanks @gcanti! - Improve annotation retrieval from `Class` APIs, closes #3348.
+
+  Previously, accessing annotations such as `identifier` and `title` required explicit casting of the `ast` field to `AST.Transformation`.
+  This update refines the type definitions to reflect that `ast` is always an `AST.Transformation`, eliminating the need for casting and simplifying client code.
+
+  ```ts
+  import { AST, Schema } from "@effect/schema";
+
+  class Person extends Schema.Class<Person>("Person")(
+    {
+      name: Schema.String,
+      age: Schema.Number,
+    },
+    { description: "my description" },
+  ) {}
+
+  console.log(AST.getDescriptionAnnotation(Person.ast.to));
+  // { _id: 'Option', _tag: 'Some', value: 'my description' }
+  ```
+
+- [#3343](https://github.com/Effect-TS/effect/pull/3343) [`9bbe7a6`](https://github.com/Effect-TS/effect/commit/9bbe7a681430ebf5c10167bb7140ba3742e46bb7) Thanks @gcanti! - - add `NonEmptyTrimmedString`
+
+  **Example**
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("")); // Option.none()
+  console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)(" a ")); // Option.none()
+  console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("a")); // Option.some("a")
+  ```
+
+  - add `OptionFromNonEmptyTrimmedString`, closes #3335
+
+    **Example**
+
+    ```ts
+    import { Schema } from "@effect/schema";
+
+    console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("")); // Option.none()
+    console.log(
+      Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)(" a "),
+    ); // Option.some("a")
+    console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("a")); // Option.some("a")
+    ```
+
+- Updated dependencies [[`6359644`](https://github.com/Effect-TS/effect/commit/635964446323cf55d4060559337e710e4a24496e), [`7f41e42`](https://github.com/Effect-TS/effect/commit/7f41e428830bf3043b8be0d28dcd235d5747c942), [`f566fd1`](https://github.com/Effect-TS/effect/commit/f566fd1d7eea531a0d981dd24037f14a603a1273)]:
+  - effect@3.5.9
+
 ## 0.69.2
 
 ### Patch Changes

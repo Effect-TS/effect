@@ -1,5 +1,18 @@
 # @effect/vitest
 
+## 0.7.0
+
+### Minor Changes
+
+- [#3367](https://github.com/Effect-TS/effect/pull/3367) [`5f01eb9`](https://github.com/Effect-TS/effect/commit/5f01eb91bef91560899f04a196fa00f01845b643) Thanks @tim-smart! - update vitest to 2.x
+
+### Patch Changes
+
+- [#3376](https://github.com/Effect-TS/effect/pull/3376) [`9f197e8`](https://github.com/Effect-TS/effect/commit/9f197e86209782a9f19c1dd3a18e6e43dc0e1e6e) Thanks @yasuaki640! - Add `it.{method}.runIf`.
+
+- Updated dependencies [[`6359644`](https://github.com/Effect-TS/effect/commit/635964446323cf55d4060559337e710e4a24496e), [`7f41e42`](https://github.com/Effect-TS/effect/commit/7f41e428830bf3043b8be0d28dcd235d5747c942), [`f566fd1`](https://github.com/Effect-TS/effect/commit/f566fd1d7eea531a0d981dd24037f14a603a1273)]:
+  - effect@3.5.9
+
 ## 0.6.12
 
 ### Patch Changes
