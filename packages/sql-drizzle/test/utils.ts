@@ -1,9 +1,9 @@
 import * as MysqlDrizzle from "@effect/sql-drizzle/Mysql"
 import * as PgDrizzle from "@effect/sql-drizzle/Pg"
-import { MysqlContainer } from "@effect/sql-mysql2/test/utils"
 import { PgClient } from "@effect/sql-pg"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { Config, Context, Data, Effect, Layer, Redacted } from "effect"
+import { MysqlContainer } from "./utils-mysql.js"
 
 export class ContainerError extends Data.TaggedError("ContainerError")<{
   cause: unknown
