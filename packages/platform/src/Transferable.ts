@@ -15,8 +15,8 @@ import * as Option from "effect/Option"
 export interface CollectorService {
   readonly addAll: (_: Iterable<globalThis.Transferable>) => Effect.Effect<void>
   readonly unsafeAddAll: (_: Iterable<globalThis.Transferable>) => void
-  readonly read: Effect.Effect<Array<globalThis.Transferable>>
-  readonly unsafeRead: () => Array<globalThis.Transferable>
+  readonly read: Effect.Effect<ReadonlyArray<globalThis.Transferable>>
+  readonly unsafeRead: () => ReadonlyArray<globalThis.Transferable>
   readonly unsafeClear: () => void
   readonly clear: Effect.Effect<void>
 }
@@ -41,7 +41,7 @@ export const unsafeMakeCollector = (): CollectorService => {
       tranferables.push(transfer)
     }
   }
-  const unsafeRead = (): Array<globalThis.Transferable> => tranferables
+  const unsafeRead = (): ReadonlyArray<globalThis.Transferable> => tranferables
   const unsafeClear = (): void => {
     tranferables.length = 0
   }

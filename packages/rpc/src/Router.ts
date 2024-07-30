@@ -317,7 +317,7 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
   const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
   const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Serializable.exitSchema(req))))
 
-  return (u: unknown): Effect.Effect<Array<Router.ResponseEffect>, ParseError, Router.Context<R>> =>
+  return (u: unknown): Effect.Effect<ReadonlyArray<Router.ResponseEffect>, ParseError, Router.Context<R>> =>
     Effect.flatMap(
       decode(u),
       Effect.forEach((req): Effect.Effect<Router.ResponseEffect, ParseError, any> => {

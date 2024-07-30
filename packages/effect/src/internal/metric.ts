@@ -525,9 +525,9 @@ export const zip = dual<
 )
 
 /** @internal */
-export const unsafeSnapshot = (): Array<MetricPair.MetricPair.Untyped> => globalMetricRegistry.snapshot()
+export const unsafeSnapshot = (): ReadonlyArray<MetricPair.MetricPair.Untyped> => globalMetricRegistry.snapshot()
 
 /** @internal */
-export const snapshot: Effect.Effect<Array<MetricPair.MetricPair.Untyped>> = core.sync(
+export const snapshot: Effect.Effect<ReadonlyArray<MetricPair.MetricPair.Untyped>> = core.sync(
   unsafeSnapshot
 )

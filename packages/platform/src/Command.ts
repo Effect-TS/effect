@@ -172,7 +172,7 @@ export const flatten: (self: Command) => NonEmptyReadonlyArray<StandardCommand> 
 export const lines: (
   command: Command,
   encoding?: string
-) => Effect<Array<string>, PlatformError, CommandExecutor> = internal.lines
+) => Effect<ReadonlyArray<string>, PlatformError, CommandExecutor> = internal.lines
 
 /**
  * Create a command with the specified process name and an optional list of

@@ -1,14 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Array from "./Array.js"
-import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/random.js"
-import type * as NonEmptyIterable from "./NonEmptyIterable.js"
 
 /**
  * @since 2.0.0
@@ -105,27 +102,6 @@ export const nextIntBetween: (min: number, max: number) => Effect.Effect<number>
  * @category constructors
  */
 export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>> = defaultServices.shuffle
-
-/**
- * Get a random element from an iterable.
- *
- * @example
- * import { Effect, Random } from "effect"
- *
- * Effect.gen(function* () {
- *   const randomItem = yield* Random.choice([1, 2, 3])
- *   console.log(randomItem)
- * })
- *
- * @since 3.6.0
- * @category constructors
- */
-export const choice: <Self extends Iterable<unknown>>(
-  elements: Self
-) => Self extends NonEmptyIterable.NonEmptyIterable<infer A> ? Effect.Effect<A>
-  : Self extends Array.NonEmptyReadonlyArray<infer A> ? Effect.Effect<A>
-  : Self extends Iterable<infer A> ? Effect.Effect<A, Cause.NoSuchElementException>
-  : never = defaultServices.choice
 
 /**
  * Retreives the `Random` service from the context and uses it to run the

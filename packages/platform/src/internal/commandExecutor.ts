@@ -52,7 +52,7 @@ export const makeExecutor = (start: _CommandExecutor.CommandExecutor["start"]): 
       return pipe(
         streamLines(command, encoding),
         Stream.runCollect,
-        Effect.map(Chunk.toArray)
+        Effect.map(Chunk.toReadonlyArray)
       )
     },
     streamLines
