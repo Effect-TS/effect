@@ -1,15 +1,23 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import { SqlClient, Statement } from "@effect/sql"
 import { MysqlClient } from "@effect/sql-mysql2"
-import { Config, Effect, FiberRef, Layer, pipe, Redacted, String } from "effect"
+import { Config, Effect, FiberRef, FiberRefs, Layer, Option, pipe, Redacted, String } from "effect"
 
 const currentResourceName = FiberRef.unsafeMake("")
 
-const SqlLoggerLive = Statement.setTransformer((statement) => {
-  const [query, params] = statement.compile()
-  return Effect.log("executing sql").pipe(
-    Effect.annotateLogs({ query, params }),
-    Effect.as(statement)
+const SqlTracingLive = Statement.setTransformer((prev, sql, refs, span) => {
+  const [query, params] = prev.compile()
+  return Effect.succeed(
+    sql.unsafe(
+      `/* ${
+        JSON.stringify({
+          trace_id: span.traceId,
+          span_id: span.spanId,
+          resource_name: Option.getOrUndefined(FiberRefs.get(refs, currentResourceName))
+        })
+      } */ ${query}`,
+      params
+    )
   )
 })
 
@@ -20,7 +28,7 @@ const EnvLive = MysqlClient.layer({
   transformQueryNames: Config.succeed(String.camelToSnake),
   transformResultNames: Config.succeed(String.snakeToCamel)
 }).pipe(
-  Layer.provide(SqlLoggerLive),
+  Layer.provide(SqlTracingLive),
   Layer.provide(DevTools.layer())
 )
 
