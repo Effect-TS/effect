@@ -2,4 +2,4 @@
 "@effect/platform": patch
 ---
 
-add HttpServerRequest to HttpApp.Default
+use type alias for HttpApp

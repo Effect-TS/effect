@@ -21,19 +21,17 @@ import * as internalMiddleware from "./internal/httpMiddleware.js"
  * @since 1.0.0
  * @category models
  */
-export interface HttpApp<A = ServerResponse.HttpServerResponse, E = never, R = never>
-  extends Effect.Effect<A, E, R | ServerRequest.HttpServerRequest>
-{}
+export type HttpApp<A = ServerResponse.HttpServerResponse, E = never, R = never> = Effect.Effect<
+  A,
+  E,
+  R | ServerRequest.HttpServerRequest
+>
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Default<E = never, R = never> = HttpApp<
-  ServerResponse.HttpServerResponse,
-  E,
-  R | ServerRequest.HttpServerRequest
->
+export type Default<E = never, R = never> = HttpApp<ServerResponse.HttpServerResponse, E, R>
 
 /**
  * @since 1.0.0
