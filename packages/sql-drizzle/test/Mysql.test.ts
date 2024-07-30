@@ -3,7 +3,7 @@ import { MysqlDrizzle } from "@effect/sql-drizzle/Mysql"
 import { assert, describe, it } from "@effect/vitest"
 import * as D from "drizzle-orm/mysql-core"
 import { Effect } from "effect"
-import { MysqlContainer } from "./utils.js"
+import { DrizzleMysqlLive } from "./utils.js"
 
 const users = D.mysqlTable("users", {
   id: D.serial("id").primaryKey(),
@@ -22,7 +22,7 @@ describe.sequential("Mysql", () => {
       const results = yield* db.select().from(users)
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice" }])
     }).pipe(
-      Effect.provide(MysqlContainer.DrizzleLive),
+      Effect.provide(DrizzleMysqlLive),
       Effect.catchTag("ContainerError", () => Effect.void)
     ), { timeout: 60000 })
 
@@ -35,7 +35,7 @@ describe.sequential("Mysql", () => {
       const results = yield* Effect.promise(() => db.select().from(users))
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake" }])
     }).pipe(
-      Effect.provide(MysqlContainer.DrizzleLive),
+      Effect.provide(DrizzleMysqlLive),
       Effect.catchTag("ContainerError", () => Effect.void)
     ), { timeout: 60000 })
 })

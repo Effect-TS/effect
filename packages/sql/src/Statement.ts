@@ -69,7 +69,7 @@ export declare namespace Statement {
     sql: Constructor,
     context: FiberRefs.FiberRefs,
     span: Tracer.Span
-  ) => Statement<unknown>
+  ) => Effect<Statement<unknown>>
 }
 
 /**
