@@ -275,8 +275,11 @@ export {
  * @since 2.0.0
  * @category destructors
  */
-export const awaitAll: <A, E>(fibers: Iterable<Fiber<A, E>>) => Effect.Effect<Array<Exit.Exit<A, E>>> =
-  fiberRuntime.fiberAwaitAll
+export const awaitAll: <T extends Iterable<Fiber<any, any>>>(
+  fibers: T
+) => Effect.Effect<
+  { -readonly [K in keyof T]: [T[K]] extends [Fiber.Variance<infer _A, infer _E>] ? Exit.Exit<_A, _E> : never }
+> = fiberRuntime.fiberAwaitAll
 
 /**
  * Retrieves the immediate children of the fiber.
