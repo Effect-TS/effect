@@ -784,7 +784,7 @@ const getTemplateLiterals = (
   throw new Error(errors_.getSchemaUnsupportedLiteralSpanErrorMessage(ast))
 }
 
-type TemplateLiteralParserParameters = Schema<any, string, any> | Schema<any, number, any> | AST.LiteralValue
+type TemplateLiteralParserParameters = Schema.Any | AST.LiteralValue
 
 type TemplateLiteralParserParametersType<T> = T extends [infer Head, ...infer Tail] ?
   readonly [Head extends Schema<infer A, infer _I, infer _R> ? A : Head, ...TemplateLiteralParserParametersType<Tail>]

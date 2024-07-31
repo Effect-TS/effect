@@ -3,6 +3,17 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("TemplateLiteralParser", () => {
+  it("should throw on unsupported template literal spans", () => {
+    expect(() => Schema.TemplateLiteralParser(Schema.Boolean)).toThrow(
+      new Error(`Unsupported template literal span
+schema (BooleanKeyword): boolean`)
+    )
+    expect(() => Schema.TemplateLiteralParser(Schema.SymbolFromSelf)).toThrow(
+      new Error(`Unsupported template literal span
+schema (SymbolKeyword): symbol`)
+    )
+  })
+
   it("should expose the params", () => {
     const params = ["/", Schema.Int, "/", Schema.String] as const
     const schema = Schema.TemplateLiteralParser(...params)

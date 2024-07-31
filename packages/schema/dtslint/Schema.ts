@@ -2671,3 +2671,9 @@ S.asSchema(S.TemplateLiteralParser(S.NumberFromString, "a", S.NonEmptyString))
 
 // $ExpectType TemplateLiteralParser<[typeof NumberFromString, "a", typeof NonEmptyString]>
 S.TemplateLiteralParser(S.NumberFromString, "a", S.NonEmptyString)
+
+// $ExpectType Schema<readonly ["/", number, "/", "a" | "b"], `/${number}/a` | `/${number}/b`, never>
+S.asSchema(S.TemplateLiteralParser("/", S.Int, "/", S.Literal("a", "b")))
+
+// $ExpectType TemplateLiteralParser<["/", typeof Int, "/", Literal<["a", "b"]>]>
+S.TemplateLiteralParser("/", S.Int, "/", S.Literal("a", "b"))
