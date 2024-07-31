@@ -7,15 +7,17 @@ const currentResourceName = FiberRef.unsafeMake("")
 
 const SqlTracingLive = Statement.setTransformer((prev, sql, refs, span) => {
   const [query, params] = prev.compile()
-  return sql.unsafe(
-    `/* ${
-      JSON.stringify({
-        trace_id: span.traceId,
-        span_id: span.spanId,
-        resource_name: Option.getOrUndefined(FiberRefs.get(refs, currentResourceName))
-      })
-    } */ ${query}`,
-    params
+  return Effect.succeed(
+    sql.unsafe(
+      `/* ${
+        JSON.stringify({
+          trace_id: span.traceId,
+          span_id: span.spanId,
+          resource_name: Option.getOrUndefined(FiberRefs.get(refs, currentResourceName))
+        })
+      } */ ${query}`,
+      params
+    )
   )
 })
 

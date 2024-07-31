@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-pg",
-  "version": "0.6.2",
+  "version": "0.8.0",
   "type": "module",
   "license": "MIT",
   "description": "A PostgreSQL toolkit for Effect",
@@ -41,6 +41,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
+    "@types/node": "^20.14.10",
     "effect": "workspace:^"
   },
   "peerDependencies": {

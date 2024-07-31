@@ -12,6 +12,7 @@ import * as chunk_ from "effect/Chunk"
 import * as config_ from "effect/Config"
 import * as configError_ from "effect/ConfigError"
 import * as data_ from "effect/Data"
+import * as dateTime from "effect/DateTime"
 import * as duration_ from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as either_ from "effect/Either"
@@ -181,6 +182,7 @@ const toASTAnnotations = <A, TypeParameters extends ReadonlyArray<any>>(
   move("batching", AST.BatchingAnnotationId)
   move("parseIssueTitle", AST.ParseIssueTitleAnnotationId)
   move("parseOptions", AST.ParseOptionsAnnotationId)
+  move("decodingFallback", AST.DecodingFallbackAnnotationId)
 
   return out
 }
@@ -1627,6 +1629,13 @@ export const PropertySignatureTypeId: unique symbol = Symbol.for("@effect/schema
 export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
 /**
+ * @since 0.69.3
+ * @category guards
+ */
+export const isPropertySignature = (u: unknown): u is PropertySignature.All =>
+  Predicate.hasProperty(u, PropertySignatureTypeId)
+
+/**
  * @category PropertySignature
  * @since 0.67.0
  */
@@ -2491,9 +2500,6 @@ export interface TypeLiteral<
     options?: MakeOptions
   ): Simplify<TypeLiteral.Type<Fields, Records>>
 }
-
-const isPropertySignature = (u: unknown): u is PropertySignature.All =>
-  Predicate.hasProperty(u, PropertySignatureTypeId)
 
 const getDefaultTypeLiteralAST = <
   Fields extends Struct.Fields,
@@ -3833,6 +3839,7 @@ export declare namespace Annotations {
     readonly batching?: AST.BatchingAnnotation
     readonly parseIssueTitle?: AST.ParseIssueTitleAnnotation
     readonly parseOptions?: AST.ParseOptions
+    readonly decodingFallback?: AST.DecodingFallbackAnnotation<A>
   }
 
   /**
@@ -5981,6 +5988,209 @@ export class DateFromNumber extends transform(
   DateFromSelf,
   { strict: true, decode: (n) => new Date(n), encode: (d) => d.getTime() }
 ).annotations({ identifier: "DateFromNumber" }) {}
+
+/**
+ * Describes a schema that represents a `DateTime.Utc` instance.
+ *
+ * @category DateTime.Utc constructors
+ * @since 0.70.0
+ */
+export class DateTimeUtcFromSelf extends declare(
+  (u) => dateTime.isDateTime(u) && dateTime.isUtc(u),
+  {
+    identifier: "DateTimeUtcFromSelf",
+    description: "a DateTime.Utc instance",
+    pretty: (): pretty_.Pretty<dateTime.Utc> => (dateTime) => dateTime.toString(),
+    arbitrary: (): LazyArbitrary<dateTime.Utc> => (fc) => fc.date().map((date) => dateTime.unsafeFromDate(date)),
+    equivalence: () => dateTime.Equivalence
+  }
+) {}
+
+const decodeDateTime = <A extends dateTime.DateTime.Input>(input: A, _: ParseOptions, ast: AST.AST) =>
+  ParseResult.try({
+    try: () => dateTime.unsafeMake(input),
+    catch: () => new ParseResult.Type(ast, input)
+  })
+
+/**
+ * Defines a schema that attempts to convert a `number` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
+ *
+ * @category DateTime.Utc transformations
+ * @since 0.70.0
+ */
+export class DateTimeUtcFromNumber extends transformOrFail(
+  Number$,
+  DateTimeUtcFromSelf,
+  {
+    strict: true,
+    decode: decodeDateTime,
+    encode: (dt) => ParseResult.succeed(dateTime.toEpochMillis(dt))
+  }
+).annotations({ identifier: "DateTimeUtcFromNumber" }) {}
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
+ *
+ * @category DateTime.Utc transformations
+ * @since 0.70.0
+ */
+export class DateTimeUtc extends transformOrFail(
+  String$,
+  DateTimeUtcFromSelf,
+  {
+    strict: true,
+    decode: decodeDateTime,
+    encode: (dt) => ParseResult.succeed(dateTime.formatIso(dt))
+  }
+).annotations({ identifier: "DateTimeUtc" }) {}
+
+const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (fc) =>
+  fc.integer({ min: -12 * 60 * 60 * 1000, max: 12 * 60 * 60 * 1000 }).map((offset) => dateTime.zoneMakeOffset(offset))
+
+/**
+ * Describes a schema that represents a `TimeZone.Offset` instance.
+ *
+ * @category TimeZone constructors
+ * @since 0.70.0
+ */
+export class TimeZoneOffsetFromSelf extends declare(
+  dateTime.isTimeZoneOffset,
+  {
+    identifier: "TimeZoneOffsetFromSelf",
+    description: "a TimeZone.Offset instance",
+    pretty: (): pretty_.Pretty<dateTime.TimeZone.Offset> => (zone) => zone.toString(),
+    arbitrary: timeZoneOffsetArbitrary
+  }
+) {}
+
+/**
+ * Defines a schema that converts a `number` to a `TimeZone.Offset` instance using the `DateTime.zoneMakeOffset` constructor.
+ *
+ * @category TimeZone transformations
+ * @since 0.70.0
+ */
+export class TimeZoneOffset extends transform(
+  Number$,
+  TimeZoneOffsetFromSelf,
+  { strict: true, decode: dateTime.zoneMakeOffset, encode: (tz) => tz.offset }
+).annotations({ identifier: "TimeZoneOffset" }) {}
+
+const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc) =>
+  fc.constantFrom(...Intl.supportedValuesOf("timeZone")).map(dateTime.zoneUnsafeMakeNamed)
+
+/**
+ * Describes a schema that represents a `TimeZone.Named` instance.
+ *
+ * @category TimeZone constructors
+ * @since 0.70.0
+ */
+export class TimeZoneNamedFromSelf extends declare(
+  dateTime.isTimeZoneNamed,
+  {
+    identifier: "TimeZoneNamedFromSelf",
+    description: "a TimeZone.Named instance",
+    pretty: (): pretty_.Pretty<dateTime.TimeZone.Named> => (zone) => zone.toString(),
+    arbitrary: timeZoneNamedArbitrary
+  }
+) {}
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `TimeZone.Named` instance using the `DateTime.zoneUnsafeMakeNamed` constructor.
+ *
+ * @category TimeZone transformations
+ * @since 0.70.0
+ */
+export class TimeZoneNamed extends transformOrFail(
+  String$,
+  TimeZoneNamedFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      ParseResult.try({
+        try: () => dateTime.zoneUnsafeMakeNamed(s),
+        catch: () => new ParseResult.Type(ast, s)
+      }),
+    encode: (tz) => ParseResult.succeed(tz.id)
+  }
+).annotations({ identifier: "TimeZoneNamed" }) {}
+
+/**
+ * @category api interface
+ * @since 0.70.0
+ */
+export interface TimeZoneFromSelf extends Union<[typeof TimeZoneOffsetFromSelf, typeof TimeZoneNamedFromSelf]> {
+  annotations(annotations: Annotations.Schema<dateTime.TimeZone>): TimeZoneFromSelf
+}
+
+/**
+ * @category TimeZone constructors
+ * @since 0.70.0
+ */
+export const TimeZoneFromSelf: TimeZoneFromSelf = Union(TimeZoneOffsetFromSelf, TimeZoneNamedFromSelf)
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `TimeZone` using the `DateTime.zoneFromString` constructor.
+ *
+ * @category TimeZone transformations
+ * @since 0.70.0
+ */
+export class TimeZone extends transformOrFail(
+  String$,
+  TimeZoneFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      option_.match(dateTime.zoneFromString(s), {
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+        onSome: ParseResult.succeed
+      }),
+    encode: (tz) => ParseResult.succeed(dateTime.zoneToString(tz))
+  }
+).annotations({ identifier: "TimeZone" }) {}
+
+const timeZoneArbitrary: LazyArbitrary<dateTime.TimeZone> = (fc) =>
+  fc.oneof(
+    timeZoneOffsetArbitrary()(fc),
+    timeZoneNamedArbitrary()(fc)
+  )
+
+/**
+ * Describes a schema that represents a `DateTime.Zoned` instance.
+ *
+ * @category DateTime.Zoned constructors
+ * @since 0.70.0
+ */
+export class DateTimeZonedFromSelf extends declare(
+  (u) => dateTime.isDateTime(u) && dateTime.isZoned(u),
+  {
+    identifier: "DateTimeZonedFromSelf",
+    description: "a DateTime.Zoned instance",
+    pretty: (): pretty_.Pretty<dateTime.Zoned> => (dateTime) => dateTime.toString(),
+    arbitrary: (): LazyArbitrary<dateTime.Zoned> => (fc) =>
+      fc.date().chain((date) => timeZoneArbitrary(fc).map((timeZone) => dateTime.unsafeMakeZoned(date, { timeZone }))),
+    equivalence: () => dateTime.Equivalence
+  }
+) {}
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `DateTime.Zoned` instance.
+ *
+ * @category DateTime.Zoned transformations
+ * @since 0.70.0
+ */
+export class DateTimeZoned extends transformOrFail(
+  String$,
+  DateTimeZonedFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      option_.match(dateTime.makeZonedFromString(s), {
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+        onSome: ParseResult.succeed
+      }),
+    encode: (dt) => ParseResult.succeed(dateTime.formatIsoZoned(dt))
+  }
+).annotations({ identifier: "DateTimeZoned" }) {}
 
 /**
  * @category Option utils

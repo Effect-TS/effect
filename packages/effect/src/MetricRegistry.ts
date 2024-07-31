@@ -25,7 +25,7 @@ export type MetricRegistryTypeId = typeof MetricRegistryTypeId
  */
 export interface MetricRegistry {
   readonly [MetricRegistryTypeId]: MetricRegistryTypeId
-  snapshot(): ReadonlyArray<MetricPair.MetricPair.Untyped>
+  snapshot(): Array<MetricPair.MetricPair.Untyped>
   get<Type extends MetricKeyType.MetricKeyType<any, any>>(
     key: MetricKey.MetricKey<Type>
   ): MetricHook.MetricHook<

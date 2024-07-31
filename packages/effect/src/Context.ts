@@ -24,12 +24,14 @@ const TagTypeId: unique symbol = internal.TagTypeId
 export type TagTypeId = typeof TagTypeId
 
 /**
- * @since 2.0.0
+ * @since 3.5.9
  * @category models
  */
 export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
   readonly _tag: "Tag"
   readonly _op: "Tag"
+  readonly Service: Value
+  readonly Identifier: Id
   readonly [TagTypeId]: {
     readonly _Service: Types.Invariant<Value>
     readonly _Identifier: Types.Invariant<Id>

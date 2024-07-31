@@ -60,3 +60,8 @@ it.scopedLive.skip(
 
 it.effect.skipIf(true)("effect skipIf (true)", () => Effect.die("skipped anyway"))
 it.effect.skipIf(false)("effect skipIf (false)", () => Effect.sync(() => expect(1).toEqual(1)))
+
+// runIf
+
+it.effect.runIf(true)("effect runIf (true)", () => Effect.sync(() => expect(1).toEqual(1)))
+it.effect.runIf(false)("effect runIf (false)", () => Effect.die("not run anyway"))
