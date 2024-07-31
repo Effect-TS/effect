@@ -785,9 +785,14 @@ const goMemo = (ast: AST.AST, isDecoding: boolean): Parser => {
   }
   const raw = go(ast, isDecoding)
   const parseOptionsAnnotation = AST.getParseOptionsAnnotation(ast)
-  const parser: Parser = Option.isSome(parseOptionsAnnotation)
+  const parserWithOptions: Parser = Option.isSome(parseOptionsAnnotation)
     ? (i, options) => raw(i, mergeInternalOptions(options, parseOptionsAnnotation.value))
     : raw
+  const decodingFallbackAnnotation = AST.getDecodingFallbackAnnotation(ast)
+  const parser: Parser = isDecoding && Option.isSome(decodingFallbackAnnotation)
+    ? (i, options) =>
+      handleForbidden(orElse(parserWithOptions(i, options), decodingFallbackAnnotation.value), ast, i, options)
+    : parserWithOptions
   memoMap.set(ast, parser)
   return parser
 }
@@ -1604,7 +1609,7 @@ export const getSearchTree = (
 
 const dropRightRefinement = (ast: AST.AST): AST.AST => AST.isRefinement(ast) ? dropRightRefinement(ast.from) : ast
 
-const handleForbidden = <R, A>(
+const handleForbidden = <A, R>(
   effect: Effect.Effect<A, ParseIssue, R>,
   ast: AST.AST,
   actual: unknown,
