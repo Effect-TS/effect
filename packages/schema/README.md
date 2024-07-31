@@ -5006,6 +5006,52 @@ console.log(isDeprecated(Schema.String)) // false
 console.log(isDeprecated(schema)) // true
 ```
 
+## Handling Decoding Errors with Fallbacks
+
+The `DecodingFallbackAnnotation` provides a way to handle decoding errors gracefully in your schemas.
+
+```ts
+export type DecodingFallbackAnnotation<A> = (
+  issue: ParseIssue
+) => Effect<A, ParseIssue>
+```
+
+By using this annotation, you can define custom fallback behaviors that trigger when decoding operations fail.
+
+**Example Usage**
+
+```ts
+import { Schema } from "@effect/schema"
+import { Effect, Either } from "effect"
+
+// Basic Fallback
+
+const schema = Schema.String.annotations({
+  decodingFallback: () => Either.right("<fallback>")
+})
+
+console.log(Schema.decodeUnknownSync(schema)("valid input")) // Output: valid input
+console.log(Schema.decodeUnknownSync(schema)(null)) // Output: <fallback value>
+
+// Advanced Fallback with Logging
+
+const schemaWithLog = Schema.String.annotations({
+  decodingFallback: (issue) =>
+    Effect.gen(function* () {
+      yield* Effect.log(issue._tag)
+      yield* Effect.sleep(10)
+      return yield* Effect.succeed("<fallback2>")
+    })
+})
+
+Effect.runPromise(Schema.decodeUnknown(schemaWithLog)(null)).then(console.log)
+/*
+Output:
+timestamp=2024-07-25T13:22:37.706Z level=INFO fiber=#0 message=Type
+<fallback2>
+*/
+```
+
 ## Recursive Schemas
 
 The `suspend` combinator is useful when you need to define a `Schema` that depends on itself, like in the case of recursive data structures. In this example, the `Category` schema depends on itself because it has a field `subcategories` that is an array of `Category` objects.
@@ -9595,6 +9641,33 @@ S.decodeUnknownSync(person)(
   { onExcessProperty: "error" }
 )
 // => throws ParseError
+```
+
+#### catch
+
+Zod
+
+```ts
+import { z } from "zod"
+
+const schema = z.number().catch(42)
+
+console.log(schema.parse(5)) // => 5
+console.log(schema.parse("tuna")) // => 42
+```
+
+Schema
+
+```ts
+import { Schema } from "@effect/schema"
+import { Either } from "effect"
+
+const schema = Schema.Number.annotations({
+  decodingFallback: () => Either.right(42)
+})
+
+console.log(Schema.decodeUnknownSync(schema)(5)) // => 5
+console.log(Schema.decodeUnknownSync(schema)("tuna")) // => 42
 ```
 
 #### catchall
