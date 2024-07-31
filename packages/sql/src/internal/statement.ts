@@ -7,8 +7,8 @@ import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
+import type * as Tracer from "effect/Tracer"
 import type * as Connection from "../SqlConnection.js"
 import type * as Error from "../SqlError.js"
 import type * as Statement from "../Statement.js"
@@ -62,6 +62,24 @@ export const setTransformer = (
   f: Statement.Statement.Transformer
 ) => Layer.locallyScoped(currentTransformer, Option.some(f))
 
+const withStatement = <A, X, E, R>(
+  self: StatementPrimitive<A>,
+  span: Tracer.Span,
+  f: (statement: StatementPrimitive<A>) => Effect.Effect<X, E, R>
+) =>
+  Effect.withFiberRuntime<X, E, R>((fiber) => {
+    const transform = fiber.getFiberRef(currentTransformer)
+    if (transform._tag === "None") {
+      return f(self)
+    }
+    return Effect.flatMap(
+      transform.value(self, make(self.acquirer, self.compiler), fiber.getFiberRefs(), span) as Effect.Effect<
+        StatementPrimitive<A>
+      >,
+      f
+    )
+  })
+
 /** @internal */
 export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Error.SqlError>
   implements Statement.Statement<A>
@@ -92,11 +110,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       "sql.execute",
       { kind: "client", captureStackTrace: false },
       (span) =>
-        Effect.withFiberRuntime((fiber) => {
-          const transform = fiber.getFiberRef(currentTransformer)
-          const statement = transform._tag === "Some"
-            ? transform.value(this, make(this.acquirer, this.compiler), fiber.getFiberRefs(), span)
-            : this
+        withStatement(this, span, (statement) => {
           const [sql, params] = statement.compile(withoutTransform)
           for (const [key, value] of this.spanAttributes) {
             span.attribute(key, value)
@@ -120,11 +134,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     return Stream.unwrapScoped(Effect.flatMap(
       Effect.makeSpanScoped("sql.execute", { kind: "client", captureStackTrace: false }),
       (span) =>
-        Effect.withFiberRuntime<Stream.Stream<A, Error.SqlError>, Error.SqlError, Scope>((fiber) => {
-          const transform = fiber.getFiberRef(currentTransformer)
-          const statement = transform._tag === "Some"
-            ? transform.value(this, make(this.acquirer, this.compiler), fiber.getFiberRefs(), span)
-            : this
+        withStatement(this, span, (statement) => {
           const [sql, params] = statement.compile()
           for (const [key, value] of this.spanAttributes) {
             span.attribute(key, value)

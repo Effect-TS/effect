@@ -1,5 +1,182 @@
 # effect
 
+## 3.6.0
+
+### Minor Changes
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`1e0fe80`](https://github.com/Effect-TS/effect/commit/1e0fe802b36c257971296617473ce0abe730e8dc) Thanks @tim-smart! - make List.Cons extend NonEmptyIterable
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`8135294`](https://github.com/Effect-TS/effect/commit/8135294b591ea94fde7e6f94a504608f0e630520) Thanks @tim-smart! - add DateTime module
+
+  The `DateTime` module provides functionality for working with time, including
+  support for time zones and daylight saving time.
+
+  It has two main data types: `DateTime.Utc` and `DateTime.Zoned`.
+
+  A `DateTime.Utc` represents a time in Coordinated Universal Time (UTC), and
+  a `DateTime.Zoned` contains both a UTC timestamp and a time zone.
+
+  There is also a `CurrentTimeZone` service, for setting a time zone contextually.
+
+  ```ts
+  import { DateTime, Effect } from "effect";
+
+  Effect.gen(function* () {
+    // Get the current time in the current time zone
+    const now = yield* DateTime.nowInCurrentZone;
+
+    // Math functions are included
+    const tomorrow = DateTime.add(now, 1, "day");
+
+    // Convert to a different time zone
+    // The UTC portion of the `DateTime` is preserved and only the time zone is
+    // changed
+    const sydneyTime = tomorrow.pipe(
+      DateTime.unsafeSetZoneNamed("Australia/Sydney"),
+    );
+  }).pipe(DateTime.withCurrentZoneNamed("America/New_York"));
+  ```
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`cd255a4`](https://github.com/Effect-TS/effect/commit/cd255a48872d8fb924cf713ef73f0883a9cc6987) Thanks @tim-smart! - add Stream.asyncPush api
+
+  This api creates a stream from an external push-based resource.
+
+  You can use the `emit` helper to emit values to the stream. You can also use
+  the `emit` helper to signal the end of the stream by using apis such as
+  `emit.end` or `emit.fail`.
+
+  By default it uses an "unbounded" buffer size.
+  You can customize the buffer size and strategy by passing an object as the
+  second argument with the `bufferSize` and `strategy` fields.
+
+  ```ts
+  import { Effect, Stream } from "effect";
+
+  Stream.asyncPush<string>(
+    (emit) =>
+      Effect.acquireRelease(
+        Effect.gen(function* () {
+          yield* Effect.log("subscribing");
+          return setInterval(() => emit.single("tick"), 1000);
+        }),
+        (handle) =>
+          Effect.gen(function* () {
+            yield* Effect.log("unsubscribing");
+            clearInterval(handle);
+          }),
+      ),
+    { bufferSize: 16, strategy: "dropping" },
+  );
+  ```
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`3845646`](https://github.com/Effect-TS/effect/commit/3845646828e98f3c7cda1217f6cfe5f642ac0603) Thanks @mikearnaldi! - Implement Struct.keys as a typed alternative to Object.keys
+
+  ```ts
+  import { Struct } from "effect";
+
+  const symbol: unique symbol = Symbol();
+
+  const value = {
+    a: 1,
+    b: 2,
+    [symbol]: 3,
+  };
+
+  const keys: Array<"a" | "b"> = Struct.keys(value);
+  ```
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`2d09078`](https://github.com/Effect-TS/effect/commit/2d09078c5948b37fc2f79ef858fe4ca3e4814085) Thanks @sukovanej! - Add `Random.choice`.
+
+  ```ts
+  import { Random } from "effect";
+
+  Effect.gen(function* () {
+    const randomItem = yield* Random.choice([1, 2, 3]);
+    console.log(randomItem);
+  });
+  ```
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`4bce5a0`](https://github.com/Effect-TS/effect/commit/4bce5a0274203550ccf117d830721891b0a3d182) Thanks @vinassefranche! - Add onlyEffect option to Effect.tap
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`4ddbff0`](https://github.com/Effect-TS/effect/commit/4ddbff0bb4e3ffddfeb509c59835b83245fb975e) Thanks @KhraksMamtsov! - Support `Refinement` in `Predicate.tuple` and `Predicate.struct`
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`e74cc38`](https://github.com/Effect-TS/effect/commit/e74cc38cb420a320c4d7ef98180f19d452a8b316) Thanks @dilame! - Implement `Stream.onEnd` that adds an effect to be executed at the end of the stream.
+
+  ```ts
+  import { Console, Effect, Stream } from "effect";
+
+  const stream = Stream.make(1, 2, 3).pipe(
+    Stream.map((n) => n * 2),
+    Stream.tap((n) => Console.log(`after mapping: ${n}`)),
+    Stream.onEnd(Console.log("Stream ended")),
+  );
+
+  Effect.runPromise(Stream.runCollect(stream)).then(console.log);
+  // after mapping: 2
+  // after mapping: 4
+  // after mapping: 6
+  // Stream ended
+  // { _id: 'Chunk', values: [ 2, 4, 6 ] }
+  ```
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`bb069b4`](https://github.com/Effect-TS/effect/commit/bb069b49ef291c532a02c1e8e74271f6d1bb32ec) Thanks @dilame! - Implement `Stream.onStart` that adds an effect to be executed at the start of the stream.
+
+  ```ts
+  import { Console, Effect, Stream } from "effect";
+
+  const stream = Stream.make(1, 2, 3).pipe(
+    Stream.onStart(Console.log("Stream started")),
+    Stream.map((n) => n * 2),
+    Stream.tap((n) => Console.log(`after mapping: ${n}`)),
+  );
+
+  Effect.runPromise(Stream.runCollect(stream)).then(console.log);
+  // Stream started
+  // after mapping: 2
+  // after mapping: 4
+  // after mapping: 6
+  // { _id: 'Chunk', values: [ 2, 4, 6 ] }
+  ```
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`cd255a4`](https://github.com/Effect-TS/effect/commit/cd255a48872d8fb924cf713ef73f0883a9cc6987) Thanks @tim-smart! - add `bufferSize` option to Stream.fromEventListener
+
+- [#3380](https://github.com/Effect-TS/effect/pull/3380) [`7d02174`](https://github.com/Effect-TS/effect/commit/7d02174af3bcbf054e5cdddb821c91d0f47e8285) Thanks @fubhy! - Changed various function signatures to return `Array` instead of `ReadonlyArray`
+
+## 3.5.9
+
+### Patch Changes
+
+- [#3377](https://github.com/Effect-TS/effect/pull/3377) [`6359644`](https://github.com/Effect-TS/effect/commit/635964446323cf55d4060559337e710e4a24496e) Thanks @tim-smart! - add MicroScheduler to Micro module
+
+- [#3362](https://github.com/Effect-TS/effect/pull/3362) [`7f41e42`](https://github.com/Effect-TS/effect/commit/7f41e428830bf3043b8be0d28dcd235d5747c942) Thanks @IMax153! - Add `Service` and `Identifier` to `Context.Tag`.
+
+  These helpers can be used, for example, to extract the service shape from a tag:
+
+  ```ts
+  import * as Context from "effect/Context";
+
+  export class Foo extends Context.Tag("Foo")<
+    Foo,
+    {
+      readonly foo: Effect.Effect<void>;
+    }
+  >() {}
+
+  type ServiceShape = typeof Foo.Service;
+  ```
+
+- [#3373](https://github.com/Effect-TS/effect/pull/3373) [`f566fd1`](https://github.com/Effect-TS/effect/commit/f566fd1d7eea531a0d981dd24037f14a603a1273) Thanks @KhraksMamtsov! - Add test for Hash.number(0.1) !== Has.number(0)
+
+## 3.5.8
+
+### Patch Changes
+
+- [#3345](https://github.com/Effect-TS/effect/pull/3345) [`1ba640c`](https://github.com/Effect-TS/effect/commit/1ba640c702f187a866023bf043c26e25cce941ef) Thanks @mikearnaldi! - Fix typo propety to property
+
+- [#3349](https://github.com/Effect-TS/effect/pull/3349) [`c8c71bd`](https://github.com/Effect-TS/effect/commit/c8c71bd20eb87d23133dac6156b83bb08941597c) Thanks @tim-smart! - ensure all Data.Error arguments are preserved in .toJSON
+
+- [#3355](https://github.com/Effect-TS/effect/pull/3355) [`a26ce58`](https://github.com/Effect-TS/effect/commit/a26ce581ca7d407e1e81439b58c8045b3fa65231) Thanks @tim-smart! - fix Hash.number not returning unique values
+
 ## 3.5.7
 
 ### Patch Changes

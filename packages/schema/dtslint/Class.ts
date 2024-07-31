@@ -61,6 +61,11 @@ checkForConflicts({ from: S.Struct({ a: S.String }).pipe(S.filter(() => true), S
 
 class NoFields extends S.Class<NoFields>("NoFields")({}) {}
 
+// the ast should be a AST.Transformation
+
+// $ExpectType Transformation
+NoFields.ast
+
 // $ExpectType [props?: void | {}, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof NoFields>>()
 

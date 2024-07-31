@@ -12,6 +12,7 @@ import * as chunk_ from "effect/Chunk"
 import * as config_ from "effect/Config"
 import * as configError_ from "effect/ConfigError"
 import * as data_ from "effect/Data"
+import * as dateTime from "effect/DateTime"
 import * as duration_ from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as either_ from "effect/Either"
@@ -84,6 +85,8 @@ export type TypeId = typeof TypeId
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly Type: A
   readonly Encoded: I
+  /** @since 0.69.3 */
+  readonly Context: R
   readonly ast: AST.AST
   /**
    * Merges a set of new annotations with existing ones, potentially overwriting
@@ -107,6 +110,7 @@ export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
     [TypeId] = variance
     static Type: A
     static Encoded: I
+    static Context: R
     static [TypeId] = variance
     static ast = ast
     static annotations(annotations: Annotations.Schema<A>) {
@@ -1558,6 +1562,13 @@ export const PropertySignatureTypeId: unique symbol = Symbol.for("@effect/schema
 export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
 /**
+ * @since 0.69.3
+ * @category guards
+ */
+export const isPropertySignature = (u: unknown): u is PropertySignature.All =>
+  Predicate.hasProperty(u, PropertySignatureTypeId)
+
+/**
  * @category PropertySignature
  * @since 0.67.0
  */
@@ -2422,9 +2433,6 @@ export interface TypeLiteral<
     options?: MakeOptions
   ): Simplify<TypeLiteral.Type<Fields, Records>>
 }
-
-const isPropertySignature = (u: unknown): u is PropertySignature.All =>
-  Predicate.hasProperty(u, PropertySignatureTypeId)
 
 const getDefaultTypeLiteralAST = <
   Fields extends Struct.Fields,
@@ -4282,6 +4290,24 @@ export class Trimmed extends String$.pipe(
 ) {}
 
 /**
+ * Useful for validating strings that must contain meaningful characters without
+ * leading or trailing whitespace.
+ *
+ * @example
+ * import { Schema } from "@effect/schema"
+ *
+ * console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("")) // Option.none()
+ * console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)(" a ")) // Option.none()
+ * console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("a")) // Option.some("a")
+ *
+ * @category string constructors
+ * @since 0.69.3
+ */
+export class NonEmptyTrimmedString extends Trimmed.pipe(
+  nonEmptyString({ identifier: "NonEmptyTrimmedString", title: "NonEmptyTrimmedString" })
+) {}
+
+/**
  * This schema allows removing whitespaces from the beginning and end of a string.
  *
  * @category string transformations
@@ -5897,6 +5923,209 @@ export class DateFromNumber extends transform(
 ).annotations({ identifier: "DateFromNumber" }) {}
 
 /**
+ * Describes a schema that represents a `DateTime.Utc` instance.
+ *
+ * @category DateTime.Utc constructors
+ * @since 0.70.0
+ */
+export class DateTimeUtcFromSelf extends declare(
+  (u) => dateTime.isDateTime(u) && dateTime.isUtc(u),
+  {
+    identifier: "DateTimeUtcFromSelf",
+    description: "a DateTime.Utc instance",
+    pretty: (): pretty_.Pretty<dateTime.Utc> => (dateTime) => dateTime.toString(),
+    arbitrary: (): LazyArbitrary<dateTime.Utc> => (fc) => fc.date().map((date) => dateTime.unsafeFromDate(date)),
+    equivalence: () => dateTime.Equivalence
+  }
+) {}
+
+const decodeDateTime = <A extends dateTime.DateTime.Input>(input: A, _: ParseOptions, ast: AST.AST) =>
+  ParseResult.try({
+    try: () => dateTime.unsafeMake(input),
+    catch: () => new ParseResult.Type(ast, input)
+  })
+
+/**
+ * Defines a schema that attempts to convert a `number` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
+ *
+ * @category DateTime.Utc transformations
+ * @since 0.70.0
+ */
+export class DateTimeUtcFromNumber extends transformOrFail(
+  Number$,
+  DateTimeUtcFromSelf,
+  {
+    strict: true,
+    decode: decodeDateTime,
+    encode: (dt) => ParseResult.succeed(dateTime.toEpochMillis(dt))
+  }
+).annotations({ identifier: "DateTimeUtcFromNumber" }) {}
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
+ *
+ * @category DateTime.Utc transformations
+ * @since 0.70.0
+ */
+export class DateTimeUtc extends transformOrFail(
+  String$,
+  DateTimeUtcFromSelf,
+  {
+    strict: true,
+    decode: decodeDateTime,
+    encode: (dt) => ParseResult.succeed(dateTime.formatIso(dt))
+  }
+).annotations({ identifier: "DateTimeUtc" }) {}
+
+const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (fc) =>
+  fc.integer({ min: -12 * 60 * 60 * 1000, max: 12 * 60 * 60 * 1000 }).map((offset) => dateTime.zoneMakeOffset(offset))
+
+/**
+ * Describes a schema that represents a `TimeZone.Offset` instance.
+ *
+ * @category TimeZone constructors
+ * @since 0.70.0
+ */
+export class TimeZoneOffsetFromSelf extends declare(
+  dateTime.isTimeZoneOffset,
+  {
+    identifier: "TimeZoneOffsetFromSelf",
+    description: "a TimeZone.Offset instance",
+    pretty: (): pretty_.Pretty<dateTime.TimeZone.Offset> => (zone) => zone.toString(),
+    arbitrary: timeZoneOffsetArbitrary
+  }
+) {}
+
+/**
+ * Defines a schema that converts a `number` to a `TimeZone.Offset` instance using the `DateTime.zoneMakeOffset` constructor.
+ *
+ * @category TimeZone transformations
+ * @since 0.70.0
+ */
+export class TimeZoneOffset extends transform(
+  Number$,
+  TimeZoneOffsetFromSelf,
+  { strict: true, decode: dateTime.zoneMakeOffset, encode: (tz) => tz.offset }
+).annotations({ identifier: "TimeZoneOffset" }) {}
+
+const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc) =>
+  fc.constantFrom(...Intl.supportedValuesOf("timeZone")).map(dateTime.zoneUnsafeMakeNamed)
+
+/**
+ * Describes a schema that represents a `TimeZone.Named` instance.
+ *
+ * @category TimeZone constructors
+ * @since 0.70.0
+ */
+export class TimeZoneNamedFromSelf extends declare(
+  dateTime.isTimeZoneNamed,
+  {
+    identifier: "TimeZoneNamedFromSelf",
+    description: "a TimeZone.Named instance",
+    pretty: (): pretty_.Pretty<dateTime.TimeZone.Named> => (zone) => zone.toString(),
+    arbitrary: timeZoneNamedArbitrary
+  }
+) {}
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `TimeZone.Named` instance using the `DateTime.zoneUnsafeMakeNamed` constructor.
+ *
+ * @category TimeZone transformations
+ * @since 0.70.0
+ */
+export class TimeZoneNamed extends transformOrFail(
+  String$,
+  TimeZoneNamedFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      ParseResult.try({
+        try: () => dateTime.zoneUnsafeMakeNamed(s),
+        catch: () => new ParseResult.Type(ast, s)
+      }),
+    encode: (tz) => ParseResult.succeed(tz.id)
+  }
+).annotations({ identifier: "TimeZoneNamed" }) {}
+
+/**
+ * @category api interface
+ * @since 0.70.0
+ */
+export interface TimeZoneFromSelf extends Union<[typeof TimeZoneOffsetFromSelf, typeof TimeZoneNamedFromSelf]> {
+  annotations(annotations: Annotations.Schema<dateTime.TimeZone>): TimeZoneFromSelf
+}
+
+/**
+ * @category TimeZone constructors
+ * @since 0.70.0
+ */
+export const TimeZoneFromSelf: TimeZoneFromSelf = Union(TimeZoneOffsetFromSelf, TimeZoneNamedFromSelf)
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `TimeZone` using the `DateTime.zoneFromString` constructor.
+ *
+ * @category TimeZone transformations
+ * @since 0.70.0
+ */
+export class TimeZone extends transformOrFail(
+  String$,
+  TimeZoneFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      option_.match(dateTime.zoneFromString(s), {
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+        onSome: ParseResult.succeed
+      }),
+    encode: (tz) => ParseResult.succeed(dateTime.zoneToString(tz))
+  }
+).annotations({ identifier: "TimeZone" }) {}
+
+const timeZoneArbitrary: LazyArbitrary<dateTime.TimeZone> = (fc) =>
+  fc.oneof(
+    timeZoneOffsetArbitrary()(fc),
+    timeZoneNamedArbitrary()(fc)
+  )
+
+/**
+ * Describes a schema that represents a `DateTime.Zoned` instance.
+ *
+ * @category DateTime.Zoned constructors
+ * @since 0.70.0
+ */
+export class DateTimeZonedFromSelf extends declare(
+  (u) => dateTime.isDateTime(u) && dateTime.isZoned(u),
+  {
+    identifier: "DateTimeZonedFromSelf",
+    description: "a DateTime.Zoned instance",
+    pretty: (): pretty_.Pretty<dateTime.Zoned> => (dateTime) => dateTime.toString(),
+    arbitrary: (): LazyArbitrary<dateTime.Zoned> => (fc) =>
+      fc.date().chain((date) => timeZoneArbitrary(fc).map((timeZone) => dateTime.unsafeMakeZoned(date, { timeZone }))),
+    equivalence: () => dateTime.Equivalence
+  }
+) {}
+
+/**
+ * Defines a schema that attempts to convert a `string` to a `DateTime.Zoned` instance.
+ *
+ * @category DateTime.Zoned transformations
+ * @since 0.70.0
+ */
+export class DateTimeZoned extends transformOrFail(
+  String$,
+  DateTimeZonedFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      option_.match(dateTime.makeZonedFromString(s), {
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+        onSome: ParseResult.succeed
+      }),
+    encode: (dt) => ParseResult.succeed(dateTime.formatIsoZoned(dt))
+  }
+).annotations({ identifier: "DateTimeZoned" }) {}
+
+/**
  * @category Option utils
  * @since 0.67.0
  */
@@ -6115,6 +6344,30 @@ export const OptionFromUndefinedOr = <Value extends Schema.Any>(
     encode: option_.getOrUndefined
   })
 }
+
+/**
+ * Transforms strings into an Option type, effectively filtering out empty or
+ * whitespace-only strings by trimming them and checking their length. Returns
+ * `none` for invalid inputs and `some` for valid non-empty strings.
+ *
+ * @example
+ * import { Schema } from "@effect/schema"
+ *
+ * console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("")) // Option.none()
+ * console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)(" a ")) // Option.some("a")
+ * console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("a")) // Option.some("a")
+ *
+ * @category Option transformations
+ * @since 0.69.3
+ */
+export const OptionFromNonEmptyTrimmedString = transform(String$, OptionFromSelf(NonEmptyTrimmedString), {
+  strict: true,
+  decode: (s) => {
+    const out = s.trim()
+    return out.length === 0 ? option_.none() : option_.some(out)
+  },
+  encode: option_.getOrElse(() => "")
+})
 
 /**
  * @category Either utils
@@ -7209,6 +7462,9 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
     props: RequiredKeys<C> extends never ? void | Simplify<C> : Simplify<C>,
     options?: MakeOptions
   ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
+
+  /** @since 0.69.3 */
+  readonly ast: AST.Transformation
 
   make<Args extends Array<any>, X>(this: { new(...args: Args): X }, ...args: Args): X
 

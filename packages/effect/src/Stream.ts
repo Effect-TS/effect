@@ -374,6 +374,46 @@ export const asyncEffect: <A, E = never, R = never>(
 ) => Stream<A, E, R> = internal.asyncEffect
 
 /**
+ * Creates a stream from an external push-based resource.
+ *
+ * You can use the `emit` helper to emit values to the stream. The `emit` helper
+ * returns a boolean indicating whether the value was emitted or not.
+ *
+ * You can also use the `emit` helper to signal the end of the stream by
+ * using apis such as `emit.end` or `emit.fail`.
+ *
+ * By default it uses an "unbounded" buffer size.
+ * You can customize the buffer size and strategy by passing an object as the
+ * second argument with the `bufferSize` and `strategy` fields.
+ *
+ * @example
+ * import { Effect, Stream } from "effect"
+ *
+ * Stream.asyncPush<string>((emit) =>
+ *   Effect.acquireRelease(
+ *     Effect.gen(function*() {
+ *       yield* Effect.log("subscribing")
+ *       return setInterval(() => emit.single("tick"), 1000)
+ *     }),
+ *     (handle) =>
+ *       Effect.gen(function*() {
+ *         yield* Effect.log("unsubscribing")
+ *         clearInterval(handle)
+ *       })
+ *   ), { bufferSize: 16, strategy: "dropping" })
+ *
+ * @since 3.6.0
+ * @category constructors
+ */
+export const asyncPush: <A, E = never, R = never>(
+  register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
+  options?: { readonly bufferSize: "unbounded" } | {
+    readonly bufferSize?: number | undefined
+    readonly strategy?: "dropping" | "sliding" | undefined
+  } | undefined
+) => Stream<A, E, Exclude<R, Scope.Scope>> = internal.asyncPush
+
+/**
  * Creates a stream from an asynchronous callback that can be called multiple
  * times. The registration of the callback itself returns an a scoped
  * resource. The optionality of the error type `E` can be used to signal the
@@ -2888,6 +2928,38 @@ export const mkString: <E, R>(self: Stream<string, E, R>) => Effect.Effect<strin
 export const never: Stream<never> = internal.never
 
 /**
+ * Adds an effect to be executed at the end of the stream.
+ *
+ * @example
+ * import { Console, Effect, Stream } from "effect"
+ *
+ * const stream = Stream.make(1, 2, 3).pipe(
+ *   Stream.map((n) => n * 2),
+ *   Stream.tap((n) => Console.log(`after mapping: ${n}`)),
+ *   Stream.onEnd(Console.log("Stream ended"))
+ * )
+ *
+ * Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * // after mapping: 2
+ * // after mapping: 4
+ * // after mapping: 6
+ * // Stream ended
+ * // { _id: 'Chunk', values: [ 2, 4, 6 ] }
+ *
+ * @since 3.6.0
+ * @category sequencing
+ */
+export const onEnd: {
+  <_, E2, R2>(
+    effect: Effect.Effect<_, E2, R2>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
+  <A, E, R, _, E2, R2>(
+    self: Stream<A, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Stream<A, E | E2, R | R2>
+} = internal.onEnd
+
+/**
  * Runs the specified effect if this stream fails, providing the error to the
  * effect if it exists.
  *
@@ -2917,6 +2989,38 @@ export const onDone: {
   <X, R2>(cleanup: () => Effect.Effect<X, never, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, R2 | R>
   <A, E, R, X, R2>(self: Stream<A, E, R>, cleanup: () => Effect.Effect<X, never, R2>): Stream<A, E, R | R2>
 } = internal.onDone
+
+/**
+ * Adds an effect to be executed at the start of the stream.
+ *
+ * @example
+ * import { Console, Effect, Stream } from "effect"
+ *
+ * const stream = Stream.make(1, 2, 3).pipe(
+ *   Stream.onStart(Console.log("Stream started")),
+ *   Stream.map((n) => n * 2),
+ *   Stream.tap((n) => Console.log(`after mapping: ${n}`))
+ * )
+ *
+ * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
+ * // Stream started
+ * // after mapping: 2
+ * // after mapping: 4
+ * // after mapping: 6
+ * // { _id: 'Chunk', values: [ 2, 4, 6 ] }
+ *
+ * @since 3.6.0
+ * @category sequencing
+ */
+export const onStart: {
+  <_, E2, R2>(
+    effect: Effect.Effect<_, E2, R2>
+  ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E2 | E, R2 | R>
+  <A, E, R, _, E2, R2>(
+    self: Stream<A, E, R>,
+    effect: Effect.Effect<_, E2, R2>
+  ): Stream<A, E | E2, R | R2>
+} = internal.onStart
 
 /**
  * Translates any failure into a stream termination, making the stream
@@ -5676,11 +5780,11 @@ export const zipWithPreviousAndNext: <A, E, R>(
 export const zipWithIndex: <A, E, R>(self: Stream<A, E, R>) => Stream<[A, number], E, R> = internal.zipWithIndex
 
 // -------------------------------------------------------------------------------------
-// Do notation
+// do notation
 // -------------------------------------------------------------------------------------
 
 /**
- * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ * The "do simulation" in Effect allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
  *
  * Here's how the do simulation works:
  *
@@ -5711,7 +5815,7 @@ export const zipWithIndex: <A, E, R>(self: Stream<A, E, R>) => Stream<[A, number
 export const Do: Stream<{}> = internal.Do
 
 /**
- * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ * The "do simulation" in Effect allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
  *
  * Here's how the do simulation works:
  *
@@ -5787,7 +5891,7 @@ export const bindEffect: {
 } = _groupBy.bindEffect
 
 /**
- * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ * The "do simulation" in Effect allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
  *
  * Here's how the do simulation works:
  *
@@ -5834,7 +5938,7 @@ const let_: {
 
 export {
   /**
-   * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+   * The "do simulation" in Effect allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
    *
    * Here's how the do simulation works:
    *
@@ -5923,5 +6027,6 @@ export const fromEventListener: <A = unknown>(
     readonly capture?: boolean
     readonly passive?: boolean
     readonly once?: boolean
+    readonly bufferSize?: number | "unbounded" | undefined
   } | undefined
 ) => Stream<A> = internal.fromEventListener
