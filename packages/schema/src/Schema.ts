@@ -705,7 +705,7 @@ const makeEnumsClass = <A extends EnumsDefinition>(
  */
 export const Enums = <A extends EnumsDefinition>(enums: A): Enums<A> => makeEnumsClass(enums)
 
-type Join<T> = T extends [infer Head, ...infer Tail] ?
+type Join<Params> = Params extends [infer Head, ...infer Tail] ?
   `${(Head extends Schema<infer A> ? A : Head) & (AST.LiteralValue)}${Join<Tail>}`
   : ""
 
@@ -718,14 +718,12 @@ export interface TemplateLiteral<A> extends SchemaClass<A> {}
 type TemplateLiteralParameter = Schema.AnyNoContext | AST.LiteralValue
 
 /**
- * @category constructors
+ * @category template literal
  * @since 0.67.0
  */
-export const TemplateLiteral = <
-  T extends readonly [TemplateLiteralParameter, ...Array<TemplateLiteralParameter>]
->(
-  ...[head, ...tail]: T
-): TemplateLiteral<Join<T>> => {
+export const TemplateLiteral = <Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParameter>>(
+  ...[head, ...tail]: Params
+): TemplateLiteral<Join<Params>> => {
   let astOrs: ReadonlyArray<AST.TemplateLiteral | string> = getTemplateLiterals(
     getTemplateLiteralParameterAST(head)
   )
@@ -784,6 +782,75 @@ const getTemplateLiterals = (
       return array_.flatMap(ast.types, getTemplateLiterals)
   }
   throw new Error(errors_.getSchemaUnsupportedLiteralSpanErrorMessage(ast))
+}
+
+type TemplateLiteralParserParameters = Schema.Any | AST.LiteralValue
+
+type TemplateLiteralParserParametersType<T> = T extends [infer Head, ...infer Tail] ?
+  readonly [Head extends Schema<infer A, infer _I, infer _R> ? A : Head, ...TemplateLiteralParserParametersType<Tail>]
+  : []
+
+type TemplateLiteralParserParametersEncoded<T> = T extends [infer Head, ...infer Tail] ? `${
+    & (Head extends Schema<infer _A, infer I, infer _R> ? I : Head)
+    & (AST.LiteralValue)}${TemplateLiteralParserParametersEncoded<Tail>}`
+  : ""
+
+/**
+ * @category API interface
+ * @since 0.70.1
+ */
+export interface TemplateLiteralParser<Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParserParameters>>
+  extends
+    Schema<
+      TemplateLiteralParserParametersType<Params>,
+      TemplateLiteralParserParametersEncoded<Params>,
+      Schema.Context<Params[number]>
+    >
+{
+  readonly params: Params
+}
+
+/**
+ * @category template literal
+ * @since 0.70.1
+ */
+export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParserParameters>>(
+  ...params: Params
+): TemplateLiteralParser<Params> => {
+  const encodedSchemas: Array<Schema.Any> = []
+  const typeSchemas: Array<Schema.Any> = []
+  const numbers: Array<number> = []
+  for (let i = 0; i < params.length; i++) {
+    const p = params[i]
+    if (isSchema(p)) {
+      const encoded = encodedSchema(p)
+      if (AST.isNumberKeyword(encoded.ast)) {
+        numbers.push(i)
+      }
+      encodedSchemas.push(encoded)
+      typeSchemas.push(p)
+    } else {
+      const literal = Literal(p as AST.LiteralValue)
+      encodedSchemas.push(literal)
+      typeSchemas.push(literal)
+    }
+  }
+  const from = TemplateLiteral(...encodedSchemas as any)
+  const re = AST.getTemplateLiteralCapturingRegExp(from.ast as AST.TemplateLiteral)
+  return class TemplateLiteralParserClass extends transform(from, Tuple(...typeSchemas), {
+    strict: false,
+    decode: (s) => {
+      const out: Array<number | string> = re.exec(s)!.slice(1, params.length + 1)
+      for (let i = 0; i < numbers.length; i++) {
+        const index = numbers[i]
+        out[index] = Number(out[index])
+      }
+      return out
+    },
+    encode: (tuple) => tuple.join("")
+  }) {
+    static params = params.slice()
+  } as any
 }
 
 const declareConstructor = <

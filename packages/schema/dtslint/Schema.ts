@@ -2655,3 +2655,25 @@ S.asSchema(S.Array(S.String).pipe(S.minItems(2), S.maxItems(3)))
 
 // $ExpectType filter<Schema<readonly string[], readonly string[], never>>
 S.Array(S.String).pipe(S.minItems(1), S.maxItems(2))
+
+// ---------------------------------------------
+// TemplateLiteralParser
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly [number, "a"], `${number}a`, never>
+S.asSchema(S.TemplateLiteralParser(S.Int, "a"))
+
+// $ExpectType TemplateLiteralParser<[typeof Int, "a"]>
+S.TemplateLiteralParser(S.Int, "a")
+
+// $ExpectType Schema<readonly [number, "a", string], `${string}a${string}`, never>
+S.asSchema(S.TemplateLiteralParser(S.NumberFromString, "a", S.NonEmptyString))
+
+// $ExpectType TemplateLiteralParser<[typeof NumberFromString, "a", typeof NonEmptyString]>
+S.TemplateLiteralParser(S.NumberFromString, "a", S.NonEmptyString)
+
+// $ExpectType Schema<readonly ["/", number, "/", "a" | "b"], `/${number}/a` | `/${number}/b`, never>
+S.asSchema(S.TemplateLiteralParser("/", S.Int, "/", S.Literal("a", "b")))
+
+// $ExpectType TemplateLiteralParser<["/", typeof Int, "/", Literal<["a", "b"]>]>
+S.TemplateLiteralParser("/", S.Int, "/", S.Literal("a", "b"))
