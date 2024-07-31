@@ -107,9 +107,12 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
     }
   }
 
-  yield* _(
-    Stream.fromQueue(requests),
-    Stream.takeWhile((request) => request._tag !== "PoisonPill"),
+  yield* Stream.fromQueue(requests).pipe(
+    Stream.mapEffect((request) =>
+      request._tag === "PoisonPill"
+        ? Effect.interrupt
+        : Effect.succeed(request)
+    ),
     Stream.pipeThroughChannel(
       Ndjson.duplexSchema(Socket.toChannel(socket), {
         inputSchema: Domain.Request,
