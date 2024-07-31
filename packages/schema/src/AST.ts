@@ -229,13 +229,13 @@ export const ParseOptionsAnnotationId = Symbol.for("@effect/schema/annotation/Pa
 
 /**
  * @category annotations
- * @since 0.69.3
+ * @since 0.70.1
  */
 export type DecodingFallbackAnnotation<A> = (issue: ParseIssue) => Effect<A, ParseIssue>
 
 /**
  * @category annotations
- * @since 0.69.3
+ * @since 0.70.1
  */
 export const DecodingFallbackAnnotationId = Symbol.for("@effect/schema/annotation/DecodingFallback")
 
@@ -379,7 +379,7 @@ export const getParseOptionsAnnotation = getAnnotation<ParseOptions>(ParseOption
 
 /**
  * @category annotations
- * @since 0.69.3
+ * @since 0.70.1
  */
 export const getDecodingFallbackAnnotation = getAnnotation<DecodingFallbackAnnotation<unknown>>(
   DecodingFallbackAnnotationId
