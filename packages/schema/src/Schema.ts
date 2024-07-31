@@ -797,7 +797,7 @@ type TemplateLiteralParserParametersEncoded<T> = T extends [infer Head, ...infer
 
 /**
  * @category API interface
- * @since 0.69.3
+ * @since 0.70.1
  */
 export interface TemplateLiteralParser<Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParserParameters>>
   extends
@@ -812,7 +812,7 @@ export interface TemplateLiteralParser<Params extends array_.NonEmptyReadonlyArr
 
 /**
  * @category template literal
- * @since 0.69.3
+ * @since 0.70.1
  */
 export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParserParameters>>(
   ...params: Params
