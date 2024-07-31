@@ -1,5 +1,103 @@
 # @effect/schema
 
+## 0.70.1
+
+### Patch Changes
+
+- [#3347](https://github.com/Effect-TS/effect/pull/3347) [`3dce357`](https://github.com/Effect-TS/effect/commit/3dce357efe4a4451d7d29859d08ac11713999b1a) Thanks @gcanti! - Enhanced Parsing with `TemplateLiteralParser`, closes #3307
+
+  In this update we've introduced a sophisticated API for more refined string parsing: `TemplateLiteralParser`. This enhancement stems from recognizing limitations in the `Schema.TemplateLiteral` and `Schema.pattern` functionalities, which effectively validate string formats without extracting structured data.
+
+  **Overview of Existing Limitations**
+
+  The `Schema.TemplateLiteral` function, while useful as a simple validator, only verifies that an input conforms to a specific string pattern by converting template literal definitions into regular expressions. Similarly, `Schema.pattern` employs regular expressions directly for the same purpose. Post-validation, both methods require additional manual parsing to convert the validated string into a usable data format.
+
+  **Introducing TemplateLiteralParser**
+
+  To address these limitations and eliminate the need for manual post-validation parsing, the new `TemplateLiteralParser` API has been developed. It not only validates the input format but also automatically parses it into a more structured and type-safe output, specifically into a **tuple** format.
+
+  This new approach enhances developer productivity by reducing boilerplate code and simplifying the process of working with complex string inputs.
+
+  **Example** (string based schemas)
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  // const schema: Schema.Schema<readonly [number, "a", string], `${string}a${string}`, never>
+  const schema = Schema.TemplateLiteralParser(
+    Schema.NumberFromString,
+    "a",
+    Schema.NonEmptyString,
+  );
+
+  console.log(Schema.decodeEither(schema)("100ab"));
+  // { _id: 'Either', _tag: 'Right', right: [ 100, 'a', 'b' ] }
+
+  console.log(Schema.encode(schema)([100, "a", "b"]));
+  // { _id: 'Either', _tag: 'Right', right: '100ab' }
+  ```
+
+  **Example** (number based schemas)
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  // const schema: Schema.Schema<readonly [number, "a"], `${number}a`, never>
+  const schema = Schema.TemplateLiteralParser(Schema.Int, "a");
+
+  console.log(Schema.decodeEither(schema)("1a"));
+  // { _id: 'Either', _tag: 'Right', right: [ 1, 'a' ] }
+
+  console.log(Schema.encode(schema)([1, "a"]));
+  // { _id: 'Either', _tag: 'Right', right: '1a' }
+  ```
+
+- [#3346](https://github.com/Effect-TS/effect/pull/3346) [`657fc48`](https://github.com/Effect-TS/effect/commit/657fc48bb32daf2dc09c9335b3cbc3152bcbdd3b) Thanks @gcanti! - Implement `DecodingFallbackAnnotation` to manage decoding errors.
+
+  ```ts
+  export type DecodingFallbackAnnotation<A> = (
+    issue: ParseIssue,
+  ) => Effect<A, ParseIssue>;
+  ```
+
+  This update introduces a `decodingFallback` annotation, enabling custom handling of decoding failures in schemas. This feature allows developers to specify fallback behaviors when decoding operations encounter issues.
+
+  **Example**
+
+  ```ts
+  import { Schema } from "@effect/schema";
+  import { Effect, Either } from "effect";
+
+  // Basic Fallback
+
+  const schema = Schema.String.annotations({
+    decodingFallback: () => Either.right("<fallback>"),
+  });
+
+  console.log(Schema.decodeUnknownSync(schema)("valid input")); // Output: valid input
+  console.log(Schema.decodeUnknownSync(schema)(null)); // Output: <fallback value>
+
+  // Advanced Fallback with Logging
+
+  const schemaWithLog = Schema.String.annotations({
+    decodingFallback: (issue) =>
+      Effect.gen(function* () {
+        yield* Effect.log(issue._tag);
+        yield* Effect.sleep(10);
+        return yield* Effect.succeed("<fallback2>");
+      }),
+  });
+
+  Effect.runPromise(Schema.decodeUnknown(schemaWithLog)(null)).then(
+    console.log,
+  );
+  /*
+  Output:
+  timestamp=2024-07-25T13:22:37.706Z level=INFO fiber=#0 message=Type
+  <fallback2>
+  */
+  ```
+
 ## 0.70.0
 
 ### Patch Changes
