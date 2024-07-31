@@ -222,7 +222,7 @@ export const toChannel = <IE>(
       const loop: Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, SocketError | IE, unknown, void, unknown> = Channel
         .flatMap(
           Queue.take(exitQueue),
-          Exit.match({
+          Effect.matchCause({
             onFailure: (cause) => Cause.isEmptyType(cause) ? Channel.void : Channel.failCause(cause),
             onSuccess: (chunk) => Channel.zipRight(Channel.write(chunk), loop)
           })
