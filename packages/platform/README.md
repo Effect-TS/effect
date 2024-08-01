@@ -295,7 +295,7 @@ Here's a list of operations that can be performed using the `FileSystem` tag:
 | **makeTempFile**            | `options?: MakeTempFileOptions`                                  | `Effect<string, PlatformError>`                | Create a temporary file. The directory creation is functionally equivalent to `makeTempDirectory`. The file name will be a randomly generated string.                  |
 | **makeTempFileScoped**      | `options?: MakeTempFileOptions`                                  | `Effect<string, PlatformError, Scope>`         | Create a temporary file inside a scope. Functionally equivalent to `makeTempFile`, but the file will be automatically deleted when the scope is closed.                |
 | **open**                    | `path: string`, `options?: OpenFileOptions`                      | `Effect<File, PlatformError, Scope>`           | Open a file at `path` with the specified `options`. The file handle will be automatically closed when the scope is closed.                                             |
-| **readDirectory**           | `path: string`, `options?: ReadDirectoryOptions`                 | `Effect<Array<string>, PlatformError>` | List the contents of a directory. You can recursively list the contents of nested directories by setting the `recursive` option.                                       |
+| **readDirectory**           | `path: string`, `options?: ReadDirectoryOptions`                 | `Effect<Array<string>, PlatformError>`         | List the contents of a directory. You can recursively list the contents of nested directories by setting the `recursive` option.                                       |
 | **readFile**                | `path: string`                                                   | `Effect<Uint8Array, PlatformError>`            | Read the contents of a file.                                                                                                                                           |
 | **readFileString**          | `path: string`, `encoding?: string`                              | `Effect<string, PlatformError>`                | Read the contents of a file as a string.                                                                                                                               |
 | **readLink**                | `path: string`                                                   | `Effect<string, PlatformError>`                | Read the destination of a symbolic link.                                                                                                                               |
@@ -420,9 +420,269 @@ In this example:
 
 # HTTP Client
 
-## Retrieving Data (GET)
+## Overview
 
-In this section, we'll explore how to retrieve data using the `HttpClient` module from `@effect/platform`.
+An `HttpClient` is a function that takes a request and produces a certain value `A` in an effectful way (possibly resulting in an error `E` and depending on some requirement `R`).
+
+```ts
+type HttpClient<A, E, R> = (request: HttpClientRequest): Effect<A, E, R>
+```
+
+Generally, you'll deal with a specialization called `Default` where `A`, `E`, and `R` are predefined:
+
+```ts
+type Default = (request: HttpClientRequest): Effect<HttpClientResponse, RequestError | ResponseError, Scope>
+```
+
+The goal of `Default` is straightforward: transform a `HttpClientRequest` into a `HttpClientResponse`.
+
+### A First Example: Retrieving JSON Data (GET)
+
+Here's a simple example demonstrating how to retrieve JSON data using `HttpClient` from `@effect/platform`.
+
+```ts
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
+import { Effect } from "effect"
+
+const req = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/posts/1"
+)
+
+// HttpClient.fetch is a Default
+const res = HttpClient.fetch(req)
+
+const json = HttpClientResponse.json(res)
+
+Effect.runPromise(json).then(console.log)
+/*
+Output:
+{
+  userId: 1,
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+  body: 'quia et suscipit\n' +
+    'suscipit recusandae consequuntur expedita et cum\n' +
+    'reprehenderit molestiae ut ut quas totam\n' +
+    'nostrum rerum est autem sunt rem eveniet architecto'
+}
+*/
+```
+
+In this example:
+
+- `HttpClientRequest.get` creates a GET request to the specified URL.
+- `HttpClient.fetch` executes the request.
+- `HttpClientResponse.json` converts the response to JSON.
+- `Effect.runPromise` runs the effect and logs the result.
+
+### Built-in Defaults
+
+| Default              | Description                                                               |
+| -------------------- | ------------------------------------------------------------------------- |
+| `HttpClient.fetch`   | Execute the request using the global `fetch` function                     |
+| `HttpClient.fetchOk` | Same as `fetch` but ensures only `2xx` responses are treated as successes |
+
+### Custom Default
+
+You can create your own `Default` using the `HttpClient.makeDefault` constructor.
+
+```ts
+import { HttpClient, HttpClientResponse } from "@effect/platform"
+import { Effect } from "effect"
+
+const myClient = HttpClient.makeDefault((req) =>
+  Effect.succeed(
+    HttpClientResponse.fromWeb(
+      req,
+      // Simulate a response from a server
+      new Response(
+        JSON.stringify({ userId: 1, id: 1, title: "title...", body: "body..." })
+      )
+    )
+  )
+)
+```
+
+## Tapping
+
+```ts
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
+import { Console, Effect } from "effect"
+
+const req = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/posts/1"
+)
+
+// Log the request before fetching
+const tapFetch: HttpClient.HttpClient.Default = HttpClient.fetch.pipe(
+  HttpClient.tapRequest(Console.log)
+)
+
+const res = tapFetch(req)
+
+const json = HttpClientResponse.json(res)
+
+Effect.runPromise(json).then(console.log)
+/*
+Output:
+{
+  _id: '@effect/platform/HttpClientRequest',
+  method: 'GET',
+  url: 'https://jsonplaceholder.typicode.com/posts/1',
+  urlParams: [],
+  hash: { _id: 'Option', _tag: 'None' },
+  headers: Object <[Object: null prototype]> {},
+  body: { _id: '@effect/platform/HttpBody', _tag: 'Empty' }
+}
+{
+  userId: 1,
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+  body: 'quia et suscipit\n' +
+    'suscipit recusandae consequuntur expedita et cum\n' +
+    'reprehenderit molestiae ut ut quas totam\n' +
+    'nostrum rerum est autem sunt rem eveniet architecto'
+}
+*/
+```
+
+## HttpClientRequest
+
+### Overview
+
+You can create a `HttpClientRequest` using the following provided constructors:
+
+| Constructor                 | Description               |
+| --------------------------- | ------------------------- |
+| `HttpClientRequest.get`     | Create a GET request      |
+| `HttpClientRequest.post`    | Create a POST request     |
+| `HttpClientRequest.patch`   | Create a PATCH request    |
+| `HttpClientRequest.put`     | Create a PUT request      |
+| `HttpClientRequest.del`     | Create a DELETE request   |
+| `HttpClientRequest.head`    | Create a HEAD request     |
+| `HttpClientRequest.options` | Create an OPTIONS request |
+
+### Setting Headers
+
+When making HTTP requests, sometimes you need to include additional information in the request headers. You can set headers using the `setHeader` function for a single header or `setHeaders` for multiple headers simultaneously.
+
+```ts
+import { HttpClientRequest } from "@effect/platform"
+
+const req = HttpClientRequest.get("https://api.example.com/data").pipe(
+  // Setting a single header
+  HttpClientRequest.setHeader("Authorization", "Bearer your_token_here"),
+  // Setting multiple headers
+  HttpClientRequest.setHeaders({
+    "Content-Type": "application/json; charset=UTF-8",
+    "Custom-Header": "CustomValue"
+  })
+)
+
+console.log(JSON.stringify(req.headers, null, 2))
+/*
+Output:
+{
+  "authorization": "Bearer your_token_here",
+  "content-type": "application/json; charset=UTF-8",
+  "custom-header": "CustomValue"
+}
+*/
+```
+
+### basicAuth
+
+To include basic authentication in your HTTP request, you can use the `basicAuth` method provided by `HttpClientRequest`.
+
+```ts
+import { HttpClientRequest } from "@effect/platform"
+
+const req = HttpClientRequest.get("https://api.example.com/data").pipe(
+  HttpClientRequest.basicAuth("your_username", "your_password")
+)
+
+console.log(JSON.stringify(req.headers, null, 2))
+/*
+Output:
+{
+  "authorization": "Basic eW91cl91c2VybmFtZTp5b3VyX3Bhc3N3b3Jk"
+}
+*/
+```
+
+### bearerToken
+
+To include a Bearer token in your HTTP request, use the `bearerToken` method provided by `HttpClientRequest`.
+
+```ts
+import { HttpClientRequest } from "@effect/platform"
+
+const req = HttpClientRequest.get("https://api.example.com/data").pipe(
+  HttpClientRequest.bearerToken("your_token")
+)
+
+console.log(JSON.stringify(req.headers, null, 2))
+/*
+Output:
+{
+  "authorization": "Bearer your_token"
+}
+*/
+```
+
+### accept
+
+To specify the media types that are acceptable for the response, use the `accept` method provided by `HttpClientRequest`.
+
+```ts
+import { HttpClientRequest } from "@effect/platform"
+
+const req = HttpClientRequest.get("https://api.example.com/data").pipe(
+  HttpClientRequest.accept("application/xml")
+)
+
+console.log(JSON.stringify(req.headers, null, 2))
+/*
+Output:
+{
+  "accept": "application/xml"
+}
+*/
+```
+
+### acceptJson
+
+To indicate that the client accepts JSON responses, use the `acceptJson` method provided by `HttpClientRequest`.
+
+```ts
+import { HttpClientRequest } from "@effect/platform"
+
+const req = HttpClientRequest.get("https://api.example.com/data").pipe(
+  HttpClientRequest.acceptJson
+)
+
+console.log(JSON.stringify(req.headers, null, 2))
+/*
+Output:
+{
+  "accept": "application/json"
+}
+*/
+```
+
+## GET
+
+### Converting to JSON
+
+To convert a GET response to JSON:
 
 ```ts
 import {
@@ -454,9 +714,9 @@ object {
 */
 ```
 
-If you want a response in a different format other than JSON, you can utilize other APIs provided by `HttpClientResponse`.
+### Converting to Text
 
-In the following example, we fetch the post as text:
+To convert a GET response to text:
 
 ```ts
 import {
@@ -488,9 +748,11 @@ string {
 */
 ```
 
+### More on Converting the Response
+
 Here are some APIs you can use to convert the response:
 
-| **API**                            | **Description**                       |
+| API                                | Description                           |
 | ---------------------------------- | ------------------------------------- |
 | `HttpClientResponse.arrayBuffer`   | Convert to `ArrayBuffer`              |
 | `HttpClientResponse.formData`      | Convert to `FormData`                 |
@@ -498,30 +760,6 @@ Here are some APIs you can use to convert the response:
 | `HttpClientResponse.stream`        | Convert to a `Stream` of `Uint8Array` |
 | `HttpClientResponse.text`          | Convert to text                       |
 | `HttpClientResponse.urlParamsBody` | Convert to `Http.urlParams.UrlParams` |
-
-### Setting Headers
-
-When making HTTP requests, sometimes you need to include additional information in the request headers. You can set headers using the `setHeader` function for a single header or `setHeaders` for multiple headers simultaneously.
-
-```ts
-import { HttpClient, HttpClientRequest } from "@effect/platform"
-
-const getPost = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/posts/1"
-).pipe(
-  // Setting a single header
-  HttpClientRequest.setHeader(
-    "Content-type",
-    "application/json; charset=UTF-8"
-  ),
-  // Setting multiple headers
-  HttpClientRequest.setHeaders({
-    "Content-type": "application/json; charset=UTF-8",
-    Foo: "Bar"
-  }),
-  HttpClient.fetch
-)
-```
 
 ### Decoding Data with Schemas
 
