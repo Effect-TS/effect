@@ -6025,6 +6025,69 @@ The class also includes a `.fields` static property, which outlines the fields d
 Person.fields
 ```
 
+### Annotations and Transformations
+
+A class that extends `Schema.Class` implicitly forms a schema transformation from a structured type to a class type. For instance, consider the following definition:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String
+}) {}
+```
+
+This class definition serves as a transformation from the following struct schema:
+
+```ts
+Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String
+})
+```
+
+to a schema that represents the `Person` class.
+
+#### Adding Annotations
+
+There are two primary ways to add annotations depending on your requirements:
+
+1. **Adding Annotations to the Struct Schema** (the "from" part of the transformation):
+
+   You can annotate the struct schema component, which is transformed into the class.
+
+   ```ts
+   import { Schema } from "@effect/schema"
+
+   class Person extends Schema.Class<Person>("Person")(
+     Schema.Struct({
+       id: Schema.Number,
+       name: Schema.String
+     }).annotations({ identifier: "From" })
+   ) {}
+
+   console.log(String(Person.ast)) // Output: (From <-> Person)
+   ```
+
+2. **Adding Annotations to the Class Schema** (the "to" part of the transformation):
+
+   Alternatively, annotations can be added directly to the class schema, affecting how the class is represented as a schema.
+
+   ```ts
+   import { Schema } from "@effect/schema"
+
+   class Person extends Schema.Class<Person>("Person")(
+     {
+       id: Schema.Number,
+       name: Schema.String
+     },
+     { identifier: "To" }
+   ) {}
+
+   console.log(String(Person.ast)) // Output: (Person (Encoded side) <-> To)
+   ```
+
 ### Recursive Schemas
 
 The `suspend` combinator is useful when you need to define a `Schema` that depends on itself, like in the case of recursive data structures. In this example, the `Category` schema depends on itself because it has a field `subcategories` that is an array of `Category` objects.
