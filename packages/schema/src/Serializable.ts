@@ -36,11 +36,11 @@ export interface Serializable<A, I, R> {
  */
 export declare namespace Serializable {
   /**
-   * @since 0.68.17
+   * @since 0.68.15
    */
   export type Type<T> = T extends Serializable<infer A, infer _I, infer _R> ? A : never
   /**
-   * @since 0.68.17
+   * @since 0.68.15
    */
   export type Encoded<T> = T extends Serializable<infer _A, infer I, infer _R> ? I : never
   /**
@@ -73,136 +73,6 @@ export const asSerializable = <S extends Serializable.All>(
  * @category accessor
  */
 export const selfSchema = <A, I, R>(self: Serializable<A, I, R>): Schema.Schema<A, I, R> => self[symbol]
-
-/**
- * @since 0.67.0
- * @category symbol
- */
-export const symbolResult: unique symbol = serializable_.symbolResult as any
-
-/**
- * The `WithResult` trait is designed to encapsulate the outcome of an
- * operation, distinguishing between success and failure cases. Each case is
- * associated with a schema that defines the structure and types of the success
- * or failure data.
- *
- * @since 0.67.0
- * @category model
- */
-export interface WithResult<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {
-  readonly [symbolResult]: {
-    readonly Success: Schema.Schema<Success, SuccessEncoded, SuccessAndFailureR>
-    readonly Failure: Schema.Schema<Failure, FailureEncoded, SuccessAndFailureR>
-  }
-}
-
-/**
- * @since 0.67.0
- * @category model
- */
-export declare namespace WithResult {
-  /**
-   * @since 0.68.16
-   */
-  export type Success<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _A : never
-
-  /**
-   * @since 0.68.17
-   */
-  export type SuccessEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _I : never
-
-  /**
-   * @since 0.68.16
-   */
-  export type Error<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _E : never
-
-  /**
-   * @since 0.68.17
-   */
-  export type ErrorEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _EI : never
-
-  /**
-   * @since 0.67.0
-   */
-  export type Context<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _R : never
-
-  /**
-   * @since 0.67.0
-   */
-  export type Any = WithResult<any, any, any, any, any> | WithResult<any, any, never, never, any>
-}
-
-/**
- * @since 0.67.0
- * @category accessor
- */
-export const failureSchema = <A extends WithResult.Any>(
-  self: A
-): Schema.Schema<WithResult.Error<A>, WithResult.ErrorEncoded<A>, WithResult.Context<A>> =>
-  self[symbolResult].Failure as any
-
-/**
- * @since 0.67.0
- * @category accessor
- */
-export const successSchema = <A extends WithResult.Any>(
-  self: A
-): Schema.Schema<WithResult.Success<A>, WithResult.SuccessEncoded<A>, WithResult.Context<A>> =>
-  self[symbolResult].Success
-
-const exitSchemaCache = globalValue(
-  "@effect/schema/Serializable/exitSchemaCache",
-  () => new WeakMap<object, Schema.Schema<any, any, any>>()
-)
-
-/**
- * @since 0.67.0
- * @category accessor
- */
-export const exitSchema = <A extends WithResult.Any>(
-  self: A
-): Schema.Schema<
-  Exit.Exit<WithResult.Success<A>, WithResult.Error<A>>,
-  Schema.ExitEncoded<WithResult.SuccessEncoded<A>, WithResult.ErrorEncoded<A>>,
-  WithResult.Context<A>
-> => {
-  const proto = Object.getPrototypeOf(self)
-  if (!(symbolResult in proto)) {
-    return Schema.Exit({ failure: failureSchema(self), success: successSchema(self) })
-  }
-  let schema = exitSchemaCache.get(proto)
-  if (schema === undefined) {
-    schema = Schema.Exit({ failure: failureSchema(self), success: successSchema(self) })
-    exitSchemaCache.set(proto, schema)
-  }
-  return schema
-}
-
-/**
- * @since 0.67.0
- * @category model
- */
-export interface SerializableWithResult<
-  A,
-  I,
-  R,
-  Success,
-  SuccessEncoded,
-  Failure,
-  FailureEncoded,
-  SuccessAndFailureR
-> extends Serializable<A, I, R>, WithResult<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {}
-
-/**
- * @since 0.67.0
- * @category model
- */
-export declare namespace SerializableWithResult {
-  /**
-   * @since 0.67.0
-   */
-  export type Context<T> = Serializable.Context<T> | WithResult.Context<T>
-}
 
 /**
  * @since 0.67.0

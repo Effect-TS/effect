@@ -147,7 +147,7 @@ export function make<Msg extends Schema.TaggedRequest.Any, R>(
               Effect.catchAllCause(Effect.logError),
               Effect.asVoid,
               Effect.annotateLogs("entityId", recipientAddress.entityId),
-              Effect.annotateLogs("recipientType", recipientAddress.recipientType)
+              Effect.annotateLogs("recipientType", recipientAddress.entityType)
             )
         }))
       )

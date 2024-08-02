@@ -428,7 +428,7 @@ function make(
     ShardingException.ShardingException
   > {
     return pipe(
-      getEntityManagerByEntityTypeName(envelope.address.recipientType),
+      getEntityManagerByEntityTypeName(envelope.address.entityType),
       Effect.flatMap((entityManager) => entityManager.sendAndGetState(envelope)),
       Effect.annotateLogs("envelope", envelope)
     )
@@ -497,7 +497,7 @@ function make(
       ShardingException.ShardingException,
       Serializable.SerializableWithResult.Context<A>
     > {
-      const recipientAddress = new RecipientAddress({ recipientType: entity.name, entityId })
+      const recipientAddress = new RecipientAddress({ entityType: entity.name, entityId })
       const shardId = getShardId(recipientAddress)
 
       return Effect.flatMap(serialization.encode(entity.schema, message), (body) =>
@@ -594,7 +594,7 @@ function make(
                   sendMessageToPodWithoutRetries(
                     pod,
                     Envelope.make(
-                      new RecipientAddress({ recipientType: entity.name, entityId: topicId }),
+                      new RecipientAddress({ entityType: entity.name, entityId: topicId }),
                       entity.messageId(message),
                       SerializedMessage.make(body)
                     )

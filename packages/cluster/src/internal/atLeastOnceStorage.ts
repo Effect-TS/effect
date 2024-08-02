@@ -202,7 +202,8 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
           Stream.map((entry) =>
             Envelope.make(
               new RecipientAddress({
-                recipientType: entry.recipient_name,
+                shardId: entry.shard_id,
+                entityType: entry.recipient_name,
                 entityId: entry.entity_id
               }),
               entry.message_id,

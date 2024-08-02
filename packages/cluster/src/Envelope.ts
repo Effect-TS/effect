@@ -44,8 +44,8 @@ export interface Envelope<Msg extends Schema.TaggedRequest.Any>
       Serializable.Serializable.Context<Msg>,
       Serializable.WithResult.Success<Msg>,
       Serializable.WithResult.SuccessEncoded<Msg>,
-      Serializable.WithResult.Error<Msg>,
-      Serializable.WithResult.ErrorEncoded<Msg>,
+      Serializable.WithResult.Failure<Msg>,
+      Serializable.WithResult.FailureEncoded<Msg>,
       Serializable.WithResult.Context<Msg>
     >,
     Envelope.Proto<Msg>
@@ -86,7 +86,7 @@ const Proto = Data.unsafeStruct({
     return (
       this.messageId +
       "@" +
-      this.address.recipientType +
+      this.address.entityType +
       "#" +
       this.address.entityId
     )

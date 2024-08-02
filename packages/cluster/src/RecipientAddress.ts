@@ -28,8 +28,9 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export class RecipientAddress extends Schema.Class<RecipientAddress>(SymbolKey)({
-  entityId: Schema.NonEmpty,
-  recipientType: Schema.NonEmpty
+  shardId: Schema.Int.pipe(Schema.positive()),
+  entityId: Schema.NonEmptyString,
+  entityType: Schema.NonEmptyString
 }) {}
 
 /**
