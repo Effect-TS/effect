@@ -22,7 +22,7 @@ export function fromFunctionEffect<Msg extends Schema.TaggedRequest.Any, R>(
   ) => Effect.Effect<
     MessageState.MessageState<
       Serializable.WithResult.Success<Msg>,
-      Serializable.WithResult.Error<Msg>
+      Serializable.WithResult.Failure<Msg>
     >,
     never,
     R
@@ -50,7 +50,7 @@ export function fromFunctionEffectStateful<S, R, Msg extends Schema.TaggedReques
   ) => Effect.Effect<
     MessageState.MessageState<
       Serializable.WithResult.Success<Msg>,
-      Serializable.WithResult.Error<Msg>
+      Serializable.WithResult.Failure<Msg>
     >,
     never,
     R2
@@ -83,7 +83,7 @@ export function fromInMemoryQueue<Msg extends Schema.TaggedRequest.Any, R>(
       envelope: Envelope<A>,
       value: Exit.Exit<
         Serializable.WithResult.Success<Msg>,
-        Serializable.WithResult.Error<Msg>
+        Serializable.WithResult.Failure<Msg>
       >
     ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>
@@ -107,10 +107,10 @@ export function fromInMemoryQueue<Msg extends Schema.TaggedRequest.Any, R>(
       message: Envelope<A>,
       reply: Exit.Exit<
         Serializable.WithResult.Success<Msg>,
-        Serializable.WithResult.Error<Msg>
+        Serializable.WithResult.Failure<Msg>
       >
     ) {
-      return updateEnvelopeState(message, MessageState.Processed(reply))
+      return updateEnvelopeState(message, MessageState.processed(reply))
     }
 
     return yield* _(pipe(
@@ -144,7 +144,7 @@ export function fromInMemoryQueue<Msg extends Schema.TaggedRequest.Any, R>(
                 onNone: () =>
                   pipe(
                     Queue.offer(queue, envelope as any),
-                    Effect.zipRight(updateEnvelopeState(envelope, MessageState.Acknowledged))
+                    Effect.zipRight(updateEnvelopeState(envelope, MessageState.acknowledged))
                   ),
                 onSome: (state) => Effect.succeed(state)
               }))

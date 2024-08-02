@@ -37,8 +37,7 @@ class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
 
 const SampleEntity = new Entity.Standard({
   name: "SampleEntity",
-  schema: SampleMessage,
-  messageId: (_) => _.id
+  schema: SampleMessage
 })
 type SampleEntity = SampleMessage
 
@@ -97,7 +96,7 @@ describe("AtLeastOnce", () => {
       yield* Sharding.registerScoped
 
       yield* Sharding.registerEntity(SampleEntity)(pipe(
-        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Acknowledged)),
+        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.acknowledged)),
         AtLeastOnce.atLeastOnceRecipientBehaviour
       ))
 
@@ -122,7 +121,7 @@ describe("AtLeastOnce", () => {
       yield* Sharding.registerScoped
 
       yield* Sharding.registerEntity(SampleEntity)(pipe(
-        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Processed(Exit.void))),
+        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.processed(Exit.void))),
         AtLeastOnce.atLeastOnceRecipientBehaviour
       ))
 
@@ -150,7 +149,7 @@ describe("AtLeastOnce", () => {
       yield* Sharding.registerScoped
 
       yield* Sharding.registerEntity(SampleEntity)(pipe(
-        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Acknowledged)),
+        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.acknowledged)),
         AtLeastOnce.atLeastOnceRecipientBehaviour
       ))
 

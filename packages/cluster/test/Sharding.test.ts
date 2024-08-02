@@ -35,45 +35,38 @@ interface SampleService {
 
 const SampleService = Context.GenericTag<SampleService>("@services/SampleService")
 
-class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
-  "SampleMessage",
-  Schema.Never,
-  Schema.Void,
-  {
+class SampleMessage extends Schema.TaggedRequest<SampleMessage>()("SampleMessage", {
+  success: Schema.Void,
+  failure: Schema.Never,
+  payload: {
     id: Schema.String,
     value: Schema.Number
   }
-) {
-}
+}) {}
 
-class SampleMessageWithResult extends Schema.TaggedRequest<SampleMessageWithResult>()(
-  "SampleMessageWithResult",
-  Schema.Never,
-  Schema.Number,
-  {
+class SampleMessageWithResult extends Schema.TaggedRequest<SampleMessageWithResult>()("SampleMessageWithResult", {
+  success: Schema.Number,
+  failure: Schema.Never,
+  payload: {
     id: Schema.String,
     value: Schema.Number
   }
-) {
-}
+}) {}
 
-class FailableMessageWithResult extends Schema.TaggedRequest<FailableMessageWithResult>()(
-  "FailableMessageWithResult",
-  Schema.String,
-  Schema.Number,
-  {
+class FailableMessageWithResult extends Schema.TaggedRequest<FailableMessageWithResult>()("FailableMessageWithResult", {
+  success: Schema.Number,
+  failure: Schema.String,
+  payload: {
     id: Schema.String,
     value: Schema.Number
   }
-) {
-}
+}) {}
 
 type SampleEntity = SampleMessage | SampleMessageWithResult | FailableMessageWithResult
 
 const SampleEntity = new Entity.Standard({
   name: "Sample",
-  schema: Schema.Union(SampleMessage, SampleMessageWithResult, FailableMessageWithResult),
-  messageId: (_) => _.id
+  schema: Schema.Union(SampleMessage, SampleMessageWithResult, FailableMessageWithResult)
 })
 
 describe.concurrent("SampleTests", () => {
@@ -104,7 +97,7 @@ describe.concurrent("SampleTests", () => {
           SampleEntity
         )(
           RecipientBehaviour.fromFunctionEffect(() =>
-            pipe(Ref.set(received, true), Effect.as(MessageState.Acknowledged))
+            pipe(Ref.set(received, true), Effect.as(MessageState.acknowledged))
           )
         )
       )
@@ -150,7 +143,7 @@ describe.concurrent("SampleTests", () => {
           RecipientBehaviour.fromFunctionEffect((entityId, msg) =>
             pipe(
               Ref.set(entityId === "entity1" ? result1 : result2, msg.message.value),
-              Effect.as(MessageState.Acknowledged)
+              Effect.as(MessageState.acknowledged)
             )
           )
         )
@@ -177,7 +170,7 @@ describe.concurrent("SampleTests", () => {
         Sharding.registerEntity(
           SampleEntity
         )(
-          RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Processed(Exit.succeed(42))))
+          RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.processed(Exit.succeed(42))))
         )
       )
 
@@ -199,8 +192,8 @@ describe.concurrent("SampleTests", () => {
         )(
           RecipientBehaviour.fromFunctionEffect((_, msg) =>
             msg.message._tag === "FailableMessageWithResult"
-              ? Effect.succeed(MessageState.Processed(Exit.fail("custom-error")))
-              : Effect.succeed(MessageState.Processed(Exit.void))
+              ? Effect.succeed(MessageState.processed(Exit.fail("custom-error")))
+              : Effect.succeed(MessageState.processed(Exit.void))
           )
         )
       )
@@ -261,9 +254,9 @@ describe.concurrent("SampleTests", () => {
           RecipientBehaviour.fromFunctionEffect((entityId, msg) => {
             switch (msg.message._tag) {
               case "BroadcastIncrement":
-                return pipe(Ref.update(ref, (_) => _ + 1), Effect.as(MessageState.Acknowledged))
+                return pipe(Ref.update(ref, (_) => _ + 1), Effect.as(MessageState.acknowledged))
               case "GetIncrement":
-                return pipe(Ref.get(ref), Effect.map((_) => MessageState.Processed(Exit.succeed(_))))
+                return pipe(Ref.get(ref), Effect.map((_) => MessageState.processed(Exit.succeed(_))))
             }
           })
         )

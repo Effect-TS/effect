@@ -12,11 +12,12 @@ const SerializedMessageSymbolKey = "@effect/cluster/SerializedMessage"
  */
 export class SerializedMessage extends Schema.TaggedRequest<SerializedMessage>()(
   SerializedMessageSymbolKey,
-  SerializedValue.schema,
-  SerializedValue.schema,
-  { body: SerializedValue.schema }
-) {
-}
+  {
+    success: SerializedValue.schema,
+    failure: SerializedValue.schema,
+    payload: { body: SerializedValue.schema }
+  }
+) {}
 
 /**
  * @since 1.0.0

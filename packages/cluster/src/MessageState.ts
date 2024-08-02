@@ -3,119 +3,199 @@
  */
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
-import type * as Exit from "effect/Exit"
+import type { Exit } from "effect/Exit"
+import type { LazyArg } from "effect/Function"
+import type { Covariant } from "effect/Types"
 import * as internal from "./internal/messageState.js"
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category type ids
  */
-export const MessageStateTypeId: unique symbol = internal.MessageStateTypeId
+export const TypeId: unique symbol = internal.TypeId
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category type ids
  */
-export type MessageStateTypeId = typeof MessageStateTypeId
+export type TypeId = typeof TypeId
 
 /**
- * A message state given to just acknowledged messages.
- * This state tells the sender that the receiver has received the message and will eventually process it later.
+ * Represents the state of a message after it has been delivered to an entity
+ * for processing.
+ *
+ * A message can either be in an `Acknowledged` state, indicating that the
+ * message was successfully recieved by the entity but has not yet been
+ * processed, or in a `Processed` state, indicating that the message has been
+ * processed by the entity and a result is availabe.
  *
  * @since 1.0.0
  * @category models
  */
-export interface MessageStateAcknowledged {
-  readonly [MessageStateTypeId]: MessageStateTypeId
-  readonly _tag: "@effect/cluster/MessageState/Acknowledged"
+export type MessageState<A, E> = Acknowledged | Processed<A, E>
+
+/**
+ * Represents the state of a message after being acknowledged by an entity.
+ *
+ * This message state indicates that an entity has received the message
+ * successfully and will eventually process the message at some later time.
+ *
+ * @since 1.0.0
+ * @category models
+ */
+export interface Acknowledged extends MessageState.Proto<never, never> {
+  readonly _tag: "Acknowledged"
 }
 
 /**
- * A message state given to processed messages.
- * This state tells the sender that the receiver has already received and processed the message.
- * This will also tell the sender the result for this message.
+ * Represents the state of a message after being processed by an entity.
+ *
+ * This message state indicates that an entity has received **and processed**
+ * the message and provides access to the result of processing the message.
  *
  * @since 1.0.0
  * @category models
  */
-export interface MessageStateProcessed<A, E> {
-  readonly [MessageStateTypeId]: MessageStateTypeId
-  readonly _tag: "@effect/cluster/MessageState/Processed"
-  readonly result: Exit.Exit<A, E>
+export interface Processed<A, E> extends MessageState.Proto<A, E> {
+  readonly _tag: "Processed"
+  readonly result: Exit<A, E>
 }
 
 /**
- * Once a Message is sent to an entity to be processed,
- * the state of that message over that entity is either Acknoledged (not yet processed) or Processed.
- *
  * @since 1.0.0
- * @category models
  */
-export type MessageState<A, E> = MessageStateAcknowledged | MessageStateProcessed<A, E>
-
-/**
- * @since 1.0.0
- * @category models
- */
-export namespace MessageState {
+export declare namespace MessageState {
   /**
    * @since 1.0.0
    * @category models
    */
-  export type Encoded<IA, IE> = {
-    readonly "@effect/cluster/MessageState": "@effect/cluster/MessageState"
+  export interface Proto<out A, out E> {
+    readonly [TypeId]: VarianceStruct<A, E>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface VarianceStruct<out A, out E> {
+    readonly _A: Covariant<A>
+    readonly _E: Covariant<E>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Encoded<IA, IE> = AcknowledgedEncoded | ProcessedEncoded<IA, IE>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface AcknowledgedEncoded {
     readonly _tag: "@effect/cluster/MessageState/Acknowledged"
-  } | {
-    readonly result: Schema.ExitEncoded<IA, IE, unknown>
-    readonly "@effect/cluster/MessageState": "@effect/cluster/MessageState"
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ProcessedEncoded<IA, IE> {
     readonly _tag: "@effect/cluster/MessageState/Processed"
+    readonly result: Schema.ExitEncoded<IA, IE, unknown>
   }
 }
 
 /**
- * Ensures that the given value is a MessageState
+ * Returns `true` if the specified unknown value is a `MessageState`, otherwise
+ * returns `false`.
  *
  * @since 1.0.0
- * @category utils
+ * @category refinements
  */
-export const isMessageState = internal.isMessageState
+export const isMessageState: (u: unknown) => u is MessageState<unknown, unknown> = internal.isMessageState
 
 /**
- * Match over the possible states of a MessageState
+ * Returns `true` if the specified `MessageState` is `Acknowledged`, otherwise
+ * returns `false`.
  *
  * @since 1.0.0
- * @category utils
+ * @category refinements
  */
-export const match = internal.match
+export const isAcknowledged: <A, E>(self: MessageState<A, E>) => self is Acknowledged = internal.isAcknowledged
 
 /**
- * Constructs an AcknowledgedMessageState.
+ * Returns `true` if the specified `MessageState` is `Processed`, otherwise
+ * returns `false`.
+ *
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isProcessed: <A, E>(self: MessageState<A, E>) => self is Processed<A, E> = internal.isProcessed
+
+/**
+ * Constructs an `Acknowledged` message state.
  *
  * @since 1.0.0
  * @category constructors
  */
-export const Acknowledged: MessageStateAcknowledged = internal.Acknowledged
+export const acknowledged: MessageState<never, never> = internal.acknowledged
 
 /**
- * Constructs a ProcessedMessageState from the result of the message being processed.
+ * Constructs a `Processed` message state from the result of processing a
+ * message.
  *
  * @since 1.0.0
  * @category constructors
  */
-export const Processed: <A, E>(result: Exit.Exit<A, E>) => MessageStateProcessed<A, E> = internal.Processed
+export const processed: <A, E>(result: Exit<A, E>) => MessageState<A, E> = internal.processed
 
 /**
- * Effectfully transform the Exit<A, E> type of the MessageState<A, E>.
+ * Match over the possible states of a `MessageState`.
+ *
+ * @since 1.0.0
+ * @category pattern matching
+ */
+export const match: {
+  <A, E, B, C = B>(
+    options: {
+      onAcknowledged: LazyArg<B>
+      onProcessed: (exit: Exit<A, E>) => C
+    }
+  ): (self: MessageState<A, E>) => B | C
+  <A, E, B, C = B>(
+    self: MessageState<A, E>,
+    options: {
+      onAcknowledged: LazyArg<B>
+      onProcessed: (exit: Exit<A, E>) => C
+    }
+  ): B | C
+} = internal.match
+
+/**
+ * Map over the result contained with the `Processed` message state, if any,
+ * and apply the specified functions to the result.
  *
  * @since 1.0.0
  * @category utils
  */
-export const mapBothEffect: <A, E, B, E1, R1, D, E2, R2, E3, R3>(
-  value: MessageState<A, E>,
-  onSuccess: (value: A) => Effect.Effect<B, E1, R1>,
-  onFailure: (value: E) => Effect.Effect<D, E2, R2>,
-  onDefect: (value: unknown) => Effect.Effect<unknown, E3, R3>
-) => Effect.Effect<MessageState<B, D>, E1 | E2 | E3, R1 | R2 | R3> = internal.mapBothEffect
+export const mapBothEffect: {
+  <A, E, B, E1, R1, C, E2, R2, E3, R3>(
+    options: {
+      onSuccess: (value: A) => Effect.Effect<B, E1, R1>
+      onFailure: (error: E) => Effect.Effect<C, E2, R2>
+    }
+  ): (
+    self: MessageState<A, E>
+  ) => Effect.Effect<MessageState<B, C>, E1 | E2 | E3, R1 | R2 | R3>
+  <A, E, B, E1, R1, C, E2, R2, E3, R3>(
+    self: MessageState<A, E>,
+    options: {
+      onSuccess: (value: A) => Effect.Effect<B, E1, R1>
+      onFailure: (error: E) => Effect.Effect<C, E2, R2>
+    }
+  ): Effect.Effect<MessageState<B, C>, E1 | E2 | E3, R1 | R2 | R3>
+} = internal.mapBothEffect
 
 /**
  * @since 1.0.0
@@ -125,4 +205,8 @@ export const schema: <A, IA, RA, E, IE, RE, RD>(
   success: Schema.Schema<A, IA, RA>,
   failure: Schema.Schema<E, IE, RE>,
   defect: Schema.Schema<unknown, unknown, RD>
-) => Schema.Schema<MessageState<A, E>, MessageState.Encoded<IA, IE>, RA | RE | RD> = internal.schema
+) => Schema.Schema<
+  MessageState<A, E>,
+  MessageState.Encoded<IA, IE>,
+  RA | RE | RD
+> = internal.schema

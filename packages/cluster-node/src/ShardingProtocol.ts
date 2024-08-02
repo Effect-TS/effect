@@ -48,7 +48,11 @@ export class Send extends Schema.TaggedRequest<Send>()(
   "@effect/cluster-node/ShardingProtocol/Send",
   {
     failure: ShardingException.schema,
-    success: MessageState.schema(SerializedValue.schema),
+    success: MessageState.schema(
+      SerializedValue.SerializedValue,
+      SerializedValue.SerializedValue,
+      Schema.Defect
+    ),
     payload: {
       envelope: SerializedEnvelope.schema
     }
