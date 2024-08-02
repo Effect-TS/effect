@@ -253,14 +253,10 @@ export const make = (
         json: (_: unknown) => PgJson(_),
         array: (_: ReadonlyArray<Primitive>) => PgArray(_),
         listen: (channel: string) =>
-          Stream.asyncScoped<string, SqlError>((emit) =>
+          Stream.asyncPush<string, SqlError>((emit) =>
             Effect.acquireRelease(
               Effect.tryPromise({
-                try: () =>
-                  client.listen(
-                    channel,
-                    (payload) => emit(Effect.succeed(Chunk.of(payload)))
-                  ),
+                try: () => client.listen(channel, (payload) => emit.single(payload)),
                 catch: (cause) => new SqlError({ cause, message: "Failed to listen" })
               }),
               ({ unlisten }) => Effect.promise(() => unlisten())
