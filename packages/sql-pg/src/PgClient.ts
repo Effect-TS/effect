@@ -41,6 +41,8 @@ export interface PgClient extends Client.SqlClient {
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
   readonly array: (_: ReadonlyArray<Primitive>) => Fragment
+  readonly listen: (channel: string) => Stream.Stream<string, SqlError>
+  readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
 }
 
 /**
@@ -249,7 +251,22 @@ export const make = (
           database: client.options.database
         },
         json: (_: unknown) => PgJson(_),
-        array: (_: ReadonlyArray<Primitive>) => PgArray(_)
+        array: (_: ReadonlyArray<Primitive>) => PgArray(_),
+        listen: (channel: string) =>
+          Stream.asyncPush<string, SqlError>((emit) =>
+            Effect.acquireRelease(
+              Effect.tryPromise({
+                try: () => client.listen(channel, (payload) => emit.single(payload)),
+                catch: (cause) => new SqlError({ cause, message: "Failed to listen" })
+              }),
+              ({ unlisten }) => Effect.promise(() => unlisten())
+            )
+          ),
+        notify: (channel: string, payload: string) =>
+          Effect.tryPromise({
+            try: () => client.notify(channel, payload),
+            catch: (cause) => new SqlError({ cause, message: "Failed to notify" })
+          })
       }
     )
   })

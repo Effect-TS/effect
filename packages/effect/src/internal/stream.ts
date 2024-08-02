@@ -617,7 +617,7 @@ const queueFromBufferOptionsPush = <A, E>(
 
 /** @internal */
 export const asyncPush = <A, E = never, R = never>(
-  register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
+  register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, E, R | Scope.Scope>,
   options?: {
     readonly bufferSize: "unbounded"
   } | {

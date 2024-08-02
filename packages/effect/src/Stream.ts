@@ -406,7 +406,7 @@ export const asyncEffect: <A, E = never, R = never>(
  * @category constructors
  */
 export const asyncPush: <A, E = never, R = never>(
-  register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
+  register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, E, R | Scope.Scope>,
   options?: { readonly bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
