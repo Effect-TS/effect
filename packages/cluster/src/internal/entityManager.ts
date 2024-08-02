@@ -253,13 +253,13 @@ export function make<Msg extends Schema.TaggedRequest.Any, R>(
                             Effect.flatMap((message) =>
                               pipe(
                                 offer(Envelope.map(envelope, () => message)),
-                                Effect.flatMap((_) =>
-                                  MessageState.mapBothEffect(
-                                    _,
-                                    (success) => serialization.encode(Serializable.successSchema(message), success),
-                                    (failure) => serialization.encode(Serializable.failureSchema(message), failure),
-                                    (defect) => Effect.succeed(defect)
-                                  )
+                                Effect.flatMap(
+                                  MessageState.mapBothEffect({
+                                    onSuccess: (success) =>
+                                      serialization.encode(Serializable.successSchema(message), success),
+                                    onFailure: (failure) =>
+                                      serialization.encode(Serializable.failureSchema(message), failure)
+                                  })
                                 )
                               )
                             ),

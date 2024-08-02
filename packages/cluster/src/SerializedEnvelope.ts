@@ -5,7 +5,12 @@ import * as Envelope from "./Envelope.js"
 import * as SerializedMessage from "./SerializedMessage.js"
 
 /**
- * A special kind of Envelope that uses SerializedMessage, so can return either a SerializedValue success or a SerializedValue failure.
+ * A `SerializedEnvelope` represents a special type of `Envelope` containing a
+ * `SerializedMessage`.
+ *
+ * The serializable result of a `SerializedEnvelope` can return either a
+ * `SerializedValue` representing success or a `SerializedValue` representing
+ * failure.
  *
  * @since 1.0.0
  * @category models

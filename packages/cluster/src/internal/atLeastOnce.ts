@@ -5,7 +5,7 @@ import { pipe } from "effect/Function"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as AtLeastOnceStorage from "../AtLeastOnceStorage.js"
-import type { Envelope } from "../Envelope.js"
+import type * as Envelope from "../Envelope.js"
 import * as MessageState from "../MessageState.js"
 import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
@@ -43,7 +43,7 @@ export function atLeastOnceRecipientBehaviour<Msg extends Schema.TaggedRequest.A
     const shardId = yield* _(RecipientBehaviourContext.shardId)
     const recipientType = yield* _(RecipientBehaviourContext.entity)
     const offer = yield* _(fa)
-    return <A extends Msg>(envelope: Envelope<A>) =>
+    return <A extends Msg>(envelope: Envelope.Envelope<A>) =>
       pipe(
         storage.upsert<A>(recipientType as any, shardId, entityId, envelope),
         Effect.zipRight(

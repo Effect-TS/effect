@@ -3,20 +3,6 @@
  */
 import * as Schema from "@effect/schema/Schema"
 
-const SymbolKey = "@effect/cluster/RecipientAddress"
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export const TypeId: unique symbol = Symbol.for(SymbolKey)
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type TypeId = typeof TypeId
-
 /**
  * A `RecipientAddress` represents the unique address of an entity which can
  * receive a message and perform some behaviour based on that message.
@@ -27,7 +13,9 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export class RecipientAddress extends Schema.Class<RecipientAddress>(SymbolKey)({
+export class RecipientAddress extends Schema.Class<RecipientAddress>(
+  "@effect/cluster/RecipientAddress"
+)({
   shardId: Schema.Int.pipe(Schema.positive()),
   entityId: Schema.NonEmptyString,
   entityType: Schema.NonEmptyString
