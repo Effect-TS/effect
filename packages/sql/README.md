@@ -101,7 +101,7 @@ import { SqlClient } from "@effect/sql"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.Strin/*  */g,
+  name: Schema.String,
   createdAt: Schema.DateFromSelf,
   updatedAt: Schema.DateFromSelf
 }) {}
