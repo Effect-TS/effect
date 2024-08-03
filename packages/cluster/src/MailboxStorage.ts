@@ -25,12 +25,13 @@ import { SerializedValue } from "./SerializedValue.js"
  *   message_acknowledged TINYINT(1) NOT NULL DEFAULT 0, -- 0 = received, 1 = acknowledged
  *   message_sequence_number INT NOT NULL,
  *   message_result TEXT,
- *   PRIMARY KEY (shard_id, entity_id, entity_type, message_id),
- *   FOREIGN KEY (message_state_id) REFERENCES message_state(message_state_id),
- *   CONSTRAINT unique_message UNIQUE (message_id)
+ *   PRIMARY KEY (entity_id, entity_type, message_id),
+ *   CONSTRAINT unique_message_sequence UNIQUE (
+ *    entity_id,
+ *    entity_type,
+ *    message_sequence_number
+ *   )
  * );
- *
- * CREATE INDEX idx_message_sequence_number ON mailbox (message_sequence_number);
  */
 
 // =============================================================================
