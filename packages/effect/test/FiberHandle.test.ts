@@ -1,4 +1,4 @@
-import { Effect, Exit, Ref } from "effect"
+import { Effect, Exit, Fiber, Ref } from "effect"
 import * as FiberHandle from "effect/FiberHandle"
 import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
@@ -73,5 +73,18 @@ describe("FiberHandle", () => {
       assert.isTrue(Exit.isInterrupted(yield* _(fiberB.await)))
       assert.isTrue(Exit.isInterrupted(yield* _(fiberC.await)))
       assert.strictEqual(fiberA.unsafePoll(), null)
+    }))
+
+  it.scoped("external interruption is propagated", () =>
+    Effect.gen(function*() {
+      const handle = yield* FiberHandle.make()
+      const fiber = yield* FiberHandle.run(handle, Effect.never)
+      yield* Effect.yieldNow()
+      yield* Fiber.interrupt(fiber)
+      assert.isTrue(Exit.isInterrupted(
+        yield* FiberHandle.join(handle).pipe(
+          Effect.exit
+        )
+      ))
     }))
 })

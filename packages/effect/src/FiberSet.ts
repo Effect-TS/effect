@@ -9,7 +9,8 @@ import * as Deferred from "./Deferred.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberRef from "./FiberRef.js"
-import { dual } from "./Function.js"
+import { constFalse, dual } from "./Function.js"
+import * as HashSet from "./HashSet.js"
 import * as Inspectable from "./Inspectable.js"
 import type { FiberRuntime } from "./internal/fiberRuntime.js"
 import * as Iterable from "./Iterable.js"
@@ -146,6 +147,17 @@ export const makeRuntime = <R = never, A = unknown, E = unknown>(): Effect.Effec
     (self) => runtime(self)<R>()
   )
 
+const internalFiberIdId = -1
+const internalFiberId = FiberId.make(internalFiberIdId, 0)
+const isInternalInterruption = Cause.reduceWithContext(undefined, {
+  emptyCase: constFalse,
+  failCase: constFalse,
+  dieCase: constFalse,
+  interruptCase: (_, fiberId) => HashSet.has(FiberId.ids(fiberId), internalFiberIdId),
+  sequentialCase: (_, left, right) => left || right,
+  parallelCase: (_, left, right) => left || right
+})
+
 /**
  * Add a fiber to the FiberSet. When the fiber completes, it will be removed.
  *
@@ -174,7 +186,7 @@ export const unsafeAdd: {
   } | undefined
 ): void => {
   if (self.state._tag === "Closed") {
-    fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
+    fiber.unsafeInterruptAsFork(FiberId.combine(options?.interruptAs ?? FiberId.none, internalFiberId))
     return
   } else if (self.state.backing.has(fiber)) {
     return
@@ -186,7 +198,7 @@ export const unsafeAdd: {
       return
     }
     self.state.backing.delete(fiber)
-    if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) {
+    if (Exit.isFailure(exit) && !isInternalInterruption(exit.cause)) {
       Deferred.unsafeDone(self.deferred, exit as any)
     }
   })
@@ -231,13 +243,13 @@ export const add: {
  * @categories combinators
  */
 export const clear = <A, E>(self: FiberSet<A, E>): Effect.Effect<void> =>
-  Effect.suspend(() => {
+  Effect.withFiberRuntime((clearFiber) => {
     if (self.state._tag === "Closed") {
       return Effect.void
     }
     return Effect.forEach(self.state.backing, (fiber) =>
       // will be removed by the observer
-      Fiber.interrupt(fiber))
+      Fiber.interruptAs(fiber, FiberId.combine(clearFiber.id(), internalFiberId)))
   })
 
 /**

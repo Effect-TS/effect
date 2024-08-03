@@ -1,4 +1,4 @@
-import { Array, Effect, Exit, Ref, Scope } from "effect"
+import { Array, Effect, Exit, Fiber, Ref, Scope } from "effect"
 import * as FiberSet from "effect/FiberSet"
 import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
@@ -69,5 +69,18 @@ describe("FiberSet", () => {
       assert.strictEqual(yield* _(FiberSet.size(set)), 2)
       yield* _(Scope.close(scope, Exit.void))
       assert.strictEqual(yield* _(FiberSet.size(set)), 0)
+    }))
+
+  it.scoped("external interruption is propagated", () =>
+    Effect.gen(function*() {
+      const set = yield* FiberSet.make()
+      const fiber = yield* FiberSet.run(set, Effect.never)
+      yield* Effect.yieldNow()
+      yield* Fiber.interrupt(fiber)
+      assert.isTrue(Exit.isInterrupted(
+        yield* FiberSet.join(set).pipe(
+          Effect.exit
+        )
+      ))
     }))
 })

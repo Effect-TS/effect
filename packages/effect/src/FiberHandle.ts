@@ -10,7 +10,8 @@ import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberId from "./FiberId.js"
 import * as FiberRef from "./FiberRef.js"
-import { dual } from "./Function.js"
+import { constFalse, dual } from "./Function.js"
+import * as HashSet from "./HashSet.js"
 import * as Inspectable from "./Inspectable.js"
 import type { FiberRuntime } from "./internal/fiberRuntime.js"
 import * as Option from "./Option.js"
@@ -142,6 +143,17 @@ export const makeRuntime = <R, E = unknown, A = unknown>(): Effect.Effect<
     (self) => runtime(self)<R>()
   )
 
+const internalFiberIdId = -1
+const internalFiberId = FiberId.make(internalFiberIdId, 0)
+const isInternalInterruption = Cause.reduceWithContext(undefined, {
+  emptyCase: constFalse,
+  failCase: constFalse,
+  dieCase: constFalse,
+  interruptCase: (_, fiberId) => HashSet.has(FiberId.ids(fiberId), internalFiberIdId),
+  sequentialCase: (_, left, right) => left || right,
+  parallelCase: (_, left, right) => left || right
+})
+
 /**
  * Set the fiber in a FiberHandle. When the fiber completes, it will be removed from the FiberHandle.
  * If a fiber is already running, it will be interrupted unless `options.onlyIfMissing` is set.
@@ -174,16 +186,16 @@ export const unsafeSet: {
   }
 ): void => {
   if (self.state._tag === "Closed") {
-    fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
+    fiber.unsafeInterruptAsFork(FiberId.combine(options?.interruptAs ?? FiberId.none, internalFiberId))
     return
   } else if (self.state.fiber !== undefined) {
     if (options?.onlyIfMissing === true) {
-      fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
+      fiber.unsafeInterruptAsFork(FiberId.combine(options?.interruptAs ?? FiberId.none, internalFiberId))
       return
     } else if (self.state.fiber === fiber) {
       return
     }
-    self.state.fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
+    self.state.fiber.unsafeInterruptAsFork(FiberId.combine(options?.interruptAs ?? FiberId.none, internalFiberId))
     self.state.fiber === undefined
   }
 
@@ -193,7 +205,7 @@ export const unsafeSet: {
     if (self.state._tag === "Open" && fiber === self.state.fiber) {
       self.state.fiber = undefined
     }
-    if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) {
+    if (Exit.isFailure(exit) && !isInternalInterruption(exit.cause)) {
       Deferred.unsafeDone(self.deferred, exit as any)
     }
   })
@@ -261,12 +273,12 @@ export const get = <A, E>(self: FiberHandle<A, E>): Effect.Effect<Fiber.RuntimeF
  */
 export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void> =>
   Effect.uninterruptibleMask((restore) =>
-    Effect.suspend(() => {
+    Effect.withFiberRuntime((fiber) => {
       if (self.state._tag === "Closed" || self.state.fiber === undefined) {
         return Effect.void
       }
       return Effect.zipRight(
-        restore(Fiber.interrupt(self.state.fiber)),
+        restore(Fiber.interruptAs(self.state.fiber, FiberId.combine(fiber.id(), internalFiberId))),
         Effect.sync(() => {
           if (self.state._tag === "Open") {
             self.state.fiber = undefined
