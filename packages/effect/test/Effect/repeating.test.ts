@@ -140,4 +140,19 @@ describe("Effect", () => {
       const result = yield* $(Ref.get(ref))
       assert.strictEqual(result, 3)
     }))
+
+  it.effect("repeat/times ", () =>
+    Effect.gen(function*($) {
+      const ref = yield* $(Ref.make<Array<number>>([]))
+      const effectResult = yield* $(
+        Ref.updateAndGet(ref, (arr) => {
+          arr.push(arr.length)
+          return arr
+        }),
+        Effect.repeat({ times: 2 })
+      )
+      const result = yield* $(Ref.get(ref))
+      assert.deepStrictEqual(result, [0, 1, 2])
+      assert.deepStrictEqual(effectResult, [0, 1, 2])
+    }))
 })
