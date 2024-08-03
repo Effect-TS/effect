@@ -569,7 +569,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
                   ) {
                     return Effect.zipRight(
                       Effect.promise(() => writer.close()),
-                      chunk === EOF ? Effect.interrupt : Effect.fail(
+                      chunk === EOF ? Effect.die(EOF) : Effect.fail(
                         new SocketCloseError({
                           reason: "Close",
                           code: chunk.code,
@@ -590,6 +590,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
                   })
                 }),
                 Effect.forever,
+                Effect.catchAllDefect((defect) => defect === EOF ? Effect.void : Effect.die(defect)),
                 FiberSet.run(fiberSet)
               )
             }),
