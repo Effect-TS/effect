@@ -43,7 +43,7 @@ export type CacheTypeId = typeof CacheTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Cache<in out Key, out Value, out Error = never> extends ConsumerCache<Key, Value, Error> {
+export interface Cache<in out Key, in out Value, out Error = never> extends ConsumerCache<Key, Value, Error> {
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise computes the value with the lookup function, puts it in the
