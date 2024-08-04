@@ -1,5 +1,7 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-propagate external interruption to Fiber{Handle,Set,Map}.join
+add `propagateInterruption` option to Fiber{Handle,Set,Map}
+
+This option will send any external interrupts to the .join result.

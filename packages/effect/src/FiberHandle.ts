@@ -167,6 +167,7 @@ export const unsafeSet: {
     options?: {
       readonly interruptAs?: FiberId.FiberId | undefined
       readonly onlyIfMissing?: boolean | undefined
+      readonly propagateInterruption?: boolean | undefined
     }
   ): (self: FiberHandle<A, E>) => void
   <A, E, XE extends E, XA extends A>(
@@ -175,6 +176,7 @@ export const unsafeSet: {
     options?: {
       readonly interruptAs?: FiberId.FiberId | undefined
       readonly onlyIfMissing?: boolean | undefined
+      readonly propagateInterruption?: boolean | undefined
     }
   ): void
 } = dual((args) => isFiberHandle(args[0]), <A, E, XE extends E, XA extends A>(
@@ -183,6 +185,7 @@ export const unsafeSet: {
   options?: {
     readonly interruptAs?: FiberId.FiberId | undefined
     readonly onlyIfMissing?: boolean | undefined
+    readonly propagateInterruption?: boolean | undefined
   }
 ): void => {
   if (self.state._tag === "Closed") {
@@ -205,7 +208,14 @@ export const unsafeSet: {
     if (self.state._tag === "Open" && fiber === self.state.fiber) {
       self.state.fiber = undefined
     }
-    if (Exit.isFailure(exit) && !isInternalInterruption(exit.cause)) {
+    if (
+      Exit.isFailure(exit) &&
+      (
+        options?.propagateInterruption === true ?
+          !isInternalInterruption(exit.cause) :
+          !Cause.isInterruptedOnly(exit.cause)
+      )
+    ) {
       Deferred.unsafeDone(self.deferred, exit as any)
     }
   })
@@ -223,6 +233,7 @@ export const set: {
     fiber: Fiber.RuntimeFiber<XA, XE>,
     options?: {
       readonly onlyIfMissing?: boolean
+      readonly propagateInterruption?: boolean | undefined
     }
   ): (self: FiberHandle<A, E>) => Effect.Effect<void>
   <A, E, XE extends E, XA extends A>(
@@ -230,6 +241,7 @@ export const set: {
     fiber: Fiber.RuntimeFiber<XA, XE>,
     options?: {
       readonly onlyIfMissing?: boolean
+      readonly propagateInterruption?: boolean | undefined
     }
   ): Effect.Effect<void>
 } = dual((args) => isFiberHandle(args[0]), <A, E, XE extends E, XA extends A>(
@@ -237,6 +249,7 @@ export const set: {
   fiber: Fiber.RuntimeFiber<XA, XE>,
   options?: {
     readonly onlyIfMissing?: boolean
+    readonly propagateInterruption?: boolean | undefined
   }
 ): Effect.Effect<void> =>
   Effect.fiberIdWith(
@@ -244,7 +257,8 @@ export const set: {
       Effect.sync(() =>
         unsafeSet(self, fiber, {
           interruptAs: fiberId,
-          onlyIfMissing: options?.onlyIfMissing
+          onlyIfMissing: options?.onlyIfMissing,
+          propagateInterruption: options?.propagateInterruption
         })
       )
   ))
@@ -310,6 +324,7 @@ export const run: {
     self: FiberHandle<A, E>,
     options?: {
       readonly onlyIfMissing?: boolean
+      readonly propagateInterruption?: boolean | undefined
     }
   ): <R, XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>
@@ -319,13 +334,17 @@ export const run: {
     effect: Effect.Effect<XA, XE, R>,
     options?: {
       readonly onlyIfMissing?: boolean
+      readonly propagateInterruption?: boolean | undefined
     }
   ): Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
 } = function() {
   const self = arguments[0] as FiberHandle
   if (Effect.isEffect(arguments[1])) {
     const effect = arguments[1]
-    const options = arguments[2] as { readonly onlyIfMissing?: boolean } | undefined
+    const options = arguments[2] as {
+      readonly onlyIfMissing?: boolean
+      readonly propagateInterruption?: boolean | undefined
+    } | undefined
     return Effect.suspend(() => {
       if (self.state._tag === "Closed") {
         return Effect.interrupt
@@ -340,7 +359,10 @@ export const run: {
       )
     }) as any
   }
-  const options = arguments[1] as { readonly onlyIfMissing?: boolean } | undefined
+  const options = arguments[1] as {
+    readonly onlyIfMissing?: boolean
+    readonly propagateInterruption?: boolean | undefined
+  } | undefined
   return (effect: Effect.Effect<unknown, unknown, any>) =>
     Effect.suspend(() => {
       if (self.state._tag === "Closed") {
@@ -394,6 +416,7 @@ export const runtime: <A, E>(
     options?:
       | Runtime.RunForkOptions & {
         readonly onlyIfMissing?: boolean | undefined
+        readonly propagateInterruption?: boolean | undefined
       }
       | undefined
   ) => Fiber.RuntimeFiber<XA, XE>,
@@ -409,6 +432,7 @@ export const runtime: <A, E>(
         options?:
           | Runtime.RunForkOptions & {
             readonly onlyIfMissing?: boolean | undefined
+            readonly propagateInterruption?: boolean | undefined
           }
           | undefined
       ) => {
