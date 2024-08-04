@@ -44,38 +44,52 @@ export const toHandled = <E, R, _, EH, RH>(
     response: ServerResponse.HttpServerResponse
   ) => Effect.Effect<_, EH, RH>,
   middleware?: HttpMiddleware | undefined
-): Effect.Effect<void, never, Exclude<R | RH, Scope.Scope>> => {
+): Effect.Effect<void, never, Exclude<R | RH | ServerRequest.HttpServerRequest, Scope.Scope>> => {
   const responded = Effect.withFiberRuntime<
-    ServerResponse.HttpServerResponse,
-    E | EH | ServerError.ResponseError,
+    void,
+    never,
     R | RH | ServerRequest.HttpServerRequest
   >((fiber) => {
+    let handled = false
     const request = Context.unsafeGet(fiber.getFiberRef(FiberRef.currentContext), ServerRequest.HttpServerRequest)
     const preprocessResponse = (response: ServerResponse.HttpServerResponse) => {
       const handler = fiber.getFiberRef(currentPreResponseHandlers)
       return handler._tag === "Some" ? handler.value(request, response) : Effect.succeed(response)
     }
-    return Effect.matchCauseEffect(self, {
+    const responded = Effect.matchCauseEffect(self, {
       onFailure: (cause) =>
         Effect.flatMap(ServerError.causeResponse(cause), ([response, cause]) =>
           preprocessResponse(response).pipe(
-            Effect.flatMap((response) => handleResponse(request, response)),
+            Effect.flatMap((response) => {
+              handled = true
+              return handleResponse(request, response)
+            }),
             Effect.zipRight(Effect.failCause(cause))
           )),
       onSuccess: (response) =>
         Effect.tap(
           preprocessResponse(response),
-          (response) => handleResponse(request, response)
+          (response) => {
+            handled = true
+            return handleResponse(request, response)
+          }
         )
     })
+    const withTracer = internalMiddleware.tracer(responded)
+    if (middleware === undefined) {
+      return withTracer as any
+    }
+    return Effect.catchAllCause(middleware(withTracer), (cause): Effect.Effect<void, EH, RH> => {
+      if (handled) {
+        return Effect.void
+      }
+      return Effect.matchCauseEffect(ServerError.causeResponse(cause), {
+        onFailure: (_cause) => handleResponse(request, ServerResponse.empty({ status: 500 })),
+        onSuccess: ([response]) => handleResponse(request, response)
+      })
+    })
   })
-  const withTracer = internalMiddleware.tracer(responded)
-  return Effect.uninterruptible(
-    Effect.catchAllCause(
-      Effect.scoped(middleware === undefined ? withTracer : middleware(withTracer)),
-      (_) => Effect.void
-    )
-  )
+  return Effect.uninterruptible(Effect.scoped(responded))
 }
 
 /**
