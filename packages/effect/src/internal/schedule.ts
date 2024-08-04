@@ -1844,7 +1844,7 @@ export const repeat_combined = dual<{
       }) :
       withWhile
     const withTimes = options.times ?
-      intersect(withUntil, recurs(options.times)) :
+      intersect(withUntil, recurs(options.times)).pipe(map((intersectionPair) => intersectionPair[0])) :
       withUntil
 
     return scheduleDefectRefail(repeat_Effect(self, withTimes))
