@@ -18,6 +18,7 @@ import {
 } from "@effect/platform"
 import { NodeContext, NodeEtag, NodeHttpClient, NodeHttpServer } from "@effect/platform-node"
 import * as Schema from "@effect/schema/Schema"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Deferred, Duration, Fiber, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -25,7 +26,6 @@ import * as Option from "effect/Option"
 import * as Tracer from "effect/Tracer"
 import { createServer } from "http"
 import * as Buffer from "node:buffer"
-import { assert, describe, expect, it } from "vitest"
 
 const ServerLive = NodeHttpServer.layer(createServer, { port: 0 })
 const EnvLive = Layer.mergeAll(
@@ -722,4 +722,15 @@ describe("HttpServer", () => {
         assert.deepStrictEqual(res, new User({ name: "test" }))
       }).pipe(Effect.scoped, runPromise))
   })
+
+  it("bad middleware responds with 500", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.empty.pipe(
+        HttpRouter.get("/", HttpServerResponse.empty()),
+        HttpServer.serveEffect(() => Effect.fail("boom"))
+      )
+      const client = yield* makeClient
+      const res = yield* HttpClientRequest.get("/").pipe(client)
+      assert.deepStrictEqual(res.status, 500)
+    }).pipe(Effect.scoped, runPromise))
 })
