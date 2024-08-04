@@ -1,5 +1,13 @@
 # effect
 
+## 3.6.1
+
+### Patch Changes
+
+- [#3405](https://github.com/Effect-TS/effect/pull/3405) [`510a34d`](https://github.com/Effect-TS/effect/commit/510a34d4cc5d2f51347a53847f6c7db84d2b17c6) Thanks @KhraksMamtsov! - Fix `Effect.repeat` with times option returns wrong value
+
+- [#3398](https://github.com/Effect-TS/effect/pull/3398) [`45dbb9f`](https://github.com/Effect-TS/effect/commit/45dbb9ffeaf93d9e4df99d0cd4920e41ba9a3978) Thanks @sukovanej! - Fix `Stream.asyncPush` type signature - allow the `register` effect to fail.
+
 ## 3.6.0
 
 ### Minor Changes
