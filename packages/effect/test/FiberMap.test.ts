@@ -1,4 +1,4 @@
-import { Array, Effect, Exit, Fiber, Ref, Scope } from "effect"
+import { Array, Deferred, Effect, Exit, Fiber, Ref, Scope } from "effect"
 import * as FiberMap from "effect/FiberMap"
 import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
@@ -97,10 +97,23 @@ describe("FiberMap", () => {
       assert.strictEqual(fiberA.unsafePoll(), null)
     }))
 
-  it.scoped("external interruption is propagated", () =>
+  it.scoped("propagateInterruption false", () =>
     Effect.gen(function*() {
       const map = yield* FiberMap.make<string>()
-      const fiber = yield* FiberMap.run(map, "a", Effect.never)
+      const fiber = yield* FiberMap.run(map, "a", Effect.never, {
+        propagateInterruption: false
+      })
+      yield* Effect.yieldNow()
+      yield* Fiber.interrupt(fiber)
+      assert.isFalse(yield* Deferred.isDone(map.deferred))
+    }))
+
+  it.scoped("propagateInterruption true", () =>
+    Effect.gen(function*() {
+      const map = yield* FiberMap.make<string>()
+      const fiber = yield* FiberMap.run(map, "a", Effect.never, {
+        propagateInterruption: true
+      })
       yield* Effect.yieldNow()
       yield* Fiber.interrupt(fiber)
       assert.isTrue(Exit.isInterrupted(
