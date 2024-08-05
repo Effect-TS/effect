@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.61.4
+
+### Patch Changes
+
+- [#3414](https://github.com/Effect-TS/effect/pull/3414) [`e7cb109`](https://github.com/Effect-TS/effect/commit/e7cb109d0754207024a64d55b6bd2a674dd8ed7d) Thanks @tim-smart! - ensure broken HttpMiddleware that doesn't fail responds
+
 ## 0.61.3
 
 ### Patch Changes
