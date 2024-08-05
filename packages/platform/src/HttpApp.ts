@@ -79,14 +79,17 @@ export const toHandled = <E, R, _, EH, RH>(
     if (middleware === undefined) {
       return withTracer as any
     }
-    return Effect.catchAllCause(middleware(withTracer), (cause): Effect.Effect<void, EH, RH> => {
-      if (handled) {
-        return Effect.void
-      }
-      return Effect.matchCauseEffect(ServerError.causeResponse(cause), {
-        onFailure: (_cause) => handleResponse(request, ServerResponse.empty({ status: 500 })),
-        onSuccess: ([response]) => handleResponse(request, response)
-      })
+    return Effect.matchCauseEffect(middleware(withTracer), {
+      onFailure: (cause): Effect.Effect<void, EH, RH> => {
+        if (handled) {
+          return Effect.void
+        }
+        return Effect.matchCauseEffect(ServerError.causeResponse(cause), {
+          onFailure: (_cause) => handleResponse(request, ServerResponse.empty({ status: 500 })),
+          onSuccess: ([response]) => handleResponse(request, response)
+        })
+      },
+      onSuccess: (response): Effect.Effect<void, EH, RH> => handled ? Effect.void : handleResponse(request, response)
     })
   })
   return Effect.uninterruptible(Effect.scoped(responded))
