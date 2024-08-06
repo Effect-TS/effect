@@ -5,6 +5,7 @@ import * as Cookies from "@effect/platform/Cookies"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as Headers from "@effect/platform/Headers"
 import * as App from "@effect/platform/HttpApp"
+import * as HttpClient from "@effect/platform/HttpClient"
 import * as IncomingMessage from "@effect/platform/HttpIncomingMessage"
 import type { HttpMethod } from "@effect/platform/HttpMethod"
 import * as Server from "@effect/platform/HttpServer"
@@ -176,6 +177,17 @@ export const layer = (
     Etag.layerWeak,
     BunContext.layer
   )
+
+/** @internal */
+export const layerTest = HttpClient.layerTest.pipe(
+  Layer.provide(
+    Layer.succeed(
+      HttpClient.HttpClient,
+      HttpClient.transformResponse(HttpClient.fetch, HttpClient.withFetchOptions({ keepalive: false }))
+    )
+  ),
+  Layer.provideMerge(layer({ port: 0 }))
+)
 
 /** @internal */
 export const layerConfig = (

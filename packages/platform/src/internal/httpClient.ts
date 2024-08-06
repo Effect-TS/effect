@@ -18,9 +18,10 @@ import * as Cookies from "../Cookies.js"
 import * as Headers from "../Headers.js"
 import type * as Client from "../HttpClient.js"
 import * as Error from "../HttpClientError.js"
-import type * as ClientRequest from "../HttpClientRequest.js"
+import * as ClientRequest from "../HttpClientRequest.js"
 import type * as ClientResponse from "../HttpClientResponse.js"
 import * as Method from "../HttpMethod.js"
+import * as HttpServer from "../HttpServer.js"
 import * as TraceContext from "../HttpTraceContext.js"
 import * as UrlParams from "../UrlParams.js"
 import * as internalBody from "./httpBody.js"
@@ -302,6 +303,20 @@ export const fetchOk: Client.HttpClient.Default = filterStatusOk(fetch)
 
 /** @internal */
 export const layer = Layer.succeed(tag, fetch)
+
+/** @internal */
+export const layerTest = Effect.flatMap(
+  Effect.zip(HttpServer.HttpServer, tag),
+  ([server, client]) => {
+    const port = server.address._tag === "TcpAddress" ? server.address.port : null
+
+    if (port === null) {
+      return Effect.dieMessage("BUG: Port not allocated")
+    }
+
+    return Effect.succeed(mapRequest(client, ClientRequest.prependUrl(`http://127.0.0.1:${port}`)))
+  }
+).pipe(Layer.effect(tag))
 
 /** @internal */
 export const transformResponse = dual<

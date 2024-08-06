@@ -4,6 +4,7 @@ import * as Cookies from "@effect/platform/Cookies"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Headers from "@effect/platform/Headers"
 import * as App from "@effect/platform/HttpApp"
+import * as HttpClient from "@effect/platform/HttpClient"
 import * as IncomingMessage from "@effect/platform/HttpIncomingMessage"
 import type { HttpMethod } from "@effect/platform/HttpMethod"
 import type * as Middleware from "@effect/platform/HttpMiddleware"
@@ -31,6 +32,7 @@ import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import * as WS from "ws"
 import * as NodeContext from "../NodeContext.js"
+import * as NodeHttpClient from "../NodeHttpClient.js"
 import * as NodeSink from "../NodeSink.js"
 import { HttpIncomingMessageImpl } from "./httpIncomingMessage.js"
 import * as internalPlatform from "./httpPlatform.js"
@@ -328,6 +330,13 @@ export const layer = (
     Etag.layerWeak,
     NodeContext.layer
   )
+
+/** @internal */
+export const layerTest = HttpClient.layerTest.pipe(
+  Layer.provide(NodeHttpClient.layerWithoutAgent),
+  Layer.provide(NodeHttpClient.makeAgentLayer({ keepAlive: false })),
+  Layer.provideMerge(layer(Http.createServer, { port: 0 }))
+)
 
 /** @internal */
 export const layerConfig = (
