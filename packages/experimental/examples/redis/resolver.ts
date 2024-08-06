@@ -1,6 +1,5 @@
 import * as Redis from "@effect/experimental/Persistence/Redis"
 import { persisted } from "@effect/experimental/RequestResolver"
-import * as TimeToLive from "@effect/experimental/TimeToLive"
 import { runMain } from "@effect/platform-node/NodeRuntime"
 import { Schema } from "@effect/schema"
 import { Array, Effect, Exit, pipe, PrimaryKey, RequestResolver } from "effect"
@@ -20,9 +19,6 @@ class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserById", {
   [PrimaryKey.symbol]() {
     return `GetUserById:${this.id}`
   }
-  [TimeToLive.symbol](exit: Exit.Exit<User, string>) {
-    return Exit.isSuccess(exit) ? 30000 : 0
-  }
 }
 
 const program = Effect.gen(function*() {
@@ -31,9 +27,10 @@ const program = Effect.gen(function*() {
       console.log("uncached requests", reqs.length)
       return Effect.forEach(reqs, (req) => Effect.succeed(new User({ id: req.id, name: "John" })))
     }
-  }).pipe(
-    persisted("users")
-  )
+  }).pipe(persisted({
+    storeId: "users",
+    timeToLive: (_req, exit) => Exit.isSuccess(exit) ? 30000 : 0
+  }))
 
   const users = yield* Effect.forEach(Array.range(1, 5), (id) => Effect.request(new GetUserById({ id }), resolver), {
     batching: true

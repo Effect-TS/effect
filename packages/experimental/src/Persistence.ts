@@ -6,6 +6,7 @@ import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Serializable from "@effect/schema/Serializable"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
+import type * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -15,7 +16,6 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
 import type * as Scope from "effect/Scope"
-import * as TimeToLive from "./TimeToLive.js"
 
 /**
  * @since 1.0.0
@@ -142,7 +142,10 @@ export type ResultPersistenceTypeId = typeof ResultPersistenceTypeId
  */
 export interface ResultPersistence {
   readonly [ResultPersistenceTypeId]: ResultPersistenceTypeId
-  readonly make: (storeId: string) => Effect.Effect<ResultPersistenceStore, never, Scope.Scope>
+  readonly make: (options: {
+    readonly storeId: string
+    readonly timeToLive?: (key: ResultPersistence.KeyAny, exit: Exit.Exit<unknown, unknown>) => Duration.DurationInput
+  }) => Effect.Effect<ResultPersistenceStore, never, Scope.Scope>
 }
 
 /**
@@ -182,6 +185,15 @@ export declare namespace ResultPersistence {
    * @category models
    */
   export type KeyAny = Key<any, any, any, any, any> | Key<any, never, never, any, any>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type TimeToLiveArgs<A> = A extends infer K
+    ? K extends Key<infer _R, infer _IE, infer _E, infer _IA, infer _A> ? [request: K, exit: Exit.Exit<_A, _E>]
+    : never
+    : never
 }
 
 /**
@@ -204,9 +216,10 @@ export const layerResult = Layer.effect(
     const backing = yield* _(BackingPersistence)
     return ResultPersistence.of({
       [ResultPersistenceTypeId]: ResultPersistenceTypeId,
-      make: (storeId: string) =>
-        Effect.gen(function*(_) {
-          const storage = yield* _(backing.make(storeId))
+      make: (options) =>
+        Effect.gen(function*() {
+          const storage = yield* backing.make(options.storeId)
+          const timeToLive = options.timeToLive ?? (() => Duration.infinity)
           const parse = <R, IE, E, IA, A>(
             method: string,
             key: ResultPersistence.Key<R, IE, E, IA, A>,
@@ -254,12 +267,14 @@ export const layerResult = Layer.effect(
                 })
               ),
             set: (key, value) => {
-              const ttl = TimeToLive.getFinite(key, value)
-              if (Option.isSome(ttl) && Duration.equals(ttl.value, Duration.zero)) {
+              const ttl = Duration.decode(timeToLive(key, value))
+              if (Duration.isZero(ttl)) {
                 return Effect.void
               }
               return encode("set", key, value).pipe(
-                Effect.flatMap((encoded) => storage.set(makeKey(key), encoded, ttl))
+                Effect.flatMap((encoded) =>
+                  storage.set(makeKey(key), encoded, Duration.isFinite(ttl) ? Option.some(ttl) : Option.none())
+                )
               )
             },
             remove: (key) => storage.remove(makeKey(key)),
@@ -304,7 +319,7 @@ export const layerMemory: Layer.Layer<BackingPersistence> = Layer.sync(
           return identity<BackingPersistenceStore>({
             get: (key) => Effect.sync(() => unsafeGet(key)),
             getMany: (keys) => Effect.sync(() => keys.map(unsafeGet)),
-            set: (key, value, ttl) => Effect.sync(() => map.set(key, [value, TimeToLive.unsafeToExpires(clock, ttl)])),
+            set: (key, value, ttl) => Effect.sync(() => map.set(key, [value, unsafeTtlToExpires(clock, ttl)])),
             remove: (key) => Effect.sync(() => map.delete(key)),
             clear: Effect.sync(() => map.clear())
           })
@@ -357,7 +372,7 @@ export const layerKeyValueStore: Layer.Layer<BackingPersistence, never, KeyValue
             set: (key, value, ttl) =>
               Effect.flatMap(
                 Effect.try({
-                  try: () => JSON.stringify([value, TimeToLive.unsafeToExpires(clock, ttl)]),
+                  try: () => JSON.stringify([value, unsafeTtlToExpires(clock, ttl)]),
                   catch: (error) => PersistenceBackingError.make("set", error)
                 }),
                 (u) =>
@@ -394,3 +409,9 @@ export const layerResultKeyValueStore: Layer.Layer<ResultPersistence, never, Key
   .pipe(
     Layer.provide(layerKeyValueStore)
   )
+
+/**
+ * @since 1.0.0
+ */
+export const unsafeTtlToExpires = (clock: Clock.Clock, ttl: Option.Option<Duration.Duration>): number | null =>
+  ttl._tag === "None" ? null : clock.unsafeCurrentTimeMillis() + Duration.toMillis(ttl.value)

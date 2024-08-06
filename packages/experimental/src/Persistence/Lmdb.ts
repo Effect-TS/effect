@@ -8,7 +8,6 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Lmdb from "lmdb"
 import * as Persistence from "../Persistence.js"
-import * as TimeToLive from "../TimeToLive.js"
 
 /**
  * @since 1.0.0
@@ -55,7 +54,7 @@ export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
               ),
             set: (key, value, ttl) =>
               Effect.tryPromise({
-                try: () => store.put(key, [value, TimeToLive.unsafeToExpires(clock, ttl)]),
+                try: () => store.put(key, [value, Persistence.unsafeTtlToExpires(clock, ttl)]),
                 catch: (error) => Persistence.PersistenceBackingError.make("set", error)
               }),
             remove: (key) =>

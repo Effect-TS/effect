@@ -47,6 +47,7 @@ export interface PersistedCache<K extends Persistence.ResultPersistence.KeyAny> 
 export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options: {
   readonly storeId: string
   readonly lookup: (key: K) => Effect.Effect<Serializable.WithResult.Success<K>, Serializable.WithResult.Failure<K>, R>
+  readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<K>) => Duration.DurationInput
   readonly inMemoryCapacity?: number | undefined
   readonly inMemoryTTL?: Duration.DurationInput | undefined
 }): Effect.Effect<
@@ -55,7 +56,12 @@ export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options:
   Serializable.SerializableWithResult.Context<K> | R | Persistence.ResultPersistence | Scope.Scope
 > =>
   Persistence.ResultPersistence.pipe(
-    Effect.flatMap((_) => _.make(options.storeId)),
+    Effect.flatMap((_) =>
+      _.make({
+        storeId: options.storeId,
+        timeToLive: options.timeToLive as any
+      })
+    ),
     Effect.bindTo("store"),
     Effect.bind("inMemoryCache", ({ store }) =>
       Cache.make({

@@ -131,9 +131,10 @@ export declare namespace PersistedRequest {
  * @category combinators
  */
 export const persisted: {
-  (
-    storeId: string
-  ): <Req extends PersistedRequest.Any>(
+  <Req extends PersistedRequest.Any>(options: {
+    readonly storeId: string
+    readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<Req>) => Duration.DurationInput
+  }): (
     self: RequestResolver.RequestResolver<Req, never>
   ) => Effect.Effect<
     RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
@@ -142,7 +143,10 @@ export const persisted: {
   >
   <Req extends PersistedRequest.Any>(
     self: RequestResolver.RequestResolver<Req, never>,
-    storeId: string
+    options: {
+      readonly storeId: string
+      readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<Req>) => Duration.DurationInput
+    }
   ): Effect.Effect<
     RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
     never,
@@ -150,16 +154,20 @@ export const persisted: {
   >
 } = dual(2, <Req extends PersistedRequest.Any>(
   self: RequestResolver.RequestResolver<Req, never>,
-  storeId: string
+  options: {
+    readonly storeId: string
+    readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<Req>) => Duration.DurationInput
+  }
 ): Effect.Effect<
   RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
   never,
   Persistence.ResultPersistence | Scope.Scope
 > =>
   Effect.gen(function*(_) {
-    const storage = yield* _(
-      (yield* _(Persistence.ResultPersistence)).make(storeId)
-    )
+    const storage = yield* (yield* Persistence.ResultPersistence).make({
+      storeId: options.storeId,
+      timeToLive: options.timeToLive as any
+    })
 
     const partition = (requests: ReadonlyArray<Req>) =>
       storage.getMany(requests as any).pipe(
