@@ -1,6 +1,5 @@
 import * as PersistedCache from "@effect/experimental/PersistedCache"
 import * as Persistence from "@effect/experimental/Persistence"
-import * as TimeToLive from "@effect/experimental/TimeToLive"
 import { KeyValueStore } from "@effect/platform"
 import { Schema } from "@effect/schema"
 import * as it from "@effect/vitest"
@@ -22,9 +21,6 @@ class TTLRequest extends Schema.TaggedRequest<TTLRequest>()("TTLRequest", {
   [PrimaryKey.symbol]() {
     return `TTLRequest:${this.id}`
   }
-  [TimeToLive.symbol](_exit: Exit.Exit<User, string>) {
-    return 5000
-  }
 }
 
 describe("PersistedCache", () => {
@@ -32,7 +28,7 @@ describe("PersistedCache", () => {
     it.scoped(storeId, () =>
       Effect.gen(function*() {
         const persistence = yield* Persistence.ResultPersistence
-        const store = yield* persistence.make("users")
+        const store = yield* persistence.make({ storeId: "users" })
         let invocations = 0
         let cache = yield* PersistedCache.make({
           storeId: "users",
@@ -40,7 +36,8 @@ describe("PersistedCache", () => {
             Effect.sync(() => {
               invocations++
               return new User({ id: req.id, name: "John" })
-            })
+            }),
+          timeToLive: (_req, _exit) => 5000
         })
         const user = yield* cache.get(new TTLRequest({ id: 1 }))
         assert.deepStrictEqual(user, new User({ id: 1, name: "John" }))
@@ -58,7 +55,8 @@ describe("PersistedCache", () => {
             Effect.sync(() => {
               invocations++
               return new User({ id: req.id, name: "John" })
-            })
+            }),
+          timeToLive: (_req, _exit) => 5000
         })
         assert.deepStrictEqual(yield* cache.get(new TTLRequest({ id: 1 })), new User({ id: 1, name: "John" }))
         assert.strictEqual(invocations, 1)
