@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.22.0
+
+### Minor Changes
+
+- [#3417](https://github.com/Effect-TS/effect/pull/3417) [`5b0a98d`](https://github.com/Effect-TS/effect/commit/5b0a98de7998a8a22b54e5e6bd8d0e1ab988a0e7) Thanks @tim-smart! - remove TimeToLive trait in favour of `timeToLive` options
+
 ## 0.21.4
 
 ### Patch Changes
