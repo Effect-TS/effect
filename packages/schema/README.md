@@ -2763,6 +2763,42 @@ console.log(Schema.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
   - `<missing value>` -> `<missing value>`
   - `a` -> `i`
 
+#### Representing Optional Fields with never Type
+
+When defining types in TypeScript that include optional fields with the type `never`, such as:
+
+```ts
+type A = {
+  readonly a?: never
+}
+```
+
+the approach varies based on the `exactOptionalPropertyTypes` configuration in your `tsconfig.json`
+
+**TypeScript Configuration: `exactOptionalPropertyTypes = false`**
+
+When this setting is disabled, optional fields are best handled by explicitly defining them as `undefined`. This reflects that the field may not be present, and if it is, it holds no value.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a: Schema.optional(Schema.Undefined)
+})
+```
+
+**TypeScript Configuration: `exactOptionalPropertyTypes = true`**
+
+With `exactOptionalPropertyTypes` enabled, the definition changes slightly to enforce the field's absence more strictly. This configuration is more precise and aligns with newer TypeScript strictness features.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a: Schema.optionalWith(Schema.Never, { exact: true })
+})
+```
+
 ### Default Values
 
 The `default` option allows you to set a default value for both the decoding phase and the default constructor.
