@@ -5,6 +5,7 @@ import * as Socket from "@effect/platform/Socket"
 import { type Scope } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Metric from "effect/Metric"
@@ -46,9 +47,9 @@ interface PoisonPill {
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket> = Effect.gen(function*(_) {
-  const socket = yield* _(Socket.Socket)
-  const requests = yield* _(Queue.unbounded<Domain.Request | PoisonPill>())
+export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket> = Effect.gen(function*() {
+  const socket = yield* Socket.Socket
+  const requests = yield* Queue.unbounded<Domain.Request | PoisonPill>()
 
   function metricsSnapshot(): Domain.MetricsSnapshot {
     const snapshot = Metric.unsafeSnapshot()
@@ -107,10 +108,10 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
     }
   }
 
-  yield* Stream.fromQueue(requests).pipe(
+  const fiber: Fiber.RuntimeFiber<void> = yield* Stream.fromQueue(requests).pipe(
     Stream.mapEffect((request) =>
       request._tag === "PoisonPill"
-        ? Effect.interrupt
+        ? Effect.zipRight(Fiber.interrupt(fiber), Effect.interrupt)
         : Effect.succeed(request)
     ),
     Stream.pipeThroughChannel(
@@ -131,22 +132,16 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
     }),
     Effect.retry(Schedule.spaced("3 seconds")),
     Effect.catchAllCause(Effect.logDebug),
-    Effect.forkScoped,
-    Effect.uninterruptible
+    Effect.forkDaemon,
+    Effect.interruptible
   )
-  yield* Effect.addFinalizer(() => Queue.offer(requests, { _tag: "PoisonPill" }))
-  yield* _(
-    Queue.offer(requests, { _tag: "Ping" }),
+  yield* Effect.addFinalizer(() => requests.offerAll([metricsSnapshot(), { _tag: "PoisonPill" }]))
+  yield* Queue.offer(requests, { _tag: "Ping" }).pipe(
     Effect.delay("3 seconds"),
     Effect.forever,
     Effect.forkScoped,
     Effect.interruptible
   )
-  yield* _(Effect.addFinalizer(() =>
-    requests.offer(metricsSnapshot()).pipe(
-      Effect.zipRight(Effect.yieldNow())
-    )
-  ))
 
   return Client.of({
     unsafeAddSpan: (request) => Queue.unsafeOffer(requests, request)
