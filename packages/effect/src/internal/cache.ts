@@ -275,6 +275,23 @@ const cacheVariance = {
   /* c8 ignore next */
   _Error: (_: never) => _,
   /* c8 ignore next */
+  _Value: (_: any) => _
+}
+
+/** @internal */
+const ConsumerCacheSymbolKey = "effect/ConsumerCache"
+
+/** @internal */
+export const ConsumerCacheTypeId: Cache.ConsumerCacheTypeId = Symbol.for(
+  ConsumerCacheSymbolKey
+) as Cache.ConsumerCacheTypeId
+
+const consumerCacheVariance = {
+  /* c8 ignore next */
+  _Key: (_: any) => _,
+  /* c8 ignore next */
+  _Error: (_: never) => _,
+  /* c8 ignore next */
   _Value: (_: never) => _
 }
 
@@ -294,6 +311,7 @@ export const makeEntryStats = (loadedMillis: number): Cache.EntryStats => ({
 
 class CacheImpl<in out Key, in out Value, in out Error> implements Cache.Cache<Key, Value, Error> {
   readonly [CacheTypeId] = cacheVariance
+  readonly [ConsumerCacheTypeId] = consumerCacheVariance
   readonly cacheState: CacheState<Key, Value, Error>
   constructor(
     readonly capacity: number,
