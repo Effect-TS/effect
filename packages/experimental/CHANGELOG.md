@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.22.1
+
+### Patch Changes
+
+- [#3420](https://github.com/Effect-TS/effect/pull/3420) [`fb18738`](https://github.com/Effect-TS/effect/commit/fb18738e7f0586eec2b3e658c94c3fd932e70427) Thanks @tim-smart! - properly interrupt DevTools client during finalization
+
 ## 0.22.0
 
 ### Minor Changes
