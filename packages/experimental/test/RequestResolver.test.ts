@@ -1,6 +1,5 @@
 import * as Persistence from "@effect/experimental/Persistence"
 import * as RequestResolverX from "@effect/experimental/RequestResolver"
-import * as TimeToLive from "@effect/experimental/TimeToLive"
 import { KeyValueStore } from "@effect/platform"
 import { Schema } from "@effect/schema"
 import * as it from "@effect/vitest"
@@ -35,9 +34,9 @@ class TTLRequest extends Schema.TaggedRequest<TTLRequest>()("TTLRequest", {
   [PrimaryKey.symbol]() {
     return `TTLRequest:${this.id}`
   }
-  [TimeToLive.symbol](exit: Exit.Exit<User, string>) {
-    return Exit.isSuccess(exit) ? 5000 : 1
-  }
+  // [TimeToLive.symbol](exit: Exit.Exit<User, string>) {
+  //   return Exit.isSuccess(exit) ? 5000 : 1
+  // }
 }
 
 describe("RequestResolver", () => {
@@ -47,7 +46,7 @@ describe("RequestResolver", () => {
       layer: Layer.Layer<Persistence.ResultPersistence, unknown>
     ) =>
       it.effect(storeId, () =>
-        Effect.gen(function*(_) {
+        Effect.gen(function*() {
           let count = 0
           const baseResolver = RequestResolver.makeBatched((reqs: NonEmptyArray<MyRequest | TTLRequest>) => {
             count += reqs.length
@@ -56,87 +55,81 @@ describe("RequestResolver", () => {
               return Request.succeed(req, new User({ id: req.id, name: "John" }))
             }, { discard: true })
           })
-          const persisted = yield* _(RequestResolverX.persisted(baseResolver, storeId))
-          let users = yield* _(
-            Effect.forEach(Array.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
+          const persisted = yield* RequestResolverX.persisted(baseResolver, {
+            storeId,
+            timeToLive: (_req, exit) => Exit.isSuccess(exit) ? 5000 : 1
+          })
+          let users = yield* Effect.forEach(
+            Array.range(1, 5),
+            (id) => Effect.request(new MyRequest({ id }), persisted),
+            {
               batching: true
-            })
+            }
           )
           assert.strictEqual(count, 5)
           assert.strictEqual(users.length, 5)
-          users = yield* _(
-            Effect.forEach(Array.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
-              batching: true
-            })
-          )
+          users = yield* Effect.forEach(Array.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
+            batching: true
+          })
           assert.strictEqual(count, 5)
           assert.strictEqual(users.length, 5)
 
           // ttl
-          let results = yield* _(
-            Effect.forEach(
-              Array.range(-1, 3),
-              (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
-              {
-                batching: true
-              }
-            )
+          let results = yield* Effect.forEach(
+            Array.range(-1, 3),
+            (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
+            {
+              batching: true
+            }
           )
+
           assert.strictEqual(count, 10)
           assert.strictEqual(results.length, 5)
           assert(Exit.isFailure(results[0]))
           assert(Exit.isSuccess(results[1]))
 
-          results = yield* _(
-            Effect.forEach(
-              Array.range(-1, 3),
-              (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
-              {
-                batching: true
-              }
-            )
+          results = yield* Effect.forEach(
+            Array.range(-1, 3),
+            (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
+            {
+              batching: true
+            }
           )
           assert.strictEqual(count, 10)
           assert.strictEqual(results.length, 5)
 
-          yield* _(TestClock.adjust(1))
+          yield* TestClock.adjust(1)
 
-          results = yield* _(
-            Effect.forEach(
-              Array.range(-1, 3),
-              (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
-              {
-                batching: true
-              }
-            )
+          results = yield* Effect.forEach(
+            Array.range(-1, 3),
+            (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
+            {
+              batching: true
+            }
           )
           assert.strictEqual(count, 11)
           assert.strictEqual(results.length, 5)
 
-          yield* _(TestClock.adjust(5000))
+          yield* TestClock.adjust(5000)
 
-          results = yield* _(
-            Effect.forEach(
-              Array.range(-1, 3),
-              (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
-              {
-                batching: true
-              }
-            )
+          results = yield* Effect.forEach(
+            Array.range(-1, 3),
+            (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
+            {
+              batching: true
+            }
           )
           assert.strictEqual(count, 16)
           assert.strictEqual(results.length, 5)
 
           // clear
-          const persistence = yield* _(Persistence.ResultPersistence)
-          const store = yield* _(persistence.make(storeId))
-          yield* _(store.clear)
+          const persistence = yield* Persistence.ResultPersistence
+          const store = yield* persistence.make({ storeId })
+          yield* store.clear
 
-          users = yield* _(
-            Effect.forEach(Array.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
-              batching: true
-            })
-          )
+          users = yield* Effect.forEach(Array.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
+            batching: true
+          })
           assert.strictEqual(count, 21)
           assert.strictEqual(users.length, 5)
         }).pipe(Effect.scoped, Effect.provide(layer)))
