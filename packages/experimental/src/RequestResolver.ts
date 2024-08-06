@@ -156,7 +156,7 @@ export const persisted: {
   self: RequestResolver.RequestResolver<Req, never>,
   options: {
     readonly storeId: string
-    readonly timeToLive: (...args: PersistedRequest.TimeToLiveArgs<Req>) => Duration.DurationInput
+    readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<Req>) => Duration.DurationInput
   }
 ): Effect.Effect<
   RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
