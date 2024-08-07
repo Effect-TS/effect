@@ -1,5 +1,33 @@
 # @effect/platform-bun
 
+## 0.41.5
+
+### Patch Changes
+
+- [#3409](https://github.com/Effect-TS/effect/pull/3409) [`056b710`](https://github.com/Effect-TS/effect/commit/056b7108978e70612176c23991916f678d947f38) Thanks @sukovanej! - Add `BunHttpServer.layerTest`.
+
+  ```ts
+  import { HttpClientRequest, HttpRouter, HttpServer } from "@effect/platform";
+  import { BunHttpServer } from "@effect/platform-bun";
+  import { expect, it } from "bun:test";
+  import { Effect } from "effect";
+
+  it("test", () =>
+    Effect.gen(function* (_) {
+      yield* HttpServer.serveEffect(HttpRouter.empty);
+      const response = yield* HttpClientRequest.get("/non-existing");
+      expect(response.status).toEqual(404);
+    }).pipe(
+      Effect.provide(BunHttpServer.layerTest),
+      Effect.scoped,
+      Effect.runPromise,
+    ));
+  ```
+
+- Updated dependencies [[`056b710`](https://github.com/Effect-TS/effect/commit/056b7108978e70612176c23991916f678d947f38)]:
+  - @effect/platform@0.61.5
+  - @effect/platform-node-shared@0.11.5
+
 ## 0.41.4
 
 ### Patch Changes
