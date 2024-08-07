@@ -93,15 +93,13 @@ export const layerConfig: (
  * @example
  * import { HttpClientRequest, HttpRouter, HttpServer } from "@effect/platform"
  * import { NodeHttpServer } from "@effect/platform-node"
- * import { expect, it } from "@effect/vitest"
  * import { Effect } from "effect"
  *
- * it.scoped("test", () =>
- *   Effect.gen(function*() {
- *     yield* HttpServer.serveEffect(HttpRouter.empty)
- *     const response = yield* HttpClientRequest.get("/")
- *     expect(response.status, 404)
- *   }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+ * Effect.gen(function*() {
+ *   yield* HttpServer.serveEffect(HttpRouter.empty)
+ *   const response = yield* HttpClientRequest.get("/")
+ *   assert.strictEqual(response.status, 404)
+ * }).pipe(Effect.provide(NodeHttpServer.layerTest))
  *
  * @since 1.0.0
  * @category layers

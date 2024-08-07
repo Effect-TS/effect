@@ -42,19 +42,6 @@ export const layer: (
  * Layer starting a server on a random port and producing an `HttpClient`
  * with prepended url of the running http server.
  *
- * @example
- * import { HttpClientRequest, HttpRouter, HttpServer } from "@effect/platform"
- * import { BunHttpServer } from "@effect/platform-bun"
- * import { expect, it } from "bun:test"
- * import { Effect } from "effect"
- *
- * it("test", () =>
- *   Effect.gen(function*(_) {
- *     yield* HttpServer.serveEffect(HttpRouter.empty)
- *     const response = yield* HttpClientRequest.get("/non-existing")
- *     expect(response.status).toEqual(404)
- *   }).pipe(Effect.provide(BunHttpServer.layerTest), Effect.scoped, Effect.runPromise))
- *
  * @since 1.0.0
  * @category layers
  */
