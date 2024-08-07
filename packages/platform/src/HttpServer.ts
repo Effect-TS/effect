@@ -6,6 +6,7 @@ import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as App from "./HttpApp.js"
+import type * as Client from "./HttpClient.js"
 import type * as Middleware from "./HttpMiddleware.js"
 import type * as ServerRequest from "./HttpServerRequest.js"
 import * as internal from "./internal/httpServer.js"
@@ -193,3 +194,12 @@ export const logAddress: Effect.Effect<void, never, HttpServer> = internal.logAd
  */
 export const withLogAddress: <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R | Exclude<HttpServer, A>> =
   internal.withLogAddress
+
+/**
+ * Layer producing an `HttpClient` with prepended url of the running http server.
+ *
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerTestClient: Layer.Layer<Client.HttpClient.Default, never, Client.HttpClient.Default | HttpServer> =
+  internal.layerTestClient

@@ -31,6 +31,7 @@ import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import * as WS from "ws"
 import * as NodeContext from "../NodeContext.js"
+import * as NodeHttpClient from "../NodeHttpClient.js"
 import * as NodeSink from "../NodeSink.js"
 import { HttpIncomingMessageImpl } from "./httpIncomingMessage.js"
 import * as internalPlatform from "./httpPlatform.js"
@@ -328,6 +329,13 @@ export const layer = (
     Etag.layerWeak,
     NodeContext.layer
   )
+
+/** @internal */
+export const layerTest = Server.layerTestClient.pipe(
+  Layer.provide(NodeHttpClient.layerWithoutAgent),
+  Layer.provide(NodeHttpClient.makeAgentLayer({ keepAlive: false })),
+  Layer.provideMerge(layer(Http.createServer, { port: 0 }))
+)
 
 /** @internal */
 export const layerConfig = (
