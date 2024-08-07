@@ -179,13 +179,13 @@ export const layer = (
   )
 
 /** @internal */
-export const layerTest = HttpClient.layerTest.pipe(
-  Layer.provide(
-    Layer.succeed(
-      HttpClient.HttpClient,
-      HttpClient.transformResponse(HttpClient.fetch, HttpClient.withFetchOptions({ keepalive: false }))
+export const layerTest = Server.layerTestClient.pipe(
+  Layer.provide(Layer.succeed(
+    HttpClient.HttpClient,
+    HttpClient.fetch.pipe(
+      HttpClient.transformResponse(HttpClient.withFetchOptions({ keepalive: false }))
     )
-  ),
+  )),
   Layer.provideMerge(layer({ port: 0 }))
 )
 

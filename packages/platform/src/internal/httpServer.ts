@@ -4,6 +4,8 @@ import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as App from "../HttpApp.js"
+import * as Client from "../HttpClient.js"
+import * as ClientRequest from "../HttpClientRequest.js"
 import type * as Middleware from "../HttpMiddleware.js"
 import type * as Server from "../HttpServer.js"
 import type * as ServerRequest from "../HttpServerRequest.js"
@@ -164,3 +166,18 @@ export const withLogAddress = <A, E, R>(
   Layer.effectDiscard(logAddress).pipe(
     Layer.provideMerge(layer)
   )
+
+/** @internal */
+export const makeTestClient = addressWith((address) =>
+  Effect.flatMap(Client.HttpClient, (client) => {
+    if (address._tag === "UnixAddress") {
+      return Effect.die(new Error("HttpServer.layerTestClient: UnixAddress not supported"))
+    }
+    const host = address.hostname === "0.0.0.0" ? "127.0.0.1" : address.hostname
+    const url = `http://${host}:${address.port}`
+    return Effect.succeed(Client.mapRequest(client, ClientRequest.prependUrl(url)))
+  })
+)
+
+/** @internal */
+export const layerTestClient = Layer.effect(Client.HttpClient, makeTestClient)

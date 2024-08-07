@@ -75,6 +75,18 @@ export const layer: (
   internal.layer
 
 /**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerConfig: (
+  evaluate: LazyArg<Http.Server<typeof Http.IncomingMessage, typeof Http.ServerResponse>>,
+  options: Config.Config.Wrap<Net.ListenOptions>
+) => Layer.Layer<
+  Platform.HttpPlatform | Etag.Generator | NodeContext.NodeContext | Server.HttpServer,
+  ConfigError.ConfigError | ServeError
+> = internal.layerConfig
+
+/**
  * Layer starting a server on a random port and producing an `HttpClient`
  * with prepended url of the running http server.
  *
@@ -102,15 +114,3 @@ export const layerTest: Layer.Layer<
   | NodeContext.NodeContext,
   ServeError
 > = internal.layerTest
-
-/**
- * @since 1.0.0
- * @category layers
- */
-export const layerConfig: (
-  evaluate: LazyArg<Http.Server<typeof Http.IncomingMessage, typeof Http.ServerResponse>>,
-  options: Config.Config.Wrap<Net.ListenOptions>
-) => Layer.Layer<
-  Platform.HttpPlatform | Etag.Generator | NodeContext.NodeContext | Server.HttpServer,
-  ConfigError.ConfigError | ServeError
-> = internal.layerConfig

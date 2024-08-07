@@ -19,7 +19,6 @@ import type { Cookies } from "./Cookies.js"
 import type * as Error from "./HttpClientError.js"
 import type * as ClientRequest from "./HttpClientRequest.js"
 import type * as ClientResponse from "./HttpClientResponse.js"
-import type * as HttpServer from "./HttpServer.js"
 import * as internal from "./internal/httpClient.js"
 
 /**
@@ -103,15 +102,6 @@ export const Fetch: Context.Tag<Fetch, typeof globalThis.fetch> = internal.Fetch
  * @category layers
  */
 export const layer: Layer.Layer<HttpClient.Default> = internal.layer
-
-/**
- * Layer producing an `HttpClient` with prepended url of the running http server.
- *
- * @since 1.0.0
- * @category layers
- */
-export const layerTest: Layer.Layer<HttpClient.Default, never, HttpServer.HttpServer | HttpClient.Default> =
-  internal.layerTest
 
 /**
  * @since 1.0.0

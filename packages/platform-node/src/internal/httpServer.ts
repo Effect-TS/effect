@@ -4,7 +4,6 @@ import * as Cookies from "@effect/platform/Cookies"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Headers from "@effect/platform/Headers"
 import * as App from "@effect/platform/HttpApp"
-import * as HttpClient from "@effect/platform/HttpClient"
 import * as IncomingMessage from "@effect/platform/HttpIncomingMessage"
 import type { HttpMethod } from "@effect/platform/HttpMethod"
 import type * as Middleware from "@effect/platform/HttpMiddleware"
@@ -332,7 +331,7 @@ export const layer = (
   )
 
 /** @internal */
-export const layerTest = HttpClient.layerTest.pipe(
+export const layerTest = Server.layerTestClient.pipe(
   Layer.provide(NodeHttpClient.layerWithoutAgent),
   Layer.provide(NodeHttpClient.makeAgentLayer({ keepAlive: false })),
   Layer.provideMerge(layer(Http.createServer, { port: 0 }))
