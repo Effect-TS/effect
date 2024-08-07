@@ -286,11 +286,11 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
             )
           }, { concurrency: "unbounded", discard: true }),
           Effect.ensuring(Queue.offer(queue, EOF)),
-          Effect.fork
+          Effect.forkScoped
         )
       ),
       Effect.map(([_, queue]) => Stream.fromChannel(channelFromQueue(queue))),
-      Stream.unwrap
+      Stream.unwrapScoped
     )
 }
 
