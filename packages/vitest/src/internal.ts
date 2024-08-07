@@ -3,18 +3,20 @@
  */
 import type { Tester, TesterContext } from "@vitest/expect"
 import * as Cause from "effect/Cause"
+import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
+import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import { flow, identity, pipe } from "effect/Function"
+import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
-import * as Utils from "effect/Utils"
 import * as V from "vitest"
 import type * as Vitest from "./index.js"
 
@@ -41,14 +43,26 @@ const TestEnv = TestEnvironment.TestContext.pipe(
 )
 
 /** @internal */
-function customTester(this: TesterContext, a: unknown, b: unknown, customTesters: Array<Tester>) {
-  if (!Equal.isEqual(a) || !Equal.isEqual(b)) {
-    return undefined
+function customTester(this: TesterContext, _a: unknown, _b: unknown, _customTesters: Array<Tester>) {
+  if (Chunk.isChunk(_a) && Chunk.isChunk(_b)) {
+    return this.equals(Array.from(_a), Array.from(_b), _customTesters)
   }
-  return Utils.structuralRegion(
-    () => Equal.equals(a, b),
-    (x, y) => this.equals(x, y, customTesters.filter((t) => t !== customTester))
-  )
+  if (Option.isOption(_a) && Option.isOption(_b)) {
+    return _a._tag === _b._tag && (_a._tag === "None" || this.equals(_a.value, (_b as any).value, _customTesters))
+  }
+  if (Either.isEither(_a) && Either.isEither(_b)) {
+    return (Either.isLeft(_a) && Either.isLeft(_b) && this.equals(_a.left, _b.left, _customTesters)) ||
+      (Either.isRight(_a) && Either.isRight(_b) && this.equals(_a.right, _b.right, _customTesters))
+  }
+  if (Cause.isCause(_a) && Cause.isCause(_b)) {
+    return this.equals(Cause.failures(_a), Cause.failures(_b), _customTesters) &&
+      this.equals(Cause.defects(_a), Cause.defects(_b), _customTesters) &&
+      this.equals(Cause.interruptors(_a), Cause.interruptors(_b), _customTesters)
+  }
+  if (HashSet.isHashSet(_a) && HashSet.isHashSet(_b)) {
+    return this.equals(new Set(_a), new Set(_b), _customTesters)
+  }
+  return undefined
 }
 
 /** @internal */
