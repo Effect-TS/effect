@@ -3,6 +3,7 @@
  */
 import type * as Etag from "@effect/platform/Etag"
 import type * as App from "@effect/platform/HttpApp"
+import type * as HttpClient from "@effect/platform/HttpClient"
 import type * as Middleware from "@effect/platform/HttpMiddleware"
 import type * as Platform from "@effect/platform/HttpPlatform"
 import type * as Server from "@effect/platform/HttpServer"
@@ -84,3 +85,30 @@ export const layerConfig: (
   Platform.HttpPlatform | Etag.Generator | NodeContext.NodeContext | Server.HttpServer,
   ConfigError.ConfigError | ServeError
 > = internal.layerConfig
+
+/**
+ * Layer starting a server on a random port and producing an `HttpClient`
+ * with prepended url of the running http server.
+ *
+ * @example
+ * import { HttpClientRequest, HttpRouter, HttpServer } from "@effect/platform"
+ * import { NodeHttpServer } from "@effect/platform-node"
+ * import { Effect } from "effect"
+ *
+ * Effect.gen(function*() {
+ *   yield* HttpServer.serveEffect(HttpRouter.empty)
+ *   const response = yield* HttpClientRequest.get("/")
+ *   assert.strictEqual(response.status, 404)
+ * }).pipe(Effect.provide(NodeHttpServer.layerTest))
+ *
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerTest: Layer.Layer<
+  | HttpClient.HttpClient.Default
+  | Server.HttpServer
+  | Platform.HttpPlatform
+  | Etag.Generator
+  | NodeContext.NodeContext,
+  ServeError
+> = internal.layerTest
