@@ -275,10 +275,13 @@ export {
  * @since 2.0.0
  * @category destructors
  */
-export const awaitAll: <T extends Iterable<Fiber<any, any>>>(
+export const awaitAll: <const T extends Iterable<Fiber<any, any>>>(
   fibers: T
 ) => Effect.Effect<
-  { -readonly [K in keyof T]: [T[K]] extends [Fiber.Variance<infer _A, infer _E>] ? Exit.Exit<_A, _E> : never }
+  [T] extends [ReadonlyArray<infer U>]
+    ? number extends T["length"] ? Array<U extends Fiber<infer A, infer E> ? Exit.Exit<A, E> : never>
+    : { -readonly [K in keyof T]: T[K] extends Fiber<infer A, infer E> ? Exit.Exit<A, E> : never }
+    : Array<T extends Iterable<infer U> ? U extends Fiber<infer A, infer E> ? Exit.Exit<A, E> : never : never>
 > = fiberRuntime.fiberAwaitAll
 
 /**
