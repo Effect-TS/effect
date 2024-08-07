@@ -65,3 +65,22 @@ it.effect.skipIf(false)("effect skipIf (false)", () => Effect.sync(() => expect(
 
 it.effect.runIf(true)("effect runIf (true)", () => Effect.sync(() => expect(1).toEqual(1)))
 it.effect.runIf(false)("effect runIf (false)", () => Effect.die("not run anyway"))
+
+// The following test is expected to fail because it simulates a test timeout.
+// Be aware that eventual "failure" of the test is only logged out.
+it.scopedLive("interrupts on timeout", (ctx) =>
+  Effect.gen(function*() {
+    let acquired = false
+
+    ctx.onTestFailed(() => {
+      if (acquired) {
+        console.error("'effect is interrupted on timeout' @effect/vitest test failed")
+      }
+    })
+
+    yield* Effect.acquireRelease(
+      Effect.sync(() => acquired = true),
+      () => Effect.sync(() => acquired = false)
+    )
+    yield* Effect.sleep(1000)
+  }), { timeout: 100, fails: true })

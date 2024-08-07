@@ -7,9 +7,11 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import { flow, identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
@@ -19,9 +21,19 @@ import * as V from "vitest"
 import type * as Vitest from "./index.js"
 
 /** @internal */
-const runTest = <E, A>(effect: Effect.Effect<A, E>) =>
+const runTest = (ctx: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
-    const exit: Exit.Exit<A, E> = yield* Effect.exit(effect)
+    const exitFiber = yield* Effect.fork(Effect.exit(effect))
+    const runtime = yield* Effect.runtime()
+
+    ctx.onTestFinished(() =>
+      Fiber.interrupt(exitFiber).pipe(
+        Effect.asVoid,
+        Runtime.runPromise(runtime)
+      )
+    )
+
+    const exit = yield* Fiber.join(exitFiber)
     if (Exit.isSuccess(exit)) {
       return () => {}
     } else {
@@ -60,20 +72,28 @@ export const addEqualityTesters = () => {
 const makeTester = <R>(
   mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>
 ): Vitest.Vitest.Tester<R> => {
-  const run =
-    <A, E, TestArgs extends Array<any>>(self: Vitest.Vitest.TestFunction<A, E, R, TestArgs>) => (...args: TestArgs) =>
-      pipe(Effect.suspend(() => self(...args)), mapEffect, runTest)
+  const run = <A, E, TestArgs extends Array<unknown>>(
+    ctx: V.TaskContext<V.Test<object>> & V.TestContext & object,
+    args: TestArgs,
+    self: Vitest.Vitest.TestFunction<A, E, R, TestArgs>
+  ) => pipe(Effect.suspend(() => self(...args)), mapEffect, runTest(ctx))
 
-  const f: Vitest.Vitest.Test<R> = (name, self, timeout) => V.it(name, run(self), timeout)
+  const f: Vitest.Vitest.Test<R> = (name, self, timeout) => V.it(name, (ctx) => run(ctx, [ctx], self), timeout)
 
-  const skip: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) => V.it.skip(name, run(self), timeout)
+  const skip: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
+    V.it.skip(name, (ctx) => run(ctx, [ctx], self), timeout)
   const skipIf: Vitest.Vitest.Tester<R>["skipIf"] = (condition) => (name, self, timeout) =>
-    V.it.skipIf(condition)(name, run(self), timeout)
+    V.it.skipIf(condition)(name, (ctx) => run(ctx, [ctx], self), timeout)
   const runIf: Vitest.Vitest.Tester<R>["runIf"] = (condition) => (name, self, timeout) =>
-    V.it.runIf(condition)(name, run(self), timeout)
-  const only: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) => V.it.only(name, run(self), timeout)
+    V.it.runIf(condition)(name, (ctx) => run(ctx, [ctx], self), timeout)
+  const only: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
+    V.it.only(name, (ctx) => run(ctx, [ctx], self), timeout)
   const each: Vitest.Vitest.Tester<R>["each"] = (cases) => (name, self, timeout) =>
-    V.it.each(cases)(name, run(self), timeout)
+    V.it.for(cases)(
+      name,
+      typeof timeout === "number" ? { timeout } : timeout ?? {},
+      (args, ctx) => run(ctx, [args], self)
+    )
 
   return Object.assign(f, { skip, skipIf, runIf, only, each })
 }
