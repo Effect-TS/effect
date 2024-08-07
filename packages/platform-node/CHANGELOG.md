@@ -1,5 +1,30 @@
 # @effect/platform-node
 
+## 0.56.5
+
+### Patch Changes
+
+- [#3409](https://github.com/Effect-TS/effect/pull/3409) [`056b710`](https://github.com/Effect-TS/effect/commit/056b7108978e70612176c23991916f678d947f38) Thanks @sukovanej! - Add `NodeHttpServer.layerTest`.
+
+  ```ts
+  import { HttpClientRequest, HttpRouter, HttpServer } from "@effect/platform";
+  import { NodeHttpServer } from "@effect/platform-node";
+  import { expect, it } from "@effect/vitest";
+  import { Effect } from "effect";
+
+  it.scoped("test", () =>
+    Effect.gen(function* () {
+      yield* HttpServer.serveEffect(HttpRouter.empty);
+      const response = yield* HttpClientRequest.get("/");
+      expect(response.status, 404);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+  ```
+
+- Updated dependencies [[`056b710`](https://github.com/Effect-TS/effect/commit/056b7108978e70612176c23991916f678d947f38)]:
+  - @effect/platform@0.61.5
+  - @effect/platform-node-shared@0.11.5
+
 ## 0.56.4
 
 ### Patch Changes

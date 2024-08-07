@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.61.5
+
+### Patch Changes
+
+- [#3409](https://github.com/Effect-TS/effect/pull/3409) [`056b710`](https://github.com/Effect-TS/effect/commit/056b7108978e70612176c23991916f678d947f38) Thanks @sukovanej! - Add `HttpClient.layerTest`.
+
 ## 0.61.4
 
 ### Patch Changes
