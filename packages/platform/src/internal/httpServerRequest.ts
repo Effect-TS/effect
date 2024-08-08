@@ -171,7 +171,15 @@ export const schemaBodyFormJson = <A, I, R>(schema: Schema.Schema<A, I, R>, opti
 
 /** @internal */
 export const fromWeb = (request: globalThis.Request): ServerRequest.HttpServerRequest =>
-  new ServerRequestImpl(request, request.url)
+  new ServerRequestImpl(request, removeHost(request.url))
+
+const removeHost = (url: string) => {
+  if (url[0] === "/") {
+    return url
+  }
+  const index = url.indexOf("/", url.indexOf("//") + 2)
+  return index === -1 ? "/" : url.slice(index)
+}
 
 class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpServerRequest {
   readonly [TypeId]: ServerRequest.TypeId
