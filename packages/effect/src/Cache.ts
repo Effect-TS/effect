@@ -23,13 +23,13 @@ export const CacheTypeId: unique symbol = internal.CacheTypeId
 export type CacheTypeId = typeof CacheTypeId
 
 /**
- * @since 2.0.0
+ * @since 3.6.2
  * @category symbols
  */
 export const ConsumerCacheTypeId: unique symbol = internal.ConsumerCacheTypeId
 
 /**
- * @since 2.0.0
+ * @since 3.6.2
  * @category symbols
  */
 export type ConsumerCacheTypeId = typeof ConsumerCacheTypeId
@@ -180,7 +180,7 @@ export declare namespace Cache {
     }
   }
   /**
-   * @since 2.0.0
+   * @since 3.6.2
    * @category models
    */
   export interface ConsumerVariance<in out Key, out Value, out Error> {
