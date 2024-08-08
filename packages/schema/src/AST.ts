@@ -481,9 +481,7 @@ export class Literal implements Annotated {
  */
 export const isLiteral: (ast: AST) => ast is Literal = createASTGuard("Literal")
 
-const $null = new Literal(null, {
-  [IdentifierAnnotationId]: "null"
-})
+const $null = new Literal(null)
 
 export {
   /**
