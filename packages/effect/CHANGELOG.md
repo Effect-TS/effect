@@ -1,5 +1,11 @@
 # effect
 
+## 3.6.2
+
+### Patch Changes
+
+- [#3435](https://github.com/Effect-TS/effect/pull/3435) [`fd4b2f6`](https://github.com/Effect-TS/effect/commit/fd4b2f6516b325740dde615f1cf0229edf13ca0c) Thanks @Andarist! - ensure fiber is properly cleared in FiberHandle.unsafeSet
+
 ## 3.6.1
 
 ### Patch Changes
