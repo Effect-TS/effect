@@ -1,5 +1,5 @@
 import { pipe } from "../../Function.js"
-import type * as MetricHook from "../../MetricHook.js"
+import * as MetricHook from "../../MetricHook.js"
 import type * as MetricKey from "../../MetricKey.js"
 import type * as MetricKeyType from "../../MetricKeyType.js"
 import type * as MetricPair from "../../MetricPair.js"
@@ -9,6 +9,7 @@ import * as Option from "../../Option.js"
 import * as metricHook from "./hook.js"
 import * as metricKeyType from "./keyType.js"
 import * as metricPair from "./pair.js"
+import * as metricState from "./state.js"
 
 /** @internal */
 const MetricRegistrySymbolKey = "effect/MetricRegistry"
@@ -17,6 +18,47 @@ const MetricRegistrySymbolKey = "effect/MetricRegistry"
 export const MetricRegistryTypeId: MetricRegistry.MetricRegistryTypeId = Symbol.for(
   MetricRegistrySymbolKey
 ) as MetricRegistry.MetricRegistryTypeId
+
+const noop = () => {}
+
+const noopCounterHook: MetricHook.MetricHook.Counter<number> = MetricHook.make({
+  get: () => metricState.counter(0),
+  update: noop
+})
+const noopGaugeHook: MetricHook.MetricHook.Gauge<number> = MetricHook.make({
+  get: () => metricState.gauge(0),
+  update: noop
+})
+const noopFrequencies = new Map()
+const noopFrequencyHook: MetricHook.MetricHook.Frequency = MetricHook.make({
+  get: () => metricState.frequency(noopFrequencies),
+  update: noop
+})
+const noopBuckets: ReadonlyArray<readonly [number, number]> = []
+const noopHistogramHook: MetricHook.MetricHook.Histogram = MetricHook.make({
+  get: () =>
+    metricState.histogram({
+      buckets: noopBuckets,
+      count: 0,
+      min: 0,
+      max: 0,
+      sum: 0
+    }),
+  update: noop
+})
+const noopQuantiles: ReadonlyArray<readonly [number, Option.Option<number>]> = []
+const noopSummaryHook: MetricHook.MetricHook.Summary = MetricHook.make({
+  get: () =>
+    metricState.summary({
+      error: 0,
+      quantiles: noopQuantiles,
+      count: 0,
+      min: 0,
+      max: 0,
+      sum: 0
+    }),
+  update: noop
+})
 
 /** @internal */
 class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
@@ -48,19 +90,24 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
     )
     if (hook == null) {
       if (metricKeyType.isCounterKey(key.keyType)) {
-        return this.getCounter(key as unknown as MetricKey.MetricKey.Counter<any>) as any
+        return noopCounterHook as any
+        // return this.getCounter(key as unknown as MetricKey.MetricKey.Counter<any>) as any
       }
       if (metricKeyType.isGaugeKey(key.keyType)) {
-        return this.getGauge(key as unknown as MetricKey.MetricKey.Gauge<any>) as any
+        return noopGaugeHook as any
+        // return this.getGauge(key as unknown as MetricKey.MetricKey.Gauge<any>) as any
       }
       if (metricKeyType.isFrequencyKey(key.keyType)) {
-        return this.getFrequency(key as unknown as MetricKey.MetricKey.Frequency) as any
+        return noopFrequencyHook as any
+        // return this.getFrequency(key as unknown as MetricKey.MetricKey.Frequency) as any
       }
       if (metricKeyType.isHistogramKey(key.keyType)) {
-        return this.getHistogram(key as unknown as MetricKey.MetricKey.Histogram) as any
+        return noopHistogramHook as any
+        // return this.getHistogram(key as unknown as MetricKey.MetricKey.Histogram) as any
       }
       if (metricKeyType.isSummaryKey(key.keyType)) {
-        return this.getSummary(key as unknown as MetricKey.MetricKey.Summary) as any
+        return noopSummaryHook as any
+        // return this.getSummary(key as unknown as MetricKey.MetricKey.Summary) as any
       }
       throw new Error(
         "BUG: MetricRegistry.get - unknown MetricKeyType - please report an issue at https://github.com/Effect-TS/effect/issues"

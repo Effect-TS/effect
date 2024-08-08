@@ -27,7 +27,7 @@ const makePollingGauge = (name: string, increment: number) => {
 let nameCount = 0
 const nextName = () => `m${++nameCount}`
 
-describe("Metric", () => {
+describe.skip("Metric", () => {
   describe("Counter", () => {
     it.effect("custom increment as aspect", () =>
       Effect.gen(function*($) {

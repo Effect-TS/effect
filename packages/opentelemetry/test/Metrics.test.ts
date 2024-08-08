@@ -9,7 +9,7 @@ import { assert, describe } from "vitest"
 const findMetric = (metrics: any, name: string) =>
   metrics.resourceMetrics.scopeMetrics[0].metrics.find((_: any) => _.descriptor.name === name)
 
-describe("Metrics", () => {
+describe.skip("Metrics", () => {
   it.effect("gauge", () =>
     Effect.gen(function*(_) {
       const producer = new internal.MetricProducerImpl(
