@@ -184,7 +184,7 @@ export const unsafeSet: {
       return
     }
     self.state.fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
-    self.state.fiber === undefined
+    self.state.fiber = undefined
   }
 
   ;(fiber as FiberRuntime<unknown, unknown>).setFiberRef(FiberRef.unhandledErrorLogLevel, Option.none())
