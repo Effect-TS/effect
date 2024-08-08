@@ -320,8 +320,11 @@ S.transform(aContext, bContext, { decode: () => 1, encode: () => "" })
 // attachPropertySignature
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a: string; readonly _tag: "A"; }, { readonly a: string; }, "aContext">
+// $ExpectType SchemaClass<{ readonly a: string; readonly _tag: "A"; }, { readonly a: string; }, "aContext">
 S.Struct({ a: aContext }).pipe(S.attachPropertySignature("_tag", "A"))
+
+// $ExpectType SchemaClass<{ readonly a: string; readonly _tag: "A"; }, { readonly a: string; }, "aContext">
+S.attachPropertySignature(S.Struct({ a: aContext }), "_tag", "A")
 
 // ---------------------------------------------
 // annotations (method)
