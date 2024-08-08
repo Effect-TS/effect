@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.56.6
+
+### Patch Changes
+
+- [#3428](https://github.com/Effect-TS/effect/pull/3428) [`76b0496`](https://github.com/Effect-TS/effect/commit/76b0496ff9d7670e3f4c07ae924d30ed7f613cee) Thanks @tim-smart! - fix for missing global undici dispatcher
+
 ## 0.56.5
 
 ### Patch Changes
