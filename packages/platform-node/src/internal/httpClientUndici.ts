@@ -243,4 +243,4 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
 export const layerWithoutDispatcher = Layer.effect(Client.HttpClient, Effect.map(Dispatcher, make))
 
 /** @internal */
-export const layer = Layer.provide(layerWithoutDispatcher, dispatcherLayerGlobal)
+export const layer = Layer.provide(layerWithoutDispatcher, dispatcherLayer)
