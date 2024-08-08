@@ -1204,18 +1204,24 @@ S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), "_id")
 // attachPropertySignature
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: number; }, never>
+// $ExpectType SchemaClass<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: number; }, never>
 pipe(S.Struct({ radius: S.Number }), S.attachPropertySignature("kind", "circle"))
 
-// $ExpectType Schema<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: string; }, never>
+// $ExpectType SchemaClass<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: string; }, never>
 pipe(S.Struct({ radius: S.NumberFromString }), S.attachPropertySignature("kind", "circle"))
+
+// $ExpectType SchemaClass<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: number; }, never>
+S.attachPropertySignature(S.Struct({ radius: S.Number }), "kind", "circle")
+
+// $ExpectType SchemaClass<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: string; }, never>
+S.attachPropertySignature(S.Struct({ radius: S.NumberFromString }), "kind", "circle")
 
 const taggedStruct = <Name extends AST.LiteralValue | symbol, Fields extends S.Struct.Fields>(
   name: Name,
   fields: Fields
 ) => S.Struct(fields).pipe(S.attachPropertySignature("_tag", name))
 
-// $ExpectType Schema<{ readonly a: string; readonly _tag: "A"; }, { readonly a: string; }, never>
+// $ExpectType SchemaClass<{ readonly a: string; readonly _tag: "A"; }, { readonly a: string; }, never>
 taggedStruct("A", { a: S.String })
 
 // ---------------------------------------------
