@@ -14,14 +14,14 @@ import * as WorkflowContext from "./WorkflowContext.js"
 /**
  * @since 1.0.0
  */
-export function make<A, IA, E, IE>(
+export function make<A, IA, RA, E, IE, RE>(
   activityId: string,
-  successSchema: Schema.Schema<A, IA>,
-  failureSchema: Schema.Schema<E, IE>
+  successSchema: Schema.Schema<A, IA, RA>,
+  failureSchema: Schema.Schema<E, IE, RE>
 ) {
   return <R>(
     execute: Effect.Effect<A, E, R>
-  ): Effect.Effect<A, E, Exclude<R, ActivityContext.ActivityContext> | WorkflowContext.WorkflowContext> => {
+  ): Effect.Effect<A, E, RA | RE | Exclude<R, ActivityContext.ActivityContext> | WorkflowContext.WorkflowContext> => {
     return Effect.gen(function*($) {
       const context = yield* $(WorkflowContext.WorkflowContext)
       const persistenceId = context.makePersistenceId(activityId)

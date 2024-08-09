@@ -1,9 +1,9 @@
+import type * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type * as Message from "../Message.js"
-import type * as RecipientAddress from "../RecipientAddress.js"
+import type * as Entity from "../Entity.js"
+import type { RecipientAddress } from "../RecipientAddress.js"
 import type * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
-import type * as RecipientType from "../RecipientType.js"
 import type * as ShardId from "../ShardId.js"
 
 /** @internal */
@@ -31,12 +31,12 @@ export function make(
 
 /** @internal */
 export const recipientAddress: Effect.Effect<
-  RecipientAddress.RecipientAddress,
+  RecipientAddress,
   never,
   RecipientBehaviourContext.RecipientBehaviourContext
 > = Effect.map(
   recipientBehaviourContextTag,
-  (_) => _.recipientAddress
+  (_) => _.address
 )
 
 /** @internal */
@@ -53,13 +53,13 @@ export const shardId: Effect.Effect<ShardId.ShardId, never, RecipientBehaviourCo
   )
 
 /** @internal */
-export const recipientType: Effect.Effect<
-  RecipientType.RecipientType<Message.Message.Any>,
+export const entity: Effect.Effect<
+  Entity.Entity<Schema.TaggedRequest.Any>,
   never,
   RecipientBehaviourContext.RecipientBehaviourContext
 > = Effect.map(
   recipientBehaviourContextTag,
-  (_) => _.recipientType
+  (_) => _.entity
 )
 
 /** @internal */

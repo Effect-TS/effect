@@ -1,15 +1,17 @@
 /**
  * @since 1.0.0
  */
-import type { Message } from "@effect/cluster/Message"
+import type * as Schema from "@effect/schema/Schema"
+import type * as Serializable from "@effect/schema/Serializable"
 import type { SqlClient } from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import type { Stream } from "effect/Stream"
+import type { Entity } from "./Entity.js"
+import type { Envelope } from "./Envelope.js"
 import * as Internal from "./internal/atLeastOnceStorage.js"
-import type { RecipientType } from "./RecipientType.js"
 import type { Serialization } from "./Serialization.js"
 import type { SerializedEnvelope } from "./SerializedEnvelope.js"
 import type { ShardId } from "./ShardId.js"
@@ -35,23 +37,23 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
    * Upserts a message into the storage, eventually returning the already
    * existing message state as result in the storage.
    */
-  upsert<Msg extends Message.Any>(
-    recipientType: RecipientType<Msg>,
+  upsert<Msg extends Schema.TaggedRequest.Any>(
+    entity: Entity<Msg>,
     shardId: ShardId,
     entityId: string,
-    message: Msg
-  ): Effect<void>
+    message: Envelope<Msg>
+  ): Effect<void, never, Serializable.SerializableWithResult.Context<Msg>>
 
   /**
    * Marks the specified message as processed to prevent additional attempts to
    * send the message.
    */
-  markAsProcessed<Msg extends Message.Any>(
-    recipientType: RecipientType<Msg>,
+  markAsProcessed<Msg extends Schema.TaggedRequest.Any>(
+    entity: Entity<Msg>,
     shardId: ShardId,
     entityId: string,
-    message: Msg
-  ): Effect<void>
+    message: Envelope<Msg>
+  ): Effect<void, never, Serializable.SerializableWithResult.Context<Msg>>
 
   /**
    * Returns a stream of messages that will be sent to the local pod as a second
