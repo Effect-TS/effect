@@ -186,15 +186,17 @@ schema (Declaration): DateFromSelf`
   it("Object", () => {
     const jsonSchema: JSONSchema.JsonSchema7Root = {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "$ref": "#/$defs/object",
-      "$defs": {
-        object: {
-          "$id": "/schemas/object",
-          oneOf: [{ "type": "object" }, { "type": "array" }],
-          description: "an object in the TypeScript meaning, i.e. the `object` type",
-          title: "object"
+      "$id": "/schemas/object",
+      "anyOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "array"
         }
-      }
+      ],
+      "description": "an object in the TypeScript meaning, i.e. the `object` type",
+      "title": "object"
     }
     expectJSONSchema(Schema.Object, jsonSchema)
     const validate = new Ajv(ajvOptions).compile(jsonSchema)
@@ -249,33 +251,32 @@ schema (Declaration): DateFromSelf`
     it("Null", () => {
       expectJSONSchema(Schema.Null, {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "$ref": "#/$defs/null",
-        "$defs": { null: { const: null } }
+        "enum": [null]
       })
     })
 
     it("string literals", () => {
       expectJSONSchema(Schema.Literal("a"), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        const: "a"
+        "enum": ["a"]
       })
     })
 
     it("number literals", () => {
       expectJSONSchema(Schema.Literal(1), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        const: 1
+        "enum": [1]
       })
     })
 
     it("boolean literals", () => {
       expectJSONSchema(Schema.Literal(true), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        const: true
+        "enum": [true]
       })
       expectJSONSchema(Schema.Literal(false), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        const: false
+        "enum": [false]
       })
     })
   })
@@ -289,14 +290,14 @@ schema (Declaration): DateFromSelf`
       expectJSONSchema(Schema.Enums(Fruits), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "$comment": "/schemas/enums",
-        "oneOf": [
+        "anyOf": [
           {
             "title": "Apple",
-            "const": 0
+            "enum": [0]
           },
           {
             "title": "Banana",
-            "const": 1
+            "enum": [1]
           }
         ]
       })
@@ -310,14 +311,14 @@ schema (Declaration): DateFromSelf`
       expectJSONSchema(Schema.Enums(Fruits), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "$comment": "/schemas/enums",
-        "oneOf": [
+        "anyOf": [
           {
             "title": "Apple",
-            "const": "apple"
+            "enum": ["apple"]
           },
           {
             "title": "Banana",
-            "const": "banana"
+            "enum": ["banana"]
           }
         ]
       })
@@ -332,18 +333,18 @@ schema (Declaration): DateFromSelf`
       expectJSONSchema(Schema.Enums(Fruits), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "$comment": "/schemas/enums",
-        "oneOf": [
+        "anyOf": [
           {
             "title": "Apple",
-            "const": "apple"
+            "enum": ["apple"]
           },
           {
             "title": "Banana",
-            "const": "banana"
+            "enum": ["banana"]
           },
           {
             "title": "Cantaloupe",
-            "const": 0
+            "enum": [0]
           }
         ]
       })
@@ -358,18 +359,18 @@ schema (Declaration): DateFromSelf`
       expectJSONSchema(Schema.Enums(Fruits), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "$comment": "/schemas/enums",
-        "oneOf": [
+        "anyOf": [
           {
             "title": "Apple",
-            "const": "apple"
+            "enum": ["apple"]
           },
           {
             "title": "Banana",
-            "const": "banana"
+            "enum": ["banana"]
           },
           {
             "title": "Cantaloupe",
-            "const": 3
+            "enum": [3]
           }
         ]
       })
@@ -402,10 +403,10 @@ schema (Declaration): DateFromSelf`
       expectJSONSchema(Schema.Union(Schema.Literal(1, true), Schema.String), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "anyOf": [
-          { "enum": [1, true] },
           {
             "type": "string"
-          }
+          },
+          { "enum": [1, true] }
         ]
       })
     })
@@ -420,11 +421,11 @@ schema (Declaration): DateFromSelf`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "anyOf": [
-            { "const": true, "description": "description" },
+            { "enum": [true], "description": "description" },
             {
               "type": "string"
             },
-            { "const": 1 }
+            { "enum": [1] }
           ]
         }
       )
@@ -440,11 +441,11 @@ schema (Declaration): DateFromSelf`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "anyOf": [
-            { "enum": [1, 2] },
-            { "const": true, "description": "description" },
+            { "enum": [true], "description": "description" },
             {
               "type": "string"
-            }
+            },
+            { "enum": [1, 2] }
           ]
         }
       )
@@ -460,11 +461,11 @@ schema (Declaration): DateFromSelf`
           "$schema": "http://json-schema.org/draft-07/schema#",
           "anyOf": [
             {
-              "const": "foo",
+              "enum": ["foo"],
               "description": "I'm a foo"
             },
             {
-              "const": "bar",
+              "enum": ["bar"],
               "description": "I'm a bar"
             }
           ]
@@ -488,11 +489,11 @@ schema (Declaration): DateFromSelf`
           "$schema": "http://json-schema.org/draft-07/schema#",
           "$defs": {
             "bar": {
-              "const": "bar",
+              "enum": ["bar"],
               "description": "I'm a bar"
             },
             "foo": {
-              "const": "foo",
+              "enum": ["foo"],
               "description": "I'm a foo"
             }
           },
@@ -692,7 +693,7 @@ schema (Declaration): DateFromSelf`
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$id": "/schemas/{}",
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "oneOf": [{
+        "anyOf": [{
           "type": "object"
         }, {
           "type": "array"
@@ -806,7 +807,8 @@ details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
               }
             },
             "additionalProperties": false
-          }
+          },
+          false
         )
       })
 
@@ -1368,7 +1370,7 @@ schema (Suspend): <suspended schema>`
             ],
             "properties": {
               "type": {
-                "const": "operation"
+                "enum": ["operation"]
               },
               "operator": {
                 "enum": ["+", "-"]
@@ -1390,7 +1392,7 @@ schema (Suspend): <suspended schema>`
             ],
             "properties": {
               "type": {
-                "const": "expression"
+                "enum": ["expression"]
               },
               "value": {
                 "anyOf": [
@@ -1898,9 +1900,9 @@ schema (Suspend): <suspended schema>`
       }, false)
       expectJSONSchema(
         Schema.Date.annotations({
-          jsonSchema: { oneOf: [{ type: "object" }, { type: "array" }] }
+          jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
         }),
-        { "$schema": "http://json-schema.org/draft-07/schema#", oneOf: [{ type: "object" }, { type: "array" }] },
+        { "$schema": "http://json-schema.org/draft-07/schema#", anyOf: [{ type: "object" }, { type: "array" }] },
         false
       )
       expectJSONSchema(
@@ -2135,17 +2137,12 @@ schema (Suspend): <suspended schema>`
                     "minLength": 1
                   },
                   {
-                    "$ref": "#/$defs/null"
+                    "enum": [null]
                   }
                 ]
               }
             },
-            "additionalProperties": false,
-            "$defs": {
-              "null": {
-                "const": null
-              }
-            }
+            "additionalProperties": false
           }
         )
       })
@@ -2272,8 +2269,6 @@ const decodeAST = (
       case "/schemas/{}":
         return emptyTypeLiteralAST
     }
-  } else if ("const" in schema) {
-    return new AST.Literal(schema.const)
   } else if ("type" in schema) {
     const type = schema.type
     if (type === "string") {
@@ -2341,12 +2336,10 @@ const decodeAST = (
   } else if ("enum" in schema) {
     return AST.Union.make(schema.enum.map((literal) => new AST.Literal(literal)))
   } else if ("anyOf" in schema) {
-    return AST.Union.make(schema.anyOf.map((s) => decodeAST(s, $defs)))
-  } else if ("oneOf" in schema) {
     if ("$comment" in schema && schema.$comment === "/schemas/enums") {
-      return new AST.Enums(schema.oneOf.map((e) => [e.title, e.const]))
+      return new AST.Enums(schema.anyOf.map((e) => [e.title, e.enum[0]]))
     }
-    return AST.Union.make(schema.oneOf.map((s) => decodeAST(s, $defs)))
+    return AST.Union.make(schema.anyOf.map((s) => decodeAST(s, $defs)))
   } else if ("$ref" in schema) {
     if ($defs) {
       const id = schema.$ref.substring(JSONSchema.DEFINITION_PREFIX.length)

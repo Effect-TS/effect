@@ -481,9 +481,7 @@ export class Literal implements Annotated {
  */
 export const isLiteral: (ast: AST) => ast is Literal = createASTGuard("Literal")
 
-const $null = new Literal(null, {
-  [IdentifierAnnotationId]: "null"
-})
+const $null = new Literal(null)
 
 export {
   /**
@@ -974,7 +972,6 @@ export class ObjectKeyword implements Annotated {
  * @since 0.67.0
  */
 export const objectKeyword: ObjectKeyword = new ObjectKeyword({
-  [IdentifierAnnotationId]: "object",
   [TitleAnnotationId]: "object",
   [DescriptionAnnotationId]: "an object in the TypeScript meaning, i.e. the `object` type"
 })

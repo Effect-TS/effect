@@ -47,11 +47,11 @@ export interface JsonSchema7Void extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 0.67.0
+ * @since 0.70.0
  */
 export interface JsonSchema7object extends JsonSchemaAnnotations {
   $id: "/schemas/object"
-  oneOf: [
+  anyOf: [
     { type: "object" },
     { type: "array" }
   ]
@@ -59,11 +59,11 @@ export interface JsonSchema7object extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 0.67.0
+ * @since 0.70.0
  */
 export interface JsonSchema7empty extends JsonSchemaAnnotations {
   $id: "/schemas/{}"
-  oneOf: [
+  anyOf: [
     { type: "object" },
     { type: "array" }
   ]
@@ -75,14 +75,6 @@ export interface JsonSchema7empty extends JsonSchemaAnnotations {
  */
 export interface JsonSchema7Ref extends JsonSchemaAnnotations {
   $ref: string
-}
-
-/**
- * @category model
- * @since 0.67.0
- */
-export interface JsonSchema7Const extends JsonSchemaAnnotations {
-  const: AST.LiteralValue
 }
 
 /**
@@ -147,27 +139,19 @@ export interface JsonSchema7Array extends JsonSchemaAnnotations {
  * @category model
  * @since 0.67.0
  */
-export interface JsonSchema7OneOf extends JsonSchemaAnnotations {
-  oneOf: Array<JsonSchema7>
-}
-
-/**
- * @category model
- * @since 0.67.0
- */
 export interface JsonSchema7Enum extends JsonSchemaAnnotations {
   enum: Array<AST.LiteralValue>
 }
 
 /**
  * @category model
- * @since 0.67.0
+ * @since 0.70.0
  */
 export interface JsonSchema7Enums extends JsonSchemaAnnotations {
   $comment: "/schemas/enums"
-  oneOf: Array<{
+  anyOf: Array<{
     title: string
-    const: string | number
+    enum: [string | number]
   }>
 }
 
@@ -194,7 +178,7 @@ export interface JsonSchema7Object extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 0.69.0
+ * @since 0.70.0
  */
 export type JsonSchema7 =
   | JsonSchema7Any
@@ -203,13 +187,11 @@ export type JsonSchema7 =
   | JsonSchema7object
   | JsonSchema7empty
   | JsonSchema7Ref
-  | JsonSchema7Const
   | JsonSchema7String
   | JsonSchema7Number
   | JsonSchema7Integer
   | JsonSchema7Boolean
   | JsonSchema7Array
-  | JsonSchema7OneOf
   | JsonSchema7Enum
   | JsonSchema7Enums
   | JsonSchema7AnyOf
@@ -255,7 +237,7 @@ const voidJsonSchema: JsonSchema7 = { $id: "/schemas/void" }
 
 const objectJsonSchema: JsonSchema7 = {
   "$id": "/schemas/object",
-  "oneOf": [
+  "anyOf": [
     { "type": "object" },
     { "type": "array" }
   ]
@@ -263,7 +245,7 @@ const objectJsonSchema: JsonSchema7 = {
 
 const empty = (): JsonSchema7 => ({
   "$id": "/schemas/{}",
-  "oneOf": [
+  "anyOf": [
     { "type": "object" },
     { "type": "array" }
   ]
@@ -369,9 +351,9 @@ const go = (
     case "Literal": {
       const literal = ast.literal
       if (literal === null) {
-        return merge({ const: null }, getJsonSchemaAnnotations(ast))
+        return merge({ enum: [null] }, getJsonSchemaAnnotations(ast))
       } else if (Predicate.isString(literal) || Predicate.isNumber(literal) || Predicate.isBoolean(literal)) {
-        return merge({ const: literal }, getJsonSchemaAnnotations(ast))
+        return merge({ enum: [literal] }, getJsonSchemaAnnotations(ast))
       }
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     }
@@ -532,26 +514,22 @@ const go = (
       const anyOf: Array<JsonSchema7> = []
       for (const type of ast.types) {
         const schema = go(type, $defs, true, path)
-        if ("const" in schema) {
+        if ("enum" in schema) {
           if (Object.keys(schema).length > 1) {
             anyOf.push(schema)
           } else {
-            enums.push(schema.const)
+            for (const e of schema.enum) {
+              enums.push(e)
+            }
           }
         } else {
           anyOf.push(schema)
         }
       }
       if (anyOf.length === 0) {
-        if (enums.length === 1) {
-          return merge({ const: enums[0] }, getJsonSchemaAnnotations(ast))
-        } else {
-          return merge({ enum: enums }, getJsonSchemaAnnotations(ast))
-        }
+        return merge({ enum: enums }, getJsonSchemaAnnotations(ast))
       } else {
-        if (enums.length === 1) {
-          anyOf.push({ const: enums[0] })
-        } else if (enums.length > 1) {
+        if (enums.length >= 1) {
           anyOf.push({ enum: enums })
         }
         return merge({ anyOf }, getJsonSchemaAnnotations(ast))
@@ -560,7 +538,7 @@ const go = (
     case "Enums": {
       return merge({
         $comment: "/schemas/enums",
-        oneOf: ast.enums.map((e) => ({ title: e[0], const: e[1] }))
+        anyOf: ast.enums.map((e) => ({ title: e[0], enum: [e[1]] }))
       }, getJsonSchemaAnnotations(ast))
     }
     case "Refinement": {
