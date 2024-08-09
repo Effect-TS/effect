@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.61.7
+
+### Patch Changes
+
+- [#3437](https://github.com/Effect-TS/effect/pull/3437) [`17245a4`](https://github.com/Effect-TS/effect/commit/17245a4e783c19dee51529600b3b40f164fa59bc) Thanks @tim-smart! - add Cookies.get/getValue apis
+
 ## 0.61.6
 
 ### Patch Changes
