@@ -262,7 +262,7 @@ export const isFull: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isFull
  * @since 2.0.0
  * @category getters
  */
-export const isShutdown: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isShutdown
+export const isShutdown: <A>(self: TDequeue<A> | TEnqueue<A>) => STM.STM<boolean> = internal.isShutdown
 
 /**
  * Places one value in the queue.
@@ -345,7 +345,7 @@ export const seek: {
  * @since 2.0.0
  * @category mutations
  */
-export const shutdown: <A>(self: TQueue<A>) => STM.STM<void> = internal.shutdown
+export const shutdown: <A>(self: TDequeue<A> | TEnqueue<A>) => STM.STM<void> = internal.shutdown
 
 /**
  * Retrieves the size of the queue, which is equal to the number of elements
