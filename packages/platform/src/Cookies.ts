@@ -445,6 +445,35 @@ export const remove: {
 } = dual(2, (self: Cookies, name: string) => fromReadonlyRecord(Record.remove(self.cookies, name)))
 
 /**
+ * Get a cookie from a Cookies object
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const get: {
+  (name: string): (self: Cookies) => Option.Option<Cookie>
+  (self: Cookies, name: string): Option.Option<Cookie>
+} = dual(
+  (args) => isCookies(args[0]),
+  (self: Cookies, name: string): Option.Option<Cookie> => Record.get(self.cookies, name)
+)
+
+/**
+ * Get a cookie from a Cookies object
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getValue: {
+  (name: string): (self: Cookies) => Option.Option<string>
+  (self: Cookies, name: string): Option.Option<string>
+} = dual(
+  (args) => isCookies(args[0]),
+  (self: Cookies, name: string): Option.Option<string> =>
+    Option.map(Record.get(self.cookies, name), (cookie) => cookie.value)
+)
+
+/**
  * Add a cookie to a Cookies object
  *
  * @since 1.0.0
