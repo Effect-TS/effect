@@ -701,4 +701,44 @@ describe("HttpServer", () => {
       const res = yield* HttpClientRequest.get("/").pipe(client)
       assert.deepStrictEqual(res.status, 500)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  const routerA = HttpRouter.empty.pipe(
+    HttpRouter.get("/a", HttpServerResponse.text("a")),
+    HttpRouter.mountApp("/ma", HttpServerResponse.text("ma"))
+  )
+
+  const routerB = HttpRouter.empty.pipe(
+    HttpRouter.get("/b", HttpServerResponse.text("b")),
+    HttpRouter.mountApp("/mb", HttpServerResponse.text("mb"))
+  )
+
+  it.scoped("concat", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.concat(routerA, routerB).pipe(HttpServer.serveEffect())
+      const [responseA, responseMountA, responseB, responseMountB] = yield* Effect.all([
+        HttpClientRequest.get("/a"),
+        HttpClientRequest.get("/ma"),
+        HttpClientRequest.get("/b"),
+        HttpClientRequest.get("/mb")
+      ])
+      expect(yield* responseA.text).toEqual("a")
+      expect(yield* responseMountA.text).toEqual("ma")
+      expect(yield* responseB.text).toEqual("b")
+      expect(yield* responseMountB.text).toEqual("mb")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.scoped("concatAll", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.concatAll(routerA, routerB).pipe(HttpServer.serveEffect())
+      const [responseA, responseMountA, responseB, responseMountB] = yield* Effect.all([
+        HttpClientRequest.get("/a"),
+        HttpClientRequest.get("/ma"),
+        HttpClientRequest.get("/b"),
+        HttpClientRequest.get("/mb")
+      ])
+      expect(yield* responseA.text).toEqual("a")
+      expect(yield* responseMountA.text).toEqual("ma")
+      expect(yield* responseB.text).toEqual("b")
+      expect(yield* responseMountB.text).toEqual("mb")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 })
