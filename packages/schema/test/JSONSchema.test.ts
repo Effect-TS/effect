@@ -186,15 +186,17 @@ schema (Declaration): DateFromSelf`
   it("Object", () => {
     const jsonSchema: JSONSchema.JsonSchema7Root = {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "$ref": "#/$defs/object",
-      "$defs": {
-        object: {
-          "$id": "/schemas/object",
-          anyOf: [{ "type": "object" }, { "type": "array" }],
-          description: "an object in the TypeScript meaning, i.e. the `object` type",
-          title: "object"
+      "$id": "/schemas/object",
+      "anyOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "array"
         }
-      }
+      ],
+      "description": "an object in the TypeScript meaning, i.e. the `object` type",
+      "title": "object"
     }
     expectJSONSchema(Schema.Object, jsonSchema)
     const validate = new Ajv(ajvOptions).compile(jsonSchema)

@@ -972,7 +972,6 @@ export class ObjectKeyword implements Annotated {
  * @since 0.67.0
  */
 export const objectKeyword: ObjectKeyword = new ObjectKeyword({
-  [IdentifierAnnotationId]: "object",
   [TitleAnnotationId]: "object",
   [DescriptionAnnotationId]: "an object in the TypeScript meaning, i.e. the `object` type"
 })
