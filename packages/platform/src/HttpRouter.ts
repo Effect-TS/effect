@@ -381,6 +381,14 @@ export const concat: {
 
 /**
  * @since 1.0.0
+ * @category combinators
+ */
+export const concatAll: <Routers extends ReadonlyArray<HttpRouter<unknown, unknown>>>(
+  ...routers: Routers
+) => [Routers[number]] extends [HttpRouter<infer E, infer R>] ? HttpRouter<E, R> : never = internal.concatAll
+
+/**
+ * @since 1.0.0
  * @category routing
  */
 export const mount: {
