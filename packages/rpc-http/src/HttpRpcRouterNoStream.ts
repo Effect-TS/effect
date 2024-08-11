@@ -5,7 +5,7 @@ import type * as App from "@effect/platform/HttpApp"
 import type * as ServerError from "@effect/platform/HttpServerError"
 import * as ServerRequest from "@effect/platform/HttpServerRequest"
 import * as ServerResponse from "@effect/platform/HttpServerResponse"
-import * as Router from "@effect/rpc/Router"
+import * as Router from "@effect/rpc/RpcRouter"
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Effect from "effect/Effect"
 
@@ -13,11 +13,11 @@ import * as Effect from "effect/Effect"
  * @since 1.0.0
  * @category conversions
  */
-export const toHttpApp = <R extends Router.Router<any, any>>(self: R): App.Default<
+export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R): App.Default<
   ServerError.RequestError | ParseError,
-  Router.Router.Context<R>
+  Router.RpcRouter.Context<R>
 > => {
-  const handler = Router.toHandlerEffect(self)
+  const handler = Router.toHandlerNoStream(self)
   return ServerRequest.HttpServerRequest.pipe(
     Effect.flatMap((_) => _.json),
     Effect.flatMap(handler),

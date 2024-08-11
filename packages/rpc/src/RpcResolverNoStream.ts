@@ -13,8 +13,8 @@ import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Stream from "effect/Stream"
 import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
-import type * as Router from "./Router.js"
 import type * as Rpc from "./Rpc.js"
+import type * as Router from "./RpcRouter.js"
 
 /**
  * @since 1.0.0
@@ -23,9 +23,9 @@ import type * as Rpc from "./Rpc.js"
 export const make = <HR, E>(
   handler: (u: ReadonlyArray<unknown>) => Effect.Effect<unknown, E, HR>
 ) =>
-<R extends Router.Router<any, any>>(): RequestResolver.RequestResolver<
-  Rpc.Request<Router.Router.Request<R>>,
-  Serializable.SerializableWithResult.Context<Router.Router.Request<R>> | HR
+<R extends Router.RpcRouter<any, any>>(): RequestResolver.RequestResolver<
+  Rpc.Request<Router.RpcRouter.Request<R>>,
+  Serializable.SerializableWithResult.Context<Router.RpcRouter.Request<R>> | HR
 > => {
   const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
   const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
