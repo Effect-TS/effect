@@ -14,8 +14,8 @@ import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Stream from "effect/Stream"
 import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
-import type * as Router from "./Router.js"
 import * as Rpc from "./Rpc.js"
+import type * as Router from "./RpcRouter.js"
 
 /**
  * @since 1.0.0
@@ -24,9 +24,9 @@ import * as Rpc from "./Rpc.js"
 export const make = <HR, E>(
   handler: (u: ReadonlyArray<unknown>) => Stream.Stream<unknown, E, HR>
 ) =>
-<R extends Router.Router<any, any>>(): RequestResolver.RequestResolver<
-  Rpc.Request<Router.Router.Request<R>>,
-  Serializable.SerializableWithResult.Context<Router.Router.Request<R>> | HR
+<R extends Router.RpcRouter<any, any>>(): RequestResolver.RequestResolver<
+  Rpc.Request<Router.RpcRouter.Request<R>>,
+  Serializable.SerializableWithResult.Context<Router.RpcRouter.Request<R>> | HR
 > => {
   const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
   const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
@@ -48,7 +48,7 @@ export const make = <HR, E>(
           Stream.runForEach(
             Stream.filter(
               handler(payload),
-              (_): _ is Router.Router.Response => Arr.isArray(_) && _.length === 2
+              (_): _ is Router.RpcRouter.Response => Arr.isArray(_) && _.length === 2
             ),
             ([index, response]): Effect.Effect<void, ParseError, any> => {
               const request = effectRequests[index]
@@ -78,7 +78,7 @@ export const make = <HR, E>(
             Effect.map((payload) =>
               pipe(
                 handler([payload]),
-                Stream.mapEffect((_) => Effect.orDie(decode((_ as Router.Router.Response)[1]))),
+                Stream.mapEffect((_) => Effect.orDie(decode((_ as Router.RpcRouter.Response)[1]))),
                 Stream.flattenChunks,
                 Stream.flatMap(Exit.match({
                   onFailure: (cause) => Cause.isEmptyType(cause) ? Stream.empty : Stream.failCause(cause),

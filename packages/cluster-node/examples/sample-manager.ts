@@ -7,8 +7,8 @@ import * as PodsHealth from "@effect/cluster/PodsHealth"
 import * as ShardManager from "@effect/cluster/ShardManager"
 import { HttpClient, HttpClientRequest, HttpMiddleware, HttpRouter, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Resolver } from "@effect/rpc"
-import { HttpResolver, HttpRouter as RpcHttpRouter } from "@effect/rpc-http"
+import { RpcResolver } from "@effect/rpc"
+import { HttpRpcResolver, HttpRpcRouter } from "@effect/rpc-http"
 import { Context, Effect, Layer, Logger, LogLevel } from "effect"
 import { createServer } from "node:http"
 
@@ -16,7 +16,7 @@ const HttpLive = Layer.flatMap(
   Layer.effect(ManagerConfig.ManagerConfig, ManagerConfig.ManagerConfig),
   (config) =>
     HttpRouter.empty.pipe(
-      HttpRouter.post("/api/rest", RpcHttpRouter.toHttpApp(ShardManagerServiceRpc.router)),
+      HttpRouter.post("/api/rest", HttpRpcRouter.toHttpApp(ShardManagerServiceRpc.router)),
       HttpServer.serve(HttpMiddleware.logger),
       HttpServer.withLogAddress,
       Layer.provide(
@@ -35,13 +35,13 @@ const liveShardingManager = Effect.never.pipe(
   Layer.provide(StorageFile.storageFile),
   Layer.provide(PodsHealth.local),
   Layer.provide(PodsRpc.podsRpc<never>((podAddress) =>
-    HttpResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
+    HttpRpcResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
       HttpClient.fetchOk.pipe(
         HttpClient.mapRequest(
           HttpClientRequest.prependUrl(`http://${podAddress.host}:${podAddress.port}/api/rest`)
         )
       )
-    ).pipe(Resolver.toClient)
+    ).pipe(RpcResolver.toClient)
   )),
   Layer.provide(ManagerConfig.fromConfig),
   Layer.provide(HttpClient.layer)

@@ -6,8 +6,8 @@ import * as Pods from "@effect/cluster/Pods"
 import type * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
 import type * as ShardId from "@effect/cluster/ShardId"
 import * as ShardingException from "@effect/cluster/ShardingException"
-import type * as Resolver from "@effect/rpc/Resolver"
 import type * as Rpc from "@effect/rpc/Rpc"
+import type * as RpcResolver from "@effect/rpc/RpcResolver"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import type * as HashSet from "effect/HashSet"
@@ -25,7 +25,7 @@ import type * as ShardingServiceRpc from "./ShardingServiceRpc.js"
 export function podsRpc<R>(
   buildClient: (
     podAddress: PodAddress.PodAddress
-  ) => Resolver.Client<
+  ) => RpcResolver.Client<
     RequestResolver.RequestResolver<Rpc.Request<ShardingServiceRpc.ShardingServiceRpcRequest>, never>
   >
 ): Layer.Layer<Pods.Pods, never, R> {

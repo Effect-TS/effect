@@ -1,6 +1,4 @@
-import * as Resolver from "@effect/rpc/Resolver"
-import * as ResolverNoStream from "@effect/rpc/ResolverNoStream"
-import * as Router from "@effect/rpc/Router"
+import { RpcResolver, RpcResolverNoStream, RpcRouter } from "@effect/rpc"
 import * as Rpc from "@effect/rpc/Rpc"
 import { Schema } from "@effect/schema"
 import * as S from "@effect/schema/Schema"
@@ -34,7 +32,7 @@ class CreatePost extends S.TaggedRequest<CreatePost>()("CreatePost", {
   }
 }) {}
 
-const posts = Router.make(
+const posts = RpcRouter.make(
   Rpc.effect(CreatePost, ({ body }) => Effect.succeed(new Post({ id: 1, body })))
 )
 
@@ -102,7 +100,7 @@ class FailStream extends Rpc.StreamRequest<FailStream>()(
   { failure: SomeError, success: S.Number, payload: {} }
 ) {}
 
-const router = Router.make(
+const router = RpcRouter.make(
   posts,
   Rpc.effect(Greet, ({ name }) => Effect.succeed(`Hello, ${name}!`)),
   Rpc.effect(Fail, () =>
@@ -137,12 +135,12 @@ const router = Router.make(
       Stream.mapEffect((i) => i === 3 ? Effect.fail(new SomeError({ message: "fail" })) : Effect.succeed(i))
     ))
 ).pipe(
-  Router.provideService(Name, "John")
+  RpcRouter.provideService(Name, "John")
 )
 
-const handler = Router.toHandler(router)
-const handlerEffect = Router.toHandlerEffect(router)
-const handlerUndecoded = Router.toHandlerUndecoded(router)
+const handler = RpcRouter.toHandler(router)
+const handlerEffect = RpcRouter.toHandlerNoStream(router)
+const handlerUndecoded = RpcRouter.toHandlerUndecoded(router)
 const handlerArray = (u: ReadonlyArray<unknown>) =>
   handler(u.map((request, i) => ({
     request,
@@ -168,15 +166,15 @@ const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
   }))).pipe(
     Effect.map(Array.filter((_): _ is S.ExitEncoded<any, any, unknown> => Array.isArray(_) === false))
   )
-const resolver = Resolver.make(handler)<typeof router>()
-const resolverEffect = ResolverNoStream.make(handlerEffect)<typeof router>()
-const resolverWithHeaders = Resolver.annotateHeadersEffect(
+const resolver = RpcResolver.make(handler)<typeof router>()
+const resolverEffect = RpcResolverNoStream.make(handlerEffect)<typeof router>()
+const resolverWithHeaders = RpcResolver.annotateHeadersEffect(
   resolver,
   Effect.succeed({
     BAZ: "qux"
   })
 )
-const client = Resolver.toClient(resolver)
+const client = RpcResolver.toClient(resolver)
 
 describe("Router", () => {
   it("handler/", async () => {

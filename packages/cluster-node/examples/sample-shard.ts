@@ -9,8 +9,8 @@ import * as Sharding from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
 import { HttpClient, HttpClientRequest, HttpMiddleware, HttpRouter, HttpServer } from "@effect/platform"
 import { NodeHttpClient, NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Resolver } from "@effect/rpc"
-import { HttpResolver, HttpRouter as RpcHttpRouter } from "@effect/rpc-http"
+import { RpcResolver } from "@effect/rpc"
+import { HttpRpcResolver, HttpRpcRouter } from "@effect/rpc-http"
 import { Context, Effect, Exit, Layer, Logger, LogLevel, Ref } from "effect"
 import { createServer } from "node:http"
 import { CounterEntity } from "./sample-common.js"
@@ -19,7 +19,7 @@ const HttpLive = Layer.flatMap(
   Layer.effect(ShardingConfig.ShardingConfig, ShardingConfig.ShardingConfig),
   (config) =>
     HttpRouter.empty.pipe(
-      HttpRouter.post("/api/rest", RpcHttpRouter.toHttpApp(ShardingServiceRpc.router)),
+      HttpRouter.post("/api/rest", HttpRpcRouter.toHttpApp(ShardingServiceRpc.router)),
       HttpServer.serve(HttpMiddleware.logger),
       HttpServer.withLogAddress,
       Layer.provide(
@@ -63,23 +63,23 @@ const liveLayer = Sharding.registerEntity(
   Layer.provideMerge(Sharding.live),
   Layer.provide(StorageFile.storageFile),
   Layer.provide(PodsRpc.podsRpc<never>((podAddress) =>
-    HttpResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
+    HttpRpcResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
       HttpClient.fetchOk.pipe(
         HttpClient.mapRequest(
           HttpClientRequest.prependUrl(`http://${podAddress.host}:${podAddress.port}/api/rest`)
         )
       )
-    ).pipe(Resolver.toClient)
+    ).pipe(RpcResolver.toClient)
   )),
   Layer.provide(ShardManagerClientRpc.shardManagerClientRpc(
     (shardManagerUri) =>
-      HttpResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
+      HttpRpcResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
         HttpClient.fetchOk.pipe(
           HttpClient.mapRequest(
             HttpClientRequest.prependUrl(shardManagerUri)
           )
         )
-      ).pipe(Resolver.toClient)
+      ).pipe(RpcResolver.toClient)
   )),
   Layer.provide(Serialization.json),
   Layer.provide(NodeHttpClient.layerUndici),
