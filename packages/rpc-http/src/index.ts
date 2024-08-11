@@ -1,19 +1,19 @@
 /**
  * @since 1.0.0
  */
-export * as HttpResolver from "./HttpResolver.js"
+export * as HttpRpcResolver from "./HttpRpcResolver.js"
 
 /**
  * @since 1.0.0
  */
-export * as HttpResolverNoStream from "./HttpResolverNoStream.js"
+export * as HttpRpcResolverNoStream from "./HttpRpcResolverNoStream.js"
 
 /**
  * @since 1.0.0
  */
-export * as HttpRouter from "./HttpRouter.js"
+export * as HttpRpcRouter from "./HttpRpcRouter.js"
 
 /**
  * @since 1.0.0
  */
-export * as HttpRouterNoStream from "./HttpRouterNoStream.js"
+export * as HttpRpcRouterNoStream from "./HttpRpcRouterNoStream.js"

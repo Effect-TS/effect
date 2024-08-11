@@ -5,7 +5,7 @@ import type * as App from "@effect/platform/HttpApp"
 import type * as ServerError from "@effect/platform/HttpServerError"
 import * as ServerRequest from "@effect/platform/HttpServerRequest"
 import * as ServerResponse from "@effect/platform/HttpServerResponse"
-import * as Router from "@effect/rpc/Router"
+import * as Router from "@effect/rpc/RpcRouter"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -16,9 +16,9 @@ import * as Stream from "effect/Stream"
  * @since 1.0.0
  * @category conversions
  */
-export const toHttpApp = <R extends Router.Router<any, any>>(self: R): App.Default<
+export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R): App.Default<
   ServerError.RequestError,
-  Router.Router.Context<R>
+  Router.RpcRouter.Context<R>
 > => {
   const handler = Router.toHandler(self)
   return Effect.withFiberRuntime((fiber) => {
