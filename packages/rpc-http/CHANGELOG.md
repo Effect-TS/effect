@@ -1,5 +1,17 @@
 # @effect/rpc-http
 
+## 0.33.0
+
+### Minor Changes
+
+- [#3442](https://github.com/Effect-TS/effect/pull/3442) [`739834e`](https://github.com/Effect-TS/effect/commit/739834efd99621f92519a98e6f60553d9d7b316d) Thanks @tim-smart! - add Rpc prefix to rpc modules
+
+### Patch Changes
+
+- Updated dependencies [[`17245a4`](https://github.com/Effect-TS/effect/commit/17245a4e783c19dee51529600b3b40f164fa59bc), [`739834e`](https://github.com/Effect-TS/effect/commit/739834efd99621f92519a98e6f60553d9d7b316d), [`630d40e`](https://github.com/Effect-TS/effect/commit/630d40eaa7eb4d2f8b6705b16d4f426bc28a7d09), [`630d40e`](https://github.com/Effect-TS/effect/commit/630d40eaa7eb4d2f8b6705b16d4f426bc28a7d09), [`739834e`](https://github.com/Effect-TS/effect/commit/739834efd99621f92519a98e6f60553d9d7b316d)]:
+  - @effect/platform@0.61.7
+  - @effect/rpc@0.35.0
+
 ## 0.32.6
 
 ### Patch Changes
