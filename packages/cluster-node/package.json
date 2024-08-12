@@ -1,7 +1,7 @@
 {
   "name": "@effect/cluster-node",
   "type": "module",
-  "version": "0.3.7",
+  "version": "0.4.1",
   "description": "Unified interfaces for common cluster-node-specific services",
   "publishConfig": {
     "access": "public",
@@ -26,8 +26,7 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
-    "@effect/platform": "workspace:^",
-    "@effect/platform-node": "workspace:^",
+    "@effect/cluster": "workspace:^",
     "@effect/rpc": "workspace:^",
     "@effect/schema": "workspace:^",
     "effect": "workspace:^"

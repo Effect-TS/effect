@@ -1,5 +1,27 @@
 # @effect/rpc
 
+## 0.35.1
+
+### Patch Changes
+
+- Updated dependencies [[`04adcac`](https://github.com/Effect-TS/effect/commit/04adcace913e6fc483df266874a68005e9e04ccf)]:
+  - effect@3.6.3
+  - @effect/platform@0.61.8
+  - @effect/schema@0.70.4
+
+## 0.35.0
+
+### Minor Changes
+
+- [#3442](https://github.com/Effect-TS/effect/pull/3442) [`739834e`](https://github.com/Effect-TS/effect/commit/739834efd99621f92519a98e6f60553d9d7b316d) Thanks @tim-smart! - add Rpc prefix to rpc modules
+
+### Patch Changes
+
+- [#3442](https://github.com/Effect-TS/effect/pull/3442) [`739834e`](https://github.com/Effect-TS/effect/commit/739834efd99621f92519a98e6f60553d9d7b316d) Thanks @tim-smart! - support backpressure for Rpc streams
+
+- Updated dependencies [[`17245a4`](https://github.com/Effect-TS/effect/commit/17245a4e783c19dee51529600b3b40f164fa59bc), [`630d40e`](https://github.com/Effect-TS/effect/commit/630d40eaa7eb4d2f8b6705b16d4f426bc28a7d09), [`630d40e`](https://github.com/Effect-TS/effect/commit/630d40eaa7eb4d2f8b6705b16d4f426bc28a7d09)]:
+  - @effect/platform@0.61.7
+
 ## 0.34.6
 
 ### Patch Changes

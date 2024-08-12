@@ -22,7 +22,7 @@ import * as Rpc from "./Rpc.js"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId: unique symbol = Symbol.for("@effect/rpc/Router")
+export const TypeId: unique symbol = Symbol.for("@effect/rpc/RpcRouter")
 
 /**
  * @since 1.0.0
@@ -34,13 +34,13 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category refinements
  */
-export const isRouter = (u: unknown): u is Router<any, any> => Predicate.hasProperty(u, TypeId)
+export const isRpcRouter = (u: unknown): u is RpcRouter<any, any> => Predicate.hasProperty(u, TypeId)
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface Router<Reqs extends Schema.TaggedRequest.All, R> extends Pipeable {
+export interface RpcRouter<Reqs extends Schema.TaggedRequest.All, R> extends Pipeable {
   readonly [TypeId]: TypeId
   readonly rpcs: ReadonlySet<Rpc.Rpc<Reqs, R>>
 }
@@ -49,12 +49,12 @@ export interface Router<Reqs extends Schema.TaggedRequest.All, R> extends Pipeab
  * @since 1.0.0
  * @category models
  */
-export declare namespace Router {
+export declare namespace RpcRouter {
   /**
    * @since 1.0.0
    * @category models
    */
-  export type Context<A extends Router<any, any>> = A extends Router<infer Req, infer R>
+  export type Context<A extends RpcRouter<any, any>> = A extends RpcRouter<infer Req, infer R>
     ? R | Serializable.SerializableWithResult.Context<Req>
     : never
 
@@ -62,7 +62,7 @@ export declare namespace Router {
    * @since 1.0.0
    * @category models
    */
-  export type ContextRaw<A extends Router<any, any>> = A extends Router<infer Req, infer R>
+  export type ContextRaw<A extends RpcRouter<any, any>> = A extends RpcRouter<infer Req, infer R>
     ? R | Serializable.Serializable.Context<Req>
     : never
 
@@ -70,7 +70,7 @@ export declare namespace Router {
    * @since 1.0.0
    * @category models
    */
-  export type Request<A extends Router<any, any>> = A extends Router<infer Req, infer _R> ? Req
+  export type Request<A extends RpcRouter<any, any>> = A extends RpcRouter<infer Req, infer _R> ? Req
     : never
 
   /**
@@ -93,7 +93,7 @@ export declare namespace Router {
 
 const fromSet = <Reqs extends Schema.TaggedRequest.All, R>(
   rpcs: ReadonlySet<Rpc.Rpc<Reqs, R>>
-): Router<Reqs, R> => ({
+): RpcRouter<Reqs, R> => ({
   [TypeId]: TypeId,
   rpcs,
   pipe() {
@@ -105,25 +105,25 @@ const fromSet = <Reqs extends Schema.TaggedRequest.All, R>(
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Rpcs extends ReadonlyArray<Rpc.Rpc<any, any> | Router<any, any>>>(
+export const make = <Rpcs extends ReadonlyArray<Rpc.Rpc<any, any> | RpcRouter<any, any>>>(
   ...rpcs: Rpcs
-): Router<
+): RpcRouter<
   | Rpc.Rpc.Request<
     Extract<Rpcs[number], { readonly [Rpc.TypeId]: Rpc.TypeId }>
   >
-  | Router.Request<
+  | RpcRouter.Request<
     Extract<Rpcs[number], { readonly [TypeId]: TypeId }>
   >,
   | Rpc.Rpc.Context<
     Extract<Rpcs[number], { readonly [Rpc.TypeId]: Rpc.TypeId }>
   >
-  | Router.Context<
+  | RpcRouter.Context<
     Extract<Rpcs[number], { readonly [TypeId]: TypeId }>
   >
 > => {
   const rpcSet = new Set<Rpc.Rpc<any, any>>()
   rpcs.forEach((rpc) => {
-    if (isRouter(rpc)) {
+    if (isRpcRouter(rpc)) {
       rpc.rpcs.forEach((rpc) => rpcSet.add(rpc))
     } else {
       rpcSet.add(rpc)
@@ -140,17 +140,17 @@ export const provideServiceEffect: {
   <I, S, E, R2>(
     tag: Context.Tag<I, S>,
     effect: Effect.Effect<S, E, R2>
-  ): <Reqs extends Schema.TaggedRequest.All, R>(self: Router<Reqs, R>) => Router<Reqs, Exclude<R, I> | R2>
+  ): <Reqs extends Schema.TaggedRequest.All, R>(self: RpcRouter<Reqs, R>) => RpcRouter<Reqs, Exclude<R, I> | R2>
   <Reqs extends Schema.TaggedRequest.All, R, I, S, E, R2>(
-    self: Router<Reqs, R>,
+    self: RpcRouter<Reqs, R>,
     tag: Context.Tag<I, S>,
     effect: Effect.Effect<S, E, R2>
-  ): Router<Reqs, Exclude<R, I> | R2>
+  ): RpcRouter<Reqs, Exclude<R, I> | R2>
 } = dual(3, <Reqs extends Schema.TaggedRequest.All, R, I, S, E, R2>(
-  self: Router<Reqs, R>,
+  self: RpcRouter<Reqs, R>,
   tag: Context.Tag<I, S>,
   effect: Effect.Effect<S, E, R2>
-): Router<Reqs, Exclude<R, I> | R2> => fromSet(new Set([...self.rpcs].map(Rpc.provideServiceEffect(tag, effect)))))
+): RpcRouter<Reqs, Exclude<R, I> | R2> => fromSet(new Set([...self.rpcs].map(Rpc.provideServiceEffect(tag, effect)))))
 
 /**
  * @since 1.0.0
@@ -160,17 +160,17 @@ export const provideService: {
   <I, S>(
     tag: Context.Tag<I, S>,
     service: S
-  ): <Reqs extends Schema.TaggedRequest.All, R>(self: Router<Reqs, R>) => Router<Reqs, Exclude<R, I>>
+  ): <Reqs extends Schema.TaggedRequest.All, R>(self: RpcRouter<Reqs, R>) => RpcRouter<Reqs, Exclude<R, I>>
   <Reqs extends Schema.TaggedRequest.All, R, I, S>(
-    self: Router<Reqs, R>,
+    self: RpcRouter<Reqs, R>,
     tag: Context.Tag<I, S>,
     service: S
-  ): Router<Reqs, Exclude<R, I>>
+  ): RpcRouter<Reqs, Exclude<R, I>>
 } = dual(3, <Reqs extends Schema.TaggedRequest.All, R, I, S>(
-  self: Router<Reqs, R>,
+  self: RpcRouter<Reqs, R>,
   tag: Context.Tag<I, S>,
   service: S
-): Router<Reqs, Exclude<R, I>> => fromSet(new Set([...self.rpcs].map(Rpc.provideService(tag, service)))))
+): RpcRouter<Reqs, Exclude<R, I>> => fromSet(new Set([...self.rpcs].map(Rpc.provideService(tag, service)))))
 
 const EOF = Symbol.for("@effect/rpc/Router/EOF")
 
@@ -197,7 +197,7 @@ const emptyExit = Schema.encodeSync(Schema.Exit({
  * @since 1.0.0
  * @category combinators
  */
-export const toHandler = <R extends Router<any, any>>(router: R, options?: {
+export const toHandler = <R extends RpcRouter<any, any>>(router: R, options?: {
   readonly spanPrefix?: string
 }) => {
   const spanPrefix = options?.spanPrefix ?? "Rpc.router "
@@ -216,10 +216,10 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
   const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
   const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Serializable.exitSchema(req))))
 
-  return (u: unknown): Stream.Stream<Router.Response, ParseError, Router.Context<R>> =>
+  return (u: unknown): Stream.Stream<RpcRouter.Response, ParseError, RpcRouter.Context<R>> =>
     pipe(
       decode(u),
-      Effect.zip(Queue.unbounded<Router.Response | typeof EOF>()),
+      Effect.zip(Queue.bounded<RpcRouter.Response | typeof EOF>(4)),
       Effect.tap(([requests, queue]) =>
         pipe(
           Effect.forEach(requests, (req, index) => {
@@ -298,7 +298,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
  * @since 1.0.0
  * @category combinators
  */
-export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?: {
+export const toHandlerNoStream = <R extends RpcRouter<any, any>>(router: R, options?: {
   readonly spanPrefix?: string
 }) => {
   const spanPrefix = options?.spanPrefix ?? "Rpc.router "
@@ -317,10 +317,10 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
   const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
   const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Serializable.exitSchema(req))))
 
-  return (u: unknown): Effect.Effect<Array<Router.ResponseEffect>, ParseError, Router.Context<R>> =>
+  return (u: unknown): Effect.Effect<Array<RpcRouter.ResponseEffect>, ParseError, RpcRouter.Context<R>> =>
     Effect.flatMap(
       decode(u),
-      Effect.forEach((req): Effect.Effect<Router.ResponseEffect, ParseError, any> => {
+      Effect.forEach((req): Effect.Effect<RpcRouter.ResponseEffect, ParseError, any> => {
         const [request, rpc] = req.request
         if (rpc._tag === "Effect") {
           const encode = getEncode(request)
@@ -370,11 +370,11 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
  * @since 1.0.0
  * @category combinators
  */
-export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
+export const toHandlerRaw = <R extends RpcRouter<any, any>>(router: R) => {
   const schema: Schema.Schema<
     readonly [Schema.TaggedRequest.All, Rpc.Rpc<any, any>],
     unknown,
-    Router.ContextRaw<R>
+    RpcRouter.ContextRaw<R>
   > = Schema.Union(...[...router.rpcs].map((rpc) =>
     Schema.transform(
       Schema.typeSchema(rpc.schema),
@@ -384,7 +384,7 @@ export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
   ))
   const parse = Schema.decode(schema)
 
-  return <Req extends Router.Request<R>>(request: Req): Rpc.Rpc.Result<Req, Router.ContextRaw<R>> => {
+  return <Req extends RpcRouter.Request<R>>(request: Req): Rpc.Rpc.Result<Req, RpcRouter.ContextRaw<R>> => {
     const isStream = StreamRequestTypeId in request
     const withHandler = parse(request)
     if (isStream) {
@@ -404,11 +404,11 @@ export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
  * @since 1.0.0
  * @category combinators
  */
-export const toHandlerUndecoded = <R extends Router<any, any>>(router: R) => {
+export const toHandlerUndecoded = <R extends RpcRouter<any, any>>(router: R) => {
   const handler = toHandlerRaw(router)
   const getEncode = withRequestTag((req) => Schema.encode(Serializable.successSchema(req)))
   const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.ChunkFromSelf(Serializable.successSchema(req))))
-  return <Req extends Router.Request<R>>(request: Req): Rpc.Rpc.ResultUndecoded<Req, Router.Context<R>> => {
+  return <Req extends RpcRouter.Request<R>>(request: Req): Rpc.Rpc.ResultUndecoded<Req, RpcRouter.Context<R>> => {
     const result = handler(request)
     if (Effect.isEffect(result)) {
       const encode = getEncode(request)

@@ -1,5 +1,26 @@
 # @effect/cluster
 
+## 0.4.1
+
+### Patch Changes
+
+- [#3446](https://github.com/Effect-TS/effect/pull/3446) [`335111d`](https://github.com/Effect-TS/effect/commit/335111ddf540b270dd3805d580f6ae63c1a134b8) Thanks @tim-smart! - sync /cluster\* package.json dependencies with source code
+
+- Updated dependencies [[`04adcac`](https://github.com/Effect-TS/effect/commit/04adcace913e6fc483df266874a68005e9e04ccf)]:
+  - effect@3.6.3
+  - @effect/cluster@0.4.7
+  - @effect/rpc@0.35.1
+  - @effect/schema@0.70.4
+
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [[`17245a4`](https://github.com/Effect-TS/effect/commit/17245a4e783c19dee51529600b3b40f164fa59bc), [`739834e`](https://github.com/Effect-TS/effect/commit/739834efd99621f92519a98e6f60553d9d7b316d), [`630d40e`](https://github.com/Effect-TS/effect/commit/630d40eaa7eb4d2f8b6705b16d4f426bc28a7d09), [`630d40e`](https://github.com/Effect-TS/effect/commit/630d40eaa7eb4d2f8b6705b16d4f426bc28a7d09), [`739834e`](https://github.com/Effect-TS/effect/commit/739834efd99621f92519a98e6f60553d9d7b316d)]:
+  - @effect/platform@0.61.7
+  - @effect/rpc@0.35.0
+  - @effect/platform-node@0.56.8
+
 ## 0.3.7
 
 ### Patch Changes

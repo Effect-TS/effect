@@ -200,6 +200,7 @@ describe("DateTime", () => {
         const now = yield* DateTime.now
         assert.strictEqual(
           DateTime.format(now, {
+            locale: "en-US",
             dateStyle: "full",
             timeStyle: "full"
           }),
@@ -213,7 +214,11 @@ describe("DateTime", () => {
       Effect.gen(function*() {
         const now = yield* DateTime.now
         assert.strictEqual(
-          DateTime.formatUtc(now, { dateStyle: "full", timeStyle: "full" }),
+          DateTime.formatUtc(now, {
+            locale: "en-US",
+            dateStyle: "full",
+            timeStyle: "full"
+          }),
           "Thursday, January 1, 1970 at 12:00:00 AM Coordinated Universal Time"
         )
       }))
@@ -226,7 +231,11 @@ describe("DateTime", () => {
           DateTime.withCurrentZoneNamed("Pacific/Auckland")
         )
         assert.strictEqual(
-          DateTime.format(now, { dateStyle: "full", timeStyle: "full" }),
+          DateTime.format(now, {
+            locale: "en-US",
+            dateStyle: "full",
+            timeStyle: "full"
+          }),
           "Thursday, January 1, 1970 at 12:00:00 PM New Zealand Standard Time"
         )
       }))
@@ -236,7 +245,11 @@ describe("DateTime", () => {
         const now = yield* DateTime.now
         const formatted = now.pipe(
           DateTime.setZoneOffset(10 * 60 * 60 * 1000),
-          DateTime.format({ dateStyle: "long", timeStyle: "short" })
+          DateTime.format({
+            locale: "en-US",
+            dateStyle: "long",
+            timeStyle: "short"
+          })
         )
         assert.strictEqual(formatted, "January 1, 1970 at 10:00 AM")
       }))

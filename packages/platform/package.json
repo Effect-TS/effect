@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform",
   "type": "module",
-  "version": "0.61.6",
+  "version": "0.61.8",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -34,6 +34,7 @@
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "dtslint": "dtslint dtslint",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage"

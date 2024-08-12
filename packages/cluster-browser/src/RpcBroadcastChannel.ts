@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Resolver from "@effect/rpc/Resolver"
-import * as Router from "@effect/rpc/Router"
 import type * as Rpc from "@effect/rpc/Rpc"
+import * as RpcResolver from "@effect/rpc/RpcResolver"
+import * as RpcRouter from "@effect/rpc/RpcRouter"
 import * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
@@ -27,8 +27,8 @@ const BroadcastMessage = Schema.Union(ClientRequest, ServerResponse)
 /**
  * @since 1.0.0
  */
-export const toBroadcastChannelRouter = <R extends Router.Router<any, any>>(self: R, channelId: string) => {
-  const handler = Router.toHandlerEffect(self)
+export const toBroadcastChannelRouter = <R extends RpcRouter.RpcRouter<any, any>>(self: R, channelId: string) => {
+  const handler = RpcRouter.toHandlerNoStream(self)
 
   return Effect.gen(function*($) {
     const queue = yield* $(Queue.unbounded())
@@ -69,13 +69,13 @@ export const toBroadcastChannelRouter = <R extends Router.Router<any, any>>(self
 /**
  * @since 1.0.0
  */
-export const make = <R extends Router.Router<any, any>>(
+export const make = <R extends RpcRouter.RpcRouter<any, any>>(
   channelId: string
 ): RequestResolver.RequestResolver<
-  Rpc.Request<Router.Router.Request<R>>,
-  Serializable.SerializableWithResult.Context<Router.Router.Request<R>>
-> => {
-  return Resolver.make((requests) => {
+  Rpc.Request<RpcRouter.RpcRouter.Request<R>>,
+  Serializable.SerializableWithResult.Context<RpcRouter.RpcRouter.Request<R>>
+> =>
+  RpcResolver.make((requests) => {
     return Effect.gen(function*($) {
       const queue = yield* $(Queue.unbounded())
       yield* $(Effect.addFinalizer(() => Queue.shutdown(queue)))
@@ -109,4 +109,3 @@ export const make = <R extends Router.Router<any, any>>(
       )
     }).pipe(Effect.scoped)
   })<R>()
-}

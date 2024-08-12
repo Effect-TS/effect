@@ -351,7 +351,25 @@ export const concat = dual<
     that: Router.HttpRouter<E1, R1>
   ) => <E, R>(self: Router.HttpRouter<E, R>) => Router.HttpRouter<E | E1, R | R1>,
   <E, R, E1, R1>(self: Router.HttpRouter<E, R>, that: Router.HttpRouter<E1, R1>) => Router.HttpRouter<E | E1, R | R1>
->(2, (self, that) => new RouterImpl(Chunk.appendAll(self.routes, that.routes) as any, self.mounts))
+>(2, (self, that) => concatAll(self, that))
+
+/** @internal */
+export const concatAll = <Routers extends ReadonlyArray<Router.HttpRouter<E, R>>, E, R>(
+  ...routers: Routers
+) =>
+  new RouterImpl(
+    routers.reduce((cur, acc) => Chunk.appendAll(cur, acc.routes), Chunk.empty<Router.Route<E, R>>()),
+    routers.reduce(
+      (cur, acc) => Chunk.appendAll(cur, acc.mounts),
+      Chunk.empty<
+        readonly [
+          prefix: string,
+          httpApp: App.Default<E, R>,
+          options?: { readonly includePrefix?: boolean | undefined } | undefined
+        ]
+      >()
+    )
+  ) as any
 
 const removeTrailingSlash = (
   path: Router.PathInput

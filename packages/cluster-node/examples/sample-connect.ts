@@ -7,8 +7,8 @@ import * as Sharding from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
 import { HttpClient, HttpClientRequest } from "@effect/platform"
 import { NodeHttpClient, NodeRuntime } from "@effect/platform-node"
-import { Resolver } from "@effect/rpc"
-import { HttpResolver } from "@effect/rpc-http"
+import { RpcResolver } from "@effect/rpc"
+import { HttpRpcResolver } from "@effect/rpc-http"
 import { Effect, Layer, Logger, LogLevel, Ref } from "effect"
 import { CounterEntity, GetCurrent, Increment } from "./sample-common.js"
 
@@ -31,23 +31,23 @@ const liveLayer = Effect.gen(function*() {
   Layer.provide(Sharding.live),
   Layer.provide(StorageFile.storageFile),
   Layer.provide(PodsRpc.podsRpc<never>((podAddress) =>
-    HttpResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
+    HttpRpcResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
       HttpClient.fetchOk.pipe(
         HttpClient.mapRequest(
           HttpClientRequest.prependUrl(`http://${podAddress.host}:${podAddress.port}/api/rest`)
         )
       )
-    ).pipe(Resolver.toClient)
+    ).pipe(RpcResolver.toClient)
   )),
   Layer.provide(ShardManagerClientRpc.shardManagerClientRpc(
     (shardManagerUri) =>
-      HttpResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
+      HttpRpcResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
         HttpClient.fetchOk.pipe(
           HttpClient.mapRequest(
             HttpClientRequest.prependUrl(shardManagerUri)
           )
         )
-      ).pipe(Resolver.toClient)
+      ).pipe(RpcResolver.toClient)
   )),
   Layer.provide(ShardingConfig.withDefaults({ shardingPort: 54322 })),
   Layer.provide(Serialization.json),

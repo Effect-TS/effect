@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import * as ShardManager from "@effect/cluster/ShardManager"
-import * as Router from "@effect/rpc/Router"
 import * as Rpc from "@effect/rpc/Rpc"
+import * as RpcRouter from "@effect/rpc/RpcRouter"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as ShardManagerProtocolHttp from "./ShardManagerProtocol.js"
@@ -12,7 +12,7 @@ import * as ShardManagerProtocolHttp from "./ShardManagerProtocol.js"
  * @since 1.0.0
  * @category rpc
  */
-export const router = Router.make(
+export const router = RpcRouter.make(
   Rpc.effect(ShardManagerProtocolHttp.Register, (request) =>
     pipe(
       ShardManager.ShardManager,
@@ -45,4 +45,4 @@ export type ShardManagerServiceRpc = typeof router
  * @since 1.0.0
  * @category models
  */
-export type ShardManagerServiceRpcRequest = Router.Router.Request<typeof router>
+export type ShardManagerServiceRpcRequest = RpcRouter.RpcRouter.Request<typeof router>
