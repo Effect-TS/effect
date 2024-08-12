@@ -26,14 +26,11 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
-    "@effect/platform": "workspace:^",
-    "@effect/platform-node": "workspace:^",
+    "@effect/rpc": "workspace:^",
     "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@effect/platform": "workspace:^",
-    "@effect/platform-node": "workspace:^",
     "@effect/rpc": "workspace:^",
     "@effect/schema": "workspace:^",
     "effect": "workspace:^"

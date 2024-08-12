@@ -26,8 +26,7 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
-    "@effect/platform": "workspace:^",
-    "@effect/platform-node": "workspace:^",
+    "@effect/cluster": "workspace:^",
     "@effect/rpc": "workspace:^",
     "@effect/schema": "workspace:^",
     "effect": "workspace:^"
