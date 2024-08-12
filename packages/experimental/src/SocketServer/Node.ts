@@ -201,7 +201,7 @@ export const makeWebSocket = (
     const address = Effect.map(
       Effect.suspend(() => Deferred.await(serverDeferred)),
       (server): SocketServer.Address => {
-        const address = server.address()
+        const address = server.address()!
         return typeof address === "string" ?
           {
             _tag: "UnixAddress",
