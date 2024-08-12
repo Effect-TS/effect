@@ -47,7 +47,7 @@ export interface JsonSchema7Void extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 0.70.0
+ * @since 0.71.0
  */
 export interface JsonSchema7object extends JsonSchemaAnnotations {
   $id: "/schemas/object"
@@ -59,7 +59,7 @@ export interface JsonSchema7object extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 0.70.0
+ * @since 0.71.0
  */
 export interface JsonSchema7empty extends JsonSchemaAnnotations {
   $id: "/schemas/{}"
@@ -145,7 +145,7 @@ export interface JsonSchema7Enum extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 0.70.0
+ * @since 0.71.0
  */
 export interface JsonSchema7Enums extends JsonSchemaAnnotations {
   $comment: "/schemas/enums"
@@ -178,7 +178,7 @@ export interface JsonSchema7Object extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 0.70.0
+ * @since 0.71.0
  */
 export type JsonSchema7 =
   | JsonSchema7Any
