@@ -1979,7 +1979,7 @@ export const format: {
 /**
  * Format a `DateTime` as a string using the `DateTimeFormat` API.
  *
- * It will use the system's local time zone.
+ * It will use the system's local time zone & locale.
  *
  * @since 3.6.0
  * @category formatting
