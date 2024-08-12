@@ -6895,10 +6895,14 @@ export const toReadableStreamRuntime = dual<
     return new ReadableStream<A>({
       start(controller) {
         scope = runSync(Scope.make())
-        pull = pipe(
+        const pullChunk: Effect.Effect<Chunk.Chunk<A>, Option.Option<E>, R> = pipe(
           toPull(self),
           Scope.extend(scope),
           runSync,
+          Effect.flatMap((chunk) => Chunk.isEmpty(chunk) ? pullChunk : Effect.succeed(chunk))
+        )
+        pull = pipe(
+          pullChunk,
           Effect.tap((chunk) =>
             Effect.sync(() => {
               Chunk.map(chunk, (a) => {
