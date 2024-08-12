@@ -8322,6 +8322,8 @@ console.log(FastCheck.sample(Arbitrary.make(improved), 2))
 
 # Generating JSON Schemas
 
+## Overview
+
 The `make` function in the `@effect/schema/JSONSchema` module allows you to generate a JSON Schema from a predefined schema.
 
 Here's an example where we define a schema for a "Person" with properties "name" (a string) and "age" (a number). Using the `JSONSchema.make` function, we generate the corresponding JSON Schema.
@@ -8404,6 +8406,464 @@ Output:
 ```
 
 The new JSON Schema for the `age` field shows it as type `"integer"`, keeping the refinement of being an integer and excluding the transformation that clamps the value between `1` and `10`.
+
+## Specific Outputs for Schema Types
+
+### Literals
+
+Literals are transformed into `enum` types within JSON Schema:
+
+**Single literal**
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Literal("a")
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "enum": [
+    "a"
+  ]
+}
+*/
+```
+
+**Union of literals**
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Literal("a", "b")
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "enum": [
+    "a",
+    "b"
+  ]
+}
+*/
+```
+
+### Void
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Void
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/void",
+  "title": "void"
+}
+*/
+```
+
+### Any
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Any
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/any",
+  "title": "any"
+}
+*/
+```
+
+### Unknown
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Unknown
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/unknown",
+  "title": "unknown"
+}
+*/
+```
+
+### Object
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Object
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/object",
+  "anyOf": [
+    {
+      "type": "object"
+    },
+    {
+      "type": "array"
+    }
+  ],
+  "description": "an object in the TypeScript meaning, i.e. the `object` type",
+  "title": "object"
+}
+*/
+```
+
+### String
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.String
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "string"
+}
+*/
+```
+
+### Number
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Number
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "number"
+}
+*/
+```
+
+### Boolean
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Boolean
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "boolean"
+}
+*/
+```
+
+### Tuples
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Tuple(Schema.String, Schema.Number)
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "minItems": 2,
+  "items": [
+    {
+      "type": "string"
+    },
+    {
+      "type": "number"
+    }
+  ],
+  "additionalItems": false
+}
+*/
+```
+
+### Arrays
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Array(Schema.String)
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "items": {
+    "type": "string"
+  }
+}
+*/
+```
+
+### Non Empty Arrays
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.NonEmptyArray(Schema.String)
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "string"
+  }
+}
+*/
+```
+
+### Structs
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "name",
+    "age"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "age": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+*/
+```
+
+### Records
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Record({
+  key: Schema.String,
+  value: Schema.Number
+})
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [],
+  "properties": {},
+  "patternProperties": {
+    "": {
+      "type": "number"
+    }
+  }
+}
+*/
+```
+
+### Mixed Structs with Records
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct(
+  {
+    name: Schema.String,
+    age: Schema.Number
+  },
+  Schema.Record({
+    key: Schema.String,
+    value: Schema.Union(Schema.String, Schema.Number)
+  })
+)
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "name",
+    "age"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "age": {
+      "type": "number"
+    }
+  },
+  "patternProperties": {
+    "": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    }
+  }
+}
+*/
+```
+
+### Enums
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+enum Fruits {
+  Apple,
+  Banana
+}
+
+const schema = Schema.Enums(Fruits)
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "/schemas/enums",
+  "anyOf": [
+    {
+      "title": "Apple",
+      "enum": [
+        0
+      ]
+    },
+    {
+      "title": "Banana",
+      "enum": [
+        1
+      ]
+    }
+  ]
+}
+*/
+```
+
+### Template Literals
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.TemplateLiteral(Schema.Literal("a"), Schema.Number)
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "string",
+  "description": "a template literal",
+  "pattern": "^a[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$"
+}
+*/
+```
+
+### Unions
+
+Unions are expressed using `anyOf` or `enum`, depending on the types involved:
+
+**Generic Union**
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Union(Schema.String, Schema.Number)
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "type": "string"
+    },
+    {
+      "type": "number"
+    }
+  ]
+}
+*/
+```
+
+**Union of literals**
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Literal("a", "b")
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "enum": [
+    "a",
+    "b"
+  ]
+}
+*/
+```
 
 ## Identifier Annotations
 
