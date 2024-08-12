@@ -1457,12 +1457,14 @@ export interface ArrayEnsure<Value extends Schema.Any> extends
  * @category constructors
  * @since 0.71.0
  */
-export const ArrayEnsure = <Value extends Schema.Any>(value: Value): ArrayEnsure<Value> =>
-  class ArrayEnsureClass extends transform(Union(value, Array$(value)), Array$(typeSchema(value)), {
+export const ArrayEnsure = <Value extends Schema.Any>(value: Value): ArrayEnsure<Value> => {
+  const value_ = asSchema(value)
+  return class ArrayEnsureClass extends transform(Union(value_, Array$(value_)), Array$(typeSchema(value_)), {
     strict: true,
-    decode: (a) => Array.isArray(a) ? a : [a],
+    decode: array_.ensure,
     encode: (arr) => arr.length === 1 ? arr[0] : arr
   }) {}
+}
 
 /**
  * @category api interface
@@ -1481,13 +1483,16 @@ export interface NonEmptyArrayEnsure<Value extends Schema.Any> extends
  * @category constructors
  * @since 0.71.0
  */
-export const NonEmptyArrayEnsure = <Value extends Schema.Any>(value: Value): NonEmptyArrayEnsure<Value> =>
-  class NonEmptyArrayEnsureClass
-    extends transform(Union(value, NonEmptyArray(value)), NonEmptyArray(typeSchema(value)), {
-      decode: (a) => Array.isArray(a) ? a : array_.of(a),
+export const NonEmptyArrayEnsure = <Value extends Schema.Any>(value: Value): NonEmptyArrayEnsure<Value> => {
+  const value_ = asSchema(value)
+  return class NonEmptyArrayEnsureClass
+    extends transform(Union(value_, NonEmptyArray(value_)), NonEmptyArray(typeSchema(value_)), {
+      strict: true,
+      decode: array_.ensure as any,
       encode: (arr) => arr.length === 1 ? arr[0] : arr
     })
-  {} as any
+  {}
+}
 
 /**
  * @since 0.67.0
