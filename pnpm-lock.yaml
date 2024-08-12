@@ -206,12 +206,6 @@ importers:
 
   packages/cluster-browser:
     devDependencies:
-      '@effect/platform':
-        specifier: workspace:^
-        version: link:../platform/dist
-      '@effect/platform-node':
-        specifier: workspace:^
-        version: link:../platform-node/dist
       '@effect/rpc':
         specifier: workspace:^
         version: link:../rpc/dist
@@ -224,6 +218,10 @@ importers:
     publishDirectory: dist
 
   packages/cluster-node:
+    dependencies:
+      '@effect/cluster':
+        specifier: workspace:^
+        version: link:../cluster/dist
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -250,12 +248,24 @@ importers:
 
   packages/cluster-workflow:
     devDependencies:
+      '@effect/cluster':
+        specifier: workspace:^
+        version: link:../cluster/dist
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../platform-node/dist
       '@effect/schema':
         specifier: workspace:^
         version: link:../schema/dist
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      '@effect/sql-sqlite-node':
+        specifier: workspace:^
+        version: link:../sql-sqlite-node/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist
