@@ -1441,6 +1441,60 @@ export const NonEmptyArray = <Value extends Schema.Any>(value: Value): NonEmptyA
   makeNonEmptyArrayClass(value)
 
 /**
+ * @category api interface
+ * @since 0.71.0
+ */
+export interface ArrayEnsure<Value extends Schema.Any> extends
+  AnnotableClass<
+    ArrayEnsure<Value>,
+    ReadonlyArray<Schema.Type<Value>>,
+    Schema.Encoded<Value> | ReadonlyArray<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category constructors
+ * @since 0.71.0
+ */
+export const ArrayEnsure = <Value extends Schema.Any>(value: Value): ArrayEnsure<Value> => {
+  const value_ = asSchema(value)
+  return class ArrayEnsureClass extends transform(Union(value_, Array$(value_)), Array$(typeSchema(value_)), {
+    strict: true,
+    decode: array_.ensure,
+    encode: (arr) => arr.length === 1 ? arr[0] : arr
+  }) {}
+}
+
+/**
+ * @category api interface
+ * @since 0.71.0
+ */
+export interface NonEmptyArrayEnsure<Value extends Schema.Any> extends
+  AnnotableClass<
+    NonEmptyArrayEnsure<Value>,
+    array_.NonEmptyReadonlyArray<Schema.Type<Value>>,
+    Schema.Encoded<Value> | array_.NonEmptyReadonlyArray<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category constructors
+ * @since 0.71.0
+ */
+export const NonEmptyArrayEnsure = <Value extends Schema.Any>(value: Value): NonEmptyArrayEnsure<Value> => {
+  const value_ = asSchema(value)
+  return class NonEmptyArrayEnsureClass
+    extends transform(Union(value_, NonEmptyArray(value_)), NonEmptyArray(typeSchema(value_)), {
+      strict: true,
+      decode: array_.ensure as any,
+      encode: (arr) => arr.length === 1 ? arr[0] : arr
+    })
+  {}
+}
+
+/**
  * @since 0.67.0
  */
 export declare namespace PropertySignature {
