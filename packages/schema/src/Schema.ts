@@ -1442,7 +1442,7 @@ export const NonEmptyArray = <Value extends Schema.Any>(value: Value): NonEmptyA
 
 /**
  * @category api interface
- * @since 0.70.5
+ * @since 0.71.0
  */
 export interface ArrayEnsure<Value extends Schema.Any> extends
   AnnotableClass<
@@ -1455,7 +1455,7 @@ export interface ArrayEnsure<Value extends Schema.Any> extends
 
 /**
  * @category constructors
- * @since 0.70.5
+ * @since 0.71.0
  */
 export const ArrayEnsure = <Value extends Schema.Any>(value: Value): ArrayEnsure<Value> =>
   class ArrayEnsureClass extends transform(Union(value, Array$(value)), Array$(typeSchema(value)), {
@@ -1466,7 +1466,7 @@ export const ArrayEnsure = <Value extends Schema.Any>(value: Value): ArrayEnsure
 
 /**
  * @category api interface
- * @since 0.70.5
+ * @since 0.71.0
  */
 export interface NonEmptyArrayEnsure<Value extends Schema.Any> extends
   AnnotableClass<
@@ -1479,7 +1479,7 @@ export interface NonEmptyArrayEnsure<Value extends Schema.Any> extends
 
 /**
  * @category constructors
- * @since 0.70.5
+ * @since 0.71.0
  */
 export const NonEmptyArrayEnsure = <Value extends Schema.Any>(value: Value): NonEmptyArrayEnsure<Value> =>
   class NonEmptyArrayEnsureClass
