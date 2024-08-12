@@ -279,3 +279,13 @@ export type MatchRecord<S, onTrue, onFalse> = {} extends S ? onTrue : onFalse
  * @since 2.0.0
  */
 export type NotFunction<T> = T extends Function ? never : T
+
+/**
+ * @since 2.0.0
+ */
+export type WideLiteral<T> = T extends string ? string
+  : T extends number ? number
+  : T extends boolean ? boolean
+  : T extends bigint ? bigint
+  : T extends symbol ? symbol
+  : T

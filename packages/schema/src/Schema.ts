@@ -600,9 +600,10 @@ export const isSchema = (u: unknown): u is Schema.Any =>
  * @category api interface
  * @since 0.67.0
  */
-export interface Literal<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>
-  extends AnnotableClass<Literal<Literals>, Literals[number]>
-{
+export interface Literal<
+  Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>,
+  EncodedLiterals extends array_.NonEmptyReadonlyArray<AST.LiteralValue> = Literals
+> extends AnnotableClass<Literal<Literals, EncodedLiterals>, Literals[number], EncodedLiterals[number]> {
   readonly literals: Readonly<Literals>
 }
 
@@ -613,12 +614,17 @@ const getDefaultLiteralAST = <Literals extends array_.NonEmptyReadonlyArray<AST.
     ? AST.Union.make(AST.mapMembers(literals, (literal) => new AST.Literal(literal)))
     : new AST.Literal(literals[0])
 
-const makeLiteralClass = <Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
+const makeLiteralClass = <
+  Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>,
+  EncodedLiterals extends array_.NonEmptyReadonlyArray<AST.LiteralValue> = Literals
+>(
   literals: Literals,
   ast: AST.AST = getDefaultLiteralAST(literals)
-): Literal<Literals> =>
-  class LiteralClass extends make<Literals[number]>(ast) {
-    static override annotations(annotations: Annotations.Schema<Literals[number]>): Literal<Literals> {
+): Literal<Literals, EncodedLiterals> =>
+  class LiteralClass extends make<Literals[number], EncodedLiterals[number]>(ast) {
+    static override annotations(
+      annotations: Annotations.Schema<Literals[number]>
+    ): Literal<Literals, EncodedLiterals> {
       return makeLiteralClass(this.literals, mergeSchemaAnnotations(this.ast, annotations))
     }
     static literals = [...literals] as Literals
@@ -639,6 +645,23 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Schema<Literals[number]> | Never {
   return array_.isNonEmptyReadonlyArray(literals) ? makeLiteralClass(literals) : Never
+}
+
+/**
+ * @category constructors
+ * @since 0.67.0
+ */
+export function LiteralFromWiden<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
+  ...literals: Literals
+): Literal<Literals, Literals>
+export function LiteralFromWiden(): Never
+export function LiteralFromWiden<Literals extends ReadonlyArray<AST.LiteralValue>>(
+  ...literals: Literals
+): Schema<Literals[number], Types.WideLiteral<Literals[number]>>
+export function LiteralFromWiden<Literals extends ReadonlyArray<AST.LiteralValue>>(
+  ...literals: Literals
+): Schema<Literals[number], Types.WideLiteral<Literals[number]>> | Never {
+  return array_.isNonEmptyReadonlyArray(literals) ? makeLiteralClass<any, any>(literals) : Never
 }
 
 /**
