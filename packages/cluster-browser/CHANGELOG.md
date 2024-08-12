@@ -1,5 +1,16 @@
 # @effect/cluster
 
+## 0.3.9
+
+### Patch Changes
+
+- [#3446](https://github.com/Effect-TS/effect/pull/3446) [`335111d`](https://github.com/Effect-TS/effect/commit/335111ddf540b270dd3805d580f6ae63c1a134b8) Thanks @tim-smart! - sync /cluster\* package.json dependencies with source code
+
+- Updated dependencies [[`04adcac`](https://github.com/Effect-TS/effect/commit/04adcace913e6fc483df266874a68005e9e04ccf)]:
+  - effect@3.6.3
+  - @effect/rpc@0.35.1
+  - @effect/schema@0.70.4
+
 ## 0.3.8
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @effect/experimental
 
+## 0.22.6
+
+### Patch Changes
+
+- Updated dependencies [[`04adcac`](https://github.com/Effect-TS/effect/commit/04adcace913e6fc483df266874a68005e9e04ccf)]:
+  - effect@3.6.3
+  - @effect/platform@0.61.8
+  - @effect/platform-node@0.56.9
+  - @effect/schema@0.70.4
+
 ## 0.22.5
 
 ### Patch Changes

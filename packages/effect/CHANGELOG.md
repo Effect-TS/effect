@@ -1,5 +1,11 @@
 # effect
 
+## 3.6.3
+
+### Patch Changes
+
+- [#3444](https://github.com/Effect-TS/effect/pull/3444) [`04adcac`](https://github.com/Effect-TS/effect/commit/04adcace913e6fc483df266874a68005e9e04ccf) Thanks @tim-smart! - ensure Stream.toReadableStream pulls always result in a enqueue
+
 ## 3.6.2
 
 ### Patch Changes
