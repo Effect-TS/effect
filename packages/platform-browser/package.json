@@ -52,6 +52,6 @@
     "mock-xmlhttprequest": "^8.3.0"
   },
   "dependencies": {
-    "multipasta": "^0.2.2"
+    "multipasta": "^0.2.5"
   }
 }

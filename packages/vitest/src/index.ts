@@ -30,7 +30,7 @@ export namespace Vitest {
   export interface Test<R> {
     <A, E>(
       name: string,
-      self: TestFunction<A, E, R, [V.TaskContext<V.Test<{}>> & V.TestContext]>,
+      self: TestFunction<A, E, R, [V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext]>,
       timeout?: number | V.TestOptions
     ): void
   }
