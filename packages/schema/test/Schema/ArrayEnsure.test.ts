@@ -13,43 +13,50 @@ describe("ArrayEnsure", () => {
   })
 
   it("decode non-array", () => {
-    const schema = S.ArrayEnsure(S.Number)
-    expectDecodeUnknownSuccess(schema, 123, [123])
+    const schema = S.ArrayEnsure(S.NumberFromString)
+    expectDecodeUnknownSuccess(schema, "123", [123])
     expectDecodeUnknownFailure(
       schema,
-      "123",
-      `(number | ReadonlyArray<number> <-> ReadonlyArray<number>)
+      null,
+      `(NumberFromString | ReadonlyArray<NumberFromString> <-> ReadonlyArray<number>)
 └─ Encoded side transformation failure
-   └─ number | ReadonlyArray<number>
-      ├─ Expected number, actual "123"
-      └─ Expected ReadonlyArray<number>, actual "123"`
+   └─ NumberFromString | ReadonlyArray<NumberFromString>
+      ├─ NumberFromString
+      │  └─ Encoded side transformation failure
+      │     └─ Expected string, actual null
+      └─ Expected ReadonlyArray<NumberFromString>, actual null`
     )
   })
 
   it("decode empty array", () => {
-    const schema = S.ArrayEnsure(S.Number)
+    const schema = S.ArrayEnsure(S.NumberFromString)
     expectDecodeUnknownSuccess(schema, [], [])
   })
 
   it("decode array", () => {
-    const schema = S.ArrayEnsure(S.Number)
-    expectDecodeUnknownSuccess(schema, [123], [123])
+    const schema = S.ArrayEnsure(S.NumberFromString)
+    expectDecodeUnknownSuccess(schema, ["123"], [123])
     expectDecodeUnknownFailure(
       schema,
-      ["123"],
-      `(number | ReadonlyArray<number> <-> ReadonlyArray<number>)
+      [null],
+      `(NumberFromString | ReadonlyArray<NumberFromString> <-> ReadonlyArray<number>)
 └─ Encoded side transformation failure
-   └─ number | ReadonlyArray<number>
-      ├─ Expected number, actual ["123"]
-      └─ ReadonlyArray<number>
+   └─ NumberFromString | ReadonlyArray<NumberFromString>
+      ├─ NumberFromString
+      │  └─ Encoded side transformation failure
+      │     └─ Expected string, actual [null]
+      └─ ReadonlyArray<NumberFromString>
          └─ [0]
-            └─ Expected number, actual "123"`
+            └─ NumberFromString
+               └─ Encoded side transformation failure
+                  └─ Expected string, actual null`
     )
   })
 
   it("encode", () => {
-    const schema = S.ArrayEnsure(S.Number)
-    expectEncodeSuccess(schema, [123], 123)
-    expectEncodeSuccess(schema, [1, 2, 3], [1, 2, 3])
+    const schema = S.ArrayEnsure(S.NumberFromString)
+    expectEncodeSuccess(schema, [], [])
+    expectEncodeSuccess(schema, [123], "123")
+    expectEncodeSuccess(schema, [1, 2, 3], ["1", "2", "3"])
   })
 })
