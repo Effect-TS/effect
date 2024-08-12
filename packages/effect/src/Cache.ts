@@ -23,6 +23,18 @@ export const CacheTypeId: unique symbol = internal.CacheTypeId
 export type CacheTypeId = typeof CacheTypeId
 
 /**
+ * @since 3.6.4
+ * @category symbols
+ */
+export const ConsumerCacheTypeId: unique symbol = internal.ConsumerCacheTypeId
+
+/**
+ * @since 3.6.4
+ * @category symbols
+ */
+export type ConsumerCacheTypeId = typeof ConsumerCacheTypeId
+
+/**
  * A `Cache` is defined in terms of a lookup function that, given a key of
  * type `Key`, can either fail with an error of type `Error` or succeed with a
  * value of type `Value`. Getting a value from the cache will either return
@@ -43,7 +55,9 @@ export type CacheTypeId = typeof CacheTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Cache<in out Key, out Value, out Error = never> extends ConsumerCache<Key, Value, Error> {
+export interface Cache<in out Key, in out Value, out Error = never>
+  extends ConsumerCache<Key, Value, Error>, Cache.Variance<Key, Value, Error>
+{
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise computes the value with the lookup function, puts it in the
@@ -83,7 +97,9 @@ export interface Cache<in out Key, out Value, out Error = never> extends Consume
  * @since 2.0.0
  * @category models
  */
-export interface ConsumerCache<in out Key, out Value, out Error = never> extends Cache.Variance<Key, Value, Error> {
+export interface ConsumerCache<in out Key, out Value, out Error = never>
+  extends Cache.ConsumerVariance<Key, Value, Error>
+{
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
@@ -156,8 +172,19 @@ export declare namespace Cache {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<in out Key, out Value, out Error> {
+  export interface Variance<in out Key, in out Value, out Error> {
     readonly [CacheTypeId]: {
+      readonly _Key: Types.Invariant<Key>
+      readonly _Error: Types.Covariant<Error>
+      readonly _Value: Types.Invariant<Value>
+    }
+  }
+  /**
+   * @since 3.6.4
+   * @category models
+   */
+  export interface ConsumerVariance<in out Key, out Value, out Error> {
+    readonly [ConsumerCacheTypeId]: {
       readonly _Key: Types.Invariant<Key>
       readonly _Error: Types.Covariant<Error>
       readonly _Value: Types.Covariant<Value>
