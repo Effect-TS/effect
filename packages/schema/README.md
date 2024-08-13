@@ -3708,7 +3708,7 @@ export const encodedSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<I>
 
 **Example Usage:**
 
-Attenzione che `encodedSchema` non preserva i refinements:
+Be aware that `encodedSchema` does not preserve refinements:
 
 ```ts
 import { Schema } from "@effect/schema"
