@@ -25,14 +25,24 @@ export interface Scheduler {
 }
 
 /**
+ * @since 3.7.0
+ * @category models
+ */
+export interface TaskBuckets<in out T = Task> {
+  scheduleTask(task: T, priority: number): void
+  buckets: Array<[number, Array<T>]>
+}
+
+/**
  * @since 2.0.0
  * @category utils
  */
-export class PriorityBuckets<in out T = Task> {
+export class PriorityBuckets<in out T = Task> implements TaskBuckets<T> {
   /**
    * @since 2.0.0
    */
   public buckets: Array<[number, Array<T>]> = []
+
   /**
    * @since 2.0.0
    */
@@ -58,6 +68,43 @@ export class PriorityBuckets<in out T = Task> {
 }
 
 /**
+ * A reversed version of `PriorityBuckets` where a higher priority number means
+ * more important.
+ *
+ * @since 3.7.0
+ * @category utils
+ */
+export class PriorityBucketsReversed<in out T = Task> implements TaskBuckets<T> {
+  /**
+   * @since 3.7.0
+   */
+  public buckets: Array<[number, Array<T>]> = []
+
+  /**
+   * @since 3.7.0
+   */
+  scheduleTask(task: T, priority: number) {
+    const length = this.buckets.length
+    let bucket: [number, Array<T>] | undefined = undefined
+    let index = 0
+    for (index = 0; index < length; index++) {
+      if (this.buckets[index][0] >= priority) {
+        bucket = this.buckets[index]
+      } else {
+        break
+      }
+    }
+    if (bucket && bucket[0] === priority) {
+      bucket[1].push(task)
+    } else if (index === length) {
+      this.buckets.push([priority, [task]])
+    } else {
+      this.buckets.splice(index, 0, [priority, [task]])
+    }
+  }
+}
+
+/**
  * @since 2.0.0
  * @category constructors
  */
@@ -66,16 +113,16 @@ export class MixedScheduler implements Scheduler {
    * @since 2.0.0
    */
   running = false
-  /**
-   * @since 2.0.0
-   */
-  tasks = new PriorityBuckets()
 
   constructor(
     /**
      * @since 2.0.0
      */
-    readonly maxNextTickBeforeTimer: number
+    readonly maxNextTickBeforeTimer: number,
+    /**
+     * @since 2.0.0
+     */
+    readonly tasks: TaskBuckets<Task> = new PriorityBuckets()
   ) {}
 
   /**
@@ -129,12 +176,25 @@ export class MixedScheduler implements Scheduler {
 }
 
 /**
+ * A scheduler that runs tasks with a lower priority number first.
+ *
  * @since 2.0.0
  * @category schedulers
  */
 export const defaultScheduler: Scheduler = globalValue(
   Symbol.for("effect/Scheduler/defaultScheduler"),
   () => new MixedScheduler(2048)
+)
+
+/**
+ * A scheduler that runs tasks with a higher priority number first.
+ *
+ * @since 3.7.0
+ * @category schedulers
+ */
+export const reversedScheduler: Scheduler = globalValue(
+  Symbol.for("effect/Scheduler/reversedScheduler"),
+  () => new MixedScheduler(2048, new PriorityBucketsReversed())
 )
 
 /**
