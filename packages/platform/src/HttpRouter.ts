@@ -8,10 +8,12 @@ import type * as Cause from "effect/Cause"
 import type * as Chunk from "effect/Chunk"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { FiberRef } from "effect/FiberRef"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
+import type { RouterConfig } from "find-my-way-ts"
 import type * as Etag from "./Etag.js"
 import type { FileSystem } from "./FileSystem.js"
 import type * as App from "./HttpApp.js"
@@ -307,6 +309,27 @@ export const schemaPathParams: <A, I extends Readonly<Record<string, string | un
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, R | RouteContext> = internal.schemaPathParams
+
+/**
+ * @since 1.0.0
+ * @category router config
+ */
+export const currentRouterConfig: FiberRef<Partial<RouterConfig>> = internal.currentRouterConfig
+
+/**
+ * @since 1.0.0
+ * @category router config
+ */
+export const withRouterConfig: {
+  (config: Partial<RouterConfig>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, config: Partial<RouterConfig>): Effect.Effect<A, E, R>
+} = internal.withRouterConfig
+
+/**
+ * @since 1.0.0
+ * @category router config
+ */
+export const setRouterConfig: (config: Partial<RouterConfig>) => Layer.Layer<never> = internal.setRouterConfig
 
 /**
  * @since 1.0.0

@@ -741,4 +741,21 @@ describe("HttpServer", () => {
       expect(yield* responseB.text).toEqual("b")
       expect(yield* responseMountB.text).toEqual("mb")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.scoped("setRouterConfig", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.empty.pipe(
+        HttpRouter.get("/:param", HttpServerResponse.empty()),
+        HttpServer.serveEffect()
+      )
+      let res = yield* HttpClientRequest.get("/123456").pipe(Effect.scoped)
+      assert.strictEqual(res.status, 404)
+      res = yield* HttpClientRequest.get("/12345").pipe(Effect.scoped)
+      assert.strictEqual(res.status, 204)
+    }).pipe(
+      Effect.provide(NodeHttpServer.layerTest),
+      HttpRouter.withRouterConfig({
+        maxParamLength: 5
+      })
+    ))
 })
