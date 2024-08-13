@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as FiberRef from "effect/FiberRef"
 import { dual } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -139,6 +140,26 @@ export const schemaPathParams = <A, I extends Readonly<Record<string, string | u
   return Effect.flatMap(RouteContext, (_) => parse(_.params))
 }
 
+/** @internal */
+export const currentRouterConfig = globalValue(
+  "@effect/platform/HttpRouter/currentRouterConfig",
+  () => FiberRef.unsafeMake<Partial<FindMyWay.RouterConfig>>({})
+)
+
+/** @internal */
+export const withRouterConfig: {
+  (config: Partial<FindMyWay.RouterConfig>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, config: Partial<FindMyWay.RouterConfig>): Effect.Effect<A, E, R>
+} = dual(
+  2,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, config: Partial<FindMyWay.RouterConfig>): Effect.Effect<A, E, R> =>
+    Effect.locally(effect, currentRouterConfig, config)
+)
+
+/** @internal */
+export const setRouterConfig = (config: Partial<FindMyWay.RouterConfig>) =>
+  Layer.locallyScoped(currentRouterConfig, config)
+
 class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
   ServerResponse.HttpServerResponse,
   E | Error.RouteNotFound,
@@ -157,7 +178,9 @@ class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
   ) {
     super()
     this[TypeId] = TypeId
-    this.httpApp = toHttpApp(this) as any
+    this.httpApp = FiberRef.get(currentRouterConfig).pipe(
+      Effect.flatMap((config) => this.httpApp = toHttpApp(this, config) as any)
+    ) as any
   }
   private httpApp: Effect.Effect<
     ServerResponse.HttpServerResponse,
@@ -183,9 +206,10 @@ class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
 }
 
 const toHttpApp = <E, R>(
-  self: Router.HttpRouter<E, R>
+  self: Router.HttpRouter<E, R>,
+  config: Partial<FindMyWay.RouterConfig>
 ): App.Default<E | Error.RouteNotFound, R> => {
-  const router = FindMyWay.make<Router.Route<E, R>>()
+  const router = FindMyWay.make<Router.Route<E, R>>(config)
   const mounts = Chunk.toReadonlyArray(self.mounts).map(([path, app, options]) =>
     [
       path,
