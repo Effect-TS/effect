@@ -484,6 +484,7 @@ export const all: <
     readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
     readonly mode?: "default" | "validate" | "either" | undefined
+    readonly concurrentFinalizers?: boolean | undefined
   }
 >(arg: Arg, options?: O) => All.Return<Arg, O> = fiberRuntime.all
 
@@ -503,6 +504,7 @@ export const allWith: <
     readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
     readonly mode?: "default" | "validate" | "either" | undefined
+    readonly concurrentFinalizers?: boolean | undefined
   }
 >(
   options?: O
@@ -602,6 +604,7 @@ export declare namespace All {
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: boolean | undefined
       readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     }
   > = [Arg] extends [ReadonlyArray<EffectAny>] ? ReturnTuple<Arg, IsDiscard<O>, ExtractMode<O>>
     : [Arg] extends [Iterable<EffectAny>] ? ReturnIterable<Arg, IsDiscard<O>, ExtractMode<O>>
@@ -622,6 +625,7 @@ export const allSuccesses: <X extends Effect<any, any, any>>(
     | {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     }
     | undefined
 ) => Effect<Array<Effect.Success<X>>, never, Effect.Context<X>> = fiberRuntime.allSuccesses
@@ -678,6 +682,7 @@ export const exists: {
       | {
         readonly concurrency?: Concurrency | undefined
         readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
       }
       | undefined
   ): (elements: Iterable<A>) => Effect<boolean, E, R>
@@ -688,6 +693,7 @@ export const exists: {
       | {
         readonly concurrency?: Concurrency | undefined
         readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
       }
       | undefined
   ): Effect<boolean, E, R>
@@ -706,6 +712,7 @@ export const filter: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly negate?: boolean | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     } | undefined
   ): (elements: Iterable<A>) => Effect<Array<A>, E, R>
   <A, E, R>(
@@ -715,6 +722,7 @@ export const filter: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly negate?: boolean | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     } | undefined
   ): Effect<Array<A>, E, R>
 } = fiberRuntime.filter
@@ -784,6 +792,7 @@ export const forEach: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     } | undefined
   ): (
     self: S
@@ -794,6 +803,7 @@ export const forEach: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): (self: Iterable<A>) => Effect<void, E, R>
   <B, E, R, S extends Iterable<any>>(
@@ -803,6 +813,7 @@ export const forEach: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     } | undefined
   ): Effect<RA.ReadonlyArray.With<S, B>, E, R>
   <A, B, E, R>(
@@ -812,6 +823,7 @@ export const forEach: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): Effect<void, E, R>
 } = fiberRuntime.forEach as any
@@ -838,7 +850,11 @@ export const mergeAll: {
     zero: Z,
     f: (z: Z, a: Effect.Success<Eff>, i: number) => Z,
     options?:
-      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): (elements: Iterable<Eff>) => Effect<Z, Effect.Error<Eff>, Effect.Context<Eff>>
   <Eff extends Effect<any, any, any>, Z>(
@@ -846,7 +862,11 @@ export const mergeAll: {
     zero: Z,
     f: (z: Z, a: Effect.Success<Eff>, i: number) => Z,
     options?:
-      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): Effect<Z, Effect.Error<Eff>, Effect.Context<Eff>>
 } = fiberRuntime.mergeAll
@@ -862,14 +882,22 @@ export const partition: {
   <A, B, E, R>(
     f: (a: A, i: number) => Effect<B, E, R>,
     options?:
-      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): (elements: Iterable<A>) => Effect<[excluded: Array<E>, satisfying: Array<B>], never, R>
   <A, B, E, R>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<B, E, R>,
     options?:
-      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): Effect<[excluded: Array<E>, satisfying: Array<B>], never, R>
 } = fiberRuntime.partition
@@ -897,7 +925,11 @@ export const reduceEffect: {
     zero: Effect<Z, E, R>,
     f: (acc: NoInfer<Z>, a: Effect.Success<Eff>, i: number) => Z,
     options?:
-      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): (elements: Iterable<Eff>) => Effect<Z, E | Effect.Error<Eff>, R | Effect.Context<Eff>>
   <Eff extends Effect<any, any, any>, Z, E, R>(
@@ -905,7 +937,11 @@ export const reduceEffect: {
     zero: Effect<Z, E, R>,
     f: (acc: NoInfer<Z>, a: Effect.Success<Eff>, i: number) => Z,
     options?:
-      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): Effect<Z, E | Effect.Error<Eff>, R | Effect.Context<Eff>>
 } = fiberRuntime.reduceEffect
@@ -965,6 +1001,7 @@ export const replicateEffect: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<Array<A>, E, R>
   (
@@ -973,6 +1010,7 @@ export const replicateEffect: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<void, E, R>
   <A, E, R>(
@@ -982,6 +1020,7 @@ export const replicateEffect: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): Effect<Array<A>, E, R>
   <A, E, R>(
@@ -991,6 +1030,7 @@ export const replicateEffect: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): Effect<void, E, R>
 } = fiberRuntime.replicateEffect
@@ -1044,6 +1084,7 @@ export const validateAll: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     } | undefined
   ): (elements: Iterable<A>) => Effect<Array<B>, Array<E>, R>
   <A, B, E, R>(
@@ -1052,6 +1093,7 @@ export const validateAll: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): (elements: Iterable<A>) => Effect<void, Array<E>, R>
   <A, B, E, R>(
@@ -1061,6 +1103,7 @@ export const validateAll: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     } | undefined
   ): Effect<Array<B>, Array<E>, R>
   <A, B, E, R>(
@@ -1070,6 +1113,7 @@ export const validateAll: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard: true
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): Effect<void, Array<E>, R>
 } = fiberRuntime.validateAll
@@ -1098,14 +1142,22 @@ export const validateFirst: {
   <A, B, E, R>(
     f: (a: A, i: number) => Effect<B, E, R>,
     options?:
-      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): (elements: Iterable<A>) => Effect<B, Array<E>, R>
   <A, B, E, R>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<B, E, R>,
     options?:
-      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): Effect<B, Array<E>, R>
 } = fiberRuntime.validateFirst
@@ -5347,19 +5399,20 @@ export const validate: {
   <B, E1, R1>(
     that: Effect<B, E1, R1>,
     options?: {
-      /**
-       * @since 2.0.0
-       * @category supervision & fibers
-       */
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     } | undefined
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<[A, B], E1 | E, R1 | R>
   <A, E, R, B, E1, R1>(
     self: Effect<A, E, R>,
     that: Effect<B, E1, R1>,
     options?:
-      | { readonly concurrent?: boolean | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrent?: boolean | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): Effect<[A, B], E | E1, R | R1>
 } = fiberRuntime.validate
@@ -5376,7 +5429,11 @@ export const validateWith: {
     that: Effect<B, E1, R1>,
     f: (a: A, b: B) => C,
     options?:
-      | { readonly concurrent?: boolean | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrent?: boolean | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): <E, R>(self: Effect<A, E, R>) => Effect<C, E1 | E, R1 | R>
   <A, E, R, B, E1, R1, C>(
@@ -5384,7 +5441,11 @@ export const validateWith: {
     that: Effect<B, E1, R1>,
     f: (a: A, b: B) => C,
     options?:
-      | { readonly concurrent?: boolean | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrent?: boolean | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): Effect<C, E | E1, R | R1>
 } = fiberRuntime.validateWith
@@ -5446,14 +5507,22 @@ export const zip: {
   <A2, E2, R2>(
     that: Effect<A2, E2, R2>,
     options?:
-      | { readonly concurrent?: boolean | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrent?: boolean | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<[A, A2], E2 | E, R2 | R>
   <A, E, R, A2, E2, R2>(
     self: Effect<A, E, R>,
     that: Effect<A2, E2, R2>,
     options?:
-      | { readonly concurrent?: boolean | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrent?: boolean | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): Effect<[A, A2], E | E2, R | R2>
 } = fiberRuntime.zipOptions
@@ -5482,14 +5551,22 @@ export const zipLeft: {
   <A2, E2, R2>(
     that: Effect<A2, E2, R2>,
     options?:
-      | { readonly concurrent?: boolean | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrent?: boolean | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E2 | E, R2 | R>
   <A, E, R, A2, E2, R2>(
     self: Effect<A, E, R>,
     that: Effect<A2, E2, R2>,
     options?:
-      | { readonly concurrent?: boolean | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | {
+        readonly concurrent?: boolean | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
       | undefined
   ): Effect<A, E | E2, R | R2>
 } = fiberRuntime.zipLeftOptions
@@ -5520,6 +5597,7 @@ export const zipRight: {
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A2, E2 | E, R2 | R>
   <A, E, R, A2, E2, R2>(
@@ -5528,6 +5606,7 @@ export const zipRight: {
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): Effect<A2, E2 | E, R2 | R>
 } = fiberRuntime.zipRightOptions
@@ -5572,6 +5651,7 @@ export const zipWith: {
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): <E, R>(self: Effect<A, E, R>) => Effect<B, E2 | E, R2 | R>
   <A, E, R, A2, E2, R2, B>(
@@ -5581,6 +5661,7 @@ export const zipWith: {
     options?: {
       readonly concurrent?: boolean | undefined
       readonly batching?: boolean | "inherit" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
     }
   ): Effect<B, E2 | E, R2 | R>
 } = fiberRuntime.zipWithOptions
