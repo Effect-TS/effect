@@ -1200,12 +1200,20 @@ export const patchFiberRefs = (patch: FiberRefsPatch.FiberRefsPatch): Effect.Eff
 export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): Effect.Effect<A> =>
   evaluate.length >= 1
     ? core.async((resolve, signal) => {
-      evaluate(signal)
-        .then((a) => resolve(core.exitSucceed(a)), (e) => resolve(core.exitDie(e)))
+      try {
+        evaluate(signal)
+          .then((a) => resolve(core.exitSucceed(a)), (e) => resolve(core.exitDie(e)))
+      } catch (e) {
+        resolve(core.exitDie(e))
+      }
     })
     : core.async((resolve) => {
-      ;(evaluate as LazyArg<PromiseLike<A>>)()
-        .then((a) => resolve(core.exitSucceed(a)), (e) => resolve(core.exitDie(e)))
+      try {
+        ;(evaluate as LazyArg<PromiseLike<A>>)()
+          .then((a) => resolve(core.exitSucceed(a)), (e) => resolve(core.exitDie(e)))
+      } catch (e) {
+        resolve(core.exitDie(e))
+      }
     })
 
 /* @internal */
@@ -1668,14 +1676,12 @@ export const tryPromise: {
     return core.async((resolve, signal) => {
       try {
         evaluate(signal)
-          .then((a) => resolve(core.exitSucceed(a)), (e) =>
-            resolve(core.fail(
-              catcher ? catcher(e) : new core.UnknownException(e)
-            )))
+          .then(
+            (a) => resolve(core.exitSucceed(a)),
+            (e) => resolve(catcher ? core.failSync(() => catcher(e)) : core.fail(new core.UnknownException(e)))
+          )
       } catch (e) {
-        resolve(core.fail(
-          catcher ? catcher(e) : new core.UnknownException(e)
-        ))
+        resolve(catcher ? core.failSync(() => catcher(e)) : core.fail(new core.UnknownException(e)))
       }
     })
   }
@@ -1683,14 +1689,12 @@ export const tryPromise: {
   return core.async((resolve) => {
     try {
       evaluate()
-        .then((a) => resolve(core.exitSucceed(a)), (e) =>
-          resolve(core.fail(
-            catcher ? catcher(e) : new core.UnknownException(e)
-          )))
+        .then(
+          (a) => resolve(core.exitSucceed(a)),
+          (e) => resolve(catcher ? core.failSync(() => catcher(e)) : core.fail(new core.UnknownException(e)))
+        )
     } catch (e) {
-      resolve(core.fail(
-        catcher ? catcher(e) : new core.UnknownException(e)
-      ))
+      resolve(catcher ? core.failSync(() => catcher(e)) : core.fail(new core.UnknownException(e)))
     }
   })
 }
