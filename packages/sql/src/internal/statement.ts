@@ -133,7 +133,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
   get raw(): Effect.Effect<unknown, Error.SqlError> {
     return this.withConnection(
       "executeRaw",
-      (connection, sql, params) => connection.executeRaw(sql, params)
+      (connection, sql, params) => connection.executeRaw(sql, params),
+      true
     )
   }
 

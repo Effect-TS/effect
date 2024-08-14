@@ -89,7 +89,7 @@ export const make = (
     class ConnectionImpl implements Connection {
       constructor(private readonly conn: Mysql.PoolConnection | Mysql.Pool) {}
 
-      private runUnprepared(
+      private runRaw(
         sql: string,
         values?: ReadonlyArray<any>,
         rowsAsArray = false,
@@ -117,7 +117,7 @@ export const make = (
         rowsAsArray = false,
         method: "execute" | "query" = "execute"
       ) {
-        return this.runUnprepared(sql, values, rowsAsArray, method).pipe(
+        return this.runRaw(sql, values, rowsAsArray, method).pipe(
           Effect.map((results) => {
             if (transform && !rowsAsArray && options.transformResultNames) {
               return transformRows(results as ReadonlyArray<any>)
@@ -131,7 +131,7 @@ export const make = (
         return this.run(sql, params)
       }
       executeRaw(sql: string, params: ReadonlyArray<Statement.Primitive>) {
-        return this.runUnprepared(sql, params, true)
+        return this.runRaw(sql, params, true)
       }
       executeWithoutTransform(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params, false)
