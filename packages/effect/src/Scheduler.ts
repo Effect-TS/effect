@@ -7,7 +7,9 @@ import type { RuntimeFiber } from "./Fiber.js"
 import type { FiberRef } from "./FiberRef.js"
 import { dual } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
+import * as Hash from "./Hash.js"
 import * as core from "./internal/core.js"
+import * as Utils from "./Utils.js"
 
 /**
  * @since 2.0.0
@@ -234,6 +236,102 @@ export class ControlledScheduler implements Scheduler {
       for (let i = 0; i < toRun.length; i++) {
         toRun[i]()
       }
+    }
+  }
+}
+
+/**
+ * Same as `MixedScheduler`, but performs tasks with the same priority randomly
+ *
+ * It is useful in scenarios where you want to introduce non-deterministic behavior in task execution while still
+ * ensuring that higher-priority tasks are generally executed before lower-priority ones.
+ * Uses a Pseudo-Random Number Generator (PRNG) for selecting the next task to execute within a tasks with the same priority.
+ * `RandomScheduler` can be seeded for reproducibility.
+ *
+ * @see MixedScheduler
+ * @since 3.6.4
+ * @category constructors
+ */
+export class RandomScheduler implements Scheduler {
+  /**
+   * @since 3.6.4
+   */
+  running = false
+  /**
+   * @since 3.6.4
+   */
+  readonly tasks = new PriorityBuckets()
+  /**
+   * @since 3.6.4
+   */
+  readonly maxNextTickBeforeTimer: number
+  /**
+   * @since 3.6.4
+   */
+  readonly PRNG: Utils.PCGRandom
+
+  constructor(
+    options?: {
+      /**
+       * @since 3.6.4
+       */
+      readonly seed?: unknown
+      /**
+       * @since 3.6.4
+       */
+      readonly maxNextTickBeforeTimer?: number | undefined
+    } | undefined
+  ) {
+    this.maxNextTickBeforeTimer = options?.maxNextTickBeforeTimer ?? 2048
+    this.PRNG = new Utils.PCGRandom(Hash.hash((options?.seed === undefined) ? Math.random() : options.seed))
+  }
+
+  /**
+   * @since 3.6.4
+   */
+  private starveInternal(depth: number) {
+    const tasks = this.tasks.buckets
+    this.tasks.buckets = []
+    for (const [_, toRun] of tasks) {
+      while (toRun.length) {
+        const randomIndex = this.PRNG.integer(toRun.length)
+        const task = toRun.splice(randomIndex, 1)[0]
+        task()
+      }
+    }
+    if (this.tasks.buckets.length === 0) {
+      this.running = false
+    } else {
+      this.starve(depth)
+    }
+  }
+
+  /**
+   * @since 3.6.4
+   */
+  private starve(depth = 0) {
+    if (depth >= this.maxNextTickBeforeTimer) {
+      setTimeout(() => this.starveInternal(0), 0)
+    } else {
+      Promise.resolve(void 0).then(() => this.starveInternal(depth + 1))
+    }
+  }
+
+  /**
+   * @since 3.6.4
+   */
+  shouldYield(fiber: RuntimeFiber<unknown, unknown>) {
+    return defaultShouldYield(fiber)
+  }
+
+  /**
+   * @since 3.6.4
+   */
+  scheduleTask(task: Task, priority: number) {
+    this.tasks.scheduleTask(task, priority)
+    if (!this.running) {
+      this.running = true
+      this.starve()
     }
   }
 }
