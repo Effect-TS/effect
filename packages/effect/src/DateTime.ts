@@ -562,7 +562,7 @@ export const makeZonedFromString = (input: string): Option.Option<Zoned> => {
   const match = zonedStringRegex.exec(input)
   if (match === null) {
     const offset = parseOffset(input)
-    return offset ? makeZoned(input, { timeZone: offset }) : Option.none()
+    return offset !== null ? makeZoned(input, { timeZone: offset }) : Option.none()
   }
   const [, isoString, timeZone] = match
   return makeZoned(isoString, { timeZone })
