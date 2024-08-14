@@ -66,7 +66,10 @@ describe("Scope", () => {
       const deferred = yield* $(Deferred.make<void>())
       const result = yield* $(
         Effect.addFinalizer(() => Deferred.succeed(deferred, void 0)),
-        Effect.zipRight(Effect.addFinalizer(() => Deferred.await(deferred)), { concurrent: true }),
+        Effect.zipRight(Effect.addFinalizer(() => Deferred.await(deferred)), {
+          concurrent: true,
+          concurrentFinalizers: true
+        }),
         Effect.scoped,
         Effect.asVoid
       )
@@ -79,7 +82,7 @@ describe("Scope", () => {
         Effect.scoped(
           pipe(
             Effect.parallelFinalizers(resource(1, ref)),
-            Effect.zip(resource(2, ref), { concurrent: true }),
+            Effect.zip(resource(2, ref), { concurrent: true, concurrentFinalizers: true }),
             Effect.flatMap(([resource1, resource2]) =>
               pipe(
                 Ref.update(ref, (actions) => [...actions, use(resource1)]),
