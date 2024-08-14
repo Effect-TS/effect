@@ -89,6 +89,27 @@ export const make = (
     class ConnectionImpl implements Connection {
       constructor(private readonly conn: Mysql.PoolConnection | Mysql.Pool) {}
 
+      private runUnprepared(
+        sql: string,
+        values?: ReadonlyArray<any>,
+        rowsAsArray = false,
+        method: "execute" | "query" = "execute"
+      ) {
+        return Effect.async<unknown, SqlError>((resume) => {
+          ;(this.conn as any)[method]({
+            sql,
+            values,
+            rowsAsArray
+          }, (cause: unknown | null, results: unknown, _fields: any) => {
+            if (cause) {
+              resume(Effect.fail(new SqlError({ cause, message: "Failed to execute statement" })))
+            } else {
+              resume(Effect.succeed(results))
+            }
+          })
+        })
+      }
+
       private run(
         sql: string,
         values?: ReadonlyArray<any>,
@@ -96,25 +117,21 @@ export const make = (
         rowsAsArray = false,
         method: "execute" | "query" = "execute"
       ) {
-        return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
-          ;(this.conn as any)[method]({
-            sql,
-            values,
-            rowsAsArray
-          }, (cause: unknown | null, results: ReadonlyArray<any>, _fields: any) => {
-            if (cause) {
-              resume(Effect.fail(new SqlError({ cause, message: "Failed to execute statement" })))
-            } else if (transform && !rowsAsArray && options.transformResultNames) {
-              resume(Effect.succeed(transformRows(results)))
-            } else {
-              resume(Effect.succeed(Array.isArray(results) ? results : []))
+        return this.runUnprepared(sql, values, rowsAsArray, method).pipe(
+          Effect.map((results) => {
+            if (transform && !rowsAsArray && options.transformResultNames) {
+              return transformRows(results as ReadonlyArray<any>)
             }
+            return Array.isArray(results) ? results : []
           })
-        })
+        )
       }
 
       execute(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params)
+      }
+      executeRaw(sql: string, params: ReadonlyArray<Statement.Primitive>) {
+        return this.runUnprepared(sql, params, true)
       }
       executeWithoutTransform(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params, false)
@@ -122,7 +139,7 @@ export const make = (
       executeValues(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params, true, true)
       }
-      executeRaw(sql: string, params?: ReadonlyArray<Statement.Primitive>) {
+      executeUnprepared(sql: string, params?: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params, true, false, "query")
       }
       executeStream(sql: string, params: ReadonlyArray<Statement.Primitive>) {

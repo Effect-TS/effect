@@ -45,6 +45,7 @@ export type Dialect = "sqlite" | "pg" | "mysql" | "mssql"
  * @since 1.0.0
  */
 export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlError>, Pipeable {
+  readonly raw: Effect<unknown, SqlError>
   readonly withoutTransform: Effect<ReadonlyArray<A>, SqlError>
   readonly stream: Stream.Stream<A, SqlError>
   readonly values: Effect<ReadonlyArray<ReadonlyArray<Primitive>>, SqlError>
