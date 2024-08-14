@@ -37,27 +37,22 @@ export class PriorityBuckets<in out T = Task> {
    * @since 2.0.0
    */
   scheduleTask(task: T, priority: number) {
+    const length = this.buckets.length
     let bucket: [number, Array<T>] | undefined = undefined
-    let index: number
-    for (index = 0; index < this.buckets.length; index++) {
+    let index = 0
+    for (; index < length; index++) {
       if (this.buckets[index][0] <= priority) {
         bucket = this.buckets[index]
       } else {
         break
       }
     }
-    if (bucket) {
+    if (bucket && bucket[0] === priority) {
       bucket[1].push(task)
+    } else if (index === length) {
+      this.buckets.push([priority, [task]])
     } else {
-      const newBuckets: Array<[number, Array<T>]> = []
-      for (let i = 0; i < index; i++) {
-        newBuckets.push(this.buckets[i])
-      }
-      newBuckets.push([priority, [task]])
-      for (let i = index; i < this.buckets.length; i++) {
-        newBuckets.push(this.buckets[i])
-      }
-      this.buckets = newBuckets
+      this.buckets.splice(index, 0, [priority, [task]])
     }
   }
 }
