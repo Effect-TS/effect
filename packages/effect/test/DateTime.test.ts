@@ -387,6 +387,13 @@ describe("DateTime", () => {
         assert.strictEqual(dt.toJSON(), "2024-07-21T08:12:34.112Z")
       }))
 
+    it.effect("only offset with 00:00", () =>
+      Effect.gen(function*() {
+        const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+00:00")
+        assert.strictEqual(dt.zone._tag, "Offset")
+        assert.strictEqual(dt.toJSON(), "2024-07-21T20:12:34.112Z")
+      }))
+
     it.effect("roundtrip", () =>
       Effect.gen(function*() {
         const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00[Pacific/Auckland]").pipe(
