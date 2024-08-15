@@ -173,14 +173,14 @@ export const extract: {
     const fields: Record<string, any> = {}
     for (const key of Object.keys(self[TypeId])) {
       const value = self[TypeId][key]
-      if (Schema.TypeId in value) {
-        fields[key] = value
+      if (TypeId in value) {
+        fields[key] = extract(value, variant)
       } else if (FieldTypeId in value) {
         if (variant in value.schemas) {
           fields[key] = value.schemas[variant]
         }
       } else {
-        fields[key] = extract(value, variant)
+        fields[key] = value
       }
     }
     return Schema.Struct(fields) as any
