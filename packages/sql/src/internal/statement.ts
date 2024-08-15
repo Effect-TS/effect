@@ -848,7 +848,7 @@ export const primitiveKind = (value: Statement.Primitive): Statement.PrimitiveKi
 }
 
 const extractPrimitive = (
-  value: Statement.Primitive | Statement.Fragment,
+  value: Statement.Primitive | Statement.Fragment | undefined,
   onCustom: (
     type: Statement.Custom<string, unknown, unknown>,
     placeholder: () => string,
@@ -857,7 +857,9 @@ const extractPrimitive = (
   placeholder: () => string,
   withoutTransform: boolean
 ): Statement.Primitive => {
-  if (isFragment(value)) {
+  if (value === undefined) {
+    return null
+  } else if (isFragment(value)) {
     const head = value.segments[0]
     if (head._tag === "Custom") {
       const compiled = onCustom(head, placeholder, withoutTransform)
