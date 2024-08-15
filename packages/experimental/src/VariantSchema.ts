@@ -248,7 +248,7 @@ type MissingSelfGeneric<Params extends string = ""> =
  * @since 1.0.0
  * @category constructors
  */
-export const factory = <
+export const make = <
   const Variants extends ReadonlyArray<string>,
   const Default extends Variants[number]
 >(options: {
