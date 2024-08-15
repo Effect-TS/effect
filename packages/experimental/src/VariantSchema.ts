@@ -2,9 +2,7 @@
  * @since 1.0.0
  */
 import type * as AST from "@effect/schema/AST"
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import * as Data from "effect/Data"
 import { dual } from "effect/Function"
 
 /**
@@ -246,15 +244,6 @@ type ClassFromFields<
 type MissingSelfGeneric<Params extends string = ""> =
   `Missing \`Self\` generic - use \`class Self extends Class<Self>()(${Params}{ ... })\``
 
-const schemaVariance = {
-  /* c8 ignore next */
-  _A: (_: any) => _,
-  /* c8 ignore next */
-  _I: (_: any) => _,
-  /* c8 ignore next */
-  _R: (_: never) => _
-}
-
 /**
  * @since 1.0.0
  * @category constructors
@@ -295,28 +284,8 @@ export const factory = <
     ) {
       const variantStruct = Struct(fields)
       const schema = extract(variantStruct, options.defaultVariant)
-      const validate = ParseResult.validateSync(schema)
-      const klass = Schema.Class<any>(identifier)(schema.fields, annotations)
-      class Base extends Data.Class {
-        constructor(
-          props: any,
-          options?: { readonly disableValidation?: boolean }
-        ) {
-          if (options?.disableValidation !== true) {
-            props = validate(props)
-          }
-          super(props)
-        }
-
-        // implement Struct
+      class Base extends Schema.Class<any>(identifier)(schema.fields, annotations) {
         static [TypeId] = fields
-
-        // implement Schema
-        static [Schema.TypeId] = schemaVariance
-        static ast = klass.ast
-        static make = klass.make
-        static fields = klass.fields
-        static identifier = klass.identifier
       }
       for (const variant of options.variants) {
         Object.defineProperty(Base, variant, {
