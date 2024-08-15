@@ -134,34 +134,7 @@ export const GeneratedByApp = <S extends Schema.Schema.All | Schema.PropertySign
  * @since 1.0.0
  * @category models
  */
-export interface FieldNoInsert<S extends Schema.Schema.All | Schema.PropertySignature.All> extends
-  VariantSchema.Field<{
-    readonly select: S
-    readonly update: S
-    readonly json: S
-    readonly jsonUpdate: S
-  }>
-{}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const FieldNoInsert = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
-  schema: S
-): FieldNoInsert<S> =>
-  Field({
-    select: schema,
-    update: schema,
-    json: schema,
-    jsonUpdate: schema
-  })
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface FieldNoJson<S extends Schema.Schema.All | Schema.PropertySignature.All> extends
+export interface Sensitive<S extends Schema.Schema.All | Schema.PropertySignature.All> extends
   VariantSchema.Field<{
     readonly select: S
     readonly insert: S
@@ -170,12 +143,15 @@ export interface FieldNoJson<S extends Schema.Schema.All | Schema.PropertySignat
 {}
 
 /**
+ * A field that represents a sensitive value that should not be exposed in the
+ * JSON variants.
+ *
  * @since 1.0.0
  * @category schemas
  */
-export const FieldNoJson = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
+export const Sensitive = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
   schema: S
-): FieldNoJson<S> =>
+): Sensitive<S> =>
   Field({
     select: schema,
     insert: schema,
