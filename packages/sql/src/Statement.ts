@@ -177,7 +177,8 @@ export interface ArrayHelper {
  */
 export interface RecordInsertHelper {
   readonly _tag: "RecordInsertHelper"
-  readonly value: ReadonlyArray<Record<string, Primitive | Fragment>>
+  readonly value: ReadonlyArray<Record<string, Primitive | Fragment | undefined>>
+  /** @internal */
   readonly returningIdentifier: string | Fragment | undefined
   readonly returning: (sql: string | Identifier | Fragment) => RecordInsertHelper
 }
@@ -188,8 +189,9 @@ export interface RecordInsertHelper {
  */
 export interface RecordUpdateHelper {
   readonly _tag: "RecordUpdateHelper"
-  readonly value: ReadonlyArray<Record<string, Primitive | Fragment>>
+  readonly value: ReadonlyArray<Record<string, Primitive | Fragment | undefined>>
   readonly alias: string
+  /** @internal */
   readonly returningIdentifier: string | Fragment | undefined
   readonly returning: (sql: string | Identifier | Fragment) => RecordUpdateHelper
 }
@@ -200,8 +202,9 @@ export interface RecordUpdateHelper {
  */
 export interface RecordUpdateHelperSingle {
   readonly _tag: "RecordUpdateHelperSingle"
-  readonly value: Record<string, Primitive | Fragment>
+  readonly value: Record<string, Primitive | Fragment | undefined>
   readonly omit: ReadonlyArray<string>
+  /** @internal */
   readonly returningIdentifier: string | Fragment | undefined
   readonly returning: (sql: string | Identifier | Fragment) => RecordUpdateHelperSingle
 }
@@ -306,13 +309,13 @@ export interface Constructor {
 
   readonly insert: {
     (
-      value: ReadonlyArray<Record<string, Primitive | Fragment>>
+      value: ReadonlyArray<Record<string, Primitive | Fragment | undefined>>
     ): RecordInsertHelper
-    (value: Record<string, Primitive | Fragment>): RecordInsertHelper
+    (value: Record<string, Primitive | Fragment | undefined>): RecordInsertHelper
   }
 
   /** Update a single row */
-  readonly update: <A extends Record<string, Primitive | Fragment>>(
+  readonly update: <A extends Record<string, Primitive | Fragment | undefined>>(
     value: A,
     omit?: ReadonlyArray<keyof A>
   ) => RecordUpdateHelperSingle
@@ -323,7 +326,7 @@ export interface Constructor {
    * **Note:** Not supported in sqlite
    */
   readonly updateValues: (
-    value: ReadonlyArray<Record<string, Primitive | Fragment>>,
+    value: ReadonlyArray<Record<string, Primitive | Fragment | undefined>>,
     alias: string
   ) => RecordUpdateHelper
 
