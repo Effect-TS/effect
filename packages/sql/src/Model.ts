@@ -6,13 +6,56 @@ import * as Schema from "@effect/schema/Schema"
 import * as DateTime from "effect/DateTime"
 import type { LazyArg } from "effect/Function"
 
-/**
- * @since 1.0.0
- */
-export const {
+const {
+  Class,
+  Field,
+  Struct
+} = VariantSchema.factory({
+  variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
+  defaultVariant: "select"
+})
+
+export {
   /**
+   * A base class used for creating domain model schemas.
+   *
+   * It supports common variants for database and JSON apis.
+   *
    * @since 1.0.0
    * @category constructors
+   * @example
+   * import { Schema } from "@effect/schema"
+   * import { Model } from "@effect/sql"
+   *
+   * export const GroupId = Schema.Number.pipe(Schema.brand("GroupId"))
+   *
+   * export class Group extends Model.Class<Group>("Group")({
+   *   id: Model.Generated(GroupId),
+   *   name: Schema.NonEmptyTrimmedString,
+   *   createdAt: Model.DateTimeInsertFromDate,
+   *   updatedAt: Model.DateTimeUpdateFromDate
+   * }) {}
+   *
+   * // schema used for selects
+   * Group
+   *
+   * // schema used for inserts
+   * Group.insert
+   *
+   * // schema used for updates
+   * Group.update
+   *
+   * // schema used for json api
+   * Group.json
+   * Group.jsonCreate
+   * Group.jsonUpdate
+   *
+   * // you can also turn them into classes
+   * class GroupJson extends Schema.Class<GroupJson>("GroupJson")(Group.json) {
+   *   get upperName() {
+   *     return this.name.toUpperCase()
+   *   }
+   * }
    */
   Class,
   /**
@@ -25,10 +68,7 @@ export const {
    * @category constructors
    */
   Struct
-} = VariantSchema.factory({
-  variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
-  defaultVariant: "select"
-})
+}
 
 /**
  * @since 1.0.0
