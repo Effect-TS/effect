@@ -1,7 +1,7 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "effect/test/utils/extend"
 
 describe("Effect", () => {
   it("tryPromise - success, no catch, no AbortSignal", async () => {
@@ -88,4 +88,18 @@ describe("Effect", () => {
     expect(exit._tag).toBe("Success")
     expect(aborted).toBe(true)
   })
+
+  it.effect("tryPromise - defects in catch", () =>
+    Effect.gen(function*() {
+      const cause = yield* Effect.tryPromise({
+        try: () => Promise.reject("error"),
+        catch: (error) => {
+          throw new Error(String(error))
+        }
+      }).pipe(
+        Effect.sandbox,
+        Effect.flip
+      )
+      expect(cause).toStrictEqual(Cause.die(new Error("error")))
+    }))
 })
