@@ -136,7 +136,7 @@ export const make = (
         params: ReadonlyArray<Statement.Primitive> = []
       ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params))
 
-      const runRaw = (
+      const runUnprepared = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
       ) => Effect.map(runStatement(db.prepare(sql), params), transformRows)
@@ -172,14 +172,17 @@ export const make = (
         execute(sql, params) {
           return runTransform(sql, params)
         },
+        executeRaw(sql, params) {
+          return run(sql, params)
+        },
         executeValues(sql, params) {
           return runValues(sql, params)
         },
         executeWithoutTransform(sql, params) {
           return run(sql, params)
         },
-        executeRaw(sql, params) {
-          return runRaw(sql, params)
+        executeUnprepared(sql, params) {
+          return runUnprepared(sql, params)
         },
         executeStream(_sql, _params) {
           return Effect.dieMessage("executeStream not implemented")

@@ -192,13 +192,16 @@ export const make = (
       execute(sql: string, params: ReadonlyArray<Primitive>) {
         return this.runTransform(this.pg.unsafe(sql, params as any))
       }
+      executeRaw(sql: string, params: ReadonlyArray<Primitive>) {
+        return this.run(this.pg.unsafe(sql, params as any))
+      }
       executeWithoutTransform(sql: string, params: ReadonlyArray<Primitive>) {
         return this.run(this.pg.unsafe(sql, params as any))
       }
       executeValues(sql: string, params: ReadonlyArray<Primitive>) {
         return this.run(this.pg.unsafe(sql, params as any).values())
       }
-      executeRaw(sql: string, params?: ReadonlyArray<Primitive>) {
+      executeUnprepared(sql: string, params?: ReadonlyArray<Primitive>) {
         return this.runTransform(this.pg.unsafe(sql, params as any))
       }
       executeStream(sql: string, params: ReadonlyArray<Primitive>) {

@@ -130,6 +130,14 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     )
   }
 
+  get raw(): Effect.Effect<unknown, Error.SqlError> {
+    return this.withConnection(
+      "executeRaw",
+      (connection, sql, params) => connection.executeRaw(sql, params),
+      true
+    )
+  }
+
   get stream(): Stream.Stream<A, Error.SqlError> {
     return Stream.unwrapScoped(Effect.flatMap(
       Effect.makeSpanScoped("sql.execute", { kind: "client", captureStackTrace: false }),
@@ -154,7 +162,10 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
   }
 
   get unprepared(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
-    return this.withConnection("executeRaw", (connection, sql, params) => connection.executeRaw(sql, params))
+    return this.withConnection(
+      "executeUnprepared",
+      (connection, sql, params) => connection.executeUnprepared(sql, params)
+    )
   }
 
   compile(withoutTransform?: boolean | undefined) {

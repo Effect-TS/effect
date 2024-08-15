@@ -18,6 +18,15 @@ export interface Connection {
     params: ReadonlyArray<Primitive>
   ) => Effect<ReadonlyArray<any>, SqlError>
 
+  /**
+   * Execute the specified SQL query and return the raw results directly from
+   * underlying SQL client.
+   */
+  readonly executeRaw: (
+    sql: string,
+    params: ReadonlyArray<Primitive>
+  ) => Effect<unknown, SqlError>
+
   readonly executeStream: (
     sql: string,
     params: ReadonlyArray<Primitive>
@@ -33,7 +42,7 @@ export interface Connection {
     params: ReadonlyArray<Primitive>
   ) => Effect<ReadonlyArray<ReadonlyArray<Primitive>>, SqlError>
 
-  readonly executeRaw: (
+  readonly executeUnprepared: (
     sql: string,
     params?: ReadonlyArray<Primitive> | undefined
   ) => Effect<ReadonlyArray<any>, SqlError>

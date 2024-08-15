@@ -102,19 +102,25 @@ export const make = (
           catch: (cause) => new SqlError({ cause, message: `Failed to execute statement` })
         })
 
-      const run = (
+      const runRaw = (
+        sql: string,
+        params: ReadonlyArray<Statement.Primitive> = []
+      ) => runStatement(db.prepare(sql), params)
+
+      const runCached = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
       ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params))
 
-      const runRaw = (
+      const runUncached = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
-      ) => Effect.map(runStatement(db.prepare(sql), params), transformRows)
+      ) => Effect.map(runRaw(sql, params), transformRows)
 
       const runTransform = options.transformResultNames
-        ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
-        : run
+        ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) =>
+          Effect.map(runCached(sql, params), transformRows)
+        : runCached
 
       const runValues = (
         sql: string,
@@ -139,14 +145,17 @@ export const make = (
         execute(sql, params) {
           return runTransform(sql, params)
         },
+        executeRaw(sql, params) {
+          return runRaw(sql, params)
+        },
         executeValues(sql, params) {
           return runValues(sql, params)
         },
         executeWithoutTransform(sql, params) {
-          return run(sql, params)
+          return runCached(sql, params)
         },
-        executeRaw(sql, params) {
-          return runRaw(sql, params)
+        executeUnprepared(sql, params) {
+          return runUncached(sql, params)
         },
         executeStream(_sql, _params) {
           return Effect.dieMessage("executeStream not implemented")
