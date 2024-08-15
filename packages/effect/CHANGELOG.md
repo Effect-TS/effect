@@ -1,5 +1,17 @@
 # effect
 
+## 3.6.4
+
+### Patch Changes
+
+- [#3404](https://github.com/Effect-TS/effect/pull/3404) [`8295281`](https://github.com/Effect-TS/effect/commit/8295281ae9bd7441e680402540bf3c8682ec417b) Thanks @KhraksMamtsov! - Fix `Cache<_, Value, _>` type parameter variance (covariant -> invariant)
+
+- [#3452](https://github.com/Effect-TS/effect/pull/3452) [`c940df6`](https://github.com/Effect-TS/effect/commit/c940df63800bf3c4396d91cf28ec34938642fd2c) Thanks @tim-smart! - ensure Scheduler tasks are added to a matching priority bucket
+
+- [#3459](https://github.com/Effect-TS/effect/pull/3459) [`00b6c6d`](https://github.com/Effect-TS/effect/commit/00b6c6d4001f5de728b7d990a1b14560b4961a63) Thanks @tim-smart! - ensure defects are caught in Effect.tryPromise
+
+- [#3458](https://github.com/Effect-TS/effect/pull/3458) [`f8d95a6`](https://github.com/Effect-TS/effect/commit/f8d95a61ad0762147933c5c32bb6d7237e18eef4) Thanks @thomasvargiu! - fix `DateTime.makeZonedFromString` for 0 offset
+
 ## 3.6.3
 
 ### Patch Changes

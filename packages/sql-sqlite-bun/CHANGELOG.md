@@ -1,5 +1,63 @@
 # @effect/sql-sqlite-bun
 
+## 0.9.0
+
+### Minor Changes
+
+- [#3457](https://github.com/Effect-TS/effect/pull/3457) [`a07990d`](https://github.com/Effect-TS/effect/commit/a07990de977fb60ab4af1e8f3a2250454dedbb34) Thanks @IMax153! - Add support for executing raw SQL queries with the underlying SQL client.
+
+  This is primarily useful when the SQL client returns special results for certain
+  query types.
+
+  For example, because MySQL does not support the `RETURNING` clause, the `mysql2`
+  client will return a [`ResultSetHeader`](https://sidorares.github.io/node-mysql2/docs/documentation/typescript-examples#resultsetheader)
+  for `INSERT`, `UPDATE`, `DELETE`, and `TRUNCATE` operations.
+
+  To gain access to the raw results of a query, you can use the `.raw` property on
+  the `Statement`:
+
+  ```ts
+  import * as Effect from "effect/Effect";
+  import * as SqlClient from "@effect/sql/SqlClient";
+  import * as MysqlClient from "@effect/sql/MysqlClient";
+
+  const DatabaseLive = MysqlClient.layer({
+    database: Config.succeed("database"),
+    username: Config.succeed("root"),
+    password: Config.succeed(Redacted.make("password")),
+  });
+
+  const program = Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+
+    const result = yield* sql`INSERT INTO usernames VALUES ("Bob")`.raw;
+
+    console.log(result);
+    /**
+     * ResultSetHeader {
+     *   fieldCount: 0,
+     *   affectedRows: 1,
+     *   insertId: 0,
+     *   info: '',
+     *   serverStatus: 2,
+     *   warningStatus: 0,
+     *   changedRows: 0
+     * }
+     */
+  });
+
+  program.pipe(Effect.provide(DatabaseLive), Effect.runPromise);
+  ```
+
+### Patch Changes
+
+- [#3450](https://github.com/Effect-TS/effect/pull/3450) [`0e42a8f`](https://github.com/Effect-TS/effect/commit/0e42a8f045ecb1fd3d080edf3d49fef16a9b0ca1) Thanks @tim-smart! - update dependencies
+
+- Updated dependencies [[`8295281`](https://github.com/Effect-TS/effect/commit/8295281ae9bd7441e680402540bf3c8682ec417b), [`c940df6`](https://github.com/Effect-TS/effect/commit/c940df63800bf3c4396d91cf28ec34938642fd2c), [`00b6c6d`](https://github.com/Effect-TS/effect/commit/00b6c6d4001f5de728b7d990a1b14560b4961a63), [`a07990d`](https://github.com/Effect-TS/effect/commit/a07990de977fb60ab4af1e8f3a2250454dedbb34), [`f8d95a6`](https://github.com/Effect-TS/effect/commit/f8d95a61ad0762147933c5c32bb6d7237e18eef4)]:
+  - effect@3.6.4
+  - @effect/sql@0.9.0
+  - @effect/platform@0.62.0
+
 ## 0.8.7
 
 ### Patch Changes
