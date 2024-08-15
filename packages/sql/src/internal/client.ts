@@ -76,7 +76,7 @@ export function make({
               (
                 [scope, conn]
               ) =>
-                conn.executeRaw(id === 0 ? beginTransaction : savepoint(`effect_sql_${id}`)).pipe(
+                conn.executeUnprepared(id === 0 ? beginTransaction : savepoint(`effect_sql_${id}`)).pipe(
                   Effect.zipRight(Effect.locally(
                     restore(effect),
                     FiberRef.currentContext,
@@ -90,7 +90,7 @@ export function make({
                     if (Exit.isSuccess(exit)) {
                       if (id === 0) {
                         span.event("db.transaction.commit", clock.unsafeCurrentTimeNanos())
-                        effect = Effect.orDie(conn.executeRaw(commit))
+                        effect = Effect.orDie(conn.executeUnprepared(commit))
                       } else {
                         span.event("db.transaction.savepoint", clock.unsafeCurrentTimeNanos())
                         effect = Effect.void
@@ -98,7 +98,9 @@ export function make({
                     } else {
                       span.event("db.transaction.rollback", clock.unsafeCurrentTimeNanos())
                       effect = Effect.orDie(
-                        id > 0 ? conn.executeRaw(rollbackSavepoint(`effect_sql_${id}`)) : conn.executeRaw(rollback)
+                        id > 0
+                          ? conn.executeUnprepared(rollbackSavepoint(`effect_sql_${id}`))
+                          : conn.executeUnprepared(rollback)
                       )
                     }
                     const withScope = scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect

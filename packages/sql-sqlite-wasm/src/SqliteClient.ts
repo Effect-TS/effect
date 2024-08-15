@@ -132,13 +132,16 @@ export const make = (
         execute(sql, params) {
           return runTransform(sql, params)
         },
+        executeRaw(sql, params) {
+          return run(sql, params)
+        },
         executeValues(sql, params) {
           return run(sql, params, "array")
         },
         executeWithoutTransform(sql, params) {
           return run(sql, params)
         },
-        executeRaw(sql, params) {
+        executeUnprepared(sql, params) {
           return runTransform(sql, params)
         },
         executeStream() {
