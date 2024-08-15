@@ -4,7 +4,6 @@
 import * as VariantSchema from "@effect/experimental/VariantSchema"
 import * as Schema from "@effect/schema/Schema"
 import * as DateTime from "effect/DateTime"
-import type { LazyArg } from "effect/Function"
 
 const {
   Class,
@@ -176,11 +175,13 @@ export const DateTimeFromDate: DateTimeFromDate = Schema.transform(
 )
 
 const DateTimeFromDateWithNow = DateTimeFromDate.pipe(
-  Schema.optionalWith({ default: DateTime.unsafeNow })
+  Schema.propertySignature,
+  Schema.withConstructorDefault(DateTime.unsafeNow)
 )
 
 const DateTimeWithNow = Schema.DateTimeUtc.pipe(
-  Schema.optionalWith({ default: DateTime.unsafeNow })
+  Schema.propertySignature,
+  Schema.withConstructorDefault(DateTime.unsafeNow)
 )
 
 /**
@@ -190,10 +191,7 @@ const DateTimeWithNow = Schema.DateTimeUtc.pipe(
 export interface DateTimeInsert extends
   VariantSchema.Field<{
     readonly select: typeof Schema.DateTimeUtc
-    readonly insert: Schema.optionalWith<
-      typeof Schema.DateTimeUtc,
-      { default: LazyArg<DateTime.Utc> }
-    >
+    readonly insert: Schema.PropertySignature<":", DateTime.Utc, never, ":", string, true>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
@@ -220,10 +218,7 @@ export const DateTimeInsert: DateTimeInsert = Field({
 export interface DateTimeInsertFromDate extends
   VariantSchema.Field<{
     readonly select: DateTimeFromDate
-    readonly insert: Schema.optionalWith<
-      DateTimeFromDate,
-      { default: LazyArg<DateTime.Utc> }
-    >
+    readonly insert: Schema.PropertySignature<":", DateTime.Utc, never, ":", Date, true>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
@@ -250,14 +245,8 @@ export const DateTimeInsertFromDate: DateTimeInsertFromDate = Field({
 export interface DateTimeUpdate extends
   VariantSchema.Field<{
     readonly select: typeof Schema.DateTimeUtc
-    readonly insert: Schema.optionalWith<
-      typeof Schema.DateTimeUtc,
-      { default: LazyArg<DateTime.Utc> }
-    >
-    readonly update: Schema.optionalWith<
-      typeof Schema.DateTimeUtc,
-      { default: LazyArg<DateTime.Utc> }
-    >
+    readonly insert: Schema.PropertySignature<":", DateTime.Utc, never, ":", string, true>
+    readonly update: Schema.PropertySignature<":", DateTime.Utc, never, ":", string, true>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
@@ -286,14 +275,8 @@ export const DateTimeUpdate: DateTimeUpdate = Field({
 export interface DateTimeUpdateFromDate extends
   VariantSchema.Field<{
     readonly select: DateTimeFromDate
-    readonly insert: Schema.optionalWith<
-      DateTimeFromDate,
-      { default: LazyArg<DateTime.Utc> }
-    >
-    readonly update: Schema.optionalWith<
-      DateTimeFromDate,
-      { default: LazyArg<DateTime.Utc> }
-    >
+    readonly insert: Schema.PropertySignature<":", DateTime.Utc, never, ":", Date, true>
+    readonly update: Schema.PropertySignature<":", DateTime.Utc, never, ":", Date, true>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
