@@ -1,5 +1,46 @@
 # @effect/schema
 
+## 0.71.0
+
+### Minor Changes
+
+- [#3433](https://github.com/Effect-TS/effect/pull/3433) [`c1987e2`](https://github.com/Effect-TS/effect/commit/c1987e25c8f5c48bdc9ad223d7a6f2c32f93f5a1) Thanks @gcanti! - Make json schema output more compatible with Open AI structured output, closes #3432.
+
+  JSONSchema
+
+  - remove `oneOf` in favour of `anyOf` (e.g. in `JsonSchema7object`, `JsonSchema7empty`, `JsonSchema7Enums`)
+  - remove `const` in favour of `enum` (e.g. in `JsonSchema7Enums`)
+  - remove `JsonSchema7Const` type
+  - remove `JsonSchema7OneOf` type
+
+  AST
+
+  - remove `identifier` annotation from `Schema.Null`
+  - remove `identifier` annotation from `Schema.Object`
+
+### Patch Changes
+
+- [#3448](https://github.com/Effect-TS/effect/pull/3448) [`1ceed14`](https://github.com/Effect-TS/effect/commit/1ceed149dc64f4874e64b5cf2f954eba0a5a1f12) Thanks @tim-smart! - add Schema.ArrayEnsure & Schema.NonEmptyArrayEnsure
+
+  These schemas can be used to ensure that a value is an array, from a value that may be an array or a single value.
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const schema = Schema.ArrayEnsure(Schema.String);
+
+  Schema.decodeUnknownSync(schema)("hello");
+  // => ["hello"]
+
+  Schema.decodeUnknownSync(schema)(["a", "b", "c"]);
+  // => ["a", "b", "c"]
+  ```
+
+- [#3450](https://github.com/Effect-TS/effect/pull/3450) [`0e42a8f`](https://github.com/Effect-TS/effect/commit/0e42a8f045ecb1fd3d080edf3d49fef16a9b0ca1) Thanks @tim-smart! - update dependencies
+
+- Updated dependencies [[`8295281`](https://github.com/Effect-TS/effect/commit/8295281ae9bd7441e680402540bf3c8682ec417b), [`c940df6`](https://github.com/Effect-TS/effect/commit/c940df63800bf3c4396d91cf28ec34938642fd2c), [`00b6c6d`](https://github.com/Effect-TS/effect/commit/00b6c6d4001f5de728b7d990a1b14560b4961a63), [`f8d95a6`](https://github.com/Effect-TS/effect/commit/f8d95a61ad0762147933c5c32bb6d7237e18eef4)]:
+  - effect@3.6.4
+
 ## 0.70.4
 
 ### Patch Changes
