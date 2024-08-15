@@ -249,35 +249,35 @@ export class ControlledScheduler implements Scheduler {
  * `RandomScheduler` can be seeded for reproducibility.
  *
  * @see MixedScheduler
- * @since 3.6.4
+ * @since 3.7.0
  * @category constructors
  */
 export class RandomScheduler implements Scheduler {
   /**
-   * @since 3.6.4
+   * @since 3.7.0
    */
   running = false
   /**
-   * @since 3.6.4
+   * @since 3.7.0
    */
   readonly tasks = new PriorityBuckets()
   /**
-   * @since 3.6.4
+   * @since 3.7.0
    */
   readonly maxNextTickBeforeTimer: number
   /**
-   * @since 3.6.4
+   * @since 3.7.0
    */
   readonly PRNG: Utils.PCGRandom
 
   constructor(
     options?: {
       /**
-       * @since 3.6.4
+       * @since 3.7.0
        */
       readonly seed?: unknown
       /**
-       * @since 3.6.4
+       * @since 3.7.0
        */
       readonly maxNextTickBeforeTimer?: number | undefined
     } | undefined
@@ -287,7 +287,7 @@ export class RandomScheduler implements Scheduler {
   }
 
   /**
-   * @since 3.6.4
+   * @since 3.7.0
    */
   private starveInternal(depth: number) {
     const tasks = this.tasks.buckets
@@ -307,7 +307,7 @@ export class RandomScheduler implements Scheduler {
   }
 
   /**
-   * @since 3.6.4
+   * @since 3.7.0
    */
   private starve(depth = 0) {
     if (depth >= this.maxNextTickBeforeTimer) {
@@ -318,14 +318,14 @@ export class RandomScheduler implements Scheduler {
   }
 
   /**
-   * @since 3.6.4
+   * @since 3.7.0
    */
   shouldYield(fiber: RuntimeFiber<unknown, unknown>) {
     return defaultShouldYield(fiber)
   }
 
   /**
-   * @since 3.6.4
+   * @since 3.7.0
    */
   scheduleTask(task: Task, priority: number) {
     this.tasks.scheduleTask(task, priority)
