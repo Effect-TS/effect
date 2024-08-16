@@ -45,7 +45,7 @@
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^",
-    "testcontainers": "^10.11.0"
+    "testcontainers": "^10.18.0"
   },
   "peerDependencies": {
     "@effect/experimental": "workspace:^",

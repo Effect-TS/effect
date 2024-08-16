@@ -3,6 +3,7 @@
   "include": ["test"],
   "references": [
     { "path": "tsconfig.src.json" },
+    { "path": "../rpc/tsconfig.src.json" },
     { "path": "../vitest/tsconfig.src.json" }
   ],
   "compilerOptions": {
