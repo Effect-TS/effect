@@ -573,6 +573,9 @@ importers:
         specifier: ^1.25.1
         version: 1.25.1
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
