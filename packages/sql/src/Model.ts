@@ -8,6 +8,8 @@ import * as DateTime from "effect/DateTime"
 const {
   Class,
   Field,
+  FieldExcept,
+  FieldOnly,
   Struct
 } = VariantSchema.make({
   variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
@@ -62,6 +64,16 @@ export {
    * @category constructors
    */
   Field,
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  FieldExcept,
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  FieldOnly,
   /**
    * @since 1.0.0
    * @category constructors

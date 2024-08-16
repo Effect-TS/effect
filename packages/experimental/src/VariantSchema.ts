@@ -261,6 +261,16 @@ export const make = <
   readonly Field: <const A extends Field.ConfigWithKeys<Variants[number]>>(
     config: A & { readonly [K in Exclude<keyof A, Variants[number]>]: never }
   ) => Field<A>
+  readonly FieldOnly: <const Keys extends ReadonlyArray<Variants[number]>>(
+    ...keys: Keys
+  ) => <S extends Schema.Schema.All | Schema.PropertySignature.All>(
+    schema: S
+  ) => Field<{ readonly [K in Keys[number]]: S }>
+  readonly FieldExcept: <const Keys extends ReadonlyArray<Variants[number]>>(
+    ...keys: Keys
+  ) => <S extends Schema.Schema.All | Schema.PropertySignature.All>(
+    schema: S
+  ) => Field<{ readonly [K in Exclude<Variants[number], Keys[number]>]: S }>
   readonly Class: <Self = never>(
     identifier: string
   ) => <Fields extends Struct.Fields>(
@@ -295,9 +305,31 @@ export const make = <
       return Base
     }
   }
+  function FieldOnly<Keys extends Variants>(...keys: Keys) {
+    return function<S extends Schema.Schema.All | Schema.PropertySignature.All>(schema: S) {
+      const obj: Record<string, S> = {}
+      for (const key of keys) {
+        obj[key] = schema
+      }
+      return Field(obj)
+    }
+  }
+  function FieldExcept<Keys extends Variants>(...keys: Keys) {
+    return function<S extends Schema.Schema.All | Schema.PropertySignature.All>(schema: S) {
+      const obj: Record<string, S> = {}
+      for (const variant of options.variants) {
+        if (!keys.includes(variant)) {
+          obj[variant] = schema
+        }
+      }
+      return Field(obj)
+    }
+  }
   return {
     Struct,
     Field,
+    FieldOnly,
+    FieldExcept,
     Class
   } as any
 }
