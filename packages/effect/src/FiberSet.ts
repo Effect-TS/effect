@@ -286,6 +286,16 @@ export const clear = <A, E>(self: FiberSet<A, E>): Effect.Effect<void> =>
       Fiber.interruptAs(fiber, FiberId.combine(clearFiber.id(), internalFiberId)))
   })
 
+const constInterruptedFiber = (function() {
+  let fiber: Fiber.RuntimeFiber<never, never> | undefined = undefined
+  return () => {
+    if (fiber === undefined) {
+      fiber = Effect.runFork(Effect.interrupt)
+    }
+    return fiber
+  }
+})()
+
 /**
  * Fork an Effect and add the forked fiber to the FiberSet.
  * When the fiber completes, it will be removed from the FiberSet.
@@ -327,7 +337,7 @@ const runImpl = <A, E, R, XE extends E, XA extends A>(
 ): Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R> =>
   Effect.fiberIdWith((fiberId) => {
     if (self.state._tag === "Closed") {
-      return Effect.interrupt
+      return Effect.sync(constInterruptedFiber)
     }
     return Effect.tap(
       Effect.forkDaemon(effect),
@@ -389,6 +399,9 @@ export const runtime: <A, E>(
           | Runtime.RunForkOptions & { readonly propagateInterruption?: boolean | undefined }
           | undefined
       ) => {
+        if (self.state._tag === "Closed") {
+          return constInterruptedFiber()
+        }
         const fiber = runFork(effect, options)
         unsafeAdd(self, fiber)
         return fiber

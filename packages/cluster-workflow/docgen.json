@@ -1,7 +1,0 @@
-{
-  "$schema": "../../node_modules/@effect/docgen/schema.json",
-  "srcLink": "https://github.com/Effect-TS/effect/tree/main/packages/cluster-workflow/src/",
-  "exclude": [
-    "src/internal/**/*.ts"
-  ]
-}

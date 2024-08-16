@@ -2,9 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "include": ["src"],
   "references": [
-    { "path": "../effect/tsconfig.src.json" },
-    { "path": "../platform/tsconfig.src.json" },
-    { "path": "../sql/tsconfig.src.json" }
+    { "path": "../effect" },
+    { "path": "../platform" },
+    { "path": "../rpc" },
+    { "path": "../sql" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",

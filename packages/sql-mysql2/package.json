@@ -42,7 +42,7 @@
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@testcontainers/mysql": "^10.11.0",
+    "@testcontainers/mysql": "^10.18.0",
     "effect": "workspace:^"
   },
   "peerDependencies": {

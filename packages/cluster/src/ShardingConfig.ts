@@ -1,76 +1,217 @@
 /**
  * @since 1.0.0
  */
-import type * as ConfigError from "effect/ConfigError"
-import type * as Context from "effect/Context"
-import type * as Duration from "effect/Duration"
-import type * as Layer from "effect/Layer"
-import * as internal from "./internal/shardingConfig.js"
+import * as Config from "effect/Config"
+import type { ConfigError } from "effect/ConfigError"
+import * as ConfigProvider from "effect/ConfigProvider"
+import * as Context from "effect/Context"
+import type { DurationInput } from "effect/Duration"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import { RunnerAddress } from "./RunnerAddress.js"
 
 /**
- * @since 1.0.0
- * @category symbols
- */
-export const ShardingConfigTypeId: unique symbol = internal.ShardingConfigTypeId
-
-/**
- * @since 1.0.0
- * @category symbols
- */
-export type ShardingConfigTypeId = typeof ShardingConfigTypeId
-
-/**
- * Sharding configuration
- * @param numberOfShards number of shards (see documentation on how to choose this), should be same on all nodes
- * @param selfHost hostname or IP address of the current pod
- * @param shardingPort port used for pods to communicate together
- * @param shardManagerUri url of the Shard Manager API
- * @param serverVersion version of the current pod
- * @param entityMaxIdleTime time of inactivity (without receiving any message) after which an entity will be interrupted
- * @param entityTerminationTimeout time we give to an entity to handle the termination message before interrupting it
- * @param refreshAssignmentsRetryInterval retry interval in case of failure getting shard assignments from storage
- * @param unhealthyPodReportInterval interval to report unhealthy pods to the Shard Manager (this exists to prevent calling the Shard Manager for each failed message)
+ * Represents the configuration for the `Sharding` service on a given runner.
+ *
  * @since 1.0.0
  * @category models
  */
-export interface ShardingConfig {
+export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig")<ShardingConfig, {
+  /**
+   * The address for the current runner.
+   *
+   * If `None`, the runner is not part of the cluster and will be in a client-only
+   * mode.
+   */
+  readonly runnerAddress: Option.Option<RunnerAddress>
+  /**
+   * The version of the current runner.
+   */
+  readonly serverVersion: number
+  /**
+   * The number of shards to allocate to a runner.
+   *
+   * **Note**: this value should be consistent across all runners.
+   */
   readonly numberOfShards: number
-  readonly selfHost: string
-  readonly shardingPort: number
-  readonly shardManagerUri: string
-  readonly serverVersion: string
-  readonly entityMaxIdleTime: Duration.Duration
-  readonly entityTerminationTimeout: Duration.Duration
-  readonly refreshAssignmentsRetryInterval: Duration.Duration
-  readonly unhealthyPodReportInterval: Duration.Duration
+  /**
+   * The address of the shard manager.
+   */
+  readonly shardManagerAddress: RunnerAddress
+  /**
+   * If the shard manager is unavailable for this duration, all the shard
+   * assignments will be reset.
+   */
+  readonly shardManagerUnavailableTimeout: DurationInput
+  /**
+   * The default capacity of the mailbox for entities.
+   */
+  readonly entityMailboxCapacity: number | "unbounded"
+  /**
+   * The maximum duration of inactivity (i.e. without receiving a message)
+   * after which an entity will be interrupted.
+   */
+  readonly entityMaxIdleTime: DurationInput
+  /**
+   * The maximum duration of time to wait for an entity to terminate.
+   *
+   * By default this is set to 15 seconds to stay within kubernetes defaults.
+   */
+  readonly entityTerminationTimeout: DurationInput
+  /**
+   * The interval at which to poll for unprocessed messages from storage.
+   */
+  readonly entityMessagePollInterval: DurationInput
+  /**
+   * The interval at which to poll for client replies from storage.
+   */
+  readonly entityReplyPollInterval: DurationInput
+  readonly refreshAssignmentsInterval: DurationInput
+  /**
+   * The interval to retry a send if EntityNotManagedByRunner is returned.
+   */
+  readonly sendRetryInterval: DurationInput
+  // readonly unhealthyRunnerReportInterval: Duration.Duration
+  /**
+   * Simulate serialization and deserialization to remote runners for local
+   * entities.
+   */
+  readonly simulateRemoteSerialization: boolean
+}>() {}
+
+const defaultRunnerAddress = RunnerAddress.make({ host: "localhost", port: 34431 })
+
+/**
+ * @since 1.0.0
+ * @category defaults
+ */
+export const defaults: ShardingConfig["Type"] = {
+  runnerAddress: Option.some(defaultRunnerAddress),
+  serverVersion: 1,
+  numberOfShards: 300,
+  shardManagerAddress: RunnerAddress.make({ host: "localhost", port: 8080 }),
+  shardManagerUnavailableTimeout: Duration.minutes(10),
+  entityMailboxCapacity: 4096,
+  entityMaxIdleTime: Duration.minutes(1),
+  entityTerminationTimeout: Duration.seconds(15),
+  entityMessagePollInterval: Duration.seconds(10),
+  entityReplyPollInterval: Duration.millis(200),
+  sendRetryInterval: Duration.millis(100),
+  refreshAssignmentsInterval: Duration.minutes(5),
+  simulateRemoteSerialization: true
 }
 
 /**
  * @since 1.0.0
- * @category context
+ * @category Layers
  */
-export const ShardingConfig: Context.Tag<ShardingConfig, ShardingConfig> = internal.shardingConfigTag
+export const layer = (options?: Partial<ShardingConfig["Type"]>): Layer.Layer<ShardingConfig> =>
+  Layer.succeed(ShardingConfig, { ...defaults, ...options })
 
 /**
- * Provides the default values for the ShardingConfig.
- *
  * @since 1.0.0
- * @category layers
+ * @category defaults
  */
-export const defaults: Layer.Layer<ShardingConfig> = internal.defaults
+export const layerDefaults: Layer.Layer<ShardingConfig> = layer()
 
 /**
- * Provides the ShardingConfig, values that are omitted will be read from the defaults
- *
  * @since 1.0.0
- * @category layers
+ * @category Config
  */
-export const withDefaults: (customs: Partial<ShardingConfig>) => Layer.Layer<ShardingConfig> = internal.withDefaults
+export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
+  runnerAddress: Config.all({
+    host: Config.string("host").pipe(
+      Config.withDefault(defaultRunnerAddress.host),
+      Config.withDescription("The hostname or IP address of the runner.")
+    ),
+    port: Config.integer("port").pipe(
+      Config.withDefault(defaultRunnerAddress.port),
+      Config.withDescription("The port used for inter-runner communication.")
+    )
+  }).pipe(Config.map((options) => RunnerAddress.make(options)), Config.option),
+  serverVersion: Config.integer("serverVersion").pipe(
+    Config.withDefault(defaults.serverVersion),
+    Config.withDescription("The version of the current runner.")
+  ),
+  numberOfShards: Config.integer("numberOfShards").pipe(
+    Config.withDefault(defaults.numberOfShards),
+    Config.withDescription("The number of shards to allocate to a runner.")
+  ),
+  shardManagerAddress: Config.all({
+    host: Config.string("shardManagerHost").pipe(
+      Config.withDefault(defaults.shardManagerAddress.host),
+      Config.withDescription("The host of the shard manager.")
+    ),
+    port: Config.integer("shardManagerPort").pipe(
+      Config.withDefault(defaults.shardManagerAddress.port),
+      Config.withDescription("The port of the shard manager.")
+    )
+  }).pipe(Config.map((options) => RunnerAddress.make(options))),
+  shardManagerUnavailableTimeout: Config.duration("shardManagerUnavailableTimeout").pipe(
+    Config.withDefault(defaults.shardManagerUnavailableTimeout),
+    Config.withDescription(
+      "If the shard is unavilable for this duration, all the shard assignments will be reset."
+    )
+  ),
+  entityMailboxCapacity: Config.integer("entityMailboxCapacity").pipe(
+    Config.withDefault(defaults.entityMailboxCapacity),
+    Config.withDescription("The default capacity of the mailbox for entities.")
+  ),
+  entityMaxIdleTime: Config.duration("entityMaxIdleTime").pipe(
+    Config.withDefault(defaults.entityMaxIdleTime),
+    Config.withDescription(
+      "The maximum duration of inactivity (i.e. without receiving a message) after which an entity will be interrupted."
+    )
+  ),
+  entityTerminationTimeout: Config.duration("entityTerminationTimeout").pipe(
+    Config.withDefault(defaults.entityTerminationTimeout),
+    Config.withDescription("The maximum duration of time to wait for an entity to terminate.")
+  ),
+  entityMessagePollInterval: Config.duration("entityMessagePollInterval").pipe(
+    Config.withDefault(defaults.entityMessagePollInterval),
+    Config.withDescription("The interval at which to poll for unprocessed messages from storage.")
+  ),
+  entityReplyPollInterval: Config.duration("entityReplyPollInterval").pipe(
+    Config.withDefault(defaults.entityReplyPollInterval),
+    Config.withDescription("The interval at which to poll for client replies from storage.")
+  ),
+  sendRetryInterval: Config.duration("sendRetryInterval").pipe(
+    Config.withDefault(defaults.sendRetryInterval),
+    Config.withDescription("The interval to retry a send if EntityNotManagedByRunner is returned.")
+  ),
+  refreshAssignmentsInterval: Config.duration("refreshAssignmentsInterval").pipe(
+    Config.withDefault(defaults.refreshAssignmentsInterval),
+    Config.withDescription("The interval at which to refresh shard assignments.")
+  ),
+  simulateRemoteSerialization: Config.boolean("simulateRemoteSerialization").pipe(
+    Config.withDefault(defaults.simulateRemoteSerialization),
+    Config.withDescription("Simulate serialization and deserialization to remote runners for local entities.")
+  )
+})
 
 /**
- * Reads the ShardingConfig from the effect/ConfigProvider
- *
  * @since 1.0.0
- * @category layers
+ * @category Config
  */
-export const fromConfig: Layer.Layer<ShardingConfig, ConfigError.ConfigError> = internal.fromConfig
+export const configFromEnv = config.pipe(
+  Effect.withConfigProvider(
+    ConfigProvider.fromEnv().pipe(
+      ConfigProvider.constantCase
+    )
+  )
+)
+
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerFromEnv = (options?: Partial<ShardingConfig["Type"]> | undefined): Layer.Layer<
+  ShardingConfig,
+  ConfigError
+> =>
+  Layer.effect(
+    ShardingConfig,
+    options ? Effect.map(configFromEnv, (config) => ({ ...config, ...options })) : configFromEnv
+  )

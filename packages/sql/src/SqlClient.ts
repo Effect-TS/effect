@@ -3,6 +3,7 @@
  */
 import type { Reactivity } from "@effect/experimental/Reactivity"
 import type { Tag } from "effect/Context"
+import * as Context from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { ReadonlyMailbox } from "effect/Mailbox"
 import type { ReadonlyRecord } from "effect/Record"
@@ -138,3 +139,10 @@ export interface TransactionConnection {
  */
 export const TransactionConnection: Tag<TransactionConnection, readonly [conn: Connection, depth: number]> =
   internal.TransactionConnection
+
+/**
+ * @since 1.0.0
+ */
+export class SafeIntegers extends Context.Reference<SafeIntegers>()("@effect/sql/SqlClient/SafeIntegers", {
+  defaultValue: () => false
+}) {}
