@@ -194,6 +194,10 @@ const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A
       return core.scopeClose(entry.scope, core.exitVoid)
     }
 
+    if (!Duration.isFinite(self.idleTimeToLive)) {
+      return core.void
+    }
+
     entry.expiresAt = clock.unsafeCurrentTimeMillis() + Duration.toMillis(self.idleTimeToLive)
     if (entry.fiber) return core.void
 

@@ -6,6 +6,7 @@
     { "path": "../effect" },
     { "path": "../platform" },
     { "path": "../platform-node" },
+    { "path": "../rpc" },
     { "path": "../sql" },
     { "path": "../sql-sqlite-node" }
   ],

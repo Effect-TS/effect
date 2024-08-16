@@ -4,6 +4,7 @@
   "references": [
     { "path": "../effect" },
     { "path": "../platform" },
+    { "path": "../rpc" },
     { "path": "../sql" }
   ],
   "compilerOptions": {

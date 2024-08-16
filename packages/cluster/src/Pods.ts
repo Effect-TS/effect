@@ -1,100 +1,99 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
-import type * as HashSet from "effect/HashSet"
-import type * as Layer from "effect/Layer"
-import * as internal from "./internal/pods.js"
-import type * as MessageState from "./MessageState.js"
-import type * as PodAddress from "./PodAddress.js"
-import type * as SerializedEnvelope from "./SerializedEnvelope.js"
-import type * as SerializedMessage from "./SerializedMessage.js"
-import type * as ShardId from "./ShardId.js"
-import type * as ShardingException from "./ShardingException.js"
-
-/**
- * @since 1.0.0
- * @category symbols
- */
-export const PodsTypeId: unique symbol = internal.PodsTypeId
-
-/**
- * @since 1.0.0
- * @category symbols
- */
-export type PodsTypeId = typeof PodsTypeId
-
-/**
- * An interface to communicate with remote pods.
- * This is used by the Shard Manager for assigning and unassigning shards.
- * This is also used by pods for internal communication (forward messages to each other).
- *
- * @since 1.0.0
- * @category models
- */
-export interface Pods {
-  /**
-   * @since 1.0.0
-   */
-  readonly [PodsTypeId]: PodsTypeId
-
-  /**
-   * Notify a pod that it was assigned a list of shards
-   * @since 1.0.0
-   */
-  readonly assignShards: (
-    pod: PodAddress.PodAddress,
-    shards: HashSet.HashSet<ShardId.ShardId>
-  ) => Effect.Effect<void, ShardingException.PodUnavailableException>
-
-  /**
-   * Notify a pod that it was unassigned a list of shards
-   * @since 1.0.0
-   */
-  readonly unassignShards: (
-    pod: PodAddress.PodAddress,
-    shards: HashSet.HashSet<ShardId.ShardId>
-  ) => Effect.Effect<void, ShardingException.PodUnavailableException>
-
-  /**
-   * Check that a pod is responsive
-   * @since 1.0.0
-   */
-  readonly ping: (pod: PodAddress.PodAddress) => Effect.Effect<void, ShardingException.PodUnavailableException>
-
-  /**
-   * Send a message to a pod and receive its message state
-   * @since 1.0.0
-   */
-  readonly sendAndGetState: (
-    pod: PodAddress.PodAddress,
-    envelope: SerializedEnvelope.SerializedEnvelope
-  ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
-    ShardingException.ShardingException
-  >
-}
+import type * as Rpc from "@effect/rpc/Rpc"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Envelope from "./Envelope.js"
+import type { PodAddress } from "./PodAddress.js"
+import type { ShardId } from "./ShardId.js"
+import type { PodUnavailable } from "./ShardingError.js"
+import { EntityNotManagedByPod, MalformedMessage } from "./ShardingError.js"
 
 /**
  * @since 1.0.0
  * @category context
  */
-export const Pods: Context.Tag<Pods, Pods> = internal.podsTag
+export class Pods extends Context.Tag("@effect/cluster/Pods")<Pods, {
+  /**
+   * Checks if a pod is responsive.
+   */
+  readonly ping: (address: PodAddress) => Effect.Effect<void, PodUnavailable>
+
+  /**
+   * Send a message locally.
+   *
+   * This ensures that the message hits storage before being sent to the local
+   * entity.
+   */
+  readonly sendLocal: <R extends Rpc.Any>(
+    options: {
+      readonly envelope: Envelope.EnvelopeWithContext<R>
+      readonly send: <Rpc extends Rpc.Any>(
+        envelope: Envelope.Envelope<Rpc>
+      ) => Effect.Effect<void, EntityNotManagedByPod>
+      readonly simulateRemoteSerialization: boolean
+    }
+  ) => Effect.Effect<void, EntityNotManagedByPod | MalformedMessage>
+
+  /**
+   * Send a message to a pod.
+   */
+  readonly send: <R extends Rpc.Any>(
+    address: PodAddress,
+    envelope: Envelope.EnvelopeWithContext<R>
+  ) => Effect.Effect<void, EntityNotManagedByPod | MalformedMessage>
+
+  /**
+   * Notify a pod that it was assigned a set of shards.
+   */
+  readonly assignShards: (address: PodAddress, shards: Iterable<ShardId>) => Effect.Effect<void>
+
+  /**
+   * Notify a pod that it was unassigned a set of shards.
+   */
+  readonly unassignShards: (address: PodAddress, shards: Iterable<ShardId>) => Effect.Effect<void>
+}>() {}
 
 /**
- * Constructs a Pods service from its implementation
- *
  * @since 1.0.0
- * @category context
+ * @category constructors
  */
-export const make: (args: Omit<Pods, typeof PodsTypeId>) => Pods = internal.make
+export const make = (options: Omit<Pods["Type"], "sendLocal">): Pods["Type"] =>
+  Pods.of({
+    ...options,
+    sendLocal(options) {
+      if (!options.simulateRemoteSerialization) {
+        return options.send(options.envelope)
+      }
+      return Envelope.serialize(options.envelope).pipe(
+        Effect.flatMap((encoded) => Envelope.deserialize(options.envelope, encoded)),
+        MalformedMessage.refail,
+        Effect.flatMap(options.send)
+      )
+    }
+  })
 
 /**
- * A layer that creates a service that does nothing when called.
- * Useful for testing ShardManager or when using Sharding.local.
- *
  * @since 1.0.0
- * @category layers
+ * @category constructors
  */
-export const noop: Layer.Layer<Pods> = internal.noop
+export const layerNoop: Layer.Layer<Pods> = Layer.succeed(
+  Pods,
+  make({
+    send: (_, envelope) => Effect.fail(new EntityNotManagedByPod({ address: envelope.address })),
+    ping: () => Effect.void,
+    assignShards: () => Effect.void,
+    unassignShards: () => Effect.void
+  })
+)
+
+// /**
+//  * @since 1.0.0
+//  * @category constructors
+//  */
+// export const withStorage = Effect.gen(function*() {
+//   const protocol = yield* Pods
+//   const storage = yield* MessageStorage
+// })
