@@ -51,10 +51,10 @@
     "@types/node": "^22.13.4",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
-    "@vitest/browser": "^3.0.3",
-    "@vitest/coverage-v8": "^3.0.3",
-    "@vitest/expect": "^3.0.3",
-    "@vitest/web-worker": "^3.0.3",
+    "@vitest/browser": "^3.0.6",
+    "@vitest/coverage-v8": "^3.0.6",
+    "@vitest/expect": "^3.0.6",
+    "@vitest/web-worker": "^3.0.6",
     "ast-types": "^0.14.2",
     "babel-plugin-annotate-pure-calls": "^0.5.0",
     "eslint": "^9.9.1",
@@ -72,8 +72,8 @@
     "tstyche": "^3.5.0",
     "tsx": "^4.17.0",
     "typescript": "^5.7.2",
-    "vite": "^6.0.11",
-    "vitest": "^3.0.5"
+    "vite": "^6.1.1",
+    "vitest": "^3.0.6"
   },
   "pnpm": {
     "patchedDependencies": {

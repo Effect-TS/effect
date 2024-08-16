@@ -3,8 +3,9 @@
   "include": ["test"],
   "references": [
     { "path": "tsconfig.src.json" },
-    { "path": "../vitest/tsconfig.src.json" },
-    { "path": "../sql-sqlite-node/tsconfig.src.json" }
+    { "path": "../sql-pg" },
+    { "path": "../sql-mysql2" },
+    { "path": "../sql-sqlite-node" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

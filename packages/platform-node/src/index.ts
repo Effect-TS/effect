@@ -1,6 +1,26 @@
 /**
  * @since 1.0.0
  */
+export * as NodeClusterHttpPods from "./NodeClusterHttpPods.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeClusterHttpShardManager from "./NodeClusterHttpShardManager.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeClusterSocketPods from "./NodeClusterSocketPods.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeClusterSocketShardManager from "./NodeClusterSocketShardManager.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as NodeCommandExecutor from "./NodeCommandExecutor.js"
 
 /**
