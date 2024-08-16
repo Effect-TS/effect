@@ -1,60 +1,55 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Layer from "effect/Layer"
-import type * as Option from "effect/Option"
+import type { Option } from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
-import type * as Pod from "../Pod.js"
-import type * as PodAddress from "../PodAddress.js"
-import type * as ShardId from "../ShardId.js"
+import type { Pod } from "../Pod.js"
+import type { PodAddress } from "../PodAddress.js"
+import type { ShardId } from "../ShardId.js"
 import type * as Storage from "../Storage.js"
 
-/** @internal */
-const StorageSymbolKey = "@effect/cluster/StorageTypeId"
+const SymbolKey = "@effect/cluster/Storage"
 
 /** @internal */
-export const StorageTypeId: Storage.StorageTypeId = Symbol.for(StorageSymbolKey) as Storage.StorageTypeId
+export const TypeId: Storage.TypeId = Symbol.for(SymbolKey) as Storage.TypeId
 
 /** @internal */
-export const storageTag: Context.Tag<Storage.Storage, Storage.Storage> = Context.GenericTag<Storage.Storage>(
-  StorageSymbolKey
-)
+export const Tag = Context.GenericTag<Storage.Storage>(SymbolKey)
 
 /** @internal */
-export function make(args: Omit<Storage.Storage, Storage.StorageTypeId>): Storage.Storage {
-  return ({ [StorageTypeId]: StorageTypeId, ...args })
-}
+export const layerNoop: Layer.Layer<Storage.Storage> = Layer.succeed(Tag, {
+  [TypeId]: TypeId,
+  getShardAssignments: Effect.succeed(HashMap.empty()),
+  saveShardAssignments: () => Effect.void,
+  streamShardAssignments: Stream.empty,
+  getPods: Effect.succeed(HashMap.empty()),
+  savePods: () => Effect.void
+})
+
+const makeMemory = Effect.gen(function*() {
+  const assignments = yield* SubscriptionRef.make(HashMap.empty<ShardId, Option<PodAddress>>())
+  const pods = yield* Ref.make(HashMap.empty<PodAddress, Pod>())
+
+  function saveShardAssignments(value: HashMap.HashMap<ShardId, Option<PodAddress>>) {
+    return SubscriptionRef.set(assignments, value)
+  }
+
+  function savePods(value: HashMap.HashMap<PodAddress, Pod>) {
+    return Ref.set(pods, value)
+  }
+
+  return {
+    [TypeId]: TypeId,
+    getShardAssignments: SubscriptionRef.get(assignments),
+    saveShardAssignments,
+    streamShardAssignments: assignments.changes,
+    getPods: Ref.get(pods),
+    savePods
+  } as const
+})
 
 /** @internal */
-export const memory: Layer.Layer<Storage.Storage> = Layer.effect(
-  storageTag,
-  Effect.gen(function*() {
-    const assignmentsRef = yield* SubscriptionRef.make(
-      HashMap.empty<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>()
-    )
-    const podsRef = yield* Ref.make(HashMap.empty<PodAddress.PodAddress, Pod.Pod>())
-
-    return make({
-      getAssignments: SubscriptionRef.get(assignmentsRef),
-      saveAssignments: (assignments) => pipe(assignmentsRef, SubscriptionRef.set(assignments)),
-      assignmentsStream: assignmentsRef.changes,
-      getPods: Ref.get(podsRef),
-      savePods: (pods) => pipe(podsRef, Ref.set(pods))
-    })
-  })
-)
-
-/** @internal */
-export const noop: Layer.Layer<Storage.Storage> = Layer.effect(
-  storageTag,
-  Effect.succeed(make({
-    getAssignments: Effect.succeed(HashMap.empty()),
-    saveAssignments: () => Effect.void,
-    assignmentsStream: Stream.empty,
-    getPods: Effect.succeed(HashMap.empty()),
-    savePods: () => Effect.void
-  }))
-)
+export const layerMemory: Layer.Layer<Storage.Storage> = Layer.effect(Tag, makeMemory)

@@ -2,150 +2,69 @@
  * @since 1.0.0
  */
 import * as Schema from "effect/Schema"
-import * as PodAddress from "./PodAddress.js"
-import * as RecipientAddress from "./RecipientAddress.js"
+import { EntityAddress } from "./EntityAddress.js"
+import { PodAddress } from "./PodAddress.js"
 
 /**
+ * Represents an error that occurs when a pod receives a message for an entity
+ * that it is not responsible for managing.
+ *
  * @since 1.0.0
- * @category models
+ * @category errors
  */
-export class EntityNotManagedByThisPodException extends Schema.TaggedError<EntityNotManagedByThisPodException>()(
-  "@effect/cluster/EntityNotManagedByThisPodException",
+export class EntityNotManagedByPod extends Schema.TaggedError<EntityNotManagedByPod>()(
+  "EntityNotManagedByPod",
+  { address: EntityAddress }
+) {}
+
+/**
+ * Represents an error that occurs when a message fails to be properly
+ * deserialized by an entity.
+ *
+ * @since 1.0.0
+ * @category errors
+ */
+export class MalformedMessage extends Schema.TaggedError<MalformedMessage>()(
+  "MalformedMessage",
+  { cause: Schema.Unknown }
+) {}
+
+/**
+ * Represents an error that occurs when a message fails to be persisted into
+ * cluster's mailbox storage.
+ *
+ * @since 1.0.0
+ * @category errors
+ */
+export class MessagePersistenceError extends Schema.TaggedError<MessagePersistenceError>()(
+  "MessagePersistenceError",
   {
-    recipientAddress: RecipientAddress.RecipientAddress
+    address: EntityAddress,
+    cause: Schema.Unknown
   }
-) {
-}
+) {}
 
 /**
+ * Represents an error that occurs when a pod is not registered with the shard
+ * manager.
+ *
  * @since 1.0.0
- * @category utils
+ * @category errors
  */
-export const isEntityNotManagedByThisPodException = Schema.is(EntityNotManagedByThisPodException)
+export class PodNotRegistered extends Schema.TaggedError<PodNotRegistered>()(
+  "PodNotRegistered",
+  { address: PodAddress }
+) {}
 
 /**
+ * Represents an error that occurs when a pod is unresponsive.
+ *
  * @since 1.0.0
- * @category models
+ * @category errors
  */
-export class EntityTypeNotRegisteredException extends Schema.TaggedError<EntityTypeNotRegisteredException>()(
-  "@effect/cluster/EntityTypeNotRegisteredException",
+export class PodUnavailable extends Schema.TaggedError<PodUnavailable>()(
+  "PodUnavailable",
   {
-    entityType: Schema.String,
-    podAddress: PodAddress.schema
+    address: PodAddress
   }
-) {
-}
-
-/**
- * @since 1.0.0
- * @category utils
- */
-export const isEntityTypeNotRegisteredException = Schema.is(EntityTypeNotRegisteredException)
-
-/**
- * @since 1.0.0
- * @category models
- */
-export class NoResultInProcessedMessageStateException
-  extends Schema.TaggedError<NoResultInProcessedMessageStateException>()(
-    "@effect/cluster/NoResultInProcessedMessageStateException",
-    {}
-  )
-{
-}
-
-/**
- * @since 1.0.0
- * @category utils
- */
-export const isNoResultInProcessedMessageStateException = Schema.is(NoResultInProcessedMessageStateException)
-
-/**
- * @since 1.0.0
- * @category models
- */
-export class PodNoLongerRegisteredException extends Schema.TaggedError<PodNoLongerRegisteredException>()(
-  "@effect/cluster/PodNoLongerRegisteredException",
-  {
-    podAddress: PodAddress.schema
-  }
-) {
-}
-
-/**
- * @since 1.0.0
- * @category utils
- */
-export const isPodNoLongerRegisteredException = Schema.is(PodNoLongerRegisteredException)
-
-/**
- * @since 1.0.0
- * @category models
- */
-export class PodUnavailableException extends Schema.TaggedError<PodUnavailableException>()(
-  "@effect/cluster/PodUnavailableException",
-  {
-    podAddress: PodAddress.schema
-  }
-) {
-}
-
-/**
- * @since 1.0.0
- * @category utils
- */
-export const isPodUnavailableException = Schema.is(PodUnavailableException)
-
-/**
- * @since 1.0.0
- * @category models
- */
-export class SerializationException extends Schema.TaggedError<SerializationException>()(
-  "@effect/cluster/SerializationException",
-  {}
-) {
-}
-
-/**
- * @since 1.0.0
- * @category utils
- */
-export const isSerializationException = Schema.is(SerializationException)
-
-/**
- * @since 1.0.0
- * @category models
- */
-export class ExceptionWhileOfferingMessageException
-  extends Schema.TaggedError<ExceptionWhileOfferingMessageException>()(
-    "@effect/cluster/ExceptionWhileOfferingMessageException",
-    {}
-  )
-{
-}
-
-/**
- * @since 1.0.0
- * @category utils
- */
-export const isExceptionWhileOfferingMessageException = Schema.is(ExceptionWhileOfferingMessageException)
-
-/**
- * @since 1.0.0
- * @category schema
- */
-export const schema = Schema.Union(
-  SerializationException,
-  EntityNotManagedByThisPodException,
-  EntityTypeNotRegisteredException,
-  PodNoLongerRegisteredException,
-  PodUnavailableException,
-  NoResultInProcessedMessageStateException,
-  ExceptionWhileOfferingMessageException
-)
-
-/**
- * @since 1.0.0
- * @category models
- */
-export type ShardingException = Schema.Schema.Type<typeof schema>
+) {}

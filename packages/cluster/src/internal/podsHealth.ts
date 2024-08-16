@@ -1,39 +1,41 @@
 import * as Context from "effect/Context"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as Pods from "../Pods.js"
+import type { PodAddress } from "../PodAddress.js"
 import type * as PodsHealth from "../PodsHealth.js"
+import * as InternalPods from "./pods.js"
+
+const SymbolKey = "@effect/cluster/PodsHealth"
 
 /** @internal */
-const PodsHealthSymbolKey = "@effect/cluster/PodsHealth"
+export const TypeId: PodsHealth.TypeId = Symbol.for(SymbolKey) as PodsHealth.TypeId
 
 /** @internal */
-export const PodsHealthTypeId: PodsHealth.PodsHealthTypeId = Symbol.for(
-  PodsHealthSymbolKey
-) as PodsHealth.PodsHealthTypeId
+export const Tag = Context.GenericTag<PodsHealth.PodsHealth>(SymbolKey)
 
-/** @internal */
-export const podsHealthTag = Context.GenericTag<PodsHealth.PodsHealth>(PodsHealthSymbolKey)
-
-/** @internal */
-export function make(args: Omit<PodsHealth.PodsHealth, PodsHealth.PodsHealthTypeId>): PodsHealth.PodsHealth {
-  return Data.struct({ [PodsHealthTypeId]: PodsHealthTypeId, ...args })
+const Proto = {
+  [TypeId]: TypeId
 }
 
 /** @internal */
-export const noop = Layer.succeed(podsHealthTag, {
-  [PodsHealthTypeId]: PodsHealthTypeId,
-  isAlive: () => Effect.succeed(true)
+export const layerNoop = Layer.succeed(
+  Tag,
+  Object.assign(Object.create(Proto), {
+    isAlive: () => Effect.succeed(true)
+  })
+)
+
+const makeLocal = Effect.gen(function*() {
+  const pods = yield* InternalPods.Tag
+
+  function isAlive(address: PodAddress): Effect.Effect<boolean> {
+    return Effect.isSuccess(pods.ping(address))
+  }
+
+  return Object.assign(Object.create(Proto), {
+    isAlive
+  })
 })
 
 /** @internal */
-export const local = Layer.effect(
-  podsHealthTag,
-  Effect.map(Pods.Pods, (podApi) =>
-    make({
-      isAlive: (address) => pipe(podApi.ping(address), Effect.option, Effect.map(Option.isSome))
-    }))
-)
+export const layerLocal = Layer.effect(Tag, makeLocal)

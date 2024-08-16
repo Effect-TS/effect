@@ -1,74 +1,76 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
-import type * as Layer from "effect/Layer"
-import * as internal from "./internal/podsHealth.js"
-import type * as PodAddress from "./PodAddress.js"
-import type * as Pods from "./Pods.js"
+import type { Tag } from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { Layer } from "effect/Layer"
+import * as InternalPodsHealth from "./internal/podsHealth.js"
+import type { PodAddress } from "./PodAddress.js"
+import type { Pods } from "./Pods.js"
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category type ids
  */
-export const PodsHealthTypeId: unique symbol = internal.PodsHealthTypeId
+export const TypeId: unique symbol = InternalPodsHealth.TypeId
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category type ids
  */
-export type PodsHealthTypeId = typeof PodsHealthTypeId
+export type TypeId = typeof TypeId
 
 /**
- * An interface to check a pod's health.
- * This is used when a pod is unresponsive, to check if it should be unassigned all its shards or not.
- * If the pod is alive, shards will not be unassigned because the pods might still be processing messages and might be responsive again.
- * If the pod is not alive, shards can be safely reassigned somewhere else.
- * A typical implementation for this is using k8s to check if the pod still exists.
+ * Represents the service used to check if a pod is healthy.
+ *
+ * If a pod is responsive, shards will not be re-assigned because the pod may
+ * still be processing messages. If a pod is not responsive, then its
+ * associated shards can and will be re-assigned to a different pod.
  *
  * @since 1.0.0
  * @category models
  */
-export interface PodsHealth {
-  /**
-   * @since 1.0.0
-   */
-  readonly [PodsHealthTypeId]: PodsHealthTypeId
-
-  /**
-   * Check if a pod is still alive.
-   * @since 1.0.0
-   */
-  readonly isAlive: (podAddress: PodAddress.PodAddress) => Effect.Effect<boolean>
+export interface PodsHealth extends PodsHealth.Proto {
+  readonly isAlive: (address: PodAddress) => Effect<boolean>
 }
 
 /**
- * Constructs a PodsHealth from its implementation
- *
  * @since 1.0.0
- * @category constructors
  */
-export const make: (args: Omit<PodsHealth, typeof PodsHealthTypeId>) => PodsHealth = internal.make
+export declare namespace PodsHealth {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Proto {
+    readonly [TypeId]: TypeId
+  }
+}
 
 /**
  * @since 1.0.0
  * @category context
  */
-export const PodsHealth: Context.Tag<PodsHealth, PodsHealth> = internal.podsHealthTag
+export const PodsHealth: Tag<PodsHealth, PodsHealth> = InternalPodsHealth.Tag
 
 /**
- * A layer that considers pods as always alive.
- * This is useful for testing only.
+ * A layer which will **always** consider a pod healthy.
+ *
+ * This is useful for testing.
+ *
  * @since 1.0.0
  * @category layers
  */
-export const noop: Layer.Layer<PodsHealth> = internal.noop
+export const layerNoop: Layer<PodsHealth> = InternalPodsHealth.layerNoop
 
 /**
- * A layer that pings the pod directly to check if it's alive.
- * This is useful for developing and testing but not reliable in production.
+ * A layer which will ping a pod directly on the same machine to check if it
+ * is healthy.
+ *
+ * This is useful when prototyping a cluster with a single machine, but is not
+ * reliable when multiple machines are introduced.
+ *
  * @since 1.0.0
  * @category layers
  */
-export const local: Layer.Layer<PodsHealth, never, Pods.Pods> = internal.local
+export const layerLocal: Layer<PodsHealth, never, Pods> = InternalPodsHealth.layerLocal

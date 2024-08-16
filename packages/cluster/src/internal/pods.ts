@@ -3,27 +3,19 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Pods from "../Pods.js"
 
-/** @internal */
-const PodsSymbolKey = "@effect/cluster/Pods"
+const SymbolKey = "@effect/cluster/Pods"
 
 /** @internal */
-export const PodsTypeId: Pods.PodsTypeId = Symbol.for(PodsSymbolKey) as Pods.PodsTypeId
+export const Tag = Context.GenericTag<Pods.Pods>(SymbolKey)
 
 /** @internal */
-export const podsTag = Context.GenericTag<Pods.Pods>(PodsSymbolKey)
+export const TypeId: Pods.TypeId = Symbol.for(SymbolKey) as Pods.TypeId
 
 /** @internal */
-export function make(
-  args: Omit<Pods.Pods, Pods.PodsTypeId>
-): Pods.Pods {
-  return { [PodsTypeId]: PodsTypeId, ...args }
-}
-
-/** @internal */
-export const noop = Layer.succeed(podsTag, {
-  [PodsTypeId]: PodsTypeId,
-  assignShards: () => Effect.void,
-  unassignShards: () => Effect.void,
+export const layerNoop = Layer.succeed(Tag, {
+  [TypeId]: TypeId,
   ping: () => Effect.void,
-  sendAndGetState: () => Effect.never
+  send: () => Effect.void,
+  assignShards: () => Effect.void,
+  unassignShards: () => Effect.void
 })

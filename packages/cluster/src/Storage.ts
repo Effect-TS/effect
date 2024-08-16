@@ -1,92 +1,87 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
-import type * as HashMap from "effect/HashMap"
-import type * as Layer from "effect/Layer"
-import type * as Option from "effect/Option"
-import type * as Stream from "effect/Stream"
-import * as internal from "./internal/storage.js"
-import type * as Pod from "./Pod.js"
-import type * as PodAddress from "./PodAddress.js"
-import type * as ShardId from "./ShardId.js"
+import type { Tag } from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { HashMap } from "effect/HashMap"
+import type { Layer } from "effect/Layer"
+import type { Option } from "effect/Option"
+import type { Stream } from "effect/Stream"
+import * as InternalStorage from "./internal/storage.js"
+import type { Pod } from "./Pod.js"
+import type { PodAddress } from "./PodAddress.js"
+import type { ShardId } from "./ShardId.js"
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category type ids
  */
-export const StorageTypeId: unique symbol = internal.StorageTypeId
+export const TypeId: unique symbol = InternalStorage.TypeId
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category type ids
  */
-export type StorageTypeId = typeof StorageTypeId
+export type TypeId = typeof TypeId
 
 /**
- * The storage Service is responsible of persisting assignments and registered pods.
- * The storage is expected to be shared among all pods, so it works also as communication of assignments between Pods.
+ * Represents a generic interface to the persistent storage required by the
+ * cluster.
  *
  * @since 1.0.0
  * @category models
  */
-export interface Storage {
-  readonly [StorageTypeId]: StorageTypeId
-
+export interface Storage extends Storage.Proto {
   /**
-   * Get the current state of shard assignments to pods
+   * Get the current assignments of shards to pods.
    */
-  readonly getAssignments: Effect.Effect<HashMap.HashMap<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>>
-
+  readonly getShardAssignments: Effect<HashMap<ShardId, Option<PodAddress>>>
   /**
-   * Save the current state of shard assignments to pods
+   * Returns a `Stream` which will emit the state of all shard assignments
+   * whenever assignments are updated.
    */
-  readonly saveAssignments: (
-    assignments: HashMap.HashMap<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>
-  ) => Effect.Effect<void>
-
+  readonly streamShardAssignments: Stream<HashMap<ShardId, Option<PodAddress>>>
   /**
-   * A stream that will emit the state of shard assignments whenever it changes
+   * Save the current state of shards assignments to pods.
    */
-  readonly assignmentsStream: Stream.Stream<HashMap.HashMap<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>>
-
+  readonly saveShardAssignments: (assignments: HashMap<ShardId, Option<PodAddress>>) => Effect<void>
   /**
-   * Get the list of existing pods
+   * Get all pods registered with the cluster.
    */
-  readonly getPods: Effect.Effect<HashMap.HashMap<PodAddress.PodAddress, Pod.Pod>>
-
+  readonly getPods: Effect<HashMap<PodAddress, Pod>>
   /**
-   * Save the list of existing pods
+   * Save the current pods registered with the cluster.
    */
-  readonly savePods: (pods: HashMap.HashMap<PodAddress.PodAddress, Pod.Pod>) => Effect.Effect<void>
+  readonly savePods: (pods: HashMap<PodAddress, Pod>) => Effect<void>
 }
 
 /**
  * @since 1.0.0
- * @category constructors
  */
-export const make: (args: Omit<Storage, typeof StorageTypeId>) => Storage = internal.make
+export declare namespace Storage {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Proto {
+    readonly [TypeId]: TypeId
+  }
+}
 
 /**
  * @since 1.0.0
  * @category context
  */
-export const Storage: Context.Tag<Storage, Storage> = internal.storageTag
+export const Storage: Tag<Storage, Storage> = InternalStorage.Tag
 
 /**
- * A layer that stores data in-memory.
- * This is useful for testing with a single pod only.
- *
  * @since 1.0.0
- * @category layers
+ * @category layer
  */
-export const memory: Layer.Layer<Storage> = internal.memory
+export const layerNoop: Layer<Storage> = InternalStorage.layerNoop
 
 /**
- * A layer that does nothing, useful for testing.
- *
  * @since 1.0.0
- * @category layers
+ * @category layer
  */
-export const noop: Layer.Layer<Storage> = internal.noop
+export const layerMemory: Layer<Storage> = InternalStorage.layerMemory
