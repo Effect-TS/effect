@@ -7,6 +7,8 @@ on:
   push:
     branches: [main, next-minor, next-major]
 
+permissions: {}
+
 jobs:
   update:
     if: github.repository_owner == 'Effect-Ts'
