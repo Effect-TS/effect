@@ -5,6 +5,7 @@ import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
@@ -264,7 +265,18 @@ function basePrompt(
     validate: Effect.succeed,
     ...options
   }
-  return InternalPrompt.custom(initialState, {
+
+  const state: State = {
+    ...initialState,
+    ...(Predicate.isString(options.default) ?
+      {
+        value: options.default,
+        cursor: options.default.length
+      } :
+      undefined)
+  }
+
+  return InternalPrompt.custom(state, {
     render: handleRender(opts),
     process: handleProcess(opts),
     clear: handleClear(opts)
