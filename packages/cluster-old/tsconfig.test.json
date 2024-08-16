@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": [
+    "test",
+  ],
+  "references": [
+    { "path": "tsconfig.src.json" },
+    { "path": "../effect" },
+    { "path": "../platform" },
+    { "path": "../platform-node" },
+    { "path": "../schema" },
+    { "path": "../sql" },
+    { "path": "../sql-sqlite-node" },
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",
+    "rootDir": "test",
+    "noEmit": true
+  }
+}
