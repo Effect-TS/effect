@@ -13,23 +13,11 @@ jobs:
       id-token: write
       pull-requests: write
     steps:
-      - name: Checkout default branch
-        uses: actions/checkout@v4
-
-      - name: Get current branch name
-        id: branch
-        run: echo "branch=$(git branch --show-current)" >> $GITHUB_OUTPUT
-
-      - name: Checkout main branch for changeset release
-        if: ${{ steps.branch.outputs.branch == 'changeset-release/main' }}
-        run: git checkout origin/main
-
+      - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
-
       - name: Build package
         run: pnpm build
-
       - name: Create snapshot
         id: snapshot
         run: pnpx pkg-pr-new@0.0.17 publish --pnpm --comment=off ./packages/*
