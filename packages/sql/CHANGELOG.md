@@ -1,5 +1,54 @@
 # @effect/sql
 
+## 0.9.1
+
+### Patch Changes
+
+- [#3455](https://github.com/Effect-TS/effect/pull/3455) [`e9da539`](https://github.com/Effect-TS/effect/commit/e9da5396bba99b2ddc20c97c7955154e6da4cab5) Thanks @tim-smart! - add Model module to /sql
+
+  The `Model` module can be used to create domain schemas with common variants for
+  the database and serializing to JSON.
+
+  ```ts
+  import { Schema } from "@effect/schema";
+  import { Model } from "@effect/sql";
+
+  export const GroupId = Schema.Number.pipe(Schema.brand("GroupId"));
+
+  export class Group extends Model.Class<Group>("Group")({
+    id: Model.Generated(GroupId),
+    name: Schema.NonEmptyTrimmedString,
+    createdAt: Model.DateTimeInsertFromDate,
+    updatedAt: Model.DateTimeUpdateFromDate,
+  }) {}
+
+  // schema used for selects
+  Group;
+
+  // schema used for inserts
+  Group.insert;
+
+  // schema used for updates
+  Group.update;
+
+  // schema used for json api
+  Group.json;
+  Group.jsonCreate;
+  Group.jsonUpdate;
+
+  // you can also turn them into classes
+  class GroupJson extends Schema.Class<GroupJson>("GroupJson")(Group.json) {
+    get upperName() {
+      return this.name.toUpperCase();
+    }
+  }
+  ```
+
+- [#3460](https://github.com/Effect-TS/effect/pull/3460) [`4fabf75`](https://github.com/Effect-TS/effect/commit/4fabf75b44ea98b1773059bd589167d5d8f64f06) Thanks @tim-smart! - support partial objects in sql helpers
+
+- Updated dependencies [[`e9da539`](https://github.com/Effect-TS/effect/commit/e9da5396bba99b2ddc20c97c7955154e6da4cab5)]:
+  - @effect/experimental@0.23.1
+
 ## 0.9.0
 
 ### Minor Changes
