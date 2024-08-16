@@ -154,10 +154,16 @@ const acquire = core.fnUntraced(function*<K, A, E>(self: RcMapImpl<K, A, E>, key
   const scope = yield* fiberRuntime.scopeMake()
   const deferred = yield* core.deferredMake<A, E>()
   const acquire = self.lookup(key)
-  yield* restore(core.fiberRefLocally(
+  const contextMap = new Map(self.context.unsafeMap)
+  yield* restore(core.mapInputContext(
     acquire as Effect<A, E>,
-    core.currentContext,
-    Context.add(self.context, fiberRuntime.scopeTag, scope)
+    (inputContext: Context.Context<never>) => {
+      inputContext.unsafeMap.forEach((value, key) => {
+        contextMap.set(key, value)
+      })
+      contextMap.set(fiberRuntime.scopeTag.key, scope)
+      return Context.unsafeMake(contextMap)
+    }
   )).pipe(
     core.exit,
     core.flatMap((exit) => core.deferredDone(deferred, exit)),
@@ -192,6 +198,10 @@ const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A
         MutableHashMap.remove(self.state.map, key)
       }
       return core.scopeClose(entry.scope, core.exitVoid)
+    }
+
+    if (!Duration.isFinite(self.idleTimeToLive)) {
+      return core.void
     }
 
     entry.expiresAt = clock.unsafeCurrentTimeMillis() + Duration.toMillis(self.idleTimeToLive)

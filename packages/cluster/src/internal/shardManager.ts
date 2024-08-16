@@ -1,591 +1,318 @@
-/**
- * @since 1.0.0
- */
-import * as Chunk from "effect/Chunk"
+import * as Arr from "effect/Array"
 import * as Clock from "effect/Clock"
-import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
-import { equals } from "effect/Equal"
-import { pipe } from "effect/Function"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
-import * as Layer from "effect/Layer"
-import * as List from "effect/List"
+import { constFalse } from "effect/Function"
+import * as MutableHashMap from "effect/MutableHashMap"
+import * as MutableHashSet from "effect/MutableHashSet"
 import * as Option from "effect/Option"
-import * as PubSub from "effect/PubSub"
-import * as Schedule from "effect/Schedule"
-import type * as Scope from "effect/Scope"
-import * as Stream from "effect/Stream"
-import * as RefSynchronized from "effect/SynchronizedRef"
-import * as ManagerConfig from "../ManagerConfig.js"
-import type * as Pod from "../Pod.js"
-import type * as PodAddress from "../PodAddress.js"
-import * as Pods from "../Pods.js"
-import * as PodsHealth from "../PodsHealth.js"
-import * as ShardId from "../ShardId.js"
-import * as ShardingEvent from "../ShardingEvent.js"
-import * as ShardingException from "../ShardingException.js"
-import type * as ShardManager from "../ShardManager.js"
-import * as Storage from "../Storage.js"
-import * as PodWithMetadata from "./podWithMetadata.js"
-import * as ShardManagerState from "./shardManagerState.js"
-import { groupBy, minByOption } from "./utils.js"
+import * as Order from "effect/Order"
+import type { Runner } from "../Runner.js"
+import type { RunnerAddress } from "../RunnerAddress.js"
+import { RunnerHealth } from "../RunnerHealth.js"
+import { ShardId } from "../ShardId.js"
+import { ShardStorage } from "../ShardStorage.js"
 
 /** @internal */
-const ShardManagerSymbolKey = "@effect/cluster/ShardManager"
+export class State {
+  static fromStorage = Effect.fnUntraced(function*(numberOfShards: number) {
+    const storage = yield* ShardStorage
+    const runnerHealth = yield* RunnerHealth
 
-/** @internal */
-export const ShardManagerTypeId: ShardManager.ShardManagerTypeId = Symbol.for(
-  ShardManagerSymbolKey
-) as ShardManager.ShardManagerTypeId
+    // Fetch registered runners and shard assignments from cluster storage
+    const storedRunners = yield* storage.getRunners
+    const storedAssignments = yield* storage.getAssignments
 
-/** @internal */
-export const shardManagerTag = GenericTag<ShardManager.ShardManager>(ShardManagerSymbolKey)
+    // Determine which runners are still alive
+    const deadRunners = Arr.empty<Runner>()
+    const aliveRunners = MutableHashMap.empty<RunnerAddress, Runner>()
+    yield* Effect.forEach(storedRunners, ([address, runner]) =>
+      Effect.map(runnerHealth.isAlive(address), (isAlive) => {
+        if (isAlive) {
+          MutableHashMap.set(aliveRunners, address, runner)
+        } else {
+          deadRunners.push(runner)
+        }
+      }), { concurrency: "unbounded", discard: true })
+    if (deadRunners.length > 0) {
+      yield* Effect.logWarning("Ignoring runners that are no longer considered alive:", deadRunners)
+    }
 
-/** @internal */
-function make(
-  layerScope: Scope.Scope,
-  stateRef: RefSynchronized.SynchronizedRef<ShardManagerState.ShardManagerState>,
-  rebalanceSemaphore: Effect.Semaphore,
-  eventsHub: PubSub.PubSub<ShardingEvent.ShardingEvent>,
-  healthApi: PodsHealth.PodsHealth,
-  podApi: Pods.Pods,
-  stateRepository: Storage.Storage,
-  config: ManagerConfig.ManagerConfig
-): ShardManager.ShardManager {
-  const getAssignments: Effect.Effect<HashMap.HashMap<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>> = pipe(
-    RefSynchronized.get(stateRef),
-    Effect.map((_) => _.shards)
-  )
-
-  const getShardingEvents = Stream.fromPubSub(eventsHub)
-
-  function register(pod: Pod.Pod) {
-    return pipe(
-      Effect.logDebug("Registering " + (pod.address) + "@" + pod.version),
-      Effect.zipRight(
-        RefSynchronized.updateAndGetEffect(stateRef, (state) =>
-          pipe(
-            Effect.flatMap(Effect.clock, (_) => _.currentTimeMillis),
-            Effect.map((cdt) =>
-              ShardManagerState.make(
-                HashMap.set(state.pods, pod.address, PodWithMetadata.make(pod, cdt)),
-                state.shards
-              )
-            )
-          ))
-      ),
-      Effect.zipLeft(PubSub.publish(eventsHub, ShardingEvent.PodRegistered(pod.address))),
-      Effect.flatMap((state) => Effect.when(rebalance(false), () => HashSet.size(state.unassignedShards) > 0)),
-      Effect.zipRight(Effect.forkIn(layerScope)(persistPods)),
-      Effect.asVoid
-    )
-  }
-
-  function stateHasPod(podAddress: PodAddress.PodAddress) {
-    return pipe(
-      RefSynchronized.get(stateRef),
-      Effect.map((_) => HashMap.has(_.pods, podAddress))
-    )
-  }
-
-  function notifyUnhealthyPod(podAddress: PodAddress.PodAddress) {
-    return pipe(
-      Effect.whenEffect(
-        pipe(
-          PubSub.publish(eventsHub, ShardingEvent.PodHealthChecked(podAddress)),
-          Effect.zipRight(
-            Effect.unlessEffect(
-              Effect.zipRight(
-                Effect.logWarning(`${podAddress} is not alive, unregistering`),
-                unregister(podAddress)
-              ),
-              healthApi.isAlive(podAddress)
-            )
-          )
-        ),
-        stateHasPod(podAddress)
-      ),
-      Effect.asVoid
-    )
-  }
-
-  const checkAllPodsHealth = pipe(
-    RefSynchronized.get(stateRef),
-    Effect.map((_) => HashMap.keySet(_.pods)),
-    Effect.flatMap((_) => (Effect.forEach(_, notifyUnhealthyPod, { concurrency: 4, discard: true })))
-  )
-
-  function unregister(podAddress: PodAddress.PodAddress) {
-    const eff = pipe(
-      Effect.Do,
-      Effect.zipLeft(Effect.logDebug(`Unregistering ${podAddress}`)),
-      Effect.bind("unassignments", (_) =>
-        pipe(
-          stateRef,
-          RefSynchronized.modify((state) => [
-            pipe(
-              state.shards,
-              HashMap.filter((pod) => equals(pod)(Option.some(podAddress))),
-              HashMap.keySet
-            ),
-            {
-              ...state,
-              pods: HashMap.remove(state.pods, podAddress),
-              shards: HashMap.map(state.shards, (_) => equals(_)(Option.some(podAddress)) ? Option.none() : _)
-            }
-          ])
-        )),
-      Effect.tap((_) => PubSub.publish(eventsHub, ShardingEvent.PodUnregistered(podAddress))),
-      Effect.tap((_) =>
-        Effect.when(
-          PubSub.publish(eventsHub, ShardingEvent.ShardsUnassigned(podAddress, _.unassignments)),
-          () => HashSet.size(_.unassignments) > 0
-        )
-      ),
-      Effect.zipLeft(Effect.forkIn(layerScope)(persistPods)),
-      Effect.zipLeft(Effect.forkIn(layerScope)(rebalance(true)))
-    )
-    return Effect.asVoid(Effect.whenEffect(eff, stateHasPod(podAddress)))
-  }
-
-  function withRetry<A, E>(zio: Effect.Effect<A, E>): Effect.Effect<void> {
-    return pipe(
-      zio,
-      Effect.retry(
-        pipe(
-          Schedule.spaced(config.persistRetryInterval),
-          Schedule.andThen(Schedule.recurs(config.persistRetryCount))
-        )
-      ),
-      Effect.ignore
-    )
-  }
-
-  const persistAssignments = withRetry(
-    pipe(
-      RefSynchronized.get(stateRef),
-      Effect.flatMap((state) => stateRepository.saveAssignments(state.shards))
-    )
-  )
-
-  const persistPods = withRetry(
-    pipe(
-      RefSynchronized.get(stateRef),
-      Effect.flatMap((state) => stateRepository.savePods(HashMap.map(state.pods, (v) => v.pod)))
-    )
-  )
-
-  function updateShardsState(
-    shards: HashSet.HashSet<ShardId.ShardId>,
-    pod: Option.Option<PodAddress.PodAddress>
-  ) {
-    return RefSynchronized.updateEffect(stateRef, (state) => {
-      if (Option.isSome(pod) && !HashMap.has(state.pods, pod.value)) {
-        return Effect.fail(new ShardingException.PodNoLongerRegisteredException({ podAddress: pod.value }))
-      }
-      return Effect.succeed({
-        ...state,
-        shards: pipe(
-          state.shards,
-          HashMap.map((assignment, shard) => HashSet.has(shards, shard) ? pod : assignment)
-        )
-      })
-    })
-  }
-
-  function rebalance(rebalanceImmediately: boolean): Effect.Effect<void> {
-    const algo = Effect.gen(function*() {
-      const state = yield* RefSynchronized.get(stateRef)
-
-      const [assignments, unassignments] = rebalanceImmediately || HashSet.size(state.unassignedShards) > 0
-        ? decideAssignmentsForUnassignedShards(state)
-        : decideAssignmentsForUnbalancedShards(state, config.rebalanceRate)
-
-      const areChanges = HashMap.size(assignments) > 0 || HashMap.size(unassignments) > 0
-
-      if (areChanges) {
-        yield* Effect.logDebug(
-          "Rebalance (rebalanceImmidiately=" + JSON.stringify(rebalanceImmediately) + ")"
-        )
-      }
-
-      const failedPingedPods = yield* pipe(
-        HashSet.union(HashMap.keySet(assignments), HashMap.keySet(unassignments)),
-        Effect.forEach(
-          (pod) =>
-            pipe(
-              podApi.ping(pod),
-              Effect.timeout(config.pingTimeout),
-              Effect.match({
-                onFailure: () => Chunk.fromIterable([pod]),
-                onSuccess: () => Chunk.empty<PodAddress.PodAddress>()
-              })
-            ),
-          { concurrency: "inherit" }
-        ),
-        Effect.map(Chunk.fromIterable),
-        Effect.map((_) => Chunk.flatten(_)),
-        Effect.map(HashSet.fromIterable)
-      )
-
-      const shardsToRemove = pipe(
-        List.fromIterable(assignments),
-        List.appendAll(List.fromIterable(unassignments)),
-        List.filter(([pod, __]) => HashSet.has(failedPingedPods, pod)),
-        List.map(([_, shards]) => List.fromIterable(shards)),
-        List.flatMap((_) => _), // TODO: List is missing flatMap
-        HashSet.fromIterable
-      )
-
-      const readyAssignments = pipe(
-        assignments,
-        HashMap.map(HashSet.difference(shardsToRemove)),
-        HashMap.filter((__) => HashSet.size(__) > 0)
-      )
-
-      const readyUnassignments = pipe(
-        unassignments,
-        HashMap.map(HashSet.difference(shardsToRemove)),
-        HashMap.filter((__) => HashSet.size(__) > 0)
-      )
-
-      const [failedUnassignedPods, failedUnassignedShards] = yield* pipe(
-        Effect.forEach(readyUnassignments, ([pod, shards]) =>
-          pipe(
-            podApi.unassignShards(pod, shards),
-            Effect.zipRight(updateShardsState(shards, Option.none())),
-            Effect.matchEffect({
-              onFailure: () => Effect.succeed([HashSet.fromIterable([pod]), shards] as const),
-              onSuccess: () =>
-                pipe(
-                  PubSub.publish(eventsHub, ShardingEvent.ShardsUnassigned(pod, shards)),
-                  Effect.as(
-                    [
-                      HashSet.empty<PodAddress.PodAddress>(),
-                      HashSet.empty<ShardId.ShardId>()
-                    ] as const
-                  )
-                )
-            })
-          ), { concurrency: "inherit" }),
-        Effect.map(Chunk.fromIterable),
-        Effect.map((_) => Chunk.unzip(_)),
-        Effect.map(
-          ([pods, shards]) => [Chunk.map(pods, Chunk.fromIterable), Chunk.map(shards, Chunk.fromIterable)] as const
-        ),
-        Effect.map(
-          ([pods, shards]) =>
-            [
-              HashSet.fromIterable(Chunk.flatten(pods)),
-              HashSet.fromIterable(Chunk.flatten(shards))
-            ] as const
-        )
-      )
-
-      // remove assignments of shards that couldn't be unassigned, as well as faulty pods.
-      const filteredAssignments = pipe(
-        HashMap.removeMany(readyAssignments, failedUnassignedPods),
-        HashMap.map((shards, __) => HashSet.difference(shards, failedUnassignedShards))
-      )
-
-      // then do the assignments
-      const failedAssignedPods = yield* pipe(
-        Effect.forEach(filteredAssignments, ([pod, shards]) =>
-          pipe(
-            podApi.assignShards(pod, shards),
-            Effect.zipRight(updateShardsState(shards, Option.some(pod))),
-            Effect.matchEffect({
-              onFailure: () => Effect.succeed(Chunk.fromIterable([pod])),
-              onSuccess: () =>
-                pipe(
-                  PubSub.publish(eventsHub, ShardingEvent.ShardsAssigned(pod, shards)),
-                  Effect.as(Chunk.empty())
-                )
-            })
-          ), { concurrency: "inherit" }),
-        Effect.map(Chunk.fromIterable),
-        Effect.map((_) => Chunk.flatten(_)),
-        Effect.map(HashSet.fromIterable)
-      )
-
-      const failedPods = HashSet.union(
-        HashSet.union(failedPingedPods, failedUnassignedPods),
-        failedAssignedPods
-      )
-
-      // check if failing pods are still up
-      yield* Effect.forkIn(layerScope)(Effect.forEach(failedPods, (_) => notifyUnhealthyPod(_), { discard: true }))
-
-      if (HashSet.size(failedPods) > 0) {
-        yield* Effect.logDebug(
-          "Failed to rebalance pods: " +
-            failedPods +
-            " failed pinged: " + failedPingedPods +
-            " failed assigned: " + failedAssignedPods +
-            " failed unassigned: " + failedUnassignedPods
-        )
-      }
-
-      // retry rebalancing later if there was any failure
-      if (HashSet.size(failedPods) > 0 && rebalanceImmediately) {
-        yield* pipe(
-          Effect.sleep(config.rebalanceRetryInterval),
-          Effect.zipRight(rebalance(rebalanceImmediately)),
-          Effect.forkIn(layerScope)
-        )
-      }
-
-      // persist state changes to Redis
-      if (areChanges) {
-        yield* Effect.forkIn(layerScope)(persistAssignments)
-      }
-    })
-
-    return rebalanceSemaphore.withPermits(1)(algo)
-  }
-
-  return {
-    getAssignments,
-    getShardingEvents,
-    register,
-    unregister,
-    persistPods,
-    rebalance,
-    notifyUnhealthyPod,
-    checkAllPodsHealth
-  }
-}
-
-/** @internal */
-export function decideAssignmentsForUnassignedShards(state: ShardManagerState.ShardManagerState) {
-  return pickNewPods(List.fromIterable(state.unassignedShards), state, true, 1)
-}
-
-/** @internal */
-export function decideAssignmentsForUnbalancedShards(
-  state: ShardManagerState.ShardManagerState,
-  rebalanceRate: number
-) {
-  // don't do regular rebalance in the middle of a rolling update
-  const extraShardsToAllocate = state.allPodsHaveMaxVersion
-    ? pipe(
-      state.shardsPerPod,
-      HashMap.flatMap((shards, _) => {
-        // count how many extra shards compared to the average
-        const extraShards = Math.max(HashSet.size(shards) - state.averageShardsPerPod.value, 0)
-        return pipe(
-          HashMap.empty(),
-          HashMap.set(_, HashSet.fromIterable(List.take(List.fromIterable(shards), extraShards)))
-        )
-      }),
-      HashSet.fromIterable,
-      HashSet.map((_) => _[1]),
-      HashSet.flatMap((_) => _)
-    )
-    : HashSet.empty()
-
-  /*
-        TODO: port sortBy
-
-    val sortedShardsToRebalance = extraShardsToAllocate.toList.sortBy { shard =>
-      // handle unassigned shards first, then shards on the pods with most shards, then shards on old pods
-      state.shards.get(shard).flatten.fold((Int.MinValue, OffsetDateTime.MIN)) { pod =>
-        (
-          state.shardsPerPod.get(pod).fold(Int.MinValue)(-_.size),
-          state.pods.get(pod).fold(OffsetDateTime.MIN)(_.registered)
-        )
+    // Determine which shards remain unassigned to a runner
+    const assignedShards = new Map<ShardId, RunnerAddress>()
+    const invalidAssignments = Arr.empty<[ShardId, RunnerAddress]>()
+    for (const [shard, address] of storedAssignments) {
+      if (Option.isSome(address) && MutableHashMap.has(aliveRunners, address.value)) {
+        assignedShards.set(shard, address.value)
+      } else if (Option.isSome(address)) {
+        invalidAssignments.push([shard, address.value])
       }
     }
-* */
-  const sortedShardsToRebalance = List.fromIterable(extraShardsToAllocate)
-  return pickNewPods(sortedShardsToRebalance, state, false, rebalanceRate)
-}
-
-function pickNewPods(
-  shardsToRebalance: List.List<ShardId.ShardId>,
-  state: ShardManagerState.ShardManagerState,
-  rebalanceImmediately: boolean,
-  rebalanceRate: number
-): readonly [
-  assignments: HashMap.HashMap<PodAddress.PodAddress, HashSet.HashSet<ShardId.ShardId>>,
-  unassignments: HashMap.HashMap<PodAddress.PodAddress, HashSet.HashSet<ShardId.ShardId>>
-] {
-  const [_, assignments] = pipe(
-    List.reduce(
-      shardsToRebalance,
-      [
-        state.shardsPerPod,
-        List.empty<readonly [ShardId.ShardId, PodAddress.PodAddress]>()
-      ] as const,
-      ([shardsPerPod, assignments], shard) => {
-        const unassignedPods = pipe(
-          assignments,
-          List.flatMap(([shard, _]) =>
-            pipe(
-              HashMap.get(state.shards, shard),
-              Option.flatten,
-              Option.toArray,
-              List.fromIterable
-            )
-          )
-        )
-
-        // find pod with least amount of shards
-        return pipe(
-          // keep only pods with the max version
-          HashMap.filter(shardsPerPod, (_, pod) => {
-            const maxVersion = state.maxVersion
-            if (Option.isNone(maxVersion)) return true
-            return pipe(
-              HashMap.get(state.pods, pod),
-              Option.map(PodWithMetadata.extractVersion),
-              Option.map((_) => PodWithMetadata.compareVersion(_, maxVersion.value) === 0),
-              Option.getOrElse(() => false)
-            )
-          }),
-          // don't assign too many shards to the same pods, unless we need rebalance immediately
-          HashMap.filter((_, pod) => {
-            if (rebalanceImmediately) return true
-            return (
-              pipe(
-                assignments,
-                List.filter(([_, p]) => equals(p)(pod)),
-                List.size
-              ) <
-                HashMap.size(state.shards) * rebalanceRate
-            )
-          }),
-          // don't assign to a pod that was unassigned in the same rebalance
-          HashMap.filter(
-            (_, pod) => !Option.isSome(List.findFirst(unassignedPods, equals(pod)))
-          ),
-          minByOption(([_, pods]) => HashSet.size(pods)),
-          Option.match({
-            onNone: () => [shardsPerPod, assignments] as const,
-            onSome: ([pod, shards]) => {
-              const oldPod = Option.flatten(HashMap.get(state.shards, shard))
-              // if old pod is same as new pod, don't change anything
-              if (equals(oldPod)(pod)) {
-                return [shardsPerPod, assignments] as const
-                // if the new pod has more, as much, or only 1 less shard than the old pod, don't change anything
-              } else if (
-                Option.match(HashMap.get(shardsPerPod, pod), { onNone: () => 0, onSome: HashSet.size }) + 1 >=
-                  Option.match(
-                    oldPod,
-                    {
-                      onNone: () => Number.MAX_SAFE_INTEGER,
-                      onSome: (_) =>
-                        Option.match(HashMap.get(shardsPerPod, _), { onNone: () => 0, onSome: HashSet.size })
-                    }
-                  )
-              ) {
-                return [shardsPerPod, assignments] as const
-
-                // otherwise, create a new assignment
-              } else {
-                const unassigned = Option.match(
-                  oldPod,
-                  {
-                    onNone: () => shardsPerPod,
-                    onSome: (oldPod) => HashMap.modify(shardsPerPod, oldPod, HashSet.remove(shard))
-                  }
-                )
-                return [
-                  HashMap.modify(unassigned, pod, (_) => HashSet.add(shards, shard)),
-                  List.prepend(assignments, [shard, pod] as const)
-                ] as const
-              }
-            }
-          })
-        )
-      }
-    )
-  )
-
-  const unassignments = List.flatMap(assignments, ([shard, _]) =>
-    pipe(
-      Option.flatten(HashMap.get(state.shards, shard)),
-      Option.map((_) => [shard, _] as const),
-      Option.match({ onNone: List.empty, onSome: List.of })
-    ))
-
-  const assignmentsPerPod = pipe(
-    assignments,
-    groupBy(([_, pod]) => pod),
-    HashMap.map(HashSet.map(([shardId, _]) => shardId))
-  )
-  const unassignmentsPerPod = pipe(
-    unassignments,
-    groupBy(([_, pod]) => pod),
-    HashMap.map(HashSet.map(([shardId, _]) => shardId))
-  )
-  return [assignmentsPerPod, unassignmentsPerPod] as const
-}
-
-/**
- * @since 1.0.0
- * @category layers
- */
-export const live = Effect.gen(function*() {
-  const config = yield* ManagerConfig.ManagerConfig
-  const stateRepository = yield* Storage.Storage
-  const healthApi = yield* PodsHealth.PodsHealth
-  const podsApi = yield* Pods.Pods
-  const layerScope = yield* Effect.scope
-
-  const pods = yield* stateRepository.getPods
-  const assignments = yield* stateRepository.getAssignments
-
-  const filteredPods = yield* pipe(
-    Effect.filter(pods, ([podAddress]) => healthApi.isAlive(podAddress), { concurrency: "inherit" }),
-    Effect.map(HashMap.fromIterable)
-  )
-  const filteredAssignments = HashMap.filter(
-    assignments,
-    (pod) => Option.isSome(pod) && HashMap.has(filteredPods, pod.value)
-  )
-  const cdt = yield* Clock.currentTimeMillis
-  const initialState = ShardManagerState.make(
-    HashMap.map(filteredPods, (pod) => PodWithMetadata.make(pod, cdt)),
-    HashMap.union(
-      filteredAssignments,
-      pipe(
-        Chunk.range(1, config.numberOfShards),
-        Chunk.map((n) => [ShardId.make(n), Option.none()] as const),
-        HashMap.fromIterable
+    if (invalidAssignments.length > 0) {
+      yield* Effect.logWarning(
+        "Ignoring shard assignments for runners that are no longer considered alive: ",
+        invalidAssignments
       )
+    }
+
+    // Construct the initial state
+    const now = yield* Clock.currentTimeMillis
+    const runnerState = MutableHashMap.empty<RunnerAddress, RunnerWithMetadata>()
+    for (const [address, runner] of aliveRunners) {
+      MutableHashMap.set(runnerState, address, RunnerWithMetadata({ runner, registeredAt: now }))
+    }
+
+    const shardState = new Map<ShardId, Option.Option<RunnerAddress>>()
+    for (let n = 1; n <= numberOfShards; n++) {
+      const shardId = ShardId.make(n)
+      shardState.set(shardId, Option.fromNullable(assignedShards.get(shardId)))
+    }
+
+    return new State(runnerState, shardState)
+  })
+
+  constructor(
+    readonly runners: MutableHashMap.MutableHashMap<RunnerAddress, RunnerWithMetadata>,
+    readonly shards: Map<ShardId, Option.Option<RunnerAddress>>
+  ) {}
+
+  get maxVersion(): Option.Option<number> {
+    if (MutableHashMap.size(this.runners) === 0) return Option.none()
+    let version: number | undefined = undefined
+    for (const [, meta] of this.runners) {
+      if (version === undefined || meta.runner.version > version) {
+        version = meta.runner.version
+      }
+    }
+    return Option.some(version!)
+  }
+
+  allRunnersHaveVersion(version: Option.Option<number>): boolean {
+    return version.pipe(
+      Option.map((max) => Arr.every(this.runnerVersions, (version) => version === max)),
+      Option.getOrElse(constFalse)
     )
-  )
-  const state = yield* RefSynchronized.make(initialState)
-  const rebalanceSemaphore = yield* Effect.makeSemaphore(1)
-  const eventsHub = yield* PubSub.unbounded<ShardingEvent.ShardingEvent>()
-  const shardManager = make(
-    layerScope,
-    state,
-    rebalanceSemaphore,
-    eventsHub,
-    healthApi,
-    podsApi,
-    stateRepository,
-    config
-  )
-  yield* Effect.forkIn(layerScope)(shardManager.persistPods)
-  // rebalance immediately if there are unassigned shards
-  yield* shardManager.rebalance(HashSet.size(initialState.unassignedShards) > 0)
-  // start a regular rebalance at the given interval
-  yield* pipe(
-    shardManager.rebalance(false),
-    Effect.repeat(Schedule.spaced(config.rebalanceInterval)),
-    Effect.forkIn(layerScope)
-  )
-  // log info events
-  yield* pipe(
-    shardManager.getShardingEvents,
-    Stream.mapEffect((_) => Effect.logDebug(JSON.stringify(_))),
-    Stream.runDrain,
-    Effect.forkIn(layerScope)
-  )
-  yield* Effect.logDebug("Shard Manager loaded")
-  return shardManager
-}).pipe(Layer.scoped(shardManagerTag))
+  }
+
+  get shardsPerRunner(): MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>> {
+    const shards = MutableHashMap.empty<RunnerAddress, Set<ShardId>>()
+
+    if (MutableHashMap.isEmpty(this.runners)) return shards
+    MutableHashMap.forEach(this.runners, (_, address) => {
+      MutableHashMap.set(shards, address, new Set())
+    })
+
+    for (const [shard, address] of this.shards) {
+      if (Option.isNone(address)) continue
+      const shardIds = Option.getOrUndefined(MutableHashMap.get(shards, address.value))!
+      shardIds.add(shard)
+    }
+
+    return shards
+  }
+
+  get averageShardsPerRunner(): number {
+    const runnerCount = MutableHashMap.size(this.runners)
+    return runnerCount > 0 ? this.shards.size / runnerCount : 0
+  }
+
+  get unassignedShards(): Array<ShardId> {
+    const shardIds: Array<ShardId> = []
+    for (const [shard, address] of this.shards) {
+      if (Option.isNone(address)) {
+        shardIds.push(shard)
+      }
+    }
+    return shardIds
+  }
+
+  private get runnerVersions(): Array<number> {
+    const runnerVersions: Array<number> = []
+    for (const [, meta] of this.runners) {
+      runnerVersions.push(meta.runner.version)
+    }
+    return runnerVersions
+  }
+}
+
+/** @internal */
+export interface RunnerWithMetadata {
+  readonly runner: Runner
+  readonly registeredAt: number
+}
+/** @internal */
+export const RunnerWithMetadata = (runner: RunnerWithMetadata): RunnerWithMetadata => runner
+
+/** @internal */
+export function decideAssignmentsForUnassignedShards(state: State): readonly [
+  assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  unassignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  changes: MutableHashSet.MutableHashSet<RunnerAddress>
+] {
+  return pickNewRunners(state.unassignedShards, state, true, 1)
+}
+
+const allocationOrder: Order.Order<[ShardId, number, number]> = Order.combine(
+  Order.mapInput(Order.number, ([, shards]) => shards),
+  Order.mapInput(Order.number, ([, , registeredAt]) => registeredAt)
+)
+
+/** @internal */
+export function decideAssignmentsForUnbalancedShards(state: State, rate: number): readonly [
+  assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  unassignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  changes: MutableHashSet.MutableHashSet<RunnerAddress>
+] {
+  const shardsPerRunner = state.shardsPerRunner
+  const maxVersion = state.maxVersion
+  const extraShardsToAllocate = Arr.empty<[ShardId, shardsInverse: number, registeredAt: number]>()
+
+  if (state.allRunnersHaveVersion(maxVersion)) {
+    const averageShardsPerRunner = state.averageShardsPerRunner
+    MutableHashMap.forEach(shardsPerRunner, (shards) => {
+      // Count how many extra shards there are compared to the average
+      const extraShards = Math.max(0, shards.size - averageShardsPerRunner)
+      for (const shard of takeRandom(shards, extraShards)) {
+        const maybeAddress = state.shards.get(shard) ?? Option.none()
+        if (Option.isNone(maybeAddress)) {
+          extraShardsToAllocate.push([shard, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER])
+          continue
+        }
+        const address = maybeAddress.value
+        extraShardsToAllocate.push([
+          shard,
+          Option.match(MutableHashMap.get(shardsPerRunner, address), {
+            onNone: () => Number.MIN_SAFE_INTEGER,
+            onSome: (shards) => -shards.size
+          }),
+          Option.match(MutableHashMap.get(state.runners, address), {
+            onNone: () => Number.MIN_SAFE_INTEGER,
+            onSome: (meta) => meta.registeredAt
+          })
+        ])
+      }
+    })
+  }
+
+  const sortedShardsToRebalance = extraShardsToAllocate.sort(allocationOrder).map(([shard]) => shard)
+
+  return pickNewRunners(sortedShardsToRebalance, state, false, rate, shardsPerRunner, maxVersion)
+}
+
+function pickNewRunners(
+  shardsToRebalance: ReadonlyArray<ShardId>,
+  state: State,
+  immediate: boolean,
+  rate: number,
+  shardsPerRunner = state.shardsPerRunner,
+  maybeMaxVersion = state.maxVersion
+): readonly [
+  assignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  unassignments: MutableHashMap.MutableHashMap<RunnerAddress, Set<ShardId>>,
+  changes: MutableHashSet.MutableHashSet<RunnerAddress>
+] {
+  const addressAssignments = MutableHashMap.empty<RunnerAddress, Set<ShardId>>()
+  const unassignments = MutableHashMap.empty<RunnerAddress, Set<ShardId>>()
+  const changes = MutableHashSet.empty<RunnerAddress>()
+
+  if (Option.isNone(maybeMaxVersion)) {
+    return [addressAssignments, unassignments, changes]
+  }
+  const maxVersion = maybeMaxVersion.value
+
+  for (const shardId of shardsToRebalance) {
+    // Find the runner with the fewest assigned shards
+    let candidate: RunnerAddress | undefined
+    let candidateShards: Set<ShardId> | undefined
+
+    for (const [address, shards] of shardsPerRunner) {
+      // Keep only runners with the maximum version
+      const maybeRunnerMeta = MutableHashMap.get(state.runners, address)
+      if (Option.isNone(maybeRunnerMeta)) continue
+      const runnerMeta = maybeRunnerMeta.value
+      if (runnerMeta.runner.version !== maxVersion) continue
+
+      // Do not assign to a runner that has unassignments in the same rebalance
+      if (MutableHashMap.has(unassignments, address)) continue
+
+      // Do not assign too many shards to each runner unless rebalancing must
+      // occur immediately
+      if (!immediate) {
+        const assignmentCount = Option.getOrUndefined(MutableHashMap.get(addressAssignments, address))?.size ?? 0
+        if (assignmentCount >= state.shards.size * rate) continue
+      }
+
+      if (candidate === undefined || shards.size < candidateShards!.size) {
+        candidate = address
+        candidateShards = shards
+      }
+    }
+    if (!candidate || !candidateShards) break
+
+    // If the old runner is the same as the new runner, do nothing
+    const oldRunner = Option.getOrUndefined(state.shards.get(shardId) ?? Option.none())
+    if (oldRunner && oldRunner.toString() === candidate.toString()) {
+      continue
+    }
+    const oldShards = oldRunner && Option.getOrUndefined(MutableHashMap.get(shardsPerRunner, oldRunner))
+
+    // If the new runner has one less, as many, or more shards than the
+    // old runner, do not change anything
+    if (oldShards && candidateShards.size + 1 >= oldShards.size) continue
+
+    // Otherwise create a new assignment
+    MutableHashMap.modifyAt(
+      addressAssignments,
+      candidate,
+      Option.match({
+        onNone: () => Option.some(new Set([shardId])),
+        onSome: (shards) => {
+          shards.add(shardId)
+          return Option.some(shards)
+        }
+      })
+    )
+    if (oldRunner) {
+      MutableHashMap.modifyAt(
+        unassignments,
+        oldRunner,
+        Option.match({
+          onNone: () => Option.some(new Set([shardId])),
+          onSome: (shards) => {
+            shards.add(shardId)
+            return Option.some(shards)
+          }
+        })
+      )
+    }
+
+    // Move the shard to the new runner
+    candidateShards.add(shardId)
+    if (oldShards) {
+      oldShards.delete(shardId)
+    }
+
+    // Track changes
+    MutableHashSet.add(changes, candidate)
+    if (oldRunner) MutableHashSet.add(changes, oldRunner)
+  }
+
+  return [addressAssignments, unassignments, changes]
+}
+
+function takeRandom<A>(self: Iterable<A>, n: number): ReadonlyArray<A> {
+  const array = Array.from(self)
+  let currentIndex = array.length
+  while (currentIndex != 0) {
+    const randomIndex = Math.floor(Math.random() * currentIndex)
+    currentIndex = currentIndex - 1
+    swap(array, currentIndex, randomIndex)
+  }
+  return n < array.length ? array.slice(0, n) : array
+}
+
+function swap<A>(array: Array<A>, i: number, j: number): ReadonlyArray<A> {
+  const tmp = array[i]
+  array[i] = array[j]
+  array[j] = tmp
+  return array
+}

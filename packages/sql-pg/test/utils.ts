@@ -6,7 +6,7 @@ export class ContainerError extends Data.TaggedError("ContainerError")<{
   cause: unknown
 }> {}
 
-export class PgContainer extends Effect.Service<PgContainer>()("test/MysqlContainer", {
+export class PgContainer extends Effect.Service<PgContainer>()("test/PgContainer", {
   scoped: Effect.acquireRelease(
     Effect.tryPromise({
       try: () => new PostgreSqlContainer("postgres:alpine").start(),
