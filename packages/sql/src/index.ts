@@ -6,6 +6,11 @@ export * as Migrator from "./Migrator.js"
 /**
  * @since 1.0.0
  */
+export * as Model from "./Model.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as SqlClient from "./SqlClient.js"
 
 /**
