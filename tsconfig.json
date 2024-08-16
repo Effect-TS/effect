@@ -8,7 +8,6 @@
     { "path": "packages/ai/openai" },
     { "path": "packages/cli" },
     { "path": "packages/cluster" },
-    { "path": "packages/cluster-workflow" },
     { "path": "packages/experimental" },
     { "path": "packages/opentelemetry" },
     { "path": "packages/platform" },
