@@ -55,11 +55,6 @@
       "@effect/cluster": ["./packages/cluster/src/index.js"],
       "@effect/cluster/*": ["./packages/cluster/src/*.js"],
       "@effect/cluster/test/*": ["./packages/cluster/test/*.js"],
-      "@effect/cluster-workflow": ["./packages/cluster-workflow/src/index.js"],
-      "@effect/cluster-workflow/*": ["./packages/cluster-workflow/src/*.js"],
-      "@effect/cluster-workflow/test/*": [
-        "./packages/cluster-workflow/test/*.js"
-      ],
       "@effect/experimental": ["./packages/experimental/src/index.js"],
       "@effect/experimental/*": ["./packages/experimental/src/*.js"],
       "@effect/experimental/test/*": ["./packages/experimental/test/*.js"],
