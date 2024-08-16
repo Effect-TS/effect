@@ -16,11 +16,6 @@ jobs:
       - name: Checkout default branch
         uses: actions/checkout@v4
 
-      - name: Checkout pull request branch
-        run: gh pr checkout ${{ github.event.pull_request.number }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Get current branch name
         id: branch
         run: echo "branch=$(git branch --show-current)" >> $GITHUB_OUTPUT
