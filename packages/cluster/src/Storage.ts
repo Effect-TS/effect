@@ -1,92 +1,60 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
-import type * as HashMap from "effect/HashMap"
-import type * as Layer from "effect/Layer"
-import type * as Option from "effect/Option"
-import type * as Stream from "effect/Stream"
-import * as internal from "./internal/storage.js"
-import type * as Pod from "./Pod.js"
-import type * as PodAddress from "./PodAddress.js"
-import type * as ShardId from "./ShardId.js"
+import type { WithResult } from "@effect/schema/Serializable"
+import * as Context from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { HashMap } from "effect/HashMap"
+import type { Option } from "effect/Option"
+import type { Stream } from "effect/Stream"
+import type { EntityAddress } from "./EntityAddress.js"
+import type { Envelope } from "./Envelope.js"
+import type { MessageState } from "./MessageState.js"
+import type { Pod } from "./Pod.js"
+import type { PodAddress } from "./PodAddress.js"
+import type { ShardId } from "./ShardId.js"
 
 /**
- * @since 1.0.0
- * @category symbols
- */
-export const StorageTypeId: unique symbol = internal.StorageTypeId
-
-/**
- * @since 1.0.0
- * @category symbols
- */
-export type StorageTypeId = typeof StorageTypeId
-
-/**
- * The storage Service is responsible of persisting assignments and registered pods.
- * The storage is expected to be shared among all pods, so it works also as communication of assignments between Pods.
+ * Represents a generic interface to the persistent storage required by the
+ * cluster.
  *
  * @since 1.0.0
  * @category models
  */
-export interface Storage {
-  readonly [StorageTypeId]: StorageTypeId
-
+export class Storage extends Context.Tag("@effect/cluster/Storage")<Storage, {
   /**
-   * Get the current state of shard assignments to pods
+   * Save the provided message and its associated metadata.
+   *
+   * @returns `true` if the message was saved successfully, `false` otherwise
    */
-  readonly getAssignments: Effect.Effect<HashMap.HashMap<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>>
-
+  readonly saveMessage: (envelope: Envelope) => Effect<boolean>
   /**
-   * Save the current state of shard assignments to pods
+   * Updates the specified message using the provided `MessageState`.
    */
-  readonly saveAssignments: (
-    assignments: HashMap.HashMap<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>
-  ) => Effect.Effect<void>
-
+  readonly updateMessage: <Msg extends Envelope.AnyMessage>(
+    address: EntityAddress,
+    message: Msg,
+    state: MessageState<WithResult.Success<Msg>, WithResult.Failure<Msg>>
+  ) => Effect<void>
   /**
-   * A stream that will emit the state of shard assignments whenever it changes
+   * Get the current assignments of shards to pods.
    */
-  readonly assignmentsStream: Stream.Stream<HashMap.HashMap<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>>
-
+  readonly getShardAssignments: Effect<HashMap<ShardId, Option<PodAddress>>>
   /**
-   * Get the list of existing pods
+   * Returns a `Stream` which will emit the state of all shard assignments
+   * whenever assignments are updated.
    */
-  readonly getPods: Effect.Effect<HashMap.HashMap<PodAddress.PodAddress, Pod.Pod>>
-
+  readonly streamShardAssignments: Stream<HashMap<ShardId, Option<PodAddress>>>
   /**
-   * Save the list of existing pods
+   * Save the current state of shards assignments to pods.
    */
-  readonly savePods: (pods: HashMap.HashMap<PodAddress.PodAddress, Pod.Pod>) => Effect.Effect<void>
-}
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const make: (args: Omit<Storage, typeof StorageTypeId>) => Storage = internal.make
-
-/**
- * @since 1.0.0
- * @category context
- */
-export const Storage: Context.Tag<Storage, Storage> = internal.storageTag
-
-/**
- * A layer that stores data in-memory.
- * This is useful for testing with a single pod only.
- *
- * @since 1.0.0
- * @category layers
- */
-export const memory: Layer.Layer<Storage> = internal.memory
-
-/**
- * A layer that does nothing, useful for testing.
- *
- * @since 1.0.0
- * @category layers
- */
-export const noop: Layer.Layer<Storage> = internal.noop
+  readonly saveShardAssignments: (assignments: HashMap<ShardId, Option<PodAddress>>) => Effect<void>
+  /**
+   * Get all pods registered with the cluster.
+   */
+  readonly getPods: Effect<HashMap<PodAddress, Pod>>
+  /**
+   * Save the current pods registered with the cluster.
+   */
+  readonly savePods: (pods: HashMap<PodAddress, Pod>) => Effect<void>
+}>() {}

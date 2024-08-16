@@ -1,9 +1,10 @@
-import * as Entity from "@effect/cluster/Entity"
+import * as Message from "@effect/cluster/Message"
 import * as MessageState from "@effect/cluster/MessageState"
 import * as Pods from "@effect/cluster/Pods"
 import * as PodsHealth from "@effect/cluster/PodsHealth"
 import * as PoisonPill from "@effect/cluster/PoisonPill"
 import * as RecipientBehaviour from "@effect/cluster/RecipientBehaviour"
+import * as RecipientType from "@effect/cluster/RecipientType"
 import * as Serialization from "@effect/cluster/Serialization"
 import * as Sharding from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
@@ -35,39 +36,42 @@ interface SampleService {
 
 const SampleService = Context.GenericTag<SampleService>("@services/SampleService")
 
-class SampleMessage extends Schema.TaggedRequest<SampleMessage>()("SampleMessage", {
-  success: Schema.Void,
-  failure: Schema.Never,
-  payload: {
-    id: Schema.String,
-    value: Schema.Number
-  }
-}) {}
+class SampleMessage extends Message.TaggedMessage<SampleMessage>()("SampleMessage", Schema.Never, Schema.Void, {
+  id: Schema.String,
+  value: Schema.Number
+}, (_) => _.id) {
+}
 
-class SampleMessageWithResult extends Schema.TaggedRequest<SampleMessageWithResult>()("SampleMessageWithResult", {
-  success: Schema.Number,
-  failure: Schema.Never,
-  payload: {
+class SampleMessageWithResult extends Message.TaggedMessage<SampleMessageWithResult>()(
+  "SampleMessageWithResult",
+  Schema.Never,
+  Schema.Number,
+  {
     id: Schema.String,
     value: Schema.Number
-  }
-}) {}
+  },
+  (_) => _.id
+) {
+}
 
-class FailableMessageWithResult extends Schema.TaggedRequest<FailableMessageWithResult>()("FailableMessageWithResult", {
-  success: Schema.Number,
-  failure: Schema.String,
-  payload: {
+class FailableMessageWithResult extends Message.TaggedMessage<FailableMessageWithResult>()(
+  "FailableMessageWithResult",
+  Schema.String,
+  Schema.Number,
+  {
     id: Schema.String,
     value: Schema.Number
-  }
-}) {}
+  },
+  (_) => _.id
+) {
+}
 
 type SampleEntity = SampleMessage | SampleMessageWithResult | FailableMessageWithResult
 
-const SampleEntity = new Entity.Standard({
-  name: "Sample",
-  schema: Schema.Union(SampleMessage, SampleMessageWithResult, FailableMessageWithResult)
-})
+const SampleEntity = RecipientType.makeEntityType(
+  "Sample",
+  Schema.Union(SampleMessage, SampleMessageWithResult, FailableMessageWithResult)
+)
 
 describe.concurrent("SampleTests", () => {
   const inMemorySharding = pipe(
@@ -97,14 +101,14 @@ describe.concurrent("SampleTests", () => {
           SampleEntity
         )(
           RecipientBehaviour.fromFunctionEffect(() =>
-            pipe(Ref.set(received, true), Effect.as(MessageState.acknowledged))
+            pipe(Ref.set(received, true), Effect.as(MessageState.Acknowledged))
           )
         )
       )
 
       const messenger = yield* _(Sharding.messenger(SampleEntity))
       const msg = new SampleMessage({ id: "a", value: 42 })
-      yield* _(messenger.fireAndForget("entity1", msg))
+      yield* _(messenger.sendDiscard("entity1")(msg))
 
       expect(yield* _(Ref.get(received))).toBe(true)
     }).pipe(withTestEnv, Effect.runPromise)
@@ -116,7 +120,7 @@ describe.concurrent("SampleTests", () => {
 
       const messenger = yield* _(Sharding.messenger(SampleEntity))
       const msg = new SampleMessage({ id: "a", value: 42 })
-      const exit = yield* _(messenger.fireAndForget("entity1", msg).pipe(Effect.exit))
+      const exit = yield* _(messenger.sendDiscard("entity1")(msg).pipe(Effect.exit))
 
       expect(Exit.isFailure(exit)).toBe(true)
 
@@ -142,8 +146,8 @@ describe.concurrent("SampleTests", () => {
         )(
           RecipientBehaviour.fromFunctionEffect((entityId, msg) =>
             pipe(
-              Ref.set(entityId === "entity1" ? result1 : result2, msg.message.value),
-              Effect.as(MessageState.acknowledged)
+              Ref.set(entityId === "entity1" ? result1 : result2, msg.value),
+              Effect.as(MessageState.Acknowledged)
             )
           )
         )
@@ -152,10 +156,10 @@ describe.concurrent("SampleTests", () => {
       const messenger = yield* _(Sharding.messenger(SampleEntity))
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.fireAndForget("entity1", msg1))
+      yield* _(messenger.sendDiscard("entity1")(msg1))
 
       const msg2 = new SampleMessage({ id: "b", value: 2 })
-      yield* _(messenger.fireAndForget("entity2", msg2))
+      yield* _(messenger.sendDiscard("entity2")(msg2))
 
       expect(yield* _(Ref.get(result1))).toBe(1)
       expect(yield* _(Ref.get(result2))).toBe(2)
@@ -170,13 +174,13 @@ describe.concurrent("SampleTests", () => {
         Sharding.registerEntity(
           SampleEntity
         )(
-          RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.processed(Exit.succeed(42))))
+          RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Processed(Exit.succeed(42))))
         )
       )
 
       const messenger = yield* _(Sharding.messenger(SampleEntity))
       const msg = new SampleMessageWithResult({ id: "a", value: 42 })
-      const result = yield* _(messenger.ask("entity1", msg))
+      const result = yield* _(messenger.send("entity1")(msg))
 
       expect(result).toEqual(42)
     }).pipe(withTestEnv, Effect.runPromise)
@@ -191,16 +195,16 @@ describe.concurrent("SampleTests", () => {
           SampleEntity
         )(
           RecipientBehaviour.fromFunctionEffect((_, msg) =>
-            msg.message._tag === "FailableMessageWithResult"
-              ? Effect.succeed(MessageState.processed(Exit.fail("custom-error")))
-              : Effect.succeed(MessageState.processed(Exit.void))
+            msg._tag === "FailableMessageWithResult"
+              ? Effect.succeed(MessageState.Processed(Exit.fail("custom-error")))
+              : Effect.succeed(MessageState.Processed(Exit.void))
           )
         )
       )
 
       const messenger = yield* _(Sharding.messenger(SampleEntity))
       const msg = new FailableMessageWithResult({ id: "a", value: 42 })
-      const result = yield* _(messenger.ask("entity1", msg), Effect.exit)
+      const result = yield* _(messenger.send("entity1")(msg), Effect.exit)
 
       expect(result).toEqual(Exit.fail("custom-error"))
     }).pipe(withTestEnv, Effect.runPromise)
@@ -239,11 +243,7 @@ describe.concurrent("SampleTests", () => {
         GetIncrement
       )
 
-      const SampleTopic = new Entity.Clustered({
-        name: "Sample",
-        schema: SampleProtocol,
-        messageId: (_) => _.id
-      })
+      const SampleTopic = RecipientType.makeTopicType("Sample", SampleProtocol)
 
       const ref = yield* _(Ref.make(0))
 
@@ -252,11 +252,11 @@ describe.concurrent("SampleTests", () => {
           SampleTopic
         )(
           RecipientBehaviour.fromFunctionEffect((entityId, msg) => {
-            switch (msg.message._tag) {
+            switch (msg._tag) {
               case "BroadcastIncrement":
-                return pipe(Ref.update(ref, (_) => _ + 1), Effect.as(MessageState.acknowledged))
+                return pipe(Ref.update(ref, (_) => _ + 1), Effect.as(MessageState.Acknowledged))
               case "GetIncrement":
-                return pipe(Ref.get(ref), Effect.map((_) => MessageState.processed(Exit.succeed(_))))
+                return pipe(Ref.get(ref), Effect.map((_) => MessageState.Processed(Exit.succeed(_))))
             }
           })
         )
@@ -265,12 +265,12 @@ describe.concurrent("SampleTests", () => {
       const broadcaster = yield* _(Sharding.broadcaster(SampleTopic))
 
       const msg1 = new BroadcastIncrement({ id: "a" })
-      yield* _(broadcaster.broadcastAndForget("c1", msg1))
+      yield* _(broadcaster.broadcastDiscard("c1")(msg1))
 
       yield* _(Effect.sleep(Duration.seconds(2)))
 
       const msg2 = new GetIncrement({ id: "b" })
-      const c1 = yield* _(broadcaster.broadcast("c1", msg2))
+      const c1 = yield* _(broadcaster.broadcast("c1")(msg2))
 
       expect(HashMap.size(c1)).toBe(1) // Here we have just one pod, so there will be just one incrementer
     }).pipe(withTestEnv, Effect.runPromise)
@@ -311,7 +311,7 @@ describe.concurrent("SampleTests", () => {
       const messenger = yield* _(Sharding.messenger(SampleEntity))
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.fireAndForget("entity1", msg1))
+      yield* _(messenger.sendDiscard("entity1")(msg1))
       yield* _(Deferred.await(entityStarted))
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(entityInterrupted).toBe(true))
   })
@@ -355,7 +355,7 @@ describe.concurrent("SampleTests", () => {
       const messenger = yield* _(Sharding.messenger(SampleEntity))
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.fireAndForget("entity1", msg1))
+      yield* _(messenger.sendDiscard("entity1")(msg1))
 
       yield* _(Deferred.await(entityStarted))
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(shutdownCompleted).toBe(true))
@@ -404,7 +404,7 @@ describe.concurrent("SampleTests", () => {
       const messenger = yield* _(Sharding.messenger(SampleEntity))
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.fireAndForget("entity1", msg1))
+      yield* _(messenger.sendDiscard("entity1")(msg1))
 
       yield* _(Deferred.await(entityStarted))
       yield* _(Deferred.await(shutdownReceived))
@@ -484,7 +484,7 @@ describe.concurrent("SampleTests", () => {
 
       const msg = new SampleMessageWithResult({ id: "a", value: 42 })
       const replyFiber = yield* _(
-        messenger.ask("entity1", msg),
+        messenger.send("entity1")(msg),
         Effect.timeoutFail({
           onTimeout: () => "timeout",
           duration: Duration.millis(1000)
