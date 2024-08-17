@@ -187,6 +187,12 @@ export const extract: {
   }
 )
 
+/**
+ * @category accessors
+ * @since 1.0.0
+ */
+export const fields = <A extends Struct<any>>(self: A): A[TypeId] => self[TypeId]
+
 type RequiredKeys<T> = {
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K
 }[keyof T]

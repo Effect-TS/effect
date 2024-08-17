@@ -83,6 +83,12 @@ export {
 
 /**
  * @since 1.0.0
+ * @category accessors
+ */
+export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[VariantSchema.TypeId] = VariantSchema.fields
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export interface Generated<S extends Schema.Schema.All | Schema.PropertySignature.All> extends
