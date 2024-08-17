@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.62.1
+
+### Patch Changes
+
+- [#3469](https://github.com/Effect-TS/effect/pull/3469) [`9efe0e5`](https://github.com/Effect-TS/effect/commit/9efe0e5b57ac557399be620822c21cc6e9add285) Thanks @tim-smart! - respond with 404 for NoSuchElementException in HttpServerRespondable
+
 ## 0.62.0
 
 ### Patch Changes

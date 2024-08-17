@@ -1,5 +1,12 @@
 # @effect/cluster
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/rpc@0.36.1
+
 ## 0.4.0
 
 ### Patch Changes
