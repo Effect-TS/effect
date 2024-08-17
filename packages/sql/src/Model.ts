@@ -2,12 +2,10 @@
  * @since 1.0.0
  */
 import * as VariantSchema from "@effect/experimental/VariantSchema"
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
-import { constUndefined } from "effect/Function"
 import * as Option from "effect/Option"
 
 const {
@@ -91,6 +89,12 @@ export {
  * @category accessors
  */
 export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[VariantSchema.TypeId] = VariantSchema.fields
+
+/**
+ * @since 1.0.0
+ * @category overrideable
+ */
+export const Override: <A>(value: A) => A & Brand<"Override"> = VariantSchema.Override
 
 /**
  * @since 1.0.0
@@ -207,49 +211,31 @@ export const DateTimeFromDate: DateTimeFromDate = Schema.transform(
 
 /**
  * @since 1.0.0
- * @category overrideable
+ * @category schemas
  */
-export const Override = <A>(value: A): A & Brand<"Override"> => value as any
-
-/**
- * @since 1.0.0
- * @category overrideable
- */
-export interface Overrideable<To, From, R = never>
-  extends Schema.PropertySignature<":", (To & Brand<"Override">) | undefined, never, ":", From, true, R>
-{}
-
-/**
- * @since 1.0.0
- * @category overrideable
- */
-export const Overrideable = <From, IFrom, RFrom, To, ITo, R>(
-  from: Schema.Schema<From, IFrom, RFrom>,
-  to: Schema.Schema<To, ITo>,
-  options: {
-    readonly generate: (_: Option.Option<ITo>) => Effect.Effect<From, ParseResult.ParseIssue, R>
-  }
-): Overrideable<To, IFrom, RFrom | R> =>
-  Schema.transformOrFail(from, Schema.Union(Schema.Undefined, to.pipe(Schema.brand("Override"))), {
-    decode: (_) => ParseResult.succeed(undefined),
-    encode: (dt) => options.generate(dt === undefined ? Option.none() : Option.some(dt))
-  }).pipe(Schema.propertySignature, Schema.withConstructorDefault(constUndefined))
-
-const DateTimeWithNow = Overrideable(Schema.String, Schema.DateTimeUtcFromSelf, {
+export const DateTimeWithNow = VariantSchema.Overrideable(Schema.String, Schema.DateTimeUtcFromSelf, {
   generate: Option.match({
     onNone: () => Effect.map(DateTime.now, DateTime.formatIso),
     onSome: (dt) => Effect.succeed(DateTime.formatIso(dt))
   })
 })
 
-const DateTimeFromDateWithNow = Overrideable(Schema.DateFromSelf, Schema.DateTimeUtcFromSelf, {
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const DateTimeFromDateWithNow = VariantSchema.Overrideable(Schema.DateFromSelf, Schema.DateTimeUtcFromSelf, {
   generate: Option.match({
     onNone: () => Effect.map(DateTime.now, DateTime.toDateUtc),
     onSome: (dt) => Effect.succeed(DateTime.toDateUtc(dt))
   })
 })
 
-const DateTimeFromNumberWithNow = Overrideable(Schema.Number, Schema.DateTimeUtcFromSelf, {
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const DateTimeFromNumberWithNow = VariantSchema.Overrideable(Schema.Number, Schema.DateTimeUtcFromSelf, {
   generate: Option.match({
     onNone: () => Effect.map(DateTime.now, DateTime.toEpochMillis),
     onSome: (dt) => Effect.succeed(DateTime.toEpochMillis(dt))
@@ -263,7 +249,7 @@ const DateTimeFromNumberWithNow = Overrideable(Schema.Number, Schema.DateTimeUtc
 export interface DateTimeInsert extends
   VariantSchema.Field<{
     readonly select: typeof Schema.DateTimeUtc
-    readonly insert: Overrideable<DateTime.Utc, string>
+    readonly insert: VariantSchema.Overrideable<DateTime.Utc, string>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
@@ -290,7 +276,7 @@ export const DateTimeInsert: DateTimeInsert = Field({
 export interface DateTimeInsertFromDate extends
   VariantSchema.Field<{
     readonly select: DateTimeFromDate
-    readonly insert: Overrideable<DateTime.Utc, Date>
+    readonly insert: VariantSchema.Overrideable<DateTime.Utc, Date>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
@@ -317,7 +303,7 @@ export const DateTimeInsertFromDate: DateTimeInsertFromDate = Field({
 export interface DateTimeInsertFromNumber extends
   VariantSchema.Field<{
     readonly select: typeof Schema.DateTimeUtcFromNumber
-    readonly insert: Overrideable<DateTime.Utc, number>
+    readonly insert: VariantSchema.Overrideable<DateTime.Utc, number>
     readonly json: typeof Schema.DateTimeUtcFromNumber
   }>
 {}
@@ -344,8 +330,8 @@ export const DateTimeInsertFromNumber: DateTimeInsertFromNumber = Field({
 export interface DateTimeUpdate extends
   VariantSchema.Field<{
     readonly select: typeof Schema.DateTimeUtc
-    readonly insert: Overrideable<DateTime.Utc, string>
-    readonly update: Overrideable<DateTime.Utc, string>
+    readonly insert: VariantSchema.Overrideable<DateTime.Utc, string>
+    readonly update: VariantSchema.Overrideable<DateTime.Utc, string>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
@@ -374,8 +360,8 @@ export const DateTimeUpdate: DateTimeUpdate = Field({
 export interface DateTimeUpdateFromDate extends
   VariantSchema.Field<{
     readonly select: DateTimeFromDate
-    readonly insert: Overrideable<DateTime.Utc, Date>
-    readonly update: Overrideable<DateTime.Utc, Date>
+    readonly insert: VariantSchema.Overrideable<DateTime.Utc, Date>
+    readonly update: VariantSchema.Overrideable<DateTime.Utc, Date>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
@@ -404,8 +390,8 @@ export const DateTimeUpdateFromDate: DateTimeUpdateFromDate = Field({
 export interface DateTimeUpdateFromNumber extends
   VariantSchema.Field<{
     readonly select: typeof Schema.DateTimeUtcFromNumber
-    readonly insert: Overrideable<DateTime.Utc, number>
-    readonly update: Overrideable<DateTime.Utc, number>
+    readonly insert: VariantSchema.Overrideable<DateTime.Utc, number>
+    readonly update: VariantSchema.Overrideable<DateTime.Utc, number>
     readonly json: typeof Schema.DateTimeUtcFromNumber
   }>
 {}
