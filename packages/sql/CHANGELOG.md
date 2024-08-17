@@ -1,5 +1,14 @@
 # @effect/sql
 
+## 0.9.2
+
+### Patch Changes
+
+- [#3467](https://github.com/Effect-TS/effect/pull/3467) [`cfcfbdf`](https://github.com/Effect-TS/effect/commit/cfcfbdfe586b011a5edc28083fd5391edeee0023) Thanks @tim-smart! - add VariantSchema.fields for accessing the fields
+
+- Updated dependencies [[`cfcfbdf`](https://github.com/Effect-TS/effect/commit/cfcfbdfe586b011a5edc28083fd5391edeee0023)]:
+  - @effect/experimental@0.23.2
+
 ## 0.9.1
 
 ### Patch Changes
