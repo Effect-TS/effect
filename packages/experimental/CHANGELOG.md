@@ -1,5 +1,15 @@
 # @effect/experimental
 
+## 0.23.3
+
+### Patch Changes
+
+- [#3471](https://github.com/Effect-TS/effect/pull/3471) [`c3446d3`](https://github.com/Effect-TS/effect/commit/c3446d3e57b0cbfe9341d6f2aebf5f5d6fefefe3) Thanks @tim-smart! - add VariantSchema.Overrideable, for creating fields with optional defaults
+
+- Updated dependencies [[`9efe0e5`](https://github.com/Effect-TS/effect/commit/9efe0e5b57ac557399be620822c21cc6e9add285)]:
+  - @effect/platform@0.62.1
+  - @effect/platform-node@0.57.1
+
 ## 0.23.2
 
 ### Patch Changes
