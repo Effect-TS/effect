@@ -2,8 +2,12 @@
  * @since 1.0.0
  */
 import type * as AST from "@effect/schema/AST"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import { dual } from "effect/Function"
+import type { Brand } from "effect/Brand"
+import type * as Effect from "effect/Effect"
+import { constUndefined, dual } from "effect/Function"
+import * as Option from "effect/Option"
 
 /**
  * @since 1.0.0
@@ -339,3 +343,33 @@ export const make = <
     Class
   } as any
 }
+
+/**
+ * @since 1.0.0
+ * @category overrideable
+ */
+export const Override = <A>(value: A): A & Brand<"Override"> => value as any
+
+/**
+ * @since 1.0.0
+ * @category overrideable
+ */
+export interface Overrideable<To, From, R = never>
+  extends Schema.PropertySignature<":", (To & Brand<"Override">) | undefined, never, ":", From, true, R>
+{}
+
+/**
+ * @since 1.0.0
+ * @category overrideable
+ */
+export const Overrideable = <From, IFrom, RFrom, To, ITo, R>(
+  from: Schema.Schema<From, IFrom, RFrom>,
+  to: Schema.Schema<To, ITo>,
+  options: {
+    readonly generate: (_: Option.Option<ITo>) => Effect.Effect<From, ParseResult.ParseIssue, R>
+  }
+): Overrideable<To, IFrom, RFrom | R> =>
+  Schema.transformOrFail(from, Schema.Union(Schema.Undefined, to.pipe(Schema.brand("Override"))), {
+    decode: (_) => ParseResult.succeed(undefined),
+    encode: (dt) => options.generate(dt === undefined ? Option.none() : Option.some(dt))
+  }).pipe(Schema.propertySignature, Schema.withConstructorDefault(constUndefined))
