@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as ParseResult from "@effect/schema/ParseResult"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import { hasProperty } from "effect/Predicate"
 import type { HttpServerResponse } from "./HttpServerResponse.js"
@@ -28,6 +29,7 @@ export interface Respondable {
 export const isRespondable = (u: unknown): u is Respondable => hasProperty(u, symbol)
 
 const badRequest = ServerResponse.empty({ status: 400 })
+const notFound = ServerResponse.empty({ status: 404 })
 
 /**
  * @since 1.0.0
@@ -52,6 +54,8 @@ export const toResponseOrElse = (u: unknown, orElse: HttpServerResponse): Effect
     // add support for some commmon types
   } else if (ParseResult.isParseError(u)) {
     return Effect.succeed(badRequest)
+  } else if (Cause.isNoSuchElementException(u)) {
+    return Effect.succeed(notFound)
   }
   return Effect.succeed(orElse)
 }
