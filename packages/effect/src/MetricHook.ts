@@ -21,7 +21,7 @@ export const MetricHookTypeId: unique symbol = internal.MetricHookTypeId
 export type MetricHookTypeId = typeof MetricHookTypeId
 
 /**
- * @since 3.6.5
+ * @since 2.0.0
  * @category models
  */
 export interface MetricHook<in In, out Out> extends MetricHook.Variance<In, Out>, Pipeable {
@@ -140,3 +140,12 @@ export const onUpdate: {
   <In, Out>(f: (input: In) => void): (self: MetricHook<In, Out>) => MetricHook<In, Out>
   <In, Out>(self: MetricHook<In, Out>, f: (input: In) => void): MetricHook<In, Out>
 } = internal.onUpdate
+
+/**
+ * @since 3.6.5
+ * @category utils
+ */
+export const onModify: {
+  <In, Out>(f: (input: In) => void): (self: MetricHook<In, Out>) => MetricHook<In, Out>
+  <In, Out>(self: MetricHook<In, Out>, f: (input: In) => void): MetricHook<In, Out>
+} = internal.onModify

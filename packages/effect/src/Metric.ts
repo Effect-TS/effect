@@ -45,7 +45,7 @@ export type MetricTypeId = typeof MetricTypeId
  *   - Histograms
  *   - Summaries
  *
- * @since 3.6.5
+ * @since 2.0.0
  * @category models
  */
 export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Type, In, Out>, Pipeable {
@@ -62,7 +62,7 @@ export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Typ
 }
 
 /**
- * @since 3.6.5
+ * @since 2.0.0
  * @category models
  */
 export interface MetricApply {
@@ -307,7 +307,7 @@ export const histogram: (
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, number, MetricState.MetricState.Histogram> = internal.histogram
 
 /**
- * @since 3.6.5
+ * @since 2.0.0
  * @category combinators
  */
 export const increment: (
@@ -315,7 +315,7 @@ export const increment: (
 ) => Effect.Effect<void> = internal.increment
 
 /**
- * @since 3.6.5
+ * @since 2.0.0
  * @category combinators
  */
 export const incrementBy: {
