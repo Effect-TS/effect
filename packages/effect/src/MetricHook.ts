@@ -27,6 +27,7 @@ export type MetricHookTypeId = typeof MetricHookTypeId
 export interface MetricHook<in In, out Out> extends MetricHook.Variance<In, Out>, Pipeable {
   get(): Out
   update(input: In): void
+  modify(input: In): void
 }
 
 /**
@@ -94,6 +95,7 @@ export declare namespace MetricHook {
 export const make: <In, Out>(options: {
   readonly get: LazyArg<Out>
   readonly update: (input: In) => void
+  readonly modify: (input: In) => void
 }) => MetricHook<In, Out> = internal.make
 
 /**
@@ -138,3 +140,12 @@ export const onUpdate: {
   <In, Out>(f: (input: In) => void): (self: MetricHook<In, Out>) => MetricHook<In, Out>
   <In, Out>(self: MetricHook<In, Out>, f: (input: In) => void): MetricHook<In, Out>
 } = internal.onUpdate
+
+/**
+ * @since 3.6.5
+ * @category utils
+ */
+export const onModify: {
+  <In, Out>(f: (input: In) => void): (self: MetricHook<In, Out>) => MetricHook<In, Out>
+  <In, Out>(self: MetricHook<In, Out>, f: (input: In) => void): MetricHook<In, Out>
+} = internal.onModify

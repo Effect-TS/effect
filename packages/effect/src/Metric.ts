@@ -56,6 +56,7 @@ export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Typ
   readonly keyType: Type
   unsafeUpdate(input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>): void
   unsafeValue(extraTags: ReadonlyArray<MetricLabel.MetricLabel>): Out
+  unsafeModify(input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>): void
   register(): this
   <A extends In, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
 }
@@ -68,7 +69,8 @@ export interface MetricApply {
   <Type, In, Out>(
     keyType: Type,
     unsafeUpdate: (input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => void,
-    unsafeValue: (extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => Out
+    unsafeValue: (extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => Out,
+    unsafeModify: (input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => void
   ): Metric<Type, In, Out>
 }
 
@@ -306,20 +308,21 @@ export const histogram: (
 
 /**
  * @since 2.0.0
- * @category aspects
+ * @category combinators
  */
-export const increment: (self: Metric.Counter<number> | Metric.Counter<bigint>) => Effect.Effect<void> =
-  internal.increment
+export const increment: (
+  self: Metric.Counter<number> | Metric.Counter<bigint> | Metric.Gauge<number> | Metric.Gauge<bigint>
+) => Effect.Effect<void> = internal.increment
 
 /**
  * @since 2.0.0
- * @category aspects
+ * @category combinators
  */
 export const incrementBy: {
-  (amount: number): (self: Metric.Counter<number>) => Effect.Effect<void>
-  (amount: bigint): (self: Metric.Counter<bigint>) => Effect.Effect<void>
-  (self: Metric.Counter<number>, amount: number): Effect.Effect<void>
-  (self: Metric.Counter<bigint>, amount: bigint): Effect.Effect<void>
+  (amount: number): (self: Metric.Counter<number> | Metric.Counter<number>) => Effect.Effect<void>
+  (amount: bigint): (self: Metric.Counter<bigint> | Metric.Gauge<bigint>) => Effect.Effect<void>
+  (self: Metric.Counter<number> | Metric.Gauge<number>, amount: number): Effect.Effect<void>
+  (self: Metric.Counter<bigint> | Metric.Gauge<bigint>, amount: bigint): Effect.Effect<void>
 } = internal.incrementBy
 
 /**
@@ -343,6 +346,19 @@ export const mapType: {
   <Type, Type2>(f: (type: Type) => Type2): <In, Out>(self: Metric<Type, In, Out>) => Metric<Type2, In, Out>
   <Type, In, Out, Type2>(self: Metric<Type, In, Out>, f: (type: Type) => Type2): Metric<Type2, In, Out>
 } = internal.mapType
+
+/**
+ * Modifies the metric with the specified update message. For example, if the
+ * metric were a gauge, the update would increment the method by the provided
+ * amount.
+ *
+ * @since 3.6.5
+ * @category utils
+ */
+export const modify: {
+  <In>(input: In): <Type, Out>(self: Metric<Type, In, Out>) => Effect.Effect<void>
+  <Type, In, Out>(self: Metric<Type, In, Out>, input: In): Effect.Effect<void>
+} = internal.modify
 
 /**
  * @since 2.0.0

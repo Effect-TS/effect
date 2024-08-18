@@ -351,6 +351,14 @@ describe("Metric", () => {
         )
         assert.deepStrictEqual(result, MetricState.gauge(3))
       }))
+    it.effect("increment", () =>
+      Effect.gen(function*() {
+        const name = nextName()
+        const gauge = pipe(Metric.gauge(name), Metric.taggedWithLabels(labels))
+        yield* Effect.forEach(Array.range(0, 99), () => Metric.increment(gauge), { concurrency: "unbounded" })
+        const result = yield* Metric.value(gauge)
+        assert.deepStrictEqual(result, MetricState.gauge(100))
+      }))
     it.effect("custom set with mapInput", () =>
       Effect.gen(function*($) {
         const name = nextName()
