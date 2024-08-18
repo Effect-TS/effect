@@ -232,10 +232,11 @@ function handleProcess(options: Options) {
       }
       case "enter":
       case "return": {
-        return Effect.match(options.validate(state.value), {
+        const value = state.value.length > 0 ? state.value : options.default
+        return Effect.match(options.validate(value), {
           onFailure: (error) =>
             Action.NextFrame({
-              state: { ...state, error: Option.some(error) }
+              state: { ...state, value, error: Option.some(error) }
             }),
           onSuccess: (value) => Action.Submit({ value })
         })
@@ -264,6 +265,7 @@ function basePrompt(
     validate: Effect.succeed,
     ...options
   }
+
   return InternalPrompt.custom(initialState, {
     render: handleRender(opts),
     process: handleProcess(opts),
