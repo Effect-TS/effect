@@ -56,7 +56,14 @@ export const collectAll = <R, E, Out>(
       (extraTags) =>
         Array.from(
           metrics.map((pollingMetric) => pollingMetric.metric.unsafeValue(extraTags))
-        )
+        ),
+      (inputs: Array<any>, extraTags) => {
+        for (let i = 0; i < inputs.length; i++) {
+          const pollingMetric = metrics[i]!
+          const input = pipe(inputs, (x) => x[i])
+          pollingMetric.metric.unsafeModify(input, extraTags)
+        }
+      }
     ),
     poll: core.forEachSequential(metrics, (metric) => metric.poll)
   }

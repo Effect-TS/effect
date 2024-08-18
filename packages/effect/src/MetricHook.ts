@@ -21,12 +21,13 @@ export const MetricHookTypeId: unique symbol = internal.MetricHookTypeId
 export type MetricHookTypeId = typeof MetricHookTypeId
 
 /**
- * @since 2.0.0
+ * @since 3.6.5
  * @category models
  */
 export interface MetricHook<in In, out Out> extends MetricHook.Variance<In, Out>, Pipeable {
   get(): Out
   update(input: In): void
+  modify(input: In): void
 }
 
 /**
@@ -94,6 +95,7 @@ export declare namespace MetricHook {
 export const make: <In, Out>(options: {
   readonly get: LazyArg<Out>
   readonly update: (input: In) => void
+  readonly modify: (input: In) => void
 }) => MetricHook<In, Out> = internal.make
 
 /**
