@@ -2,11 +2,13 @@
  * @since 1.0.0
  */
 import * as VariantSchema from "@effect/experimental/VariantSchema"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as Record from "effect/Record"
 
 const {
   Class,
@@ -18,6 +20,18 @@ const {
   variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
   defaultVariant: "select"
 })
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type VariantsDatabase = "select" | "insert" | "update"
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type VariantsJson = "json" | "jsonCreate" | "jsonUpdate"
 
 export {
   /**
@@ -186,6 +200,58 @@ export const Sensitive = <S extends Schema.Schema.All | Schema.PropertySignature
   })
 
 /**
+ * Convert a field to one that is optional for all variants.
+ *
+ * For the database variants, it will accept `null`able values.
+ * For the JSON variants, it will also accept missing keys.
+ *
+ * @since 1.0.0
+ * @category optional
+ */
+export const FieldOption = <Field extends VariantSchema.Field<any> | Schema.Schema.Any>(
+  self: Field
+): VariantSchema.Field<
+  Field extends Schema.Schema.Any ? {
+      readonly select: Schema.OptionFromNullOr<Field>
+      readonly insert: Schema.OptionFromNullOr<Field>
+      readonly update: Schema.OptionFromNullOr<Field>
+      readonly json: Schema.optionalWith<Field, { as: "Option" }>
+      readonly jsonCreate: Schema.optionalWith<Field, { as: "Option"; nullable: true }>
+      readonly jsonUpdate: Schema.optionalWith<Field, { as: "Option"; nullable: true }>
+    }
+    : Field extends VariantSchema.Field<infer S> ? {
+        readonly [K in keyof S]: S[K] extends Schema.Schema.Any
+          ? K extends VariantsDatabase ? Schema.OptionFromNullOr<S[K]> :
+          Schema.optionalWith<S[K], { as: "Option"; nullable: true }>
+          : never
+      } :
+    {}
+> => {
+  if (Schema.isSchema(self)) {
+    return Field({
+      select: Schema.OptionFromNullOr(self),
+      insert: Schema.OptionFromNullOr(self),
+      update: Schema.OptionFromNullOr(self),
+      json: Schema.optionalWith(self, { as: "Option" }),
+      jsonCreate: Schema.optionalWith(self, { as: "Option", nullable: true }),
+      jsonUpdate: Schema.optionalWith(self, { as: "Option", nullable: true })
+    }) as any
+  }
+  return VariantSchema.Field(Record.map(self.schemas, (schema, variant) => {
+    switch (variant) {
+      case "select":
+      case "insert":
+      case "update":
+        return Schema.OptionFromNullOr(schema as any)
+      case "json":
+        return Schema.optionalWith(schema as any, { as: "Option" })
+      default:
+        return Schema.optionalWith(schema as any, { as: "Option", nullable: true })
+    }
+  }) as any)
+}
+
+/**
  * @since 1.0.0
  * @category models
  */
@@ -208,6 +274,46 @@ export const DateTimeFromDate: DateTimeFromDate = Schema.transform(
     encode: DateTime.toDateUtc
   }
 )
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Date extends Schema.transformOrFail<typeof Schema.String, typeof Schema.DateTimeUtcFromSelf> {}
+
+/**
+ * A schema for a `DateTime.Utc` that is serialized as a date string in the
+ * format `YYYY-MM-DD`.
+ *
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Date = Schema.transformOrFail(
+  Schema.String,
+  Schema.DateTimeUtcFromSelf,
+  {
+    decode: (s, _, ast) =>
+      DateTime.make(s).pipe(
+        Option.map(DateTime.removeTime),
+        Option.match({
+          onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+          onSome: (dt) => ParseResult.succeed(dt)
+        })
+      ),
+    encode: (dt) => ParseResult.succeed(DateTime.formatIsoDate(dt))
+  }
+)
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const DateWithNow = VariantSchema.Overrideable(Date, Schema.DateTimeUtcFromSelf, {
+  generate: Option.match({
+    onNone: () => Effect.map(DateTime.now, DateTime.removeTime),
+    onSome: (dt) => Effect.succeed(DateTime.removeTime(dt))
+  })
+})
 
 /**
  * @since 1.0.0
@@ -276,7 +382,7 @@ export const DateTimeInsert: DateTimeInsert = Field({
 export interface DateTimeInsertFromDate extends
   VariantSchema.Field<{
     readonly select: DateTimeFromDate
-    readonly insert: VariantSchema.Overrideable<DateTime.Utc, Date>
+    readonly insert: VariantSchema.Overrideable<DateTime.Utc, globalThis.Date>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
@@ -360,8 +466,8 @@ export const DateTimeUpdate: DateTimeUpdate = Field({
 export interface DateTimeUpdateFromDate extends
   VariantSchema.Field<{
     readonly select: DateTimeFromDate
-    readonly insert: VariantSchema.Overrideable<DateTime.Utc, Date>
-    readonly update: VariantSchema.Overrideable<DateTime.Utc, Date>
+    readonly insert: VariantSchema.Overrideable<DateTime.Utc, globalThis.Date>
+    readonly update: VariantSchema.Overrideable<DateTime.Utc, globalThis.Date>
     readonly json: typeof Schema.DateTimeUtc
   }>
 {}
