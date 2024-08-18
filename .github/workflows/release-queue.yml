@@ -7,12 +7,17 @@ on:
   push:
     branches: [main, next-minor, next-major]
 
+permissions: {}
+
 jobs:
   update:
     if: github.repository_owner == 'Effect-Ts'
     name: Update
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
