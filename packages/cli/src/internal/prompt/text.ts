@@ -5,7 +5,6 @@ import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
@@ -233,10 +232,11 @@ function handleProcess(options: Options) {
       }
       case "enter":
       case "return": {
-        return Effect.match(options.validate(state.value), {
+        const value = state.value.length > 0 ? state.value : options.default
+        return Effect.match(options.validate(value), {
           onFailure: (error) =>
             Action.NextFrame({
-              state: { ...state, error: Option.some(error) }
+              state: { ...state, value, error: Option.some(error) }
             }),
           onSuccess: (value) => Action.Submit({ value })
         })
@@ -266,17 +266,7 @@ function basePrompt(
     ...options
   }
 
-  const state: State = {
-    ...initialState,
-    ...(Predicate.isString(options.default) ?
-      {
-        value: options.default,
-        cursor: options.default.length
-      } :
-      undefined)
-  }
-
-  return InternalPrompt.custom(state, {
+  return InternalPrompt.custom(initialState, {
     render: handleRender(opts),
     process: handleProcess(opts),
     clear: handleClear(opts)
