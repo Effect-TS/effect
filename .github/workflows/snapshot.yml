@@ -3,15 +3,14 @@ on:
   pull_request:
     branches: [main, next-minor, next-major]
 
+permissions: {}
+
 jobs:
   snapshot:
     name: Snapshot
     if: github.repository_owner == 'Effect-Ts'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      id-token: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
