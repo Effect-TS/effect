@@ -30,6 +30,7 @@ export const make = <In, Out>(
   options: {
     readonly get: LazyArg<Out>
     readonly update: (input: In) => void
+    readonly modify: (input: In) => void
   }
 ): MetricHook.MetricHook<In, Out> => ({
   [MetricHookTypeId]: metricHookVariance,
@@ -38,6 +39,23 @@ export const make = <In, Out>(
   },
   ...options
 })
+
+/** @internal */
+export const onModify = dual<
+  <In, Out>(f: (input: In) => void) => (self: MetricHook.MetricHook<In, Out>) => MetricHook.MetricHook<In, Out>,
+  <In, Out>(self: MetricHook.MetricHook<In, Out>, f: (input: In) => void) => MetricHook.MetricHook<In, Out>
+>(2, (self, f) => ({
+  [MetricHookTypeId]: metricHookVariance,
+  pipe() {
+    return pipeArguments(this, arguments)
+  },
+  get: self.get,
+  update: self.update,
+  modify: (input) => {
+    self.modify(input)
+    return f(input)
+  }
+}))
 
 /** @internal */
 export const onUpdate = dual<
@@ -52,7 +70,8 @@ export const onUpdate = dual<
   update: (input) => {
     self.update(input)
     return f(input)
-  }
+  },
+  modify: self.modify
 }))
 
 const bigint0 = BigInt(0)
@@ -67,13 +86,15 @@ export const counter = <A extends (number | bigint)>(
       ? (value: A) => value >= bigint0
       : (value: A) => value >= 0
     : (_value: A) => true
+  const update = (value: A) => {
+    if (canUpdate(value)) {
+      sum = (sum as any) + value
+    }
+  }
   return make({
     get: () => metricState.counter(sum as number) as unknown as MetricState.MetricState.Counter<A>,
-    update: (value) => {
-      if (canUpdate(value)) {
-        sum = (sum as any) + value
-      }
-    }
+    update,
+    modify: update
   })
 }
 
@@ -89,7 +110,8 @@ export const frequency = (key: MetricKey.MetricKey.Frequency): MetricHook.Metric
   }
   return make({
     get: () => metricState.frequency(values),
-    update
+    update,
+    modify: update
   })
 }
 
@@ -106,6 +128,9 @@ export const gauge: {
     get: () => metricState.gauge(value as number) as unknown as MetricState.MetricState.Gauge<A>,
     update: (v) => {
       value = v
+    },
+    modify: (v) => {
+      value = (value as any) + v
     }
   })
 }
@@ -182,7 +207,8 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
         max,
         sum
       }),
-    update
+    update,
+    modify: update
   })
 }
 
@@ -258,7 +284,8 @@ export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook
         max,
         sum
       }),
-    update: ([value, timestamp]) => observe(value, timestamp)
+    update: ([value, timestamp]) => observe(value, timestamp),
+    modify: ([value, timestamp]) => observe(value, timestamp)
   })
 }
 

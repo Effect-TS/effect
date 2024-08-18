@@ -117,10 +117,7 @@ class GaugeKeyType<A extends (number | bigint)> implements MetricKeyType.MetricK
   }
 }
 
-/**
- * @category model
- * @since 2.0.0
- */
+/** @internal */
 export class HistogramKeyType implements MetricKeyType.MetricKeyType.Histogram {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [HistogramKeyTypeTypeId]: MetricKeyType.HistogramKeyTypeTypeId = HistogramKeyTypeTypeId
@@ -176,10 +173,7 @@ class SummaryKeyType implements MetricKeyType.MetricKeyType.Summary {
   }
 }
 
-/**
- * @since 2.0.0
- * @category constructors
- */
+/** @internal */
 export const counter: <A extends number | bigint>(options?: {
   readonly bigint: boolean
   readonly incremental: boolean
@@ -189,18 +183,12 @@ export const counter: <A extends number | bigint>(options?: {
     options?.bigint ?? false
   )
 
-/**
- * @since 2.0.0
- * @category constructors
- */
+/** @internal */
 export const frequency = (options?: {
   readonly preregisteredWords?: ReadonlyArray<string> | undefined
 }): MetricKeyType.MetricKeyType.Frequency => new FrequencyKeyType(options?.preregisteredWords ?? [])
 
-/**
- * @since 2.0.0
- * @category constructors
- */
+/** @internal */
 export const gauge: <A extends number | bigint>(options?: {
   readonly bigint: boolean
 }) => GaugeKeyType<A> = (options) =>
@@ -208,18 +196,12 @@ export const gauge: <A extends number | bigint>(options?: {
     options?.bigint ?? false
   )
 
-/**
- * @since 2.0.0
- * @category constructors
- */
+/** @internal */
 export const histogram = (boundaries: MetricBoundaries.MetricBoundaries): MetricKeyType.MetricKeyType.Histogram => {
   return new HistogramKeyType(boundaries)
 }
 
-/**
- * @since 2.0.0
- * @category constructors
- */
+/** @internal */
 export const summary = (
   options: {
     readonly maxAge: Duration.DurationInput
@@ -231,44 +213,26 @@ export const summary = (
   return new SummaryKeyType(Duration.decode(options.maxAge), options.maxSize, options.error, options.quantiles)
 }
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
 export const isMetricKeyType = (u: unknown): u is MetricKeyType.MetricKeyType<unknown, unknown> =>
   hasProperty(u, MetricKeyTypeTypeId)
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
 export const isCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.Counter<number | bigint> =>
   hasProperty(u, CounterKeyTypeTypeId)
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
 export const isFrequencyKey = (u: unknown): u is MetricKeyType.MetricKeyType.Frequency =>
   hasProperty(u, FrequencyKeyTypeTypeId)
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
 export const isGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.Gauge<number | bigint> =>
   hasProperty(u, GaugeKeyTypeTypeId)
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
 export const isHistogramKey = (u: unknown): u is MetricKeyType.MetricKeyType.Histogram =>
   hasProperty(u, HistogramKeyTypeTypeId)
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
 export const isSummaryKey = (u: unknown): u is MetricKeyType.MetricKeyType.Summary =>
   hasProperty(u, SummaryKeyTypeTypeId)

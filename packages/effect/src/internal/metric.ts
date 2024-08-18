@@ -20,6 +20,7 @@ import * as _effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as metricBoundaries from "./metric/boundaries.js"
 import * as metricKey from "./metric/key.js"
+import * as metricKeyType from "./metric/keyType.js"
 import * as metricLabel from "./metric/label.js"
 import * as metricRegistry from "./metric/registry.js"
 
@@ -50,7 +51,8 @@ export const globalMetricRegistry: MetricRegistry.MetricRegistry = globalValue(
 export const make: Metric.MetricApply = function<Type, In, Out>(
   keyType: Type,
   unsafeUpdate: (input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => void,
-  unsafeValue: (extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => Out
+  unsafeValue: (extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => Out,
+  unsafeModify: (input: In, extraTags: ReadonlyArray<MetricLabel.MetricLabel>) => void
 ): Metric.Metric<Type, In, Out> {
   const metric: Metric.Metric<Type, In, Out> = Object.assign(
     <A extends In, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
@@ -60,6 +62,7 @@ export const make: Metric.MetricApply = function<Type, In, Out>(
       keyType,
       unsafeUpdate,
       unsafeValue,
+      unsafeModify,
       register() {
         this.unsafeValue([])
         return this as any
@@ -80,7 +83,8 @@ export const mapInput = dual<
   make(
     self.keyType,
     (input, extraTags) => self.unsafeUpdate(f(input), extraTags),
-    self.unsafeValue
+    self.unsafeValue,
+    (input, extraTags) => self.unsafeModify(f(input), extraTags)
   ))
 
 /** @internal */
@@ -149,7 +153,8 @@ export const fromMetricKey = <Type extends MetricKeyType.MetricKeyType<any, any>
   return make(
     key.keyType,
     (input, extraTags) => hook(extraTags).update(input),
-    (extraTags) => hook(extraTags).get()
+    (extraTags) => hook(extraTags).get(),
+    (input, extraTags) => hook(extraTags).modify(input)
   )
 }
 
@@ -171,20 +176,30 @@ export const histogram = (name: string, boundaries: MetricBoundaries.MetricBound
 
 /* @internal */
 export const increment = (
-  self: Metric.Metric.Counter<number> | Metric.Metric.Counter<bigint>
-): Effect.Effect<void> => update(self as Metric.Metric.Counter<number>, self.keyType.bigint ? BigInt(1) as any : 1)
+  self:
+    | Metric.Metric.Counter<number>
+    | Metric.Metric.Counter<bigint>
+    | Metric.Metric.Gauge<number>
+    | Metric.Metric.Gauge<bigint>
+): Effect.Effect<void> =>
+  metricKeyType.isCounterKey(self.keyType)
+    ? update(self as Metric.Metric.Counter<number>, self.keyType.bigint ? BigInt(1) as any : 1)
+    : modify(self as Metric.Metric.Gauge<number>, self.keyType.bigint ? BigInt(1) as any : 1)
 
 /* @internal */
 export const incrementBy = dual<
   {
-    (amount: number): (self: Metric.Metric.Counter<number>) => Effect.Effect<void>
-    (amount: bigint): (self: Metric.Metric.Counter<bigint>) => Effect.Effect<void>
+    (amount: number): (self: Metric.Metric.Counter<number> | Metric.Metric.Counter<number>) => Effect.Effect<void>
+    (amount: bigint): (self: Metric.Metric.Counter<bigint> | Metric.Metric.Gauge<bigint>) => Effect.Effect<void>
   },
   {
-    (self: Metric.Metric.Counter<number>, amount: number): Effect.Effect<void>
-    (self: Metric.Metric.Counter<bigint>, amount: bigint): Effect.Effect<void>
+    (self: Metric.Metric.Counter<number> | Metric.Metric.Gauge<number>, amount: number): Effect.Effect<void>
+    (self: Metric.Metric.Counter<bigint> | Metric.Metric.Gauge<bigint>, amount: bigint): Effect.Effect<void>
   }
->(2, (self, amount) => update(self as any, amount))
+>(2, (self, amount) =>
+  metricKeyType.isCounterKey(self.keyType)
+    ? update(self as any, amount)
+    : modify(self as any, amount))
 
 /** @internal */
 export const map = dual<
@@ -194,7 +209,8 @@ export const map = dual<
   make(
     self.keyType,
     self.unsafeUpdate,
-    (extraTags) => f(self.unsafeValue(extraTags))
+    (extraTags) => f(self.unsafeValue(extraTags)),
+    self.unsafeModify
   ))
 
 /** @internal */
@@ -208,7 +224,23 @@ export const mapType = dual<
     self: Metric.Metric<Type, In, Out>,
     f: (type: Type) => Type2
   ) => Metric.Metric<Type2, In, Out>
->(2, (self, f) => make(f(self.keyType), self.unsafeUpdate, self.unsafeValue))
+>(2, (self, f) =>
+  make(
+    f(self.keyType),
+    self.unsafeUpdate,
+    self.unsafeValue,
+    self.unsafeModify
+  ))
+
+/** @internal */
+export const modify = dual<
+  <In>(input: In) => <Type, Out>(self: Metric.Metric<Type, In, Out>) => Effect.Effect<void>,
+  <Type, In, Out>(self: Metric.Metric<Type, In, Out>, input: In) => Effect.Effect<void>
+>(2, (self, input) =>
+  core.fiberRefGetWith(
+    core.currentMetricLabels,
+    (tags) => core.sync(() => self.unsafeModify(input, tags))
+  ))
 
 /* @internal */
 export const set = dual<
@@ -223,11 +255,12 @@ export const set = dual<
 >(2, (self, value) => update(self as any, value))
 
 /** @internal */
-export const succeed = <Out>(out: Out): Metric.Metric<void, unknown, Out> => make(void 0 as void, constVoid, () => out)
+export const succeed = <Out>(out: Out): Metric.Metric<void, unknown, Out> =>
+  make(void 0 as void, constVoid, () => out, constVoid)
 
 /** @internal */
 export const sync = <Out>(evaluate: LazyArg<Out>): Metric.Metric<void, unknown, Out> =>
-  make(void 0 as void, constVoid, evaluate)
+  make(void 0 as void, constVoid, evaluate, constVoid)
 
 /** @internal */
 export const summary = (
@@ -277,7 +310,12 @@ export const taggedWithLabelsInput = dual<
           input,
           Arr.union(f(input), extraTags)
         ),
-      self.unsafeValue
+      self.unsafeValue,
+      (input, extraTags) =>
+        self.unsafeModify(
+          input,
+          Arr.union(f(input), extraTags)
+        )
     ),
     constVoid
   ))
@@ -295,7 +333,8 @@ export const taggedWithLabels = dual<
   return make(
     self.keyType,
     (input, extraTags1) => self.unsafeUpdate(input, Arr.union(extraTags, extraTags1)),
-    (extraTags1) => self.unsafeValue(Arr.union(extraTags, extraTags1))
+    (extraTags1) => self.unsafeValue(Arr.union(extraTags, extraTags1)),
+    (input, extraTags1) => self.unsafeModify(input, Arr.union(extraTags, extraTags1))
   )
 })
 
@@ -520,7 +559,12 @@ export const zip = dual<
         self.unsafeUpdate(l, extraTags)
         that.unsafeUpdate(r, extraTags)
       },
-      (extraTags) => [self.unsafeValue(extraTags), that.unsafeValue(extraTags)]
+      (extraTags) => [self.unsafeValue(extraTags), that.unsafeValue(extraTags)],
+      (input: readonly [In, In2], extraTags) => {
+        const [l, r] = input
+        self.unsafeModify(l, extraTags)
+        that.unsafeModify(r, extraTags)
+      }
     )
 )
 
