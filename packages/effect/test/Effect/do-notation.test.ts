@@ -47,7 +47,7 @@ describe("do notation", () => {
   })
 
   describe("bindAll", () => {
-    describe("succeed", () => {
+    it("succeed", () => {
       const getTest = <O extends Effect.All.Options>(options: O) =>
         Effect.Do.pipe(
           Effect.bind("x", () => Effect.succeed(2)),
@@ -76,7 +76,7 @@ describe("do notation", () => {
       })
     })
 
-    describe("with failure", () => {
+    it("with failure", () => {
       const getTest = <O extends Effect.All.Options>(options: O) =>
         Effect.Do.pipe(
           Effect.bind("x", () => Effect.succeed(2)),
