@@ -6,7 +6,7 @@ import * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
-import * as Effect from "../Effect.js"
+import type * as Effect from "../Effect.js"
 import type * as Fiber from "../Fiber.js"
 import type * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
@@ -406,73 +406,6 @@ export const let_: {
     f: (a: A) => B
   ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = doNotation.let_<Effect.EffectTypeLambda>(core.map)
-
-/* @internal */
-export const bindAll: {
-  <A extends object, X extends Record<string, Effect.Effect<any, any, any>>, O extends Effect.All.Options>(
-    f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
-    options?: undefined | O
-  ): <E1, R1>(self: Effect.Effect<A, E1, R1>) => Effect.Effect<
-    {
-      [K in keyof X | keyof A]: K extends keyof A ? A[K] :
-        K extends keyof Effect.Effect.Success<
-          Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
-        > ? Effect.Effect.Success<
-            Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
-          >[K] :
-        never
-    },
-    | E1
-    | Effect.Effect.Error<
-      Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
-    >,
-    R1 | Effect.Effect.Context<X[keyof X]>
-  >
-  <
-    A extends object,
-    X extends Record<string, Effect.Effect<any, any, any>>,
-    O extends Effect.All.Options,
-    E1,
-    R1
-  >(
-    self: Effect.Effect<A, E1, R1>,
-    f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
-    options?: undefined | Effect.All.Options
-  ): Effect.Effect<
-    {
-      [K in keyof X | keyof A]: K extends keyof A ? A[K] :
-        K extends keyof Effect.Effect.Success<
-          Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
-        > ? Effect.Effect.Success<
-            Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
-          >[K] :
-        never
-    },
-    | E1
-    | Effect.Effect.Error<
-      Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
-    >,
-    R1 | Effect.Effect.Context<X[keyof X]>
-  >
-} = dual((args) => core.isEffect(args[0]), <
-  A extends object,
-  X extends Record<string, Effect.Effect<any, any, any>>,
-  O extends Effect.All.Options,
-  E1,
-  R1
->(
-  self: Effect.Effect<A, E1, R1>,
-  f: (a: A) => X,
-  options?: undefined | O
-) =>
-  Effect.flatMap(
-    self,
-    (a) =>
-      (Effect.all(f(a), options) as Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>)
-        .pipe(
-          Effect.map((record) => Object.assign({}, a, record))
-        )
-  ))
 
 /* @internal */
 export const dropUntil: {

@@ -3603,7 +3603,7 @@ export const bindAll: {
     | Effect.Error<All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>>,
     R1 | Effect.Context<X[keyof X]>
   >
-} = effect.bindAll
+} = circular.bindAll
 
 /**
  * The "do simulation" in Effect allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
