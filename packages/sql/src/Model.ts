@@ -596,11 +596,13 @@ export const JsonFromString = <S extends Schema.Schema.All | Schema.PropertySign
  * @since 1.0.0
  * @category repository
  */
-export const makeRepository = <S extends Any, Id extends Schema.Schema.Any>(Model: S, options: {
+export const makeRepository = <
+  S extends Any,
+  Id extends (keyof S["Type"]) & (keyof S["update"]["Type"]) & (keyof S["fields"])
+>(Model: S, options: {
   readonly tableName: string
   readonly spanPrefix: string
-  readonly idColumn: (keyof S["Type"]) & (keyof S["update"]["Type"])
-  readonly idSchema: Id
+  readonly idColumn: Id
 }): Effect.Effect<
   {
     readonly insert: (
@@ -609,14 +611,19 @@ export const makeRepository = <S extends Any, Id extends Schema.Schema.Any>(Mode
     readonly update: (
       update: S["update"]["Type"]
     ) => Effect.Effect<S["Type"], never, S["Context"] | S["update"]["Context"]>
-    readonly findById: (id: Id["Type"]) => Effect.Effect<Option.Option<S["Type"]>, never, S["Context"] | Id["Context"]>
-    readonly delete: (id: Id["Type"]) => Effect.Effect<void, never, Id["Context"]>
+    readonly findById: (
+      id: Schema.Schema.Type<S["fields"][Id]>
+    ) => Effect.Effect<Option.Option<S["Type"]>, never, S["Context"] | Schema.Schema.Context<S["fields"][Id]>>
+    readonly delete: (
+      id: Schema.Schema.Type<S["fields"][Id]>
+    ) => Effect.Effect<void, never, Schema.Schema.Context<S["fields"][Id]>>
   },
   never,
   SqlClient
 > =>
   Effect.gen(function*() {
     const sql = yield* SqlClient
+    const idSchema = Model.fields[options.idColumn] as Schema.Schema.Any
 
     const insertSchema = SqlSchema.single({
       Request: Model.insert,
@@ -654,11 +661,13 @@ export const makeRepository = <S extends Any, Id extends Schema.Schema.Any>(Mode
       ) as any
 
     const findByIdSchema = SqlSchema.findOne({
-      Request: options.idSchema,
+      Request: idSchema,
       Result: Model,
       execute: (id) => sql`select * from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${id}`
     })
-    const findById = (id: Id["Type"]): Effect.Effect<Option.Option<S["Type"]>, never, S["Context"] | Id["Context"]> =>
+    const findById = (
+      id: Schema.Schema.Type<S["fields"][Id]>
+    ): Effect.Effect<Option.Option<S["Type"]>, never, S["Context"] | Schema.Schema.Context<S["fields"][Id]>> =>
       findByIdSchema(id).pipe(
         Effect.orDie,
         Effect.withSpan(`${options.spanPrefix}.findById`, {
@@ -668,10 +677,12 @@ export const makeRepository = <S extends Any, Id extends Schema.Schema.Any>(Mode
       ) as any
 
     const deleteSchema = SqlSchema.void({
-      Request: options.idSchema,
+      Request: idSchema,
       execute: (id) => sql`delete from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${id}`
     })
-    const delete_ = (id: Id["Type"]): Effect.Effect<void, never, Id["Context"]> =>
+    const delete_ = (
+      id: Schema.Schema.Type<S["fields"][Id]>
+    ): Effect.Effect<void, never, Schema.Schema.Context<S["fields"][Id]>> =>
       deleteSchema(id).pipe(
         Effect.orDie,
         Effect.withSpan(`${options.spanPrefix}.delete`, {
@@ -689,24 +700,30 @@ export const makeRepository = <S extends Any, Id extends Schema.Schema.Any>(Mode
  * @since 1.0.0
  * @category repository
  */
-export const makeDataLoaders = <S extends AnyNoContext, Id extends Schema.Schema.AnyNoContext>(Model: S, options: {
-  readonly tableName: string
-  readonly spanPrefix: string
-  readonly idColumn: (keyof S["Type"]) & (keyof S["update"]["Type"])
-  readonly idSchema: Id
-  readonly window: number
-  readonly maxBatchSize?: number | undefined
-}): Effect.Effect<
+export const makeDataLoaders = <
+  S extends AnyNoContext,
+  Id extends (keyof S["Type"]) & (keyof S["update"]["Type"]) & (keyof S["fields"])
+>(
+  Model: S,
+  options: {
+    readonly tableName: string
+    readonly spanPrefix: string
+    readonly idColumn: Id
+    readonly window: number
+    readonly maxBatchSize?: number | undefined
+  }
+): Effect.Effect<
   {
     readonly insert: (insert: S["insert"]["Type"]) => Effect.Effect<S["Type"]>
-    readonly findById: (id: Id["Type"]) => Effect.Effect<Option.Option<S["Type"]>>
-    readonly delete: (id: Id["Type"]) => Effect.Effect<void>
+    readonly findById: (id: Schema.Schema.Type<S["fields"][Id]>) => Effect.Effect<Option.Option<S["Type"]>>
+    readonly delete: (id: Schema.Schema.Type<S["fields"][Id]>) => Effect.Effect<void>
   },
   never,
   SqlClient | Scope
 > =>
   Effect.gen(function*() {
     const sql = yield* SqlClient
+    const idSchema = Model.fields[options.idColumn] as Schema.Schema.Any
 
     const insertResolver = yield* SqlResolver.ordered(`${options.spanPrefix}/insert`, {
       Request: Model.insert,
@@ -730,7 +747,7 @@ export const makeDataLoaders = <S extends AnyNoContext, Id extends Schema.Schema
       ) as any
 
     const findByIdResolver = yield* SqlResolver.grouped(`${options.spanPrefix}/findById`, {
-      Request: options.idSchema,
+      Request: idSchema,
       RequestGroupKey(id) {
         return id
       },
@@ -745,7 +762,7 @@ export const makeDataLoaders = <S extends AnyNoContext, Id extends Schema.Schema
       maxBatchSize: options.maxBatchSize!
     })
     const findByIdExecute = findByIdResolver.makeExecute(findByIdLoader)
-    const findById = (id: Id["Type"]): Effect.Effect<Option.Option<S["Type"]>> =>
+    const findById = (id: Schema.Schema.Type<S["fields"][Id]>): Effect.Effect<Option.Option<S["Type"]>> =>
       findByIdExecute(id).pipe(
         Effect.orDie,
         Effect.withSpan(`${options.spanPrefix}.findById`, {
@@ -755,7 +772,7 @@ export const makeDataLoaders = <S extends AnyNoContext, Id extends Schema.Schema
       ) as any
 
     const deleteResolver = yield* SqlResolver.void(`${options.spanPrefix}/delete`, {
-      Request: options.idSchema,
+      Request: idSchema,
       execute: (ids) => sql`delete from ${sql(options.tableName)} where ${sql.in(options.idColumn as string, ids)}`
     })
     const deleteLoader = yield* RRX.dataLoader(deleteResolver, {
@@ -763,7 +780,7 @@ export const makeDataLoaders = <S extends AnyNoContext, Id extends Schema.Schema
       maxBatchSize: options.maxBatchSize!
     })
     const deleteExecute = deleteResolver.makeExecute(deleteLoader)
-    const delete_ = (id: Id["Type"]): Effect.Effect<void> =>
+    const delete_ = (id: Schema.Schema.Type<S["fields"][Id]>): Effect.Effect<void> =>
       deleteExecute(id).pipe(
         Effect.orDie,
         Effect.withSpan(`${options.spanPrefix}.delete`, {
