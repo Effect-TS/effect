@@ -97,6 +97,33 @@ const let_ = <F extends TypeLambda>(
 
 export {
   /**
+   * @example
+   * import * as covariant from "@effect/typeclass/Covariant"
+   * import type { HKT } from "effect"
+   * import { dual, pipe } from "effect/Function"
+   *
+   * interface MyData<A> {
+   *   readonly value: A
+   * }
+   *
+   * interface MyDataTypeLambda extends HKT.TypeLambda {
+   *   readonly type: MyData<this["Target"]>
+   * }
+   *
+   * const map: covariant.Covariant<MyDataTypeLambda>["map"] = dual(
+   *   2,
+   *   <A, B>(self: MyData<A>, f: (a: A) => B): MyData<B> => ({ value: f(self.value) })
+   * )
+   *
+   * const Covariant: covariant.Covariant<MyDataTypeLambda> = { imap: covariant.imap<MyDataTypeLambda>(map), map }
+   *
+   * const notation = {
+   *   Do: { value: {} } as MyData<{}>,
+   *   let: covariant.let(Covariant)
+   * }
+   *
+   * assert.deepStrictEqual(pipe(notation.Do, notation.let("foo", () => "bar")), { value: { foo: "bar" } })
+   *
    * @category do notation
    * @since 0.24.0
    */
