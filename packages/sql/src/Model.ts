@@ -78,17 +78,17 @@ export {
   Class,
   /**
    * @since 1.0.0
-   * @category constructors
+   * @category fields
    */
   Field,
   /**
    * @since 1.0.0
-   * @category constructors
+   * @category fields
    */
   FieldExcept,
   /**
    * @since 1.0.0
-   * @category constructors
+   * @category fields
    */
   FieldOnly,
   /**
@@ -100,7 +100,7 @@ export {
 
 /**
  * @since 1.0.0
- * @category accessors
+ * @category fields
  */
 export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[VariantSchema.TypeId] = VariantSchema.fields
 
@@ -112,7 +112,7 @@ export const Override: <A>(value: A) => A & Brand<"Override"> = VariantSchema.Ov
 
 /**
  * @since 1.0.0
- * @category models
+ * @category generated
  */
 export interface Generated<S extends Schema.Schema.All | Schema.PropertySignature.All> extends
   VariantSchema.Field<{
@@ -128,7 +128,7 @@ export interface Generated<S extends Schema.Schema.All | Schema.PropertySignatur
  * It is available for selection and update, but not for insertion.
  *
  * @since 1.0.0
- * @category schemas
+ * @category generated
  */
 export const Generated = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
   schema: S
@@ -141,7 +141,7 @@ export const Generated = <S extends Schema.Schema.All | Schema.PropertySignature
 
 /**
  * @since 1.0.0
- * @category models
+ * @category generated
  */
 export interface GeneratedByApp<S extends Schema.Schema.All | Schema.PropertySignature.All>
   extends
@@ -159,7 +159,7 @@ export interface GeneratedByApp<S extends Schema.Schema.All | Schema.PropertySig
  * It is required by the database, but not by the JSON variants.
  *
  * @since 1.0.0
- * @category schemas
+ * @category generated
  */
 export const GeneratedByApp = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
   schema: S
@@ -173,7 +173,7 @@ export const GeneratedByApp = <S extends Schema.Schema.All | Schema.PropertySign
 
 /**
  * @since 1.0.0
- * @category models
+ * @category sensitive
  */
 export interface Sensitive<S extends Schema.Schema.All | Schema.PropertySignature.All> extends
   VariantSchema.Field<{
@@ -188,7 +188,7 @@ export interface Sensitive<S extends Schema.Schema.All | Schema.PropertySignatur
  * JSON variants.
  *
  * @since 1.0.0
- * @category schemas
+ * @category sensitive
  */
 export const Sensitive = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
   schema: S
@@ -253,7 +253,7 @@ export const FieldOption = <Field extends VariantSchema.Field<any> | Schema.Sche
 
 /**
  * @since 1.0.0
- * @category models
+ * @category date & time
  */
 export interface DateTimeFromDate extends
   Schema.transform<
@@ -264,7 +264,7 @@ export interface DateTimeFromDate extends
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeFromDate: DateTimeFromDate = Schema.transform(
   Schema.ValidDateFromSelf,
@@ -277,7 +277,7 @@ export const DateTimeFromDate: DateTimeFromDate = Schema.transform(
 
 /**
  * @since 1.0.0
- * @category models
+ * @category date & time
  */
 export interface Date extends Schema.transformOrFail<typeof Schema.String, typeof Schema.DateTimeUtcFromSelf> {}
 
@@ -286,9 +286,9 @@ export interface Date extends Schema.transformOrFail<typeof Schema.String, typeo
  * format `YYYY-MM-DD`.
  *
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
-export const Date = Schema.transformOrFail(
+export const Date: Date = Schema.transformOrFail(
   Schema.String,
   Schema.DateTimeUtcFromSelf,
   {
@@ -306,7 +306,7 @@ export const Date = Schema.transformOrFail(
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateWithNow = VariantSchema.Overrideable(Date, Schema.DateTimeUtcFromSelf, {
   generate: Option.match({
@@ -317,7 +317,7 @@ export const DateWithNow = VariantSchema.Overrideable(Date, Schema.DateTimeUtcFr
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeWithNow = VariantSchema.Overrideable(Schema.String, Schema.DateTimeUtcFromSelf, {
   generate: Option.match({
@@ -328,7 +328,7 @@ export const DateTimeWithNow = VariantSchema.Overrideable(Schema.String, Schema.
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeFromDateWithNow = VariantSchema.Overrideable(Schema.DateFromSelf, Schema.DateTimeUtcFromSelf, {
   generate: Option.match({
@@ -339,7 +339,7 @@ export const DateTimeFromDateWithNow = VariantSchema.Overrideable(Schema.DateFro
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeFromNumberWithNow = VariantSchema.Overrideable(Schema.Number, Schema.DateTimeUtcFromSelf, {
   generate: Option.match({
@@ -350,7 +350,7 @@ export const DateTimeFromNumberWithNow = VariantSchema.Overrideable(Schema.Numbe
 
 /**
  * @since 1.0.0
- * @category models
+ * @category date & time
  */
 export interface DateTimeInsert extends
   VariantSchema.Field<{
@@ -367,7 +367,7 @@ export interface DateTimeInsert extends
  * It is omitted from updates and is available for selection.
  *
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeInsert: DateTimeInsert = Field({
   select: Schema.DateTimeUtc,
@@ -377,7 +377,7 @@ export const DateTimeInsert: DateTimeInsert = Field({
 
 /**
  * @since 1.0.0
- * @category models
+ * @category date & time
  */
 export interface DateTimeInsertFromDate extends
   VariantSchema.Field<{
@@ -394,7 +394,7 @@ export interface DateTimeInsertFromDate extends
  * It is omitted from updates and is available for selection.
  *
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeInsertFromDate: DateTimeInsertFromDate = Field({
   select: DateTimeFromDate,
@@ -404,7 +404,7 @@ export const DateTimeInsertFromDate: DateTimeInsertFromDate = Field({
 
 /**
  * @since 1.0.0
- * @category models
+ * @category date & time
  */
 export interface DateTimeInsertFromNumber extends
   VariantSchema.Field<{
@@ -421,7 +421,7 @@ export interface DateTimeInsertFromNumber extends
  * It is omitted from updates and is available for selection.
  *
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeInsertFromNumber: DateTimeInsertFromNumber = Field({
   select: Schema.DateTimeUtcFromNumber,
@@ -431,7 +431,7 @@ export const DateTimeInsertFromNumber: DateTimeInsertFromNumber = Field({
 
 /**
  * @since 1.0.0
- * @category models
+ * @category date & time
  */
 export interface DateTimeUpdate extends
   VariantSchema.Field<{
@@ -450,7 +450,7 @@ export interface DateTimeUpdate extends
  * available for selection.
  *
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeUpdate: DateTimeUpdate = Field({
   select: Schema.DateTimeUtc,
@@ -461,7 +461,7 @@ export const DateTimeUpdate: DateTimeUpdate = Field({
 
 /**
  * @since 1.0.0
- * @category models
+ * @category date & time
  */
 export interface DateTimeUpdateFromDate extends
   VariantSchema.Field<{
@@ -480,7 +480,7 @@ export interface DateTimeUpdateFromDate extends
  * available for selection.
  *
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeUpdateFromDate: DateTimeUpdateFromDate = Field({
   select: DateTimeFromDate,
@@ -491,7 +491,7 @@ export const DateTimeUpdateFromDate: DateTimeUpdateFromDate = Field({
 
 /**
  * @since 1.0.0
- * @category models
+ * @category date & time
  */
 export interface DateTimeUpdateFromNumber extends
   VariantSchema.Field<{
@@ -510,7 +510,7 @@ export interface DateTimeUpdateFromNumber extends
  * available for selection.
  *
  * @since 1.0.0
- * @category schemas
+ * @category date & time
  */
 export const DateTimeUpdateFromNumber: DateTimeUpdateFromNumber = Field({
   select: Schema.DateTimeUtcFromNumber,
@@ -521,7 +521,7 @@ export const DateTimeUpdateFromNumber: DateTimeUpdateFromNumber = Field({
 
 /**
  * @since 1.0.0
- * @category models
+ * @category json
  */
 export interface JsonFromString<S extends Schema.Schema.All | Schema.PropertySignature.All>
   extends
@@ -541,7 +541,7 @@ export interface JsonFromString<S extends Schema.Schema.All | Schema.PropertySig
  * The "json" variants will use the object schema directly.
  *
  * @since 1.0.0
- * @category schemas
+ * @category json
  */
 export const JsonFromString = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
   schema: S
