@@ -128,12 +128,12 @@ export declare namespace Field {
  * @since 1.0.0
  * @category extractors
  */
-export type ExtractFields<V extends string, Fields extends Struct.Fields> = {
+export type ExtractFields<V extends string, Fields extends Struct.Fields, IsDefault = false> = {
   readonly [
     K in keyof Fields as [Fields[K]] extends [Field<infer Config>] ? V extends keyof Config ? K
       : never
       : K
-  ]: [Fields[K]] extends [Struct<infer _>] ? Extract<V, Fields[K]>
+  ]: [Fields[K]] extends [Struct<infer _>] ? Extract<V, Fields[K], IsDefault>
     : [Fields[K]] extends [Field<infer Config>]
       ? [Config[V]] extends [Schema.Schema.All | Schema.PropertySignature.All] ? Config[V]
       : never
@@ -145,9 +145,12 @@ export type ExtractFields<V extends string, Fields extends Struct.Fields> = {
  * @since 1.0.0
  * @category extractors
  */
-export type Extract<V extends string, A extends Struct<any>> = [A] extends [
+export type Extract<V extends string, A extends Struct<any>, IsDefault = false> = [A] extends [
   Struct<infer Fields>
-] ? Schema.Struct<Schema.Simplify<ExtractFields<V, Fields>>>
+] ?
+  IsDefault extends true
+    ? [A] extends [Schema.Schema.Any] ? A : Schema.Struct<Schema.Simplify<ExtractFields<V, Fields>>>
+  : Schema.Struct<Schema.Simplify<ExtractFields<V, Fields>>>
   : never
 
 /**
@@ -318,7 +321,7 @@ export const make = <
       & ClassFromFields<
         Self,
         Fields,
-        Schema.Simplify<ExtractFields<Default, Fields>>
+        Schema.Simplify<ExtractFields<Default, Fields, true>>
       >
       & {
         readonly [V in Variants[number]]: Extract<V, Struct<Fields>>
