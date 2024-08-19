@@ -595,17 +595,22 @@ export declare namespace All {
   export type ExtractMode<A> = [A] extends [{ mode: infer M }] ? M : "default"
 
   /**
+   * @since 3.7.0
+   */
+  export type Options = {
+    readonly concurrency?: Concurrency | undefined
+    readonly batching?: boolean | "inherit" | undefined
+    readonly discard?: boolean | undefined
+    readonly mode?: "default" | "validate" | "either" | undefined
+    readonly concurrentFinalizers?: boolean | undefined
+  }
+
+  /**
    * @since 2.0.0
    */
   export type Return<
     Arg extends Iterable<EffectAny> | Record<string, EffectAny>,
-    O extends {
-      readonly concurrency?: Concurrency | undefined
-      readonly batching?: boolean | "inherit" | undefined
-      readonly discard?: boolean | undefined
-      readonly mode?: "default" | "validate" | "either" | undefined
-      readonly concurrentFinalizers?: boolean | undefined
-    }
+    O extends Options
   > = [Arg] extends [ReadonlyArray<EffectAny>] ? ReturnTuple<Arg, IsDiscard<O>, ExtractMode<O>>
     : [Arg] extends [Iterable<EffectAny>] ? ReturnIterable<Arg, IsDiscard<O>, ExtractMode<O>>
     : [Arg] extends [Record<string, EffectAny>] ? ReturnObject<Arg, IsDiscard<O>, ExtractMode<O>>
@@ -3539,6 +3544,66 @@ export const bind: {
     f: (a: A) => Effect<B, E2, R2>
   ): Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E1 | E2, R1 | R2>
 } = effect.bind
+
+/**
+ * @example
+ * import { Effect, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Effect.Do,
+ *   Effect.bind("x", () => Effect.succeed(2)),
+ *   Effect.bindAll(({ x }) => ({
+ *     a: Effect.succeed(x),
+ *     b: Effect.fail('ops'),
+ *   }), { concurrency: 2, mode: 'either' })
+ * )
+ * assert.deepStrictEqual(Effect.runSync(result), { x: 2, a: Either.right(2), b: Either.left('ops') })
+ *
+ * @see All.Options
+ * @category do notation
+ * @since 3.7.0
+ */
+export const bindAll: {
+  <
+    A extends object,
+    X extends Record<string, Effect<any, any, any>>,
+    O extends All.Options
+  >(
+    f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
+    options?: undefined | O
+  ): <E1, R1>(
+    self: Effect<A, E1, R1>
+  ) => Effect<
+    {
+      [K in keyof X | keyof A]: K extends keyof A ? A[K] :
+        K extends keyof Effect.Success<
+          All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>
+        > ? Effect.Success<All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>>[K] :
+        never
+    },
+    | E1
+    | Effect.Error<All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>>,
+    R1 | Effect.Context<X[keyof X]>
+  >
+  <A extends object, X extends Record<string, Effect<any, any, any>>, O extends All.Options, E1, R1>(
+    self: Effect<A, E1, R1>,
+    f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
+    options?: undefined | All.Options
+  ): Effect<
+    {
+      [K in keyof X | keyof A]: K extends keyof A ? A[K] :
+        K extends keyof Effect.Success<
+          All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>
+        > ? Effect.Success<
+            All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>
+          >[K] :
+        never
+    },
+    | E1
+    | Effect.Error<All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>>,
+    R1 | Effect.Context<X[keyof X]>
+  >
+} = effect.bindAll
 
 /**
  * The "do simulation" in Effect allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.

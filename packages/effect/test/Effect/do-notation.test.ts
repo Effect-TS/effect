@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 import * as Util from "effect/test/util"
 import { describe, it } from "vitest"
 
@@ -43,5 +44,60 @@ describe("do notation", () => {
       pipe(Effect.fail("left"), Effect.bindTo("a"), Effect.let("b", () => 2)),
       "left"
     )
+  })
+
+  describe("bindAll", () => {
+    describe("succeed", () => {
+      const getTest = <O extends Effect.All.Options>(options: O) =>
+        Effect.Do.pipe(
+          Effect.bind("x", () => Effect.succeed(2)),
+          Effect.bindAll(({ x }) => ({
+            a: Effect.succeed(x),
+            b: Effect.succeed("ops")
+          }), options)
+        )
+
+      expectRight(getTest({ mode: "default" }), {
+        a: 2,
+        b: "ops",
+        x: 2
+      })
+
+      expectRight(getTest({ mode: "either" }), {
+        a: Either.right(2),
+        b: Either.right("ops"),
+        x: 2
+      })
+
+      expectRight(getTest({ mode: "validate" }), {
+        a: 2,
+        b: "ops",
+        x: 2
+      })
+    })
+
+    describe("with failure", () => {
+      const getTest = <O extends Effect.All.Options>(options: O) =>
+        Effect.Do.pipe(
+          Effect.bind("x", () => Effect.succeed(2)),
+          Effect.bindAll(({ x }) => ({
+            a: Effect.fail(x), // <-- fail
+            b: Effect.succeed("ops")
+          }), options)
+        )
+
+      expectLeft(getTest({ mode: "default" }), 2)
+
+      expectRight(getTest({ mode: "either" }), {
+        a: Either.left(2),
+        b: Either.right("ops"),
+        x: 2
+      })
+
+      expectLeft(getTest({ mode: "validate" }), {
+        a: Option.some(2),
+        b: Option.none()
+      })
+    })
   })
 })
