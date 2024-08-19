@@ -8,6 +8,8 @@ import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import { SqlClient } from "./SqlClient.js"
+import * as SqlSchema from "./SqlSchema.js"
 
 const {
   Class,
@@ -20,6 +22,32 @@ const {
   variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
   defaultVariant: "select"
 })
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Any = Schema.Schema.Any & {
+  readonly fields: Schema.Struct.Fields
+  readonly insert: Schema.Schema.Any
+  readonly update: Schema.Schema.Any
+  readonly json: Schema.Schema.Any
+  readonly jsonCreate: Schema.Schema.Any
+  readonly jsonUpdate: Schema.Schema.Any
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type AnyNoContext = Schema.Schema.AnyNoContext & {
+  readonly fields: Schema.Struct.Fields
+  readonly insert: Schema.Schema.AnyNoContext
+  readonly update: Schema.Schema.AnyNoContext
+  readonly json: Schema.Schema.AnyNoContext
+  readonly jsonCreate: Schema.Schema.AnyNoContext
+  readonly jsonUpdate: Schema.Schema.AnyNoContext
+}
 
 /**
  * @since 1.0.0
@@ -558,3 +586,96 @@ export const JsonFromString = <S extends Schema.Schema.All | Schema.PropertySign
     jsonUpdate: schema
   }) as any
 }
+
+/**
+ * Create a simple CRUD repository from a model.
+ *
+ * @since 1.0.0
+ * @category repository
+ */
+export const makeRepository = <S extends Any, Id extends Schema.Schema.Any>(Model: S, options: {
+  readonly tableName: string
+  readonly spanPrefix: string
+  readonly idColumn: (keyof S["Type"]) & (keyof S["update"]["Type"])
+  readonly idSchema: Id
+}): Effect.Effect<
+  {
+    readonly insert: (
+      insert: S["insert"]["Type"]
+    ) => Effect.Effect<S["Type"], never, S["Context"] | S["insert"]["Context"]>
+    readonly update: (
+      update: S["update"]["Type"]
+    ) => Effect.Effect<S["Type"], never, S["Context"] | S["update"]["Context"]>
+    readonly findById: (id: Id["Type"]) => Effect.Effect<Option.Option<S["Type"]>, never, S["Context"] | Id["Context"]>
+    readonly delete: (id: Id["Type"]) => Effect.Effect<void, never, Id["Context"]>
+  },
+  never,
+  SqlClient
+> =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient
+
+    const insertSchema = SqlSchema.single({
+      Request: Model.insert,
+      Result: Model,
+      execute: (request) => sql`insert into ${sql(options.tableName)} ${sql.insert(request).returning("*")}`
+    })
+    const insert = (
+      insert: S["insert"]["Type"]
+    ): Effect.Effect<S["Type"], never, S["Context"] | S["insert"]["Context"]> =>
+      insertSchema(insert).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.insert`, {
+          captureStackTrace: false,
+          attributes: { insert }
+        })
+      ) as any
+
+    const updateSchema = SqlSchema.single({
+      Request: Model.update,
+      Result: Model,
+      execute: (request) =>
+        sql`update ${sql(options.tableName)} set ${sql.update(request, [options.idColumn])} where ${
+          sql(options.idColumn as string)
+        } = ${sql(request[options.idColumn])} returning *`
+    })
+    const update = (
+      update: S["update"]["Type"]
+    ): Effect.Effect<S["Type"], never, S["Context"] | S["update"]["Context"]> =>
+      updateSchema(update).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.update`, {
+          captureStackTrace: false,
+          attributes: { update }
+        })
+      ) as any
+
+    const findByIdSchema = SqlSchema.findOne({
+      Request: options.idSchema,
+      Result: Model,
+      execute: (id) => sql`select * from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${id}`
+    })
+    const findById = (id: Id["Type"]): Effect.Effect<Option.Option<S["Type"]>, never, S["Context"] | Id["Context"]> =>
+      findByIdSchema(id).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.findById`, {
+          captureStackTrace: false,
+          attributes: { id }
+        })
+      ) as any
+
+    const deleteSchema = SqlSchema.void({
+      Request: options.idSchema,
+      execute: (id) => sql`delete from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${id}`
+    })
+    const delete_ = (id: Id["Type"]): Effect.Effect<void, never, Id["Context"]> =>
+      deleteSchema(id).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.delete`, {
+          captureStackTrace: false,
+          attributes: { id }
+        })
+      ) as any
+
+    return { insert, update, findById, delete: delete_ } as const
+  })
