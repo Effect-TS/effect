@@ -8,6 +8,8 @@ import type { Brand } from "effect/Brand"
 import type * as Effect from "effect/Effect"
 import { constUndefined, dual } from "effect/Function"
 import * as Option from "effect/Option"
+import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import * as Struct_ from "effect/Struct"
 
 /**
  * @since 1.0.0
@@ -25,7 +27,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Struct<in out A extends Field.Fields> {
+export interface Struct<in out A extends Field.Fields> extends Pipeable {
   readonly [TypeId]: A
 }
 
@@ -77,7 +79,7 @@ export type FieldTypeId = typeof FieldTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Field<in out A extends Field.Config> {
+export interface Field<in out A extends Field.Config> extends Pipeable {
   readonly [FieldTypeId]: FieldTypeId
   readonly schemas: A
 }
@@ -87,6 +89,12 @@ export interface Field<in out A extends Field.Config> {
  * @category models
  */
 export declare namespace Field {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  type ValueAny = Schema.Schema.All | Schema.PropertySignature.All
+
   /**
    * @since 1.0.0
    * @category models
@@ -116,22 +124,73 @@ export declare namespace Field {
   }
 }
 
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const Struct = <const A extends Field.Fields>(fields: A): Struct<A> => ({
-  [TypeId]: fields
-})
+const StructProto = {
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const Field = <const A extends Field.Config>(schemas: A): Field<A> => ({
+export const Struct = <const A extends Field.Fields>(fields: A): Struct<A> => {
+  const self = Object.create(StructProto)
+  self[TypeId] = fields
+  return self
+}
+
+const FieldProto = {
   [FieldTypeId]: FieldTypeId,
-  schemas
-})
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const Field = <const A extends Field.Config>(schemas: A): Field<A> => {
+  const self = Object.create(FieldProto)
+  self.schemas = schemas
+  return self
+}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fieldEvolve: {
+  <
+    Self extends Field<any>,
+    Mapping extends {
+      readonly [K in keyof Self["schemas"]]?: (variant: Self["schemas"][K]) => Field.ValueAny
+    }
+  >(f: Mapping): (self: Self) => Field<
+    {
+      readonly [K in keyof Self["schemas"]]: K extends keyof Mapping
+        ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : Self["schemas"][K]
+        : Self["schemas"][K]
+    }
+  >
+  <
+    Self extends Field<any>,
+    Mapping extends {
+      readonly [K in keyof Self["schemas"]]?: (variant: Self["schemas"][K]) => Field.ValueAny
+    }
+  >(self: Self, f: Mapping): Field<
+    {
+      readonly [K in keyof Self["schemas"]]: K extends keyof Mapping
+        ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : Self["schemas"][K]
+        : Self["schemas"][K]
+    }
+  >
+} = dual(
+  2,
+  (self: Field<any>, f: Record<string, (schema: Field.ValueAny) => Field.ValueAny>): Field<any> =>
+    Field(Struct_.evolve(self.schemas, f))
+)
 
 /**
  * @since 1.0.0
@@ -281,6 +340,42 @@ export const make = <
   ) => <S extends Schema.Schema.All | Schema.PropertySignature.All>(
     schema: S
   ) => Field<{ readonly [K in Exclude<Variants[number], Keys[number]>]: S }>
+  readonly fieldEvolve: {
+    <
+      Self extends Field<any> | Field.ValueAny,
+      Mapping extends (Self extends Field<infer S> ? { readonly [K in keyof S]?: (variant: S[K]) => Field.ValueAny }
+        : { readonly [K in Variants[number]]?: (variant: Self) => Field.ValueAny })
+    >(f: Mapping): (self: Self) => Field<
+      Self extends Field<infer S> ? {
+          readonly [K in keyof S]: K extends keyof Mapping
+            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : S[K]
+            : S[K]
+        } :
+        {
+          readonly [K in Variants[number]]: K extends keyof Mapping
+            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : Self
+            : Self
+        }
+    >
+    <
+      Self extends Field<any> | Field.ValueAny,
+      Mapping extends (Self extends Field<infer S> ? {
+          readonly [K in keyof S]?: (variant: S[K]) => Field.ValueAny
+        }
+        : { readonly [K in Variants[number]]?: (variant: Self) => Field.ValueAny })
+    >(self: Self, f: Mapping): Field<
+      Self extends Field<infer S> ? {
+          readonly [K in keyof S]: K extends keyof Mapping
+            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : S[K]
+            : S[K]
+        } :
+        {
+          readonly [K in Variants[number]]: K extends keyof Mapping
+            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : Self
+            : Self
+        }
+    >
+  }
   readonly Class: <Self = never>(
     identifier: string
   ) => <Fields extends Struct.Fields>(
@@ -335,12 +430,25 @@ export const make = <
       return Field(obj)
     }
   }
+  const fieldEvolveVariants = dual(
+    2,
+    (
+      self: Field<any> | Schema.Schema.All | Schema.PropertySignature.All,
+      f: Record<string, (schema: Field.ValueAny) => Field.ValueAny>
+    ): Field<any> => {
+      const field = FieldTypeId in self ? self : Field(Object.fromEntries(
+        options.variants.map((variant) => [variant, self])
+      ))
+      return fieldEvolve(field, f)
+    }
+  )
   return {
     Struct,
     Field,
     FieldOnly,
     FieldExcept,
-    Class
+    Class,
+    fieldEvolve: fieldEvolveVariants
   } as any
 }
 
