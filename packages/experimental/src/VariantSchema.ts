@@ -124,74 +124,6 @@ export declare namespace Field {
   }
 }
 
-const StructProto = {
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const Struct = <const A extends Field.Fields>(fields: A): Struct<A> => {
-  const self = Object.create(StructProto)
-  self[TypeId] = fields
-  return self
-}
-
-const FieldProto = {
-  [FieldTypeId]: FieldTypeId,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const Field = <const A extends Field.Config>(schemas: A): Field<A> => {
-  const self = Object.create(FieldProto)
-  self.schemas = schemas
-  return self
-}
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const fieldEvolve: {
-  <
-    Self extends Field<any>,
-    Mapping extends {
-      readonly [K in keyof Self["schemas"]]?: (variant: Self["schemas"][K]) => Field.ValueAny
-    }
-  >(f: Mapping): (self: Self) => Field<
-    {
-      readonly [K in keyof Self["schemas"]]: K extends keyof Mapping
-        ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : Self["schemas"][K]
-        : Self["schemas"][K]
-    }
-  >
-  <
-    Self extends Field<any>,
-    Mapping extends {
-      readonly [K in keyof Self["schemas"]]?: (variant: Self["schemas"][K]) => Field.ValueAny
-    }
-  >(self: Self, f: Mapping): Field<
-    {
-      readonly [K in keyof Self["schemas"]]: K extends keyof Mapping
-        ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : Self["schemas"][K]
-        : Self["schemas"][K]
-    }
-  >
-} = dual(
-  2,
-  (self: Field<any>, f: Record<string, (schema: Field.ValueAny) => Field.ValueAny>): Field<any> =>
-    Field(Struct_.evolve(self.schemas, f))
-)
-
 /**
  * @since 1.0.0
  * @category extractors
@@ -261,8 +193,8 @@ type RequiredKeys<T> = {
 }[keyof T]
 
 /**
- * @category models
  * @since 1.0.0
+ * @category models
  */
 export interface Class<
   Self,
@@ -439,7 +371,7 @@ export const make = <
       const field = FieldTypeId in self ? self : Field(Object.fromEntries(
         options.variants.map((variant) => [variant, self])
       ))
-      return fieldEvolve(field, f)
+      return Field(Struct_.evolve(field.schemas, f))
     }
   )
   return {
@@ -481,3 +413,28 @@ export const Overrideable = <From, IFrom, RFrom, To, ITo, R>(
     decode: (_) => ParseResult.succeed(undefined),
     encode: (dt) => options.generate(dt === undefined ? Option.none() : Option.some(dt))
   }).pipe(Schema.propertySignature, Schema.withConstructorDefault(constUndefined))
+
+const StructProto = {
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+const Struct = <const A extends Field.Fields>(fields: A): Struct<A> => {
+  const self = Object.create(StructProto)
+  self[TypeId] = fields
+  return self
+}
+
+const FieldProto = {
+  [FieldTypeId]: FieldTypeId,
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+const Field = <const A extends Field.Config>(schemas: A): Field<A> => {
+  const self = Object.create(FieldProto)
+  self.schemas = schemas
+  return self
+}
