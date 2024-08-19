@@ -8,14 +8,14 @@ import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as Record from "effect/Record"
 
 const {
   Class,
   Field,
   FieldExcept,
   FieldOnly,
-  Struct
+  Struct,
+  fieldEvolve
 } = VariantSchema.make({
   variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
   defaultVariant: "select"
@@ -81,6 +81,11 @@ export {
    * @category fields
    */
   Field,
+  /**
+   * @since 1.0.0
+   * @category fields
+   */
+  fieldEvolve,
   /**
    * @since 1.0.0
    * @category fields
@@ -208,48 +213,45 @@ export const Sensitive = <S extends Schema.Schema.All | Schema.PropertySignature
  * @since 1.0.0
  * @category optional
  */
-export const FieldOption = <Field extends VariantSchema.Field<any> | Schema.Schema.Any>(
+export interface FieldOption<S extends Schema.Schema.Any> extends
+  VariantSchema.Field<{
+    readonly select: Schema.OptionFromNullOr<S>
+    readonly insert: Schema.OptionFromNullOr<S>
+    readonly update: Schema.OptionFromNullOr<S>
+    readonly json: Schema.optionalWith<S, { as: "Option" }>
+    readonly jsonCreate: Schema.optionalWith<S, { as: "Option"; nullable: true }>
+    readonly jsonUpdate: Schema.optionalWith<S, { as: "Option"; nullable: true }>
+  }>
+{}
+
+/**
+ * Convert a field to one that is optional for all variants.
+ *
+ * For the database variants, it will accept `null`able values.
+ * For the JSON variants, it will also accept missing keys.
+ *
+ * @since 1.0.0
+ * @category optional
+ */
+export const FieldOption: <Field extends VariantSchema.Field<any> | Schema.Schema.Any>(
   self: Field
-): VariantSchema.Field<
-  Field extends Schema.Schema.Any ? {
-      readonly select: Schema.OptionFromNullOr<Field>
-      readonly insert: Schema.OptionFromNullOr<Field>
-      readonly update: Schema.OptionFromNullOr<Field>
-      readonly json: Schema.optionalWith<Field, { as: "Option" }>
-      readonly jsonCreate: Schema.optionalWith<Field, { as: "Option"; nullable: true }>
-      readonly jsonUpdate: Schema.optionalWith<Field, { as: "Option"; nullable: true }>
-    }
-    : Field extends VariantSchema.Field<infer S> ? {
+) => Field extends Schema.Schema.Any ? FieldOption<Field>
+  : Field extends VariantSchema.Field<infer S> ? VariantSchema.Field<
+      {
         readonly [K in keyof S]: S[K] extends Schema.Schema.Any
           ? K extends VariantsDatabase ? Schema.OptionFromNullOr<S[K]> :
           Schema.optionalWith<S[K], { as: "Option"; nullable: true }>
           : never
-      } :
-    {}
-> => {
-  if (Schema.isSchema(self)) {
-    return Field({
-      select: Schema.OptionFromNullOr(self),
-      insert: Schema.OptionFromNullOr(self),
-      update: Schema.OptionFromNullOr(self),
-      json: Schema.optionalWith(self, { as: "Option" }),
-      jsonCreate: Schema.optionalWith(self, { as: "Option", nullable: true }),
-      jsonUpdate: Schema.optionalWith(self, { as: "Option", nullable: true })
-    }) as any
-  }
-  return VariantSchema.Field(Record.map(self.schemas, (schema, variant) => {
-    switch (variant) {
-      case "select":
-      case "insert":
-      case "update":
-        return Schema.OptionFromNullOr(schema as any)
-      case "json":
-        return Schema.optionalWith(schema as any, { as: "Option" })
-      default:
-        return Schema.optionalWith(schema as any, { as: "Option", nullable: true })
-    }
-  }) as any)
-}
+      }
+    > :
+  never = fieldEvolve({
+    select: Schema.OptionFromNullOr,
+    insert: Schema.OptionFromNullOr,
+    update: Schema.OptionFromNullOr,
+    json: Schema.optionalWith({ as: "Option" }),
+    jsonCreate: Schema.optionalWith({ as: "Option", nullable: true }),
+    jsonUpdate: Schema.optionalWith({ as: "Option", nullable: true })
+  }) as any
 
 /**
  * @since 1.0.0
