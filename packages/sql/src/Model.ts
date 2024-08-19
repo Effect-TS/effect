@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as RRX from "@effect/experimental/RequestResolver"
 import * as VariantSchema from "@effect/experimental/VariantSchema"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
@@ -8,7 +9,9 @@ import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import type { Scope } from "effect/Scope"
 import { SqlClient } from "./SqlClient.js"
+import * as SqlResolver from "./SqlResolver.js"
 import * as SqlSchema from "./SqlSchema.js"
 
 const {
@@ -678,4 +681,96 @@ export const makeRepository = <S extends Any, Id extends Schema.Schema.Any>(Mode
       ) as any
 
     return { insert, update, findById, delete: delete_ } as const
+  })
+
+/**
+ * Create some simple data loaders from a model.
+ *
+ * @since 1.0.0
+ * @category repository
+ */
+export const makeDataLoaders = <S extends AnyNoContext, Id extends Schema.Schema.AnyNoContext>(Model: S, options: {
+  readonly tableName: string
+  readonly spanPrefix: string
+  readonly idColumn: (keyof S["Type"]) & (keyof S["update"]["Type"])
+  readonly idSchema: Id
+  readonly window: number
+  readonly maxBatchSize?: number | undefined
+}): Effect.Effect<
+  {
+    readonly insert: (insert: S["insert"]["Type"]) => Effect.Effect<S["Type"]>
+    readonly findById: (id: Id["Type"]) => Effect.Effect<Option.Option<S["Type"]>>
+    readonly delete: (id: Id["Type"]) => Effect.Effect<void>
+  },
+  never,
+  SqlClient | Scope
+> =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient
+
+    const insertResolver = yield* SqlResolver.ordered(`${options.spanPrefix}/insert`, {
+      Request: Model.insert,
+      Result: Model,
+      execute: (request) => sql`insert into ${sql(options.tableName)} ${sql.insert(request).returning("*")}`
+    })
+    const insertLoader = yield* RRX.dataLoader(insertResolver, {
+      window: options.window,
+      maxBatchSize: options.maxBatchSize!
+    })
+    const insertExecute = insertResolver.makeExecute(insertLoader)
+    const insert = (
+      insert: S["insert"]["Type"]
+    ): Effect.Effect<S["Type"], never, S["Context"] | S["insert"]["Context"]> =>
+      insertExecute(insert).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.insert`, {
+          captureStackTrace: false,
+          attributes: { insert }
+        })
+      ) as any
+
+    const findByIdResolver = yield* SqlResolver.grouped(`${options.spanPrefix}/findById`, {
+      Request: options.idSchema,
+      RequestGroupKey(id) {
+        return id
+      },
+      Result: Model,
+      ResultGroupKey(request) {
+        return request[options.idColumn]
+      },
+      execute: (ids) => sql`select * from ${sql(options.tableName)} where ${sql.in(options.idColumn as string, ids)}`
+    })
+    const findByIdLoader = yield* RRX.dataLoader(findByIdResolver, {
+      window: options.window,
+      maxBatchSize: options.maxBatchSize!
+    })
+    const findByIdExecute = findByIdResolver.makeExecute(findByIdLoader)
+    const findById = (id: Id["Type"]): Effect.Effect<Option.Option<S["Type"]>> =>
+      findByIdExecute(id).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.findById`, {
+          captureStackTrace: false,
+          attributes: { id }
+        })
+      ) as any
+
+    const deleteResolver = yield* SqlResolver.void(`${options.spanPrefix}/delete`, {
+      Request: options.idSchema,
+      execute: (ids) => sql`delete from ${sql(options.tableName)} where ${sql.in(options.idColumn as string, ids)}`
+    })
+    const deleteLoader = yield* RRX.dataLoader(deleteResolver, {
+      window: options.window,
+      maxBatchSize: options.maxBatchSize!
+    })
+    const deleteExecute = deleteResolver.makeExecute(deleteLoader)
+    const delete_ = (id: Id["Type"]): Effect.Effect<void> =>
+      deleteExecute(id).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.delete`, {
+          captureStackTrace: false,
+          attributes: { id }
+        })
+      ) as any
+
+    return { insert, findById, delete: delete_ } as const
   })
