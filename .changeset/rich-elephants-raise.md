@@ -2,4 +2,4 @@
 "@effect/sql": patch
 ---
 
-add Model.makeRepository, for deriving a simple CRUD repo
+add Model.makeRepository & Model.makeDataLoaders, for deriving a simple CRUD ops
