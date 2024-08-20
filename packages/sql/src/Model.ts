@@ -21,6 +21,7 @@ const {
   FieldExcept,
   FieldOnly,
   Struct,
+  Union,
   extract,
   fieldEvolve
 } = VariantSchema.make({
@@ -138,7 +139,12 @@ export {
    * @since 1.0.0
    * @category constructors
    */
-  Struct
+  Struct,
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  Union
 }
 
 /**
