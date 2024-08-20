@@ -7,6 +7,7 @@
  * @category models
  */
 export interface Pipeable {
+  pipe<A>(this: A): A
   pipe<A, B>(this: A, ab: (_: A) => B): B
   pipe<A, B, C>(this: A, ab: (_: A) => B, bc: (_: B) => C): C
   pipe<A, B, C, D>(this: A, ab: (_: A) => B, bc: (_: B) => C, cd: (_: C) => D): D
@@ -289,6 +290,8 @@ export interface Pipeable {
  */
 export const pipeArguments = <A>(self: A, args: IArguments): unknown => {
   switch (args.length) {
+    case 0:
+      return self
     case 1:
       return args[0](self)
     case 2:
