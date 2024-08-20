@@ -24,12 +24,16 @@ export const TypeId: unique symbol = Symbol.for("@effect/experimental/VariantSch
  */
 export type TypeId = typeof TypeId
 
+const cacheSymbol = Symbol.for("@effect/experimental/VariantSchema/cache")
+
 /**
  * @since 1.0.0
  * @category models
  */
 export interface Struct<in out A extends Field.Fields> extends Pipeable {
   readonly [TypeId]: A
+  /** @internal */
+  [cacheSymbol]?: Record<string, Schema.Schema.All>
 }
 
 /**
@@ -185,6 +189,11 @@ const extract: {
       readonly isDefault?: boolean | undefined
     }
   ): Extract<V, A> => {
+    const cache = self[cacheSymbol] ?? (self[cacheSymbol] = {})
+    const cacheKey = options?.isDefault === true ? "__default" : variant
+    if (cache[cacheKey] !== undefined) {
+      return cache[cacheKey] as any
+    }
     const fields: Record<string, any> = {}
     for (const key of Object.keys(self[TypeId])) {
       const value = self[TypeId][key]
@@ -202,7 +211,7 @@ const extract: {
         fields[key] = value
       }
     }
-    return Schema.Struct(fields) as any
+    return cache[cacheKey] = Schema.Struct(fields) as any
   }
 )
 
@@ -268,6 +277,36 @@ type ClassFromFields<
 
 type MissingSelfGeneric<Params extends string = ""> =
   `Missing \`Self\` generic - use \`class Self extends Class<Self>()(${Params}{ ... })\``
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Union<Members extends ReadonlyArray<Struct<any>>> extends
+  Schema.Union<
+    {
+      readonly [K in keyof Members]: [Members[K]] extends [Schema.Schema.All] ? Members[K] : never
+    }
+  >
+{}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export declare namespace Union {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Variants<Members extends ReadonlyArray<Struct<any>>, Variants extends string> = {
+    readonly [Variant in Variants]: Schema.Union<
+      {
+        [K in keyof Members]: Extract<Variant, Members[K]>
+      }
+    >
+  }
+}
 
 /**
  * @since 1.0.0
@@ -347,6 +386,9 @@ export const make = <
       & {
         readonly [V in Variants[number]]: Extract<V, Struct<Fields>>
       }
+  readonly Union: <const Members extends ReadonlyArray<Struct<any>>>(
+    ...members: Members
+  ) => Union<Members> & Union.Variants<Members, Variants[number]>
   readonly extract: {
     <V extends Variants[number]>(
       variant: V
@@ -397,6 +439,9 @@ export const make = <
       return Field(obj)
     }
   }
+  function UnionVariants(...members: ReadonlyArray<Struct<any>>) {
+    return Union(members, options.variants)
+  }
   const fieldEvolveVariants = dual(
     2,
     (
@@ -422,6 +467,7 @@ export const make = <
     FieldOnly,
     FieldExcept,
     Class,
+    Union: UnionVariants,
     fieldEvolve: fieldEvolveVariants,
     extract: extractVariants
   } as any
@@ -480,4 +526,17 @@ const Field = <const A extends Field.Config>(schemas: A): Field<A> => {
   const self = Object.create(FieldProto)
   self.schemas = schemas
   return self
+}
+
+const Union = <Members extends ReadonlyArray<Struct<any>>, Variants extends ReadonlyArray<string>>(
+  members: Members,
+  variants: Variants
+) => {
+  class VariantUnion extends (Schema.Union(...members.filter((member) => Schema.isSchema(member))) as any) {}
+  for (const variant of variants) {
+    Object.defineProperty(VariantUnion, variant, {
+      value: Schema.Union(...members.map((member) => extract(member, variant)))
+    })
+  }
+  return VariantUnion
 }
