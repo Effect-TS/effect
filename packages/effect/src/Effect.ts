@@ -3546,6 +3546,10 @@ export const bind: {
 } = effect.bind
 
 /**
+ * `bindAll` combines `Effect.all` with `Effect.bind`. It is useful
+ * when you want to concurrently run multiple effects and then combine their
+ * results in a Do notation pipeline.
+ *
  * @example
  * import { Effect, pipe } from "effect"
  *
