@@ -334,7 +334,7 @@ export const make = <
   }
   readonly Class: <Self = never>(
     identifier: string
-  ) => <Fields extends Struct.Fields>(
+  ) => <const Fields extends Struct.Fields>(
     fields: Fields,
     annotations?: Schema.Annotations.Schema<Self>
   ) => [Self] extends [never] ? MissingSelfGeneric
