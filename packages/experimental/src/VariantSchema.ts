@@ -9,6 +9,7 @@ import type * as Effect from "effect/Effect"
 import { constUndefined, dual } from "effect/Function"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import * as Predicate from "effect/Predicate"
 import * as Struct_ from "effect/Struct"
 
 /**
@@ -30,6 +31,12 @@ export type TypeId = typeof TypeId
 export interface Struct<in out A extends Field.Fields> extends Pipeable {
   readonly [TypeId]: A
 }
+
+/**
+ * @since 1.0.0
+ * @category guards
+ */
+export const isStruct = (u: unknown): u is Struct<any> => Predicate.hasProperty(u, TypeId)
 
 /**
  * @since 1.0.0
@@ -83,6 +90,12 @@ export interface Field<in out A extends Field.Config> extends Pipeable {
   readonly [FieldTypeId]: FieldTypeId
   readonly schemas: A
 }
+
+/**
+ * @since 1.0.0
+ * @category guards
+ */
+export const isField = (u: unknown): u is Field<any> => Predicate.hasProperty(u, FieldTypeId)
 
 /**
  * @since 1.0.0
@@ -153,26 +166,34 @@ export type Extract<V extends string, A extends Struct<any>, IsDefault = false> 
   : Schema.Struct<Schema.Simplify<ExtractFields<V, Fields>>>
   : never
 
-/**
- * @since 1.0.0
- * @category extractors
- */
-export const extract: {
-  <V extends string>(
-    variant: V
-  ): <A extends Struct<any>>(self: A) => Extract<V, A>
-  <V extends string, A extends Struct<any>>(self: A, variant: V): Extract<V, A>
+const extract: {
+  <V extends string, const IsDefault extends boolean = false>(
+    variant: V,
+    options?: {
+      readonly isDefault?: IsDefault | undefined
+    }
+  ): <A extends Struct<any>>(self: A) => Extract<V, A, IsDefault>
+  <V extends string, A extends Struct<any>, const IsDefault extends boolean = false>(self: A, variant: V, options?: {
+    readonly isDefault?: IsDefault | undefined
+  }): Extract<V, A, IsDefault>
 } = dual(
-  2,
+  (args) => isStruct(args[0]),
   <V extends string, A extends Struct<any>>(
     self: A,
-    variant: V
+    variant: V,
+    options?: {
+      readonly isDefault?: boolean | undefined
+    }
   ): Extract<V, A> => {
     const fields: Record<string, any> = {}
     for (const key of Object.keys(self[TypeId])) {
       const value = self[TypeId][key]
       if (TypeId in value) {
-        fields[key] = extract(value, variant)
+        if (options?.isDefault === true && Schema.isSchema(value)) {
+          fields[key] = value
+        } else {
+          fields[key] = extract(value, variant)
+        }
       } else if (FieldTypeId in value) {
         if (variant in value.schemas) {
           fields[key] = value.schemas[variant]
@@ -326,6 +347,15 @@ export const make = <
       & {
         readonly [V in Variants[number]]: Extract<V, Struct<Fields>>
       }
+  readonly extract: {
+    <V extends Variants[number]>(
+      variant: V
+    ): <A extends Struct<any>>(self: A) => Extract<V, A, V extends Default ? true : false>
+    <V extends Variants[number], A extends Struct<any>>(
+      self: A,
+      variant: V
+    ): Extract<V, A, V extends Default ? true : false>
+  }
 } => {
   function Class<Self>(identifier: string) {
     return function(
@@ -333,7 +363,9 @@ export const make = <
       annotations?: Schema.Annotations.Schema<Self>
     ) {
       const variantStruct = Struct(fields)
-      const schema = extract(variantStruct, options.defaultVariant)
+      const schema = extract(variantStruct, options.defaultVariant, {
+        isDefault: true
+      })
       class Base extends Schema.Class<any>(identifier)(schema.fields, annotations) {
         static [TypeId] = fields
       }
@@ -377,13 +409,21 @@ export const make = <
       return Field(Struct_.evolve(field.schemas, f))
     }
   )
+  const extractVariants = dual(
+    2,
+    (self: Struct<any>, variant: string): any =>
+      extract(self, variant, {
+        isDefault: variant === options.defaultVariant
+      })
+  )
   return {
     Struct,
     Field,
     FieldOnly,
     FieldExcept,
     Class,
-    fieldEvolve: fieldEvolveVariants
+    fieldEvolve: fieldEvolveVariants,
+    extract: extractVariants
   } as any
 }
 
