@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import type { LazyArg } from "effect/Function"
-import { dual, pipe } from "effect/Function"
+import { dual, identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PlatformError from "../Error.js"
@@ -77,11 +77,17 @@ export const makeStringOnly: (
     & Partial<Omit<KeyValueStore.KeyValueStore, "set">>
     & { readonly set: (key: string, value: string) => Effect.Effect<void, PlatformError.PlatformError> }
 ) => KeyValueStore.KeyValueStore = (impl) => {
+  const encoder = new TextEncoder()
   return make({
     ...impl,
     getUint8Array: (key) =>
       impl.get(key).pipe(
-        Effect.map(Option.flatMap((value) => Either.getRight(Encoding.decodeBase64(value))))
+        Effect.map(Option.map((value) =>
+          Either.match(Encoding.decodeBase64(value), {
+            onLeft: () => encoder.encode(value),
+            onRight: identity
+          })
+        ))
       ),
     set: (key, value) =>
       typeof value === "string"
