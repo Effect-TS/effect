@@ -154,7 +154,14 @@ export const make = (
     }
 
     const pool = options.url
-      ? Mysql.createPool(Redacted.value(options.url))
+      ? Mysql.createPool({
+        uri: Redacted.value(options.url),
+        multipleStatements: true,
+        connectionLimit: options.maxConnections!,
+        idleTimeout: options.connectionTTL
+          ? Duration.toMillis(options.connectionTTL)
+          : undefined as any
+      })
       : Mysql.createPool({
         ...(options.poolConfig ?? {}),
         host: options.host,
@@ -164,6 +171,7 @@ export const make = (
         password: options.password
           ? Redacted.value(options.password)
           : undefined,
+        multipleStatements: true,
         connectionLimit: options.maxConnections,
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(options.connectionTTL)
