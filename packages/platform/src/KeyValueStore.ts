@@ -37,9 +37,14 @@ export interface KeyValueStore {
   readonly get: (key: string) => Effect.Effect<Option.Option<string>, PlatformError.PlatformError>
 
   /**
+   * Returns the value of the specified key if it exists.
+   */
+  readonly getUint8Array: (key: string) => Effect.Effect<Option.Option<Uint8Array>, PlatformError.PlatformError>
+
+  /**
    * Sets the value of the specified key.
    */
-  readonly set: (key: string, value: string) => Effect.Effect<void, PlatformError.PlatformError>
+  readonly set: (key: string, value: string | Uint8Array) => Effect.Effect<void, PlatformError.PlatformError>
 
   /**
    * Removes the specified key.
@@ -63,6 +68,14 @@ export interface KeyValueStore {
     key: string,
     f: (value: string) => string
   ) => Effect.Effect<Option.Option<string>, PlatformError.PlatformError>
+
+  /**
+   * Updates the value of the specified key if it exists.
+   */
+  readonly modifyUint8Array: (
+    key: string,
+    f: (value: Uint8Array) => Uint8Array
+  ) => Effect.Effect<Option.Option<Uint8Array>, PlatformError.PlatformError>
 
   /**
    * Returns true if the KeyValueStore contains the specified key.
@@ -103,6 +116,16 @@ export const KeyValueStore: Context.Tag<KeyValueStore, KeyValueStore> = internal
 export const make: (
   impl: Omit<KeyValueStore, typeof TypeId | "has" | "modify" | "isEmpty" | "forSchema"> & Partial<KeyValueStore>
 ) => KeyValueStore = internal.make
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeStringOnly: (
+  impl: Pick<KeyValueStore, "get" | "remove" | "clear" | "size"> & Partial<Omit<KeyValueStore, "set">> & {
+    readonly set: (key: string, value: string) => Effect.Effect<void, PlatformError.PlatformError>
+  }
+) => KeyValueStore = internal.makeStringOnly
 
 /**
  * @since 1.0.0

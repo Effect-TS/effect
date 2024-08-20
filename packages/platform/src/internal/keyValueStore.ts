@@ -1,8 +1,10 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
+import * as Encoding from "effect/Encoding"
 import type { LazyArg } from "effect/Function"
-import { dual, pipe } from "effect/Function"
+import { dual, identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PlatformError from "../Error.js"
@@ -21,7 +23,10 @@ export const keyValueStoreTag = Context.GenericTag<KeyValueStore.KeyValueStore>(
 /** @internal */
 export const make: (
   impl:
-    & Omit<KeyValueStore.KeyValueStore, KeyValueStore.TypeId | "has" | "modify" | "isEmpty" | "forSchema">
+    & Omit<
+      KeyValueStore.KeyValueStore,
+      KeyValueStore.TypeId | "has" | "modify" | "modifyUint8Array" | "isEmpty" | "forSchema"
+    >
     & Partial<KeyValueStore.KeyValueStore>
 ) => KeyValueStore.KeyValueStore = (impl) =>
   keyValueStoreTag.of({
@@ -42,11 +47,54 @@ export const make: (
           )
         }
       ),
+    modifyUint8Array: (key, f) =>
+      Effect.flatMap(
+        impl.getUint8Array(key),
+        (o) => {
+          if (Option.isNone(o)) {
+            return Effect.succeedNone
+          }
+          const newValue = f(o.value)
+          return Effect.as(
+            impl.set(key, newValue),
+            Option.some(newValue)
+          )
+        }
+      ),
     forSchema(schema) {
       return makeSchemaStore(this, schema)
     },
     ...impl
   })
+
+/** @internal */
+export const makeStringOnly: (
+  impl:
+    & Pick<
+      KeyValueStore.KeyValueStore,
+      "get" | "remove" | "clear" | "size"
+    >
+    & Partial<Omit<KeyValueStore.KeyValueStore, "set">>
+    & { readonly set: (key: string, value: string) => Effect.Effect<void, PlatformError.PlatformError> }
+) => KeyValueStore.KeyValueStore = (impl) => {
+  const encoder = new TextEncoder()
+  return make({
+    ...impl,
+    getUint8Array: (key) =>
+      impl.get(key).pipe(
+        Effect.map(Option.map((value) =>
+          Either.match(Encoding.decodeBase64(value), {
+            onLeft: () => encoder.encode(value),
+            onRight: identity
+          })
+        ))
+      ),
+    set: (key, value) =>
+      typeof value === "string"
+        ? impl.set(key, value)
+        : Effect.suspend(() => impl.set(key, Encoding.encodeBase64(value)))
+  })
+}
 
 /** @internal */
 export const prefix = dual<
@@ -119,11 +167,23 @@ const makeSchemaStore = <A, I, R>(
 
 /** @internal */
 export const layerMemory = Layer.sync(keyValueStoreTag, () => {
-  const store = new Map<string, string>()
+  const store = new Map<string, string | Uint8Array>()
+  const encoder = new TextEncoder()
 
   return make({
-    get: (key: string) => Effect.sync(() => Option.fromNullable(store.get(key))),
-    set: (key: string, value: string) => Effect.sync(() => store.set(key, value)),
+    get: (key: string) =>
+      Effect.sync(() =>
+        Option.fromNullable(store.get(key)).pipe(
+          Option.map((value) => typeof value === "string" ? value : Encoding.encodeBase64(value))
+        )
+      ),
+    getUint8Array: (key: string) =>
+      Effect.sync(() =>
+        Option.fromNullable(store.get(key)).pipe(
+          Option.map((value) => typeof value === "string" ? encoder.encode(value) : value)
+        )
+      ),
+    set: (key: string, value: string | Uint8Array) => Effect.sync(() => store.set(key, value)),
     remove: (key: string) => Effect.sync(() => store.delete(key)),
     clear: Effect.sync(() => store.clear()),
     size: Effect.sync(() => store.size)
@@ -152,7 +212,16 @@ export const layerFileSystem = (directory: string) =>
               (sysError) => sysError.reason === "NotFound" ? Effect.succeed(Option.none()) : Effect.fail(sysError)
             )
           ),
-        set: (key: string, value: string) => fs.writeFileString(keyPath(key), value),
+        getUint8Array: (key: string) =>
+          pipe(
+            Effect.map(fs.readFile(keyPath(key)), Option.some),
+            Effect.catchTag(
+              "SystemError",
+              (sysError) => sysError.reason === "NotFound" ? Effect.succeed(Option.none()) : Effect.fail(sysError)
+            )
+          ),
+        set: (key: string, value: string | Uint8Array) =>
+          typeof value === "string" ? fs.writeFileString(keyPath(key), value) : fs.writeFile(keyPath(key), value),
         remove: (key: string) => fs.remove(keyPath(key)),
         has: (key: string) => fs.exists(keyPath(key)),
         clear: Effect.zipRight(
@@ -189,7 +258,7 @@ const storageError = (props: Omit<Parameters<typeof PlatformError.SystemError>[0
 export const layerStorage = (evaluate: LazyArg<Storage>) =>
   Layer.sync(keyValueStoreTag, () => {
     const storage = evaluate()
-    return make({
+    return makeStringOnly({
       get: (key: string) =>
         Effect.try({
           try: () => Option.fromNullable(storage.getItem(key)),
