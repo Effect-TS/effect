@@ -302,7 +302,7 @@ export declare namespace Union {
   export type Variants<Members extends ReadonlyArray<Struct<any>>, Variants extends string> = {
     readonly [Variant in Variants]: Schema.Union<
       {
-        [K in keyof Members]: [Extract<Variant, Members[K]>] extends [infer S] ? S : never
+        [K in keyof Members]: Extract<Variant, Members[K]>
       }
     >
   }
