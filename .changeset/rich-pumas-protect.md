@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-preserve `Array.replace` `Array.replaceOption` nonemptyness
+preserve `Array.replace` `Array.replaceOption` non emptiness
