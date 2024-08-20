@@ -7,6 +7,7 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
+import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import type { Scope } from "effect/Scope"
@@ -715,7 +716,7 @@ export const makeDataLoaders = <
     readonly tableName: string
     readonly spanPrefix: string
     readonly idColumn: Id
-    readonly window: number
+    readonly window: DurationInput
     readonly maxBatchSize?: number | undefined
   }
 ): Effect.Effect<
