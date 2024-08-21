@@ -28,8 +28,8 @@ export type TypeId = typeof TypeId
  */
 export class EntityAddress extends Schema.Class<EntityAddress>(SymbolKey)({
   shardId: ShardId,
-  entityId: EntityId,
-  entityType: EntityType
+  entityType: EntityType,
+  entityId: EntityId
 }) {
   /**
    * @since 1.0.0

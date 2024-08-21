@@ -1,5 +1,5 @@
 {
-  "name": "@effect/cluster",
+  "name": "@effect/cluster-old",
   "type": "module",
   "version": "0.4.7",
   "description": "Unified interfaces for common cluster-specific services",

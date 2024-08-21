@@ -1,18 +1,26 @@
 /**
  * @since 1.0.0
  */
-import type { WithResult } from "@effect/schema/Serializable"
-import * as Context from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Stream } from "effect/Stream"
-import type { EntityAddress } from "./EntityAddress.js"
-import type { Envelope } from "./Envelope.js"
-import type { MessageState } from "./MessageState.js"
+import * as InternalStorage from "./internal/storage.js"
 import type { Pod } from "./Pod.js"
 import type { PodAddress } from "./PodAddress.js"
 import type { ShardId } from "./ShardId.js"
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const TypeId: unique symbol = InternalStorage.TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type TypeId = typeof TypeId
 
 /**
  * Represents a generic interface to the persistent storage required by the
@@ -21,21 +29,7 @@ import type { ShardId } from "./ShardId.js"
  * @since 1.0.0
  * @category models
  */
-export class Storage extends Context.Tag("@effect/cluster/Storage")<Storage, {
-  /**
-   * Save the provided message and its associated metadata.
-   *
-   * @returns `true` if the message was saved successfully, `false` otherwise
-   */
-  readonly saveMessage: (envelope: Envelope) => Effect<boolean>
-  /**
-   * Updates the specified message using the provided `MessageState`.
-   */
-  readonly updateMessage: <Msg extends Envelope.AnyMessage>(
-    address: EntityAddress,
-    message: Msg,
-    state: MessageState<WithResult.Success<Msg>, WithResult.Failure<Msg>>
-  ) => Effect<void>
+export interface Storage extends Storage.Proto {
   /**
    * Get the current assignments of shards to pods.
    */
@@ -57,4 +51,23 @@ export class Storage extends Context.Tag("@effect/cluster/Storage")<Storage, {
    * Save the current pods registered with the cluster.
    */
   readonly savePods: (pods: HashMap<PodAddress, Pod>) => Effect<void>
-}>() {}
+}
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const Storage = InternalStorage.Tag
+
+/**
+ * @since 1.0.0
+ */
+export declare namespace Storage {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Proto {
+    readonly [TypeId]: TypeId
+  }
+}
