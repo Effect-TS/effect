@@ -1,6 +1,26 @@
 /**
  * @since 1.0.0
  */
+export * as Api from "./Api.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as ApiBuilder from "./ApiBuilder.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as ApiEndpoint from "./ApiEndpoint.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as ApiGroup from "./ApiGroup.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Command from "./Command.js"
 
 /**
