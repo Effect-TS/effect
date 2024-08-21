@@ -1,5 +1,13 @@
 # effect
 
+## 3.6.5
+
+### Patch Changes
+
+- [#3474](https://github.com/Effect-TS/effect/pull/3474) [`14a47a8`](https://github.com/Effect-TS/effect/commit/14a47a8c1f3cff2186b8fe7a919a1d773888fb5b) Thanks @IMax153! - Add support for incrementing and decrementing a gauge based on its prior value
+
+- [#3490](https://github.com/Effect-TS/effect/pull/3490) [`0c09841`](https://github.com/Effect-TS/effect/commit/0c0984173be3d58f050b300a1a8aa89d76ba49ae) Thanks @tim-smart! - fix type error when .pipe() has no arguments
+
 ## 3.6.4
 
 ### Patch Changes

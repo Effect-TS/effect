@@ -1,5 +1,25 @@
 # @effect/experimental
 
+## 0.23.4
+
+### Patch Changes
+
+- [#3487](https://github.com/Effect-TS/effect/pull/3487) [`00670d0`](https://github.com/Effect-TS/effect/commit/00670d0f8dfda42150c640e3e949e1f8ad3bdaed) Thanks @tim-smart! - ensure VariantSchema preserves opaque types
+
+- [#3488](https://github.com/Effect-TS/effect/pull/3488) [`8dd3959`](https://github.com/Effect-TS/effect/commit/8dd3959e967ca2b38ba601d94a80f1c50e9445e0) Thanks @tim-smart! - move VariantSchema.extract to factory, and copy type level behaviour
+
+- [#3482](https://github.com/Effect-TS/effect/pull/3482) [`dba570a`](https://github.com/Effect-TS/effect/commit/dba570a8e9554958626e5a8ec9ca556345b1bfd2) Thanks @tim-smart! - make VariantSchema constructor apis internal
+
+- [#3493](https://github.com/Effect-TS/effect/pull/3493) [`f2c8dbb`](https://github.com/Effect-TS/effect/commit/f2c8dbb77e196c9a36cb3bf2ae3b82ce68e9874d) Thanks @tim-smart! - add VariantSchema.Union constructor
+
+- [#3478](https://github.com/Effect-TS/effect/pull/3478) [`da52556`](https://github.com/Effect-TS/effect/commit/da52556cfe5a3b35d21563dfdbdde2146d74d3e1) Thanks @tim-smart! - Add VariantSchema.fieldEvolve api
+
+- Updated dependencies [[`413994c`](https://github.com/Effect-TS/effect/commit/413994c9792f16d9d57cca3ae6eb254bf93bd261), [`14a47a8`](https://github.com/Effect-TS/effect/commit/14a47a8c1f3cff2186b8fe7a919a1d773888fb5b), [`0c09841`](https://github.com/Effect-TS/effect/commit/0c0984173be3d58f050b300a1a8aa89d76ba49ae)]:
+  - @effect/platform@0.62.2
+  - effect@3.6.5
+  - @effect/platform-node@0.57.2
+  - @effect/schema@0.71.1
+
 ## 0.23.3
 
 ### Patch Changes
