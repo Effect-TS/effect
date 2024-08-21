@@ -6,15 +6,16 @@ import * as Queue from "effect/Queue"
 import type { EntityAddress } from "../EntityAddress.js"
 import type { Envelope } from "../Envelope.js"
 import type { Mailbox } from "../Mailbox.js"
-import { Storage } from "../Storage.js"
+import type { MailboxStorage } from "../MailboxStorage.js"
+import * as InternalMailboxStorage from "./mailboxStorage.js"
 import * as InternalMessageState from "./messageState.js"
 
 /** @internal */
 export const make = <Msg extends Envelope.AnyMessage>(
   address: EntityAddress
-): Effect.Effect<Mailbox<Msg>, never, Storage> =>
+): Effect.Effect<Mailbox<Msg>, never, MailboxStorage> =>
   Effect.gen(function*() {
-    const storage = yield* Storage
+    const storage = yield* InternalMailboxStorage.Tag
     const queue = yield* Queue.unbounded<Msg>()
 
     function acknowledge(message: Msg): Effect.Effect<void> {
@@ -68,6 +69,7 @@ export const make = <Msg extends Envelope.AnyMessage>(
     }
 
     return {
+      offer: (message) => Queue.offer(queue, message),
       take: Queue.take(queue),
       takeUpTo: (max) => Queue.takeUpTo(queue, max),
       takeBetween: (min, max) => Queue.takeBetween(queue, min, max),
