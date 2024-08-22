@@ -1049,7 +1049,7 @@ export const insertAt: {
  * import { Array } from "effect"
  *
  * const letters = ['a', 'b', 'c', 'd']
- * const result = Array.replace(1, 'z')(letters)
+ * const result = Array.replace(letters, 1, 'z')
  * assert.deepStrictEqual(result, ['a', 'z', 'c', 'd'])
  *
  * @since 2.0.0
@@ -1084,9 +1084,7 @@ export const replaceOption: {
   <B>(
     i: number,
     b: B
-  ): <A, S extends Iterable<A> = Iterable<A>>(
-    self: Iterable<A>
-  ) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  ): <A, S extends Iterable<A> = Iterable<A>>(self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
   <A, B, S extends Iterable<A> = Iterable<A>>(
     self: S,
     i: number,
