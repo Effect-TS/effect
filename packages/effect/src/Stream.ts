@@ -3499,13 +3499,13 @@ export const provideSomeLayer: {
  * @category racing
  */
 export const race: {
-  <A2, E2, R2>(
-    stream2: Stream<A2, E2, R2>
-  ): <A1, E1, R1>(stream1: Stream<A1, E1, R1>) => Stream<A1 | A2, E1 | E2, R1 | R2>
-  <A1, E1, R1, A2, E2, R2>(
-    stream1: Stream<A1, E1, R1>,
-    stream2: Stream<A2, E2, R2>
-  ): Stream<A1 | A2, E1 | E2, R1 | R2>
+  <AR, ER, RR>(
+    right: Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream<AL, EL, RL>) => Stream<AL | AR, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream<AL, EL, RL>,
+    right: Stream<AR, ER, RR>
+  ): Stream<AL | AR, EL | ER, RL | RR>
 } = internal.race
 
 /**

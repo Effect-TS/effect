@@ -4875,19 +4875,19 @@ export const range = (min: number, max: number, chunkSize = DefaultChunkSize): S
 
 /** @internal */
 export const race: {
-  <A2, E2, R2>(
-    stream2: Stream.Stream<A2, E2, R2>
-  ): <A1, E1, R1>(stream1: Stream.Stream<A1, E1, R1>) => Stream.Stream<A1 | A2, E1 | E2, R1 | R2>
-  <A1, E1, R1, A2, E2, R2>(
-    stream1: Stream.Stream<A1, E1, R1>,
-    stream2: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<A1 | A2, E1 | E2, R1 | R2>
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<AL | AR, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AL | AR, EL | ER, RL | RR>
 } = dual(
   2,
-  <A1, E1, R1, A2, E2, R2>(
-    stream1: Stream.Stream<A1, E1, R1>,
-    stream2: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<A1 | A2, E1 | E2, R1 | R2> => raceAll(stream1, stream2)
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AL | AR, EL | ER, RL | RR> => raceAll(left, right)
 )
 
 /** @internal */
