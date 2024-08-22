@@ -1109,10 +1109,10 @@ export const replaceOption: {
  * @since 2.0.0
  */
 export const modify: {
-  <A, B>(
+  <A, B, S extends Iterable<A> = Iterable<A>>(
     i: number,
-    f: (a: A) => B
-  ): <S extends Iterable<A> = Iterable<A>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+    f: (a: ReadonlyArray.Infer<S>) => B
+  ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
   <A, B, S extends Iterable<A> = Iterable<A>>(
     self: S,
     i: number,
@@ -1141,10 +1141,10 @@ export const modify: {
  * @since 2.0.0
  */
 export const modifyOption: {
-  <A, B>(
+  <A, B, S extends Iterable<A> = Iterable<A>>(
     i: number,
-    f: (a: A) => B
-  ): <S extends Iterable<A> = Iterable<A>>(self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+    f: (a: ReadonlyArray.Infer<S>) => B
+  ): (self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
   <A, B, S extends Iterable<A> = Iterable<A>>(
     self: S,
     i: number,
