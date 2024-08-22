@@ -1049,7 +1049,7 @@ export const insertAt: {
  * import { Array } from "effect"
  *
  * const letters = ['a', 'b', 'c', 'd']
- * const result = Array.replace(1, 'z')(letters)
+ * const result = Array.replace(letters, 1, 'z')
  * assert.deepStrictEqual(result, ['a', 'z', 'c', 'd'])
  *
  * @since 2.0.0

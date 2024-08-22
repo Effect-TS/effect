@@ -1342,6 +1342,9 @@ Array.getSomes(hole<Iterable<Option.Option<number>> | Iterable<Option.Option<str
 // $ExpectType string[]
 Array.replace([], 0, "a")
 
+// $ExpectType (string | number)[]
+Array.replace(numbers, 0, "a")
+
 // $ExpectType ("a" | 1 | 2)[]
 Array.replace(new Set([1, 2] as const), 0, "a" as const)
 
@@ -1350,6 +1353,9 @@ Array.replace(Array.of(1), 0, "a" as const)
 
 // $ExpectType string[]
 pipe([], Array.replace(0, "a"))
+
+// $ExpectType (string | number)[]
+pipe(numbers, Array.replace(0, "a"))
 
 // $ExpectType ("a" | 1 | 2)[]
 pipe(new Set([1, 2] as const), Array.replace(0, "a" as const))
