@@ -1342,17 +1342,51 @@ Array.getSomes(hole<Iterable<Option.Option<number>> | Iterable<Option.Option<str
 // $ExpectType string[]
 Array.replace([], 0, "a")
 
-// $ExpectType ("a" | 1 | 2)[]
-Array.replace(new Set([1, 2] as const), 0, "a" as const)
+// $ExpectType (string | number)[]
+Array.replace(numbers, 0, "a")
 
 // $ExpectType [number | "a", ...(number | "a")[]]
-Array.replace(Array.of(1), 0, "a" as const)
+Array.replace(nonEmptyNumbers, 0, "a" as const)
+
+// $ExpectType ("a" | 1 | 2)[]
+Array.replace(new Set([1, 2] as const), 0, "a" as const)
 
 // $ExpectType string[]
 pipe([], Array.replace(0, "a"))
 
+// $ExpectType (string | number)[]
+pipe(numbers, Array.replace(0, "a"))
+
+// $ExpectType [number | "a", ...(number | "a")[]]
+pipe(nonEmptyNumbers, Array.replace(0, "a" as const))
+
 // $ExpectType ("a" | 1 | 2)[]
 pipe(new Set([1, 2] as const), Array.replace(0, "a" as const))
 
-// $ExpectType [number | "a", ...(number | "a")[]]
-pipe(Array.of(1), Array.replace(0, "a" as const))
+// -------------------------------------------------------------------------------------
+// replaceOption
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Option<string[]>
+Array.replaceOption([], 0, "a")
+
+// $ExpectType Option<(string | number)[]>
+Array.replaceOption(numbers, 0, "a")
+
+// $ExpectType Option<[number | "a", ...(number | "a")[]]>
+Array.replaceOption(nonEmptyNumbers, 0, "a" as const)
+
+// $ExpectType Option<("a" | 1 | 2)[]>
+Array.replaceOption(new Set([1, 2] as const), 0, "a" as const)
+
+// $ExpectType Option<string[]>
+pipe([], Array.replaceOption(0, "a"))
+
+// $ExpectType Option<(string | number)[]>
+pipe(numbers, Array.replaceOption(0, "a"))
+
+// $ExpectType Option<[number | "a", ...(number | "a")[]]>
+pipe(nonEmptyNumbers, Array.replaceOption(0, "a" as const))
+
+// $ExpectType Option<("a" | 1 | 2)[]>
+pipe(new Set([1, 2] as const), Array.replaceOption(0, "a" as const))
