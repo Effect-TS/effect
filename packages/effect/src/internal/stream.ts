@@ -7892,18 +7892,18 @@ export const zipAllWith = dual<
 
 /** @internal */
 export const zipLatest: {
-  <AR, EL, RL>(
-    right: Stream.Stream<AR, EL, RL>
-  ): <AL, ER, RR>(left: Stream.Stream<AL, ER, RR>) => Stream.Stream<[AL, AR], EL | ER, RL | RR>
-  <AL, ER, RR, AR, EL, RL>(
-    left: Stream.Stream<AL, ER, RR>,
-    right: Stream.Stream<AR, EL, RL>
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<[AL, AR], EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
   ): Stream.Stream<[AL, AR], EL | ER, RL | RR>
 } = dual(
   2,
-  <AL, ER, RR, AR, EL, RL>(
-    left: Stream.Stream<AL, ER, RR>,
-    right: Stream.Stream<AR, EL, RL>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
   ): Stream.Stream<[AL, AR], EL | ER, RL | RR> => pipe(left, zipLatestWith(right, (a, a2) => [a, a2]))
 )
 

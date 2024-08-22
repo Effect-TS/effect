@@ -5519,8 +5519,8 @@ export const zipAllWith: {
  * @category zipping
  */
 export const zipLatest: {
-  <AR, EL, RL>(right: Stream<AR, EL, RL>): <AL, ER, RR>(left: Stream<AL, ER, RR>) => Stream<[AL, AR], EL | ER, RL | RR>
-  <AL, ER, RR, AR, EL, RL>(left: Stream<AL, ER, RR>, right: Stream<AR, EL, RL>): Stream<[AL, AR], EL | ER, RL | RR>
+  <AL, EL, RL>(right: Stream<AR, EL, RL>): <AR, ER, RR>(left: Stream<AR, ER, RR>) => Stream<[AL, AR], EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(left: Stream<AL, EL, RL>, right: Stream<AR, ER, RR>): Stream<[AL, AR], EL | ER, RL | RR>
 } = internal.zipLatest
 
 /**
