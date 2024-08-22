@@ -1400,30 +1400,40 @@ pipe(new Set([1, 2] as const), Array.replaceOption(0, "a" as const))
 
 // $ExpectType string[]
 Array.modify([], 0, () => "a")
-// $ExpectType Option<string[]>
-Array.modifyOption([], 0, () => "a")
 
 // $ExpectType ("a" | 1 | 2)[]
 Array.modify(new Set([1, 2] as const), 0, () => "a" as const)
-// $ExpectType Option<("a" | 1 | 2)[]>
-Array.modifyOption(new Set([1, 2] as const), 0, () => "a" as const)
 
 // $ExpectType [number | string, ...(number | string)[]]
 Array.modify(Array.of(1), 0, (n) => n.toString())
-// $ExpectType Option<[number | string, ...(number | string)[]]>
-Array.modifyOption(Array.of(1), 0, (n) => n.toString())
 
 // $ExpectType string[]
 pipe([], Array.modify(0, () => "a"))
-// $ExpectType Option<string[]>
-pipe([], Array.modifyOption(0, () => "a"))
 
 // $ExpectType ("a" | 1 | 2)[]
 pipe(new Set([1, 2] as const), Array.modify(0, () => "a" as const))
-// $ExpectType Option<("a" | 1 | 2)[]>
-pipe(new Set([1, 2] as const), Array.modifyOption(0, () => "a" as const))
 
 // $ExpectType [number | "a", ...(number | "a")[]]
 pipe(Array.of(1), Array.modify(0, () => "a" as const))
+
+// -------------------------------------------------------------------------------------
+// modifyOption
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Option<string[]>
+Array.modifyOption([], 0, () => "a")
+
+// $ExpectType Option<("a" | 1 | 2)[]>
+Array.modifyOption(new Set([1, 2] as const), 0, () => "a" as const)
+
+// $ExpectType Option<[number | string, ...(number | string)[]]>
+Array.modifyOption(Array.of(1), 0, (n) => n.toString())
+
+// $ExpectType Option<string[]>
+pipe([], Array.modifyOption(0, () => "a"))
+
+// $ExpectType Option<("a" | 1 | 2)[]>
+pipe(new Set([1, 2] as const), Array.modifyOption(0, () => "a" as const))
+
 // $ExpectType Option<[number | "a", ...(number | "a")[]]>
 pipe(Array.of(1), Array.modifyOption(0, () => "a" as const))
