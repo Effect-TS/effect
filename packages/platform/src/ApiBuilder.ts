@@ -43,14 +43,17 @@ export class ApiRouter extends HttpRouter.Tag("@effect/platform/ApiBuilder/ApiRo
 export const serve: {
   <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
     self: Api.Api<Groups, Error, ErrorR>
-  ): Layer.Layer<never, never, HttpServer.HttpServer | ApiGroup.ApiGroup.ToService<Groups>>
+  ): Layer.Layer<never, never, HttpServer.HttpServer | ApiGroup.ApiGroup.ToService<Groups> | ErrorR>
   <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, R>(
     self: Api.Api<Groups, Error, ErrorR>,
     middleware: (httpApp: HttpApp.Default) => HttpApp.Default<never, R>
   ): Layer.Layer<
     never,
     never,
-    Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | ApiGroup.ApiGroup.ToService<Groups>
+    | HttpServer.HttpServer
+    | Exclude<R, Scope | HttpServerRequest.HttpServerRequest>
+    | ApiGroup.ApiGroup.ToService<Groups>
+    | ErrorR
   >
 } = (
   self: Api.Api.Any,
@@ -60,7 +63,24 @@ export const serve: {
   never,
   any
 > =>
-  Layer.unwrapEffect(Effect.gen(function*() {
+  httpApp(self as any).pipe(
+    Effect.map(HttpServer.serve(middleware!)),
+    Layer.unwrapEffect,
+    Layer.provide(ApiRouter.Live)
+  )
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const httpApp = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
+  self: Api.Api<Groups, Error, ErrorR>
+): Effect.Effect<
+  HttpApp.Default,
+  never,
+  ApiRouter | ApiGroup.ApiGroup.ToService<Groups> | ErrorR
+> =>
+  Effect.gen(function*() {
     const router = yield* ApiRouter.router
     const apiMiddleware = yield* Effect.serviceOption(ApiMiddleware)
     const errorSchema = makeErrorSchema(self as any)
@@ -72,10 +92,9 @@ export const serve: {
           onFailure: () => Effect.die(error),
           onSuccess: ([body, status]) => Effect.orDie(HttpServerResponse.json(body, { status }))
         })
-      ),
-      HttpServer.serve(middleware as HttpMiddleware.HttpMiddleware)
+      )
     )
-  })).pipe(Layer.provide(ApiRouter.Live))
+  })
 
 /**
  * @since 1.0.0
@@ -260,18 +279,20 @@ export const middleware =
  * @since 1.0.0
  * @category middleware
  */
-export class ApiMiddleware
-  extends Context.Tag("@effect/platform/ApiBuilder/ApiMiddleware")<ApiMiddleware, HttpMiddleware.HttpMiddleware>()
-{
-}
+export class ApiMiddleware extends Context.Tag("@effect/platform/ApiBuilder/ApiMiddleware")<
+  ApiMiddleware,
+  HttpMiddleware.HttpMiddleware
+>() {}
 
 const middlewareAdd = (middleware: HttpMiddleware.HttpMiddleware): Effect.Effect<HttpMiddleware.HttpMiddleware> =>
   Effect.map(
-    Effect.serviceOption(ApiMiddleware),
-    Option.match({
-      onNone: () => middleware,
-      onSome: (current) => (httpApp) => middleware(current(httpApp))
-    })
+    Effect.context<never>(),
+    (context) => {
+      const current = Context.getOption(context, ApiMiddleware)
+      const withContext: HttpMiddleware.HttpMiddleware = (httpApp) =>
+        Effect.mapInputContext(middleware(httpApp), (input) => Context.merge(context, input))
+      return current._tag === "None" ? withContext : (httpApp) => withContext(current.value(httpApp))
+    }
   )
 
 /**
