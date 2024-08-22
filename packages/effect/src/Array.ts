@@ -1111,8 +1111,15 @@ export const replaceOption: {
  * @since 2.0.0
  */
 export const modify: {
-  <A, B>(i: number, f: (a: A) => B): (self: Iterable<A>) => Array<A | B>
-  <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Array<A | B>
+  <A, B>(
+    i: number,
+    f: (a: A) => B
+  ): <S extends Iterable<A> = Iterable<A>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    self: S,
+    i: number,
+    f: (a: A) => B
+  ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
 } = dual(
   3,
   <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Array<A | B> =>
@@ -1136,8 +1143,15 @@ export const modify: {
  * @since 2.0.0
  */
 export const modifyOption: {
-  <A, B>(i: number, f: (a: A) => B): (self: Iterable<A>) => Option<Array<A | B>>
-  <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Option<Array<A | B>>
+  <A, B>(
+    i: number,
+    f: (a: A) => B
+  ): <S extends Iterable<A> = Iterable<A>>(self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    self: S,
+    i: number,
+    f: (a: A) => B
+  ): Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
 } = dual(3, <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Option<Array<A | B>> => {
   const out = Array.from(self)
   if (isOutOfBound(i, out)) {
