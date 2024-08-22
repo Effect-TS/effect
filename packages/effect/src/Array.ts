@@ -1055,8 +1055,17 @@ export const insertAt: {
  * @since 2.0.0
  */
 export const replace: {
-  <B>(i: number, b: B): <A>(self: Iterable<A>) => Array<A | B>
-  <A, B>(self: Iterable<A>, i: number, b: B): Array<A | B>
+  <B>(
+    i: number,
+    b: B
+  ): <A, S extends Iterable<A> = Iterable<A>>(
+    self: S
+  ) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    self: S,
+    i: number,
+    b: B
+  ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
 } = dual(3, <A, B>(self: Iterable<A>, i: number, b: B): Array<A | B> => modify(self, i, () => b))
 
 /**
@@ -1072,8 +1081,17 @@ export const replace: {
  * @since 2.0.0
  */
 export const replaceOption: {
-  <B>(i: number, b: B): <A>(self: Iterable<A>) => Option<Array<A | B>>
-  <A, B>(self: Iterable<A>, i: number, b: B): Option<Array<A | B>>
+  <B>(
+    i: number,
+    b: B
+  ): <A, S extends Iterable<A> = Iterable<A>>(
+    self: Iterable<A>
+  ) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  <A, B, S extends Iterable<A> = Iterable<A>>(
+    self: S,
+    i: number,
+    b: B
+  ): Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
 } = dual(
   3,
   <A, B>(self: Iterable<A>, i: number, b: B): Option<Array<A | B>> => modifyOption(self, i, () => b)
