@@ -309,13 +309,7 @@ const makeErrorSchema = (
     }
   }
   return Schema.Union(...[...schemas].map((schema) => {
-    const annotations = schema.ast._tag === "Transformation" ?
-      {
-        ...schema.ast.to.annotations,
-        ...schema.ast.annotations
-      } :
-      schema.ast.annotations
-    const status = annotations[ApiEndpoint.AnnotationStatus] ?? 500
+    const status = ApiEndpoint.getAnnotationStatus(schema.ast, 500)
     return Schema.transform(Schema.Any, schema, {
       decode: identity,
       encode: (error) => [error, status]

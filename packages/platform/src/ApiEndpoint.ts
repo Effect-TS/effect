@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
+import type * as AST from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
 import type { Effect } from "effect/Effect"
 import { dual } from "effect/Function"
@@ -318,6 +318,20 @@ export const del: <const Name extends string>(
  */
 export const AnnotationStatus: unique symbol = Symbol.for("@effect/platform/ApiEndpoint/AnnotationStatus")
 
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getAnnotationStatus = (ast: AST.AST, defaultStatus: number): number => {
+  const annotations = ast._tag === "Transformation" ?
+    {
+      ...ast.to.annotations,
+      ...ast.annotations
+    } :
+    ast.annotations
+  return annotations[AnnotationStatus] as number ?? defaultStatus
+}
+
 type Void$ = typeof Schema.Void
 
 /**
@@ -423,8 +437,7 @@ export const setSuccess: {
     makeProto({
       ...self,
       successSchema: schema.annotations({
-        [AnnotationStatus]: annotations?.status ??
-          Option.getOrElse(AST.getAnnotation(schema.ast, AnnotationStatus), () => 200)
+        [AnnotationStatus]: annotations?.status ?? getAnnotationStatus(schema.ast, 200)
       }) as S
     })
 )
@@ -485,8 +498,7 @@ export const setError: {
       ...self,
       errorSchema: schema.pipe(
         Schema.annotations({
-          [AnnotationStatus]: annotations?.status ??
-            Option.getOrElse(AST.getAnnotation(schema.ast, AnnotationStatus), () => 500)
+          [AnnotationStatus]: annotations?.status ?? getAnnotationStatus(schema.ast, 500)
         })
       ) as E
     })
@@ -607,10 +619,9 @@ export const prefix: {
  * @category reflection
  */
 export const successStatus = <A extends ApiEndpoint.Any>(self: A): number => {
-  const status = AST.getAnnotation<number>(self.successSchema.ast, AnnotationStatus)
   const ast = Schema.encodedSchema(self.successSchema).ast
   const isVoid = ast._tag === "VoidKeyword"
-  return Option.getOrElse(status, () => isVoid ? 204 : 200)
+  return getAnnotationStatus(self.successSchema.ast, isVoid ? 204 : 200)
 }
 
 /**
