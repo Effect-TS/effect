@@ -1,24 +1,30 @@
 /**
  * @since 1.0.0
  */
+import type * as AST from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
-import type * as Layer from "effect/Layer"
+import { globalValue } from "effect/GlobalValue"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type { ReadonlyRecord } from "effect/Record"
+import type { Scope } from "effect/Scope"
 import type { Covariant, Mutable, NoInfer } from "effect/Types"
 import type * as Api from "./Api.js"
 import * as ApiEndpoint from "./ApiEndpoint.js"
 import { ApiDecodeError } from "./ApiError.js"
 import type * as ApiGroup from "./ApiGroup.js"
+import * as ApiSchema from "./ApiSchema.js"
 import type * as HttpApp from "./HttpApp.js"
 import * as HttpMethod from "./HttpMethod.js"
+import * as HttpMiddleware from "./HttpMiddleware.js"
 import * as HttpRouter from "./HttpRouter.js"
+import * as HttpServer from "./HttpServer.js"
 import * as HttpServerRequest from "./HttpServerRequest.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
 
@@ -34,27 +40,42 @@ export class ApiRouter extends HttpRouter.Tag("@effect/platform/ApiBuilder/ApiRo
  * @since 1.0.0
  * @category constructors
  */
-export const serve = <Name extends string, Groups extends ApiGroup.ApiGroup.Any, A, E, R>(
-  self: Api.Api<Name, Groups>,
-  f: (httpApp: HttpApp.Default<never, HttpRouter.HttpRouter.DefaultServices>) => Layer.Layer<A, E, R>
+export const serve: {
+  <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
+    self: Api.Api<Groups, Error, ErrorR>
+  ): Layer.Layer<never, never, HttpServer.HttpServer | ApiGroup.ApiGroup.ToService<Groups>>
+  <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, R>(
+    self: Api.Api<Groups, Error, ErrorR>,
+    middleware: (httpApp: HttpApp.Default) => HttpApp.Default<never, R>
+  ): Layer.Layer<
+    never,
+    never,
+    Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | ApiGroup.ApiGroup.ToService<Groups>
+  >
+} = (
+  self: Api.Api.Any,
+  middleware?: HttpMiddleware.HttpMiddleware.Applied<any, never, any>
 ): Layer.Layer<
-  A,
-  E,
-  R | ApiGroup.ApiGroup.ToService<Groups>
+  never,
+  never,
+  any
 > =>
-  ApiRouter.unwrap((router) => {
+  Layer.unwrapEffect(Effect.gen(function*() {
+    const router = yield* ApiRouter.router
+    const apiMiddleware = yield* Effect.serviceOption(ApiMiddleware)
     const errorSchema = makeErrorSchema(self as any)
     const encodeError = Schema.encodeUnknown(errorSchema)
     return router.pipe(
+      apiMiddleware._tag === "Some" ? apiMiddleware.value : identity,
       Effect.catchAll((error) =>
         Effect.matchEffect(encodeError(error), {
           onFailure: () => Effect.die(error),
           onSuccess: ([body, status]) => Effect.orDie(HttpServerResponse.json(body, { status }))
         })
       ),
-      f
+      HttpServer.serve(middleware as HttpMiddleware.HttpMiddleware)
     )
-  })
+  })).pipe(Layer.provide(ApiRouter.Live))
 
 /**
  * @since 1.0.0
@@ -137,7 +158,6 @@ const makeHandlers = <E, R, Endpoints extends ApiEndpoint.ApiEndpoint.Any>(
  * @category handlers
  */
 export const group = <
-  ApiName extends string,
   Groups extends ApiGroup.ApiGroup.Any,
   ApiError,
   ApiErrorR,
@@ -146,7 +166,7 @@ export const group = <
   EX = never,
   RX = never
 >(
-  api: Api.Api<ApiName, Groups, ApiError, ApiErrorR>,
+  api: Api.Api<Groups, ApiError, ApiErrorR>,
   groupName: Name,
   build: (
     handlers: Handlers<never, never, ApiGroup.ApiGroup.EndpointsWithName<Groups, Name>>
@@ -159,7 +179,7 @@ export const group = <
       const context = yield* Effect.context<any>()
       const group = Chunk.findFirst(api.groups, (group) => group.name === groupName)
       if (group._tag === "None") {
-        throw new Error(`Group "${groupName}" not found in API "${api.name}"`)
+        throw new Error(`Group "${groupName}" not found in API`)
       }
       const result = build(makeHandlers({ group: group.value as any, handlers: Chunk.empty() }))
       const handlers = Effect.isEffect(result) ? (yield* result) : result
@@ -216,6 +236,10 @@ export const handle = <Endpoints extends ApiEndpoint.ApiEndpoint.Any, const Name
 }
 
 /**
+ * Add `HttpMiddleware` to a `Handlers` group.
+ *
+ * Any errors are required to have a corresponding schema in the API.
+ *
  * @since 1.0.0
  * @category middleware
  */
@@ -232,6 +256,109 @@ export const middleware =
       })
     })
 
+/**
+ * @since 1.0.0
+ * @category middleware
+ */
+export class ApiMiddleware
+  extends Context.Tag("@effect/platform/ApiBuilder/ApiMiddleware")<ApiMiddleware, HttpMiddleware.HttpMiddleware>()
+{
+}
+
+const middlewareAdd = (middleware: HttpMiddleware.HttpMiddleware): Effect.Effect<HttpMiddleware.HttpMiddleware> =>
+  Effect.map(
+    Effect.serviceOption(ApiMiddleware),
+    Option.match({
+      onNone: () => middleware,
+      onSome: (current) => (httpApp) => middleware(current(httpApp))
+    })
+  )
+
+/**
+ * Create an `Api` level middleware `Layer`.
+ *
+ * @since 1.0.0
+ * @category middleware
+ */
+export const middlewareMake = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, R, EX = never, RX = never>(
+  _api: Api.Api<Groups, Error, ErrorR>,
+  middleware: ApiMiddleware.Fn<NoInfer<Error>, R> | Effect.Effect<ApiMiddleware.Fn<NoInfer<Error>, R>, EX, RX>
+): Layer.Layer<never, EX, Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | RX> =>
+  Effect.isEffect(middleware)
+    ? Layer.effect(ApiMiddleware, Effect.flatMap(middleware as any, middlewareAdd))
+    : Layer.effect(ApiMiddleware, middlewareAdd(middleware as any))
+
+/**
+ * Create an `Api` level middleware `Layer`, that has a `Scope` provided to
+ * the constructor.
+ *
+ * @since 1.0.0
+ * @category middleware
+ */
+export const middlewareMakeScoped = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, R, EX = never, RX = never>(
+  _api: Api.Api<Groups, Error, ErrorR>,
+  middleware: ApiMiddleware.Fn<NoInfer<Error>, R> | Effect.Effect<ApiMiddleware.Fn<NoInfer<Error>, R>, EX, RX>
+): Layer.Layer<never, EX, Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | Exclude<RX, Scope>> =>
+  Effect.isEffect(middleware)
+    ? Layer.scoped(ApiMiddleware, Effect.flatMap(middleware as any, middlewareAdd))
+    : Layer.effect(ApiMiddleware, middlewareAdd(middleware as any))
+
+/**
+ * Create an `Api` level middleware `Layer`, that can't fail.
+ *
+ * @since 1.0.0
+ * @category middleware
+ */
+export const middlewareMakeNoError = <R, EX = never, RX = never>(
+  middleware: ApiMiddleware.Fn<never, R> | Effect.Effect<ApiMiddleware.Fn<never, R>, EX, RX>
+): Layer.Layer<never, EX, Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | RX> =>
+  Effect.isEffect(middleware)
+    ? Layer.effect(ApiMiddleware, Effect.flatMap(middleware as any, middlewareAdd))
+    : Layer.effect(ApiMiddleware, middlewareAdd(middleware as any))
+
+/**
+ * Create an `Api` level middleware `Layer`, that can't fail.
+ * It has a `Scope` provided to the constructor.
+ *
+ * @since 1.0.0
+ * @category middleware
+ */
+export const middlewareMakeNoErrorScoped = <R, EX = never, RX = never>(
+  middleware: ApiMiddleware.Fn<never, R> | Effect.Effect<ApiMiddleware.Fn<never, R>, EX, RX>
+): Layer.Layer<never, EX, Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | RX> =>
+  Effect.isEffect(middleware)
+    ? Layer.scoped(ApiMiddleware, Effect.flatMap(middleware as any, middlewareAdd))
+    : Layer.effect(ApiMiddleware, middlewareAdd(middleware as any))
+
+/**
+ * A CORS middleware layer.
+ *
+ * @since 1.0.0
+ * @category middleware
+ */
+export const middlewareCors = (
+  options?: {
+    readonly allowedOrigins?: ReadonlyArray<string> | undefined
+    readonly allowedMethods?: ReadonlyArray<string> | undefined
+    readonly allowedHeaders?: ReadonlyArray<string> | undefined
+    readonly exposedHeaders?: ReadonlyArray<string> | undefined
+    readonly maxAge?: number | undefined
+    readonly credentials?: boolean | undefined
+  } | undefined
+): Layer.Layer<never> => middlewareMakeNoError(HttpMiddleware.cors(options) as any)
+
+/**
+ * @since 1.0.0
+ * @category middleware
+ */
+export declare namespace ApiMiddleware {
+  /**
+   * @since 1.0.0
+   * @category middleware
+   */
+  export type Fn<Error, R> = (httpApp: HttpApp.Default) => HttpApp.Default<Error, R>
+}
+
 // internal
 
 const requestPayload = (
@@ -245,8 +372,8 @@ const handlerToRoute = (
 ): HttpRouter.Route<any, any> => {
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
   const decodePayload = Option.map(endpoint.payloadSchema, Schema.decodeUnknown)
-  const encodeSuccess = Option.map(ApiEndpoint.successSchema(endpoint), Schema.encodeUnknown)
-  const successStatus = ApiEndpoint.successStatus(endpoint)
+  const encodeSuccess = Option.map(ApiEndpoint.schemaSuccess(endpoint), Schema.encodeUnknown)
+  const successStatus = ApiSchema.getStatusSuccess(endpoint.successSchema)
   return HttpRouter.makeRoute(
     endpoint.method,
     endpoint.path,
@@ -286,30 +413,40 @@ const handlerToRoute = (
   )
 }
 
+const astCache = globalValue("@effect/platform/ApiBuilder", () => new WeakMap<AST.AST, Schema.Schema.Any>())
+
 const makeErrorSchema = (
-  api: Api.Api<string, ApiGroup.ApiGroup<string, ApiEndpoint.ApiEndpoint.Any>, any, any>
+  api: Api.Api<ApiGroup.ApiGroup<string, ApiEndpoint.ApiEndpoint.Any>, any, any>
 ): Schema.Schema<unknown, [error: unknown, status: number]> => {
   const schemas = new Set<Schema.Schema.Any>([ApiDecodeError])
-  for (const group of api.groups) {
-    for (const endpoint of group.endpoints) {
-      schemas.add(endpoint.errorSchema)
+  function processSchema(schema: Schema.Schema.Any): void {
+    if (astCache.has(schema.ast)) {
+      schemas.add(astCache.get(schema.ast)!)
+      return
     }
-    const groupAst = group.error.ast
-    if (groupAst._tag === "Union") {
-      for (const ast of groupAst.types) {
-        schemas.add(
-          Schema.make(ast).annotations({
-            ...groupAst.annotations,
-            ...ast.annotations
-          })
-        )
+    const ast = schema.ast
+    if (ast._tag === "Union") {
+      for (const astType of ast.types) {
+        const errorSchema = Schema.make(astType).annotations({
+          ...ast.annotations,
+          ...astType.annotations
+        })
+        astCache.set(astType, errorSchema)
+        schemas.add(errorSchema)
       }
     } else {
-      schemas.add(group.error)
+      astCache.set(ast, schema)
+      schemas.add(schema)
     }
   }
+  for (const group of api.groups) {
+    for (const endpoint of group.endpoints) {
+      processSchema(endpoint.errorSchema)
+    }
+    processSchema(group.errorSchema)
+  }
   return Schema.Union(...[...schemas].map((schema) => {
-    const status = ApiEndpoint.getAnnotationStatus(schema.ast, 500)
+    const status = ApiSchema.getStatusError(schema)
     return Schema.transform(Schema.Any, schema, {
       decode: identity,
       encode: (error) => [error, status]

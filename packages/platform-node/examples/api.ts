@@ -16,24 +16,24 @@ class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
 const users = ApiGroup.make("users").pipe(
   ApiGroup.add(
     ApiEndpoint.get("findById", "/:id").pipe(
-      ApiEndpoint.setPathSchema(Schema.Struct({
+      ApiEndpoint.path(Schema.Struct({
         id: Schema.NumberFromString
       })),
-      ApiEndpoint.setSuccess(User),
-      ApiEndpoint.setError(Schema.String)
+      ApiEndpoint.success(User),
+      ApiEndpoint.error(Schema.String)
     )
   ),
   ApiGroup.add(
     ApiEndpoint.post("create", "/").pipe(
-      ApiEndpoint.setPayload(Schema.Struct({
+      ApiEndpoint.payload(Schema.Struct({
         name: Schema.String
       })),
-      ApiEndpoint.setSuccess(User)
+      ApiEndpoint.success(User)
     )
   ),
   ApiGroup.add(
     ApiEndpoint.get("me", "/me").pipe(
-      ApiEndpoint.setSuccess(User)
+      ApiEndpoint.success(User)
     )
   ),
   ApiGroup.addError(Unauthorized, { status: 401 })
@@ -65,9 +65,10 @@ const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
     ApiBuilder.middleware(Effect.provideService(CurrentUser, new User({ id: 1000, name: "Provided" })))
   ))
 
-ApiBuilder.serve(api, HttpServer.serve(HttpMiddleware.logger)).pipe(
-  Layer.provide(UsersLive),
+ApiBuilder.serve(api, HttpMiddleware.logger).pipe(
   HttpServer.withLogAddress,
+  Layer.provide(UsersLive),
+  Layer.provide(ApiBuilder.middlewareCors()),
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
   Layer.launch,
   NodeRuntime.runMain

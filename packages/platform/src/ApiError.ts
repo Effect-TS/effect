@@ -6,7 +6,7 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Effect from "effect/Effect"
-import { AnnotationStatus } from "./ApiEndpoint.js"
+import * as ApiSchema from "./ApiSchema.js"
 
 /**
  * @since 1.0.0
@@ -62,9 +62,7 @@ export const Issue: Issue = Schema.Struct({
 export class ApiDecodeError extends Schema.TaggedError<ApiDecodeError>()("ApiDecodeError", {
   issues: Schema.Array(Issue),
   message: Schema.String
-}, {
-  [AnnotationStatus]: 400
-}) {
+}, ApiSchema.annotations({ status: 400 })) {
   /**
    * @since 1.0.0
    */

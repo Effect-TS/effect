@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as AST from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
 import type { Effect } from "effect/Effect"
 import { dual } from "effect/Function"
@@ -9,6 +8,7 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Types from "effect/Types"
+import * as ApiSchema from "./ApiSchema.js"
 import type { HttpMethod } from "./HttpMethod.js"
 import * as HttpRouter from "./HttpRouter.js"
 
@@ -228,17 +228,7 @@ const makeProto = <
   readonly payloadSchema: Option.Option<Payload>
   readonly successSchema: Success
   readonly errorSchema: Error
-}): ApiEndpoint<Name, Method, Path, Payload, Success, Error> => {
-  const self = Object.create(Proto)
-  self.name = options.name
-  self.method = options.method
-  self.path = options.path
-  self.pathSchema = options.pathSchema
-  self.payloadSchema = options.payloadSchema
-  self.successSchema = options.successSchema
-  self.errorSchema = options.errorSchema
-  return self
-}
+}): ApiEndpoint<Name, Method, Path, Payload, Success, Error> => Object.assign(Object.create(Proto), options)
 
 /**
  * @since 1.0.0
@@ -312,26 +302,6 @@ export const del: <const Name extends string>(
   "DELETE"
 )
 
-/**
- * @since 1.0.0
- * @category annotations
- */
-export const AnnotationStatus: unique symbol = Symbol.for("@effect/platform/ApiEndpoint/AnnotationStatus")
-
-/**
- * @since 1.0.0
- * @category annotations
- */
-export const getAnnotationStatus = (ast: AST.AST, defaultStatus: number): number => {
-  const annotations = ast._tag === "Transformation" ?
-    {
-      ...ast.to.annotations,
-      ...ast.annotations
-    } :
-    ast.annotations
-  return annotations[AnnotationStatus] as number ?? defaultStatus
-}
-
 type Void$ = typeof Schema.Void
 
 /**
@@ -346,9 +316,9 @@ export interface Created extends Void$ {
  * @since 1.0.0
  * @category schemas
  */
-export const Created: Created = Schema.Void.annotations({
-  [AnnotationStatus]: 201
-}) as any
+export const Created: Created = Schema.Void.annotations(ApiSchema.annotations({
+  status: 201
+})) as any
 
 /**
  * @since 1.0.0
@@ -362,9 +332,9 @@ export interface Accepted extends Void$ {
  * @since 1.0.0
  * @category schemas
  */
-export const Accepted: Accepted = Schema.Void.annotations({
-  [AnnotationStatus]: 202
-}) as any
+export const Accepted: Accepted = Schema.Void.annotations(ApiSchema.annotations({
+  status: 202
+})) as any
 
 /**
  * @since 1.0.0
@@ -378,15 +348,15 @@ export interface Empty extends Void$ {
  * @since 1.0.0
  * @category schemas
  */
-export const Empty: Empty = Schema.Void.annotations({
-  [AnnotationStatus]: 204
-}) as any
+export const Empty: Empty = Schema.Void.annotations(ApiSchema.annotations({
+  status: 204
+})) as any
 
 /**
  * @since 1.0.0
  * @category result
  */
-export const setSuccess: {
+export const success: {
   <S extends Schema.Schema.Any>(
     schema: S,
     annotations?: {
@@ -436,9 +406,9 @@ export const setSuccess: {
   ): ApiEndpoint<Name, Method, _Path, _P, S, _E> =>
     makeProto({
       ...self,
-      successSchema: schema.annotations({
-        [AnnotationStatus]: annotations?.status ?? getAnnotationStatus(schema.ast, 200)
-      }) as S
+      successSchema: schema.annotations(ApiSchema.annotations({
+        status: annotations?.status ?? ApiSchema.getStatusSuccess(schema)
+      })) as S
     })
 )
 
@@ -446,7 +416,7 @@ export const setSuccess: {
  * @since 1.0.0
  * @category result
  */
-export const setError: {
+export const error: {
   <E extends Schema.Schema.All>(
     schema: E,
     annotations?: {
@@ -497,9 +467,9 @@ export const setError: {
     makeProto({
       ...self,
       errorSchema: schema.pipe(
-        Schema.annotations({
-          [AnnotationStatus]: annotations?.status ?? getAnnotationStatus(schema.ast, 500)
-        })
+        Schema.annotations(ApiSchema.annotations({
+          status: annotations?.status ?? ApiSchema.getStatusError(schema)
+        }))
       ) as E
     })
 )
@@ -508,7 +478,7 @@ export const setError: {
  * @since 1.0.0
  * @category request
  */
-export const setPayload: {
+export const payload: {
   <Method extends HttpMethod, P extends Schema.Schema.All>(
     schema: P & ApiEndpoint.ValidatePayload<Method, P>
   ): <
@@ -556,7 +526,7 @@ export const setPayload: {
  * @since 1.0.0
  * @category request
  */
-export const setPathSchema: {
+export const path: {
   <Path extends Schema.Schema.Any>(
     schema: Path & ApiEndpoint.ValidatePath<Path>
   ): <
@@ -618,26 +588,14 @@ export const prefix: {
  * @since 1.0.0
  * @category reflection
  */
-export const successStatus = <A extends ApiEndpoint.Any>(self: A): number => {
-  const ast = Schema.encodedSchema(self.successSchema).ast
-  const isVoid = ast._tag === "VoidKeyword"
-  return getAnnotationStatus(self.successSchema.ast, isVoid ? 204 : 200)
-}
-
-/**
- * @since 1.0.0
- * @category reflection
- */
-export const successSchema = <A extends ApiEndpoint.Any>(self: A): Option.Option<A["successSchema"]> => {
-  const ast = Schema.encodedSchema(self.successSchema).ast
-  return ast._tag === "VoidKeyword" ? Option.none() : Option.some(self.successSchema)
-}
-
-/**
- * @since 1.0.0
- * @category reflection
- */
 export const successIsVoid = <A extends ApiEndpoint.Any>(self: A): boolean => {
   const ast = Schema.encodedSchema(self.successSchema).ast
   return ast._tag === "VoidKeyword"
 }
+
+/**
+ * @since 1.0.0
+ * @category reflection
+ */
+export const schemaSuccess = <A extends ApiEndpoint.Any>(self: A): Option.Option<A["successSchema"]> =>
+  successIsVoid(self) ? Option.none() : Option.some(self.successSchema)

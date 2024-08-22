@@ -1,15 +1,14 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import { dual } from "effect/Function"
-import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as ApiEndpoint from "./ApiEndpoint.js"
 import type { ApiDecodeError } from "./ApiError.js"
+import * as ApiSchema from "./ApiSchema.js"
 import type { PathInput } from "./HttpRouter.js"
 
 /**
@@ -43,7 +42,7 @@ export interface ApiGroup<
   readonly [TypeId]: TypeId
   readonly name: Name
   readonly endpoints: Chunk.Chunk<Endpoints>
-  readonly error: Schema.Schema<Error, unknown, ErrorR>
+  readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
 }
 
 /**
@@ -132,21 +131,15 @@ const Proto = {
 const makeProto = <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR>(options: {
   readonly name: Name
   readonly endpoints: Chunk.Chunk<Endpoints>
-  readonly error: Schema.Schema<Error, unknown, ErrorR>
-}): ApiGroup<Name, Endpoints, Error, ErrorR> => {
-  const self = Object.create(Proto)
-  self.name = options.name
-  self.endpoints = options.endpoints
-  self.error = options.error
-  return self
-}
+  readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
+}): ApiGroup<Name, Endpoints, Error, ErrorR> => Object.assign(Object.create(Proto), options)
 
 /**
  * @since 1.0.0
  * @category constructors
  */
 export const make = <Name extends string>(name: Name): ApiGroup<Name> =>
-  makeProto({ name, endpoints: Chunk.empty(), error: Schema.Never as any })
+  makeProto({ name, endpoints: Chunk.empty(), errorSchema: Schema.Never as any })
 
 /**
  * @since 1.0.0
@@ -214,12 +207,11 @@ export const addError: {
   ): ApiGroup<Name, Endpoints, Error | A, ErrorR | R> =>
     makeProto({
       ...self,
-      error: Schema.Union(
-        self.error,
-        schema.annotations({
-          [ApiEndpoint.AnnotationStatus]: annotations?.status ??
-            Option.getOrElse(AST.getAnnotation(schema.ast, ApiEndpoint.AnnotationStatus), () => 500)
-        })
+      errorSchema: Schema.Union(
+        self.errorSchema,
+        schema.annotations(ApiSchema.annotations({
+          status: annotations?.status ?? ApiSchema.getStatusError(schema)
+        }))
       )
     })
 )
