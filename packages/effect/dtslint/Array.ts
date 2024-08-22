@@ -1334,3 +1334,25 @@ Array.getSomes(hole<Iterable<Option.Option<number> | Option.Option<string>>>())
 
 // $ExpectType (string | number)[]
 Array.getSomes(hole<Iterable<Option.Option<number>> | Iterable<Option.Option<string>>>())
+
+// -------------------------------------------------------------------------------------
+// replace
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+Array.replace([], 0, "a")
+
+// $ExpectType ("a" | 1 | 2)[]
+Array.replace(new Set([1, 2] as const), 0, "a" as const)
+
+// $ExpectType [number | "a", ...(number | "a")[]]
+Array.replace(Array.of(1), 0, "a" as const)
+
+// $ExpectType string[]
+pipe([], Array.replace(0, "a"))
+
+// $ExpectType ("a" | 1 | 2)[]
+pipe(new Set([1, 2] as const), Array.replace(0, "a" as const))
+
+// $ExpectType [number | "a", ...(number | "a")[]]
+pipe(Array.of(1), Array.replace(0, "a" as const))
