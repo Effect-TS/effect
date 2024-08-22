@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Introduce new arguments and generics naming style for stream module 
+Introduce left / right naming for Stream apis
