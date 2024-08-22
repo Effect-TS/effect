@@ -1,7 +1,7 @@
 import { Api, ApiBuilder, ApiEndpoint, ApiGroup, HttpMiddleware, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
-import { Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { createServer } from "node:http"
 
 class User extends Schema.Class<User>("User")({
@@ -28,8 +28,12 @@ const users = ApiGroup.make("users").pipe(
       ApiEndpoint.setPayload(Schema.Struct({
         name: Schema.String
       })),
-      ApiEndpoint.setSuccess(User),
-      ApiEndpoint.setError(Schema.String)
+      ApiEndpoint.setSuccess(User)
+    )
+  ),
+  ApiGroup.add(
+    ApiEndpoint.get("me", "/me").pipe(
+      ApiEndpoint.setSuccess(User)
     )
   ),
   ApiGroup.addError(Unauthorized, { status: 401 })
@@ -38,6 +42,8 @@ const users = ApiGroup.make("users").pipe(
 const api = Api.make("My api").pipe(
   Api.addGroup("/users", users)
 )
+
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
 const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
   handlers.pipe(
@@ -54,7 +60,9 @@ const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
           id: _.path.id,
           name: "John"
         })
-      ))
+      )),
+    ApiBuilder.handle("me", (_) => CurrentUser),
+    ApiBuilder.middleware(Effect.provideService(CurrentUser, new User({ id: 1000, name: "Provided" })))
   ))
 
 ApiBuilder.serve(api, HttpServer.serve(HttpMiddleware.logger)).pipe(

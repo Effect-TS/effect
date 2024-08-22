@@ -11,7 +11,7 @@ import type * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type { ReadonlyRecord } from "effect/Record"
-import type { Covariant, NoInfer } from "effect/Types"
+import type { Covariant, Mutable, NoInfer } from "effect/Types"
 import type * as Api from "./Api.js"
 import * as ApiEndpoint from "./ApiEndpoint.js"
 import { ApiDecodeError } from "./ApiError.js"
@@ -83,7 +83,32 @@ export interface Handlers<
     _Endpoints: Covariant<Endpoints>
   }
   readonly group: ApiGroup.ApiGroup<any, ApiEndpoint.ApiEndpoint.Any, any, R>
-  readonly handlers: Chunk.Chunk<[ApiEndpoint.ApiEndpoint.Any, ApiEndpoint.ApiEndpoint.Handler<any, E, R>]>
+  readonly handlers: Chunk.Chunk<Handlers.Item<E, R>>
+}
+
+/**
+ * @since 1.0.0
+ * @category handlers
+ */
+export declare namespace Handlers {
+  /**
+   * @since 1.0.0
+   * @category handlers
+   */
+  export type Middleware<E, R, E1, R1> = (self: HttpRouter.Route.Middleware<E, R>) => HttpApp.Default<E1, R1>
+
+  /**
+   * @since 1.0.0
+   * @category handlers
+   */
+  export type Item<E, R> = {
+    readonly _tag: "Handler"
+    readonly endpoint: ApiEndpoint.ApiEndpoint.Any
+    readonly handler: ApiEndpoint.ApiEndpoint.Handler<any, E, R>
+  } | {
+    readonly _tag: "Middleware"
+    readonly middleware: Middleware<any, any, E, R>
+  }
 }
 
 const HandlersProto = {
@@ -98,7 +123,10 @@ const HandlersProto = {
 const makeHandlers = <Name extends string, Error, ErrorR, E, R, Endpoints extends ApiEndpoint.ApiEndpoint.Any>(
   options: {
     readonly group: ApiGroup.ApiGroup<Name, Endpoints, Error, ErrorR>
-    readonly handlers: Chunk.Chunk<[ApiEndpoint.ApiEndpoint.Any, ApiEndpoint.ApiEndpoint.Handler<any, E, R>]>
+    readonly handlers: Chunk.Chunk<
+      | [ApiEndpoint.ApiEndpoint.Any, ApiEndpoint.ApiEndpoint.Handler<any, E, R>]
+      | HttpRouter.Route.Middleware<E, R>
+    >
   }
 ): Handlers<E, R, Endpoints> => {
   const self = Object.create(HandlersProto)
@@ -128,22 +156,37 @@ export const group = <
   ) =>
     | Handlers<NoInfer<ApiError> | ApiGroup.ApiGroup.ErrorWithName<Groups, Name>, RH>
     | Effect.Effect<Handlers<NoInfer<ApiError> | ApiGroup.ApiGroup.ErrorWithName<Groups, Name>, RH>, EX, RX>
-): Layer.Layer<ApiGroup.ApiGroup.Service<Name>, EX, RX> =>
+): Layer.Layer<ApiGroup.ApiGroup.Service<Name>, EX, RX | RH | ApiGroup.ApiGroup.ContextWithName<Groups, Name>> =>
   ApiRouter.use((router) =>
     Effect.gen(function*() {
+      const context = yield* Effect.context<any>()
       const group = Chunk.findFirst(api.groups, (group) => group.name === groupName)
       if (group._tag === "None") {
         throw new Error(`Group "${groupName}" not found in API "${api.name}"`)
       }
       const result = build(makeHandlers({ group: group.value as any, handlers: Chunk.empty() }))
       const handlers = Effect.isEffect(result) ? (yield* result) : result
-      yield* router.concat(
-        HttpRouter.fromIterable(
-          Chunk.map(handlers.handlers, ([endpoint, handler]) => handlerToRoute(endpoint, handler))
-        )
-      )
+      const routes: Array<HttpRouter.Route<any, any>> = []
+      for (const item of handlers.handlers) {
+        if (item._tag === "Middleware") {
+          for (const route of routes) {
+            ;(route as Mutable<HttpRouter.Route<any, any>>).handler = item.middleware(route.handler as any)
+          }
+        } else {
+          routes.push(handlerToRoute(
+            item.endpoint,
+            function(request) {
+              return Effect.mapInputContext(
+                item.handler(request),
+                (input) => Context.merge(context, input)
+              )
+            }
+          ))
+        }
+      }
+      yield* router.concat(HttpRouter.fromIterable(routes))
     })
-  ) as Layer.Layer<ApiGroup.ApiGroup.Service<Name>, EX, RX>
+  ) as any
 
 /**
  * @since 1.0.0
@@ -167,9 +210,30 @@ export const handle = <Endpoints extends ApiEndpoint.ApiEndpoint.Any, const Name
   const endpoint = o.value
   return makeHandlers({
     group: self.group,
-    handlers: Chunk.append(self.handlers, [endpoint, handler]) as any
+    handlers: Chunk.append(self.handlers, {
+      _tag: "Handler",
+      endpoint,
+      handler
+    }) as any
   }) as any
 }
+
+/**
+ * @since 1.0.0
+ * @category middleware
+ */
+export const middleware =
+  <E, R, E1, R1>(middleware: Handlers.Middleware<E, R, E1, R1>) =>
+  <Endpoints extends ApiEndpoint.ApiEndpoint.Any>(
+    self: Handlers<E, R, Endpoints>
+  ): Handlers<E1, ApiEndpoint.ApiEndpoint.ExcludeProvided<R1>, Endpoints> =>
+    makeHandlers({
+      ...self,
+      handlers: Chunk.append(self.handlers, {
+        _tag: "Middleware",
+        middleware
+      }) as any
+    }) as any
 
 // internal
 

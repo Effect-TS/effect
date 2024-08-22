@@ -181,7 +181,7 @@ export declare namespace ApiEndpoint {
    */
   export type ExcludeProvided<R> = Exclude<
     R,
-    HttpRouter.HttpRouter.DefaultServices | HttpRouter.HttpRouter.DefaultServices
+    HttpRouter.HttpRouter.DefaultServices | HttpRouter.HttpRouter.Provided
   >
 
   /**
