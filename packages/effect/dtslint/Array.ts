@@ -1363,6 +1363,9 @@ pipe(nonEmptyNumbers, Array.replace(0, "a" as const))
 // $ExpectType ("a" | 1 | 2)[]
 pipe(new Set([1, 2] as const), Array.replace(0, "a" as const))
 
+// $ExpectType [number | "a", ...(number | "a")[]]
+pipe(Array.of(1), Array.replace(0, "a" as const))
+
 // -------------------------------------------------------------------------------------
 // replaceOption
 // -------------------------------------------------------------------------------------
@@ -1390,3 +1393,114 @@ pipe(nonEmptyNumbers, Array.replaceOption(0, "a" as const))
 
 // $ExpectType Option<("a" | 1 | 2)[]>
 pipe(new Set([1, 2] as const), Array.replaceOption(0, "a" as const))
+
+// -------------------------------------------------------------------------------------
+// modify
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+Array.modify([], 0, (
+  _n // $ExpectType never
+) => "a")
+// $ExpectType (string | number)[]
+Array.modify(numbers, 0, (
+  _n // $ExpectType number
+) => "a")
+
+// $ExpectType [number | "a", ...(number | "a")[]]
+Array.modify(nonEmptyNumbers, 0, (
+  _n // $ExpectType number
+) => "a" as const)
+
+// $ExpectType ("a" | 1 | 2)[]
+Array.modify(new Set([1, 2] as const), 0, (
+  _n // $ExpectType 1 | 2
+) => "a" as const)
+
+// $ExpectType string[]
+pipe(
+  [],
+  Array.modify(0, (
+    _n // $ExpectType never
+  ) => "a")
+)
+
+// $ExpectType (string | number)[]
+pipe(
+  numbers,
+  Array.modify(0, (
+    _n // $ExpectType number
+  ) => "a")
+)
+
+// $ExpectType [number | "a", ...(number | "a")[]]
+pipe(
+  nonEmptyNumbers,
+  Array.modify(0, (
+    _n // $ExpectType number
+  ) => "a" as const)
+)
+
+// $ExpectType ("a" | 1 | 2)[]
+pipe(
+  new Set([1, 2] as const),
+  Array.modify(0, (
+    _n // $ExpectType 1 | 2
+  ) => "a" as const)
+)
+
+// -------------------------------------------------------------------------------------
+// modifyOption
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Option<string[]>
+Array.modifyOption([], 0, (
+  _n // $ExpectType never
+) => "a")
+
+// $ExpectType Option<(string | number)[]>
+Array.modifyOption(numbers, 0, (
+  _n // $ExpectType number
+) => "a")
+
+// $ExpectType Option<[number | "a", ...(number | "a")[]]>
+Array.modifyOption(nonEmptyNumbers, 0, (
+  _n // $ExpectType number
+) => "a" as const)
+
+// $ExpectType Option<("a" | 1 | 2)[]>
+Array.modifyOption(new Set([1, 2] as const), 0, (
+  _n // $ExpectType 1 | 2
+) => "a" as const)
+
+// $ExpectType Option<string[]>
+pipe(
+  [],
+  Array.modifyOption(0, (
+    _n // $ExpectType never
+  ) => "a")
+)
+
+// $ExpectType Option<(string | number)[]>
+pipe(
+  numbers,
+  Array.modifyOption(0, (
+    _n // $ExpectType number
+  ) => "a")
+)
+
+// $ExpectType Option<[number | "a", ...(number | "a")[]]>
+pipe(
+  nonEmptyNumbers,
+  Array.modifyOption(0, (
+    _n // $ExpectType number
+  ) => "a" as const)
+)
+
+// $ExpectType Option<("a" | 1 | 2)[]>
+pipe(
+  new Set([1, 2] as const),
+  Array.modifyOption(0, (
+    _n // $ExpectType 1 | 2
+  ) => "a" as const)
+)
