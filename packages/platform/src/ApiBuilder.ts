@@ -120,13 +120,10 @@ const HandlersProto = {
   }
 }
 
-const makeHandlers = <Name extends string, Error, ErrorR, E, R, Endpoints extends ApiEndpoint.ApiEndpoint.Any>(
+const makeHandlers = <E, R, Endpoints extends ApiEndpoint.ApiEndpoint.Any>(
   options: {
-    readonly group: ApiGroup.ApiGroup<Name, Endpoints, Error, ErrorR>
-    readonly handlers: Chunk.Chunk<
-      | [ApiEndpoint.ApiEndpoint.Any, ApiEndpoint.ApiEndpoint.Handler<any, E, R>]
-      | HttpRouter.Route.Middleware<E, R>
-    >
+    readonly group: ApiGroup.ApiGroup<any, ApiEndpoint.ApiEndpoint.Any, any, R>
+    readonly handlers: Chunk.Chunk<Handlers.Item<E, R>>
   }
 ): Handlers<E, R, Endpoints> => {
   const self = Object.create(HandlersProto)
@@ -215,7 +212,7 @@ export const handle = <Endpoints extends ApiEndpoint.ApiEndpoint.Any, const Name
       endpoint,
       handler
     }) as any
-  }) as any
+  })
 }
 
 /**
@@ -227,13 +224,13 @@ export const middleware =
   <Endpoints extends ApiEndpoint.ApiEndpoint.Any>(
     self: Handlers<E, R, Endpoints>
   ): Handlers<E1, ApiEndpoint.ApiEndpoint.ExcludeProvided<R1>, Endpoints> =>
-    makeHandlers({
-      ...self,
+    makeHandlers<E1, ApiEndpoint.ApiEndpoint.ExcludeProvided<R1>, Endpoints>({
+      ...self as any,
       handlers: Chunk.append(self.handlers, {
         _tag: "Middleware",
         middleware
-      }) as any
-    }) as any
+      })
+    })
 
 // internal
 
