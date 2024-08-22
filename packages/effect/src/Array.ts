@@ -1095,8 +1095,6 @@ export const replaceOption: {
   <A, B>(self: Iterable<A>, i: number, b: B): Option<Array<A | B>> => modifyOption(self, i, () => b)
 )
 
-type TypeOfIterable<T extends Iterable<any>> = T extends Iterable<infer A> ? A : never
-
 /**
  * Apply a function to the element at the specified index, creating a new `Array`,
  * or return a copy of the input if the index is out of bounds.
@@ -1118,7 +1116,7 @@ export const modify: {
   <A, B, S extends Iterable<A> = Iterable<A>>(
     self: S,
     i: number,
-    f: (a: TypeOfIterable<S>) => B
+    f: (a: ReadonlyArray.Infer<S>) => B
   ): ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
 } = dual(
   3,
@@ -1150,7 +1148,7 @@ export const modifyOption: {
   <A, B, S extends Iterable<A> = Iterable<A>>(
     self: S,
     i: number,
-    f: (a: TypeOfIterable<S>) => B
+    f: (a: ReadonlyArray.Infer<S>) => B
   ): Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
 } = dual(3, <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Option<Array<A | B>> => {
   const out = Array.from(self)
