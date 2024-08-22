@@ -32,7 +32,7 @@ const users = ApiGroup.make("users").pipe(
       ApiEndpoint.setError(Schema.String)
     )
   ),
-  ApiGroup.addError(Unauthorized)
+  ApiGroup.addError(Unauthorized, { status: 401 })
 )
 
 const api = Api.make("My api").pipe(

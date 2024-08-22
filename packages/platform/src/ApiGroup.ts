@@ -7,7 +7,9 @@ import * as Chunk from "effect/Chunk"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import * as Predicate from "effect/Predicate"
 import * as ApiEndpoint from "./ApiEndpoint.js"
+import type { ApiDecodeError } from "./ApiError.js"
 import type { PathInput } from "./HttpRouter.js"
 
 /**
@@ -24,12 +26,18 @@ export type TypeId = typeof TypeId
 
 /**
  * @since 1.0.0
+ * @category guards
+ */
+export const isApiGroup = (u: unknown): u is ApiGroup.Any => Predicate.hasProperty(u, TypeId)
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export interface ApiGroup<
   out Name extends string,
   out Endpoints extends ApiEndpoint.ApiEndpoint.Any = never,
-  in out Error = never,
+  in out Error = ApiDecodeError,
   out ErrorR = never
 > extends Pipeable {
   readonly [TypeId]: TypeId
@@ -195,23 +203,26 @@ export const addError: {
       readonly status?: number | undefined
     }
   ): ApiGroup<Name, Endpoints, Error | A, ErrorR | R>
-} = dual(2, <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR, A, I, R>(
-  self: ApiGroup<Name, Endpoints, Error, ErrorR>,
-  schema: Schema.Schema<A, I, R>,
-  annotations?: {
-    readonly status?: number | undefined
-  }
-): ApiGroup<Name, Endpoints, Error | A, ErrorR | R> =>
-  makeProto({
-    ...self,
-    error: Schema.Union(
-      self.error,
-      schema.annotations({
-        [ApiEndpoint.AnnotationStatus]: annotations?.status ??
-          Option.getOrElse(AST.getAnnotation(schema.ast, ApiEndpoint.AnnotationStatus), () => 500)
-      })
-    )
-  }))
+} = dual(
+  (args) => isApiGroup(args[0]),
+  <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR, A, I, R>(
+    self: ApiGroup<Name, Endpoints, Error, ErrorR>,
+    schema: Schema.Schema<A, I, R>,
+    annotations?: {
+      readonly status?: number | undefined
+    }
+  ): ApiGroup<Name, Endpoints, Error | A, ErrorR | R> =>
+    makeProto({
+      ...self,
+      error: Schema.Union(
+        self.error,
+        schema.annotations({
+          [ApiEndpoint.AnnotationStatus]: annotations?.status ??
+            Option.getOrElse(AST.getAnnotation(schema.ast, ApiEndpoint.AnnotationStatus), () => 500)
+        })
+      )
+    })
+)
 
 /**
  * @since 1.0.0

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import { dual } from "effect/Function"
 import type { Pipeable } from "effect/Pipeable"
@@ -31,11 +32,16 @@ export const isApi = (u: unknown): u is Api<any, any> => Predicate.hasProperty(u
  * @since 1.0.0
  * @category models
  */
-export interface Api<Name extends string, out Groups extends ApiGroup.ApiGroup.Any = never> extends Pipeable {
+export interface Api<
+  out Name extends string,
+  out Groups extends ApiGroup.ApiGroup.Any = never,
+  in out Error = never,
+  out ErrorR = never
+> extends Pipeable {
   readonly [TypeId]: TypeId
   readonly name: Name
   readonly groups: Chunk.Chunk<Groups>
-  // TODO: error schema
+  readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
 }
 
 /**
@@ -57,13 +63,15 @@ const Proto = {
   }
 }
 
-const makeProto = <Name extends string, Groups extends ApiGroup.ApiGroup.Any>(options: {
+const makeProto = <Name extends string, Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(options: {
   readonly name: Name
   readonly groups: Chunk.Chunk<Groups>
+  readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
 }): Api<Name, Groups> => {
   const self = Object.create(Proto)
   self.name = options.name
   self.groups = options.groups
+  self.errorSchema = options.errorSchema
   return self
 }
 
@@ -71,7 +79,8 @@ const makeProto = <Name extends string, Groups extends ApiGroup.ApiGroup.Any>(op
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Name extends string>(name: Name): Api<Name> => makeProto({ name, groups: Chunk.empty() })
+export const make = <Name extends string>(name: Name): Api<Name> =>
+  makeProto({ name, groups: Chunk.empty(), errorSchema: Schema.Never as any })
 
 /**
  * @since 1.0.0
@@ -80,20 +89,24 @@ export const make = <Name extends string>(name: Name): Api<Name> => makeProto({ 
 export const addGroup: {
   <Group extends ApiGroup.ApiGroup.Any>(
     group: Group
-  ): <Name extends string, Groups extends ApiGroup.ApiGroup.Any>(self: Api<Name, Groups>) => Api<Name, Groups | Group>
+  ): <Name extends string, Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
+    self: Api<Name, Groups, Error, ErrorR>
+  ) => Api<Name, Groups | Group, Error, ErrorR>
   <Group extends ApiGroup.ApiGroup.Any>(
     path: HttpRouter.PathInput,
     group: Group
-  ): <Name extends string, Groups extends ApiGroup.ApiGroup.Any>(self: Api<Name, Groups>) => Api<Name, Groups | Group>
-  <Name extends string, Groups extends ApiGroup.ApiGroup.Any, Group extends ApiGroup.ApiGroup.Any>(
-    self: Api<Name, Groups>,
+  ): <Name extends string, Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
+    self: Api<Name, Groups, Error, ErrorR>
+  ) => Api<Name, Groups | Group, Error, ErrorR>
+  <Name extends string, Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, Group extends ApiGroup.ApiGroup.Any>(
+    self: Api<Name, Groups, Error, ErrorR>,
     group: Group
-  ): Api<Name, Groups | Group>
-  <Name extends string, Groups extends ApiGroup.ApiGroup.Any, Group extends ApiGroup.ApiGroup.Any>(
-    self: Api<Name, Groups>,
+  ): Api<Name, Groups | Group, Error, ErrorR>
+  <Name extends string, Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, Group extends ApiGroup.ApiGroup.Any>(
+    self: Api<Name, Groups, Error, ErrorR>,
     path: HttpRouter.PathInput,
     group: Group
-  ): Api<Name, Groups | Group>
+  ): Api<Name, Groups | Group, Error, ErrorR>
 } = dual(
   (args) => isApi(args[0]),
   (
