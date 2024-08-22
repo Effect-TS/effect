@@ -1084,9 +1084,7 @@ export const replaceOption: {
   <B>(
     i: number,
     b: B
-  ): <A, S extends Iterable<A> = Iterable<A>>(
-    self: Iterable<A>
-  ) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
+  ): <A, S extends Iterable<A> = Iterable<A>>(self: S) => Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
   <A, B, S extends Iterable<A> = Iterable<A>>(
     self: S,
     i: number,
