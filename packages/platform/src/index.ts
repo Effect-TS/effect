@@ -16,6 +16,11 @@ export * as ApiEndpoint from "./ApiEndpoint.js"
 /**
  * @since 1.0.0
  */
+export * as ApiError from "./ApiError.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as ApiGroup from "./ApiGroup.js"
 
 /**
