@@ -3495,7 +3495,7 @@ export const provideSomeLayer: {
  * // 3
  * // 4
  * // 5
- * @since 3.6.0
+ * @since 3.7.0
  * @category racing
  */
 export const race: {
