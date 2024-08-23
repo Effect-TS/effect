@@ -4,6 +4,7 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import type { Simplify } from "effect/Types"
 import { unify } from "effect/Unify"
@@ -40,11 +41,18 @@ export type Client<A extends Api.Any> = [A] extends [Api<infer _Groups, infer _A
  * @category constructors
  */
 export const make = <A extends Api.Any>(
-  api: A
+  api: A,
+  options?: {
+    readonly transformClient?: ((client: HttpClient.HttpClient.Default) => HttpClient.HttpClient.Default) | undefined
+    readonly baseUrl?: string | undefined
+  }
 ): Effect.Effect<Simplify<Client<A>>, never, Api.Context<A> | HttpClient.HttpClient.Default> =>
   Effect.gen(function*() {
     const context = yield* Effect.context<any>()
-    const httpClient = yield* HttpClient.HttpClient
+    const httpClient = (yield* HttpClient.HttpClient).pipe(
+      options?.baseUrl === undefined ? identity : HttpClient.mapRequest(HttpClientRequest.prependUrl(options.baseUrl)),
+      options?.transformClient === undefined ? identity : options.transformClient
+    )
     const client: Record<string, Record<string, any>> = {}
     reflect(api as any, {
       mode: "full",
@@ -52,6 +60,7 @@ export const make = <A extends Api.Any>(
         client[group.name] = {}
       },
       onEndpoint({ endpoint, errors, group, success }) {
+        const makeUrl = compilePath(endpoint.path)
         const handleSuccess = unify(Option.match(success[0], {
           onNone: () => HttpClientResponse.void,
           onSome: (ast) => HttpClientResponse.schemaBodyJsonScoped(Schema.make(ast))
@@ -84,13 +93,7 @@ export const make = <A extends Api.Any>(
           readonly path: any
           readonly payload: any
         }) => {
-          // TODO: make more efficient
-          let url: string = endpoint.path
-          if (request && request.path) {
-            for (const key in request.path) {
-              url = url.replace(new RegExp(`:${key}\\b`), request.path[key])
-            }
-          }
+          const url = request && request.path ? makeUrl(request && request.path) : endpoint.path
           const baseRequest = HttpClientRequest.make(endpoint.method)(url)
           return (encodePayload._tag === "Some" ?
             encodePayload.value(request.payload).pipe(
@@ -118,3 +121,24 @@ export const make = <A extends Api.Any>(
     })
     return client as any
   })
+
+const paramsRegex = /:(\w+)[^/]*/g
+
+const compilePath = (path: string) => {
+  const segments = path.split(paramsRegex)
+  const len = segments.length
+  if (len === 1) {
+    return (_: any) => path
+  }
+  return (params: Record<string, string>) => {
+    let url = segments[0]
+    for (let i = 1; i < len; i++) {
+      if (i % 2 === 0) {
+        url += segments[i]
+      } else {
+        url += params[segments[i]]
+      }
+    }
+    return url
+  }
+}

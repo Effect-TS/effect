@@ -4,13 +4,13 @@ import {
   ApiClient,
   ApiEndpoint,
   ApiGroup,
+  ApiSchema,
   ApiSecurity,
   HttpClient,
-  HttpClientRequest,
   HttpMiddleware,
   HttpServer
 } from "@effect/platform"
-import { NodeHttpClient, NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import { Context, Effect, Layer } from "effect"
 import { createServer } from "node:http"
@@ -24,7 +24,7 @@ class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
 class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
   message: Schema.String
-}) {}
+}, ApiSchema.annotations({ status: 401 })) {}
 
 const security = ApiSecurity.bearer()
 
@@ -57,11 +57,12 @@ const users = ApiGroup.make("users").pipe(
       ApiEndpoint.success(User)
     )
   ),
-  ApiGroup.addError(Unauthorized, { status: 401 })
+  ApiGroup.addError(Unauthorized),
+  ApiGroup.prefix("/users")
 )
 
 const api = Api.empty.pipe(
-  Api.addGroup("/users", users)
+  Api.addGroup(users)
 )
 
 const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
@@ -95,15 +96,12 @@ ApiBuilder.serve(api, HttpMiddleware.logger).pipe(
 
 Effect.gen(function*() {
   yield* Effect.sleep(2000)
-  const client = yield* ApiClient.make(api)
-  const user = yield* client.users.me()
+  const client = yield* ApiClient.make(api, {
+    baseUrl: "http://localhost:3000"
+  })
+  const user = yield* client.users.findById({ path: { id: 123 } })
   console.log(user)
 }).pipe(
-  Effect.provideService(
-    HttpClient.HttpClient,
-    HttpClient.fetch.pipe(
-      HttpClient.mapRequest(HttpClientRequest.prependUrl("http://localhost:3000"))
-    )
-  ),
+  Effect.provide(HttpClient.layer),
   NodeRuntime.runMain
 )
