@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import type { Cause } from "effect/Cause"
 import type { Effect } from "effect/Effect"

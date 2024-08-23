@@ -5,7 +5,6 @@ import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
-import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as Metric from "effect/Metric"
@@ -135,8 +134,8 @@ export const make = <Msg extends Envelope.AnyMessage>(
       return SynchronizedRef.modifyEffect(entities, (map) => {
         return Option.match(HashMap.get(map, address), {
           onNone: () =>
-            sharding.isShutdown.pipe(
-              Effect.filterOrFail(identity, () => new EntityNotManagedByPod({ address })),
+            new EntityNotManagedByPod({ address }).pipe(
+              Effect.whenEffect(sharding.isShutdown),
               Effect.zipRight(
                 InternalMailbox.make<Msg>(address).pipe(
                   Effect.provideService(MailboxStorage, storage)

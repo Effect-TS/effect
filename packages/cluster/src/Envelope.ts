@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import * as ParseResult from "@effect/schema/ParseResult"
+import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
-import * as Effect from "effect/Effect"
+import type { Effect } from "effect/Effect"
 import * as Predicate from "effect/Predicate"
 import type * as PrimaryKey from "effect/PrimaryKey"
 import { EntityAddress } from "./EntityAddress.js"
@@ -27,14 +27,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Envelope<in out Msg extends Envelope.AnyMessage> extends
-  Envelope.Proto,
-  Serializable.Serializable<
-    Envelope<Msg>,
-    Envelope.Encoded,
-    Serializable.Serializable.Context<Msg>
-  >
-{
+export interface Envelope<in out Msg extends Envelope.AnyMessage> extends Envelope.Proto {
   readonly address: EntityAddress
   readonly message: Msg
 }
@@ -55,7 +48,7 @@ export declare namespace Envelope {
    * @since 1.0.0
    * @category models
    */
-  export type AnyMessage = Schema.TaggedRequest.All & PrimaryKey.PrimaryKey
+  export type AnyMessage = Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey
 
   /**
    * @since 1.0.0
@@ -74,10 +67,7 @@ const variance = {
 const Proto = {
   address: undefined,
   message: undefined,
-  [TypeId]: variance,
-  get [Serializable.symbol]() {
-    return EnvelopeSchema(this.message as any)
-  }
+  [TypeId]: variance
 }
 
 /**
@@ -99,93 +89,20 @@ export const make = <Msg extends Envelope.AnyMessage>(
     message
   })
 
-const envelopeEncoded = <Msg extends Envelope.AnyMessage>(
-  message: Msg
-) =>
-  Schema.Struct({
+/**
+ * @since 1.0.0
+ * @category serialization / deserialization
+ */
+export const serialize = <Msg extends Envelope.AnyMessage>(
+  envelope: Envelope<Msg>
+): Effect<
+  Envelope.Encoded,
+  ParseError,
+  Serializable.Serializable.Context<Msg>
+> => {
+  const schema = Schema.Struct({
     address: EntityAddress,
-    message: Serializable.selfSchema(message)
-  }).annotations({ title: "Envelope.Encoded" })
-
-const envelopeParse = <Msg extends Envelope.AnyMessage>(
-  decodeUnknownMessage: ParseResult.DecodeUnknown<Msg, never>
-): ParseResult.DeclarationDecodeUnknown<Envelope<Msg>, never> =>
-(u, options, ast) =>
-  isEnvelope(u)
-    ? ParseResult.mapBoth(decodeUnknownMessage(u.message, options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: (message) => make(u.address, message)
-    })
-    : ParseResult.fail(new ParseResult.Type(ast, u))
-
-/**
- * @since 1.0.0
- * @category api interface
- */
-export interface EnvelopeFromSelf<Msg extends Envelope.AnyMessage> extends
-  Schema.AnnotableClass<
-    EnvelopeFromSelf<Msg>,
-    Envelope<Msg>,
-    Envelope<Msg>,
-    Schema.Schema.Context<Msg>
-  >
-{}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const EnvelopeFromSelf = <Msg extends Envelope.AnyMessage>(
-  message: Msg
-): EnvelopeFromSelf<Msg> => {
-  const messageSchema = Serializable.selfSchema(message)
-  return Schema.declare(
-    [messageSchema],
-    {
-      decode: (message) => envelopeParse(ParseResult.decodeUnknown(message)),
-      encode: (message) => envelopeParse(ParseResult.encodeUnknown(message))
-    },
-    {
-      title: `Envelope<${messageSchema.ast}>`
-    }
-  )
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface EnvelopeSchema<Msg extends Envelope.AnyMessage> extends
-  Schema.AnnotableClass<
-    EnvelopeSchema<Msg>,
-    Envelope<Msg>,
-    Envelope.Encoded,
-    Schema.Schema.Context<Msg>
-  >
-{}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const EnvelopeSchema = <Msg extends Envelope.AnyMessage>(
-  message: Msg
-): EnvelopeSchema<Msg> => {
-  const message_ = Serializable.selfSchema(message)
-  return Schema.transformOrFail(
-    Schema.encodedSchema(envelopeEncoded(message)),
-    EnvelopeFromSelf(message),
-    {
-      strict: true,
-      decode: (encoded) => {
-        const decodeAddress = ParseResult.decode(EntityAddress)
-        const decodeMessage = ParseResult.decodeUnknown(message_)
-        return Effect.all({
-          address: decodeAddress(encoded.address),
-          message: decodeMessage(encoded.message)
-        }).pipe(Effect.map(({ address, message }) => make(address, message)))
-      },
-      encode: (envelope) => Effect.succeed({ address: envelope.address, message })
-    }
-  )
+    message: Serializable.selfSchema(envelope.message)
+  })
+  return Schema.encode(schema)(envelope)
 }

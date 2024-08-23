@@ -1,5 +1,5 @@
 import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
+import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as HashMap from "effect/HashMap"
@@ -121,7 +121,7 @@ const make = Effect.gen(function*() {
         return Ref.get(shardAssignments).pipe(
           Effect.flatMap(HashMap.get(shardId)),
           Effect.bindTo("pod"),
-          Effect.bind("envelope", () => Serializable.serialize(Envelope.make(address, message))),
+          Effect.bind("envelope", () => Envelope.serialize(Envelope.make(address, message))),
           Effect.catchTags({
             NoSuchElementException: () => new EntityNotManagedByPod({ address }),
             ParseError: (cause) => new MalformedMessage({ cause })
