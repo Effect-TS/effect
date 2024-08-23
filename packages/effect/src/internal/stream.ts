@@ -4873,6 +4873,24 @@ export const range = (min: number, max: number, chunkSize = DefaultChunkSize): S
     return new StreamImpl(go(min, max, chunkSize))
   })
 
+/** @internal */
+export const race: {
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<AL | AR, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AL | AR, EL | ER, RL | RR>
+} = dual(
+  2,
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AL | AR, EL | ER, RL | RR> => raceAll(left, right)
+)
+
+/** @internal */
 export const raceAll = <S extends ReadonlyArray<Stream.Stream<any, any, any>>>(
   ...streams: S
 ): Stream.Stream<
