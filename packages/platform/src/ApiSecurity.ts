@@ -83,7 +83,7 @@ export interface Credentials {
   readonly password: string
 }
 
-export const Proto = {
+const Proto = {
   [TypeId]: TypeId,
   pipe() {
     return pipeArguments(this, arguments)
