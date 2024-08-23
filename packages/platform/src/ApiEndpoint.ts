@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
+import * as Context from "effect/Context"
 import type { Effect } from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
@@ -62,6 +63,7 @@ export interface ApiEndpoint<
   readonly payloadSchema: Option.Option<Payload>
   readonly successSchema: Success
   readonly errorSchema: Error
+  readonly annotations: Context.Context<never>
 }
 
 /**
@@ -228,6 +230,7 @@ const makeProto = <
   readonly payloadSchema: Option.Option<Payload>
   readonly successSchema: Success
   readonly errorSchema: Error
+  readonly annotations: Context.Context<never>
 }): ApiEndpoint<Name, Method, Path, Payload, Success, Error> => Object.assign(Object.create(Proto), options)
 
 /**
@@ -246,7 +249,8 @@ export const make = <Method extends HttpMethod>(method: Method) =>
     pathSchema: Option.none(),
     payloadSchema: Option.none(),
     successSchema: Empty,
-    errorSchema: Schema.Never
+    errorSchema: Schema.Never,
+    annotations: Context.empty()
   })
 
 /**
@@ -599,3 +603,35 @@ export const successIsVoid = <A extends ApiEndpoint.Any>(self: A): boolean => {
  */
 export const schemaSuccess = <A extends ApiEndpoint.Any>(self: A): Option.Option<A["successSchema"]> =>
   successIsVoid(self) ? Option.none() : Option.some(self.successSchema)
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotateMerge: {
+  <I>(context: Context.Context<I>): <A extends ApiEndpoint.Any>(self: A) => A
+  <A extends ApiEndpoint.Any, I>(self: A, context: Context.Context<I>): A
+} = dual(
+  2,
+  <A extends ApiEndpoint.Any, I>(self: A, context: Context.Context<I>): A =>
+    makeProto({
+      ...self,
+      annotations: Context.merge(self.annotations, context)
+    }) as A
+)
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotate: {
+  <I, S>(tag: Context.Tag<I, S>, value: S): <A extends ApiEndpoint.Any>(self: A) => A
+  <A extends ApiEndpoint.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A
+} = dual(
+  3,
+  <A extends ApiEndpoint.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A =>
+    makeProto({
+      ...self,
+      annotations: Context.add(self.annotations, tag, value)
+    }) as A
+)

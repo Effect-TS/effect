@@ -3,6 +3,7 @@
  */
 import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
+import * as Context from "effect/Context"
 import { dual } from "effect/Function"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -43,6 +44,7 @@ export interface ApiGroup<
   readonly name: Name
   readonly endpoints: Chunk.Chunk<Endpoints>
   readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
+  readonly annotations: Context.Context<never>
 }
 
 /**
@@ -132,6 +134,7 @@ const makeProto = <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoin
   readonly name: Name
   readonly endpoints: Chunk.Chunk<Endpoints>
   readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
+  readonly annotations: Context.Context<never>
 }): ApiGroup<Name, Endpoints, Error, ErrorR> => Object.assign(Object.create(Proto), options)
 
 /**
@@ -139,7 +142,12 @@ const makeProto = <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoin
  * @category constructors
  */
 export const make = <Name extends string>(name: Name): ApiGroup<Name> =>
-  makeProto({ name, endpoints: Chunk.empty(), errorSchema: Schema.Never as any })
+  makeProto({
+    name,
+    endpoints: Chunk.empty(),
+    errorSchema: Schema.Never as any,
+    annotations: Context.empty()
+  })
 
 /**
  * @since 1.0.0
@@ -238,3 +246,35 @@ export const prefix: {
     ...self,
     endpoints: Chunk.map(self.endpoints, ApiEndpoint.prefix(prefix))
   }))
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotateMerge: {
+  <I>(context: Context.Context<I>): <A extends ApiGroup.Any>(self: A) => A
+  <A extends ApiGroup.Any, I>(self: A, context: Context.Context<I>): A
+} = dual(
+  2,
+  <A extends ApiGroup.Any, I>(self: A, context: Context.Context<I>): A =>
+    makeProto({
+      ...self as any,
+      annotations: Context.merge(self.annotations, context)
+    }) as A
+)
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotate: {
+  <I, S>(tag: Context.Tag<I, S>, value: S): <A extends ApiGroup.Any>(self: A) => A
+  <A extends ApiGroup.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A
+} = dual(
+  3,
+  <A extends ApiGroup.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A =>
+    makeProto({
+      ...self as any,
+      annotations: Context.add(self.annotations, tag, value)
+    }) as A
+)

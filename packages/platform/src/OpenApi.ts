@@ -1,0 +1,70 @@
+/**
+ * @since 1.0.0
+ */
+import * as Context from "effect/Context"
+import { dual } from "effect/Function"
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Title extends Context.Tag("@effect/platform/OpenApi/Title")<Title, string>() {
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Description extends Context.Tag("@effect/platform/OpenApi/Description")<Description, string>() {}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotations = (annotations: {
+  readonly title?: string | undefined
+  readonly description?: string | undefined
+}): Context.Context<never> => {
+  let context = Context.empty()
+  if (annotations.title !== undefined) {
+    context = Context.add(context, Title, annotations.title)
+  }
+  if (annotations.description !== undefined) {
+    context = Context.add(context, Description, annotations.description)
+  }
+  return context
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export interface Annotatable {
+  readonly annotations: Context.Context<never>
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotate: {
+  (annotations: {
+    readonly title?: string | undefined
+    readonly description?: string | undefined
+  }): <A extends Annotatable>(self: A) => A
+  <A extends Annotatable>(self: A, annotations: {
+    readonly title?: string | undefined
+    readonly description?: string | undefined
+  }): A
+} = dual(2, <A extends Annotatable>(self: A, annotations_: {
+  readonly title?: string | undefined
+  readonly description?: string | undefined
+}): A => {
+  const context = Context.merge(
+    self.annotations,
+    annotations(annotations_)
+  )
+  return Object.assign(Object.create(Object.getPrototypeOf(self)), self, {
+    annotations: context
+  })
+})

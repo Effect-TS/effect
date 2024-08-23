@@ -31,6 +31,11 @@ export * as ApiSchema from "./ApiSchema.js"
 /**
  * @since 1.0.0
  */
+export * as ApiSecurity from "./ApiSecurity.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Command from "./Command.js"
 
 /**
@@ -168,6 +173,11 @@ export * as KeyValueStore from "./KeyValueStore.js"
  * @since 1.0.0
  */
 export * as Multipart from "./Multipart.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as OpenApi from "./OpenApi.js"
 
 /**
  * @since 1.0.0

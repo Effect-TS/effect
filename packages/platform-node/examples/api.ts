@@ -39,7 +39,7 @@ const users = ApiGroup.make("users").pipe(
   ApiGroup.addError(Unauthorized, { status: 401 })
 )
 
-const api = Api.make("My api").pipe(
+const api = Api.empty.pipe(
   Api.addGroup("/users", users)
 )
 
