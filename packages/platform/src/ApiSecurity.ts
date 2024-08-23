@@ -22,7 +22,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export type ApiSecurity = Bearer | ApiKey
+export type ApiSecurity = Bearer | ApiKey | Basic
 
 /**
  * @since 1.0.0
@@ -96,12 +96,11 @@ export const Proto = {
  */
 export const bearer = (options?: {
   readonly prefix?: string | undefined
-  readonly annotations?: Context.Context<never> | never
 }): Bearer =>
   Object.assign(Object.create(Proto), {
     _tag: "Bearer",
     prefix: options?.prefix ?? "Bearer",
-    annotations: options?.annotations ?? Context.empty()
+    annotations: Context.empty()
   })
 
 /**
@@ -111,26 +110,22 @@ export const bearer = (options?: {
 export const apiKey = (options: {
   readonly key: string
   readonly in?: "header" | "query" | undefined
-  readonly annotations?: Context.Context<never> | never
 }): Bearer =>
   Object.assign(Object.create(Proto), {
     _tag: "ApiKey",
     key: options.key,
     in: options.in ?? "header",
-    annotations: options?.annotations ?? Context.empty
+    annotations: Context.empty
   })
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const basic = (options?: {
-  readonly annotations?: Context.Context<never> | never
-}): Basic =>
-  Object.assign(Object.create(Proto), {
-    _tag: "Basic",
-    annotations: options?.annotations ?? Context.empty()
-  })
+export const basic: Basic = Object.assign(Object.create(Proto), {
+  _tag: "Basic",
+  annotations: Context.empty()
+})
 
 /**
  * @since 1.0.0

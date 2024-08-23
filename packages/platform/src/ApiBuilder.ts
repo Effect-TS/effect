@@ -6,6 +6,7 @@ import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Encoding from "effect/Encoding"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
@@ -15,11 +16,13 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type { ReadonlyRecord } from "effect/Record"
 import type { Scope } from "effect/Scope"
 import type { Covariant, Mutable, NoInfer } from "effect/Types"
+import { unify } from "effect/Unify"
 import type * as Api from "./Api.js"
 import * as ApiEndpoint from "./ApiEndpoint.js"
 import { ApiDecodeError } from "./ApiError.js"
 import type * as ApiGroup from "./ApiGroup.js"
 import * as ApiSchema from "./ApiSchema.js"
+import type * as ApiSecurity from "./ApiSecurity.js"
 import type * as HttpApp from "./HttpApp.js"
 import * as HttpMethod from "./HttpMethod.js"
 import * as HttpMiddleware from "./HttpMiddleware.js"
@@ -367,6 +370,109 @@ export const middlewareCors = (
     readonly credentials?: boolean | undefined
   } | undefined
 ): Layer.Layer<never> => middlewareMakeNoError(HttpMiddleware.cors(options) as any)
+
+/**
+ * @since 1.0.0
+ * @category middleware
+ */
+export interface SecurityMiddleware<I, EM = never, RM = never> {
+  <Endpoints extends ApiEndpoint.ApiEndpoint.Any, E, R>(
+    self: Handlers<E, R, Endpoints>
+  ): Handlers<E | EM, Exclude<R, I> | ApiEndpoint.ApiEndpoint.ExcludeProvided<RM>, Endpoints>
+}
+
+/**
+ * Make a middleware from an `ApiSecurity` instance, that can be used when
+ * constructing a `Handlers` group.
+ *
+ * @since 1.0.0
+ * @category middleware
+ * @example
+ * import { ApiBuilder, ApiSecurity } from "@effect/platform"
+ * import { Schema } from "@effect/schema"
+ * import { Context, Effect } from "effect"
+ *
+ * class User extends Schema.Class<User>("User")({
+ *   id: Schema.Number
+ * }) {}
+ *
+ * class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
+ *
+ * class Accounts extends Context.Tag("Accounts")<Accounts, {
+ *   readonly findUserByAccessToken: (accessToken: string) => Effect.Effect<User>
+ * }>() {}
+ *
+ * const security = ApiSecurity.bearer()
+ *
+ * const securityMiddleware = Effect.gen(function*() {
+ *   const accounts = yield* Accounts
+ *   return ApiBuilder.middlewareSecurity(
+ *     security,
+ *     CurrentUser,
+ *     (token) => accounts.findUserByAccessToken(token)
+ *   )
+ * })
+ */
+export const middlewareSecurity = <Security extends ApiSecurity.ApiSecurity, I, S, EM, RM>(
+  self: Security,
+  tag: Context.Tag<I, S>,
+  f: (
+    credentials: ApiSecurity.ApiSecurity.Type<Security>
+  ) => Effect.Effect<S, EM, RM>
+): SecurityMiddleware<I, EM, RM> => {
+  switch (self._tag) {
+    case "Bearer": {
+      const prefixLen = `${self.prefix} `.length
+      return middleware(Effect.provideServiceEffect(
+        tag,
+        HttpServerRequest.HttpServerRequest.pipe(
+          Effect.map((request) => (request.headers.authorization ?? "").slice(prefixLen) as any),
+          Effect.flatMap(f)
+        )
+      )) as SecurityMiddleware<I, EM, RM>
+    }
+    case "ApiKey": {
+      const schema = Schema.Struct({
+        [self.key]: Schema.String
+      })
+      const decode = unify(
+        self.in === "query"
+          ? HttpServerRequest.schemaSearchParams(schema)
+          : HttpServerRequest.schemaHeaders(schema)
+      )
+      const handled = Effect.match(decode, {
+        onFailure: () => "" as any,
+        onSuccess: (match) => match[self.key]
+      })
+      return middleware(Effect.provideServiceEffect(tag, Effect.flatMap(handled, f))) as SecurityMiddleware<I, EM, RM>
+    }
+    case "Basic": {
+      const empty: ApiSecurity.ApiSecurity.Type<Security> = {
+        username: "",
+        password: ""
+      } as any
+      return middleware(Effect.provideServiceEffect(
+        tag,
+        HttpServerRequest.HttpServerRequest.pipe(
+          Effect.flatMap((request) => Encoding.decodeBase64String(request.headers.authorization ?? "")),
+          Effect.matchEffect({
+            onFailure: () => f(empty),
+            onSuccess: (header) => {
+              const parts = header.split(":")
+              if (parts.length !== 2) {
+                return f(empty)
+              }
+              return f({
+                username: parts[0],
+                password: parts[1]
+              } as any)
+            }
+          })
+        )
+      )) as SecurityMiddleware<I, EM, RM>
+    }
+  }
+}
 
 /**
  * @since 1.0.0

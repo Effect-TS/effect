@@ -1,4 +1,4 @@
-import { Api, ApiBuilder, ApiEndpoint, ApiGroup, HttpMiddleware, HttpServer } from "@effect/platform"
+import { Api, ApiBuilder, ApiEndpoint, ApiGroup, ApiSecurity, HttpMiddleware, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import { Context, Effect, Layer } from "effect"
@@ -9,9 +9,19 @@ class User extends Schema.Class<User>("User")({
   name: Schema.String
 }) {}
 
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
+
 class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
   message: Schema.String
 }) {}
+
+const security = ApiSecurity.bearer()
+
+const securityMiddleware = ApiBuilder.middlewareSecurity(
+  security,
+  CurrentUser,
+  (token) => Effect.succeed(new User({ id: 1000, name: `Authenticated with ${token}` }))
+)
 
 const users = ApiGroup.make("users").pipe(
   ApiGroup.add(
@@ -43,8 +53,6 @@ const api = Api.empty.pipe(
   Api.addGroup("/users", users)
 )
 
-class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
-
 const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
   handlers.pipe(
     ApiBuilder.handle("create", (_) =>
@@ -62,7 +70,7 @@ const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
         })
       )),
     ApiBuilder.handle("me", (_) => CurrentUser),
-    ApiBuilder.middleware(Effect.provideService(CurrentUser, new User({ id: 1000, name: "Provided" })))
+    securityMiddleware
   ))
 
 ApiBuilder.serve(api, HttpMiddleware.logger).pipe(
