@@ -11,6 +11,11 @@ export * as ApiBuilder from "./ApiBuilder.js"
 /**
  * @since 1.0.0
  */
+export * as ApiClient from "./ApiClient.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as ApiEndpoint from "./ApiEndpoint.js"
 
 /**
@@ -22,6 +27,11 @@ export * as ApiError from "./ApiError.js"
  * @since 1.0.0
  */
 export * as ApiGroup from "./ApiGroup.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as ApiReflection from "./ApiReflection.js"
 
 /**
  * @since 1.0.0

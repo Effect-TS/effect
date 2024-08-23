@@ -79,7 +79,7 @@ export declare namespace ApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type WithName<Group extends Any, Name extends string> = Extract<Group, { readonly name: Name }>
+  export type WithName<Group, Name extends string> = Extract<Group, { readonly name: Name }>
 
   /**
    * @since 1.0.0

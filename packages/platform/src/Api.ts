@@ -8,6 +8,7 @@ import { dual } from "effect/Function"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import { ApiDecodeError } from "./ApiError.js"
 import * as ApiGroup from "./ApiGroup.js"
 import * as ApiSchema from "./ApiSchema.js"
 import type * as HttpRouter from "./HttpRouter.js"
@@ -55,6 +56,14 @@ export declare namespace Api {
    * @category models
    */
   export type Any = Api<any, any, any> | Api<any, any, never> | Api<any, never, never>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Context<A> = A extends Api<infer _Groups, infer _ApiError, infer _ApiErrorR>
+    ? _ApiErrorR | ApiGroup.ApiGroup.Context<_Groups>
+    : never
 }
 
 const Proto = {
@@ -76,7 +85,7 @@ const makeProto = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(options:
  */
 export const empty: Api = makeProto({
   groups: Chunk.empty(),
-  errorSchema: Schema.Never as any,
+  errorSchema: ApiDecodeError as any,
   annotations: Context.empty()
 })
 

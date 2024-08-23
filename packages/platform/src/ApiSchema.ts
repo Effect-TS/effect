@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type * as AST from "@effect/schema/AST"
-import * as Schema from "@effect/schema/Schema"
+import * as AST from "@effect/schema/AST"
+import type * as Schema from "@effect/schema/Schema"
 import * as Struct from "effect/Struct"
 
 /**
@@ -45,14 +45,26 @@ export const annotations = <A>(
  * @since 1.0.0
  * @category reflection
  */
-export const getStatusSuccess = <A extends Schema.Schema.Any>(self: A): number => {
-  const ast = Schema.encodedSchema(self).ast
-  const isVoid = ast._tag === "VoidKeyword"
-  return getStatus(self.ast, isVoid ? 204 : 200)
+export const getStatusSuccessAST = (ast: AST.AST): number => {
+  const encoded = AST.encodedAST(ast)
+  const isVoid = encoded._tag === "VoidKeyword"
+  return getStatus(ast, isVoid ? 204 : 200)
 }
 
 /**
  * @since 1.0.0
  * @category reflection
  */
-export const getStatusError = <A extends Schema.Schema.All>(self: A): number => getStatus(self.ast, 500)
+export const getStatusSuccess = <A extends Schema.Schema.Any>(self: A): number => getStatusSuccessAST(self.ast)
+
+/**
+ * @since 1.0.0
+ * @category reflection
+ */
+export const getStatusErrorAST = (ast: AST.AST): number => getStatus(ast, 500)
+
+/**
+ * @since 1.0.0
+ * @category reflection
+ */
+export const getStatusError = <A extends Schema.Schema.All>(self: A): number => getStatusErrorAST(self.ast)

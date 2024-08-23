@@ -1,5 +1,16 @@
-import { Api, ApiBuilder, ApiEndpoint, ApiGroup, ApiSecurity, HttpMiddleware, HttpServer } from "@effect/platform"
-import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import {
+  Api,
+  ApiBuilder,
+  ApiClient,
+  ApiEndpoint,
+  ApiGroup,
+  ApiSecurity,
+  HttpClient,
+  HttpClientRequest,
+  HttpMiddleware,
+  HttpServer
+} from "@effect/platform"
+import { NodeHttpClient, NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import { Context, Effect, Layer } from "effect"
 import { createServer } from "node:http"
@@ -79,5 +90,20 @@ ApiBuilder.serve(api, HttpMiddleware.logger).pipe(
   Layer.provide(ApiBuilder.middlewareCors()),
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
   Layer.launch,
+  NodeRuntime.runMain
+)
+
+Effect.gen(function*() {
+  yield* Effect.sleep(2000)
+  const client = yield* ApiClient.make(api)
+  const user = yield* client.users.me()
+  console.log(user)
+}).pipe(
+  Effect.provideService(
+    HttpClient.HttpClient,
+    HttpClient.fetch.pipe(
+      HttpClient.mapRequest(HttpClientRequest.prependUrl("http://localhost:3000"))
+    )
+  ),
   NodeRuntime.runMain
 )

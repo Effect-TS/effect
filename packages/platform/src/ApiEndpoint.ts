@@ -131,6 +131,15 @@ export declare namespace ApiEndpoint {
    * @since 1.0.0
    * @category models
    */
+  export type ClientRequest<Endpoint extends Any> = (
+    & ([Endpoint["pathSchema"]] extends [Option.Option<PathParams>] ? {} : { readonly path: PathParsed<Endpoint> })
+    & ([Payload<Endpoint>] extends [infer P] ? [P] extends [never] ? {} : { readonly payload: P } : {})
+  ) extends infer Req ? keyof Req extends never ? void : Req : void
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type Context<Endpoint> = Endpoint extends
     ApiEndpoint<infer _Name, infer _Method, infer _Path, infer _Payload, infer _Success, infer _Error> ?
       | Schema.Schema.Context<_Path>
@@ -170,6 +179,12 @@ export declare namespace ApiEndpoint {
     E,
     R
   >
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type SuccessWithName<Endpoints extends Any, Name extends string> = Success<WithName<Endpoints, Name>>
 
   /**
    * @since 1.0.0

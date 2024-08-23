@@ -645,7 +645,7 @@ const astCache = globalValue("@effect/platform/ApiBuilder", () => new WeakMap<AS
 const makeErrorSchema = (
   api: Api.Api<ApiGroup.ApiGroup<string, ApiEndpoint.ApiEndpoint.Any>, any, any>
 ): Schema.Schema<unknown, [error: unknown, status: number]> => {
-  const schemas = new Set<Schema.Schema.Any>([ApiDecodeError])
+  const schemas = new Set<Schema.Schema.Any>()
   function processSchema(schema: Schema.Schema.Any): void {
     if (astCache.has(schema.ast)) {
       schemas.add(astCache.get(schema.ast)!)
