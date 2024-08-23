@@ -557,4 +557,16 @@ describe("Config", () => {
     ))
     assert.strictEqual(result, "value")
   })
+
+  it("array nested", () => {
+    const result = Config.array(Config.number(), "ARRAY").pipe(
+      Effect.withConfigProvider(
+        ConfigProvider.fromMap(new Map([["NESTED_ARRAY", "1,2,3"]])).pipe(
+          ConfigProvider.nested("NESTED")
+        )
+      ),
+      Effect.runSync
+    )
+    assert.deepStrictEqual(result, [1, 2, 3])
+  })
 })
