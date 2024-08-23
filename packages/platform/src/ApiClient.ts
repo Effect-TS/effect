@@ -83,7 +83,14 @@ export const make = <A extends Api.Any>(
           return response.json.pipe(
             Effect.flatMap(decode),
             Effect.matchEffect({
-              onFailure: Effect.die,
+              onFailure: () =>
+                Effect.die(
+                  new HttpClientError.ResponseError({
+                    reason: "Decode",
+                    request,
+                    response
+                  })
+                ),
               onSuccess: Effect.fail
             })
           )
