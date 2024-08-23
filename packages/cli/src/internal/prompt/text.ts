@@ -66,17 +66,19 @@ function renderInput(nextState: State, options: Options, submitted: boolean) {
   const text = getValue(nextState, options)
 
   const annotation = Option.match(nextState.error, {
-    onNone: () => Match.value(submitted)
-    .pipe(
-      Match.when(true, () => Ansi.green),
-      Match.orElse(() => Match.value(nextState.value).pipe(
-        Match.when('', () => Ansi.blackBright),
-        Match.orElse(() => Ansi.combine(Ansi.underlined, Ansi.cyanBright))
-      ))
-    ),
+    onNone: () =>
+      Match.value(submitted)
+        .pipe(
+          Match.when(true, () => Ansi.green),
+          Match.orElse(() =>
+            Match.value(nextState.value).pipe(
+              Match.when("", () => Ansi.blackBright),
+              Match.orElse(() => Ansi.combine(Ansi.underlined, Ansi.cyanBright))
+            )
+          )
+        ),
     onSome: () => Ansi.red
   })
-
 
   switch (options.type) {
     case "hidden": {
@@ -259,7 +261,7 @@ function handleProcess(options: Options) {
       }
       case "enter":
       case "return": {
-        const value = getValue(state, options)   
+        const value = getValue(state, options)
         return Effect.match(options.validate(value), {
           onFailure: (error) =>
             Action.NextFrame({
@@ -269,7 +271,7 @@ function handleProcess(options: Options) {
         })
       }
       case "tab": {
-        return processTab(state, options);
+        return processTab(state, options)
       }
       default: {
         const value = Option.getOrElse(input.input, () => "")
