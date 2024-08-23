@@ -1680,74 +1680,74 @@ export const concatAll = <A, E, R>(streams: Chunk.Chunk<Stream.Stream<A, E, R>>)
   suspend(() => pipe(streams, Chunk.reduce(empty as Stream.Stream<A, E, R>, (x, y) => concat(y)(x))))
 
 /** @internal */
-export const cross = dual<
-  <A2, E2, R2>(
-    that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<[A, A2], E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<[A, A2], E2 | E, R2 | R>
->(
+export const cross: {
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<[AL, AR], EL | ER, RL | RR>
+  <AL, ER, RR, AR, EL, RL>(
+    left: Stream.Stream<AL, ER, RR>,
+    right: Stream.Stream<AR, EL, RL>
+  ): Stream.Stream<[AL, AR], EL | ER, RL | RR>
+} = dual(
   2,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<[A, A2], E2 | E, R2 | R> => pipe(self, crossWith(that, (a, a2) => [a, a2]))
+  <AL, ER, RR, AR, EL, RL>(
+    left: Stream.Stream<AL, ER, RR>,
+    right: Stream.Stream<AR, EL, RL>
+  ): Stream.Stream<[AL, AR], EL | ER, RL | RR> => pipe(left, crossWith(right, (a, a2) => [a, a2]))
 )
 
 /** @internal */
-export const crossLeft = dual<
-  <A2, E2, R2>(
-    that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<A, E2 | E, R2 | R>
->(
+export const crossLeft: {
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<AL, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AL, EL | ER, RL | RR>
+} = dual(
   2,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<A, E2 | E, R2 | R> => pipe(self, crossWith(that, (a, _) => a))
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AL, EL | ER, RL | RR> => pipe(left, crossWith(right, (a, _) => a))
 )
 
 /** @internal */
-export const crossRight = dual<
-  <A2, E2, R2>(
-    that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<A2, E2 | E, R2 | R>
->(
+export const crossRight: {
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<AR, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AR, EL | ER, RL | RR>
+} = dual(
   2,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<A2, E2 | E, R2 | R> => flatMap(self, () => that)
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AR, EL | ER, RL | RR> => flatMap(left, () => right)
 )
 
 /** @internal */
-export const crossWith = dual<
-  <B, E2, R2, A, C>(
-    that: Stream.Stream<B, E2, R2>,
-    f: (a: A, b: B) => C
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<C, E2 | E, R2 | R>,
-  <A, E, R, B, E2, R2, C>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<B, E2, R2>,
-    f: (a: A, b: B) => C
-  ) => Stream.Stream<C, E2 | E, R2 | R>
->(
+export const crossWith: {
+  <AR, ER, RR, AL, A>(
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): <EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<A, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR>
+} = dual(
   3,
-  <A, E, R, B, E2, R2, C>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<B, E2, R2>,
-    f: (a: A, b: B) => C
-  ): Stream.Stream<C, E2 | E, R2 | R> => pipe(self, flatMap((a) => pipe(that, map((b) => f(a, b)))))
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR> => pipe(left, flatMap((a) => pipe(right, map((b) => f(a, b)))))
 )
 
 /** @internal */
@@ -7891,20 +7891,20 @@ export const zipAllWith = dual<
 )
 
 /** @internal */
-export const zipLatest = dual<
-  <A2, E2, R2>(
-    that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<[A, A2], E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<[A, A2], E2 | E, R2 | R>
->(
+export const zipLatest: {
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<[AL, AR], EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<[AL, AR], EL | ER, RL | RR>
+} = dual(
   2,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<[A, A2], E2 | E, R2 | R> => pipe(self, zipLatestWith(that, (a, a2) => [a, a2]))
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<[AL, AR], EL | ER, RL | RR> => pipe(left, zipLatestWith(right, (a, a2) => [a, a2]))
 )
 
 export const zipLatestAll = <T extends ReadonlyArray<Stream.Stream<any, any, any>>>(
@@ -7929,34 +7929,34 @@ export const zipLatestAll = <T extends ReadonlyArray<Stream.Stream<any, any, any
 }
 
 /** @internal */
-export const zipLatestWith = dual<
-  <A2, E2, R2, A, A3>(
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A3, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2, A3>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ) => Stream.Stream<A3, E2 | E, R2 | R>
->(
+export const zipLatestWith: {
+  <AR, ER, RR, AL, A>(
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): <EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<A, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR>
+} = dual(
   3,
-  <A, E, R, A2, E2, R2, A3>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ): Stream.Stream<A3, E2 | E, R2 | R> => {
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR> => {
     const pullNonEmpty = <_R, _E, _A>(
       pull: Effect.Effect<Chunk.Chunk<_A>, Option.Option<_E>, _R>
     ): Effect.Effect<Chunk.Chunk<_A>, Option.Option<_E>, _R> =>
       pipe(pull, Effect.flatMap((chunk) => Chunk.isEmpty(chunk) ? pullNonEmpty(pull) : Effect.succeed(chunk)))
     return pipe(
-      toPull(self),
+      toPull(left),
       Effect.map(pullNonEmpty),
-      Effect.zip(pipe(toPull(that), Effect.map(pullNonEmpty))),
+      Effect.zip(pipe(toPull(right), Effect.map(pullNonEmpty))),
       Effect.flatMap(([left, right]) =>
         pipe(
-          fromEffectOption<readonly [Chunk.Chunk<A>, Chunk.Chunk<A2>, boolean], E | E2, R | R2>(
+          fromEffectOption<readonly [Chunk.Chunk<AL>, Chunk.Chunk<AR>, boolean], EL | ER, RL | RR>(
             Effect.raceWith(left, right, {
               onSelfDone: (leftDone, rightFiber) =>
                 pipe(
@@ -8020,23 +8020,23 @@ export const zipLatestWith = dual<
 )
 
 /** @internal */
-export const zipLeft = dual<
-  <A2, E2, R2>(
-    that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<A, E2 | E, R2 | R>
->(
+export const zipLeft: {
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<AL, ER | EL, RR | RL>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AL, EL | ER, RL | RR>
+} = dual(
   2,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<A, E | E2, R | R2> =>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AL, EL | ER, RL | RR> =>
     pipe(
-      self,
-      zipWithChunks(that, (left, right) => {
+      left,
+      zipWithChunks(right, (left, right) => {
         if (left.length > right.length) {
           return [
             pipe(left, Chunk.take(right.length)),
@@ -8052,23 +8052,23 @@ export const zipLeft = dual<
 )
 
 /** @internal */
-export const zipRight = dual<
-  <A2, E2, R2>(
-    that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<A2, E2 | E, R2 | R>
->(
+export const zipRight: {
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ): <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<AR, ER | EL, RR | RL>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AR, EL | ER, RL | RR>
+} = dual(
   2,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<A2, E | E2, R | R2> =>
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AR, EL | ER, RL | RR> =>
     pipe(
-      self,
-      zipWithChunks(that, (left, right) => {
+      left,
+      zipWithChunks(right, (left, right) => {
         if (left.length > right.length) {
           return [
             right,
@@ -8084,24 +8084,24 @@ export const zipRight = dual<
 )
 
 /** @internal */
-export const zipWith = dual<
-  <A2, E2, R2, A, A3>(
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A3, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2, A3>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ) => Stream.Stream<A3, E2 | E, R2 | R>
->(
+export const zipWith: {
+  <AR, ER, RR, AL, A>(
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): <EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<A, EL | ER, RL | RR>
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR>
+} = dual(
   3,
-  <A, E, R, A2, E2, R2, A3>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>,
-    f: (a: A, a2: A2) => A3
-  ): Stream.Stream<A3, E2 | E, R2 | R> =>
-    pipe(self, zipWithChunks(that, (leftChunk, rightChunk) => zipChunks(leftChunk, rightChunk, f)))
+  <AL, EL, RL, AR, ER, RR, A>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>,
+    f: (left: AL, right: AR) => A
+  ): Stream.Stream<A, EL | ER, RL | RR> =>
+    pipe(left, zipWithChunks(right, (leftChunk, rightChunk) => zipChunks(leftChunk, rightChunk, f)))
 )
 
 /** @internal */
