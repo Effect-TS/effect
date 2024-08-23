@@ -17,7 +17,7 @@ import type { ReadonlyRecord } from "effect/Record"
 import type { Scope } from "effect/Scope"
 import type { Covariant, Mutable, NoInfer } from "effect/Types"
 import { unify } from "effect/Unify"
-import type * as Api from "./Api.js"
+import * as Api from "./Api.js"
 import * as ApiEndpoint from "./ApiEndpoint.js"
 import { ApiDecodeError } from "./ApiError.js"
 import type * as ApiGroup from "./ApiGroup.js"
@@ -261,6 +261,8 @@ export const handle = <Endpoints extends ApiEndpoint.ApiEndpoint.Any, const Name
  * Add `HttpMiddleware` to a `Handlers` group.
  *
  * Any errors are required to have a corresponding schema in the API.
+ * You can add middleware errors to an `ApiGroup` using the `ApiGroup.addError`
+ * api.
  *
  * @since 1.0.0
  * @category middleware
@@ -287,6 +289,20 @@ export class ApiMiddleware extends Context.Tag("@effect/platform/ApiBuilder/ApiM
   HttpMiddleware.HttpMiddleware
 >() {}
 
+/**
+ * @since 1.0.0
+ * @category middleware
+ */
+export declare namespace ApiMiddleware {
+  /**
+   * @since 1.0.0
+   * @category middleware
+   */
+  export type Fn<Error, R = HttpRouter.HttpRouter.Provided> = (
+    httpApp: HttpApp.Default
+  ) => HttpApp.Default<Error, R>
+}
+
 const middlewareAdd = (middleware: HttpMiddleware.HttpMiddleware): Effect.Effect<HttpMiddleware.HttpMiddleware> =>
   Effect.map(
     Effect.context<never>(),
@@ -298,19 +314,71 @@ const middlewareAdd = (middleware: HttpMiddleware.HttpMiddleware): Effect.Effect
     }
   )
 
+const middlewareAddNoContext = (
+  middleware: HttpMiddleware.HttpMiddleware
+): Effect.Effect<HttpMiddleware.HttpMiddleware> =>
+  Effect.map(
+    Effect.serviceOption(ApiMiddleware),
+    (current): HttpMiddleware.HttpMiddleware => {
+      return current._tag === "None" ? middleware : (httpApp) => middleware(current.value(httpApp))
+    }
+  )
+
 /**
  * Create an `Api` level middleware `Layer`.
  *
  * @since 1.0.0
  * @category middleware
  */
-export const middlewareMake = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, R, EX = never, RX = never>(
-  _api: Api.Api<Groups, Error, ErrorR>,
-  middleware: ApiMiddleware.Fn<NoInfer<Error>, R> | Effect.Effect<ApiMiddleware.Fn<NoInfer<Error>, R>, EX, RX>
-): Layer.Layer<never, EX, Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | RX> =>
-  Effect.isEffect(middleware)
-    ? Layer.effect(ApiMiddleware, Effect.flatMap(middleware as any, middlewareAdd))
-    : Layer.effect(ApiMiddleware, middlewareAdd(middleware as any))
+export const middlewareLayer: {
+  <EX = never, RX = never>(
+    middleware: ApiMiddleware.Fn<never> | Effect.Effect<ApiMiddleware.Fn<never>, EX, RX>,
+    options?: {
+      readonly withContext?: false | undefined
+    }
+  ): Layer.Layer<never, EX, RX>
+  <R, EX = never, RX = never>(
+    middleware: ApiMiddleware.Fn<never, R> | Effect.Effect<ApiMiddleware.Fn<never, R>, EX, RX>,
+    options: {
+      readonly withContext: true
+    }
+  ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | RX>
+  <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, EX = never, RX = never>(
+    api: Api.Api<Groups, Error, ErrorR>,
+    middleware: ApiMiddleware.Fn<NoInfer<Error>> | Effect.Effect<ApiMiddleware.Fn<NoInfer<Error>>, EX, RX>,
+    options?: {
+      readonly withContext?: false | undefined
+    }
+  ): Layer.Layer<never, EX, RX>
+  <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, R, EX = never, RX = never>(
+    api: Api.Api<Groups, Error, ErrorR>,
+    middleware: ApiMiddleware.Fn<NoInfer<Error>, R> | Effect.Effect<ApiMiddleware.Fn<NoInfer<Error>, R>, EX, RX>,
+    options: {
+      readonly withContext: true
+    }
+  ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | RX>
+} = (
+  ...args: [
+    middleware: ApiMiddleware.Fn<any, any> | Effect.Effect<ApiMiddleware.Fn<any, any>, any, any>,
+    options?: {
+      readonly withContext?: boolean | undefined
+    } | undefined
+  ] | [
+    api: Api.Api.Any,
+    middleware: ApiMiddleware.Fn<any, any> | Effect.Effect<ApiMiddleware.Fn<any, any>, any, any>,
+    options?: {
+      readonly withContext?: boolean | undefined
+    } | undefined
+  ]
+): any => {
+  const apiFirst = Api.isApi(args[0])
+  const withContext = apiFirst ? args[2]?.withContext === true : (args as any)[1]?.withContext === true
+  const add = withContext ? middlewareAdd : middlewareAddNoContext
+  const middleware = apiFirst ? args[1] : args[0]
+  return Effect.isEffect(middleware)
+    ? Layer.effect(ApiMiddleware, Effect.flatMap(middleware as any, add))
+    : Layer.effect(ApiMiddleware, add(middleware as any))
+}
 
 /**
  * Create an `Api` level middleware `Layer`, that has a `Scope` provided to
@@ -319,40 +387,53 @@ export const middlewareMake = <Groups extends ApiGroup.ApiGroup.Any, Error, Erro
  * @since 1.0.0
  * @category middleware
  */
-export const middlewareMakeScoped = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, R, EX = never, RX = never>(
-  _api: Api.Api<Groups, Error, ErrorR>,
-  middleware: ApiMiddleware.Fn<NoInfer<Error>, R> | Effect.Effect<ApiMiddleware.Fn<NoInfer<Error>, R>, EX, RX>
-): Layer.Layer<never, EX, Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | Exclude<RX, Scope>> =>
-  Effect.isEffect(middleware)
-    ? Layer.scoped(ApiMiddleware, Effect.flatMap(middleware as any, middlewareAdd))
-    : Layer.effect(ApiMiddleware, middlewareAdd(middleware as any))
-
-/**
- * Create an `Api` level middleware `Layer`, that can't fail.
- *
- * @since 1.0.0
- * @category middleware
- */
-export const middlewareMakeNoError = <R, EX = never, RX = never>(
-  middleware: ApiMiddleware.Fn<never, R> | Effect.Effect<ApiMiddleware.Fn<never, R>, EX, RX>
-): Layer.Layer<never, EX, Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | RX> =>
-  Effect.isEffect(middleware)
-    ? Layer.effect(ApiMiddleware, Effect.flatMap(middleware as any, middlewareAdd))
-    : Layer.effect(ApiMiddleware, middlewareAdd(middleware as any))
-
-/**
- * Create an `Api` level middleware `Layer`, that can't fail.
- * It has a `Scope` provided to the constructor.
- *
- * @since 1.0.0
- * @category middleware
- */
-export const middlewareMakeNoErrorScoped = <R, EX = never, RX = never>(
-  middleware: ApiMiddleware.Fn<never, R> | Effect.Effect<ApiMiddleware.Fn<never, R>, EX, RX>
-): Layer.Layer<never, EX, Exclude<R, Scope | HttpServerRequest.HttpServerRequest> | RX> =>
-  Effect.isEffect(middleware)
-    ? Layer.scoped(ApiMiddleware, Effect.flatMap(middleware as any, middlewareAdd))
-    : Layer.effect(ApiMiddleware, middlewareAdd(middleware as any))
+export const middlewareLayerScoped: {
+  <EX, RX>(
+    middleware: Effect.Effect<ApiMiddleware.Fn<never>, EX, RX>,
+    options?: {
+      readonly withContext?: false | undefined
+    }
+  ): Layer.Layer<never, EX, Exclude<RX, Scope>>
+  <R, EX, RX>(
+    middleware: Effect.Effect<ApiMiddleware.Fn<never, R>, EX, RX>,
+    options: {
+      readonly withContext: true
+    }
+  ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | Exclude<RX, Scope>>
+  <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, EX, RX>(
+    api: Api.Api<Groups, Error, ErrorR>,
+    middleware: Effect.Effect<ApiMiddleware.Fn<NoInfer<Error>>, EX, RX>,
+    options?: {
+      readonly withContext?: false | undefined
+    }
+  ): Layer.Layer<never, EX, Exclude<RX, Scope>>
+  <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, R, EX, RX>(
+    api: Api.Api<Groups, Error, ErrorR>,
+    middleware: Effect.Effect<ApiMiddleware.Fn<NoInfer<Error>, R>, EX, RX>,
+    options: {
+      readonly withContext: true
+    }
+  ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | Exclude<RX, Scope>>
+} = (
+  ...args: [
+    middleware: ApiMiddleware.Fn<any, any> | Effect.Effect<ApiMiddleware.Fn<any, any>, any, any>,
+    options?: {
+      readonly withContext?: boolean | undefined
+    } | undefined
+  ] | [
+    api: Api.Api.Any,
+    middleware: ApiMiddleware.Fn<any, any> | Effect.Effect<ApiMiddleware.Fn<any, any>, any, any>,
+    options?: {
+      readonly withContext?: boolean | undefined
+    } | undefined
+  ]
+): any => {
+  const apiFirst = Api.isApi(args[0])
+  const withContext = apiFirst ? args[2]?.withContext === true : (args as any)[1]?.withContext === true
+  const add = withContext ? middlewareAdd : middlewareAddNoContext
+  const middleware = apiFirst ? args[1] : args[0]
+  return Layer.scoped(ApiMiddleware, Effect.flatMap(middleware as any, add))
+}
 
 /**
  * A CORS middleware layer.
@@ -369,7 +450,7 @@ export const middlewareCors = (
     readonly maxAge?: number | undefined
     readonly credentials?: boolean | undefined
   } | undefined
-): Layer.Layer<never> => middlewareMakeNoError(HttpMiddleware.cors(options) as any)
+): Layer.Layer<never> => middlewareLayer(HttpMiddleware.cors(options))
 
 /**
  * @since 1.0.0
@@ -504,18 +585,6 @@ export const middlewareSecurityVoid = <Security extends ApiSecurity.ApiSecurity,
       Effect.zipRight(httpApp)
     )
   ) as SecurityMiddleware<never, EM, RM>
-
-/**
- * @since 1.0.0
- * @category middleware
- */
-export declare namespace ApiMiddleware {
-  /**
-   * @since 1.0.0
-   * @category middleware
-   */
-  export type Fn<Error, R> = (httpApp: HttpApp.Default) => HttpApp.Default<Error, R>
-}
 
 // internal
 
