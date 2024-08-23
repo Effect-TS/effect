@@ -29,13 +29,13 @@ export const TypeId: MailboxStorage.TypeId = Symbol.for(SymbolKey) as MailboxSto
 /** @internal */
 export const Tag = Context.GenericTag<MailboxStorage.MailboxStorage>(SymbolKey)
 
-/**
- * A schema which converts between a bit (encoded) to a boolean (decoded).
- */
-const BooleanFromBit = Schema.transformLiterals(
-  [0, false],
-  [1, true]
-)
+// /**
+//  * A schema which converts between a bit (encoded) to a boolean (decoded).
+//  */
+// const BooleanFromBit = Schema.transformLiterals(
+//   [0, false],
+//   [1, true]
+// )
 
 /**
  * Represents identifiers that associate to a specific entity.

@@ -16,7 +16,7 @@ export const make = <Msg extends Envelope.AnyMessage>(
 ): Effect.Effect<Mailbox<Msg>, never, MailboxStorage> =>
   Effect.gen(function*() {
     const storage = yield* InternalMailboxStorage.Tag
-    const queue = yield* Queue.unbounded<Msg>()
+    const queue = yield* Queue.unbounded<Mailbox.Entry<Msg>>()
 
     function acknowledge(message: Msg): Effect.Effect<void> {
       return storage.updateMessage(address, message, InternalMessageState.acknowledged)
@@ -68,17 +68,12 @@ export const make = <Msg extends Envelope.AnyMessage>(
       return complete(message, Exit.failCause(cause))
     }
 
-    return {
-      offer: (message) => Queue.offer(queue, message),
-      take: Queue.take(queue),
-      takeUpTo: (max) => Queue.takeUpTo(queue, max),
-      takeBetween: (min, max) => Queue.takeBetween(queue, min, max),
-      takeAll: Queue.takeAll(queue),
+    return Object.assign(queue, {
       acknowledge,
       complete,
       completeEffect,
       succeed,
       fail,
       failCause
-    } as const
+    })
   })

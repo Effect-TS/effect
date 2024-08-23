@@ -27,7 +27,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Entity<Msg extends Schema.TaggedRequest.Any> extends Equal.Equal, Entity.Proto {
+export interface Entity<Msg extends Envelope.AnyMessage> extends Equal.Equal, Entity.Proto {
   /**
    * The entity type name.
    */
@@ -41,10 +41,6 @@ export interface Entity<Msg extends Schema.TaggedRequest.Any> extends Equal.Equa
     Serializable.Serializable.Encoded<Msg>,
     Serializable.Serializable.Context<Msg>
   >
-  /**
-   * A function used to determine the message identifier for a given message.
-   */
-  readonly getMessageId: (message: Msg) => string
 }
 
 /**
@@ -65,7 +61,7 @@ export declare namespace Entity {
  * @category refinements
  */
 export const isEntity = (u: unknown): u is Entity<
-  Schema.TaggedRequest.Any
+  Envelope.AnyMessage
 > => Predicate.hasProperty(u, TypeId)
 
 const Proto = {
