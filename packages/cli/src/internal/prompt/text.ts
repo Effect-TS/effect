@@ -4,6 +4,7 @@ import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
+import * as Match from "effect/Match"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import type * as Prompt from "../../Prompt.js"
@@ -23,6 +24,10 @@ interface State {
   readonly offset: number
   readonly value: string
   readonly error: Option.Option<string>
+}
+
+function getValue(state: State, options: Options): string {
+  return state.value.length > 0 ? state.value : options.default
 }
 
 const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
@@ -58,19 +63,30 @@ function renderClearScreen(state: State, options: Options) {
 }
 
 function renderInput(nextState: State, options: Options, submitted: boolean) {
+  const text = getValue(nextState, options)
+
   const annotation = Option.match(nextState.error, {
-    onNone: () => submitted ? Ansi.white : Ansi.combine(Ansi.underlined, Ansi.cyanBright),
+    onNone: () => Match.value(submitted)
+    .pipe(
+      Match.when(true, () => Ansi.green),
+      Match.orElse(() => Match.value(nextState.value).pipe(
+        Match.when('', () => Ansi.blackBright),
+        Match.orElse(() => Ansi.combine(Ansi.underlined, Ansi.cyanBright))
+      ))
+    ),
     onSome: () => Ansi.red
   })
+
+
   switch (options.type) {
     case "hidden": {
       return Doc.empty
     }
     case "password": {
-      return Doc.annotate(Doc.text("*".repeat(nextState.value.length)), annotation)
+      return Doc.annotate(Doc.text("*".repeat(text.length)), annotation)
     }
     case "text": {
-      return Doc.annotate(Doc.text(nextState.value), annotation)
+      return Doc.annotate(Doc.text(text), annotation)
     }
   }
 }
@@ -191,6 +207,17 @@ function processCursorRight(state: State) {
   }))
 }
 
+function processTab(state: State, options: Options) {
+  if (state.value === options.default) {
+    return Effect.succeed(Action.Beep())
+  }
+  const value = getValue(state, options)
+  const cursor = value.length
+  return Effect.succeed(Action.NextFrame({
+    state: { ...state, value, cursor, error: Option.none() }
+  }))
+}
+
 function defaultProcessor(input: string, state: State) {
   const beforeCursor = state.value.slice(0, state.cursor)
   const afterCursor = state.value.slice(state.cursor)
@@ -232,7 +259,7 @@ function handleProcess(options: Options) {
       }
       case "enter":
       case "return": {
-        const value = state.value.length > 0 ? state.value : options.default
+        const value = getValue(state, options)   
         return Effect.match(options.validate(value), {
           onFailure: (error) =>
             Action.NextFrame({
@@ -240,6 +267,9 @@ function handleProcess(options: Options) {
             }),
           onSuccess: (value) => Action.Submit({ value })
         })
+      }
+      case "tab": {
+        return processTab(state, options);
       }
       default: {
         const value = Option.getOrElse(input.input, () => "")
