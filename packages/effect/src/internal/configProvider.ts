@@ -329,7 +329,7 @@ const fromFlatLoop = <A>(
             core.flatMap((indices) => {
               if (indices.length === 0) {
                 return core.suspend(() =>
-                  core.map(fromFlatLoop(flat, patchedPrefix, op.config, true), Arr.of)
+                  core.map(fromFlatLoop(flat, prefix, op.config, true), Arr.of)
                 ) as unknown as Effect.Effect<Array<A>, ConfigError.ConfigError>
               }
               return pipe(
