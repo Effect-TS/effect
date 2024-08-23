@@ -382,6 +382,64 @@ export interface SecurityMiddleware<I, EM = never, RM = never> {
 }
 
 /**
+ * @since 1.0.0
+ * @category middleware
+ */
+export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
+  self: Security
+): Effect.Effect<
+  ApiSecurity.ApiSecurity.Type<Security>,
+  never,
+  HttpServerRequest.HttpServerRequest | HttpServerRequest.ParsedSearchParams
+> => {
+  switch (self._tag) {
+    case "Bearer": {
+      const prefixLen = `${self.prefix} `.length
+      return Effect.map(
+        HttpServerRequest.HttpServerRequest,
+        (request) => (request.headers.authorization ?? "").slice(prefixLen) as any
+      )
+    }
+    case "ApiKey": {
+      const schema = Schema.Struct({
+        [self.key]: Schema.String
+      })
+      const decode = unify(
+        self.in === "query"
+          ? HttpServerRequest.schemaSearchParams(schema)
+          : HttpServerRequest.schemaHeaders(schema)
+      )
+      return Effect.match(decode, {
+        onFailure: () => "" as any,
+        onSuccess: (match) => match[self.key]
+      })
+    }
+    case "Basic": {
+      const empty: ApiSecurity.ApiSecurity.Type<Security> = {
+        username: "",
+        password: ""
+      } as any
+      return HttpServerRequest.HttpServerRequest.pipe(
+        Effect.flatMap((request) => Encoding.decodeBase64String(request.headers.authorization ?? "")),
+        Effect.match({
+          onFailure: () => empty,
+          onSuccess: (header) => {
+            const parts = header.split(":")
+            if (parts.length !== 2) {
+              return empty
+            }
+            return {
+              username: parts[0],
+              password: parts[1]
+            } as any
+          }
+        })
+      )
+    }
+  }
+}
+
+/**
  * Make a middleware from an `ApiSecurity` instance, that can be used when
  * constructing a `Handlers` group.
  *
@@ -419,60 +477,33 @@ export const middlewareSecurity = <Security extends ApiSecurity.ApiSecurity, I, 
   f: (
     credentials: ApiSecurity.ApiSecurity.Type<Security>
   ) => Effect.Effect<S, EM, RM>
-): SecurityMiddleware<I, EM, RM> => {
-  switch (self._tag) {
-    case "Bearer": {
-      const prefixLen = `${self.prefix} `.length
-      return middleware(Effect.provideServiceEffect(
-        tag,
-        HttpServerRequest.HttpServerRequest.pipe(
-          Effect.map((request) => (request.headers.authorization ?? "").slice(prefixLen) as any),
-          Effect.flatMap(f)
-        )
-      )) as SecurityMiddleware<I, EM, RM>
-    }
-    case "ApiKey": {
-      const schema = Schema.Struct({
-        [self.key]: Schema.String
-      })
-      const decode = unify(
-        self.in === "query"
-          ? HttpServerRequest.schemaSearchParams(schema)
-          : HttpServerRequest.schemaHeaders(schema)
-      )
-      const handled = Effect.match(decode, {
-        onFailure: () => "" as any,
-        onSuccess: (match) => match[self.key]
-      })
-      return middleware(Effect.provideServiceEffect(tag, Effect.flatMap(handled, f))) as SecurityMiddleware<I, EM, RM>
-    }
-    case "Basic": {
-      const empty: ApiSecurity.ApiSecurity.Type<Security> = {
-        username: "",
-        password: ""
-      } as any
-      return middleware(Effect.provideServiceEffect(
-        tag,
-        HttpServerRequest.HttpServerRequest.pipe(
-          Effect.flatMap((request) => Encoding.decodeBase64String(request.headers.authorization ?? "")),
-          Effect.matchEffect({
-            onFailure: () => f(empty),
-            onSuccess: (header) => {
-              const parts = header.split(":")
-              if (parts.length !== 2) {
-                return f(empty)
-              }
-              return f({
-                username: parts[0],
-                password: parts[1]
-              } as any)
-            }
-          })
-        )
-      )) as SecurityMiddleware<I, EM, RM>
-    }
-  }
-}
+): SecurityMiddleware<I, EM, RM> =>
+  middleware(Effect.provideServiceEffect(
+    tag,
+    Effect.flatMap(securityDecode(self), f)
+  )) as SecurityMiddleware<I, EM, RM>
+
+/**
+ * Make a middleware from an `ApiSecurity` instance, that can be used when
+ * constructing a `Handlers` group.
+ *
+ * This version does not supply any context to the handlers.
+ *
+ * @since 1.0.0
+ * @category middleware
+ */
+export const middlewareSecurityVoid = <Security extends ApiSecurity.ApiSecurity, X, EM, RM>(
+  self: Security,
+  f: (
+    credentials: ApiSecurity.ApiSecurity.Type<Security>
+  ) => Effect.Effect<X, EM, RM>
+): SecurityMiddleware<never, EM, RM> =>
+  middleware((httpApp) =>
+    securityDecode(self).pipe(
+      Effect.flatMap(f),
+      Effect.zipRight(httpApp)
+    )
+  ) as SecurityMiddleware<never, EM, RM>
 
 /**
  * @since 1.0.0
