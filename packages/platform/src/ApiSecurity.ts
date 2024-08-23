@@ -4,6 +4,7 @@
 import * as Context from "effect/Context"
 import { dual } from "effect/Function"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import type { Redacted } from "effect/Redacted"
 import type { Covariant } from "effect/Types"
 
 /**
@@ -51,7 +52,7 @@ export declare namespace ApiSecurity {
  * @since 1.0.0
  * @category models
  */
-export interface Bearer extends ApiSecurity.Proto<string> {
+export interface Bearer extends ApiSecurity.Proto<Redacted> {
   readonly _tag: "Bearer"
   readonly prefix: string
 }
@@ -60,7 +61,7 @@ export interface Bearer extends ApiSecurity.Proto<string> {
  * @since 1.0.0
  * @category models
  */
-export interface ApiKey extends ApiSecurity.Proto<string> {
+export interface ApiKey extends ApiSecurity.Proto<Redacted> {
   readonly _tag: "ApiKey"
   readonly in: "header" | "query"
   readonly key: string
@@ -80,7 +81,7 @@ export interface Basic extends ApiSecurity.Proto<Credentials> {
  */
 export interface Credentials {
   readonly username: string
-  readonly password: string
+  readonly password: Redacted
 }
 
 const Proto = {

@@ -14,6 +14,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type { ReadonlyRecord } from "effect/Record"
+import * as Redacted from "effect/Redacted"
 import type { Scope } from "effect/Scope"
 import type { Covariant, Mutable, NoInfer } from "effect/Types"
 import { unify } from "effect/Unify"
@@ -478,7 +479,7 @@ export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
       const prefixLen = `${self.prefix} `.length
       return Effect.map(
         HttpServerRequest.HttpServerRequest,
-        (request) => (request.headers.authorization ?? "").slice(prefixLen) as any
+        (request) => Redacted.make((request.headers.authorization ?? "").slice(prefixLen)) as any
       )
     }
     case "ApiKey": {
@@ -491,14 +492,14 @@ export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
           : HttpServerRequest.schemaHeaders(schema)
       )
       return Effect.match(decode, {
-        onFailure: () => "" as any,
-        onSuccess: (match) => match[self.key]
+        onFailure: () => Redacted.make("") as any,
+        onSuccess: (match) => Redacted.make(match[self.key])
       })
     }
     case "Basic": {
       const empty: ApiSecurity.ApiSecurity.Type<Security> = {
         username: "",
-        password: ""
+        password: Redacted.make("")
       } as any
       return HttpServerRequest.HttpServerRequest.pipe(
         Effect.flatMap((request) => Encoding.decodeBase64String(request.headers.authorization ?? "")),
@@ -511,7 +512,7 @@ export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
             }
             return {
               username: parts[0],
-              password: parts[1]
+              password: Redacted.make(parts[1])
             } as any
           }
         })

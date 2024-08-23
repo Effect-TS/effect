@@ -12,7 +12,7 @@ import {
 } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Redacted } from "effect"
 import { createServer } from "node:http"
 
 class User extends Schema.Class<User>("User")({
@@ -31,7 +31,7 @@ const security = ApiSecurity.bearer()
 const securityMiddleware = ApiBuilder.middlewareSecurity(
   security,
   CurrentUser,
-  (token) => Effect.succeed(new User({ id: 1000, name: `Authenticated with ${token}` }))
+  (token) => Effect.succeed(new User({ id: 1000, name: `Authenticated with ${Redacted.value(token)}` }))
 )
 
 const users = ApiGroup.make("users").pipe(
