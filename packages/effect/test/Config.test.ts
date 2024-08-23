@@ -561,7 +561,7 @@ describe("Config", () => {
   it("array nested", () => {
     const result = Config.array(Config.number(), "ARRAY").pipe(
       Effect.withConfigProvider(
-        ConfigProvider.fromMap(new Map([["NESTED_ARRAY", "1,2,3"]])).pipe(
+        ConfigProvider.fromMap(new Map([["NESTED.ARRAY", "1,2,3"]])).pipe(
           ConfigProvider.nested("NESTED")
         )
       ),

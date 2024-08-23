@@ -321,33 +321,28 @@ const fromFlatLoop = <A>(
     }
     case OpCodes.OP_SEQUENCE: {
       return pipe(
-        pathPatch.patch(prefix, flat.patch),
-        core.flatMap((patchedPrefix) =>
-          pipe(
-            flat.enumerateChildren(patchedPrefix),
-            core.flatMap(indicesFrom),
-            core.flatMap((indices) => {
-              if (indices.length === 0) {
-                return core.suspend(() =>
-                  core.map(fromFlatLoop(flat, patchedPrefix, op.config, true), Arr.of)
-                ) as unknown as Effect.Effect<Array<A>, ConfigError.ConfigError>
+        flat.enumerateChildren(prefix),
+        core.flatMap(indicesFrom),
+        core.flatMap((indices) => {
+          if (indices.length === 0) {
+            return core.suspend(() =>
+              core.map(fromFlatLoop(flat, prefix, op.config, true), Arr.of)
+            ) as unknown as Effect.Effect<Array<A>, ConfigError.ConfigError>
+          }
+          return pipe(
+            core.forEachSequential(
+              indices,
+              (index) => fromFlatLoop(flat, Arr.append(prefix, `[${index}]`), op.config, true)
+            ),
+            core.map((chunkChunk) => {
+              const flattened = Arr.flatten(chunkChunk)
+              if (flattened.length === 0) {
+                return Arr.of(Arr.empty<A>())
               }
-              return pipe(
-                core.forEachSequential(
-                  indices,
-                  (index) => fromFlatLoop(flat, Arr.append(prefix, `[${index}]`), op.config, true)
-                ),
-                core.map((chunkChunk) => {
-                  const flattened = Arr.flatten(chunkChunk)
-                  if (flattened.length === 0) {
-                    return Arr.of(Arr.empty<A>())
-                  }
-                  return Arr.of(flattened)
-                })
-              ) as unknown as Effect.Effect<Array<A>, ConfigError.ConfigError>
+              return Arr.of(flattened)
             })
-          )
-        )
+          ) as unknown as Effect.Effect<Array<A>, ConfigError.ConfigError>
+        })
       )
     }
     case OpCodes.OP_HASHMAP: {
