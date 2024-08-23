@@ -278,3 +278,35 @@ export const annotate: {
       annotations: Context.add(self.annotations, tag, value)
     }) as A
 )
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotateEndpointsMerge: {
+  <I>(context: Context.Context<I>): <A extends ApiGroup.Any>(self: A) => A
+  <A extends ApiGroup.Any, I>(self: A, context: Context.Context<I>): A
+} = dual(
+  2,
+  <A extends ApiGroup.Any, I>(self: A, context: Context.Context<I>): A =>
+    makeProto({
+      ...self as any,
+      endpoints: Chunk.map(self.endpoints, ApiEndpoint.annotateMerge(context))
+    }) as A
+)
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotateEndpoints: {
+  <I, S>(tag: Context.Tag<I, S>, value: S): <A extends ApiGroup.Any>(self: A) => A
+  <A extends ApiGroup.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A
+} = dual(
+  3,
+  <A extends ApiGroup.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A =>
+    makeProto({
+      ...self as any,
+      endpoints: Chunk.map(self.endpoints, ApiEndpoint.annotate(tag, value))
+    }) as A
+)
