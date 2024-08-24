@@ -173,7 +173,7 @@ export const fromApi = <A extends Api.Any>(api: A): OpenAPISpec => {
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       const op: DeepMutable<OpenAPISpecOperation> = {
         tags: [group.name],
-        operationId: endpoint.name,
+        operationId: `${group.name}.${endpoint.name}`,
         parameters: [],
         responses: {
           [success[1]]: {
