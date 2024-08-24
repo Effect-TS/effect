@@ -530,7 +530,7 @@ export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
  * @example
  * import { ApiBuilder, ApiSecurity } from "@effect/platform"
  * import { Schema } from "@effect/schema"
- * import { Context, Effect } from "effect"
+ * import { Context, Effect, Redacted } from "effect"
  *
  * class User extends Schema.Class<User>("User")({
  *   id: Schema.Number
@@ -549,7 +549,7 @@ export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
  *   return ApiBuilder.middlewareSecurity(
  *     security,
  *     CurrentUser,
- *     (token) => accounts.findUserByAccessToken(token)
+ *     (token) => accounts.findUserByAccessToken(Redacted.value(token))
  *   )
  * })
  */
