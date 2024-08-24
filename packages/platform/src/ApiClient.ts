@@ -23,14 +23,24 @@ import * as HttpMethod from "./HttpMethod.js"
  * @category models
  */
 export type Client<A extends Api.Any> = [A] extends [Api<infer _Groups, infer _ApiError, infer _ApiErrorR>] ? {
-    readonly [GroupName in _Groups["name"]]: ApiGroup.WithName<_Groups, GroupName> extends
-      ApiGroup<infer _, infer _Endpoints, infer _GroupError, infer _GroupErrorR> ? {
-        readonly [Name in _Endpoints["name"]]: (
-          request: Simplify<ApiEndpoint.ClientRequest<ApiGroup.WithName<_Endpoints, Name>>>
-        ) => Effect.Effect<
-          ApiEndpoint.SuccessWithName<_Endpoints, Name>,
-          ApiEndpoint.ErrorWithName<_Endpoints, Name> | _GroupError | _ApiError
-        >
+    readonly [GroupName in _Groups["name"]]: [ApiGroup.WithName<_Groups, GroupName>] extends
+      [ApiGroup<GroupName, infer _Endpoints, infer _GroupError, infer _GroupErrorR>] ? {
+        readonly [Name in _Endpoints["name"]]: [ApiEndpoint.WithName<_Endpoints, Name>] extends [
+          ApiEndpoint<
+            Name,
+            infer _Method,
+            infer _Path,
+            infer _Payload,
+            Schema.Schema<infer _Success, infer _SuccessI, infer _SuccessR>,
+            Schema.Schema<infer _Error, infer _ErrorI, infer _ErrorR>
+          >
+        ] ? (
+            request: Simplify<ApiEndpoint.ClientRequest<_Path, _Payload>>
+          ) => Effect.Effect<
+            _Success,
+            _Error | _GroupError | _ApiError
+          > :
+          never
       } :
       never
   } :
@@ -128,6 +138,8 @@ export const make = <A extends Api.Any>(
     })
     return client as any
   })
+
+// ----------------------------------------------------------------------------
 
 const paramsRegex = /:(\w+)[^/]*/g
 

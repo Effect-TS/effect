@@ -131,9 +131,9 @@ export declare namespace ApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type ClientRequest<Endpoint extends Any> = (
-    & ([Endpoint["pathSchema"]] extends [Option.Option<PathParams>] ? {} : { readonly path: PathParsed<Endpoint> })
-    & ([Payload<Endpoint>] extends [infer P] ? [P] extends [never] ? {} : { readonly payload: P } : {})
+  export type ClientRequest<Path, Payload> = (
+    & ([Path] extends [PathParams] ? {} : { readonly path: Schema.Schema.Type<Path> })
+    & ([Schema.Schema.Type<Payload>] extends [infer P] ? [P] extends [never] ? {} : { readonly payload: P } : {})
   ) extends infer Req ? keyof Req extends never ? void : Req : void
 
   /**
