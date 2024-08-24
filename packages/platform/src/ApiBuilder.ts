@@ -121,12 +121,12 @@ export type HandlersTypeId = typeof HandlersTypeId
 export interface Handlers<
   E,
   R,
-  Endpoints extends ApiEndpoint.ApiEndpoint.Any = never
+  Endpoints extends ApiEndpoint.ApiEndpoint.All = never
 > extends Pipeable {
   readonly [HandlersTypeId]: {
     _Endpoints: Covariant<Endpoints>
   }
-  readonly group: ApiGroup.ApiGroup<any, ApiEndpoint.ApiEndpoint.Any, any, R>
+  readonly group: ApiGroup.ApiGroup<any, ApiEndpoint.ApiEndpoint.All, any, R>
   readonly handlers: Chunk.Chunk<Handlers.Item<E, R>>
 }
 
@@ -164,9 +164,9 @@ const HandlersProto = {
   }
 }
 
-const makeHandlers = <E, R, Endpoints extends ApiEndpoint.ApiEndpoint.Any>(
+const makeHandlers = <E, R, Endpoints extends ApiEndpoint.ApiEndpoint.All>(
   options: {
-    readonly group: ApiGroup.ApiGroup<any, ApiEndpoint.ApiEndpoint.Any, any, R>
+    readonly group: ApiGroup.ApiGroup<any, ApiEndpoint.ApiEndpoint.All, any, R>
     readonly handlers: Chunk.Chunk<Handlers.Item<E, R>>
   }
 ): Handlers<E, R, Endpoints> => {
@@ -232,7 +232,7 @@ export const group = <
  * @since 1.0.0
  * @category handlers
  */
-export const handle = <Endpoints extends ApiEndpoint.ApiEndpoint.Any, const Name extends Endpoints["name"], E, R>(
+export const handle = <Endpoints extends ApiEndpoint.ApiEndpoint.All, const Name extends Endpoints["name"], E, R>(
   name: Name,
   handler: ApiEndpoint.ApiEndpoint.HandlerWithName<Endpoints, Name, E, R>
 ) =>
@@ -270,7 +270,7 @@ export const handle = <Endpoints extends ApiEndpoint.ApiEndpoint.Any, const Name
  */
 export const middleware =
   <E, R, E1, R1>(middleware: Handlers.Middleware<E, R, E1, R1>) =>
-  <Endpoints extends ApiEndpoint.ApiEndpoint.Any>(
+  <Endpoints extends ApiEndpoint.ApiEndpoint.All>(
     self: Handlers<E, R, Endpoints>
   ): Handlers<E1, ApiEndpoint.ApiEndpoint.ExcludeProvided<R1>, Endpoints> =>
     makeHandlers<E1, ApiEndpoint.ApiEndpoint.ExcludeProvided<R1>, Endpoints>({
@@ -458,7 +458,7 @@ export const middlewareCors = (
  * @category middleware
  */
 export interface SecurityMiddleware<I, EM = never, RM = never> {
-  <Endpoints extends ApiEndpoint.ApiEndpoint.Any, E, R>(
+  <Endpoints extends ApiEndpoint.ApiEndpoint.All, E, R>(
     self: Handlers<E, R, Endpoints>
   ): Handlers<E | EM, Exclude<R, I> | ApiEndpoint.ApiEndpoint.ExcludeProvided<RM>, Endpoints>
 }

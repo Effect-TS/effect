@@ -31,8 +31,9 @@ export type Client<A extends Api.Any> = [A] extends [Api<infer _Groups, infer _A
             infer _Method,
             infer _Path,
             infer _Payload,
-            Schema.Schema<infer _Success, infer _SuccessI, infer _SuccessR>,
-            Schema.Schema<infer _Error, infer _ErrorI, infer _ErrorR>
+            infer _Success,
+            infer _Error,
+            infer _R
           >
         ] ? (
             request: Simplify<ApiEndpoint.ClientRequest<_Path, _Payload>>
@@ -65,7 +66,6 @@ export const make = <A extends Api.Any>(
     )
     const client: Record<string, Record<string, any>> = {}
     reflect(api as any, {
-      mode: "full",
       onGroup({ group }) {
         client[group.name] = {}
       },
@@ -117,7 +117,7 @@ export const make = <A extends Api.Any>(
               Effect.flatMap((payload) =>
                 HttpMethod.hasBody(endpoint.method)
                   ? HttpClientRequest.jsonBody(baseRequest, payload)
-                  : Effect.succeed(HttpClientRequest.setUrlParams(baseRequest, payload))
+                  : Effect.succeed(HttpClientRequest.setUrlParams(baseRequest, payload as any))
               ),
               Effect.orDie
             ) :

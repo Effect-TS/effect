@@ -36,7 +36,7 @@ export const isApiGroup = (u: unknown): u is ApiGroup.Any => Predicate.hasProper
  */
 export interface ApiGroup<
   out Name extends string,
-  out Endpoints extends ApiEndpoint.ApiEndpoint.Any = never,
+  out Endpoints extends ApiEndpoint.ApiEndpoint.All = never,
   in out Error = ApiDecodeError,
   out ErrorR = never
 > extends Pipeable {
@@ -130,7 +130,7 @@ const Proto = {
   }
 }
 
-const makeProto = <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR>(options: {
+const makeProto = <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.All, Error, ErrorR>(options: {
   readonly name: Name
   readonly endpoints: Chunk.Chunk<Endpoints>
   readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
@@ -154,27 +154,27 @@ export const make = <Name extends string>(name: Name): ApiGroup<Name> =>
  * @category endpoints
  */
 export const add: {
-  <A extends ApiEndpoint.ApiEndpoint.Any>(
+  <A extends ApiEndpoint.ApiEndpoint.All>(
     endpoint: A
-  ): <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR>(
+  ): <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.All, Error, ErrorR>(
     self: ApiGroup<Name, Endpoints, Error, ErrorR>
   ) => ApiGroup<Name, Endpoints | A, Error, ErrorR>
   <
     Name extends string,
-    Endpoints extends ApiEndpoint.ApiEndpoint.Any,
+    Endpoints extends ApiEndpoint.ApiEndpoint.All,
     Error,
     ErrorR,
-    A extends ApiEndpoint.ApiEndpoint.Any
+    A extends ApiEndpoint.ApiEndpoint.All
   >(
     self: ApiGroup<Name, Endpoints, Error, ErrorR>,
     endpoint: A
   ): ApiGroup<Name, Endpoints | A, Error, ErrorR>
 } = dual(2, <
   Name extends string,
-  Endpoints extends ApiEndpoint.ApiEndpoint.Any,
+  Endpoints extends ApiEndpoint.ApiEndpoint.All,
   Error,
   ErrorR,
-  A extends ApiEndpoint.ApiEndpoint.Any
+  A extends ApiEndpoint.ApiEndpoint.All
 >(
   self: ApiGroup<Name, Endpoints, Error, ErrorR>,
   endpoint: A
@@ -194,10 +194,10 @@ export const addError: {
     annotations?: {
       readonly status?: number | undefined
     }
-  ): <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR>(
+  ): <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.All, Error, ErrorR>(
     self: ApiGroup<Name, Endpoints, Error, ErrorR>
   ) => ApiGroup<Name, Endpoints, Error | A, ErrorR | R>
-  <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR, A, I, R>(
+  <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.All, Error, ErrorR, A, I, R>(
     self: ApiGroup<Name, Endpoints, Error, ErrorR>,
     schema: Schema.Schema<A, I, R>,
     annotations?: {
@@ -206,7 +206,7 @@ export const addError: {
   ): ApiGroup<Name, Endpoints, Error | A, ErrorR | R>
 } = dual(
   (args) => isApiGroup(args[0]),
-  <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR, A, I, R>(
+  <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.All, Error, ErrorR, A, I, R>(
     self: ApiGroup<Name, Endpoints, Error, ErrorR>,
     schema: Schema.Schema<A, I, R>,
     annotations?: {
@@ -231,14 +231,14 @@ export const addError: {
 export const prefix: {
   (
     prefix: PathInput
-  ): <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR>(
+  ): <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.All, Error, ErrorR>(
     self: ApiGroup<Name, Endpoints, Error, ErrorR>
   ) => ApiGroup<Name, Endpoints, Error, ErrorR>
-  <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR>(
+  <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.All, Error, ErrorR>(
     self: ApiGroup<Name, Endpoints, Error, ErrorR>,
     prefix: PathInput
   ): ApiGroup<Name, Endpoints, Error, ErrorR>
-} = dual(2, <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.Any, Error, ErrorR>(
+} = dual(2, <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoint.All, Error, ErrorR>(
   self: ApiGroup<Name, Endpoints, Error, ErrorR>,
   prefix: PathInput
 ): ApiGroup<Name, Endpoints, Error, ErrorR> =>
