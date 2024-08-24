@@ -18,6 +18,12 @@ import * as HttpMethod from "./HttpMethod.js"
  * @since 1.0.0
  * @category annotations
  */
+export class Identifier extends Context.Tag("@effect/platform/OpenApi/Identifier")<Identifier, string>() {}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
 export class Title extends Context.Tag("@effect/platform/OpenApi/Title")<Title, string>() {}
 
 /**
@@ -57,6 +63,7 @@ export class ExternalDocs
  * @category annotations
  */
 export const annotations = (annotations: {
+  readonly identifier?: string | undefined
   readonly title?: string | undefined
   readonly description?: string | undefined
   readonly version?: string | undefined
@@ -65,6 +72,9 @@ export const annotations = (annotations: {
   readonly externalDocs?: OpenAPISpecExternalDocs | undefined
 }): Context.Context<never> => {
   let context = Context.empty()
+  if (annotations.identifier !== undefined) {
+    context = Context.add(context, Identifier, annotations.identifier)
+  }
   if (annotations.title !== undefined) {
     context = Context.add(context, Title, annotations.title)
   }
@@ -100,31 +110,31 @@ export interface Annotatable {
  */
 export const annotate: {
   (annotations: {
+    readonly identifier?: string | undefined
     readonly title?: string | undefined
     readonly description?: string | undefined
     readonly version?: string | undefined
     readonly license?: OpenAPISpecLicense | undefined
     readonly security?: ApiSecurity | undefined
     readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-    readonly tags?: ReadonlyArray<OpenAPISpecTag> | undefined
   }): <A extends Annotatable>(self: A) => A
   <A extends Annotatable>(self: A, annotations: {
+    readonly identifier?: string | undefined
     readonly title?: string | undefined
     readonly description?: string | undefined
     readonly version?: string | undefined
     readonly license?: OpenAPISpecLicense | undefined
     readonly security?: ApiSecurity | undefined
     readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-    readonly tags?: ReadonlyArray<OpenAPISpecTag> | undefined
   }): A
 } = dual(2, <A extends Annotatable>(self: A, annotations_: {
+  readonly identifier?: string | undefined
   readonly title?: string | undefined
   readonly description?: string | undefined
   readonly version?: string | undefined
   readonly license?: OpenAPISpecLicense | undefined
   readonly security?: ApiSecurity | undefined
   readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-  readonly tags?: ReadonlyArray<OpenAPISpecTag> | undefined
 }): A => {
   const context = Context.merge(
     self.annotations,
@@ -173,7 +183,7 @@ export const fromApi = <A extends Api.Any>(api: A): OpenAPISpec => {
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       const op: DeepMutable<OpenAPISpecOperation> = {
         tags: [group.name],
-        operationId: `${group.name}.${endpoint.name}`,
+        operationId: Context.getOrElse(endpoint.annotations, Identifier, () => `${group.name}.${endpoint.name}`),
         parameters: [],
         responses: {
           [success[1]]: {
