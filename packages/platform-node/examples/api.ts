@@ -8,7 +8,8 @@ import {
   ApiSecurity,
   HttpClient,
   HttpMiddleware,
-  HttpServer
+  HttpServer,
+  OpenApi
 } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
@@ -62,7 +63,11 @@ const users = ApiGroup.make("users").pipe(
 )
 
 const api = Api.empty.pipe(
-  Api.addGroup(users)
+  Api.addGroup(users),
+  OpenApi.annotate({
+    title: "Users API",
+    description: "API for managing users"
+  })
 )
 
 const UsersLive = ApiBuilder.group(api, "users", (handlers) =>

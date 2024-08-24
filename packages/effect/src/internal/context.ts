@@ -1,5 +1,6 @@
 import type * as C from "../Context.js"
 import * as Equal from "../Equal.js"
+import type { LazyArg } from "../Function.js"
 import { dual } from "../Function.js"
 import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
@@ -208,6 +209,17 @@ export const get: {
   <Services, T extends C.ValidTagsById<Services>>(tag: T): (self: C.Context<Services>) => C.Tag.Service<T>
   <Services, T extends C.ValidTagsById<Services>>(self: C.Context<Services>, tag: T): C.Tag.Service<T>
 } = unsafeGet
+
+/** @internal */
+export const getOrElse = dual<
+  <S, I, B>(tag: C.Tag<I, S>, orElse: LazyArg<B>) => <Services>(self: C.Context<Services>) => S | B,
+  <Services, S, I, B>(self: C.Context<Services>, tag: C.Tag<I, S>, orElse: LazyArg<B>) => S | B
+>(3, (self, tag, orElse) => {
+  if (!self.unsafeMap.has(tag.key)) {
+    return orElse()
+  }
+  return self.unsafeMap.get(tag.key)! as any
+})
 
 /** @internal */
 export const getOption = dual<
