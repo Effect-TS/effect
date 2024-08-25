@@ -168,7 +168,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
   Api.reflect(api as any, {
     onGroup({ group }) {
       const tag: Mutable<OpenAPISpecTag> = {
-        name: group.name
+        name: Context.getOrElse(group.annotations, Title, () => group.name)
       }
       Option.map(Context.getOption(group.annotations, Description), (description) => {
         tag.description = description
@@ -182,12 +182,15 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       const op: DeepMutable<OpenAPISpecOperation> = {
-        tags: [group.name],
+        tags: [Context.getOrElse(group.annotations, Title, () => group.name)],
         operationId: Context.getOrElse(endpoint.annotations, Identifier, () => `${group.name}.${endpoint.name}`),
         parameters: [],
         responses: {
           [success[1]]: {
-            description: "Success"
+            description: success[0].pipe(
+              Option.flatMap(AST.getDescriptionAnnotation),
+              Option.getOrElse(() => "Success")
+            )
           }
         }
       }
@@ -220,7 +223,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
         })
       )
       if (Option.isSome(endpoint.pathSchema)) {
-        getPropertySignatures(AST.encodedAST(endpoint.pathSchema.value.ast)).forEach((ps) => {
+        getPropertySignatures(endpoint.pathSchema.value.ast).forEach((ps) => {
           op.parameters!.push({
             name: ps.name as string,
             in: "path",
@@ -230,7 +233,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
         })
       }
       if (!HttpMethod.hasBody(endpoint.method) && Option.isSome(endpoint.payloadSchema)) {
-        getPropertySignatures(AST.encodedAST(endpoint.payloadSchema.value.ast)).forEach((ps) => {
+        getPropertySignatures(endpoint.payloadSchema.value.ast).forEach((ps) => {
           op.parameters!.push({
             name: ps.name as string,
             in: "query",
@@ -243,7 +246,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
         if (op.responses![status]) continue
         op.responses![status] = {
           description: ast.pipe(
-            Option.flatMap((ast) => AST.getDescriptionAnnotation(ast)),
+            Option.flatMap(AST.getDescriptionAnnotation),
             Option.getOrElse(() => "Error")
           )
         }
@@ -270,11 +273,17 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
 
 const getPropertySignatures = (ast: AST.AST): ReadonlyArray<AST.PropertySignature> => {
   switch (ast._tag) {
+    case "TypeLiteral": {
+      return ast.propertySignatures
+    }
     case "Union": {
       return ast.types.flatMap(getPropertySignatures)
     }
-    case "TypeLiteral": {
-      return ast.propertySignatures
+    case "Transformation": {
+      return getPropertySignatures(ast.from)
+    }
+    case "Suspend": {
+      return getPropertySignatures(ast.f())
     }
     default: {
       return []

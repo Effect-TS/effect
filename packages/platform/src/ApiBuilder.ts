@@ -476,7 +476,7 @@ export const middlewareOpenApi = (
       const response = yield* HttpServerResponse.json(spec).pipe(
         Effect.orDie
       )
-      yield* router.get(options?.path ?? "/openapi.json", response)
+      yield* router.get(options?.path ?? "/openapi.json", Effect.succeed(response))
     })
   )
 
