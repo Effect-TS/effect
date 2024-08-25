@@ -172,7 +172,7 @@ export type MicroCauseTypeId = typeof MicroCauseTypeId
 export type MicroCause<E> = MicroCause.Die | MicroCause.Fail<E> | MicroCause.Interrupt
 
 /**
- * @since 3.6.6
+ * @since 3.7.0
  * @experimental
  * @category guards
  */
