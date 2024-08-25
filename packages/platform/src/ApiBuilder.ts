@@ -47,7 +47,7 @@ export class ApiRouter extends HttpRouter.Tag("@effect/platform/ApiBuilder/ApiRo
  * @category constructors
  */
 export const serve: {
-  (): Layer.Layer<never, never, HttpServer.HttpServer>
+  (): Layer.Layer<never, never, HttpServer.HttpServer | Api.Api.Service>
   <R>(
     middleware: (httpApp: HttpApp.Default) => HttpApp.Default<never, R>
   ): Layer.Layer<
@@ -55,6 +55,7 @@ export const serve: {
     never,
     | HttpServer.HttpServer
     | Exclude<R, Scope | HttpServerRequest.HttpServerRequest>
+    | Api.Api.Service
   >
 } = (middleware?: HttpMiddleware.HttpMiddleware.Applied<any, never, any>): Layer.Layer<
   never,
