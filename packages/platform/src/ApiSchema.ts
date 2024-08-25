@@ -3,7 +3,8 @@
  */
 import * as AST from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
-import { constVoid, identity } from "effect/Function"
+import type { LazyArg } from "effect/Function"
+import { constVoid, dual } from "effect/Function"
 import * as Struct from "effect/Struct"
 
 /**
@@ -11,6 +12,14 @@ import * as Struct from "effect/Struct"
  * @category annotations
  */
 export const AnnotationStatus: unique symbol = Symbol.for("@effect/platform/ApiSchema/AnnotationStatus")
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const AnnotationEmptyDecodeable: unique symbol = Symbol.for(
+  "@effect/platform/ApiSchema/AnnotationEmptyDecodeable"
+)
 
 /**
  * @since 1.0.0
@@ -24,6 +33,20 @@ export const getStatus = (ast: AST.AST, defaultStatus: number): number => {
     } :
     ast.annotations
   return annotations[AnnotationStatus] as number ?? defaultStatus
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getEmptyDecodeable = (ast: AST.AST): boolean => {
+  const annotations = ast._tag === "Transformation" ?
+    {
+      ...ast.to.annotations,
+      ...ast.annotations
+    } :
+    ast.annotations
+  return annotations[AnnotationEmptyDecodeable] as boolean ?? false
 }
 
 /**
@@ -88,26 +111,47 @@ export const Empty = (status: number): typeof Schema.Void => Schema.Void.annotat
  * @since 1.0.0
  * @category schemas
  */
-export interface asEmpty<S extends Schema.Schema.Any>
-  extends Schema.transform<typeof Schema.Void, Schema.Union<[S, typeof Schema.Void]>>
-{}
+export interface asEmpty<
+  S extends Schema.Schema.Any
+> extends Schema.transform<typeof Schema.Void, S> {}
 
 /**
  * @since 1.0.0
  * @category schemas
  */
-export const asEmpty = <S extends Schema.Schema.Any>(
-  self: S,
-  status: number
-): asEmpty<S> =>
-  Schema.transform(
-    Schema.Void,
-    Schema.Union(self, Schema.Void),
-    {
-      decode: identity,
-      encode: constVoid
+export const asEmpty: {
+  <S extends Schema.Schema.Any>(options: {
+    readonly status: number
+    readonly decode: LazyArg<Schema.Schema.Type<S>>
+  }): (self: S) => asEmpty<S>
+  <S extends Schema.Schema.Any>(
+    self: S,
+    options: {
+      readonly status: number
+      readonly decode?: LazyArg<Schema.Schema.Type<S>>
     }
-  ).annotations(annotations({ status }))
+  ): asEmpty<S>
+} = dual(
+  2,
+  <S extends Schema.Schema.Any>(
+    self: S,
+    options: {
+      readonly status: number
+      readonly decode?: LazyArg<Schema.Schema.Type<S>>
+    }
+  ): asEmpty<S> =>
+    Schema.transform(
+      Schema.Void,
+      Schema.typeSchema(self),
+      {
+        decode: options.decode as any,
+        encode: constVoid
+      }
+    ).annotations(annotations({
+      status: options.status,
+      [AnnotationEmptyDecodeable]: true
+    })) as any
+)
 
 /**
  * @since 1.0.0

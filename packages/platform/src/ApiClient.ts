@@ -38,7 +38,7 @@ export type Client<A extends Api.Api.Any> = [A] extends [Api.Api<infer _Groups, 
             request: Simplify<ApiEndpoint.ClientRequest<_Path, _Payload>>
           ) => Effect.Effect<
             _Success,
-            _Error | _GroupError | _ApiError
+            _Error | _GroupError | _ApiError | HttpClientError.HttpClientError
           > :
           never
       } :
@@ -87,21 +87,39 @@ export const make = <A extends Api.Api.Any>(
                 response
               })
             )
+          } else if (Option.isNone(error)) {
+            return Effect.fail(
+              new HttpClientError.ResponseError({
+                reason: "StatusCode",
+                request,
+                response
+              })
+            )
           }
-          const decode = Schema.decodeUnknown(Schema.make(error))
-          return response.json.pipe(
-            Effect.flatMap(decode),
-            Effect.matchEffect({
-              onFailure: () =>
-                Effect.die(
+          const decode = Schema.decodeUnknown(Schema.make(error.value))
+          return response.text.pipe(
+            Effect.flatMap((text) =>
+              text === "" ? Effect.void : Effect.try({
+                try: () => JSON.parse(text),
+                catch: (cause) =>
                   new HttpClientError.ResponseError({
                     reason: "Decode",
                     request,
-                    response
+                    response,
+                    cause
                   })
-                ),
-              onSuccess: Effect.fail
-            })
+              })
+            ),
+            Effect.flatMap((json) =>
+              Effect.mapError(decode(json), (cause) =>
+                new HttpClientError.ResponseError({
+                  reason: "Decode",
+                  request,
+                  response,
+                  cause
+                }))
+            ),
+            Effect.flatMap(Effect.fail)
           )
         }
         const encodePayload = Option.map(endpoint.payloadSchema, Schema.encodeUnknown)

@@ -42,7 +42,9 @@ const users = ApiGroup.make("users").pipe(
         id: Schema.NumberFromString
       })),
       ApiEndpoint.success(User),
-      ApiEndpoint.error(Schema.String)
+      ApiEndpoint.error(Schema.String.pipe(
+        ApiSchema.asEmpty({ status: 413, decode: () => "boom" })
+      ))
     )
   ),
   ApiGroup.add(

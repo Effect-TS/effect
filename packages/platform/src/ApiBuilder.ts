@@ -1,7 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type * as AST from "@effect/schema/AST"
+import * as AST from "@effect/schema/AST"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -85,7 +86,7 @@ export const httpApp: Effect.Effect<
     Effect.catchAll((error) =>
       Effect.matchEffect(encodeError(error), {
         onFailure: () => Effect.die(error),
-        onSuccess: ([body, status]) => Effect.orDie(HttpServerResponse.json(body, { status }))
+        onSuccess: Effect.succeed
       })
     )
   )
@@ -671,7 +672,7 @@ const astCache = globalValue("@effect/platform/ApiBuilder", () => new WeakMap<AS
 
 const makeErrorSchema = (
   api: Api.Api<ApiGroup.ApiGroup<string, ApiEndpoint.ApiEndpoint.Any>, any, any>
-): Schema.Schema<unknown, [error: unknown, status: number]> => {
+): Schema.Schema<unknown, HttpServerResponse.HttpServerResponse> => {
   const schemas = new Set<Schema.Schema.Any>()
   function processSchema(schema: Schema.Schema.Any): void {
     if (astCache.has(schema.ast)) {
@@ -701,9 +702,16 @@ const makeErrorSchema = (
   }
   return Schema.Union(...[...schemas].map((schema) => {
     const status = ApiSchema.getStatusError(schema)
-    return Schema.transform(Schema.Any, schema, {
-      decode: identity,
-      encode: (error) => [error, status]
+    const encoded = AST.encodedAST(schema.ast)
+    const isEmpty = encoded._tag === "VoidKeyword"
+    return Schema.transformOrFail(Schema.Any, schema, {
+      decode: (_, __, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, _, "Encode only schema")),
+      encode: (error, _, ast) =>
+        isEmpty ?
+          HttpServerResponse.empty({ status }) :
+          HttpServerResponse.json(error, { status }).pipe(
+            Effect.mapError((error) => new ParseResult.Type(ast, error, "Could not encode to JSON"))
+          )
     })
   })) as any
 }

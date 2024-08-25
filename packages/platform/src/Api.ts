@@ -233,7 +233,7 @@ export const reflect = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
       readonly endpoint: ApiEndpoint.ApiEndpoint<string, HttpMethod>
       readonly mergedAnnotations: Context.Context<never>
       readonly success: readonly [ast: Option.Option<AST.AST>, status: number]
-      readonly errors: ReadonlyMap<number, AST.AST>
+      readonly errors: ReadonlyMap<number, Option.Option<AST.AST>>
     }) => void
   }
 ) => {
@@ -273,8 +273,8 @@ export const reflect = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
 
 const extractErrors = (
   ast: AST.AST,
-  inherited: ReadonlyMap<number, AST.AST>
-): ReadonlyMap<number, AST.AST> => {
+  inherited: ReadonlyMap<number, Option.Option<AST.AST>>
+): ReadonlyMap<number, Option.Option<AST.AST>> => {
   const topStatus = ApiSchema.getStatusErrorAST(ast)
   const errors = new Map(inherited)
   function process(ast: AST.AST) {
@@ -282,17 +282,21 @@ const extractErrors = (
       return
     }
     const status = ApiSchema.getStatus(ast, topStatus)
-    if (errors.has(status)) {
-      const current = errors.get(status)!
-      errors.set(
-        status,
-        AST.Union.make(
-          current._tag === "Union" ? [...current.types, ast] : [current, ast]
+    const emptyDecodeable = ApiSchema.getEmptyDecodeable(ast)
+    const current = errors.get(status) ?? Option.none()
+    errors.set(
+      status,
+      current.pipe(
+        Option.map((current) =>
+          AST.Union.make(
+            current._tag === "Union" ? [...current.types, ast] : [current, ast]
+          )
+        ),
+        Option.orElse(() =>
+          !emptyDecodeable && AST.encodedAST(ast)._tag === "VoidKeyword" ? Option.none() : Option.some(ast)
         )
       )
-    } else {
-      errors.set(status, ast)
-    }
+    )
   }
   if (ast._tag === "Union") {
     for (const type of ast.types) {

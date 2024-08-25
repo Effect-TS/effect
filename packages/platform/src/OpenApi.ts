@@ -12,6 +12,7 @@ import type { DeepMutable, Mutable } from "effect/Types"
 import * as Api from "./Api.js"
 import type { ApiSecurity } from "./ApiSecurity.js"
 import * as HttpMethod from "./HttpMethod.js"
+import { ApiSchema } from "./index.js"
 
 /**
  * @since 1.0.0
@@ -241,13 +242,21 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
       for (const [status, ast] of errors) {
         if (op.responses![status]) continue
         op.responses![status] = {
-          description: Option.getOrElse(AST.getDescriptionAnnotation(ast), () => "Error"),
-          content: {
-            "application/json": {
-              schema: makeJsonSchema(Schema.make(ast))
-            }
-          }
+          description: ast.pipe(
+            Option.flatMap((ast) => AST.getDescriptionAnnotation(ast)),
+            Option.getOrElse(() => "Error")
+          )
         }
+        ast.pipe(
+          Option.filter((ast) => !ApiSchema.getEmptyDecodeable(ast)),
+          Option.map((ast) => {
+            op.responses![status].content = {
+              "application/json": {
+                schema: makeJsonSchema(Schema.make(ast))
+              }
+            }
+          })
+        )
       }
       if (!spec.paths[path]) {
         spec.paths[path] = {}
