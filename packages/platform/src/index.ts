@@ -31,11 +31,6 @@ export * as ApiGroup from "./ApiGroup.js"
 /**
  * @since 1.0.0
  */
-export * as ApiReflection from "./ApiReflection.js"
-
-/**
- * @since 1.0.0
- */
 export * as ApiSchema from "./ApiSchema.js"
 
 /**

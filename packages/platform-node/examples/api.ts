@@ -95,6 +95,7 @@ const ApiLive = ApiBuilder.api(api).pipe(
 )
 
 ApiBuilder.serve(HttpMiddleware.logger).pipe(
+  Layer.provide(ApiBuilder.middlewareOpenApi()),
   Layer.provide(ApiLive),
   Layer.provide(ApiBuilder.middlewareCors()),
   HttpServer.withLogAddress,

@@ -31,6 +31,7 @@ import * as HttpRouter from "./HttpRouter.js"
 import * as HttpServer from "./HttpServer.js"
 import * as HttpServerRequest from "./HttpServerRequest.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
+import * as OpenApi from "./OpenApi.js"
 
 /**
  * The router that the API endpoints are attached to.
@@ -455,6 +456,28 @@ export const middlewareCors = (
     readonly credentials?: boolean | undefined
   } | undefined
 ): Layer.Layer<never> => middlewareLayer(HttpMiddleware.cors(options))
+
+/**
+ * A middleware that adds an openapi.json endpoint to the API.
+ *
+ * @since 1.0.0
+ * @category middleware
+ */
+export const middlewareOpenApi = (
+  options?: {
+    readonly path?: HttpRouter.PathInput | undefined
+  } | undefined
+): Layer.Layer<never, never, Api.Api.Service> =>
+  ApiRouter.use((router) =>
+    Effect.gen(function*() {
+      const api = yield* Api.Api
+      const spec = OpenApi.fromApi(api)
+      const response = yield* HttpServerResponse.json(spec).pipe(
+        Effect.orDie
+      )
+      yield* router.get(options?.path ?? "/openapi.json", response)
+    })
+  )
 
 /**
  * @since 1.0.0

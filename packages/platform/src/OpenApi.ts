@@ -9,8 +9,7 @@ import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
 import type { DeepMutable, Mutable } from "effect/Types"
-import type { Api } from "./Api.js"
-import { reflect } from "./ApiReflection.js"
+import * as Api from "./Api.js"
 import type { ApiSecurity } from "./ApiSecurity.js"
 import * as HttpMethod from "./HttpMethod.js"
 
@@ -149,7 +148,7 @@ export const annotate: {
  * @category constructors
  * @since 1.0.0
  */
-export const fromApi = <A extends Api.Any>(api: A): OpenAPISpec => {
+export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
   const spec: DeepMutable<OpenAPISpec> = {
     openapi: "3.0.3",
     info: {
@@ -165,7 +164,7 @@ export const fromApi = <A extends Api.Any>(api: A): OpenAPISpec => {
   Option.map(Context.getOption(api.annotations, License), (license) => {
     spec.info.license = license
   })
-  reflect(api as any, {
+  Api.reflect(api as any, {
     onGroup({ group }) {
       const tag: Mutable<OpenAPISpecTag> = {
         name: group.name

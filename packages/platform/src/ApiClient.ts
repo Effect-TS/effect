@@ -8,10 +8,9 @@ import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import type { Simplify } from "effect/Types"
 import { unify } from "effect/Unify"
-import type { Api } from "./Api.js"
+import * as Api from "./Api.js"
 import type { ApiEndpoint } from "./ApiEndpoint.js"
 import type { ApiGroup } from "./ApiGroup.js"
-import { reflect } from "./ApiReflection.js"
 import * as HttpClient from "./HttpClient.js"
 import * as HttpClientError from "./HttpClientError.js"
 import * as HttpClientRequest from "./HttpClientRequest.js"
@@ -22,7 +21,7 @@ import * as HttpMethod from "./HttpMethod.js"
  * @since 1.0.0
  * @category models
  */
-export type Client<A extends Api.Any> = [A] extends [Api<infer _Groups, infer _ApiError, infer _ApiErrorR>] ? {
+export type Client<A extends Api.Api.Any> = [A] extends [Api.Api<infer _Groups, infer _ApiError, infer _ApiErrorR>] ? {
     readonly [GroupName in _Groups["name"]]: [ApiGroup.WithName<_Groups, GroupName>] extends
       [ApiGroup<GroupName, infer _Endpoints, infer _GroupError, infer _GroupErrorR>] ? {
         readonly [Name in _Endpoints["name"]]: [ApiEndpoint.WithName<_Endpoints, Name>] extends [
@@ -51,13 +50,13 @@ export type Client<A extends Api.Any> = [A] extends [Api<infer _Groups, infer _A
  * @since 1.0.0
  * @category constructors
  */
-export const make = <A extends Api.Any>(
+export const make = <A extends Api.Api.Any>(
   api: A,
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient.Default) => HttpClient.HttpClient.Default) | undefined
     readonly baseUrl?: string | undefined
   }
-): Effect.Effect<Simplify<Client<A>>, never, Api.Context<A> | HttpClient.HttpClient.Default> =>
+): Effect.Effect<Simplify<Client<A>>, never, Api.Api.Context<A> | HttpClient.HttpClient.Default> =>
   Effect.gen(function*() {
     const context = yield* Effect.context<any>()
     const httpClient = (yield* HttpClient.HttpClient).pipe(
@@ -65,7 +64,7 @@ export const make = <A extends Api.Any>(
       options?.transformClient === undefined ? identity : options.transformClient
     )
     const client: Record<string, Record<string, any>> = {}
-    reflect(api as any, {
+    Api.reflect(api as any, {
       onGroup({ group }) {
         client[group.name] = {}
       },

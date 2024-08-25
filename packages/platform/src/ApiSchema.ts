@@ -2,7 +2,8 @@
  * @since 1.0.0
  */
 import * as AST from "@effect/schema/AST"
-import type * as Schema from "@effect/schema/Schema"
+import * as Schema from "@effect/schema/Schema"
+import { constVoid, identity } from "effect/Function"
 import * as Struct from "effect/Struct"
 
 /**
@@ -68,3 +69,84 @@ export const getStatusErrorAST = (ast: AST.AST): number => getStatus(ast, 500)
  * @category reflection
  */
 export const getStatusError = <A extends Schema.Schema.All>(self: A): number => getStatusErrorAST(self.ast)
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export interface PathParams extends Schema.Record$<typeof Schema.String, typeof Schema.String> {}
+
+type Void$ = typeof Schema.Void
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Empty = (status: number): typeof Schema.Void => Schema.Void.annotations(annotations({ status }))
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export interface asEmpty<S extends Schema.Schema.Any>
+  extends Schema.transform<typeof Schema.Void, Schema.Union<[S, typeof Schema.Void]>>
+{}
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const asEmpty = <S extends Schema.Schema.Any>(
+  self: S,
+  status: number
+): asEmpty<S> =>
+  Schema.transform(
+    Schema.Void,
+    Schema.Union(self, Schema.Void),
+    {
+      decode: identity,
+      encode: constVoid
+    }
+  ).annotations(annotations({ status }))
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export interface Created extends Void$ {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Created: Created = Empty(201) as any
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export interface Accepted extends Void$ {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Accepted: Accepted = Empty(202) as any
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export interface NoContent extends Void$ {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const NoContent: NoContent = Empty(204) as any

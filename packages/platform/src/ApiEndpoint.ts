@@ -27,18 +27,6 @@ export type TypeId = typeof TypeId
 
 /**
  * @since 1.0.0
- * @category symbols
- */
-export const Ignored: unique symbol = Symbol.for("@effect/platform/ApiEndpoint/Ignored")
-
-/**
- * @since 1.0.0
- * @category symbols
- */
-export type Ignored = typeof Ignored
-
-/**
- * @since 1.0.0
  * @category guards
  */
 export const isApiEndpoint = (u: unknown): u is ApiEndpoint<any, any, any> => Predicate.hasProperty(u, TypeId)
@@ -66,12 +54,6 @@ export interface ApiEndpoint<
   readonly errorSchema: Schema.Schema<Error, unknown, R>
   readonly annotations: Context.Context<never>
 }
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface PathParams extends Schema.Record$<typeof Schema.String, typeof Schema.String> {}
 
 /**
  * @since 1.0.0
@@ -286,7 +268,7 @@ export const make = <Method extends HttpMethod>(method: Method) =>
     method,
     pathSchema: Option.none(),
     payloadSchema: Option.none(),
-    successSchema: Empty as any,
+    successSchema: ApiSchema.NoContent as any,
     errorSchema: Schema.Never as any,
     annotations: Context.empty()
   })
@@ -335,56 +317,6 @@ export const del: <const Name extends string>(
   name: Name,
   path: HttpRouter.PathInput
 ) => ApiEndpoint<Name, "DELETE"> = make("DELETE")
-
-type Void$ = typeof Schema.Void
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export interface Created extends Void$ {
-  readonly _: unique symbol
-}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const Created: Created = Schema.Void.annotations(ApiSchema.annotations({
-  status: 201
-})) as any
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export interface Accepted extends Void$ {
-  readonly _: unique symbol
-}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const Accepted: Accepted = Schema.Void.annotations(ApiSchema.annotations({
-  status: 202
-})) as any
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export interface Empty extends Void$ {
-  readonly _: unique symbol
-}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const Empty: Empty = Schema.Void.annotations(ApiSchema.annotations({
-  status: 204
-})) as any
 
 /**
  * @since 1.0.0
