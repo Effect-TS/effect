@@ -45,29 +45,21 @@ export class ApiRouter extends HttpRouter.Tag("@effect/platform/ApiBuilder/ApiRo
  * @category constructors
  */
 export const serve: {
-  <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
-    self: Api.Api<Groups, Error, ErrorR>
-  ): Layer.Layer<never, never, HttpServer.HttpServer | ApiGroup.ApiGroup.ToService<Groups> | ErrorR>
-  <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR, R>(
-    self: Api.Api<Groups, Error, ErrorR>,
+  (): Layer.Layer<never, never, HttpServer.HttpServer>
+  <R>(
     middleware: (httpApp: HttpApp.Default) => HttpApp.Default<never, R>
   ): Layer.Layer<
     never,
     never,
     | HttpServer.HttpServer
     | Exclude<R, Scope | HttpServerRequest.HttpServerRequest>
-    | ApiGroup.ApiGroup.ToService<Groups>
-    | ErrorR
   >
-} = (
-  self: Api.Api.Any,
-  middleware?: HttpMiddleware.HttpMiddleware.Applied<any, never, any>
-): Layer.Layer<
+} = (middleware?: HttpMiddleware.HttpMiddleware.Applied<any, never, any>): Layer.Layer<
   never,
   never,
   any
 > =>
-  httpApp(self as any).pipe(
+  httpApp.pipe(
     Effect.map(HttpServer.serve(middleware!)),
     Layer.unwrapEffect,
     Layer.provide(ApiRouter.Live)
@@ -77,28 +69,35 @@ export const serve: {
  * @since 1.0.0
  * @category constructors
  */
-export const httpApp = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
-  self: Api.Api<Groups, Error, ErrorR>
-): Effect.Effect<
+export const httpApp: Effect.Effect<
   HttpApp.Default,
   never,
-  ApiRouter | ApiGroup.ApiGroup.ToService<Groups> | ErrorR
-> =>
-  Effect.gen(function*() {
-    const router = yield* ApiRouter.router
-    const apiMiddleware = yield* Effect.serviceOption(ApiMiddleware)
-    const errorSchema = makeErrorSchema(self as any)
-    const encodeError = Schema.encodeUnknown(errorSchema)
-    return router.pipe(
-      apiMiddleware._tag === "Some" ? apiMiddleware.value : identity,
-      Effect.catchAll((error) =>
-        Effect.matchEffect(encodeError(error), {
-          onFailure: () => Effect.die(error),
-          onSuccess: ([body, status]) => Effect.orDie(HttpServerResponse.json(body, { status }))
-        })
-      )
+  ApiRouter | Api.Api.Service
+> = Effect.gen(function*() {
+  const api = yield* Api.Api
+  const router = yield* ApiRouter.router
+  const apiMiddleware = yield* Effect.serviceOption(ApiMiddleware)
+  const errorSchema = makeErrorSchema(api as any)
+  const encodeError = Schema.encodeUnknown(errorSchema)
+  return router.pipe(
+    apiMiddleware._tag === "Some" ? apiMiddleware.value : identity,
+    Effect.catchAll((error) =>
+      Effect.matchEffect(encodeError(error), {
+        onFailure: () => Effect.die(error),
+        onSuccess: ([body, status]) => Effect.orDie(HttpServerResponse.json(body, { status }))
+      })
     )
-  })
+  )
+})
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const api = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(
+  self: Api.Api<Groups, Error, ErrorR>
+): Layer.Layer<Api.Api.Service, never, ApiGroup.ApiGroup.ToService<Groups> | ErrorR> =>
+  Layer.succeed(Api.Api, self) as any
 
 /**
  * @since 1.0.0
@@ -196,7 +195,11 @@ export const group = <
   ) =>
     | Handlers<NoInfer<ApiError> | ApiGroup.ApiGroup.ErrorWithName<Groups, Name>, RH>
     | Effect.Effect<Handlers<NoInfer<ApiError> | ApiGroup.ApiGroup.ErrorWithName<Groups, Name>, RH>, EX, RX>
-): Layer.Layer<ApiGroup.ApiGroup.Service<Name>, EX, RX | RH | ApiGroup.ApiGroup.ContextWithName<Groups, Name>> =>
+): Layer.Layer<
+  ApiGroup.ApiGroup.Service<Name>,
+  EX,
+  RX | RH | ApiGroup.ApiGroup.ContextWithName<Groups, Name> | ApiErrorR
+> =>
   ApiRouter.use((router) =>
     Effect.gen(function*() {
       const context = yield* Effect.context<any>()

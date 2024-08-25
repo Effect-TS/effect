@@ -90,10 +90,14 @@ const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
     securityMiddleware
   ))
 
-ApiBuilder.serve(api, HttpMiddleware.logger).pipe(
-  HttpServer.withLogAddress,
-  Layer.provide(UsersLive),
+const ApiLive = ApiBuilder.api(api).pipe(
+  Layer.provide(UsersLive)
+)
+
+ApiBuilder.serve(HttpMiddleware.logger).pipe(
+  Layer.provide(ApiLive),
   Layer.provide(ApiBuilder.middlewareCors()),
+  HttpServer.withLogAddress,
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
   Layer.launch,
   NodeRuntime.runMain

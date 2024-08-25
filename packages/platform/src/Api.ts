@@ -48,9 +48,23 @@ export interface Api<
 
 /**
  * @since 1.0.0
+ * @category tags
+ */
+export const Api: Context.Tag<Api.Service, Api.Any> = Context.GenericTag<Api.Service, Api.Any>("@effect/platform/Api")
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export declare namespace Api {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Service {
+    readonly _: unique symbol
+  }
+
   /**
    * @since 1.0.0
    * @category models
