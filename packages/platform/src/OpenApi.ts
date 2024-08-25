@@ -288,9 +288,12 @@ const makeProperty = (ps: AST.PropertySignature, type: OpenAPISpecParameter["in"
     schema: makeJsonSchema(Schema.make(ps.type)),
     required: !ps.isOptional
   }
-  Option.map(AST.getDescriptionAnnotation(ps), (description) => {
-    spec.description = description
-  })
+  AST.getDescriptionAnnotation(ps).pipe(
+    Option.orElse(() => AST.getDescriptionAnnotation(ps.type)),
+    Option.map((description) => {
+      spec.description = description
+    })
+  )
   return spec
 }
 
