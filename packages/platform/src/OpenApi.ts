@@ -224,22 +224,12 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
       )
       if (Option.isSome(endpoint.pathSchema)) {
         getPropertySignatures(endpoint.pathSchema.value.ast).forEach((ps) => {
-          op.parameters!.push({
-            name: ps.name as string,
-            in: "path",
-            schema: makeJsonSchema(Schema.make(ps.type)),
-            required: !ps.isOptional
-          })
+          op.parameters!.push(makeProperty(ps, "path"))
         })
       }
       if (!HttpMethod.hasBody(endpoint.method) && Option.isSome(endpoint.payloadSchema)) {
         getPropertySignatures(endpoint.payloadSchema.value.ast).forEach((ps) => {
-          op.parameters!.push({
-            name: ps.name as string,
-            in: "query",
-            schema: makeJsonSchema(Schema.make(ps.type)),
-            required: !ps.isOptional
-          })
+          op.parameters!.push(makeProperty(ps, "query"))
         })
       }
       for (const [status, ast] of errors) {
@@ -289,6 +279,19 @@ const getPropertySignatures = (ast: AST.AST): ReadonlyArray<AST.PropertySignatur
       return []
     }
   }
+}
+
+const makeProperty = (ps: AST.PropertySignature, type: OpenAPISpecParameter["in"]): OpenAPISpecParameter => {
+  const spec: Mutable<OpenAPISpecParameter> = {
+    in: type,
+    name: ps.name as string,
+    schema: makeJsonSchema(Schema.make(ps.type)),
+    required: !ps.isOptional
+  }
+  Option.map(AST.getDescriptionAnnotation(ps), (description) => {
+    spec.description = description
+  })
+  return spec
 }
 
 const makeJsonSchema = (schema: Schema.Schema.All): OpenAPIJSONSchema => {
