@@ -491,6 +491,8 @@ export interface SecurityMiddleware<I, EM = never, RM = never> {
   ): Handlers<E | EM, Exclude<R, I> | ApiEndpoint.ApiEndpoint.ExcludeProvided<RM>, Endpoints>
 }
 
+const bearerLen = `Bearer `.length
+
 /**
  * @since 1.0.0
  * @category middleware
@@ -504,10 +506,9 @@ export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
 > => {
   switch (self._tag) {
     case "Bearer": {
-      const prefixLen = `${self.prefix} `.length
       return Effect.map(
         HttpServerRequest.HttpServerRequest,
-        (request) => Redacted.make((request.headers.authorization ?? "").slice(prefixLen)) as any
+        (request) => Redacted.make((request.headers.authorization ?? "").slice(bearerLen)) as any
       )
     }
     case "ApiKey": {
