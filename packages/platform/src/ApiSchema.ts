@@ -103,13 +103,6 @@ export const isVoid = (ast: AST.AST): boolean => {
     case "Suspend": {
       return isVoid(ast.f())
     }
-    case "Declaration": {
-      const surrogate = AST.getSurrogateAnnotation(ast)
-      if (surrogate._tag === "Some") {
-        return isVoid(surrogate.value)
-      }
-      return false
-    }
     default: {
       return false
     }
