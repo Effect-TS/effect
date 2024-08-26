@@ -11,12 +11,12 @@ import { unify } from "effect/Unify"
 import * as Api from "./Api.js"
 import type { ApiEndpoint } from "./ApiEndpoint.js"
 import type { ApiGroup } from "./ApiGroup.js"
+import * as ApiSchema from "./ApiSchema.js"
 import * as HttpClient from "./HttpClient.js"
 import * as HttpClientError from "./HttpClientError.js"
 import * as HttpClientRequest from "./HttpClientRequest.js"
 import * as HttpClientResponse from "./HttpClientResponse.js"
 import * as HttpMethod from "./HttpMethod.js"
-import { ApiSchema } from "./index.js"
 
 /**
  * @since 1.0.0
