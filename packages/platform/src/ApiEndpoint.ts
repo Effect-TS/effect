@@ -331,7 +331,7 @@ export const del: <const Name extends string>(
  * @since 1.0.0
  * @category result
  */
-export const success: {
+export const setSuccess: {
   <S extends Schema.Schema.Any>(
     schema: S,
     annotations?: {
@@ -474,7 +474,7 @@ export const addError: {
  * @since 1.0.0
  * @category request
  */
-export const payload: {
+export const setPayload: {
   <Method extends HttpMethod, P extends Schema.Schema.All>(
     schema: P & ApiEndpoint.ValidatePayload<Method, P>
   ): <
@@ -528,7 +528,7 @@ export const payload: {
  * @since 1.0.0
  * @category request
  */
-export const path: {
+export const setPath: {
   <Path extends Schema.Schema.Any>(
     schema: Path & ApiEndpoint.ValidatePath<Path>
   ): <

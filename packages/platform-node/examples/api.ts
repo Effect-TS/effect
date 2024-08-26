@@ -39,10 +39,10 @@ const securityMiddleware = ApiBuilder.middlewareSecurity(
 const users = ApiGroup.make("users").pipe(
   ApiGroup.add(
     ApiEndpoint.get("findById", "/:id").pipe(
-      ApiEndpoint.path(Schema.Struct({
+      ApiEndpoint.setPath(Schema.Struct({
         id: Schema.NumberFromString
       })),
-      ApiEndpoint.success(User),
+      ApiEndpoint.setSuccess(User),
       ApiEndpoint.addError(Schema.String.pipe(
         ApiSchema.asEmpty({ status: 413, decode: () => "boom" })
       ))
@@ -50,15 +50,15 @@ const users = ApiGroup.make("users").pipe(
   ),
   ApiGroup.add(
     ApiEndpoint.post("create", "/").pipe(
-      ApiEndpoint.payload(ApiSchema.Multipart(Schema.Struct({
+      ApiEndpoint.setPayload(ApiSchema.Multipart(Schema.Struct({
         name: Schema.String
       }))),
-      ApiEndpoint.success(User)
+      ApiEndpoint.setSuccess(User)
     )
   ),
   ApiGroup.add(
     ApiEndpoint.get("me", "/me").pipe(
-      ApiEndpoint.success(User)
+      ApiEndpoint.setSuccess(User)
     )
   ),
   ApiGroup.addError(Unauthorized),
