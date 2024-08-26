@@ -41,6 +41,11 @@ export * as ApiSecurity from "./ApiSecurity.js"
 /**
  * @since 1.0.0
  */
+export * as ApiSwagger from "./ApiSwagger.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Command from "./Command.js"
 
 /**

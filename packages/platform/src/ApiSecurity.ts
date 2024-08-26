@@ -54,7 +54,6 @@ export declare namespace ApiSecurity {
  */
 export interface Bearer extends ApiSecurity.Proto<Redacted> {
   readonly _tag: "Bearer"
-  readonly prefix: string
 }
 
 /**
@@ -95,14 +94,10 @@ const Proto = {
  * @since 1.0.0
  * @category constructors
  */
-export const bearer = (options?: {
-  readonly prefix?: string | undefined
-}): Bearer =>
-  Object.assign(Object.create(Proto), {
-    _tag: "Bearer",
-    prefix: options?.prefix ?? "Bearer",
-    annotations: Context.empty()
-  })
+export const bearer: Bearer = Object.assign(Object.create(Proto), {
+  _tag: "Bearer",
+  annotations: Context.empty()
+})
 
 /**
  * @since 1.0.0

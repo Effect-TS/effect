@@ -6,6 +6,7 @@ import {
   ApiGroup,
   ApiSchema,
   ApiSecurity,
+  ApiSwagger,
   HttpClient,
   HttpMiddleware,
   HttpServer,
@@ -27,7 +28,7 @@ class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
   message: Schema.String
 }, ApiSchema.annotations({ status: 401 })) {}
 
-const security = ApiSecurity.bearer()
+const security = ApiSecurity.bearer
 
 const securityMiddleware = ApiBuilder.middlewareSecurity(
   security,
@@ -61,7 +62,8 @@ const users = ApiGroup.make("users").pipe(
     )
   ),
   ApiGroup.addError(Unauthorized),
-  ApiGroup.prefix("/users")
+  ApiGroup.prefix("/users"),
+  OpenApi.annotate({ security })
 )
 
 const api = Api.empty.pipe(
@@ -97,6 +99,7 @@ const ApiLive = ApiBuilder.api(api).pipe(
 )
 
 ApiBuilder.serve(HttpMiddleware.logger).pipe(
+  Layer.provide(ApiSwagger.layer()),
   Layer.provide(ApiBuilder.middlewareOpenApi()),
   Layer.provide(ApiLive),
   Layer.provide(ApiBuilder.middlewareCors()),
@@ -106,14 +109,14 @@ ApiBuilder.serve(HttpMiddleware.logger).pipe(
   NodeRuntime.runMain
 )
 
-Effect.gen(function*() {
-  yield* Effect.sleep(2000)
-  const client = yield* ApiClient.make(api, {
-    baseUrl: "http://localhost:3000"
-  })
-  const user = yield* client.users.findById({ path: { id: 123 } })
-  console.log(user)
-}).pipe(
-  Effect.provide(HttpClient.layer),
-  NodeRuntime.runMain
-)
+// Effect.gen(function*() {
+//   yield* Effect.sleep(2000)
+//   const client = yield* ApiClient.make(api, {
+//     baseUrl: "http://localhost:3000"
+//   })
+//   const user = yield* client.users.findById({ path: { id: 123 } })
+//   console.log(user)
+// }).pipe(
+//   Effect.provide(HttpClient.layer),
+//   NodeRuntime.runMain
+// )

@@ -157,13 +157,36 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
       version: Context.getOrElse(api.annotations, Version, () => "0.0.1")
     },
     paths: {},
-    tags: []
+    tags: [],
+    components: {
+      schemas: {},
+      securitySchemes: {}
+    },
+    security: []
+  }
+  const securityMap = new Map<ApiSecurity, string>()
+  let securityCount = 0
+  function registerSecurity(security: ApiSecurity): string {
+    if (securityMap.has(security)) {
+      return securityMap.get(security)!
+    }
+    const count = securityCount++
+    const id = `${security._tag}${count === 0 ? "" : count}`
+    const scheme = makeSecurityScheme(security)
+    spec.components!.securitySchemes![id] = scheme
+    securityMap.set(security, id)
+    return id
   }
   Option.map(Context.getOption(api.annotations, Description), (description) => {
     spec.info.description = description
   })
   Option.map(Context.getOption(api.annotations, License), (license) => {
     spec.info.license = license
+  })
+  Option.map(Context.getOption(api.annotations, Security), (apiSecurity) => {
+    spec.security!.push({
+      [registerSecurity(apiSecurity)]: []
+    })
   })
   Api.reflect(api as any, {
     onGroup({ group }) {
@@ -178,13 +201,14 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
       })
       spec.tags!.push(tag)
     },
-    onEndpoint({ endpoint, errors, group, success }) {
+    onEndpoint({ endpoint, errors, group, mergedAnnotations, success }) {
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       const op: DeepMutable<OpenAPISpecOperation> = {
         tags: [Context.getOrElse(group.annotations, Title, () => group.name)],
         operationId: Context.getOrElse(endpoint.annotations, Identifier, () => `${group.name}.${endpoint.name}`),
         parameters: [],
+        security: [],
         responses: {
           [success[1]]: {
             description: success[0].pipe(
@@ -199,6 +223,11 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
       })
       Option.map(Context.getOption(endpoint.annotations, ExternalDocs), (externalDocs) => {
         op.externalDocs = externalDocs
+      })
+      Option.map(Context.getOption(mergedAnnotations, Security), (apiSecurity) => {
+        op.security!.push({
+          [registerSecurity(apiSecurity)]: []
+        })
       })
       endpoint.payloadSchema.pipe(
         Option.filter(() => HttpMethod.hasBody(endpoint.method)),
@@ -277,6 +306,37 @@ const getPropertySignatures = (ast: AST.AST): ReadonlyArray<AST.PropertySignatur
     }
     default: {
       return []
+    }
+  }
+}
+
+const makeSecurityScheme = (security: ApiSecurity): OpenAPISecurityScheme => {
+  const meta: Mutable<Partial<OpenAPISecurityScheme>> = {}
+  Option.map(Context.getOption(security.annotations, Description), (description) => {
+    meta.description = description
+  })
+  switch (security._tag) {
+    case "Basic": {
+      return {
+        ...meta,
+        type: "http",
+        scheme: "basic"
+      }
+    }
+    case "Bearer": {
+      return {
+        ...meta,
+        type: "http",
+        scheme: "bearer"
+      }
+    }
+    case "ApiKey": {
+      return {
+        ...meta,
+        type: "apiKey",
+        name: security.key,
+        in: security.in
+      }
     }
   }
 }
