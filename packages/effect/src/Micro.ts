@@ -172,11 +172,11 @@ export type MicroCauseTypeId = typeof MicroCauseTypeId
 export type MicroCause<E> = MicroCause.Die | MicroCause.Fail<E> | MicroCause.Interrupt
 
 /**
- * @since 3.7.0
+ * @since 3.6.6
  * @experimental
  * @category guards
  */
-export const isMicroCause = <E>(self: unknown): self is MicroCause<E> => hasProperty(self, MicroCauseTypeId)
+export const isMicroCause = (self: unknown): self is MicroCause<unknown> => hasProperty(self, MicroCauseTypeId)
 
 /**
  * @since 3.4.6
