@@ -391,13 +391,13 @@ export const success: {
 )
 
 /**
- * Set the schema for the error response of the endpoint. The status code
+ * Add an error response schema to the endpoint. The status code
  * will be inferred from the schema, otherwise it will default to 500.
  *
  * @since 1.0.0
  * @category result
  */
-export const error: {
+export const addError: {
   <E extends Schema.Schema.All>(
     schema: E,
     annotations?: {
@@ -413,7 +413,7 @@ export const error: {
     _R
   >(
     self: ApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>
-  ) => ApiEndpoint<Name, Method, _Path, _P, _S, Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>>
+  ) => ApiEndpoint<Name, Method, _Path, _P, _S, _E | Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>>
   <
     Name extends string,
     Method extends HttpMethod,
@@ -429,7 +429,7 @@ export const error: {
     annotations?: {
       readonly status?: number | undefined
     }
-  ): ApiEndpoint<Name, Method, _Path, _P, _S, Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>>
+  ): ApiEndpoint<Name, Method, _Path, _P, _S, _E | Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>>
 } = dual(
   (args) => isApiEndpoint(args[0]),
   <
@@ -447,13 +447,16 @@ export const error: {
     annotations?: {
       readonly status?: number | undefined
     }
-  ): ApiEndpoint<Name, Method, _Path, _P, _S, Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>> =>
+  ): ApiEndpoint<Name, Method, _Path, _P, _S, _E | Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>> =>
     makeProto({
       ...self as any,
-      errorSchema: schema.pipe(
-        Schema.annotations(ApiSchema.annotations({
-          status: annotations?.status ?? ApiSchema.getStatusError(schema)
-        }))
+      errorSchema: ApiSchema.UnionUnify(
+        self.errorSchema,
+        schema.pipe(
+          Schema.annotations(ApiSchema.annotations({
+            status: annotations?.status ?? ApiSchema.getStatusError(schema)
+          }))
+        )
       )
     })
 )
@@ -592,19 +595,10 @@ export const prefix: {
  * @since 1.0.0
  * @category reflection
  */
-export const successIsVoid = <A extends ApiEndpoint.All>(self: A): boolean => {
-  const ast = Schema.encodedSchema(self.successSchema).ast
-  return ast._tag === "VoidKeyword"
-}
-
-/**
- * @since 1.0.0
- * @category reflection
- */
 export const schemaSuccess = <A extends ApiEndpoint.All>(
   self: A
 ): Option.Option<Schema.Schema<ApiEndpoint.Success<A>, unknown, ApiEndpoint.Context<A>>> =>
-  successIsVoid(self) ? Option.none() : Option.some(self.successSchema as any)
+  ApiSchema.isVoid(self.successSchema.ast) ? Option.none() : Option.some(self.successSchema as any)
 
 /**
  * Merge the annotations of the endpoint with the provided context.

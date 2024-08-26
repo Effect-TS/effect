@@ -92,11 +92,35 @@ export const annotations = <A>(
  * @since 1.0.0
  * @category reflection
  */
-export const getStatusSuccessAST = (ast: AST.AST): number => {
-  const encoded = AST.encodedAST(ast)
-  const isVoid = encoded._tag === "VoidKeyword"
-  return getStatus(ast, isVoid ? 204 : 200)
+export const isVoid = (ast: AST.AST): boolean => {
+  switch (ast._tag) {
+    case "VoidKeyword": {
+      return true
+    }
+    case "Transformation": {
+      return isVoid(ast.from)
+    }
+    case "Suspend": {
+      return isVoid(ast.f())
+    }
+    case "Declaration": {
+      const surrogate = AST.getSurrogateAnnotation(ast)
+      if (surrogate._tag === "Some") {
+        return isVoid(surrogate.value)
+      }
+      return false
+    }
+    default: {
+      return false
+    }
+  }
 }
+
+/**
+ * @since 1.0.0
+ * @category reflection
+ */
+export const getStatusSuccessAST = (ast: AST.AST): number => getStatus(ast, isVoid(ast) ? 204 : 200)
 
 /**
  * @since 1.0.0
