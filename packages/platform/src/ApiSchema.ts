@@ -3,9 +3,18 @@
  */
 import * as AST from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
+import type { Brand } from "effect/Brand"
 import type { LazyArg } from "effect/Function"
 import { constVoid, dual } from "effect/Function"
 import * as Struct from "effect/Struct"
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const AnnotationMultipart: unique symbol = Symbol.for(
+  "@effect/platform/ApiSchema/AnnotationMultipart"
+)
 
 /**
  * @since 1.0.0
@@ -47,6 +56,20 @@ export const getEmptyDecodeable = (ast: AST.AST): boolean => {
     } :
     ast.annotations
   return annotations[AnnotationEmptyDecodeable] as boolean ?? false
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getMultipart = (ast: AST.AST): boolean => {
+  const annotations = ast._tag === "Transformation" ?
+    {
+      ...ast.to.annotations,
+      ...ast.annotations
+    } :
+    ast.annotations
+  return annotations[AnnotationMultipart] as boolean ?? false
 }
 
 /**
@@ -95,7 +118,7 @@ export const getStatusError = <A extends Schema.Schema.All>(self: A): number => 
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category params
  */
 export interface PathParams extends Schema.Record$<typeof Schema.String, typeof Schema.String> {}
 
@@ -103,13 +126,13 @@ type Void$ = typeof Schema.Void
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category empty response
  */
 export const Empty = (status: number): typeof Schema.Void => Schema.Void.annotations(annotations({ status }))
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category empty response
  */
 export interface asEmpty<
   S extends Schema.Schema.Any
@@ -117,7 +140,7 @@ export interface asEmpty<
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category empty response
  */
 export const asEmpty: {
   <S extends Schema.Schema.Any>(options: {
@@ -155,7 +178,7 @@ export const asEmpty: {
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category empty response
  */
 export interface Created extends Void$ {
   readonly _: unique symbol
@@ -163,13 +186,13 @@ export interface Created extends Void$ {
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category empty response
  */
 export const Created: Created = Empty(201) as any
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category empty response
  */
 export interface Accepted extends Void$ {
   readonly _: unique symbol
@@ -177,13 +200,13 @@ export interface Accepted extends Void$ {
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category empty response
  */
 export const Accepted: Accepted = Empty(202) as any
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category empty response
  */
 export interface NoContent extends Void$ {
   readonly _: unique symbol
@@ -191,6 +214,36 @@ export interface NoContent extends Void$ {
 
 /**
  * @since 1.0.0
- * @category schemas
+ * @category empty response
  */
 export const NoContent: NoContent = Empty(204) as any
+
+/**
+ * @since 1.0.0
+ * @category multipart
+ */
+export const MultipartTypeId: unique symbol = Symbol.for("@effect/platform/ApiSchema/Multipart")
+
+/**
+ * @since 1.0.0
+ * @category multipart
+ */
+export type MultipartTypeId = typeof MultipartTypeId
+
+/**
+ * @since 1.0.0
+ * @category multipart
+ */
+export interface Multipart<S extends Schema.Schema.Any>
+  extends
+    Schema.Schema<Schema.Schema.Type<S> & Brand<MultipartTypeId>, Schema.Schema.Encoded<S>, Schema.Schema.Context<S>>
+{}
+
+/**
+ * @since 1.0.0
+ * @category multipart
+ */
+export const Multipart = <S extends Schema.Schema.Any>(self: S): Multipart<S> =>
+  self.annotations({
+    [AnnotationMultipart]: true
+  }) as any

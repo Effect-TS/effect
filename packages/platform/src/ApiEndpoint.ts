@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
+import type { Brand } from "effect/Brand"
 import * as Context from "effect/Context"
 import type { Effect } from "effect/Effect"
 import { dual } from "effect/Function"
@@ -141,7 +142,9 @@ export declare namespace ApiEndpoint {
    */
   export type ClientRequest<Path, Payload> = (
     & ([Path] extends [void] ? {} : { readonly path: Path })
-    & ([Payload] extends [never] ? {} : { readonly payload: Payload })
+    & ([Payload] extends [never] ? {}
+      : [Payload] extends [Brand<ApiSchema.MultipartTypeId>] ? { readonly payload: FormData }
+      : { readonly payload: Payload })
   ) extends infer Req ? keyof Req extends never ? void : Req : void
 
   /**

@@ -16,6 +16,7 @@ import * as HttpClientError from "./HttpClientError.js"
 import * as HttpClientRequest from "./HttpClientRequest.js"
 import * as HttpClientResponse from "./HttpClientResponse.js"
 import * as HttpMethod from "./HttpMethod.js"
+import { ApiSchema } from "./index.js"
 
 /**
  * @since 1.0.0
@@ -122,23 +123,34 @@ export const make = <A extends Api.Api.Any>(
             Effect.flatMap(Effect.fail)
           )
         }
-        const encodePayload = Option.map(endpoint.payloadSchema, Schema.encodeUnknown)
+        const isMultipart = endpoint.payloadSchema.pipe(
+          Option.map((schema) => ApiSchema.getMultipart(schema.ast)),
+          Option.getOrElse(() => false)
+        )
+        const encodePayload = endpoint.payloadSchema.pipe(
+          Option.filter(() => !isMultipart),
+          Option.map(Schema.encodeUnknown)
+        )
         client[group.name][endpoint.name] = (request: {
           readonly path: any
           readonly payload: any
         }) => {
           const url = request && request.path ? makeUrl(request && request.path) : endpoint.path
           const baseRequest = HttpClientRequest.make(endpoint.method)(url)
-          return (encodePayload._tag === "Some" ?
-            encodePayload.value(request.payload).pipe(
+          return (isMultipart ?
+            Effect.succeed(baseRequest.pipe(
+              HttpClientRequest.formDataBody(request.payload)
+            ))
+            : encodePayload._tag === "Some"
+            ? encodePayload.value(request.payload).pipe(
               Effect.flatMap((payload) =>
                 HttpMethod.hasBody(endpoint.method)
                   ? HttpClientRequest.jsonBody(baseRequest, payload)
                   : Effect.succeed(HttpClientRequest.setUrlParams(baseRequest, payload as any))
               ),
               Effect.orDie
-            ) :
-            Effect.succeed(baseRequest)).pipe(
+            )
+            : Effect.succeed(baseRequest)).pipe(
               Effect.flatMap((request) =>
                 httpClient(request).pipe(
                   Effect.orDie,

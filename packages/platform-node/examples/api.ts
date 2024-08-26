@@ -50,9 +50,9 @@ const users = ApiGroup.make("users").pipe(
   ),
   ApiGroup.add(
     ApiEndpoint.post("create", "/").pipe(
-      ApiEndpoint.payload(Schema.Struct({
+      ApiEndpoint.payload(ApiSchema.Multipart(Schema.Struct({
         name: Schema.String
-      })),
+      }))),
       ApiEndpoint.success(User)
     )
   ),
@@ -113,8 +113,13 @@ Effect.gen(function*() {
   const client = yield* ApiClient.make(api, {
     baseUrl: "http://localhost:3000"
   })
+
+  const data = new FormData()
+  data.append("name", "John")
+  console.log("Multipart", yield* client.users.create({ payload: data }))
+
   const user = yield* client.users.findById({ path: { id: 123 } })
-  console.log(user)
+  console.log("json", user)
 }).pipe(
   Effect.provide(HttpClient.layer),
   NodeRuntime.runMain

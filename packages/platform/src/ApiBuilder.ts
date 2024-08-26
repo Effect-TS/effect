@@ -25,6 +25,7 @@ import { ApiDecodeError } from "./ApiError.js"
 import type * as ApiGroup from "./ApiGroup.js"
 import * as ApiSchema from "./ApiSchema.js"
 import type * as ApiSecurity from "./ApiSecurity.js"
+import type { FileSystem } from "./FileSystem.js"
 import type * as HttpApp from "./HttpApp.js"
 import * as HttpMethod from "./HttpMethod.js"
 import * as HttpMiddleware from "./HttpMiddleware.js"
@@ -33,6 +34,7 @@ import * as HttpServer from "./HttpServer.js"
 import * as HttpServerRequest from "./HttpServerRequest.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
 import * as OpenApi from "./OpenApi.js"
+import type { Path } from "./Path.js"
 
 /**
  * The router that the API endpoints are attached to.
@@ -54,6 +56,7 @@ export const serve: {
     never,
     never,
     | HttpServer.HttpServer
+    | HttpRouter.HttpRouter.DefaultServices
     | Exclude<R, Scope | HttpServerRequest.HttpServerRequest>
     | Api.Api.Service
   >
@@ -75,7 +78,7 @@ export const serve: {
 export const httpApp: Effect.Effect<
   HttpApp.Default,
   never,
-  ApiRouter | Api.Api.Service
+  ApiRouter | Api.Api.Service | HttpRouter.HttpRouter.DefaultServices
 > = Effect.gen(function*() {
   const api = yield* Api.Api
   const router = yield* ApiRouter.router
@@ -618,14 +621,30 @@ export const middlewareSecurityVoid = <Security extends ApiSecurity.ApiSecurity,
 
 const requestPayload = (
   request: HttpServerRequest.HttpServerRequest,
-  urlParams: ReadonlyRecord<string, string | Array<string>>
-) => HttpMethod.hasBody(request.method) ? request.json : Effect.succeed(urlParams)
+  urlParams: ReadonlyRecord<string, string | Array<string>>,
+  isMultipart: boolean
+): Effect.Effect<
+  unknown,
+  never,
+  | FileSystem
+  | Path
+  | Scope
+> =>
+  HttpMethod.hasBody(request.method)
+    ? isMultipart
+      ? Effect.orDie(request.multipart)
+      : Effect.orDie(request.json)
+    : Effect.succeed(urlParams)
 
 const handlerToRoute = (
   endpoint: ApiEndpoint.ApiEndpoint.Any,
   handler: ApiEndpoint.ApiEndpoint.Handler<any, any, any>
 ): HttpRouter.Route<any, any> => {
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
+  const isMultipart = endpoint.payloadSchema.pipe(
+    Option.map((schema) => ApiSchema.getMultipart(schema.ast)),
+    Option.getOrElse(() => false)
+  )
   const decodePayload = Option.map(endpoint.payloadSchema, Schema.decodeUnknown)
   const encodeSuccess = Option.map(ApiEndpoint.schemaSuccess(endpoint), Schema.encodeUnknown)
   const successStatus = ApiSchema.getStatusSuccess(endpoint.successSchema)
@@ -643,7 +662,7 @@ const handlerToRoute = (
           Effect.bindTo("pathParams"),
           decodePayload._tag === "Some"
             ? Effect.bind("payload", (_) =>
-              requestPayload(request, urlParams).pipe(
+              requestPayload(request, urlParams, isMultipart).pipe(
                 Effect.orDie,
                 Effect.flatMap((raw) => Effect.catchAll(decodePayload.value(raw), ApiDecodeError.refailParseError))
               ))

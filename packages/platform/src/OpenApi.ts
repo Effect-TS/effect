@@ -231,7 +231,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
         Option.map((schema) => {
           op.requestBody = {
             content: {
-              "application/json": {
+              [ApiSchema.getMultipart(schema.ast) ? "multipart/form-data" : "application/json"]: {
                 schema: makeJsonSchema(schema)
               }
             },
@@ -504,7 +504,7 @@ export type OpenAPISpecResponses = Record<number, OpenApiSpecResponse>
  * @category models
  * @since 1.0.0
  */
-export type OpenApiSpecContentType = "application/json" | "application/xml"
+export type OpenApiSpecContentType = "application/json" | "application/xml" | "multipart/form-data" | "text/plain"
 
 /**
  * @category models

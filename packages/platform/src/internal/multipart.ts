@@ -103,7 +103,11 @@ export const withFieldMimeTypes = dual<
 
 /** @internal */
 export const FileSchema: Schema.Schema<Multipart.PersistedFile> = Schema.declare(isPersistedFile, {
-  identifier: "PersistedFile"
+  identifier: "PersistedFile",
+  jsonSchema: {
+    type: "string",
+    format: "binary"
+  }
 })
 
 /** @internal */
