@@ -571,12 +571,10 @@ export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
  *   readonly findUserByAccessToken: (accessToken: string) => Effect.Effect<User>
  * }>() {}
  *
- * const security = ApiSecurity.bearer()
- *
  * const securityMiddleware = Effect.gen(function*() {
  *   const accounts = yield* Accounts
  *   return ApiBuilder.middlewareSecurity(
- *     security,
+ *     ApiSecurity.bearer,
  *     CurrentUser,
  *     (token) => accounts.findUserByAccessToken(Redacted.value(token))
  *   )
