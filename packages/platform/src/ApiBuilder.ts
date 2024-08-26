@@ -45,11 +45,17 @@ import type { Path } from "./Path.js"
 export class ApiRouter extends HttpRouter.Tag("@effect/platform/ApiBuilder/ApiRouter")<ApiRouter>() {}
 
 /**
+ * Build an `HttpApp` from an `Api` instance, and serve it using an
+ * `HttpServer`.
+ *
+ * Optionally, you can provide a middleware function that will be applied to
+ * the `HttpApp` before serving.
+ *
  * @since 1.0.0
  * @category constructors
  */
 export const serve: {
-  (): Layer.Layer<never, never, HttpServer.HttpServer | Api.Api.Service>
+  (): Layer.Layer<never, never, HttpServer.HttpServer | Api.Api.Service | HttpRouter.HttpRouter.DefaultServices>
   <R>(
     middleware: (httpApp: HttpApp.Default) => HttpApp.Default<never, R>
   ): Layer.Layer<
@@ -72,6 +78,8 @@ export const serve: {
   )
 
 /**
+ * Construct an `HttpApp` from an `Api` instance.
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -97,6 +105,13 @@ export const httpApp: Effect.Effect<
 })
 
 /**
+ * Build a root level `Layer` from an `Api` instance.
+ *
+ * The `Layer` will provide the `Api` service, and will require the
+ * implementation for all the `ApiGroup`'s contained in the `Api`.
+ *
+ * The resulting `Layer` can be provided to the `ApiBuilder.serve` layer.
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -182,6 +197,13 @@ const makeHandlers = <E, R, Endpoints extends ApiEndpoint.ApiEndpoint.All>(
 }
 
 /**
+ * Create a `Layer` that will implement all the endpoints in an `ApiGroup`.
+ *
+ * An unimplemented `Handlers` instance is passed to the `build` function, which
+ * you can use to add handlers to the group.
+ *
+ * You can implement endpoints using the `ApiBuilder.handle` api.
+ *
  * @since 1.0.0
  * @category handlers
  */
@@ -238,6 +260,8 @@ export const group = <
   ) as any
 
 /**
+ * Add the implementation for an `ApiEndpoint` to a `Handlers` group.
+ *
  * @since 1.0.0
  * @category handlers
  */
@@ -446,7 +470,7 @@ export const middlewareLayerScoped: {
 }
 
 /**
- * A CORS middleware layer.
+ * A CORS middleware layer that can be provided to the `ApiBuilder.serve` layer.
  *
  * @since 1.0.0
  * @category middleware

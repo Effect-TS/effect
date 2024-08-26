@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as AST from "@effect/schema/AST"
-import * as Schema from "@effect/schema/Schema"
+import type * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import { dual } from "effect/Function"
@@ -36,6 +36,9 @@ export type TypeId = typeof TypeId
 export const isApi = (u: unknown): u is Api<any, any> => Predicate.hasProperty(u, TypeId)
 
 /**
+ * An `Api` represents a collection of `ApiGroup`s. You can use an `Api` to
+ * represent your entire domain.
+ *
  * @since 1.0.0
  * @category models
  */
@@ -98,6 +101,10 @@ const makeProto = <Groups extends ApiGroup.ApiGroup.Any, Error, ErrorR>(options:
 }): Api<Groups, Error, ErrorR> => Object.assign(Object.create(Proto), options)
 
 /**
+ * An empty `Api`. You can use this to start building your `Api`.
+ *
+ * You can add groups to this `Api` using the `addGroup` function.
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -108,6 +115,8 @@ export const empty: Api = makeProto({
 })
 
 /**
+ * Add a `ApiGroup` to an `Api`.
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -146,6 +155,11 @@ export const addGroup: {
   }
 )
 /**
+ * Add an error schema to an `Api`, which is shared by all endpoints in the
+ * `Api`.
+ *
+ * Useful for adding error types from middleware or other shared error types.
+ *
  * @since 1.0.0
  * @category errors
  */
@@ -176,7 +190,7 @@ export const addError: {
   ): Api<Groups, Error | A, ErrorR | R> =>
     makeProto({
       ...self,
-      errorSchema: Schema.Union(
+      errorSchema: ApiSchema.UnionUnify(
         self.errorSchema,
         schema.annotations(ApiSchema.annotations({
           status: annotations?.status ?? ApiSchema.getStatusError(schema)
@@ -218,6 +232,11 @@ export const annotate: {
 )
 
 /**
+ * Extract metadata from an `Api`, which can be used to generate documentation
+ * or other tooling.
+ *
+ * See the `OpenApi` & `ApiClient` modules for examples of how to use this function.
+ *
  * @since 1.0.0
  * @category reflection
  */

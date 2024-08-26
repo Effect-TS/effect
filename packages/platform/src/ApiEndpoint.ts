@@ -33,6 +33,9 @@ export type TypeId = typeof TypeId
 export const isApiEndpoint = (u: unknown): u is ApiEndpoint<any, any, any> => Predicate.hasProperty(u, TypeId)
 
 /**
+ * Represents an API endpoint. An API endpoint is mapped to a single route on
+ * the underlying `HttpRouter`.
+ *
  * @since 1.0.0
  * @category models
  */
@@ -322,6 +325,9 @@ export const del: <const Name extends string>(
 ) => ApiEndpoint<Name, "DELETE"> = make("DELETE")
 
 /**
+ * Set the schema for the success response of the endpoint. The status code
+ * will be inferred from the schema, otherwise it will default to 200.
+ *
  * @since 1.0.0
  * @category result
  */
@@ -385,6 +391,9 @@ export const success: {
 )
 
 /**
+ * Set the schema for the error response of the endpoint. The status code
+ * will be inferred from the schema, otherwise it will default to 500.
+ *
  * @since 1.0.0
  * @category result
  */
@@ -450,6 +459,15 @@ export const error: {
 )
 
 /**
+ * Set the schema for the request body of the endpoint. The schema will be
+ * used to validate the request body before the handler is called.
+ *
+ * For endpoints with no request body, the payload will use the url search
+ * parameters.
+ *
+ * You can set a multipart schema to handle file uploads by using the
+ * `ApiSchema.Multipart` combinator.
+ *
  * @since 1.0.0
  * @category request
  */
@@ -501,6 +519,9 @@ export const payload: {
 )
 
 /**
+ * Set the schema for the path parameters of the endpoint. The schema will be
+ * used to validate the path parameters before the handler is called.
+ *
  * @since 1.0.0
  * @category request
  */
@@ -553,6 +574,8 @@ export const path: {
 )
 
 /**
+ * Add a prefix to the path of the endpoint.
+ *
  * @since 1.0.0
  * @category request
  */
@@ -584,6 +607,8 @@ export const schemaSuccess = <A extends ApiEndpoint.All>(
   successIsVoid(self) ? Option.none() : Option.some(self.successSchema as any)
 
 /**
+ * Merge the annotations of the endpoint with the provided context.
+ *
  * @since 1.0.0
  * @category annotations
  */
@@ -600,6 +625,8 @@ export const annotateMerge: {
 )
 
 /**
+ * Add an annotation to the endpoint.
+ *
  * @since 1.0.0
  * @category annotations
  */

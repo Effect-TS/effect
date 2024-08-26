@@ -31,6 +31,11 @@ export type TypeId = typeof TypeId
 export const isApiGroup = (u: unknown): u is ApiGroup.Any => Predicate.hasProperty(u, TypeId)
 
 /**
+ * An `ApiGroup` is a collection of `ApiEndpoint`s. You can use an `ApiGroup` to
+ * represent a portion of your domain.
+ *
+ * The endpoints can be implemented later using the `ApiBuilder.group` api.
+ *
  * @since 1.0.0
  * @category models
  */
@@ -138,6 +143,11 @@ const makeProto = <Name extends string, Endpoints extends ApiEndpoint.ApiEndpoin
 }): ApiGroup<Name, Endpoints, Error, ErrorR> => Object.assign(Object.create(Proto), options)
 
 /**
+ * An `ApiGroup` is a collection of `ApiEndpoint`s. You can use an `ApiGroup` to
+ * represent a portion of your domain.
+ *
+ * The endpoints can be implemented later using the `ApiBuilder.group` api.
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -150,6 +160,8 @@ export const make = <Name extends string>(name: Name): ApiGroup<Name> =>
   })
 
 /**
+ * Add an `ApiEndpoint` to an `ApiGroup`.
+ *
  * @since 1.0.0
  * @category endpoints
  */
@@ -185,6 +197,9 @@ export const add: {
   }))
 
 /**
+ * Add an error schema to an `ApiGroup`, which is shared by all endpoints in the
+ * group.
+ *
  * @since 1.0.0
  * @category errors
  */
@@ -215,7 +230,7 @@ export const addError: {
   ): ApiGroup<Name, Endpoints, Error | A, ErrorR | R> =>
     makeProto({
       ...self,
-      errorSchema: Schema.Union(
+      errorSchema: ApiSchema.UnionUnify(
         self.errorSchema,
         schema.annotations(ApiSchema.annotations({
           status: annotations?.status ?? ApiSchema.getStatusError(schema)
@@ -225,6 +240,9 @@ export const addError: {
 )
 
 /**
+ * Add a path prefix to all endpoints in an `ApiGroup`. Note that this will only
+ * add the prefix to the endpoints before this api is called.
+ *
  * @since 1.0.0
  * @category endpoints
  */
@@ -248,6 +266,8 @@ export const prefix: {
   }))
 
 /**
+ * Merge the annotations of an `ApiGroup` with a new context.
+ *
  * @since 1.0.0
  * @category annotations
  */
@@ -264,6 +284,8 @@ export const annotateMerge: {
 )
 
 /**
+ * Add an annotation to an `ApiGroup`.
+ *
  * @since 1.0.0
  * @category annotations
  */
@@ -280,6 +302,11 @@ export const annotate: {
 )
 
 /**
+ * For each endpoint in an `ApiGroup`, update the annotations with a new
+ * context.
+ *
+ * Note that this will only update the annotations before this api is called.
+ *
  * @since 1.0.0
  * @category annotations
  */
@@ -296,6 +323,11 @@ export const annotateEndpointsMerge: {
 )
 
 /**
+ * For each endpoint in an `ApiGroup`, add an annotation.
+ *
+ * Note that this will only add the annotation to the endpoints before this api
+ * is called.
+ *
  * @since 1.0.0
  * @category annotations
  */

@@ -118,6 +118,22 @@ export const getStatusError = <A extends Schema.Schema.All>(self: A): number => 
 
 /**
  * @since 1.0.0
+ */
+export const UnionUnify = <A extends Schema.Schema.All, B extends Schema.Schema.All>(self: A, that: B): Schema.Schema<
+  A["Type"] | B["Type"],
+  A["Encoded"] | B["Encoded"],
+  A["Context"] | B["Context"]
+> => {
+  const selfTypes = self.ast._tag === "Union" ? self.ast.types : [self.ast]
+  const thatTypes = that.ast._tag === "Union" ? that.ast.types : [that.ast]
+  return Schema.make(AST.Union.make([
+    ...selfTypes,
+    ...thatTypes
+  ]))
+}
+
+/**
+ * @since 1.0.0
  * @category params
  */
 export interface PathParams extends Schema.Record$<typeof Schema.String, typeof Schema.String> {}
