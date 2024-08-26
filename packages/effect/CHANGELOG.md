@@ -1,5 +1,13 @@
 # effect
 
+## 3.6.6
+
+### Patch Changes
+
+- [#3306](https://github.com/Effect-TS/effect/pull/3306) [`f960bf4`](https://github.com/Effect-TS/effect/commit/f960bf45239e9badac6e0ad3a602f4174cd7bbdf) Thanks @dilame! - Introduce left / right naming for Stream apis
+
+- [#3499](https://github.com/Effect-TS/effect/pull/3499) [`46a575f`](https://github.com/Effect-TS/effect/commit/46a575f48a05457b782fb21f7827d338c9b59320) Thanks @tim-smart! - fix nested Config.array, by ensuring path patches aren't applied twice in sequences
+
 ## 3.6.5
 
 ### Patch Changes
