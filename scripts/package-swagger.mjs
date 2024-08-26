@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import * as Fs from "fs/promises"
 
 const jsBundle = await fetch(
