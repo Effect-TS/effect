@@ -19,7 +19,7 @@ import { StructuralPrototype } from "./internal/effectable.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
-import { isIterable, isTagged, type Predicate, type Refinement } from "./Predicate.js"
+import { hasProperty, isIterable, isTagged, type Predicate, type Refinement } from "./Predicate.js"
 import type { ReadonlyRecord } from "./Record.js"
 import type { Sink, SinkTypeId } from "./Sink.js"
 import type { Stream, StreamTypeId } from "./Stream.js"
@@ -170,6 +170,13 @@ export type MicroCauseTypeId = typeof MicroCauseTypeId
  * @category MicroCause
  */
 export type MicroCause<E> = MicroCause.Die | MicroCause.Fail<E> | MicroCause.Interrupt
+
+/**
+ * @since 3.6.6
+ * @experimental
+ * @category guards
+ */
+export const isMicroCause = (self: unknown): self is MicroCause<unknown> => hasProperty(self, MicroCauseTypeId)
 
 /**
  * @since 3.4.6
