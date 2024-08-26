@@ -10,9 +10,9 @@ import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
 import type { DeepMutable, Mutable } from "effect/Types"
 import * as Api from "./Api.js"
+import * as ApiSchema from "./ApiSchema.js"
 import type { ApiSecurity } from "./ApiSecurity.js"
 import * as HttpMethod from "./HttpMethod.js"
-import { ApiSchema } from "./index.js"
 
 /**
  * @since 1.0.0
