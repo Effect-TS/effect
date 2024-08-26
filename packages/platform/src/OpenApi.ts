@@ -211,10 +211,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
         security: [],
         responses: {
           [success[1]]: {
-            description: success[0].pipe(
-              Option.flatMap(AST.getDescriptionAnnotation),
-              Option.getOrElse(() => "Success")
-            )
+            description: Option.getOrElse(getDescriptionOrIdentifier(success[0]), () => "Success")
           }
         }
       }
@@ -264,10 +261,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
       for (const [status, ast] of errors) {
         if (op.responses![status]) continue
         op.responses![status] = {
-          description: ast.pipe(
-            Option.flatMap(AST.getDescriptionAnnotation),
-            Option.getOrElse(() => "Error")
-          )
+          description: Option.getOrElse(getDescriptionOrIdentifier(ast), () => "Error")
         }
         ast.pipe(
           Option.filter((ast) => !ApiSchema.getEmptyDecodeable(ast)),
@@ -292,20 +286,11 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
 
 const getPropertySignatures = (ast: AST.AST): ReadonlyArray<AST.PropertySignature> => {
   switch (ast._tag) {
-    case "TypeLiteral": {
-      return ast.propertySignatures
-    }
-    case "Union": {
-      return ast.types.flatMap(getPropertySignatures)
-    }
     case "Transformation": {
       return getPropertySignatures(ast.from)
     }
-    case "Suspend": {
-      return getPropertySignatures(ast.f())
-    }
     default: {
-      return []
+      return AST.getPropertySignatures(ast)
     }
   }
 }
@@ -348,14 +333,29 @@ const makeProperty = (ps: AST.PropertySignature, type: OpenAPISpecParameter["in"
     schema: makeJsonSchema(Schema.make(ps.type)),
     required: !ps.isOptional
   }
-  AST.getDescriptionAnnotation(ps).pipe(
-    Option.orElse(() => AST.getDescriptionAnnotation(ps.type)),
+  getDescriptionOrIdentifier(Option.some(ps)).pipe(
+    Option.orElse(() => getDescriptionOrIdentifier(Option.some(ps.type))),
     Option.map((description) => {
       spec.description = description
     })
   )
   return spec
 }
+
+const getDescriptionOrIdentifier = (ast: Option.Option<AST.PropertySignature | AST.AST>): Option.Option<string> =>
+  ast.pipe(
+    Option.map((ast) =>
+      "to" in ast ?
+        {
+          ...ast.to.annotations,
+          ...ast.annotations
+        } :
+        ast.annotations
+    ),
+    Option.flatMapNullable((annotations) =>
+      annotations[AST.DescriptionAnnotationId] ?? annotations[AST.IdentifierAnnotationId] as any
+    )
+  )
 
 const makeJsonSchema = (schema: Schema.Schema.All): OpenAPIJSONSchema => {
   const jsonSchema = JSONSchema.make(schema as any)

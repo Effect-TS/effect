@@ -59,10 +59,17 @@ export const Issue: Issue = Schema.Struct({
  * @since 1.0.0
  * @category errors
  */
-export class ApiDecodeError extends Schema.TaggedError<ApiDecodeError>()("ApiDecodeError", {
-  issues: Schema.Array(Issue),
-  message: Schema.String
-}, ApiSchema.annotations({ status: 400 })) {
+export class ApiDecodeError extends Schema.TaggedError<ApiDecodeError>()(
+  "ApiDecodeError",
+  {
+    issues: Schema.Array(Issue),
+    message: Schema.String
+  },
+  ApiSchema.annotations({
+    status: 400,
+    description: "ApiDecodeError: The request did not match the expected schema"
+  })
+) {
   /**
    * @since 1.0.0
    */
