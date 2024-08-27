@@ -1,12 +1,12 @@
 import {
-  Api,
-  ApiBuilder,
-  ApiClient,
-  ApiEndpoint,
-  ApiGroup,
-  ApiSchema,
-  ApiSecurity,
-  ApiSwagger,
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiClient,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiSchema,
+  HttpApiSecurity,
+  HttpApiSwagger,
   HttpClient,
   HttpMiddleware,
   HttpServer,
@@ -26,61 +26,61 @@ class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
 class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
   message: Schema.String
-}, ApiSchema.annotations({ status: 401 })) {}
+}, HttpApiSchema.annotations({ status: 401 })) {}
 
-const security = ApiSecurity.bearer
+const security = HttpApiSecurity.bearer
 
-const securityMiddleware = ApiBuilder.middlewareSecurity(
+const securityMiddleware = HttpApiBuilder.middlewareSecurity(
   security,
   CurrentUser,
   (token) => Effect.succeed(new User({ id: 1000, name: `Authenticated with ${Redacted.value(token)}` }))
 )
 
-const users = ApiGroup.make("users").pipe(
-  ApiGroup.add(
-    ApiEndpoint.get("findById", "/:id").pipe(
-      ApiEndpoint.setPath(Schema.Struct({
+const users = HttpApiGroup.make("users").pipe(
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("findById", "/:id").pipe(
+      HttpApiEndpoint.setPath(Schema.Struct({
         id: Schema.NumberFromString
       })),
-      ApiEndpoint.setSuccess(User),
-      ApiEndpoint.addError(Schema.String.pipe(
-        ApiSchema.asEmpty({ status: 413, decode: () => "boom" })
+      HttpApiEndpoint.setSuccess(User),
+      HttpApiEndpoint.addError(Schema.String.pipe(
+        HttpApiSchema.asEmpty({ status: 413, decode: () => "boom" })
       ))
     )
   ),
-  ApiGroup.add(
-    ApiEndpoint.post("create", "/").pipe(
-      ApiEndpoint.setPayload(ApiSchema.Multipart(Schema.Struct({
+  HttpApiGroup.add(
+    HttpApiEndpoint.post("create", "/").pipe(
+      HttpApiEndpoint.setPayload(HttpApiSchema.Multipart(Schema.Struct({
         name: Schema.String
       }))),
-      ApiEndpoint.setSuccess(User)
+      HttpApiEndpoint.setSuccess(User)
     )
   ),
-  ApiGroup.add(
-    ApiEndpoint.get("me", "/me").pipe(
-      ApiEndpoint.setSuccess(User)
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("me", "/me").pipe(
+      HttpApiEndpoint.setSuccess(User)
     )
   ),
-  ApiGroup.addError(Unauthorized),
-  ApiGroup.prefix("/users"),
+  HttpApiGroup.addError(Unauthorized),
+  HttpApiGroup.prefix("/users"),
   OpenApi.annotate({ security })
 )
 
-const api = Api.empty.pipe(
-  Api.addGroup(users),
+const api = HttpApi.empty.pipe(
+  HttpApi.addGroup(users),
   OpenApi.annotate({
     title: "Users API",
     description: "API for managing users"
   })
 )
 
-const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
+const UsersLive = HttpApiBuilder.group(api, "users", (handlers) =>
   handlers.pipe(
-    ApiBuilder.handle("create", (_) => Effect.succeed(new User({ ..._.payload, id: 123 }))),
-    ApiBuilder.handle("findById", (_) =>
+    HttpApiBuilder.handle("create", (_) => Effect.succeed(new User({ ..._.payload, id: 123 }))),
+    HttpApiBuilder.handle("findById", (_) =>
       Effect.as(
-        ApiBuilder.securitySetCookie(
-          ApiSecurity.apiKey({
+        HttpApiBuilder.securitySetCookie(
+          HttpApiSecurity.apiKey({
             in: "cookie",
             key: "token"
           }),
@@ -91,18 +91,18 @@ const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
           name: "John"
         })
       )),
-    ApiBuilder.handle("me", (_) => CurrentUser),
+    HttpApiBuilder.handle("me", (_) => CurrentUser),
     securityMiddleware
   ))
 
-const ApiLive = ApiBuilder.api(api).pipe(
+const ApiLive = HttpApiBuilder.api(api).pipe(
   Layer.provide(UsersLive)
 )
 
-ApiBuilder.serve(HttpMiddleware.logger).pipe(
-  Layer.provide(ApiSwagger.layer()),
+HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
+  Layer.provide(HttpApiSwagger.layer()),
   Layer.provide(ApiLive),
-  Layer.provide(ApiBuilder.middlewareCors()),
+  Layer.provide(HttpApiBuilder.middlewareCors()),
   HttpServer.withLogAddress,
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
   Layer.launch,
@@ -111,7 +111,7 @@ ApiBuilder.serve(HttpMiddleware.logger).pipe(
 
 Effect.gen(function*() {
   yield* Effect.sleep(2000)
-  const client = yield* ApiClient.make(api, {
+  const client = yield* HttpApiClient.make(api, {
     baseUrl: "http://localhost:3000"
   })
 

@@ -1,51 +1,6 @@
 /**
  * @since 1.0.0
  */
-export * as Api from "./Api.js"
-
-/**
- * @since 1.0.0
- */
-export * as ApiBuilder from "./ApiBuilder.js"
-
-/**
- * @since 1.0.0
- */
-export * as ApiClient from "./ApiClient.js"
-
-/**
- * @since 1.0.0
- */
-export * as ApiEndpoint from "./ApiEndpoint.js"
-
-/**
- * @since 1.0.0
- */
-export * as ApiError from "./ApiError.js"
-
-/**
- * @since 1.0.0
- */
-export * as ApiGroup from "./ApiGroup.js"
-
-/**
- * @since 1.0.0
- */
-export * as ApiSchema from "./ApiSchema.js"
-
-/**
- * @since 1.0.0
- */
-export * as ApiSecurity from "./ApiSecurity.js"
-
-/**
- * @since 1.0.0
- */
-export * as ApiSwagger from "./ApiSwagger.js"
-
-/**
- * @since 1.0.0
- */
 export * as Command from "./Command.js"
 
 /**
@@ -82,6 +37,51 @@ export * as FileSystem from "./FileSystem.js"
  * @since 1.0.0
  */
 export * as Headers from "./Headers.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApi from "./HttpApi.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiBuilder from "./HttpApiBuilder.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiClient from "./HttpApiClient.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiEndpoint from "./HttpApiEndpoint.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiError from "./HttpApiError.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiGroup from "./HttpApiGroup.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiSchema from "./HttpApiSchema.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiSecurity from "./HttpApiSecurity.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiSwagger from "./HttpApiSwagger.js"
 
 /**
  * @since 1.0.0

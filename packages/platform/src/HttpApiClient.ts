@@ -8,10 +8,10 @@ import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import type { Simplify } from "effect/Types"
 import { unify } from "effect/Unify"
-import * as Api from "./Api.js"
-import type { ApiEndpoint } from "./ApiEndpoint.js"
-import type { ApiGroup } from "./ApiGroup.js"
-import * as ApiSchema from "./ApiSchema.js"
+import * as HttpApi from "./HttpApi.js"
+import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
+import type { HttpApiGroup } from "./HttpApiGroup.js"
+import * as HttpApiSchema from "./HttpApiSchema.js"
 import * as HttpClient from "./HttpClient.js"
 import * as HttpClientError from "./HttpClientError.js"
 import * as HttpClientRequest from "./HttpClientRequest.js"
@@ -22,11 +22,12 @@ import * as HttpMethod from "./HttpMethod.js"
  * @since 1.0.0
  * @category models
  */
-export type Client<A extends Api.Api.Any> = [A] extends [Api.Api<infer _Groups, infer _ApiError, infer _ApiErrorR>] ? {
-    readonly [GroupName in _Groups["name"]]: [ApiGroup.WithName<_Groups, GroupName>] extends
-      [ApiGroup<GroupName, infer _Endpoints, infer _GroupError, infer _GroupErrorR>] ? {
-        readonly [Name in _Endpoints["name"]]: [ApiEndpoint.WithName<_Endpoints, Name>] extends [
-          ApiEndpoint<
+export type Client<A extends HttpApi.HttpApi.Any> = [A] extends
+  [HttpApi.HttpApi<infer _Groups, infer _ApiError, infer _ApiErrorR>] ? {
+    readonly [GroupName in _Groups["name"]]: [HttpApiGroup.WithName<_Groups, GroupName>] extends
+      [HttpApiGroup<GroupName, infer _Endpoints, infer _GroupError, infer _GroupErrorR>] ? {
+        readonly [Name in _Endpoints["name"]]: [HttpApiEndpoint.WithName<_Endpoints, Name>] extends [
+          HttpApiEndpoint<
             Name,
             infer _Method,
             infer _Path,
@@ -36,7 +37,7 @@ export type Client<A extends Api.Api.Any> = [A] extends [Api.Api<infer _Groups, 
             infer _R
           >
         ] ? (
-            request: Simplify<ApiEndpoint.ClientRequest<_Path, _Payload>>
+            request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _Payload>>
           ) => Effect.Effect<
             _Success,
             _Error | _GroupError | _ApiError | HttpClientError.HttpClientError
@@ -51,13 +52,13 @@ export type Client<A extends Api.Api.Any> = [A] extends [Api.Api<infer _Groups, 
  * @since 1.0.0
  * @category constructors
  */
-export const make = <A extends Api.Api.Any>(
+export const make = <A extends HttpApi.HttpApi.Any>(
   api: A,
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient.Default) => HttpClient.HttpClient.Default) | undefined
     readonly baseUrl?: string | undefined
   }
-): Effect.Effect<Simplify<Client<A>>, never, Api.Api.Context<A> | HttpClient.HttpClient.Default> =>
+): Effect.Effect<Simplify<Client<A>>, never, HttpApi.HttpApi.Context<A> | HttpClient.HttpClient.Default> =>
   Effect.gen(function*() {
     const context = yield* Effect.context<any>()
     const httpClient = (yield* HttpClient.HttpClient).pipe(
@@ -65,7 +66,7 @@ export const make = <A extends Api.Api.Any>(
       options?.transformClient === undefined ? identity : options.transformClient
     )
     const client: Record<string, Record<string, any>> = {}
-    Api.reflect(api as any, {
+    HttpApi.reflect(api as any, {
       onGroup({ group }) {
         client[group.name] = {}
       },
@@ -124,7 +125,7 @@ export const make = <A extends Api.Api.Any>(
           )
         }
         const isMultipart = endpoint.payloadSchema.pipe(
-          Option.map((schema) => ApiSchema.getMultipart(schema.ast)),
+          Option.map((schema) => HttpApiSchema.getMultipart(schema.ast)),
           Option.getOrElse(() => false)
         )
         const encodePayload = endpoint.payloadSchema.pipe(

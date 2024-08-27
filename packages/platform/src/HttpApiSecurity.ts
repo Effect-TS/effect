@@ -11,7 +11,7 @@ import type { Covariant } from "effect/Types"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId: unique symbol = Symbol.for("@effect/platform/ApiSecurity")
+export const TypeId: unique symbol = Symbol.for("@effect/platform/HttpApiSecurity")
 
 /**
  * @since 1.0.0
@@ -23,13 +23,13 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export type ApiSecurity = Bearer | ApiKey | Basic
+export type HttpApiSecurity = Bearer | ApiKey | Basic
 
 /**
  * @since 1.0.0
  * @category models
  */
-export declare namespace ApiSecurity {
+export declare namespace HttpApiSecurity {
   /**
    * @since 1.0.0
    * @category models
@@ -45,14 +45,14 @@ export declare namespace ApiSecurity {
    * @since 1.0.0
    * @category models
    */
-  export type Type<A extends ApiSecurity> = A extends Proto<infer Out> ? Out : never
+  export type Type<A extends HttpApiSecurity> = A extends Proto<infer Out> ? Out : never
 }
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface Bearer extends ApiSecurity.Proto<Redacted> {
+export interface Bearer extends HttpApiSecurity.Proto<Redacted> {
   readonly _tag: "Bearer"
 }
 
@@ -60,7 +60,7 @@ export interface Bearer extends ApiSecurity.Proto<Redacted> {
  * @since 1.0.0
  * @category models
  */
-export interface ApiKey extends ApiSecurity.Proto<Redacted> {
+export interface ApiKey extends HttpApiSecurity.Proto<Redacted> {
   readonly _tag: "ApiKey"
   readonly in: "header" | "query" | "cookie"
   readonly key: string
@@ -70,7 +70,7 @@ export interface ApiKey extends ApiSecurity.Proto<Redacted> {
  * @since 1.0.0
  * @category models
  */
-export interface Basic extends ApiSecurity.Proto<Credentials> {
+export interface Basic extends HttpApiSecurity.Proto<Credentials> {
   readonly _tag: "Basic"
 }
 
@@ -94,7 +94,7 @@ const Proto = {
  * Create an Bearer token security scheme.
  *
  * You can implement some api middleware for this security scheme using
- * `ApiBuilder.middlewareSecurity`.
+ * `HttpApiBuilder.middlewareSecurity`.
  *
  * @since 1.0.0
  * @category constructors
@@ -108,10 +108,10 @@ export const bearer: Bearer = Object.assign(Object.create(Proto), {
  * Create an API key security scheme.
  *
  * You can implement some api middleware for this security scheme using
- * `ApiBuilder.middlewareSecurity`.
+ * `HttpApiBuilder.middlewareSecurity`.
  *
  * To set the correct cookie in a handler, you can use
- * `ApiBuilder.securitySetCookie`.
+ * `HttpApiBuilder.securitySetCookie`.
  *
  * @since 1.0.0
  * @category constructors
@@ -141,11 +141,11 @@ export const basic: Basic = Object.assign(Object.create(Proto), {
  * @category annotations
  */
 export const annotateMerge: {
-  <I>(context: Context.Context<I>): <A extends ApiSecurity>(self: A) => A
-  <A extends ApiSecurity, I>(self: A, context: Context.Context<I>): A
+  <I>(context: Context.Context<I>): <A extends HttpApiSecurity>(self: A) => A
+  <A extends HttpApiSecurity, I>(self: A, context: Context.Context<I>): A
 } = dual(
   2,
-  <A extends ApiSecurity, I>(self: A, context: Context.Context<I>): A =>
+  <A extends HttpApiSecurity, I>(self: A, context: Context.Context<I>): A =>
     Object.assign(Object.create(Proto), {
       ...self,
       annotations: Context.merge(self.annotations, context)
@@ -157,11 +157,11 @@ export const annotateMerge: {
  * @category annotations
  */
 export const annotate: {
-  <I, S>(tag: Context.Tag<I, S>, value: S): <A extends ApiSecurity>(self: A) => A
-  <A extends ApiSecurity, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A
+  <I, S>(tag: Context.Tag<I, S>, value: S): <A extends HttpApiSecurity>(self: A) => A
+  <A extends HttpApiSecurity, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A
 } = dual(
   3,
-  <A extends ApiSecurity, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A =>
+  <A extends HttpApiSecurity, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A =>
     Object.assign(Object.create(Proto), {
       ...self,
       annotations: Context.add(self.annotations, tag, value)

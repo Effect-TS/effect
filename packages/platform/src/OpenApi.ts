@@ -9,9 +9,9 @@ import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
 import type { DeepMutable, Mutable } from "effect/Types"
-import * as Api from "./Api.js"
-import * as ApiSchema from "./ApiSchema.js"
-import type { ApiSecurity } from "./ApiSecurity.js"
+import * as HttpApi from "./HttpApi.js"
+import * as HttpApiSchema from "./HttpApiSchema.js"
+import type { HttpApiSecurity } from "./HttpApiSecurity.js"
 import * as HttpMethod from "./HttpMethod.js"
 
 /**
@@ -48,7 +48,7 @@ export class License extends Context.Tag("@effect/platform/OpenApi/License")<Lic
  * @since 1.0.0
  * @category annotations
  */
-export class Security extends Context.Tag("@effect/platform/OpenApi/Security")<Security, ApiSecurity>() {}
+export class Security extends Context.Tag("@effect/platform/OpenApi/Security")<Security, HttpApiSecurity>() {}
 
 /**
  * @since 1.0.0
@@ -68,7 +68,7 @@ export const annotations = (annotations: {
   readonly description?: string | undefined
   readonly version?: string | undefined
   readonly license?: OpenAPISpecLicense | undefined
-  readonly security?: ApiSecurity | undefined
+  readonly security?: HttpApiSecurity | undefined
   readonly externalDocs?: OpenAPISpecExternalDocs | undefined
 }): Context.Context<never> => {
   let context = Context.empty()
@@ -115,7 +115,7 @@ export const annotate: {
     readonly description?: string | undefined
     readonly version?: string | undefined
     readonly license?: OpenAPISpecLicense | undefined
-    readonly security?: ApiSecurity | undefined
+    readonly security?: HttpApiSecurity | undefined
     readonly externalDocs?: OpenAPISpecExternalDocs | undefined
   }): <A extends Annotatable>(self: A) => A
   <A extends Annotatable>(self: A, annotations: {
@@ -124,7 +124,7 @@ export const annotate: {
     readonly description?: string | undefined
     readonly version?: string | undefined
     readonly license?: OpenAPISpecLicense | undefined
-    readonly security?: ApiSecurity | undefined
+    readonly security?: HttpApiSecurity | undefined
     readonly externalDocs?: OpenAPISpecExternalDocs | undefined
   }): A
 } = dual(2, <A extends Annotatable>(self: A, annotations_: {
@@ -133,7 +133,7 @@ export const annotate: {
   readonly description?: string | undefined
   readonly version?: string | undefined
   readonly license?: OpenAPISpecLicense | undefined
-  readonly security?: ApiSecurity | undefined
+  readonly security?: HttpApiSecurity | undefined
   readonly externalDocs?: OpenAPISpecExternalDocs | undefined
 }): A => {
   const context = Context.merge(
@@ -149,7 +149,7 @@ export const annotate: {
  * @category constructors
  * @since 1.0.0
  */
-export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
+export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
   const spec: DeepMutable<OpenAPISpec> = {
     openapi: "3.0.3",
     info: {
@@ -164,9 +164,9 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
     },
     security: []
   }
-  const securityMap = new Map<ApiSecurity, string>()
+  const securityMap = new Map<HttpApiSecurity, string>()
   let securityCount = 0
-  function registerSecurity(security: ApiSecurity): string {
+  function registerSecurity(security: HttpApiSecurity): string {
     if (securityMap.has(security)) {
       return securityMap.get(security)!
     }
@@ -188,7 +188,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
       [registerSecurity(apiSecurity)]: []
     })
   })
-  Api.reflect(api as any, {
+  HttpApi.reflect(api as any, {
     onGroup({ group }) {
       const tag: Mutable<OpenAPISpecTag> = {
         name: Context.getOrElse(group.annotations, Title, () => group.name)
@@ -231,7 +231,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
         Option.map((schema) => {
           op.requestBody = {
             content: {
-              [ApiSchema.getMultipart(schema.ast) ? "multipart/form-data" : "application/json"]: {
+              [HttpApiSchema.getMultipart(schema.ast) ? "multipart/form-data" : "application/json"]: {
                 schema: makeJsonSchema(schema)
               }
             },
@@ -264,7 +264,7 @@ export const fromApi = <A extends Api.Api.Any>(api: A): OpenAPISpec => {
           description: Option.getOrElse(getDescriptionOrIdentifier(ast), () => "Error")
         }
         ast.pipe(
-          Option.filter((ast) => !ApiSchema.getEmptyDecodeable(ast)),
+          Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
           Option.map((ast) => {
             op.responses![status].content = {
               "application/json": {
@@ -295,7 +295,7 @@ const getPropertySignatures = (ast: AST.AST): ReadonlyArray<AST.PropertySignatur
   }
 }
 
-const makeSecurityScheme = (security: ApiSecurity): OpenAPISecurityScheme => {
+const makeSecurityScheme = (security: HttpApiSecurity): OpenAPISecurityScheme => {
   const meta: Mutable<Partial<OpenAPISecurityScheme>> = {}
   Option.map(Context.getOption(security.annotations, Description), (description) => {
     meta.description = description

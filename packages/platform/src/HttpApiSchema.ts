@@ -13,21 +13,21 @@ import * as Struct from "effect/Struct"
  * @category annotations
  */
 export const AnnotationMultipart: unique symbol = Symbol.for(
-  "@effect/platform/ApiSchema/AnnotationMultipart"
+  "@effect/platform/HttpApiSchema/AnnotationMultipart"
 )
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export const AnnotationStatus: unique symbol = Symbol.for("@effect/platform/ApiSchema/AnnotationStatus")
+export const AnnotationStatus: unique symbol = Symbol.for("@effect/platform/HttpApiSchema/AnnotationStatus")
 
 /**
  * @since 1.0.0
  * @category annotations
  */
 export const AnnotationEmptyDecodeable: unique symbol = Symbol.for(
-  "@effect/platform/ApiSchema/AnnotationEmptyDecodeable"
+  "@effect/platform/HttpApiSchema/AnnotationEmptyDecodeable"
 )
 
 /**
@@ -255,7 +255,7 @@ export const NoContent: NoContent = Empty(204) as any
  * @since 1.0.0
  * @category multipart
  */
-export const MultipartTypeId: unique symbol = Symbol.for("@effect/platform/ApiSchema/Multipart")
+export const MultipartTypeId: unique symbol = Symbol.for("@effect/platform/HttpApiSchema/Multipart")
 
 /**
  * @since 1.0.0

@@ -3,8 +3,8 @@
  */
 import * as Effect from "effect/Effect"
 import type { Layer } from "effect/Layer"
-import { Api } from "./Api.js"
-import { ApiRouter } from "./ApiBuilder.js"
+import { HttpApi } from "./HttpApi.js"
+import { Router } from "./HttpApiBuilder.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
 import * as internal from "./internal/apiSwagger.js"
 import * as OpenApi from "./OpenApi.js"
@@ -15,10 +15,10 @@ import * as OpenApi from "./OpenApi.js"
  */
 export const layer = (options?: {
   readonly path?: `/${string}` | undefined
-}): Layer<never, never, Api.Service> =>
-  ApiRouter.use((router) =>
+}): Layer<never, never, HttpApi.Service> =>
+  Router.use((router) =>
     Effect.gen(function*() {
-      const api = yield* Api
+      const api = yield* HttpApi
       const spec = OpenApi.fromApi(api)
       const response = HttpServerResponse.html(`<!DOCTYPE html>
 <html lang="en">
