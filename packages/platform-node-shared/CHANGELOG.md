@@ -1,5 +1,15 @@
 # @effect/platform-node-shared
 
+## 0.12.4
+
+### Patch Changes
+
+- [#3506](https://github.com/Effect-TS/effect/pull/3506) [`e7a65e3`](https://github.com/Effect-TS/effect/commit/e7a65e3c6a08636bbfce3d3af3098bf28474364d) Thanks @tim-smart! - use Logger.pretty for runMain, and support dual usage
+
+- Updated dependencies [[`e7a65e3`](https://github.com/Effect-TS/effect/commit/e7a65e3c6a08636bbfce3d3af3098bf28474364d), [`50ec889`](https://github.com/Effect-TS/effect/commit/50ec8897a49b7d1fe84f63107f89d543c52f3dfc)]:
+  - @effect/platform@0.62.4
+  - effect@3.6.7
+
 ## 0.12.3
 
 ### Patch Changes
