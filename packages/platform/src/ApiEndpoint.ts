@@ -9,6 +9,7 @@ import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import type { Redacted } from "effect/Redacted"
 import type * as Types from "effect/Types"
 import * as ApiSchema from "./ApiSchema.js"
 import type { HttpMethod } from "./HttpMethod.js"
@@ -171,6 +172,14 @@ export declare namespace ApiEndpoint {
    * @since 1.0.0
    * @category models
    */
+  export type HandlerRedacted<Endpoint extends All, E, R> = (
+    request: Types.Simplify<Request<Endpoint>>
+  ) => Effect<readonly [Success<Endpoint>, Redacted], E, R>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type HandlerResponse<Endpoint extends All, E, R> = (
     request: Types.Simplify<Request<Endpoint>>
   ) => Effect<HttpServerResponse, E, R>
@@ -204,6 +213,16 @@ export declare namespace ApiEndpoint {
    * @category models
    */
   export type HandlerResponseWithName<Endpoints extends All, Name extends string, E, R> = HandlerResponse<
+    WithName<Endpoints, Name>,
+    E,
+    R
+  >
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type HandlerRedactedWithName<Endpoints extends All, Name extends string, E, R> = HandlerRedacted<
     WithName<Endpoints, Name>,
     E,
     R

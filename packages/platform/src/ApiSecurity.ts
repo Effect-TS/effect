@@ -62,7 +62,7 @@ export interface Bearer extends ApiSecurity.Proto<Redacted> {
  */
 export interface ApiKey extends ApiSecurity.Proto<Redacted> {
   readonly _tag: "ApiKey"
-  readonly in: "header" | "query"
+  readonly in: "header" | "query" | "cookie"
   readonly key: string
 }
 
@@ -91,6 +91,11 @@ const Proto = {
 }
 
 /**
+ * Create an Bearer token security scheme.
+ *
+ * You can implement some api middleware for this security scheme using
+ * `ApiBuilder.middlewareSecurity`.
+ *
  * @since 1.0.0
  * @category constructors
  */
@@ -100,13 +105,21 @@ export const bearer: Bearer = Object.assign(Object.create(Proto), {
 })
 
 /**
+ * Create an API key security scheme.
+ *
+ * You can implement some api middleware for this security scheme using
+ * `ApiBuilder.middlewareSecurity`.
+ *
+ * To set the correct cookie in a handler, you can use
+ * `ApiBuilder.securitySetCookie`.
+ *
  * @since 1.0.0
  * @category constructors
  */
 export const apiKey = (options: {
   readonly key: string
-  readonly in?: "header" | "query" | undefined
-}): Bearer =>
+  readonly in?: "header" | "query" | "cookie" | undefined
+}): ApiKey =>
   Object.assign(Object.create(Proto), {
     _tag: "ApiKey",
     key: options.key,

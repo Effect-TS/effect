@@ -25,8 +25,9 @@ import { ApiDecodeError } from "./ApiError.js"
 import type * as ApiGroup from "./ApiGroup.js"
 import * as ApiSchema from "./ApiSchema.js"
 import type * as ApiSecurity from "./ApiSecurity.js"
+import type { Cookie } from "./Cookies.js"
 import type { FileSystem } from "./FileSystem.js"
-import type * as HttpApp from "./HttpApp.js"
+import * as HttpApp from "./HttpApp.js"
 import * as HttpMethod from "./HttpMethod.js"
 import * as HttpMiddleware from "./HttpMiddleware.js"
 import * as HttpRouter from "./HttpRouter.js"
@@ -571,6 +572,8 @@ export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
       const decode = unify(
         self.in === "query"
           ? HttpServerRequest.schemaSearchParams(schema)
+          : self.in === "cookie"
+          ? HttpServerRequest.schemaCookies(schema)
           : HttpServerRequest.schemaHeaders(schema)
       )
       return Effect.match(decode, {
@@ -601,6 +604,34 @@ export const securityDecode = <Security extends ApiSecurity.ApiSecurity>(
       )
     }
   }
+}
+
+/**
+ * Set a cookie from an `ApiSecurity.ApiKey` instance.
+ *
+ * You can use this api before returning a response from an endpoint handler.
+ *
+ * ```ts
+ * ApiBuilder.handle(
+ *   "authenticate",
+ *   (_) => ApiBuilder.securitySetCookie(security, "secret123")
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ * @category middleware
+ */
+export const securitySetCookie = (
+  self: ApiSecurity.ApiKey,
+  value: string | Redacted.Redacted,
+  options?: Cookie["options"]
+): Effect.Effect<void> => {
+  const stringValue = typeof value === "string" ? value : Redacted.value(value)
+  return HttpApp.appendPreResponseHandler((_req, response) =>
+    HttpServerResponse.setCookie(response, self.key, stringValue, options).pipe(
+      Effect.orDie
+    )
+  )
 }
 
 /**
