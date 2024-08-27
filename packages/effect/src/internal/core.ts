@@ -1198,25 +1198,10 @@ export const orDieWith: {
 )
 
 /* @internal */
-export const partitionMap = <A, A1, A2>(
+export const partitionMap: <A, A1, A2>(
   elements: Iterable<A>,
   f: (a: A) => Either.Either<A2, A1>
-): [left: Array<A1>, right: Array<A2>] =>
-  Arr.fromIterable(elements).reduceRight(
-    ([lefts, rights], current) => {
-      const either = f(current)
-      switch (either._tag) {
-        case "Left": {
-          return [[either.left, ...lefts], rights]
-        }
-        case "Right": {
-          return [lefts, [either.right, ...rights]]
-        }
-      }
-    },
-    [Arr.empty<A1>(), Arr.empty<A2>()]
-  )
-
+) => [left: Array<A1>, right: Array<A2>] = Arr.partitionMap
 /* @internal */
 export const runtimeFlags: Effect.Effect<RuntimeFlags.RuntimeFlags> = withFiberRuntime((_, status) =>
   succeed(status.runtimeFlags)
