@@ -10,6 +10,7 @@ import {
   HttpClient,
   HttpMiddleware,
   HttpServer,
+  HttpServerResponse,
   OpenApi
 } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
@@ -76,20 +77,17 @@ const api = Api.empty.pipe(
 
 const UsersLive = ApiBuilder.group(api, "users", (handlers) =>
   handlers.pipe(
-    ApiBuilder.handle("create", (_) =>
-      Effect.succeed(
-        new User({
-          id: 1,
-          name: "John"
-        })
-      )),
+    ApiBuilder.handle("create", (_) => Effect.succeed(new User({ ..._.payload, id: 123 }))),
     ApiBuilder.handle("findById", (_) =>
-      Effect.succeed(
+      HttpServerResponse.schemaJson(User)(
         new User({
           id: _.path.id,
           name: "John"
         })
-      )),
+      ).pipe(
+        Effect.flatMap(HttpServerResponse.setCookie("token", "123")),
+        Effect.orDie
+      ), { withFullResponse: true }),
     ApiBuilder.handle("me", (_) => CurrentUser),
     securityMiddleware
   ))

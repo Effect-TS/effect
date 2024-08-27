@@ -169,6 +169,7 @@ export declare namespace Handlers {
     readonly _tag: "Handler"
     readonly endpoint: ApiEndpoint.ApiEndpoint.Any
     readonly handler: ApiEndpoint.ApiEndpoint.Handler<any, E, R>
+    readonly withFullResponse: boolean
   } | {
     readonly _tag: "Middleware"
     readonly middleware: Middleware<any, any, E, R>
@@ -251,7 +252,8 @@ export const group = <
                 item.handler(request),
                 (input) => Context.merge(context, input)
               )
-            }
+            },
+            item.withFullResponse
           ))
         }
       }
@@ -265,9 +267,32 @@ export const group = <
  * @since 1.0.0
  * @category handlers
  */
-export const handle = <Endpoints extends ApiEndpoint.ApiEndpoint.All, const Name extends Endpoints["name"], E, R>(
+export const handle: {
+  <Endpoints extends ApiEndpoint.ApiEndpoint.All, const Name extends Endpoints["name"], E, R>(
+    name: Name,
+    handler: ApiEndpoint.ApiEndpoint.HandlerWithName<Endpoints, Name, E, R>
+  ): <EG, RG>(self: Handlers<EG, RG, Endpoints>) => Handlers<
+    EG | Exclude<E, ApiEndpoint.ApiEndpoint.ErrorWithName<Endpoints, Name>> | ApiDecodeError,
+    RG | ApiEndpoint.ApiEndpoint.ExcludeProvided<R>,
+    ApiEndpoint.ApiEndpoint.ExcludeName<Endpoints, Name>
+  >
+  <Endpoints extends ApiEndpoint.ApiEndpoint.All, const Name extends Endpoints["name"], E, R>(
+    name: Name,
+    handler: ApiEndpoint.ApiEndpoint.HandlerResponseWithName<Endpoints, Name, E, R>,
+    options: {
+      readonly withFullResponse: true
+    }
+  ): <EG, RG>(self: Handlers<EG, RG, Endpoints>) => Handlers<
+    EG | Exclude<E, ApiEndpoint.ApiEndpoint.ErrorWithName<Endpoints, Name>> | ApiDecodeError,
+    RG | ApiEndpoint.ApiEndpoint.ExcludeProvided<R>,
+    ApiEndpoint.ApiEndpoint.ExcludeName<Endpoints, Name>
+  >
+} = <Endpoints extends ApiEndpoint.ApiEndpoint.All, const Name extends Endpoints["name"], E, R>(
   name: Name,
-  handler: ApiEndpoint.ApiEndpoint.HandlerWithName<Endpoints, Name, E, R>
+  handler: ApiEndpoint.ApiEndpoint.HandlerWithName<Endpoints, Name, E, R>,
+  options?: {
+    readonly withFullResponse: true
+  }
 ) =>
 <EG, RG>(
   self: Handlers<EG, RG, Endpoints>
@@ -286,7 +311,8 @@ export const handle = <Endpoints extends ApiEndpoint.ApiEndpoint.All, const Name
     handlers: Chunk.append(self.handlers, {
       _tag: "Handler",
       endpoint,
-      handler
+      handler,
+      withFullResponse: options?.withFullResponse === true
     }) as any
   })
 }
@@ -662,7 +688,8 @@ const requestPayload = (
 
 const handlerToRoute = (
   endpoint: ApiEndpoint.ApiEndpoint.Any,
-  handler: ApiEndpoint.ApiEndpoint.Handler<any, any, any>
+  handler: ApiEndpoint.ApiEndpoint.Handler<any, any, any>,
+  isFullResponse: boolean
 ): HttpRouter.Route<any, any> => {
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
   const isMultipart = endpoint.payloadSchema.pipe(
@@ -698,7 +725,9 @@ const handlerToRoute = (
             }
             return handler(request)
           }),
-          encodeSuccess._tag === "Some"
+          isFullResponse ?
+            identity as (_: any) => Effect.Effect<HttpServerResponse.HttpServerResponse> :
+            encodeSuccess._tag === "Some"
             ? Effect.flatMap((body) =>
               encodeSuccess.value(body).pipe(
                 Effect.flatMap((json) => HttpServerResponse.json(json, { status: successStatus })),

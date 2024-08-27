@@ -13,6 +13,7 @@ import type * as Types from "effect/Types"
 import * as ApiSchema from "./ApiSchema.js"
 import type { HttpMethod } from "./HttpMethod.js"
 import * as HttpRouter from "./HttpRouter.js"
+import type { HttpServerResponse } from "./HttpServerResponse.js"
 
 /**
  * @since 1.0.0
@@ -170,6 +171,14 @@ export declare namespace ApiEndpoint {
    * @since 1.0.0
    * @category models
    */
+  export type HandlerResponse<Endpoint extends All, E, R> = (
+    request: Types.Simplify<Request<Endpoint>>
+  ) => Effect<HttpServerResponse, E, R>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type WithName<Endpoints extends All, Name extends string> = Endpoints extends infer Endpoint
     ? Endpoint extends { readonly name: Name } ? Endpoint : never
     : never
@@ -185,6 +194,16 @@ export declare namespace ApiEndpoint {
    * @category models
    */
   export type HandlerWithName<Endpoints extends All, Name extends string, E, R> = Handler<
+    WithName<Endpoints, Name>,
+    E,
+    R
+  >
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type HandlerResponseWithName<Endpoints extends All, Name extends string, E, R> = HandlerResponse<
     WithName<Endpoints, Name>,
     E,
     R
