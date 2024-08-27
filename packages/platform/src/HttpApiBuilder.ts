@@ -645,7 +645,7 @@ export const securitySetCookie = (
  * @since 1.0.0
  * @category middleware
  * @example
- * import { ApiBuilder, ApiSecurity } from "@effect/platform"
+ * import { HttpApiBuilder, HttpApiSecurity } from "@effect/platform"
  * import { Schema } from "@effect/schema"
  * import { Context, Effect, Redacted } from "effect"
  *
@@ -661,8 +661,8 @@ export const securitySetCookie = (
  *
  * const securityMiddleware = Effect.gen(function*() {
  *   const accounts = yield* Accounts
- *   return ApiBuilder.middlewareSecurity(
- *     ApiSecurity.bearer,
+ *   return HttpApiBuilder.middlewareSecurity(
+ *     HttpApiSecurity.bearer,
  *     CurrentUser,
  *     (token) => accounts.findUserByAccessToken(Redacted.value(token))
  *   )
