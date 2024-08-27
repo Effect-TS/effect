@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Pretty from "@effect/schema/Pretty"
 import * as Schema from "@effect/schema/Schema"
 
 const SymbolKey = "@effect/cluster/PodAddress"
@@ -25,6 +26,11 @@ export class PodAddress extends Schema.Class<PodAddress>(SymbolKey)({
   host: Schema.NonEmptyString,
   port: Schema.Int
 }) {
+  /**
+   * @since 1.0.0
+   */
+  static pretty = Pretty.make(this)
+
   /**
    * @since 1.0.0
    */

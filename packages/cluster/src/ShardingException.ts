@@ -45,6 +45,18 @@ export class MessagePersistenceError extends Schema.TaggedError<MessagePersisten
 ) {}
 
 /**
+ * Represents an error that occurs when a pod is not registered with the shard
+ * manager.
+ *
+ * @since 1.0.0
+ * @category errors
+ */
+export class PodNotRegistered extends Schema.TaggedError<PodNotRegistered>()(
+  "PodNotRegistered",
+  { address: PodAddress }
+) {}
+
+/**
  * Represents an error that occurs when a pod is unresponsive.
  *
  * @since 1.0.0

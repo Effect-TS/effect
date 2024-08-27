@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Pretty from "@effect/schema/Pretty"
 import * as Schema from "@effect/schema/Schema"
 import { PodAddress } from "./PodAddress.js"
 
@@ -33,8 +34,13 @@ export type TypeId = typeof TypeId
  */
 export class Pod extends Schema.Class<Pod>(SymbolKey)({
   address: PodAddress,
-  version: Schema.NonEmptyString
+  version: Schema.Int.pipe(Schema.positive())
 }) {
+  /**
+   * @since 1.0.0
+   */
+  static pretty = Pretty.make(this)
+
   /**
    * @since 1.0.0
    */

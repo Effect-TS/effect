@@ -1,4 +1,10 @@
+import * as Context from "effect/Context"
 import type * as Storage from "../Storage.js"
 
+const SymbolKey = "@effect/cluster/Storage"
+
 /** @internal */
-export const TypeId: Storage.TypeId = Symbol.for("@effect/cluster/Storage") as Storage.TypeId
+export const TypeId: Storage.TypeId = Symbol.for(SymbolKey) as Storage.TypeId
+
+/** @internal */
+export const Tag = Context.GenericTag<Storage.Storage>(SymbolKey)
