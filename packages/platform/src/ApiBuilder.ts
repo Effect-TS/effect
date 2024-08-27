@@ -628,8 +628,12 @@ export const securitySetCookie = (
 ): Effect.Effect<void> => {
   const stringValue = typeof value === "string" ? value : Redacted.value(value)
   return HttpApp.appendPreResponseHandler((_req, response) =>
-    HttpServerResponse.setCookie(response, self.key, stringValue, options).pipe(
-      Effect.orDie
+    Effect.orDie(
+      HttpServerResponse.setCookie(response, self.key, stringValue, {
+        secure: true,
+        httpOnly: true,
+        ...options
+      })
     )
   )
 }
