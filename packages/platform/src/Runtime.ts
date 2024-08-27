@@ -2,8 +2,14 @@
  * @since 1.0.0
  */
 import * as Cause from "effect/Cause"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import type * as Fiber from "effect/Fiber"
+import * as FiberRef from "effect/FiberRef"
+import { dual } from "effect/Function"
+import * as HashSet from "effect/HashSet"
+import * as Logger from "effect/Logger"
+import * as Runtime from "effect/Runtime"
 
 /**
  * @category model
@@ -29,11 +35,60 @@ export const defaultTeardown: Teardown = <E, A>(
  * @since 1.0.0
  */
 export interface RunMain {
+  (
+    options?: {
+      readonly disableErrorReporting?: boolean | undefined
+      readonly disablePrettyLogger?: boolean | undefined
+      readonly teardown?: Teardown | undefined
+    }
+  ): <E, A>(effect: Effect.Effect<A, E>) => void
   <E, A>(
     effect: Effect.Effect<A, E>,
     options?: {
-      readonly disableErrorReporting?: boolean
-      readonly teardown?: Teardown
+      readonly disableErrorReporting?: boolean | undefined
+      readonly disablePrettyLogger?: boolean | undefined
+      readonly teardown?: Teardown | undefined
     }
   ): void
 }
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeRunMain = (
+  f: <E, A>(
+    options: {
+      readonly fiber: Fiber.RuntimeFiber<A, E>
+      readonly teardown: Teardown
+    }
+  ) => void
+): RunMain =>
+  dual((args) => Effect.isEffect(args[0]), (effect: Effect.Effect<any, any>, options?: {
+    readonly disableErrorReporting?: boolean | undefined
+    readonly disablePrettyLogger?: boolean | undefined
+    readonly teardown?: Teardown | undefined
+  }) => {
+    const runtime = options?.disablePrettyLogger === true ? Runtime.defaultRuntime : Runtime.defaultRuntime.pipe(
+      Runtime.setFiberRef(
+        FiberRef.currentLoggers,
+        FiberRef.currentLoggers.initial.pipe(
+          HashSet.remove(Logger.defaultLogger),
+          HashSet.add(Logger.prettyLogger())
+        )
+      )
+    )
+    const runFork = Runtime.runFork(runtime)
+    const fiber = options?.disablePrettyLogger === true
+      ? runFork(effect)
+      : runFork(
+        Effect.tapErrorCause(effect, (cause) => {
+          if (Cause.isInterruptedOnly(cause)) {
+            return Effect.void
+          }
+          return Effect.logError(cause)
+        })
+      )
+    const teardown = options?.teardown ?? defaultTeardown
+    return f({ fiber, teardown })
+  })

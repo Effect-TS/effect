@@ -1,25 +1,11 @@
-import { defaultTeardown, type RunMain } from "@effect/platform/Runtime"
-import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
+import { makeRunMain } from "@effect/platform/Runtime"
 
 /** @internal */
-export const runMain: RunMain = (
-  effect,
-  options
-) => {
-  const teardown = options?.teardown ?? defaultTeardown
+export const runMain = makeRunMain(({
+  fiber,
+  teardown
+}) => {
   const keepAlive = setInterval(() => {}, 2 ** 31 - 1)
-
-  const fiber = Effect.runFork(
-    options?.disableErrorReporting === true ?
-      effect :
-      Effect.tapErrorCause(effect, (cause) => {
-        if (Cause.isInterruptedOnly(cause)) {
-          return Effect.void
-        }
-        return Effect.logError(cause)
-      })
-  )
 
   fiber.addObserver((exit) => {
     clearInterval(keepAlive)
@@ -36,4 +22,4 @@ export const runMain: RunMain = (
 
   process.once("SIGINT", onSigint)
   process.once("SIGTERM", onSigint)
-}
+})
