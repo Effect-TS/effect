@@ -1,5 +1,11 @@
 # effect
 
+## 3.6.7
+
+### Patch Changes
+
+- [#3504](https://github.com/Effect-TS/effect/pull/3504) [`50ec889`](https://github.com/Effect-TS/effect/commit/50ec8897a49b7d1fe84f63107f89d543c52f3dfc) Thanks @datner! - improve the performance of Effect.partitionMap
+
 ## 3.6.6
 
 ### Patch Changes
