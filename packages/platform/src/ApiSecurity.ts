@@ -124,7 +124,7 @@ export const apiKey = (options: {
     _tag: "ApiKey",
     key: options.key,
     in: options.in ?? "header",
-    annotations: Context.empty
+    annotations: Context.empty()
   })
 
 /**
