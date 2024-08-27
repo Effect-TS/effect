@@ -3,9 +3,11 @@
  */
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
+import type { HashSet } from "effect/HashSet"
 import type { Envelope } from "./Envelope.js"
 import * as InternalPods from "./internal/pods.js"
 import type { PodAddress } from "./PodAddress.js"
+import type { ShardId } from "./ShardId.js"
 import type { PodUnavailable } from "./ShardingException.js"
 
 /**
@@ -25,11 +27,29 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface Pods extends Pods.Proto {
+  /**
+   * Checks if a pod is responsive.
+   */
+  readonly ping: (address: PodAddress) => Effect<void, PodUnavailable>
+
   // TODO: improve type signature
+  /**
+   * Send a message to a pod.
+   */
   readonly send: (address: PodAddress, envelope: Envelope.Encoded) => Effect<
     void,
     PodUnavailable
   >
+
+  /**
+   * Notify a pod that it was assigned a set of shards.
+   */
+  readonly assignShards: (address: PodAddress, shards: HashSet<ShardId>) => Effect<void>
+
+  /**
+   * Notify a pod that it was unassigned a set of shards.
+   */
+  readonly unassignShards: (address: PodAddress, shards: HashSet<ShardId>) => Effect<void>
 }
 
 /**
