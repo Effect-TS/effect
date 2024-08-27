@@ -1769,7 +1769,7 @@ const allValidate = (
     readonly mode?: "default" | "validate" | "either" | undefined
   }
 ) => {
-  const eitherEffects: Array<Effect.Effect<unknown, never, Either.Either<unknown, unknown>>> = []
+  const eitherEffects: Array<Effect.Effect<Either.Either<unknown, unknown>, never, unknown>> = []
   for (const effect of effects) {
     eitherEffects.push(core.either(effect))
   }
@@ -1818,7 +1818,7 @@ const allEither = (
     readonly mode?: "default" | "validate" | "either" | undefined
   }
 ) => {
-  const eitherEffects: Array<Effect.Effect<unknown, never, Either.Either<unknown, unknown>>> = []
+  const eitherEffects: Array<Effect.Effect<Either.Either<unknown, unknown>, never, unknown>> = []
   for (const effect of effects) {
     eitherEffects.push(core.either(effect))
   }
