@@ -595,22 +595,17 @@ export declare namespace All {
   export type ExtractMode<A> = [A] extends [{ mode: infer M }] ? M : "default"
 
   /**
-   * @since 3.7.0
-   */
-  export type Options = {
-    readonly concurrency?: Concurrency | undefined
-    readonly batching?: boolean | "inherit" | undefined
-    readonly discard?: boolean | undefined
-    readonly mode?: "default" | "validate" | "either" | undefined
-    readonly concurrentFinalizers?: boolean | undefined
-  }
-
-  /**
    * @since 2.0.0
    */
   export type Return<
     Arg extends Iterable<EffectAny> | Record<string, EffectAny>,
-    O extends Options
+    O extends {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly discard?: boolean | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    }
   > = [Arg] extends [ReadonlyArray<EffectAny>] ? ReturnTuple<Arg, IsDiscard<O>, ExtractMode<O>>
     : [Arg] extends [Iterable<EffectAny>] ? ReturnIterable<Arg, IsDiscard<O>, ExtractMode<O>>
     : [Arg] extends [Record<string, EffectAny>] ? ReturnObject<Arg, IsDiscard<O>, ExtractMode<O>>
@@ -3571,7 +3566,12 @@ export const bindAll: {
   <
     A extends object,
     X extends Record<string, Effect<any, any, any>>,
-    O extends All.Options
+    O extends {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    }
   >(
     f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
     options?: undefined | O
@@ -3589,10 +3589,26 @@ export const bindAll: {
     | Effect.Error<All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>>,
     R1 | Effect.Context<X[keyof X]>
   >
-  <A extends object, X extends Record<string, Effect<any, any, any>>, O extends All.Options, E1, R1>(
+  <
+    A extends object,
+    X extends Record<string, Effect<any, any, any>>,
+    O extends {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    },
+    E1,
+    R1
+  >(
     self: Effect<A, E1, R1>,
     f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
-    options?: undefined | All.Options
+    options?: undefined | {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    }
   ): Effect<
     {
       [K in keyof X | keyof A]: K extends keyof A ? A[K] :
