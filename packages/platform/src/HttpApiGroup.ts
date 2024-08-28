@@ -45,8 +45,9 @@ export interface HttpApiGroup<
   in out Error = HttpApiDecodeError,
   out ErrorR = never
 > extends Pipeable {
+  new(_: never): {}
   readonly [TypeId]: TypeId
-  readonly name: Name
+  readonly identifier: Name
   readonly endpoints: Chunk.Chunk<Endpoints>
   readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
   readonly annotations: Context.Context<never>
@@ -87,7 +88,7 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type WithName<Group, Name extends string> = Extract<Group, { readonly name: Name }>
+  export type WithName<Group, Name extends string> = Extract<Group, { readonly identifier: Name }>
 
   /**
    * @since 1.0.0
@@ -140,11 +141,15 @@ const Proto = {
 }
 
 const makeProto = <Name extends string, Endpoints extends HttpApiEndpoint.HttpApiEndpoint.All, Error, ErrorR>(options: {
-  readonly name: Name
+  readonly identifier: Name
   readonly endpoints: Chunk.Chunk<Endpoints>
   readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
   readonly annotations: Context.Context<never>
-}): HttpApiGroup<Name, Endpoints, Error, ErrorR> => Object.assign(Object.create(Proto), options)
+}): HttpApiGroup<Name, Endpoints, Error, ErrorR> => {
+  function HttpApiGroup() {}
+  Object.setPrototypeOf(HttpApiGroup, Proto)
+  return Object.assign(HttpApiGroup, options) as any
+}
 
 /**
  * An `HttpApiGroup` is a collection of `HttpApiEndpoint`s. You can use an `HttpApiGroup` to
@@ -155,9 +160,9 @@ const makeProto = <Name extends string, Endpoints extends HttpApiEndpoint.HttpAp
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Name extends string>(name: Name): HttpApiGroup<Name> =>
+export const make = <Name extends string>(identifier: Name): HttpApiGroup<Name> =>
   makeProto({
-    name,
+    identifier,
     endpoints: Chunk.empty(),
     errorSchema: Schema.Never as any,
     annotations: Context.empty()

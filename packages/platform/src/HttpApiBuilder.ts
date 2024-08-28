@@ -213,7 +213,7 @@ export const group = <
   Groups extends HttpApiGroup.HttpApiGroup.Any,
   ApiError,
   ApiErrorR,
-  const Name extends Groups["name"],
+  const Name extends Groups["identifier"],
   RH,
   EX = never,
   RX = never
@@ -233,7 +233,7 @@ export const group = <
   Router.use((router) =>
     Effect.gen(function*() {
       const context = yield* Effect.context<any>()
-      const group = Chunk.findFirst(api.groups, (group) => group.name === groupName)
+      const group = Chunk.findFirst(api.groups, (group) => group.identifier === groupName)
       if (group._tag === "None") {
         throw new Error(`Group "${groupName}" not found in API`)
       }
@@ -304,7 +304,7 @@ export const handle: {
 > => {
   const o = Chunk.findFirst(self.group.endpoints, (endpoint) => endpoint.name === name)
   if (o._tag === "None") {
-    throw new Error(`Endpoint "${name}" not found in group "${self.group.name}"`)
+    throw new Error(`Endpoint "${name}" not found in group "${self.group.identifier}"`)
   }
   const endpoint = o.value
   return makeHandlers({

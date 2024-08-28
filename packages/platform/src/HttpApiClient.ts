@@ -24,7 +24,7 @@ import * as HttpMethod from "./HttpMethod.js"
  */
 export type Client<A extends HttpApi.HttpApi.Any> = [A] extends
   [HttpApi.HttpApi<infer _Groups, infer _ApiError, infer _ApiErrorR>] ? {
-    readonly [GroupName in _Groups["name"]]: [HttpApiGroup.WithName<_Groups, GroupName>] extends
+    readonly [GroupName in _Groups["identifier"]]: [HttpApiGroup.WithName<_Groups, GroupName>] extends
       [HttpApiGroup<GroupName, infer _Endpoints, infer _GroupError, infer _GroupErrorR>] ? {
         readonly [Name in _Endpoints["name"]]: [HttpApiEndpoint.WithName<_Endpoints, Name>] extends [
           HttpApiEndpoint<
@@ -68,11 +68,11 @@ export const make = <A extends HttpApi.HttpApi.Any>(
     const client: Record<string, Record<string, any>> = {}
     HttpApi.reflect(api as any, {
       onGroup({ group }) {
-        client[group.name] = {}
+        client[group.identifier] = {}
       },
-      onEndpoint({ endpoint, errors, group, success }) {
+      onEndpoint({ endpoint, errors, group, successAST, successStatus }) {
         const makeUrl = compilePath(endpoint.path)
-        const handleSuccess = unify(Option.match(success[0], {
+        const handleSuccess = unify(Option.match(successAST, {
           onNone: () => HttpClientResponse.void,
           onSome: (ast) => HttpClientResponse.schemaBodyJsonScoped(Schema.make(ast))
         }))
@@ -132,7 +132,7 @@ export const make = <A extends HttpApi.HttpApi.Any>(
           Option.filter(() => !isMultipart),
           Option.map(Schema.encodeUnknown)
         )
-        client[group.name][endpoint.name] = (request: {
+        client[group.identifier][endpoint.name] = (request: {
           readonly path: any
           readonly payload: any
         }) => {
@@ -156,7 +156,7 @@ export const make = <A extends HttpApi.HttpApi.Any>(
                 httpClient(request).pipe(
                   Effect.orDie,
                   Effect.flatMap((response) =>
-                    response.status !== success[1] ? handleError(request, response) : Effect.succeed(response)
+                    response.status !== successStatus ? handleError(request, response) : Effect.succeed(response)
                   )
                 )
               ),

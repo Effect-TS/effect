@@ -136,11 +136,13 @@ export const annotate: {
   readonly security?: HttpApiSecurity | undefined
   readonly externalDocs?: OpenAPISpecExternalDocs | undefined
 }): A => {
+  const base = typeof self === "function" ? function() {} : self
+  Object.setPrototypeOf(base, Object.getPrototypeOf(self))
   const context = Context.merge(
     self.annotations,
     annotations(annotations_)
   )
-  return Object.assign(Object.create(Object.getPrototypeOf(self)), self, {
+  return Object.assign(base, self, {
     annotations: context
   })
 })
@@ -191,7 +193,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
   HttpApi.reflect(api as any, {
     onGroup({ group }) {
       const tag: Mutable<OpenAPISpecTag> = {
-        name: Context.getOrElse(group.annotations, Title, () => group.name)
+        name: Context.getOrElse(group.annotations, Title, () => group.identifier)
       }
       Option.map(Context.getOption(group.annotations, Description), (description) => {
         tag.description = description
@@ -201,17 +203,17 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
       })
       spec.tags!.push(tag)
     },
-    onEndpoint({ endpoint, errors, group, mergedAnnotations, success }) {
+    onEndpoint({ endpoint, errors, group, mergedAnnotations, successAST, successStatus }) {
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       const op: DeepMutable<OpenAPISpecOperation> = {
-        tags: [Context.getOrElse(group.annotations, Title, () => group.name)],
-        operationId: Context.getOrElse(endpoint.annotations, Identifier, () => `${group.name}.${endpoint.name}`),
+        tags: [Context.getOrElse(group.annotations, Title, () => group.identifier)],
+        operationId: Context.getOrElse(endpoint.annotations, Identifier, () => `${group.identifier}.${endpoint.name}`),
         parameters: [],
         security: [],
         responses: {
-          [success[1]]: {
-            description: Option.getOrElse(getDescriptionOrIdentifier(success[0]), () => "Success")
+          [successStatus]: {
+            description: Option.getOrElse(getDescriptionOrIdentifier(successAST), () => "Success")
           }
         }
       }
@@ -239,9 +241,9 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
           }
         })
       )
-      success[0].pipe(
+      successAST.pipe(
         Option.map((ast) => {
-          op.responses![success[1]].content = {
+          op.responses![successStatus].content = {
             "application/json": {
               schema: makeJsonSchema(Schema.make(ast))
             }

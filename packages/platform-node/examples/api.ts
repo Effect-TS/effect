@@ -36,7 +36,7 @@ const securityMiddleware = HttpApiBuilder.middlewareSecurity(
   (token) => Effect.succeed(new User({ id: 1000, name: `Authenticated with ${Redacted.value(token)}` }))
 )
 
-const users = HttpApiGroup.make("users").pipe(
+class UsersApi extends HttpApiGroup.make("users").pipe(
   HttpApiGroup.add(
     HttpApiEndpoint.get("findById", "/:id").pipe(
       HttpApiEndpoint.setPath(Schema.Struct({
@@ -64,17 +64,17 @@ const users = HttpApiGroup.make("users").pipe(
   HttpApiGroup.addError(Unauthorized),
   HttpApiGroup.prefix("/users"),
   OpenApi.annotate({ security })
-)
+) {}
 
-const api = HttpApi.empty.pipe(
-  HttpApi.addGroup(users),
+class MyApi extends HttpApi.empty.pipe(
+  HttpApi.addGroup(UsersApi),
   OpenApi.annotate({
     title: "Users API",
     description: "API for managing users"
   })
-)
+) {}
 
-const UsersLive = HttpApiBuilder.group(api, "users", (handlers) =>
+const UsersLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
   handlers.pipe(
     HttpApiBuilder.handle("create", (_) => Effect.succeed(new User({ ..._.payload, id: 123 }))),
     HttpApiBuilder.handle("findById", (_) =>
@@ -95,7 +95,7 @@ const UsersLive = HttpApiBuilder.group(api, "users", (handlers) =>
     securityMiddleware
   ))
 
-const ApiLive = HttpApiBuilder.api(api).pipe(
+const ApiLive = HttpApiBuilder.api(MyApi).pipe(
   Layer.provide(UsersLive)
 )
 
@@ -111,7 +111,7 @@ HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 
 Effect.gen(function*() {
   yield* Effect.sleep(2000)
-  const client = yield* HttpApiClient.make(api, {
+  const client = yield* HttpApiClient.make(MyApi, {
     baseUrl: "http://localhost:3000"
   })
 

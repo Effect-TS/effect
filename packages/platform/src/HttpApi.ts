@@ -47,6 +47,7 @@ export interface HttpApi<
   in out Error = never,
   out ErrorR = never
 > extends Pipeable {
+  new(_: never): {}
   readonly [TypeId]: TypeId
   readonly groups: Chunk.Chunk<Groups>
   readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
@@ -78,7 +79,13 @@ export declare namespace HttpApi {
    * @since 1.0.0
    * @category models
    */
-  export type Any = HttpApi<any, any, any> | HttpApi<any, any, never> | HttpApi<any, never, never>
+  export interface Any extends Pipeable {
+    new(_: never): {}
+    readonly [TypeId]: TypeId
+    readonly groups: Chunk.Chunk<HttpApiGroup.HttpApiGroup.Any>
+    readonly errorSchema: Schema.Schema.All
+    readonly annotations: Context.Context<never>
+  }
 
   /**
    * @since 1.0.0
@@ -100,7 +107,11 @@ const makeProto = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR>(
   readonly groups: Chunk.Chunk<Groups>
   readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
   readonly annotations: Context.Context<never>
-}): HttpApi<Groups, Error, ErrorR> => Object.assign(Object.create(Proto), options)
+}): HttpApi<Groups, Error, ErrorR> => {
+  function HttpApi() {}
+  Object.setPrototypeOf(HttpApi, Proto)
+  return Object.assign(HttpApi, options) as any
+}
 
 /**
  * An empty `HttpApi`. You can use this to start building your `HttpApi`.
@@ -253,7 +264,8 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, Err
       readonly group: HttpApiGroup.HttpApiGroup<string, any>
       readonly endpoint: HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>
       readonly mergedAnnotations: Context.Context<never>
-      readonly success: readonly [ast: Option.Option<AST.AST>, status: number]
+      readonly successAST: Option.Option<AST.AST>
+      readonly successStatus: number
       readonly errors: ReadonlyMap<number, Option.Option<AST.AST>>
     }) => void
   }
@@ -269,22 +281,16 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, Err
       mergedAnnotations: groupAnnotations
     })
     const endpoints = group.endpoints as Iterable<HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>>
-
     for (const endpoint of endpoints) {
-      const errors = extractErrors(endpoint.errorSchema.ast, groupErrors)
-      const annotations = Context.merge(groupAnnotations, endpoint.annotations)
-      const success = [
-        HttpApiEndpoint.schemaSuccess(endpoint).pipe(
-          Option.map((schema) => schema.ast)
-        ),
-        HttpApiSchema.getStatusSuccess(endpoint.successSchema)
-      ] as const
       options.onEndpoint({
         group,
         endpoint,
-        mergedAnnotations: annotations,
-        success,
-        errors
+        mergedAnnotations: Context.merge(groupAnnotations, endpoint.annotations),
+        successAST: HttpApiEndpoint.schemaSuccess(endpoint).pipe(
+          Option.map((schema) => schema.ast)
+        ),
+        successStatus: HttpApiSchema.getStatusSuccess(endpoint.successSchema),
+        errors: extractErrors(endpoint.errorSchema.ast, groupErrors)
       })
     }
   }
