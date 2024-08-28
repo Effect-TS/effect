@@ -4,7 +4,6 @@ import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
-import * as Match from "effect/Match"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import type * as Prompt from "../../Prompt.js"
@@ -66,17 +65,17 @@ function renderInput(nextState: State, options: Options, submitted: boolean) {
   const text = getValue(nextState, options)
 
   const annotation = Option.match(nextState.error, {
-    onNone: () =>
-      Match.value(submitted)
-        .pipe(
-          Match.when(true, () => Ansi.green),
-          Match.orElse(() =>
-            Match.value(nextState.value).pipe(
-              Match.when("", () => Ansi.blackBright),
-              Match.orElse(() => Ansi.combine(Ansi.underlined, Ansi.cyanBright))
-            )
-          )
-        ),
+    onNone: () => {
+      if (submitted) {
+        return Ansi.white
+      }
+
+      if (nextState.value.length === 0) {
+        return Ansi.blackBright
+      }
+
+      return Ansi.combine(Ansi.underlined, Ansi.cyanBright)
+    },
     onSome: () => Ansi.red
   })
 
