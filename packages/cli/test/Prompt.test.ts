@@ -321,7 +321,7 @@ describe("Prompt", () => {
 
         const lines = yield* MockConsole.getLines()
 
-        const redactedValue = Array.from("default-value", () => "*").join("")
+        const redactedValue = "*".repeat("default-value".length)
         const unsubmittedValue = Doc.annotate(Doc.text(redactedValue), Ansi.blackBright).pipe(Doc.render({
           style: "pretty"
         }))
