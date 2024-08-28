@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Make `Ref`, `SynchronizedRed` and `SubscriptionRef` subtype of `Effect`
+Made `Ref`, `SynchronizedRed` and `SubscriptionRef` a subtype of `Effect`
