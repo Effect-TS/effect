@@ -1,5 +1,4 @@
 import type * as CliApp from "@effect/cli/CliApp"
-import * as Command from "@effect/cli/Command"
 import * as Prompt from "@effect/cli/Prompt"
 import * as MockConsole from "@effect/cli/test/services/MockConsole"
 import * as MockTerminal from "@effect/cli/test/services/MockTerminal"
@@ -63,12 +62,7 @@ describe("Prompt", () => {
           default: "default-value"
         })
 
-        const cli = Command.prompt("test-command", prompt, () => Effect.void).pipe(Command.run({
-          name: "Test",
-          version: "1.0.0"
-        }))
-
-        const fiber = yield* Effect.fork(cli([]))
+        const fiber = yield* Effect.fork(prompt)
 
         yield* MockTerminal.inputKey("enter")
         yield* Fiber.join(fiber)
@@ -106,12 +100,7 @@ describe("Prompt", () => {
           default: "default-value"
         })
 
-        const cli = Command.prompt("test-command", prompt, () => Effect.void).pipe(Command.run({
-          name: "Test",
-          version: "1.0.0"
-        }))
-
-        const fiber = yield* Effect.fork(cli([]))
+        const fiber = yield* Effect.fork(prompt)
 
         yield* MockTerminal.inputKey("tab")
         yield* MockTerminal.inputKey("enter")
@@ -180,12 +169,7 @@ describe("Prompt", () => {
           default: "default-value"
         })
 
-        const cli = Command.prompt("test-command", prompt, () => Effect.void).pipe(Command.run({
-          name: "Test",
-          version: "1.0.0"
-        }))
-
-        const fiber = yield* Effect.fork(cli([]))
+        const fiber = yield* Effect.fork(prompt)
 
         yield* MockTerminal.inputKey("enter")
         yield* Fiber.join(fiber)
@@ -237,12 +221,7 @@ describe("Prompt", () => {
           default: "default-value"
         })
 
-        const cli = Command.prompt("test-command", prompt, () => Effect.void).pipe(Command.run({
-          name: "Test",
-          version: "1.0.0"
-        }))
-
-        const fiber = yield* Effect.fork(cli([]))
+        const fiber = yield* Effect.fork(prompt)
 
         yield* MockTerminal.inputKey("enter")
         yield* Fiber.join(fiber)
@@ -309,12 +288,7 @@ describe("Prompt", () => {
           default: "default-value"
         })
 
-        const cli = Command.prompt("test-command", prompt, () => Effect.void).pipe(Command.run({
-          name: "Test",
-          version: "1.0.0"
-        }))
-
-        const fiber = yield* Effect.fork(cli([]))
+        const fiber = yield* Effect.fork(prompt)
 
         yield* MockTerminal.inputKey("enter")
         yield* Fiber.join(fiber)
