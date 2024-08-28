@@ -22,6 +22,7 @@ import { currentScheduler } from "../../Scheduler.js"
 import type * as Scope from "../../Scope.js"
 import type * as Supervisor from "../../Supervisor.js"
 import type * as Synchronized from "../../SynchronizedRef.js"
+import type * as Types from "../../Types.js"
 import * as internalCause from "../cause.js"
 import * as effect from "../core-effect.js"
 import * as core from "../core.js"
@@ -707,7 +708,16 @@ export const zipWithFiber = dual<
 
 /* @internal */
 export const bindAll: {
-  <A extends object, X extends Record<string, Effect.Effect<any, any, any>>, O extends Effect.All.Options>(
+  <
+    A extends object,
+    X extends Record<string, Effect.Effect<any, any, any>>,
+    O extends {
+      readonly concurrency?: Types.Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    }
+  >(
     f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
     options?: undefined | O
   ): <E1, R1>(self: Effect.Effect<A, E1, R1>) => Effect.Effect<
@@ -729,13 +739,23 @@ export const bindAll: {
   <
     A extends object,
     X extends Record<string, Effect.Effect<any, any, any>>,
-    O extends Effect.All.Options,
+    O extends {
+      readonly concurrency?: Types.Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    },
     E1,
     R1
   >(
     self: Effect.Effect<A, E1, R1>,
     f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
-    options?: undefined | Effect.All.Options
+    options?: undefined | {
+      readonly concurrency?: Types.Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    }
   ): Effect.Effect<
     {
       [K in keyof X | keyof A]: K extends keyof A ? A[K] :
@@ -755,7 +775,12 @@ export const bindAll: {
 } = dual((args) => core.isEffect(args[0]), <
   A extends object,
   X extends Record<string, Effect.Effect<any, any, any>>,
-  O extends Effect.All.Options,
+  O extends {
+    readonly concurrency?: Types.Concurrency | undefined
+    readonly batching?: boolean | "inherit" | undefined
+    readonly mode?: "default" | "validate" | "either" | undefined
+    readonly concurrentFinalizers?: boolean | undefined
+  },
   E1,
   R1
 >(
