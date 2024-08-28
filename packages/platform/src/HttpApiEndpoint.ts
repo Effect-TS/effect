@@ -46,6 +46,7 @@ export interface HttpApiEndpoint<
   out Method extends HttpMethod,
   in out Path = never,
   in out Payload = never,
+  in out Headers = never,
   in out Success = void,
   in out Error = never,
   out R = never
@@ -56,6 +57,7 @@ export interface HttpApiEndpoint<
   readonly method: Method
   readonly pathSchema: Option.Option<Schema.Schema<Path, unknown, R>>
   readonly payloadSchema: Option.Option<Schema.Schema<Payload, unknown, R>>
+  readonly headersSchema: Option.Option<Schema.Schema<Headers, unknown, R>>
   readonly successSchema: Schema.Schema<Success, unknown, R>
   readonly errorSchema: Schema.Schema<Error, unknown, R>
   readonly annotations: Context.Context<never>
@@ -77,6 +79,7 @@ export declare namespace HttpApiEndpoint {
     readonly method: HttpMethod
     readonly pathSchema: Option.Option<Schema.Schema.Any>
     readonly payloadSchema: Option.Option<Schema.Schema.Any>
+    readonly headersSchema: Option.Option<Schema.Schema.Any>
     readonly successSchema: Schema.Schema.Any
     readonly errorSchema: Schema.Schema.Any
     readonly annotations: Context.Context<never>
@@ -93,6 +96,7 @@ export declare namespace HttpApiEndpoint {
     readonly method: HttpMethod
     readonly pathSchema: Option.Option<Schema.Schema.All>
     readonly payloadSchema: Option.Option<Schema.Schema.All>
+    readonly headersSchema: Option.Option<Schema.Schema.All>
     readonly successSchema: Schema.Schema.Any
     readonly errorSchema: Schema.Schema.All
     readonly annotations: Context.Context<never>
@@ -102,52 +106,100 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type Success<Endpoint extends All> = Endpoint extends
-    HttpApiEndpoint<infer _Name, infer _Method, infer _Path, infer _Payload, infer _Success, infer _Error, infer _R> ?
-    _Success
+  export type Success<Endpoint extends All> = Endpoint extends HttpApiEndpoint<
+    infer _Name,
+    infer _Method,
+    infer _Path,
+    infer _Payload,
+    infer _Headers,
+    infer _Success,
+    infer _Error,
+    infer _R
+  > ? _Success
     : never
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type Error<Endpoint extends All> = Endpoint extends
-    HttpApiEndpoint<infer _Name, infer _Method, infer _Path, infer _Payload, infer _Success, infer _Error, infer _R> ?
-    _Error
+  export type Error<Endpoint extends All> = Endpoint extends HttpApiEndpoint<
+    infer _Name,
+    infer _Method,
+    infer _Path,
+    infer _Payload,
+    infer _Headers,
+    infer _Success,
+    infer _Error,
+    infer _R
+  > ? _Error
     : never
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type PathParsed<Endpoint extends All> = Endpoint extends
-    HttpApiEndpoint<infer _Name, infer _Method, infer _Path, infer _Payload, infer _Success, infer _Error, infer _R> ?
-    _Path
+  export type PathParsed<Endpoint extends All> = Endpoint extends HttpApiEndpoint<
+    infer _Name,
+    infer _Method,
+    infer _Path,
+    infer _Payload,
+    infer _Headers,
+    infer _Success,
+    infer _Error,
+    infer _R
+  > ? _Path
     : never
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type Payload<Endpoint extends All> = Endpoint extends
-    HttpApiEndpoint<infer _Name, infer _Method, infer _Path, infer _Payload, infer _Success, infer _Error, infer _R> ?
-    _Payload
+  export type Payload<Endpoint extends All> = Endpoint extends HttpApiEndpoint<
+    infer _Name,
+    infer _Method,
+    infer _Path,
+    infer _Payload,
+    infer _Headers,
+    infer _Success,
+    infer _Error,
+    infer _R
+  > ? _Payload
     : never
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type Request<Endpoint extends All> = {
-    readonly path: PathParsed<Endpoint>
-  } & ([Payload<Endpoint>] extends [infer P] ? [P] extends [never] ? {} : { readonly payload: P } : {})
+  export type Headers<Endpoint extends All> = Endpoint extends HttpApiEndpoint<
+    infer _Name,
+    infer _Method,
+    infer _Path,
+    infer _Payload,
+    infer _Headers,
+    infer _Success,
+    infer _Error,
+    infer _R
+  > ? _Headers
+    : never
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ClientRequest<Path, Payload> = (
+  export type Request<Endpoint extends All> =
+    & {
+      readonly path: PathParsed<Endpoint>
+    }
+    & ([Payload<Endpoint>] extends [infer P] ? [P] extends [never] ? {} : { readonly payload: P } : {})
+    & ([Headers<Endpoint>] extends [infer H] ? [H] extends [never] ? {} : { readonly headers: H } : {})
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ClientRequest<Path, Payload, Headers> = (
     & ([Path] extends [void] ? {} : { readonly path: Path })
+    & ([Headers] extends [never] ? {} : { readonly headers: Headers })
     & ([Payload] extends [never] ? {}
       : [Payload] extends [Brand<HttpApiSchema.MultipartTypeId>] ? { readonly payload: FormData }
       : { readonly payload: Payload })
@@ -157,9 +209,16 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type Context<Endpoint> = Endpoint extends
-    HttpApiEndpoint<infer _Name, infer _Method, infer _Path, infer _Payload, infer _Success, infer _Error, infer _R> ?
-    _R
+  export type Context<Endpoint> = Endpoint extends HttpApiEndpoint<
+    infer _Name,
+    infer _Method,
+    infer _Path,
+    infer _Payload,
+    infer _Headers,
+    infer _Success,
+    infer _Error,
+    infer _R
+  > ? _R
     : never
 
   /**
@@ -264,6 +323,15 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
+  export type ValidateHeaders<S extends Schema.Schema.Any> = S extends Schema.Schema<infer _A, infer _I, infer _R>
+    ? [_I] extends [Readonly<Record<string, string | undefined>>] ? {}
+    : `Headers schema must be encodeable to strings`
+    : {}
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type ValidatePayload<Method extends HttpMethod, P extends Schema.Schema.All> = Method extends
     HttpMethod.NoBody ?
     P extends Schema.Schema<infer _A, infer _I, infer _R>
@@ -285,6 +353,7 @@ const makeProto = <
   Method extends HttpMethod,
   Path,
   Payload,
+  Headers,
   Success,
   Error,
   R
@@ -294,10 +363,12 @@ const makeProto = <
   readonly method: Method
   readonly pathSchema: Option.Option<Schema.Schema<Path, unknown, R>>
   readonly payloadSchema: Option.Option<Schema.Schema<Payload, unknown, R>>
+  readonly headersSchema: Option.Option<Schema.Schema<Headers, unknown, R>>
   readonly successSchema: Schema.Schema<Success, unknown, R>
   readonly errorSchema: Schema.Schema<Error, unknown, R>
   readonly annotations: Context.Context<never>
-}): HttpApiEndpoint<Name, Method, Path, Payload, Success, Error, R> => Object.assign(Object.create(Proto), options)
+}): HttpApiEndpoint<Name, Method, Path, Payload, Headers, Success, Error, R> =>
+  Object.assign(Object.create(Proto), options)
 
 /**
  * @since 1.0.0
@@ -314,6 +385,7 @@ export const make = <Method extends HttpMethod>(method: Method) =>
     method,
     pathSchema: Option.none(),
     payloadSchema: Option.none(),
+    headersSchema: Option.none(),
     successSchema: HttpApiSchema.NoContent as any,
     errorSchema: Schema.Never as any,
     annotations: Context.empty()
@@ -382,28 +454,30 @@ export const setSuccess: {
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>
-  ) => HttpApiEndpoint<Name, Method, _Path, _P, Schema.Schema.Type<S>, _E, _R | Schema.Schema.Context<S>>
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>
+  ) => HttpApiEndpoint<Name, Method, _Path, _P, _H, Schema.Schema.Type<S>, _E, _R | Schema.Schema.Context<S>>
   <
     Name extends string,
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R,
     S extends Schema.Schema.Any
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>,
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
     schema: S,
     annotations?: {
       readonly status?: number | undefined
     }
-  ): HttpApiEndpoint<Name, Method, _Path, _P, Schema.Schema.Type<S>, _E, _R | Schema.Schema.Context<S>>
+  ): HttpApiEndpoint<Name, Method, _Path, _P, _H, Schema.Schema.Type<S>, _E, _R | Schema.Schema.Context<S>>
 } = dual(
   (args) => isHttpApiEndpoint(args[0]),
   <
@@ -411,12 +485,13 @@ export const setSuccess: {
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R,
     S extends Schema.Schema.Any
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>,
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
     schema: S,
     annotations?: {
       readonly status?: number | undefined
@@ -448,28 +523,30 @@ export const addError: {
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>
-  ) => HttpApiEndpoint<Name, Method, _Path, _P, _S, _E | Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>>
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>
+  ) => HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E | Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>>
   <
     Name extends string,
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R,
     E extends Schema.Schema.All
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>,
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
     schema: E,
     annotations?: {
       readonly status?: number | undefined
     }
-  ): HttpApiEndpoint<Name, Method, _Path, _P, _S, _E | Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>>
+  ): HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E | Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>>
 } = dual(
   (args) => isHttpApiEndpoint(args[0]),
   <
@@ -477,17 +554,18 @@ export const addError: {
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R,
     E extends Schema.Schema.All
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>,
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
     schema: E,
     annotations?: {
       readonly status?: number | undefined
     }
-  ): HttpApiEndpoint<Name, Method, _Path, _P, _S, _E | Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>> =>
+  ): HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E | Schema.Schema.Type<E>, _R | Schema.Schema.Context<E>> =>
     makeProto({
       ...self as any,
       errorSchema: HttpApiSchema.UnionUnify(
@@ -521,25 +599,27 @@ export const setPayload: {
     Name extends string,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>
-  ) => HttpApiEndpoint<Name, Method, _Path, Schema.Schema.Type<P>, _S, _E, _R | Schema.Schema.Context<P>>
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>
+  ) => HttpApiEndpoint<Name, Method, _Path, Schema.Schema.Type<P>, _H, _S, _E, _R | Schema.Schema.Context<P>>
   <
     Name extends string,
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R,
     P extends Schema.Schema.All
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>,
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
     schema: P & HttpApiEndpoint.ValidatePayload<Method, P>
-  ): HttpApiEndpoint<Name, Method, _Path, Schema.Schema.Type<P>, _S, _E, _R | Schema.Schema.Context<P>>
+  ): HttpApiEndpoint<Name, Method, _Path, Schema.Schema.Type<P>, _H, _S, _E, _R | Schema.Schema.Context<P>>
 } = dual(
   2,
   <
@@ -547,14 +627,15 @@ export const setPayload: {
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R,
     P extends Schema.Schema.All
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>,
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
     schema: P & HttpApiEndpoint.ValidatePayload<Method, P>
-  ): HttpApiEndpoint<Name, Method, _Path, Schema.Schema.Type<P>, _S, _E, _R | Schema.Schema.Context<P>> =>
+  ): HttpApiEndpoint<Name, Method, _Path, Schema.Schema.Type<P>, _H, _S, _E, _R | Schema.Schema.Context<P>> =>
     makeProto({
       ...self as any,
       payloadSchema: Option.some(schema)
@@ -576,25 +657,27 @@ export const setPath: {
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>
-  ) => HttpApiEndpoint<Name, Method, Schema.Schema.Type<Path>, _P, _S, _E, _R | Schema.Schema.Context<Path>>
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>
+  ) => HttpApiEndpoint<Name, Method, Schema.Schema.Type<Path>, _P, _H, _S, _E, _R | Schema.Schema.Context<Path>>
   <
     Name extends string,
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R,
     Path extends Schema.Schema.Any
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>,
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
     schema: Path & HttpApiEndpoint.ValidatePath<Path>
-  ): HttpApiEndpoint<Name, Method, Schema.Schema.Type<Path>, _P, _S, _E, _R | Schema.Schema.Context<Path>>
+  ): HttpApiEndpoint<Name, Method, Schema.Schema.Type<Path>, _P, _H, _S, _E, _R | Schema.Schema.Context<Path>>
 } = dual(
   2,
   <
@@ -602,17 +685,75 @@ export const setPath: {
     Method extends HttpMethod,
     _Path,
     _P,
+    _H,
     _S,
     _E,
     _R,
     Path extends Schema.Schema.Any
   >(
-    self: HttpApiEndpoint<Name, Method, _Path, _P, _S, _E, _R>,
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
     schema: Path & HttpApiEndpoint.ValidatePath<Path>
-  ): HttpApiEndpoint<Name, Method, Schema.Schema.Type<Path>, _P, _S, _E, _R | Schema.Schema.Context<Path>> =>
+  ): HttpApiEndpoint<Name, Method, Schema.Schema.Type<Path>, _P, _H, _S, _E, _R | Schema.Schema.Context<Path>> =>
     makeProto({
       ...self as any,
       pathSchema: Option.some(schema)
+    })
+)
+
+/**
+ * Set the schema for the headers of the endpoint. The schema will be
+ * used to validate the headers before the handler is called.
+ *
+ * @since 1.0.0
+ * @category request
+ */
+export const setHeaders: {
+  <Method extends HttpMethod, H extends Schema.Schema.Any>(
+    schema: H & HttpApiEndpoint.ValidateHeaders<H>
+  ): <
+    Name extends string,
+    _Path,
+    _P,
+    _H,
+    _S,
+    _E,
+    _R
+  >(
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>
+  ) => HttpApiEndpoint<Name, Method, _Path, _P, Schema.Schema.Type<H>, _S, _E, _R | Schema.Schema.Context<H>>
+  <
+    Name extends string,
+    Method extends HttpMethod,
+    _Path,
+    _P,
+    _H,
+    _S,
+    _E,
+    _R,
+    H extends Schema.Schema.Any
+  >(
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
+    schema: H & HttpApiEndpoint.ValidateHeaders<H>
+  ): HttpApiEndpoint<Name, Method, _Path, _P, Schema.Schema.Type<H>, _S, _E, _R | Schema.Schema.Context<H>>
+} = dual(
+  2,
+  <
+    Name extends string,
+    Method extends HttpMethod,
+    _Path,
+    _P,
+    _H,
+    _S,
+    _E,
+    _R,
+    H extends Schema.Schema.Any
+  >(
+    self: HttpApiEndpoint<Name, Method, _Path, _P, _H, _S, _E, _R>,
+    schema: H & HttpApiEndpoint.ValidateHeaders<H>
+  ): HttpApiEndpoint<Name, Method, _Path, _P, Schema.Schema.Type<H>, _S, _E, _R | Schema.Schema.Context<H>> =>
+    makeProto({
+      ...self as any,
+      headersSchema: Option.some(schema)
     })
 )
 

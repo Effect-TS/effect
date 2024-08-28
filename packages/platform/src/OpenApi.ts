@@ -251,14 +251,43 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
         })
       )
       if (Option.isSome(endpoint.pathSchema)) {
-        getPropertySignatures(endpoint.pathSchema.value.ast).forEach((ps) => {
-          op.parameters!.push(makeProperty(ps, "path"))
-        })
+        const schema = makeJsonSchema(endpoint.pathSchema.value) as JSONSchema.JsonSchema7Object
+        if ("properties" in schema) {
+          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
+            op.parameters!.push({
+              name,
+              in: "path",
+              schema: jsonSchema,
+              required: schema.required.includes(name)
+            })
+          })
+        }
       }
       if (!HttpMethod.hasBody(endpoint.method) && Option.isSome(endpoint.payloadSchema)) {
-        getPropertySignatures(endpoint.payloadSchema.value.ast).forEach((ps) => {
-          op.parameters!.push(makeProperty(ps, "query"))
-        })
+        const schema = makeJsonSchema(endpoint.payloadSchema.value) as JSONSchema.JsonSchema7Object
+        if ("properties" in schema) {
+          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
+            op.parameters!.push({
+              name,
+              in: "query",
+              schema: jsonSchema,
+              required: schema.required.includes(name)
+            })
+          })
+        }
+      }
+      if (Option.isSome(endpoint.headersSchema)) {
+        const schema = makeJsonSchema(endpoint.headersSchema.value) as JSONSchema.JsonSchema7Object
+        if ("properties" in schema) {
+          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
+            op.parameters!.push({
+              name,
+              in: "header",
+              schema: jsonSchema,
+              required: schema.required.includes(name)
+            })
+          })
+        }
       }
       for (const [status, ast] of errors) {
         if (op.responses![status]) continue
@@ -284,17 +313,6 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
   })
 
   return spec
-}
-
-const getPropertySignatures = (ast: AST.AST): ReadonlyArray<AST.PropertySignature> => {
-  switch (ast._tag) {
-    case "Transformation": {
-      return getPropertySignatures(ast.from)
-    }
-    default: {
-      return AST.getPropertySignatures(ast)
-    }
-  }
 }
 
 const makeSecurityScheme = (security: HttpApiSecurity): OpenAPISecurityScheme => {
@@ -326,22 +344,6 @@ const makeSecurityScheme = (security: HttpApiSecurity): OpenAPISecurityScheme =>
       }
     }
   }
-}
-
-const makeProperty = (ps: AST.PropertySignature, type: OpenAPISpecParameter["in"]): OpenAPISpecParameter => {
-  const spec: Mutable<OpenAPISpecParameter> = {
-    in: type,
-    name: ps.name as string,
-    schema: makeJsonSchema(Schema.make(ps.type)),
-    required: !ps.isOptional
-  }
-  getDescriptionOrIdentifier(Option.some(ps)).pipe(
-    Option.orElse(() => getDescriptionOrIdentifier(Option.some(ps.type))),
-    Option.map((description) => {
-      spec.description = description
-    })
-  )
-  return spec
 }
 
 const getDescriptionOrIdentifier = (ast: Option.Option<AST.PropertySignature | AST.AST>): Option.Option<string> =>

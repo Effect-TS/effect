@@ -732,6 +732,7 @@ const handlerToRoute = (
     Option.getOrElse(() => false)
   )
   const decodePayload = Option.map(endpoint.payloadSchema, Schema.decodeUnknown)
+  const decodeHeaders = Option.map(endpoint.headersSchema, Schema.decodeUnknown)
   const encodeSuccess = Option.map(HttpApiEndpoint.schemaSuccess(endpoint), Schema.encodeUnknown)
   const successStatus = HttpApiSchema.getStatusSuccess(endpoint.successSchema)
   return HttpRouter.makeRoute(
@@ -753,10 +754,16 @@ const handlerToRoute = (
                 Effect.flatMap((raw) => Effect.catchAll(decodePayload.value(raw), HttpApiDecodeError.refailParseError))
               ))
             : identity,
+          decodeHeaders._tag === "Some"
+            ? Effect.bind("headers", (_) => Effect.orDie(decodeHeaders.value(request.headers)))
+            : identity,
           Effect.flatMap((input) => {
             const request: any = { path: input.pathParams }
             if ("payload" in input) {
               request.payload = input.payload
+            }
+            if ("headers" in input) {
+              request.headers = input.headers
             }
             return handler(request)
           }),

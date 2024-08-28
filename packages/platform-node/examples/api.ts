@@ -43,6 +43,11 @@ class UsersApi extends HttpApiGroup.make("users").pipe(
         id: Schema.NumberFromString
       })),
       HttpApiEndpoint.setSuccess(User),
+      HttpApiEndpoint.setHeaders(Schema.Struct({
+        page: Schema.NumberFromString.pipe(
+          Schema.optionalWith({ default: () => 1 })
+        )
+      })),
       HttpApiEndpoint.addError(Schema.String.pipe(
         HttpApiSchema.asEmpty({ status: 413, decode: () => "boom" })
       ))
@@ -88,7 +93,7 @@ const UsersLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
         ),
         new User({
           id: _.path.id,
-          name: "John"
+          name: `John Doe (${_.headers.page})`
         })
       )),
     HttpApiBuilder.handle("me", (_) => CurrentUser),
@@ -119,7 +124,10 @@ Effect.gen(function*() {
   data.append("name", "John")
   console.log("Multipart", yield* client.users.create({ payload: data }))
 
-  const user = yield* client.users.findById({ path: { id: 123 } })
+  const user = yield* client.users.findById({
+    path: { id: 123 },
+    headers: { page: 10 }
+  })
   console.log("json", user)
 }).pipe(
   Effect.provide(HttpClient.layer),

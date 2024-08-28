@@ -32,12 +32,13 @@ export type Client<A extends HttpApi.HttpApi.Any> = [A] extends
             infer _Method,
             infer _Path,
             infer _Payload,
+            infer _Headers,
             infer _Success,
             infer _Error,
             infer _R
           >
         ] ? (
-            request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _Payload>>
+            request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _Payload, _Headers>>
           ) => Effect.Effect<
             _Success,
             _Error | _GroupError | _ApiError | HttpClientError.HttpClientError
@@ -132,9 +133,13 @@ export const make = <A extends HttpApi.HttpApi.Any>(
           Option.filter(() => !isMultipart),
           Option.map(Schema.encodeUnknown)
         )
+        const encodeHeaders = endpoint.headersSchema.pipe(
+          Option.map(Schema.encodeUnknown)
+        )
         client[group.identifier][endpoint.name] = (request: {
           readonly path: any
           readonly payload: any
+          readonly headers: any
         }) => {
           const url = request && request.path ? makeUrl(request && request.path) : endpoint.path
           const baseRequest = HttpClientRequest.make(endpoint.method)(url)
@@ -152,6 +157,14 @@ export const make = <A extends HttpApi.HttpApi.Any>(
               Effect.orDie
             )
             : Effect.succeed(baseRequest)).pipe(
+              encodeHeaders._tag === "Some"
+                ? Effect.flatMap((httpRequest) =>
+                  encodeHeaders.value(request.headers).pipe(
+                    Effect.orDie,
+                    Effect.map((headers) => HttpClientRequest.setHeaders(httpRequest, headers as any))
+                  )
+                )
+                : identity,
               Effect.flatMap((request) =>
                 httpClient(request).pipe(
                   Effect.orDie,
