@@ -35,7 +35,7 @@ describe("Ref", () => {
     Effect.gen(function*(_) {
       const ref = yield* _(Ref.make(123))
       assert.isTrue(Readable.isReadable(ref))
-      assert.strictEqual(yield* _(ref.get), 123)
+      assert.strictEqual(yield* ref, 123)
     }))
 
   it.effect("get", () =>
@@ -44,10 +44,11 @@ describe("Ref", () => {
       assert.strictEqual(result, current)
     }))
   it.effect("getAndSet", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(current))
-      const result1 = yield* $(Ref.getAndSet(ref, update))
-      const result2 = yield* $(Ref.get(ref))
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(current)
+      const result1 = yield* Ref.getAndSet(ref, update)
+
+      const result2 = yield* ref
       assert.strictEqual(result1, current)
       assert.strictEqual(result2, update)
     }))
@@ -55,7 +56,7 @@ describe("Ref", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(current))
       const result1 = yield* $(Ref.getAndUpdate(ref, () => update))
-      const result2 = yield* $(Ref.get(ref))
+      const result2 = yield* $(ref)
       assert.strictEqual(result1, current)
       assert.strictEqual(result2, update)
     }))

@@ -1,6 +1,6 @@
 import * as Effect from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import { dual, pipe } from "../Function.js"
-import { pipeArguments } from "../Pipeable.js"
 import * as PubSub from "../PubSub.js"
 import * as Readable from "../Readable.js"
 import * as Ref from "../Ref.js"
@@ -26,7 +26,7 @@ const subscriptionRefVariance = {
 }
 
 /** @internal */
-class SubscriptionRefImpl<in out A> implements SubscriptionRef.SubscriptionRef<A> {
+class SubscriptionRefImpl<in out A> extends Effectable.Class<A> implements SubscriptionRef.SubscriptionRef<A> {
   readonly [Readable.TypeId]: Readable.TypeId
   readonly [Subscribable.TypeId]: Subscribable.TypeId
   readonly [Ref.RefTypeId] = _ref.refVariance
@@ -37,17 +37,18 @@ class SubscriptionRefImpl<in out A> implements SubscriptionRef.SubscriptionRef<A
     readonly pubsub: PubSub.PubSub<A>,
     readonly semaphore: Effect.Semaphore
   ) {
+    super()
     this[Readable.TypeId] = Readable.TypeId
     this[Subscribable.TypeId] = Subscribable.TypeId
-    this.get = Ref.get(this.ref)
+    this.get = this.ref
   }
-  pipe() {
-    return pipeArguments(this, arguments)
+  commit() {
+    return this.get
   }
   readonly get: Effect.Effect<A>
   get changes(): Stream<A> {
     return pipe(
-      Ref.get(this.ref),
+      this.ref,
       Effect.flatMap((a) =>
         Effect.map(
           stream.fromPubSub(this.pubsub, { scoped: true }),
@@ -67,7 +68,7 @@ class SubscriptionRefImpl<in out A> implements SubscriptionRef.SubscriptionRef<A
   }
   modifyEffect<B, E, R>(f: (a: A) => Effect.Effect<readonly [B, A], E, R>): Effect.Effect<B, E, R> {
     return pipe(
-      Ref.get(this.ref),
+      this.ref,
       Effect.flatMap(f),
       Effect.flatMap(([b, a]) =>
         pipe(

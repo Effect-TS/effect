@@ -23,7 +23,7 @@ export type RefTypeId = typeof RefTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Ref<in out A> extends Ref.Variance<A>, Readable<A> {
+export interface Ref<in out A> extends Effect.Effect<A>, Ref.Variance<A>, Readable<A> {
   modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<B>
 }
 
