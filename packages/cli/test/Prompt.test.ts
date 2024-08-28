@@ -75,27 +75,27 @@ describe("Prompt", () => {
 
         const lines = yield* MockConsole.getLines()
 
-        const uncommittedValue = Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
+        const unsubmittedValue = Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
           style: "pretty"
         }))
 
-        const committedValue = Doc.annotate(Doc.text("default-value"), Ansi.green).pipe(Doc.render({
+        const submittedValue = Doc.annotate(Doc.text("default-value"), Ansi.green).pipe(Doc.render({
           style: "pretty"
         }))
 
         expect(lines).toEqual(
           expect.arrayContaining([
             expect.stringContaining(
-              uncommittedValue
+              unsubmittedValue
             ),
             expect.stringContaining(
-              committedValue
+              submittedValue
             )
           ])
         )
 
-        expect(lines.findIndex((line) => line.includes(uncommittedValue))).toBeLessThan(
-          lines.findIndex((line) => line.includes(committedValue))
+        expect(lines.findIndex((line) => line.includes(unsubmittedValue))).toBeLessThan(
+          lines.findIndex((line) => line.includes(submittedValue))
         )
       }).pipe(runEffect))
 
@@ -119,7 +119,7 @@ describe("Prompt", () => {
 
         const lines = yield* MockConsole.getLines()
 
-        const uncommittedValue = Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
+        const unsubmittedValue = Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
           style: "pretty"
         }))
 
@@ -131,7 +131,7 @@ describe("Prompt", () => {
         expect(lines).toEqual(
           expect.arrayContaining([
             expect.stringContaining(
-              uncommittedValue
+              unsubmittedValue
             ),
             expect.stringContaining(
               enteredValue
@@ -139,7 +139,7 @@ describe("Prompt", () => {
           ])
         )
 
-        expect(lines.findIndex((line) => line.includes(uncommittedValue))).toBeLessThan(
+        expect(lines.findIndex((line) => line.includes(unsubmittedValue))).toBeLessThan(
           lines.findIndex((line) => line.includes(enteredValue))
         )
       }).pipe(runEffect))
@@ -249,27 +249,27 @@ describe("Prompt", () => {
 
         const lines = yield* MockConsole.getLines()
 
-        const uncommittedValue = Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
+        const unsubmittedValue = Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
           style: "pretty"
         }))
 
-        const committedValue = Doc.annotate(Doc.text("default-value"), Ansi.green).pipe(Doc.render({
+        const submittedValue = Doc.annotate(Doc.text("default-value"), Ansi.green).pipe(Doc.render({
           style: "pretty"
         }))
 
         expect(lines).toEqual(
           expect.arrayContaining([
             expect.stringContaining(
-              uncommittedValue
+              unsubmittedValue
             ),
             expect.stringContaining(
-              committedValue
+              submittedValue
             )
           ])
         )
 
-        expect(lines.findIndex((line) => line.includes(uncommittedValue))).toBeLessThan(
-          lines.findIndex((line) => line.includes(committedValue))
+        expect(lines.findIndex((line) => line.includes(unsubmittedValue))).toBeLessThan(
+          lines.findIndex((line) => line.includes(submittedValue))
         )
       }).pipe(runEffect))
   })
@@ -322,27 +322,27 @@ describe("Prompt", () => {
         const lines = yield* MockConsole.getLines()
 
         const redactedValue = Array.from("default-value", () => "*").join("")
-        const uncommittedValue = Doc.annotate(Doc.text(redactedValue), Ansi.blackBright).pipe(Doc.render({
+        const unsubmittedValue = Doc.annotate(Doc.text(redactedValue), Ansi.blackBright).pipe(Doc.render({
           style: "pretty"
         }))
 
-        const committedValue = Doc.annotate(Doc.text(redactedValue), Ansi.green).pipe(Doc.render({
+        const submittedValue = Doc.annotate(Doc.text(redactedValue), Ansi.green).pipe(Doc.render({
           style: "pretty"
         }))
 
         expect(lines).toEqual(
           expect.arrayContaining([
             expect.stringContaining(
-              uncommittedValue
+              unsubmittedValue
             ),
             expect.stringContaining(
-              committedValue
+              submittedValue
             )
           ])
         )
 
-        expect(lines.findIndex((line) => line.includes(uncommittedValue))).toBeLessThan(
-          lines.findIndex((line) => line.includes(committedValue))
+        expect(lines.findIndex((line) => line.includes(unsubmittedValue))).toBeLessThan(
+          lines.findIndex((line) => line.includes(submittedValue))
         )
       }).pipe(runEffect))
   })
