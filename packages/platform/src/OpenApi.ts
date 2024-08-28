@@ -482,7 +482,7 @@ export type OpenAPISpecPathItem =
  * @category models
  * @since 1.0.0
  */
-export type OpenAPIJSONSchema = Omit<JSONSchema.JsonSchema7, "$schema">
+export type OpenAPIJSONSchema = JSONSchema.JsonSchema7
 
 /**
  * @category models

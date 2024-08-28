@@ -8,415 +8,543 @@ This package empowers you to perform various operations, such as:
 
 | **Operation**  | **Description**                                                                                  |
 | -------------- | ------------------------------------------------------------------------------------------------ |
-| Terminal       | Reading and writing from/to standard input/output                                                |
-| Command        | Creating and running a command with the specified process name and an optional list of arguments |
-| FileSystem     | Reading and writing from/to the file system                                                      |
+| HTTP API       | Declarative HTTP API servers & clients                                                           |
 | HTTP Client    | Sending HTTP requests and receiving responses                                                    |
 | HTTP Server    | Creating HTTP servers to handle incoming requests                                                |
 | HTTP Router    | Routing HTTP requests to specific handlers                                                       |
+| Terminal       | Reading and writing from/to standard input/output                                                |
+| Command        | Creating and running a command with the specified process name and an optional list of arguments |
+| FileSystem     | Reading and writing from/to the file system                                                      |
 | KeyValueStore  | Storing and retrieving key-value pairs                                                           |
 | PlatformLogger | Creating a logger that writes to a specified file from another string logger                     |
 
 By utilizing `@effect/platform`, you can write code that remains platform-agnostic, ensuring compatibility across different environments.
 
-# Terminal
-
-The `@effect/platform/Terminal` module exports a single `Terminal` tag, which serves as the entry point to reading from and writing to standard input and standard output.
-
-## Writing to standard output
-
-```ts
-import { Terminal } from "@effect/platform"
-import { NodeRuntime, NodeTerminal } from "@effect/platform-node"
-import { Effect } from "effect"
-
-// const displayMessage: Effect.Effect<void, PlatformError, Terminal.Terminal>
-const displayMessage = Effect.gen(function* (_) {
-  const terminal = yield* _(Terminal.Terminal)
-  yield* _(terminal.display("a message\n"))
-})
-
-NodeRuntime.runMain(displayMessage.pipe(Effect.provide(NodeTerminal.layer)))
-// Output: "a message"
-```
-
-## Reading from standard input
-
-```ts
-import { Terminal } from "@effect/platform"
-import { NodeRuntime, NodeTerminal } from "@effect/platform-node"
-import { Console, Effect } from "effect"
-
-// const readLine: Effect.Effect<void, Terminal.QuitException, Terminal.Terminal>
-const readLine = Effect.gen(function* (_) {
-  const terminal = yield* _(Terminal.Terminal)
-  const input = yield* _(terminal.readLine)
-  yield* _(Console.log(`input: ${input}`))
-})
-
-NodeRuntime.runMain(readLine.pipe(Effect.provide(NodeTerminal.layer)))
-// Input: "hello"
-// Output: "input: hello"
-```
-
-These simple examples illustrate how to utilize the `Terminal` module for handling standard input and output in your programs. Let's use this knowledge to build a number guessing game:
-
-```ts
-import { Terminal } from "@effect/platform"
-import type { PlatformError } from "@effect/platform/Error"
-import { Effect, Option, Random } from "effect"
-
-export const secret = Random.nextIntBetween(1, 100)
-
-const parseGuess = (input: string) => {
-  const n = parseInt(input, 10)
-  return isNaN(n) || n < 1 || n > 100 ? Option.none() : Option.some(n)
-}
-
-const display = (message: string) =>
-  Effect.gen(function* (_) {
-    const terminal = yield* _(Terminal.Terminal)
-    yield* _(terminal.display(`${message}\n`))
-  })
-
-const prompt = Effect.gen(function* (_) {
-  const terminal = yield* _(Terminal.Terminal)
-  yield* _(terminal.display("Enter a guess: "))
-  return yield* _(terminal.readLine)
-})
-
-const answer: Effect.Effect<
-  number,
-  Terminal.QuitException | PlatformError,
-  Terminal.Terminal
-> = Effect.gen(function* (_) {
-  const input = yield* _(prompt)
-  const guess = parseGuess(input)
-  if (Option.isNone(guess)) {
-    yield* _(display("You must enter an integer from 1 to 100"))
-    return yield* _(answer)
-  }
-  return guess.value
-})
-
-const check = <A, E, R>(
-  secret: number,
-  guess: number,
-  ok: Effect.Effect<A, E, R>,
-  ko: Effect.Effect<A, E, R>
-): Effect.Effect<A, E | PlatformError, R | Terminal.Terminal> =>
-  Effect.gen(function* (_) {
-    if (guess > secret) {
-      yield* _(display("Too high"))
-      return yield* _(ko)
-    } else if (guess < secret) {
-      yield* _(display("Too low"))
-      return yield* _(ko)
-    } else {
-      return yield* _(ok)
-    }
-  })
-
-const end = display("You guessed it!")
-
-const loop = (
-  secret: number
-): Effect.Effect<
-  void,
-  Terminal.QuitException | PlatformError,
-  Terminal.Terminal
-> =>
-  Effect.gen(function* (_) {
-    const guess = yield* _(answer)
-    return yield* _(
-      check(
-        secret,
-        guess,
-        end,
-        Effect.suspend(() => loop(secret))
-      )
-    )
-  })
-
-export const game = Effect.gen(function* (_) {
-  yield* _(
-    display(
-      "We have selected a random number between 1 and 100. See if you can guess it in 10 turns or fewer. We'll tell you if your guess was too high or too low."
-    )
-  )
-  yield* _(loop(yield* _(secret)))
-})
-```
-
-Let's run the game in Node.js:
-
-```ts
-import { NodeRuntime, NodeTerminal } from "@effect/platform-node"
-import * as Effect from "effect/Effect"
-import { game } from "./game.js"
-
-NodeRuntime.runMain(game.pipe(Effect.provide(NodeTerminal.layer)))
-```
-
-Let's run the game in Bun:
-
-```ts
-import { BunRuntime, BunTerminal } from "@effect/platform-bun"
-import * as Effect from "effect/Effect"
-import { game } from "./game.js"
-
-BunRuntime.runMain(game.pipe(Effect.provide(BunTerminal.layer)))
-```
-
-# Command
-
-As an example of using the `@effect/platform/Command` module, let's see how to run the TypeScript compiler `tsc`:
-
-```ts
-import { Command, CommandExecutor } from "@effect/platform"
-import {
-  NodeCommandExecutor,
-  NodeFileSystem,
-  NodeRuntime
-} from "@effect/platform-node"
-import { Effect } from "effect"
-
-// const program: Effect.Effect<string, PlatformError, CommandExecutor.CommandExecutor>
-const program = Effect.gen(function* (_) {
-  const executor = yield* _(CommandExecutor.CommandExecutor)
-
-  // Creating a command to run the TypeScript compiler
-  const command = Command.make("tsc", "--noEmit")
-  console.log("Running tsc...")
-
-  // Executing the command and capturing the output
-  const output = yield* _(executor.string(command))
-  console.log(output)
-  return output
-})
-
-// Running the program with the necessary runtime and executor layers
-NodeRuntime.runMain(
-  program.pipe(
-    Effect.provide(NodeCommandExecutor.layer),
-    Effect.provide(NodeFileSystem.layer)
-  )
-)
-```
-
-## Obtaining Information About the Running Process
-
-Here, we'll explore how to retrieve information about a running process.
-
-```ts
-import { Command, CommandExecutor } from "@effect/platform"
-import {
-  NodeCommandExecutor,
-  NodeFileSystem,
-  NodeRuntime
-} from "@effect/platform-node"
-import { Effect, Stream, String } from "effect"
-
-const runString = <E, R>(
-  stream: Stream.Stream<Uint8Array, E, R>
-): Effect.Effect<string, E, R> =>
-  stream.pipe(Stream.decodeText(), Stream.runFold(String.empty, String.concat))
-
-const program = Effect.gen(function* (_) {
-  const executor = yield* _(CommandExecutor.CommandExecutor)
-
-  const command = Command.make("ls")
-
-  const [exitCode, stdout, stderr] = yield* _(
-    // Start running the command and return a handle to the running process.
-    executor.start(command),
-    Effect.flatMap((process) =>
-      Effect.all(
-        [
-          // Waits for the process to exit and returns the ExitCode of the command that was run.
-          process.exitCode,
-          // The standard output stream of the process.
-          runString(process.stdout),
-          // The standard error stream of the process.
-          runString(process.stderr)
-        ],
-        { concurrency: 3 }
-      )
-    )
-  )
-  console.log({ exitCode, stdout, stderr })
-})
-
-NodeRuntime.runMain(
-  Effect.scoped(program).pipe(
-    Effect.provide(NodeCommandExecutor.layer),
-    Effect.provide(NodeFileSystem.layer)
-  )
-)
-```
-
-## Running a Platform Command with stdout Streamed to process.stdout
-
-To run a command (for example `cat`) and stream its `stdout` to `process.stdout` follow these steps:
-
-```ts
-import { Command } from "@effect/platform"
-import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Effect } from "effect"
-
-// Create a command to run `cat` on a file and inherit stdout
-const program = Command.make("cat", "./some-file.txt").pipe(
-  Command.stdout("inherit"),
-  Command.exitCode
-)
-
-// Run the command using NodeRuntime with the NodeContext layer
-NodeRuntime.runMain(program.pipe(Effect.provide(NodeContext.layer)))
-```
-
-# FileSystem
-
-The `@effect/platform/FileSystem` module provides a single `FileSystem` tag, which acts as the gateway for interacting with the filesystem.
-
-Here's a list of operations that can be performed using the `FileSystem` tag:
-
-| **Name**                    | **Arguments**                                                    | **Return**                                     | **Description**                                                                                                                                                        |
-| --------------------------- | ---------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **access**                  | `path: string`, `options?: AccessFileOptions`                    | `Effect<void, PlatformError>`                  | Check if a file can be accessed. You can optionally specify the level of access to check for.                                                                          |
-| **copy**                    | `fromPath: string`, `toPath: string`, `options?: CopyOptions`    | `Effect<void, PlatformError>`                  | Copy a file or directory from `fromPath` to `toPath`. Equivalent to `cp -r`.                                                                                           |
-| **copyFile**                | `fromPath: string`, `toPath: string`                             | `Effect<void, PlatformError>`                  | Copy a file from `fromPath` to `toPath`.                                                                                                                               |
-| **chmod**                   | `path: string`, `mode: number`                                   | `Effect<void, PlatformError>`                  | Change the permissions of a file.                                                                                                                                      |
-| **chown**                   | `path: string`, `uid: number`, `gid: number`                     | `Effect<void, PlatformError>`                  | Change the owner and group of a file.                                                                                                                                  |
-| **exists**                  | `path: string`                                                   | `Effect<boolean, PlatformError>`               | Check if a path exists.                                                                                                                                                |
-| **link**                    | `fromPath: string`, `toPath: string`                             | `Effect<void, PlatformError>`                  | Create a hard link from `fromPath` to `toPath`.                                                                                                                        |
-| **makeDirectory**           | `path: string`, `options?: MakeDirectoryOptions`                 | `Effect<void, PlatformError>`                  | Create a directory at `path`. You can optionally specify the mode and whether to recursively create nested directories.                                                |
-| **makeTempDirectory**       | `options?: MakeTempDirectoryOptions`                             | `Effect<string, PlatformError>`                | Create a temporary directory. By default, the directory will be created inside the system's default temporary directory.                                               |
-| **makeTempDirectoryScoped** | `options?: MakeTempDirectoryOptions`                             | `Effect<string, PlatformError, Scope>`         | Create a temporary directory inside a scope. Functionally equivalent to `makeTempDirectory`, but the directory will be automatically deleted when the scope is closed. |
-| **makeTempFile**            | `options?: MakeTempFileOptions`                                  | `Effect<string, PlatformError>`                | Create a temporary file. The directory creation is functionally equivalent to `makeTempDirectory`. The file name will be a randomly generated string.                  |
-| **makeTempFileScoped**      | `options?: MakeTempFileOptions`                                  | `Effect<string, PlatformError, Scope>`         | Create a temporary file inside a scope. Functionally equivalent to `makeTempFile`, but the file will be automatically deleted when the scope is closed.                |
-| **open**                    | `path: string`, `options?: OpenFileOptions`                      | `Effect<File, PlatformError, Scope>`           | Open a file at `path` with the specified `options`. The file handle will be automatically closed when the scope is closed.                                             |
-| **readDirectory**           | `path: string`, `options?: ReadDirectoryOptions`                 | `Effect<Array<string>, PlatformError>`         | List the contents of a directory. You can recursively list the contents of nested directories by setting the `recursive` option.                                       |
-| **readFile**                | `path: string`                                                   | `Effect<Uint8Array, PlatformError>`            | Read the contents of a file.                                                                                                                                           |
-| **readFileString**          | `path: string`, `encoding?: string`                              | `Effect<string, PlatformError>`                | Read the contents of a file as a string.                                                                                                                               |
-| **readLink**                | `path: string`                                                   | `Effect<string, PlatformError>`                | Read the destination of a symbolic link.                                                                                                                               |
-| **realPath**                | `path: string`                                                   | `Effect<string, PlatformError>`                | Resolve a path to its canonicalized absolute pathname.                                                                                                                 |
-| **remove**                  | `path: string`, `options?: RemoveOptions`                        | `Effect<void, PlatformError>`                  | Remove a file or directory. By setting the `recursive` option to `true`, you can recursively remove nested directories.                                                |
-| **rename**                  | `oldPath: string`, `newPath: string`                             | `Effect<void, PlatformError>`                  | Rename a file or directory.                                                                                                                                            |
-| **sink**                    | `path: string`, `options?: SinkOptions`                          | `Sink<void, Uint8Array, never, PlatformError>` | Create a writable `Sink` for the specified `path`.                                                                                                                     |
-| **stat**                    | `path: string`                                                   | `Effect<File.Info, PlatformError>`             | Get information about a file at `path`.                                                                                                                                |
-| **stream**                  | `path: string`, `options?: StreamOptions`                        | `Stream<Uint8Array, PlatformError>`            | Create a readable `Stream` for the specified `path`.                                                                                                                   |
-| **symlink**                 | `fromPath: string`, `toPath: string`                             | `Effect<void, PlatformError>`                  | Create a symbolic link from `fromPath` to `toPath`.                                                                                                                    |
-| **truncate**                | `path: string`, `length?: SizeInput`                             | `Effect<void, PlatformError>`                  | Truncate a file to a specified length. If the `length` is not specified, the file will be truncated to length `0`.                                                     |
-| **utimes**                  | `path: string`, `atime: Date \| number`, `mtime: Date \| number` | `Effect<void, PlatformError>`                  | Change the file system timestamps of the file at `path`.                                                                                                               |
-| **watch**                   | `path: string`                                                   | `Stream<WatchEvent, PlatformError>`            | Watch a directory or file for changes.                                                                                                                                 |
-
-Let's explore a simple example using `readFileString`:
-
-```ts
-import { FileSystem } from "@effect/platform"
-import { NodeFileSystem, NodeRuntime } from "@effect/platform-node"
-import { Effect } from "effect"
-
-// const readFileString: Effect.Effect<void, PlatformError, FileSystem.FileSystem>
-const readFileString = Effect.gen(function* (_) {
-  const fs = yield* _(FileSystem.FileSystem)
-
-  // Reading the content of the same file where this code is written
-  const content = yield* _(fs.readFileString("./index.ts", "utf8"))
-  console.log(content)
-})
-
-NodeRuntime.runMain(readFileString.pipe(Effect.provide(NodeFileSystem.layer)))
-```
-
-# KeyValueStore
+# HTTP API
 
 ## Overview
 
-The `KeyValueStore` module provides a robust and effectful interface for managing key-value pairs. It supports asynchronous operations, ensuring data integrity and consistency, and includes built-in implementations for in-memory, file system-based, and schema-validated stores.
+The `HttpApi` family of modules provide a declarative way to define HTTP APIs.
+You can create an API by combining multiple endpoints, each with its own set of
+schemas that define the request and response types.
 
-## Basic Usage
+After you have defined your API, you can use it to implement a server or derive
+a client that can interact with the server.
 
-The `KeyValueStore` interface includes the following operations:
+## Defining an API
 
-- **get**: Retrieve a value by key.
-- **set**: Store a key-value pair.
-- **remove**: Delete a key-value pair.
-- **clear**: Remove all key-value pairs.
-- **size**: Get the number of stored pairs.
-- **modify**: Atomically modify a value.
-- **has**: Check if a key exists.
-- **isEmpty**: Check if the store is empty.
+To define an API, you need to create a set of endpoints. Each endpoint is
+defined by a path, a method, and a set of schemas that define the request and
+response types.
 
-**Example**
+Each set of endpoints is added to an `HttpApiGroup`, which can be combined with
+other groups to create a complete API.
 
-```ts
-import { KeyValueStore, layerMemory } from "@effect/platform/KeyValueStore"
-import { Effect } from "effect"
+### Your first `HttpApiGroup`
 
-const program = Effect.gen(function* () {
-  const store = yield* KeyValueStore
-  console.log(yield* store.size) // Outputs: 0
-
-  yield* store.set("key", "value")
-  console.log(yield* store.size) // Outputs: 1
-
-  const value = yield* store.get("key")
-  console.log(value) // Outputs: { _id: 'Option', _tag: 'Some', value: 'value' }
-
-  yield* store.remove("key")
-  console.log(yield* store.size) // Outputs: 0
-})
-
-Effect.runPromise(program.pipe(Effect.provide(layerMemory)))
-```
-
-## Built-in Implementations
-
-The module provides several built-in implementations to suit different needs:
-
-- **In-Memory Store**: `layerMemory` provides a simple, in-memory key-value store, ideal for lightweight or testing scenarios.
-- **File System Store**: `layerFileSystem` offers a file-based store for persistent storage needs.
-- **Schema Store**: `layerSchema` enables schema-based validation for stored values, ensuring data integrity and type safety.
-
-## Schema Store
-
-The `SchemaStore` implementation allows you to validate and parse values according to a defined schema. This ensures that all data stored in the key-value store adheres to the specified structure, enhancing data integrity and type safety.
-
-**Example**
+Let's define a simple CRUD API for managing users. First, we need to make an
+`HttpApiGroup` that contains our endpoints.
 
 ```ts
-import { KeyValueStore, layerMemory } from "@effect/platform/KeyValueStore"
+import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
 import { Schema } from "@effect/schema"
-import { Effect } from "effect"
 
-// Define a schema for the values
-const Person = Schema.Struct({
+// Our domain "User" Schema
+class User extends Schema.Class<User>("User")({
+  id: Schema.Number,
   name: Schema.String,
-  age: Schema.Number
-})
+  createdAt: Schema.DateTimeUtc
+}) {}
 
-const program = Effect.gen(function* () {
-  const store = (yield* KeyValueStore).forSchema(Person)
-
-  // Create a value that adheres to the schema
-  const value = { name: "Alice", age: 30 }
-  yield* store.set("user1", value)
-  console.log(yield* store.size) // Outputs: 1
-
-  // Retrieve and validate the value
-  const retrievedValue = yield* store.get("user1")
-  console.log(retrievedValue) // Outputs: { _id: 'Option', _tag: 'Some', value: { name: 'Alice', age: 30 } }
-})
-
-Effect.runPromise(program.pipe(Effect.provide(layerMemory)))
+const usersApi = HttpApiGroup.make("users").pipe(
+  HttpApiGroup.add(
+    // each endpoint has a name and a path
+    HttpApiEndpoint.get("findById", "/users/:id").pipe(
+      // the endpoint can have a Schema for a successful response
+      HttpApiEndpoint.setSuccess(User),
+      // and here is a Schema for the path parameters
+      HttpApiEndpoint.setPath(
+        Schema.Struct({
+          id: Schema.NumberFromString
+        })
+      )
+    )
+  ),
+  HttpApiGroup.add(
+    HttpApiEndpoint.post("create", "/users").pipe(
+      HttpApiEndpoint.setSuccess(User),
+      // and here is a Schema for the request payload / body
+      //
+      // this is a POST request, so the payload is in the body
+      // but for a GET request, the payload would be in the URL search params
+      HttpApiEndpoint.setPayload(
+        Schema.Struct({
+          name: Schema.String
+        })
+      )
+    )
+  ),
+  // by default, the endpoint will respond with a 204 No Content
+  HttpApiGroup.add(HttpApiEndpoint.del("delete", "/users/:id")),
+  HttpApiGroup.add(
+    HttpApiEndpoint.patch("update", "/users/:id").pipe(
+      HttpApiEndpoint.setSuccess(User),
+      HttpApiEndpoint.setPayload(
+        Schema.Struct({
+          name: Schema.String
+        })
+      )
+    )
+  )
+)
 ```
 
-In this example:
+You can also extend the `HttpApiGroup` with a class to gain an opaque type.
+We will use this API style in the following examples:
 
-- **Person**: Defines the structure for the values stored in the key-value store.
-- **store.set**: Stores a value adhering to `Person`.
-- **store.get**: Retrieves and validates the stored value against `Person`.
+```ts
+class UsersApi extends HttpApiGroup.make("users").pipe(
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("findById", "/users/:id")
+    // ... same as above
+  )
+) {}
+```
+
+### Creating the top level `HttpApi`
+
+Once you have defined your groups, you can combine them into a single `HttpApi`.
+
+```ts
+import { HttpApi } from "@effect/platform"
+
+class MyApi extends HttpApi.empty.pipe(HttpApi.addGroup(UsersApi)) {}
+```
+
+Or with the non-opaque style:
+
+```ts
+const api = HttpApi.empty.pipe(HttpApi.addGroup(usersApi))
+```
+
+### Adding OpenApi annotations
+
+You can add OpenApi annotations to your API by using the `OpenApi` module.
+
+Let's add a title to our `UsersApi` group:
+
+```ts
+import { OpenApi } from "@effect/platform"
+
+class UsersApi extends HttpApiGroup.make("users").pipe(
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("findById", "/users/:id")
+    // ... same as above
+  ),
+  // add an OpenApi title & description
+  OpenApi.annotate({
+    title: "Users API",
+    description: "API for managing users"
+  })
+) {}
+```
+
+Now when you generate OpenApi documentation, the title and description will be
+included.
+
+You can also add OpenApi annotations to the top-level `HttpApi`:
+
+```ts
+class MyApi extends HttpApi.empty.pipe(
+  HttpApi.addGroup(UsersApi),
+  OpenApi.annotate({
+    title: "My API",
+    description: "My awesome API"
+  })
+) {}
+```
+
+### Adding errors
+
+You can add error responses to your endpoints using the following apis:
+
+- `HttpApiEndpoint.addError` - add an error response for a single endpoint
+- `HttpApiGroup.addError` - add an error response for all endpoints in a group
+- `HttpApi.addError` - add an error response for all endpoints in the api
+
+The group & api level errors are useful for adding common error responses that
+can be used in middleware.
+
+Here is an example of adding a 404 error to the `UsersApi` group:
+
+```ts
+// define the error schemas
+class UserNotFound extends Schema.TaggedError<UserNotFound>()(
+  "UserNotFound",
+  {}
+) {}
+
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+  "Unauthorized",
+  {}
+) {}
+
+class UsersApi extends HttpApiGroup.make("users").pipe(
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("findById", "/users/:id").pipe(
+      // here we are adding our error response
+      HttpApiEndpoint.addError(UserNotFound, { status: 404 }),
+      HttpApiEndpoint.setSuccess(User),
+      HttpApiEndpoint.setPath(Schema.Struct({ id: Schema.NumberFromString }))
+    )
+  ),
+  // or we could add an error to the group
+  HttpApiGroup.addError(Unauthorized, { status: 401 })
+) {}
+```
+
+It is worth noting that you can add multiple error responses to an endpoint,
+just by calling `HttpApiEndpoint.addError` multiple times.
+
+### Multipart requests
+
+If you need to handle file uploads, you can use the `HttpApiSchema.Multipart`
+api to flag a `HttpApiSchema` payload schema as a multipart request.
+
+You can then use the schemas from the `Multipart` module to define the expected
+shape of the multipart request.
+
+```ts
+import { HttpApiSchema, Multipart } from "@effect/platform"
+
+class UsersApi extends HttpApiGroup.make("users").pipe(
+  HttpApiGroup.add(
+    HttpApiEndpoint.post("upload", "/users/upload").pipe(
+      HttpApiEndpoint.setPayload(
+        HttpApiSchema.Multipart(
+          Schema.Struct({
+            // add a "files" field to the schema
+            files: Multipart.FilesSchema
+          })
+        )
+      )
+    )
+  )
+) {}
+```
+
+### Adding security annotations
+
+The `HttpApiSecurity` module provides a way to add security annotations to your
+API.
+
+The `HttpApiSecurity` offers the following authorization types:
+
+- `HttpApiSecurity.apiKey` - API key authorization through headers, query
+  parameters, or cookies.
+- `HttpApiSecurity.basicAuth` - HTTP Basic authentication.
+- `HttpApiSecurity.bearerAuth` - Bearer token authentication.
+
+You can annotate your API with these security types using the
+`OpenApi.annotate` api as before.
+
+```ts
+import { HttpApiSecurity } from "@effect/platform"
+
+const security = HttpApiSecurity.apiKey({
+  in: "cookie",
+  key: "token"
+})
+
+class UsersApi extends HttpApiGroup.make("users").pipe(
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("findById", "/users/:id").pipe(
+      // add the security annotation to the endpoint
+      OpenApi.annotate({ security })
+    )
+  ),
+  // or at the group level
+  OpenApi.annotate({ security }),
+
+  // or just for the endpoints above this line
+  HttpApiGroup.annotateEndpoints(OpenApi.Security, security),
+  // this endpoint will not have the security annotation
+  HttpApiGroup.add(HttpApiEndpoint.get("list", "/users"))
+) {}
+```
+
+## Implementing a server
+
+Now that you have defined your API, you can implement a server that serves the
+endpoints.
+
+The `HttpApiBuilder` module provides all the apis you need to implement your
+server.
+
+### Implementing a `HttpApiGroup`
+
+First up, let's implement an `UsersApi` group with a single `findById` endpoint:
+
+```ts
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup
+} from "@effect/platform"
+import { Schema } from "@effect/schema"
+import { DateTime, Effect } from "effect"
+
+// here is our api definition
+class User extends Schema.Class<User>("User")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+}) {}
+
+class UsersApi extends HttpApiGroup.make("users").pipe(
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("findById", "/users/:id").pipe(
+      HttpApiEndpoint.setSuccess(User),
+      HttpApiEndpoint.setPath(
+        Schema.Struct({
+          id: Schema.NumberFromString
+        })
+      )
+    )
+  )
+) {}
+
+class MyApi extends HttpApi.empty.pipe(HttpApi.addGroup(UsersApi)) {}
+
+// --------------------------------------------
+// Implementation
+// --------------------------------------------
+
+// the `HttpApiBuilder.group` api return a `Layer`
+const UsersApiLive: Layer.Layer<HttpApiGroup.HttpApiGroup.Service<"users">> =
+  HttpApiBuilder.group(MyApi, "users", (handlers) =>
+    handlers.pipe(
+      // the parameters & payload are passed to the handler function.
+      HttpApiBuilder.handle("findById", ({ path: { id } }) =>
+        Effect.succeed(
+          new User({
+            id,
+            name: "John Doe",
+            createdAt: DateTime.unsafeNow()
+          })
+        )
+      )
+    )
+  )
+```
+
+### Using services inside a `HttpApiGroup`
+
+If you need to use services inside your handlers, you can return an
+`Effect` from the `HttpApiBuilder.group` api.
+
+```ts
+class UsersRepository extends Context.Tag("UsersRepository")<
+  UsersRepository,
+  {
+    readonly findById: (id: number) => Effect.Effect<User>
+  }
+>() {}
+
+// the dependencies will show up in the resulting `Layer`
+const UsersApiLive: Layer.Layer<
+  HttpApiGroup.HttpApiGroup.Service<"users">,
+  never,
+  UsersRepository
+> = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  // we can return an Effect that creates our handlers
+  Effect.gen(function* () {
+    const repository = yield* UsersRepository
+    return handlers.pipe(
+      HttpApiBuilder.handle("findById", ({ path: { id } }) =>
+        repository.findById(id)
+      )
+    )
+  })
+)
+```
+
+### Implementing a `HttpApi`
+
+Once all your groups are implemented, you can implement the top-level `HttpApi`.
+
+This is done using the `HttpApiBuilder.api` api, and then using `Layer.provide`
+to add all the group implementations.
+
+```ts
+const MyApiLive: Layer.Layer<HttpApi.HttpApi.Service> = HttpApiBuilder.api(
+  MyApi
+).pipe(Layer.provide(UsersApiLive))
+```
+
+### Serving the API
+
+Finally, you can serve the API using the `HttpApiBuilder.serve` api.
+
+You can also add middleware to the server using the `HttpMiddleware` module, or
+use some of the middleware Layer's from the `HttpApiBuilder` module.
+
+```ts
+import { HttpMiddleware, HttpServer } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { createServer } from "node:http"
+
+// use the `HttpApiBuilder.serve` function to register our API with the HTTP
+// server
+const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
+  // Add CORS middleware
+  Layer.provide(HttpApiBuilder.middlewareCors()),
+  // Provide the API implementation
+  Layer.provide(MyApiLive),
+  // Log the address the server is listening on
+  HttpServer.withLogAddress,
+  // Provide the HTTP server implementation
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+// run the server
+Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
+```
+
+## Implementing `HttpApiSecurity`
+
+If you are using `HttpApiSecurity` in your API, you can use the security
+definition to implement a middleware that will protect your endpoints.
+
+The `HttpApiBuilder.middlewareSecurity` api will assist you in creating this
+middleware.
+
+Here is an example:
+
+```ts
+// our cookie security definition
+const security = HttpApiSecurity.apiKey({
+  in: "cookie",
+  key: "token"
+})
+
+// the user repository service
+class UsersRepository extends Context.Tag("UsersRepository")<
+  UsersRepository,
+  {
+    readonly findByToken: (token: Redacted.Redacted) => Effect.Effect<User>
+  }
+>() {}
+
+// the security middleware will supply the current user to the handlers
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
+
+// implement the middleware
+const makeSecurityMiddleware: Effect.Effect<
+  HttpApiBuilder.SecurityMiddleware<CurrentUser>,
+  never,
+  UsersRepository
+> = Effect.gen(function* () {
+  const repository = yield* UsersRepository
+  return HttpApiBuilder.middlewareSecurity(
+    // the security definition
+    security,
+    // the Context.Tag this middleware will provide
+    CurrentUser,
+    // the function to get the user from the token
+    (token) => repository.findByToken(token)
+  )
+})
+
+// use the middleware
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  Effect.gen(function* () {
+    // construct the security middleware
+    const securityMiddleware = yield* makeSecurityMiddleware
+
+    return handlers.pipe(
+      HttpApiBuilder.handle("findById", ({ path: { id } }) =>
+        Effect.succeed(
+          new User({ id, name: "John Doe", createdAt: DateTime.unsafeNow() })
+        )
+      ),
+      // apply the middleware to the findById endpoint
+      securityMiddleware
+      // any endpoint after this will not be protected
+    )
+  })
+)
+```
+
+If you need to set the security cookie from within a handler, you can use the
+`HttpApiBuilder.securitySetCookie` api.
+
+By default, the cookie will be set with the `HttpOnly` and `Secure` flags.
+
+```ts
+const security = HttpApiSecurity.apiKey({
+  in: "cookie",
+  key: "token"
+})
+
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  handlers.pipe(
+    HttpApiBuilder.handle("login", () =>
+      // set the security cookie
+      HttpApiBuilder.securitySetCookie(
+        security,
+        Redacted.make("keep me secret")
+      )
+    )
+  )
+)
+```
+
+## Deriving a client
+
+Once you have defined your API, you can derive a client that can interact with
+the server.
+
+The `HttpApiClient` module provides all the apis you need to derive a client.
+
+```ts
+import { HttpApiClient } from "@effect/platform"
+
+Effect.gen(function* () {
+  const client = yield* HttpApiClient.make(MyApi, {
+    baseUrl: "http://localhost:3000"
+    // You can tranform the HttpClient to add things like authentication
+    // transformClient: ....
+  })
+  const user = yield* client.users.findById({ path: { id: 1 } })
+  yield* Effect.log(user)
+})
+```
+
+## Swagger documentation
+
+You can add Swagger documentation to your API using the `HttpApiSwagger` module.
+
+You just need to provide the `HttpApiSwagger.layer` to your server
+implementation:
+
+```ts
+import { HttpApiSwagger } from "@effect/platform"
+
+const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
+  // add the swagger documentation layer
+  Layer.provide(
+    HttpApiSwagger.layer({
+      // "/docs" is the default path for the swagger documentation
+      path: "/docs"
+    })
+  ),
+  Layer.provide(HttpApiBuilder.middlewareCors()),
+  Layer.provide(MyApiLive),
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+```
 
 # HTTP Client
 
@@ -500,7 +628,12 @@ const myClient = HttpClient.makeDefault((req) =>
       req,
       // Simulate a response from a server
       new Response(
-        JSON.stringify({ userId: 1, id: 1, title: "title...", body: "body..." })
+        JSON.stringify({
+          userId: 1,
+          id: 1,
+          title: "title...",
+          body: "body..."
+        })
       )
     )
   )
@@ -2183,3 +2316,402 @@ const handler = HttpApp.toWebHandler(router)
 const response = await handler(new Request("http://localhost:3000/foo"))
 console.log(await response.text()) // Output: content 2
 ```
+
+# Terminal
+
+The `@effect/platform/Terminal` module exports a single `Terminal` tag, which serves as the entry point to reading from and writing to standard input and standard output.
+
+## Writing to standard output
+
+```ts
+import { Terminal } from "@effect/platform"
+import { NodeRuntime, NodeTerminal } from "@effect/platform-node"
+import { Effect } from "effect"
+
+// const displayMessage: Effect.Effect<void, PlatformError, Terminal.Terminal>
+const displayMessage = Effect.gen(function* (_) {
+  const terminal = yield* _(Terminal.Terminal)
+  yield* _(terminal.display("a message\n"))
+})
+
+NodeRuntime.runMain(displayMessage.pipe(Effect.provide(NodeTerminal.layer)))
+// Output: "a message"
+```
+
+## Reading from standard input
+
+```ts
+import { Terminal } from "@effect/platform"
+import { NodeRuntime, NodeTerminal } from "@effect/platform-node"
+import { Console, Effect } from "effect"
+
+// const readLine: Effect.Effect<void, Terminal.QuitException, Terminal.Terminal>
+const readLine = Effect.gen(function* (_) {
+  const terminal = yield* _(Terminal.Terminal)
+  const input = yield* _(terminal.readLine)
+  yield* _(Console.log(`input: ${input}`))
+})
+
+NodeRuntime.runMain(readLine.pipe(Effect.provide(NodeTerminal.layer)))
+// Input: "hello"
+// Output: "input: hello"
+```
+
+These simple examples illustrate how to utilize the `Terminal` module for handling standard input and output in your programs. Let's use this knowledge to build a number guessing game:
+
+```ts
+import { Terminal } from "@effect/platform"
+import type { PlatformError } from "@effect/platform/Error"
+import { Effect, Option, Random } from "effect"
+
+export const secret = Random.nextIntBetween(1, 100)
+
+const parseGuess = (input: string) => {
+  const n = parseInt(input, 10)
+  return isNaN(n) || n < 1 || n > 100 ? Option.none() : Option.some(n)
+}
+
+const display = (message: string) =>
+  Effect.gen(function* (_) {
+    const terminal = yield* _(Terminal.Terminal)
+    yield* _(terminal.display(`${message}\n`))
+  })
+
+const prompt = Effect.gen(function* (_) {
+  const terminal = yield* _(Terminal.Terminal)
+  yield* _(terminal.display("Enter a guess: "))
+  return yield* _(terminal.readLine)
+})
+
+const answer: Effect.Effect<
+  number,
+  Terminal.QuitException | PlatformError,
+  Terminal.Terminal
+> = Effect.gen(function* (_) {
+  const input = yield* _(prompt)
+  const guess = parseGuess(input)
+  if (Option.isNone(guess)) {
+    yield* _(display("You must enter an integer from 1 to 100"))
+    return yield* _(answer)
+  }
+  return guess.value
+})
+
+const check = <A, E, R>(
+  secret: number,
+  guess: number,
+  ok: Effect.Effect<A, E, R>,
+  ko: Effect.Effect<A, E, R>
+): Effect.Effect<A, E | PlatformError, R | Terminal.Terminal> =>
+  Effect.gen(function* (_) {
+    if (guess > secret) {
+      yield* _(display("Too high"))
+      return yield* _(ko)
+    } else if (guess < secret) {
+      yield* _(display("Too low"))
+      return yield* _(ko)
+    } else {
+      return yield* _(ok)
+    }
+  })
+
+const end = display("You guessed it!")
+
+const loop = (
+  secret: number
+): Effect.Effect<
+  void,
+  Terminal.QuitException | PlatformError,
+  Terminal.Terminal
+> =>
+  Effect.gen(function* (_) {
+    const guess = yield* _(answer)
+    return yield* _(
+      check(
+        secret,
+        guess,
+        end,
+        Effect.suspend(() => loop(secret))
+      )
+    )
+  })
+
+export const game = Effect.gen(function* (_) {
+  yield* _(
+    display(
+      "We have selected a random number between 1 and 100. See if you can guess it in 10 turns or fewer. We'll tell you if your guess was too high or too low."
+    )
+  )
+  yield* _(loop(yield* _(secret)))
+})
+```
+
+Let's run the game in Node.js:
+
+```ts
+import { NodeRuntime, NodeTerminal } from "@effect/platform-node"
+import * as Effect from "effect/Effect"
+import { game } from "./game.js"
+
+NodeRuntime.runMain(game.pipe(Effect.provide(NodeTerminal.layer)))
+```
+
+Let's run the game in Bun:
+
+```ts
+import { BunRuntime, BunTerminal } from "@effect/platform-bun"
+import * as Effect from "effect/Effect"
+import { game } from "./game.js"
+
+BunRuntime.runMain(game.pipe(Effect.provide(BunTerminal.layer)))
+```
+
+# Command
+
+As an example of using the `@effect/platform/Command` module, let's see how to run the TypeScript compiler `tsc`:
+
+```ts
+import { Command, CommandExecutor } from "@effect/platform"
+import {
+  NodeCommandExecutor,
+  NodeFileSystem,
+  NodeRuntime
+} from "@effect/platform-node"
+import { Effect } from "effect"
+
+// const program: Effect.Effect<string, PlatformError, CommandExecutor.CommandExecutor>
+const program = Effect.gen(function* (_) {
+  const executor = yield* _(CommandExecutor.CommandExecutor)
+
+  // Creating a command to run the TypeScript compiler
+  const command = Command.make("tsc", "--noEmit")
+  console.log("Running tsc...")
+
+  // Executing the command and capturing the output
+  const output = yield* _(executor.string(command))
+  console.log(output)
+  return output
+})
+
+// Running the program with the necessary runtime and executor layers
+NodeRuntime.runMain(
+  program.pipe(
+    Effect.provide(NodeCommandExecutor.layer),
+    Effect.provide(NodeFileSystem.layer)
+  )
+)
+```
+
+## Obtaining Information About the Running Process
+
+Here, we'll explore how to retrieve information about a running process.
+
+```ts
+import { Command, CommandExecutor } from "@effect/platform"
+import {
+  NodeCommandExecutor,
+  NodeFileSystem,
+  NodeRuntime
+} from "@effect/platform-node"
+import { Effect, Stream, String } from "effect"
+
+const runString = <E, R>(
+  stream: Stream.Stream<Uint8Array, E, R>
+): Effect.Effect<string, E, R> =>
+  stream.pipe(Stream.decodeText(), Stream.runFold(String.empty, String.concat))
+
+const program = Effect.gen(function* (_) {
+  const executor = yield* _(CommandExecutor.CommandExecutor)
+
+  const command = Command.make("ls")
+
+  const [exitCode, stdout, stderr] = yield* _(
+    // Start running the command and return a handle to the running process.
+    executor.start(command),
+    Effect.flatMap((process) =>
+      Effect.all(
+        [
+          // Waits for the process to exit and returns the ExitCode of the command that was run.
+          process.exitCode,
+          // The standard output stream of the process.
+          runString(process.stdout),
+          // The standard error stream of the process.
+          runString(process.stderr)
+        ],
+        { concurrency: 3 }
+      )
+    )
+  )
+  console.log({ exitCode, stdout, stderr })
+})
+
+NodeRuntime.runMain(
+  Effect.scoped(program).pipe(
+    Effect.provide(NodeCommandExecutor.layer),
+    Effect.provide(NodeFileSystem.layer)
+  )
+)
+```
+
+## Running a Platform Command with stdout Streamed to process.stdout
+
+To run a command (for example `cat`) and stream its `stdout` to `process.stdout` follow these steps:
+
+```ts
+import { Command } from "@effect/platform"
+import { NodeContext, NodeRuntime } from "@effect/platform-node"
+import { Effect } from "effect"
+
+// Create a command to run `cat` on a file and inherit stdout
+const program = Command.make("cat", "./some-file.txt").pipe(
+  Command.stdout("inherit"),
+  Command.exitCode
+)
+
+// Run the command using NodeRuntime with the NodeContext layer
+NodeRuntime.runMain(program.pipe(Effect.provide(NodeContext.layer)))
+```
+
+# FileSystem
+
+The `@effect/platform/FileSystem` module provides a single `FileSystem` tag, which acts as the gateway for interacting with the filesystem.
+
+Here's a list of operations that can be performed using the `FileSystem` tag:
+
+| **Name**                    | **Arguments**                                                    | **Return**                                     | **Description**                                                                                                                                                        |
+| --------------------------- | ---------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **access**                  | `path: string`, `options?: AccessFileOptions`                    | `Effect<void, PlatformError>`                  | Check if a file can be accessed. You can optionally specify the level of access to check for.                                                                          |
+| **copy**                    | `fromPath: string`, `toPath: string`, `options?: CopyOptions`    | `Effect<void, PlatformError>`                  | Copy a file or directory from `fromPath` to `toPath`. Equivalent to `cp -r`.                                                                                           |
+| **copyFile**                | `fromPath: string`, `toPath: string`                             | `Effect<void, PlatformError>`                  | Copy a file from `fromPath` to `toPath`.                                                                                                                               |
+| **chmod**                   | `path: string`, `mode: number`                                   | `Effect<void, PlatformError>`                  | Change the permissions of a file.                                                                                                                                      |
+| **chown**                   | `path: string`, `uid: number`, `gid: number`                     | `Effect<void, PlatformError>`                  | Change the owner and group of a file.                                                                                                                                  |
+| **exists**                  | `path: string`                                                   | `Effect<boolean, PlatformError>`               | Check if a path exists.                                                                                                                                                |
+| **link**                    | `fromPath: string`, `toPath: string`                             | `Effect<void, PlatformError>`                  | Create a hard link from `fromPath` to `toPath`.                                                                                                                        |
+| **makeDirectory**           | `path: string`, `options?: MakeDirectoryOptions`                 | `Effect<void, PlatformError>`                  | Create a directory at `path`. You can optionally specify the mode and whether to recursively create nested directories.                                                |
+| **makeTempDirectory**       | `options?: MakeTempDirectoryOptions`                             | `Effect<string, PlatformError>`                | Create a temporary directory. By default, the directory will be created inside the system's default temporary directory.                                               |
+| **makeTempDirectoryScoped** | `options?: MakeTempDirectoryOptions`                             | `Effect<string, PlatformError, Scope>`         | Create a temporary directory inside a scope. Functionally equivalent to `makeTempDirectory`, but the directory will be automatically deleted when the scope is closed. |
+| **makeTempFile**            | `options?: MakeTempFileOptions`                                  | `Effect<string, PlatformError>`                | Create a temporary file. The directory creation is functionally equivalent to `makeTempDirectory`. The file name will be a randomly generated string.                  |
+| **makeTempFileScoped**      | `options?: MakeTempFileOptions`                                  | `Effect<string, PlatformError, Scope>`         | Create a temporary file inside a scope. Functionally equivalent to `makeTempFile`, but the file will be automatically deleted when the scope is closed.                |
+| **open**                    | `path: string`, `options?: OpenFileOptions`                      | `Effect<File, PlatformError, Scope>`           | Open a file at `path` with the specified `options`. The file handle will be automatically closed when the scope is closed.                                             |
+| **readDirectory**           | `path: string`, `options?: ReadDirectoryOptions`                 | `Effect<Array<string>, PlatformError>`         | List the contents of a directory. You can recursively list the contents of nested directories by setting the `recursive` option.                                       |
+| **readFile**                | `path: string`                                                   | `Effect<Uint8Array, PlatformError>`            | Read the contents of a file.                                                                                                                                           |
+| **readFileString**          | `path: string`, `encoding?: string`                              | `Effect<string, PlatformError>`                | Read the contents of a file as a string.                                                                                                                               |
+| **readLink**                | `path: string`                                                   | `Effect<string, PlatformError>`                | Read the destination of a symbolic link.                                                                                                                               |
+| **realPath**                | `path: string`                                                   | `Effect<string, PlatformError>`                | Resolve a path to its canonicalized absolute pathname.                                                                                                                 |
+| **remove**                  | `path: string`, `options?: RemoveOptions`                        | `Effect<void, PlatformError>`                  | Remove a file or directory. By setting the `recursive` option to `true`, you can recursively remove nested directories.                                                |
+| **rename**                  | `oldPath: string`, `newPath: string`                             | `Effect<void, PlatformError>`                  | Rename a file or directory.                                                                                                                                            |
+| **sink**                    | `path: string`, `options?: SinkOptions`                          | `Sink<void, Uint8Array, never, PlatformError>` | Create a writable `Sink` for the specified `path`.                                                                                                                     |
+| **stat**                    | `path: string`                                                   | `Effect<File.Info, PlatformError>`             | Get information about a file at `path`.                                                                                                                                |
+| **stream**                  | `path: string`, `options?: StreamOptions`                        | `Stream<Uint8Array, PlatformError>`            | Create a readable `Stream` for the specified `path`.                                                                                                                   |
+| **symlink**                 | `fromPath: string`, `toPath: string`                             | `Effect<void, PlatformError>`                  | Create a symbolic link from `fromPath` to `toPath`.                                                                                                                    |
+| **truncate**                | `path: string`, `length?: SizeInput`                             | `Effect<void, PlatformError>`                  | Truncate a file to a specified length. If the `length` is not specified, the file will be truncated to length `0`.                                                     |
+| **utimes**                  | `path: string`, `atime: Date \| number`, `mtime: Date \| number` | `Effect<void, PlatformError>`                  | Change the file system timestamps of the file at `path`.                                                                                                               |
+| **watch**                   | `path: string`                                                   | `Stream<WatchEvent, PlatformError>`            | Watch a directory or file for changes.                                                                                                                                 |
+
+Let's explore a simple example using `readFileString`:
+
+```ts
+import { FileSystem } from "@effect/platform"
+import { NodeFileSystem, NodeRuntime } from "@effect/platform-node"
+import { Effect } from "effect"
+
+// const readFileString: Effect.Effect<void, PlatformError, FileSystem.FileSystem>
+const readFileString = Effect.gen(function* (_) {
+  const fs = yield* _(FileSystem.FileSystem)
+
+  // Reading the content of the same file where this code is written
+  const content = yield* _(fs.readFileString("./index.ts", "utf8"))
+  console.log(content)
+})
+
+NodeRuntime.runMain(readFileString.pipe(Effect.provide(NodeFileSystem.layer)))
+```
+
+# KeyValueStore
+
+## Overview
+
+The `KeyValueStore` module provides a robust and effectful interface for managing key-value pairs. It supports asynchronous operations, ensuring data integrity and consistency, and includes built-in implementations for in-memory, file system-based, and schema-validated stores.
+
+## Basic Usage
+
+The `KeyValueStore` interface includes the following operations:
+
+- **get**: Retrieve a value by key.
+- **set**: Store a key-value pair.
+- **remove**: Delete a key-value pair.
+- **clear**: Remove all key-value pairs.
+- **size**: Get the number of stored pairs.
+- **modify**: Atomically modify a value.
+- **has**: Check if a key exists.
+- **isEmpty**: Check if the store is empty.
+
+**Example**
+
+```ts
+import { KeyValueStore, layerMemory } from "@effect/platform/KeyValueStore"
+import { Effect } from "effect"
+
+const program = Effect.gen(function* () {
+  const store = yield* KeyValueStore
+  console.log(yield* store.size) // Outputs: 0
+
+  yield* store.set("key", "value")
+  console.log(yield* store.size) // Outputs: 1
+
+  const value = yield* store.get("key")
+  console.log(value) // Outputs: { _id: 'Option', _tag: 'Some', value: 'value' }
+
+  yield* store.remove("key")
+  console.log(yield* store.size) // Outputs: 0
+})
+
+Effect.runPromise(program.pipe(Effect.provide(layerMemory)))
+```
+
+## Built-in Implementations
+
+The module provides several built-in implementations to suit different needs:
+
+- **In-Memory Store**: `layerMemory` provides a simple, in-memory key-value store, ideal for lightweight or testing scenarios.
+- **File System Store**: `layerFileSystem` offers a file-based store for persistent storage needs.
+- **Schema Store**: `layerSchema` enables schema-based validation for stored values, ensuring data integrity and type safety.
+
+## Schema Store
+
+The `SchemaStore` implementation allows you to validate and parse values according to a defined schema. This ensures that all data stored in the key-value store adheres to the specified structure, enhancing data integrity and type safety.
+
+**Example**
+
+```ts
+import { KeyValueStore, layerMemory } from "@effect/platform/KeyValueStore"
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+
+// Define a schema for the values
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+const program = Effect.gen(function* () {
+  const store = (yield* KeyValueStore).forSchema(Person)
+
+  // Create a value that adheres to the schema
+  const value = { name: "Alice", age: 30 }
+  yield* store.set("user1", value)
+  console.log(yield* store.size) // Outputs: 1
+
+  // Retrieve and validate the value
+  const retrievedValue = yield* store.get("user1")
+  console.log(retrievedValue) // Outputs: { _id: 'Option', _tag: 'Some', value: { name: 'Alice', age: 30 } }
+})
+
+Effect.runPromise(program.pipe(Effect.provide(layerMemory)))
+```
+
+In this example:
+
+- **Person**: Defines the structure for the values stored in the key-value store.
+- **store.set**: Stores a value adhering to `Person`.
+- **store.get**: Retrieves and validates the stored value against `Person`.

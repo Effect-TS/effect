@@ -811,6 +811,7 @@ const makeErrorSchema = (
       schemas.add(schema)
     }
   }
+  processSchema(api.errorSchema)
   for (const group of api.groups) {
     for (const endpoint of group.endpoints) {
       processSchema(endpoint.errorSchema)

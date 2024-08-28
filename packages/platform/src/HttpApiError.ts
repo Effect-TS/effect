@@ -6,6 +6,7 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Effect from "effect/Effect"
+import { identity } from "effect/Function"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 
 /**
@@ -30,11 +31,35 @@ export interface Issue extends
       _tag: Schema.Literal<
         ["Pointer", "Unexpected", "Missing", "Composite", "Refinement", "Transformation", "Type", "Forbidden"]
       >
-      path: Schema.Array$<Schema.Union<[typeof Schema.Symbol, typeof Schema.String, typeof Schema.Number]>>
+      path: PropertyKeysNoSymbol
       message: typeof Schema.String
     }
   >
 {}
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export interface PropertyKeysNoSymbol extends
+  Schema.transform<
+    Schema.Array$<Schema.Union<[typeof Schema.String, typeof Schema.Number]>>,
+    Schema.Array$<Schema.Union<[typeof Schema.SymbolFromSelf, typeof Schema.String, typeof Schema.Number]>>
+  >
+{}
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const PropertyKeysNoSymbol: PropertyKeysNoSymbol = Schema.transform(
+  Schema.Array(Schema.Union(Schema.String, Schema.Number)),
+  Schema.Array(Schema.Union(Schema.SymbolFromSelf, Schema.String, Schema.Number)),
+  {
+    decode: identity,
+    encode: (items) => items.filter((item) => typeof item !== "symbol")
+  }
+)
 
 /**
  * @since 1.0.0
@@ -51,7 +76,7 @@ export const Issue: Issue = Schema.Struct({
     "Type",
     "Forbidden"
   ),
-  path: Schema.Array(Schema.Union(Schema.Symbol, Schema.String, Schema.Number)),
+  path: PropertyKeysNoSymbol,
   message: Schema.String
 })
 
@@ -67,7 +92,7 @@ export class HttpApiDecodeError extends Schema.TaggedError<HttpApiDecodeError>()
   },
   HttpApiSchema.annotations({
     status: 400,
-    description: "ApiDecodeError: The request did not match the expected schema"
+    description: "HttpApiDecodeError: The request did not match the expected schema"
   })
 ) {
   /**

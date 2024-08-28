@@ -162,7 +162,8 @@ export const addGroup: {
   ): HttpApi.Any => {
     const group = args.length === 1 ? args[0] : HttpApiGroup.prefix(args[1] as any, args[0])
     return makeProto({
-      ...self as any,
+      errorSchema: self.errorSchema as any,
+      annotations: self.annotations,
       groups: Chunk.append(self.groups, group)
     })
   }
@@ -202,7 +203,8 @@ export const addError: {
     }
   ): HttpApi<Groups, Error | A, ErrorR | R> =>
     makeProto({
-      ...self,
+      groups: self.groups,
+      annotations: self.annotations,
       errorSchema: HttpApiSchema.UnionUnify(
         self.errorSchema,
         schema.annotations(HttpApiSchema.annotations({
@@ -223,7 +225,8 @@ export const annotateMerge: {
   2,
   <A extends HttpApi.Any, I>(self: A, context: Context.Context<I>): A =>
     makeProto({
-      ...self as any,
+      groups: self.groups,
+      errorSchema: self.errorSchema as any,
       annotations: Context.merge(self.annotations, context)
     }) as A
 )
@@ -239,7 +242,8 @@ export const annotate: {
   3,
   <A extends HttpApi.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A =>
     makeProto({
-      ...self as any,
+      groups: self.groups,
+      errorSchema: self.errorSchema as any,
       annotations: Context.add(self.annotations, tag, value)
     }) as A
 )

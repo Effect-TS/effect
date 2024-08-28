@@ -201,7 +201,9 @@ export const add: {
   endpoint: A
 ): HttpApiGroup<Name, Endpoints | A, Error, ErrorR> =>
   makeProto({
-    ...self,
+    identifier: self.identifier,
+    errorSchema: self.errorSchema,
+    annotations: self.annotations,
     endpoints: Chunk.append(self.endpoints, endpoint)
   }))
 
@@ -238,7 +240,9 @@ export const addError: {
     }
   ): HttpApiGroup<Name, Endpoints, Error | A, ErrorR | R> =>
     makeProto({
-      ...self,
+      identifier: self.identifier,
+      annotations: self.annotations,
+      endpoints: self.endpoints,
       errorSchema: HttpApiSchema.UnionUnify(
         self.errorSchema,
         schema.annotations(HttpApiSchema.annotations({
@@ -270,7 +274,9 @@ export const prefix: {
   prefix: PathInput
 ): HttpApiGroup<Name, Endpoints, Error, ErrorR> =>
   makeProto({
-    ...self,
+    identifier: self.identifier,
+    errorSchema: self.errorSchema,
+    annotations: self.annotations,
     endpoints: Chunk.map(self.endpoints, HttpApiEndpoint.prefix(prefix))
   }))
 
@@ -305,7 +311,9 @@ export const annotate: {
   3,
   <A extends HttpApiGroup.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A =>
     makeProto({
-      ...self as any,
+      identifier: self.identifier,
+      errorSchema: self.errorSchema as any,
+      endpoints: self.endpoints,
       annotations: Context.add(self.annotations, tag, value)
     }) as A
 )
@@ -326,7 +334,9 @@ export const annotateEndpointsMerge: {
   2,
   <A extends HttpApiGroup.Any, I>(self: A, context: Context.Context<I>): A =>
     makeProto({
-      ...self as any,
+      identifier: self.identifier,
+      errorSchema: self.errorSchema as any,
+      annotations: self.annotations,
       endpoints: Chunk.map(self.endpoints, HttpApiEndpoint.annotateMerge(context))
     }) as A
 )
@@ -347,7 +357,9 @@ export const annotateEndpoints: {
   3,
   <A extends HttpApiGroup.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A =>
     makeProto({
-      ...self as any,
+      identifier: self.identifier,
+      errorSchema: self.errorSchema as any,
+      annotations: self.annotations,
       endpoints: Chunk.map(self.endpoints, HttpApiEndpoint.annotate(tag, value))
     }) as A
 )
