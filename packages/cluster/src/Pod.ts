@@ -34,7 +34,7 @@ export type TypeId = typeof TypeId
  */
 export class Pod extends Schema.Class<Pod>(SymbolKey)({
   address: PodAddress,
-  version: Schema.Int.pipe(Schema.positive())
+  version: Schema.Int
 }) {
   /**
    * @since 1.0.0

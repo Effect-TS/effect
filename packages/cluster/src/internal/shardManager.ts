@@ -76,7 +76,7 @@ const make = (config: ShardManager.ShardManager.Config) =>
     const now = yield* Clock.currentTimeMillis
     const initialState = new ShardManagerState(
       HashMap.map(filteredPods, (pod) =>
-        new PodWithMetadata(pod, now)),
+        PodWithMetadata({ pod, registeredAt: now })),
       pipe(
         Array.range(1, config.numberOfShards),
         Array.map((n) =>
@@ -187,7 +187,7 @@ const make = (config: ShardManager.ShardManager.Config) =>
           Clock.currentTimeMillis.pipe(
             Effect.map((now) =>
               new ShardManagerState(
-                HashMap.set(state.pods, pod.address, new PodWithMetadata(pod, now)),
+                HashMap.set(state.pods, pod.address, PodWithMetadata({ pod, registeredAt: now })),
                 state.shards
               )
             )
@@ -456,7 +456,8 @@ export const layer = (config: ShardManager.ShardManager.Config) => Layer.scoped(
 
 const ShardingEvent = Data.taggedEnum<ShardManager.ShardManager.ShardingEvent>()
 
-class ShardManagerState {
+/** @internal */
+export class ShardManagerState {
   constructor(
     readonly pods: HashMap.HashMap<PodAddress, PodWithMetadata>,
     readonly shards: HashMap.HashMap<ShardId, Option.Option<PodAddress>>
@@ -519,32 +520,38 @@ class ShardManagerState {
   }
 }
 
-class PodWithMetadata {
-  constructor(readonly pod: Pod, readonly registeredAt: number) {}
+/** @internal */
+export interface PodWithMetadata {
+  readonly pod: Pod
+  readonly registeredAt: number
 }
+/** @internal */
+export const PodWithMetadata = Data.case<PodWithMetadata>()
 
-function decideAssignmentsForUnassignedShards(state: ShardManagerState): readonly [
+/** @internal */
+export function decideAssignmentsForUnassignedShards(state: ShardManagerState): readonly [
   assignments: HashMap.HashMap<PodAddress, HashSet.HashSet<ShardId>>,
   unassignments: HashMap.HashMap<PodAddress, HashSet.HashSet<ShardId>>
 ] {
   return pickNewPods(Array.fromIterable(state.unassignedShards), state, true, 1)
 }
 
-function decideAssignmentsForUnbalancedShards(state: ShardManagerState, rate: number): readonly [
+/** @internal */
+export function decideAssignmentsForUnbalancedShards(state: ShardManagerState, rate: number): readonly [
   assignments: HashMap.HashMap<PodAddress, HashSet.HashSet<ShardId>>,
   unassignments: HashMap.HashMap<PodAddress, HashSet.HashSet<ShardId>>
 ] {
   const extraShardsToAllocate = state.allPodsHaveMaxVersion
     ? state.shardsPerPod.pipe(
-      HashMap.flatMap((shards, address) => {
+      HashMap.map((shards) => {
         // Count how many extra shards there are compared to the average
         const extraShards = Math.max(0, HashSet.size(shards) - state.averageShardsPerPod)
         const shuffled = Array.take(shuffle(shards), extraShards)
-        return HashMap.make([address, HashSet.fromIterable(shuffled)])
+        return HashSet.fromIterable(shuffled)
       }),
       HashMap.values,
       HashSet.fromIterable,
-      HashSet.map(([, shard]) => shard)
+      HashSet.flatMap(identity)
     )
     // Do not perform a regular rebalance in the middle of a rolling update
     : HashSet.empty<ShardId>()
