@@ -724,15 +724,15 @@ export const bindAll: {
     {
       [K in keyof X | keyof A]: K extends keyof A ? A[K] :
         K extends keyof Effect.Effect.Success<
-          Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
+          Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
         > ? Effect.Effect.Success<
-            Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
+            Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
           >[K] :
         never
     },
     | E1
     | Effect.Effect.Error<
-      Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
+      Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
     >,
     R1 | Effect.Effect.Context<X[keyof X]>
   >
@@ -760,15 +760,15 @@ export const bindAll: {
     {
       [K in keyof X | keyof A]: K extends keyof A ? A[K] :
         K extends keyof Effect.Effect.Success<
-          Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
+          Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
         > ? Effect.Effect.Success<
-            Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
+            Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
           >[K] :
         never
     },
     | E1
     | Effect.Effect.Error<
-      Effect.All.ReturnObject<X, Effect.All.IsDiscard<O>, Effect.All.ExtractMode<O>>
+      Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
     >,
     R1 | Effect.Effect.Context<X[keyof X]>
   >

@@ -3558,7 +3558,6 @@ export const bind: {
  * )
  * assert.deepStrictEqual(Effect.runSync(result), { x: 2, a: Either.right(2), b: Either.left('ops') })
  *
- * @see All.Options
  * @category do notation
  * @since 3.7.0
  */
@@ -3581,12 +3580,12 @@ export const bindAll: {
     {
       [K in keyof X | keyof A]: K extends keyof A ? A[K] :
         K extends keyof Effect.Success<
-          All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>
-        > ? Effect.Success<All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>>[K] :
+          All.ReturnObject<X, false, All.ExtractMode<O>>
+        > ? Effect.Success<All.ReturnObject<X, false, All.ExtractMode<O>>>[K] :
         never
     },
     | E1
-    | Effect.Error<All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>>,
+    | Effect.Error<All.ReturnObject<X, false, All.ExtractMode<O>>>,
     R1 | Effect.Context<X[keyof X]>
   >
   <
@@ -3613,14 +3612,14 @@ export const bindAll: {
     {
       [K in keyof X | keyof A]: K extends keyof A ? A[K] :
         K extends keyof Effect.Success<
-          All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>
+          All.ReturnObject<X, false, All.ExtractMode<O>>
         > ? Effect.Success<
-            All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>
+            All.ReturnObject<X, false, All.ExtractMode<O>>
           >[K] :
         never
     },
     | E1
-    | Effect.Error<All.ReturnObject<X, All.IsDiscard<O>, All.ExtractMode<O>>>,
+    | Effect.Error<All.ReturnObject<X, false, All.ExtractMode<O>>>,
     R1 | Effect.Context<X[keyof X]>
   >
 } = circular.bindAll
