@@ -425,6 +425,7 @@ const hasWindow = typeof window === "object"
 const isWorker = typeof self === "object" &&
   self !== null &&
   typeof self.constructor === "function" &&
+  typeof self.constructor.name === "string" &&
   self.constructor.name.includes("Worker")
 
 /** @internal */
