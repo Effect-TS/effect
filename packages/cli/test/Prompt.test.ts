@@ -98,6 +98,51 @@ describe("Prompt", () => {
           lines.findIndex((line) => line.includes(committedValue))
         )
       }).pipe(runEffect))
+
+    it("should accept the default value when the tab is pressed", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.text({
+          message: "Test Prompt",
+          default: "default-value"
+        })
+
+        const cli = Command.prompt("test-command", prompt, () => Effect.void).pipe(Command.run({
+          name: "Test",
+          version: "1.0.0"
+        }))
+
+        const fiber = yield* Effect.fork(cli([]))
+
+        yield* MockTerminal.inputKey("tab")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        const lines = yield* MockConsole.getLines()
+
+        const uncommittedValue = Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
+          style: "pretty"
+        }))
+
+        const enteredValue = Doc.annotate(Doc.text("default-value"), Ansi.combine(Ansi.underlined, Ansi.cyanBright))
+          .pipe(Doc.render({
+            style: "pretty"
+          }))
+
+        expect(lines).toEqual(
+          expect.arrayContaining([
+            expect.stringContaining(
+              uncommittedValue
+            ),
+            expect.stringContaining(
+              enteredValue
+            )
+          ])
+        )
+
+        expect(lines.findIndex((line) => line.includes(uncommittedValue))).toBeLessThan(
+          lines.findIndex((line) => line.includes(enteredValue))
+        )
+      }).pipe(runEffect))
   })
 
   describe("hidden", () => {
