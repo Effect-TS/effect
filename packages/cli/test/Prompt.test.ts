@@ -69,21 +69,33 @@ describe("Prompt", () => {
         }))
 
         const fiber = yield* Effect.fork(cli([]))
+
         yield* MockTerminal.inputKey("enter")
         yield* Fiber.join(fiber)
+
         const lines = yield* MockConsole.getLines()
 
-        const [line1, , line2] = lines.filter(Boolean)
+        const uncommittedValue = Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
+          style: "pretty"
+        }))
 
-        expect(line1).toContain(
-          Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
-            style: "pretty"
-          }))
+        const committedValue = Doc.annotate(Doc.text("default-value"), Ansi.green).pipe(Doc.render({
+          style: "pretty"
+        }))
+
+        expect(lines).toEqual(
+          expect.arrayContaining([
+            expect.stringContaining(
+              uncommittedValue
+            ),
+            expect.stringContaining(
+              committedValue
+            )
+          ])
         )
-        expect(line2).toContain(
-          Doc.annotate(Doc.text("default-value"), Ansi.green).pipe(Doc.render({
-            style: "pretty"
-          }))
+
+        expect(lines.findIndex((line) => line.includes(uncommittedValue))).toBeLessThan(
+          lines.findIndex((line) => line.includes(committedValue))
         )
       }).pipe(runEffect))
   })
@@ -115,6 +127,34 @@ describe("Prompt", () => {
 
         expect(result).toEqual(Redacted.make("default-value"))
       }).pipe(runEffect))
+
+    it("should not render the default value when the default is provided", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.hidden({
+          message: "Test Prompt",
+          default: "default-value"
+        })
+
+        const cli = Command.prompt("test-command", prompt, () => Effect.void).pipe(Command.run({
+          name: "Test",
+          version: "1.0.0"
+        }))
+
+        const fiber = yield* Effect.fork(cli([]))
+
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true })
+
+        expect(lines).not.toEqual(
+          expect.arrayContaining([
+            expect.stringContaining(
+              "default-value"
+            )
+          ])
+        )
+      }).pipe(runEffect))
   })
 
   describe("list", () => {
@@ -144,6 +184,49 @@ describe("Prompt", () => {
 
         expect(result).toEqual(["default-value"])
       }).pipe(runEffect))
+
+    it("should render the default value when the default is provided", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.list({
+          message: "Test Prompt",
+          default: "default-value"
+        })
+
+        const cli = Command.prompt("test-command", prompt, () => Effect.void).pipe(Command.run({
+          name: "Test",
+          version: "1.0.0"
+        }))
+
+        const fiber = yield* Effect.fork(cli([]))
+
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        const lines = yield* MockConsole.getLines()
+
+        const uncommittedValue = Doc.annotate(Doc.text("default-value"), Ansi.blackBright).pipe(Doc.render({
+          style: "pretty"
+        }))
+
+        const committedValue = Doc.annotate(Doc.text("default-value"), Ansi.green).pipe(Doc.render({
+          style: "pretty"
+        }))
+
+        expect(lines).toEqual(
+          expect.arrayContaining([
+            expect.stringContaining(
+              uncommittedValue
+            ),
+            expect.stringContaining(
+              committedValue
+            )
+          ])
+        )
+
+        expect(lines.findIndex((line) => line.includes(uncommittedValue))).toBeLessThan(
+          lines.findIndex((line) => line.includes(committedValue))
+        )
+      }).pipe(runEffect))
   })
 
   describe("password", () => {
@@ -172,6 +255,50 @@ describe("Prompt", () => {
         const result = yield* Fiber.join(fiber)
 
         expect(result).toEqual(Redacted.make("default-value"))
+      }).pipe(runEffect))
+
+    it("should render the redacted default value when the default is provided", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.password({
+          message: "Test Prompt",
+          default: "default-value"
+        })
+
+        const cli = Command.prompt("test-command", prompt, () => Effect.void).pipe(Command.run({
+          name: "Test",
+          version: "1.0.0"
+        }))
+
+        const fiber = yield* Effect.fork(cli([]))
+
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        const lines = yield* MockConsole.getLines()
+
+        const redactedValue = Array.from("default-value", () => "*").join("")
+        const uncommittedValue = Doc.annotate(Doc.text(redactedValue), Ansi.blackBright).pipe(Doc.render({
+          style: "pretty"
+        }))
+
+        const committedValue = Doc.annotate(Doc.text(redactedValue), Ansi.green).pipe(Doc.render({
+          style: "pretty"
+        }))
+
+        expect(lines).toEqual(
+          expect.arrayContaining([
+            expect.stringContaining(
+              uncommittedValue
+            ),
+            expect.stringContaining(
+              committedValue
+            )
+          ])
+        )
+
+        expect(lines.findIndex((line) => line.includes(uncommittedValue))).toBeLessThan(
+          lines.findIndex((line) => line.includes(committedValue))
+        )
       }).pipe(runEffect))
   })
 })
