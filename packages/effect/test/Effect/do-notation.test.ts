@@ -87,7 +87,6 @@ describe("do notation", () => {
         )
 
       expectLeft(getTest({ mode: "default" }), 2)
-
       expectRight(getTest({ mode: "either" }), {
         a: Either.left(2),
         b: Either.right("ops"),

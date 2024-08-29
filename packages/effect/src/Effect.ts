@@ -3546,17 +3546,17 @@ export const bind: {
  * results in a Do notation pipeline.
  *
  * @example
- * import { Effect, pipe } from "effect"
+ * import { Effect, Either, pipe } from "effect"
  *
  * const result = pipe(
  *   Effect.Do,
  *   Effect.bind("x", () => Effect.succeed(2)),
  *   Effect.bindAll(({ x }) => ({
  *     a: Effect.succeed(x),
- *     b: Effect.fail('ops'),
- *   }), { concurrency: 2, mode: 'either' })
+ *     b: Effect.fail("oops"),
+ *   }), { concurrency: 2, mode: "either" })
  * )
- * assert.deepStrictEqual(Effect.runSync(result), { x: 2, a: Either.right(2), b: Either.left('ops') })
+ * assert.deepStrictEqual(Effect.runSync(result), { x: 2, a: Either.right(2), b: Either.left("oops") })
  *
  * @category do notation
  * @since 3.7.0
@@ -3576,18 +3576,13 @@ export const bindAll: {
     options?: undefined | O
   ): <E1, R1>(
     self: Effect<A, E1, R1>
-  ) => Effect<
-    {
-      [K in keyof X | keyof A]: K extends keyof A ? A[K] :
-        K extends keyof Effect.Success<
-          All.ReturnObject<X, false, All.ExtractMode<O>>
-        > ? Effect.Success<All.ReturnObject<X, false, All.ExtractMode<O>>>[K] :
-        never
-    },
-    | E1
-    | Effect.Error<All.ReturnObject<X, false, All.ExtractMode<O>>>,
-    R1 | Effect.Context<X[keyof X]>
-  >
+  ) => [All.ReturnObject<X, false, All.ExtractMode<O>>] extends [Effect<infer Success, infer Error, infer Context>]
+    ? Effect<
+      { [K in keyof A | keyof Success]: K extends keyof A ? A[K] : K extends keyof Success ? Success[K] : never },
+      E1 | Error,
+      R1 | Context
+    >
+    : never
   <
     A extends object,
     X extends Record<string, Effect<any, any, any>>,
@@ -3608,20 +3603,13 @@ export const bindAll: {
       readonly mode?: "default" | "validate" | "either" | undefined
       readonly concurrentFinalizers?: boolean | undefined
     }
-  ): Effect<
-    {
-      [K in keyof X | keyof A]: K extends keyof A ? A[K] :
-        K extends keyof Effect.Success<
-          All.ReturnObject<X, false, All.ExtractMode<O>>
-        > ? Effect.Success<
-            All.ReturnObject<X, false, All.ExtractMode<O>>
-          >[K] :
-        never
-    },
-    | E1
-    | Effect.Error<All.ReturnObject<X, false, All.ExtractMode<O>>>,
-    R1 | Effect.Context<X[keyof X]>
-  >
+  ): [All.ReturnObject<X, false, All.ExtractMode<O>>] extends [Effect<infer Success, infer Error, infer Context>]
+    ? Effect<
+      { [K in keyof A | keyof Success]: K extends keyof A ? A[K] : K extends keyof Success ? Success[K] : never },
+      E1 | Error,
+      R1 | Context
+    >
+    : never
 } = circular.bindAll
 
 /**

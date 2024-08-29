@@ -720,22 +720,21 @@ export const bindAll: {
   >(
     f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
     options?: undefined | O
-  ): <E1, R1>(self: Effect.Effect<A, E1, R1>) => Effect.Effect<
-    {
-      [K in keyof X | keyof A]: K extends keyof A ? A[K] :
-        K extends keyof Effect.Effect.Success<
-          Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
-        > ? Effect.Effect.Success<
-            Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
-          >[K] :
-        never
-    },
-    | E1
-    | Effect.Effect.Error<
-      Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
-    >,
-    R1 | Effect.Effect.Context<X[keyof X]>
-  >
+  ): <E1, R1>(
+    self: Effect.Effect<A, E1, R1>
+  ) => [Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>] extends
+    [Effect.Effect<infer Success, infer Error, infer Context>] ? Effect.Effect<
+      {
+        [K in keyof A | keyof Success]: K extends keyof A ? A[K]
+          : K extends keyof Success ? Success[K]
+          : never
+      },
+      | E1
+      | Error,
+      R1 | Context
+    >
+    : never
+
   <
     A extends object,
     X extends Record<string, Effect.Effect<any, any, any>>,
@@ -756,22 +755,18 @@ export const bindAll: {
       readonly mode?: "default" | "validate" | "either" | undefined
       readonly concurrentFinalizers?: boolean | undefined
     }
-  ): Effect.Effect<
-    {
-      [K in keyof X | keyof A]: K extends keyof A ? A[K] :
-        K extends keyof Effect.Effect.Success<
-          Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
-        > ? Effect.Effect.Success<
-            Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
-          >[K] :
-        never
-    },
-    | E1
-    | Effect.Effect.Error<
-      Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>
-    >,
-    R1 | Effect.Effect.Context<X[keyof X]>
-  >
+  ): [Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>] extends
+    [Effect.Effect<infer Success, infer Error, infer Context>] ? Effect.Effect<
+      {
+        [K in keyof A | keyof Success]: K extends keyof A ? A[K]
+          : K extends keyof Success ? Success[K]
+          : never
+      },
+      | E1
+      | Error,
+      R1 | Context
+    >
+    : never
 } = dual((args) => core.isEffect(args[0]), <
   A extends object,
   X extends Record<string, Effect.Effect<any, any, any>>,
