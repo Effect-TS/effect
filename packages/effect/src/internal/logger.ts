@@ -416,17 +416,13 @@ const defaultDateFormat = (date: Date): string =>
     date.getSeconds().toString().padStart(2, "0")
   }.${date.getMilliseconds().toString().padStart(3, "0")}`
 
-const processStdoutIsTTY = typeof process === "object" &&
+const hasProcessStdout = typeof process === "object" &&
   process !== null &&
   typeof process.stdout === "object" &&
-  process.stdout !== null &&
+  process.stdout !== null
+const processStdoutIsTTY = hasProcessStdout &&
   process.stdout.isTTY === true
-const hasWindow = typeof window === "object"
-const isWorker = typeof self === "object" &&
-  self !== null &&
-  typeof self.constructor === "function" &&
-  typeof self.constructor.name === "string" &&
-  self.constructor.name.includes("Worker")
+const hasProcessStdoutOrDeno = hasProcessStdout || "Deno" in globalThis
 
 /** @internal */
 export const prettyLogger = (options?: {
@@ -436,7 +432,7 @@ export const prettyLogger = (options?: {
   readonly mode?: "browser" | "tty" | "auto" | undefined
 }) => {
   const mode_ = options?.mode ?? "auto"
-  const mode = mode_ === "auto" ? (hasWindow || isWorker ? "browser" : "tty") : mode_
+  const mode = mode_ === "auto" ? (hasProcessStdoutOrDeno ? "tty" : "browser") : mode_
   const isBrowser = mode === "browser"
   const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY || isBrowser
   const formatDate = options?.formatDate ?? defaultDateFormat
