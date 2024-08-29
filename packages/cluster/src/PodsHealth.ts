@@ -6,6 +6,7 @@ import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import * as InternalPodsHealth from "./internal/podsHealth.js"
 import type { PodAddress } from "./PodAddress.js"
+import type { Pods } from "./Pods.js"
 
 /**
  * @since 1.0.0
@@ -72,4 +73,4 @@ export const layerNoop: Layer<PodsHealth> = InternalPodsHealth.layerNoop
  * @since 1.0.0
  * @category layers
  */
-export const layerLocal: Layer<PodsHealth> = InternalPodsHealth.layerLocal
+export const layerLocal: Layer<PodsHealth, never, Pods> = InternalPodsHealth.layerLocal

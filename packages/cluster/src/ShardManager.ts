@@ -1,17 +1,22 @@
 /**
  * @since 1.0.0
  */
+import type { Tag } from "effect/Context"
 import type { TaggedEnum } from "effect/Data"
 import type { DurationInput } from "effect/Duration"
 import type { Effect } from "effect/Effect"
 import type { HashMap } from "effect/HashMap"
 import type { HashSet } from "effect/HashSet"
+import type { Layer } from "effect/Layer"
 import type { Option } from "effect/Option"
 import type { Stream } from "effect/Stream"
 import * as InternalShardManager from "./internal/shardManager.js"
 import type { Pod } from "./Pod.js"
 import type { PodAddress } from "./PodAddress.js"
+import type { Pods } from "./Pods.js"
+import type { PodsHealth } from "./PodsHealth.js"
 import type { ShardId } from "./ShardId.js"
+import type { Storage } from "./Storage.js"
 
 /**
  * @since 1.0.0
@@ -144,3 +149,17 @@ export declare namespace ShardManager {
     }
   }>
 }
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const ShardManager: Tag<ShardManager, ShardManager> = InternalShardManager.Tag
+
+/**
+ * @since 1.0.0
+ * @category layer
+ */
+export const layer: (
+  config?: Partial<ShardManager.Config>
+) => Layer<ShardManager, never, Storage | PodsHealth | Pods> = InternalShardManager.layer

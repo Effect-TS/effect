@@ -1,8 +1,10 @@
 /**
  * @since 1.0.0
  */
+import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { HashMap } from "effect/HashMap"
+import type { Layer } from "effect/Layer"
 import type { Option } from "effect/Option"
 import type { Stream } from "effect/Stream"
 import * as InternalStorage from "./internal/storage.js"
@@ -55,12 +57,6 @@ export interface Storage extends Storage.Proto {
 
 /**
  * @since 1.0.0
- * @category context
- */
-export const Storage = InternalStorage.Tag
-
-/**
- * @since 1.0.0
  */
 export declare namespace Storage {
   /**
@@ -71,3 +67,21 @@ export declare namespace Storage {
     readonly [TypeId]: TypeId
   }
 }
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const Storage: Tag<Storage, Storage> = InternalStorage.Tag
+
+/**
+ * @since 1.0.0
+ * @category layer
+ */
+export const layerNoop: Layer<Storage> = InternalStorage.layerNoop
+
+/**
+ * @since 1.0.0
+ * @category layer
+ */
+export const layerMemory: Layer<Storage> = InternalStorage.layerMemory

@@ -4,6 +4,7 @@
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { HashSet } from "effect/HashSet"
+import type { Layer } from "effect/Layer"
 import type { Envelope } from "./Envelope.js"
 import * as InternalPods from "./internal/pods.js"
 import type { PodAddress } from "./PodAddress.js"
@@ -70,3 +71,9 @@ export declare namespace Pods {
  * @category context
  */
 export const Pods: Tag<Pods, Pods> = InternalPods.Tag
+
+/**
+ * @since 1.0.0
+ * @category layer
+ */
+export const layerNoop: Layer<Pods> = InternalPods.layerNoop

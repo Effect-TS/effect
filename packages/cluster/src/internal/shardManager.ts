@@ -33,7 +33,19 @@ const SymbolKey = "@effect/cluster/ShardManager"
 /** @internal */
 export const TypeId: ShardManager.TypeId = Symbol.for(SymbolKey) as ShardManager.TypeId
 
-const make = (config: ShardManager.ShardManager.Config) =>
+const defaultConfig: ShardManager.ShardManager.Config = {
+  port: 3000,
+  numberOfShards: 300,
+  rebalanceInterval: "20 seconds",
+  rebalanceRetryInterval: "10 seconds",
+  rebalanceRate: 2 / 100,
+  persistRetryCount: 100,
+  persistRetryInterval: "3 seconds",
+  podHealthCheckInterval: "1 minute",
+  podPingTimeout: "3 seconds"
+}
+
+const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
   Effect.gen(function*() {
     const storage = yield* InternalStorage.Tag
     const podsApi = yield* InternalPods.Tag
@@ -41,6 +53,8 @@ const make = (config: ShardManager.ShardManager.Config) =>
 
     const pods = yield* storage.getPods
     const shardAssignments = yield* storage.getShardAssignments
+
+    const config = Object.assign({}, customConfig, defaultConfig)
 
     // Service Initialization
     const [failedPods, filtered] = yield* Effect.partition(pods, ([address, pod]) =>
@@ -87,8 +101,8 @@ const make = (config: ShardManager.ShardManager.Config) =>
       )
     )
 
-    yield* Effect.logInfo(`Recovered pods: ${1}`) // filteredPods.values
-    yield* Effect.logInfo(`Recovered assignments: ${1}`) // filteredAssignments.values
+    yield* Effect.logInfo(`Recovered pods: ${1}`) // TODO: filteredPods.values
+    yield* Effect.logInfo(`Recovered assignments: ${1}`) // TODO: filteredAssignments.values
 
     yield* Metric.incrementBy(InternalMetrics.pods, HashMap.size(initialState.pods))
 
@@ -161,18 +175,19 @@ const make = (config: ShardManager.ShardManager.Config) =>
       shards: HashSet.HashSet<ShardId>,
       address: Option.Option<PodAddress>
     ): Effect.Effect<void, PodNotRegistered> {
-      return SynchronizedRef.updateEffect(state, (state) => {
-        return Option.isSome(address) && !HashMap.has(state.pods, address)
+      return SynchronizedRef.updateEffect(state, (state) =>
+        Option.isSome(address) && !HashMap.has(state.pods, address.value)
           ? Effect.fail(new PodNotRegistered({ address: address.value }))
           : Effect.succeed(
             new ShardManagerState(
               state.pods,
               state.shards.pipe(
-                HashMap.map((assignment, shard) => HashSet.has(shards, shard) ? address : assignment)
+                HashMap.map((assignment, shard) =>
+                  HashSet.has(shards, shard) ? address : assignment
+                )
               )
             )
-          )
-      })
+          ))
     }
 
     const getAssignments = SynchronizedRef.get(state).pipe(
@@ -274,7 +289,7 @@ const make = (config: ShardManager.ShardManager.Config) =>
                     onSuccess: () => Array.empty<PodAddress>()
                   })
                 ),
-              { concurrency: "unbounded" }
+              { concurrency: "inherit" }
             ).pipe(Effect.map((addresses) => HashSet.fromIterable(Array.flatten(addresses))))
 
             const shardsToRemove = pipe(
@@ -314,7 +329,7 @@ const make = (config: ShardManager.ShardManager.Config) =>
                     }
                   })
                 ),
-              { concurrency: "unbounded" }
+              { concurrency: "inherit" }
             ).pipe(
               Effect.map(Array.unzip),
               Effect.map(([pods, shards]) =>
@@ -335,7 +350,8 @@ const make = (config: ShardManager.ShardManager.Config) =>
               podsApi.assignShards(address, shards).pipe(
                 Effect.zipRight(updateShardsState(shards, Option.some(address))),
                 Effect.matchEffect({
-                  onFailure: () => Effect.succeed(Array.of(address)),
+                  onFailure: () =>
+                    Effect.succeed(Array.of(address)),
                   onSuccess: () => {
                     const shardCount = HashSet.size(shards)
                     const assignedShards = InternalMetrics.assignedShards.pipe(
@@ -348,7 +364,7 @@ const make = (config: ShardManager.ShardManager.Config) =>
                     )
                   }
                 })
-              ), { concurrency: "unbounded" }).pipe(Effect.map((pods) =>
+              ), { concurrency: "inherit" }).pipe(Effect.map((pods) =>
                 HashSet.fromIterable(Array.flatten(pods))
               ))
 
@@ -452,7 +468,7 @@ const make = (config: ShardManager.ShardManager.Config) =>
 export const Tag = Context.GenericTag<ShardManager.ShardManager, ShardManager.ShardManager>(SymbolKey)
 
 /** @internal */
-export const layer = (config: ShardManager.ShardManager.Config) => Layer.scoped(Tag, make(config))
+export const layer = (config?: Partial<ShardManager.ShardManager.Config>) => Layer.scoped(Tag, make(config))
 
 const ShardingEvent = Data.taggedEnum<ShardManager.ShardManager.ShardingEvent>()
 
