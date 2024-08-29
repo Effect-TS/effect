@@ -370,7 +370,7 @@ export const string: (name?: string) => Config<string> = internal.string
 /**
  * Constructs a config for a non-empty string value.
  *
- * @since ??
+ * @since 3.7.0
  * @category constructors
  */
 export const nonEmptyString: (name?: string) => Config<string> = internal.nonEmptyString
