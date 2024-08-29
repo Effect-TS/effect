@@ -21,7 +21,6 @@ import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Match from "effect/Match"
 import * as Option from "effect/Option"
-import * as Stream from "effect/Stream"
 import * as TestClock from "effect/TestClock"
 
 const pod1 = PodWithMetadata({
