@@ -34,43 +34,48 @@ export const AnnotationEmptyDecodeable: unique symbol = Symbol.for(
  * @since 1.0.0
  * @category annotations
  */
-export const getStatus = (ast: AST.AST, defaultStatus: number): number => {
-  const annotations = ast._tag === "Transformation" ?
+export const AnnotationEncoding: unique symbol = Symbol.for("@effect/platform/HttpApiSchema/AnnotationEncoding")
+
+const mergedAnnotations = (ast: AST.AST): Record<symbol, unknown> =>
+  ast._tag === "Transformation" ?
     {
       ...ast.to.annotations,
       ...ast.annotations
     } :
     ast.annotations
-  return annotations[AnnotationStatus] as number ?? defaultStatus
+
+const getAnnotation = <A>(ast: AST.AST, key: symbol): A | undefined => mergedAnnotations(ast)[key] as A
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getStatus = (ast: AST.AST, defaultStatus: number): number =>
+  getAnnotation<number>(ast, AnnotationStatus) ?? defaultStatus
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getEmptyDecodeable = (ast: AST.AST): boolean =>
+  getAnnotation<boolean>(ast, AnnotationEmptyDecodeable) ?? false
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getMultipart = (ast: AST.AST): boolean => getAnnotation<boolean>(ast, AnnotationMultipart) ?? false
+
+const encodingJson: Encoding = {
+  kind: "Json",
+  contentType: "application/json"
 }
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export const getEmptyDecodeable = (ast: AST.AST): boolean => {
-  const annotations = ast._tag === "Transformation" ?
-    {
-      ...ast.to.annotations,
-      ...ast.annotations
-    } :
-    ast.annotations
-  return annotations[AnnotationEmptyDecodeable] as boolean ?? false
-}
-
-/**
- * @since 1.0.0
- * @category annotations
- */
-export const getMultipart = (ast: AST.AST): boolean => {
-  const annotations = ast._tag === "Transformation" ?
-    {
-      ...ast.to.annotations,
-      ...ast.annotations
-    } :
-    ast.annotations
-  return annotations[AnnotationMultipart] as boolean ?? false
-}
+export const getEncoding = (ast: AST.AST): Encoding => getAnnotation<Encoding>(ast, AnnotationEncoding) ?? encodingJson
 
 /**
  * @since 1.0.0
@@ -280,3 +285,84 @@ export const Multipart = <S extends Schema.Schema.Any>(self: S): Multipart<S> =>
   self.annotations({
     [AnnotationMultipart]: true
   }) as any
+
+const defaultContentType = (encoding: Encoding["kind"]) => {
+  switch (encoding) {
+    case "Json": {
+      return "application/json"
+    }
+    case "UrlParams": {
+      return "application/x-www-form-urlencoded"
+    }
+    case "Uint8Array": {
+      return "application/octet-stream"
+    }
+    case "Text": {
+      return "text/plain"
+    }
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category encoding
+ */
+export interface Encoding {
+  readonly kind: "Json" | "UrlParams" | "Uint8Array" | "Text"
+  readonly contentType: string
+}
+
+/**
+ * @since 1.0.0
+ * @category encoding
+ */
+export declare namespace Encoding {
+  /**
+   * @since 1.0.0
+   * @category encoding
+   */
+  export type Validate<A extends Schema.Schema.Any, Kind extends Encoding["kind"]> = Kind extends "Json" ? {}
+    : Kind extends "UrlParams" ? [A["Encoded"]] extends [Readonly<Record<string, string | undefined>>] ? {}
+      : `'UrlParams' kind can only be encoded to 'Record<string, string | undefined>'`
+    : Kind extends "Uint8Array" ?
+      [A["Encoded"]] extends [Uint8Array] ? {} : `'Uint8Array' kind can only be encoded to 'Uint8Array'`
+    : Kind extends "Text" ? [A["Encoded"]] extends [string] ? {} : `'Text' kind can only be encoded to 'string'`
+    : never
+}
+
+/**
+ * @since 1.0.0
+ * @category encoding
+ */
+export const withEncoding: {
+  <A extends Schema.Schema.Any, Kind extends Encoding["kind"]>(
+    options: {
+      readonly kind: Kind
+      readonly contentType?: string | undefined
+    } & Encoding.Validate<A, Kind>
+  ): (self: A) => A
+  <A extends Schema.Schema.Any, Kind extends Encoding["kind"]>(
+    self: A,
+    options: {
+      readonly kind: Kind
+      readonly contentType?: string | undefined
+    } & Encoding.Validate<A, Kind>
+  ): A
+} = dual(2, <A extends Schema.Schema.Any>(self: A, options: {
+  readonly kind: Encoding["kind"]
+  readonly contentType?: string | undefined
+}): A =>
+  self.annotations({
+    [AnnotationEncoding]: {
+      kind: options.kind,
+      contentType: options.contentType ?? defaultContentType(options.kind)
+    },
+    ...(options.kind === "Uint8Array" ?
+      {
+        jsonSchema: {
+          type: "string",
+          format: "binary"
+        }
+      } :
+      undefined)
+  }) as any)

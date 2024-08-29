@@ -124,7 +124,7 @@ export const htmlStream: <A extends ReadonlyArray<Template.InterpolatedWithStrea
  */
 export const json: (
   body: unknown,
-  options?: Options.WithContent | undefined
+  options?: Options.WithContentType | undefined
 ) => Effect.Effect<HttpServerResponse, Body.HttpBodyError> = internal.json
 
 /**
@@ -141,14 +141,14 @@ export const schemaJson: <A, I, R>(
  * @since 1.0.0
  * @category constructors
  */
-export const unsafeJson: (body: unknown, options?: Options.WithContent | undefined) => HttpServerResponse =
+export const unsafeJson: (body: unknown, options?: Options.WithContentType | undefined) => HttpServerResponse =
   internal.unsafeJson
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const urlParams: (body: UrlParams.Input, options?: Options.WithContent | undefined) => HttpServerResponse =
+export const urlParams: (body: UrlParams.Input, options?: Options.WithContentType | undefined) => HttpServerResponse =
   internal.urlParams
 
 /**

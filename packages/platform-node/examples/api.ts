@@ -66,6 +66,37 @@ class UsersApi extends HttpApiGroup.make("users").pipe(
       HttpApiEndpoint.setSuccess(User)
     )
   ),
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("csv", "/csv").pipe(
+      HttpApiEndpoint.setSuccess(Schema.String.pipe(
+        HttpApiSchema.withEncoding({
+          kind: "Text",
+          contentType: "text/csv"
+        })
+      ))
+    )
+  ),
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("binary", "/binary").pipe(
+      HttpApiEndpoint.setSuccess(Schema.Uint8ArrayFromSelf.pipe(
+        HttpApiSchema.withEncoding({ kind: "Uint8Array" })
+      ))
+    )
+  ),
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("urlParams", "/url-params").pipe(
+      HttpApiEndpoint.setSuccess(
+        Schema.Struct({
+          id: Schema.NumberFromString,
+          name: Schema.String
+        }).pipe(
+          HttpApiSchema.withEncoding({
+            kind: "UrlParams"
+          })
+        )
+      )
+    )
+  ),
   HttpApiGroup.addError(Unauthorized),
   HttpApiGroup.prefix("/users"),
   OpenApi.annotate({ security })
@@ -97,6 +128,13 @@ const UsersLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
         })
       )),
     HttpApiBuilder.handle("me", (_) => CurrentUser),
+    HttpApiBuilder.handle("csv", (_) => Effect.succeed("id,name\n1,John")),
+    HttpApiBuilder.handle("urlParams", (_) =>
+      Effect.succeed({
+        id: 123,
+        name: "John"
+      })),
+    HttpApiBuilder.handle("binary", (_) => Effect.succeed(new Uint8Array([1, 2, 3, 4, 5]))),
     securityMiddleware
   ))
 
@@ -106,6 +144,7 @@ const ApiLive = HttpApiBuilder.api(MyApi).pipe(
 
 HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
   Layer.provide(HttpApiSwagger.layer()),
+  Layer.provide(HttpApiBuilder.middlewareOpenApi()),
   Layer.provide(ApiLive),
   Layer.provide(HttpApiBuilder.middlewareCors()),
   HttpServer.withLogAddress,
@@ -129,6 +168,15 @@ Effect.gen(function*() {
     headers: { page: 10 }
   })
   console.log("json", user)
+
+  const csv = yield* client.users.csv()
+  console.log("csv", csv)
+
+  const urlParams = yield* client.users.urlParams()
+  console.log("urlParams", urlParams)
+
+  const binary = yield* client.users.binary()
+  console.log("binary", binary)
 }).pipe(
   Effect.provide(HttpClient.layer),
   NodeRuntime.runMain

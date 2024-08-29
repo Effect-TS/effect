@@ -203,7 +203,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
       })
       spec.tags!.push(tag)
     },
-    onEndpoint({ endpoint, errors, group, mergedAnnotations, successAST, successStatus }) {
+    onEndpoint({ endpoint, errors, group, mergedAnnotations, successAST, successEncoding, successStatus }) {
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       const op: DeepMutable<OpenAPISpecOperation> = {
@@ -244,7 +244,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
       successAST.pipe(
         Option.map((ast) => {
           op.responses![successStatus].content = {
-            "application/json": {
+            [successEncoding.contentType]: {
               schema: makeJsonSchema(Schema.make(ast))
             }
           }

@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import type { Simplify } from "effect/Types"
-import { unify } from "effect/Unify"
 import * as HttpApi from "./HttpApi.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
 import type { HttpApiGroup } from "./HttpApiGroup.js"
@@ -71,12 +71,32 @@ export const make = <A extends HttpApi.HttpApi.Any>(
       onGroup({ group }) {
         client[group.identifier] = {}
       },
-      onEndpoint({ endpoint, errors, group, successAST, successStatus }) {
+      onEndpoint({ endpoint, errors, group, successAST, successEncoding, successStatus }) {
         const makeUrl = compilePath(endpoint.path)
-        const handleSuccess = unify(Option.match(successAST, {
-          onNone: () => HttpClientResponse.void,
-          onSome: (ast) => HttpClientResponse.schemaBodyJsonScoped(Schema.make(ast))
-        }))
+        const successDecode = successAST.pipe(
+          Option.map((ast) => {
+            const schema = Schema.make(ast)
+            switch (successEncoding.kind) {
+              case "Json": {
+                return HttpClientResponse.schemaBodyJson(schema)
+              }
+              case "UrlParams": {
+                return HttpClientResponse.schemaBodyUrlParams(schema as any)
+              }
+              case "Uint8Array": {
+                return (response: HttpClientResponse.HttpClientResponse) =>
+                  response.arrayBuffer.pipe(
+                    Effect.map((buffer) => new Uint8Array(buffer)),
+                    Effect.flatMap(Schema.decodeUnknown(schema))
+                  )
+              }
+              case "Text": {
+                return (response: HttpClientResponse.HttpClientResponse) =>
+                  Effect.flatMap(response.text, Schema.decodeUnknown(schema))
+              }
+            }
+          })
+        )
         const handleError = (
           request: HttpClientRequest.HttpClientRequest,
           response: HttpClientResponse.HttpClientResponse
@@ -166,14 +186,16 @@ export const make = <A extends HttpApi.HttpApi.Any>(
                 )
                 : identity,
               Effect.flatMap((request) =>
-                httpClient(request).pipe(
-                  Effect.orDie,
-                  Effect.flatMap((response) =>
-                    response.status !== successStatus ? handleError(request, response) : Effect.succeed(response)
-                  )
-                )
+                Effect.flatMap(httpClient(request), (response) =>
+                  response.status !== successStatus
+                    ? handleError(request, response)
+                    : Effect.succeed(response))
               ),
-              handleSuccess,
+              successDecode._tag === "Some"
+                ? Effect.flatMap(successDecode.value)
+                : Effect.asVoid,
+              Effect.scoped,
+              Effect.catchIf(ParseResult.isParseError, Effect.die),
               Effect.mapInputContext((input) => Context.merge(context, input))
             )
         }

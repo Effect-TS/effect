@@ -270,6 +270,7 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, Err
       readonly mergedAnnotations: Context.Context<never>
       readonly successAST: Option.Option<AST.AST>
       readonly successStatus: number
+      readonly successEncoding: HttpApiSchema.Encoding
       readonly errors: ReadonlyMap<number, Option.Option<AST.AST>>
     }) => void
   }
@@ -294,6 +295,7 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, Err
           Option.map((schema) => schema.ast)
         ),
         successStatus: HttpApiSchema.getStatusSuccess(endpoint.successSchema),
+        successEncoding: HttpApiSchema.getEncoding(endpoint.successSchema.ast),
         errors: extractErrors(endpoint.errorSchema.ast, groupErrors)
       })
     }

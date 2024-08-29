@@ -733,8 +733,47 @@ const handlerToRoute = (
   )
   const decodePayload = Option.map(endpoint.payloadSchema, Schema.decodeUnknown)
   const decodeHeaders = Option.map(endpoint.headersSchema, Schema.decodeUnknown)
-  const encodeSuccess = Option.map(HttpApiEndpoint.schemaSuccess(endpoint), Schema.encodeUnknown)
+  const encoding = HttpApiSchema.getEncoding(endpoint.successSchema.ast)
   const successStatus = HttpApiSchema.getStatusSuccess(endpoint.successSchema)
+  const encodeSuccess = Option.map(HttpApiEndpoint.schemaSuccess(endpoint), (schema) => {
+    const encode = Schema.encodeUnknown(schema)
+    switch (encoding.kind) {
+      case "Json": {
+        return (body: unknown) =>
+          Effect.orDie(
+            Effect.flatMap(encode(body), (json) =>
+              HttpServerResponse.json(json, {
+                status: successStatus,
+                contentType: encoding.contentType
+              }))
+          )
+      }
+      case "Text": {
+        return (body: unknown) =>
+          Effect.map(Effect.orDie(encode(body)), (text) =>
+            HttpServerResponse.text(text as any, {
+              status: successStatus,
+              contentType: encoding.contentType
+            }))
+      }
+      case "Uint8Array": {
+        return (body: unknown) =>
+          Effect.map(Effect.orDie(encode(body)), (data) =>
+            HttpServerResponse.uint8Array(data as any, {
+              status: successStatus,
+              contentType: encoding.contentType
+            }))
+      }
+      case "UrlParams": {
+        return (body: unknown) =>
+          Effect.map(Effect.orDie(encode(body)), (params) =>
+            HttpServerResponse.urlParams(params as any, {
+              status: successStatus,
+              contentType: encoding.contentType
+            }))
+      }
+    }
+  })
   return HttpRouter.makeRoute(
     endpoint.method,
     endpoint.path,
@@ -770,12 +809,7 @@ const handlerToRoute = (
           isFullResponse ?
             identity as (_: any) => Effect.Effect<HttpServerResponse.HttpServerResponse> :
             encodeSuccess._tag === "Some"
-            ? Effect.flatMap((body) =>
-              encodeSuccess.value(body).pipe(
-                Effect.flatMap((json) => HttpServerResponse.json(json, { status: successStatus })),
-                Effect.orDie
-              )
-            )
+            ? Effect.flatMap(encodeSuccess.value)
             : Effect.as(HttpServerResponse.empty({ status: successStatus }))
         )
     })
