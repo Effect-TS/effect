@@ -1,5 +1,22 @@
 # @effect/cli
 
+## 0.41.5
+
+### Patch Changes
+
+- [#3508](https://github.com/Effect-TS/effect/pull/3508) [`8e64b1a`](https://github.com/Effect-TS/effect/commit/8e64b1a6ed4310fbc767910c6141adda9d19463c) Thanks @cdierkens! - Renders the default for all `Prompt` types that accepts `TextOptions`.
+
+  - The default value will be rendered as ghost text for `Prompt.text` and `Prompt.list`.
+  - The default value will be rendered as redacted ghost text for `Prompt.password`.
+  - The default value will remain hidden for `Prompt.hidden`.
+
+- Updated dependencies [[`e809286`](https://github.com/Effect-TS/effect/commit/e8092865900608c4df7a6b7991b1c13cc1e4ca2d)]:
+  - effect@3.6.8
+  - @effect/platform@0.62.5
+  - @effect/printer@0.34.8
+  - @effect/printer-ansi@0.34.8
+  - @effect/schema@0.71.4
+
 ## 0.41.4
 
 ### Patch Changes
