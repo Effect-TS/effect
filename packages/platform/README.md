@@ -209,7 +209,7 @@ just by calling `HttpApiEndpoint.addError` multiple times.
 ### Multipart requests
 
 If you need to handle file uploads, you can use the `HttpApiSchema.Multipart`
-api to flag a `HttpApiSchema` payload schema as a multipart request.
+api to flag a `HttpApiEnen` payload schema as a multipart request.
 
 You can then use the schemas from the `Multipart` module to define the expected
 shape of the multipart request.
@@ -238,7 +238,7 @@ class UsersApi extends HttpApiGroup.make("users").pipe(
 The `HttpApiSecurity` module provides a way to add security annotations to your
 API.
 
-The `HttpApiSecurity` offers the following authorization types:
+It offers the following authorization types:
 
 - `HttpApiSecurity.apiKey` - API key authorization through headers, query
   parameters, or cookies.
@@ -283,7 +283,12 @@ server.
 
 ### Implementing a `HttpApiGroup`
 
-First up, let's implement an `UsersApi` group with a single `findById` endpoint:
+First up, let's implement an `UsersApi` group with a single `findById` endpoint.
+
+The `HttpApiBuilder.group` api takes the `HttpApi` definition, the group name,
+and a function that adds the handlers required for the group.
+
+Each endpoint is implemented using the `HttpApiBuilder.handle` api.
 
 ```ts
 import {
@@ -321,7 +326,7 @@ class MyApi extends HttpApi.empty.pipe(HttpApi.addGroup(UsersApi)) {}
 // Implementation
 // --------------------------------------------
 
-// the `HttpApiBuilder.group` api return a `Layer`
+// the `HttpApiBuilder.group` api returns a `Layer`
 const UsersApiLive: Layer.Layer<HttpApiGroup.HttpApiGroup.Service<"users">> =
   HttpApiBuilder.group(MyApi, "users", (handlers) =>
     handlers.pipe(
@@ -501,28 +506,7 @@ const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
 )
 ```
 
-## Deriving a client
-
-Once you have defined your API, you can derive a client that can interact with
-the server.
-
-The `HttpApiClient` module provides all the apis you need to derive a client.
-
-```ts
-import { HttpApiClient } from "@effect/platform"
-
-Effect.gen(function* () {
-  const client = yield* HttpApiClient.make(MyApi, {
-    baseUrl: "http://localhost:3000"
-    // You can tranform the HttpClient to add things like authentication
-    // transformClient: ....
-  })
-  const user = yield* client.users.findById({ path: { id: 1 } })
-  yield* Effect.log(user)
-})
-```
-
-## Swagger documentation
+### Serving Swagger documentation
 
 You can add Swagger documentation to your API using the `HttpApiSwagger` module.
 
@@ -544,6 +528,27 @@ const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
   Layer.provide(MyApiLive),
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
 )
+```
+
+## Deriving a client
+
+Once you have defined your API, you can derive a client that can interact with
+the server.
+
+The `HttpApiClient` module provides all the apis you need to derive a client.
+
+```ts
+import { HttpApiClient } from "@effect/platform"
+
+Effect.gen(function* () {
+  const client = yield* HttpApiClient.make(MyApi, {
+    baseUrl: "http://localhost:3000"
+    // You can transform the HttpClient to add things like authentication
+    // transformClient: ....
+  })
+  const user = yield* client.users.findById({ path: { id: 1 } })
+  yield* Effect.log(user)
+})
 ```
 
 # HTTP Client
