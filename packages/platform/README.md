@@ -273,6 +273,30 @@ class UsersApi extends HttpApiGroup.make("users").pipe(
 ) {}
 ```
 
+### Changing the response encoding
+
+By default, the response is encoded as JSON. You can change the encoding using
+the `HttpApiSchema.withEncoding` api.
+
+Here is an example of changing the encoding to text/csv:
+
+```ts
+class UsersApi extends HttpApiGroup.make("users").pipe(
+  HttpApiGroup.add(
+    HttpApiEndpoint.get("csv", "/users/csv").pipe(
+      HttpApiEndpoint.setSuccess(
+        Schema.String.pipe(
+          HttpApiSchema.withEncoding({
+            kind: "Text",
+            contentType: "text/csv"
+          })
+        )
+      )
+    )
+  )
+) {}
+```
+
 ## Implementing a server
 
 Now that you have defined your API, you can implement a server that serves the
