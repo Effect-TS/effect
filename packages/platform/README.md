@@ -209,7 +209,7 @@ just by calling `HttpApiEndpoint.addError` multiple times.
 ### Multipart requests
 
 If you need to handle file uploads, you can use the `HttpApiSchema.Multipart`
-api to flag a `HttpApiEnen` payload schema as a multipart request.
+api to flag a `HttpApiEndpoint` payload schema as a multipart request.
 
 You can then use the schemas from the `Multipart` module to define the expected
 shape of the multipart request.
