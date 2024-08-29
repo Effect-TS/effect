@@ -12,8 +12,8 @@ import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import { describe, expect, it } from "vitest"
 
-const MainLive = Effect.gen(function*(_) {
-  const console = yield* _(MockConsole.make)
+const MainLive = Effect.gen(function*() {
+  const console = yield* MockConsole.make
   return Layer.mergeAll(
     Console.setConsole(console),
     NodeFileSystem.layer,
