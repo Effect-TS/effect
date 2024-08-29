@@ -22,6 +22,7 @@ import { currentScheduler } from "../../Scheduler.js"
 import type * as Scope from "../../Scope.js"
 import type * as Supervisor from "../../Supervisor.js"
 import type * as Synchronized from "../../SynchronizedRef.js"
+import type * as Types from "../../Types.js"
 import * as internalCause from "../cause.js"
 import * as effect from "../core-effect.js"
 import * as core from "../core.js"
@@ -704,3 +705,93 @@ export const zipWithFiber = dual<
     return pipeArguments(this, arguments)
   }
 }))
+
+/* @internal */
+export const bindAll: {
+  <
+    A extends object,
+    X extends Record<string, Effect.Effect<any, any, any>>,
+    O extends {
+      readonly concurrency?: Types.Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    }
+  >(
+    f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
+    options?: undefined | O
+  ): <E1, R1>(
+    self: Effect.Effect<A, E1, R1>
+  ) => [Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>] extends
+    [Effect.Effect<infer Success, infer Error, infer Context>] ? Effect.Effect<
+      {
+        [K in keyof A | keyof Success]: K extends keyof A ? A[K]
+          : K extends keyof Success ? Success[K]
+          : never
+      },
+      | E1
+      | Error,
+      R1 | Context
+    >
+    : never
+
+  <
+    A extends object,
+    X extends Record<string, Effect.Effect<any, any, any>>,
+    O extends {
+      readonly concurrency?: Types.Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    },
+    E1,
+    R1
+  >(
+    self: Effect.Effect<A, E1, R1>,
+    f: (a: A) => [Extract<keyof X, keyof A>] extends [never] ? X : `Duplicate keys`,
+    options?: undefined | {
+      readonly concurrency?: Types.Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly mode?: "default" | "validate" | "either" | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    }
+  ): [Effect.All.ReturnObject<X, false, Effect.All.ExtractMode<O>>] extends
+    [Effect.Effect<infer Success, infer Error, infer Context>] ? Effect.Effect<
+      {
+        [K in keyof A | keyof Success]: K extends keyof A ? A[K]
+          : K extends keyof Success ? Success[K]
+          : never
+      },
+      | E1
+      | Error,
+      R1 | Context
+    >
+    : never
+} = dual((args) => core.isEffect(args[0]), <
+  A extends object,
+  X extends Record<string, Effect.Effect<any, any, any>>,
+  O extends {
+    readonly concurrency?: Types.Concurrency | undefined
+    readonly batching?: boolean | "inherit" | undefined
+    readonly mode?: "default" | "validate" | "either" | undefined
+    readonly concurrentFinalizers?: boolean | undefined
+  },
+  E1,
+  R1
+>(
+  self: Effect.Effect<A, E1, R1>,
+  f: (a: A) => X,
+  options?: undefined | O
+) =>
+  core.flatMap(
+    self,
+    (a) =>
+      (fiberRuntime.all(f(a), options) as Effect.All.ReturnObject<
+        X,
+        Effect.All.IsDiscard<O>,
+        Effect.All.ExtractMode<O>
+      >)
+        .pipe(
+          core.map((record) => Object.assign({}, a, record))
+        )
+  ))
