@@ -448,6 +448,16 @@ export const string = (name?: string): Config.Config<string> => {
 }
 
 /** @internal */
+export const nonEmptyString = (name?: string): Config.Config<string> => {
+  const config = primitive(
+    "a non-empty text property",
+    Either.liftPredicate((text) => text.length > 0, () => configError.InvalidData([], "Expected a non-empty string"))
+  )
+
+  return name === undefined ? config : nested(config, name)
+}
+
+/** @internal */
 export const all = <const Arg extends Iterable<Config.Config<any>> | Record<string, Config.Config<any>>>(
   arg: Arg
 ): Config.Config<
