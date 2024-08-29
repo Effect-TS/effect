@@ -549,6 +549,10 @@ pipe(
   Effect.tapErrorTag("TestError1", () => Effect.succeed(1))
 )
 
+// $ExpectType Effect<number, TestError1 | TestError2, never>
+hole<Effect.Effect<number, TestError1 | TestError2>>()
+  .pipe(Effect.tapErrorTag("TestError1", Effect.log))
+
 // -------------------------------------------------------------------------------------
 // catchTag
 // -------------------------------------------------------------------------------------
@@ -578,6 +582,10 @@ Effect.catchTag(hole<Effect.Effect<number, TestError1>>(), "TestError1", (
   _e // $ExpectType TestError1
 ) => Effect.succeed(1))
 
+// $ExpectType Effect<number | void, TestError2, never>
+hole<Effect.Effect<number, TestError1 | TestError2>>()
+  .pipe(Effect.catchTag("TestError1", Effect.log))
+
 // $ExpectType Effect<number, never, never>
 pipe(
   hole<Effect.Effect<number, TestError1>>(),
@@ -587,9 +595,7 @@ pipe(
 )
 
 // $ExpectType Effect<number, TestError2, never>
-Effect.catchTag(hole<Effect.Effect<number, TestError1 | TestError2>>(), "TestError1", (
-  _e // $ExpectType TestError1
-) => Effect.succeed(1))
+Effect.catchTag(hole<Effect.Effect<number, TestError1 | TestError2>>(), "TestError1", Effect.succeed)
 
 // $ExpectType Effect<number, TestError2, never>
 pipe(
