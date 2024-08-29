@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Stricter worker environment detection
+Detect environment in Logger.pretty using process.stdout
