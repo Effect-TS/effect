@@ -400,6 +400,15 @@ const removeTrailingSlash = (
 ): Router.PathInput => (path.endsWith("/") ? path.slice(0, -1) : path) as any
 
 /** @internal */
+export const prefixPath: {
+  (prefix: string): (self: string) => string
+  (self: string, prefix: string): string
+} = dual(2, (self, prefix) => {
+  prefix = removeTrailingSlash(prefix)
+  return self === "/" ? prefix : prefix + self
+})
+
+/** @internal */
 export const prefixAll = dual<
   (prefix: Router.PathInput) => <E, R>(self: Router.HttpRouter<E, R>) => Router.HttpRouter<E, R>,
   <E, R>(self: Router.HttpRouter<E, R>, prefix: Router.PathInput) => Router.HttpRouter<E, R>
