@@ -1,5 +1,15 @@
 # @effect/experimental
 
+## 0.24.0
+
+### Patch Changes
+
+- Updated dependencies [[`db89601`](https://github.com/Effect-TS/effect/commit/db89601ee9c1050c4e762b7bd7ec65a6a2799dfe), [`2f456cc`](https://github.com/Effect-TS/effect/commit/2f456cce5012b9fcb6b4e039190d527813b75b92), [`8745e41`](https://github.com/Effect-TS/effect/commit/8745e41ed96e3765dc6048efc2a9afbe05c8a1e9), [`e557838`](https://github.com/Effect-TS/effect/commit/e55783886b046d3c5f33447f455f9ccf2fa75922), [`d6e7e40`](https://github.com/Effect-TS/effect/commit/d6e7e40b1e2ad0c59aa02f07344d28601b14ebdc), [`8356321`](https://github.com/Effect-TS/effect/commit/8356321598da04bd77c1001f45a4e447bec5591d), [`192f2eb`](https://github.com/Effect-TS/effect/commit/192f2ebb2c4ddbf4bfd8baedd32140b2376868f4), [`718cb70`](https://github.com/Effect-TS/effect/commit/718cb70038629a6d58d02e407760e341f7c94474), [`e9d0310`](https://github.com/Effect-TS/effect/commit/e9d03107acbf204d9304f3e8aea0816b7d3c7dfb), [`6bf28f7`](https://github.com/Effect-TS/effect/commit/6bf28f7e3b1e5e0608ff567205fea0581d11666f)]:
+  - effect@3.7.0
+  - @effect/platform@0.63.0
+  - @effect/platform-node@0.58.0
+  - @effect/schema@0.72.0
+
 ## 0.23.7
 
 ### Patch Changes
@@ -75,39 +85,39 @@
   The `VariantSchema` module can be used to schemas with multiple variants.
 
   ```ts
-  import { VariantSchema } from "@effect/experimental";
-  import { Schema } from "@effect/schema";
-  import { DateTime } from "effect";
+  import { VariantSchema } from "@effect/experimental"
+  import { Schema } from "@effect/schema"
+  import { DateTime } from "effect"
 
   export const { Class, Field, Struct } = VariantSchema.factory({
     variants: ["database", "api"],
-    defaultVariant: "database",
-  });
+    defaultVariant: "database"
+  })
 
   class User extends Class<User>("User")({
     id: Schema.Number,
     createdAt: Field({
       database: Schema.DateTimeUtc.pipe(
-        Schema.optionalWith({ default: DateTime.unsafeNow }),
+        Schema.optionalWith({ default: DateTime.unsafeNow })
       ),
-      api: Schema.DateTimeUtc,
+      api: Schema.DateTimeUtc
     }),
     updateAt: Field({
       database: Schema.DateTimeUtc.pipe(
-        Schema.optionalWith({ default: DateTime.unsafeNow }),
+        Schema.optionalWith({ default: DateTime.unsafeNow })
       ),
-      api: Schema.DateTimeUtc,
-    }),
+      api: Schema.DateTimeUtc
+    })
   }) {}
 
   // the class will use the `defaultVariant` fields
-  const user = new User({ id: 1 });
-  user.createdAt;
-  user.updateAt;
+  const user = new User({ id: 1 })
+  user.createdAt
+  user.updateAt
 
   // access the `Schema.Struct` variants as static props
-  User.database;
-  User.api;
+  User.database
+  User.api
   ```
 
 ## 0.23.0
@@ -949,13 +959,13 @@
   You now have to provide a WebSocketConstructor implementation to the `Socket.makeWebSocket` api.
 
   ```ts
-  import * as Socket from "@effect/platform/Socket";
-  import * as NodeSocket from "@effect/platform-node/NodeSocket";
-  import { Effect } from "effect";
+  import * as Socket from "@effect/platform/Socket"
+  import * as NodeSocket from "@effect/platform-node/NodeSocket"
+  import { Effect } from "effect"
 
   Socket.makeWebSocket("ws://localhost:8080").pipe(
-    Effect.provide(NodeSocket.layerWebSocketConstructor), // use "ws" npm package
-  );
+    Effect.provide(NodeSocket.layerWebSocketConstructor) // use "ws" npm package
+  )
   ```
 
 ### Patch Changes
@@ -1156,8 +1166,8 @@
   For all the data types.
 
   ```ts
-  Effect.unit; // => Effect.void
-  Stream.unit; // => Stream.void
+  Effect.unit // => Effect.void
+  Stream.unit // => Stream.void
 
   // etc
   ```
@@ -1203,16 +1213,16 @@
   For example, `Ref`'s implement `Readable`:
 
   ```ts
-  import { Effect, Readable, Ref } from "effect";
-  import assert from "assert";
+  import { Effect, Readable, Ref } from "effect"
+  import assert from "assert"
 
   Effect.gen(function* (_) {
-    const ref = yield* _(Ref.make(123));
-    assert(Readable.isReadable(ref));
+    const ref = yield* _(Ref.make(123))
+    assert(Readable.isReadable(ref))
 
-    const result = yield* _(ref.get);
-    assert(result === 123);
-  });
+    const result = yield* _(ref.get)
+    assert(result === 123)
+  })
   ```
 
 - Updated dependencies [[`0aee906`](https://github.com/Effect-TS/effect/commit/0aee906f034539344db6fbac08919de3e28eccde), [`41c8102`](https://github.com/Effect-TS/effect/commit/41c810228b1a50e4b41f19e735d7c62fe8d36871), [`4c37001`](https://github.com/Effect-TS/effect/commit/4c370013417e18c4f564818de1341a8fccb43b4c), [`776ef2b`](https://github.com/Effect-TS/effect/commit/776ef2bb66db9aa9f68b7beab14f6986f9c1288b), [`217147e`](https://github.com/Effect-TS/effect/commit/217147ea67c5c42c96f024775c41e5b070f81e4c), [`8a69b4e`](https://github.com/Effect-TS/effect/commit/8a69b4ef6a3a06d2e21fe2e11a626038beefb4e1), [`90776ec`](https://github.com/Effect-TS/effect/commit/90776ec8e8671d835b65fc33ead1de6c864b81b9), [`b3acf47`](https://github.com/Effect-TS/effect/commit/b3acf47f9c9dfae1c99377aa906097aaa2d47d44), [`8709856`](https://github.com/Effect-TS/effect/commit/870985694ae985c3cb9360ad8a25c60e6f785f55), [`232c353`](https://github.com/Effect-TS/effect/commit/232c353c2e6f743f38e57639ee30e324ffa9c2a9), [`0d3231a`](https://github.com/Effect-TS/effect/commit/0d3231a195202635ecc0bf6bbf6a08fc017d0d69), [`0ca835c`](https://github.com/Effect-TS/effect/commit/0ca835cbac8e69072a93ace83b534219faba24e8), [`8709856`](https://github.com/Effect-TS/effect/commit/870985694ae985c3cb9360ad8a25c60e6f785f55), [`da22adc`](https://github.com/Effect-TS/effect/commit/da22adc6507563876f1c416fd22a5f9206cc1395), [`d590094`](https://github.com/Effect-TS/effect/commit/d5900943489ec1e0891836aeafb5ce99fb9c75c7), [`c22b019`](https://github.com/Effect-TS/effect/commit/c22b019e5eaf9d3a937a3d99cadbb8f8e9116a70), [`e983740`](https://github.com/Effect-TS/effect/commit/e9837401145605aff5bc2ec7e73004f397c5d2d1), [`e3e0924`](https://github.com/Effect-TS/effect/commit/e3e09247d46a35430fc60e4aa4032cc50814f212)]:
@@ -1352,12 +1362,12 @@
   A trait for attaching expiry information to objects.
 
   ```ts
-  import * as TimeToLive from "@effect/experimental";
-  import { Duration, Exit } from "effect";
+  import * as TimeToLive from "@effect/experimental"
+  import { Duration, Exit } from "effect"
 
   class User {
     [TimeToLive.symbol](exit: Exit.Exit<unknown, unknown>) {
-      return Exit.isSuccess(exit) ? Duration.seconds(60) : Duration.zero;
+      return Exit.isSuccess(exit) ? Duration.seconds(60) : Duration.zero
     }
   }
   ```
@@ -1571,21 +1581,21 @@
   example of a machine that sends emails:
 
   ```ts
-  import { Machine } from "@effect/experimental";
-  import { runMain } from "@effect/platform-node/NodeRuntime";
-  import { Data, Effect, List, Request, Schedule } from "effect";
+  import { Machine } from "@effect/experimental"
+  import { runMain } from "@effect/platform-node/NodeRuntime"
+  import { Data, Effect, List, Request, Schedule } from "effect"
 
   class SendError extends Data.TaggedError("SendError")<{
-    readonly email: string;
-    readonly reason: string;
+    readonly email: string
+    readonly reason: string
   }> {}
 
   class SendEmail extends Request.TaggedClass("SendEmail")<
     void,
     SendError,
     {
-      readonly email: string;
-      readonly message: string;
+      readonly email: string
+      readonly message: string
     }
   > {}
 
@@ -1599,14 +1609,14 @@
 
   const mailer = Machine.makeWith<List.List<SendEmail>>()((_, previous) =>
     Effect.gen(function* (_) {
-      const ctx = yield* _(Machine.MachineContext);
-      const state = previous ?? List.empty();
+      const ctx = yield* _(Machine.MachineContext)
+      const state = previous ?? List.empty()
 
       if (List.isCons(state)) {
         yield* _(
           ctx.unsafeSend(new ProcessEmail()),
-          Effect.replicateEffect(List.size(state)),
-        );
+          Effect.replicateEffect(List.size(state))
+        )
       }
 
       return Machine.procedures.make(state).pipe(
@@ -1615,47 +1625,47 @@
           ({ state }) =>
             Effect.gen(function* (_) {
               if (List.isNil(state)) {
-                return [void 0, state];
+                return [void 0, state]
               }
-              const req = state.head;
+              const req = state.head
               yield* _(
                 Effect.log(`Sending email to ${req.email}`),
-                Effect.delay(500),
-              );
-              return [void 0, state.tail];
-            }),
+                Effect.delay(500)
+              )
+              return [void 0, state.tail]
+            })
         ),
         Machine.procedures.add<SendEmail>()("SendEmail", (ctx) =>
           ctx
             .send(new ProcessEmail())
-            .pipe(Effect.as([void 0, List.append(ctx.state, ctx.request)])),
+            .pipe(Effect.as([void 0, List.append(ctx.state, ctx.request)]))
         ),
         Machine.procedures.add<Shutdown>()("Shutdown", () =>
-          Effect.log("Shutting down").pipe(Effect.zipRight(Effect.interrupt)),
-        ),
-      );
-    }),
-  ).pipe(Machine.retry(Schedule.forever));
+          Effect.log("Shutting down").pipe(Effect.zipRight(Effect.interrupt))
+        )
+      )
+    })
+  ).pipe(Machine.retry(Schedule.forever))
 
   Effect.gen(function* (_) {
-    const actor = yield* _(Machine.boot(mailer));
+    const actor = yield* _(Machine.boot(mailer))
     yield* _(
       actor.send(
-        new SendEmail({ email: "test@example.com", message: "Hello, World!" }),
-      ),
-    );
+        new SendEmail({ email: "test@example.com", message: "Hello, World!" })
+      )
+    )
     yield* _(
       actor.send(
-        new SendEmail({ email: "test@example.com", message: "Hello, World!" }),
-      ),
-    );
+        new SendEmail({ email: "test@example.com", message: "Hello, World!" })
+      )
+    )
     yield* _(
       actor.send(
-        new SendEmail({ email: "test@example.com", message: "Hello, World!" }),
-      ),
-    );
-    yield* _(actor.send(new Shutdown()));
-  }).pipe(Effect.scoped, runMain);
+        new SendEmail({ email: "test@example.com", message: "Hello, World!" })
+      )
+    )
+    yield* _(actor.send(new Shutdown()))
+  }).pipe(Effect.scoped, runMain)
   ```
 
 - Updated dependencies [[`e03811e`](https://github.com/Effect-TS/effect/commit/e03811e80c93e986e6348b3b67ac2ed6d5fefff0), [`ac41d84`](https://github.com/Effect-TS/effect/commit/ac41d84776484cdce8165b7ca2c9c9b6377eee2d), [`0f3d99c`](https://github.com/Effect-TS/effect/commit/0f3d99c27521ec6b221b644a0fffc79199c3acca), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`1bf9f31`](https://github.com/Effect-TS/effect/commit/1bf9f31f07667de677673f7c29a4e7a26ebad3c8), [`e3ff789`](https://github.com/Effect-TS/effect/commit/e3ff789226f89e71eb28ca38ce79f90af6a03f1a), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`507ba40`](https://github.com/Effect-TS/effect/commit/507ba4060ff043c1a8d541dae723fa6940633b00), [`4064ea0`](https://github.com/Effect-TS/effect/commit/4064ea04e0b3fa23108ee471cd89ab2482b2f6e5), [`e466afe`](https://github.com/Effect-TS/effect/commit/e466afe32f2de598ceafd8982bd0cfbd388e5671), [`465be79`](https://github.com/Effect-TS/effect/commit/465be7926afe98169837d8a4ed5ebc059a732d21), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`de74eb8`](https://github.com/Effect-TS/effect/commit/de74eb80a79eebde5ff645033765e7a617e92f27), [`d8e6940`](https://github.com/Effect-TS/effect/commit/d8e694040f67da6fefc0f5c98fc8e15c0b48822e), [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e), [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e)]:
@@ -1856,31 +1866,31 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - With this change we now require a string key to be provided for all tags and renames the dear old `Tag` to `GenericTag`, so when previously you could do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.Tag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >();
+  >()
   ```
 
   you are now mandated to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.GenericTag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >("Service");
+  >("Service")
   ```
 
   This makes by default all tags globals and ensures better debuggaility when unexpected errors arise.
@@ -1888,17 +1898,17 @@
   Furthermore we introduce a new way of constructing tags that should be considered the new default:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   class Service extends Context.Tag("Service")<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
   >() {}
 
   const program = Effect.flatMap(Service, ({ number }) => number).pipe(
-    Effect.flatMap((_) => Effect.log(`number: ${_}`)),
-  );
+    Effect.flatMap((_) => Effect.log(`number: ${_}`))
+  )
   ```
 
   this will use "Service" as the key and will create automatically an opaque identifier (the class) to be used at the type level, it does something similar to the above in a single shot.
@@ -1916,15 +1926,15 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - This change enables `Effect.serviceConstants` and `Effect.serviceMembers` to access any constant in the service, not only the effects, namely it is now possible to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
 
   class NumberRepo extends Context.TagClass("NumberRepo")<
     NumberRepo,
     {
-      readonly numbers: Array<number>;
+      readonly numbers: Array<number>
     }
   >() {
-    static numbers = Effect.serviceConstants(NumberRepo).numbers;
+    static numbers = Effect.serviceConstants(NumberRepo).numbers
   }
   ```
 

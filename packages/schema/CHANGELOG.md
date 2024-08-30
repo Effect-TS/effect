@@ -1,5 +1,12 @@
 # @effect/schema
 
+## 0.72.0
+
+### Patch Changes
+
+- Updated dependencies [[`db89601`](https://github.com/Effect-TS/effect/commit/db89601ee9c1050c4e762b7bd7ec65a6a2799dfe), [`2f456cc`](https://github.com/Effect-TS/effect/commit/2f456cce5012b9fcb6b4e039190d527813b75b92), [`8745e41`](https://github.com/Effect-TS/effect/commit/8745e41ed96e3765dc6048efc2a9afbe05c8a1e9), [`e557838`](https://github.com/Effect-TS/effect/commit/e55783886b046d3c5f33447f455f9ccf2fa75922), [`d6e7e40`](https://github.com/Effect-TS/effect/commit/d6e7e40b1e2ad0c59aa02f07344d28601b14ebdc), [`8356321`](https://github.com/Effect-TS/effect/commit/8356321598da04bd77c1001f45a4e447bec5591d), [`192f2eb`](https://github.com/Effect-TS/effect/commit/192f2ebb2c4ddbf4bfd8baedd32140b2376868f4), [`718cb70`](https://github.com/Effect-TS/effect/commit/718cb70038629a6d58d02e407760e341f7c94474), [`e9d0310`](https://github.com/Effect-TS/effect/commit/e9d03107acbf204d9304f3e8aea0816b7d3c7dfb), [`6bf28f7`](https://github.com/Effect-TS/effect/commit/6bf28f7e3b1e5e0608ff567205fea0581d11666f)]:
+  - effect@3.7.0
+
 ## 0.71.4
 
 ### Patch Changes
@@ -53,14 +60,14 @@
   These schemas can be used to ensure that a value is an array, from a value that may be an array or a single value.
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
-  const schema = Schema.ArrayEnsure(Schema.String);
+  const schema = Schema.ArrayEnsure(Schema.String)
 
-  Schema.decodeUnknownSync(schema)("hello");
+  Schema.decodeUnknownSync(schema)("hello")
   // => ["hello"]
 
-  Schema.decodeUnknownSync(schema)(["a", "b", "c"]);
+  Schema.decodeUnknownSync(schema)(["a", "b", "c"])
   // => ["a", "b", "c"]
   ```
 
@@ -115,34 +122,34 @@
   **Example** (string based schemas)
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   // const schema: Schema.Schema<readonly [number, "a", string], `${string}a${string}`, never>
   const schema = Schema.TemplateLiteralParser(
     Schema.NumberFromString,
     "a",
-    Schema.NonEmptyString,
-  );
+    Schema.NonEmptyString
+  )
 
-  console.log(Schema.decodeEither(schema)("100ab"));
+  console.log(Schema.decodeEither(schema)("100ab"))
   // { _id: 'Either', _tag: 'Right', right: [ 100, 'a', 'b' ] }
 
-  console.log(Schema.encode(schema)([100, "a", "b"]));
+  console.log(Schema.encode(schema)([100, "a", "b"]))
   // { _id: 'Either', _tag: 'Right', right: '100ab' }
   ```
 
   **Example** (number based schemas)
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   // const schema: Schema.Schema<readonly [number, "a"], `${number}a`, never>
-  const schema = Schema.TemplateLiteralParser(Schema.Int, "a");
+  const schema = Schema.TemplateLiteralParser(Schema.Int, "a")
 
-  console.log(Schema.decodeEither(schema)("1a"));
+  console.log(Schema.decodeEither(schema)("1a"))
   // { _id: 'Either', _tag: 'Right', right: [ 1, 'a' ] }
 
-  console.log(Schema.encode(schema)([1, "a"]));
+  console.log(Schema.encode(schema)([1, "a"]))
   // { _id: 'Either', _tag: 'Right', right: '1a' }
   ```
 
@@ -150,8 +157,8 @@
 
   ```ts
   export type DecodingFallbackAnnotation<A> = (
-    issue: ParseIssue,
-  ) => Effect<A, ParseIssue>;
+    issue: ParseIssue
+  ) => Effect<A, ParseIssue>
   ```
 
   This update introduces a `decodingFallback` annotation, enabling custom handling of decoding failures in schemas. This feature allows developers to specify fallback behaviors when decoding operations encounter issues.
@@ -159,32 +166,30 @@
   **Example**
 
   ```ts
-  import { Schema } from "@effect/schema";
-  import { Effect, Either } from "effect";
+  import { Schema } from "@effect/schema"
+  import { Effect, Either } from "effect"
 
   // Basic Fallback
 
   const schema = Schema.String.annotations({
-    decodingFallback: () => Either.right("<fallback>"),
-  });
+    decodingFallback: () => Either.right("<fallback>")
+  })
 
-  console.log(Schema.decodeUnknownSync(schema)("valid input")); // Output: valid input
-  console.log(Schema.decodeUnknownSync(schema)(null)); // Output: <fallback value>
+  console.log(Schema.decodeUnknownSync(schema)("valid input")) // Output: valid input
+  console.log(Schema.decodeUnknownSync(schema)(null)) // Output: <fallback value>
 
   // Advanced Fallback with Logging
 
   const schemaWithLog = Schema.String.annotations({
     decodingFallback: (issue) =>
       Effect.gen(function* () {
-        yield* Effect.log(issue._tag);
-        yield* Effect.sleep(10);
-        return yield* Effect.succeed("<fallback2>");
-      }),
-  });
+        yield* Effect.log(issue._tag)
+        yield* Effect.sleep(10)
+        return yield* Effect.succeed("<fallback2>")
+      })
+  })
 
-  Effect.runPromise(Schema.decodeUnknown(schemaWithLog)(null)).then(
-    console.log,
-  );
+  Effect.runPromise(Schema.decodeUnknown(schemaWithLog)(null)).then(console.log)
   /*
   Output:
   timestamp=2024-07-25T13:22:37.706Z level=INFO fiber=#0 message=Type
@@ -215,17 +220,17 @@
   This update refines the type definitions to reflect that `ast` is always an `AST.Transformation`, eliminating the need for casting and simplifying client code.
 
   ```ts
-  import { AST, Schema } from "@effect/schema";
+  import { AST, Schema } from "@effect/schema"
 
   class Person extends Schema.Class<Person>("Person")(
     {
       name: Schema.String,
-      age: Schema.Number,
+      age: Schema.Number
     },
-    { description: "my description" },
+    { description: "my description" }
   ) {}
 
-  console.log(AST.getDescriptionAnnotation(Person.ast.to));
+  console.log(AST.getDescriptionAnnotation(Person.ast.to))
   // { _id: 'Option', _tag: 'Some', value: 'my description' }
   ```
 
@@ -234,11 +239,11 @@
   **Example**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
-  console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("")); // Option.none()
-  console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)(" a ")); // Option.none()
-  console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("a")); // Option.some("a")
+  console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("")) // Option.none()
+  console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)(" a ")) // Option.none()
+  console.log(Schema.decodeOption(Schema.NonEmptyTrimmedString)("a")) // Option.some("a")
   ```
 
   - add `OptionFromNonEmptyTrimmedString`, closes #3335
@@ -246,13 +251,13 @@
     **Example**
 
     ```ts
-    import { Schema } from "@effect/schema";
+    import { Schema } from "@effect/schema"
 
-    console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("")); // Option.none()
+    console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("")) // Option.none()
     console.log(
-      Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)(" a "),
-    ); // Option.some("a")
-    console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("a")); // Option.some("a")
+      Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)(" a ")
+    ) // Option.some("a")
+    console.log(Schema.decodeSync(Schema.OptionFromNonEmptyTrimmedString)("a")) // Option.some("a")
     ```
 
 - Updated dependencies [[`6359644`](https://github.com/Effect-TS/effect/commit/635964446323cf55d4060559337e710e4a24496e), [`7f41e42`](https://github.com/Effect-TS/effect/commit/7f41e428830bf3043b8be0d28dcd235d5747c942), [`f566fd1`](https://github.com/Effect-TS/effect/commit/f566fd1d7eea531a0d981dd24037f14a603a1273)]:
@@ -300,7 +305,7 @@
       "Sample",
       Schema.String, // Failure Schema
       Schema.Number, // Success Schema
-      { id: Schema.String, foo: Schema.Number }, // Payload Schema
+      { id: Schema.String, foo: Schema.Number } // Payload Schema
     ) {}
     ```
 
@@ -310,10 +315,10 @@
     class Sample extends Schema.TaggedRequest<Sample>()("Sample", {
       payload: {
         id: Schema.String,
-        foo: Schema.Number,
+        foo: Schema.Number
       },
       success: Schema.Number,
-      failure: Schema.String,
+      failure: Schema.String
     }) {}
     ```
 
@@ -325,17 +330,17 @@
     Before Update
 
     ```ts
-    import { Schema } from "@effect/schema";
+    import { Schema } from "@effect/schema"
 
-    const schema = Schema.Record(Schema.String, Schema.Number);
+    const schema = Schema.Record(Schema.String, Schema.Number)
     ```
 
     After Update
 
     ```ts
-    import { Schema } from "@effect/schema";
+    import { Schema } from "@effect/schema"
 
-    const schema = Schema.Record({ key: Schema.String, value: Schema.Number });
+    const schema = Schema.Record({ key: Schema.String, value: Schema.Number })
     ```
 
   - rename `Base64` to `Uint8ArrayFromBase64` (**codmod**)
@@ -353,7 +358,7 @@
   - We've refined the `optional` and `partial` APIs by splitting them into two distinct methods: one without options (`optional` and `partial`) and another with options (`optionalWith` and `partialWith`). This change resolves issues with previous implementations when used with the `pipe` method:
 
     ```ts
-    Schema.String.pipe(Schema.optional);
+    Schema.String.pipe(Schema.optional)
     ```
 
   ### ParseResult
@@ -371,17 +376,17 @@
     Before
 
     ```ts
-    import { AST } from "@effect/schema";
+    import { AST } from "@effect/schema"
 
-    console.log(String(new AST.TemplateLiteralSpan(AST.stringKeyword, "a"))); // ${string}
+    console.log(String(new AST.TemplateLiteralSpan(AST.stringKeyword, "a"))) // ${string}
     ```
 
     Now
 
     ```ts
-    import { AST } from "@effect/schema";
+    import { AST } from "@effect/schema"
 
-    console.log(String(new AST.TemplateLiteralSpan(AST.stringKeyword, "a"))); // ${string}a
+    console.log(String(new AST.TemplateLiteralSpan(AST.stringKeyword, "a"))) // ${string}a
     ```
 
   ### Serializable
@@ -400,15 +405,15 @@
   - Support for extending `Schema.String`, `Schema.Number`, and `Schema.Boolean` with refinements has been added:
 
     ```ts
-    import { Schema } from "@effect/schema";
+    import { Schema } from "@effect/schema"
 
-    const Integer = Schema.Int.pipe(Schema.brand("Int"));
-    const Positive = Schema.Positive.pipe(Schema.brand("Positive"));
+    const Integer = Schema.Int.pipe(Schema.brand("Int"))
+    const Positive = Schema.Positive.pipe(Schema.brand("Positive"))
 
     // Schema.Schema<number & Brand<"Positive"> & Brand<"Int">, number, never>
-    const PositiveInteger = Schema.asSchema(Schema.extend(Positive, Integer));
+    const PositiveInteger = Schema.asSchema(Schema.extend(Positive, Integer))
 
-    Schema.decodeUnknownSync(PositiveInteger)(-1);
+    Schema.decodeUnknownSync(PositiveInteger)(-1)
     /*
     throws
     ParseError: Int & Brand<"Int">
@@ -418,7 +423,7 @@
             └─ Expected Positive & Brand<"Positive">, actual -1
     */
 
-    Schema.decodeUnknownSync(PositiveInteger)(1.1);
+    Schema.decodeUnknownSync(PositiveInteger)(1.1)
     /*
     throws
     ParseError: Int & Brand<"Int">
@@ -465,14 +470,14 @@
   Before
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   const schema = Schema.Struct({
-    a: Schema.NullishOr(Schema.Number),
-  });
+    a: Schema.NullishOr(Schema.Number)
+  })
 
-  const jsonSchema = JSONSchema.make(schema);
-  console.log(JSON.stringify(jsonSchema, null, 2));
+  const jsonSchema = JSONSchema.make(schema)
+  console.log(JSON.stringify(jsonSchema, null, 2))
   /*
   throws
   Error: Missing annotation
@@ -485,14 +490,14 @@
   Now
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   const schema = Schema.Struct({
-    a: Schema.NullishOr(Schema.Number),
-  });
+    a: Schema.NullishOr(Schema.Number)
+  })
 
-  const jsonSchema = JSONSchema.make(schema);
-  console.log(JSON.stringify(jsonSchema, null, 2));
+  const jsonSchema = JSONSchema.make(schema)
+  console.log(JSON.stringify(jsonSchema, null, 2))
   /*
   {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -531,12 +536,12 @@
   Before
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
-  const schema = Schema.Trim.pipe(Schema.nonEmpty());
+  const schema = Schema.Trim.pipe(Schema.nonEmpty())
 
-  const jsonSchema = JSONSchema.make(schema);
-  console.log(JSON.stringify(jsonSchema, null, 2));
+  const jsonSchema = JSONSchema.make(schema)
+  console.log(JSON.stringify(jsonSchema, null, 2))
   /*
   {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -548,12 +553,12 @@
   Now
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
-  const schema = Schema.Trim.pipe(Schema.nonEmpty());
+  const schema = Schema.Trim.pipe(Schema.nonEmpty())
 
-  const jsonSchema = JSONSchema.make(schema);
-  console.log(JSON.stringify(jsonSchema, null, 2));
+  const jsonSchema = JSONSchema.make(schema)
+  console.log(JSON.stringify(jsonSchema, null, 2))
   /*
   {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -633,11 +638,11 @@
   Previously, when a type mismatch occurred in `Schema.decodeUnknownSync`, the error message displayed for `IndexSignature` was not accurately representing the type used. For example:
 
   ```typescript
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
-  const schema = Schema.Record(Schema.Char, Schema.String);
+  const schema = Schema.Record(Schema.Char, Schema.String)
 
-  Schema.decodeUnknownSync(schema)({ a: 1 });
+  Schema.decodeUnknownSync(schema)({ a: 1 })
   /*
   throws
   ParseError: { readonly [x: string]: string }
@@ -653,11 +658,11 @@
   The `toString` implementation now correctly reflects the type used in `IndexSignature`, providing more accurate and informative error messages:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
-  const schema = Schema.Record(Schema.Char, Schema.String);
+  const schema = Schema.Record(Schema.Char, Schema.String)
 
-  Schema.decodeUnknownSync(schema)({ a: 1 });
+  Schema.decodeUnknownSync(schema)({ a: 1 })
   /*
   throws
   ParseError: { readonly [x: Char]: string }
@@ -682,24 +687,24 @@
   **Example: Validating Usernames Asynchronously**
 
   ```ts
-  import { Schema } from "@effect/schema";
-  import { Effect } from "effect";
+  import { Schema } from "@effect/schema"
+  import { Effect } from "effect"
 
   async function validateUsername(username: string) {
-    return Promise.resolve(username === "gcanti");
+    return Promise.resolve(username === "gcanti")
   }
 
   const ValidUsername = Schema.String.pipe(
     Schema.filterEffect((username) =>
       Effect.promise(() =>
-        validateUsername(username).then((valid) => valid || "Invalid username"),
-      ),
-    ),
-  ).annotations({ identifier: "ValidUsername" });
+        validateUsername(username).then((valid) => valid || "Invalid username")
+      )
+    )
+  ).annotations({ identifier: "ValidUsername" })
 
   Effect.runPromise(Schema.decodeUnknown(ValidUsername)("xxx")).then(
-    console.log,
-  );
+    console.log
+  )
   /*
   ParseError: ValidUsername
   └─ Transformation process failure
@@ -714,16 +719,16 @@
   The `pick` static function available in each struct schema can be used to create a new `Struct` by selecting particular properties from an existing `Struct`.
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MyStruct = Schema.Struct({
     a: Schema.String,
     b: Schema.Number,
-    c: Schema.Boolean,
-  });
+    c: Schema.Boolean
+  })
 
   // Schema.Struct<{ a: typeof Schema.String; c: typeof Schema.Boolean; }>
-  const PickedSchema = MyStruct.pick("a", "c");
+  const PickedSchema = MyStruct.pick("a", "c")
   ```
 
   **omit**
@@ -731,16 +736,16 @@
   The `omit` static function available in each struct schema can be used to create a new `Struct` by excluding particular properties from an existing `Struct`.
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MyStruct = Schema.Struct({
     a: Schema.String,
     b: Schema.Number,
-    c: Schema.Boolean,
-  });
+    c: Schema.Boolean
+  })
 
   // Schema.Struct<{ a: typeof Schema.String; c: typeof Schema.Boolean; }>
-  const PickedSchema = MyStruct.omit("b");
+  const PickedSchema = MyStruct.omit("b")
   ```
 
 - Updated dependencies [[`a5737d6`](https://github.com/Effect-TS/effect/commit/a5737d6db2b921605c332eabbc5402ee3d17357b)]:
@@ -757,14 +762,14 @@
   Before
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   const schema = Schema.Record(
     Schema.String.pipe(Schema.minLength(1)),
-    Schema.Number,
-  );
+    Schema.Number
+  )
 
-  console.log(JSONSchema.make(schema));
+  console.log(JSONSchema.make(schema))
   /*
   throws
   Error: Unsupported index signature parameter
@@ -775,14 +780,14 @@
   Now
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   const schema = Schema.Record(
     Schema.String.pipe(Schema.minLength(1)),
-    Schema.Number,
-  );
+    Schema.Number
+  )
 
-  console.log(JSONSchema.make(schema));
+  console.log(JSONSchema.make(schema))
   /*
   Output:
   {
@@ -818,32 +823,32 @@
     - `ReadonlyMap<KA, VA>` -> `{ readonly [x: string]: VI }`
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const schema = Schema.ReadonlyMapFromRecord({
     key: Schema.BigInt,
-    value: Schema.NumberFromString,
-  });
+    value: Schema.NumberFromString
+  })
 
-  const decode = Schema.decodeUnknownSync(schema);
-  const encode = Schema.encodeSync(schema);
+  const decode = Schema.decodeUnknownSync(schema)
+  const encode = Schema.encodeSync(schema)
 
   console.log(
     decode({
       "1": "4",
       "2": "5",
-      "3": "6",
-    }),
-  ); // Map(3) { 1n => 4, 2n => 5, 3n => 6 }
+      "3": "6"
+    })
+  ) // Map(3) { 1n => 4, 2n => 5, 3n => 6 }
   console.log(
     encode(
       new Map([
         [1n, 4],
         [2n, 5],
-        [3n, 6],
-      ]),
-    ),
-  ); // { '1': '4', '2': '5', '3': '6' }
+        [3n, 6]
+      ])
+    )
+  ) // { '1': '4', '2': '5', '3': '6' }
   ```
 
 - Updated dependencies [[`5c0ceb0`](https://github.com/Effect-TS/effect/commit/5c0ceb00826cce9e50bf9d41d83e191d5352c030), [`5c0ceb0`](https://github.com/Effect-TS/effect/commit/5c0ceb00826cce9e50bf9d41d83e191d5352c030), [`33735b1`](https://github.com/Effect-TS/effect/commit/33735b16b41bd26929d8f4754c190925db6323b7), [`5c0ceb0`](https://github.com/Effect-TS/effect/commit/5c0ceb00826cce9e50bf9d41d83e191d5352c030), [`139d4b3`](https://github.com/Effect-TS/effect/commit/139d4b39fb3bff2eeaa7c0c809c581da42425a83)]:
@@ -864,14 +869,14 @@
   Before
 
   ```ts
-  import { JSONSchema, Schema as S } from "@effect/schema";
+  import { JSONSchema, Schema as S } from "@effect/schema"
 
   const schema = S.Struct({
     foo: S.String,
-    bar: S.Number,
-  });
+    bar: S.Number
+  })
 
-  console.log(JSONSchema.make(schema));
+  console.log(JSONSchema.make(schema))
   /*
   {
     '$schema': 'http://json-schema.org/draft-07/schema#',
@@ -889,14 +894,14 @@
   Now
 
   ```ts
-  import { JSONSchema, Schema as S } from "@effect/schema";
+  import { JSONSchema, Schema as S } from "@effect/schema"
 
   const schema = S.Struct({
     foo: S.String,
-    bar: S.Number,
-  });
+    bar: S.Number
+  })
 
-  console.log(JSONSchema.make(schema));
+  console.log(JSONSchema.make(schema))
   /*
   {
     '$schema': 'http://json-schema.org/draft-07/schema#',
@@ -917,21 +922,21 @@
   Example
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   const schema = Schema.Struct({
-    a: Schema.String,
+    a: Schema.String
   })
     .pipe(Schema.filter(() => true, { jsonSchema: { a: 1 } }))
     .pipe(
       Schema.extend(
         Schema.Struct({
-          b: Schema.Number,
-        }).pipe(Schema.filter(() => true, { jsonSchema: { b: 2 } })),
-      ),
-    );
+          b: Schema.Number
+        }).pipe(Schema.filter(() => true, { jsonSchema: { b: 2 } }))
+      )
+    )
 
-  console.log(JSONSchema.make(schema));
+  console.log(JSONSchema.make(schema))
   /*
   {
     '$schema': 'http://json-schema.org/draft-07/schema#',
@@ -962,16 +967,16 @@
   Before
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   // Define a schema that parses a JSON string into a structured object
   const schema = Schema.parseJson(
     Schema.Struct({
-      a: Schema.parseJson(Schema.NumberFromString), // Nested parsing from JSON string to number
-    }),
-  );
+      a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
+    })
+  )
 
-  console.log(JSONSchema.make(schema));
+  console.log(JSONSchema.make(schema))
   /*
   {
     '$schema': 'http://json-schema.org/draft-07/schema#',
@@ -990,16 +995,16 @@
   Now
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   // Define a schema that parses a JSON string into a structured object
   const schema = Schema.parseJson(
     Schema.Struct({
-      a: Schema.parseJson(Schema.NumberFromString), // Nested parsing from JSON string to number
-    }),
-  );
+      a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
+    })
+  )
 
-  console.log(JSONSchema.make(schema));
+  console.log(JSONSchema.make(schema))
   /*
   {
     '$schema': 'http://json-schema.org/draft-07/schema#',
@@ -1056,16 +1061,16 @@
   This commit resolves an issue where the custom message for a struct (or tuple or union) was displayed regardless of whether the validation error was related to the entire struct or just a specific part of it. Previously, users would see the custom error message even when the error only concerned a particular field within the struct and the flag `overwrite` was not set to `true`.
 
   ```ts
-  import { Schema, TreeFormatter } from "@effect/schema";
-  import { Either } from "effect";
+  import { Schema, TreeFormatter } from "@effect/schema"
+  import { Either } from "effect"
 
   const schema = Schema.Struct({
-    a: Schema.String,
-  }).annotations({ message: () => "custom message" });
+    a: Schema.String
+  }).annotations({ message: () => "custom message" })
 
-  const res = Schema.decodeUnknownEither(schema)({ a: null });
+  const res = Schema.decodeUnknownEither(schema)({ a: null })
   if (Either.isLeft(res)) {
-    console.log(TreeFormatter.formatErrorSync(res.left));
+    console.log(TreeFormatter.formatErrorSync(res.left))
     // before: custom message
     // now: { readonly a: string }
     //      └─ ["a"]
@@ -1084,23 +1089,23 @@
   **Example**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   class MyClass extends Schema.Class<MyClass>("MyClass")({
-    someField: Schema.String,
+    someField: Schema.String
   }) {
     someMethod() {
-      return this.someField + "bar";
+      return this.someField + "bar"
     }
   }
 
   // Create an instance of MyClass using the make constructor
-  const instance = MyClass.make({ someField: "foo" }); // same as new MyClass({ someField: "foo" })
+  const instance = MyClass.make({ someField: "foo" }) // same as new MyClass({ someField: "foo" })
 
   // Outputs to console to demonstrate that the instance is correctly created
-  console.log(instance instanceof MyClass); // true
-  console.log(instance.someField); // "foo"
-  console.log(instance.someMethod()); // "foobar"
+  console.log(instance instanceof MyClass) // true
+  console.log(instance.someField) // "foo"
+  console.log(instance.someMethod()) // "foobar"
   ```
 
 ## 0.68.4
@@ -1121,29 +1126,29 @@
   Here's how you can leverage this new feature:
 
   ```ts
-  import { Schema } from "@effect/schema";
-  import { Either } from "effect";
+  import { Schema } from "@effect/schema"
+  import { Either } from "effect"
 
   const schema = Schema.Struct({
     a: Schema.Struct({
       b: Schema.String,
-      c: Schema.String,
+      c: Schema.String
     }).annotations({
       title: "first error only",
-      parseOptions: { errors: "first" }, // Only the first error in this sub-schema is reported
+      parseOptions: { errors: "first" } // Only the first error in this sub-schema is reported
     }),
-    d: Schema.String,
+    d: Schema.String
   }).annotations({
     title: "all errors",
-    parseOptions: { errors: "all" }, // All errors in the main schema are reported
-  });
+    parseOptions: { errors: "all" } // All errors in the main schema are reported
+  })
 
   const result = Schema.decodeUnknownEither(schema)(
     { a: {} },
-    { errors: "first" },
-  );
+    { errors: "first" }
+  )
   if (Either.isLeft(result)) {
-    console.log(result.left.message);
+    console.log(result.left.message)
   }
   /*
   all errors
@@ -1198,29 +1203,29 @@
   **Example of Previous Implementation:**
 
   ```ts
-  import { ArrayFormatter, Schema } from "@effect/schema";
-  import { Either } from "effect";
+  import { ArrayFormatter, Schema } from "@effect/schema"
+  import { Either } from "effect"
 
-  const Password = Schema.Trim.pipe(Schema.minLength(1));
+  const Password = Schema.Trim.pipe(Schema.minLength(1))
 
   const MyForm = Schema.Struct({
     password: Password,
-    confirm_password: Password,
+    confirm_password: Password
   }).pipe(
     Schema.filter((input) => {
       if (input.password !== input.confirm_password) {
-        return "Passwords do not match";
+        return "Passwords do not match"
       }
-    }),
-  );
+    })
+  )
 
   console.log(
     "%o",
     Schema.decodeUnknownEither(MyForm)({
       password: "abc",
-      confirm_password: "d",
-    }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error))),
-  );
+      confirm_password: "d"
+    }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error)))
+  )
   /*
   {
     _id: 'Either',
@@ -1245,32 +1250,32 @@
   **Updated Implementation Example:**
 
   ```ts
-  import { ArrayFormatter, Schema } from "@effect/schema";
-  import { Either } from "effect";
+  import { ArrayFormatter, Schema } from "@effect/schema"
+  import { Either } from "effect"
 
-  const Password = Schema.Trim.pipe(Schema.minLength(1));
+  const Password = Schema.Trim.pipe(Schema.minLength(1))
 
   const MyForm = Schema.Struct({
     password: Password,
-    confirm_password: Password,
+    confirm_password: Password
   }).pipe(
     Schema.filter((input) => {
       if (input.password !== input.confirm_password) {
         return {
           path: ["confirm_password"],
-          message: "Passwords do not match",
-        };
+          message: "Passwords do not match"
+        }
       }
-    }),
-  );
+    })
+  )
 
   console.log(
     "%o",
     Schema.decodeUnknownEither(MyForm)({
       password: "abc",
-      confirm_password: "d",
-    }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error))),
-  );
+      confirm_password: "d"
+    }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error)))
+  )
   /*
   {
     _id: 'Either',
@@ -1295,45 +1300,45 @@
   **Example of Multiple Issues Reporting:**
 
   ```ts
-  import { ArrayFormatter, Schema } from "@effect/schema";
-  import { Either } from "effect";
+  import { ArrayFormatter, Schema } from "@effect/schema"
+  import { Either } from "effect"
 
-  const Password = Schema.Trim.pipe(Schema.minLength(1));
-  const OptionalString = Schema.optional(Schema.String);
+  const Password = Schema.Trim.pipe(Schema.minLength(1))
+  const OptionalString = Schema.optional(Schema.String)
 
   const MyForm = Schema.Struct({
     password: Password,
     confirm_password: Password,
     name: OptionalString,
-    surname: OptionalString,
+    surname: OptionalString
   }).pipe(
     Schema.filter((input) => {
-      const issues: Array<Schema.FilterIssue> = [];
+      const issues: Array<Schema.FilterIssue> = []
       // passwords must match
       if (input.password !== input.confirm_password) {
         issues.push({
           path: ["confirm_password"],
-          message: "Passwords do not match",
-        });
+          message: "Passwords do not match"
+        })
       }
       // either name or surname must be present
       if (!input.name && !input.surname) {
         issues.push({
           path: ["surname"],
-          message: "Surname must be present if name is not present",
-        });
+          message: "Surname must be present if name is not present"
+        })
       }
-      return issues;
-    }),
-  );
+      return issues
+    })
+  )
 
   console.log(
     "%o",
     Schema.decodeUnknownEither(MyForm)({
       password: "abc",
-      confirm_password: "d",
-    }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error))),
-  );
+      confirm_password: "d"
+    }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error)))
+  )
   /*
   {
     _id: 'Either',
@@ -1371,7 +1376,7 @@
     | Pointer
     | Refinement
     | Transformation
-    | Composite;
+    | Composite
   ```
 
   **Key Changes in the Model:**
@@ -1390,11 +1395,11 @@
 
   ```ts
   interface Composite {
-    readonly _tag: "Composite";
-    readonly ast: AST.Annotated;
-    readonly actual: unknown;
-    readonly issues: ParseIssue | NonEmptyReadonlyArray<ParseIssue>;
-    readonly output?: unknown;
+    readonly _tag: "Composite"
+    readonly ast: AST.Annotated
+    readonly actual: unknown
+    readonly issues: ParseIssue | NonEmptyReadonlyArray<ParseIssue>
+    readonly output?: unknown
   }
   ```
 
@@ -1405,9 +1410,9 @@
   **Example**
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
-  JSONSchema.make(Schema.Struct({ a: Schema.Void }));
+  JSONSchema.make(Schema.Struct({ a: Schema.Void }))
   /*
   throws:
   Error: Missing annotation
@@ -1422,22 +1427,22 @@
   Annotations are used to add metadata to tuple elements, which can describe the purpose or requirements of each element more clearly. This can be particularly useful when generating documentation or JSON schemas from your schemas.
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   // Defining a tuple with annotations for each coordinate in a point
   const Point = Schema.Tuple(
     Schema.element(Schema.Number).annotations({
       title: "X",
-      description: "X coordinate",
+      description: "X coordinate"
     }),
     Schema.optionalElement(Schema.Number).annotations({
       title: "Y",
-      description: "optional Y coordinate",
-    }),
-  );
+      description: "optional Y coordinate"
+    })
+  )
 
   // Generating a JSON Schema from the tuple
-  console.log(JSONSchema.make(Point));
+  console.log(JSONSchema.make(Point))
   /*
   Output:
   {
@@ -1464,15 +1469,15 @@
   Example (missing field)
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const Person = Schema.Struct({
     name: Schema.propertySignature(Schema.String).annotations({
-      missingMessage: () => "Name is required",
-    }),
-  });
+      missingMessage: () => "Name is required"
+    })
+  })
 
-  Schema.decodeUnknownSync(Person)({});
+  Schema.decodeUnknownSync(Person)({})
   /*
   Output:
   Error: { readonly name: string }
@@ -1484,18 +1489,18 @@
   Example (missing element)
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const Point = Schema.Tuple(
     Schema.element(Schema.Number).annotations({
-      missingMessage: () => "X coordinate is required",
+      missingMessage: () => "X coordinate is required"
     }),
     Schema.element(Schema.Number).annotations({
-      missingMessage: () => "Y coordinate is required",
-    }),
-  );
+      missingMessage: () => "Y coordinate is required"
+    })
+  )
 
-  Schema.decodeUnknownSync(Point)([], { errors: "all" });
+  Schema.decodeUnknownSync(Point)([], { errors: "all" })
   /*
   Output:
   Error: readonly [number, number]
@@ -1513,24 +1518,24 @@
   Before
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   // Example of adding an identifier using a dedicated API
-  const schema = Schema.String.pipe(Schema.identifier("myIdentitifer"));
+  const schema = Schema.String.pipe(Schema.identifier("myIdentitifer"))
   ```
 
   Now
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   // Directly using the annotations method
-  const schema = Schema.String.annotations({ identifier: "myIdentitifer" });
+  const schema = Schema.String.annotations({ identifier: "myIdentitifer" })
   // or
   const schema2 = Schema.String.pipe(
     // Using the annotations function in a pipe-able format
-    Schema.annotations({ identifier: "myIdentitifer" }),
-  );
+    Schema.annotations({ identifier: "myIdentitifer" })
+  )
   ```
 
   ## Standardize Error Handling for `*Either`, `*Sync` and `asserts` APIs
@@ -1538,21 +1543,21 @@
   Now the `*Sync` and `asserts` APIs throw a `ParseError` while before they was throwing a simple `Error` with a `cause` containing a `ParseIssue`
 
   ```ts
-  import { ParseResult, Schema } from "@effect/schema";
+  import { ParseResult, Schema } from "@effect/schema"
 
   try {
-    Schema.decodeUnknownSync(Schema.String)(null);
+    Schema.decodeUnknownSync(Schema.String)(null)
   } catch (e) {
-    console.log(ParseResult.isParseError(e)); // true
+    console.log(ParseResult.isParseError(e)) // true
   }
 
   const asserts: (u: unknown) => asserts u is string = Schema.asserts(
-    Schema.String,
-  );
+    Schema.String
+  )
   try {
-    asserts(null);
+    asserts(null)
   } catch (e) {
-    console.log(ParseResult.isParseError(e)); // true
+    console.log(ParseResult.isParseError(e)) // true
   }
   ```
 
@@ -1702,34 +1707,34 @@
   **Example** (Synchronous Decoding)
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const schema = Schema.Struct({
     a: Schema.Number,
     b: Schema.Literal("b"),
-    c: Schema.Number,
-  });
+    c: Schema.Number
+  })
 
   // Decoding an object synchronously without specifying the property order
-  console.log(Schema.decodeUnknownSync(schema)({ b: "b", c: 2, a: 1 }));
+  console.log(Schema.decodeUnknownSync(schema)({ b: "b", c: 2, a: 1 }))
   // Output decided internally: { b: 'b', a: 1, c: 2 }
 
   // Decoding an object synchronously while preserving the order of properties as in the input
   console.log(
     Schema.decodeUnknownSync(schema)(
       { b: "b", c: 2, a: 1 },
-      { propertyOrder: "original" },
-    ),
-  );
+      { propertyOrder: "original" }
+    )
+  )
   // Output preserving input order: { b: 'b', c: 2, a: 1 }
   ```
 
   **Example** (Asynchronous Decoding)
 
   ```ts
-  import { ParseResult, Schema } from "@effect/schema";
-  import type { Duration } from "effect";
-  import { Effect } from "effect";
+  import { ParseResult, Schema } from "@effect/schema"
+  import type { Duration } from "effect"
+  import { Effect } from "effect"
 
   // Function to simulate an asynchronous process within the schema
   const effectify = (duration: Duration.DurationInput) =>
@@ -1737,27 +1742,27 @@
       Schema.transformOrFail(Schema.Number, {
         decode: (x) =>
           Effect.sleep(duration).pipe(Effect.andThen(ParseResult.succeed(x))),
-        encode: ParseResult.succeed,
-      }),
-    );
+        encode: ParseResult.succeed
+      })
+    )
 
   // Define a structure with asynchronous behavior in each field
   const schema = Schema.Struct({
     a: effectify("200 millis"),
     b: effectify("300 millis"),
-    c: effectify("100 millis"),
-  }).annotations({ concurrency: 3 });
+    c: effectify("100 millis")
+  }).annotations({ concurrency: 3 })
 
   // Decoding data asynchronously without preserving order
   Schema.decode(schema)({ a: 1, b: 2, c: 3 })
     .pipe(Effect.runPromise)
-    .then(console.log);
+    .then(console.log)
   // Output decided internally: { c: 3, a: 1, b: 2 }
 
   // Decoding data asynchronously while preserving the original input order
   Schema.decode(schema)({ a: 1, b: 2, c: 3 }, { propertyOrder: "original" })
     .pipe(Effect.runPromise)
-    .then(console.log);
+    .then(console.log)
   // Output preserving input order: { a: 1, b: 2, c: 3 }
   ```
 
@@ -1777,14 +1782,14 @@
   Example
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const BrandedNumberSchema = Schema.Number.pipe(
     Schema.between(1, 10),
-    Schema.brand("MyNumber"),
-  );
+    Schema.brand("MyNumber")
+  )
 
-  BrandedNumberSchema.make(20, { disableValidation: true }); // Bypasses validation and creates the instance without errors
+  BrandedNumberSchema.make(20, { disableValidation: true }) // Bypasses validation and creates the instance without errors
   ```
 
 - Updated dependencies [[`8c5d280`](https://github.com/Effect-TS/effect/commit/8c5d280c0402284a4e58372867a15a431cb99461), [`6ba6d26`](https://github.com/Effect-TS/effect/commit/6ba6d269f5891e6b11aa35c5281dde4bf3273004), [`3f28bf2`](https://github.com/Effect-TS/effect/commit/3f28bf274333611906175446b772243f34f1b6d5), [`5817820`](https://github.com/Effect-TS/effect/commit/58178204a770d1a78c06945ef438f9fffbb50afa)]:
@@ -1813,29 +1818,29 @@
   Before
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   // `https://${string}.com` | `https://${string}.net`
   const MyUrl = Schema.TemplateLiteral(
     Schema.Literal("https://"),
     Schema.String,
     Schema.Literal("."),
-    Schema.Literal("com", "net"),
-  );
+    Schema.Literal("com", "net")
+  )
   ```
 
   Now
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   // `https://${string}.com` | `https://${string}.net`
   const MyUrl = Schema.TemplateLiteral(
     "https://",
     Schema.String,
     ".",
-    Schema.Literal("com", "net"),
-  );
+    Schema.Literal("com", "net")
+  )
   ```
 
 - [#2905](https://github.com/Effect-TS/effect/pull/2905) [`7d6d875`](https://github.com/Effect-TS/effect/commit/7d6d8750077d9c8379f37240745240d7f3b7a4f8) Thanks @gcanti! - add support for unions to `rename`, closes #2904
@@ -1856,20 +1861,20 @@
   **Example Usage:**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const schema = Schema.Struct({
-    foo: Schema.String.pipe(Schema.minLength(3), Schema.compose(Schema.Trim)),
-  });
+    foo: Schema.String.pipe(Schema.minLength(3), Schema.compose(Schema.Trim))
+  })
 
   // The resultingEncodedBoundSchema preserves the minLength(3) refinement,
   // ensuring the string length condition is enforced but omits the Trim transformation.
-  const resultingEncodedBoundSchema = Schema.encodedBoundSchema(schema);
+  const resultingEncodedBoundSchema = Schema.encodedBoundSchema(schema)
 
   // resultingEncodedBoundSchema is the same as:
   Schema.Struct({
-    foo: Schema.String.pipe(Schema.minLength(3)),
-  });
+    foo: Schema.String.pipe(Schema.minLength(3))
+  })
   ```
 
   In the provided example:
@@ -1919,19 +1924,19 @@
   The `tag` constructor is specifically designed to create a property signature that holds a specific literal value, serving as the discriminator for object types. Here's how you can define a schema with a tag:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const User = Schema.Struct({
     _tag: Schema.tag("User"),
     name: Schema.String,
-    age: Schema.Number,
-  });
+    age: Schema.Number
+  })
 
   assert.deepStrictEqual(User.make({ name: "John", age: 44 }), {
     _tag: "User",
     name: "John",
-    age: 44,
-  });
+    age: 44
+  })
   ```
 
   In the example above, `Schema.tag("User")` attaches a `_tag` property to the `User` struct schema, effectively labeling objects of this struct type as "User". This label is automatically applied when using the `make` method to create new instances, simplifying object creation and ensuring consistent tagging.
@@ -1941,21 +1946,21 @@
   The `TaggedStruct` constructor streamlines the process of creating tagged structs by directly integrating the tag into the struct definition. This method provides a clearer and more declarative approach to building data structures with embedded discriminators.
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const User = Schema.TaggedStruct("User", {
     name: Schema.String,
-    age: Schema.Number,
-  });
+    age: Schema.Number
+  })
 
   // `_tag` is optional
-  const userInstance = User.make({ name: "John", age: 44 });
+  const userInstance = User.make({ name: "John", age: 44 })
 
   assert.deepStrictEqual(userInstance, {
     _tag: "User",
     name: "John",
-    age: 44,
-  });
+    age: 44
+  })
   ```
 
   **Multiple Tags**
@@ -1963,23 +1968,23 @@
   While a primary tag is often sufficient, TypeScript allows you to define multiple tags for more complex data structuring needs. Here's an example demonstrating the use of multiple tags within a single struct:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const Product = Schema.TaggedStruct("Product", {
     category: Schema.tag("Electronics"),
     name: Schema.String,
-    price: Schema.Number,
-  });
+    price: Schema.Number
+  })
 
   // `_tag` and `category` are optional
-  const productInstance = Product.make({ name: "Smartphone", price: 999 });
+  const productInstance = Product.make({ name: "Smartphone", price: 999 })
 
   assert.deepStrictEqual(productInstance, {
     _tag: "Product",
     category: "Electronics",
     name: "Smartphone",
-    price: 999,
-  });
+    price: 999
+  })
   ```
 
   This example showcases a product schema that not only categorizes each product under a general tag (`"Product"`) but also specifies a category tag (`"Electronics"`), enhancing the clarity and specificity of the data model.
@@ -2087,9 +2092,9 @@
   **Before:**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
-  declare const array: Array<string | number>;
+  declare const array: Array<string | number>
 
   /*
   Throws an error:
@@ -2097,18 +2102,18 @@
   ...
   Types of parameters 'overrideOptions' and 'index' are incompatible.
   */
-  const strings = array.filter(Schema.is(Schema.String));
+  const strings = array.filter(Schema.is(Schema.String))
   ```
 
   **Now:**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
-  declare const array: Array<string | number>;
+  declare const array: Array<string | number>
 
   // const strings: string[]
-  const strings = array.filter(Schema.is(Schema.String));
+  const strings = array.filter(Schema.is(Schema.String))
   ```
 
   Note that the result has been correctly narrowed to `string[]`.
@@ -2133,29 +2138,29 @@
   **Example**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const Product = Schema.Struct({
     name: Schema.String,
     price: Schema.NumberFromString,
-    quantity: Schema.optional(Schema.NumberFromString, { default: () => 1 }),
-  });
+    quantity: Schema.optional(Schema.NumberFromString, { default: () => 1 })
+  })
 
   // Applying defaults in the decoding phase
   console.log(
-    Schema.decodeUnknownSync(Product)({ name: "Laptop", price: "999" }),
-  ); // { name: 'Laptop', price: 999, quantity: 1 }
+    Schema.decodeUnknownSync(Product)({ name: "Laptop", price: "999" })
+  ) // { name: 'Laptop', price: 999, quantity: 1 }
   console.log(
     Schema.decodeUnknownSync(Product)({
       name: "Laptop",
       price: "999",
-      quantity: "2",
-    }),
-  ); // { name: 'Laptop', price: 999, quantity: 2 }
+      quantity: "2"
+    })
+  ) // { name: 'Laptop', price: 999, quantity: 2 }
 
   // Applying defaults in the constructor
-  console.log(Product.make({ name: "Laptop", price: 999 })); // { name: 'Laptop', price: 999, quantity: 1 }
-  console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })); // { name: 'Laptop', price: 999, quantity: 2 }
+  console.log(Product.make({ name: "Laptop", price: 999 })) // { name: 'Laptop', price: 999, quantity: 1 }
+  console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name: 'Laptop', price: 999, quantity: 2 }
   ```
 
 ## 0.67.1
@@ -2176,18 +2181,18 @@
   Now, you can easily access `Type` and `Encoded` directly from a schema without the need for `Schema.Schema.Type` and `Schema.Schema.Encoded`.
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const PersonSchema = Schema.Struct({
     name: Schema.String,
-    age: Schema.NumberFromString,
-  });
+    age: Schema.NumberFromString
+  })
 
   // same as type PersonType = Schema.Schema.Type<typeof PersonSchema>
-  type PersonType = typeof PersonSchema.Type;
+  type PersonType = typeof PersonSchema.Type
 
   // same as Schema.Schema.Encoded<typeof PersonSchema>
-  type PersonEncoded = typeof PersonSchema.Encoded;
+  type PersonEncoded = typeof PersonSchema.Encoded
   ```
 
   ## Default Constructors
@@ -2203,14 +2208,14 @@
   **Example** (`Struct`)
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MyStruct = Schema.Struct({
-    name: Schema.NonEmpty,
-  });
+    name: Schema.NonEmpty
+  })
 
-  MyStruct.make({ name: "a" }); // ok
-  MyStruct.make({ name: "" });
+  MyStruct.make({ name: "a" }) // ok
+  MyStruct.make({ name: "" })
   /*
   throws
   Error: { name: NonEmpty }
@@ -2224,13 +2229,13 @@
   **Example** (`filter`)
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
-  const MyNumber = Schema.Number.pipe(Schema.between(1, 10));
+  const MyNumber = Schema.Number.pipe(Schema.between(1, 10))
 
   // const n: number
-  const n = MyNumber.make(5); // ok
-  MyNumber.make(20);
+  const n = MyNumber.make(5) // ok
+  MyNumber.make(20)
   /*
   throws
   Error: a number between 1 and 10
@@ -2242,16 +2247,16 @@
   **Example** (`brand`)
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MyBrand = Schema.Number.pipe(
     Schema.between(1, 10),
-    Schema.brand("MyNumber"),
-  );
+    Schema.brand("MyNumber")
+  )
 
   // const n: number & Brand<"MyNumber">
-  const n = MyBrand.make(5); // ok
-  MyBrand.make(20);
+  const n = MyBrand.make(5) // ok
+  MyBrand.make(20)
   /*
   throws
   Error: a number between 1 and 10
@@ -2269,18 +2274,18 @@
   To have a "safe" constructor, you can use `Schema.validateEither`:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
-  const MyNumber = Schema.Number.pipe(Schema.between(1, 10));
+  const MyNumber = Schema.Number.pipe(Schema.between(1, 10))
 
-  const ctor = Schema.validateEither(MyNumber);
+  const ctor = Schema.validateEither(MyNumber)
 
-  console.log(ctor(5));
+  console.log(ctor(5))
   /*
   { _id: 'Either', _tag: 'Right', right: 5 }
   */
 
-  console.log(ctor(20));
+  console.log(ctor(20))
   /*
   {
     _id: 'Either',
@@ -2303,41 +2308,41 @@
   **Example**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const PersonSchema = Schema.Struct({
     name: Schema.NonEmpty,
     age: Schema.Number.pipe(
       Schema.propertySignature,
-      Schema.withConstructorDefault(() => 0),
-    ),
-  });
+      Schema.withConstructorDefault(() => 0)
+    )
+  })
 
   // The age field is optional and defaults to 0
-  console.log(PersonSchema.make({ name: "John" }));
+  console.log(PersonSchema.make({ name: "John" }))
   // => { age: 0, name: 'John' }
   ```
 
   Defaults are **lazily evaluated**, meaning that a new instance of the default is generated every time the constructor is called:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const PersonSchema = Schema.Struct({
     name: Schema.NonEmpty,
     age: Schema.Number.pipe(
       Schema.propertySignature,
-      Schema.withConstructorDefault(() => 0),
+      Schema.withConstructorDefault(() => 0)
     ),
     timestamp: Schema.Number.pipe(
       Schema.propertySignature,
-      Schema.withConstructorDefault(() => new Date().getTime()),
-    ),
-  });
+      Schema.withConstructorDefault(() => new Date().getTime())
+    )
+  })
 
-  console.log(PersonSchema.make({ name: "name1" }));
+  console.log(PersonSchema.make({ name: "name1" }))
   // => { age: 0, timestamp: 1714232909221, name: 'name1' }
-  console.log(PersonSchema.make({ name: "name2" }));
+  console.log(PersonSchema.make({ name: "name2" }))
   // => { age: 0, timestamp: 1714232909227, name: 'name2' }
   ```
 
@@ -2346,70 +2351,70 @@
   Defaults can also be applied using the `Class` API:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   class Person extends Schema.Class<Person>("Person")({
     name: Schema.NonEmpty,
     age: Schema.Number.pipe(
       Schema.propertySignature,
-      Schema.withConstructorDefault(() => 0),
+      Schema.withConstructorDefault(() => 0)
     ),
     timestamp: Schema.Number.pipe(
       Schema.propertySignature,
-      Schema.withConstructorDefault(() => new Date().getTime()),
-    ),
+      Schema.withConstructorDefault(() => new Date().getTime())
+    )
   }) {}
 
-  console.log(new Person({ name: "name1" }));
+  console.log(new Person({ name: "name1" }))
   // => Person { age: 0, timestamp: 1714400867208, name: 'name1' }
-  console.log(new Person({ name: "name2" }));
+  console.log(new Person({ name: "name2" }))
   // => Person { age: 0, timestamp: 1714400867215, name: 'name2' }
   ```
 
   Default values are also "portable", meaning that if you reuse the same property signature in another schema, the default is carried over:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const PersonSchema = Schema.Struct({
     name: Schema.NonEmpty,
     age: Schema.Number.pipe(
       Schema.propertySignature,
-      Schema.withConstructorDefault(() => 0),
+      Schema.withConstructorDefault(() => 0)
     ),
     timestamp: Schema.Number.pipe(
       Schema.propertySignature,
-      Schema.withConstructorDefault(() => new Date().getTime()),
-    ),
-  });
+      Schema.withConstructorDefault(() => new Date().getTime())
+    )
+  })
 
   const AnotherSchema = Schema.Struct({
     foo: Schema.String,
-    age: PersonSchema.fields.age,
-  });
+    age: PersonSchema.fields.age
+  })
 
-  console.log(AnotherSchema.make({ foo: "bar" })); // => { foo: 'bar', age: 0 }
+  console.log(AnotherSchema.make({ foo: "bar" })) // => { foo: 'bar', age: 0 }
   ```
 
   Defaults can also be applied using the `Class` API:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   class Person extends Schema.Class<Person>("Person")({
     name: Schema.NonEmpty,
     age: Schema.Number.pipe(
       Schema.propertySignature,
-      Schema.withConstructorDefault(() => 0),
+      Schema.withConstructorDefault(() => 0)
     ),
     timestamp: Schema.Number.pipe(
       Schema.propertySignature,
-      Schema.withConstructorDefault(() => new Date().getTime()),
-    ),
+      Schema.withConstructorDefault(() => new Date().getTime())
+    )
   }) {}
 
-  console.log(new Person({ name: "name1" })); // Person { age: 0, timestamp: 1714400867208, name: 'name1' }
-  console.log(new Person({ name: "name2" })); // Person { age: 0, timestamp: 1714400867215, name: 'name2' }
+  console.log(new Person({ name: "name1" })) // Person { age: 0, timestamp: 1714400867208, name: 'name1' }
+  console.log(new Person({ name: "name2" })) // Person { age: 0, timestamp: 1714400867215, name: 'name2' }
   ```
 
   ## Default Decoding Values
@@ -2417,45 +2422,43 @@
   Our new `Schema.withDecodingDefault` combinator makes it easy to handle the optionality of a field during the **decoding process**.
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MySchema = Schema.Struct({
-    a: Schema.optional(Schema.String).pipe(
-      Schema.withDecodingDefault(() => ""),
-    ),
-  });
+    a: Schema.optional(Schema.String).pipe(Schema.withDecodingDefault(() => ""))
+  })
 
-  console.log(Schema.decodeUnknownSync(MySchema)({}));
+  console.log(Schema.decodeUnknownSync(MySchema)({}))
   // => { a: '' }
-  console.log(Schema.decodeUnknownSync(MySchema)({ a: undefined }));
+  console.log(Schema.decodeUnknownSync(MySchema)({ a: undefined }))
   // => { a: '' }
-  console.log(Schema.decodeUnknownSync(MySchema)({ a: "a" }));
+  console.log(Schema.decodeUnknownSync(MySchema)({ a: "a" }))
   // => { a: 'a' }
   ```
 
   If you want to set default values both for the decoding phase and for the default constructor, you can use `Schema.withDefaults`:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MySchema = Schema.Struct({
     a: Schema.optional(Schema.String).pipe(
       Schema.withDefaults({
         decoding: () => "",
-        constructor: () => "-",
-      }),
-    ),
-  });
+        constructor: () => "-"
+      })
+    )
+  })
 
-  console.log(Schema.decodeUnknownSync(MySchema)({}));
+  console.log(Schema.decodeUnknownSync(MySchema)({}))
   // => { a: '' }
-  console.log(Schema.decodeUnknownSync(MySchema)({ a: undefined }));
+  console.log(Schema.decodeUnknownSync(MySchema)({ a: undefined }))
   // => { a: '' }
-  console.log(Schema.decodeUnknownSync(MySchema)({ a: "a" }));
+  console.log(Schema.decodeUnknownSync(MySchema)({ a: "a" }))
   // => { a: 'a' }
 
-  console.log(MySchema.make({})); // => { a: '-' }
-  console.log(MySchema.make({ a: "a" })); // => { a: 'a' }
+  console.log(MySchema.make({})) // => { a: '-' }
+  console.log(MySchema.make({ a: "a" })) // => { a: 'a' }
   ```
 
   ## Refactoring of Custom Message System
@@ -2467,22 +2470,22 @@
   **Previous Approach**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MyString = Schema.String.pipe(
     Schema.minLength(1),
-    Schema.maxLength(2),
+    Schema.maxLength(2)
   ).annotations({
     // This message always takes precedence
     // So, for any error, the same message will always be shown
-    message: () => "my custom message",
-  });
+    message: () => "my custom message"
+  })
 
-  const decode = Schema.decodeUnknownEither(MyString);
+  const decode = Schema.decodeUnknownEither(MyString)
 
-  console.log(decode(null)); // "my custom message"
-  console.log(decode("")); // "my custom message"
-  console.log(decode("abc")); // "my custom message"
+  console.log(decode(null)) // "my custom message"
+  console.log(decode("")) // "my custom message"
+  console.log(decode("abc")) // "my custom message"
   ```
 
   As you can see, no matter where the decoding error is raised, the same error message will always be presented because in the previous version, the custom message by default overrides those generated by previous filters.
@@ -2492,49 +2495,49 @@
   **Current Approach**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MyString = Schema.String.pipe(
     Schema.minLength(1),
-    Schema.maxLength(2),
+    Schema.maxLength(2)
   ).annotations({
     // This message is shown only if the maxLength filter fails
-    message: () => "my custom message",
-  });
+    message: () => "my custom message"
+  })
 
-  const decode = Schema.decodeUnknownEither(MyString);
+  const decode = Schema.decodeUnknownEither(MyString)
 
-  console.log(decode(null)); // "Expected a string, actual null"
-  console.log(decode("")); // `Expected a string at least 1 character(s) long, actual ""`
-  console.log(decode("abc")); // "my custom message"
+  console.log(decode(null)) // "Expected a string, actual null"
+  console.log(decode("")) // `Expected a string at least 1 character(s) long, actual ""`
+  console.log(decode("abc")) // "my custom message"
   ```
 
   To restore the old behavior (for example, to address the scenario where a user wants to define a single cumulative custom message describing the properties that a valid value must have and does not want to see default messages), you need to set the `override` flag to `true`:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MyString = Schema.String.pipe(
     Schema.minLength(1),
-    Schema.maxLength(2),
+    Schema.maxLength(2)
   ).annotations({
     // By setting the `override` flag to `true`
     // this message will always be shown for any error
-    message: () => ({ message: "my custom message", override: true }),
-  });
+    message: () => ({ message: "my custom message", override: true })
+  })
 
-  const decode = Schema.decodeUnknownEither(MyString);
+  const decode = Schema.decodeUnknownEither(MyString)
 
-  console.log(decode(null)); // "my custom message"
-  console.log(decode("")); // "my custom message"
-  console.log(decode("abc")); // "my custom message"
+  console.log(decode(null)) // "my custom message"
+  console.log(decode("")) // "my custom message"
+  console.log(decode("abc")) // "my custom message"
   ```
 
   The new system is particularly useful when the schema on which custom messages are defined is more complex than a scalar value (like `string` or `number`), for example, if it's a struct containing a field that is an array of structs. Let's see an example that illustrates how convenient it is to rely on default messages when the decoding error occurs in a nested structure:
 
   ```ts
-  import { Schema } from "@effect/schema";
-  import { pipe } from "effect";
+  import { Schema } from "@effect/schema"
+  import { pipe } from "effect"
 
   const schema = Schema.Struct({
     outcomes: pipe(
@@ -2545,17 +2548,17 @@
             Schema.String,
             Schema.message(() => "error_invalid_outcome_type"),
             Schema.minLength(1, { message: () => "error_required_field" }),
-            Schema.maxLength(50, { message: () => "error_max_length_field" }),
-          ),
-        }),
+            Schema.maxLength(50, { message: () => "error_max_length_field" })
+          )
+        })
       ),
-      Schema.minItems(1, { message: () => "error_min_length_field" }),
-    ),
-  });
+      Schema.minItems(1, { message: () => "error_min_length_field" })
+    )
+  })
 
   Schema.decodeUnknownSync(schema, { errors: "all" })({
-    outcomes: [],
-  });
+    outcomes: []
+  })
   /*
   throws
   Error: { outcomes: an array of at least 1 items }
@@ -2567,9 +2570,9 @@
     outcomes: [
       { id: "1", text: "" },
       { id: "2", text: "this one is valid" },
-      { id: "3", text: "1234567890".repeat(6) },
-    ],
-  });
+      { id: "3", text: "1234567890".repeat(6) }
+    ]
+  })
   /*
   throws
   Error: { outcomes: an array of at least 1 items }
@@ -2595,21 +2598,21 @@
   We've introduced a new API interface to the `filter` API. This allows you to access the refined schema using the exposed `from` field:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const MyFilter = Schema.Struct({
-    a: Schema.String,
-  }).pipe(Schema.filter(() => /* some filter... */ true));
+    a: Schema.String
+  }).pipe(Schema.filter(() => /* some filter... */ true))
 
   // const aField: typeof Schema.String
-  const aField = MyFilter.from.fields.a;
+  const aField = MyFilter.from.fields.a
   ```
 
   The signature of the `filter` function has been simplified and streamlined to be more ergonomic when setting a default message. In the new signature of `filter`, the type of the predicate passed as an argument is as follows:
 
   ```ts
   predicate: (a: A, options: ParseOptions, self: AST.Refinement) =>
-    undefined | boolean | string | ParseResult.ParseIssue;
+    undefined | boolean | string | ParseResult.ParseIssue
   ```
 
   with the following semantics:
@@ -2624,18 +2627,18 @@
   **Before**
 
   ```ts
-  import { Schema, ParseResult } from "@effect/schema";
-  import { Option } from "effect";
+  import { Schema, ParseResult } from "@effect/schema"
+  import { Option } from "effect"
 
   const Positive = Schema.Number.pipe(
     Schema.filter((n, _, ast) =>
       n > 0
         ? Option.none()
-        : Option.some(new ParseResult.Type(ast, n, "must be positive")),
-    ),
-  );
+        : Option.some(new ParseResult.Type(ast, n, "must be positive"))
+    )
+  )
 
-  Schema.decodeUnknownSync(Positive)(-1);
+  Schema.decodeUnknownSync(Positive)(-1)
   /*
   throws
   Error: <refinement schema>
@@ -2647,13 +2650,13 @@
   **Now**
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const Positive = Schema.Number.pipe(
-    Schema.filter((n) => (n > 0 ? undefined : "must be positive")),
-  );
+    Schema.filter((n) => (n > 0 ? undefined : "must be positive"))
+  )
 
-  Schema.decodeUnknownSync(Positive)(-1);
+  Schema.decodeUnknownSync(Positive)(-1)
   /*
   throws
   Error: { number | filter }
@@ -2669,16 +2672,16 @@
   Let's see an example:
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   const schema = Schema.Struct({
     foo: Schema.String.pipe(Schema.minLength(2)),
     bar: Schema.optional(Schema.NumberFromString, {
-      default: () => 0,
-    }),
-  });
+      default: () => 0
+    })
+  })
 
-  console.log(JSON.stringify(JSONSchema.make(schema), null, 2));
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
   ```
 
   Now, let's compare the JSON Schemas produced in both the previous and new versions.
@@ -2716,7 +2719,7 @@
   This happens because in the previous version, the `JSONSchema.make` API by default produces a JSON Schema for the `Type` part of the schema. That is:
 
   ```ts
-  type Type = Schema.Schema.Type<typeof schema>;
+  type Type = Schema.Schema.Type<typeof schema>
   /*
   type Type = {
       readonly foo: string;
@@ -2728,7 +2731,7 @@
   However, typically, we are interested in generating a JSON Schema for the input part of the decoding process, i.e., in this case for:
 
   ```ts
-  type Encoded = Schema.Schema.Encoded<typeof schema>;
+  type Encoded = Schema.Schema.Encoded<typeof schema>
   /*
   type Encoded = {
       readonly foo: string;
@@ -2741,8 +2744,8 @@
 
   ```ts
   console.log(
-    JSON.stringify(JSONSchema.make(Schema.encodedSchema(schema)), null, 2),
-  );
+    JSON.stringify(JSONSchema.make(Schema.encodedSchema(schema)), null, 2)
+  )
   ```
 
   But here's what the result would be:
@@ -2804,37 +2807,37 @@
   Now `extend` supports extending refinements, so you can do something like this:
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const RefinedStruct = Schema.Struct({
     a: Schema.Number,
-    b: Schema.Number,
+    b: Schema.Number
   }).pipe(
     Schema.filter((value) => {
       if (value.a !== value.b) {
-        return "`a` must be equal to `b`";
+        return "`a` must be equal to `b`"
       }
-    }),
-  );
+    })
+  )
 
   const AnotherStruct = Schema.Struct({
     c: Schema.String,
-    d: Schema.String,
-  });
+    d: Schema.String
+  })
 
   // in the previous version you would receive an error:
   // Extend: cannot extend `<refinement schema>` with `{ c: string; d: string }` (path [])
-  const Extended = Schema.extend(RefinedStruct, AnotherStruct);
+  const Extended = Schema.extend(RefinedStruct, AnotherStruct)
 
-  console.log(String(Extended));
+  console.log(String(Extended))
 
   console.log(
-    Schema.decodeUnknownSync(Extended)({ a: 1, b: 1, c: "c", d: "d" }),
-  );
+    Schema.decodeUnknownSync(Extended)({ a: 1, b: 1, c: "c", d: "d" })
+  )
   // => { a: 1, b: 1, c: 'c', d: 'd' }
   console.log(
-    Schema.decodeUnknownSync(Extended)({ a: 1, b: 2, c: "c", d: "d" }),
-  );
+    Schema.decodeUnknownSync(Extended)({ a: 1, b: 2, c: "c", d: "d" })
+  )
   /*
   throws
   Error: { { readonly a: number; readonly b: number; readonly c: string; readonly d: string } | filter }
@@ -2846,19 +2849,19 @@
   We've also added support for `Schema.suspend`. Here's an example:
 
   ```ts
-  import { Arbitrary, FastCheck, Schema } from "@effect/schema";
+  import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
   // Define a recursive list type
   type List =
     | {
-        readonly type: "nil";
+        readonly type: "nil"
       }
     | {
-        readonly type: "cons";
+        readonly type: "cons"
         readonly tail: {
-          readonly value: number;
-        } & List; // extend
-      };
+          readonly value: number
+        } & List // extend
+      }
 
   // Define a schema for the list type
   const List: Schema.Schema<List> = Schema.Union(
@@ -2867,14 +2870,14 @@
       type: Schema.Literal("cons"),
       tail: Schema.extend(
         Schema.Struct({ value: Schema.Number }),
-        Schema.suspend(() => List), // extend
-      ),
-    }),
-  );
+        Schema.suspend(() => List) // extend
+      )
+    })
+  )
 
   console.log(
-    JSON.stringify(FastCheck.sample(Arbitrary.make(List), 5), null, 2),
-  );
+    JSON.stringify(FastCheck.sample(Arbitrary.make(List), 5), null, 2)
+  )
   /*
   [
     {
@@ -2957,11 +2960,11 @@
   - remove `hash` function, you can replace it with the following code:
 
     ```ts
-    import { Hash } from "effect";
-    import { AST } from "@effect/schema";
+    import { Hash } from "effect"
+    import { AST } from "@effect/schema"
 
     export const hash = (ast: AST.AST): number =>
-      Hash.string(JSON.stringify(ast, null, 2));
+      Hash.string(JSON.stringify(ast, null, 2))
     ```
 
   JSONSchema
@@ -2970,10 +2973,10 @@
 
     ```ts
     export interface JsonSchemaAnnotations {
-      title?: string;
-      description?: string;
-      default?: unknown;
-      examples?: Array<unknown>;
+      title?: string
+      description?: string
+      default?: unknown
+      examples?: Array<unknown>
     }
     ```
 
@@ -3003,7 +3006,7 @@
     ```ts
     export interface BrandSchema<A extends Brand<any>, I, R>
       extends AnnotableClass<BrandSchema<A, I, R>, A, I, R> {
-      make(a: Brand.Unbranded<A>): A;
+      make(a: Brand.Unbranded<A>): A
     }
     ```
 
@@ -3012,21 +3015,21 @@
     Before
 
     ```ts
-    import { Schema } from "@effect/schema";
+    import { Schema } from "@effect/schema"
 
-    const UserId = Schema.Number.pipe(Schema.brand("UserId"));
+    const UserId = Schema.Number.pipe(Schema.brand("UserId"))
 
-    console.log(UserId(1)); // 1
+    console.log(UserId(1)) // 1
     ```
 
     Now
 
     ```ts
-    import { Schema } from "@effect/schema";
+    import { Schema } from "@effect/schema"
 
-    const UserId = Schema.Number.pipe(Schema.brand("UserId"));
+    const UserId = Schema.Number.pipe(Schema.brand("UserId"))
 
-    console.log(UserId.make(1)); // 1
+    console.log(UserId.make(1)) // 1
     ```
 
 ## 0.66.16
@@ -3092,21 +3095,21 @@
   Before
 
   ```ts
-  import { Schema as S } from "@effect/schema";
+  import { Schema as S } from "@effect/schema"
 
-  S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString)); // ts error
-  S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number))); // ts error
+  S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString)) // ts error
+  S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number))) // ts error
   ```
 
   Now
 
   ```ts
-  import { Schema as S } from "@effect/schema";
+  import { Schema as S } from "@effect/schema"
 
   // $ExpectType Schema<number, string | null, never>
-  S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString)); // ok
+  S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString)) // ok
   // $ExpectType Schema<number | null, string, never>
-  S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number))); // ok
+  S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number))) // ok
   ```
 
 - Updated dependencies [[`ffe4f4e`](https://github.com/Effect-TS/effect/commit/ffe4f4e95db35fff6869e360b072e3837befa0a1), [`027418e`](https://github.com/Effect-TS/effect/commit/027418edaa6aa6c0ae4861b95832827b45adace4), [`ac1898e`](https://github.com/Effect-TS/effect/commit/ac1898eb7bc96880f911c276048e2ea3d6fe9c50), [`ffe4f4e`](https://github.com/Effect-TS/effect/commit/ffe4f4e95db35fff6869e360b072e3837befa0a1)]:
@@ -3155,7 +3158,7 @@
   Before
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const schema = Schema.Struct({
     a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
@@ -3163,10 +3166,10 @@
     c: Schema.String,
     d: Schema.String,
     e: Schema.String,
-    f: Schema.String,
-  });
+    f: Schema.String
+  })
 
-  Schema.decodeUnknownSync(schema)({ a: 1 });
+  Schema.decodeUnknownSync(schema)({ a: 1 })
   /*
   throws
   Error: ({ a?: string; b: string; c: string; d: string; e: string; f: string } <-> { a: string; b: string; c: string; d: string; e: string; f: string })
@@ -3180,7 +3183,7 @@
   Now
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const schema = Schema.Struct({
     a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
@@ -3188,10 +3191,10 @@
     c: Schema.String,
     d: Schema.String,
     e: Schema.String,
-    f: Schema.String,
-  });
+    f: Schema.String
+  })
 
-  Schema.decodeUnknownSync(schema)({ a: 1 });
+  Schema.decodeUnknownSync(schema)({ a: 1 })
   /*
   throws
   Error: (Struct (Encoded side) <-> Struct (Type side))
@@ -3209,19 +3212,19 @@
   Before
 
   ```ts
-  import { JSONSchema, Schema } from "@effect/schema";
+  import { JSONSchema, Schema } from "@effect/schema"
 
   class A extends Schema.Class<A>("A")({
-    a: Schema.String,
+    a: Schema.String
   }) {}
 
-  console.log(JSONSchema.make(A)); // throws MissingAnnotation: cannot build a JSON Schema for a declaration without a JSON Schema annotation
+  console.log(JSONSchema.make(A)) // throws MissingAnnotation: cannot build a JSON Schema for a declaration without a JSON Schema annotation
   ```
 
   Now
 
   ```ts
-  console.log(JSONSchema.make(A));
+  console.log(JSONSchema.make(A))
   /*
   Output:
   {
@@ -3243,36 +3246,36 @@
   Before
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const TestType = Schema.Struct({
     a: Schema.String,
-    b: Schema.propertySignature(Schema.String).pipe(Schema.fromKey("c")),
-  });
+    b: Schema.propertySignature(Schema.String).pipe(Schema.fromKey("c"))
+  })
 
-  const PartialTestType = Schema.partial(TestType);
+  const PartialTestType = Schema.partial(TestType)
   // throws Error: Partial: cannot handle transformations
   ```
 
   Now
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
 
   const TestType = Schema.Struct({
     a: Schema.String,
-    b: Schema.propertySignature(Schema.String).pipe(Schema.fromKey("c")),
-  });
+    b: Schema.propertySignature(Schema.String).pipe(Schema.fromKey("c"))
+  })
 
-  const PartialTestType = Schema.partial(TestType);
+  const PartialTestType = Schema.partial(TestType)
 
-  console.log(Schema.decodeUnknownSync(PartialTestType)({ a: "a", c: "c" })); // { a: 'a', b: 'c' }
-  console.log(Schema.decodeUnknownSync(PartialTestType)({ a: "a" })); // { a: 'a' }
+  console.log(Schema.decodeUnknownSync(PartialTestType)({ a: "a", c: "c" })) // { a: 'a', b: 'c' }
+  console.log(Schema.decodeUnknownSync(PartialTestType)({ a: "a" })) // { a: 'a' }
 
-  const RequiredTestType = Schema.required(PartialTestType);
+  const RequiredTestType = Schema.required(PartialTestType)
 
-  console.log(Schema.decodeUnknownSync(RequiredTestType)({ a: "a", c: "c" })); // { a: 'a', b: 'c' }
-  console.log(Schema.decodeUnknownSync(RequiredTestType)({ a: "a" })); // { a: 'a', b: undefined }
+  console.log(Schema.decodeUnknownSync(RequiredTestType)({ a: "a", c: "c" })) // { a: 'a', b: 'c' }
+  console.log(Schema.decodeUnknownSync(RequiredTestType)({ a: "a" })) // { a: 'a', b: undefined }
   ```
 
 ## 0.66.3
@@ -3311,8 +3314,8 @@
   For all the data types.
 
   ```ts
-  Effect.unit; // => Effect.void
-  Stream.unit; // => Stream.void
+  Effect.unit // => Effect.void
+  Stream.unit // => Stream.void
 
   // etc
   ```
@@ -3446,38 +3449,38 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before
 
   ```ts
-  import { Arbitrary, Schema } from "@effect/schema";
-  import * as fc from "fast-check";
+  import { Arbitrary, Schema } from "@effect/schema"
+  import * as fc from "fast-check"
 
   const Person = Schema.struct({
     name: Schema.string,
     age: Schema.string.pipe(
       Schema.compose(Schema.NumberFromString),
-      Schema.int(),
-    ),
-  });
+      Schema.int()
+    )
+  })
 
-  const arb = Arbitrary.make(Person)(fc);
+  const arb = Arbitrary.make(Person)(fc)
 
-  console.log(fc.sample(arb, 2));
+  console.log(fc.sample(arb, 2))
   ```
 
   Now
 
   ```ts
-  import { Arbitrary, FastCheck, Schema } from "@effect/schema";
+  import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
   const Person = Schema.Struct({
     name: Schema.String,
     age: Schema.String.pipe(
       Schema.compose(Schema.NumberFromString),
-      Schema.int(),
-    ),
-  });
+      Schema.int()
+    )
+  })
 
-  const arb = Arbitrary.make(Person);
+  const arb = Arbitrary.make(Person)
 
-  console.log(FastCheck.sample(arb, 2));
+  console.log(FastCheck.sample(arb, 2))
   ```
 
 ### Patch Changes
@@ -3501,8 +3504,8 @@ The codemod is designed to automate many of the changes needed. However, it migh
 
   ```ts
   export type ParseIssueTitleAnnotation = (
-    issue: ParseIssue,
-  ) => string | undefined;
+    issue: ParseIssue
+  ) => string | undefined
   ```
 
   If you set this annotation on a schema and the provided function returns a `string`, then that string is used as the title by `TreeFormatter`, unless a `message` annotation (which has the highest priority) has also been set. If the function returns `undefined`, then the default title used by `TreeFormatter` is determined with the following priorities:
@@ -3515,43 +3518,43 @@ The codemod is designed to automate many of the changes needed. However, it migh
   **Example**
 
   ```ts
-  import type { ParseIssue } from "@effect/schema/ParseResult";
-  import * as S from "@effect/schema/Schema";
+  import type { ParseIssue } from "@effect/schema/ParseResult"
+  import * as S from "@effect/schema/Schema"
 
   const getOrderItemId = ({ actual }: ParseIssue) => {
     if (S.is(S.struct({ id: S.string }))(actual)) {
-      return `OrderItem with id: ${actual.id}`;
+      return `OrderItem with id: ${actual.id}`
     }
-  };
+  }
 
   const OrderItem = S.struct({
     id: S.string,
     name: S.string,
-    price: S.number,
+    price: S.number
   }).annotations({
     identifier: "OrderItem",
-    parseIssueTitle: getOrderItemId,
-  });
+    parseIssueTitle: getOrderItemId
+  })
 
   const getOrderId = ({ actual }: ParseIssue) => {
     if (S.is(S.struct({ id: S.number }))(actual)) {
-      return `Order with id: ${actual.id}`;
+      return `Order with id: ${actual.id}`
     }
-  };
+  }
 
   const Order = S.struct({
     id: S.number,
     name: S.string,
-    items: S.array(OrderItem),
+    items: S.array(OrderItem)
   }).annotations({
     identifier: "Order",
-    parseIssueTitle: getOrderId,
-  });
+    parseIssueTitle: getOrderId
+  })
 
-  const decode = S.decodeUnknownSync(Order, { errors: "all" });
+  const decode = S.decodeUnknownSync(Order, { errors: "all" })
 
   // No id available, so the `identifier` annotation is used as the title
-  decode({});
+  decode({})
   /*
   throws
   Error: Order
@@ -3564,7 +3567,7 @@ The codemod is designed to automate many of the changes needed. However, it migh
   */
 
   // An id is available, so the `parseIssueTitle` annotation is used as the title
-  decode({ id: 1 });
+  decode({ id: 1 })
   /*
   throws
   Error: Order with id: 1
@@ -3574,7 +3577,7 @@ The codemod is designed to automate many of the changes needed. However, it migh
      └─ is missing
   */
 
-  decode({ id: 1, items: [{ id: "22b", price: "100" }] });
+  decode({ id: 1, items: [{ id: "22b", price: "100" }] })
   /*
   throws
   Error: Order with id: 1
@@ -3602,14 +3605,14 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
   class MySchema extends S.Class<MySchema>("MySchema")({
     a: S.string,
-    b: S.number,
+    b: S.number
   }) {}
 
-  S.decodeUnknownSync(MySchema)({}, { errors: "all" });
+  S.decodeUnknownSync(MySchema)({}, { errors: "all" })
   /*
   Error: ({ a: string; b: number } <-> MySchema)
   └─ Encoded side transformation failure
@@ -3624,14 +3627,14 @@ The codemod is designed to automate many of the changes needed. However, it migh
   After:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
   class MySchema extends S.Class<MySchema>("MySchema")({
     a: S.string,
-    b: S.number,
+    b: S.number
   }) {}
 
-  S.decodeUnknownSync(MySchema)({}, { errors: "all" });
+  S.decodeUnknownSync(MySchema)({}, { errors: "all" })
   /*
   Error: (MySchema (Encoded side) <-> MySchema)
   └─ Encoded side transformation failure
@@ -3648,13 +3651,13 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Example
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
   const schema = S.string.pipe(
-    S.length({ min: 2, max: 4 }, { identifier: "MyRange" }),
-  );
+    S.length({ min: 2, max: 4 }, { identifier: "MyRange" })
+  )
 
-  S.decodeUnknownSync(schema)("");
+  S.decodeUnknownSync(schema)("")
   /*
   throws:
   Error: MyRange
@@ -3682,17 +3685,17 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Examples (Tuple)
 
   ```ts
-  import * as S from "@effect/schema/Schema";
-  import * as Either from "effect/Either";
+  import * as S from "@effect/schema/Schema"
+  import * as Either from "effect/Either"
 
-  const schema = S.array(S.number);
+  const schema = S.array(S.number)
   const result = S.decodeUnknownEither(schema)([1, "a", 2, "b"], {
-    errors: "all",
-  });
+    errors: "all"
+  })
   if (Either.isLeft(result)) {
-    const issue = result.left.error;
+    const issue = result.left.error
     if (issue._tag === "TupleType") {
-      console.log(issue.output); // [1, 2]
+      console.log(issue.output) // [1, 2]
     }
   }
   ```
@@ -3700,18 +3703,18 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Examples (TypeLiteral)
 
   ```ts
-  import * as S from "@effect/schema/Schema";
-  import * as Either from "effect/Either";
+  import * as S from "@effect/schema/Schema"
+  import * as Either from "effect/Either"
 
-  const schema = S.record(S.string, S.number);
+  const schema = S.record(S.string, S.number)
   const result = S.decodeUnknownEither(schema)(
     { a: 1, b: "b", c: 2, d: "d" },
-    { errors: "all" },
-  );
+    { errors: "all" }
+  )
   if (Either.isLeft(result)) {
-    const issue = result.left.error;
+    const issue = result.left.error
     if (issue._tag === "TypeLiteral") {
-      console.log(issue.output); // { a: 1, c: 2 }
+      console.log(issue.output) // { a: 1, c: 2 }
     }
   }
   ```
@@ -3736,20 +3739,20 @@ The codemod is designed to automate many of the changes needed. However, it migh
   ```ts
   enum Fruits {
     Apple,
-    Banana,
+    Banana
   }
 
   // $ExpectType enums<typeof Fruits>
-  S.enums(Fruits);
+  S.enums(Fruits)
 
   // $ExpectType typeof Fruits
-  S.enums(Fruits).enums;
+  S.enums(Fruits).enums
 
   // $ExpectType Fruits.Apple
-  S.enums(Fruits).enums.Apple;
+  S.enums(Fruits).enums.Apple
 
   // $ExpectType Fruits.Banana
-  S.enums(Fruits).enums.Banana;
+  S.enums(Fruits).enums.Banana
   ```
 
 ## 0.64.15
@@ -3789,16 +3792,16 @@ The codemod is designed to automate many of the changes needed. However, it migh
 
   ```ts
   // ts 5.3
-  type A = readonly [string, ...number[], boolean];
-  type B = Required<A>; // readonly [string, ...(number | boolean)[], number | boolean]
+  type A = readonly [string, ...number[], boolean]
+  type B = Required<A> // readonly [string, ...(number | boolean)[], number | boolean]
   ```
 
   to
 
   ```ts
   // ts 5.4
-  type A = readonly [string, ...number[], boolean];
-  type B = Required<A>; // readonly [string, ...number[], boolean]
+  type A = readonly [string, ...number[], boolean]
+  type B = Required<A> // readonly [string, ...number[], boolean]
   ```
 
 - [#2359](https://github.com/Effect-TS/effect/pull/2359) [`9392de6`](https://github.com/Effect-TS/effect/commit/9392de6baa6861662abc2bd3171897145f5ea073) Thanks [@tim-smart](https://github.com/tim-smart)! - use provided message in Schema.TaggedError .toString
@@ -3856,27 +3859,27 @@ The codemod is designed to automate many of the changes needed. However, it migh
 - [#2353](https://github.com/Effect-TS/effect/pull/2353) [`5f5fcd9`](https://github.com/Effect-TS/effect/commit/5f5fcd969ae30ed6fe61d566a571498d9e895e16) Thanks [@tim-smart](https://github.com/tim-smart)! - make `optional` dual:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
   const schema = S.struct({
-    a: S.string.pipe(S.optional()),
-  });
+    a: S.string.pipe(S.optional())
+  })
 
   // same as:
   const schema2 = S.struct({
-    a: S.optional(S.string),
-  });
+    a: S.optional(S.string)
+  })
   ```
 
 - [#2356](https://github.com/Effect-TS/effect/pull/2356) [`7a45ad0`](https://github.com/Effect-TS/effect/commit/7a45ad0a5f715d64a69b28a8ee3573e5f86909c3) Thanks [@gcanti](https://github.com/gcanti)! - make `partial` dual:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  const schema = S.struct({ a: S.string }).pipe(S.partial());
+  const schema = S.struct({ a: S.string }).pipe(S.partial())
 
   // same as:
-  const schema2 = S.partial(S.struct({ a: S.string }));
+  const schema2 = S.partial(S.struct({ a: S.string }))
   ```
 
 - [#2339](https://github.com/Effect-TS/effect/pull/2339) [`5c3b1cc`](https://github.com/Effect-TS/effect/commit/5c3b1ccba182d0f636a973729f9c6bfb12539dc8) Thanks [@gcanti](https://github.com/gcanti)! - use `Simplify` from `effect/Types` in `TaggedClass`, `TaggedError` and `TaggedRequest` to avoid errors in `Schema.d.ts`, closes #1841
@@ -3982,17 +3985,17 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before
 
   ```ts
-  import * as ParseResult from "@effect/schema/ParseResult";
+  import * as ParseResult from "@effect/schema/ParseResult"
 
-  ParseResult.type(ast, actual);
+  ParseResult.type(ast, actual)
   ```
 
   Now
 
   ```ts
-  import * as ParseResult from "@effect/schema/ParseResult";
+  import * as ParseResult from "@effect/schema/ParseResult"
 
-  new ParseResult.Type(ast, actual);
+  new ParseResult.Type(ast, actual)
   ```
 
 - `Transform` has been refactored to `Transformation`, and its `kind` property now accepts `"Encoded"`, `"Transformation"`, or `"Type"` as values
@@ -4015,24 +4018,21 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  const schema1 = S.tuple().pipe(S.rest(S.number), S.element(S.boolean));
+  const schema1 = S.tuple().pipe(S.rest(S.number), S.element(S.boolean))
 
-  const schema2 = S.tuple(S.string).pipe(
-    S.rest(S.number),
-    S.element(S.boolean),
-  );
+  const schema2 = S.tuple(S.string).pipe(S.rest(S.number), S.element(S.boolean))
   ```
 
   Now
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  const schema1 = S.tuple([], S.number, S.boolean);
+  const schema1 = S.tuple([], S.number, S.boolean)
 
-  const schema2 = S.tuple([S.string], S.number, S.boolean);
+  const schema2 = S.tuple([S.string], S.number, S.boolean)
   ```
 
 - `optionalElement` has been refactored:
@@ -4040,17 +4040,17 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  const schema = S.tuple(S.string).pipe(S.optionalElement(S.number));
+  const schema = S.tuple(S.string).pipe(S.optionalElement(S.number))
   ```
 
   Now
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  const schema = S.tuple(S.string, S.optionalElement(S.number));
+  const schema = S.tuple(S.string, S.optionalElement(S.number))
   ```
 
 - use `TreeFormatter` in `BrandSchema`s
@@ -4061,16 +4061,16 @@ The codemod is designed to automate many of the changes needed. However, it migh
   ```ts
   S.optional(S.string, {
     exact: true,
-    annotations: { description: "description" },
-  });
+    annotations: { description: "description" }
+  })
   ```
 
   Now
 
   ```ts
   S.optional(S.string, { exact: true }).annotations({
-    description: "description",
-  });
+    description: "description"
+  })
   ```
 
 - Updated the `pluck` function to return `Schema<A[K], { readonly [key]: I[K] }>` instead of `Schema<A[K], I>`. Removed the `{ transformation: false }` option in favor of selecting the specific field from the `fields` exposed by a struct.
@@ -4093,16 +4093,16 @@ The codemod is designed to automate many of the changes needed. However, it migh
     ```ts
     const schema1 = S.struct(
       { a: S.number },
-      { key: S.string, value: S.number },
-    );
+      { key: S.string, value: S.number }
+    )
     // or
-    const schema2 = S.struct({ a: S.number }, S.record(S.string, S.number));
+    const schema2 = S.struct({ a: S.number }, S.record(S.string, S.number))
     ```
   - enhance the `extend` API to allow nested (non-overlapping) fields:
     ```ts
-    const A = S.struct({ a: S.struct({ b: S.string }) });
-    const B = S.struct({ a: S.struct({ c: S.number }) });
-    const schema = S.extend(A, B);
+    const A = S.struct({ a: S.struct({ b: S.string }) })
+    const B = S.struct({ a: S.struct({ c: S.number }) })
+    const schema = S.extend(A, B)
     /*
     same as:
     const schema = S.struct({
@@ -4122,14 +4122,14 @@ The codemod is designed to automate many of the changes needed. However, it migh
   - add `annotations?` parameter to Class constructors:
 
     ```ts
-    import * as AST from "@effect/schema/AST";
-    import * as S from "@effect/schema/Schema";
+    import * as AST from "@effect/schema/AST"
+    import * as S from "@effect/schema/Schema"
 
     class A extends S.Class<A>("A")(
       {
-        a: S.string,
+        a: S.string
       },
-      { description: "some description..." }, // <= annotations
+      { description: "some description..." } // <= annotations
     ) {}
     ```
 
@@ -4154,8 +4154,8 @@ The codemod is designed to automate many of the changes needed. However, it migh
   ```ts
   const schema = S.struct({
     a: S.string,
-    b: S.number,
-  }).pipe(S.batching(true /* boolean | "inherit" | undefined */));
+    b: S.number
+  }).pipe(S.batching(true /* boolean | "inherit" | undefined */))
   ```
 
 - [#2241](https://github.com/Effect-TS/effect/pull/2241) [`d8e6940`](https://github.com/Effect-TS/effect/commit/d8e694040f67da6fefc0f5c98fc8e15c0b48822e) Thanks [@jessekelly881](https://github.com/jessekelly881)! - add `sortedSet` and `sortedSetFromSeld` combinators
@@ -4176,8 +4176,8 @@ The codemod is designed to automate many of the changes needed. However, it migh
   ```ts
   const schema = S.struct({
     a: S.string,
-    b: S.number,
-  }).pipe(S.concurrency(1 /* number | "unbounded" | "inherit" | undefined */));
+    b: S.number
+  }).pipe(S.concurrency(1 /* number | "unbounded" | "inherit" | undefined */))
   ```
 
 - [#2221](https://github.com/Effect-TS/effect/pull/2221) [`c035972`](https://github.com/Effect-TS/effect/commit/c035972dfabdd3cb3372b5ab468aa2fd0d808f4d) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure Schema.Class is compatible without strictNullCheck
@@ -4192,13 +4192,13 @@ The codemod is designed to automate many of the changes needed. However, it migh
 - [#2209](https://github.com/Effect-TS/effect/pull/2209) [`5d30853`](https://github.com/Effect-TS/effect/commit/5d308534cac6f187227185393c0bac9eb27f90ab) Thanks [@steffanek](https://github.com/steffanek)! - Add `pickLiteral` to Schema so that we can pick values from a Schema literal as follows:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  const schema = S.literal("a", "b", "c").pipe(S.pickLiteral("a", "b")); // same as S.literal("a", "b")
+  const schema = S.literal("a", "b", "c").pipe(S.pickLiteral("a", "b")) // same as S.literal("a", "b")
 
-  S.decodeUnknownSync(schema)("a"); // ok
-  S.decodeUnknownSync(schema)("b"); // ok
-  S.decodeUnknownSync(schema)("c");
+  S.decodeUnknownSync(schema)("a") // ok
+  S.decodeUnknownSync(schema)("b") // ok
+  S.decodeUnknownSync(schema)("c")
   /*
   Error: "a" | "b"
   ├─ Union member
@@ -4234,9 +4234,9 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Along the same line of the other changes this allows to shorten the most common types such as:
 
   ```ts
-  import { Either } from "effect";
+  import { Either } from "effect"
 
-  const right: Either.Either<string> = Either.right("ok");
+  const right: Either.Either<string> = Either.right("ok")
   ```
 
 ### Patch Changes
@@ -4279,7 +4279,7 @@ The codemod is designed to automate many of the changes needed. However, it migh
   **Example**
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
   /*
   const schema: S.Schema<{
@@ -4288,10 +4288,10 @@ The codemod is designed to automate many of the changes needed. However, it migh
       readonly a?: string | undefined;
   }, never>
   */
-  const schema = S.partial(S.struct({ a: S.string }));
+  const schema = S.partial(S.struct({ a: S.string }))
 
-  S.decodeUnknownSync(schema)({ a: "a" }); // ok
-  S.decodeUnknownSync(schema)({ a: undefined }); // ok
+  S.decodeUnknownSync(schema)({ a: "a" }) // ok
+  S.decodeUnknownSync(schema)({ a: undefined }) // ok
 
   /*
   const exact: S.Schema<{
@@ -4300,10 +4300,10 @@ The codemod is designed to automate many of the changes needed. However, it migh
       readonly a?: string;
   }, never>
   */
-  const exactSchema = S.partial(S.struct({ a: S.string }), { exact: true });
+  const exactSchema = S.partial(S.struct({ a: S.string }), { exact: true })
 
-  S.decodeUnknownSync(exactSchema)({ a: "a" }); // ok
-  S.decodeUnknownSync(exactSchema)({ a: undefined });
+  S.decodeUnknownSync(exactSchema)({ a: "a" }) // ok
+  S.decodeUnknownSync(exactSchema)({ a: undefined })
   /*
   throws:
   Error: { a?: string }
@@ -4317,21 +4317,21 @@ The codemod is designed to automate many of the changes needed. However, it migh
   The following will no longer throw an error:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
   class C extends S.Class<C>()({
-    n: S.NumberFromString,
+    n: S.NumberFromString
   }) {
     get b() {
-      return 1;
+      return 1
     }
   }
   class D extends S.Class<D>()({
     n: S.NumberFromString,
-    b: S.number,
+    b: S.number
   }) {}
 
-  console.log(S.encodeSync(D)(new C({ n: 1 })));
+  console.log(S.encodeSync(D)(new C({ n: 1 })))
   // Output: { b: 1, n: '1' }
   ```
 
@@ -4386,7 +4386,7 @@ The codemod is designed to automate many of the changes needed. However, it migh
   **Example**
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
   // ---------------------------------------------
   // use case: pull out a single field from a
@@ -4395,21 +4395,21 @@ The codemod is designed to automate many of the changes needed. However, it migh
 
   const mytable = S.struct({
     column1: S.NumberFromString,
-    column2: S.number,
-  });
+    column2: S.number
+  })
 
   // const pullOutColumn1: S.Schema<number, {
   //     readonly column1: string;
   //     readonly column2: number;
   // }, never>
-  const pullOutColumn1 = mytable.pipe(S.pluck("column1"));
+  const pullOutColumn1 = mytable.pipe(S.pluck("column1"))
 
   console.log(
     S.decode(S.array(pullOutColumn1))([
       { column1: "1", column2: 100 },
-      { column1: "2", column2: 300 },
-    ]),
-  );
+      { column1: "2", column2: 300 }
+    ])
+  )
   // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
 
   // ---------------------------------------------
@@ -4419,10 +4419,10 @@ The codemod is designed to automate many of the changes needed. However, it migh
 
   // const pullOutColumn1Value: S.Schema<number, string, never>
   const pullOutColumn1Value = mytable.pipe(
-    S.pluck("column1", { transformation: false }),
-  );
+    S.pluck("column1", { transformation: false })
+  )
 
-  console.log(S.decode(S.array(pullOutColumn1Value))(["1", "2"]));
+  console.log(S.decode(S.array(pullOutColumn1Value))(["1", "2"]))
   // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
   ```
 
@@ -4458,31 +4458,31 @@ The codemod is designed to automate many of the changes needed. However, it migh
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - With this change we now require a string key to be provided for all tags and renames the dear old `Tag` to `GenericTag`, so when previously you could do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.Tag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >();
+  >()
   ```
 
   you are now mandated to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.GenericTag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >("Service");
+  >("Service")
   ```
 
   This makes by default all tags globals and ensures better debuggaility when unexpected errors arise.
@@ -4490,17 +4490,17 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Furthermore we introduce a new way of constructing tags that should be considered the new default:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   class Service extends Context.Tag("Service")<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
   >() {}
 
   const program = Effect.flatMap(Service, ({ number }) => number).pipe(
-    Effect.flatMap((_) => Effect.log(`number: ${_}`)),
-  );
+    Effect.flatMap((_) => Effect.log(`number: ${_}`))
+  )
   ```
 
   this will use "Service" as the key and will create automatically an opaque identifier (the class) to be used at the type level, it does something similar to the above in a single shot.
@@ -4512,19 +4512,19 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.readonlyMapFromSelf(S.string, S.number);
-  S.readonlyMap(S.string, S.number);
+  S.readonlyMapFromSelf(S.string, S.number)
+  S.readonlyMap(S.string, S.number)
   ```
 
   Now:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.readonlyMapFromSelf({ key: S.string, value: S.number });
-  S.readonlyMap({ key: S.string, value: S.number });
+  S.readonlyMapFromSelf({ key: S.string, value: S.number })
+  S.readonlyMap({ key: S.string, value: S.number })
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`d3f9f4d`](https://github.com/Effect-TS/effect/commit/d3f9f4d4032b1131c62f4ddb21a4583e4e8d7c18) Thanks [@github-actions](https://github.com/apps/github-actions)! - Schema: switch `hashMapFromSelf`, `hashMap` from positional arguments to a single `options` argument:
@@ -4532,19 +4532,19 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.hashMapFromSelf(S.string, S.number);
-  S.hashMap(S.string, S.number);
+  S.hashMapFromSelf(S.string, S.number)
+  S.hashMap(S.string, S.number)
   ```
 
   Now:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.hashMapFromSelf({ key: S.string, value: S.number });
-  S.hashMap({ key: S.string, value: S.number });
+  S.hashMapFromSelf({ key: S.string, value: S.number })
+  S.hashMap({ key: S.string, value: S.number })
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`d3f9f4d`](https://github.com/Effect-TS/effect/commit/d3f9f4d4032b1131c62f4ddb21a4583e4e8d7c18) Thanks [@github-actions](https://github.com/apps/github-actions)! - Schema: switch `causeFromSelf`, `cause` from positional arguments to a single `options` argument:
@@ -4552,23 +4552,23 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.causeFromSelf(S.string);
-  S.causeFromSelf(S.string, S.unknown);
-  S.cause(S.string);
-  S.cause(S.string, S.unknown);
+  S.causeFromSelf(S.string)
+  S.causeFromSelf(S.string, S.unknown)
+  S.cause(S.string)
+  S.cause(S.string, S.unknown)
   ```
 
   Now:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.causeFromSelf({ error: S.string });
-  S.causeFromSelf({ error: S.string, defect: S.unknown });
-  S.cause({ error: S.string });
-  S.cause({ error: S.string, defect: S.unknown });
+  S.causeFromSelf({ error: S.string })
+  S.causeFromSelf({ error: S.string, defect: S.unknown })
+  S.cause({ error: S.string })
+  S.cause({ error: S.string, defect: S.unknown })
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`d3f9f4d`](https://github.com/Effect-TS/effect/commit/d3f9f4d4032b1131c62f4ddb21a4583e4e8d7c18) Thanks [@github-actions](https://github.com/apps/github-actions)! - Schema: switch `exitFromSelf`, `exit` from positional arguments to a single `options` argument:
@@ -4576,19 +4576,19 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.exitFromSelf(S.string, S.number);
-  S.exit(S.string, S.number);
+  S.exitFromSelf(S.string, S.number)
+  S.exit(S.string, S.number)
   ```
 
   Now:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.exitFromSelf({ failure: S.string, success: S.number });
-  S.exit({ failure: S.string, success: S.number });
+  S.exitFromSelf({ failure: S.string, success: S.number })
+  S.exit({ failure: S.string, success: S.number })
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`a34dbdc`](https://github.com/Effect-TS/effect/commit/a34dbdc1552c73c1b612676f262a0c735ce444a7) Thanks [@github-actions](https://github.com/apps/github-actions)! - - Schema: change type parameters order from `Schema<R, I, A>` to `Schema<A, I = A, R = never>`
@@ -4602,21 +4602,21 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.eitherFromSelf(S.string, S.number);
-  S.either(S.string, S.number);
-  S.eitherFromUnion(S.string, S.number);
+  S.eitherFromSelf(S.string, S.number)
+  S.either(S.string, S.number)
+  S.eitherFromUnion(S.string, S.number)
   ```
 
   Now:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
-  S.eitherFromSelf({ left: S.string, right: S.number });
-  S.either({ left: S.string, right: S.number });
-  S.eitherFromUnion({ left: S.string, right: S.number });
+  S.eitherFromSelf({ left: S.string, right: S.number })
+  S.either({ left: S.string, right: S.number })
+  S.eitherFromUnion({ left: S.string, right: S.number })
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`02c3461`](https://github.com/Effect-TS/effect/commit/02c34615d02f91269ea04036d0306fccf4e39e18) Thanks [@github-actions](https://github.com/apps/github-actions)! - With this change we remove the `Data.Data` type and we make `Equal.Equal` & `Hash.Hash` implicit traits.
@@ -4628,35 +4628,35 @@ The codemod is designed to automate many of the changes needed. However, it migh
   At the type level instead the functions return `Readonly` variants, so for example we have:
 
   ```ts
-  import { Data } from "effect";
+  import { Data } from "effect"
 
   const obj = Data.struct({
     a: 0,
-    b: 1,
-  });
+    b: 1
+  })
   ```
 
   will have the `obj` typed as:
 
   ```ts
   declare const obj: {
-    readonly a: number;
-    readonly b: number;
-  };
+    readonly a: number
+    readonly b: number
+  }
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - This change enables `Effect.serviceConstants` and `Effect.serviceMembers` to access any constant in the service, not only the effects, namely it is now possible to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
 
   class NumberRepo extends Context.TagClass("NumberRepo")<
     NumberRepo,
     {
-      readonly numbers: Array<number>;
+      readonly numbers: Array<number>
     }
   >() {
-    static numbers = Effect.serviceConstants(NumberRepo).numbers;
+    static numbers = Effect.serviceConstants(NumberRepo).numbers
   }
   ```
 
@@ -4665,25 +4665,25 @@ The codemod is designed to automate many of the changes needed. However, it migh
   When used with Unify we previously had:
 
   ```ts
-  import { Schema } from "@effect/schema";
-  import type { Unify } from "effect";
+  import { Schema } from "@effect/schema"
+  import type { Unify } from "effect"
 
   class Err extends Schema.TaggedError<Err>()("Err", {}) {}
 
   // $ExpectType Effect<unknown, unknown, unknown>
-  export type IdErr = Unify.Unify<Err>;
+  export type IdErr = Unify.Unify<Err>
   ```
 
   With this fix we now have:
 
   ```ts
-  import { Schema } from "@effect/schema";
-  import type { Unify } from "effect";
+  import { Schema } from "@effect/schema"
+  import type { Unify } from "effect"
 
   class Err extends Schema.TaggedError<Err>()("Err", {}) {}
 
   // $ExpectType Err
-  export type IdErr = Unify.Unify<Err>;
+  export type IdErr = Unify.Unify<Err>
   ```
 
 ### Patch Changes
@@ -4697,25 +4697,25 @@ The codemod is designed to automate many of the changes needed. However, it migh
   Before:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
   const myschema = S.struct({
     a: S.optional(S.string).pipe(
-      S.propertySignatureAnnotations({ description: "my description..." }),
-    ),
-  });
+      S.propertySignatureAnnotations({ description: "my description..." })
+    )
+  })
   ```
 
   Now:
 
   ```ts
-  import * as S from "@effect/schema/Schema";
+  import * as S from "@effect/schema/Schema"
 
   const myschema = S.struct({
     a: S.optional(S.string, {
-      annotations: { description: "my description..." },
-    }),
-  });
+      annotations: { description: "my description..." }
+    })
+  })
   ```
 
   With this update, you can easily include annotations directly within the `optional` API without the need for additional calls.
