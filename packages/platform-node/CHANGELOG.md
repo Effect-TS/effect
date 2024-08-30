@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.58.0
+
+### Patch Changes
+
+- Updated dependencies [[`db89601`](https://github.com/Effect-TS/effect/commit/db89601ee9c1050c4e762b7bd7ec65a6a2799dfe), [`2f456cc`](https://github.com/Effect-TS/effect/commit/2f456cce5012b9fcb6b4e039190d527813b75b92), [`8745e41`](https://github.com/Effect-TS/effect/commit/8745e41ed96e3765dc6048efc2a9afbe05c8a1e9), [`e557838`](https://github.com/Effect-TS/effect/commit/e55783886b046d3c5f33447f455f9ccf2fa75922), [`d6e7e40`](https://github.com/Effect-TS/effect/commit/d6e7e40b1e2ad0c59aa02f07344d28601b14ebdc), [`8356321`](https://github.com/Effect-TS/effect/commit/8356321598da04bd77c1001f45a4e447bec5591d), [`192f2eb`](https://github.com/Effect-TS/effect/commit/192f2ebb2c4ddbf4bfd8baedd32140b2376868f4), [`718cb70`](https://github.com/Effect-TS/effect/commit/718cb70038629a6d58d02e407760e341f7c94474), [`e9d0310`](https://github.com/Effect-TS/effect/commit/e9d03107acbf204d9304f3e8aea0816b7d3c7dfb), [`6bf28f7`](https://github.com/Effect-TS/effect/commit/6bf28f7e3b1e5e0608ff567205fea0581d11666f)]:
+  - effect@3.7.0
+  - @effect/platform@0.63.0
+  - @effect/platform-node-shared@0.13.0
+
 ## 0.57.5
 
 ### Patch Changes
@@ -94,18 +103,18 @@
 - [#3409](https://github.com/Effect-TS/effect/pull/3409) [`056b710`](https://github.com/Effect-TS/effect/commit/056b7108978e70612176c23991916f678d947f38) Thanks @sukovanej! - Add `NodeHttpServer.layerTest`.
 
   ```ts
-  import { HttpClientRequest, HttpRouter, HttpServer } from "@effect/platform";
-  import { NodeHttpServer } from "@effect/platform-node";
-  import { expect, it } from "@effect/vitest";
-  import { Effect } from "effect";
+  import { HttpClientRequest, HttpRouter, HttpServer } from "@effect/platform"
+  import { NodeHttpServer } from "@effect/platform-node"
+  import { expect, it } from "@effect/vitest"
+  import { Effect } from "effect"
 
   it.scoped("test", () =>
     Effect.gen(function* () {
-      yield* HttpServer.serveEffect(HttpRouter.empty);
-      const response = yield* HttpClientRequest.get("/");
-      expect(response.status, 404);
-    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
-  );
+      yield* HttpServer.serveEffect(HttpRouter.empty)
+      const response = yield* HttpClientRequest.get("/")
+      expect(response.status, 404)
+    }).pipe(Effect.provide(NodeHttpServer.layerTest))
+  )
   ```
 
 - Updated dependencies [[`056b710`](https://github.com/Effect-TS/effect/commit/056b7108978e70612176c23991916f678d947f38)]:
@@ -492,17 +501,17 @@
   Before:
 
   ```ts
-  import { HttpClient } from "@effect/platform";
+  import { HttpClient } from "@effect/platform"
 
-  HttpClient.request.get("/").pipe(HttpClient.client.fetchOk);
+  HttpClient.request.get("/").pipe(HttpClient.client.fetchOk)
   ```
 
   After:
 
   ```ts
-  import { HttpClient, HttpClientRequest } from "@effect/platform";
+  import { HttpClient, HttpClientRequest } from "@effect/platform"
 
-  HttpClientRequest.get("/").pipe(HttpClient.fetchOk);
+  HttpClientRequest.get("/").pipe(HttpClient.fetchOk)
   ```
 
 ### Patch Changes
@@ -819,13 +828,13 @@
   You now have to provide a WebSocketConstructor implementation to the `Socket.makeWebSocket` api.
 
   ```ts
-  import * as Socket from "@effect/platform/Socket";
-  import * as NodeSocket from "@effect/platform-node/NodeSocket";
-  import { Effect } from "effect";
+  import * as Socket from "@effect/platform/Socket"
+  import * as NodeSocket from "@effect/platform-node/NodeSocket"
+  import { Effect } from "effect"
 
   Socket.makeWebSocket("ws://localhost:8080").pipe(
-    Effect.provide(NodeSocket.layerWebSocketConstructor), // use "ws" npm package
-  );
+    Effect.provide(NodeSocket.layerWebSocketConstructor) // use "ws" npm package
+  )
   ```
 
 ### Patch Changes
@@ -1024,8 +1033,8 @@
   For all the data types.
 
   ```ts
-  Effect.unit; // => Effect.void
-  Stream.unit; // => Stream.void
+  Effect.unit // => Effect.void
+  Stream.unit // => Stream.void
 
   // etc
   ```
@@ -1139,11 +1148,11 @@
   This makes it easier to quickly create a request and execute it in a single line.
 
   ```ts
-  import * as Http from "@effect/platform/HttpClient";
+  import * as Http from "@effect/platform/HttpClient"
 
   Http.request
     .get("https://jsonplaceholder.typicode.com/todos/1")
-    .pipe(Http.response.json);
+    .pipe(Http.response.json)
   ```
 
 - [#2413](https://github.com/Effect-TS/effect/pull/2413) [`4789083`](https://github.com/Effect-TS/effect/commit/4789083283bdaec456982d614ebc4a496ea0e7f7) Thanks [@tim-smart](https://github.com/tim-smart)! - prevent unhandled errors in undici http client
@@ -1195,37 +1204,37 @@
   To add cookies to a http response:
 
   ```ts
-  import * as Http from "@effect/platform/HttpServer";
+  import * as Http from "@effect/platform/HttpServer"
 
   Http.response.empty().pipe(
     Http.response.setCookies([
       ["name", "value"],
-      ["foo", "bar", { httpOnly: true }],
-    ]),
-  );
+      ["foo", "bar", { httpOnly: true }]
+    ])
+  )
   ```
 
   You can also use cookies with the http client:
 
   ```ts
-  import * as Http from "@effect/platform/HttpClient";
-  import { Effect, Ref } from "effect";
+  import * as Http from "@effect/platform/HttpClient"
+  import { Effect, Ref } from "effect"
 
   Effect.gen(function* (_) {
-    const ref = yield* _(Ref.make(Http.cookies.empty));
-    const defaultClient = yield* _(Http.client.Client);
+    const ref = yield* _(Ref.make(Http.cookies.empty))
+    const defaultClient = yield* _(Http.client.Client)
     const clientWithCookies = defaultClient.pipe(
       Http.client.withCookiesRef(ref),
-      Http.client.filterStatusOk,
-    );
+      Http.client.filterStatusOk
+    )
 
     // cookies will be stored in the ref and sent in any subsequent requests
     yield* _(
       Http.request.get("https://www.google.com/"),
       clientWithCookies,
-      Effect.scoped,
-    );
-  });
+      Effect.scoped
+    )
+  })
   ```
 
 - [#2385](https://github.com/Effect-TS/effect/pull/2385) [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87) Thanks [@tim-smart](https://github.com/tim-smart)! - update typescript to 5.4
@@ -1403,14 +1412,14 @@
   Here is an example server that handles websockets on the `/ws` path:
 
   ```ts
-  import { NodeHttpServer, NodeRuntime } from "@effect/platform-node";
-  import * as Http from "@effect/platform/HttpServer";
-  import { Console, Effect, Layer, Schedule, Stream } from "effect";
-  import { createServer } from "node:http";
+  import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+  import * as Http from "@effect/platform/HttpServer"
+  import { Console, Effect, Layer, Schedule, Stream } from "effect"
+  import { createServer } from "node:http"
 
   const ServerLive = NodeHttpServer.server.layer(() => createServer(), {
-    port: 3000,
-  });
+    port: 3000
+  })
 
   const HttpLive = Http.router.empty.pipe(
     Http.router.get(
@@ -1422,17 +1431,17 @@
           Stream.encodeText,
           Stream.pipeThroughChannel(Http.request.upgradeChannel()),
           Stream.decodeText(),
-          Stream.runForEach(Console.log),
-        );
-        return Http.response.empty();
-      }),
+          Stream.runForEach(Console.log)
+        )
+        return Http.response.empty()
+      })
     ),
     Http.server.serve(Http.middleware.logger),
     Http.server.withLogAddress,
-    Layer.provide(ServerLive),
-  );
+    Layer.provide(ServerLive)
+  )
 
-  NodeRuntime.runMain(Layer.launch(HttpLive));
+  NodeRuntime.runMain(Layer.launch(HttpLive))
   ```
 
 - Updated dependencies [[`e03811e`](https://github.com/Effect-TS/effect/commit/e03811e80c93e986e6348b3b67ac2ed6d5fefff0), [`ac41d84`](https://github.com/Effect-TS/effect/commit/ac41d84776484cdce8165b7ca2c9c9b6377eee2d), [`0f3d99c`](https://github.com/Effect-TS/effect/commit/0f3d99c27521ec6b221b644a0fffc79199c3acca), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`1bf9f31`](https://github.com/Effect-TS/effect/commit/1bf9f31f07667de677673f7c29a4e7a26ebad3c8), [`e3ff789`](https://github.com/Effect-TS/effect/commit/e3ff789226f89e71eb28ca38ce79f90af6a03f1a), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`507ba40`](https://github.com/Effect-TS/effect/commit/507ba4060ff043c1a8d541dae723fa6940633b00), [`4064ea0`](https://github.com/Effect-TS/effect/commit/4064ea04e0b3fa23108ee471cd89ab2482b2f6e5), [`e466afe`](https://github.com/Effect-TS/effect/commit/e466afe32f2de598ceafd8982bd0cfbd388e5671), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`de74eb8`](https://github.com/Effect-TS/effect/commit/de74eb80a79eebde5ff645033765e7a617e92f27), [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e), [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e)]:
@@ -1547,26 +1556,26 @@
   Some response helpers have been added to reduce the noise.
 
   ```ts
-  import * as Http from "@effect/platform/HttpClient";
-  import { Effect } from "effect";
+  import * as Http from "@effect/platform/HttpClient"
+  import { Effect } from "effect"
 
   // instead of
   Http.request.get("/").pipe(
     Http.client.fetchOk(),
     Effect.flatMap((_) => _.json),
-    Effect.scoped,
-  );
+    Effect.scoped
+  )
 
   // you can do
-  Http.request.get("/").pipe(Http.client.fetchOk(), Http.response.json);
+  Http.request.get("/").pipe(Http.client.fetchOk(), Http.response.json)
 
   // other helpers include
-  Http.response.text;
-  Http.response.stream;
-  Http.response.arrayBuffer;
-  Http.response.urlParamsBody;
-  Http.response.formData;
-  Http.response.schema * Effect;
+  Http.response.text
+  Http.response.stream
+  Http.response.arrayBuffer
+  Http.response.urlParamsBody
+  Http.response.formData
+  Http.response.schema * Effect
   ```
 
 ### Patch Changes
@@ -1643,31 +1652,31 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - With this change we now require a string key to be provided for all tags and renames the dear old `Tag` to `GenericTag`, so when previously you could do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.Tag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >();
+  >()
   ```
 
   you are now mandated to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.GenericTag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >("Service");
+  >("Service")
   ```
 
   This makes by default all tags globals and ensures better debuggaility when unexpected errors arise.
@@ -1675,17 +1684,17 @@
   Furthermore we introduce a new way of constructing tags that should be considered the new default:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   class Service extends Context.Tag("Service")<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
   >() {}
 
   const program = Effect.flatMap(Service, ({ number }) => number).pipe(
-    Effect.flatMap((_) => Effect.log(`number: ${_}`)),
-  );
+    Effect.flatMap((_) => Effect.log(`number: ${_}`))
+  )
   ```
 
   this will use "Service" as the key and will create automatically an opaque identifier (the class) to be used at the type level, it does something similar to the above in a single shot.
@@ -1720,15 +1729,15 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - This change enables `Effect.serviceConstants` and `Effect.serviceMembers` to access any constant in the service, not only the effects, namely it is now possible to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
 
   class NumberRepo extends Context.TagClass("NumberRepo")<
     NumberRepo,
     {
-      readonly numbers: Array<number>;
+      readonly numbers: Array<number>
     }
   >() {
-    static numbers = Effect.serviceConstants(NumberRepo).numbers;
+    static numbers = Effect.serviceConstants(NumberRepo).numbers
   }
   ```
 

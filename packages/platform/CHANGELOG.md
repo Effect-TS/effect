@@ -1,5 +1,20 @@
 # @effect/platform
 
+## 0.63.0
+
+### Patch Changes
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`6bf28f7`](https://github.com/Effect-TS/effect/commit/6bf28f7e3b1e5e0608ff567205fea0581d11666f) Thanks @tim-smart! - add HttpApi modules
+
+  The `HttpApi` family of modules provide a declarative way to define HTTP APIs.
+
+  For more infomation see the README.md for the /platform package:<br />
+  https://github.com/Effect-TS/effect/blob/main/packages/platform/README.md
+
+- Updated dependencies [[`db89601`](https://github.com/Effect-TS/effect/commit/db89601ee9c1050c4e762b7bd7ec65a6a2799dfe), [`2f456cc`](https://github.com/Effect-TS/effect/commit/2f456cce5012b9fcb6b4e039190d527813b75b92), [`8745e41`](https://github.com/Effect-TS/effect/commit/8745e41ed96e3765dc6048efc2a9afbe05c8a1e9), [`e557838`](https://github.com/Effect-TS/effect/commit/e55783886b046d3c5f33447f455f9ccf2fa75922), [`d6e7e40`](https://github.com/Effect-TS/effect/commit/d6e7e40b1e2ad0c59aa02f07344d28601b14ebdc), [`8356321`](https://github.com/Effect-TS/effect/commit/8356321598da04bd77c1001f45a4e447bec5591d), [`192f2eb`](https://github.com/Effect-TS/effect/commit/192f2ebb2c4ddbf4bfd8baedd32140b2376868f4), [`718cb70`](https://github.com/Effect-TS/effect/commit/718cb70038629a6d58d02e407760e341f7c94474), [`e9d0310`](https://github.com/Effect-TS/effect/commit/e9d03107acbf204d9304f3e8aea0816b7d3c7dfb), [`6bf28f7`](https://github.com/Effect-TS/effect/commit/6bf28f7e3b1e5e0608ff567205fea0581d11666f)]:
+  - effect@3.7.0
+  - @effect/schema@0.72.0
+
 ## 0.62.5
 
 ### Patch Changes
@@ -368,26 +383,26 @@
   You can it for both errors and success values.
 
   ```ts
-  import { Schema } from "@effect/schema";
+  import { Schema } from "@effect/schema"
   import {
     HttpRouter,
     HttpServerRespondable,
-    HttpServerResponse,
-  } from "@effect/platform";
+    HttpServerResponse
+  } from "@effect/platform"
 
   class User extends Schema.Class<User>("User")({
-    name: Schema.String,
+    name: Schema.String
   }) {
     [HttpServerRespondable.symbol]() {
-      return HttpServerResponse.schemaJson(User)(this);
+      return HttpServerResponse.schemaJson(User)(this)
     }
   }
 
   class MyError extends Schema.TaggedError<MyError>()("MyError", {
-    message: Schema.String,
+    message: Schema.String
   }) {
     [HttpServerRespondable.symbol]() {
-      return HttpServerResponse.schemaJson(MyError)(this, { status: 403 });
+      return HttpServerResponse.schemaJson(MyError)(this, { status: 403 })
     }
   }
 
@@ -395,8 +410,8 @@
     // responds with `{ "name": "test" }`
     HttpRouter.get("/user", Effect.succeed(new User({ name: "test" }))),
     // responds with a 403 status, and `{ "_tag": "MyError", "message": "boom" }`
-    HttpRouter.get("/fail", new MyError({ message: "boom" })),
-  );
+    HttpRouter.get("/fail", new MyError({ message: "boom" }))
+  )
   ```
 
 - [#3088](https://github.com/Effect-TS/effect/pull/3088) [`a48ee84`](https://github.com/Effect-TS/effect/commit/a48ee845ac21bbde9baf938af9e97a98322211c9) Thanks @tim-smart! - swap type parameters for HttpRouter.Tag, so request context comes first
@@ -413,9 +428,9 @@
     HttpClientResponse.matchStatusScoped({
       "2xx": (_response) => Effect.succeed("ok"),
       404: (_response) => Effect.fail("not found"),
-      orElse: (_response) => Effect.fail("boom"),
-    }),
-  );
+      orElse: (_response) => Effect.fail("boom")
+    })
+  )
   ```
 
 - [#3079](https://github.com/Effect-TS/effect/pull/3079) [`bbdd365`](https://github.com/Effect-TS/effect/commit/bbdd36567706c94cdec45bacea825941c347b6cd) Thanks @tim-smart! - update to typescript 5.5
@@ -456,10 +471,10 @@
     HttpMiddleware,
     HttpRouter,
     HttpServer,
-    HttpServerResponse,
-  } from "@effect/platform";
-  import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
-  import { Effect, Layer } from "effect";
+    HttpServerResponse
+  } from "@effect/platform"
+  import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+  import { Effect, Layer } from "effect"
 
   // create your router Context.Tag
   class UserRouter extends HttpRouter.Tag("UserRouter")<UserRouter>() {}
@@ -468,32 +483,32 @@
   // There is also `.useScoped`
   const GetUsers = UserRouter.use((router) =>
     Effect.gen(function* () {
-      yield* router.get("/", HttpServerResponse.text("got users"));
-    }),
-  );
+      yield* router.get("/", HttpServerResponse.text("got users"))
+    })
+  )
 
   const CreateUser = UserRouter.use((router) =>
     Effect.gen(function* () {
-      yield* router.post("/", HttpServerResponse.text("created user"));
-    }),
-  );
+      yield* router.post("/", HttpServerResponse.text("created user"))
+    })
+  )
 
-  const AllRoutes = Layer.mergeAll(GetUsers, CreateUser);
+  const AllRoutes = Layer.mergeAll(GetUsers, CreateUser)
 
-  const ServerLive = BunHttpServer.layer({ port: 3000 });
+  const ServerLive = BunHttpServer.layer({ port: 3000 })
 
   // access the router with the `.router` api, to create your server
   const HttpLive = Layer.unwrapEffect(
     Effect.gen(function* () {
-      return HttpServer.serve(yield* UserRouter.router, HttpMiddleware.logger);
-    }),
+      return HttpServer.serve(yield* UserRouter.router, HttpMiddleware.logger)
+    })
   ).pipe(
     Layer.provide(UserRouter.Live),
     Layer.provide(AllRoutes),
-    Layer.provide(ServerLive),
-  );
+    Layer.provide(ServerLive)
+  )
 
-  BunRuntime.runMain(Layer.launch(HttpLive));
+  BunRuntime.runMain(Layer.launch(HttpLive))
   ```
 
 - Updated dependencies [[`66a1910`](https://github.com/Effect-TS/effect/commit/66a19109ff90c4252123b8809b8c8a74681dba6a)]:
@@ -543,17 +558,17 @@
   Before:
 
   ```ts
-  import { HttpClient } from "@effect/platform";
+  import { HttpClient } from "@effect/platform"
 
-  HttpClient.request.get("/").pipe(HttpClient.client.fetchOk);
+  HttpClient.request.get("/").pipe(HttpClient.client.fetchOk)
   ```
 
   After:
 
   ```ts
-  import { HttpClient, HttpClientRequest } from "@effect/platform";
+  import { HttpClient, HttpClientRequest } from "@effect/platform"
 
-  HttpClientRequest.get("/").pipe(HttpClient.fetchOk);
+  HttpClientRequest.get("/").pipe(HttpClient.fetchOk)
   ```
 
 ### Patch Changes
@@ -672,15 +687,15 @@
   For example, the following code would log `Invalid URL: '/api/v1/users' with base 'NaN'`.
 
   ```js
-  import { makeUrl } from "@effect/platform/Http/UrlParams";
+  import { makeUrl } from "@effect/platform/Http/UrlParams"
 
-  globalThis.location = { href: "" };
+  globalThis.location = { href: "" }
 
-  const url = makeUrl("/api/v1/users", []);
+  const url = makeUrl("/api/v1/users", [])
 
   // This would log "Invalid URL: '/api/v1/users' with base 'NaN'",
   // because location.origin + location.pathname return NaN in baseUrl()
-  console.log(url.left.message);
+  console.log(url.left.message)
   ```
 
   Arguably, this is not an issue of Effect per se, but it's better to be defensive and handle such cases gracefully.
@@ -883,13 +898,13 @@
   You now have to provide a WebSocketConstructor implementation to the `Socket.makeWebSocket` api.
 
   ```ts
-  import * as Socket from "@effect/platform/Socket";
-  import * as NodeSocket from "@effect/platform-node/NodeSocket";
-  import { Effect } from "effect";
+  import * as Socket from "@effect/platform/Socket"
+  import * as NodeSocket from "@effect/platform-node/NodeSocket"
+  import { Effect } from "effect"
 
   Socket.makeWebSocket("ws://localhost:8080").pipe(
-    Effect.provide(NodeSocket.layerWebSocketConstructor), // use "ws" npm package
-  );
+    Effect.provide(NodeSocket.layerWebSocketConstructor) // use "ws" npm package
+  )
   ```
 
 ## 0.52.3
@@ -925,13 +940,13 @@
   If you want to access the search params for a request, you can now use the `Http.request.ParsedSearchParams` tag.
 
   ```ts
-  import * as Http from "@effect/platform/HttpServer";
-  import { Effect } from "effect";
+  import * as Http from "@effect/platform/HttpServer"
+  import { Effect } from "effect"
 
   Effect.gen(function* () {
-    const searchParams = yield* Http.request.ParsedSearchParams;
-    console.log(searchParams);
-  });
+    const searchParams = yield* Http.request.ParsedSearchParams
+    console.log(searchParams)
+  })
   ```
 
   The schema method has also been moved to the `ServerRequest` module. It is now available as `Http.request.schemaSearchParams`.
@@ -943,11 +958,11 @@
   To disable trace propagation:
 
   ```ts
-  import { HttpClient as Http } from "@effect/platform";
+  import { HttpClient as Http } from "@effect/platform"
 
   Http.request
     .get("https://example.com")
-    .pipe(Http.client.fetchOk, Http.client.withTracerPropagation(false));
+    .pipe(Http.client.fetchOk, Http.client.withTracerPropagation(false))
   ```
 
 ## 0.51.0
@@ -1081,13 +1096,13 @@
   your effects.
 
   ```ts
-  import { Layer } from "effect";
-  import { FileSystem } from "@effect/platform";
-  import { NodeFileSystem } from "@effect/platform-node";
-  import * as ParcelWatcher from "@effect/platform-node/NodeFileSystem/ParcelWatcher";
+  import { Layer } from "effect"
+  import { FileSystem } from "@effect/platform"
+  import { NodeFileSystem } from "@effect/platform-node"
+  import * as ParcelWatcher from "@effect/platform-node/NodeFileSystem/ParcelWatcher"
 
   // create a Layer that uses the ParcelWatcher backend
-  NodeFileSystem.layer.pipe(Layer.provide(ParcelWatcher.layer));
+  NodeFileSystem.layer.pipe(Layer.provide(ParcelWatcher.layer))
   ```
 
 - [#2555](https://github.com/Effect-TS/effect/pull/2555) [`8edacca`](https://github.com/Effect-TS/effect/commit/8edacca37f8e37c01a63fec332b06d9361efaa7b) Thanks [@tim-smart](https://github.com/tim-smart)! - prevent use of `Array` as import name to solve bundler issues
@@ -1107,15 +1122,15 @@
   Usage is now:
 
   ```ts
-  import * as Http from "@effect/platform/HttpServer";
+  import * as Http from "@effect/platform/HttpServer"
 
   Http.router.empty.pipe(
     Http.router.get("/health"),
     Http.server.serve(),
     Http.middleware.withTracerDisabledWhen(
-      (request) => request.url === "/no-tracing",
-    ),
-  );
+      (request) => request.url === "/no-tracing"
+    )
+  )
   ```
 
 - [#2207](https://github.com/Effect-TS/effect/pull/2207) [`aa4a3b5`](https://github.com/Effect-TS/effect/commit/aa4a3b550da1c1020265ac389ed3f309388994a2) Thanks [@github-actions](https://github.com/apps/github-actions)! - Swap type parameters in /platform data types
@@ -1133,8 +1148,8 @@
   For all the data types.
 
   ```ts
-  Effect.unit; // => Effect.void
-  Stream.unit; // => Stream.void
+  Effect.unit // => Effect.void
+  Stream.unit // => Stream.void
 
   // etc
   ```
@@ -1144,15 +1159,15 @@
   This change makes adjusting options to fetch more composable. You can now do:
 
   ```ts
-  import { pipe } from "effect";
-  import * as Http from "@effect/platform/HttpClient";
+  import { pipe } from "effect"
+  import * as Http from "@effect/platform/HttpClient"
 
   pipe(
     Http.request.get("https://example.com"),
     Http.client.fetchOk,
     Http.client.withFetchOptions({ credentials: "include" }),
-    Http.response.text,
-  );
+    Http.response.text
+  )
   ```
 
 - [#2207](https://github.com/Effect-TS/effect/pull/2207) [`2fb7d9c`](https://github.com/Effect-TS/effect/commit/2fb7d9ca15037ff62a578bb9fe5732da5f4f317d) Thanks [@github-actions](https://github.com/apps/github-actions)! - Release Effect 3.0 🎉
@@ -1166,13 +1181,13 @@
   Allows you to disable the http server tracer for the given urls:
 
   ```ts
-  import * as Http from "@effect/platform/HttpServer";
+  import * as Http from "@effect/platform/HttpServer"
 
   Http.router.empty.pipe(
     Http.router.get("/health"),
     Http.server.serve(),
-    Http.middleware.withTracerDisabledForUrls(["/health"]),
-  );
+    Http.middleware.withTracerDisabledForUrls(["/health"])
+  )
   ```
 
 - [#2529](https://github.com/Effect-TS/effect/pull/2529) [`78b767c`](https://github.com/Effect-TS/effect/commit/78b767c2b1625186e17131761a0edbac25d21850) Thanks [@fubhy](https://github.com/fubhy)! - Renamed `ReadonlyArray` and `ReadonlyRecord` modules for better discoverability.
@@ -1232,18 +1247,18 @@
   You could do the following:
 
   ```ts
-  import { PlatformConfigProvider } from "@effect/platform";
-  import { NodeContext } from "@effect/platform-node";
-  import { Config, Effect, Layer } from "effect";
+  import { PlatformConfigProvider } from "@effect/platform"
+  import { NodeContext } from "@effect/platform-node"
+  import { Config, Effect, Layer } from "effect"
 
   const ConfigProviderLive = PlatformConfigProvider.layerFileTree({
-    rootDirectory: `/config`,
-  }).pipe(Layer.provide(NodeContext.layer));
+    rootDirectory: `/config`
+  }).pipe(Layer.provide(NodeContext.layer))
 
   Effect.gen(function* (_) {
-    const secret = yield* _(Config.secret("secret"));
-    const value = yield* _(Config.string("value"), Config.nested("nested"));
-  }).pipe(Effect.provide(ConfigProviderLive));
+    const secret = yield* _(Config.secret("secret"))
+    const value = yield* _(Config.string("value"), Config.nested("nested"))
+  }).pipe(Effect.provide(ConfigProviderLive))
   ```
 
 ## 0.48.25
@@ -1308,11 +1323,11 @@
   This makes it easier to quickly create a request and execute it in a single line.
 
   ```ts
-  import * as Http from "@effect/platform/HttpClient";
+  import * as Http from "@effect/platform/HttpClient"
 
   Http.request
     .get("https://jsonplaceholder.typicode.com/todos/1")
-    .pipe(Http.response.json);
+    .pipe(Http.response.json)
   ```
 
 - [#2413](https://github.com/Effect-TS/effect/pull/2413) [`4789083`](https://github.com/Effect-TS/effect/commit/4789083283bdaec456982d614ebc4a496ea0e7f7) Thanks [@tim-smart](https://github.com/tim-smart)! - prevent unhandled errors in undici http client
@@ -1358,37 +1373,37 @@
   To add cookies to a http response:
 
   ```ts
-  import * as Http from "@effect/platform/HttpServer";
+  import * as Http from "@effect/platform/HttpServer"
 
   Http.response.empty().pipe(
     Http.response.setCookies([
       ["name", "value"],
-      ["foo", "bar", { httpOnly: true }],
-    ]),
-  );
+      ["foo", "bar", { httpOnly: true }]
+    ])
+  )
   ```
 
   You can also use cookies with the http client:
 
   ```ts
-  import * as Http from "@effect/platform/HttpClient";
-  import { Effect, Ref } from "effect";
+  import * as Http from "@effect/platform/HttpClient"
+  import { Effect, Ref } from "effect"
 
   Effect.gen(function* (_) {
-    const ref = yield* _(Ref.make(Http.cookies.empty));
-    const defaultClient = yield* _(Http.client.Client);
+    const ref = yield* _(Ref.make(Http.cookies.empty))
+    const defaultClient = yield* _(Http.client.Client)
     const clientWithCookies = defaultClient.pipe(
       Http.client.withCookiesRef(ref),
-      Http.client.filterStatusOk,
-    );
+      Http.client.filterStatusOk
+    )
 
     // cookies will be stored in the ref and sent in any subsequent requests
     yield* _(
       Http.request.get("https://www.google.com/"),
       clientWithCookies,
-      Effect.scoped,
-    );
-  });
+      Effect.scoped
+    )
+  })
   ```
 
 - [#2385](https://github.com/Effect-TS/effect/pull/2385) [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87) Thanks [@tim-smart](https://github.com/tim-smart)! - update typescript to 5.4
@@ -1460,14 +1475,14 @@
   It can be used to listen for file system events. Example:
 
   ```ts
-  import { FileSystem } from "@effect/platform";
-  import { NodeFileSystem, NodeRuntime } from "@effect/platform-node";
-  import { Console, Effect, Stream } from "effect";
+  import { FileSystem } from "@effect/platform"
+  import { NodeFileSystem, NodeRuntime } from "@effect/platform-node"
+  import { Console, Effect, Stream } from "effect"
 
   Effect.gen(function* (_) {
-    const fs = yield* _(FileSystem.FileSystem);
-    yield* _(fs.watch("./"), Stream.runForEach(Console.log));
-  }).pipe(Effect.provide(NodeFileSystem.layer), NodeRuntime.runMain);
+    const fs = yield* _(FileSystem.FileSystem)
+    yield* _(fs.watch("./"), Stream.runForEach(Console.log))
+  }).pipe(Effect.provide(NodeFileSystem.layer), NodeRuntime.runMain)
   ```
 
 - Updated dependencies [[`d0f56c6`](https://github.com/Effect-TS/effect/commit/d0f56c68e604b1cf8dd4e761a3f3cf3631b3cec1)]:
@@ -1580,22 +1595,22 @@
   If you wanted to write logfmt logs to a file, you can do the following:
 
   ```ts
-  import { PlatformLogger } from "@effect/platform";
-  import { NodeFileSystem, NodeRuntime } from "@effect/platform-node";
-  import { Effect, Layer, Logger } from "effect";
+  import { PlatformLogger } from "@effect/platform"
+  import { NodeFileSystem, NodeRuntime } from "@effect/platform-node"
+  import { Effect, Layer, Logger } from "effect"
 
-  const fileLogger = Logger.logfmtLogger.pipe(PlatformLogger.toFile("log.txt"));
+  const fileLogger = Logger.logfmtLogger.pipe(PlatformLogger.toFile("log.txt"))
   const LoggerLive = Logger.replaceScoped(
     Logger.defaultLogger,
-    fileLogger,
-  ).pipe(Layer.provide(NodeFileSystem.layer));
+    fileLogger
+  ).pipe(Layer.provide(NodeFileSystem.layer))
 
   Effect.log("a").pipe(
     Effect.zipRight(Effect.log("b")),
     Effect.zipRight(Effect.log("c")),
     Effect.provide(LoggerLive),
-    NodeRuntime.runMain,
-  );
+    NodeRuntime.runMain
+  )
   ```
 
 - [#2261](https://github.com/Effect-TS/effect/pull/2261) [`fa9663c`](https://github.com/Effect-TS/effect/commit/fa9663cb854ca03dba672d7857ecff84f1140c9e) Thanks [@tim-smart](https://github.com/tim-smart)! - add websocket support to platform http server
@@ -1605,14 +1620,14 @@
   Here is an example server that handles websockets on the `/ws` path:
 
   ```ts
-  import { NodeHttpServer, NodeRuntime } from "@effect/platform-node";
-  import * as Http from "@effect/platform/HttpServer";
-  import { Console, Effect, Layer, Schedule, Stream } from "effect";
-  import { createServer } from "node:http";
+  import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+  import * as Http from "@effect/platform/HttpServer"
+  import { Console, Effect, Layer, Schedule, Stream } from "effect"
+  import { createServer } from "node:http"
 
   const ServerLive = NodeHttpServer.server.layer(() => createServer(), {
-    port: 3000,
-  });
+    port: 3000
+  })
 
   const HttpLive = Http.router.empty.pipe(
     Http.router.get(
@@ -1624,17 +1639,17 @@
           Stream.encodeText,
           Stream.pipeThroughChannel(Http.request.upgradeChannel()),
           Stream.decodeText(),
-          Stream.runForEach(Console.log),
-        );
-        return Http.response.empty();
-      }),
+          Stream.runForEach(Console.log)
+        )
+        return Http.response.empty()
+      })
     ),
     Http.server.serve(Http.middleware.logger),
     Http.server.withLogAddress,
-    Layer.provide(ServerLive),
-  );
+    Layer.provide(ServerLive)
+  )
 
-  NodeRuntime.runMain(Layer.launch(HttpLive));
+  NodeRuntime.runMain(Layer.launch(HttpLive))
   ```
 
 - Updated dependencies [[`e03811e`](https://github.com/Effect-TS/effect/commit/e03811e80c93e986e6348b3b67ac2ed6d5fefff0), [`ac41d84`](https://github.com/Effect-TS/effect/commit/ac41d84776484cdce8165b7ca2c9c9b6377eee2d), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`1bf9f31`](https://github.com/Effect-TS/effect/commit/1bf9f31f07667de677673f7c29a4e7a26ebad3c8), [`e3ff789`](https://github.com/Effect-TS/effect/commit/e3ff789226f89e71eb28ca38ce79f90af6a03f1a), [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750), [`507ba40`](https://github.com/Effect-TS/effect/commit/507ba4060ff043c1a8d541dae723fa6940633b00), [`e466afe`](https://github.com/Effect-TS/effect/commit/e466afe32f2de598ceafd8982bd0cfbd388e5671), [`465be79`](https://github.com/Effect-TS/effect/commit/465be7926afe98169837d8a4ed5ebc059a732d21), [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed), [`de74eb8`](https://github.com/Effect-TS/effect/commit/de74eb80a79eebde5ff645033765e7a617e92f27), [`d8e6940`](https://github.com/Effect-TS/effect/commit/d8e694040f67da6fefc0f5c98fc8e15c0b48822e)]:
@@ -1651,10 +1666,10 @@
 
   ```ts
   // Here a request to `/child/hello` will be mapped to `/hello`
-  Http.router.mountApp("/child", httpApp);
+  Http.router.mountApp("/child", httpApp)
 
   // Here a request to `/child/hello` will be mapped to `/child/hello`
-  Http.router.mountApp("/child", httpApp, { includePrefix: true });
+  Http.router.mountApp("/child", httpApp, { includePrefix: true })
   ```
 
 - [#2232](https://github.com/Effect-TS/effect/pull/2232) [`bd1d7ac`](https://github.com/Effect-TS/effect/commit/bd1d7ac75eea57a94d5e2d8e1edccb3136e84899) Thanks [@tim-smart](https://github.com/tim-smart)! - use less aggressive type exclusion in http router apis
@@ -1715,10 +1730,10 @@
   Example:
 
   ```ts
-  import { Effect } from "effect";
-  import * as Http from "@effect/platform/HttpServer";
+  import { Effect } from "effect"
+  import * as Http from "@effect/platform/HttpServer"
 
-  Http.response.html`<html>${Effect.succeed(123)}</html>`;
+  Http.response.html`<html>${Effect.succeed(123)}</html>`
   ```
 
 - [#2174](https://github.com/Effect-TS/effect/pull/2174) [`abcb7d9`](https://github.com/Effect-TS/effect/commit/abcb7d983a4a85b43b7175e952f5b331b9019aea) Thanks [@tim-smart](https://github.com/tim-smart)! - add Template module to platform
@@ -1728,12 +1743,12 @@
   Example:
 
   ```ts
-  import { Effect } from "effect";
-  import { Template } from "@effect/platform";
+  import { Effect } from "effect"
+  import { Template } from "@effect/platform"
 
-  const t = Template.make`<html>${Effect.succeed(123)}</html>`;
+  const t = Template.make`<html>${Effect.succeed(123)}</html>`
 
-  Effect.runSync(t); // returns "<html>123</html>"
+  Effect.runSync(t) // returns "<html>123</html>"
   ```
 
 - Updated dependencies [[`bc8404d`](https://github.com/Effect-TS/effect/commit/bc8404d54fd42072d200c0399cb39672837afa9f), [`2c5cbcd`](https://github.com/Effect-TS/effect/commit/2c5cbcd1161b4f40dab184999291e817314107de), [`6565916`](https://github.com/Effect-TS/effect/commit/6565916ef254bf910e47d25fd0ef55e7cb420241)]:
@@ -1774,26 +1789,26 @@
   Some response helpers have been added to reduce the noise.
 
   ```ts
-  import * as Http from "@effect/platform/HttpClient";
-  import { Effect } from "effect";
+  import * as Http from "@effect/platform/HttpClient"
+  import { Effect } from "effect"
 
   // instead of
   Http.request.get("/").pipe(
     Http.client.fetchOk(),
     Effect.flatMap((_) => _.json),
-    Effect.scoped,
-  );
+    Effect.scoped
+  )
 
   // you can do
-  Http.request.get("/").pipe(Http.client.fetchOk(), Http.response.json);
+  Http.request.get("/").pipe(Http.client.fetchOk(), Http.response.json)
 
   // other helpers include
-  Http.response.text;
-  Http.response.stream;
-  Http.response.arrayBuffer;
-  Http.response.urlParamsBody;
-  Http.response.formData;
-  Http.response.schema * Effect;
+  Http.response.text
+  Http.response.stream
+  Http.response.arrayBuffer
+  Http.response.urlParamsBody
+  Http.response.formData
+  Http.response.schema * Effect
   ```
 
 ## 0.44.7
@@ -1856,31 +1871,31 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - With this change we now require a string key to be provided for all tags and renames the dear old `Tag` to `GenericTag`, so when previously you could do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.Tag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >();
+  >()
   ```
 
   you are now mandated to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.GenericTag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >("Service");
+  >("Service")
   ```
 
   This makes by default all tags globals and ensures better debuggaility when unexpected errors arise.
@@ -1888,17 +1903,17 @@
   Furthermore we introduce a new way of constructing tags that should be considered the new default:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   class Service extends Context.Tag("Service")<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
   >() {}
 
   const program = Effect.flatMap(Service, ({ number }) => number).pipe(
-    Effect.flatMap((_) => Effect.log(`number: ${_}`)),
-  );
+    Effect.flatMap((_) => Effect.log(`number: ${_}`))
+  )
   ```
 
   this will use "Service" as the key and will create automatically an opaque identifier (the class) to be used at the type level, it does something similar to the above in a single shot.
@@ -1939,21 +1954,21 @@
   At the type level instead the functions return `Readonly` variants, so for example we have:
 
   ```ts
-  import { Data } from "effect";
+  import { Data } from "effect"
 
   const obj = Data.struct({
     a: 0,
-    b: 1,
-  });
+    b: 1
+  })
   ```
 
   will have the `obj` typed as:
 
   ```ts
   declare const obj: {
-    readonly a: number;
-    readonly b: number;
-  };
+    readonly a: number
+    readonly b: number
+  }
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`6361ee2`](https://github.com/Effect-TS/effect/commit/6361ee2e83bdfead24045c3d058a7298efc18113) Thanks [@github-actions](https://github.com/apps/github-actions)! - fix for encoding of Transferable schemas
@@ -1967,26 +1982,26 @@
   to wrap the outermost schema:
 
   ```ts
-  import { Transferable } from "@effect/platform";
-  import { Schema } from "@effect/schema";
+  import { Transferable } from "@effect/platform"
+  import { Schema } from "@effect/schema"
 
   const structWithTransferable = Schema.struct({
-    data: Transferable.Uint8Array,
-  });
+    data: Transferable.Uint8Array
+  })
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - This change enables `Effect.serviceConstants` and `Effect.serviceMembers` to access any constant in the service, not only the effects, namely it is now possible to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
 
   class NumberRepo extends Context.TagClass("NumberRepo")<
     NumberRepo,
     {
-      readonly numbers: Array<number>;
+      readonly numbers: Array<number>
     }
   >() {
-    static numbers = Effect.serviceConstants(NumberRepo).numbers;
+    static numbers = Effect.serviceConstants(NumberRepo).numbers
   }
   ```
 
