@@ -1,5 +1,76 @@
 # effect
 
+## 3.7.0
+
+### Minor Changes
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`2f456cc`](https://github.com/Effect-TS/effect/commit/2f456cce5012b9fcb6b4e039190d527813b75b92) Thanks @vinassefranche! - preserve `Array.modify` `Array.modifyOption` non emptiness
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`8745e41`](https://github.com/Effect-TS/effect/commit/8745e41ed96e3765dc6048efc2a9afbe05c8a1e9) Thanks @patroza! - improve: type Fiber.awaitAll as Exit<A, E>[].
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`e557838`](https://github.com/Effect-TS/effect/commit/e55783886b046d3c5f33447f455f9ccf2fa75922) Thanks @titouancreach! - New constructor Config.nonEmptyString
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`d6e7e40`](https://github.com/Effect-TS/effect/commit/d6e7e40b1e2ad0c59aa02f07344d28601b14ebdc) Thanks @KhraksMamtsov! - preserve `Array.replace` `Array.replaceOption` non emptiness
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`8356321`](https://github.com/Effect-TS/effect/commit/8356321598da04bd77c1001f45a4e447bec5591d) Thanks @KhraksMamtsov! - add `Effect.bindAll` api
+
+  This api allows you to combine `Effect.all` with `Effect.bind`. It is useful
+  when you want to concurrently run multiple effects and then combine their
+  results in a Do notation pipeline.
+
+  ```ts
+  import { Effect } from "effect"
+
+  const result = Effect.Do.pipe(
+    Effect.bind("x", () => Effect.succeed(2)),
+    Effect.bindAll(
+      ({ x }) => ({
+        a: Effect.succeed(x + 1),
+        b: Effect.succeed("foo")
+      }),
+      { concurrency: 2 }
+    )
+  )
+  assert.deepStrictEqual(Effect.runSync(result), {
+    x: 2,
+    a: 3,
+    b: "foo"
+  })
+  ```
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`192f2eb`](https://github.com/Effect-TS/effect/commit/192f2ebb2c4ddbf4bfd8baedd32140b2376868f4) Thanks @tim-smart! - add `propagateInterruption` option to Fiber{Handle,Set,Map}
+
+  This option will send any external interrupts to the .join result.
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`718cb70`](https://github.com/Effect-TS/effect/commit/718cb70038629a6d58d02e407760e341f7c94474) Thanks @dilame! - feat(Stream): implement `race` operator, which accepts two upstreams and returns a stream that mirrors the first upstream to emit an item and interrupts the other upstream.
+
+  ```ts
+  import { Stream, Schedule, Console, Effect } from "effect"
+
+  const stream = Stream.fromSchedule(Schedule.spaced("2 millis")).pipe(
+    Stream.race(Stream.fromSchedule(Schedule.spaced("1 millis"))),
+    Stream.take(6),
+    Stream.tap((n) => Console.log(n))
+  )
+
+  Effect.runPromise(Stream.runDrain(stream))
+  // Output each millisecond from the first stream, the rest streams are interrupted
+  // 0
+  // 1
+  // 2
+  // 3
+  // 4
+  // 5
+  ```
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`e9d0310`](https://github.com/Effect-TS/effect/commit/e9d03107acbf204d9304f3e8aea0816b7d3c7dfb) Thanks @mikearnaldi! - Avoid automatic propagation of finalizer concurrency, closes #3440
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`6bf28f7`](https://github.com/Effect-TS/effect/commit/6bf28f7e3b1e5e0608ff567205fea0581d11666f) Thanks @tim-smart! - add Context.getOrElse api, for gettings a Tag's value with a fallback
+
+### Patch Changes
+
+- [#3410](https://github.com/Effect-TS/effect/pull/3410) [`db89601`](https://github.com/Effect-TS/effect/commit/db89601ee9c1050c4e762b7bd7ec65a6a2799dfe) Thanks @juliusmarminge! - add `Micro.isMicroCause` guard
+
 ## 3.6.8
 
 ### Patch Changes
@@ -79,22 +150,22 @@
   There is also a `CurrentTimeZone` service, for setting a time zone contextually.
 
   ```ts
-  import { DateTime, Effect } from "effect";
+  import { DateTime, Effect } from "effect"
 
   Effect.gen(function* () {
     // Get the current time in the current time zone
-    const now = yield* DateTime.nowInCurrentZone;
+    const now = yield* DateTime.nowInCurrentZone
 
     // Math functions are included
-    const tomorrow = DateTime.add(now, 1, "day");
+    const tomorrow = DateTime.add(now, 1, "day")
 
     // Convert to a different time zone
     // The UTC portion of the `DateTime` is preserved and only the time zone is
     // changed
     const sydneyTime = tomorrow.pipe(
-      DateTime.unsafeSetZoneNamed("Australia/Sydney"),
-    );
-  }).pipe(DateTime.withCurrentZoneNamed("America/New_York"));
+      DateTime.unsafeSetZoneNamed("Australia/Sydney")
+    )
+  }).pipe(DateTime.withCurrentZoneNamed("America/New_York"))
   ```
 
 - [#3380](https://github.com/Effect-TS/effect/pull/3380) [`cd255a4`](https://github.com/Effect-TS/effect/commit/cd255a48872d8fb924cf713ef73f0883a9cc6987) Thanks @tim-smart! - add Stream.asyncPush api
@@ -110,50 +181,50 @@
   second argument with the `bufferSize` and `strategy` fields.
 
   ```ts
-  import { Effect, Stream } from "effect";
+  import { Effect, Stream } from "effect"
 
   Stream.asyncPush<string>(
     (emit) =>
       Effect.acquireRelease(
         Effect.gen(function* () {
-          yield* Effect.log("subscribing");
-          return setInterval(() => emit.single("tick"), 1000);
+          yield* Effect.log("subscribing")
+          return setInterval(() => emit.single("tick"), 1000)
         }),
         (handle) =>
           Effect.gen(function* () {
-            yield* Effect.log("unsubscribing");
-            clearInterval(handle);
-          }),
+            yield* Effect.log("unsubscribing")
+            clearInterval(handle)
+          })
       ),
-    { bufferSize: 16, strategy: "dropping" },
-  );
+    { bufferSize: 16, strategy: "dropping" }
+  )
   ```
 
 - [#3380](https://github.com/Effect-TS/effect/pull/3380) [`3845646`](https://github.com/Effect-TS/effect/commit/3845646828e98f3c7cda1217f6cfe5f642ac0603) Thanks @mikearnaldi! - Implement Struct.keys as a typed alternative to Object.keys
 
   ```ts
-  import { Struct } from "effect";
+  import { Struct } from "effect"
 
-  const symbol: unique symbol = Symbol();
+  const symbol: unique symbol = Symbol()
 
   const value = {
     a: 1,
     b: 2,
-    [symbol]: 3,
-  };
+    [symbol]: 3
+  }
 
-  const keys: Array<"a" | "b"> = Struct.keys(value);
+  const keys: Array<"a" | "b"> = Struct.keys(value)
   ```
 
 - [#3380](https://github.com/Effect-TS/effect/pull/3380) [`2d09078`](https://github.com/Effect-TS/effect/commit/2d09078c5948b37fc2f79ef858fe4ca3e4814085) Thanks @sukovanej! - Add `Random.choice`.
 
   ```ts
-  import { Random } from "effect";
+  import { Random } from "effect"
 
   Effect.gen(function* () {
-    const randomItem = yield* Random.choice([1, 2, 3]);
-    console.log(randomItem);
-  });
+    const randomItem = yield* Random.choice([1, 2, 3])
+    console.log(randomItem)
+  })
   ```
 
 - [#3380](https://github.com/Effect-TS/effect/pull/3380) [`4bce5a0`](https://github.com/Effect-TS/effect/commit/4bce5a0274203550ccf117d830721891b0a3d182) Thanks @vinassefranche! - Add onlyEffect option to Effect.tap
@@ -163,15 +234,15 @@
 - [#3380](https://github.com/Effect-TS/effect/pull/3380) [`e74cc38`](https://github.com/Effect-TS/effect/commit/e74cc38cb420a320c4d7ef98180f19d452a8b316) Thanks @dilame! - Implement `Stream.onEnd` that adds an effect to be executed at the end of the stream.
 
   ```ts
-  import { Console, Effect, Stream } from "effect";
+  import { Console, Effect, Stream } from "effect"
 
   const stream = Stream.make(1, 2, 3).pipe(
     Stream.map((n) => n * 2),
     Stream.tap((n) => Console.log(`after mapping: ${n}`)),
-    Stream.onEnd(Console.log("Stream ended")),
-  );
+    Stream.onEnd(Console.log("Stream ended"))
+  )
 
-  Effect.runPromise(Stream.runCollect(stream)).then(console.log);
+  Effect.runPromise(Stream.runCollect(stream)).then(console.log)
   // after mapping: 2
   // after mapping: 4
   // after mapping: 6
@@ -182,15 +253,15 @@
 - [#3380](https://github.com/Effect-TS/effect/pull/3380) [`bb069b4`](https://github.com/Effect-TS/effect/commit/bb069b49ef291c532a02c1e8e74271f6d1bb32ec) Thanks @dilame! - Implement `Stream.onStart` that adds an effect to be executed at the start of the stream.
 
   ```ts
-  import { Console, Effect, Stream } from "effect";
+  import { Console, Effect, Stream } from "effect"
 
   const stream = Stream.make(1, 2, 3).pipe(
     Stream.onStart(Console.log("Stream started")),
     Stream.map((n) => n * 2),
-    Stream.tap((n) => Console.log(`after mapping: ${n}`)),
-  );
+    Stream.tap((n) => Console.log(`after mapping: ${n}`))
+  )
 
-  Effect.runPromise(Stream.runCollect(stream)).then(console.log);
+  Effect.runPromise(Stream.runCollect(stream)).then(console.log)
   // Stream started
   // after mapping: 2
   // after mapping: 4
@@ -213,16 +284,16 @@
   These helpers can be used, for example, to extract the service shape from a tag:
 
   ```ts
-  import * as Context from "effect/Context";
+  import * as Context from "effect/Context"
 
   export class Foo extends Context.Tag("Foo")<
     Foo,
     {
-      readonly foo: Effect.Effect<void>;
+      readonly foo: Effect.Effect<void>
     }
   >() {}
 
-  type ServiceShape = typeof Foo.Service;
+  type ServiceShape = typeof Foo.Service
   ```
 
 - [#3373](https://github.com/Effect-TS/effect/pull/3373) [`f566fd1`](https://github.com/Effect-TS/effect/commit/f566fd1d7eea531a0d981dd24037f14a603a1273) Thanks @KhraksMamtsov! - Add test for Hash.number(0.1) !== Has.number(0)
@@ -277,10 +348,10 @@
 - [#3250](https://github.com/Effect-TS/effect/pull/3250) [`203658f`](https://github.com/Effect-TS/effect/commit/203658f8001c132b25764ab70344b171683b554c) Thanks @gcanti! - add support for `Refinement`s to `Predicate.or`, closes #3243
 
   ```ts
-  import { Predicate } from "effect";
+  import { Predicate } from "effect"
 
   // Refinement<unknown, string | number>
-  const isStringOrNumber = Predicate.or(Predicate.isString, Predicate.isNumber);
+  const isStringOrNumber = Predicate.or(Predicate.isString, Predicate.isNumber)
   ```
 
 - [#3246](https://github.com/Effect-TS/effect/pull/3246) [`eb1c4d4`](https://github.com/Effect-TS/effect/commit/eb1c4d44e54b9d8d201a366d1ff94face2a6dcd3) Thanks @tim-smart! - render nested causes in Cause.pretty
@@ -330,41 +401,41 @@
   The resource is lazily acquired on the first call to `get` and released when the last reference is released.
 
   ```ts
-  import { Effect, RcRef } from "effect";
+  import { Effect, RcRef } from "effect"
 
   Effect.gen(function* () {
     const ref = yield* RcRef.make({
       acquire: Effect.acquireRelease(Effect.succeed("foo"), () =>
-        Effect.log("release foo"),
-      ),
-    });
+        Effect.log("release foo")
+      )
+    })
 
     // will only acquire the resource once, and release it
     // when the scope is closed
-    yield* RcRef.get(ref).pipe(Effect.andThen(RcRef.get(ref)), Effect.scoped);
-  });
+    yield* RcRef.get(ref).pipe(Effect.andThen(RcRef.get(ref)), Effect.scoped)
+  })
   ```
 
 - [#3048](https://github.com/Effect-TS/effect/pull/3048) [`5ab348f`](https://github.com/Effect-TS/effect/commit/5ab348f265db3d283aa091ddca6d2d49137c16f2) Thanks @tim-smart! - allowing customizing Stream pubsub strategy
 
   ```ts
-  import { Schedule, Stream } from "effect";
+  import { Schedule, Stream } from "effect"
 
   // toPubSub
   Stream.fromSchedule(Schedule.spaced(1000)).pipe(
     Stream.toPubSub({
       capacity: 16, // or "unbounded"
-      strategy: "dropping", // or "sliding" / "suspend"
-    }),
-  );
+      strategy: "dropping" // or "sliding" / "suspend"
+    })
+  )
 
   // also for the broadcast apis
   Stream.fromSchedule(Schedule.spaced(1000)).pipe(
     Stream.broadcastDynamic({
       capacity: 16,
-      strategy: "dropping",
-    }),
-  );
+      strategy: "dropping"
+    })
+  )
   ```
 
 - [#3048](https://github.com/Effect-TS/effect/pull/3048) [`60bc3d0`](https://github.com/Effect-TS/effect/commit/60bc3d0867b13e48b24dc22604b4dd2e7b2c1ca4) Thanks @tim-smart! - add Duration.isZero, for checking if a Duration is zero
@@ -378,9 +449,9 @@
   To try it out, provide it to your program:
 
   ```ts
-  import { Effect, Logger } from "effect";
+  import { Effect, Logger } from "effect"
 
-  Effect.log("Hello, World!").pipe(Effect.provide(Logger.pretty));
+  Effect.log("Hello, World!").pipe(Effect.provide(Logger.pretty))
   ```
 
 - [#3048](https://github.com/Effect-TS/effect/pull/3048) [`a1f5b83`](https://github.com/Effect-TS/effect/commit/a1f5b831a1bc7535988b370d68d0b3eb1123e0ce) Thanks @tim-smart! - add .groupCollapsed to UnsafeConsole
@@ -411,23 +482,23 @@
   Complex keys can extend `Equal` and `Hash` to allow lookups by value.
 
   ```ts
-  import { Effect, RcMap } from "effect";
+  import { Effect, RcMap } from "effect"
 
   Effect.gen(function* () {
     const map = yield* RcMap.make({
       lookup: (key: string) =>
         Effect.acquireRelease(Effect.succeed(`acquired ${key}`), () =>
-          Effect.log(`releasing ${key}`),
-        ),
-    });
+          Effect.log(`releasing ${key}`)
+        )
+    })
 
     // Get "foo" from the map twice, which will only acquire it once
     // It will then be released once the scope closes.
     yield* RcMap.get(map, "foo").pipe(
       Effect.andThen(RcMap.get(map, "foo")),
-      Effect.scoped,
-    );
-  });
+      Effect.scoped
+    )
+  })
   ```
 
 - [#3048](https://github.com/Effect-TS/effect/pull/3048) [`ac71f37`](https://github.com/Effect-TS/effect/commit/ac71f378f2413e5aa91c95f649ffe898d6a26114) Thanks @dilame! - Ensure `Scope` is excluded from `R` in the `Channel` / `Stream` `run*` functions.
@@ -443,15 +514,15 @@
 - [#3048](https://github.com/Effect-TS/effect/pull/3048) [`e4bf1bf`](https://github.com/Effect-TS/effect/commit/e4bf1bf2b4a970eacd77c9b77b5ea8c68bc84498) Thanks @dilame! - feat(Stream): implement "raceAll" operator, which returns a stream that mirrors the first source stream to emit an item.
 
   ```ts
-  import { Stream, Schedule, Console, Effect } from "effect";
+  import { Stream, Schedule, Console, Effect } from "effect"
 
   const stream = Stream.raceAll(
     Stream.fromSchedule(Schedule.spaced("1 millis")),
     Stream.fromSchedule(Schedule.spaced("2 millis")),
-    Stream.fromSchedule(Schedule.spaced("4 millis")),
-  ).pipe(Stream.take(6), Stream.tap(Console.log));
+    Stream.fromSchedule(Schedule.spaced("4 millis"))
+  ).pipe(Stream.take(6), Stream.tap(Console.log))
 
-  Effect.runPromise(Stream.runDrain(stream));
+  Effect.runPromise(Stream.runDrain(stream))
   // Output only from the first stream, the rest streams are interrupted
   // 0
   // 1
@@ -468,7 +539,7 @@
 - [#3048](https://github.com/Effect-TS/effect/pull/3048) [`9f66825`](https://github.com/Effect-TS/effect/commit/9f66825f1fce0fe8d10420c285f7dc4c71e8af8d) Thanks @tim-smart! - allow customizing the output buffer for the Stream.async\* apis
 
   ```ts
-  import { Stream } from "effect";
+  import { Stream } from "effect"
 
   Stream.async<string>(
     (emit) => {
@@ -476,9 +547,9 @@
     },
     {
       bufferSize: 16,
-      strategy: "dropping", // you can also use "sliding" or "suspend"
-    },
-  );
+      strategy: "dropping" // you can also use "sliding" or "suspend"
+    }
+  )
   ```
 
 ### Patch Changes
@@ -596,15 +667,15 @@
 - [#3121](https://github.com/Effect-TS/effect/pull/3121) [`33735b1`](https://github.com/Effect-TS/effect/commit/33735b16b41bd26929d8f4754c190925db6323b7) Thanks @KhraksMamtsov! - Support for the tacit usage of external handlers for `Match.tag` and `Match.tagStartsWith` functions
 
   ```ts
-  type Value = { _tag: "A"; a: string } | { _tag: "B"; b: number };
-  const handlerA = (_: { _tag: "A"; a: number }) => _.a;
+  type Value = { _tag: "A"; a: string } | { _tag: "B"; b: number }
+  const handlerA = (_: { _tag: "A"; a: number }) => _.a
 
   // $ExpectType string | number
   pipe(
     M.type<Value>(),
     M.tag("A", handlerA), // <-- no type issue
-    M.orElse((_) => _.b),
-  )(value);
+    M.orElse((_) => _.b)
+  )(value)
   ```
 
 - [#3096](https://github.com/Effect-TS/effect/pull/3096) [`5c0ceb0`](https://github.com/Effect-TS/effect/commit/5c0ceb00826cce9e50bf9d41d83e191d5352c030) Thanks @gcanti! - Micro: move MicroExit types to a namespace
@@ -664,15 +735,15 @@
   `Effect.liftPredicate` transforms a `Predicate` function into an `Effect` returning the input value if the predicate returns `true` or failing with specified error if the predicate fails.
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
-  const isPositive = (n: number): boolean => n > 0;
+  const isPositive = (n: number): boolean => n > 0
 
   // succeeds with `1`
-  Effect.liftPredicate(1, isPositive, (n) => `${n} is not positive`);
+  Effect.liftPredicate(1, isPositive, (n) => `${n} is not positive`)
 
   // fails with `"0 is not positive"`
-  Effect.liftPredicate(0, isPositive, (n) => `${n} is not positive`);
+  Effect.liftPredicate(0, isPositive, (n) => `${n} is not positive`)
   ```
 
 - [#2938](https://github.com/Effect-TS/effect/pull/2938) [`9c1b5b3`](https://github.com/Effect-TS/effect/commit/9c1b5b39e6c19604ce834f072a114ad392c50a06) Thanks @tim-smart! - add EventListener type to Stream to avoid use of dom lib
@@ -695,21 +766,21 @@
 - [#2938](https://github.com/Effect-TS/effect/pull/2938) [`91bf8a2`](https://github.com/Effect-TS/effect/commit/91bf8a2e9d1959393b3cf7366cc1d584d3e666b7) Thanks @msensys! - Add `Tuple.at` api, to retrieve an element at a specified index from a tuple.
 
   ```ts
-  import { Tuple } from "effect";
+  import { Tuple } from "effect"
 
-  assert.deepStrictEqual(Tuple.at([1, "hello", true], 1), "hello");
+  assert.deepStrictEqual(Tuple.at([1, "hello", true], 1), "hello")
   ```
 
 - [#2938](https://github.com/Effect-TS/effect/pull/2938) [`c6a4a26`](https://github.com/Effect-TS/effect/commit/c6a4a266606575fd2c7165940c4072ad4c57d01f) Thanks @datner! - add `ensure` util for Array, used to normalize `A | ReadonlyArray<A>`
 
   ```ts
-  import { ensure } from "effect/Array";
+  import { ensure } from "effect/Array"
 
   // lets say you are not 100% sure if it's a member or a collection
-  declare const someValue: { foo: string } | Array<{ foo: string }>;
+  declare const someValue: { foo: string } | Array<{ foo: string }>
 
   // $ExpectType ({ foo: string })[]
-  const normalized = ensure(someValue);
+  const normalized = ensure(someValue)
   ```
 
 ## 3.3.5
@@ -779,13 +850,13 @@
   This allows you to add log & span annotation to a Layer.
 
   ```ts
-  import { Effect, Layer } from "effect";
+  import { Effect, Layer } from "effect"
 
   Layer.effectDiscard(Effect.log("hello")).pipe(
     Layer.annotateLogs({
-      service: "my-service",
-    }),
-  );
+      service: "my-service"
+    })
+  )
   ```
 
 - [#2837](https://github.com/Effect-TS/effect/pull/2837) [`b53f69b`](https://github.com/Effect-TS/effect/commit/b53f69bff1452a487b21198cd83961f844e02d36) Thanks @dilame! - Types: implement `TupleOf` and `TupleOfAtLeast` types
@@ -873,7 +944,7 @@
   The following now correctly flags a type error given that the property `context` exists already in `Tag`:
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
   class LoaderArgs extends Effect.Tag("@services/LoaderContext")<
     LoaderArgs,
@@ -910,15 +981,15 @@
   Allows you to define an effectful function that is wrapped with a span.
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
   const getTodo = Effect.functionWithSpan({
     body: (id: number) => Effect.succeed(`Got todo ${id}!`),
     options: (id) => ({
       name: `getTodo-${id}`,
-      attributes: { id },
-    }),
-  });
+      attributes: { id }
+    })
+  })
   ```
 
 - [#2778](https://github.com/Effect-TS/effect/pull/2778) [`2cbb76b`](https://github.com/Effect-TS/effect/commit/2cbb76bb52500a3f4bf27d1c91482518cbea56d7) Thanks [@tim-smart](https://github.com/tim-smart)! - Add do notation for Array
@@ -986,13 +1057,13 @@
   This api allows you to annotate logs until the Scope has been closed.
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
   Effect.gen(function* () {
-    yield* Effect.log("no annotations");
-    yield* Effect.annotateLogsScoped({ foo: "bar" });
-    yield* Effect.log("annotated with foo=bar");
-  }).pipe(Effect.scoped, Effect.andThen(Effect.log("no annotations again")));
+    yield* Effect.log("no annotations")
+    yield* Effect.annotateLogsScoped({ foo: "bar" })
+    yield* Effect.log("annotated with foo=bar")
+  }).pipe(Effect.scoped, Effect.andThen(Effect.log("no annotations again")))
   ```
 
 - [#2543](https://github.com/Effect-TS/effect/pull/2543) [`a1c7ab8`](https://github.com/Effect-TS/effect/commit/a1c7ab8ffedacd18c1fc784f4ff5844f79498b83) Thanks [@github-actions](https://github.com/apps/github-actions)! - added Stream.fromEventListener, and BrowserStream.{fromEventListenerWindow, fromEventListenerDocument} for constructing a stream from addEventListener
@@ -1007,38 +1078,38 @@
   will return `Some` of the produced value.
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
   // will return `None` after 500 millis
   Effect.succeed("hello").pipe(
     Effect.delay(1000),
-    Effect.timeoutOption("500 millis"),
-  );
+    Effect.timeoutOption("500 millis")
+  )
   ```
 
 - [#2543](https://github.com/Effect-TS/effect/pull/2543) [`92d56db`](https://github.com/Effect-TS/effect/commit/92d56dbb3f33e36636c2a2f1030c56492e39cf4d) Thanks [@github-actions](https://github.com/apps/github-actions)! - add $is & $match helpers to Data.TaggedEnum constructors
 
   ```ts
-  import { Data } from "effect";
+  import { Data } from "effect"
 
   type HttpError = Data.TaggedEnum<{
-    NotFound: {};
-    InternalServerError: { reason: string };
-  }>;
+    NotFound: {}
+    InternalServerError: { reason: string }
+  }>
   const { $is, $match, InternalServerError, NotFound } =
-    Data.taggedEnum<HttpError>();
+    Data.taggedEnum<HttpError>()
 
   // create a matcher
   const matcher = $match({
     NotFound: () => 0,
-    InternalServerError: () => 1,
-  });
+    InternalServerError: () => 1
+  })
 
   // true
-  $is("NotFound")(NotFound());
+  $is("NotFound")(NotFound())
 
   // false
-  $is("NotFound")(InternalServerError({ reason: "fail" }));
+  $is("NotFound")(InternalServerError({ reason: "fail" }))
   ```
 
 ## 3.0.8
@@ -1089,10 +1160,10 @@
 
   ```ts
   Effect.gen(function* () {
-    const a = yield* Effect.success(1);
-    const b = yield* Effect.success(2);
-    return a + b;
-  });
+    const a = yield* Effect.success(1)
+    const b = yield* Effect.success(2)
+    return a + b
+  })
   ```
 
 ## 3.0.3
@@ -1104,14 +1175,14 @@
   Which can be used to constrain the return type of a match expression.
 
   ```ts
-  import { Match } from "effect";
+  import { Match } from "effect"
 
   Match.type<string>().pipe(
     Match.withReturnType<string>(),
     Match.when("foo", () => "foo"), // valid
     Match.when("bar", () => 123), // type error
-    Match.else(() => "baz"),
-  );
+    Match.else(() => "baz")
+  )
   ```
 
 ## 3.0.2
@@ -1148,11 +1219,11 @@
   metric.
 
   ```ts
-  import { Metric } from "effect";
+  import { Metric } from "effect"
 
   const counts = Metric.frequency("counts", {
-    preregisteredWords: ["a", "b", "c"],
-  }).register();
+    preregisteredWords: ["a", "b", "c"]
+  }).register()
   ```
 
 - [#2207](https://github.com/Effect-TS/effect/pull/2207) [`9a3bd47`](https://github.com/Effect-TS/effect/commit/9a3bd47ebd0750c7e498162734f6d21895de0cb2) Thanks [@github-actions](https://github.com/apps/github-actions)! - Bump TypeScript min requirement to version 5.4
@@ -1168,7 +1239,7 @@
   This makes Effect.log more similar to console.log:
 
   ```ts
-  Effect.log("hello", { foo: "bar" }, Cause.fail("error"));
+  Effect.log("hello", { foo: "bar" }, Cause.fail("error"))
   ```
 
 - [#2207](https://github.com/Effect-TS/effect/pull/2207) [`2f96d93`](https://github.com/Effect-TS/effect/commit/2f96d938b90f8c19377583279e3c7afd9b509c50) Thanks [@github-actions](https://github.com/apps/github-actions)! - Fix ConfigError `_tag`, with the previous implementation catching the `ConfigError` with `Effect.catchTag` would show `And`, `Or`, etc.
@@ -1178,8 +1249,8 @@
   For all the data types.
 
   ```ts
-  Effect.unit; // => Effect.void
-  Stream.unit; // => Stream.void
+  Effect.unit // => Effect.void
+  Stream.unit // => Stream.void
 
   // etc
   ```
@@ -1193,8 +1264,8 @@
   ```ts
   Effect.if(true, {
     onTrue: Effect.succeed("true"),
-    onFalse: Effect.succeed("false"),
-  });
+    onFalse: Effect.succeed("false")
+  })
   ```
 
   You should now write:
@@ -1202,8 +1273,8 @@
   ```ts
   Effect.if(true, {
     onTrue: () => Effect.succeed("true"),
-    onFalse: () => Effect.succeed("false"),
-  });
+    onFalse: () => Effect.succeed("false")
+  })
   ```
 
 - [#2207](https://github.com/Effect-TS/effect/pull/2207) [`e7e1bbe`](https://github.com/Effect-TS/effect/commit/e7e1bbe68486fdf31c8f84b0880522d39adcaad3) Thanks [@github-actions](https://github.com/apps/github-actions)! - Replaced custom `NoInfer` type with the native `NoInfer` type from TypeScript 5.4
@@ -1230,22 +1301,22 @@
 - [#2207](https://github.com/Effect-TS/effect/pull/2207) [`1b5f0c7`](https://github.com/Effect-TS/effect/commit/1b5f0c77e7fd477a0026071e82129a948227f4b3) Thanks [@github-actions](https://github.com/apps/github-actions)! - add FiberHandle module, for holding a reference to a running fiber
 
   ```ts
-  import { Effect, FiberHandle } from "effect";
+  import { Effect, FiberHandle } from "effect"
 
   Effect.gen(function* (_) {
-    const handle = yield* _(FiberHandle.make());
+    const handle = yield* _(FiberHandle.make())
 
     // run some effects
-    yield* _(FiberHandle.run(handle, Effect.never));
+    yield* _(FiberHandle.run(handle, Effect.never))
     // this will interrupt the previous fiber
-    yield* _(FiberHandle.run(handle, Effect.never));
+    yield* _(FiberHandle.run(handle, Effect.never))
     // this will not run, as a fiber is already running
-    yield* _(FiberHandle.run(handle, Effect.never, { onlyIfMissing: true }));
+    yield* _(FiberHandle.run(handle, Effect.never, { onlyIfMissing: true }))
 
-    yield* _(Effect.sleep(1000));
+    yield* _(Effect.sleep(1000))
   }).pipe(
-    Effect.scoped, // The fiber will be interrupted when the scope is closed
-  );
+    Effect.scoped // The fiber will be interrupted when the scope is closed
+  )
   ```
 
 - [#2521](https://github.com/Effect-TS/effect/pull/2521) [`6424181`](https://github.com/Effect-TS/effect/commit/64241815fe6a939e91e6947253e7dceea1306aa8) Thanks [@patroza](https://github.com/patroza)! - change return type of Fiber.joinAll to return an array
@@ -1283,16 +1354,16 @@
   For example, `Ref`'s implement `Readable`:
 
   ```ts
-  import { Effect, Readable, Ref } from "effect";
-  import assert from "assert";
+  import { Effect, Readable, Ref } from "effect"
+  import assert from "assert"
 
   Effect.gen(function* (_) {
-    const ref = yield* _(Ref.make(123));
-    assert(Readable.isReadable(ref));
+    const ref = yield* _(Ref.make(123))
+    assert(Readable.isReadable(ref))
 
-    const result = yield* _(ref.get);
-    assert(result === 123);
-  });
+    const result = yield* _(ref.get)
+    assert(result === 123)
+  })
   ```
 
 - [#2498](https://github.com/Effect-TS/effect/pull/2498) [`e983740`](https://github.com/Effect-TS/effect/commit/e9837401145605aff5bc2ec7e73004f397c5d2d1) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added {Readable, Subscribable}.unwrap
@@ -1300,25 +1371,25 @@
 - [#2494](https://github.com/Effect-TS/effect/pull/2494) [`e3e0924`](https://github.com/Effect-TS/effect/commit/e3e09247d46a35430fc60e4aa4032cc50814f212) Thanks [@thewilkybarkid](https://github.com/thewilkybarkid)! - Add `Duration.divide` and `Duration.unsafeDivide`.
 
   ```ts
-  import { Duration, Option } from "effect";
-  import assert from "assert";
+  import { Duration, Option } from "effect"
+  import assert from "assert"
 
   assert.deepStrictEqual(
     Duration.divide("10 seconds", 2),
-    Option.some(Duration.decode("5 seconds")),
-  );
-  assert.deepStrictEqual(Duration.divide("10 seconds", 0), Option.none());
-  assert.deepStrictEqual(Duration.divide("1 nano", 1.5), Option.none());
+    Option.some(Duration.decode("5 seconds"))
+  )
+  assert.deepStrictEqual(Duration.divide("10 seconds", 0), Option.none())
+  assert.deepStrictEqual(Duration.divide("1 nano", 1.5), Option.none())
 
   assert.deepStrictEqual(
     Duration.unsafeDivide("10 seconds", 2),
-    Duration.decode("5 seconds"),
-  );
+    Duration.decode("5 seconds")
+  )
   assert.deepStrictEqual(
     Duration.unsafeDivide("10 seconds", 0),
-    Duration.infinity,
-  );
-  assert.throws(() => Duration.unsafeDivide("1 nano", 1.5));
+    Duration.infinity
+  )
+  assert.throws(() => Duration.unsafeDivide("1 nano", 1.5))
   ```
 
 ## 2.4.18
@@ -1330,10 +1401,10 @@
   These apis send a Logger's output to console.log/console.error respectively.
 
   ```ts
-  import { Logger } from "effect";
+  import { Logger } from "effect"
 
   // send output to stderr
-  const stderrLogger = Logger.withConsoleError(Logger.stringLogger);
+  const stderrLogger = Logger.withConsoleError(Logger.stringLogger)
   ```
 
 ## 2.4.17
@@ -1351,14 +1422,14 @@
   This module shares many apis compared to "effect/ReadonlyArray", but is fully lazy.
 
   ```ts
-  import { Iterable, pipe } from "effect";
+  import { Iterable, pipe } from "effect"
 
   // Only 5 items will be generated & transformed
   pipe(
     Iterable.range(1, 100),
     Iterable.map((i) => `item ${i}`),
-    Iterable.take(5),
-  );
+    Iterable.take(5)
+  )
   ```
 
 - [#2438](https://github.com/Effect-TS/effect/pull/2438) [`7ddd654`](https://github.com/Effect-TS/effect/commit/7ddd65415b65ccb654ad04f4dbefe39402f15117) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Support Heterogeneous Effects in Effect Iterable apis
@@ -1375,7 +1446,7 @@
   For example:
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
   class Foo extends Effect.Tag("Foo")<Foo, 3>() {}
   class Bar extends Effect.Tag("Bar")<Bar, 4>() {}
@@ -1385,8 +1456,8 @@
     Effect.succeed(1 as const),
     Effect.succeed(2 as const),
     Foo,
-    Bar,
-  ]);
+    Bar
+  ])
   ```
 
   The above is now possible while before it was expecting all Effects to conform to the same type
@@ -1396,13 +1467,13 @@
   Which allows you to filter and map an Iterable of Effects in one step.
 
   ```ts
-  import { Effect, Option } from "effect";
+  import { Effect, Option } from "effect"
 
   // resolves with `["even: 2"]
   Effect.filterMap(
     [Effect.succeed(1), Effect.succeed(2), Effect.succeed(3)],
-    (i) => (i % 2 === 0 ? Option.some(`even: ${i}`) : Option.none()),
-  );
+    (i) => (i % 2 === 0 ? Option.some(`even: ${i}`) : Option.none())
+  )
   ```
 
 - [#2461](https://github.com/Effect-TS/effect/pull/2461) [`8fdfda6`](https://github.com/Effect-TS/effect/commit/8fdfda6618be848c01b399d13bc05a9a3adfb613) Thanks [@tim-smart](https://github.com/tim-smart)! - use Inspectable.toStringUnknown for absurd runtime errors
@@ -1468,13 +1539,13 @@
   You can use it with the Effect.withTracerEnabled api:
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
   Effect.succeed(42).pipe(
     Effect.withSpan("my-span"),
     // the span will not be registered with the tracer
-    Effect.withTracerEnabled(false),
-  );
+    Effect.withTracerEnabled(false)
+  )
   ```
 
 - [#2383](https://github.com/Effect-TS/effect/pull/2383) [`317b5b8`](https://github.com/Effect-TS/effect/commit/317b5b8e8c8c2207469b3ebfcf72bf3a9f7cbc60) Thanks [@tim-smart](https://github.com/tim-smart)! - add Duration.isFinite api, to determine if a duration is not Infinity
@@ -1505,10 +1576,10 @@
   Example:
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
   // fails with NoSuchElementException
-  Effect.succeed(1).pipe(Effect.filterOrFail((n) => n === 0));
+  Effect.succeed(1).pipe(Effect.filterOrFail((n) => n === 0))
   ```
 
 - [#2336](https://github.com/Effect-TS/effect/pull/2336) [`6b20bad`](https://github.com/Effect-TS/effect/commit/6b20badebb3a7ca4d38857753e8ecaa09d02ccfb) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added Predicate.isTruthy
@@ -1554,8 +1625,8 @@
 
   ```ts
   export function refined<A extends Brand<any>>(
-    f: (unbranded: Brand.Unbranded<A>) => Option.Option<Brand.BrandErrors>,
-  ): Brand.Constructor<A>;
+    f: (unbranded: Brand.Unbranded<A>) => Option.Option<Brand.BrandErrors>
+  ): Brand.Constructor<A>
   ```
 
 - [#2285](https://github.com/Effect-TS/effect/pull/2285) [`817a04c`](https://github.com/Effect-TS/effect/commit/817a04cb2df0f4140984dc97eb3e1bb14a6c4a38) Thanks [@tim-smart](https://github.com/tim-smart)! - add support for AbortSignal's to runPromise
@@ -1563,14 +1634,14 @@
   If the signal is aborted, the effect execution will be interrupted.
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
-  const controller = new AbortController();
+  const controller = new AbortController()
 
-  Effect.runPromise(Effect.never, { signal: controller.signal });
+  Effect.runPromise(Effect.never, { signal: controller.signal })
 
   // abort after 1 second
-  setTimeout(() => controller.abort(), 1000);
+  setTimeout(() => controller.abort(), 1000)
   ```
 
 - [#2293](https://github.com/Effect-TS/effect/pull/2293) [`d90a99d`](https://github.com/Effect-TS/effect/commit/d90a99d03d074adc7cd2533f15419138264da5a2) Thanks [@tim-smart](https://github.com/tim-smart)! - add AbortSignal support to ManagedRuntime
@@ -1591,24 +1662,24 @@
   dependencies from the given Layer. For example:
 
   ```ts
-  import { Console, Effect, Layer, ManagedRuntime } from "effect";
+  import { Console, Effect, Layer, ManagedRuntime } from "effect"
 
   class Notifications extends Effect.Tag("Notifications")<
     Notifications,
     { readonly notify: (message: string) => Effect.Effect<void> }
   >() {
     static Live = Layer.succeed(this, {
-      notify: (message) => Console.log(message),
-    });
+      notify: (message) => Console.log(message)
+    })
   }
 
   async function main() {
-    const runtime = ManagedRuntime.make(Notifications.Live);
-    await runtime.runPromise(Notifications.notify("Hello, world!"));
-    await runtime.dispose();
+    const runtime = ManagedRuntime.make(Notifications.Live)
+    await runtime.runPromise(Notifications.notify("Hello, world!"))
+    await runtime.dispose()
   }
 
-  main();
+  main()
   ```
 
 - [#2211](https://github.com/Effect-TS/effect/pull/2211) [`20e63fb`](https://github.com/Effect-TS/effect/commit/20e63fb9207210f3fe2d136ec40d0a2dbff3225e) Thanks [@tim-smart](https://github.com/tim-smart)! - add Layer.toRuntimeWithMemoMap api
@@ -1633,8 +1704,8 @@
   class DemoTag extends Effect.Tag("DemoTag")<
     DemoTag,
     {
-      readonly getNumbers: () => Array<number>;
-      readonly strings: Array<string>;
+      readonly getNumbers: () => Array<number>
+      readonly strings: Array<string>
     }
   >() {}
   ```
@@ -1642,8 +1713,8 @@
   And use them like:
 
   ```ts
-  DemoTag.getNumbers();
-  DemoTag.strings;
+  DemoTag.getNumbers()
+  DemoTag.strings
   ```
 
   This fuses together `serviceFunctions` and `serviceConstants` in the static side of the tag.
@@ -1651,7 +1722,7 @@
   Additionally it allows using the service like:
 
   ```ts
-  DemoTag.use((_) => _.getNumbers());
+  DemoTag.use((_) => _.getNumbers())
   ```
 
   This is especially useful when having functions that contain generics in the service given that those can't be reliably transformed at the type level and because of that we can't put them on the tag.
@@ -1673,22 +1744,22 @@
   This change allows the following to work just fine:
 
   ```ts
-  import { Effect, Layer } from "effect";
+  import { Effect, Layer } from "effect"
 
   class DateTag extends Effect.Tag("DateTag")<DateTag, Date>() {
-    static date = new Date(1970, 1, 1);
-    static Live = Layer.succeed(this, this.date);
+    static date = new Date(1970, 1, 1)
+    static Live = Layer.succeed(this, this.date)
   }
 
   class MapTag extends Effect.Tag("MapTag")<MapTag, Map<string, string>>() {
     static Live = Layer.effect(
       this,
-      Effect.sync(() => new Map()),
-    );
+      Effect.sync(() => new Map())
+    )
   }
 
   class NumberTag extends Effect.Tag("NumberTag")<NumberTag, number>() {
-    static Live = Layer.succeed(this, 100);
+    static Live = Layer.succeed(this, 100)
   }
   ```
 
@@ -1699,15 +1770,15 @@
   Example:
 
   ```ts
-  import { Effect, FiberSet } from "effect";
+  import { Effect, FiberSet } from "effect"
 
   Effect.gen(function* (_) {
-    const set = yield* _(FiberSet.make());
-    yield* _(FiberSet.add(set, Effect.runFork(Effect.fail("error"))));
+    const set = yield* _(FiberSet.make())
+    yield* _(FiberSet.add(set, Effect.runFork(Effect.fail("error"))))
 
     // parent fiber will fail with "error"
-    yield* _(FiberSet.join(set));
-  });
+    yield* _(FiberSet.join(set))
+  })
   ```
 
 - [#2238](https://github.com/Effect-TS/effect/pull/2238) [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750) Thanks [@JJayet](https://github.com/JJayet)! - make Effect.request dual
@@ -1723,22 +1794,22 @@
   Example:
 
   ```ts
-  import { Console, Effect, Logger } from "effect";
+  import { Console, Effect, Logger } from "effect"
 
   const LoggerLive = Logger.replaceScoped(
     Logger.defaultLogger,
     Logger.logfmtLogger.pipe(
       Logger.batched("500 millis", (messages) =>
-        Console.log("BATCH", messages.join("\n")),
-      ),
-    ),
-  );
+        Console.log("BATCH", messages.join("\n"))
+      )
+    )
+  )
 
   Effect.gen(function* (_) {
-    yield* _(Effect.log("one"));
-    yield* _(Effect.log("two"));
-    yield* _(Effect.log("three"));
-  }).pipe(Effect.provide(LoggerLive), Effect.runFork);
+    yield* _(Effect.log("one"))
+    yield* _(Effect.log("two"))
+    yield* _(Effect.log("three"))
+  }).pipe(Effect.provide(LoggerLive), Effect.runFork)
   ```
 
 - [#2233](https://github.com/Effect-TS/effect/pull/2233) [`de74eb8`](https://github.com/Effect-TS/effect/commit/de74eb80a79eebde5ff645033765e7a617e92f27) Thanks [@gcanti](https://github.com/gcanti)! - Struct: make `pick` / `omit` dual
@@ -1771,10 +1842,10 @@
   declare const async: <A, E = never, R = never>(
     register: (
       callback: (_: Effect<A, E, R>) => void,
-      signal: AbortSignal,
+      signal: AbortSignal
     ) => void | Effect<void, never, R>,
-    blockingOn?: FiberId,
-  ) => Effect<A, E, R>;
+    blockingOn?: FiberId
+  ) => Effect<A, E, R>
   ```
 
   Additionally, this PR removes `Stream.asyncOption`, `Stream.asyncEither`, and `Stream.asyncInterrupt` as their behavior can be entirely implemented with the new signature of `Stream.async`, which can optionally return a cleanup `Effect` from the registration callback.
@@ -1782,8 +1853,8 @@
   ```ts
   declare const async: <A, E = never, R = never>(
     register: (emit: Emit<R, E, A, void>) => Effect<void, never, R> | void,
-    outputBuffer?: number,
-  ) => Stream<A, E, R>;
+    outputBuffer?: number
+  ) => Stream<A, E, R>
   ```
 
 - [#2101](https://github.com/Effect-TS/effect/pull/2101) [`d8d278b`](https://github.com/Effect-TS/effect/commit/d8d278b2efb2966947029885e01f7b68348a021f) Thanks [@github-actions](https://github.com/apps/github-actions)! - swap `GroupBy` type parameters from `GroupBy<out R, out E, out K, out V>` to `GroupBy<out K, out V, out E = never, out R = never>`
@@ -1793,27 +1864,27 @@
   The `Unify` module fully replaces the need for specific unify functions, when before you did:
 
   ```ts
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
   const effect = Effect.unified(
-    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO"),
-  );
+    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO")
+  )
   const effectFn = Effect.unifiedFn((n: number) =>
-    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO"),
-  );
+    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO")
+  )
   ```
 
   You can now do:
 
   ```ts
-  import { Effect, Unify } from "effect";
+  import { Effect, Unify } from "effect"
 
   const effect = Unify.unify(
-    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO"),
-  );
+    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO")
+  )
   const effectFn = Unify.unify((n: number) =>
-    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO"),
-  );
+    Math.random() > 0.5 ? Effect.succeed("OK") : Effect.fail("NO")
+  )
   ```
 
 - [#2101](https://github.com/Effect-TS/effect/pull/2101) [`5de7be5`](https://github.com/Effect-TS/effect/commit/5de7be5beca2e963b503e6029dcc3217848187d2) Thanks [@github-actions](https://github.com/apps/github-actions)! - add key type to ReadonlyRecord
@@ -1823,48 +1894,48 @@
   Before:
 
   ```ts
-  import { pipe } from "effect/Function";
-  import * as S from "effect/Struct";
+  import { pipe } from "effect/Function"
+  import * as S from "effect/Struct"
 
   const struct: {
-    a?: string;
-    b: number;
-    c: boolean;
-  } = { b: 1, c: true };
+    a?: string
+    b: number
+    c: boolean
+  } = { b: 1, c: true }
 
   // error
-  const x = pipe(struct, S.pick("a", "b"));
+  const x = pipe(struct, S.pick("a", "b"))
 
-  const record: Record<string, number> = {};
+  const record: Record<string, number> = {}
 
-  const y = pipe(record, S.pick("a", "b"));
-  console.log(y); // => { a: undefined, b: undefined }
+  const y = pipe(record, S.pick("a", "b"))
+  console.log(y) // => { a: undefined, b: undefined }
 
   // error
-  console.log(pipe(struct, S.get("a")));
+  console.log(pipe(struct, S.get("a")))
   ```
 
   Now
 
   ```ts
-  import { pipe } from "effect/Function";
-  import * as S from "effect/Struct";
+  import { pipe } from "effect/Function"
+  import * as S from "effect/Struct"
 
   const struct: {
-    a?: string;
-    b: number;
-    c: boolean;
-  } = { b: 1, c: true };
+    a?: string
+    b: number
+    c: boolean
+  } = { b: 1, c: true }
 
-  const x = pipe(struct, S.pick("a", "b"));
-  console.log(x); // => { b: 1 }
+  const x = pipe(struct, S.pick("a", "b"))
+  console.log(x) // => { b: 1 }
 
-  const record: Record<string, number> = {};
+  const record: Record<string, number> = {}
 
-  const y = pipe(record, S.pick("a", "b"));
-  console.log(y); // => {}
+  const y = pipe(record, S.pick("a", "b"))
+  console.log(y) // => {}
 
-  console.log(pipe(struct, S.get("a"))); // => undefined
+  console.log(pipe(struct, S.get("a"))) // => undefined
   ```
 
 - [#2101](https://github.com/Effect-TS/effect/pull/2101) [`a025b12`](https://github.com/Effect-TS/effect/commit/a025b121235ba01cfce8d62a775491880c575561) Thanks [@github-actions](https://github.com/apps/github-actions)! - Swap type params of Either from `Either<E, A>` to `Either<R, L = never>`.
@@ -1872,9 +1943,9 @@
   Along the same line of the other changes this allows to shorten the most common types such as:
 
   ```ts
-  import { Either } from "effect";
+  import { Either } from "effect"
 
-  const right: Either.Either<string> = Either.right("ok");
+  const right: Either.Either<string> = Either.right("ok")
   ```
 
 ### Patch Changes
@@ -1896,14 +1967,14 @@
   This api assists with adding a layer of caching, when hashing immutable data structures.
 
   ```ts
-  import { Data, Hash } from "effect";
+  import { Data, Hash } from "effect"
 
   class User extends Data.Class<{
-    id: number;
-    name: string;
+    id: number
+    name: string
   }> {
     [Hash.symbol]() {
-      return Hash.cached(this, Hash.string(`${this.id}-${this.name}`));
+      return Hash.cached(this, Hash.string(`${this.id}-${this.name}`))
     }
   }
   ```
@@ -1923,11 +1994,11 @@
   To manually control the module version one can use:
 
   ```ts
-  import * as ModuleVersion from "effect/ModuleVersion";
+  import * as ModuleVersion from "effect/ModuleVersion"
 
   ModuleVersion.setCurrentVersion(
-    `my-effect-runtime-${ModuleVersion.getCurrentVersion()}`,
-  );
+    `my-effect-runtime-${ModuleVersion.getCurrentVersion()}`
+  )
   ```
 
   Note that this code performs side effects and should be executed before any module is imported ideally via an init script.
@@ -1935,13 +2006,13 @@
   The resulting order of execution has to be:
 
   ```ts
-  import * as ModuleVersion from "effect/ModuleVersion";
+  import * as ModuleVersion from "effect/ModuleVersion"
 
   ModuleVersion.setCurrentVersion(
-    `my-effect-runtime-${ModuleVersion.getCurrentVersion()}`,
-  );
+    `my-effect-runtime-${ModuleVersion.getCurrentVersion()}`
+  )
 
-  import { Effect } from "effect";
+  import { Effect } from "effect"
 
   // rest of code
   ```
@@ -1962,19 +2033,19 @@
   Example:
 
   ```ts
-  import { Effect, Request, RequestResolver } from "effect";
+  import { Effect, Request, RequestResolver } from "effect"
 
   interface GetUserById extends Request.Request<unknown> {
-    readonly id: number;
+    readonly id: number
   }
 
-  declare const resolver: RequestResolver.RequestResolver<GetUserById>;
+  declare const resolver: RequestResolver.RequestResolver<GetUserById>
 
   RequestResolver.aroundRequests(
     resolver,
     (requests) => Effect.log(`got ${requests.length} requests`),
-    (requests, _) => Effect.log(`finised running ${requests.length} requests`),
-  );
+    (requests, _) => Effect.log(`finised running ${requests.length} requests`)
+  )
   ```
 
 - [#2148](https://github.com/Effect-TS/effect/pull/2148) [`b46b869`](https://github.com/Effect-TS/effect/commit/b46b869e59a6da5aa235a9fcc25e1e0d24e9e8f8) Thanks [@riordanpawley](https://github.com/riordanpawley)! - Flipped scheduleForked types to match new <A, E, R> signature
@@ -1988,9 +2059,9 @@
 - [#2143](https://github.com/Effect-TS/effect/pull/2143) [`ff88f80`](https://github.com/Effect-TS/effect/commit/ff88f808c4ed9947a148045849e7410b00acad0a) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix Cause.pretty when toString is invalid
 
   ```ts
-  import { Cause } from "effect";
+  import { Cause } from "effect"
 
-  console.log(Cause.pretty(Cause.fail([{ toString: "" }])));
+  console.log(Cause.pretty(Cause.fail([{ toString: "" }])))
   ```
 
   The code above used to throw now it prints:
@@ -2003,13 +2074,13 @@
   This is a convenient operator to use in the `pipe` chain to localize type errors closer to their source.
 
   ```ts
-  import { satisfies } from "effect/Function";
+  import { satisfies } from "effect/Function"
 
-  const test1 = satisfies<number>()(5 as const);
+  const test1 = satisfies<number>()(5 as const)
   // ^? const test: 5
 
   // @ts-expect-error
-  const test2 = satisfies<string>()(5);
+  const test2 = satisfies<string>()(5)
   // ^? Argument of type 'number' is not assignable to parameter of type 'string'
   ```
 
@@ -2028,16 +2099,16 @@
   Example:
 
   ```ts
-  import { Effect, FiberRef, Runtime } from "effect";
+  import { Effect, FiberRef, Runtime } from "effect"
 
-  const ref = FiberRef.unsafeMake(0);
+  const ref = FiberRef.unsafeMake(0)
 
   const updatedRuntime = Runtime.defaultRuntime.pipe(
-    Runtime.setFiberRef(ref, 1),
-  );
+    Runtime.setFiberRef(ref, 1)
+  )
 
   // returns 1
-  const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref));
+  const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
   ```
 
 ## 2.3.5
@@ -2061,30 +2132,30 @@
   Usage Example :
 
   ```ts
-  import { Effect, RateLimiter } from "effect";
-  import { compose } from "effect/Function";
+  import { Effect, RateLimiter } from "effect"
+  import { compose } from "effect/Function"
 
   const program = Effect.scoped(
     Effect.gen(function* ($) {
       // Create a rate limiter that has an hourly limit of 1000 credits
-      const rateLimiter = yield* $(RateLimiter.make(1000, "1 hours"));
+      const rateLimiter = yield* $(RateLimiter.make(1000, "1 hours"))
       // Query API costs 1 credit per call ( 1 is the default cost )
-      const queryAPIRL = compose(rateLimiter, RateLimiter.withCost(1));
+      const queryAPIRL = compose(rateLimiter, RateLimiter.withCost(1))
       // Mutation API costs 5 credits per call
-      const mutationAPIRL = compose(rateLimiter, RateLimiter.withCost(5));
+      const mutationAPIRL = compose(rateLimiter, RateLimiter.withCost(5))
       // ...
       // Use the pre-defined rate limiters
-      yield* $(queryAPIRL(Effect.log("Sample Query")));
-      yield* $(mutationAPIRL(Effect.log("Sample Mutation")));
+      yield* $(queryAPIRL(Effect.log("Sample Query")))
+      yield* $(mutationAPIRL(Effect.log("Sample Mutation")))
 
       // Or set a cost on-the-fly
       yield* $(
         rateLimiter(Effect.log("Another query with a different cost")).pipe(
-          RateLimiter.withCost(3),
-        ),
-      );
-    }),
-  );
+          RateLimiter.withCost(3)
+        )
+      )
+    })
+  )
   ```
 
 - [#2097](https://github.com/Effect-TS/effect/pull/2097) [`0f83515`](https://github.com/Effect-TS/effect/commit/0f83515a9c01d13c7c15a3f026e02d22c3c6bb7f) Thanks [@IMax153](https://github.com/IMax153)! - Updates the `RateLimiter.make` constructor to take an object of `RateLimiter.Options`, which allows for specifying the rate-limiting algorithm to utilize:
@@ -2097,7 +2168,7 @@
       /**
        * The maximum number of requests that should be allowed.
        */
-      readonly limit: number;
+      readonly limit: number
       /**
        * The interval to utilize for rate-limiting requests. The semantics of the
        * specified `interval` vary depending on the chosen `algorithm`:
@@ -2114,13 +2185,13 @@
        * algorithm with a `limit` of `10` and an `interval` of `1 seconds`, a
        * maximum of `10` requests can be made each second.
        */
-      readonly interval: DurationInput;
+      readonly interval: DurationInput
       /**
        * The algorithm to utilize for rate-limiting requests.
        *
        * Defaults to `token-bucket`.
        */
-      readonly algorithm?: "fixed-window" | "token-bucket";
+      readonly algorithm?: "fixed-window" | "token-bucket"
     }
   }
   ```
@@ -2153,22 +2224,22 @@
 
   ```ts
   expect(pipe(Either.right(1), Either.andThen(2))).toStrictEqual(
-    Either.right(2),
-  );
+    Either.right(2)
+  )
   expect(
     pipe(
       Either.right(1),
-      Either.andThen(() => 2),
-    ),
-  ).toStrictEqual(Either.right(2));
+      Either.andThen(() => 2)
+    )
+  ).toStrictEqual(Either.right(2))
 
-  expect(pipe(Option.some(1), Option.andThen(2))).toStrictEqual(Option.some(2));
+  expect(pipe(Option.some(1), Option.andThen(2))).toStrictEqual(Option.some(2))
   expect(
     pipe(
       Option.some(1),
-      Option.andThen(() => 2),
-    ),
-  ).toStrictEqual(Option.some(2));
+      Option.andThen(() => 2)
+    )
+  ).toStrictEqual(Option.some(2))
   ```
 
 - [#2098](https://github.com/Effect-TS/effect/pull/2098) [`71aa5b1`](https://github.com/Effect-TS/effect/commit/71aa5b1c180dcb8b53aefe232d12a97bd06b5447) Thanks [@ethanniser](https://github.com/ethanniser)! - removed `./internal/timeout` and replaced all usages with `setTimeout` directly
@@ -2204,31 +2275,31 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - With this change we now require a string key to be provided for all tags and renames the dear old `Tag` to `GenericTag`, so when previously you could do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.Tag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >();
+  >()
   ```
 
   you are now mandated to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.GenericTag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >("Service");
+  >("Service")
   ```
 
   This makes by default all tags globals and ensures better debuggaility when unexpected errors arise.
@@ -2236,17 +2307,17 @@
   Furthermore we introduce a new way of constructing tags that should be considered the new default:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   class Service extends Context.Tag("Service")<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
   >() {}
 
   const program = Effect.flatMap(Service, ({ number }) => number).pipe(
-    Effect.flatMap((_) => Effect.log(`number: ${_}`)),
-  );
+    Effect.flatMap((_) => Effect.log(`number: ${_}`))
+  )
   ```
 
   this will use "Service" as the key and will create automatically an opaque identifier (the class) to be used at the type level, it does something similar to the above in a single shot.
@@ -2270,21 +2341,21 @@
   At the type level instead the functions return `Readonly` variants, so for example we have:
 
   ```ts
-  import { Data } from "effect";
+  import { Data } from "effect"
 
   const obj = Data.struct({
     a: 0,
-    b: 1,
-  });
+    b: 1
+  })
   ```
 
   will have the `obj` typed as:
 
   ```ts
   declare const obj: {
-    readonly a: number;
-    readonly b: number;
-  };
+    readonly a: number
+    readonly b: number
+  }
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`0e56e99`](https://github.com/Effect-TS/effect/commit/0e56e998ab9815c4d096c239a553cb86a0f99af9) Thanks [@github-actions](https://github.com/apps/github-actions)! - change `Deferred` type parameters order from `Deferred<E, A>` to `Deferred<A, E>`
@@ -2312,15 +2383,15 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - This change enables `Effect.serviceConstants` and `Effect.serviceMembers` to access any constant in the service, not only the effects, namely it is now possible to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
 
   class NumberRepo extends Context.TagClass("NumberRepo")<
     NumberRepo,
     {
-      readonly numbers: Array<number>;
+      readonly numbers: Array<number>
     }
   >() {
-    static numbers = Effect.serviceConstants(NumberRepo).numbers;
+    static numbers = Effect.serviceConstants(NumberRepo).numbers
   }
   ```
 
@@ -2352,47 +2423,47 @@
   Usage Example:
 
   ```ts
-  import { Effect, RateLimiter } from "effect";
+  import { Effect, RateLimiter } from "effect"
 
   // we need a scope because the rate limiter needs to allocate a state and a background job
   const program = Effect.scoped(
     Effect.gen(function* ($) {
       // create a rate limiter that executes up to 10 requests within 2 seconds
-      const rateLimit = yield* $(RateLimiter.make(10, "2 seconds"));
+      const rateLimit = yield* $(RateLimiter.make(10, "2 seconds"))
       // simulate repeated calls
       for (let n = 0; n < 100; n++) {
         // wrap the effect we want to limit with rateLimit
-        yield* $(rateLimit(Effect.log("Calling RateLimited Effect")));
+        yield* $(rateLimit(Effect.log("Calling RateLimited Effect")))
       }
-    }),
-  );
+    })
+  )
 
   // will print 10 calls immediately and then throttle
-  program.pipe(Effect.runFork);
+  program.pipe(Effect.runFork)
   ```
 
   Or, in a more real world scenario, with a dedicated Service + Layer:
 
   ```ts
-  import { Context, Effect, Layer, RateLimiter } from "effect";
+  import { Context, Effect, Layer, RateLimiter } from "effect"
 
   class ApiLimiter extends Context.Tag("@services/ApiLimiter")<
     ApiLimiter,
     RateLimiter.RateLimiter
   >() {
     static Live = RateLimiter.make(10, "2 seconds").pipe(
-      Layer.scoped(ApiLimiter),
-    );
+      Layer.scoped(ApiLimiter)
+    )
   }
 
   const program = Effect.gen(function* ($) {
-    const rateLimit = yield* $(ApiLimiter);
+    const rateLimit = yield* $(ApiLimiter)
     for (let n = 0; n < 100; n++) {
-      yield* $(rateLimit(Effect.log("Calling RateLimited Effect")));
+      yield* $(rateLimit(Effect.log("Calling RateLimited Effect")))
     }
-  });
+  })
 
-  program.pipe(Effect.provide(ApiLimiter.Live), Effect.runFork);
+  program.pipe(Effect.provide(ApiLimiter.Live), Effect.runFork)
   ```
 
 - [#2084](https://github.com/Effect-TS/effect/pull/2084) [`4a5d01a`](https://github.com/Effect-TS/effect/commit/4a5d01a409e9b6dd53893e65f8e5c9247f568021) Thanks [@tim-smart](https://github.com/tim-smart)! - simplify RateLimiter implementation using semaphore
@@ -2402,10 +2473,10 @@
   This function returns the next power of 2 from the given number.
 
   ```ts
-  import { nextPow2 } from "effect/Number";
+  import { nextPow2 } from "effect/Number"
 
-  assert.deepStrictEqual(nextPow2(5), 8);
-  assert.deepStrictEqual(nextPow2(17), 32);
+  assert.deepStrictEqual(nextPow2(5), 8)
+  assert.deepStrictEqual(nextPow2(17), 32)
   ```
 
 ## 2.2.5
@@ -2422,16 +2493,16 @@
   Example:
 
   ```ts
-  import { Context, Runtime } from "effect";
+  import { Context, Runtime } from "effect"
 
   interface Name {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
-  const Name = Context.Tag<Name, string>("Name");
+  const Name = Context.Tag<Name, string>("Name")
 
   const runtime: Runtime.Runtime<Name> = Runtime.defaultRuntime.pipe(
-    Runtime.provideService(Name, "John"),
-  );
+    Runtime.provideService(Name, "John")
+  )
   ```
 
 - [#2075](https://github.com/Effect-TS/effect/pull/2075) [`3ddfdbf`](https://github.com/Effect-TS/effect/commit/3ddfdbf914edea536aef207cec6695f33496258c) Thanks [@tim-smart](https://github.com/tim-smart)! - add apis for patching runtime flags to the Runtime module
@@ -2457,23 +2528,23 @@
   Option.getOrElse, except the return value is still an Option.
 
   ```ts
-  import * as O from "effect/Option";
-  import { pipe } from "effect/Function";
+  import * as O from "effect/Option"
+  import { pipe } from "effect/Function"
 
   assert.deepStrictEqual(
     pipe(
       O.none(),
-      O.orElseSome(() => "b"),
+      O.orElseSome(() => "b")
     ),
-    O.some("b"),
-  );
+    O.some("b")
+  )
   assert.deepStrictEqual(
     pipe(
       O.some("a"),
-      O.orElseSome(() => "b"),
+      O.orElseSome(() => "b")
     ),
-    O.some("a"),
-  );
+    O.some("a")
+  )
   ```
 
 - [#2057](https://github.com/Effect-TS/effect/pull/2057) [`6928a2b`](https://github.com/Effect-TS/effect/commit/6928a2b0bae86a4bdfbece0aa32924207c2d5a70) Thanks [@joepjoosten](https://github.com/joepjoosten)! - Fix for possible stack overflow errors when using Array.push with spread operator arguments

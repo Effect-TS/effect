@@ -1,5 +1,15 @@
 # @effect/sql
 
+## 0.10.0
+
+### Patch Changes
+
+- Updated dependencies [[`db89601`](https://github.com/Effect-TS/effect/commit/db89601ee9c1050c4e762b7bd7ec65a6a2799dfe), [`2f456cc`](https://github.com/Effect-TS/effect/commit/2f456cce5012b9fcb6b4e039190d527813b75b92), [`8745e41`](https://github.com/Effect-TS/effect/commit/8745e41ed96e3765dc6048efc2a9afbe05c8a1e9), [`e557838`](https://github.com/Effect-TS/effect/commit/e55783886b046d3c5f33447f455f9ccf2fa75922), [`d6e7e40`](https://github.com/Effect-TS/effect/commit/d6e7e40b1e2ad0c59aa02f07344d28601b14ebdc), [`8356321`](https://github.com/Effect-TS/effect/commit/8356321598da04bd77c1001f45a4e447bec5591d), [`192f2eb`](https://github.com/Effect-TS/effect/commit/192f2ebb2c4ddbf4bfd8baedd32140b2376868f4), [`718cb70`](https://github.com/Effect-TS/effect/commit/718cb70038629a6d58d02e407760e341f7c94474), [`e9d0310`](https://github.com/Effect-TS/effect/commit/e9d03107acbf204d9304f3e8aea0816b7d3c7dfb), [`6bf28f7`](https://github.com/Effect-TS/effect/commit/6bf28f7e3b1e5e0608ff567205fea0581d11666f)]:
+  - effect@3.7.0
+  - @effect/platform@0.63.0
+  - @effect/experimental@0.24.0
+  - @effect/schema@0.72.0
+
 ## 0.9.7
 
 ### Patch Changes
@@ -85,36 +95,36 @@
   the database and serializing to JSON.
 
   ```ts
-  import { Schema } from "@effect/schema";
-  import { Model } from "@effect/sql";
+  import { Schema } from "@effect/schema"
+  import { Model } from "@effect/sql"
 
-  export const GroupId = Schema.Number.pipe(Schema.brand("GroupId"));
+  export const GroupId = Schema.Number.pipe(Schema.brand("GroupId"))
 
   export class Group extends Model.Class<Group>("Group")({
     id: Model.Generated(GroupId),
     name: Schema.NonEmptyTrimmedString,
     createdAt: Model.DateTimeInsertFromDate,
-    updatedAt: Model.DateTimeUpdateFromDate,
+    updatedAt: Model.DateTimeUpdateFromDate
   }) {}
 
   // schema used for selects
-  Group;
+  Group
 
   // schema used for inserts
-  Group.insert;
+  Group.insert
 
   // schema used for updates
-  Group.update;
+  Group.update
 
   // schema used for json api
-  Group.json;
-  Group.jsonCreate;
-  Group.jsonUpdate;
+  Group.json
+  Group.jsonCreate
+  Group.jsonUpdate
 
   // you can also turn them into classes
   class GroupJson extends Schema.Class<GroupJson>("GroupJson")(Group.json) {
     get upperName() {
-      return this.name.toUpperCase();
+      return this.name.toUpperCase()
     }
   }
   ```
@@ -141,22 +151,22 @@
   the `Statement`:
 
   ```ts
-  import * as Effect from "effect/Effect";
-  import * as SqlClient from "@effect/sql/SqlClient";
-  import * as MysqlClient from "@effect/sql/MysqlClient";
+  import * as Effect from "effect/Effect"
+  import * as SqlClient from "@effect/sql/SqlClient"
+  import * as MysqlClient from "@effect/sql/MysqlClient"
 
   const DatabaseLive = MysqlClient.layer({
     database: Config.succeed("database"),
     username: Config.succeed("root"),
-    password: Config.succeed(Redacted.make("password")),
-  });
+    password: Config.succeed(Redacted.make("password"))
+  })
 
   const program = Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
+    const sql = yield* SqlClient.SqlClient
 
-    const result = yield* sql`INSERT INTO usernames VALUES ("Bob")`.raw;
+    const result = yield* sql`INSERT INTO usernames VALUES ("Bob")`.raw
 
-    console.log(result);
+    console.log(result)
     /**
      * ResultSetHeader {
      *   fieldCount: 0,
@@ -168,9 +178,9 @@
      *   changedRows: 0
      * }
      */
-  });
+  })
 
-  program.pipe(Effect.provide(DatabaseLive), Effect.runPromise);
+  program.pipe(Effect.provide(DatabaseLive), Effect.runPromise)
   ```
 
 ### Patch Changes
@@ -892,43 +902,43 @@
   You can now use the `@effect/sql` package to access the client apis:
 
   ```ts
-  import * as Sql from "@effect/sql";
-  import { Effect } from "effect";
+  import * as Sql from "@effect/sql"
+  import { Effect } from "effect"
 
   Effect.gen(function* () {
-    const sql = yield* Sql.client.Client;
-    yield* sql`SELECT * FROM users`;
-  });
+    const sql = yield* Sql.client.Client
+    yield* sql`SELECT * FROM users`
+  })
   ```
 
   If you need a functionality that is specific to a implementation, you can use the tag from the
   implementation package:
 
   ```ts
-  import * as Sqlite from "@effect/sql-sqlite-node";
-  import { Effect } from "effect";
+  import * as Sqlite from "@effect/sql-sqlite-node"
+  import { Effect } from "effect"
 
   Effect.gen(function* () {
-    const sql = yield* Sqlite.client.SqliteClient;
-    const dump = yield* sql.export;
-  });
+    const sql = yield* Sqlite.client.SqliteClient
+    const dump = yield* sql.export
+  })
   ```
 
   If you need to run a different query depending on the dialect, you can use the `sql.onDialect` api:
 
   ```ts
-  import * as Sql from "@effect/sql";
-  import { Effect } from "effect";
+  import * as Sql from "@effect/sql"
+  import { Effect } from "effect"
 
   Effect.gen(function* () {
-    const sql = yield* Sql.client.Client;
+    const sql = yield* Sql.client.Client
     yield* sql.onDialect({
       sqlite: () => sql`SELECT * FROM sqlite_master`,
       mysql: () => sql`SHOW TABLES`,
       mssql: () => sql`SELECT * FROM sys.tables`,
-      pg: () => sql`SELECT * FROM pg_catalog.pg_tables`,
-    });
-  });
+      pg: () => sql`SELECT * FROM pg_catalog.pg_tables`
+    })
+  })
   ```
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @effect/typeclass
 
+## 0.26.0
+
+### Patch Changes
+
+- Updated dependencies [[`db89601`](https://github.com/Effect-TS/effect/commit/db89601ee9c1050c4e762b7bd7ec65a6a2799dfe), [`2f456cc`](https://github.com/Effect-TS/effect/commit/2f456cce5012b9fcb6b4e039190d527813b75b92), [`8745e41`](https://github.com/Effect-TS/effect/commit/8745e41ed96e3765dc6048efc2a9afbe05c8a1e9), [`e557838`](https://github.com/Effect-TS/effect/commit/e55783886b046d3c5f33447f455f9ccf2fa75922), [`d6e7e40`](https://github.com/Effect-TS/effect/commit/d6e7e40b1e2ad0c59aa02f07344d28601b14ebdc), [`8356321`](https://github.com/Effect-TS/effect/commit/8356321598da04bd77c1001f45a4e447bec5591d), [`192f2eb`](https://github.com/Effect-TS/effect/commit/192f2ebb2c4ddbf4bfd8baedd32140b2376868f4), [`718cb70`](https://github.com/Effect-TS/effect/commit/718cb70038629a6d58d02e407760e341f7c94474), [`e9d0310`](https://github.com/Effect-TS/effect/commit/e9d03107acbf204d9304f3e8aea0816b7d3c7dfb), [`6bf28f7`](https://github.com/Effect-TS/effect/commit/6bf28f7e3b1e5e0608ff567205fea0581d11666f)]:
+  - effect@3.7.0
+
 ## 0.25.8
 
 ### Patch Changes
@@ -445,8 +452,8 @@
   For all the data types.
 
   ```ts
-  Effect.unit; // => Effect.void
-  Stream.unit; // => Stream.void
+  Effect.unit // => Effect.void
+  Stream.unit // => Stream.void
 
   // etc
   ```
@@ -604,9 +611,9 @@
   Along the same line of the other changes this allows to shorten the most common types such as:
 
   ```ts
-  import { Either } from "effect";
+  import { Either } from "effect"
 
-  const right: Either.Either<string> = Either.right("ok");
+  const right: Either.Either<string> = Either.right("ok")
   ```
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @effect/platform-node-shared
 
+## 0.13.0
+
+### Patch Changes
+
+- Updated dependencies [[`db89601`](https://github.com/Effect-TS/effect/commit/db89601ee9c1050c4e762b7bd7ec65a6a2799dfe), [`2f456cc`](https://github.com/Effect-TS/effect/commit/2f456cce5012b9fcb6b4e039190d527813b75b92), [`8745e41`](https://github.com/Effect-TS/effect/commit/8745e41ed96e3765dc6048efc2a9afbe05c8a1e9), [`e557838`](https://github.com/Effect-TS/effect/commit/e55783886b046d3c5f33447f455f9ccf2fa75922), [`d6e7e40`](https://github.com/Effect-TS/effect/commit/d6e7e40b1e2ad0c59aa02f07344d28601b14ebdc), [`8356321`](https://github.com/Effect-TS/effect/commit/8356321598da04bd77c1001f45a4e447bec5591d), [`192f2eb`](https://github.com/Effect-TS/effect/commit/192f2ebb2c4ddbf4bfd8baedd32140b2376868f4), [`718cb70`](https://github.com/Effect-TS/effect/commit/718cb70038629a6d58d02e407760e341f7c94474), [`e9d0310`](https://github.com/Effect-TS/effect/commit/e9d03107acbf204d9304f3e8aea0816b7d3c7dfb), [`6bf28f7`](https://github.com/Effect-TS/effect/commit/6bf28f7e3b1e5e0608ff567205fea0581d11666f)]:
+  - effect@3.7.0
+  - @effect/platform@0.63.0
+
 ## 0.12.5
 
 ### Patch Changes
@@ -409,17 +417,17 @@
   Before:
 
   ```ts
-  import { HttpClient } from "@effect/platform";
+  import { HttpClient } from "@effect/platform"
 
-  HttpClient.request.get("/").pipe(HttpClient.client.fetchOk);
+  HttpClient.request.get("/").pipe(HttpClient.client.fetchOk)
   ```
 
   After:
 
   ```ts
-  import { HttpClient, HttpClientRequest } from "@effect/platform";
+  import { HttpClient, HttpClientRequest } from "@effect/platform"
 
-  HttpClientRequest.get("/").pipe(HttpClient.fetchOk);
+  HttpClientRequest.get("/").pipe(HttpClient.fetchOk)
   ```
 
 ### Patch Changes
@@ -847,13 +855,13 @@
   your effects.
 
   ```ts
-  import { Layer } from "effect";
-  import { FileSystem } from "@effect/platform";
-  import { NodeFileSystem } from "@effect/platform-node";
-  import * as ParcelWatcher from "@effect/platform-node/NodeFileSystem/ParcelWatcher";
+  import { Layer } from "effect"
+  import { FileSystem } from "@effect/platform"
+  import { NodeFileSystem } from "@effect/platform-node"
+  import * as ParcelWatcher from "@effect/platform-node/NodeFileSystem/ParcelWatcher"
 
   // create a Layer that uses the ParcelWatcher backend
-  NodeFileSystem.layer.pipe(Layer.provide(ParcelWatcher.layer));
+  NodeFileSystem.layer.pipe(Layer.provide(ParcelWatcher.layer))
   ```
 
 - Updated dependencies [[`3da0cfa`](https://github.com/Effect-TS/effect/commit/3da0cfa12c407fd930dc480be1ecc9217a8058f8), [`570e8d8`](https://github.com/Effect-TS/effect/commit/570e8d87e7c0e9ad4cd2686462fdb9b4812f7716), [`87c5687`](https://github.com/Effect-TS/effect/commit/87c5687de0782dab177b7861217fa3b040046282), [`8edacca`](https://github.com/Effect-TS/effect/commit/8edacca37f8e37c01a63fec332b06d9361efaa7b)]:
@@ -877,8 +885,8 @@
   For all the data types.
 
   ```ts
-  Effect.unit; // => Effect.void
-  Stream.unit; // => Stream.void
+  Effect.unit // => Effect.void
+  Stream.unit // => Stream.void
 
   // etc
   ```
@@ -994,11 +1002,11 @@
   With this api you can convert an Effect Stream into a node.js Readable stream.
 
   ```ts
-  import { Stream } from "effect";
-  import * as NodeStream from "@effect/platform-node/NodeStream";
+  import { Stream } from "effect"
+  import * as NodeStream from "@effect/platform-node/NodeStream"
 
   // Effect<Readable>
-  NodeStream.toReadable(Stream.make("a", "b", "c"));
+  NodeStream.toReadable(Stream.make("a", "b", "c"))
   ```
 
 - Updated dependencies [[`26435ec`](https://github.com/Effect-TS/effect/commit/26435ecfa06569dc18d1801ccf38213a43b7c334), [`6180c0c`](https://github.com/Effect-TS/effect/commit/6180c0cc51dee785cfce72220a52c9fc3b9bf9aa)]:
@@ -1022,37 +1030,37 @@
   To add cookies to a http response:
 
   ```ts
-  import * as Http from "@effect/platform/HttpServer";
+  import * as Http from "@effect/platform/HttpServer"
 
   Http.response.empty().pipe(
     Http.response.setCookies([
       ["name", "value"],
-      ["foo", "bar", { httpOnly: true }],
-    ]),
-  );
+      ["foo", "bar", { httpOnly: true }]
+    ])
+  )
   ```
 
   You can also use cookies with the http client:
 
   ```ts
-  import * as Http from "@effect/platform/HttpClient";
-  import { Effect, Ref } from "effect";
+  import * as Http from "@effect/platform/HttpClient"
+  import { Effect, Ref } from "effect"
 
   Effect.gen(function* (_) {
-    const ref = yield* _(Ref.make(Http.cookies.empty));
-    const defaultClient = yield* _(Http.client.Client);
+    const ref = yield* _(Ref.make(Http.cookies.empty))
+    const defaultClient = yield* _(Http.client.Client)
     const clientWithCookies = defaultClient.pipe(
       Http.client.withCookiesRef(ref),
-      Http.client.filterStatusOk,
-    );
+      Http.client.filterStatusOk
+    )
 
     // cookies will be stored in the ref and sent in any subsequent requests
     yield* _(
       Http.request.get("https://www.google.com/"),
       clientWithCookies,
-      Effect.scoped,
-    );
-  });
+      Effect.scoped
+    )
+  })
   ```
 
 - [#2385](https://github.com/Effect-TS/effect/pull/2385) [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87) Thanks [@tim-smart](https://github.com/tim-smart)! - update typescript to 5.4
@@ -1131,14 +1139,14 @@
   It can be used to listen for file system events. Example:
 
   ```ts
-  import { FileSystem } from "@effect/platform";
-  import { NodeFileSystem, NodeRuntime } from "@effect/platform-node";
-  import { Console, Effect, Stream } from "effect";
+  import { FileSystem } from "@effect/platform"
+  import { NodeFileSystem, NodeRuntime } from "@effect/platform-node"
+  import { Console, Effect, Stream } from "effect"
 
   Effect.gen(function* (_) {
-    const fs = yield* _(FileSystem.FileSystem);
-    yield* _(fs.watch("./"), Stream.runForEach(Console.log));
-  }).pipe(Effect.provide(NodeFileSystem.layer), NodeRuntime.runMain);
+    const fs = yield* _(FileSystem.FileSystem)
+    yield* _(fs.watch("./"), Stream.runForEach(Console.log))
+  }).pipe(Effect.provide(NodeFileSystem.layer), NodeRuntime.runMain)
   ```
 
 - Updated dependencies [[`69d27bb`](https://github.com/Effect-TS/effect/commit/69d27bb633884b6b50f9c3d9e95c29f09b4860b5)]:
@@ -1265,9 +1273,9 @@
   Along the same line of the other changes this allows to shorten the most common types such as:
 
   ```ts
-  import { Either } from "effect";
+  import { Either } from "effect"
 
-  const right: Either.Either<string> = Either.right("ok");
+  const right: Either.Either<string> = Either.right("ok")
   ```
 
 ### Patch Changes
@@ -1391,31 +1399,31 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - With this change we now require a string key to be provided for all tags and renames the dear old `Tag` to `GenericTag`, so when previously you could do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.Tag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >();
+  >()
   ```
 
   you are now mandated to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   interface Service {
-    readonly _: unique symbol;
+    readonly _: unique symbol
   }
   const Service = Context.GenericTag<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
-  >("Service");
+  >("Service")
   ```
 
   This makes by default all tags globals and ensures better debuggaility when unexpected errors arise.
@@ -1423,17 +1431,17 @@
   Furthermore we introduce a new way of constructing tags that should be considered the new default:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
   class Service extends Context.Tag("Service")<
     Service,
     {
-      number: Effect.Effect<never, never, number>;
+      number: Effect.Effect<never, never, number>
     }
   >() {}
 
   const program = Effect.flatMap(Service, ({ number }) => number).pipe(
-    Effect.flatMap((_) => Effect.log(`number: ${_}`)),
-  );
+    Effect.flatMap((_) => Effect.log(`number: ${_}`))
+  )
   ```
 
   this will use "Service" as the key and will create automatically an opaque identifier (the class) to be used at the type level, it does something similar to the above in a single shot.
@@ -1445,15 +1453,15 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`9a2d1c1`](https://github.com/Effect-TS/effect/commit/9a2d1c1468ea0789b34767ad683da074f061ea9c) Thanks [@github-actions](https://github.com/apps/github-actions)! - This change enables `Effect.serviceConstants` and `Effect.serviceMembers` to access any constant in the service, not only the effects, namely it is now possible to do:
 
   ```ts
-  import { Effect, Context } from "effect";
+  import { Effect, Context } from "effect"
 
   class NumberRepo extends Context.TagClass("NumberRepo")<
     NumberRepo,
     {
-      readonly numbers: Array<number>;
+      readonly numbers: Array<number>
     }
   >() {
-    static numbers = Effect.serviceConstants(NumberRepo).numbers;
+    static numbers = Effect.serviceConstants(NumberRepo).numbers
   }
   ```
 
