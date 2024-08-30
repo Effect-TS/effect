@@ -594,7 +594,7 @@ pipe(
   ) => Effect.succeed(1))
 )
 
-// $ExpectType Effect<number, TestError2, never>
+// $ExpectType Effect<number | TestError1, TestError2, never>
 Effect.catchTag(hole<Effect.Effect<number, TestError1 | TestError2>>(), "TestError1", Effect.succeed)
 
 // $ExpectType Effect<number, TestError2, never>
