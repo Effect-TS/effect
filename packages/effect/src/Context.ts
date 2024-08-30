@@ -8,6 +8,7 @@
  * @since 2.0.0
  */
 import type { Equal } from "./Equal.js"
+import type { LazyArg } from "./Function.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/context.js"
 import type { Option } from "./Option.js"
@@ -262,6 +263,18 @@ export const get: {
   <Services, T extends ValidTagsById<Services>>(tag: T): (self: Context<Services>) => Tag.Service<T>
   <Services, T extends ValidTagsById<Services>>(self: Context<Services>, tag: T): Tag.Service<T>
 } = internal.get
+
+/**
+ * Get a service from the context that corresponds to the given tag, or
+ * use the fallback value.
+ *
+ * @since 3.7.0
+ * @category getters
+ */
+export const getOrElse: {
+  <S, I, B>(tag: Tag<I, S>, orElse: LazyArg<B>): <Services>(self: Context<Services>) => S | B
+  <Services, S, I, B>(self: Context<Services>, tag: Tag<I, S>, orElse: LazyArg<B>): S | B
+} = internal.getOrElse
 
 /**
  * Get a service from the context that corresponds to the given tag.

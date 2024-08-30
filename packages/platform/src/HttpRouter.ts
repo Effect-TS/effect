@@ -359,6 +359,15 @@ export const makeRoute: <E, R>(
 
 /**
  * @since 1.0.0
+ * @category utils
+ */
+export const prefixPath: {
+  (prefix: string): (self: string) => string
+  (self: string, prefix: string): string
+} = internal.prefixPath
+
+/**
+ * @since 1.0.0
  * @category combinators
  */
 export const prefixAll: {
