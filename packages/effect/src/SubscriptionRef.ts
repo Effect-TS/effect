@@ -10,6 +10,7 @@ import type * as Stream from "./Stream.js"
 import type { Subscribable } from "./Subscribable.js"
 import * as Synchronized from "./SynchronizedRef.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -44,6 +45,28 @@ export interface SubscriptionRef<in out A>
    * to that value.
    */
   readonly changes: Stream.Stream<A>
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: SubscriptionRefUnify<this>
+  readonly [Unify.ignoreSymbol]?: SubscriptionRefUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface SubscriptionRefUnify<A extends { [Unify.typeSymbol]?: any }>
+  extends Synchronized.SynchronizedRefUnify<A>
+{
+  SubscriptionRef?: () => A[Unify.typeSymbol] extends SubscriptionRef<infer A0> | infer _ ? SubscriptionRef<A0>
+    : never
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface SubscriptionRefUnifyIgnore extends Synchronized.SynchronizedRefUnifyIgnore {
+  SynchronizedRef?: true
 }
 
 /**

@@ -8,6 +8,7 @@ import * as internal from "./internal/synchronizedRef.js"
 import type * as Option from "./Option.js"
 import type * as Ref from "./Ref.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -27,6 +28,26 @@ export type SynchronizedRefTypeId = typeof SynchronizedRefTypeId
  */
 export interface SynchronizedRef<in out A> extends SynchronizedRef.Variance<A>, Ref.Ref<A> {
   modifyEffect<B, E, R>(f: (a: A) => Effect.Effect<readonly [B, A], E, R>): Effect.Effect<B, E, R>
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: SynchronizedRefUnify<this>
+  readonly [Unify.ignoreSymbol]?: SynchronizedRefUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface SynchronizedRefUnify<A extends { [Unify.typeSymbol]?: any }> extends Ref.RefUnify<A> {
+  SynchronizedRef?: () => A[Unify.typeSymbol] extends SynchronizedRef<infer A0> | infer _ ? SynchronizedRef<A0>
+    : never
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface SynchronizedRefUnifyIgnore extends Ref.RefUnifyIgnore {
+  Ref?: true
 }
 
 /**

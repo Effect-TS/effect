@@ -56,7 +56,7 @@ describe("Ref", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(current))
       const result1 = yield* $(Ref.getAndUpdate(ref, () => update))
-      const result2 = yield* $(ref)
+      const result2 = yield* ref
       assert.strictEqual(result1, current)
       assert.strictEqual(result2, update)
     }))

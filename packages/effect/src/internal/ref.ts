@@ -21,10 +21,9 @@ class RefImpl<in out A> extends Effectable.Class<A> implements Ref.Ref<A> {
     return this.get
   }
   readonly [RefTypeId] = refVariance
-  readonly [Readable.TypeId]: Readable.TypeId
+  readonly [Readable.TypeId]: Readable.TypeId = Readable.TypeId
   constructor(readonly ref: MutableRef.MutableRef<A>) {
     super()
-    this[Readable.TypeId] = Readable.TypeId
     this.get = core.sync(() => MutableRef.get(this.ref))
   }
   readonly get: Effect.Effect<A>
