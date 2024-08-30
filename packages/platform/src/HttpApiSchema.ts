@@ -366,3 +366,19 @@ export const withEncoding: {
       } :
       undefined)
   }) as any)
+
+/**
+ * @since 1.0.0
+ * @category encoding
+ */
+export const Text = (options?: {
+  readonly contentType?: string
+}): typeof Schema.String => withEncoding(Schema.String, { kind: "Text", ...options })
+
+/**
+ * @since 1.0.0
+ * @category encoding
+ */
+export const Uint8Array = (options?: {
+  readonly contentType?: string
+}): typeof Schema.Uint8ArrayFromSelf => withEncoding(Schema.Uint8ArrayFromSelf, { kind: "Uint8Array", ...options })

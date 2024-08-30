@@ -68,19 +68,14 @@ class UsersApi extends HttpApiGroup.make("users").pipe(
   ),
   HttpApiGroup.add(
     HttpApiEndpoint.get("csv", "/csv").pipe(
-      HttpApiEndpoint.setSuccess(Schema.String.pipe(
-        HttpApiSchema.withEncoding({
-          kind: "Text",
-          contentType: "text/csv"
-        })
-      ))
+      HttpApiEndpoint.setSuccess(HttpApiSchema.Text({
+        contentType: "text/csv"
+      }))
     )
   ),
   HttpApiGroup.add(
     HttpApiEndpoint.get("binary", "/binary").pipe(
-      HttpApiEndpoint.setSuccess(Schema.Uint8ArrayFromSelf.pipe(
-        HttpApiSchema.withEncoding({ kind: "Uint8Array" })
-      ))
+      HttpApiEndpoint.setSuccess(HttpApiSchema.Uint8Array())
     )
   ),
   HttpApiGroup.add(
