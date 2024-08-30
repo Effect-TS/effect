@@ -1,5 +1,11 @@
 # effect
 
+## 3.6.8
+
+### Patch Changes
+
+- [#3510](https://github.com/Effect-TS/effect/pull/3510) [`e809286`](https://github.com/Effect-TS/effect/commit/e8092865900608c4df7a6b7991b1c13cc1e4ca2d) Thanks @fubhy! - Detect environment in Logger.pretty using process.stdout
+
 ## 3.6.7
 
 ### Patch Changes
