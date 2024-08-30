@@ -448,7 +448,7 @@ export const string = (name?: string): Config.Config<string> => {
 }
 
 /** @internal */
-export const nonEmptyString = (name?: string): Config.Config<string> => {
+export const stringNonEmpty = (name?: string): Config.Config<string> => {
   const config = primitive(
     "a non-empty text property",
     Either.liftPredicate((text) => text.length > 0, () => configError.InvalidData([], "Expected a non-empty string"))

@@ -66,15 +66,15 @@ describe("Config", () => {
     })
   })
 
-  describe("nonEmptyString", () => {
+  describe("stringNonEmpty", () => {
     it("name = undefined", () => {
-      const config = Config.array(Config.nonEmptyString(), "ITEMS")
+      const config = Config.array(Config.stringNonEmpty(), "ITEMS")
       assertSuccess(config, [["ITEMS", "foo"]], ["foo"])
       assertFailure(config, [["ITEMS", ""]], ConfigError.InvalidData(["ITEMS"], "Expected a non-empty string"))
     })
 
     it("name != undefined", () => {
-      const config = Config.nonEmptyString("NON_EMPTY_STRING")
+      const config = Config.stringNonEmpty("NON_EMPTY_STRING")
       assertSuccess(config, [["NON_EMPTY_STRING", "foo"]], "foo")
       assertSuccess(config, [["NON_EMPTY_STRING", " "]], " ")
       assertFailure(

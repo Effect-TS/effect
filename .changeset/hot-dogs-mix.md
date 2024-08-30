@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-New constructor Config.nonEmptyString
+New constructor Config.stringNonEmpty
