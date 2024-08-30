@@ -41,6 +41,51 @@ export * as Headers from "./Headers.js"
 /**
  * @since 1.0.0
  */
+export * as HttpApi from "./HttpApi.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiBuilder from "./HttpApiBuilder.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiClient from "./HttpApiClient.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiEndpoint from "./HttpApiEndpoint.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiError from "./HttpApiError.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiGroup from "./HttpApiGroup.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiSchema from "./HttpApiSchema.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiSecurity from "./HttpApiSecurity.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApiSwagger from "./HttpApiSwagger.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as HttpApp from "./HttpApp.js"
 
 /**
@@ -138,6 +183,11 @@ export * as KeyValueStore from "./KeyValueStore.js"
  * @since 1.0.0
  */
 export * as Multipart from "./Multipart.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as OpenApi from "./OpenApi.js"
 
 /**
  * @since 1.0.0
