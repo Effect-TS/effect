@@ -368,6 +368,14 @@ export const hashSet: <A>(config: Config<A>, name?: string) => Config<HashSet.Ha
 export const string: (name?: string) => Config<string> = internal.string
 
 /**
+ * Constructs a config for a non-empty string value.
+ *
+ * @since 3.7.0
+ * @category constructors
+ */
+export const stringNonEmpty: (name?: string) => Config<string> = internal.stringNonEmpty
+
+/**
  * Constructs a config which contains the specified value.
  *
  * @since 2.0.0
