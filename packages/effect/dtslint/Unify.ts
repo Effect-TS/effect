@@ -41,22 +41,22 @@ export type MicroUnify = Unify.Unify<
 >
 // $ExpectType Effect<0 | "a", "b" | 1, "c" | 2>
 export type EffectUnify = Unify.Unify<
-  Effect.Effect<0, 1, 2> | Effect.Effect<"a", "b", "c">
+  | Effect.Effect<0, 1, 2>
+  | Effect.Effect<"a", "b", "c">
 >
 // $ExpectType Exit<0 | "a", "b" | 1>
 export type ExitUnify = Unify.Unify<
   | Exit.Exit<0, 1>
   | Exit.Exit<"a", "b">
 >
-// $ExpectType Ref<"a" | 1>
+// $ExpectType Ref<1> | Ref<"a">
 export type RefUnify = Unify.Unify<Ref.Ref<1> | Ref.Ref<"a">>
-//          ^?
-// $ExpectType SynchronizedRef<"a" | 1>
+// $ExpectType SynchronizedRef<1> | SynchronizedRef<"a">
 export type SynchronizedRefUnify = Unify.Unify<
   | SynchronizedRef.SynchronizedRef<1>
   | SynchronizedRef.SynchronizedRef<"a">
 >
-// $ExpectType SubscriptionRef<"a" | 1>
+// $ExpectType SubscriptionRef<1> | SubscriptionRef<"a">
 export type SubscriptionRefUnify = Unify.Unify<
   | SubscriptionRef.SubscriptionRef<1>
   | SubscriptionRef.SubscriptionRef<"a">

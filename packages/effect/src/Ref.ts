@@ -36,8 +36,7 @@ export interface Ref<in out A> extends Ref.Variance<A>, Effect.Effect<A>, Readab
  * @since 3.8.0
  */
 export interface RefUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
-  Ref?: () => A[Unify.typeSymbol] extends Ref<infer A0> | infer _ ? Ref<A0>
-    : never
+  Ref?: () => Extract<A[Unify.typeSymbol], Ref<any>>
 }
 
 /**

@@ -38,8 +38,7 @@ export interface SynchronizedRef<in out A> extends SynchronizedRef.Variance<A>, 
  * @since 3.8.0
  */
 export interface SynchronizedRefUnify<A extends { [Unify.typeSymbol]?: any }> extends Ref.RefUnify<A> {
-  SynchronizedRef?: () => A[Unify.typeSymbol] extends SynchronizedRef<infer A0> | infer _ ? SynchronizedRef<A0>
-    : never
+  SynchronizedRef?: () => Extract<A[Unify.typeSymbol], SynchronizedRef<any>>
 }
 
 /**

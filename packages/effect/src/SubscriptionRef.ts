@@ -57,8 +57,7 @@ export interface SubscriptionRef<in out A>
 export interface SubscriptionRefUnify<A extends { [Unify.typeSymbol]?: any }>
   extends Synchronized.SynchronizedRefUnify<A>
 {
-  SubscriptionRef?: () => A[Unify.typeSymbol] extends SubscriptionRef<infer A0> | infer _ ? SubscriptionRef<A0>
-    : never
+  SubscriptionRef?: () => Extract<A[Unify.typeSymbol], SubscriptionRef<any>>
 }
 
 /**
