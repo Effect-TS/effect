@@ -46,12 +46,12 @@
     "@effect/sql": "workspace:^",
     "@testcontainers/mysql": "^10.11.0",
     "@testcontainers/postgresql": "^10.11.0",
-    "drizzle-orm": "^0.31.0",
+    "drizzle-orm": "^0.33.0",
     "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/sql": "workspace:^",
-    "drizzle-orm": "^0.31",
+    "drizzle-orm": "^0.33",
     "effect": "workspace:^"
   }
 }
