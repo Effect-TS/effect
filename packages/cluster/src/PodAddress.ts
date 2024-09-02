@@ -3,6 +3,7 @@
  */
 import * as Pretty from "@effect/schema/Pretty"
 import * as Schema from "@effect/schema/Schema"
+import { Hash } from "effect"
 
 const SymbolKey = "@effect/cluster/PodAddress"
 
@@ -34,5 +35,12 @@ export class PodAddress extends Schema.Class<PodAddress>(SymbolKey)({
   /**
    * @since 1.0.0
    */
-  readonly [TypeId] = TypeId
+  readonly [TypeId] = TypeId;
+
+  /**
+   * @since 1.0.0
+   */
+  [Hash.symbol]() {
+    return Hash.cached(this)(Hash.string(`${this.host}:${this.port}`))
+  }
 }
