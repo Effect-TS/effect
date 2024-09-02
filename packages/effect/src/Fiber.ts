@@ -2,6 +2,8 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.js"
+import type { Context } from "./Context.js"
+import type { DefaultServices } from "./DefaultServices.js"
 import type * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
 import type * as Exit from "./Exit.js"
@@ -18,7 +20,10 @@ import type * as Option from "./Option.js"
 import type * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
+import type { Scheduler } from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
+import type { Supervisor } from "./Supervisor.js"
+import type { AnySpan, Tracer } from "./Tracer.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -155,6 +160,36 @@ export interface RuntimeFiber<out A, out E = never> extends Fiber<A, E>, Fiber.R
    * resume immediately. Otherwise, the effect will resume when the fiber exits.
    */
   unsafeInterruptAsFork(fiberId: FiberId.FiberId): void
+
+  /**
+   * Gets the current context
+   */
+  get currentContext(): Context<never>
+
+  /**
+   * Gets the current context
+   */
+  get currentDefaultServices(): Context<DefaultServices>
+
+  /**
+   * Gets the current scheduler
+   */
+  get currentScheduler(): Scheduler
+
+  /**
+   * Gets the current tracer
+   */
+  get currentTracer(): Tracer
+
+  /**
+   * Gets the current span
+   */
+  get currentSpan(): AnySpan | undefined
+
+  /**
+   * Gets the current supervisor
+   */
+  get currentSupervisor(): Supervisor<unknown>
 }
 
 /**
