@@ -15,6 +15,7 @@
           corepack
           deno
           nodejs
+          python3
         ];
       };
     });
