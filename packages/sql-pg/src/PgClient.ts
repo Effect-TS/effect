@@ -101,6 +101,18 @@ export interface PgClientConfig {
   readonly transformJson?: boolean | undefined
   readonly fetchTypes?: boolean | undefined
   readonly prepare?: boolean | undefined
+  /**
+   * A callback when postgres has a notice, see
+   * [readme](https://github.com/porsager/postgres?tab=readme-ov-file#connection-details).
+   * By default, postgres.js logs these with console.log.
+   * To silence notices, see the following example:
+   * @example
+   * import { PgClient } from "@effect/sql-pg";
+   * import { Config, Layer } from "effect"
+   *
+   * const layer = PgClient.layer({ onnotice: Config.succeed(() => {}) })
+   */
+  readonly onnotice?: (notice: postgres.Notice) => void
   readonly types?: Record<string, postgres.PostgresType> | undefined
 
   readonly debug?: postgres.Options<{}>["debug"] | undefined
@@ -156,6 +168,7 @@ export const make = (
       password: options.password ? Redacted.value(options.password) : undefined,
       fetch_types: options.fetchTypes ?? true,
       prepare: options.prepare ?? true,
+      onnotice: options.onnotice,
       types: options.types,
       debug: options.debug,
       connection: {
