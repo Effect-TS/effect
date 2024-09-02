@@ -572,25 +572,25 @@ export function decideAssignmentsForUnbalancedShards(state: ShardManagerState, r
     // Do not perform a regular rebalance in the middle of a rolling update
     : HashSet.empty<ShardId>()
 
-  const cmp = Order.tuple(Order.number, Order.number)
-
-  const sortedShardsToRebalance = Array.map(Array.fromIterable(extraShardsToAllocate), (shard) =>
-    // Handle unassigned shards, followed by shards on pods with the most
-    // shards, and finally shards on old pods
-    Option.match(Option.flatten(HashMap.get(state.shards, shard)), {
-      onNone: () => [shard, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER] as const,
-      onSome: (address) => {
-        const shards = Option.match(HashMap.get(state.shardsPerPod, address), {
-          onNone: () => Number.MIN_SAFE_INTEGER,
-          onSome: (shards) => -HashSet.size(shards)
-        })
-        const registeredAt = Option.match(HashMap.get(state.pods, address), {
-          onNone: () => Number.MIN_SAFE_INTEGER,
-          onSome: (meta) => meta.registeredAt
-        })
-        return [shard, shards, registeredAt] as const
-      }
-    })).sort(([, x, y], [, x2, y2]) => cmp([x, y], [x2, y2])).map(([_]) => _)
+  const sortedShardsToRebalance = extraShardsToAllocate.pipe(
+    Array.sortWith((shard) =>
+      // Handle unassigned shards, followed by shards on pods with the most
+      // shards, and finally shards on old pods
+      Option.match(Option.flatten(HashMap.get(state.shards, shard)), {
+        onNone: () => [Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER] as const,
+        onSome: (address) => {
+          const shards = Option.match(HashMap.get(state.shardsPerPod, address), {
+            onNone: () => Number.MIN_SAFE_INTEGER,
+            onSome: (shards) => -HashSet.size(shards)
+          })
+          const registeredAt = Option.match(HashMap.get(state.pods, address), {
+            onNone: () => Number.MIN_SAFE_INTEGER,
+            onSome: (meta) => meta.registeredAt
+          })
+          return [shards, registeredAt] as const
+        }
+      }), Order.tuple(Order.number, Order.number))
+  )
 
   return pickNewPods(sortedShardsToRebalance, state, false, rate)
 }

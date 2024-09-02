@@ -1225,7 +1225,8 @@ export const sortWith: {
   <A, B>(self: Iterable<A>, f: (a: A) => B, order: Order.Order<B>): Array<A>
 } = dual(
   3,
-  <A, B>(self: Iterable<A>, f: (a: A) => B, order: Order.Order<B>): Array<A> => sort(self, Order.mapInput(order, f))
+  <A, B>(self: Iterable<A>, f: (a: A) => B, order: Order.Order<B>): Array<A> =>
+    Array.from(self).map((a) => [a, f(a)] as const).sort(([, a], [, b]) => order(a, b)).map(([_]) => _)
 )
 
 /**
