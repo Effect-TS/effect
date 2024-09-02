@@ -492,3 +492,26 @@ export const parse = (s: string): Option<number> => {
     ? option.none
     : option.some(n)
 }
+
+/**
+ * Returns the number rounded with the given precision.
+ *
+ * @param self - The number to round
+ * @param precision - The precision
+ *
+ * @example
+ * import { round } from "effect/Number"
+ *
+ * assert.deepStrictEqual(round(5,1234, 2), 5.12)
+ * assert.deepStrictEqual(nextPow2(17), 32)
+ *
+ * @category math
+ * @since 3.8.0
+ */
+export const round: {
+  (precision: number): (self: number) => number
+  (self: number, precision: number): number
+} = dual(2, (self: number, precision: number): number => {
+  const factor = Math.pow(10, precision)
+  return Math.round(self * factor) / factor
+})
