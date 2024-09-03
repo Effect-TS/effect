@@ -119,6 +119,7 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
       }), { discard: true })
 
     // Service Interface
+    const scope = yield* Effect.scope
     const state = yield* SynchronizedRef.make(initialState)
     const rebalanceSemaphore = yield* Effect.makeSemaphore(1)
     const events = yield* PubSub.unbounded<ShardManager.ShardManager.ShardingEvent>()
@@ -211,7 +212,7 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
           Metric.increment(InternalMetrics.pods).pipe(
             Effect.zipRight(PubSub.publish(events, ShardingEvent.PodRegistered({ address: pod.address }))),
             Effect.zipRight(HashSet.size(state.unassignedShards) > 0 ? rebalance(false) : Effect.void),
-            Effect.zipRight(Effect.forkDaemon(persistPods))
+            Effect.zipRight(Effect.forkIn(persistPods, scope))
           )
         ),
         Effect.asVoid
@@ -248,8 +249,8 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
                 Effect.when(() => unassignedShardCount > 0)
               )
             ),
-            Effect.zipRight(Effect.forkDaemon(persistPods)),
-            Effect.zipRight(Effect.forkDaemon(rebalance(true)))
+            Effect.zipRight(Effect.forkIn(persistPods, scope)),
+            Effect.zipRight(Effect.forkIn(rebalance(true), scope))
           )
         }),
         Effect.whenEffect(
@@ -289,7 +290,7 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
                     onSuccess: () => Array.empty<PodAddress>()
                   })
                 ),
-              { concurrency: "inherit" }
+              { concurrency: "unbounded" }
             ).pipe(Effect.map((addresses) => HashSet.fromIterable(Array.flatten(addresses))))
 
             const shardsToRemove = pipe(
@@ -329,7 +330,7 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
                     }
                   })
                 ),
-              { concurrency: "inherit" }
+              { concurrency: "unbounded" }
             ).pipe(
               Effect.map(Array.unzip),
               Effect.map(([pods, shards]) =>
@@ -364,7 +365,7 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
                     )
                   }
                 })
-              ), { concurrency: "inherit" }).pipe(Effect.map((pods) =>
+              ), { concurrency: "unbounded" }).pipe(Effect.map((pods) =>
                 HashSet.fromIterable(Array.flatten(pods))
               ))
 
@@ -377,7 +378,7 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
             if (wereFailures) {
               // Check if the failing pods are still reachable
               yield* Effect.forEach(failedPods, notifyUnhealthyPod, { discard: true }).pipe(
-                Effect.forkDaemon
+                Effect.forkIn(scope)
               )
 
               const failed = pipe(
@@ -392,7 +393,7 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
               // Try rebalancing again later if there were any failures
               yield* Clock.sleep(config.rebalanceRetryInterval).pipe(
                 Effect.zipRight(rebalance(immediate)),
-                Effect.forkDaemon
+                Effect.forkIn(scope)
               )
             }
 
@@ -403,7 +404,10 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
           })
         ),
         Effect.asVoid,
-        rebalanceSemaphore.withPermits(1)
+        rebalanceSemaphore.withPermits(1),
+        Effect.withSpan("ShardManager.rebalance", {
+          attributes: { immediate }
+        })
       )
     }
 
@@ -428,25 +432,25 @@ const make = (customConfig: Partial<ShardManager.ShardManager.Config> = {}) =>
       )
     )
 
-    yield* Effect.forkDaemon(persistPods)
+    yield* Effect.forkScoped(persistPods)
 
     // Rebalance immediately if there are unassigned shards
-    yield* Effect.forkDaemon(rebalance(HashSet.size(initialState.unassignedShards) > 0))
+    yield* Effect.forkScoped(rebalance(HashSet.size(initialState.unassignedShards) > 0))
 
     // Start a regular cluster rebalance at the configured interval
     yield* rebalance(false).pipe(
       Effect.repeat(Schedule.spaced(config.rebalanceInterval)),
-      Effect.forkDaemon
+      Effect.forkScoped
     )
 
     yield* getShardingEvents.pipe(
       Stream.runForEach((event) => Effect.logInfo(event)),
-      Effect.forkDaemon
+      Effect.forkScoped
     )
 
     yield* checkPodHealth.pipe(
       Effect.repeat(Schedule.spaced(config.podHealthCheckInterval)),
-      Effect.forkDaemon
+      Effect.forkScoped
     )
 
     yield* Effect.logInfo("Shard manager initialized")
