@@ -10,8 +10,6 @@ import * as UrlParams from "@effect/platform/UrlParams"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
-import { dual } from "effect/Function"
-import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -39,31 +37,19 @@ export const dispatcherLayer = Layer.scoped(Dispatcher, makeDispatcher)
 export const dispatcherLayerGlobal = Layer.sync(Dispatcher, () => Undici.getGlobalDispatcher())
 
 /** @internal */
-export const currentUndiciOptions = globalValue(
-  Symbol.for("@effect/platform-node/NodeHttpClient/currentUndici"),
-  () => FiberRef.unsafeMake<Partial<Undici.Dispatcher.RequestOptions>>({})
-)
+export const undiciOptionsTagKey = "@effect/platform-node/NodeHttpClient/undiciOptions"
 
 /** @internal */
-export const withUndiciOptions = dual<
-  (
-    options: Partial<Undici.Dispatcher.RequestOptions>
-  ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(
-    effect: Effect.Effect<A, E, R>,
-    options: Partial<Undici.Dispatcher.RequestOptions>
-  ) => Effect.Effect<A, E, R>
->(2, (self, options) => Effect.locally(self, currentUndiciOptions, options))
-
-/** @internal */
-export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient.Default =>
-  Client.makeDefault((request, url, signal, fiber) =>
-    convertBody(request.body).pipe(
+export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient.Service =>
+  Client.makeService((request, url, signal, fiber) => {
+    const context = fiber.getFiberRef(FiberRef.currentContext)
+    const options: Undici.Dispatcher.RequestOptions = context.unsafeMap.get(undiciOptionsTagKey) ?? {}
+    return convertBody(request.body).pipe(
       Effect.flatMap((body) =>
         Effect.tryPromise({
           try: () =>
             dispatcher.request({
-              ...(fiber.getFiberRef(currentUndiciOptions)),
+              ...options,
               signal,
               method: request.method,
               headers: request.headers,
@@ -85,7 +71,7 @@ export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient.Default =
       ),
       Effect.map((response) => new ClientResponseImpl(request, response))
     )
-  )
+  })
 
 function convertBody(
   body: Body.HttpBody
@@ -240,7 +226,7 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
 }
 
 /** @internal */
-export const layerWithoutDispatcher = Layer.effect(Client.HttpClient, Effect.map(Dispatcher, make))
+export const layerWithoutDispatcher = Client.layerMergedContext(Effect.map(Dispatcher, make))
 
 /** @internal */
 export const layer = Layer.provide(layerWithoutDispatcher, dispatcherLayer)
