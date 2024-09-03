@@ -29,7 +29,7 @@ const makeTodoService = Effect.gen(function*() {
     HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
   )
 
-  const addTodoWithoutIdBody = HttpClientRequest.schemaBody(TodoWithoutId)
+  const addTodoWithoutIdBody = HttpClientRequest.schemaBodyJson(TodoWithoutId)
   const create = (todo: TodoWithoutId) =>
     addTodoWithoutIdBody(
       HttpClientRequest.post("/todos"),

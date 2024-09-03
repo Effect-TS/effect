@@ -455,7 +455,7 @@ export const bodyFileWeb = dual<
 >(2, (self, file) => setBody(self, internalBody.fileWeb(file)))
 
 /** @internal */
-export const bodySchema = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined): {
+export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined): {
   (
     body: A
   ): (self: ClientRequest.HttpClientRequest) => Effect.Effect<ClientRequest.HttpClientRequest, Body.HttpBodyError, R>

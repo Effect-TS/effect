@@ -337,13 +337,13 @@ export const bodyUnsafeJson: {
  * @since 1.0.0
  * @category combinators
  */
-export const bodySchema: <A, I, R>(
+export const schemaBodyJson: <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
   (body: A): (self: HttpClientRequest) => Effect.Effect<HttpClientRequest, Body.HttpBodyError, R>
   (self: HttpClientRequest, body: A): Effect.Effect<HttpClientRequest, Body.HttpBodyError, R>
-} = internal.bodySchema
+} = internal.schemaBodyJson
 
 /**
  * @since 1.0.0
