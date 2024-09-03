@@ -33,8 +33,7 @@ export class FiberRefsImpl implements FiberRefs.FiberRefs {
       FiberRef.FiberRef<any>,
       Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>
     >
-  ) {
-  }
+  ) {}
   pipe() {
     return pipeArguments(this, arguments)
   }
