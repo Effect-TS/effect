@@ -242,6 +242,12 @@ export const withConsoleLog: <M, O>(self: Logger<M, O>) => Logger<M, void> = fib
  * @since 2.0.0
  * @category console
  */
+export const withLeveledConsole: <M, O>(self: Logger<M, O>) => Logger<M, void> = fiberRuntime.loggerWithLeveledLog
+
+/**
+ * @since 2.0.0
+ * @category console
+ */
 export const withConsoleError: <M, O>(self: Logger<M, O>) => Logger<M, void> = fiberRuntime.loggerWithConsoleError
 
 /**
