@@ -2,10 +2,10 @@
 import * as Etag from "@effect/platform-node-shared/NodeEtag"
 import * as MultipartNode from "@effect/platform-node-shared/NodeMultipart"
 import * as Cookies from "@effect/platform/Cookies"
+import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as Headers from "@effect/platform/Headers"
 import * as App from "@effect/platform/HttpApp"
-import * as HttpClient from "@effect/platform/HttpClient"
 import * as IncomingMessage from "@effect/platform/HttpIncomingMessage"
 import type { HttpMethod } from "@effect/platform/HttpMethod"
 import * as Server from "@effect/platform/HttpServer"
@@ -180,11 +180,8 @@ export const layer = (
 
 /** @internal */
 export const layerTest = Server.layerTestClient.pipe(
-  Layer.provide(Layer.succeed(
-    HttpClient.HttpClient,
-    HttpClient.fetch.pipe(
-      HttpClient.transformResponse(HttpClient.withFetchOptions({ keepalive: false }))
-    )
+  Layer.provide(FetchHttpClient.layer.pipe(
+    Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { keepalive: false }))
   )),
   Layer.provideMerge(layer({ port: 0 }))
 )

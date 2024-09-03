@@ -36,7 +36,7 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface HttpClientRequest
-  extends Effect.Effect<HttpClientResponse, HttpClientError, HttpClient.Default | Scope>, Inspectable
+  extends Effect.Effect<HttpClientResponse, HttpClientError, HttpClient.Service | Scope>, Inspectable
 {
   readonly [TypeId]: TypeId
   readonly method: HttpMethod

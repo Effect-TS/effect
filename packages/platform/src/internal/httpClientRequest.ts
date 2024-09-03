@@ -21,14 +21,14 @@ import * as internalBody from "./httpBody.js"
 export const TypeId: ClientRequest.TypeId = Symbol.for("@effect/platform/HttpClientRequest") as ClientRequest.TypeId
 
 /** @internal */
-export const clientTag = Context.GenericTag<HttpClient.Default>("@effect/platform/HttpClient")
+export const clientTag = Context.GenericTag<HttpClient.Service>("@effect/platform/HttpClient")
 
 const Proto = {
   [TypeId]: TypeId,
   ...Effectable.CommitPrototype,
   ...Inspectable.BaseProto,
   commit(this: ClientRequest.HttpClientRequest) {
-    return Effect.flatMap(clientTag, (client) => client(this))
+    return Effect.flatMap(clientTag, (client) => client.execute(this))
   },
   toJSON(this: ClientRequest.HttpClientRequest): unknown {
     return {

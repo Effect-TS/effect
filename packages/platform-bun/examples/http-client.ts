@@ -1,4 +1,4 @@
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
+import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
 import type { HttpBody, HttpClientError } from "@effect/platform"
 import { BunRuntime } from "@effect/platform-bun"
 import type * as ParseResult from "@effect/schema/ParseResult"
@@ -35,15 +35,16 @@ const makeTodoService = Effect.gen(function*() {
       HttpClientRequest.post("/todos"),
       todo
     ).pipe(
-      Effect.flatMap(clientWithBaseUrl),
-      HttpClientResponse.schemaBodyJsonScoped(Todo)
+      Effect.flatMap(clientWithBaseUrl.execute),
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
+      Effect.scoped
     )
 
   return TodoService.of({ create })
 })
 
 const TodoServiceLive = Layer.effect(TodoService, makeTodoService).pipe(
-  Layer.provide(HttpClient.layer)
+  Layer.provide(FetchHttpClient.layer)
 )
 
 Effect.flatMap(

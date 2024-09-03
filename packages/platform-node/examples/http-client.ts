@@ -14,7 +14,7 @@ class Todo extends Schema.Class<Todo>("Todo")({
   title: Schema.String,
   completed: Schema.Boolean
 }) {
-  static decodeResponse = HttpClientResponse.schemaBodyJsonScoped(Todo)
+  static decodeResponse = HttpClientResponse.schemaBodyJson(Todo)
 }
 
 const TodoWithoutId = Schema.Struct(Todo.fields).pipe(Schema.omit("id"))
@@ -40,8 +40,9 @@ const makeTodoService = Effect.gen(function*() {
       HttpClientRequest.post("/todos"),
       todo
     ).pipe(
-      Effect.flatMap(clientWithBaseUrl),
-      Todo.decodeResponse
+      Effect.flatMap(clientWithBaseUrl.execute),
+      Effect.flatMap(Todo.decodeResponse),
+      Effect.scoped
     )
 
   return TodoService.of({ create })
