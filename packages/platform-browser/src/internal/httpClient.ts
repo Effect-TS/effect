@@ -6,21 +6,20 @@ import type * as ClientRequest from "@effect/platform/HttpClientRequest"
 import * as ClientResponse from "@effect/platform/HttpClientResponse"
 import * as IncomingMessage from "@effect/platform/HttpIncomingMessage"
 import * as UrlParams from "@effect/platform/UrlParams"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { type LazyArg } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as HeaderParser from "multipasta/HeadersParser"
 
 /** @internal */
-export const currentXMLHttpRequest = globalValue(
-  "@effect/platform-browser/BrowserHttpClient/currentXMLHttpRequest",
-  () => FiberRef.unsafeMake<LazyArg<XMLHttpRequest>>(() => new XMLHttpRequest())
-)
+export const xhrTagKey = "@effect/platform-browser/BrowserHttpClient/XMLHttpRequest"
+
+const xhrTag = Context.GenericTag<LazyArg<XMLHttpRequest>>(xhrTagKey)
 
 /** @internal */
 export const currentXHRResponseType = globalValue(
@@ -36,10 +35,15 @@ export const withXHRArrayBuffer = <A, E, R>(effect: Effect.Effect<A, E, R>): Eff
     "arraybuffer"
   )
 
-/** @internal */
-export const makeXMLHttpRequest = Client.makeDefault((request, url, signal, fiber) =>
+const makeXhr = () => new XMLHttpRequest()
+
+const makeXMLHttpRequest = Client.makeService((request, url, signal, fiber) =>
   Effect.suspend(() => {
-    const xhr = fiber.getFiberRef(currentXMLHttpRequest)()
+    const xhr = Context.getOrElse(
+      fiber.getFiberRef(FiberRef.currentContext),
+      xhrTag,
+      () => makeXhr
+    )()
     signal.addEventListener("abort", () => {
       xhr.abort()
       xhr.onreadystatechange = null
@@ -70,6 +74,7 @@ export const makeXMLHttpRequest = Client.makeDefault((request, url, signal, fibe
           ))
         }
         onChange()
+        return Effect.void
       })
     )
   })
@@ -332,4 +337,4 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
 }
 
 /** @internal */
-export const layerXMLHttpRequest = Layer.succeed(Client.HttpClient, makeXMLHttpRequest)
+export const layerXMLHttpRequest = Client.layerMergedContext(Effect.succeed(makeXMLHttpRequest))

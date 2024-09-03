@@ -201,5 +201,5 @@ export const withLogAddress: <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Lay
  * @since 1.0.0
  * @category layers
  */
-export const layerTestClient: Layer.Layer<Client.HttpClient.Default, never, Client.HttpClient.Default | HttpServer> =
+export const layerTestClient: Layer.Layer<Client.HttpClient.Service, never, Client.HttpClient.Service | HttpServer> =
   internal.layerTestClient
