@@ -2405,7 +2405,7 @@ export const either = <A, E, R>(self: Stream.Stream<A, E, R>): Stream.Stream<Eit
   pipe(self, map(Either.right), catchAll((error) => make(Either.left(error))))
 
 /** @internal */
-export const empty: Stream.Stream<never> = new StreamImpl(core.write(Chunk.empty()))
+export const empty: Stream.Stream<never> = new StreamImpl(core.void)
 
 /** @internal */
 export const ensuring = dual<
