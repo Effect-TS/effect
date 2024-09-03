@@ -56,10 +56,10 @@ export type Client<A extends HttpApi.HttpApi.Any> = [A] extends
 export const make = <A extends HttpApi.HttpApi.Any>(
   api: A,
   options?: {
-    readonly transformClient?: ((client: HttpClient.HttpClient.Default) => HttpClient.HttpClient.Default) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.Service) => HttpClient.HttpClient.Service) | undefined
     readonly baseUrl?: string | undefined
   }
-): Effect.Effect<Simplify<Client<A>>, never, HttpApi.HttpApi.Context<A> | HttpClient.HttpClient.Default> =>
+): Effect.Effect<Simplify<Client<A>>, never, HttpApi.HttpApi.Context<A> | HttpClient.HttpClient.Service> =>
   Effect.gen(function*() {
     const context = yield* Effect.context<any>()
     const httpClient = (yield* HttpClient.HttpClient).pipe(
@@ -165,13 +165,13 @@ export const make = <A extends HttpApi.HttpApi.Any>(
           const baseRequest = HttpClientRequest.make(endpoint.method)(url)
           return (isMultipart ?
             Effect.succeed(baseRequest.pipe(
-              HttpClientRequest.formDataBody(request.payload)
+              HttpClientRequest.bodyFormData(request.payload)
             ))
             : encodePayload._tag === "Some"
             ? encodePayload.value(request.payload).pipe(
               Effect.flatMap((payload) =>
                 HttpMethod.hasBody(endpoint.method)
-                  ? HttpClientRequest.jsonBody(baseRequest, payload)
+                  ? HttpClientRequest.bodyJson(baseRequest, payload)
                   : Effect.succeed(HttpClientRequest.setUrlParams(baseRequest, payload as any))
               ),
               Effect.orDie
@@ -186,7 +186,7 @@ export const make = <A extends HttpApi.HttpApi.Any>(
                 )
                 : identity,
               Effect.flatMap((request) =>
-                Effect.flatMap(httpClient(request), (response) =>
+                Effect.flatMap(httpClient.execute(request), (response) =>
                   response.status !== successStatus
                     ? handleError(request, response)
                     : Effect.succeed(response))

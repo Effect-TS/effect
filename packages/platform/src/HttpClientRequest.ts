@@ -36,7 +36,7 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface HttpClientRequest
-  extends Effect.Effect<HttpClientResponse, HttpClientError, HttpClient.Default | Scope>, Inspectable
+  extends Effect.Effect<HttpClientResponse, HttpClientError, HttpClient.Service | Scope>, Inspectable
 {
   readonly [TypeId]: TypeId
   readonly method: HttpMethod
@@ -301,73 +301,73 @@ export const setBody: {
  * @since 1.0.0
  * @category combinators
  */
-export const uint8ArrayBody: {
+export const bodyUint8Array: {
   (body: Uint8Array, contentType?: string): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, body: Uint8Array, contentType?: string): HttpClientRequest
-} = internal.uint8ArrayBody
+} = internal.bodyUint8Array
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const textBody: {
+export const bodyText: {
   (body: string, contentType?: string): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, body: string, contentType?: string): HttpClientRequest
-} = internal.textBody
+} = internal.bodyText
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const jsonBody: {
+export const bodyJson: {
   (body: unknown): (self: HttpClientRequest) => Effect.Effect<HttpClientRequest, Body.HttpBodyError>
   (self: HttpClientRequest, body: unknown): Effect.Effect<HttpClientRequest, Body.HttpBodyError>
-} = internal.jsonBody
+} = internal.bodyJson
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const unsafeJsonBody: {
+export const bodyUnsafeJson: {
   (body: unknown): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, body: unknown): HttpClientRequest
-} = internal.unsafeJsonBody
+} = internal.bodyUnsafeJson
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const schemaBody: <A, I, R>(
+export const schemaBodyJson: <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
   (body: A): (self: HttpClientRequest) => Effect.Effect<HttpClientRequest, Body.HttpBodyError, R>
   (self: HttpClientRequest, body: A): Effect.Effect<HttpClientRequest, Body.HttpBodyError, R>
-} = internal.schemaBody
+} = internal.schemaBodyJson
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const urlParamsBody: {
+export const bodyUrlParams: {
   (input: UrlParams.Input): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, input: UrlParams.Input): HttpClientRequest
-} = internal.urlParamsBody
+} = internal.bodyUrlParams
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const formDataBody: {
+export const bodyFormData: {
   (body: FormData): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, body: FormData): HttpClientRequest
-} = internal.formDataBody
+} = internal.bodyFormData
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const streamBody: {
+export const bodyStream: {
   (
     body: Stream.Stream<Uint8Array, unknown>,
     options?: { readonly contentType?: string | undefined; readonly contentLength?: number | undefined } | undefined
@@ -377,13 +377,13 @@ export const streamBody: {
     body: Stream.Stream<Uint8Array, unknown>,
     options?: { readonly contentType?: string | undefined; readonly contentLength?: number | undefined } | undefined
   ): HttpClientRequest
-} = internal.streamBody
+} = internal.bodyStream
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const fileBody: {
+export const bodyFile: {
   (
     path: string,
     options?: FileSystem.StreamOptions & { readonly contentType?: string }
@@ -393,13 +393,13 @@ export const fileBody: {
     path: string,
     options?: FileSystem.StreamOptions & { readonly contentType?: string }
   ): Effect.Effect<HttpClientRequest, PlatformError.PlatformError, FileSystem.FileSystem>
-} = internal.fileBody
+} = internal.bodyFile
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const fileWebBody: {
+export const bodyFileWeb: {
   (file: Body.HttpBody.FileLike): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, file: Body.HttpBody.FileLike): HttpClientRequest
-} = internal.fileWebBody
+} = internal.bodyFileWeb

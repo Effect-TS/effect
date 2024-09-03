@@ -10,7 +10,6 @@ import { dual } from "effect/Function"
 import * as Global from "effect/GlobalValue"
 import type { Inspectable } from "effect/Inspectable"
 import * as Option from "effect/Option"
-import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import * as FileSystem from "./FileSystem.js"
 import type * as Headers from "./Headers.js"
@@ -57,18 +56,6 @@ export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyJsonScoped = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => {
-  const decode = schemaBodyJson(schema, options)
-  return <E, E2, R2>(
-    effect: Effect.Effect<HttpIncomingMessage<E>, E2, R2>
-  ): Effect.Effect<A, ParseResult.ParseError | E | E2, Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>> =>
-    Effect.scoped(Effect.flatMap(effect, decode))
-}
-
-/**
- * @since 1.0.0
- * @category schema
- */
 export const schemaBodyUrlParams = <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
@@ -82,42 +69,12 @@ export const schemaBodyUrlParams = <A, I extends Readonly<Record<string, string 
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyUrlParamsScoped = <A, I extends Readonly<Record<string, string | undefined>>, R>(
-  schema: Schema.Schema<A, I, R>,
-  options?: ParseOptions | undefined
-) => {
-  const decode = schemaBodyUrlParams(schema, options)
-  return <E, E2, R2>(
-    effect: Effect.Effect<HttpIncomingMessage<E>, E2, R2>
-  ): Effect.Effect<A, ParseResult.ParseError | E | E2, Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>> =>
-    Effect.scoped(Effect.flatMap(effect, decode))
-}
-
-/**
- * @since 1.0.0
- * @category schema
- */
 export const schemaHeaders = <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
   const parse = Schema.decodeUnknown(schema, options)
   return <E>(self: HttpIncomingMessage<E>): Effect.Effect<A, ParseResult.ParseError, R> => parse(self.headers)
-}
-
-/**
- * @since 1.0.0
- * @category schema
- */
-export const schemaHeadersScoped = <A, I extends Readonly<Record<string, string | undefined>>, R>(
-  schema: Schema.Schema<A, I, R>,
-  options?: ParseOptions | undefined
-) => {
-  const decode = schemaHeaders(schema, options)
-  return <E, E2, R2>(
-    effect: Effect.Effect<HttpIncomingMessage<E>, E2, R2>
-  ): Effect.Effect<A, ParseResult.ParseError | E2, Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>> =>
-    Effect.scoped(Effect.flatMap(effect, decode))
 }
 
 /**
