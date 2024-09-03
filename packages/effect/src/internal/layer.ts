@@ -1270,17 +1270,17 @@ const provideSomeRuntime = dual<
       const oldContext = fiber.getFiberRef(core.currentContext)
       const oldRefs = fiber.getFiberRefs()
       const newRefs = FiberRefsPatch.patch(fiber.id(), oldRefs)(patchRefs)
-      const oldFlags = fiber._runtimeFlags
+      const oldFlags = fiber.currentRuntimeFlags
       const newFlags = runtimeFlags.patch(patchFlags)(oldFlags)
       const rollbackRefs = FiberRefsPatch.diff(newRefs, oldRefs)
       const rollbackFlags = runtimeFlags.diff(newFlags, oldFlags)
       fiber.setFiberRefs(newRefs)
-      fiber._runtimeFlags = newFlags
+      fiber.currentRuntimeFlags = newFlags
       return fiberRuntime.ensuring(
         core.provideSomeContext(restore(self), Context.merge(oldContext, rt.context)),
         core.withFiberRuntime((fiber) => {
           fiber.setFiberRefs(FiberRefsPatch.patch(fiber.id(), fiber.getFiberRefs())(rollbackRefs))
-          fiber._runtimeFlags = runtimeFlags.patch(rollbackFlags)(fiber._runtimeFlags)
+          fiber.currentRuntimeFlags = runtimeFlags.patch(rollbackFlags)(fiber.currentRuntimeFlags)
           return core.void
         })
       )

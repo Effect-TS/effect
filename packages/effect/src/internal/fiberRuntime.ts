@@ -6,6 +6,7 @@ import * as Chunk from "../Chunk.js"
 import type * as Clock from "../Clock.js"
 import type { ConfigProvider } from "../ConfigProvider.js"
 import * as Context from "../Context.js"
+import type { DefaultServices } from "../DefaultServices.js"
 import * as Deferred from "../Deferred.js"
 import type * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
@@ -169,8 +170,8 @@ const contOpSuccess = {
     cont: core.RevertFlags,
     value: unknown
   ) => {
-    self.patchRuntimeFlags(self._runtimeFlags, cont.patch)
-    if (_runtimeFlags.interruptible(self._runtimeFlags) && self.isInterrupted()) {
+    self.patchRuntimeFlags(self.currentRuntimeFlags, cont.patch)
+    if (_runtimeFlags.interruptible(self.currentRuntimeFlags) && self.isInterrupted()) {
       return core.exitFailCause(self.getInterruptedCause())
     } else {
       return core.exitSucceed(value)
@@ -278,8 +279,6 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
 
   private _fiberRefs: FiberRefs.FiberRefs
   private _fiberId: FiberId.Runtime
-  public _runtimeFlags: RuntimeFlags.RuntimeFlags
-
   private _queue = new Array<FiberMessage.FiberMessage>()
   private _children: Set<FiberRuntime<any, any>> | null = null
   private _observers = new Array<(exit: Exit.Exit<A, E>) => void>()
@@ -289,28 +288,31 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   private _asyncBlockingOn: FiberId.FiberId | null = null
   private _exitValue: Exit.Exit<A, E> | null = null
   private _steps: Array<Snapshot> = []
-  public _supervisor: Supervisor.Supervisor<any>
-  public _scheduler: Scheduler
-  private _tracer: Tracer.Tracer
+  private _isYielding = false
+
+  public currentRuntimeFlags: RuntimeFlags.RuntimeFlags
   public currentOpCount: number = 0
-  private isYielding = false
+  public currentSupervisor!: Supervisor.Supervisor<any>
+  public currentScheduler!: Scheduler
+  public currentTracer!: Tracer.Tracer
+  public currentSpan!: Tracer.AnySpan | undefined
+  public currentContext!: Context.Context<never>
+  public currentDefaultServices!: Context.Context<DefaultServices>
 
   constructor(
     fiberId: FiberId.Runtime,
     fiberRefs0: FiberRefs.FiberRefs,
     runtimeFlags0: RuntimeFlags.RuntimeFlags
   ) {
-    this._runtimeFlags = runtimeFlags0
+    this.currentRuntimeFlags = runtimeFlags0
     this._fiberId = fiberId
     this._fiberRefs = fiberRefs0
-    this._supervisor = this.getFiberRef(currentSupervisor)
-    this._scheduler = this.getFiberRef(currentScheduler)
     if (_runtimeFlags.runtimeMetrics(runtimeFlags0)) {
       const tags = this.getFiberRef(core.currentMetricLabels)
       fiberStarted.unsafeUpdate(1, tags)
       fiberActive.unsafeUpdate(1, tags)
     }
-    this._tracer = Context.get(this.getFiberRef(defaultServices.currentServices), tracer.tracerTag)
+    this.refreshRefCache()
   }
 
   /**
@@ -342,7 +344,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   get runtimeFlags(): Effect.Effect<RuntimeFlags.RuntimeFlags> {
     return this.ask((state, status) => {
       if (FiberStatus.isDone(status)) {
-        return state._runtimeFlags
+        return state.currentRuntimeFlags
       }
       return status.runtimeFlags
     })
@@ -528,7 +530,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
    * log annotations and log level) may not be up-to-date.
    */
   getFiberRefs(): FiberRefs.FiberRefs {
-    this.setFiberRef(currentRuntimeFlags, this._runtimeFlags)
+    this.setFiberRef(currentRuntimeFlags, this.currentRuntimeFlags)
     return this._fiberRefs
   }
 
@@ -570,9 +572,12 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   refreshRefCache() {
-    this._tracer = Context.get(this.getFiberRef(defaultServices.currentServices), tracer.tracerTag)
-    this._supervisor = this.getFiberRef(currentSupervisor)
-    this._scheduler = this.getFiberRef(currentScheduler)
+    this.currentDefaultServices = this.getFiberRef(defaultServices.currentServices)
+    this.currentTracer = this.currentDefaultServices.unsafeMap.get(tracer.tracerTag.key)
+    this.currentSupervisor = this.getFiberRef(currentSupervisor)
+    this.currentScheduler = this.getFiberRef(currentScheduler)
+    this.currentContext = this.getFiberRef(core.currentContext)
+    this.currentSpan = this.currentContext.unsafeMap.get(tracer.spanTag.key)
   }
 
   /**
@@ -653,7 +658,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
    * **NOTE**: This method must be invoked by the fiber itself.
    */
   drainQueueLaterOnExecutor() {
-    this._scheduler.scheduleTask(
+    this.currentScheduler.scheduleTask(
       this.run,
       this.getFiberRef(core.currentSchedulingPriority)
     )
@@ -764,7 +769,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   reportExitValue(exit: Exit.Exit<A, E>) {
-    if (_runtimeFlags.runtimeMetrics(this._runtimeFlags)) {
+    if (_runtimeFlags.runtimeMetrics(this.currentRuntimeFlags)) {
       const tags = this.getFiberRef(core.currentMetricLabels)
       const startTimeMillis = this.id().startTimeMillis
       const endTimeMillis = Date.now()
@@ -866,7 +871,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
           this,
           this._exitValue !== null ?
             FiberStatus.done :
-            FiberStatus.suspended(this._runtimeFlags, this._asyncBlockingOn!)
+            FiberStatus.suspended(this.currentRuntimeFlags, this._asyncBlockingOn!)
         )
         return EvaluationSignalContinue
       }
@@ -882,10 +887,10 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
    * **NOTE**: This method must be invoked by the fiber itself.
    */
   evaluateEffect(effect0: Effect.Effect<any, any, any>) {
-    this._supervisor.onResume(this)
+    this.currentSupervisor.onResume(this)
     try {
       let effect: Effect.Effect<any, any, any> | null =
-        _runtimeFlags.interruptible(this._runtimeFlags) && this.isInterrupted() ?
+        _runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted() ?
           core.exitFailCause(this.getInterruptedCause()) :
           effect0
       while (effect !== null) {
@@ -895,7 +900,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
           const op = yieldedOpChannel.currentOp!
           yieldedOpChannel.currentOp = null
           if (op._op === OpCodes.OP_YIELD) {
-            if (_runtimeFlags.cooperativeYielding(this._runtimeFlags)) {
+            if (_runtimeFlags.cooperativeYielding(this.currentRuntimeFlags)) {
               this.tell(FiberMessage.yieldNow())
               this.tell(FiberMessage.resume(core.exitVoid))
               effect = null
@@ -907,7 +912,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
             effect = null
           }
         } else {
-          this._runtimeFlags = pipe(this._runtimeFlags, _runtimeFlags.enable(_runtimeFlags.WindDown))
+          this.currentRuntimeFlags = pipe(this.currentRuntimeFlags, _runtimeFlags.enable(_runtimeFlags.WindDown))
           const interruption = this.interruptAllChildren()
           if (interruption !== null) {
             effect = core.flatMap(interruption, () => exit)
@@ -926,7 +931,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         }
       }
     } finally {
-      this._supervisor.onSuspend(this)
+      this.currentSupervisor.onSuspend(this)
     }
   }
 
@@ -981,7 +986,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   patchRuntimeFlags(oldRuntimeFlags: RuntimeFlags.RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch) {
     const newRuntimeFlags = _runtimeFlags.patch(oldRuntimeFlags, patch)
     ;(globalThis as any)[internalFiber.currentFiberURI] = this
-    this._runtimeFlags = newRuntimeFlags
+    this.currentRuntimeFlags = newRuntimeFlags
     return newRuntimeFlags
   }
 
@@ -1016,7 +1021,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   pushStack(cont: core.Continuation) {
     this._stack.push(cont)
     if (cont._op === "OnStep") {
-      this._steps.push({ refs: this.getFiberRefs(), flags: this._runtimeFlags })
+      this._steps.push({ refs: this.getFiberRefs(), flags: this.currentRuntimeFlags })
     }
   }
 
@@ -1052,10 +1057,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_TAG](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {
-    return core.map(
-      core.fiberRefGet(core.currentContext),
-      (context) => Context.unsafeGet(context, op as unknown as Context.Tag<any, any>)
-    )
+    return core.sync(() => Context.unsafeGet(this.currentContext, op as unknown as Context.Tag<any, any>))
   }
 
   ["Left"](op: core.Primitive & { _op: "Left" }) {
@@ -1144,22 +1146,22 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
       switch (cont._op) {
         case OpCodes.OP_ON_FAILURE:
         case OpCodes.OP_ON_SUCCESS_AND_FAILURE: {
-          if (!(_runtimeFlags.interruptible(this._runtimeFlags) && this.isInterrupted())) {
+          if (!(_runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted())) {
             return internalCall(() => cont.effect_instruction_i1(cause))
           } else {
             return core.exitFailCause(internalCause.stripFailures(cause))
           }
         }
         case "OnStep": {
-          if (!(_runtimeFlags.interruptible(this._runtimeFlags) && this.isInterrupted())) {
+          if (!(_runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted())) {
             return core.exitSucceed(core.exitFailCause(cause))
           } else {
             return core.exitFailCause(internalCause.stripFailures(cause))
           }
         }
         case OpCodes.OP_REVERT_FLAGS: {
-          this.patchRuntimeFlags(this._runtimeFlags, cont.patch)
-          if (_runtimeFlags.interruptible(this._runtimeFlags) && this.isInterrupted()) {
+          this.patchRuntimeFlags(this.currentRuntimeFlags, cont.patch)
+          if (_runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted()) {
             return core.exitFailCause(internalCause.sequential(cause, this.getInterruptedCause()))
           } else {
             return core.exitFailCause(cause)
@@ -1179,14 +1181,14 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
     return internalCall(() =>
       op.effect_instruction_i0(
         this as FiberRuntime<unknown, unknown>,
-        FiberStatus.running(this._runtimeFlags) as FiberStatus.Running
+        FiberStatus.running(this.currentRuntimeFlags) as FiberStatus.Running
       )
     )
   }
 
   ["Blocked"](op: core.Primitive & { _op: "Blocked" }) {
     const refs = this.getFiberRefs()
-    const flags = this._runtimeFlags
+    const flags = this.currentRuntimeFlags
     if (this._steps.length > 0) {
       const frames: Array<core.Continuation> = []
       const snap = this._steps[this._steps.length - 1]
@@ -1196,7 +1198,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         frame = this.popStack()
       }
       this.setFiberRefs(snap.refs)
-      this._runtimeFlags = snap.flags
+      this.currentRuntimeFlags = snap.flags
       const patchRefs = FiberRefsPatch.diff(snap.refs, refs)
       const patchFlags = _runtimeFlags.diff(snap.flags, flags)
       return core.exitSucceed(core.blocked(
@@ -1208,7 +1210,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
           newFiber.setFiberRefs(
             FiberRefsPatch.patch(newFiber.id(), newFiber.getFiberRefs())(patchRefs)
           )
-          newFiber._runtimeFlags = _runtimeFlags.patch(patchFlags)(newFiber._runtimeFlags)
+          newFiber.currentRuntimeFlags = _runtimeFlags.patch(patchFlags)(newFiber.currentRuntimeFlags)
           return op.effect_instruction_i1
         })
       ))
@@ -1227,7 +1229,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
 
   [OpCodes.OP_UPDATE_RUNTIME_FLAGS](op: core.Primitive & { _op: OpCodes.OP_UPDATE_RUNTIME_FLAGS }) {
     const updateFlags = op.effect_instruction_i0
-    const oldRuntimeFlags = this._runtimeFlags
+    const oldRuntimeFlags = this.currentRuntimeFlags
     const newRuntimeFlags = _runtimeFlags.patch(oldRuntimeFlags, updateFlags)
     // One more chance to short circuit: if we're immediately going
     // to interrupt. Interruption will cause immediate reversion of
@@ -1237,7 +1239,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
       return core.exitFailCause(this.getInterruptedCause())
     } else {
       // Impossible to short circuit, so record the changes
-      this.patchRuntimeFlags(this._runtimeFlags, updateFlags)
+      this.patchRuntimeFlags(this.currentRuntimeFlags, updateFlags)
       if (op.effect_instruction_i1) {
         // Since we updated the flags, we need to revert them
         const revertFlags = _runtimeFlags.diff(newRuntimeFlags, oldRuntimeFlags)
@@ -1271,13 +1273,13 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
 
   [OpCodes.OP_ASYNC](op: core.Primitive & { _op: OpCodes.OP_ASYNC }) {
     this._asyncBlockingOn = op.effect_instruction_i1
-    this.initiateAsync(this._runtimeFlags, op.effect_instruction_i0)
+    this.initiateAsync(this.currentRuntimeFlags, op.effect_instruction_i0)
     yieldedOpChannel.currentOp = op
     return YieldedOp
   }
 
   [OpCodes.OP_YIELD](op: core.Primitive & { op: OpCodes.OP_YIELD }) {
-    this.isYielding = false
+    this._isYielding = false
     yieldedOpChannel.currentOp = op
     return YieldedOp
   }
@@ -1307,17 +1309,17 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
     this.currentOpCount = 0
 
     while (true) {
-      if ((this._runtimeFlags & OpSupervision) !== 0) {
-        this._supervisor.onEffect(this, cur)
+      if ((this.currentRuntimeFlags & OpSupervision) !== 0) {
+        this.currentSupervisor.onEffect(this, cur)
       }
       if (this._queue.length > 0) {
-        cur = this.drainQueueWhileRunning(this._runtimeFlags, cur)
+        cur = this.drainQueueWhileRunning(this.currentRuntimeFlags, cur)
       }
-      if (!this.isYielding) {
+      if (!this._isYielding) {
         this.currentOpCount += 1
-        const shouldYield = this._scheduler.shouldYield(this)
+        const shouldYield = this.currentScheduler.shouldYield(this)
         if (shouldYield !== false) {
-          this.isYielding = true
+          this._isYielding = true
           this.currentOpCount = 0
           const oldCur = cur
           cur = core.flatMap(core.yieldNow({ priority: shouldYield }), () => oldCur)
@@ -1330,7 +1332,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         }
 
         // @ts-expect-error
-        cur = this._tracer.context(
+        cur = this.currentTracer.context(
           () => {
             if (version.getCurrentVersion() !== (cur as core.Primitive)[EffectTypeId]._V) {
               return core.dieMessage(
@@ -1604,12 +1606,12 @@ export const addFinalizer = <X, R>(
   core.withFiberRuntime(
     (runtime) => {
       const acquireRefs = runtime.getFiberRefs()
-      const acquireFlags = runtime._runtimeFlags
+      const acquireFlags = runtime.currentRuntimeFlags
       return core.flatMap(scope, (scope) =>
         core.scopeAddFinalizerExit(scope, (exit) =>
           core.withFiberRuntime((runtimeFinalizer) => {
             const preRefs = runtimeFinalizer.getFiberRefs()
-            const preFlags = runtimeFinalizer._runtimeFlags
+            const preFlags = runtimeFinalizer.currentRuntimeFlags
             const patchRefs = FiberRefsPatch.diff(preRefs, acquireRefs)
             const patchFlags = _runtimeFlags.diff(preFlags, acquireFlags)
             const inverseRefs = FiberRefsPatch.diff(acquireRefs, preRefs)
@@ -2100,7 +2102,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
         const results = new Array()
         const interruptAll = () =>
           fibers.forEach((fiber) => {
-            fiber._scheduler.scheduleTask(() => {
+            fiber.currentScheduler.scheduleTask(() => {
               fiber.unsafeInterruptAsFork(parent.id())
             }, 0)
           })
@@ -2122,10 +2124,10 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
           const fiber = unsafeForkUnstarted(
             runnable,
             parent,
-            parent._runtimeFlags,
+            parent.currentRuntimeFlags,
             fiberScope.globalScope
           )
-          parent._scheduler.scheduleTask(() => {
+          parent.currentScheduler.scheduleTask(() => {
             if (interruptImmediately) {
               fiber.unsafeInterruptAsFork(parent.id())
             }
@@ -2186,7 +2188,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
                 startOrder.push(fiber)
                 fibers.add(fiber)
                 if (interrupted) {
-                  fiber._scheduler.scheduleTask(() => {
+                  fiber.currentScheduler.scheduleTask(() => {
                     fiber.unsafeInterruptAsFork(parent.id())
                   }, 0)
                 }
@@ -2356,7 +2358,7 @@ export const unsafeMakeChildFiber = <A, E, R, E2, B>(
     childFiberRefs,
     core.currentContext as unknown as FiberRef.FiberRef<Context.Context<R>>
   )
-  const supervisor = childFiber._supervisor
+  const supervisor = childFiber.currentSupervisor
 
   supervisor.onStart(
     childContext,
