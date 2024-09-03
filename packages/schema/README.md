@@ -37,6 +37,8 @@ Welcome to the documentation for `@effect/schema`, **a library for defining and 
 
 - [Website Docs](https://effect.website/docs/guides/schema)
 - [API Reference](https://effect-ts.github.io/effect/docs/schema)
+- Comparisons
+  - [zod (v3)](https://github.com/Effect-TS/effect/blob/main/packages/schema/comparisons.md#zod-v3)
 
 # Getting started
 
