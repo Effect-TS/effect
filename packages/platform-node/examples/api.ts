@@ -1,4 +1,5 @@
 import {
+  FetchHttpClient,
   HttpApi,
   HttpApiBuilder,
   HttpApiClient,
@@ -7,7 +8,6 @@ import {
   HttpApiSchema,
   HttpApiSecurity,
   HttpApiSwagger,
-  HttpClient,
   HttpMiddleware,
   HttpServer,
   OpenApi
@@ -173,6 +173,6 @@ Effect.gen(function*() {
   const binary = yield* client.users.binary()
   console.log("binary", binary)
 }).pipe(
-  Effect.provide(HttpClient.layer),
+  Effect.provide(FetchHttpClient.layer),
   NodeRuntime.runMain
 )

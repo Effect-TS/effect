@@ -1,39 +1,35 @@
-import { Cookies, HttpClientRequest, HttpClientResponse } from "@effect/platform"
+import { Cookies, HttpClientRequest } from "@effect/platform"
 import { BrowserHttpClient } from "@effect/platform-browser"
 import { assert, describe, it } from "@effect/vitest"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, Layer, Stream } from "effect"
 import * as MXHR from "mock-xmlhttprequest"
+
+const layer = (...args: Parameters<typeof MXHR.newServer>) =>
+  Layer.unwrapEffect(Effect.sync(() => {
+    const server = MXHR.newServer(...args)
+    return BrowserHttpClient.layerXMLHttpRequest.pipe(
+      Layer.provide(Layer.succeed(BrowserHttpClient.XMLHttpRequest, server.xhrFactory))
+    )
+  }))
 
 describe("BrowserHttpClient", () => {
   it.effect("json", () =>
-    Effect.gen(function*(_) {
-      const server = MXHR.newServer({
-        get: ["http://localhost:8080/my/url", {
-          headers: { "Content-Type": "application/json" },
-          body: "{ \"message\": \"Success!\" }"
-        }]
-      })
-      const body = yield* _(
-        HttpClientRequest.get("http://localhost:8080/my/url"),
-        BrowserHttpClient.xmlHttpRequest,
+    Effect.gen(function*() {
+      const body = yield* HttpClientRequest.get("http://localhost:8080/my/url").pipe(
         Effect.flatMap((_) => _.json),
-        Effect.scoped,
-        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
+        Effect.scoped
       )
       assert.deepStrictEqual(body, { message: "Success!" })
-    }))
+    }).pipe(Effect.provide(layer({
+      get: ["http://localhost:8080/my/url", {
+        headers: { "Content-Type": "application/json" },
+        body: "{ \"message\": \"Success!\" }"
+      }]
+    }))))
 
   it.effect("stream", () =>
-    Effect.gen(function*(_) {
-      const server = MXHR.newServer({
-        get: ["http://localhost:8080/my/url", {
-          headers: { "Content-Type": "application/json" },
-          body: "{ \"message\": \"Success!\" }"
-        }]
-      })
-      const body = yield* _(
-        HttpClientRequest.get("http://localhost:8080/my/url"),
-        BrowserHttpClient.xmlHttpRequest,
+    Effect.gen(function*() {
+      const body = yield* HttpClientRequest.get("http://localhost:8080/my/url").pipe(
         Effect.map((_) =>
           _.stream.pipe(
             Stream.decodeText(),
@@ -41,47 +37,48 @@ describe("BrowserHttpClient", () => {
           )
         ),
         Stream.unwrapScoped,
-        Stream.runCollect,
-        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
+        Stream.runCollect
       )
       assert.deepStrictEqual(Chunk.unsafeHead(body), "{ \"message\": \"Success!\" }")
-    }))
+    }).pipe(Effect.provide(layer({
+      get: ["http://localhost:8080/my/url", {
+        headers: { "Content-Type": "application/json" },
+        body: "{ \"message\": \"Success!\" }"
+      }]
+    }))))
 
   it.effect("cookies", () =>
-    Effect.gen(function*(_) {
-      const server = MXHR.newServer({
-        get: ["http://localhost:8080/my/url", {
-          headers: { "Content-Type": "application/json", "Set-Cookie": "foo=bar; HttpOnly; Secure" },
-          body: "{ \"message\": \"Success!\" }"
-        }]
-      })
-      const cookies = yield* _(
-        HttpClientRequest.get("http://localhost:8080/my/url"),
-        BrowserHttpClient.xmlHttpRequest,
+    Effect.gen(function*() {
+      const cookies = yield* HttpClientRequest.get("http://localhost:8080/my/url").pipe(
         Effect.map((res) => res.cookies),
-        Effect.scoped,
-        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
+        Effect.scoped
       )
       assert.deepStrictEqual(Cookies.toRecord(cookies), {
         foo: "bar"
       })
-    }))
+    }).pipe(
+      Effect.provide(layer({
+        get: ["http://localhost:8080/my/url", {
+          headers: { "Content-Type": "application/json", "Set-Cookie": "foo=bar; HttpOnly; Secure" },
+          body: "{ \"message\": \"Success!\" }"
+        }]
+      }))
+    ))
 
   it.effect("arrayBuffer", () =>
-    Effect.gen(function*(_) {
-      const server = MXHR.newServer({
+    Effect.gen(function*() {
+      const body = yield* HttpClientRequest.get("http://localhost:8080/my/url").pipe(
+        Effect.flatMap((_) => _.arrayBuffer),
+        Effect.scoped,
+        BrowserHttpClient.withXHRArrayBuffer
+      )
+      assert.strictEqual(new TextDecoder().decode(body), "{ \"message\": \"Success!\" }")
+    }).pipe(
+      Effect.provide(layer({
         get: ["http://localhost:8080/my/url", {
           headers: { "Content-Type": "application/json" },
           body: "{ \"message\": \"Success!\" }"
         }]
-      })
-      const body = yield* _(
-        HttpClientRequest.get("http://localhost:8080/my/url"),
-        BrowserHttpClient.xmlHttpRequest,
-        HttpClientResponse.arrayBuffer,
-        BrowserHttpClient.withXHRArrayBuffer,
-        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
-      )
-      assert.strictEqual(new TextDecoder().decode(body), "{ \"message\": \"Success!\" }")
-    }))
+      }))
+    ))
 })
