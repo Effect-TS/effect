@@ -2,9 +2,8 @@
  * @since 1.0.0
  */
 import type * as Client from "@effect/platform/HttpClient"
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
-import type * as FiberRef from "effect/FiberRef"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
@@ -64,19 +63,19 @@ export const makeAgentLayer: (options?: Https.AgentOptions) => Layer.Layer<HttpA
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<Client.HttpClient.Default, never, HttpAgent> = internal.make
+export const make: Effect.Effect<Client.HttpClient.Service, never, HttpAgent> = internal.make
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<Client.HttpClient.Default> = internal.layer
+export const layer: Layer.Layer<Client.HttpClient.Service> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerWithoutAgent: Layer.Layer<Client.HttpClient.Default, never, HttpAgent> = internal.layerWithoutAgent
+export const layerWithoutAgent: Layer.Layer<Client.HttpClient.Service, never, HttpAgent> = internal.layerWithoutAgent
 
 /**
  * @since 1.0.0
@@ -114,35 +113,26 @@ export const dispatcherLayerGlobal: Layer.Layer<Dispatcher> = internalUndici.dis
  * @since 1.0.0
  * @category undici
  */
-export const currentUndiciOptions: FiberRef.FiberRef<Partial<Undici.Dispatcher.RequestOptions>> =
-  internalUndici.currentUndiciOptions
-
-/**
- * @since 1.0.0
- * @category undici
- */
-export const withUndiciOptions: {
-  (
-    options: Partial<Undici.Dispatcher.RequestOptions>
-  ): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(effect: Effect.Effect<A, E, R>, options: Partial<Undici.Dispatcher.RequestOptions>): Effect.Effect<A, E, R>
-} = internalUndici.withUndiciOptions
+export class UndiciRequestOptions extends Context.Tag(internalUndici.undiciOptionsTagKey)<
+  UndiciRequestOptions,
+  Undici.Dispatcher.RequestOptions
+>() {}
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const makeUndici: (dispatcher: Undici.Dispatcher) => Client.HttpClient.Default = internalUndici.make
+export const makeUndici: (dispatcher: Undici.Dispatcher) => Client.HttpClient.Service = internalUndici.make
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerUndici: Layer.Layer<Client.HttpClient.Default> = internalUndici.layer
+export const layerUndici: Layer.Layer<Client.HttpClient.Service> = internalUndici.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerUndiciWithoutDispatcher: Layer.Layer<Client.HttpClient.Default, never, Dispatcher> =
+export const layerUndiciWithoutDispatcher: Layer.Layer<Client.HttpClient.Service, never, Dispatcher> =
   internalUndici.layerWithoutDispatcher
