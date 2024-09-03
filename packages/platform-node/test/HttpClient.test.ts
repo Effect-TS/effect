@@ -20,7 +20,8 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
     HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
   )
   const todoClient = client.pipe(
-    HttpClient.mapEffectScoped(HttpClientResponse.schemaBodyJson(Todo))
+    HttpClient.mapEffect(HttpClientResponse.schemaBodyJson(Todo)),
+    HttpClient.scoped
   )
   const createTodo = HttpClient.schemaFunction(
     todoClient,
@@ -48,10 +49,8 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
   describe(`NodeHttpClient - ${name}`, () => {
     it.effect("google", () =>
       Effect.gen(function*(_) {
-        const client = yield* _(HttpClient.HttpClient)
         const response = yield* _(
           HttpClientRequest.get("https://www.google.com/"),
-          client,
           Effect.flatMap((_) => _.text),
           Effect.scoped
         )
@@ -59,13 +58,11 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       }).pipe(Effect.provide(layer)))
 
     it.effect("google followRedirects", () =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const client = (yield* HttpClient.HttpClient).pipe(
           HttpClient.followRedirects()
         )
-        const response = yield* _(
-          HttpClientRequest.get("http://google.com/"),
-          client,
+        const response = yield* client.get("http://google.com/").pipe(
           Effect.flatMap((_) => _.text),
           Effect.scoped
         )
@@ -73,11 +70,9 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       }).pipe(Effect.provide(layer)))
 
     it.effect("google stream", () =>
-      Effect.gen(function*(_) {
-        const client = yield* _(HttpClient.HttpClient)
-        const response = yield* _(
-          HttpClientRequest.get("https://www.google.com/"),
-          client,
+      Effect.gen(function*() {
+        const client = yield* HttpClient.HttpClient
+        const response = yield* client.get("https://www.google.com/").pipe(
           Effect.map((_) => _.stream),
           Stream.unwrapScoped,
           Stream.runFold("", (a, b) => a + new TextDecoder().decode(b))
@@ -86,45 +81,45 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       }).pipe(Effect.provide(layer)))
 
     it.effect("jsonplaceholder", () =>
-      Effect.gen(function*(_) {
-        const jp = yield* _(JsonPlaceholder)
-        const response = yield* _(HttpClientRequest.get("/todos/1"), jp.todoClient)
+      Effect.gen(function*() {
+        const jp = yield* JsonPlaceholder
+        const response = yield* jp.todoClient.get("/todos/1")
         expect(response.id).toBe(1)
       }).pipe(Effect.provide(JsonPlaceholderLive.pipe(
         Layer.provide(layer)
       ))))
 
     it.effect("jsonplaceholder schemaFunction", () =>
-      Effect.gen(function*(_) {
-        const jp = yield* _(JsonPlaceholder)
-        const response = yield* _(jp.createTodo({
+      Effect.gen(function*() {
+        const jp = yield* JsonPlaceholder
+        const response = yield* jp.createTodo({
           userId: 1,
           title: "test",
           completed: false
-        }))
+        })
         expect(response.title).toBe("test")
       }).pipe(Effect.provide(JsonPlaceholderLive.pipe(
         Layer.provide(layer)
       ))))
 
     it.effect("head request with schemaJson", () =>
-      Effect.gen(function*(_) {
-        const client = yield* _(HttpClient.HttpClient)
-        const response = yield* _(
-          HttpClientRequest.head("https://jsonplaceholder.typicode.com/todos"),
-          client,
-          HttpClientResponse.schemaJsonScoped(Schema.Struct({ status: Schema.Literal(200) }))
+      Effect.gen(function*() {
+        const client = yield* HttpClient.HttpClient
+        const response = yield* client.head("https://jsonplaceholder.typicode.com/todos").pipe(
+          Effect.flatMap(
+            HttpClientResponse.schemaJson(Schema.Struct({ status: Schema.Literal(200) }))
+          ),
+          Effect.scoped
         )
         expect(response).toEqual({ status: 200 })
       }).pipe(Effect.provide(layer)))
 
     it.live("interrupt", () =>
-      Effect.gen(function*(_) {
-        const client = yield* _(HttpClient.HttpClient)
-        const response = yield* _(
-          HttpClientRequest.get("https://www.google.com/"),
-          client,
-          HttpClientResponse.text,
+      Effect.gen(function*() {
+        const client = yield* HttpClient.HttpClient
+        const response = yield* client.get("https://www.google.com/").pipe(
+          Effect.flatMap((_) => _.text),
+          Effect.scoped,
           Effect.timeout(1),
           Effect.asSome,
           Effect.catchTag("TimeoutException", () => Effect.succeedNone)

@@ -103,7 +103,7 @@ describe("HttpApi", () => {
     it.scoped("class level annotations", () =>
       Effect.gen(function*() {
         const response = yield* HttpClientRequest.post("/users").pipe(
-          HttpClientRequest.unsafeJsonBody({ name: "boom" })
+          HttpClientRequest.bodyUnsafeJson({ name: "boom" })
         )
         assert.strictEqual(response.status, 400)
       }).pipe(Effect.provide(HttpLive)))
