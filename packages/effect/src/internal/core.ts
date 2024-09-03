@@ -51,7 +51,6 @@ import * as DeferredOpCodes from "./opCodes/deferred.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
 import { SingleShotGen } from "./singleShotGen.js"
-import * as internalTracer from "./tracer.js"
 
 // -----------------------------------------------------------------------------
 // Effect
@@ -1684,7 +1683,7 @@ const fiberRefVariance = {
 
 /* @internal */
 export const fiberRefGet = <A>(self: FiberRef.FiberRef<A>): Effect.Effect<A> =>
-  fiberRefModify(self, (a) => [a, a] as const)
+  withFiberRuntime((fiber) => exitSucceed(fiber.getFiberRef(self)))
 
 /* @internal */
 export const fiberRefGetAndSet = dual<
@@ -2966,7 +2965,7 @@ const deferredInterruptJoiner = <A, E>(
 // Context
 // -----------------------------------------------------------------------------
 
-const constContext = fiberRefGet(currentContext)
+const constContext = withFiberRuntime((fiber) => exitSucceed(fiber.currentContext))
 
 /* @internal */
 export const context = <R>(): Effect.Effect<Context.Context<R>, never, R> => constContext as any
@@ -3021,9 +3020,7 @@ export const mapInputContext = dual<
 
 /** @internal */
 export const currentSpanFromFiber = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Option.Option<Tracer.Span> => {
-  const span = fiber.getFiberRef(currentContext).unsafeMap.get(internalTracer.spanTag.key) as
-    | Tracer.AnySpan
-    | undefined
+  const span = fiber.currentSpan
   return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
 }
 

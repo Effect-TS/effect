@@ -48,8 +48,13 @@ export const sleep = (duration: Duration.DurationInput): Effect.Effect<void> => 
 }
 
 /** @internal */
+export const defaultServicesWith = <A, E, R>(
+  f: (services: Context.Context<DefaultServices.DefaultServices>) => Effect.Effect<A, E, R>
+) => core.withFiberRuntime<A, E, R>((fiber) => f(fiber.currentDefaultServices))
+
+/** @internal */
 export const clockWith = <A, E, R>(f: (clock: Clock.Clock) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, clock.clockTag)))
+  defaultServicesWith((services) => f(services.unsafeMap.get(clock.clockTag.key)))
 
 /** @internal */
 export const currentTimeMillis: Effect.Effect<number> = clockWith((clock) => clock.currentTimeMillis)
@@ -83,10 +88,7 @@ export const withConfigProvider = dual<
 export const configProviderWith = <A, E, R>(
   f: (configProvider: ConfigProvider.ConfigProvider) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> =>
-  core.fiberRefGetWith(
-    currentServices,
-    (services) => f(Context.get(services, configProvider.configProviderTag))
-  )
+  defaultServicesWith((services) => f(services.unsafeMap.get(configProvider.configProviderTag.key)))
 
 /** @internal */
 export const config = <A>(config: Config.Config<A>) => configProviderWith((_) => _.load(config))
@@ -98,10 +100,7 @@ export const configOrDie = <A>(config: Config.Config<A>) => core.orDie(configPro
 
 /** @internal */
 export const randomWith = <A, E, R>(f: (random: Random.Random) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  core.fiberRefGetWith(
-    currentServices,
-    (services) => f(Context.get(services, random.randomTag))
-  )
+  defaultServicesWith((services) => f(services.unsafeMap.get(random.randomTag.key)))
 
 /** @internal */
 export const withRandom = dual<
@@ -151,7 +150,7 @@ export const choice = <Self extends Iterable<unknown>>(
 
 /** @internal */
 export const tracerWith = <A, E, R>(f: (tracer: Tracer.Tracer) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, tracer.tracerTag)))
+  defaultServicesWith((services) => f(services.unsafeMap.get(tracer.tracerTag.key)))
 
 /** @internal */
 export const withTracer = dual<
