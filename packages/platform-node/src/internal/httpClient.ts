@@ -54,8 +54,8 @@ export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<NodeCl
 /** @internal */
 export const agentLayer = makeAgentLayer()
 
-const fromAgent = (agent: NodeClient.HttpAgent): Client.HttpClient.Default =>
-  Client.makeDefault((request, url, signal) => {
+const fromAgent = (agent: NodeClient.HttpAgent): Client.HttpClient.Service =>
+  Client.makeService((request, url, signal) => {
     const nodeRequest = url.protocol === "https:" ?
       Https.request(url, {
         agent: agent.https,
@@ -254,7 +254,7 @@ class ClientResponseImpl extends HttpIncomingMessageImpl<Error.ResponseError>
 export const make = Effect.map(HttpAgent, fromAgent)
 
 /** @internal */
-export const layerWithoutAgent = Layer.effect(Client.HttpClient, make)
+export const layerWithoutAgent = Client.layerMergedContext(make)
 
 /** @internal */
 export const layer = Layer.provide(layerWithoutAgent, agentLayer)

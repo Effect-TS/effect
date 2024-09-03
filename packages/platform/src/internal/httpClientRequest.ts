@@ -21,14 +21,14 @@ import * as internalBody from "./httpBody.js"
 export const TypeId: ClientRequest.TypeId = Symbol.for("@effect/platform/HttpClientRequest") as ClientRequest.TypeId
 
 /** @internal */
-export const clientTag = Context.GenericTag<HttpClient.Default>("@effect/platform/HttpClient")
+export const clientTag = Context.GenericTag<HttpClient.Service>("@effect/platform/HttpClient")
 
 const Proto = {
   [TypeId]: TypeId,
   ...Effectable.CommitPrototype,
   ...Inspectable.BaseProto,
   commit(this: ClientRequest.HttpClientRequest) {
-    return Effect.flatMap(clientTag, (client) => client(this))
+    return Effect.flatMap(clientTag, (client) => client.execute(this))
   },
   toJSON(this: ClientRequest.HttpClientRequest): unknown {
     return {
@@ -393,7 +393,7 @@ export const setBody = dual<
 })
 
 /** @internal */
-export const uint8ArrayBody = dual<
+export const bodyUint8Array = dual<
   (
     body: Uint8Array,
     contentType?: string
@@ -405,7 +405,7 @@ export const uint8ArrayBody = dual<
 )
 
 /** @internal */
-export const textBody = dual<
+export const bodyText = dual<
   (body: string, contentType?: string) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
   (self: ClientRequest.HttpClientRequest, body: string, contentType?: string) => ClientRequest.HttpClientRequest
 >(
@@ -414,7 +414,7 @@ export const textBody = dual<
 )
 
 /** @internal */
-export const jsonBody = dual<
+export const bodyJson = dual<
   (
     body: unknown
   ) => (self: ClientRequest.HttpClientRequest) => Effect.Effect<ClientRequest.HttpClientRequest, Body.HttpBodyError>,
@@ -425,13 +425,13 @@ export const jsonBody = dual<
 >(2, (self, body) => Effect.map(internalBody.json(body), (body) => setBody(self, body)))
 
 /** @internal */
-export const unsafeJsonBody = dual<
+export const bodyUnsafeJson = dual<
   (body: unknown) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
   (self: ClientRequest.HttpClientRequest, body: unknown) => ClientRequest.HttpClientRequest
 >(2, (self, body) => setBody(self, internalBody.unsafeJson(body)))
 
 /** @internal */
-export const fileBody = dual<
+export const bodyFile = dual<
   (
     path: string,
     options?: FileSystem.StreamOptions & { readonly contentType?: string }
@@ -449,13 +449,13 @@ export const fileBody = dual<
 )
 
 /** @internal */
-export const fileWebBody = dual<
+export const bodyFileWeb = dual<
   (file: Body.HttpBody.FileLike) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
   (self: ClientRequest.HttpClientRequest, file: Body.HttpBody.FileLike) => ClientRequest.HttpClientRequest
 >(2, (self, file) => setBody(self, internalBody.fileWeb(file)))
 
 /** @internal */
-export const schemaBody = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined): {
+export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined): {
   (
     body: A
   ): (self: ClientRequest.HttpClientRequest) => Effect.Effect<ClientRequest.HttpClientRequest, Body.HttpBodyError, R>
@@ -479,7 +479,7 @@ export const schemaBody = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
 }
 
 /** @internal */
-export const urlParamsBody = dual<
+export const bodyUrlParams = dual<
   (input: UrlParams.Input) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
   (self: ClientRequest.HttpClientRequest, input: UrlParams.Input) => ClientRequest.HttpClientRequest
 >(2, (self, body) =>
@@ -492,13 +492,13 @@ export const urlParamsBody = dual<
   ))
 
 /** @internal */
-export const formDataBody = dual<
+export const bodyFormData = dual<
   (body: FormData) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
   (self: ClientRequest.HttpClientRequest, body: FormData) => ClientRequest.HttpClientRequest
 >(2, (self, body) => setBody(self, internalBody.formData(body)))
 
 /** @internal */
-export const streamBody = dual<
+export const bodyStream = dual<
   (
     body: Stream.Stream<Uint8Array, unknown>,
     options?: {

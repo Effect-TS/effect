@@ -31,6 +31,11 @@ export * as Etag from "./Etag.js"
 /**
  * @since 1.0.0
  */
+export * as FetchHttpClient from "./FetchHttpClient.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as FileSystem from "./FileSystem.js"
 
 /**

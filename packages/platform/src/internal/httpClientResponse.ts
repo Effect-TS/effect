@@ -5,8 +5,8 @@ import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
-import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
+import type { Unify } from "effect/Unify"
 import * as Cookies from "../Cookies.js"
 import * as Headers from "../Headers.js"
 import * as Error from "../HttpClientError.js"
@@ -195,61 +195,8 @@ export const schemaNoBody = <
 }
 
 /** @internal */
-export const arrayBuffer = <E, R>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) =>
-  Effect.scoped(Effect.flatMap(effect, (_) => _.arrayBuffer))
-
-/** @internal */
-export const text = <E, R>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) =>
-  Effect.scoped(Effect.flatMap(effect, (_) => _.text))
-
-/** @internal */
-export const json = <E, R>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) =>
-  Effect.scoped(Effect.flatMap(effect, (_) => _.json))
-
-/** @internal */
-export const urlParamsBody = <E, R>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) =>
-  Effect.scoped(Effect.flatMap(effect, (_) => _.urlParamsBody))
-
-/** @internal */
-export const formData = <E, R>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) =>
-  Effect.scoped(Effect.flatMap(effect, (_) => _.formData))
-
-/** @internal */
-export const void_ = <E, R>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) =>
-  Effect.scoped(Effect.asVoid(effect))
-
-/** @internal */
 export const stream = <E, R>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) =>
   Stream.unwrapScoped(Effect.map(effect, (_) => _.stream))
-
-/** @internal */
-export const schemaJsonScoped = <
-  R,
-  I extends {
-    readonly status?: number | undefined
-    readonly headers?: Readonly<Record<string, string>> | undefined
-    readonly body?: unknown | undefined
-  },
-  A
->(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => {
-  const decode = schemaJson(schema, options)
-  return <E, R2>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R2>) =>
-    Effect.scoped(Effect.flatMap(effect, decode))
-}
-
-/** @internal */
-export const schemaNoBodyScoped = <
-  R,
-  I extends {
-    readonly status?: number | undefined
-    readonly headers?: Readonly<Record<string, string>> | undefined
-  },
-  A
->(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => {
-  const decode = schemaNoBody(schema, options)
-  return <E, R2>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R2>) =>
-    Effect.scoped(Effect.flatMap(effect, decode))
-}
 
 /** @internal */
 export const matchStatus = dual<
@@ -264,7 +211,7 @@ export const matchStatus = dual<
     }
   >(
     cases: Cases
-  ) => (self: ClientResponse.HttpClientResponse) => Cases[keyof Cases] extends (_: any) => infer R ? R : never,
+  ) => (self: ClientResponse.HttpClientResponse) => Cases[keyof Cases] extends (_: any) => infer R ? Unify<R> : never,
   <
     const Cases extends {
       readonly [status: number]: (_: ClientResponse.HttpClientResponse) => any
@@ -274,7 +221,10 @@ export const matchStatus = dual<
       readonly "5xx"?: (_: ClientResponse.HttpClientResponse) => any
       readonly orElse: (_: ClientResponse.HttpClientResponse) => any
     }
-  >(self: ClientResponse.HttpClientResponse, cases: Cases) => Cases[keyof Cases] extends (_: any) => infer R ? R : never
+  >(
+    self: ClientResponse.HttpClientResponse,
+    cases: Cases
+  ) => Cases[keyof Cases] extends (_: any) => infer R ? Unify<R> : never
 >(2, (self, cases) => {
   const status = self.status
   if (cases[status]) {
@@ -290,43 +240,3 @@ export const matchStatus = dual<
   }
   return cases.orElse(self)
 })
-
-/** @internal */
-export const matchStatusScoped = dual<
-  <
-    const Cases extends {
-      readonly [status: number]: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly "2xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly "3xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly "4xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly "5xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly orElse: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-    }
-  >(cases: Cases) => <E, R>(self: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) => Effect.Effect<
-    Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _A : never,
-    E | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never),
-    Exclude<
-      R | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _R : never),
-      Scope
-    >
-  >,
-  <
-    E,
-    R,
-    const Cases extends {
-      readonly [status: number]: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly "2xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly "3xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly "4xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly "5xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-      readonly orElse: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
-    }
-  >(self: Effect.Effect<ClientResponse.HttpClientResponse, E, R>, cases: Cases) => Effect.Effect<
-    Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _A : never,
-    E | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never),
-    Exclude<
-      R | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _R : never),
-      Scope
-    >
-  >
->(2, (self, cases) => Effect.scoped(Effect.flatMap(self, matchStatus(cases) as any)))
