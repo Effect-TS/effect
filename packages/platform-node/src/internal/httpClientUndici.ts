@@ -41,7 +41,7 @@ export const undiciOptionsTagKey = "@effect/platform-node/NodeHttpClient/undiciO
 
 /** @internal */
 export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient.Service =>
-  Client.makeDefault((request, url, signal, fiber) => {
+  Client.makeService((request, url, signal, fiber) => {
     const context = fiber.getFiberRef(FiberRef.currentContext)
     const options: Undici.Dispatcher.RequestOptions = context.unsafeMap.get(undiciOptionsTagKey) ?? {}
     return convertBody(request.body).pipe(

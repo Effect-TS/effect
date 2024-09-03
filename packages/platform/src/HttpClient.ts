@@ -236,14 +236,14 @@ export const make: <A, E, R, E2, R2>(
  * @since 1.0.0
  * @category constructors
  */
-export const makeDefault: (
+export const makeService: (
   f: (
     request: ClientRequest.HttpClientRequest,
     url: URL,
     signal: AbortSignal,
     fiber: RuntimeFiber<ClientResponse.HttpClientResponse, Error.HttpClientError>
   ) => Effect.Effect<ClientResponse.HttpClientResponse, Error.HttpClientError, Scope.Scope>
-) => HttpClient.Service = internal.makeDefault
+) => HttpClient.Service = internal.makeService
 
 /**
  * @since 1.0.0

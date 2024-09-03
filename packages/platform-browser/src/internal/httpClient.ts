@@ -37,8 +37,7 @@ export const withXHRArrayBuffer = <A, E, R>(effect: Effect.Effect<A, E, R>): Eff
 
 const makeXhr = () => new XMLHttpRequest()
 
-/** @internal */
-export const makeXMLHttpRequest = Client.makeDefault((request, url, signal, fiber) =>
+const makeXMLHttpRequest = Client.makeService((request, url, signal, fiber) =>
   Effect.suspend(() => {
     const xhr = Context.getOrElse(
       fiber.getFiberRef(FiberRef.currentContext),

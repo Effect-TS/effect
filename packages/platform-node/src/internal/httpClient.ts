@@ -55,7 +55,7 @@ export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<NodeCl
 export const agentLayer = makeAgentLayer()
 
 const fromAgent = (agent: NodeClient.HttpAgent): Client.HttpClient.Service =>
-  Client.makeDefault((request, url, signal) => {
+  Client.makeService((request, url, signal) => {
     const nodeRequest = url.protocol === "https:" ?
       Https.request(url, {
         agent: agent.https,

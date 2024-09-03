@@ -125,7 +125,7 @@ export const make = <E2, R2, A, E, R>(
 }
 
 /** @internal */
-export const makeDefault = (
+export const makeService = (
   f: (
     request: ClientRequest.HttpClientRequest,
     url: URL,

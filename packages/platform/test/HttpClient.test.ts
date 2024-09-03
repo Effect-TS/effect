@@ -154,7 +154,7 @@ describe("HttpClient", () => {
       const logger = Logger.make(({ message }) => logs.push(message))
 
       yield* HttpClientRequest.post("https://jsonplaceholder.typicode.com").pipe(
-        HttpClientRequest.streamBody(requestStream),
+        HttpClientRequest.bodyStream(requestStream),
         defaultClient.execute,
         Effect.provide(Logger.replace(Logger.defaultLogger, logger)),
         Effect.scoped

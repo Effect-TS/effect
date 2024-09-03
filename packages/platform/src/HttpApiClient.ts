@@ -165,13 +165,13 @@ export const make = <A extends HttpApi.HttpApi.Any>(
           const baseRequest = HttpClientRequest.make(endpoint.method)(url)
           return (isMultipart ?
             Effect.succeed(baseRequest.pipe(
-              HttpClientRequest.formDataBody(request.payload)
+              HttpClientRequest.bodyFormData(request.payload)
             ))
             : encodePayload._tag === "Some"
             ? encodePayload.value(request.payload).pipe(
               Effect.flatMap((payload) =>
                 HttpMethod.hasBody(endpoint.method)
-                  ? HttpClientRequest.jsonBody(baseRequest, payload)
+                  ? HttpClientRequest.bodyJson(baseRequest, payload)
                   : Effect.succeed(HttpClientRequest.setUrlParams(baseRequest, payload as any))
               ),
               Effect.orDie
