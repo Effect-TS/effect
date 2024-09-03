@@ -308,7 +308,7 @@ describe("HttpServer", () => {
       )
       const client = yield* makeTodoClient
       const todo = yield* HttpClientRequest.post("/todos").pipe(
-        HttpClientRequest.urlParamsBody({ id: "1", title: "test" }),
+        HttpClientRequest.bodyUrlParams({ id: "1", title: "test" }),
         client.execute,
         Effect.scoped
       )
