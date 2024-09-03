@@ -46,7 +46,7 @@ export const layer: (
  * @category layers
  */
 export const layerTest: Layer.Layer<
-  | HttpClient.HttpClient.Default
+  | HttpClient.HttpClient.Service
   | Server.HttpServer
   | Platform.HttpPlatform
   | Etag.Generator

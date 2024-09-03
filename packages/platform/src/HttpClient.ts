@@ -9,7 +9,7 @@ import type * as Effect from "effect/Effect"
 import type { RuntimeFiber } from "effect/Fiber"
 import type * as FiberRef from "effect/FiberRef"
 import type { Inspectable } from "effect/Inspectable"
-import type * as Layer from "effect/Layer"
+import type { Layer } from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type { Ref } from "effect/Ref"
@@ -38,10 +38,16 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface HttpClient<A = ClientResponse.HttpClientResponse, E = never, R = never> extends Pipeable, Inspectable {
-  (request: ClientRequest.HttpClientRequest): Effect.Effect<A, E, R>
   readonly [TypeId]: TypeId
-  readonly preprocess: HttpClient.Preprocess<E, R>
-  readonly execute: HttpClient.Execute<A, E, R>
+  readonly execute: (request: ClientRequest.HttpClientRequest) => Effect.Effect<A, E, R>
+
+  readonly get: (url: string | URL, options?: ClientRequest.Options.NoBody) => Effect.Effect<A, E, R>
+  readonly head: (url: string | URL, options?: ClientRequest.Options.NoBody) => Effect.Effect<A, E, R>
+  readonly post: (url: string | URL, options?: ClientRequest.Options.NoUrl) => Effect.Effect<A, E, R>
+  readonly patch: (url: string | URL, options?: ClientRequest.Options.NoUrl) => Effect.Effect<A, E, R>
+  readonly put: (url: string | URL, options?: ClientRequest.Options.NoUrl) => Effect.Effect<A, E, R>
+  readonly del: (url: string | URL, options?: ClientRequest.Options.NoUrl) => Effect.Effect<A, E, R>
+  readonly options: (url: string | URL, options?: ClientRequest.Options.NoUrl) => Effect.Effect<A, E, R>
 }
 
 /**
@@ -60,7 +66,7 @@ export declare namespace HttpClient {
    * @since 1.0.0
    * @category models
    */
-  export type Execute<A, E = never, R = never> = (
+  export type Postprocess<A, E = never, R = never> = (
     request: Effect.Effect<ClientRequest.HttpClientRequest, E, R>
   ) => Effect.Effect<A, E, R>
 
@@ -74,46 +80,14 @@ export declare namespace HttpClient {
    * @since 1.0.0
    * @category models
    */
-  export type Default = WithResponse<Error.HttpClientError, Scope.Scope>
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Fetch {
-  readonly _: unique symbol
+  export type Service = WithResponse<Error.HttpClientError, Scope.Scope>
 }
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const HttpClient: Context.Tag<HttpClient.Default, HttpClient.Default> = internal.tag
-
-/**
- * @since 1.0.0
- * @category tags
- */
-export const Fetch: Context.Tag<Fetch, typeof globalThis.fetch> = internal.Fetch
-
-/**
- * @since 1.0.0
- * @category layers
- */
-export const layer: Layer.Layer<HttpClient.Default> = internal.layer
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const fetch: HttpClient.Default = internal.fetch
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const fetchOk: HttpClient.Default = internal.fetchOk
+export const HttpClient: Context.Tag<HttpClient.Service, HttpClient.Service> = internal.tag
 
 /**
  * @since 1.0.0
@@ -262,14 +236,14 @@ export const make: <A, E, R, E2, R2>(
  * @since 1.0.0
  * @category constructors
  */
-export const makeDefault: (
+export const makeService: (
   f: (
     request: ClientRequest.HttpClientRequest,
     url: URL,
     signal: AbortSignal,
     fiber: RuntimeFiber<ClientResponse.HttpClientResponse, Error.HttpClientError>
   ) => Effect.Effect<ClientResponse.HttpClientResponse, Error.HttpClientError, Scope.Scope>
-) => HttpClient.Default = internal.makeDefault
+) => HttpClient.Service = internal.makeService
 
 /**
  * @since 1.0.0
@@ -323,20 +297,6 @@ export const mapEffect: {
  * @since 1.0.0
  * @category mapping & sequencing
  */
-export const mapEffectScoped: {
-  <A, B, E2, R2>(
-    f: (a: A) => Effect.Effect<B, E2, R2>
-  ): <E, R>(self: HttpClient<A, E, R>) => HttpClient<B, E2 | E, Exclude<R2, Scope.Scope> | Exclude<R, Scope.Scope>>
-  <A, E, R, B, E2, R2>(
-    self: HttpClient<A, E, R>,
-    f: (a: A) => Effect.Effect<B, E2, R2>
-  ): HttpClient<B, E | E2, Exclude<R2, Scope.Scope> | Exclude<R, Scope.Scope>>
-} = internal.mapEffectScoped
-
-/**
- * @since 1.0.0
- * @category mapping & sequencing
- */
 export const mapRequest: {
   (
     f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
@@ -365,7 +325,7 @@ export const mapRequestEffect: {
  * @since 1.0.0
  * @category mapping & sequencing
  */
-export const mapInputRequest: {
+export const mapRequestInput: {
   (
     f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
   ): <A, E, R>(self: HttpClient<A, E, R>) => HttpClient<A, E, R>
@@ -373,13 +333,13 @@ export const mapInputRequest: {
     self: HttpClient<A, E, R>,
     f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
   ): HttpClient<A, E, R>
-} = internal.mapInputRequest
+} = internal.mapRequestInput
 
 /**
  * @since 1.0.0
  * @category mapping & sequencing
  */
-export const mapInputRequestEffect: {
+export const mapRequestInputEffect: {
   <E2, R2>(
     f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<ClientRequest.HttpClientRequest, E2, R2>
   ): <A, E, R>(self: HttpClient<A, E, R>) => HttpClient<A, E2 | E, R2 | R>
@@ -387,20 +347,42 @@ export const mapInputRequestEffect: {
     self: HttpClient<A, E, R>,
     f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<ClientRequest.HttpClientRequest, E2, R2>
   ): HttpClient<A, E | E2, R2 | R>
-} = internal.mapInputRequestEffect
+} = internal.mapRequestInputEffect
+
+/**
+ * @since 1.0.0
+ * @category error handling
+ */
+export declare namespace Retry {
+  /**
+   * @since 1.0.0
+   * @category error handling
+   */
+  export type Return<R, E, A, O extends Effect.Retry.Options<E>> = HttpClient<
+    A,
+    | (O extends { schedule: Schedule.Schedule<infer _O, infer _I, infer _R> } ? E
+      : O extends { until: Predicate.Refinement<E, infer E2> } ? E2
+      : E)
+    | (O extends { while: (...args: Array<any>) => Effect.Effect<infer _A, infer E, infer _R> } ? E : never)
+    | (O extends { until: (...args: Array<any>) => Effect.Effect<infer _A, infer E, infer _R> } ? E : never),
+    | R
+    | (O extends { schedule: Schedule.Schedule<infer _O, infer _I, infer R> } ? R : never)
+    | (O extends { while: (...args: Array<any>) => Effect.Effect<infer _A, infer _E, infer R> } ? R : never)
+    | (O extends { until: (...args: Array<any>) => Effect.Effect<infer _A, infer _E, infer R> } ? R : never)
+  > extends infer Z ? Z : never
+}
 
 /**
  * @since 1.0.0
  * @category error handling
  */
 export const retry: {
-  <B, E extends E0, E0, R1>(
-    policy: Schedule.Schedule<B, E0, R1>
+  <E, O extends Effect.Retry.Options<E>>(options: O): <A, R>(self: HttpClient<A, E, R>) => Retry.Return<R, E, A, O>
+  <B, E, R1>(
+    policy: Schedule.Schedule<B, NoInfer<E>, R1>
   ): <A, R>(self: HttpClient<A, E, R>) => HttpClient<A, E, R1 | R>
-  <A, E extends E0, E0, R, R1, B>(
-    self: HttpClient<A, E, R>,
-    policy: Schedule.Schedule<B, E0, R1>
-  ): HttpClient<A, E, R1 | R>
+  <A, E, R, O extends Effect.Retry.Options<E>>(self: HttpClient<A, E, R>, options: O): Retry.Return<R, E, A, O>
+  <A, E, R, B, R1>(self: HttpClient<A, E, R>, policy: Schedule.Schedule<B, E, R1>): HttpClient<A, E, R1 | R>
 } = internal.retry
 
 /**
@@ -512,15 +494,7 @@ export const withTracerPropagation: {
 
 /**
  * @since 1.0.0
- * @category fiber refs
  */
-export const currentFetchOptions: FiberRef.FiberRef<RequestInit> = internal.currentFetchOptions
-
-/**
- * @since 1.0.0
- * @category fiber refs
- */
-export const withFetchOptions: {
-  (options: RequestInit): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(effect: Effect.Effect<A, E, R>, options: RequestInit): Effect.Effect<A, E, R>
-} = internal.withFetchOptions
+export const layerMergedContext: <E, R>(
+  effect: Effect.Effect<HttpClient.Service, E, R>
+) => Layer<HttpClient.Service, E, R> = internal.layerMergedContext

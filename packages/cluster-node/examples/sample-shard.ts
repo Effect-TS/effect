@@ -62,25 +62,33 @@ const liveLayer = Sharding.registerEntity(
   Layer.provide(HttpLive),
   Layer.provideMerge(Sharding.live),
   Layer.provide(StorageFile.storageFile),
-  Layer.provide(PodsRpc.podsRpc<never>((podAddress) =>
-    HttpRpcResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
-      HttpClient.fetchOk.pipe(
-        HttpClient.mapRequest(
-          HttpClientRequest.prependUrl(`http://${podAddress.host}:${podAddress.port}/api/rest`)
-        )
-      )
-    ).pipe(RpcResolver.toClient)
-  )),
-  Layer.provide(ShardManagerClientRpc.shardManagerClientRpc(
-    (shardManagerUri) =>
+  Layer.provide(Layer.unwrapEffect(Effect.gen(function*() {
+    const client = yield* HttpClient.HttpClient
+    return PodsRpc.podsRpc<never>((podAddress) =>
       HttpRpcResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
-        HttpClient.fetchOk.pipe(
+        client.pipe(
+          HttpClient.filterStatusOk,
           HttpClient.mapRequest(
-            HttpClientRequest.prependUrl(shardManagerUri)
+            HttpClientRequest.prependUrl(`http://${podAddress.host}:${podAddress.port}/api/rest`)
           )
         )
       ).pipe(RpcResolver.toClient)
-  )),
+    )
+  }))),
+  Layer.provide(Layer.unwrapEffect(Effect.gen(function*() {
+    const client = yield* HttpClient.HttpClient
+    return ShardManagerClientRpc.shardManagerClientRpc(
+      (shardManagerUri) =>
+        HttpRpcResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
+          client.pipe(
+            HttpClient.filterStatusOk,
+            HttpClient.mapRequest(
+              HttpClientRequest.prependUrl(shardManagerUri)
+            )
+          )
+        ).pipe(RpcResolver.toClient)
+    )
+  }))),
   Layer.provide(Serialization.json),
   Layer.provide(NodeHttpClient.layerUndici),
   Layer.provide(ShardingConfig.fromConfig)
