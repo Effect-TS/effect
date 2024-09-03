@@ -26,7 +26,7 @@ function provide<R, ER, A, E>(
     (rt) =>
       core.withFiberRuntime((fiber) => {
         fiber.setFiberRefs(rt.fiberRefs)
-        fiber._runtimeFlags = rt.runtimeFlags
+        fiber.currentRuntimeFlags = rt.runtimeFlags
         return core.provideContext(effect, rt.context)
       })
   )

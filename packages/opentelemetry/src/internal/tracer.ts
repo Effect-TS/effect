@@ -3,7 +3,6 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { Exit } from "effect/Exit"
-import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
@@ -143,9 +142,7 @@ export const make = Effect.map(Tracer, (tracer) =>
       )
     },
     context(execution, fiber) {
-      const currentSpan = fiber.getFiberRef(FiberRef.currentContext).unsafeMap.get(EffectTracer.ParentSpan.key) as
-        | EffectTracer.AnySpan
-        | undefined
+      const currentSpan = fiber.currentSpan
 
       if (currentSpan === undefined) {
         return execution()
