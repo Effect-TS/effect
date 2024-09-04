@@ -5,6 +5,7 @@ import * as Optimize from "@effect/printer/Optimize"
 import * as Schema from "@effect/schema/Schema"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
+import * as EffectNumber from "effect/Number"
 import * as Option from "effect/Option"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
@@ -18,11 +19,6 @@ interface State {
   readonly cursor: number
   readonly value: string
   readonly error: Option.Option<string>
-}
-
-const round = (number: number, precision: number) => {
-  const factor = Math.pow(10, precision)
-  return Math.round(number * factor) / factor
 }
 
 const parseInt = Schema.NumberFromString.pipe(
@@ -352,7 +348,7 @@ function handleProcessFloat(options: FloatOptions) {
             })),
           onSuccess: (n) =>
             Effect.flatMap(
-              Effect.sync(() => round(n, options.precision)),
+              Effect.sync(() => EffectNumber.round(n, options.precision)),
               (rounded) =>
                 Effect.match(options.validate(rounded), {
                   onFailure: (error) =>
