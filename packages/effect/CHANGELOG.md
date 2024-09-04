@@ -1,5 +1,17 @@
 # effect
 
+## 3.7.1
+
+### Patch Changes
+
+- [#3536](https://github.com/Effect-TS/effect/pull/3536) [`79859e7`](https://github.com/Effect-TS/effect/commit/79859e71040d8edf1868b8530b90c650f4321eff) Thanks @mikearnaldi! - Optimize Array.sortWith to avoid calling the map function excesively
+
+- [#3516](https://github.com/Effect-TS/effect/pull/3516) [`f6a469c`](https://github.com/Effect-TS/effect/commit/f6a469c190b9f00eee5ea0cd4d5912a0ef8b46f5) Thanks @KhraksMamtsov! - support tacit usage for `Effect.tapErrorTag` and `Effect.catchTag`
+
+- [#3543](https://github.com/Effect-TS/effect/pull/3543) [`dcb9ec0`](https://github.com/Effect-TS/effect/commit/dcb9ec0db443894dd204d87450f779c44b9ad7f1) Thanks @datner! - Align behavior of `Stream.empty` to act like `Stream.make()` to fix behavior with `NodeStream.toReadable`
+
+- [#3545](https://github.com/Effect-TS/effect/pull/3545) [`79aa6b1`](https://github.com/Effect-TS/effect/commit/79aa6b136e1f29b36f34e88cb2ff162bff2bb4ed) Thanks @tim-smart! - fix Micro.forEach for empty iterables
+
 ## 3.7.0
 
 ### Minor Changes
