@@ -2594,11 +2594,9 @@ export const withTrace: {
   const f = (name: string) => (self: Micro<any, any, any>) =>
     unsafeMakeOptions(function(env, onExit) {
       self[runSymbol](env, function(exit) {
-        console.log(name, exit)
         onExit(exit._tag === "Left" ? Either.left(generate(name, exit.left)) : exit)
       })
     }, false)
-  console.log(arguments.length)
   if (arguments.length === 2) {
     return f(arguments[1])(arguments[0])
   }
@@ -3954,7 +3952,6 @@ export const runSyncExit = <A, E>(effect: Micro<A, E>): MicroExit<A, E> => {
   const handle = runFork(effect, { scheduler })
   scheduler.flush()
   const exit = handle.unsafePoll()
-  console.log(exit)
   if (exit === null) {
     return exitDie(handle)
   }
