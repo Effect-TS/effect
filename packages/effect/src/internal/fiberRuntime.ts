@@ -1305,7 +1305,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   runLoop(effect0: Effect.Effect<any, any, any>): Exit.Exit<any, any> | YieldedOp {
     let cur: Effect.Effect<any, any, any> | YieldedOp = effect0
     this.currentOpCount = 0
-    // eslint-disable-next-line no-constant-condition
+
     while (true) {
       if ((this._runtimeFlags & OpSupervision) !== 0) {
         this._supervisor.onEffect(this, cur)

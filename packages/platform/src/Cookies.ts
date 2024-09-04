@@ -707,7 +707,7 @@ export function parseHeader(header: string): Record<string, string> {
   const strLen = header.length
   let pos = 0
   let terminatorPos = 0
-  // eslint-disable-next-line no-constant-condition
+
   while (true) {
     if (terminatorPos === strLen) break
     terminatorPos = header.indexOf(";", pos)
