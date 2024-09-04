@@ -135,4 +135,13 @@ describe("Number", () => {
     assert.deepStrictEqual(Number.parse("42"), Option.some(42))
     assert.deepStrictEqual(Number.parse("a"), Option.none())
   })
+
+  it("round", () => {
+    assert.deepStrictEqual(Number.round(1.1234, 2), 1.12)
+    assert.deepStrictEqual(Number.round(2)(1.1234), 1.12)
+    assert.deepStrictEqual(Number.round(0)(1.1234), 1)
+    assert.deepStrictEqual(Number.round(0)(1.1234), 1)
+    assert.deepStrictEqual(Number.round(1.567, 2), 1.57)
+    assert.deepStrictEqual(Number.round(2)(1.567), 1.57)
+  })
 })
