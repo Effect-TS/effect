@@ -1,5 +1,13 @@
 # effect
 
+## 3.7.2
+
+### Patch Changes
+
+- [#3548](https://github.com/Effect-TS/effect/pull/3548) [`8a601d7`](https://github.com/Effect-TS/effect/commit/8a601d7a1f8ffe52ac9e6d67e9282a1495fe59c9) Thanks @tim-smart! - remove console.log statements from Micro
+
+- [#3546](https://github.com/Effect-TS/effect/pull/3546) [`353ba19`](https://github.com/Effect-TS/effect/commit/353ba19f9b2b9e959f0a00d058c6d40a4bc02db7) Thanks @tim-smart! - fix exported Stream types for `broadcast*` and `toPubSub`
+
 ## 3.7.1
 
 ### Patch Changes
