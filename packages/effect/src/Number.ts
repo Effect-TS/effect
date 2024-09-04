@@ -502,8 +502,8 @@ export const parse = (s: string): Option<number> => {
  * @example
  * import { round } from "effect/Number"
  *
- * assert.deepStrictEqual(round(5,1234, 2), 5.12)
- * assert.deepStrictEqual(nextPow2(17), 32)
+ * assert.deepStrictEqual(round(1.1234, 2), 1.12)
+ * assert.deepStrictEqual(round(1.567, 2), 1.57)
  *
  * @category math
  * @since 3.8.0
