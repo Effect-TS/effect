@@ -232,6 +232,12 @@ describe.concurrent("Micro", () => {
         assert.deepStrictEqual(result, Micro.exitFail("error"))
         assert.deepStrictEqual(done, [1, 2, 3])
       }).pipe(Micro.runPromise))
+
+    it("length = 0", () =>
+      Micro.gen(function*() {
+        const results = yield* Micro.forEach([], (_) => Micro.succeed(_))
+        assert.deepStrictEqual(results, [])
+      }).pipe(Micro.runPromise))
   })
 
   describe("all", () => {
