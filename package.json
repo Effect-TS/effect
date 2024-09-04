@@ -47,6 +47,9 @@
     "@effect/dtslint": "^0.1.0",
     "@effect/eslint-plugin": "^0.2.0",
     "@effect/language-service": "^0.1.0",
+    "@eslint/compat": "1.1.1",
+    "@eslint/eslintrc": "3.1.0",
+    "@eslint/js": "9.9.1",
     "@types/node": "^20.14.10",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
@@ -55,11 +58,11 @@
     "@vitest/expect": "^2.0.5",
     "@vitest/web-worker": "^2.0.5",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
-    "eslint": "^8.57.0",
-    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint": "^9.9.1",
+    "eslint-import-resolver-typescript": "^3.6.3",
     "eslint-plugin-codegen": "^0.28.0",
     "eslint-plugin-deprecation": "^3.0.0",
-    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-import": "^2.30.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
     "fast-check": "^3.21.0",
@@ -81,11 +84,6 @@
       "@changesets/get-github-info@0.6.0": "patches/@changesets__get-github-info@0.6.0.patch",
       "@changesets/assemble-release-plan@6.0.3": "patches/@changesets__assemble-release-plan@6.0.3.patch",
       "babel-plugin-annotate-pure-calls@0.4.0": "patches/babel-plugin-annotate-pure-calls@0.4.0.patch"
-    },
-    "updateConfig": {
-      "ignoreDependencies": [
-        "eslint"
-      ]
     }
   }
 }

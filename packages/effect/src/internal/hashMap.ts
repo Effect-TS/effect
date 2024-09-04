@@ -221,7 +221,7 @@ export const getHash = Dual.dual<
 >(3, <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => {
   let node = (self as HashMapImpl<K, V>)._root
   let shift = 0
-  // eslint-disable-next-line no-constant-condition
+
   while (true) {
     switch (node._tag) {
       case "LeafNode": {

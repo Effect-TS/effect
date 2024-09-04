@@ -372,7 +372,7 @@ function mergeLeaves<K, V>(
 ): Node<K, V> {
   let stack: Stack.Stack<(node: Node<K, V>) => Node<K, V>> | undefined = undefined
   let currentShift = shift
-  // eslint-disable-next-line no-constant-condition
+
   while (true) {
     const res = mergeLeavesInner(edit, currentShift, h1, n1, h2, n2)
 

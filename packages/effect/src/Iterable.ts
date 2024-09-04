@@ -605,7 +605,7 @@ export const groupWith: {
             }
           }
           const chunk: NonEmptyArray<A> = [result.value]
-          // eslint-disable-next-line no-constant-condition
+
           while (true) {
             const next = iterator.next()
             if (next.done || !isEquivalent(result.value, next.value)) {

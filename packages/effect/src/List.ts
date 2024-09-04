@@ -496,7 +496,6 @@ const noneIn = <A>(
   predicate: Predicate<A>,
   isFlipped: boolean
 ): List<A> => {
-  /* eslint-disable no-constant-condition */
   while (true) {
     if (isNil(self)) {
       return _Nil
@@ -518,7 +517,6 @@ const allIn = <A>(
   predicate: Predicate<A>,
   isFlipped: boolean
 ): List<A> => {
-  /* eslint-disable no-constant-condition */
   while (true) {
     if (isNil(remaining)) {
       return start
