@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.63.3
+
+### Patch Changes
+
+- [#3550](https://github.com/Effect-TS/effect/pull/3550) [`4a701c4`](https://github.com/Effect-TS/effect/commit/4a701c406da032563fedae459536c00ae5cfe3c7) Thanks @tim-smart! - ensure Socket.toChannel fiber is attached to Scope
+
 ## 0.63.2
 
 ### Patch Changes

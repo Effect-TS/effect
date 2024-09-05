@@ -1,5 +1,14 @@
 # @effect/platform-node-shared
 
+## 0.13.3
+
+### Patch Changes
+
+- [#3555](https://github.com/Effect-TS/effect/pull/3555) [`64c2292`](https://github.com/Effect-TS/effect/commit/64c22927aa01e0159b0fa98ff55e742069af399c) Thanks @tim-smart! - leave node stream listeners attached to prevent unhandled errors
+
+- Updated dependencies [[`4a701c4`](https://github.com/Effect-TS/effect/commit/4a701c406da032563fedae459536c00ae5cfe3c7)]:
+  - @effect/platform@0.63.3
+
 ## 0.13.2
 
 ### Patch Changes

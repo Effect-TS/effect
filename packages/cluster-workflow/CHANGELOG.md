@@ -1,5 +1,13 @@
 # @effect/cluster
 
+## 0.5.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/cluster@0.6.3
+  - @effect/sql@0.10.3
+
 ## 0.5.2
 
 ### Patch Changes
