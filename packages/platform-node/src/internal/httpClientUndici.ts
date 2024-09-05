@@ -16,7 +16,7 @@ import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
-import type * as Stream from "effect/Stream"
+import * as Stream from "effect/Stream"
 import * as Undici from "undici"
 import type * as NodeClient from "../NodeHttpClient.js"
 import * as NodeStream from "../NodeStream.js"
@@ -158,7 +158,7 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
         response: this,
         reason: "Decode",
         cause
-      }))
+      })).pipe(Stream.ensuring(Effect.promise(() => this.source.body.dump())))
   }
 
   get json(): Effect.Effect<unknown, Error.ResponseError> {
