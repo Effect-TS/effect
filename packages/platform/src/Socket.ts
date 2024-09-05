@@ -209,12 +209,12 @@ export const toChannel = <IE>(
         }
       })
     ),
-    Effect.tap(({ exitQueue }) =>
+    Effect.tap(({ exitQueue, scope }) =>
       self.run((data) => Queue.offer(exitQueue, Exit.succeed(Chunk.of(data)))).pipe(
         Effect.zipRight(Effect.failCause(Cause.empty)),
         Effect.exit,
         Effect.tap((exit) => Queue.offer(exitQueue, exit)),
-        Effect.fork,
+        Effect.forkIn(scope),
         Effect.interruptible
       )
     ),
@@ -348,16 +348,12 @@ export const fromWebSocket = <R>(
     Effect.map(
       Queue.dropping<Uint8Array | string | CloseEvent>(fiber.getFiberRef(currentSendQueueCapacity)),
       (sendQueue) => {
-        const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<Exclude<R, Scope.Scope>>
+        const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<R>
         const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
         const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
-          Effect.scope.pipe(
-            Effect.bindTo("scope"),
-            Effect.bind("ws", ({ scope }) =>
-              acquire.pipe(
-                Effect.provide(Context.add(acquireContext, Scope.Scope, scope))
-              ) as Effect.Effect<globalThis.WebSocket>),
-            Effect.bind("fiberSet", (_) => FiberSet.make<any, E | SocketError>()),
+          acquire.pipe(
+            Effect.bindTo("ws"),
+            Effect.bind("fiberSet", () => FiberSet.make<any, E | SocketError>()),
             Effect.bind("run", ({ fiberSet, ws }) =>
               Effect.provideService(FiberSet.runtime(fiberSet)<R>(), WebSocket, ws)),
             Effect.tap(({ fiberSet, run, ws }) => {
@@ -392,19 +388,12 @@ export const fromWebSocket = <R>(
               }
 
               if (ws.readyState !== 1) {
-                return Effect.async<void, SocketError, never>((resume) => {
-                  function onOpen() {
-                    ws.removeEventListener("open", onOpen)
-                    resume(Effect.void)
-                  }
-                  ws.addEventListener("open", onOpen)
-                  return Effect.sync(() => {
-                    ws.removeEventListener("open", onOpen)
-                  })
-                }).pipe(
-                  Effect.tap((_) => {
-                    open = true
-                  }),
+                const openDeferred = Deferred.unsafeMake<void>(fiber.id())
+                ws.onopen = () => {
+                  open = true
+                  Deferred.unsafeDone(openDeferred, Effect.void)
+                }
+                return Deferred.await(openDeferred).pipe(
                   Effect.timeoutFail({
                     duration: options?.openTimeout ?? 10000,
                     onTimeout: () =>
@@ -445,6 +434,7 @@ export const fromWebSocket = <R>(
                 (_) => Effect.void
               )
             ),
+            Effect.mapInputContext((input: Context.Context<R | Scope.Scope>) => Context.merge(acquireContext, input)),
             Effect.scoped,
             Effect.interruptible
           )
@@ -534,15 +524,11 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
     Effect.map(
       Queue.dropping<Uint8Array | string | CloseEvent | typeof EOF>(fiber.getFiberRef(currentSendQueueCapacity)),
       (sendQueue) => {
-        const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<Exclude<R, Scope.Scope>>
+        const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<R>
         const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
         const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
-          Effect.scope.pipe(
-            Effect.bindTo("scope"),
-            Effect.bind("stream", ({ scope }) =>
-              acquire.pipe(
-                Effect.provide(Context.add(acquireContext, Scope.Scope, scope))
-              ) as Effect.Effect<InputTransformStream>),
+          acquire.pipe(
+            Effect.bindTo("stream"),
             Effect.bind("reader", ({ stream }) =>
               Effect.acquireRelease(
                 Effect.sync(() => stream.readable.getReader()),
@@ -615,6 +601,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
                 (_) => Effect.void
               )
             ),
+            Effect.mapInputContext((input: Context.Context<R | Scope.Scope>) => Context.merge(acquireContext, input)),
             Effect.scoped,
             Effect.interruptible
           )
