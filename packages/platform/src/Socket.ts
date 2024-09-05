@@ -351,8 +351,7 @@ export const fromWebSocket = <R>(
         const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<Exclude<R, Scope.Scope>>
         const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
         const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
-          Effect.scope.pipe(
-            Effect.bindTo("scope"),
+          Effect.Do.pipe(
             Effect.bind("ws", () =>
               acquire.pipe(
                 Effect.mapInputContext((input: Context.Context<any>) => Context.merge(acquireContext, input))
@@ -537,11 +536,10 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
         const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<Exclude<R, Scope.Scope>>
         const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
         const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
-          Effect.scope.pipe(
-            Effect.bindTo("scope"),
-            Effect.bind("stream", ({ scope }) =>
+          Effect.Do.pipe(
+            Effect.bind("stream", () =>
               acquire.pipe(
-                Effect.provide(Context.add(acquireContext, Scope.Scope, scope))
+                Effect.mapInputContext((input: Context.Context<any>) => Context.merge(acquireContext, input))
               ) as Effect.Effect<InputTransformStream>),
             Effect.bind("reader", ({ stream }) =>
               Effect.acquireRelease(
