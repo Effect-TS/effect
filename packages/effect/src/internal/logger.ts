@@ -442,9 +442,6 @@ export const prettyLogger = (options?: {
     : prettyLoggerTty({ colors: showColors, formatDate, stderr: options?.stderr === true })
 }
 
-/** @internal */
-export const prettyLoggerDefault = globalValue("effect/Logger/prettyLoggerDefault", () => prettyLogger())
-
 const prettyLoggerTty = (options: {
   readonly colors: boolean
   readonly stderr: boolean
@@ -574,3 +571,6 @@ const prettyLoggerBrowser = (options: {
     }
   )
 }
+
+/** @internal */
+export const prettyLoggerDefault = globalValue("effect/Logger/prettyLoggerDefault", () => prettyLogger())
