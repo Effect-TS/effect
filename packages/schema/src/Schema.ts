@@ -6699,11 +6699,18 @@ export const EitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ le
   )
 }
 
-const mapArbitrary = <K, V>(
+const mapArbitrary = (depthIdentifier: string) =>
+<K, V>(
   key: LazyArbitrary<K>,
   value: LazyArbitrary<V>
-): LazyArbitrary<Map<K, V>> =>
-(fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => new Map(as))
+): LazyArbitrary<Map<K, V>> => {
+  return (fc) =>
+    fc.oneof(
+      { maxDepth: 2, depthIdentifier },
+      fc.constant([]),
+      fc.array(fc.tuple(key(fc), value(fc)))
+    ).map((as) => new Map(as))
+}
 
 const readonlyMapPretty = <K, V>(
   key: pretty_.Pretty<K>,
@@ -6761,7 +6768,7 @@ const mapFromSelf_ = <K extends Schema.Any, V extends Schema.Any>(
     {
       description,
       pretty: readonlyMapPretty,
-      arbitrary: mapArbitrary,
+      arbitrary: mapArbitrary(description),
       equivalence: readonlyMapEquivalence
     }
   )
@@ -6889,8 +6896,14 @@ export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
     encode: record_.fromEntries
   })
 
-const setArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<ReadonlySet<A>> => (fc) =>
-  fc.array(item(fc)).map((as) => new Set(as))
+const setArbitrary = (depthIdentifier: string) => <A>(item: LazyArbitrary<A>): LazyArbitrary<ReadonlySet<A>> => {
+  return (fc) =>
+    fc.oneof(
+      { maxDepth: 2, depthIdentifier },
+      fc.constant([]),
+      fc.array(item(fc))
+    ).map((as) => new Set(as))
+}
 
 const readonlySetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<ReadonlySet<A>> => (set) =>
   `new Set([${Array.from(set.values()).map((a) => item(a)).join(", ")}])`
@@ -6933,7 +6946,7 @@ const setFromSelf_ = <Value extends Schema.Any>(value: Value, description: strin
     {
       description,
       pretty: readonlySetPretty,
-      arbitrary: setArbitrary,
+      arbitrary: setArbitrary(description),
       equivalence: readonlySetEquivalence
     }
   )
