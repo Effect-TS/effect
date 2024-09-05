@@ -63,7 +63,6 @@ export const toString = <E>(
       }),
     (stream) =>
       Effect.sync(() => {
-        stream.removeAllListeners()
         if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }
@@ -102,7 +101,6 @@ export const toUint8Array = <E>(
       }),
     (stream) =>
       Effect.sync(() => {
-        stream.removeAllListeners()
         if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }
@@ -136,7 +134,6 @@ export const fromDuplex = <IE, E, I = Uint8Array | string, O = Uint8Array>(
     ([duplex, queue]) =>
       Effect.zipRight(
         Effect.sync(() => {
-          duplex.removeAllListeners()
           if (!duplex.closed) {
             duplex.destroy()
           }
@@ -210,7 +207,6 @@ export const fromReadableChannel = <E, A = Uint8Array>(
     ([readable, queue]) =>
       Effect.zipRight(
         Effect.sync(() => {
-          readable.removeAllListeners()
           if ("closed" in readable && !readable.closed) {
             readable.destroy()
           }
