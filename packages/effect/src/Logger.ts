@@ -476,6 +476,14 @@ export const prettyLogger: (
 ) => Logger<unknown, void> = internal.prettyLogger
 
 /**
+ * A default version of the pretty logger.
+ *
+ * @since 3.8.0
+ * @category constructors
+ */
+export const prettyLoggerDefault: Logger<unknown, void> = internal.prettyLoggerDefault
+
+/**
  * The structured logger provides detailed log outputs, structured in a way that
  * retains comprehensive traceability of the events, suitable for deeper
  * analysis and troubleshooting.

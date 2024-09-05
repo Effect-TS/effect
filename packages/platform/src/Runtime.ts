@@ -63,7 +63,7 @@ const addPrettyLogger = (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) =>
     fiberRef: FiberRef.currentLoggers,
     value: loggers.pipe(
       HashSet.remove(Logger.defaultLogger),
-      HashSet.add(Logger.prettyLogger())
+      HashSet.add(Logger.prettyLoggerDefault)
     )
   })
 }
