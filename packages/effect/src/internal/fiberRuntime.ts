@@ -1424,7 +1424,7 @@ export const logFmtLogger: Logger<unknown, void> = globalValue(
 /** @internal */
 export const prettyLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/prettyLogger"),
-  () => internalLogger.prettyLogger()
+  () => internalLogger.prettyLoggerDefault
 )
 
 /** @internal */
