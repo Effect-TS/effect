@@ -89,6 +89,15 @@ describe("Function", () => {
   })
 
   it("pipe()", () => {
+    // We should only have one error for the missing definition.
+  (): number =>
+    pipe(
+      1,
+      // @ts-expect-error
+      add(1),
+      Function.identity,
+    );
+
     const pipe = Function.pipe // this alias is required in order to exclude the `@effect/babel-plugin` compiler and get 100% coverage
     deepStrictEqual(pipe(2), 2)
     deepStrictEqual(pipe(2, f), 3)
@@ -117,6 +126,14 @@ describe("Function", () => {
   })
 
   it("flow", () => {
+    // We should only have one error for the missing definition.
+  (): ((n: number) => number) =>
+    flow(
+      // @ts-expect-error
+      add(1),
+      Function.identity,
+    );
+
     const flow = Function.flow // this alias is required in order to exclude the `@effect/babel-plugin` compiler and get 100% coverage
     deepStrictEqual(flow(f)(2), 3)
     deepStrictEqual(flow(f, g)(2), 6)
