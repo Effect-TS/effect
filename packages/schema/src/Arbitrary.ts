@@ -36,14 +36,25 @@ export type ArbitraryHookId = typeof ArbitraryHookId
  * @category hooks
  * @since 0.72.3
  */
-export type ArbitraryAnnotations<A> = (...args: ReadonlyArray<LazyArbitrary<any>>) => LazyArbitrary<A>
+export interface GenerationContext {
+  readonly depthIdentifier?: string
+  readonly maxDepth: number
+}
+
+/**
+ * @category hooks
+ * @since 0.72.3
+ */
+export type ArbitraryAnnotation<A> = (
+  ...args: [...ReadonlyArray<LazyArbitrary<any>>, GenerationContext]
+) => LazyArbitrary<A>
 
 /**
  * @category annotations
  * @since 0.67.0
  */
 export const arbitrary =
-  <A>(annotation: ArbitraryAnnotations<A>) => <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
+  <A>(annotation: ArbitraryAnnotation<A>) => <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
     self.annotations({ [ArbitraryHookId]: annotation })
 
 /**
@@ -52,7 +63,8 @@ export const arbitrary =
  * @category arbitrary
  * @since 0.67.0
  */
-export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> => go(schema.ast, {}, [])
+export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> =>
+  go(schema.ast, { maxDepth: 2 }, [])
 
 /**
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
@@ -62,25 +74,27 @@ export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): FastCheck.Arbitrary<A> => makeLazy(schema)(FastCheck)
 
-const getHook = AST.getAnnotation<ArbitraryAnnotations<any>>(ArbitraryHookId)
+const getHook = AST.getAnnotation<ArbitraryAnnotation<any>>(ArbitraryHookId)
 
-interface Context {
-  readonly constraints?: Constraints
-  readonly depthIdentifier?: string
-}
-
-const getRefinementFromArbitrary = (ast: AST.Refinement, ctx: Context, path: ReadonlyArray<PropertyKey>) => {
+const getRefinementFromArbitrary = (
+  ast: AST.Refinement,
+  ctx: Context,
+  path: ReadonlyArray<PropertyKey>
+) => {
   const constraints = combineConstraints(ctx.constraints, getConstraints(ast))
   return go(ast.from, constraints ? { ...ctx, constraints } : ctx, path)
 }
 
-const getSuspendedContext = (ctx: Context, ast: AST.Suspend): Context => {
+const getSuspendedContext = (
+  ctx: Context,
+  ast: AST.Suspend
+): Context => {
   if (ctx.depthIdentifier !== undefined) {
     return ctx
   }
   const depthIdentifier = AST.getIdentifierAnnotation(ast).pipe(
     Option.orElse(() => AST.getIdentifierAnnotation(ast.f())),
-    Option.getOrElse(() => "depthIdentifier")
+    Option.getOrElse(() => "SuspendDefaultDepthIdentifier")
   )
   return { ...ctx, depthIdentifier }
 }
@@ -88,6 +102,7 @@ const getSuspendedContext = (ctx: Context, ast: AST.Suspend): Context => {
 const getSuspendedArray = (
   fc: typeof FastCheck,
   depthIdentifier: string,
+  maxDepth: number,
   item: FastCheck.Arbitrary<any>,
   constraints?: FastCheck.ArrayConstraints
 ) => {
@@ -100,22 +115,30 @@ const getSuspendedArray = (
     }
   }
   return fc.oneof(
-    { maxDepth: 2, depthIdentifier },
+    { maxDepth, depthIdentifier },
     fc.constant([]),
     fc.array(item, { minLength, maxLength })
   )
 }
 
-const go = (ast: AST.AST, ctx: Context, path: ReadonlyArray<PropertyKey>): LazyArbitrary<any> => {
+interface Context extends GenerationContext {
+  readonly constraints?: Constraints
+}
+
+const go = (
+  ast: AST.AST,
+  ctx: Context,
+  path: ReadonlyArray<PropertyKey>
+): LazyArbitrary<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
     switch (ast._tag) {
       case "Declaration":
-        return hook.value(...ast.typeParameters.map((p) => go(p, ctx, path)))
+        return hook.value(...ast.typeParameters.map((p) => go(p, ctx, path)), ctx)
       case "Refinement":
-        return hook.value(getRefinementFromArbitrary(ast, ctx, path))
+        return hook.value(getRefinementFromArbitrary(ast, ctx, path), ctx)
       default:
-        return hook.value()
+        return hook.value(ctx)
     }
   }
   switch (ast._tag) {
@@ -234,7 +257,7 @@ const go = (ast: AST.AST, ctx: Context, path: ReadonlyArray<PropertyKey>): LazyA
               : undefined
           output = output.chain((as) => {
             return (ctx.depthIdentifier !== undefined
-              ? getSuspendedArray(fc, ctx.depthIdentifier, item, constraints)
+              ? getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, constraints)
               : fc.array(item, constraints)).map((rest) => [...as, ...rest])
           })
           // ---------------------------------------------
@@ -277,7 +300,7 @@ const go = (ast: AST.AST, ctx: Context, path: ReadonlyArray<PropertyKey>): LazyA
           output = output.chain((o) => {
             const item = fc.tuple(key, value)
             const arr = ctx.depthIdentifier !== undefined ?
-              getSuspendedArray(fc, ctx.depthIdentifier, item) :
+              getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item) :
               fc.array(item)
             return arr.map((tuples) => ({ ...Object.fromEntries(tuples), ...o }))
           })

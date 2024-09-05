@@ -231,7 +231,7 @@ export const expectValidArbitrary = <A, I>(schema: S.Schema<A, I, never>, params
     return
   }
   const arb = A.makeLazy(schema)(fc)
-  // console.log(fc.sample(arb, 10), null, 2)
+  // console.log(fc.sample(arb, 10))
   const is = S.is(schema)
   fc.assert(fc.property(arb, (a) => is(a)), params)
 }

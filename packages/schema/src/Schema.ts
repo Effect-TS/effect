@@ -39,7 +39,7 @@ import * as sortedSet_ from "effect/SortedSet"
 import * as string_ from "effect/String"
 import * as struct_ from "effect/Struct"
 import type * as Types from "effect/Types"
-import type { LazyArbitrary } from "./Arbitrary.js"
+import type { GenerationContext, LazyArbitrary } from "./Arbitrary.js"
 import * as arbitrary_ from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
@@ -3881,7 +3881,10 @@ export declare namespace Annotations {
     readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
     readonly jsonSchema?: AST.JSONSchemaAnnotation
     readonly arbitrary?: (
-      ...arbitraries: { readonly [K in keyof TypeParameters]: LazyArbitrary<TypeParameters[K]> }
+      ...arbitraries: [
+        ...{ readonly [K in keyof TypeParameters]: LazyArbitrary<TypeParameters[K]> },
+        ctx: GenerationContext
+      ]
     ) => LazyArbitrary<A>
     readonly pretty?: (
       ...pretties: { readonly [K in keyof TypeParameters]: pretty_.Pretty<TypeParameters[K]> }
@@ -6699,17 +6702,19 @@ export const EitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ le
   )
 }
 
-const mapArbitrary = (depthIdentifier: string) =>
-<K, V>(
+const mapArbitrary = <K, V>(
   key: LazyArbitrary<K>,
-  value: LazyArbitrary<V>
+  value: LazyArbitrary<V>,
+  ctx: GenerationContext
 ): LazyArbitrary<Map<K, V>> => {
   return (fc) =>
-    fc.oneof(
-      { maxDepth: 2, depthIdentifier },
-      fc.constant([]),
-      fc.array(fc.tuple(key(fc), value(fc)))
-    ).map((as) => new Map(as))
+    (ctx.depthIdentifier !== undefined ?
+      fc.oneof(
+        ctx,
+        fc.constant([]),
+        fc.array(fc.tuple(key(fc), value(fc)))
+      ) :
+      fc.array(fc.tuple(key(fc), value(fc)))).map((as) => new Map(as))
 }
 
 const readonlyMapPretty = <K, V>(
@@ -6768,7 +6773,7 @@ const mapFromSelf_ = <K extends Schema.Any, V extends Schema.Any>(
     {
       description,
       pretty: readonlyMapPretty,
-      arbitrary: mapArbitrary(description),
+      arbitrary: mapArbitrary,
       equivalence: readonlyMapEquivalence
     }
   )
@@ -6896,13 +6901,9 @@ export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
     encode: record_.fromEntries
   })
 
-const setArbitrary = (depthIdentifier: string) => <A>(item: LazyArbitrary<A>): LazyArbitrary<ReadonlySet<A>> => {
-  return (fc) =>
-    fc.oneof(
-      { maxDepth: 2, depthIdentifier },
-      fc.constant([]),
-      fc.array(item(fc))
-    ).map((as) => new Set(as))
+const setArbitrary = <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<ReadonlySet<A>> => (fc) => {
+  const items = fc.array(item(fc))
+  return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map((as) => new Set(as))
 }
 
 const readonlySetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<ReadonlySet<A>> => (set) =>
@@ -6946,7 +6947,7 @@ const setFromSelf_ = <Value extends Schema.Any>(value: Value, description: strin
     {
       description,
       pretty: readonlySetPretty,
-      arbitrary: setArbitrary(description),
+      arbitrary: setArbitrary,
       equivalence: readonlySetEquivalence
     }
   )
@@ -8051,7 +8052,8 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
           title: identifier,
           description: `an instance of ${identifier}`,
           pretty: (pretty) => (self: any) => `${identifier}(${pretty(self)})`,
-          arbitrary: (arb) => (fc: any) => arb(fc).map((props: any) => new this(props)),
+          // @ts-expect-error
+          arbitrary: (arb) => (fc) => arb(fc).map((props) => new this(props)),
           equivalence: identity,
           [AST.SurrogateAnnotationId]: typeSide.ast,
           ...annotations
