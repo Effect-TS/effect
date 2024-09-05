@@ -209,12 +209,12 @@ export const toChannel = <IE>(
         }
       })
     ),
-    Effect.tap(({ exitQueue }) =>
+    Effect.tap(({ exitQueue, scope }) =>
       self.run((data) => Queue.offer(exitQueue, Exit.succeed(Chunk.of(data)))).pipe(
         Effect.zipRight(Effect.failCause(Cause.empty)),
         Effect.exit,
         Effect.tap((exit) => Queue.offer(exitQueue, exit)),
-        Effect.fork,
+        Effect.forkIn(scope),
         Effect.interruptible
       )
     ),
@@ -353,9 +353,9 @@ export const fromWebSocket = <R>(
         const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
           Effect.scope.pipe(
             Effect.bindTo("scope"),
-            Effect.bind("ws", ({ scope }) =>
+            Effect.bind("ws", () =>
               acquire.pipe(
-                Effect.provide(Context.add(acquireContext, Scope.Scope, scope))
+                Effect.mapInputContext((input: Context.Context<any>) => Context.merge(acquireContext, input))
               ) as Effect.Effect<globalThis.WebSocket>),
             Effect.bind("fiberSet", (_) => FiberSet.make<any, E | SocketError>()),
             Effect.bind("run", ({ fiberSet, ws }) =>
