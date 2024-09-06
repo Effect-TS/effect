@@ -574,13 +574,12 @@ export const synchronizedVariance = {
 class SynchronizedImpl<in out A> extends Effectable.Class<A> implements Synchronized.SynchronizedRef<A> {
   readonly [SynchronizedTypeId] = synchronizedVariance
   readonly [internalRef.RefTypeId] = internalRef.refVariance
-  readonly [Readable.TypeId]: Readable.TypeId
+  readonly [Readable.TypeId]: Readable.TypeId = Readable.TypeId
   constructor(
     readonly ref: Ref.Ref<A>,
     readonly withLock: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   ) {
     super()
-    this[Readable.TypeId] = Readable.TypeId
     this.get = internalRef.get(this.ref)
   }
   readonly get: Effect.Effect<A>

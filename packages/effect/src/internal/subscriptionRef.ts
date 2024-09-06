@@ -27,8 +27,8 @@ const subscriptionRefVariance = {
 
 /** @internal */
 class SubscriptionRefImpl<in out A> extends Effectable.Class<A> implements SubscriptionRef.SubscriptionRef<A> {
-  readonly [Readable.TypeId]: Readable.TypeId
-  readonly [Subscribable.TypeId]: Subscribable.TypeId
+  readonly [Readable.TypeId]: Readable.TypeId = Readable.TypeId
+  readonly [Subscribable.TypeId]: Subscribable.TypeId = Subscribable.TypeId
   readonly [Ref.RefTypeId] = _ref.refVariance
   readonly [Synchronized.SynchronizedRefTypeId] = _circular.synchronizedVariance
   readonly [SubscriptionRefTypeId] = subscriptionRefVariance
@@ -38,9 +38,7 @@ class SubscriptionRefImpl<in out A> extends Effectable.Class<A> implements Subsc
     readonly semaphore: Effect.Semaphore
   ) {
     super()
-    this[Readable.TypeId] = Readable.TypeId
-    this[Subscribable.TypeId] = Subscribable.TypeId
-    this.get = this.ref
+    this.get = Ref.get(this.ref)
   }
   commit() {
     return this.get
@@ -48,7 +46,7 @@ class SubscriptionRefImpl<in out A> extends Effectable.Class<A> implements Subsc
   readonly get: Effect.Effect<A>
   get changes(): Stream<A> {
     return pipe(
-      this.ref,
+      Ref.get(this.ref),
       Effect.flatMap((a) =>
         Effect.map(
           stream.fromPubSub(this.pubsub, { scoped: true }),
@@ -68,7 +66,7 @@ class SubscriptionRefImpl<in out A> extends Effectable.Class<A> implements Subsc
   }
   modifyEffect<B, E, R>(f: (a: A) => Effect.Effect<readonly [B, A], E, R>): Effect.Effect<B, E, R> {
     return pipe(
-      this.ref,
+      Ref.get(this.ref),
       Effect.flatMap(f),
       Effect.flatMap(([b, a]) =>
         pipe(
