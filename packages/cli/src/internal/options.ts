@@ -4,7 +4,7 @@ import type * as Terminal from "@effect/platform/Terminal"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Arr from "effect/Array"
-import type * as Config from "effect/Config"
+import * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -127,7 +127,6 @@ export interface OrElse extends
 export interface WithFallback extends
   Op<"WithFallback", {
     readonly options: Options.Options<unknown>
-    readonly helpDoc: HelpDoc.HelpDoc
     readonly effect: Effect.Effect<
       unknown,
       unknown,
@@ -611,8 +610,7 @@ export const withFallbackConfig: {
       self.fallback as any
     )
   }
-  const helpDoc = InternalHelpDoc.p("This option can be set from environment variables.")
-  return makeWithFallback(self, helpDoc, config)
+  return makeWithFallback(self, config)
 })
 
 /** @internal */
@@ -629,8 +627,7 @@ export const withFallbackPrompt: {
       self.fallback as any
     )
   }
-  const helpDoc = InternalHelpDoc.p("Will prompt the user for input if this option is not provided.")
-  return makeWithFallback(self, helpDoc, prompt)
+  return makeWithFallback(self, prompt)
 })
 
 /** @internal */
@@ -799,9 +796,14 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
       )
     }
     case "WithFallback": {
+      const helpDoc: HelpDoc.HelpDoc = Config.isConfig(self.effect)
+        ? InternalHelpDoc.p("This option can be set from environment variables.")
+        : InternalPrompt.isPrompt(self.effect)
+        ? InternalHelpDoc.p("Will prompt the user for input if this option is not provided.")
+        : InternalHelpDoc.empty
       return InternalHelpDoc.mapDescriptionList(
         getHelpInternal(self.options as Instruction),
-        (span, block) => [span, InternalHelpDoc.sequence(block, self.helpDoc)]
+        (span, block) => [span, InternalHelpDoc.sequence(block, helpDoc)]
       )
     }
   }
@@ -1055,13 +1057,11 @@ const makeWithDefault = <A, const B>(
 
 const makeWithFallback = <A, B>(
   options: Options.Options<A>,
-  helpDoc: HelpDoc.HelpDoc,
   effect: Effect.Effect<B, unknown, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
 ): Options.Options<A | B> => {
   const op = Object.create(proto)
   op._tag = "WithFallback"
   op.options = options
-  op.helpDoc = helpDoc
   op.effect = effect
   return op
 }
@@ -1101,7 +1101,6 @@ const modifySingle = (self: Instruction, f: (single: Single) => Single): Options
     case "WithFallback": {
       return makeWithFallback(
         modifySingle(self.options as Instruction, f),
-        self.helpDoc,
         self.effect
       )
     }
