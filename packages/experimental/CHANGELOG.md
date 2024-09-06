@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.24.4
+
+### Patch Changes
+
+- [#3557](https://github.com/Effect-TS/effect/pull/3557) [`c969f74`](https://github.com/Effect-TS/effect/commit/c969f74f6111e852fc55c126d2ee384cba718878) Thanks @tim-smart! - add ChannelSchema module to /experimental, for integrating /schema with Channels
+
 ## 0.24.3
 
 ### Patch Changes
