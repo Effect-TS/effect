@@ -3,13 +3,13 @@
  */
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import type * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import { Packr, Unpackr } from "msgpackr"
+import * as ChannelSchema from "./ChannelSchema.js"
 
 /**
  * @since 1.0.0
@@ -73,20 +73,7 @@ export const packSchema = <A, I, R>(
   Done,
   Done,
   R
-> => {
-  const encode = Schema.encode(Schema.ChunkFromSelf(schema))
-  const loop: Channel.Channel<Chunk.Chunk<I>, Chunk.Chunk<A>, IE | ParseError, IE, Done, Done, R> = Channel
-    .readWithCause({
-      onInput: (input: Chunk.Chunk<A>) =>
-        Channel.zipRight(
-          Channel.flatMap(encode(input), Channel.write),
-          loop
-        ),
-      onFailure: (cause: Cause.Cause<IE>) => Channel.failCause(cause),
-      onDone: Channel.succeed
-    })
-  return Channel.pipeTo(loop, pack())
-}
+> => Channel.pipeTo(ChannelSchema.encode(schema)(), pack())
 
 /**
  * @since 1.0.0
