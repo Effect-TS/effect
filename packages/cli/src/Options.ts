@@ -12,6 +12,7 @@ import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
+import type { Prompt } from "effect/Prompt"
 import type { Redacted } from "effect/Redacted"
 import type { Secret } from "effect/Secret"
 import type { CliConfig } from "./CliConfig.js"
@@ -521,6 +522,15 @@ export const withFallbackConfig: {
   <B>(config: Config<B>): <A>(self: Options<A>) => Options<B | A>
   <A, B>(self: Options<A>, config: Config<B>): Options<A | B>
 } = InternalOptions.withFallbackConfig
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withFallbackPrompt: {
+  <B>(prompt: Prompt<B>): <A>(self: Options<A>) => Options<B | A>
+  <A, B>(self: Options<A>, prompt: Prompt<B>): Options<A | B>
+} = InternalOptions.withFallbackPrompt
 
 /**
  * @since 1.0.0

@@ -5,10 +5,10 @@ import * as ValidationError from "@effect/cli/ValidationError"
 import { FileSystem, Path } from "@effect/platform"
 import { NodeContext } from "@effect/platform-node"
 import * as Schema from "@effect/schema/Schema"
+import { describe, expect, it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(
   self: Effect.Effect<A, E, NodeContext.NodeContext>
