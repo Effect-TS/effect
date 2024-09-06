@@ -2,12 +2,12 @@
  * @since 1.0.0
  */
 import type { ParseError } from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
+import type * as Schema from "@effect/schema/Schema"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import { dual, pipe } from "effect/Function"
+import { dual } from "effect/Function"
 import { Packr, Unpackr } from "msgpackr"
 import * as ChannelSchema from "./ChannelSchema.js"
 
@@ -146,18 +146,15 @@ export const unpackSchema = <A, I, R>(
   Done,
   Done,
   R
-> => {
-  const parse = Schema.decodeUnknown(Schema.ChunkFromSelf(schema))
-  return Channel.mapOutEffect(unpack<IE, Done>(), parse)
-}
+> => Channel.pipeTo(unpack(), ChannelSchema.decodeUnknown(schema)())
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const duplex = <R, IE, OE>(
-  self: Channel.Channel<Chunk.Chunk<Uint8Array>, Chunk.Chunk<Uint8Array>, OE, IE | MsgPackError, void, unknown, R>
-): Channel.Channel<Chunk.Chunk<unknown>, Chunk.Chunk<unknown>, MsgPackError | OE, IE, void, unknown, R> =>
+export const duplex = <R, IE, OE, OutDone, InDone>(
+  self: Channel.Channel<Chunk.Chunk<Uint8Array>, Chunk.Chunk<Uint8Array>, OE, IE | MsgPackError, OutDone, InDone, R>
+): Channel.Channel<Chunk.Chunk<unknown>, Chunk.Chunk<unknown>, MsgPackError | OE, IE, OutDone, InDone, R> =>
   Channel.pipeTo(
     Channel.pipeTo(pack(), self),
     unpack()
@@ -285,12 +282,4 @@ export const duplexSchema: {
   OutDone,
   InDone,
   R | IR | OR
-> => {
-  const pack = packSchema(options.inputSchema)
-  const unpack = unpackSchema(options.outputSchema)
-  return pipe(
-    pack<InErr, InDone>(),
-    Channel.pipeTo(self),
-    Channel.pipeTo(unpack())
-  )
-})
+> => ChannelSchema.duplexUnknown(duplex(self), options))

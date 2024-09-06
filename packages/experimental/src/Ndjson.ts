@@ -3,12 +3,12 @@
  */
 import { TypeIdError } from "@effect/platform/Error"
 import type { ParseError } from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
+import type * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
-import { constTrue, dual, pipe } from "effect/Function"
+import { constTrue, dual } from "effect/Function"
 import * as ChannelSchema from "./ChannelSchema.js"
 
 /**
@@ -173,10 +173,7 @@ export const unpackSchema = <A, I, R>(
   Done,
   Done,
   R
-> => {
-  const parse = Schema.decodeUnknown(Schema.ChunkFromSelf(schema))
-  return Channel.mapOutEffect(unpack<IE, Done>(options), parse)
-}
+> => Channel.pipeTo(unpack(options), ChannelSchema.decodeUnknown(schema)())
 
 /**
  * @since 1.0.0
@@ -273,13 +270,4 @@ export const duplexSchema: {
   OutDone,
   InDone,
   R | IR | OR
-> => {
-  const { inputSchema, outputSchema, ...opts } = options
-  const pack = packSchema(inputSchema)
-  const unpack = unpackSchema(outputSchema)
-  return pipe(
-    pack<InErr, InDone>(),
-    Channel.pipeTo(self),
-    Channel.pipeTo(unpack(opts))
-  )
-})
+> => ChannelSchema.duplexUnknown(duplex(self, options), options))
