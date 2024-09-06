@@ -1,6 +1,11 @@
 /**
  * @since 1.0.0
  */
+export * as ChannelSchema from "./ChannelSchema.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as DevTools from "./DevTools.js"
 
 /**
