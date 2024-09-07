@@ -33,12 +33,29 @@ export const ArbitraryHookId: unique symbol = Symbol.for("@effect/schema/Arbitra
 export type ArbitraryHookId = typeof ArbitraryHookId
 
 /**
+ * @category hooks
+ * @since 0.72.3
+ */
+export interface GenerationContext {
+  readonly depthIdentifier?: string
+  readonly maxDepth: number
+}
+
+/**
+ * @category hooks
+ * @since 0.72.3
+ */
+export type ArbitraryAnnotation<A> = (
+  ...args: [...ReadonlyArray<LazyArbitrary<any>>, GenerationContext]
+) => LazyArbitrary<A>
+
+/**
  * @category annotations
  * @since 0.67.0
  */
 export const arbitrary =
-  <A>(handler: (...args: ReadonlyArray<LazyArbitrary<any>>) => LazyArbitrary<A>) =>
-  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> => self.annotations({ [ArbitraryHookId]: handler })
+  <A>(annotation: ArbitraryAnnotation<A>) => <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
+    self.annotations({ [ArbitraryHookId]: annotation })
 
 /**
  * Returns a LazyArbitrary for the `A` type of the provided schema.
@@ -46,7 +63,8 @@ export const arbitrary =
  * @category arbitrary
  * @since 0.67.0
  */
-export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> => go(schema.ast, {}, [])
+export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> =>
+  go(schema.ast, { maxDepth: 2 }, [])
 
 /**
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
@@ -56,53 +74,71 @@ export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): FastCheck.Arbitrary<A> => makeLazy(schema)(FastCheck)
 
-const depthSize = 1
+const getHook = AST.getAnnotation<ArbitraryAnnotation<any>>(ArbitraryHookId)
 
-const record = <K extends PropertyKey, V>(
+const getRefinementFromArbitrary = (
+  ast: AST.Refinement,
+  ctx: Context,
+  path: ReadonlyArray<PropertyKey>
+) => {
+  const constraints = combineConstraints(ctx.constraints, getConstraints(ast))
+  return go(ast.from, constraints ? { ...ctx, constraints } : ctx, path)
+}
+
+const getSuspendedContext = (
+  ctx: Context,
+  ast: AST.Suspend
+): Context => {
+  if (ctx.depthIdentifier !== undefined) {
+    return ctx
+  }
+  const depthIdentifier = AST.getIdentifierAnnotation(ast).pipe(
+    Option.orElse(() => AST.getIdentifierAnnotation(ast.f())),
+    Option.getOrElse(() => "SuspendDefaultDepthIdentifier")
+  )
+  return { ...ctx, depthIdentifier }
+}
+
+const getSuspendedArray = (
   fc: typeof FastCheck,
-  key: FastCheck.Arbitrary<K>,
-  value: FastCheck.Arbitrary<V>,
-  options: Options
-): FastCheck.Arbitrary<{ readonly [k in K]: V }> => {
-  return (options.isSuspend ?
-    fc.oneof(
-      { depthSize },
-      fc.constant([]),
-      fc.array(fc.tuple(key, value), { minLength: 1, maxLength: 2 })
-    ) :
-    fc.array(fc.tuple(key, value))).map((tuples) => {
-      const out: { [k in K]: V } = {} as any
-      for (const [k, v] of tuples) {
-        out[k] = v
-      }
-      return out
-    })
+  depthIdentifier: string,
+  maxDepth: number,
+  item: FastCheck.Arbitrary<any>,
+  constraints?: FastCheck.ArrayConstraints
+) => {
+  let minLength = 1
+  let maxLength = 2
+  if (constraints && constraints.minLength !== undefined && constraints.minLength > minLength) {
+    minLength = constraints.minLength
+    if (minLength > maxLength) {
+      maxLength = minLength
+    }
+  }
+  return fc.oneof(
+    { maxDepth, depthIdentifier },
+    fc.constant([]),
+    fc.array(item, { minLength, maxLength })
+  )
 }
 
-const getHook = AST.getAnnotation<
-  (...args: ReadonlyArray<LazyArbitrary<any>>) => LazyArbitrary<any>
->(ArbitraryHookId)
-
-type Options = {
+interface Context extends GenerationContext {
   readonly constraints?: Constraints
-  readonly isSuspend?: boolean
 }
 
-const getRefinementFromArbitrary = (ast: AST.Refinement, options: Options, path: ReadonlyArray<PropertyKey>) => {
-  const constraints = combineConstraints(options.constraints, getConstraints(ast))
-  return go(ast.from, constraints ? { ...options, constraints } : options, path)
-}
-
-const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): LazyArbitrary<any> => {
+const go = (
+  ast: AST.AST,
+  ctx: Context,
+  path: ReadonlyArray<PropertyKey>
+): LazyArbitrary<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
     switch (ast._tag) {
       case "Declaration":
-        return hook.value(...ast.typeParameters.map((p) => go(p, options, path)))
+        return hook.value(...ast.typeParameters.map((p) => go(p, ctx, path)), ctx)
       case "Refinement":
-        return hook.value(getRefinementFromArbitrary(ast, options, path))
+        return hook.value(getRefinementFromArbitrary(ast, ctx, path), ctx)
       default:
-        return hook.value()
+        return hook.value(ctx)
     }
   }
   switch (ast._tag) {
@@ -125,22 +161,22 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
       return (fc) => fc.anything()
     case "StringKeyword":
       return (fc) => {
-        if (options.constraints) {
-          switch (options.constraints._tag) {
+        if (ctx.constraints) {
+          switch (ctx.constraints._tag) {
             case "StringConstraints":
-              return fc.string(options.constraints.constraints)
+              return fc.string(ctx.constraints.constraints)
           }
         }
         return fc.string()
       }
     case "NumberKeyword":
       return (fc) => {
-        if (options.constraints) {
-          switch (options.constraints._tag) {
+        if (ctx.constraints) {
+          switch (ctx.constraints._tag) {
             case "NumberConstraints":
-              return fc.float(options.constraints.constraints)
+              return fc.float(ctx.constraints.constraints)
             case "IntegerConstraints":
-              return fc.integer(options.constraints.constraints)
+              return fc.integer(ctx.constraints.constraints)
           }
         }
         return fc.float()
@@ -149,10 +185,10 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
       return (fc) => fc.boolean()
     case "BigIntKeyword":
       return (fc) => {
-        if (options.constraints) {
-          switch (options.constraints._tag) {
+        if (ctx.constraints) {
+          switch (ctx.constraints._tag) {
             case "BigIntConstraints":
-              return fc.bigInt(options.constraints.constraints)
+              return fc.bigInt(ctx.constraints.constraints)
           }
         }
         return fc.bigInt()
@@ -182,12 +218,12 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
       let hasOptionals = false
       let i = 0
       for (const element of ast.elements) {
-        elements.push(go(element.type, options, path.concat(i++)))
+        elements.push(go(element.type, ctx, path.concat(i++)))
         if (element.isOptional) {
           hasOptionals = true
         }
       }
-      const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, options, path))
+      const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, ctx, path))
       return (fc) => {
         // ---------------------------------------------
         // handle elements
@@ -214,20 +250,15 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
         // ---------------------------------------------
         if (Arr.isNonEmptyReadonlyArray(rest)) {
           const [head, ...tail] = rest
-          const arb = head(fc)
-          const constraints = options.constraints
+          const item = head(fc)
+          const constraints: FastCheck.ArrayConstraints | undefined =
+            ctx.constraints && ctx.constraints._tag === "ArrayConstraints"
+              ? ctx.constraints.constraints
+              : undefined
           output = output.chain((as) => {
-            let out = fc.array(arb)
-            if (options.isSuspend) {
-              out = fc.oneof(
-                { depthSize },
-                fc.constant([]),
-                fc.array(arb, { minLength: 1, maxLength: 2 })
-              )
-            } else if (constraints && constraints._tag === "ArrayConstraints") {
-              out = fc.array(arb, constraints.constraints)
-            }
-            return out.map((rest) => [...as, ...rest])
+            return (ctx.depthIdentifier !== undefined
+              ? getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, constraints)
+              : fc.array(item, constraints)).map((rest) => [...as, ...rest])
           })
           // ---------------------------------------------
           // handle post rest elements
@@ -241,9 +272,9 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
       }
     }
     case "TypeLiteral": {
-      const propertySignaturesTypes = ast.propertySignatures.map((ps) => go(ps.type, options, path.concat(ps.name)))
+      const propertySignaturesTypes = ast.propertySignatures.map((ps) => go(ps.type, ctx, path.concat(ps.name)))
       const indexSignatures = ast.indexSignatures.map((is) =>
-        [go(is.parameter, options, path), go(is.type, options, path)] as const
+        [go(is.parameter, ctx, path), go(is.type, ctx, path)] as const
       )
       return (fc) => {
         const arbs: any = {}
@@ -264,10 +295,14 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
         // handle index signatures
         // ---------------------------------------------
         for (let i = 0; i < indexSignatures.length; i++) {
-          const parameter = indexSignatures[i][0](fc)
-          const type = indexSignatures[i][1](fc)
+          const key = indexSignatures[i][0](fc)
+          const value = indexSignatures[i][1](fc)
           output = output.chain((o) => {
-            return record(fc, parameter, type, options).map((d) => ({ ...d, ...o }))
+            const item = fc.tuple(key, value)
+            const arr = ctx.depthIdentifier !== undefined ?
+              getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item) :
+              fc.array(item)
+            return arr.map((tuples) => ({ ...Object.fromEntries(tuples), ...o }))
           })
         }
 
@@ -275,8 +310,8 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
       }
     }
     case "Union": {
-      const types = ast.types.map((t) => go(t, options, path))
-      return (fc) => fc.oneof({ depthSize }, ...types.map((arb) => arb(fc)))
+      const types = ast.types.map((member) => go(member, ctx, path))
+      return (fc) => fc.oneof(...types.map((arb) => arb(fc)))
     }
     case "Enums": {
       if (ast.enums.length === 0) {
@@ -285,15 +320,17 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
       return (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
     }
     case "Refinement": {
-      const from = getRefinementFromArbitrary(ast, options, path)
+      const from = getRefinementFromArbitrary(ast, ctx, path)
       return (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, AST.defaultParseOption, ast)))
     }
     case "Suspend": {
-      const get = util_.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }, path))
+      const get = util_.memoizeThunk(() => {
+        return go(ast.f(), getSuspendedContext(ctx, ast), path)
+      })
       return (fc) => fc.constant(null).chain(() => get()(fc))
     }
     case "Transformation":
-      return go(ast.to, options, path)
+      return go(ast.to, ctx, path)
   }
 }
 

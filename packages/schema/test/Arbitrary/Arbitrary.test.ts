@@ -1,11 +1,12 @@
 import * as Arbitrary from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
 import { expectValidArbitrary } from "@effect/schema/test/TestUtils"
+import * as Order from "effect/Order"
 import { isUnknown } from "effect/Predicate"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-describe("Arbitrary > Arbitrary", () => {
+describe("Arbitrary", () => {
   it("should throw on declarations without annotations", () => {
     const schema = S.declare(isUnknown)
     expect(() => Arbitrary.makeLazy(schema)).toThrow(
@@ -261,18 +262,6 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       expectValidArbitrary(schema)
     })
 
-    it("struct", () => {
-      interface A {
-        readonly a: string
-        readonly as: ReadonlyArray<A>
-      }
-      const schema = S.Struct({
-        a: S.String,
-        as: S.Array(S.suspend((): S.Schema<A> => schema))
-      })
-      expectValidArbitrary(schema)
-    })
-
     it("make(S.encodedSchema(schema))", () => {
       const NumberFromString = S.NumberFromString
       interface I {
@@ -288,16 +277,34 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       expectValidArbitrary(S.encodedSchema(schema))
     })
 
-    it("tuple", () => {
+    it("Tuple", () => {
       type A = readonly [number, A | null]
       const schema = S.Tuple(
         S.Number,
-        S.Union(S.Literal(null), S.suspend((): S.Schema<A> => schema))
+        S.NullOr(S.suspend((): S.Schema<A> => schema))
       )
       expectValidArbitrary(schema)
     })
 
-    it("record", () => {
+    it("Array", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.Array(S.Union(S.String, Rec))
+      expectValidArbitrary(schema)
+    })
+
+    it("Struct", () => {
+      interface A {
+        readonly a: string
+        readonly as: ReadonlyArray<A>
+      }
+      const schema = S.Struct({
+        a: S.String,
+        as: S.Array(S.suspend((): S.Schema<A> => schema))
+      })
+      expectValidArbitrary(schema)
+    })
+
+    it("Record", () => {
       type A = {
         [_: string]: A
       }
@@ -305,7 +312,33 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       expectValidArbitrary(schema)
     })
 
-    it("should support mutually suspended schemas", () => {
+    it("optional", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.Struct({
+        a: S.optional(Rec)
+      })
+      expectValidArbitrary(schema)
+    })
+
+    it("Array + Array", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.Struct({
+        a: S.Array(Rec),
+        b: S.Array(Rec)
+      })
+      expectValidArbitrary(schema)
+    })
+
+    it("optional + Array", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.Struct({
+        a: S.optional(Rec),
+        b: S.Array(Rec)
+      })
+      expectValidArbitrary(schema)
+    })
+
+    it("mutually suspended schemas", () => {
       interface Expression {
         readonly type: "expression"
         readonly value: number | Operation
@@ -330,6 +363,66 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         right: Expression
       })
       expectValidArbitrary(Operation, { numRuns: 5 })
+    })
+
+    it("RedactedFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.RedactedFromSelf(S.NullOr(Rec))
+      expectValidArbitrary(schema)
+    })
+
+    it("OptionFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.OptionFromSelf(Rec)
+      expectValidArbitrary(schema)
+    })
+
+    it("EitherFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.EitherFromSelf({ left: S.String, right: Rec })
+      expectValidArbitrary(schema)
+    })
+
+    it("MapFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.MapFromSelf({ key: S.String, value: Rec })
+      expectValidArbitrary(schema)
+    })
+
+    it("SetFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.SetFromSelf(Rec)
+      expectValidArbitrary(schema)
+    })
+
+    it("ChunkFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.ChunkFromSelf(Rec)
+      expectValidArbitrary(schema)
+    })
+
+    it("HashSetFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.HashSetFromSelf(Rec)
+      expectValidArbitrary(schema)
+    })
+
+    it("HashMapFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.HashMapFromSelf({ key: S.String, value: Rec })
+      expectValidArbitrary(schema)
+    })
+
+    it("ListFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.ListFromSelf(Rec)
+      expectValidArbitrary(schema)
+    })
+
+    it("SortedSetFromSelf", () => {
+      const Rec = S.suspend((): any => schema)
+      const schema: any = S.SortedSetFromSelf(Rec, Order.empty(), Order.empty())
+      expectValidArbitrary(schema)
     })
   })
 
