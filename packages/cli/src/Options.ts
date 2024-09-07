@@ -18,6 +18,7 @@ import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalOptions from "./internal/options.js"
 import type { Primitive } from "./Primitive.js"
+import type { Prompt } from "./Prompt.js"
 import type { Usage } from "./Usage.js"
 import type { ValidationError } from "./ValidationError.js"
 
@@ -521,6 +522,15 @@ export const withFallbackConfig: {
   <B>(config: Config<B>): <A>(self: Options<A>) => Options<B | A>
   <A, B>(self: Options<A>, config: Config<B>): Options<A | B>
 } = InternalOptions.withFallbackConfig
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withFallbackPrompt: {
+  <B>(prompt: Prompt<B>): <A>(self: Options<A>) => Options<B | A>
+  <A, B>(self: Options<A>, prompt: Prompt<B>): Options<A | B>
+} = InternalOptions.withFallbackPrompt
 
 /**
  * @since 1.0.0
