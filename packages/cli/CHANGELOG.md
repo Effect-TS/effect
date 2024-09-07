@@ -1,5 +1,13 @@
 # @effect/cli
 
+## 0.43.2
+
+### Patch Changes
+
+- [#3569](https://github.com/Effect-TS/effect/pull/3569) [`06989e9`](https://github.com/Effect-TS/effect/commit/06989e9969ef78132c4c2dde3ac4892ff60fdb4c) Thanks @IMax153! - Ensure `QuitException` terminates command-line processing.
+
+  A `QuitException` raised by a `Prompt` that is executing as a fallback for a CLI option will terminate processing of the command line.
+
 ## 0.43.1
 
 ### Patch Changes
