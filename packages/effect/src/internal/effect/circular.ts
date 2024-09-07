@@ -102,21 +102,22 @@ export const unsafeMakeSemaphore = (permits: number): Semaphore => new Semaphore
 export const makeSemaphore = (permits: number) => core.sync(() => unsafeMakeSemaphore(permits))
 
 class Latch implements Effect.Latch {
-  waiters: Array<() => void> = []
+  waiters: Array<(_: Effect.Effect<void>) => void> = []
   constructor(private isOpen: boolean) {}
 
   private unsafeSchedule(fiber: Fiber.RuntimeFiber<void>) {
     if (this.waiters.length === 0) {
       return core.void
     }
-    fiber.currentScheduler.scheduleTask(() => {
-      const waiters = this.waiters
-      this.waiters = []
-      for (let i = 0; i < waiters.length; i++) {
-        waiters[i]()
-      }
-    }, fiber.getFiberRef(core.currentSchedulingPriority))
+    fiber.currentScheduler.scheduleTask(this.flushWaiters, fiber.getFiberRef(core.currentSchedulingPriority))
     return core.void
+  }
+  private flushWaiters = () => {
+    const waiters = this.waiters
+    this.waiters = []
+    for (let i = 0; i < waiters.length; i++) {
+      waiters[i](core.exitVoid)
+    }
   }
 
   open = core.withFiberRuntime<void>((fiber) => {
@@ -136,12 +137,9 @@ class Latch implements Effect.Latch {
     if (this.isOpen) {
       return resume(core.void)
     }
-    function onRelease() {
-      resume(core.void)
-    }
-    this.waiters.push(onRelease)
+    this.waiters.push(resume)
     return core.sync(() => {
-      const index = this.waiters.indexOf(onRelease)
+      const index = this.waiters.indexOf(resume)
       if (index !== -1) {
         this.waiters.splice(index, 1)
       }
