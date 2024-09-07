@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.72.3
+
+### Patch Changes
+
+- [#3560](https://github.com/Effect-TS/effect/pull/3560) [`f6acb71`](https://github.com/Effect-TS/effect/commit/f6acb71b17a0e6b0d449e7f661c9e2c3d335fcac) Thanks @gcanti! - Enhanced the generation of recursive Arbitraries to prevent infinite nesting, closes #3512
+
 ## 0.72.2
 
 ### Patch Changes
