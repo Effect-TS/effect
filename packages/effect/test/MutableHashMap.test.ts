@@ -174,6 +174,19 @@ describe("MutableHashMap", () => {
     )
   })
 
+  it("keys", () => {
+    const map = pipe(
+      HM.empty<Key, Value>(),
+      HM.set(key(0, 0), value(0, 0)),
+      HM.set(key(1, 1), value(1, 1))
+    )
+
+    expect(HM.keys(map)).toStrictEqual([
+      key(0, 0),
+      key(1, 1)
+    ])
+  })
+
   it("modifyAt", () => {
     const map = pipe(
       HM.empty<Key, Value>(),
