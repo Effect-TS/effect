@@ -1,5 +1,27 @@
 # @effect/cli
 
+## 0.43.1
+
+### Patch Changes
+
+- [#3561](https://github.com/Effect-TS/effect/pull/3561) [`2df49c4`](https://github.com/Effect-TS/effect/commit/2df49c44ee9c2504eb96507ce5dfb1fa57b33b18) Thanks @IMax153! - Add `Options.withFallbackPrompt` to CLI
+
+  You can now specify that a command-line option should fallback to prompting the
+  user for a value if no value is specified.
+
+  ```ts
+  import * as Options from "@effect/cli/Options"
+  import * as Prompt from "@effect/cli/Prompt"
+
+  const name = Options.text("name").pipe(
+    Options.withFallbackPrompt(
+      Prompt.text({
+        message: "Please provide your name"
+      })
+    )
+  )
+  ```
+
 ## 0.43.0
 
 ### Patch Changes
