@@ -112,6 +112,66 @@ export const unsafeMakeSemaphore = (permits: number): Semaphore => new Semaphore
 /** @internal */
 export const makeSemaphore = (permits: number) => core.sync(() => unsafeMakeSemaphore(permits))
 
+class Latch implements Effect.Latch {
+  waiters: Array<() => void> = []
+  constructor(private isOpen: boolean) {}
+
+  private unsafeSchedule(fiber: Fiber.RuntimeFiber<void>) {
+    if (this.waiters.length === 0) {
+      return core.void
+    }
+    fiber.currentScheduler.scheduleTask(() => {
+      const waiters = this.waiters
+      this.waiters = []
+      for (let i = 0; i < waiters.length; i++) {
+        waiters[i]()
+      }
+    }, fiber.getFiberRef(core.currentSchedulingPriority))
+    return core.void
+  }
+
+  open = core.withFiberRuntime<void>((fiber) => {
+    if (this.isOpen) {
+      return core.void
+    }
+    this.isOpen = true
+    return this.unsafeSchedule(fiber)
+  })
+  release = core.withFiberRuntime<void>((fiber) => {
+    if (this.isOpen) {
+      return core.void
+    }
+    return this.unsafeSchedule(fiber)
+  })
+  await = core.unsafeAsync<void>((resume) => {
+    if (this.isOpen) {
+      return resume(core.void)
+    }
+    function onRelease() {
+      resume(core.void)
+    }
+    this.waiters.push(onRelease)
+    return core.sync(() => {
+      const index = this.waiters.indexOf(onRelease)
+      if (index !== -1) {
+        this.waiters.splice(index, 1)
+      }
+    })
+  })
+  close = core.sync(() => {
+    this.isOpen = false
+  })
+  with<A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
+    return core.zipRight(this.await, self)
+  }
+}
+
+/** @internal */
+export const unsafeMakeLatch = (open: boolean): Effect.Latch => new Latch(open)
+
+/** @internal */
+export const makeLatch = (open: boolean) => core.sync(() => unsafeMakeLatch(open))
+
 /** @internal */
 export const awaitAllChildren = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   ensuringChildren(self, fiberRuntime.fiberAwaitAll)
