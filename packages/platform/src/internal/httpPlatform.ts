@@ -1,12 +1,14 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import { identity, pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Stream from "effect/Stream"
 import * as Etag from "../Etag.js"
 import * as FileSystem from "../FileSystem.js"
 import * as Headers from "../Headers.js"
 import type * as Body from "../HttpBody.js"
 import type * as Platform from "../HttpPlatform.js"
-import type * as ServerResponse from "../HttpServerResponse.js"
+import * as ServerResponse from "../HttpServerResponse.js"
 
 /** @internal */
 export const TypeId: Platform.TypeId = Symbol.for("@effect/platform/HttpPlatform") as Platform.TypeId
@@ -33,9 +35,9 @@ export const make = (impl: {
     options?: FileSystem.StreamOptions
   ) => ServerResponse.HttpServerResponse
 }): Effect.Effect<Platform.HttpPlatform, never, FileSystem.FileSystem | Etag.Generator> =>
-  Effect.gen(function*(_) {
-    const fs = yield* _(FileSystem.FileSystem)
-    const etagGen = yield* _(Etag.Generator)
+  Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const etagGen = yield* Etag.Generator
 
     return tag.of({
       [TypeId]: TypeId,
@@ -83,3 +85,28 @@ export const make = (impl: {
       }
     })
   })
+
+/** @internal */
+export const layer = Layer.effect(
+  tag,
+  Effect.flatMap(FileSystem.FileSystem, (fs) =>
+    make({
+      fileResponse(path, status, statusText, headers, start, end, contentLength) {
+        return ServerResponse.stream(
+          fs.stream(path, {
+            offset: start,
+            bytesToRead: end !== undefined ? end - start : undefined
+          }),
+          { contentLength, headers, status, statusText }
+        )
+      },
+      fileWebResponse(file, status, statusText, headers, _options) {
+        return ServerResponse.stream(
+          Stream.fromReadableStream(() => file.stream() as ReadableStream<Uint8Array>, identity),
+          { headers, status, statusText }
+        )
+      }
+    }))
+).pipe(
+  Layer.provide(Etag.layerWeak)
+)

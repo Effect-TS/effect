@@ -1,6 +1,6 @@
-import * as Etag from "@effect/platform-node-shared/NodeEtag"
 import * as MultipartNode from "@effect/platform-node-shared/NodeMultipart"
 import * as Cookies from "@effect/platform/Cookies"
+import * as Etag from "@effect/platform/Etag"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Headers from "@effect/platform/Headers"
 import * as App from "@effect/platform/HttpApp"

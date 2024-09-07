@@ -11,11 +11,6 @@ export * as BunContext from "./BunContext.js"
 /**
  * @since 1.0.0
  */
-export * as BunEtag from "./BunEtag.js"
-
-/**
- * @since 1.0.0
- */
 export * as BunFileSystem from "./BunFileSystem.js"
 
 /**

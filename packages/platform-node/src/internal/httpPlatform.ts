@@ -1,4 +1,4 @@
-import * as EtagImpl from "@effect/platform-node-shared/NodeEtag"
+import * as EtagImpl from "@effect/platform/Etag"
 import * as Headers from "@effect/platform/Headers"
 import * as Platform from "@effect/platform/HttpPlatform"
 import * as ServerResponse from "@effect/platform/HttpServerResponse"
