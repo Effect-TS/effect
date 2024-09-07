@@ -124,4 +124,17 @@ describe("RcMap", () => {
       // no failure means a hit
       assert.strictEqual(yield* RcMap.get(map, new Key({ id: 1 })), 1)
     }))
+
+  it.scoped("keys lookup", () =>
+    Effect.gen(function*() {
+      const map = yield* RcMap.make({
+        lookup: (key: string) => Effect.succeed(key)
+      })
+
+      yield* RcMap.get(map, "foo")
+      yield* RcMap.get(map, "bar")
+      yield* RcMap.get(map, "baz")
+
+      assert.deepStrictEqual(yield* RcMap.keys(map), ["foo", "bar", "baz"])
+    }))
 })
