@@ -112,12 +112,12 @@ export const httpApp: Effect.Effect<
  * @since 1.0.0
  * @category constructors
  * @example
- * import type { HttpApi } from "@effect/platform"
+ * import { HttpApi } from "@effect/platform"
  * import { Etag, HttpApiBuilder, HttpMiddleware, HttpPlatform } from "@effect/platform"
  * import { NodeContext } from "@effect/platform-node"
  * import { Layer, ManagedRuntime } from "effect"
  *
- * declare const ApiLive: Layer.Layer<HttpApi.HttpApi.Service>
+ * const ApiLive = HttpApiBuilder.api(HttpApi.empty)
  *
  * const runtime = ManagedRuntime.make(
  *   Layer.mergeAll(

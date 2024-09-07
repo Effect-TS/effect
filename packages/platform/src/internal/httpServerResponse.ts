@@ -1,5 +1,6 @@
 import type { ParseOptions } from "@effect/schema/AST"
 import type * as Schema from "@effect/schema/Schema"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
@@ -11,7 +12,7 @@ import type * as PlatformError from "../Error.js"
 import type * as FileSystem from "../FileSystem.js"
 import * as Headers from "../Headers.js"
 import type * as Body from "../HttpBody.js"
-import * as Platform from "../HttpPlatform.js"
+import type * as Platform from "../HttpPlatform.js"
 import type * as Respondable from "../HttpServerRespondable.js"
 import type * as ServerResponse from "../HttpServerResponse.js"
 import * as Template from "../Template.js"
@@ -214,13 +215,15 @@ export const schemaJson = <A, I, R>(
       ))
 }
 
+const httpPlatform = Context.GenericTag<Platform.HttpPlatform>("@effect/platform/HttpPlatform")
+
 /** @internal */
 export const file = (
   path: string,
   options?: (ServerResponse.Options & FileSystem.StreamOptions) | undefined
 ): Effect.Effect<ServerResponse.HttpServerResponse, PlatformError.PlatformError, Platform.HttpPlatform> =>
   Effect.flatMap(
-    Platform.HttpPlatform,
+    httpPlatform,
     (platform) => platform.fileResponse(path, options)
   )
 
@@ -230,7 +233,7 @@ export const fileWeb = (
   options?: (ServerResponse.Options.WithContent & FileSystem.StreamOptions) | undefined
 ): Effect.Effect<ServerResponse.HttpServerResponse, never, Platform.HttpPlatform> =>
   Effect.flatMap(
-    Platform.HttpPlatform,
+    httpPlatform,
     (platform) => platform.fileWebResponse(file, options)
   )
 
