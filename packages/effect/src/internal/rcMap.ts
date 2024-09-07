@@ -215,5 +215,7 @@ export const get: {
 /** @internal */
 export const keys = <K, A, E>(self: RcMap.RcMap<K, A, E>): Effect<Array<K>> => {
   const impl = self as RcMapImpl<K, A, E>
-  return core.suspend(() => impl.state._tag === "Closed" ? core.interrupt : core.succeed(MutableHashMap.keys(impl.state.map)))
+  return core.suspend(() =>
+    impl.state._tag === "Closed" ? core.interrupt : core.succeed(MutableHashMap.keys(impl.state.map))
+  )
 }
