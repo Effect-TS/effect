@@ -1,7 +1,7 @@
 /// <reference types="bun-types" />
-import * as Etag from "@effect/platform-node-shared/NodeEtag"
 import * as MultipartNode from "@effect/platform-node-shared/NodeMultipart"
 import * as Cookies from "@effect/platform/Cookies"
+import * as Etag from "@effect/platform/Etag"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as Headers from "@effect/platform/Headers"
 import * as App from "@effect/platform/HttpApp"

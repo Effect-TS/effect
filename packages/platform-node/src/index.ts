@@ -11,11 +11,6 @@ export * as NodeContext from "./NodeContext.js"
 /**
  * @since 1.0.0
  */
-export * as NodeEtag from "./NodeEtag.js"
-
-/**
- * @since 1.0.0
- */
 export * as NodeFileSystem from "./NodeFileSystem.js"
 
 /**

@@ -1,5 +1,5 @@
-import * as Etag from "@effect/platform-node-shared/NodeEtag"
 import * as FileSystem from "@effect/platform-node-shared/NodeFileSystem"
+import * as Etag from "@effect/platform/Etag"
 import * as Platform from "@effect/platform/HttpPlatform"
 import * as ServerResponse from "@effect/platform/HttpServerResponse"
 import * as Layer from "effect/Layer"

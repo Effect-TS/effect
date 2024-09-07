@@ -287,9 +287,7 @@ const makeFromQueue = <IE>(
           if (chunk === null) {
             parser.end()
           } else {
-            Chunk.forEach(chunk, function(buf) {
-              parser.write(buf)
-            })
+            Chunk.forEach(chunk, parser.write)
           }
         })
     )
