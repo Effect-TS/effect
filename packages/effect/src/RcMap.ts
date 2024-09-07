@@ -101,3 +101,9 @@ export const get: {
   <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<A, E, Scope.Scope>
   <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<A, E, Scope.Scope>
 } = internal.get
+
+/**
+ * @since 3.8.0
+ * @category combinators
+ */
+export const keys: <K, A, E>(self: RcMap<K, A, E>) => Effect.Effect<Array<K>, E> = internal.keys
