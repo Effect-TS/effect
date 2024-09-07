@@ -12,6 +12,7 @@ import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
+import type { ManagedRuntime } from "effect/ManagedRuntime"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type { ReadonlyRecord } from "effect/Record"
@@ -85,9 +86,9 @@ export const serve: {
  * @category constructors
  */
 export const httpApp: Effect.Effect<
-  HttpApp.Default,
+  HttpApp.Default<never, HttpRouter.HttpRouter.DefaultServices>,
   never,
-  Router | HttpApi.HttpApi.Service | HttpRouter.HttpRouter.DefaultServices
+  Router | HttpApi.HttpApi.Service
 > = Effect.gen(function*() {
   const api = yield* HttpApi.HttpApi
   const router = yield* Router.router
@@ -104,6 +105,49 @@ export const httpApp: Effect.Effect<
     )
   )
 })
+
+/**
+ * Construct an http web handler from an `HttpApi` instance.
+ *
+ * @since 1.0.0
+ * @category constructors
+ * @example
+ * import type { HttpApi } from "@effect/platform"
+ * import { Etag, HttpApiBuilder, HttpMiddleware, HttpPlatform } from "@effect/platform"
+ * import { NodeContext } from "@effect/platform-node"
+ * import { Layer, ManagedRuntime } from "effect"
+ *
+ * declare const ApiLive: Layer.Layer<HttpApi.HttpApi.Service>
+ *
+ * const runtime = ManagedRuntime.make(
+ *   Layer.mergeAll(
+ *     ApiLive,
+ *     HttpApiBuilder.Router.Live,
+ *     HttpPlatform.layer,
+ *     Etag.layerWeak
+ *   ).pipe(
+ *     Layer.provideMerge(NodeContext.layer)
+ *   )
+ * )
+ *
+ * const handler = HttpApiBuilder.toWebHandler(runtime, HttpMiddleware.logger)
+ */
+export const toWebHandler = <R, ER>(
+  runtime: ManagedRuntime<R | HttpApi.HttpApi.Service | Router | HttpRouter.HttpRouter.DefaultServices, ER>,
+  middleware?: (
+    httpApp: HttpApp.Default
+  ) => HttpApp.Default<never, R | HttpApi.HttpApi.Service | Router | HttpRouter.HttpRouter.DefaultServices>
+): (request: Request) => Promise<Response> => {
+  const handlerPromise = httpApp.pipe(
+    Effect.bindTo("httpApp"),
+    Effect.bind("runtime", () => runtime.runtimeEffect),
+    Effect.map(({ httpApp, runtime }) =>
+      HttpApp.toWebHandlerRuntime(runtime)(middleware ? middleware(httpApp as any) : httpApp)
+    ),
+    runtime.runPromise
+  )
+  return (request) => handlerPromise.then((handler) => handler(request))
+}
 
 /**
  * Build a root level `Layer` from an `HttpApi` instance.

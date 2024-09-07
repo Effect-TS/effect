@@ -3,6 +3,7 @@
  */
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { Layer } from "effect/Layer"
 import type * as FileSystem from "./FileSystem.js"
 import type * as Body from "./HttpBody.js"
 import * as internal from "./internal/etag.js"
@@ -64,3 +65,15 @@ export interface Generator {
  * @category tags
  */
 export const Generator: Context.Tag<Generator, Generator> = internal.tag
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layer: Layer<Generator> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerWeak: Layer<Generator> = internal.layerWeak

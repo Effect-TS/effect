@@ -3,6 +3,7 @@
  */
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { Layer } from "effect/Layer"
 import type * as Error from "./Error.js"
 import type * as Etag from "./Etag.js"
 import type * as FileSystem from "./FileSystem.js"
@@ -69,3 +70,9 @@ export const make: (
     ) => ServerResponse.HttpServerResponse
   }
 ) => Effect.Effect<HttpPlatform, never, FileSystem.FileSystem | Etag.Generator> = internal.make
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layer: Layer<HttpPlatform, never, FileSystem.FileSystem> = internal.layer
