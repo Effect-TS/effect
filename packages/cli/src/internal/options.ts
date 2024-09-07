@@ -13,6 +13,7 @@ import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import { pipeArguments } from "effect/Pipeable"
+import * as Predicate from "effect/Predicate"
 import type * as Redacted from "effect/Redacted"
 import * as Ref from "effect/Ref"
 import type * as Secret from "effect/Secret"
@@ -1347,7 +1348,12 @@ const parseInternal = (
       return parseInternal(self.options as Instruction, args, config).pipe(
         Effect.catchTag(
           "MissingValue",
-          (e) => Effect.mapError(self.effect, () => e)
+          (e) =>
+            self.effect.pipe(Effect.catchAll((e2) =>
+              Predicate.isTagged(e2, "QuitException")
+                ? Effect.die(e2)
+                : Effect.fail(e)
+            ))
         )
       )
     }
