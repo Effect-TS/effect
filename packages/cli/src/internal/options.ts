@@ -4,7 +4,7 @@ import type * as Terminal from "@effect/platform/Terminal"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Arr from "effect/Array"
-import type * as Config from "effect/Config"
+import * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -20,6 +20,7 @@ import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Options from "../Options.js"
 import type * as Primitive from "../Primitive.js"
+import type * as Prompt from "../Prompt.js"
 import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalAutoCorrect from "./autoCorrect.js"
@@ -28,6 +29,7 @@ import * as InternalFiles from "./files.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
+import * as InternalPrompt from "./prompt.js"
 import * as InternalListPrompt from "./prompt/list.js"
 import * as InternalNumberPrompt from "./prompt/number.js"
 import * as InternalSelectPrompt from "./prompt/select.js"
@@ -63,7 +65,7 @@ export type Instruction =
   | Map
   | Both
   | OrElse
-  | WithFallbackConfig
+  | WithFallback
   | Variadic
   | WithDefault
 
@@ -122,10 +124,14 @@ export interface OrElse extends
 {}
 
 /** @internal */
-export interface WithFallbackConfig extends
-  Op<"WithFallbackConfig", {
+export interface WithFallback extends
+  Op<"WithFallback", {
     readonly options: Options.Options<unknown>
-    readonly config: Config.Config<unknown>
+    readonly effect: Effect.Effect<
+      unknown,
+      unknown,
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal
+    >
   }>
 {}
 
@@ -179,8 +185,7 @@ export const isOrElse = (self: Instruction): self is OrElse => self._tag === "Or
 export const isWithDefault = (self: Instruction): self is WithDefault => self._tag === "WithDefault"
 
 /** @internal */
-export const isWithFallbackConfig = (self: Instruction): self is WithFallbackConfig =>
-  self._tag === "WithFallbackConfig"
+export const isWithFallback = (self: Instruction): self is WithFallback => self._tag === "WithFallback"
 
 // =============================================================================
 // Constructors
@@ -605,7 +610,24 @@ export const withFallbackConfig: {
       self.fallback as any
     )
   }
-  return makeWithFallbackConfig(self, config)
+  return makeWithFallback(self, config)
+})
+
+/** @internal */
+export const withFallbackPrompt: {
+  <B>(prompt: Prompt.Prompt<B>): <A>(self: Options.Options<A>) => Options.Options<B | A>
+  <A, B>(self: Options.Options<A>, prompt: Prompt.Prompt<B>): Options.Options<A | B>
+} = dual<
+  <B>(prompt: Prompt.Prompt<B>) => <A>(self: Options.Options<A>) => Options.Options<A | B>,
+  <A, B>(self: Options.Options<A>, prompt: Prompt.Prompt<B>) => Options.Options<A | B>
+>(2, (self, prompt) => {
+  if (isInstruction(self) && isWithDefault(self)) {
+    return makeWithDefault(
+      withFallbackPrompt(self.options, prompt),
+      self.fallback as any
+    )
+  }
+  return makeWithFallback(self, prompt)
 })
 
 /** @internal */
@@ -773,18 +795,15 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
         }
       )
     }
-    case "WithFallbackConfig": {
+    case "WithFallback": {
+      const helpDoc: HelpDoc.HelpDoc = Config.isConfig(self.effect)
+        ? InternalHelpDoc.p("This option can be set from environment variables.")
+        : InternalPrompt.isPrompt(self.effect)
+        ? InternalHelpDoc.p("Will prompt the user for input if this option is not provided.")
+        : InternalHelpDoc.empty
       return InternalHelpDoc.mapDescriptionList(
         getHelpInternal(self.options as Instruction),
-        (span, block) => [
-          span,
-          InternalHelpDoc.sequence(
-            block,
-            InternalHelpDoc.p(
-              "This option can be set from environment variables."
-            )
-          )
-        ]
+        (span, block) => [span, InternalHelpDoc.sequence(block, helpDoc)]
       )
     }
   }
@@ -814,7 +833,7 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
       return getIdentifierInternal(self.argumentOption as Instruction)
     }
     case "Map":
-    case "WithFallbackConfig":
+    case "WithFallback":
     case "WithDefault": {
       return getIdentifierInternal(self.options as Instruction)
     }
@@ -825,7 +844,7 @@ const getMinSizeInternal = (self: Instruction): number => {
   switch (self._tag) {
     case "Empty":
     case "WithDefault":
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       return 0
     }
     case "Single":
@@ -866,7 +885,7 @@ const getMaxSizeInternal = (self: Instruction): number => {
     }
     case "Map":
     case "WithDefault":
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       return getMaxSizeInternal(self.options as Instruction)
     }
     case "Both": {
@@ -923,7 +942,7 @@ const getUsageInternal = (self: Instruction): Usage.Usage => {
       return InternalUsage.repeated(getUsageInternal(self.argumentOption as Instruction))
     }
     case "WithDefault":
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       return InternalUsage.optional(getUsageInternal(self.options as Instruction))
     }
   }
@@ -1036,14 +1055,14 @@ const makeWithDefault = <A, const B>(
   return op
 }
 
-const makeWithFallbackConfig = <A, B>(
+const makeWithFallback = <A, B>(
   options: Options.Options<A>,
-  config: Config.Config<B>
+  effect: Effect.Effect<B, unknown, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
 ): Options.Options<A | B> => {
   const op = Object.create(proto)
-  op._tag = "WithFallbackConfig"
+  op._tag = "WithFallback"
   op.options = options
-  op.config = config
+  op.effect = effect
   return op
 }
 
@@ -1079,8 +1098,11 @@ const modifySingle = (self: Instruction, f: (single: Single) => Single): Options
     case "WithDefault": {
       return makeWithDefault(modifySingle(self.options as Instruction, f), self.fallback)
     }
-    case "WithFallbackConfig": {
-      return makeWithFallbackConfig(modifySingle(self.options as Instruction, f), self.config)
+    case "WithFallback": {
+      return makeWithFallback(
+        modifySingle(self.options as Instruction, f),
+        self.effect
+      )
     }
   }
 }
@@ -1101,7 +1123,7 @@ export const getNames = (self: Instruction): Array<string> => {
       }
       case "Map":
       case "WithDefault":
-      case "WithFallbackConfig": {
+      case "WithFallback": {
         return loop(self.options as Instruction)
       }
       case "Both":
@@ -1136,7 +1158,7 @@ const toParseableInstruction = (self: Instruction): Array<ParseableInstruction> 
     }
     case "Map":
     case "WithDefault":
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       return toParseableInstruction(self.options as Instruction)
     }
     case "Both":
@@ -1321,11 +1343,11 @@ const parseInternal = (
         Effect.catchTag("MissingValue", () => Effect.succeed(self.fallback))
       )
     }
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       return parseInternal(self.options as Instruction, args, config).pipe(
         Effect.catchTag(
           "MissingValue",
-          (e) => Effect.mapError(self.config, () => e)
+          (e) => Effect.mapError(self.effect, () => e)
         )
       )
     }
@@ -1462,8 +1484,12 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         )
       )
     }
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       if (isBoolInternal(self.options as Instruction)) {
+        return wizardInternal(self.options as Instruction, config)
+      }
+      // TODO: should we use the prompt directly here?
+      if (InternalPrompt.isPrompt(self.effect)) {
         return wizardInternal(self.options as Instruction, config)
       }
       const defaultHelp = InternalHelpDoc.p(`Try load this option from the environment?`)
@@ -1917,7 +1943,7 @@ const getShortDescription = (self: Instruction): string => {
     }
     case "Map":
     case "WithDefault":
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       return getShortDescription(self.options as Instruction)
     }
   }
@@ -1948,7 +1974,7 @@ export const getBashCompletions = (self: Instruction): ReadonlyArray<string> => 
     }
     case "Map":
     case "WithDefault":
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       return getBashCompletions(self.options as Instruction)
     }
     case "Both":
@@ -1992,7 +2018,7 @@ export const getFishCompletions = (self: Instruction): Array<string> => {
     }
     case "Map":
     case "WithDefault":
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       return getFishCompletions(self.options as Instruction)
     }
     case "Both":
@@ -2039,7 +2065,7 @@ export const getZshCompletions = (
     }
     case "Map":
     case "WithDefault":
-    case "WithFallbackConfig": {
+    case "WithFallback": {
       return getZshCompletions(self.options as Instruction, state)
     }
     case "Both": {
