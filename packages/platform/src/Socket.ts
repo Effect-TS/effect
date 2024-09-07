@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -12,6 +11,7 @@ import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
+import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
@@ -31,6 +31,12 @@ export const TypeId: unique symbol = Symbol.for("@effect/platform/Socket")
  * @category type ids
  */
 export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
+ * @category guards
+ */
+export const isSocket = (u: unknown): u is Socket => Predicate.hasProperty(u, TypeId)
 
 /**
  * @since 1.0.0
@@ -171,6 +177,83 @@ export class SocketCloseError extends TypeIdError(SocketErrorTypeId, "SocketErro
  * @since 1.0.0
  * @category combinators
  */
+export const toChannelMap = <IE, A>(
+  self: Socket,
+  f: (data: Uint8Array | string) => A
+): Channel.Channel<
+  Chunk.Chunk<A>,
+  Chunk.Chunk<Uint8Array | string | CloseEvent>,
+  SocketError | IE,
+  IE,
+  void,
+  unknown
+> =>
+  Effect.scope.pipe(
+    Effect.bindTo("scope"),
+    Effect.let("state", () => ({ finished: false, buffer: [] as Array<A> })),
+    Effect.bind("semaphore", () => Effect.makeSemaphore(0)),
+    Effect.bind("writeScope", ({ scope }) => Scope.fork(scope, ExecutionStrategy.sequential)),
+    Effect.bind("write", ({ writeScope }) => Scope.extend(self.writer, writeScope)),
+    Effect.bind("deferred", () => Deferred.make<void, SocketError | IE>()),
+    Effect.let(
+      "input",
+      (
+        { deferred, write, writeScope }
+      ): AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array | string | CloseEvent>, unknown> => ({
+        awaitRead: () => Effect.void,
+        emit(chunk) {
+          return Effect.catchAllCause(
+            Effect.forEach(chunk, write, { discard: true }),
+            (cause) => Deferred.failCause(deferred, cause)
+          )
+        },
+        error(error) {
+          return Effect.zipRight(
+            Scope.close(writeScope, Exit.void),
+            Deferred.failCause(deferred, error)
+          )
+        },
+        done() {
+          return Scope.close(writeScope, Exit.void)
+        }
+      })
+    ),
+    Effect.tap(({ deferred, scope, semaphore, state }) =>
+      self.runRaw((data) => {
+        state.buffer.push(f(data))
+        return semaphore.release(1)
+      }).pipe(
+        Effect.intoDeferred(deferred),
+        Effect.raceFirst(Deferred.await(deferred)),
+        Effect.ensuring(Effect.suspend(() => {
+          state.finished = true
+          return semaphore.release(1)
+        })),
+        Effect.forkIn(scope),
+        Effect.interruptible
+      )
+    ),
+    Effect.map(({ deferred, input, semaphore, state }) => {
+      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, SocketError | IE, unknown, void, unknown> = Channel.flatMap(
+        semaphore.take(1),
+        (_) => {
+          if (state.buffer.length === 0) {
+            return state.finished ? Deferred.await(deferred) : loop
+          }
+          const chunk = Chunk.unsafeFromArray(state.buffer)
+          state.buffer = []
+          return Channel.zipRight(Channel.write(chunk), state.finished ? Deferred.await(deferred) : loop)
+        }
+      )
+      return Channel.embedInput(loop, input)
+    }),
+    Channel.unwrapScoped
+  )
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const toChannel = <IE>(
   self: Socket
 ): Channel.Channel<
@@ -180,58 +263,49 @@ export const toChannel = <IE>(
   IE,
   void,
   unknown
-> =>
-  Effect.scope.pipe(
-    Effect.bindTo("scope"),
-    Effect.bind("writeScope", ({ scope }) => Scope.fork(scope, ExecutionStrategy.sequential)),
-    Effect.bind("write", ({ writeScope }) => Scope.extend(self.writer, writeScope)),
-    Effect.bind("exitQueue", (_) => Queue.unbounded<Exit.Exit<Chunk.Chunk<Uint8Array>, SocketError | IE>>()),
-    Effect.let(
-      "input",
-      (
-        { exitQueue, write, writeScope }
-      ): AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array | string | CloseEvent>, unknown> => ({
-        awaitRead: () => Effect.void,
-        emit(chunk) {
-          return Effect.catchAllCause(
-            Effect.forEach(chunk, write, { discard: true }),
-            (cause) => Queue.offer(exitQueue, Exit.failCause(cause))
-          )
-        },
-        error(error) {
-          return Effect.zipRight(
-            Scope.close(writeScope, Exit.void),
-            Queue.offer(exitQueue, Exit.failCause(error))
-          )
-        },
-        done() {
-          return Scope.close(writeScope, Exit.void)
-        }
-      })
-    ),
-    Effect.tap(({ exitQueue, scope }) =>
-      self.run((data) => Queue.offer(exitQueue, Exit.succeed(Chunk.of(data)))).pipe(
-        Effect.zipRight(Effect.failCause(Cause.empty)),
-        Effect.exit,
-        Effect.tap((exit) => Queue.offer(exitQueue, exit)),
-        Effect.forkIn(scope),
-        Effect.interruptible
-      )
-    ),
-    Effect.map(({ exitQueue, input }) => {
-      const loop: Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, SocketError | IE, unknown, void, unknown> = Channel
-        .flatMap(
-          Queue.take(exitQueue),
-          Exit.match({
-            onFailure: (cause) => Cause.isEmptyType(cause) ? Channel.void : Channel.failCause(cause),
-            onSuccess: (chunk) => Channel.zipRight(Channel.write(chunk), loop)
-          })
-        )
+> => {
+  const encoder = new TextEncoder()
+  return toChannelMap(self, (data) => typeof data === "string" ? encoder.encode(data) : data)
+}
 
-      return Channel.embedInput(loop, input)
-    }),
-    Channel.unwrapScoped
-  )
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const toChannelString: {
+  (encoding?: string | undefined): <IE>(self: Socket) => Channel.Channel<
+    Chunk.Chunk<string>,
+    Chunk.Chunk<Uint8Array | string | CloseEvent>,
+    SocketError | IE,
+    IE,
+    void,
+    unknown
+  >
+  <IE>(
+    self: Socket,
+    encoding?: string | undefined
+  ): Channel.Channel<
+    Chunk.Chunk<string>,
+    Chunk.Chunk<Uint8Array | string | CloseEvent>,
+    SocketError | IE,
+    IE,
+    void,
+    unknown
+  >
+} = dual((args) => isSocket(args[0]), <IE>(
+  self: Socket,
+  encoding?: string | undefined
+): Channel.Channel<
+  Chunk.Chunk<string>,
+  Chunk.Chunk<Uint8Array | string | CloseEvent>,
+  SocketError | IE,
+  IE,
+  void,
+  unknown
+> => {
+  const decoder = new TextDecoder(encoding)
+  return toChannelMap(self, (data) => typeof data === "string" ? data : decoder.decode(data))
+})
 
 /**
  * @since 1.0.0
