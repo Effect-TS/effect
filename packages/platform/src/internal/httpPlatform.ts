@@ -8,7 +8,8 @@ import * as FileSystem from "../FileSystem.js"
 import * as Headers from "../Headers.js"
 import type * as Body from "../HttpBody.js"
 import type * as Platform from "../HttpPlatform.js"
-import * as ServerResponse from "../HttpServerResponse.js"
+import type * as ServerResponse from "../HttpServerResponse.js"
+import * as serverResponse from "./httpServerResponse.js"
 
 /** @internal */
 export const TypeId: Platform.TypeId = Symbol.for("@effect/platform/HttpPlatform") as Platform.TypeId
@@ -92,7 +93,7 @@ export const layer = Layer.effect(
   Effect.flatMap(FileSystem.FileSystem, (fs) =>
     make({
       fileResponse(path, status, statusText, headers, start, end, contentLength) {
-        return ServerResponse.stream(
+        return serverResponse.stream(
           fs.stream(path, {
             offset: start,
             bytesToRead: end !== undefined ? end - start : undefined
@@ -101,7 +102,7 @@ export const layer = Layer.effect(
         )
       },
       fileWebResponse(file, status, statusText, headers, _options) {
-        return ServerResponse.stream(
+        return serverResponse.stream(
           Stream.fromReadableStream(() => file.stream() as ReadableStream<Uint8Array>, identity),
           { headers, status, statusText }
         )
