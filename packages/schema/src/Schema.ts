@@ -39,7 +39,7 @@ import * as sortedSet_ from "effect/SortedSet"
 import * as string_ from "effect/String"
 import * as struct_ from "effect/Struct"
 import type * as Types from "effect/Types"
-import type { LazyArbitrary } from "./Arbitrary.js"
+import type { GenerationContext, LazyArbitrary } from "./Arbitrary.js"
 import * as arbitrary_ from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
@@ -3881,7 +3881,10 @@ export declare namespace Annotations {
     readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
     readonly jsonSchema?: AST.JSONSchemaAnnotation
     readonly arbitrary?: (
-      ...arbitraries: { readonly [K in keyof TypeParameters]: LazyArbitrary<TypeParameters[K]> }
+      ...arbitraries: [
+        ...{ readonly [K in keyof TypeParameters]: LazyArbitrary<TypeParameters[K]> },
+        ctx: GenerationContext
+      ]
     ) => LazyArbitrary<A>
     readonly pretty?: (
       ...pretties: { readonly [K in keyof TypeParameters]: pretty_.Pretty<TypeParameters[K]> }
@@ -5322,7 +5325,7 @@ export class BigIntFromNumber extends transformOrFail(
 ).annotations({ identifier: "BigintFromNumber" }) {}
 
 const redactedArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<redacted_.Redacted<A>> => (fc) =>
-  value(fc).map((x) => redacted_.make(x))
+  value(fc).map(redacted_.make)
 
 const toComposite = <A, R, B>(
   eff: Effect.Effect<A, ParseResult.ParseIssue, R>,
@@ -6099,7 +6102,7 @@ export class DateTimeUtc extends transformOrFail(
 ).annotations({ identifier: "DateTimeUtc" }) {}
 
 const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (fc) =>
-  fc.integer({ min: -12 * 60 * 60 * 1000, max: 12 * 60 * 60 * 1000 }).map((offset) => dateTime.zoneMakeOffset(offset))
+  fc.integer({ min: -12 * 60 * 60 * 1000, max: 12 * 60 * 60 * 1000 }).map(dateTime.zoneMakeOffset)
 
 /**
  * Describes a schema that represents a `TimeZone.Offset` instance.
@@ -6280,11 +6283,13 @@ const optionEncoded = <A, I, R>(value: Schema<A, I, R>) =>
 const optionDecode = <A>(input: OptionEncoded<A>): option_.Option<A> =>
   input._tag === "None" ? option_.none() : option_.some(input.value)
 
-const optionArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<option_.Option<A>> => (fc) =>
-  fc.oneof(
-    fc.record({ _tag: fc.constant("None" as const) }),
-    fc.record({ _tag: fc.constant("Some" as const), value: value(fc) })
-  ).map(optionDecode)
+const optionArbitrary =
+  <A>(value: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<option_.Option<A>> => (fc) =>
+    fc.oneof(
+      ctx,
+      fc.record({ _tag: fc.constant("None" as const) }),
+      fc.record({ _tag: fc.constant("Some" as const), value: value(fc) })
+    ).map(optionDecode)
 
 const optionPretty = <A>(value: pretty_.Pretty<A>): pretty_.Pretty<option_.Option<A>> =>
   option_.match({
@@ -6701,9 +6706,14 @@ export const EitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ le
 
 const mapArbitrary = <K, V>(
   key: LazyArbitrary<K>,
-  value: LazyArbitrary<V>
-): LazyArbitrary<Map<K, V>> =>
-(fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => new Map(as))
+  value: LazyArbitrary<V>,
+  ctx: GenerationContext
+): LazyArbitrary<Map<K, V>> => {
+  return (fc) => {
+    const items = fc.array(fc.tuple(key(fc), value(fc)))
+    return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map((as) => new Map(as))
+  }
+}
 
 const readonlyMapPretty = <K, V>(
   key: pretty_.Pretty<K>,
@@ -6889,8 +6899,10 @@ export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
     encode: record_.fromEntries
   })
 
-const setArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<ReadonlySet<A>> => (fc) =>
-  fc.array(item(fc)).map((as) => new Set(as))
+const setArbitrary = <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<ReadonlySet<A>> => (fc) => {
+  const items = fc.array(item(fc))
+  return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map((as) => new Set(as))
+}
 
 const readonlySetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<ReadonlySet<A>> => (set) =>
   `new Set([${Array.from(set.values()).map((a) => item(a)).join(", ")}])`
@@ -7351,8 +7363,10 @@ export const clampBigDecimal =
       { strict: false, decode: (self) => bigDecimal_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
-const chunkArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<chunk_.Chunk<A>> => (fc) =>
-  fc.array(item(fc)).map(chunk_.fromIterable)
+const chunkArbitrary = <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<chunk_.Chunk<A>> => (fc) => {
+  const items = fc.array(item(fc))
+  return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map(chunk_.fromIterable)
+}
 
 const chunkPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<chunk_.Chunk<A>> => (c) =>
   `Chunk(${chunk_.toReadonlyArray(c).map(item).join(", ")})`
@@ -8038,7 +8052,8 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
           title: identifier,
           description: `an instance of ${identifier}`,
           pretty: (pretty) => (self: any) => `${identifier}(${pretty(self)})`,
-          arbitrary: (arb) => (fc: any) => arb(fc).map((props: any) => new this(props)),
+          // @ts-expect-error
+          arbitrary: (arb) => (fc) => arb(fc).map((props) => new this(props)),
           equivalence: identity,
           [AST.SurrogateAnnotationId]: typeSide.ast,
           ...annotations
@@ -8719,8 +8734,13 @@ export const Exit = <A extends Schema.All, E extends Schema.All, D extends Schem
   )
 }
 
-const hashSetArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<hashSet_.HashSet<A>> => (fc) =>
-  fc.array(item(fc)).map((as) => hashSet_.fromIterable(as))
+const hashSetArbitrary =
+  <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<hashSet_.HashSet<A>> => (fc) => {
+    const items = fc.array(item(fc))
+    return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map(
+      hashSet_.fromIterable
+    )
+  }
 
 const hashSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<hashSet_.HashSet<A>> => (set) =>
   `HashSet(${Array.from(set).map((a) => item(a)).join(", ")})`
@@ -8803,9 +8823,13 @@ export const HashSet = <Value extends Schema.Any>(value: Value): HashSet<Value> 
 
 const hashMapArbitrary = <K, V>(
   key: LazyArbitrary<K>,
-  value: LazyArbitrary<V>
+  value: LazyArbitrary<V>,
+  ctx: GenerationContext
 ): LazyArbitrary<hashMap_.HashMap<K, V>> =>
-(fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => hashMap_.fromIterable(as))
+(fc) => {
+  const items = fc.array(fc.tuple(key(fc), value(fc)))
+  return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map(hashMap_.fromIterable)
+}
 
 const hashMapPretty = <K, V>(
   key: pretty_.Pretty<K>,
@@ -8902,8 +8926,10 @@ export const HashMap = <K extends Schema.Any, V extends Schema.Any>({ key, value
   )
 }
 
-const listArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<list_.List<A>> => (fc) =>
-  fc.array(item(fc)).map((as) => list_.fromIterable(as))
+const listArbitrary = <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<list_.List<A>> => (fc) => {
+  const items = fc.array(item(fc))
+  return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map(list_.fromIterable)
+}
 
 const listPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<list_.List<A>> => (set) =>
   `List(${Array.from(set).map((a) => item(a)).join(", ")})`
@@ -8985,8 +9011,13 @@ export const List = <Value extends Schema.Any>(value: Value): List<Value> => {
 }
 
 const sortedSetArbitrary =
-  <A>(item: LazyArbitrary<A>, ord: Order.Order<A>): LazyArbitrary<sortedSet_.SortedSet<A>> => (fc) =>
-    fc.array(item(fc)).map((as) => sortedSet_.fromIterable(as, ord))
+  <A>(item: LazyArbitrary<A>, ord: Order.Order<A>, ctx: GenerationContext): LazyArbitrary<sortedSet_.SortedSet<A>> =>
+  (fc) => {
+    const items = fc.array(item(fc))
+    return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map((as) =>
+      sortedSet_.fromIterable(as, ord)
+    )
+  }
 
 const sortedSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<sortedSet_.SortedSet<A>> => (set) =>
   `new SortedSet([${Array.from(sortedSet_.values(set)).map((a) => item(a)).join(", ")}])`
@@ -9036,7 +9067,7 @@ export const SortedSetFromSelf = <Value extends Schema.Any>(
     {
       description: `SortedSet<${format(value)}>`,
       pretty: sortedSetPretty,
-      arbitrary: (arb) => sortedSetArbitrary(arb, ordA),
+      arbitrary: (arb, ctx) => sortedSetArbitrary(arb, ordA, ctx),
       equivalence: () => sortedSet_.getEquivalence<Schema.Type<Value>>()
     }
   )
