@@ -159,6 +159,18 @@ export const get: {
   return getFromBucket(self, bucket, key)
 })
 
+/**
+ * @since 3.8.0
+ * @category elements
+ */
+export const keys = <K, V>(self: MutableHashMap<K, V>): Array<K> => {
+  const keys: Array<K> = []
+  for (const [key] of self) {
+    keys.push(key)
+  }
+  return keys
+}
+
 const getFromBucket = <K, V>(
   self: MutableHashMap<K, V>,
   bucket: NonEmptyArray<readonly [K & Equal.Equal, V]>,
