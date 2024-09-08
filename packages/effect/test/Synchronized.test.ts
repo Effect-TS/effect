@@ -40,10 +40,10 @@ describe("SynchronizedRef", () => {
       assert.strictEqual(result, current)
     }))
   it.effect("getAndUpdateEffect - happy path", () =>
-    Effect.gen(function*($) {
-      const ref = yield* $(Synchronized.make(current))
-      const result1 = yield* $(Synchronized.getAndUpdateEffect(ref, () => Effect.succeed(update)))
-      const result2 = yield* $(Synchronized.get(ref))
+    Effect.gen(function*() {
+      const ref = yield* Synchronized.make(current)
+      const result1 = yield* Synchronized.getAndUpdateEffect(ref, () => Effect.succeed(update))
+      const result2 = yield* ref
       assert.strictEqual(result1, current)
       assert.strictEqual(result2, update)
     }))
@@ -77,7 +77,7 @@ describe("SynchronizedRef", () => {
           : isChanged(state)
           ? Option.some(Effect.succeed(Closed))
           : Option.none()))
-      const result3 = yield* $(Synchronized.get(ref))
+      const result3 = yield* ref
       assert.deepStrictEqual(result1, Active)
       assert.deepStrictEqual(result2, Changed)
       assert.deepStrictEqual(result3, Closed)
