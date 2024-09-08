@@ -157,4 +157,14 @@ describe("Deferred", () => {
       )
       assert.isTrue(Exit.isInterrupted(result))
     }))
+  it.effect("is subtype of Effect", () =>
+    Effect.gen(function*() {
+      const deferred = yield* Deferred.make<number>()
+      const ref = yield* Ref.make(13)
+      yield* Deferred.complete(deferred, Ref.updateAndGet(ref, (n) => n + 1))
+      const result1 = yield* deferred
+      const result2 = yield* deferred
+      assert.strictEqual(result1, 14)
+      assert.strictEqual(result2, 14)
+    }))
 })

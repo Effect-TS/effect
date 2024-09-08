@@ -1,3 +1,4 @@
+import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import type * as Exit from "effect/Exit"
@@ -66,8 +67,13 @@ export type RcRefUnify = Unify.Unify<
   | RcRef.RcRef<1, 2>
   | RcRef.RcRef<"a", "b">
 >
+// $ExpectType Deferred<1, 2> | Deferred<"a", "b">
+export type DeferredUnify = Unify.Unify<
+  | Deferred.Deferred<1, 2>
+  | Deferred.Deferred<"a", "b">
+>
 
-// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
+// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
 export type AllUnify = Unify.Unify<
   | Either.Either<1, 0>
   | Either.Either<"A", "E">
@@ -83,5 +89,7 @@ export type AllUnify = Unify.Unify<
   | SubscriptionRef.SubscriptionRef<"A">
   | RcRef.RcRef<1, 0>
   | RcRef.RcRef<"A", "E">
+  | Deferred.Deferred<1, 2>
+  | Deferred.Deferred<"a", "b">
   | 0
 >
