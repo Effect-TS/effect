@@ -31,17 +31,16 @@ const tokenBucket = (limit: number, window: DurationInput): Effect.Effect<
   never,
   Scope.Scope
 > =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const millisPerToken = Math.ceil(Duration.toMillis(window) / limit)
-    const semaphore = yield* _(Effect.makeSemaphore(limit))
-    const latch = yield* Effect.makeSemaphore(0)
+    const semaphore = yield* Effect.makeSemaphore(limit)
+    const latch = yield* Effect.makeLatch()
     const refill: Effect.Effect<void> = Effect.sleep(millisPerToken).pipe(
-      Effect.zipRight(latch.releaseAll),
+      Effect.zipRight(latch.close),
       Effect.zipRight(semaphore.release(1)),
       Effect.flatMap((free) => free === limit ? Effect.void : refill)
     )
-    yield* _(
-      latch.take(1),
+    yield* latch.await.pipe(
       Effect.zipRight(refill),
       Effect.forever,
       Effect.forkScoped,
@@ -50,7 +49,7 @@ const tokenBucket = (limit: number, window: DurationInput): Effect.Effect<
     const take = Effect.uninterruptibleMask((restore) =>
       Effect.flatMap(
         FiberRef.get(currentCost),
-        (cost) => Effect.zipRight(restore(semaphore.take(cost)), latch.release(1))
+        (cost) => Effect.zipRight(restore(semaphore.take(cost)), latch.open)
       )
     )
     return (effect) => Effect.zipRight(take, effect)
@@ -61,13 +60,12 @@ const fixedWindow = (limit: number, window: DurationInput): Effect.Effect<
   never,
   Scope.Scope
 > =>
-  Effect.gen(function*(_) {
-    const semaphore = yield* _(Effect.makeSemaphore(limit))
-    const latch = yield* _(Effect.makeSemaphore(0))
-    yield* _(
-      latch.take(1),
+  Effect.gen(function*() {
+    const semaphore = yield* Effect.makeSemaphore(limit)
+    const latch = yield* Effect.makeLatch()
+    yield* latch.await.pipe(
       Effect.zipRight(Effect.sleep(window)),
-      Effect.zipRight(latch.releaseAll),
+      Effect.zipRight(latch.close),
       Effect.zipRight(semaphore.releaseAll),
       Effect.forever,
       Effect.forkScoped,
@@ -76,7 +74,7 @@ const fixedWindow = (limit: number, window: DurationInput): Effect.Effect<
     const take = Effect.uninterruptibleMask((restore) =>
       Effect.flatMap(
         FiberRef.get(currentCost),
-        (cost) => Effect.zipRight(restore(semaphore.take(cost)), latch.release(1))
+        (cost) => Effect.zipRight(restore(semaphore.take(cost)), latch.open)
       )
     )
     return (effect) => Effect.zipRight(take, effect)

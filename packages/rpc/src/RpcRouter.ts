@@ -11,9 +11,9 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { dual, pipe } from "effect/Function"
+import * as Mailbox from "effect/Mailbox"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
 import * as Rpc from "./Rpc.js"
@@ -172,21 +172,6 @@ export const provideService: {
   service: S
 ): RpcRouter<Reqs, Exclude<R, I>> => fromSet(new Set([...self.rpcs].map(Rpc.provideService(tag, service)))))
 
-const EOF = Symbol.for("@effect/rpc/Router/EOF")
-
-const channelFromQueue = <A>(queue: Queue.Queue<A | typeof EOF>) => {
-  const loop: Channel.Channel<Chunk.Chunk<A>> = Channel.flatMap(
-    Queue.takeBetween(queue, 1, Number.MAX_SAFE_INTEGER),
-    (chunk) => {
-      if (Chunk.unsafeLast(chunk) === EOF) {
-        return Channel.write(Chunk.dropRight(chunk as Chunk.Chunk<A>, 1))
-      }
-      return Channel.zipRight(Channel.write(chunk as Chunk.Chunk<A>), loop)
-    }
-  )
-  return loop
-}
-
 const emptyExit = Schema.encodeSync(Schema.Exit({
   failure: Schema.Never,
   success: Schema.Never,
@@ -219,8 +204,8 @@ export const toHandler = <R extends RpcRouter<any, any>>(router: R, options?: {
   return (u: unknown): Stream.Stream<RpcRouter.Response, ParseError, RpcRouter.Context<R>> =>
     pipe(
       decode(u),
-      Effect.zip(Queue.bounded<RpcRouter.Response | typeof EOF>(4)),
-      Effect.tap(([requests, queue]) =>
+      Effect.zip(Mailbox.make<RpcRouter.Response>(4)),
+      Effect.tap(([requests, mailbox]) =>
         pipe(
           Effect.forEach(requests, (req, index) => {
             const [request, rpc] = req.request
@@ -231,11 +216,11 @@ export const toHandler = <R extends RpcRouter<any, any>>(router: R, options?: {
                 Effect.flatMap(encode),
                 Effect.orDie,
                 Effect.matchCauseEffect({
-                  onSuccess: (response) => Queue.offer(queue, [index, response]),
+                  onSuccess: (response) => mailbox.offer([index, response]),
                   onFailure: (cause) =>
                     Effect.flatMap(
                       encode(Exit.failCause(cause)),
-                      (response) => Queue.offer(queue, [index, response])
+                      (response) => mailbox.offer([index, response])
                     )
                 }),
                 Effect.locally(Rpc.currentHeaders, req.headers as any),
@@ -259,16 +244,16 @@ export const toHandler = <R extends RpcRouter<any, any>>(router: R, options?: {
               Channel.mapOutEffect((chunk) =>
                 Effect.flatMap(
                   encode(Chunk.map(chunk, Exit.succeed)),
-                  (response) => Queue.offer(queue, [index, response])
+                  (response) => mailbox.offer([index, response])
                 )
               ),
               Channel.runDrain,
               Effect.matchCauseEffect({
-                onSuccess: () => Queue.offer(queue, [index, [emptyExit]]),
+                onSuccess: () => mailbox.offer([index, [emptyExit]]),
                 onFailure: (cause) =>
                   Effect.flatMap(
                     encode(Chunk.of(Exit.failCause(cause))),
-                    (response) => Queue.offer(queue, [index, response])
+                    (response) => mailbox.offer([index, response])
                   )
               }),
               Effect.locally(Rpc.currentHeaders, req.headers as any),
@@ -285,11 +270,11 @@ export const toHandler = <R extends RpcRouter<any, any>>(router: R, options?: {
               })
             )
           }, { concurrency: "unbounded", discard: true }),
-          Effect.ensuring(Queue.offer(queue, EOF)),
+          Effect.ensuring(mailbox.done),
           Effect.forkScoped
         )
       ),
-      Effect.map(([_, queue]) => Stream.fromChannel(channelFromQueue(queue))),
+      Effect.map(([_, mailbox]) => Mailbox.toStream(mailbox)),
       Stream.unwrapScoped
     )
 }

@@ -410,6 +410,11 @@ export * as LogSpan from "./LogSpan.js"
 export * as Logger from "./Logger.js"
 
 /**
+ * @since 3.8.0
+ */
+export * as Mailbox from "./Mailbox.js"
+
+/**
  * @since 2.0.0
  */
 export * as ManagedRuntime from "./ManagedRuntime.js"
