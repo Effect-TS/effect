@@ -1,3 +1,4 @@
+import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import type * as Micro from "effect/Micro"
@@ -35,6 +36,55 @@ export type MU = Unify.Unify<
   Micro.Micro<0, 1, 2> | Micro.Micro<"a", "b", "c">
 >
 // $ExpectType Effect<0 | "a", "b" | 1, "c" | 2>
-export type EU = Unify.Unify<
-  Effect.Effect<0, 1, 2> | Effect.Effect<"a", "b", "c">
+export type EffectUnify = Unify.Unify<
+  | Effect.Effect<0, 1, 2>
+  | Effect.Effect<"a", "b", "c">
+>
+// $ExpectType Exit<0 | "a", "b" | 1>
+export type ExitUnify = Unify.Unify<
+  | Exit.Exit<0, 1>
+  | Exit.Exit<"a", "b">
+>
+// $ExpectType Ref<1> | Ref<"a">
+export type RefUnify = Unify.Unify<Ref.Ref<1> | Ref.Ref<"a">>
+// $ExpectType SynchronizedRef<1> | SynchronizedRef<"a">
+export type SynchronizedRefUnify = Unify.Unify<
+  | SynchronizedRef.SynchronizedRef<1>
+  | SynchronizedRef.SynchronizedRef<"a">
+>
+// $ExpectType SubscriptionRef<1> | SubscriptionRef<"a">
+export type SubscriptionRefUnify = Unify.Unify<
+  | SubscriptionRef.SubscriptionRef<1>
+  | SubscriptionRef.SubscriptionRef<"a">
+>
+// $ExpectType RcRef<"a" | 1, "b" | 2>
+export type RcRefUnify = Unify.Unify<
+  | RcRef.RcRef<1, 2>
+  | RcRef.RcRef<"a", "b">
+>
+// $ExpectType Deferred<1, 2> | Deferred<"a", "b">
+export type DeferredUnify = Unify.Unify<
+  | Deferred.Deferred<1, 2>
+  | Deferred.Deferred<"a", "b">
+>
+
+// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
+export type AllUnify = Unify.Unify<
+  | Either.Either<1, 0>
+  | Either.Either<"A", "E">
+  | Option.Option<number>
+  | Option.Option<string>
+  | Effect.Effect<"A", "E", "R">
+  | Effect.Effect<1, 0, "R1">
+  | Ref.Ref<1>
+  | Ref.Ref<"A">
+  | SynchronizedRef.SynchronizedRef<1>
+  | SynchronizedRef.SynchronizedRef<"A">
+  | SubscriptionRef.SubscriptionRef<1>
+  | SubscriptionRef.SubscriptionRef<"A">
+  | RcRef.RcRef<1, 0>
+  | RcRef.RcRef<"A", "E">
+  | Deferred.Deferred<1, 2>
+  | Deferred.Deferred<"a", "b">
+  | 0
 >

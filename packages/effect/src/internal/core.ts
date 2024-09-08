@@ -43,7 +43,7 @@ import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
 import * as internalDiffer from "./differ.js"
-import { effectVariance, StructuralCommitPrototype } from "./effectable.js"
+import { CommitPrototype, effectVariance, StructuralCommitPrototype } from "./effectable.js"
 import { getBugErrorMessage } from "./errors.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
@@ -2788,14 +2788,18 @@ const exitCollectAllInternal = <A, E>(
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const deferredUnsafeMake = <A, E = never>(fiberId: FiberId.FiberId): Deferred.Deferred<A, E> => ({
-  [deferred.DeferredTypeId]: deferred.deferredVariance,
-  state: MutableRef.make(deferred.pending([])),
-  blockingOn: fiberId,
-  pipe() {
-    return pipeArguments(this, arguments)
+export const deferredUnsafeMake = <A, E = never>(fiberId: FiberId.FiberId): Deferred.Deferred<A, E> => {
+  const _deferred = {
+    ...CommitPrototype,
+    [deferred.DeferredTypeId]: deferred.deferredVariance,
+    state: MutableRef.make(deferred.pending<A, E>([])),
+    commit() {
+      return deferredAwait(this)
+    },
+    blockingOn: fiberId
   }
-})
+  return _deferred
+}
 
 /* @internal */
 export const deferredMake = <A, E = never>(): Effect.Effect<Deferred.Deferred<A, E>> =>
