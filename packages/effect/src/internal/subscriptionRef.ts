@@ -1,6 +1,6 @@
 import * as Effect from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import { dual, pipe } from "../Function.js"
-import { pipeArguments } from "../Pipeable.js"
 import * as PubSub from "../PubSub.js"
 import * as Readable from "../Readable.js"
 import * as Ref from "../Ref.js"
@@ -26,9 +26,9 @@ const subscriptionRefVariance = {
 }
 
 /** @internal */
-class SubscriptionRefImpl<in out A> implements SubscriptionRef.SubscriptionRef<A> {
-  readonly [Readable.TypeId]: Readable.TypeId
-  readonly [Subscribable.TypeId]: Subscribable.TypeId
+class SubscriptionRefImpl<in out A> extends Effectable.Class<A> implements SubscriptionRef.SubscriptionRef<A> {
+  readonly [Readable.TypeId]: Readable.TypeId = Readable.TypeId
+  readonly [Subscribable.TypeId]: Subscribable.TypeId = Subscribable.TypeId
   readonly [Ref.RefTypeId] = _ref.refVariance
   readonly [Synchronized.SynchronizedRefTypeId] = _circular.synchronizedVariance
   readonly [SubscriptionRefTypeId] = subscriptionRefVariance
@@ -37,12 +37,11 @@ class SubscriptionRefImpl<in out A> implements SubscriptionRef.SubscriptionRef<A
     readonly pubsub: PubSub.PubSub<A>,
     readonly semaphore: Effect.Semaphore
   ) {
-    this[Readable.TypeId] = Readable.TypeId
-    this[Subscribable.TypeId] = Subscribable.TypeId
+    super()
     this.get = Ref.get(this.ref)
   }
-  pipe() {
-    return pipeArguments(this, arguments)
+  commit() {
+    return this.get
   }
   readonly get: Effect.Effect<A>
   get changes(): Stream<A> {

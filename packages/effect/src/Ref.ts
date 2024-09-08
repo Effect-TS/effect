@@ -4,8 +4,9 @@
 import type * as Effect from "./Effect.js"
 import * as internal from "./internal/ref.js"
 import type * as Option from "./Option.js"
-import type { Readable } from "./Readable.js"
+import type * as Readable from "./Readable.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -23,8 +24,27 @@ export type RefTypeId = typeof RefTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Ref<in out A> extends Ref.Variance<A>, Readable<A> {
+export interface Ref<in out A> extends Ref.Variance<A>, Effect.Effect<A>, Readable.Readable<A> {
   modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<B>
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: RefUnify<this>
+  readonly [Unify.ignoreSymbol]?: RefUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface RefUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  Ref?: () => Extract<A[Unify.typeSymbol], Ref<any>>
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface RefUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**
