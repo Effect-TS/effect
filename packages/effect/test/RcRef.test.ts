@@ -23,14 +23,14 @@ describe("RcRef", () => {
       )
 
       assert.strictEqual(acquired, 0)
-      assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
+      assert.strictEqual(yield* Effect.scoped(ref), "foo")
       assert.strictEqual(acquired, 1)
       assert.strictEqual(released, 1)
 
       const scopeA = yield* Scope.make()
       const scopeB = yield* Scope.make()
-      yield* RcRef.get(ref).pipe(Scope.extend(scopeA))
-      yield* RcRef.get(ref).pipe(Scope.extend(scopeB))
+      yield* ref.pipe(Scope.extend(scopeA))
+      yield* ref.pipe(Scope.extend(scopeB))
       assert.strictEqual(acquired, 2)
       assert.strictEqual(released, 1)
       yield* Scope.close(scopeB, Exit.void)
@@ -41,7 +41,7 @@ describe("RcRef", () => {
       assert.strictEqual(released, 2)
 
       const scopeC = yield* Scope.make()
-      yield* RcRef.get(ref).pipe(Scope.extend(scopeC))
+      yield* ref.pipe(Scope.extend(scopeC))
       assert.strictEqual(acquired, 3)
       assert.strictEqual(released, 2)
 
@@ -49,7 +49,7 @@ describe("RcRef", () => {
       assert.strictEqual(acquired, 3)
       assert.strictEqual(released, 3)
 
-      const exit = yield* RcRef.get(ref).pipe(Effect.scoped, Effect.exit)
+      const exit = yield* ref.get.pipe(Effect.scoped, Effect.exit)
       assert.isTrue(Exit.isInterrupted(exit))
     }))
 
