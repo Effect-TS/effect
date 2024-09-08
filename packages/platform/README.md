@@ -579,42 +579,46 @@ Effect.gen(function* () {
 
 ## Overview
 
-An `HttpClient` is a function that takes a request and produces a certain value `A` in an effectful way (possibly resulting in an error `E` and depending on some requirement `R`).
+The `@effect/platform/HttpClient*` modules provide a way to send HTTP requests,
+handle responses, and abstract over the differences between platforms.
 
-```ts
-type HttpClient<A, E, R> = (request: HttpClientRequest): Effect<A, E, R>
-```
+The `HttpClient` interface has a set of methods for sending requests:
 
-Generally, you'll deal with a specialization called `Default` where `A`, `E`, and `R` are predefined:
+- `.execute` - takes a `HttpClientRequest` and returns a `HttpClientResponse`
+- `.{get, post, ...}` - convenience methods for creating a request and
+  executing it in one step
 
-```ts
-type Default = (request: HttpClientRequest): Effect<HttpClientResponse, RequestError | ResponseError, Scope>
-```
-
-The goal of `Default` is straightforward: transform a `HttpClientRequest` into a `HttpClientResponse`.
+To access the `HttpClient`, you can use the `HttpClient.HttpClient` `Context.Tag`.
+This will give you access to a `HttpClient.Service` instance, which is the default
+type of the `HttpClient` interface.
 
 ### A First Example: Retrieving JSON Data (GET)
 
 Here's a simple example demonstrating how to retrieve JSON data using `HttpClient` from `@effect/platform`.
 
 ```ts
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse
-} from "@effect/platform"
+import { FetchHttpClient, HttpClient } from "@effect/platform"
 import { Effect } from "effect"
 
-const req = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/posts/1"
+const program = Effect.gen(function* () {
+  // access the HttpClient
+  const client = yield* HttpClient.HttpClient
+
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+
+  const json = yield* response.json
+
+  console.log(json)
+}).pipe(
+  // ensure the request is aborted if the program is interrupted
+  Effect.scoped,
+  // provide the HttpClient
+  Effect.provide(FetchHttpClient.layer)
 )
 
-// HttpClient.fetch is a Default
-const res = HttpClient.fetch(req)
-
-const json = HttpClientResponse.json(res)
-
-Effect.runPromise(json).then(console.log)
+Effect.runPromise(program)
 /*
 Output:
 {
@@ -629,29 +633,15 @@ Output:
 */
 ```
 
-In this example:
+### Custom `HttpClient.Service`'s
 
-- `HttpClientRequest.get` creates a GET request to the specified URL.
-- `HttpClient.fetch` executes the request.
-- `HttpClientResponse.json` converts the response to JSON.
-- `Effect.runPromise` runs the effect and logs the result.
-
-### Built-in Defaults
-
-| Default              | Description                                                               |
-| -------------------- | ------------------------------------------------------------------------- |
-| `HttpClient.fetch`   | Execute the request using the global `fetch` function                     |
-| `HttpClient.fetchOk` | Same as `fetch` but ensures only `2xx` responses are treated as successes |
-
-### Custom Default
-
-You can create your own `Default` using the `HttpClient.makeDefault` constructor.
+You can create your own `HttpClient.Service` using the `HttpClient.makeService` constructor.
 
 ```ts
 import { HttpClient, HttpClientResponse } from "@effect/platform"
 import { Effect } from "effect"
 
-const myClient = HttpClient.makeDefault((req) =>
+const myClient = HttpClient.makeService((req) =>
   Effect.succeed(
     HttpClientResponse.fromWeb(
       req,
@@ -672,27 +662,25 @@ const myClient = HttpClient.makeDefault((req) =>
 ## Tapping
 
 ```ts
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse
-} from "@effect/platform"
+import { FetchHttpClient, HttpClient } from "@effect/platform"
 import { Console, Effect } from "effect"
 
-const req = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/posts/1"
-)
+const program = Effect.gen(function* () {
+  const client = (yield* HttpClient.HttpClient).pipe(
+    // Log the request before fetching
+    HttpClient.tapRequest(Console.log)
+  )
 
-// Log the request before fetching
-const tapFetch: HttpClient.HttpClient.Default = HttpClient.fetch.pipe(
-  HttpClient.tapRequest(Console.log)
-)
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
 
-const res = tapFetch(req)
+  const json = yield* response.json
 
-const json = HttpClientResponse.json(res)
+  console.log(json)
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
 
-Effect.runPromise(json).then(console.log)
+Effect.runPromise(program)
 /*
 Output:
 {
@@ -847,20 +835,21 @@ Output:
 To convert a GET response to JSON:
 
 ```ts
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse
-} from "@effect/platform"
+import { FetchHttpClient, HttpClient } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
-const getPostAsJson = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/posts/1"
-).pipe(HttpClient.fetch, HttpClientResponse.json)
+const getPostAsJson = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+  return yield* response.json
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
 
-NodeRuntime.runMain(
-  getPostAsJson.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
+getPostAsJson.pipe(
+  Effect.andThen((post) => Console.log(typeof post, post)),
+  NodeRuntime.runMain
 )
 /*
 Output:
@@ -881,20 +870,21 @@ object {
 To convert a GET response to text:
 
 ```ts
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse
-} from "@effect/platform"
+import { FetchHttpClient, HttpClient } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
-const getPostAsText = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/posts/1"
-).pipe(HttpClient.fetch, HttpClientResponse.text)
+const getPostAsJson = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+  return yield* response.text
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
 
-NodeRuntime.runMain(
-  getPostAsText.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
+getPostAsJson.pipe(
+  Effect.andThen((post) => Console.log(typeof post, post)),
+  NodeRuntime.runMain
 )
 /*
 Output:
@@ -914,14 +904,14 @@ string {
 
 Here are some APIs you can use to convert the response:
 
-| API                                | Description                           |
-| ---------------------------------- | ------------------------------------- |
-| `HttpClientResponse.arrayBuffer`   | Convert to `ArrayBuffer`              |
-| `HttpClientResponse.formData`      | Convert to `FormData`                 |
-| `HttpClientResponse.json`          | Convert to JSON                       |
-| `HttpClientResponse.stream`        | Convert to a `Stream` of `Uint8Array` |
-| `HttpClientResponse.text`          | Convert to text                       |
-| `HttpClientResponse.urlParamsBody` | Convert to `Http.urlParams.UrlParams` |
+| API                      | Description                           |
+| ------------------------ | ------------------------------------- |
+| `response.arrayBuffer`   | Convert to `ArrayBuffer`              |
+| `response.formData`      | Convert to `FormData`                 |
+| `response.json`          | Convert to JSON                       |
+| `response.stream`        | Convert to a `Stream` of `Uint8Array` |
+| `response.text`          | Convert to text                       |
+| `response.urlParamsBody` | Convert to `UrlParams`                |
 
 ### Decoding Data with Schemas
 
@@ -929,8 +919,8 @@ A common use case when fetching data is to validate the received format. For thi
 
 ```ts
 import {
+  FetchHttpClient,
   HttpClient,
-  HttpClientRequest,
   HttpClientResponse
 } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
@@ -946,17 +936,17 @@ const Post = Schema.Struct({
 const getPostAndValidate: Effect.Effect<{
     readonly id: number;
     readonly title: string;
-}, Http.error.HttpClientError | ParseError, never>
+}, HttpClientError | ParseError, never>
 */
-const getPostAndValidate = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/posts/1"
-).pipe(
-  HttpClient.fetch,
-  Effect.andThen(HttpClientResponse.schemaBodyJson(Post)),
-  Effect.scoped
-)
+const getPostAndValidate = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+  return yield* HttpClientResponse.schemaBodyJson(Post)(response)
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
 
-NodeRuntime.runMain(getPostAndValidate.pipe(Effect.andThen(Console.log)))
+getPostAndValidate.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
 Output:
 {
@@ -979,19 +969,19 @@ You can use `HttpClient.filterStatusOk`, or `HttpClient.fetchOk` to ensure only 
 In this example, we attempt to fetch a non-existent page and don't receive any error:
 
 ```ts
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse
-} from "@effect/platform"
+import { FetchHttpClient, HttpClient } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
-const getText = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/non-existing-page"
-).pipe(HttpClient.fetch, HttpClientResponse.text)
+const getText = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/non-existing-page"
+  )
+  return yield* response.text
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
 
-NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)))
+getText.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
 Output:
 {}
@@ -1001,19 +991,19 @@ Output:
 However, if we use `HttpClient.filterStatusOk`, an error is logged:
 
 ```ts
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse
-} from "@effect/platform"
+import { FetchHttpClient, HttpClient } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
-const getText = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/non-existing-page"
-).pipe(HttpClient.filterStatusOk(HttpClient.fetch), HttpClientResponse.text)
+const getText = Effect.gen(function* () {
+  const client = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk)
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/non-existing-page"
+  )
+  return yield* response.text
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
 
-NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)))
+getText.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
 Output:
 timestamp=... level=ERROR fiber=#0 cause="ResponseError: StatusCode error (404 GET https://jsonplaceholder.typicode.com/non-existing-page): non 2xx status code
@@ -1021,60 +1011,36 @@ timestamp=... level=ERROR fiber=#0 cause="ResponseError: StatusCode error (404 G
 */
 ```
 
-Note that you can use `HttpClient.fetchOk` as a shortcut for `HttpClient.filterStatusOk(HttpClient.fetch)`:
-
-```ts
-const getText = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/non-existing-page"
-).pipe(HttpClient.fetchOk, HttpClientResponse.text)
-```
-
-You can also create your own status-based filters. In fact, `HttpClient.filterStatusOk` is just a shortcut for the following filter:
-
-```ts
-const getText = HttpClientRequest.get(
-  "https://jsonplaceholder.typicode.com/non-existing-page"
-).pipe(
-  HttpClient.filterStatus(
-    HttpClient.fetch,
-    (status) => status >= 200 && status < 300
-  ),
-  HttpClientResponse.text
-)
-
-/*
-Output:
-timestamp=... level=ERROR fiber=#0 cause="ResponseError: StatusCode error (404 GET https://jsonplaceholder.typicode.com/non-existing-page): invalid status code
-    ... stack trace ...
-*/
-```
-
 ## POST
 
-To make a POST request, you can use the `HttpClientRequest.post` function provided by the `HttpClient` module. Here's an example of how to create and send a POST request:
+To make a POST request, you can use the `HttpClientRequest.post` function provided by the `HttpClientRequest` module. Here's an example of how to create and send a POST request:
 
 ```ts
 import {
+  FetchHttpClient,
   HttpClient,
-  HttpClientRequest,
-  HttpClientResponse
+  HttpClientRequest
 } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
-const addPost = HttpClientRequest.post(
-  "https://jsonplaceholder.typicode.com/posts"
-).pipe(
-  HttpClientRequest.jsonBody({
-    title: "foo",
-    body: "bar",
-    userId: 1
-  }),
-  Effect.andThen(HttpClient.fetch),
-  HttpClientResponse.json
-)
+const addPost = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  return yield* HttpClientRequest.post(
+    "https://jsonplaceholder.typicode.com/posts"
+  ).pipe(
+    HttpClientRequest.bodyJson({
+      title: "foo",
+      body: "bar",
+      userId: 1
+    }),
+    Effect.flatMap(client.execute),
+    Effect.flatMap((res) => res.json),
+    Effect.scoped
+  )
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
-NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)))
+addPost.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
 Output:
 { title: 'foo', body: 'bar', userId: 1, id: 101 }
@@ -1087,29 +1053,33 @@ In the following example, we send the data as text:
 
 ```ts
 import {
+  FetchHttpClient,
   HttpClient,
-  HttpClientRequest,
-  HttpClientResponse
+  HttpClientRequest
 } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
-const addPost = HttpClientRequest.post(
-  "https://jsonplaceholder.typicode.com/posts"
-).pipe(
-  HttpClientRequest.textBody(
-    JSON.stringify({
-      title: "foo",
-      body: "bar",
-      userId: 1
-    }),
-    "application/json; charset=UTF-8"
-  ),
-  HttpClient.fetch,
-  HttpClientResponse.json
-)
+const addPost = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  return yield* HttpClientRequest.post(
+    "https://jsonplaceholder.typicode.com/posts"
+  ).pipe(
+    HttpClientRequest.bodyText(
+      JSON.stringify({
+        title: "foo",
+        body: "bar",
+        userId: 1
+      }),
+      "application/json; charset=UTF-8"
+    ),
+    client.execute,
+    Effect.flatMap((res) => res.json),
+    Effect.scoped
+  )
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
-NodeRuntime.runMain(Effect.andThen(addPost, Console.log))
+addPost.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
 Output:
 { title: 'foo', body: 'bar', userId: 1, id: 101 }
@@ -1122,6 +1092,7 @@ A common use case when fetching data is to validate the received format. For thi
 
 ```ts
 import {
+  FetchHttpClient,
   HttpClient,
   HttpClientRequest,
   HttpClientResponse
@@ -1135,20 +1106,26 @@ const Post = Schema.Struct({
   title: Schema.String
 })
 
-const addPost = HttpClientRequest.post(
-  "https://jsonplaceholder.typicode.com/posts"
-).pipe(
-  HttpClientRequest.jsonBody({
-    title: "foo",
-    body: "bar",
-    userId: 1
-  }),
-  Effect.andThen(HttpClient.fetch),
-  Effect.andThen(HttpClientResponse.schemaBodyJson(Post)),
-  Effect.scoped
-)
+const addPost = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  return yield* HttpClientRequest.post(
+    "https://jsonplaceholder.typicode.com/posts"
+  ).pipe(
+    HttpClientRequest.bodyText(
+      JSON.stringify({
+        title: "foo",
+        body: "bar",
+        userId: 1
+      }),
+      "application/json; charset=UTF-8"
+    ),
+    client.execute,
+    Effect.flatMap(HttpClientResponse.schemaBodyJson(Post)),
+    Effect.scoped
+  )
+}).pipe(Effect.provide(FetchHttpClient.layer))
 
-NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)))
+addPost.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
 Output:
 { id: 101, title: 'foo' }
@@ -1162,30 +1139,31 @@ Output:
 To test HTTP requests, you can inject a mock fetch implementation.
 
 ```ts
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse
-} from "@effect/platform"
+import { FetchHttpClient, HttpClient } from "@effect/platform"
 import { Effect, Layer } from "effect"
 import * as assert from "node:assert"
 
 // Mock fetch implementation
-const FetchTest = Layer.succeed(HttpClient.Fetch, () =>
+const FetchTest = Layer.succeed(FetchHttpClient.Fetch, () =>
   Promise.resolve(new Response("not found", { status: 404 }))
 )
 
-// Program to test
-const program = HttpClientRequest.get("https://www.google.com/").pipe(
-  HttpClient.fetch,
-  HttpClientResponse.text
-)
+const TestLayer = FetchHttpClient.layer.pipe(Layer.provide(FetchTest))
+
+const program = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+
+  return yield* client.get("https://www.google.com/").pipe(
+    Effect.flatMap((res) => res.text),
+    Effect.scoped
+  )
+})
 
 // Test
 Effect.gen(function* () {
   const response = yield* program
   assert.equal(response, "not found")
-}).pipe(Effect.provide(FetchTest), Effect.runPromise)
+}).pipe(Effect.provide(TestLayer), Effect.runPromise)
 ```
 
 # HTTP Server

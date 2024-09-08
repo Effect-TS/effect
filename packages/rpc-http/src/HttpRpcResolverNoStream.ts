@@ -18,15 +18,15 @@ import * as Schedule from "effect/Schedule"
  * @since 1.0.0
  */
 export const make = <R extends Router.RpcRouter<any, any>>(
-  client: Client.HttpClient.Default
+  client: Client.HttpClient.Service
 ): RequestResolver.RequestResolver<
   Rpc.Request<Router.RpcRouter.Request<R>>,
   Serializable.SerializableWithResult.Context<Router.RpcRouter.Request<R>>
 > =>
   ResolverNoStream.make((requests) =>
-    client(ClientRequest.post("", {
+    client.post("", {
       body: Body.unsafeJson(requests)
-    })).pipe(
+    }).pipe(
       Effect.flatMap((_) => _.json),
       Effect.scoped
     )
@@ -38,19 +38,22 @@ export const make = <R extends Router.RpcRouter<any, any>>(
  */
 export const makeClient = <R extends Router.RpcRouter<any, any>>(
   baseUrl: string
-): Serializable.SerializableWithResult.Context<Router.RpcRouter.Request<R>> extends never ? Resolver.Client<
-    RequestResolver.RequestResolver<
-      Rpc.Request<Router.RpcRouter.Request<R>>
-    >
+): Serializable.SerializableWithResult.Context<Router.RpcRouter.Request<R>> extends never ? Effect.Effect<
+    Resolver.Client<
+      RequestResolver.RequestResolver<
+        Rpc.Request<Router.RpcRouter.Request<R>>
+      >
+    >,
+    never,
+    Client.HttpClient
   >
-  : "HttpResolver.makeClientEffect: request context is not `never`" =>
-  Resolver.toClient(make<R>(
-    Client.fetchOk.pipe(
+  : "request context is not `never`" =>
+  Effect.map(Client.HttpClient, (client) =>
+    Resolver.toClient(make<R>(client.pipe(
       Client.mapRequest(ClientRequest.prependUrl(baseUrl)),
       Client.retry(
         Schedule.exponential(50).pipe(
           Schedule.intersect(Schedule.recurs(5))
         )
       )
-    )
-  ) as any) as any
+    )) as any)) as any

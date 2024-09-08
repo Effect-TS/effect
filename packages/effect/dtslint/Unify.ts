@@ -1,19 +1,24 @@
 import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
+import type * as Exit from "effect/Exit"
 import type * as Micro from "effect/Micro"
 import type * as Option from "effect/Option"
+import type * as RcRef from "effect/RcRef"
+import type * as Ref from "effect/Ref"
 import type * as Stream from "effect/Stream"
+import type * as SubscriptionRef from "effect/SubscriptionRef"
+import type * as SynchronizedRef from "effect/SynchronizedRef"
 import * as Unify from "effect/Unify"
 
 // $ExpectType Option<string | number>
-export type option = Unify.Unify<Option.Option<number> | Option.Option<string>>
+export type OptionUnify = Unify.Unify<Option.Option<number> | Option.Option<string>>
 
 // $ExpectType Either<"RA" | "RB", "LA" | "LB">
-export type either = Unify.Unify<Either.Either<"RA", "LA"> | Either.Either<"RB", "LB">>
+export type EitherUnify = Unify.Unify<Either.Either<"RA", "LA"> | Either.Either<"RB", "LB">>
 
 // $ExpectType 0 | Option<string | number> | Either<"RA" | "RB", "LA" | "LB">
-export type both = Unify.Unify<
+export type EitherOptionUnify = Unify.Unify<
   Either.Either<"RA", "LA"> | Either.Either<"RB", "LB"> | Option.Option<number> | Option.Option<string> | 0
 >
 
@@ -27,12 +32,12 @@ Unify.unify(<N>(n: N) => Math.random() > 0 ? Either.right(n) : Either.left("ok")
 Unify.unify(Math.random() > 0 ? Either.right(10) : Either.left("ok"))
 
 // $ExpectType Stream<0 | "a", "b" | 1, "c" | 2>
-export type SU = Unify.Unify<
+export type StreamUnify = Unify.Unify<
   Stream.Stream<0, 1, 2> | Stream.Stream<"a", "b", "c">
 >
 
 // $ExpectType Micro<0 | "a", "b" | 1, "c" | 2>
-export type MU = Unify.Unify<
+export type MicroUnify = Unify.Unify<
   Micro.Micro<0, 1, 2> | Micro.Micro<"a", "b", "c">
 >
 // $ExpectType Effect<0 | "a", "b" | 1, "c" | 2>

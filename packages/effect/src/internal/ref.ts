@@ -1,8 +1,8 @@
 import type * as Effect from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import { dual } from "../Function.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
-import { pipeArguments } from "../Pipeable.js"
 import * as Readable from "../Readable.js"
 import type * as Ref from "../Ref.js"
 import * as core from "./core.js"
@@ -16,11 +16,14 @@ export const refVariance = {
   _A: (_: any) => _
 }
 
-class RefImpl<in out A> implements Ref.Ref<A> {
+class RefImpl<in out A> extends Effectable.Class<A> implements Ref.Ref<A> {
+  commit() {
+    return this.get
+  }
   readonly [RefTypeId] = refVariance
-  readonly [Readable.TypeId]: Readable.TypeId
+  readonly [Readable.TypeId]: Readable.TypeId = Readable.TypeId
   constructor(readonly ref: MutableRef.MutableRef<A>) {
-    this[Readable.TypeId] = Readable.TypeId
+    super()
     this.get = core.sync(() => MutableRef.get(this.ref))
   }
   readonly get: Effect.Effect<A>
@@ -33,9 +36,6 @@ class RefImpl<in out A> implements Ref.Ref<A> {
       }
       return b
     })
-  }
-  pipe() {
-    return pipeArguments(this, arguments)
   }
 }
 

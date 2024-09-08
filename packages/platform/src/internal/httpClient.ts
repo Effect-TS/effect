@@ -7,25 +7,23 @@ import type * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
 import { constFalse, dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
-import * as Stream from "effect/Stream"
 import * as Cookies from "../Cookies.js"
 import * as Headers from "../Headers.js"
 import type * as Client from "../HttpClient.js"
 import * as Error from "../HttpClientError.js"
 import type * as ClientRequest from "../HttpClientRequest.js"
 import type * as ClientResponse from "../HttpClientResponse.js"
-import * as Method from "../HttpMethod.js"
 import * as TraceContext from "../HttpTraceContext.js"
 import * as UrlParams from "../UrlParams.js"
 import * as internalBody from "./httpBody.js"
 import * as internalRequest from "./httpClientRequest.js"
-import * as internalResponse from "./httpClientResponse.js"
 
 /** @internal */
 export const TypeId: Client.TypeId = Symbol.for(
@@ -33,7 +31,7 @@ export const TypeId: Client.TypeId = Symbol.for(
 ) as Client.TypeId
 
 /** @internal */
-export const tag = Context.GenericTag<Client.HttpClient.Default>("@effect/platform/HttpClient")
+export const tag = Context.GenericTag<Client.HttpClient.Service>("@effect/platform/HttpClient")
 
 /** @internal */
 export const currentTracerDisabledWhen = globalValue(
@@ -69,57 +67,72 @@ export const withTracerPropagation = dual<
   ) => Effect.Effect<A, E, R>
 >(2, (self, enabled) => Effect.locally(self, currentTracerPropagation, enabled))
 
-/** @internal */
-export const currentFetchOptions = globalValue(
-  Symbol.for("@effect/platform/HttpClient/currentFetchOptions"),
-  () => FiberRef.unsafeMake<RequestInit>({})
-)
-
-/** @internal */
-export const withFetchOptions = dual<
-  (
-    options: RequestInit
-  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
-    options: RequestInit
-  ) => Effect.Effect<A, E, R>
->(2, (self, options) => Effect.locally(self, currentFetchOptions, options))
-
-const clientProto = {
+const ClientProto = {
   [TypeId]: TypeId,
   pipe() {
     return pipeArguments(this, arguments)
+  },
+  ...Inspectable.BaseProto,
+  toJSON() {
+    return {
+      _id: "@effect/platform/HttpClient"
+    }
+  },
+  get(this: Client.HttpClient.Service, url: string | URL, options?: ClientRequest.Options.NoBody) {
+    return this.execute(internalRequest.get(url, options))
+  },
+  head(this: Client.HttpClient.Service, url: string | URL, options?: ClientRequest.Options.NoBody) {
+    return this.execute(internalRequest.head(url, options))
+  },
+  post(this: Client.HttpClient.Service, url: string | URL, options: ClientRequest.Options.NoUrl) {
+    return this.execute(internalRequest.post(url, options))
+  },
+  put(this: Client.HttpClient.Service, url: string | URL, options: ClientRequest.Options.NoUrl) {
+    return this.execute(internalRequest.put(url, options))
+  },
+  patch(this: Client.HttpClient.Service, url: string | URL, options: ClientRequest.Options.NoUrl) {
+    return this.execute(internalRequest.patch(url, options))
+  },
+  del(this: Client.HttpClient.Service, url: string | URL, options?: ClientRequest.Options.NoUrl) {
+    return this.execute(internalRequest.del(url, options))
+  },
+  options(this: Client.HttpClient.Service, url: string | URL, options?: ClientRequest.Options.NoBody) {
+    return this.execute(internalRequest.options(url, options))
   }
 }
 
 const isClient = (u: unknown): u is Client.HttpClient<unknown, unknown, unknown> => Predicate.hasProperty(u, TypeId)
 
+interface HttpClientImpl<A, E, R> extends Client.HttpClient<A, E, R> {
+  readonly preprocess: Client.HttpClient.Preprocess<E, R>
+  readonly postprocess: Client.HttpClient.Postprocess<A, E, R>
+}
+
 /** @internal */
 export const make = <E2, R2, A, E, R>(
-  execute: (
+  postprocess: (
     request: Effect.Effect<ClientRequest.HttpClientRequest, E2, R2>
   ) => Effect.Effect<A, E, R>,
   preprocess: Client.HttpClient.Preprocess<E2, R2>
 ): Client.HttpClient<A, E, R> => {
-  function client(request: ClientRequest.HttpClientRequest) {
-    return execute(preprocess(request))
+  const self = Object.create(ClientProto)
+  self.preprocess = preprocess
+  self.postprocess = postprocess
+  self.execute = function(request: ClientRequest.HttpClientRequest) {
+    return postprocess(preprocess(request))
   }
-  Object.setPrototypeOf(client, clientProto)
-  ;(client as any).preprocess = preprocess
-  ;(client as any).execute = execute
-  return client as any
+  return self
 }
 
 /** @internal */
-export const makeDefault = (
+export const makeService = (
   f: (
     request: ClientRequest.HttpClientRequest,
     url: URL,
     signal: AbortSignal,
     fiber: Fiber.RuntimeFiber<ClientResponse.HttpClientResponse, Error.HttpClientError>
   ) => Effect.Effect<ClientResponse.HttpClientResponse, Error.HttpClientError, Scope.Scope>
-): Client.HttpClient.Default =>
+): Client.HttpClient.Service =>
   make((effect) =>
     Effect.flatMap(effect, (request) =>
       Effect.withFiberRuntime((fiber) => {
@@ -189,52 +202,6 @@ export const makeDefault = (
       })), Effect.succeed as Client.HttpClient.Preprocess<never, never>)
 
 /** @internal */
-export const Fetch = Context.GenericTag<Client.Fetch, typeof globalThis.fetch>(
-  "@effect/platform/HttpClient/Fetch"
-)
-
-/** @internal */
-export const fetch: Client.HttpClient.Default = makeDefault((request, url, signal, fiber) => {
-  const context = fiber.getFiberRef(FiberRef.currentContext)
-  const fetch: typeof globalThis.fetch = context.unsafeMap.get(Fetch.key) ?? globalThis.fetch
-  const options = fiber.getFiberRef(currentFetchOptions)
-  const headers = new globalThis.Headers(request.headers)
-  const send = (body: BodyInit | undefined) =>
-    Effect.map(
-      Effect.tryPromise({
-        try: () =>
-          fetch(url, {
-            ...options,
-            method: request.method,
-            headers,
-            body,
-            duplex: request.body._tag === "Stream" ? "half" : undefined,
-            signal
-          } as any),
-        catch: (cause) =>
-          new Error.RequestError({
-            request,
-            reason: "Transport",
-            cause
-          })
-      }),
-      (response) => internalResponse.fromWeb(request, response)
-    )
-  if (Method.hasBody(request.method)) {
-    switch (request.body._tag) {
-      case "Raw":
-      case "Uint8Array":
-        return send(request.body.body as any)
-      case "FormData":
-        return send(request.body.formData)
-      case "Stream":
-        return Effect.flatMap(Stream.toReadableStreamEffect(request.body.stream), send)
-    }
-  }
-  return send(undefined)
-})
-
-/** @internal */
 export const transform = dual<
   <A, E, R, A1, E1, R1>(
     f: (
@@ -249,11 +216,13 @@ export const transform = dual<
       request: ClientRequest.HttpClientRequest
     ) => Effect.Effect<A1, E1, R1>
   ) => Client.HttpClient<A1, E | E1, R | R1>
->(2, (self, f) =>
-  make(
-    Effect.flatMap((request) => f(self.execute(Effect.succeed(request)), request)),
-    self.preprocess
-  ))
+>(2, (self, f) => {
+  const client = self as HttpClientImpl<any, any, any>
+  return make(
+    Effect.flatMap((request) => f(client.postprocess(Effect.succeed(request)), request)),
+    client.preprocess
+  )
+})
 
 /** @internal */
 export const filterStatus = dual<
@@ -298,12 +267,6 @@ export const filterStatusOk = <E, R>(
     ))
 
 /** @internal */
-export const fetchOk: Client.HttpClient.Default = filterStatusOk(fetch)
-
-/** @internal */
-export const layer = Layer.succeed(tag, fetch)
-
-/** @internal */
 export const transformResponse = dual<
   <A, E, R, A1, E1, R1>(
     f: (effect: Effect.Effect<A, E, R>) => Effect.Effect<A1, E1, R1>
@@ -312,7 +275,10 @@ export const transformResponse = dual<
     self: Client.HttpClient<A, E, R>,
     f: (effect: Effect.Effect<A, E, R>) => Effect.Effect<A1, E1, R1>
   ) => Client.HttpClient<A1, E1, R1>
->(2, (self, f) => make((request) => f(self.execute(request)), self.preprocess))
+>(2, (self, f) => {
+  const client = self as HttpClientImpl<any, any, any>
+  return make((request) => f(client.postprocess(request)), client.preprocess)
+})
 
 /** @internal */
 export const catchTag: {
@@ -584,7 +550,10 @@ export const mapRequest = dual<
     self: Client.HttpClient<A, E, R>,
     f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
   ) => Client.HttpClient<A, E, R>
->(2, (self, f) => make(self.execute, (request) => Effect.map(self.preprocess(request), f)))
+>(2, (self, f) => {
+  const client = self as HttpClientImpl<any, any, any>
+  return make(client.postprocess, (request) => Effect.map(client.preprocess(request), f))
+})
 
 /** @internal */
 export const mapRequestEffect = dual<
@@ -601,10 +570,13 @@ export const mapRequestEffect = dual<
       a: ClientRequest.HttpClientRequest
     ) => Effect.Effect<ClientRequest.HttpClientRequest, E2, R2>
   ) => Client.HttpClient<A, E | E2, R | R2>
->(2, (self, f) => make(self.execute as any, (request) => Effect.flatMap(self.preprocess(request), f)))
+>(2, (self, f) => {
+  const client = self as HttpClientImpl<any, any, any>
+  return make(client.postprocess as any, (request) => Effect.flatMap(client.preprocess(request), f))
+})
 
 /** @internal */
-export const mapInputRequest = dual<
+export const mapRequestInput = dual<
   (
     f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
   ) => <A, E, R>(self: Client.HttpClient<A, E, R>) => Client.HttpClient<A, E, R>,
@@ -612,10 +584,13 @@ export const mapInputRequest = dual<
     self: Client.HttpClient<A, E, R>,
     f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
   ) => Client.HttpClient<A, E, R>
->(2, (self, f) => make(self.execute, (request) => self.preprocess(f(request))))
+>(2, (self, f) => {
+  const client = self as HttpClientImpl<any, any, any>
+  return make(client.postprocess, (request) => client.preprocess(f(request)))
+})
 
 /** @internal */
-export const mapInputRequestEffect = dual<
+export const mapRequestInputEffect = dual<
   <E2, R2>(
     f: (
       a: ClientRequest.HttpClientRequest
@@ -629,17 +604,29 @@ export const mapInputRequestEffect = dual<
       a: ClientRequest.HttpClientRequest
     ) => Effect.Effect<ClientRequest.HttpClientRequest, E2, R2>
   ) => Client.HttpClient<A, E | E2, R | R2>
->(2, (self, f) => make(self.execute as any, (request) => Effect.flatMap(f(request), self.preprocess)))
+>(2, (self, f) => {
+  const client = self as HttpClientImpl<any, any, any>
+  return make(client.postprocess as any, (request) => Effect.flatMap(f(request), client.preprocess))
+})
 
 /** @internal */
 export const retry: {
-  <R1, E extends E0, E0, B>(
-    policy: Schedule.Schedule<B, E0, R1>
+  <E, O extends Effect.Retry.Options<E>>(
+    options: O
+  ): <A, R>(
+    self: Client.HttpClient<A, E, R>
+  ) => Client.Retry.Return<R, E, A, O>
+  <B, E, R1>(
+    policy: Schedule.Schedule<B, NoInfer<E>, R1>
   ): <A, R>(self: Client.HttpClient<A, E, R>) => Client.HttpClient<A, E, R1 | R>
-  <A, E extends E0, E0, R, R1, B>(
+  <A, E, R, O extends Effect.Retry.Options<E>>(
     self: Client.HttpClient<A, E, R>,
-    policy: Schedule.Schedule<B, E0, R1>
-  ): Client.HttpClient<A, E, R | R1>
+    options: O
+  ): Client.Retry.Return<R, E, A, O>
+  <A, E, R, B, R1>(
+    self: Client.HttpClient<A, E, R>,
+    policy: Schedule.Schedule<B, E, R1>
+  ): Client.HttpClient<A, E, R1 | R>
 } = dual(
   2,
   <A, E extends E0, E0, R, R1, B>(
@@ -683,7 +670,7 @@ export const schemaFunction = dual<
           })
       }),
       (body) =>
-        self(
+        self.execute(
           internalRequest.setBody(
             request,
             internalBody.uint8Array(body, "application/json")
@@ -714,7 +701,10 @@ export const tapRequest = dual<
     self: Client.HttpClient<A, E, R>,
     f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<_, E2, R2>
   ) => Client.HttpClient<A, E | E2, R | R2>
->(2, (self, f) => make(self.execute as any, (request) => Effect.tap(self.preprocess(request), f)))
+>(2, (self, f) => {
+  const client = self as HttpClientImpl<any, any, any>
+  return make(client.postprocess as any, (request) => Effect.tap(client.preprocess(request), f))
+})
 
 /** @internal */
 export const withCookiesRef = dual<
@@ -730,15 +720,16 @@ export const withCookiesRef = dual<
   <E, R>(
     self: Client.HttpClient.WithResponse<E, R>,
     ref: Ref.Ref<Cookies.Cookies>
-  ): Client.HttpClient.WithResponse<E, R> =>
-    make(
+  ): Client.HttpClient.WithResponse<E, R> => {
+    const client = self as HttpClientImpl<ClientResponse.HttpClientResponse, E, R>
+    return make(
       (request: Effect.Effect<ClientRequest.HttpClientRequest, E, R>) =>
         Effect.tap(
-          self.execute(request),
+          client.postprocess(request),
           (response) => Ref.update(ref, (cookies) => Cookies.merge(cookies, response.cookies))
         ),
       (request) =>
-        Effect.flatMap(self.preprocess(request), (request) =>
+        Effect.flatMap(client.preprocess(request), (request) =>
           Effect.map(
             Ref.get(ref),
             (cookies) =>
@@ -747,6 +738,7 @@ export const withCookiesRef = dual<
                 : internalRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
           ))
     )
+  }
 )
 
 /** @internal */
@@ -761,15 +753,16 @@ export const followRedirects = dual<
 >((args) => isClient(args[0]), <E, R>(
   self: Client.HttpClient.WithResponse<E, R>,
   maxRedirects?: number | undefined
-): Client.HttpClient.WithResponse<E, R> =>
-  make(
+): Client.HttpClient.WithResponse<E, R> => {
+  const client = self as HttpClientImpl<ClientResponse.HttpClientResponse, E, R>
+  return make(
     (request) => {
       const loop = (
         request: ClientRequest.HttpClientRequest,
         redirects: number
       ): Effect.Effect<ClientResponse.HttpClientResponse, E, R> =>
         Effect.flatMap(
-          self.execute(Effect.succeed(request)),
+          client.postprocess(Effect.succeed(request)),
           (response) =>
             response.status >= 300 && response.status < 400 && response.headers.location &&
               redirects < (maxRedirects ?? 10)
@@ -784,5 +777,18 @@ export const followRedirects = dual<
         )
       return Effect.flatMap(request, (request) => loop(request, 0))
     },
-    self.preprocess
-  ))
+    client.preprocess
+  )
+})
+
+/** @internal */
+export const layerMergedContext = <E, R>(effect: Effect.Effect<Client.HttpClient.Service, E, R>) =>
+  Layer.effect(
+    tag,
+    Effect.flatMap(Effect.context<never>(), (context) =>
+      Effect.map(effect, (client) =>
+        transformResponse(
+          client,
+          Effect.mapInputContext((input: Context.Context<Scope.Scope>) => Context.merge(context, input))
+        )))
+  )

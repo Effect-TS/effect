@@ -1,10 +1,11 @@
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type { Effect } from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import type { RuntimeFiber } from "../Fiber.js"
 import { identity } from "../Function.js"
-import { pipeArguments } from "../Pipeable.js"
 import type * as RcRef from "../RcRef.js"
+import * as Readable from "../Readable.js"
 import type * as Scope from "../Scope.js"
 import * as coreEffect from "./core-effect.js"
 import * as core from "./core.js"
@@ -42,8 +43,9 @@ const variance: RcRef.RcRef.Variance<any, any> = {
   _E: identity
 }
 
-class RcRefImpl<A, E> implements RcRef.RcRef<A, E> {
-  readonly [TypeId]: RcRef.RcRef.Variance<A, E>
+class RcRefImpl<A, E> extends Effectable.Class<A, E, Scope.Scope> implements RcRef.RcRef<A, E> {
+  readonly [TypeId]: RcRef.RcRef.Variance<A, E> = variance
+  readonly [Readable.TypeId]: Readable.TypeId = Readable.TypeId
 
   state: State<A> = stateEmpty
   readonly semaphore = circular.unsafeMakeSemaphore(1)
@@ -54,11 +56,13 @@ class RcRefImpl<A, E> implements RcRef.RcRef<A, E> {
     readonly scope: Scope.Scope,
     readonly idleTimeToLive: Duration.Duration | undefined
   ) {
-    this[TypeId] = variance
+    super()
+    this.get = get(this)
   }
+  readonly get: Effect<A, E, Scope.Scope>
 
-  pipe() {
-    return pipeArguments(this, arguments)
+  commit() {
+    return this.get
   }
 }
 
