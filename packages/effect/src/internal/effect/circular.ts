@@ -2,6 +2,7 @@ import type * as Cause from "../../Cause.js"
 import type * as Deferred from "../../Deferred.js"
 import * as Duration from "../../Duration.js"
 import type * as Effect from "../../Effect.js"
+import * as Effectable from "../../Effectable.js"
 import * as Equal from "../../Equal.js"
 import type { Equivalence } from "../../Equivalence.js"
 import * as Exit from "../../Exit.js"
@@ -571,18 +572,21 @@ export const synchronizedVariance = {
 }
 
 /** @internal */
-class SynchronizedImpl<in out A> implements Synchronized.SynchronizedRef<A> {
+class SynchronizedImpl<in out A> extends Effectable.Class<A> implements Synchronized.SynchronizedRef<A> {
   readonly [SynchronizedTypeId] = synchronizedVariance
   readonly [internalRef.RefTypeId] = internalRef.refVariance
-  readonly [Readable.TypeId]: Readable.TypeId
+  readonly [Readable.TypeId]: Readable.TypeId = Readable.TypeId
   constructor(
     readonly ref: Ref.Ref<A>,
     readonly withLock: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   ) {
-    this[Readable.TypeId] = Readable.TypeId
+    super()
     this.get = internalRef.get(this.ref)
   }
   readonly get: Effect.Effect<A>
+  commit() {
+    return this.get
+  }
   modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<B> {
     return this.modifyEffect((a) => core.succeed(f(a)))
   }
@@ -593,9 +597,6 @@ class SynchronizedImpl<in out A> implements Synchronized.SynchronizedRef<A> {
         core.flatMap(([b, a]) => core.as(internalRef.set(this.ref, a), b))
       )
     )
-  }
-  pipe() {
-    return pipeArguments(this, arguments)
   }
 }
 
