@@ -10,8 +10,8 @@ import * as core from "./internal/core.js"
 import * as internal from "./internal/deferred.js"
 import type * as MutableRef from "./MutableRef.js"
 import type * as Option from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -37,11 +37,30 @@ export type DeferredTypeId = typeof DeferredTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Deferred<in out A, in out E = never> extends Deferred.Variance<A, E>, Pipeable {
+export interface Deferred<in out A, in out E = never> extends Effect.Effect<A, E>, Deferred.Variance<A, E> {
   /** @internal */
   readonly state: MutableRef.MutableRef<internal.State<A, E>>
   /** @internal */
   readonly blockingOn: FiberId.FiberId
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: DeferredUnify<this>
+  readonly [Unify.ignoreSymbol]?: DeferredUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface DeferredUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  Deferred?: () => Extract<A[Unify.typeSymbol], Deferred<any>>
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface DeferredUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**
