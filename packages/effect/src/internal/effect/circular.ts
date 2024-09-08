@@ -154,10 +154,10 @@ class Latch implements Effect.Latch {
 }
 
 /** @internal */
-export const unsafeMakeLatch = (open: boolean): Effect.Latch => new Latch(open)
+export const unsafeMakeLatch = (open?: boolean | undefined): Effect.Latch => new Latch(open ?? false)
 
 /** @internal */
-export const makeLatch = (open: boolean) => core.sync(() => unsafeMakeLatch(open))
+export const makeLatch = (open?: boolean | undefined) => core.sync(() => unsafeMakeLatch(open))
 
 /** @internal */
 export const awaitAllChildren = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
