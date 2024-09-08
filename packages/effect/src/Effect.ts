@@ -5425,13 +5425,13 @@ export interface Latch {
  * @category latch
  * @since 3.8.0
  */
-export const unsafeMakeLatch: (open: boolean) => Latch = circular.unsafeMakeLatch
+export const unsafeMakeLatch: (open?: boolean | undefined) => Latch = circular.unsafeMakeLatch
 
 /**
  * @category latch
  * @since 3.8.0
  */
-export const makeLatch: (open: boolean) => Effect<Latch> = circular.makeLatch
+export const makeLatch: (open?: boolean | undefined) => Effect<Latch, never, never> = circular.makeLatch
 
 // -------------------------------------------------------------------------------------
 // execution
