@@ -148,7 +148,7 @@ class Latch implements Effect.Latch {
   close = core.sync(() => {
     this.isOpen = false
   })
-  with = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
+  whenOpen = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
     return core.zipRight(this.await, self)
   }
 }
