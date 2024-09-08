@@ -5418,7 +5418,7 @@ export interface Latch {
   /** close the latch */
   readonly close: Effect<void>
   /** only run the given effect when the latch is open */
-  readonly with: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  readonly whenOpen: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
 }
 
 /**
