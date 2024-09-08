@@ -103,16 +103,19 @@ export const makeSemaphore = (permits: number) => core.sync(() => unsafeMakeSema
 
 class Latch implements Effect.Latch {
   waiters: Array<(_: Effect.Effect<void>) => void> = []
+  scheduled = false
   constructor(private isOpen: boolean) {}
 
   private unsafeSchedule(fiber: Fiber.RuntimeFiber<void>) {
-    if (this.waiters.length === 0) {
+    if (this.scheduled || this.waiters.length === 0) {
       return core.void
     }
+    this.scheduled = true
     fiber.currentScheduler.scheduleTask(this.flushWaiters, fiber.getFiberRef(core.currentSchedulingPriority))
     return core.void
   }
   private flushWaiters = () => {
+    this.scheduled = false
     const waiters = this.waiters
     this.waiters = []
     for (let i = 0; i < waiters.length; i++) {
