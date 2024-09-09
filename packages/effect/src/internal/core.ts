@@ -1955,19 +1955,21 @@ export const fiberRefUnsafeMakePatch = <Value, Patch>(
     readonly fork: Patch
     readonly join?: ((oldV: Value, newV: Value) => Value) | undefined
   }
-): FiberRef.FiberRef<Value> =>  {
-  const _fiberRef =  ({
+): FiberRef.FiberRef<Value> => {
+  const _fiberRef = {
     ...CommitPrototype,
     [FiberRefTypeId]: fiberRefVariance,
     initial,
-    commit() { return fiberRefGet(this) },
+    commit() {
+      return fiberRefGet(this)
+    },
     diff: (oldValue: Value, newValue: Value) => options.differ.diff(oldValue, newValue),
     combine: (first: Patch, second: Patch) => options.differ.combine(first, second),
     patch: (patch: Patch) => (oldValue: Value) => options.differ.patch(patch, oldValue),
     fork: options.fork,
-    join: options.join ?? ((_, n) => n),
-  })
-  return _fiberRef;
+    join: options.join ?? ((_, n) => n)
+  }
+  return _fiberRef
 }
 
 /** @internal */

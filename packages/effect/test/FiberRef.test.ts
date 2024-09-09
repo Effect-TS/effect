@@ -349,22 +349,22 @@ describe("FiberRef", () => {
       const result = yield* $(Deferred.await(deferred))
       assert.isTrue(result)
     }))
-    it.scoped("fork patch is applied when a fiber is unsafely forked", () =>
-      Effect.gen(function*($) {
-        const fiberRef = yield* $(FiberRef.make<boolean>(true, { fork: constTrue }))
-        const deferred = yield* $(Deferred.make<boolean>())
-        const runtime: Runtime.Runtime<never> = yield* $(Effect.locally(Effect.runtime<never>(), fiberRef, false))
-        const fiber = yield* $(
-          Effect.sync(() => Runtime.runFork(runtime)(Effect.intoDeferred(FiberRef.get(fiberRef), deferred)))
-        )
-        yield* $(Fiber.join(fiber))
-        const result = yield* $(Deferred.await(deferred))
-        assert.isTrue(result)
-      }))
-    it.scoped("is subtype of Effect", () =>
-      Effect.gen(function*() {
-        const fiberRef = yield* FiberRef.make(initial)
-        const result = yield* fiberRef
-        assert.strictEqual(result, initial)
-      }))
+  it.scoped("fork patch is applied when a fiber is unsafely forked", () =>
+    Effect.gen(function*($) {
+      const fiberRef = yield* $(FiberRef.make<boolean>(true, { fork: constTrue }))
+      const deferred = yield* $(Deferred.make<boolean>())
+      const runtime: Runtime.Runtime<never> = yield* $(Effect.locally(Effect.runtime<never>(), fiberRef, false))
+      const fiber = yield* $(
+        Effect.sync(() => Runtime.runFork(runtime)(Effect.intoDeferred(FiberRef.get(fiberRef), deferred)))
+      )
+      yield* $(Fiber.join(fiber))
+      const result = yield* $(Deferred.await(deferred))
+      assert.isTrue(result)
+    }))
+  it.scoped("is subtype of Effect", () =>
+    Effect.gen(function*() {
+      const fiberRef = yield* FiberRef.make(initial)
+      const result = yield* fiberRef
+      assert.strictEqual(result, initial)
+    }))
 })

@@ -43,7 +43,7 @@ export type FiberRefTypeId = typeof FiberRefTypeId
  * @since 2.0.0
  * @category model
  */
-export interface FiberRef<in out A> extends Effect.Effect<A>, Variance<A>{
+export interface FiberRef<in out A> extends Effect.Effect<A>, Variance<A> {
   /** @internal */
   readonly initial: A
   /** @internal */
