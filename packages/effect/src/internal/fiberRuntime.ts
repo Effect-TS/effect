@@ -492,14 +492,16 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
    * In the background, interrupts the fiber as if interrupted from the specified fiber.
    */
   interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<void> {
-    return core.sync(() => this.tell(FiberMessage.interruptSignal(internalCause.interrupt(fiberId))))
+    return core.sync(() => this.unsafeInterruptAsFork(fiberId))
   }
 
   /**
    * In the background, interrupts the fiber as if interrupted from the specified fiber.
    */
   unsafeInterruptAsFork(fiberId: FiberId.FiberId) {
-    this.tell(FiberMessage.interruptSignal(internalCause.interrupt(fiberId)))
+    this.tell(FiberMessage.interruptSignal(
+      internalCause.interrupt(core.capture(fiberId, core.currentSpanFromFiber(this)))
+    ))
   }
 
   /**
@@ -731,7 +733,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
     }
     let told = false
     for (const child of this._children) {
-      child.tell(FiberMessage.interruptSignal(internalCause.interrupt(this.id())))
+      child.unsafeInterruptAsFork(this.id())
       told = true
     }
     return told
@@ -1164,7 +1166,11 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         case OpCodes.OP_REVERT_FLAGS: {
           this.patchRuntimeFlags(this.currentRuntimeFlags, cont.patch)
           if (_runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted()) {
-            return core.exitFailCause(internalCause.sequential(cause, this.getInterruptedCause()))
+            let interruptedCause: any = this.getInterruptedCause()
+            if (!internalCause.contains(cause, interruptedCause)) {
+              interruptedCause = internalCause.sequential(cause, interruptedCause)
+            }
+            return core.exitFailCause(interruptedCause)
           } else {
             return core.exitFailCause(cause)
           }
