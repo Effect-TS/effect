@@ -21,6 +21,7 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isTagged, type Predicate, type Refinement } from "../Predicate.js"
 import * as PubSub from "../PubSub.js"
 import * as Queue from "../Queue.js"
+import * as RcRef from "../RcRef.js"
 import * as Ref from "../Ref.js"
 import * as Runtime from "../Runtime.js"
 import * as Schedule from "../Schedule.js"
@@ -836,6 +837,58 @@ export const broadcastDynamic = dual<
   }
 ): Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R> =>
   Effect.map(toPubSub(self, maximumLag), (pubsub) => flattenTake(fromPubSub(pubsub))))
+
+export const share = dual<
+  <A, E>(
+    config: {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
+  ) => <R>(
+    self: Stream.Stream<A, E, R>
+  ) => Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope>,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    config: {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
+  ) => Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope>
+>(
+  2,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    options: {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
+  ): Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope> =>
+    Effect.map(
+      RcRef.make({
+        acquire: broadcastDynamic(self, options),
+        idleTimeToLive: options.idleTimeToLive
+      }),
+      (rcRef) => unwrapScoped(RcRef.get(rcRef))
+    )
+)
 
 /** @internal */
 export const broadcastedQueues = dual<
