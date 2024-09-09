@@ -1135,7 +1135,8 @@ export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<PrettyError> =>
     interruptCase: (_, fiberId) => {
       const limit = Error.stackTraceLimit
       Error.stackTraceLimit = 0
-      const err = new Error(`Fiber Interrupted by: ${internalFiberId.threadName(fiberId)}`)
+      const threadName = internalFiberId.threadName(fiberId)
+      const err = new Error(threadName.length > 0 ? `Fiber Interrupted by: ${threadName}` : "Fiber Interrupted")
       err.name = "InterruptedException"
       Error.stackTraceLimit = limit
       delete err.stack
