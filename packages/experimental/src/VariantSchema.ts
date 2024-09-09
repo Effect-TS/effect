@@ -51,24 +51,35 @@ export declare namespace Struct {
    * @since 1.0.0
    * @category models
    */
+  export type Any = { readonly [TypeId]: any }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type Fields = {
     readonly [key: string]:
       | Schema.Schema.All
       | Schema.PropertySignature.All
       | Field<any>
       | Struct<any>
+      | undefined
   }
+
+  export type ValidateUnion<A, Variant extends string> = A[keyof A] extends infer U
+    ? U extends { readonly [TypeId]: infer F } ? ValidateUnion<F, Variant> :
+    U extends Field<infer Config> ? [keyof Config] extends [Variant] ? never : false
+    : never :
+    never
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type FieldsWithKeys<K extends string> = {
-    readonly [key: string]:
-      | Schema.Schema.All
-      | Schema.PropertySignature.All
-      | Field<Field.ConfigWithKeys<K>>
-      | Struct<FieldsWithKeys<K>>
+  export type Validate<A, Variant extends string> = {
+    readonly [K in keyof A]: A[K] extends { readonly [TypeId]: infer _ } ? Validate<A[K], Variant> :
+      A[K] extends Field<infer Config> ? [keyof Config] extends [Variant] ? {} : "field must have valid variants"
+      : {}
   }
 }
 
@@ -110,15 +121,21 @@ export declare namespace Field {
    * @since 1.0.0
    * @category models
    */
+  export type Any = { readonly [FieldTypeId]: FieldTypeId }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   type ValueAny = Schema.Schema.All | Schema.PropertySignature.All
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type Config = Partial<{
-    readonly [key: string]: Schema.Schema.All | Schema.PropertySignature.All
-  }>
+  export type Config = {
+    readonly [key: string]: Schema.Schema.All | Schema.PropertySignature.All | undefined
+  }
 
   /**
    * @since 1.0.0
@@ -138,6 +155,7 @@ export declare namespace Field {
       | Schema.PropertySignature.All
       | Field<any>
       | Struct<any>
+      | undefined
   }
 }
 
@@ -319,8 +337,8 @@ export const make = <
   readonly variants: Variants
   readonly defaultVariant: Default
 }): {
-  readonly Struct: <const A extends Struct.FieldsWithKeys<Variants[number]>>(
-    fields: A
+  readonly Struct: <const A extends Struct.Fields>(
+    fields: A & Struct.Validate<A, Variants[number]>
   ) => Struct<A>
   readonly Field: <const A extends Field.ConfigWithKeys<Variants[number]>>(
     config: A & { readonly [K in Exclude<keyof A, Variants[number]>]: never }
@@ -374,7 +392,7 @@ export const make = <
   readonly Class: <Self = never>(
     identifier: string
   ) => <const Fields extends Struct.Fields>(
-    fields: Fields,
+    fields: Fields & Struct.Validate<Fields, Variants[number]>,
     annotations?: Schema.Annotations.Schema<Self>
   ) => [Self] extends [never] ? MissingSelfGeneric
     :
