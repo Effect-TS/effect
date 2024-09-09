@@ -18,7 +18,6 @@ import type * as LogLevel from "./LogLevel.js"
 import type * as LogSpan from "./LogSpan.js"
 import type * as MetricLabel from "./MetricLabel.js"
 import type * as Option from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type * as Request from "./Request.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
 import * as Scheduler from "./Scheduler.js"
@@ -26,6 +25,7 @@ import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -43,7 +43,7 @@ export type FiberRefTypeId = typeof FiberRefTypeId
  * @since 2.0.0
  * @category model
  */
-export interface FiberRef<in out A> extends Variance<A>, Pipeable {
+export interface FiberRef<in out A> extends Effect.Effect<A>, Variance<A>{
   /** @internal */
   readonly initial: A
   /** @internal */
@@ -56,6 +56,25 @@ export interface FiberRef<in out A> extends Variance<A>, Pipeable {
   readonly fork: unknown
   /** @internal */
   join(oldValue: A, newValue: A): A
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: FiberRefUnify<this>
+  readonly [Unify.ignoreSymbol]?: FiberRefUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface FiberRefUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  FiberRef?: () => Extract<A[Unify.typeSymbol], FiberRef<any>>
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface FiberRefUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**

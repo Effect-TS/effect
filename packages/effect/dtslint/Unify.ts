@@ -6,6 +6,7 @@ import type * as Micro from "effect/Micro"
 import type * as Option from "effect/Option"
 import type * as RcRef from "effect/RcRef"
 import type * as Ref from "effect/Ref"
+import type * as FiberRef from "effect/FiberRef"
 import type * as Stream from "effect/Stream"
 import type * as SubscriptionRef from "effect/SubscriptionRef"
 import type * as SynchronizedRef from "effect/SynchronizedRef"
@@ -72,8 +73,13 @@ export type DeferredUnify = Unify.Unify<
   | Deferred.Deferred<1, 2>
   | Deferred.Deferred<"a", "b">
 >
+// $ExpectType FiberRef<1> | FiberRef<"a">
+export type FiberRefUnify = Unify.Unify<
+  | FiberRef.FiberRef<1>
+  | FiberRef.FiberRef<"a">
+>
 
-// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
+// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
 export type AllUnify = Unify.Unify<
   | Either.Either<1, 0>
   | Either.Either<"A", "E">
@@ -91,5 +97,7 @@ export type AllUnify = Unify.Unify<
   | RcRef.RcRef<"A", "E">
   | Deferred.Deferred<1, 2>
   | Deferred.Deferred<"a", "b">
+  | FiberRef.FiberRef<12>
+  | FiberRef.FiberRef<"a2">
   | 0
 >
