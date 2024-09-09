@@ -66,12 +66,6 @@ export declare namespace Struct {
       | undefined
   }
 
-  export type ValidateUnion<A, Variant extends string> = A[keyof A] extends infer U
-    ? U extends { readonly [TypeId]: infer F } ? ValidateUnion<F, Variant> :
-    U extends Field<infer Config> ? [keyof Config] extends [Variant] ? never : false
-    : never :
-    never
-
   /**
    * @since 1.0.0
    * @category models
