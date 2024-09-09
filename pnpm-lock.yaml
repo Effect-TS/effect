@@ -15,6 +15,7 @@ overrides:
   detective-scss: ^4.0.3
   detective-stylus: ^4.0.0
   detective-typescript: ^11.1.0
+  '@types/node': ^22.5.4
   vitest: ^2.0.5
 
 patchedDependencies:
@@ -91,13 +92,13 @@ importers:
         version: 2.0.5(playwright@1.46.0)(typescript@5.6.2)(vitest@2.0.5)
       '@vitest/coverage-v8':
         specifier: ^2.0.5
-        version: 2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0))
+        version: 2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0))
       '@vitest/expect':
         specifier: ^2.0.5
         version: 2.0.5
       '@vitest/web-worker':
         specifier: ^2.0.5
-        version: 2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0))
+        version: 2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0))
       babel-plugin-annotate-pure-calls:
         specifier: ^0.4.0
         version: 0.4.0(patch_hash=lz2aochwly4t7pzapzh4fqay4m)(@babel/core@7.25.2)
@@ -151,7 +152,7 @@ importers:
         version: 5.4.0(@types/node@22.5.4)(terser@5.32.0)
       vitest:
         specifier: ^2.0.5
-        version: 2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0)
+        version: 2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0)
 
   packages/cli:
     dependencies:
@@ -184,8 +185,8 @@ importers:
         specifier: ^4.1.1
         version: 4.1.1
       '@types/node':
-        specifier: ^20.14.10
-        version: 20.14.11
+        specifier: ^22.5.4
+        version: 22.5.4
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -248,8 +249,8 @@ importers:
         specifier: workspace:^
         version: link:../schema/dist
       '@types/node':
-        specifier: ^20.14.10
-        version: 20.14.11
+        specifier: ^22.5.4
+        version: 22.5.4
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -286,8 +287,8 @@ importers:
         specifier: ^0.11.11
         version: 0.11.11
       '@types/node':
-        specifier: ^20.14.10
-        version: 20.14.11
+        specifier: ^22.5.4
+        version: 22.5.4
       ast-types:
         specifier: ^0.14.2
         version: 0.14.2
@@ -325,7 +326,7 @@ importers:
         version: 3.0.13
       vitest-websocket-mock:
         specifier: ^0.3.0
-        version: 0.3.0(vitest@2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0))
+        version: 0.3.0(vitest@2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0))
       ws:
         specifier: ^8.18.0
         version: 8.18.0
@@ -460,8 +461,8 @@ importers:
         specifier: ^3.0.4
         version: 3.0.4
       '@types/node':
-        specifier: ^20.14.10
-        version: 20.14.11
+        specifier: ^22.5.4
+        version: 22.5.4
       '@types/ws':
         specifier: ^8.5.12
         version: 8.5.12
@@ -486,8 +487,8 @@ importers:
         specifier: workspace:^
         version: link:../schema/dist
       '@types/node':
-        specifier: ^20.14.10
-        version: 20.14.11
+        specifier: ^22.5.4
+        version: 22.5.4
       '@types/tar':
         specifier: ^6.1.12
         version: 6.1.13
@@ -632,7 +633,7 @@ importers:
         version: 10.11.0
       drizzle-orm:
         specifier: ^0.31.0
-        version: 0.31.4(@cloudflare/workers-types@4.20240903.0)(@op-engineering/op-sqlite@7.4.0(react-native@0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.2.1)(bun-types@1.1.27)(kysely@0.27.4)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1)
+        version: 0.31.4(@cloudflare/workers-types@4.20240903.0)(@op-engineering/op-sqlite@7.1.0(react-native@0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.2.1)(bun-types@1.1.22)(kysely@0.27.4)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1)
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -729,8 +730,8 @@ importers:
         specifier: workspace:^
         version: link:../sql/dist
       '@types/node':
-        specifier: ^20.14.10
-        version: 20.14.11
+        specifier: ^22.5.4
+        version: 22.5.4
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -827,7 +828,7 @@ importers:
         version: link:../effect/dist
       vitest:
         specifier: ^2.0.5
-        version: 2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0)
+        version: 2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0)
     publishDirectory: dist
 
 packages:
@@ -2386,12 +2387,6 @@ packages:
       react: '*'
       react-native: '>0.73.0'
 
-  '@op-engineering/op-sqlite@7.4.0':
-    resolution: {integrity: sha512-45jSBAG6BPiX/HMqdChNKBnjemD/7X1fDx0xcAzKzoacnT96Z73MtNc7dbS2uE4UYom/mC0gd7eC+4AHovq86Q==}
-    peerDependencies:
-      react: '*'
-      react-native: '>0.73.0'
-
   '@open-draft/deferred-promise@2.2.0':
     resolution: {integrity: sha512-CecwLWx3rhxVQF6V4bAgPS5t+So2sTbPgAzafKkVizyi7tlwpcFpdFqq+wqF2OwNBmqFuu6tOyouTuxgpMfzmA==}
 
@@ -2936,21 +2931,6 @@ packages:
   '@types/node-forge@1.3.11':
     resolution: {integrity: sha512-FQx220y22OKNTqaByeBGqHWYz4cl94tpcxeFdvBo3wjG6XPBuZ0BNgNZRV5J5TFmmcsJ4IzsLkmGRiQbnYsBEQ==}
 
-  '@types/node@12.20.55':
-    resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
-
-  '@types/node@18.19.50':
-    resolution: {integrity: sha512-xonK+NRrMBRtkL1hVCc3G+uXtjh1Al4opBLjqVmipe5ZAaBYWW6cNAiBVZ1BvmkBhep698rP3UM3aRAdSALuhg==}
-
-  '@types/node@20.12.14':
-    resolution: {integrity: sha512-scnD59RpYD91xngrQQLGkE+6UrHUPzeKZWhhjBSa3HSkwjbQc38+q3RoIVEwxQGRw3M+j5hpNAM+lgV3cVormg==}
-
-  '@types/node@20.14.11':
-    resolution: {integrity: sha512-kprQpL8MMeszbz6ojB5/tU8PLN4kesnN8Gjzw349rDlNgsSzg90lAVj3llK99Dh7JON+t9AuscPPFW6mPbTnSA==}
-
-  '@types/node@20.16.5':
-    resolution: {integrity: sha512-VwYCweNo3ERajwy0IUlqqcyZ8/A7Zwa9ZP3MnENWcB11AejO+tLy3pu850goUW2FC/IJMdZUfKpX/yxL1gymCA==}
-
   '@types/node@22.5.4':
     resolution: {integrity: sha512-FDuKUJQm/ju9fT/SeX/6+gBzoPzlVCzfzmGkwKvRHQVxi4BntVbyIwf6a4Xn62mrvndLiml6z/UBXIdEVjQLXg==}
 
@@ -3427,9 +3407,6 @@ packages:
 
   bun-types@1.1.22:
     resolution: {integrity: sha512-PBgj4pQd+1WZJ8kWCho7D6i1RMS9/6WkiRikIfqYFzFomfyWZET32Wy83xK2zmF9HiKXd2+bjtVahJ6546oraA==}
-
-  bun-types@1.1.27:
-    resolution: {integrity: sha512-rHXAiIDefeMS/fleNM1rRDYqolJGNRdch3+AuCRwcZWaqTa1vjGBNsahH/HVV7Y82frllYhJomCVSEiHzLzkgg==}
 
   byline@5.0.0:
     resolution: {integrity: sha512-s6webAy+R4SR8XVuJWt2V2rGvhnrhxN+9S15GNuTK3wKPOXFF6RNc+8ug2XhH+2s4f+uudG4kUVYmYOQWL2g0Q==}
@@ -4563,10 +4540,6 @@ packages:
   happy-dom@14.12.3:
     resolution: {integrity: sha512-vsYlEs3E9gLwA1Hp+w3qzu+RUDFf4VTT8cyKqVICoZ2k7WM++Qyd2LwzyTi5bqMJFiIC/vNpTDYuxdreENRK/g==}
     engines: {node: '>=16.0.0'}
-
-  happy-dom@15.7.3:
-    resolution: {integrity: sha512-w3RUaYNXFJX5LiNVhOJLK4GqCB1bFj1FvELtpon3HrN8gUpS09V0Vvm4/BBRRj7mLUE1+ch8PKv1JxEp/0IHjA==}
-    engines: {node: '>=18.0.0'}
 
   has-bigints@1.0.2:
     resolution: {integrity: sha512-tSvCKtBr9lkF0Ex0aQiP9N+OpV4zi2r/Nee5VkRDbaqv35RLYMzbwQfFSZZH0kR+Rd6302UJZ2p/bJCEoR3VoQ==}
@@ -6774,9 +6747,6 @@ packages:
   unbox-primitive@1.0.2:
     resolution: {integrity: sha512-61pPlCD9h51VoreyJ0BReideM3MDKMKnh6+V9L08331ipq6Q8OFXZYiqP6n/tbHx4s5I9uRhcye6BrbkizkBDw==}
 
-  undici-types@5.26.5:
-    resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
-
   undici-types@6.19.8:
     resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
 
@@ -6863,7 +6833,7 @@ packages:
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
     peerDependencies:
-      '@types/node': ^18.0.0 || >=20.0.0
+      '@types/node': ^22.5.4
       less: '*'
       lightningcss: ^1.21.0
       sass: '*'
@@ -6900,7 +6870,7 @@ packages:
     hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
-      '@types/node': ^18.0.0 || >=20.0.0
+      '@types/node': ^22.5.4
       '@vitest/browser': 2.0.5
       '@vitest/ui': 2.0.5
       happy-dom: '*'
@@ -8907,7 +8877,7 @@ snapshots:
   '@manypkg/find-root@1.1.0':
     dependencies:
       '@babel/runtime': 7.24.8
-      '@types/node': 12.20.55
+      '@types/node': 22.5.4
       find-up: 4.1.0
       fs-extra: 8.1.0
 
@@ -8968,12 +8938,6 @@ snapshots:
     dependencies:
       react: 18.3.1
       react-native: 0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2)
-
-  '@op-engineering/op-sqlite@7.4.0(react-native@0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2))(react@18.3.1)':
-    dependencies:
-      react: 18.3.1
-      react-native: 0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2)
-    optional: true
 
   '@open-draft/deferred-promise@2.2.0': {}
 
@@ -9679,24 +9643,6 @@ snapshots:
     dependencies:
       '@types/node': 22.5.4
 
-  '@types/node@12.20.55': {}
-
-  '@types/node@18.19.50':
-    dependencies:
-      undici-types: 5.26.5
-
-  '@types/node@20.12.14':
-    dependencies:
-      undici-types: 5.26.5
-
-  '@types/node@20.14.11':
-    dependencies:
-      undici-types: 5.26.5
-
-  '@types/node@20.16.5':
-    dependencies:
-      undici-types: 6.19.8
-
   '@types/node@22.5.4':
     dependencies:
       undici-types: 6.19.8
@@ -9721,7 +9667,7 @@ snapshots:
 
   '@types/ssh2@1.15.1':
     dependencies:
-      '@types/node': 18.19.50
+      '@types/node': 22.5.4
 
   '@types/stack-utils@2.0.3': {}
 
@@ -9729,7 +9675,7 @@ snapshots:
 
   '@types/tar@6.1.13':
     dependencies:
-      '@types/node': 20.14.11
+      '@types/node': 22.5.4
       minipass: 4.2.8
 
   '@types/tough-cookie@4.0.5': {}
@@ -9862,7 +9808,7 @@ snapshots:
       magic-string: 0.30.11
       msw: 2.3.5(typescript@5.6.2)
       sirv: 2.0.4
-      vitest: 2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0)
+      vitest: 2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0)
       ws: 8.18.0
     optionalDependencies:
       playwright: 1.46.0
@@ -9879,7 +9825,7 @@ snapshots:
       magic-string: 0.30.11
       msw: 2.3.5(typescript@5.6.2)
       sirv: 2.0.4
-      vitest: 2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0)
+      vitest: 2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0)
       ws: 8.18.0
     optionalDependencies:
       playwright: 1.47.0
@@ -9889,7 +9835,7 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  '@vitest/coverage-v8@2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0))':
+  '@vitest/coverage-v8@2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -9903,7 +9849,7 @@ snapshots:
       std-env: 3.7.0
       test-exclude: 7.0.1
       tinyrainbow: 1.2.0
-      vitest: 2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0)
+      vitest: 2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -9940,10 +9886,10 @@ snapshots:
       loupe: 3.1.1
       tinyrainbow: 1.2.0
 
-  '@vitest/web-worker@2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0))':
+  '@vitest/web-worker@2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0))':
     dependencies:
       debug: 4.3.6
-      vitest: 2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0)
+      vitest: 2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -10306,14 +10252,8 @@ snapshots:
 
   bun-types@1.1.22:
     dependencies:
-      '@types/node': 20.12.14
+      '@types/node': 22.5.4
       '@types/ws': 8.5.12
-
-  bun-types@1.1.27:
-    dependencies:
-      '@types/node': 20.12.14
-      '@types/ws': 8.5.12
-    optional: true
 
   byline@5.0.0: {}
 
@@ -10768,14 +10708,14 @@ snapshots:
 
   dotenv@8.6.0: {}
 
-  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20240903.0)(@op-engineering/op-sqlite@7.4.0(react-native@0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.2.1)(bun-types@1.1.27)(kysely@0.27.4)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1):
+  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20240903.0)(@op-engineering/op-sqlite@7.1.0(react-native@0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.2.1)(bun-types@1.1.22)(kysely@0.27.4)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20240903.0
-      '@op-engineering/op-sqlite': 7.4.0(react-native@0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2))(react@18.3.1)
+      '@op-engineering/op-sqlite': 7.1.0(react-native@0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2))(react@18.3.1)
       '@opentelemetry/api': 1.9.0
       '@types/better-sqlite3': 7.6.11
       better-sqlite3: 11.2.1
-      bun-types: 1.1.27
+      bun-types: 1.1.22
       kysely: 0.27.4
       mysql2: 3.11.0
       postgres: 3.4.4
@@ -11026,7 +10966,7 @@ snapshots:
       '@types/glob': 7.1.3
       '@types/js-yaml': 3.12.5
       '@types/lodash': 4.17.7
-      '@types/node': 20.16.5
+      '@types/node': 22.5.4
       dedent: 1.5.3
       eslint-plugin-markdown: 4.0.1(eslint@9.9.1)
       expect: 29.7.0
@@ -11548,13 +11488,6 @@ snapshots:
       entities: 4.5.0
       webidl-conversions: 7.0.0
       whatwg-mimetype: 3.0.0
-
-  happy-dom@15.7.3:
-    dependencies:
-      entities: 4.5.0
-      webidl-conversions: 7.0.0
-      whatwg-mimetype: 3.0.0
-    optional: true
 
   has-bigints@1.0.2: {}
 
@@ -14073,8 +14006,6 @@ snapshots:
       has-symbols: 1.0.3
       which-boxed-primitive: 1.0.2
 
-  undici-types@5.26.5: {}
-
   undici-types@6.19.8: {}
 
   undici@5.28.4:
@@ -14162,13 +14093,13 @@ snapshots:
       fsevents: 2.3.3
       terser: 5.32.0
 
-  vitest-websocket-mock@0.3.0(vitest@2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0)):
+  vitest-websocket-mock@0.3.0(vitest@2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0)):
     dependencies:
       jest-diff: 29.7.0
       mock-socket: 9.3.1
-      vitest: 2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0)
+      vitest: 2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0)
 
-  vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0):
+  vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0):
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@vitest/expect': 2.0.5
@@ -14193,7 +14124,7 @@ snapshots:
       '@edge-runtime/vm': 4.0.1
       '@types/node': 22.5.4
       '@vitest/browser': 2.0.5(playwright@1.46.0)(typescript@5.6.2)(vitest@2.0.5)
-      happy-dom: 15.7.3
+      happy-dom: 14.12.3
     transitivePeerDependencies:
       - less
       - lightningcss
@@ -14204,7 +14135,7 @@ snapshots:
       - supports-color
       - terser
 
-  vitest@2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@15.7.3)(terser@5.32.0):
+  vitest@2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0):
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@vitest/expect': 2.0.5
@@ -14229,7 +14160,7 @@ snapshots:
       '@edge-runtime/vm': 4.0.3
       '@types/node': 22.5.4
       '@vitest/browser': 2.0.5(playwright@1.47.0)(typescript@5.6.2)(vitest@2.0.5)
-      happy-dom: 15.7.3
+      happy-dom: 14.12.3
     transitivePeerDependencies:
       - less
       - lightningcss
