@@ -10,6 +10,7 @@ import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
+import * as FiberRef from "../FiberRef.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
 import * as Layer from "../Layer.js"
@@ -837,42 +838,56 @@ export const broadcastDynamic = dual<
 ): Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R> =>
   Effect.map(toPubSub(self, maximumLag), (pubsub) => flattenTake(fromPubSub(pubsub))))
 
-export const broadcastDynamicRefCount = dual<
+export const share = dual<
   <A, E>(
     config: {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    } | {
       readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
       readonly replay?: number | undefined
       readonly idleTimeToLive?: Duration.DurationInput | undefined
     }
   ) => <R>(
     self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<Stream.Stream<A, E, Scope.Scope>, never, R | Scope.Scope>,
+  ) => Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     config: {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    } | {
       readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
       readonly replay?: number | undefined
       readonly idleTimeToLive?: Duration.DurationInput | undefined
     }
-  ) => Effect.Effect<Stream.Stream<A, E, Scope.Scope>, never, R | Scope.Scope>
+  ) => Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope>
 >(
   2,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    {
-      capacity,
-      idleTimeToLive,
-      replay
-    }: {
+    options: {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    } | {
       readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
       readonly replay?: number | undefined
       readonly idleTimeToLive?: Duration.DurationInput | undefined
     }
-  ): Effect.Effect<Stream.Stream<A, E, Scope.Scope>, never, R | Scope.Scope> =>
-    RcRef.make({
-      acquire: broadcastDynamic(self, { capacity, replay }),
-      idleTimeToLive
-    }).pipe(Effect.map((rcRef) => unwrap(RcRef.get(rcRef))))
+  ): Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope> =>
+    Effect.map(
+      RcRef.make({
+        acquire: broadcastDynamic(self, options),
+        idleTimeToLive: options.idleTimeToLive
+      }),
+      (rcRef) => unwrapScoped(RcRef.get(rcRef))
+    )
 )
 
 /** @internal */

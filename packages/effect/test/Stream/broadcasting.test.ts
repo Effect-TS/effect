@@ -64,12 +64,10 @@ describe("Stream", () => {
               Stream.tap((n) =>
                 pipe(
                   Ref.update(ref, Chunk.append(n)),
-                  Effect.zipRight(
-                    pipe(
-                      Deferred.succeed(latch, void 0),
-                      Effect.when(() => n === 1)
-                    )
-                  )
+                  Effect.zipRight(pipe(
+                    Deferred.succeed(latch, void 0),
+                    Effect.when(() => n === 1)
+                  ))
                 )
               ),
               Stream.runDrain,
@@ -95,17 +93,22 @@ describe("Stream", () => {
         Stream.range(0, 4),
         Stream.broadcast(2, 2),
         Effect.flatMap((streams) =>
-          pipe(Stream.toPull(streams[0]), Effect.ignore, Effect.scoped, Effect.zipRight(Stream.runCollect(streams[1])))
+          pipe(
+            Stream.toPull(streams[0]),
+            Effect.ignore,
+            Effect.scoped,
+            Effect.zipRight(Stream.runCollect(streams[1]))
+          )
         ),
         Effect.scoped
       )
       assert.deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4])
     }))
 
-  it.scoped("broadcastDynamicRefCount sequenced", () =>
+  it.scoped("share sequenced", () =>
     Effect.gen(function*() {
       const sharedStream = yield* Stream.fromSchedule(Schedule.spaced("1 seconds")).pipe(
-        Stream.broadcastDynamicRefCount({ capacity: 16 })
+        Stream.share({ capacity: 16 })
       )
 
       const firstFiber = yield* sharedStream.pipe(
@@ -133,10 +136,10 @@ describe("Stream", () => {
       assert.deepStrictEqual(second, [0])
     }))
 
-  it.scoped("broadcastDynamicRefCount sequenced with idleTimeToLive", () =>
+  it.scoped("share sequenced with idleTimeToLive", () =>
     Effect.gen(function*() {
       const sharedStream = yield* Stream.fromSchedule(Schedule.spaced("1 seconds")).pipe(
-        Stream.broadcastDynamicRefCount({
+        Stream.share({
           capacity: 16,
           idleTimeToLive: "1 second"
         })
@@ -166,10 +169,11 @@ describe("Stream", () => {
       const second = yield* Fiber.join(secondFiber)
       assert.deepStrictEqual(second, [1])
     }))
-  it.scoped("broadcastDynamicRefCount parallel", () =>
+
+  it.scoped("share parallel", () =>
     Effect.gen(function*() {
       const sharedStream = yield* Stream.fromSchedule(Schedule.spaced("1 seconds")).pipe(
-        Stream.broadcastDynamicRefCount({ capacity: 16 })
+        Stream.share({ capacity: 16 })
       )
 
       const fiber1 = yield* sharedStream.pipe(
