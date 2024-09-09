@@ -6,10 +6,9 @@ import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import { dual, identity } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Stream from "effect/Stream"
 import { hasProperty } from "./Predicate.js"
-import type { Invariant } from "./Types.js"
 
 /**
  * @since 3.8.0
@@ -25,9 +24,27 @@ export type TypeId = typeof TypeId
 
 /**
  * @since 3.8.0
+ * @category type ids
+ */
+export const ReadonlyTypeId: unique symbol = Symbol.for("effect/Mailbox/ReadonlyMailbox")
+
+/**
+ * @since 3.8.0
+ * @category type ids
+ */
+export type ReadonlyTypeId = typeof ReadonlyTypeId
+
+/**
+ * @since 3.8.0
  * @category guards
  */
 export const isMailbox = (u: unknown): u is Mailbox<unknown, unknown> => hasProperty(u, TypeId)
+
+/**
+ * @since 3.8.0
+ * @category guards
+ */
+export const isReadonlyMailbox = (u: unknown): u is Mailbox<unknown, unknown> => hasProperty(u, ReadonlyTypeId)
 
 /**
  * A `Mailbox` is a queue that can be signaled to be done or failed.
@@ -35,11 +52,8 @@ export const isMailbox = (u: unknown): u is Mailbox<unknown, unknown> => hasProp
  * @since 3.8.0
  * @category models
  */
-export interface Mailbox<in out A, in out E = never> {
-  readonly [TypeId]: {
-    readonly _A: Invariant<A>
-    readonly _E: Invariant<E>
-  }
+export interface Mailbox<in out A, in out E = never> extends ReadonlyMailbox<A, E> {
+  readonly [TypeId]: TypeId
   /**
    * Add a message to the mailbox. Returns `false` if the mailbox is done.
    */
@@ -64,6 +78,16 @@ export interface Mailbox<in out A, in out E = never> {
    * returned.
    */
   readonly done: Effect.Effect<boolean>
+}
+
+/**
+ * A `ReadonlyMailbox` represents a mailbox that can only be read from.
+ *
+ * @since 3.8.0
+ * @category models
+ */
+export interface ReadonlyMailbox<out A, out E = never> {
+  readonly [ReadonlyTypeId]: ReadonlyTypeId
   /** Take all messages from the mailbox, or wait for messages to be available. */
   readonly take: Effect.Effect<readonly [messages: ReadonlyArray<A>, done: boolean], E>
   /** Wait for the mailbox to be done or failed. */
@@ -79,15 +103,11 @@ type MailboxState<E> = {
   readonly exit: Exit.Exit<void, E>
 }
 
-const doneResult = [[], true] as const
-
-const variance = {
-  _A: identity,
-  _E: identity
-}
+const asDone = Exit.as([[], true] as const)
 
 class MailboxImpl<A, E> implements Mailbox<A, E> {
-  readonly [TypeId] = variance as Mailbox<A, E>[TypeId]
+  readonly [TypeId]: TypeId = TypeId
+  readonly [ReadonlyTypeId]: ReadonlyTypeId = ReadonlyTypeId
   private state: MailboxState<E> = {
     _tag: "Open",
     takeLatch: Effect.unsafeMakeLatch(false),
@@ -189,9 +209,9 @@ class MailboxImpl<A, E> implements Mailbox<A, E> {
       Effect.flatMap((_) => {
         if (this.messages.length === 0) {
           if (this.state._tag === "Done") {
-            return Exit.as(this.state.exit, doneResult)
+            return asDone(this.state.exit)
           }
-          return this.take
+          return Effect.zipRight(Effect.yieldNow(), this.take)
         }
         const messages = this.messages
         this.messages = []
@@ -265,14 +285,17 @@ export const make = <A, E = never>(capacity?: number | undefined): Effect.Effect
 export const into: {
   <A, E>(
     self: Mailbox<A, E>
-  ): <AX, EX extends E, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<void, never, RX>
-  <AX, E, EX extends E, RX, A>(effect: Effect.Effect<AX, EX, RX>, self: Mailbox<A, E>): Effect.Effect<void, never, RX>
+  ): <AX, EX extends E, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<boolean, never, RX>
+  <AX, E, EX extends E, RX, A>(
+    effect: Effect.Effect<AX, EX, RX>,
+    self: Mailbox<A, E>
+  ): Effect.Effect<boolean, never, RX>
 } = dual(
   2,
   <AX, E, EX extends E, RX, A>(
     effect: Effect.Effect<AX, EX, RX>,
     self: Mailbox<A, E>
-  ): Effect.Effect<void, never, RX> =>
+  ): Effect.Effect<boolean, never, RX> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.matchCauseEffect(restore(effect), {
         onFailure: (cause) => self.failCause(cause),
@@ -287,7 +310,7 @@ export const into: {
  * @since 3.8.0
  * @category conversions
  */
-export const toChannel = <A, E>(self: Mailbox<A, E>): Channel.Channel<Chunk.Chunk<A>, unknown, E> => {
+export const toChannel = <A, E>(self: ReadonlyMailbox<A, E>): Channel.Channel<Chunk.Chunk<A>, unknown, E> => {
   const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = Channel.flatMap(self.take, ([messages, done]) =>
     done
       ? messages.length === 0 ? Channel.void : Channel.write(Chunk.unsafeFromArray(messages))
@@ -301,4 +324,4 @@ export const toChannel = <A, E>(self: Mailbox<A, E>): Channel.Channel<Chunk.Chun
  * @since 3.8.0
  * @category conversions
  */
-export const toStream = <A, E>(self: Mailbox<A, E>): Stream.Stream<A, E> => Stream.fromChannel(toChannel(self))
+export const toStream = <A, E>(self: ReadonlyMailbox<A, E>): Stream.Stream<A, E> => Stream.fromChannel(toChannel(self))
