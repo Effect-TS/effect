@@ -201,12 +201,13 @@ class MailboxImpl<A, E> implements Mailbox<A, E> {
     return Effect.as(openState.takeLatch.open, true)
   })
   take: Effect.Effect<readonly [messages: ReadonlyArray<A>, done: boolean], E> = Effect.uninterruptibleMask((restore) =>
-    restore(Effect.suspend(() =>
-      this.state._tag === "Open"
-        ? this.state.takeLatch.await
-        : Effect.void
-    )).pipe(
-      Effect.flatMap((_) => {
+    Effect.flatMap(
+      restore(Effect.suspend(() =>
+        this.state._tag === "Open"
+          ? this.state.takeLatch.await
+          : Effect.void
+      )),
+      (_) => {
         if (this.messages.length === 0) {
           if (this.state._tag === "Done") {
             return asDone(this.state.exit)
@@ -215,13 +216,14 @@ class MailboxImpl<A, E> implements Mailbox<A, E> {
         }
         const messages = this.messages
         this.messages = []
-        return Effect.succeed([messages, this.state._tag === "Done"] as const)
-      }),
-      Effect.tap(() =>
-        this.state._tag === "Open"
-          ? Effect.zipRight(this.state.takeLatch.close, this.state.capacityLatch.open)
-          : Effect.void
-      )
+        if (this.state._tag === "Done") {
+          return Effect.succeed([messages, true] as const)
+        }
+        return Effect.as(
+          Effect.zipRight(this.state.takeLatch.close, this.state.capacityLatch.open),
+          [messages, false] as const
+        )
+      }
     )
   )
   await: Effect.Effect<void, E> = Effect.suspend(() => {
