@@ -16,7 +16,7 @@ describe("Mailbox", () => {
       assert.isFalse(result[1])
 
       yield* Effect.yieldNow({ priority: 1 })
-      assert.isNull(fiber.unsafePoll())
+      assert.isNotNull(fiber.unsafePoll())
 
       result = yield* mailbox.take
       assert.deepStrictEqual(result[0], [3, 4])
