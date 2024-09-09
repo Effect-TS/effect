@@ -5,8 +5,11 @@ import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import * as Schedule from "effect/Schedule"
+import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as it from "effect/test/utils/extend"
+import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe("Stream", () => {
@@ -100,5 +103,96 @@ describe("Stream", () => {
         Effect.scoped
       )
       assert.deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4])
+    }))
+
+  it.scoped("share sequenced", () =>
+    Effect.gen(function*() {
+      const sharedStream = yield* Stream.fromSchedule(Schedule.spaced("1 seconds")).pipe(
+        Stream.share({ capacity: 16 })
+      )
+
+      const firstFiber = yield* sharedStream.pipe(
+        Stream.take(1),
+        Stream.run(Sink.collectAll()),
+        Effect.map(Array.from),
+        Effect.fork
+      )
+
+      yield* TestClock.adjust("1 second")
+
+      const first = yield* Fiber.join(firstFiber)
+      assert.deepStrictEqual(first, [0])
+
+      const secondFiber = yield* sharedStream.pipe(
+        Stream.take(1),
+        Stream.run(Sink.collectAll()),
+        Effect.map(Array.from),
+        Effect.fork
+      )
+
+      yield* TestClock.adjust("1 second")
+
+      const second = yield* Fiber.join(secondFiber)
+      assert.deepStrictEqual(second, [0])
+    }))
+
+  it.scoped("share sequenced with idleTimeToLive", () =>
+    Effect.gen(function*() {
+      const sharedStream = yield* Stream.fromSchedule(Schedule.spaced("1 seconds")).pipe(
+        Stream.share({
+          capacity: 16,
+          idleTimeToLive: "1 second"
+        })
+      )
+
+      const firstFiber = yield* sharedStream.pipe(
+        Stream.take(1),
+        Stream.run(Sink.collectAll()),
+        Effect.map(Array.from),
+        Effect.fork
+      )
+
+      yield* TestClock.adjust("1 second")
+
+      const first = yield* Fiber.join(firstFiber)
+      assert.deepStrictEqual(first, [0])
+
+      const secondFiber = yield* sharedStream.pipe(
+        Stream.take(1),
+        Stream.run(Sink.collectAll()),
+        Effect.map(Array.from),
+        Effect.fork
+      )
+
+      yield* TestClock.adjust("1 second")
+
+      const second = yield* Fiber.join(secondFiber)
+      assert.deepStrictEqual(second, [1])
+    }))
+
+  it.scoped("share parallel", () =>
+    Effect.gen(function*() {
+      const sharedStream = yield* Stream.fromSchedule(Schedule.spaced("1 seconds")).pipe(
+        Stream.share({ capacity: 16 })
+      )
+
+      const fiber1 = yield* sharedStream.pipe(
+        Stream.take(1),
+        Stream.run(Sink.collectAll()),
+        Effect.map((x) => Array.from(x)),
+        Effect.fork
+      )
+      const fiber2 = yield* sharedStream.pipe(
+        Stream.take(2),
+        Stream.run(Sink.collectAll()),
+        Effect.map((x) => Array.from(x)),
+        Effect.fork
+      )
+
+      yield* TestClock.adjust("2 second")
+      const [result1, result2] = yield* Fiber.joinAll([fiber1, fiber2])
+
+      assert.deepStrictEqual(result1, [0])
+      assert.deepStrictEqual(result2, [0, 1])
     }))
 })
