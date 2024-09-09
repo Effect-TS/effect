@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.25.1
+
+### Patch Changes
+
+- [#3574](https://github.com/Effect-TS/effect/pull/3574) [`ce86193`](https://github.com/Effect-TS/effect/commit/ce86193546fd4cf5682df6cef0ab1d486136cc15) Thanks @tim-smart! - fix VariantSchema variant validation
+
 ## 0.25.0
 
 ### Patch Changes
