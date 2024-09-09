@@ -550,6 +550,42 @@ export const broadcast: {
 } = internal.broadcast
 
 /**
+ * Returns a new Stream that multicasts the original Stream, subscribing to it as soon as the first consumer subscribes.
+ * As long as there is at least one consumer, the upstream will continue running and emitting data.
+ * When all consumers have exited, the upstream will be finalized.
+ *
+ * @since 3.8.0
+ * @category utils
+ */
+export const share: {
+  <A, E>(
+    config: {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
+  ): <R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E>, never, R | Scope.Scope>
+  <A, E, R>(
+    self: Stream<A, E, R>,
+    config: {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
+  ): Effect.Effect<Stream<A, E>, never, R | Scope.Scope>
+} = internal.share
+
+/**
  * Fan out the stream, producing a dynamic number of streams that have the
  * same elements as this stream. The driver stream will only ever advance the
  * `maximumLag` chunks before the slowest downstream stream.
