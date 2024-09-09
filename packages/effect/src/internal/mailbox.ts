@@ -1,16 +1,17 @@
 import type { Cause } from "../Cause.js"
 import type { Channel } from "../Channel.js"
 import * as Chunk from "../Chunk.js"
-import type { Effect, Latch } from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import type { Exit } from "../Exit.js"
 import { dual } from "../Function.js"
+import * as Iterable from "../Iterable.js"
 import type * as Api from "../Mailbox.js"
 import { hasProperty } from "../Predicate.js"
+import type { Scheduler } from "../Scheduler.js"
 import type { Stream } from "../Stream.js"
 import * as channel from "./channel.js"
 import * as coreChannel from "./core-stream.js"
 import * as core from "./core.js"
-import * as circular from "./effect/circular.js"
 import * as stream from "./stream.js"
 
 /** @internal */
@@ -27,8 +28,9 @@ export const isReadonlyMailbox = (u: unknown): u is Api.Mailbox<unknown, unknown
 
 type MailboxState<E> = {
   readonly _tag: "Open"
-  readonly takeLatch: Latch
-  readonly waiters: Set<readonly [capacity: number, resume: (_: Effect<void>) => void]>
+  readonly takers: Set<(_: Effect<void>) => void>
+  readonly offers: Set<readonly [capacity: number, resume: (_: Effect<void>) => void]>
+  readonly awaiters: Set<(_: Effect<void, E>) => void>
 } | {
   readonly _tag: "Done"
   readonly exit: Exit<void, E>
@@ -41,8 +43,9 @@ class MailboxImpl<A, E> implements Api.Mailbox<A, E> {
   readonly [ReadonlyTypeId]: Api.ReadonlyTypeId = ReadonlyTypeId
   private state: MailboxState<E> = {
     _tag: "Open",
-    takeLatch: circular.unsafeMakeLatch(false),
-    waiters: new Set()
+    takers: new Set(),
+    offers: new Set(),
+    awaiters: new Set()
   }
   private messages: Array<A> = []
   constructor(readonly capacity: number) {}
@@ -53,10 +56,10 @@ class MailboxImpl<A, E> implements Api.Mailbox<A, E> {
         return resume(core.exitVoid)
       }
       const entry = [capacity, resume] as const
-      this.state.waiters.add(entry)
+      this.state.offers.add(entry)
       return core.sync(() => {
         if (this.state._tag === "Open") {
-          this.state.waiters.delete(entry)
+          this.state.offers.delete(entry)
         }
       })
     })
@@ -64,13 +67,13 @@ class MailboxImpl<A, E> implements Api.Mailbox<A, E> {
   private releaseCapacity = core.sync(() => {
     if (this.state._tag !== "Open") {
       return
-    } else if (this.state.waiters.size === 0) {
+    } else if (this.state.offers.size === 0) {
       return
     }
     let released = 0
-    for (const entry of this.state.waiters) {
+    for (const entry of this.state.offers) {
       released += entry[0]
-      this.state.waiters.delete(entry)
+      this.state.offers.delete(entry)
       entry[1](core.exitVoid)
       if (released >= this.capacity) {
         break
@@ -78,9 +81,29 @@ class MailboxImpl<A, E> implements Api.Mailbox<A, E> {
     }
   })
 
+  private scheduleRunning = false
+  private scheduleReleaseTaker(scheduler: Scheduler) {
+    if (this.scheduleRunning) {
+      return
+    }
+    this.scheduleRunning = true
+    scheduler.scheduleTask(this.releaseTaker, 0)
+  }
+  private releaseTaker = () => {
+    this.scheduleRunning = false
+    if (this.state._tag !== "Open") {
+      return
+    } else if (this.state.takers.size === 0) {
+      return
+    }
+    const taker = Iterable.unsafeHead(this.state.takers)
+    this.state.takers.delete(taker)
+    taker(core.exitVoid)
+  }
+
   offer(message: A): Effect<boolean> {
     return core.uninterruptibleMask((restore) =>
-      core.suspend(() => {
+      core.withFiberRuntime((fiber) => {
         if (this.state._tag !== "Open") {
           return core.succeed(false)
         }
@@ -92,7 +115,8 @@ class MailboxImpl<A, E> implements Api.Mailbox<A, E> {
           )
         }
         this.messages.push(message)
-        return core.as(this.state.takeLatch.open, true)
+        this.scheduleReleaseTaker(fiber.currentScheduler)
+        return core.succeed(true)
       })
     )
   }
@@ -101,7 +125,7 @@ class MailboxImpl<A, E> implements Api.Mailbox<A, E> {
   }
   private offerAllLoop(messages: Array<A>, count: number): Effect<number> {
     return core.uninterruptibleMask((restore) =>
-      core.suspend(() => {
+      core.withFiberRuntime((fiber) => {
         if (this.state._tag !== "Open") {
           return core.succeed(count)
         }
@@ -119,7 +143,8 @@ class MailboxImpl<A, E> implements Api.Mailbox<A, E> {
             // eslint-disable-next-line no-restricted-syntax
             this.messages.push(...messages)
           }
-          return core.as(this.state.takeLatch.open, count + len)
+          this.scheduleReleaseTaker(fiber.currentScheduler)
+          return core.succeed(count + len)
         }
         const remaining = new Array<A>(len - free)
         for (let i = 0; i < len; i++) {
@@ -129,8 +154,8 @@ class MailboxImpl<A, E> implements Api.Mailbox<A, E> {
             remaining[i - free] = messages[i]
           }
         }
-        return this.state.takeLatch.open.pipe(
-          core.zipRight(restore(this.awaitCapacity(len - free))),
+        this.scheduleReleaseTaker(fiber.currentScheduler)
+        return restore(this.awaitCapacity(len - free)).pipe(
           core.zipRight(this.offerAllLoop(remaining, count + free))
         )
       })
@@ -149,44 +174,61 @@ class MailboxImpl<A, E> implements Api.Mailbox<A, E> {
       }
       const openState = this.state
       this.state = { _tag: "Done", exit }
-      for (const entry of openState.waiters) {
+      for (const entry of openState.offers) {
         entry[1](core.exitVoid)
       }
-      return core.as(openState.takeLatch.open, true)
+      openState.takers.clear()
+      for (const taker of openState.takers) {
+        taker(core.exitVoid)
+      }
+      openState.offers.clear()
+      for (const awaiter of openState.awaiters) {
+        awaiter(exit)
+      }
+      openState.awaiters.clear()
+      return core.succeed(true)
     })
   }
   end = this.done(core.exitVoid)
   take: Effect<readonly [messages: ReadonlyArray<A>, done: boolean], E> = core.uninterruptibleMask((restore) =>
     core.flatMap(
-      restore(core.suspend(() =>
-        this.state._tag === "Open"
-          ? this.state.takeLatch.await
-          : core.void
-      )),
+      restore(core.unsafeAsync<void>((resume) => {
+        if (this.state._tag !== "Open" || this.messages.length > 0) {
+          return resume(core.exitVoid)
+        }
+        this.state.takers.add(resume)
+        return core.sync(() => {
+          if (this.state._tag === "Open") {
+            this.state.takers.delete(resume)
+          }
+        })
+      })),
       (_) => {
         if (this.messages.length === 0) {
           if (this.state._tag === "Done") {
             return asDone(this.state.exit)
           }
-          return core.zipRight(core.yieldNow(), this.take)
+          return restore(this.take)
         }
         const messages = this.messages
         this.messages = []
         if (this.state._tag === "Done") {
           return core.succeed([messages, true] as const)
         }
-        return core.as(
-          core.zipRight(this.state.takeLatch.close, this.releaseCapacity),
-          [messages, false] as const
-        )
+        return core.as(this.releaseCapacity, [messages, false] as const)
       }
     )
   )
-  await: Effect<void, E> = core.suspend(() => {
-    if (this.state._tag === "Done") {
-      return this.state.exit
+  await: Effect<void, E> = core.unsafeAsync<void, E>((resume) => {
+    if (this.state._tag !== "Open") {
+      return resume(this.state.exit)
     }
-    return core.zipRight(this.state.takeLatch.await, this.await)
+    this.state.awaiters.add(resume)
+    return core.sync(() => {
+      if (this.state._tag === "Open") {
+        this.state.awaiters.delete(resume)
+      }
+    })
   })
 }
 
