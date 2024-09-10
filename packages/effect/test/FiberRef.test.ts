@@ -361,4 +361,10 @@ describe("FiberRef", () => {
       const result = yield* $(Deferred.await(deferred))
       assert.isTrue(result)
     }))
+  it.scoped("is subtype of Effect", () =>
+    Effect.gen(function*() {
+      const fiberRef = yield* FiberRef.make(initial)
+      const result = yield* fiberRef
+      assert.strictEqual(result, initial)
+    }))
 })
