@@ -48,7 +48,7 @@ describe("Cause", () => {
 
   describe("pretty", () => {
     it("Empty", () => {
-      expect(Cause.pretty(Cause.empty)).toEqual("All fibers interrupted without errors.")
+      expect(Cause.pretty(Cause.empty)).toEqual("")
     })
 
     it("Fail", () => {
@@ -84,12 +84,12 @@ describe("Cause", () => {
     })
 
     it("Interrupt", () => {
-      expect(Cause.pretty(Cause.interrupt(FiberId.none))).toEqual("All fibers interrupted without errors.")
+      expect(Cause.pretty(Cause.interrupt(FiberId.none))).toEqual("InterruptedException: Fiber Interrupted")
       expect(Cause.pretty(Cause.interrupt(FiberId.runtime(1, 0)))).toEqual(
-        "All fibers interrupted without errors."
+        "InterruptedException: Fiber Interrupted by: #1"
       )
       expect(Cause.pretty(Cause.interrupt(FiberId.composite(FiberId.none, FiberId.runtime(1, 0))))).toEqual(
-        "All fibers interrupted without errors."
+        "InterruptedException: Fiber Interrupted by: #1"
       )
     })
   })
@@ -202,7 +202,7 @@ describe("Cause", () => {
 
   describe("toString", () => {
     it("Empty", () => {
-      expect(String(Cause.empty)).toEqual(`All fibers interrupted without errors.`)
+      expect(String(Cause.empty)).toEqual(``)
     })
 
     it("Fail", () => {
@@ -214,10 +214,10 @@ describe("Cause", () => {
     })
 
     it("Interrupt", () => {
-      expect(String(Cause.interrupt(FiberId.none))).toEqual(`All fibers interrupted without errors.`)
-      expect(String(Cause.interrupt(FiberId.runtime(1, 0)))).toEqual(`All fibers interrupted without errors.`)
+      expect(String(Cause.interrupt(FiberId.none))).toEqual(`InterruptedException: Fiber Interrupted`)
+      expect(String(Cause.interrupt(FiberId.runtime(1, 0)))).toEqual(`InterruptedException: Fiber Interrupted by: #1`)
       expect(String(Cause.interrupt(FiberId.composite(FiberId.none, FiberId.runtime(1, 0))))).toEqual(
-        `All fibers interrupted without errors.`
+        `InterruptedException: Fiber Interrupted by: #1`
       )
     })
 
