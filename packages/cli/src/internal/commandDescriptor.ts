@@ -687,7 +687,7 @@ const parseInternal = (
             })
           )
         }
-        return loop(iterator.next().value)
+        return loop(iterator.next().value!)
       })
       const helpDirectiveForParent = Effect.sync(() => {
         return InternalCommandDirective.builtIn(InternalBuiltInOptions.showHelp(
