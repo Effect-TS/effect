@@ -153,9 +153,9 @@ export const feed: {
 /**
  * Flatten this command to a non-empty array of standard commands.
  *
- * * For a `StandardCommand`, this simply returns a `1` element array
- * * For a `PipedCommand`, all commands in the pipe will be extracted out into
- *   a array from left to right
+ * For a `StandardCommand`, this simply returns a `1` element array
+ * For a `PipedCommand`, all commands in the pipe will be extracted out into
+ * a array from left to right
  *
  * @since 1.0.0
  * @category combinators
@@ -169,10 +169,8 @@ export const flatten: (self: Command) => NonEmptyReadonlyArray<StandardCommand> 
  * @since 1.0.0
  * @category execution
  */
-export const lines: (
-  command: Command,
-  encoding?: string
-) => Effect<Array<string>, PlatformError, CommandExecutor> = internal.lines
+export const lines: (command: Command, encoding?: string) => Effect<Array<string>, PlatformError, CommandExecutor> =
+  internal.lines
 
 /**
  * Create a command with the specified process name and an optional list of
@@ -235,7 +233,8 @@ export const stream: (command: Command) => Stream<Uint8Array, PlatformError, Com
  * @since 1.0.0
  * @category execution
  */
-export const streamLines: (command: Command) => Stream<string, PlatformError, CommandExecutor> = internal.streamLines
+export const streamLines: (command: Command, encoding?: string) => Stream<string, PlatformError, CommandExecutor> =
+  internal.streamLines
 
 /**
  * Runs the command returning the entire output as a string with the
