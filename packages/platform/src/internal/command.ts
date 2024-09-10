@@ -241,13 +241,14 @@ export const start = (
 export const stream = (
   command: Command.Command
 ): Stream.Stream<Uint8Array, PlatformError, CommandExecutor.CommandExecutor> =>
-  Stream.flatMap(commandExecutor.CommandExecutor, (process) => process.stream(command))
+  Stream.flatMap(commandExecutor.CommandExecutor, (executor) => executor.stream(command))
 
 /** @internal */
 export const streamLines = (
-  command: Command.Command
+  command: Command.Command,
+  encoding?: string
 ): Stream.Stream<string, PlatformError, CommandExecutor.CommandExecutor> =>
-  Stream.flatMap(commandExecutor.CommandExecutor, (process) => process.streamLines(command))
+  Stream.flatMap(commandExecutor.CommandExecutor, (executor) => executor.streamLines(command, encoding))
 
 /** @internal */
 export const string = dual<
