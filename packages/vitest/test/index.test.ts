@@ -74,6 +74,7 @@ it.scopedLive("interrupts on timeout", (ctx) =>
 
     ctx.onTestFailed(() => {
       if (acquired) {
+        // eslint-disable-next-line no-console
         console.error("'effect is interrupted on timeout' @effect/vitest test failed")
       }
     })

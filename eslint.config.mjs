@@ -63,10 +63,13 @@ export default [
       "prefer-destructuring": "off",
       "sort-imports": "off",
 
-      "no-restricted-syntax": ["error", {
-        selector: "CallExpression[callee.property.name='push'] > SpreadElement.arguments",
-        message: "Do not use spread arguments in Array.push"
-      }],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.property.name='push'] > SpreadElement.arguments",
+          message: "Do not use spread arguments in Array.push"
+        }
+      ],
 
       "no-unused-vars": "off",
       "prefer-rest-params": "off",
@@ -80,10 +83,13 @@ export default [
       "sort-destructure-keys/sort-destructure-keys": "error",
       "deprecation/deprecation": "off",
 
-      "@typescript-eslint/array-type": ["warn", {
-        default: "generic",
-        readonly: "generic"
-      }],
+      "@typescript-eslint/array-type": [
+        "warn",
+        {
+          default: "generic",
+          readonly: "generic"
+        }
+      ],
 
       "@typescript-eslint/member-delimiter-style": 0,
       "@typescript-eslint/no-non-null-assertion": "off",
@@ -92,10 +98,13 @@ export default [
       "@typescript-eslint/no-empty-interface": "off",
       "@typescript-eslint/consistent-type-imports": "warn",
 
-      "@typescript-eslint/no-unused-vars": ["error", {
-        argsIgnorePattern: "^_",
-        varsIgnorePattern: "^_"
-      }],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_"
+        }
+      ],
 
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/camelcase": "off",
@@ -106,17 +115,26 @@ export default [
       "@typescript-eslint/no-use-before-define": "off",
       "@typescript-eslint/no-namespace": "off",
 
-      "@effect/dprint": ["error", {
-        config: {
-          indentWidth: 2,
-          lineWidth: 120,
-          semiColons: "asi",
-          quoteStyle: "alwaysDouble",
-          trailingCommas: "never",
-          operatorPosition: "maintain",
-          "arrowFunction.useParentheses": "force"
+      "@effect/dprint": [
+        "error",
+        {
+          config: {
+            indentWidth: 2,
+            lineWidth: 120,
+            semiColons: "asi",
+            quoteStyle: "alwaysDouble",
+            trailingCommas: "never",
+            operatorPosition: "maintain",
+            "arrowFunction.useParentheses": "force"
+          }
         }
-      }]
+      ]
+    }
+  },
+  {
+    files: ["packages/*/src/**/*", "packages/*/test/**/*"],
+    rules: {
+      "no-console": "error"
     }
   }
 ]

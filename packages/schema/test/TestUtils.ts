@@ -207,6 +207,7 @@ export const expectEncodeFailure = async <A, I>(
 ) => expectFailure(S.encode(schema)(a, options), message)
 
 export const printAST = <A, I, R>(schema: S.Schema<A, I, R>) => {
+  // eslint-disable-next-line no-console
   console.log("%o", schema.ast)
 }
 
@@ -263,6 +264,7 @@ export const expectPromiseFailure = async <A>(promise: Promise<A>, message: stri
 export const sample = <A, I>(schema: S.Schema<A, I>, n: number) => {
   const arbitrary = A.makeLazy(schema)
   const arb = arbitrary(fc)
+  // eslint-disable-next-line no-console
   console.log(JSON.stringify(fc.sample(arb, n), null, 2))
 }
 
@@ -311,6 +313,7 @@ export const expectEitherLeft = <A>(e: Either.Either<A, ParseResult.ParseError>,
   if (Either.isLeft(e)) {
     expect(formatErrorSync(e.left)).toStrictEqual(message)
   } else {
+    // eslint-disable-next-line no-console
     console.log(e.right)
     assert.fail(`expected a Left`)
   }
@@ -320,6 +323,7 @@ export const expectEitherRight = <E, A>(e: Either.Either<A, E>, a: A) => {
   if (Either.isRight(e)) {
     expect(e.right).toStrictEqual(a)
   } else {
+    // eslint-disable-next-line no-console
     console.log(e.left)
     assert.fail(`expected a Right`)
   }

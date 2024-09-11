@@ -256,7 +256,7 @@ describe("Class", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
     expect(() => {
       class A2 extends A.extend<A2>("A2")({ a: S.String }) {}
-      console.log(A2)
+      A2
     }).toThrow(
       new Error(`Duplicate property signature
 details: Duplicate key "a"`)
