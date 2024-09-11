@@ -2,6 +2,7 @@ import * as Arr from "../Array.js"
 import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Effect from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import { dual, pipe } from "../Function.js"
 import * as MutableQueue from "../MutableQueue.js"
 import * as MutableRef from "../MutableRef.js"
@@ -63,7 +64,7 @@ export const dequeueVariance = {
 }
 
 /** @internal */
-class QueueImpl<in out A> implements Queue.Queue<A> {
+class QueueImpl<in out A> extends Effectable.Class<A> implements Queue.Queue<A> {
   readonly [EnqueueTypeId] = enqueueVariance
   readonly [DequeueTypeId] = dequeueVariance
 
@@ -79,10 +80,15 @@ class QueueImpl<in out A> implements Queue.Queue<A> {
     /** @internal */
     readonly strategy: Queue.Strategy<A>
   ) {
+    super()
   }
 
   pipe() {
     return pipeArguments(this, arguments)
+  }
+
+  commit() {
+    return this.take
   }
 
   capacity(): number {
