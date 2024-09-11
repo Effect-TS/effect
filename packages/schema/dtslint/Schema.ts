@@ -305,6 +305,9 @@ S.NullOr(S.NumberFromString)
 // Union
 // ---------------------------------------------
 
+// $ExpectType Union<[typeof String$, typeof Never]>
+S.Union(S.String, S.Never)
+
 // $ExpectType Union<[typeof String$, typeof Number$]>
 S.Union(S.String, S.Number).annotations({})
 
@@ -507,6 +510,9 @@ S.asSchema(S.Struct({ a: neverAnyPropertySignature }))
 // ---------------------------------------------
 // optional
 // ---------------------------------------------
+
+// $ExpectType optional<typeof Never>
+S.optional(S.Never)
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean) }))
@@ -2683,3 +2689,24 @@ S.asSchema(S.TemplateLiteralParser("/", S.Int, "/", S.Literal("a", "b")))
 
 // $ExpectType TemplateLiteralParser<["/", typeof Int, "/", Literal<["a", "b"]>]>
 S.TemplateLiteralParser("/", S.Int, "/", S.Literal("a", "b"))
+
+// ---------------------------------------------
+// UndefinedOr
+// ---------------------------------------------
+
+// $ExpectType UndefinedOr<typeof Never>
+S.UndefinedOr(S.Never)
+
+// ---------------------------------------------
+// NullOr
+// ---------------------------------------------
+
+// $ExpectType NullOr<typeof Never>
+S.NullOr(S.Never)
+
+// ---------------------------------------------
+// NullishOr
+// ---------------------------------------------
+
+// $ExpectType NullishOr<typeof Never>
+S.NullishOr(S.Never)
