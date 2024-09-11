@@ -18,13 +18,13 @@ import * as internal from "./internal/fiber.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import type * as Option from "./Option.js"
 import type * as order from "./Order.js"
-import type { Pipeable } from "./Pipeable.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
 import type { Scheduler } from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type { Supervisor } from "./Supervisor.js"
 import type { AnySpan, Tracer } from "./Tracer.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -62,7 +62,7 @@ export type RuntimeFiberTypeId = typeof RuntimeFiberTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Fiber<out A, out E = never> extends Fiber.Variance<A, E>, Pipeable {
+export interface Fiber<out A, out E = never> extends Effect.Effect<A, E>, Fiber.Variance<A, E> {
   /**
    * The identity of the fiber.
    */
@@ -97,6 +97,26 @@ export interface Fiber<out A, out E = never> extends Fiber.Variance<A, E>, Pipea
    * resume immediately. Otherwise, the effect will resume when the fiber exits.
    */
   interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<void>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: FiberUnify<this>
+  readonly [Unify.ignoreSymbol]?: FiberUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface FiberUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  Fiber?: () => A[Unify.typeSymbol] extends Fiber<infer A0, infer E0> | infer _ ? Fiber<A0, E0> : never
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface FiberUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**
@@ -190,6 +210,27 @@ export interface RuntimeFiber<out A, out E = never> extends Fiber<A, E>, Fiber.R
    * Gets the current supervisor
    */
   get currentSupervisor(): Supervisor<unknown>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: RuntimeFiberUnify<this>
+  readonly [Unify.ignoreSymbol]?: RuntimeFiberUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface RuntimeFiberUnify<A extends { [Unify.typeSymbol]?: any }> extends FiberUnify<A> {
+  RuntimeFiber?: () => A[Unify.typeSymbol] extends RuntimeFiber<infer A0, infer E0> | infer _ ? RuntimeFiber<A0, E0>
+    : never
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface RuntimeFiberUnifyIgnore extends FiberUnifyIgnore {
+  Fiber?: true
 }
 
 /**

@@ -10,7 +10,7 @@ import type { DefaultServices } from "../DefaultServices.js"
 import * as Deferred from "../Deferred.js"
 import type * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
-import { EffectTypeId } from "../Effectable.js"
+import * as Effectable from "../Effectable.js"
 import type * as Either from "../Either.js"
 import * as ExecutionStrategy from "../ExecutionStrategy.js"
 import type * as Exit from "../Exit.js"
@@ -269,14 +269,11 @@ export interface Snapshot {
 }
 
 /** @internal */
-export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFiber<A, E> {
+export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A, E>
+  implements Fiber.RuntimeFiber<A, E>
+{
   readonly [internalFiber.FiberTypeId] = internalFiber.fiberVariance
   readonly [internalFiber.RuntimeFiberTypeId] = runtimeFiberVariance
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-
   private _fiberRefs: FiberRefs.FiberRefs
   private _fiberId: FiberId.Runtime
   private _queue = new Array<FiberMessage.FiberMessage>()
@@ -304,6 +301,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
     fiberRefs0: FiberRefs.FiberRefs,
     runtimeFlags0: RuntimeFlags.RuntimeFlags
   ) {
+    super()
     this.currentRuntimeFlags = runtimeFlags0
     this._fiberId = fiberId
     this._fiberRefs = fiberRefs0
@@ -313,6 +311,10 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
       fiberActive.unsafeUpdate(1, tags)
     }
     this.refreshRefCache()
+  }
+
+  commit(): Effect.Effect<A, E, never> {
+    return internalFiber.join(this)
   }
 
   /**
@@ -1334,10 +1336,10 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         // @ts-expect-error
         cur = this.currentTracer.context(
           () => {
-            if (version.getCurrentVersion() !== (cur as core.Primitive)[EffectTypeId]._V) {
+            if (version.getCurrentVersion() !== (cur as core.Primitive)[core.EffectTypeId]._V) {
               return core.dieMessage(
                 `Cannot execute an Effect versioned ${
-                  (cur as core.Primitive)[EffectTypeId]._V
+                  (cur as core.Primitive)[core.EffectTypeId]._V
                 } with a Runtime of version ${version.getCurrentVersion()}`
               )
             }
@@ -3365,46 +3367,51 @@ export const fiberAwaitAll = <const T extends Iterable<Fiber.Fiber<any, any>>>(
 > => forEach(fibers, internalFiber._await) as any
 
 /** @internal */
-export const fiberAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Fiber.Fiber<Array<A>, E> => ({
-  [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
-  id: () =>
-    RA.fromIterable(fibers).reduce((id, fiber) => FiberId.combine(id, fiber.id()), FiberId.none as FiberId.FiberId),
-  await: core.exit(forEachParUnbounded(fibers, (fiber) => core.flatten(fiber.await), false)),
-  children: core.map(forEachParUnbounded(fibers, (fiber) => fiber.children, false), RA.flatten),
-  inheritAll: core.forEachSequentialDiscard(fibers, (fiber) => fiber.inheritAll),
-  poll: core.map(
-    core.forEachSequential(fibers, (fiber) => fiber.poll),
-    RA.reduceRight(
-      Option.some<Exit.Exit<Array<A>, E>>(core.exitSucceed(new Array())),
-      (optionB, optionA) => {
-        switch (optionA._tag) {
-          case "None": {
-            return Option.none()
-          }
-          case "Some": {
-            switch (optionB._tag) {
-              case "None": {
-                return Option.none()
-              }
-              case "Some": {
-                return Option.some(
-                  core.exitZipWith(optionA.value, optionB.value, {
-                    onSuccess: (a, chunk) => [a, ...chunk],
-                    onFailure: internalCause.parallel
-                  })
-                )
+export const fiberAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Fiber.Fiber<Array<A>, E> => {
+  const _fiberAll = {
+    ...Effectable.CommitPrototype,
+    commit() {
+      return internalFiber.join(this)
+    },
+    [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
+    id: () =>
+      RA.fromIterable(fibers).reduce((id, fiber) => FiberId.combine(id, fiber.id()), FiberId.none as FiberId.FiberId),
+    await: core.exit(forEachParUnbounded(fibers, (fiber) => core.flatten(fiber.await), false)),
+    children: core.map(forEachParUnbounded(fibers, (fiber) => fiber.children, false), RA.flatten),
+    inheritAll: core.forEachSequentialDiscard(fibers, (fiber) => fiber.inheritAll),
+    poll: core.map(
+      core.forEachSequential(fibers, (fiber) => fiber.poll),
+      RA.reduceRight(
+        Option.some<Exit.Exit<Array<A>, E>>(core.exitSucceed(new Array())),
+        (optionB, optionA) => {
+          switch (optionA._tag) {
+            case "None": {
+              return Option.none()
+            }
+            case "Some": {
+              switch (optionB._tag) {
+                case "None": {
+                  return Option.none()
+                }
+                case "Some": {
+                  return Option.some(
+                    core.exitZipWith(optionA.value, optionB.value, {
+                      onSuccess: (a, chunk) => [a, ...chunk],
+                      onFailure: internalCause.parallel
+                    })
+                  )
+                }
               }
             }
           }
         }
-      }
-    )
-  ),
-  interruptAsFork: (fiberId) => core.forEachSequentialDiscard(fibers, (fiber) => fiber.interruptAsFork(fiberId)),
-  pipe() {
-    return pipeArguments(this, arguments)
+      )
+    ),
+    interruptAsFork: (fiberId: FiberId.FiberId) =>
+      core.forEachSequentialDiscard(fibers, (fiber) => fiber.interruptAsFork(fiberId))
   }
-})
+  return _fiberAll
+}
 
 /* @internal */
 export const fiberInterruptFork = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<void> =>
