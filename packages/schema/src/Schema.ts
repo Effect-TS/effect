@@ -1110,10 +1110,10 @@ export interface Union<Members extends ReadonlyArray<Schema.All>> extends
   annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): Union<Members>
 }
 
-const getDefaultUnionAST = <Members extends ReadonlyArray<Schema.All>>(members: Members) =>
-  AST.Union.members(members.map((m) => m.ast))
+const getDefaultUnionAST = <Members extends AST.Members<Schema.All>>(members: Members): AST.AST =>
+  AST.Union.make(members.map((m) => m.ast))
 
-const makeUnionClass = <Members extends ReadonlyArray<Schema.All>>(
+const makeUnionClass = <Members extends AST.Members<Schema.All>>(
   members: Members,
   ast: AST.AST = getDefaultUnionAST(members)
 ): Union<Members> =>
@@ -1124,7 +1124,7 @@ const makeUnionClass = <Members extends ReadonlyArray<Schema.All>>(
       return makeUnionClass(this.members, mergeSchemaAnnotations(this.ast, annotations))
     }
 
-    static members = [...members] as any as Members
+    static members = [...members]
   }
 
 /**
@@ -1139,14 +1139,11 @@ export function Union<Members extends ReadonlyArray<Schema.All>>(
 ): Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>
 export function Union<Members extends ReadonlyArray<Schema.All>>(
   ...members: Members
-):
-  | Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>
-  | typeof Never
-{
+) {
   return AST.isMembers(members)
     ? makeUnionClass(members)
     : array_.isNonEmptyReadonlyArray(members)
-    ? members[0] as any
+    ? members[0]
     : Never
 }
 
