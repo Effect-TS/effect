@@ -2497,6 +2497,7 @@ export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
  */
 export const ignoreLogged = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
   matchEffect(self, {
+    // eslint-disable-next-line no-console
     onFailure: (error) => sync(() => console.error(error)),
     onSuccess: (_) => void_
   })

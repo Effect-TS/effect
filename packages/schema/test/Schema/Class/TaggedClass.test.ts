@@ -42,7 +42,7 @@ describe("TaggedClass", () => {
   it("a custom _tag field should be not allowed", () => {
     expect(() => {
       class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
-      console.log(_TA)
+      _TA
     }).toThrow(
       new Error(`Duplicate property signature
 details: Duplicate key "_tag"`)
