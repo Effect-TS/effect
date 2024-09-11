@@ -665,6 +665,10 @@ export const zipWithFiber = dual<
     f: (a: A, b: B) => C
   ) => Fiber.Fiber<C, E | E2>
 >(3, (self, that, f) => ({
+  ...Effectable.CommitPrototype,
+  commit() {
+    return internalFiber.join(this)
+  },
   [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
   id: () => pipe(self.id(), FiberId.getOrElse(that.id())),
   await: pipe(
