@@ -304,13 +304,21 @@ export class TestClockImpl implements TestClock {
       return Option.none()
     })
   }
+
+  private yieldTimer = core.async<void>((resume) => {
+    const timer = setTimeout(() => {
+      resume(core.void)
+    }, 0)
+    return core.sync(() => clearTimeout(timer))
+  })
+
   /**
    * Returns whether all descendants of this fiber are done or suspended.
    */
   suspended(): Effect.Effect<HashMap.HashMap<FiberId.FiberId, FiberStatus.FiberStatus>, void> {
     return pipe(
       this.freeze(),
-      core.zip(this.live.provide(pipe(effect.sleep(Duration.millis(5)), core.zipRight(this.freeze())))),
+      core.zip(pipe(this.yieldTimer, core.zipRight(this.freeze()))),
       core.flatMap(([first, last]) =>
         Equal.equals(first, last) ?
           core.succeed(first) :
@@ -328,7 +336,7 @@ export class TestClockImpl implements TestClock {
         pipe(
           this.suspended(),
           core.zipWith(
-            pipe(this.live.provide(effect.sleep(Duration.millis(10))), core.zipRight(this.suspended())),
+            pipe(this.yieldTimer, core.zipRight(this.suspended())),
             Equal.equals
           ),
           effect.filterOrFail(identity, constVoid),
