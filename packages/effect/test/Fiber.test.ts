@@ -226,4 +226,10 @@ describe("Fiber", () => {
       const result = yield* $(Fiber.join(Fiber.all(fibers)), Effect.asVoid)
       assert.isUndefined(result)
     }), 10000)
+  it.effect("is subtype of Effect", () =>
+    Effect.gen(function*() {
+      const fiber = yield* Effect.fork(Effect.succeed(1))
+      const fiberResult = yield* fiber
+      assert(1 === fiberResult)
+    }))
 })

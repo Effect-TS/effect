@@ -14,6 +14,7 @@ import * as order from "../Order.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import * as core from "./core.js"
+import * as effectable from "./effectable.js"
 import * as fiberScope from "./fiberScope.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 
@@ -76,15 +77,23 @@ export const children = <A, E>(
 ): Effect.Effect<Array<Fiber.RuntimeFiber<any, any>>> => self.children
 
 /** @internal */
-export const done = <A, E>(exit: Exit.Exit<A, E>): Fiber.Fiber<A, E> => ({
-  ...fiberProto,
-  id: () => FiberId.none,
-  await: core.succeed(exit),
-  children: core.succeed([]),
-  inheritAll: core.void,
-  poll: core.succeed(Option.some(exit)),
-  interruptAsFork: () => core.void
-})
+export const done = <A, E>(exit: Exit.Exit<A, E>): Fiber.Fiber<A, E> => {
+  const _fiber = {
+    ...effectable.CommitPrototype,
+    commit() {
+      return join(this)
+    },
+    ...fiberProto,
+    id: () => FiberId.none,
+    await: core.succeed(exit),
+    children: core.succeed([]),
+    inheritAll: core.void,
+    poll: core.succeed(Option.some(exit)),
+    interruptAsFork: () => core.void
+  }
+
+  return _fiber
+}
 
 /** @internal */
 export const dump = <A, E>(self: Fiber.RuntimeFiber<A, E>): Effect.Effect<Fiber.Fiber.Dump> =>
@@ -148,25 +157,32 @@ export const map = dual<
 export const mapEffect = dual<
   <A, A2, E2>(f: (a: A) => Effect.Effect<A2, E2>) => <E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<A2, E | E2>,
   <A, E, A2, E2>(self: Fiber.Fiber<A, E>, f: (a: A) => Effect.Effect<A2, E2>) => Fiber.Fiber<A2, E | E2>
->(2, (self, f) => ({
-  ...fiberProto,
-  id: () => self.id(),
-  await: core.flatMap(self.await, Exit.forEachEffect(f)),
-  children: self.children,
-  inheritAll: self.inheritAll,
-  poll: core.flatMap(self.poll, (result) => {
-    switch (result._tag) {
-      case "None":
-        return core.succeed(Option.none())
-      case "Some":
-        return pipe(
-          Exit.forEachEffect(result.value, f),
-          core.map(Option.some)
-        )
-    }
-  }),
-  interruptAsFork: (id) => self.interruptAsFork(id)
-}))
+>(2, (self, f) => {
+  const _fiber = {
+    ...effectable.CommitPrototype,
+    commit() {
+      return join(this)
+    },
+    ...fiberProto,
+    id: () => self.id(),
+    await: core.flatMap(self.await, Exit.forEachEffect(f)),
+    children: self.children,
+    inheritAll: self.inheritAll,
+    poll: core.flatMap(self.poll, (result) => {
+      switch (result._tag) {
+        case "None":
+          return core.succeed(Option.none())
+        case "Some":
+          return pipe(
+            Exit.forEachEffect(result.value, f),
+            core.map(Option.some)
+          )
+      }
+    }),
+    interruptAsFork: (id: FiberId.FiberId) => self.interruptAsFork(id)
+  }
+  return _fiber
+})
 
 /** @internal */
 export const mapFiber = dual<
@@ -212,7 +228,11 @@ export const match = dual<
 })
 
 /** @internal */
-export const never: Fiber.Fiber<never> = {
+const _never = {
+  ...effectable.CommitPrototype,
+  commit() {
+    return join(this)
+  },
   ...fiberProto,
   id: () => FiberId.none,
   await: core.never,
@@ -223,10 +243,17 @@ export const never: Fiber.Fiber<never> = {
 }
 
 /** @internal */
+export const never: Fiber.Fiber<never> = _never
+
+/** @internal */
 export const orElse = dual<
   <A2, E2>(that: Fiber.Fiber<A2, E2>) => <A, E>(self: Fiber.Fiber<A, E>) => Fiber.Fiber<A | A2, E | E2>,
   <A, E, A2, E2>(self: Fiber.Fiber<A, E>, that: Fiber.Fiber<A2, E2>) => Fiber.Fiber<A | A2, E | E2>
 >(2, (self, that) => ({
+  ...effectable.CommitPrototype,
+  commit() {
+    return join(this)
+  },
   ...fiberProto,
   id: () => FiberId.getOrElse(self.id(), that.id()),
   await: core.zipWith(
