@@ -93,6 +93,17 @@ class Semaphore {
         (permits) => fiberRuntime.ensuring(restore(self), this.release(permits))
       )
     )
+
+  readonly withPermitsIfAvailable = (n: number) => <A, E, R>(self: Effect.Effect<A, E, R>) =>
+    core.uninterruptibleMask((restore) =>
+      core.suspend(() => {
+        if (this.free < n) {
+          return effect.succeedNone
+        }
+        this.taken += n
+        return fiberRuntime.ensuring(restore(effect.asSome(self)), this.release(n))
+      })
+    )
 }
 
 /** @internal */
