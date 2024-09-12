@@ -94,7 +94,7 @@ export const fail = <E>(error: E): Cause.Cause<E> => {
   const o = Object.create(proto)
   o._tag = OpCodes.OP_FAIL
   o.error = error
-  return o
+  return rehydrateAnnotations(o, error)
 }
 
 /** @internal */
@@ -102,7 +102,7 @@ export const die = (defect: unknown): Cause.Cause<never> => {
   const o = Object.create(proto)
   o._tag = OpCodes.OP_DIE
   o.defect = defect
-  return o
+  return rehydrateAnnotations(o, defect)
 }
 
 /** @internal */
@@ -136,15 +136,19 @@ export const annotated = dual<
   (context: Context.Context<never>) => <E>(self: Cause.Cause<E>) => Cause.Cause<E>,
   <E>(self: Cause.Cause<E>, context: Context.Context<never>) => Cause.Cause<E>
 >(2, (self, context) => {
+  if (self._tag === OpCodes.OP_ANNOTATED && self.context === context) {
+    return self
+  }
   const o = Object.create(proto)
   o._tag = OpCodes.OP_ANNOTATED
   if (self._tag === OpCodes.OP_ANNOTATED) {
     o.context = Context.merge(context, self.context)
-    o.cause = propagateAnnotations(self.cause, o.context)
+    o.cause = self.cause
   } else {
     o.context = context
-    o.cause = propagateAnnotations(self, context)
+    o.cause = self
   }
+  propagateAnnotations(o.cause, o.context)
   return o
 })
 
@@ -1321,16 +1325,19 @@ function addOriginalAnnotations<E>(obj: E, annotations: Context.Context<never>):
   })
 }
 
-const propagateAnnotations = <E>(self: Cause.Cause<E>, context: Context.Context<never>): Cause.Cause<E> => {
+const rehydrateAnnotations = <E>(self: Cause.Cause<E>, obj: unknown): Cause.Cause<E> => {
+  const annotations = originalAnnotations(obj)
+  return annotations ? annotated(self, annotations) : self
+}
+
+const propagateAnnotations = <E>(self: Cause.Cause<E>, context: Context.Context<never>): void => {
   switch (self._tag) {
     case "Die": {
-      return die(addOriginalAnnotations(self.defect, context))
+      ;(self as any).defect = addOriginalAnnotations(self.defect, context)
+      break
     }
     case "Fail": {
-      return fail(addOriginalAnnotations(self.error, context))
-    }
-    default: {
-      return self
+      ;(self as any).error = addOriginalAnnotations(self.error, context)
     }
   }
 }
