@@ -30,17 +30,16 @@ export class PodAddress extends Schema.Class<PodAddress>(SymbolKey)({
   /**
    * @since 1.0.0
    */
-  static pretty = Pretty.make(this)
-
-  /**
-   * @since 1.0.0
-   */
   readonly [TypeId] = TypeId;
 
   /**
    * @since 1.0.0
    */
   [Hash.symbol]() {
-    return Hash.cached(this)(Hash.string(`${this.host}:${this.port}`))
+    return Hash.cached(this)(Hash.string(this.toString()))
+  }
+
+  toString(): string {
+    return `${this.host}:${this.port}`
   }
 }

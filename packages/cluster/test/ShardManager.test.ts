@@ -2,7 +2,7 @@ import {
   decideAssignmentsForUnassignedShards,
   decideAssignmentsForUnbalancedShards,
   PodWithMetadata,
-  ShardManagerState
+  State
 } from "@effect/cluster/internal/shardManager"
 import { Pod } from "@effect/cluster/Pod"
 import { PodAddress } from "@effect/cluster/PodAddress"
@@ -39,7 +39,7 @@ const pod3 = PodWithMetadata({
 describe("ShardManager", () => {
   describe("Rebalancing", () => {
     it("should rebalance unbalanced assignments", () => {
-      const state = new ShardManagerState(
+      const state = new State(
         HashMap.make(
           [pod1.pod.address, pod1],
           [pod2.pod.address, pod2]
@@ -61,7 +61,7 @@ describe("ShardManager", () => {
         pod: Pod.make({ address: pod2.pod.address, version: 0 }),
         registeredAt: pod2.registeredAt
       })
-      const state = new ShardManagerState(
+      const state = new State(
         HashMap.make(
           [pod1.pod.address, pod1],
           [pod2.pod.address, oldPod2]
@@ -77,7 +77,7 @@ describe("ShardManager", () => {
     })
 
     it("should not rebalance when already well-balanced", () => {
-      const state = new ShardManagerState(
+      const state = new State(
         HashMap.make(
           [pod1.pod.address, pod1],
           [pod2.pod.address, pod2]
@@ -93,7 +93,7 @@ describe("ShardManager", () => {
     })
 
     it("should not rebalance when there is only a one-shard difference", () => {
-      const state = new ShardManagerState(
+      const state = new State(
         HashMap.make(
           [pod1.pod.address, pod1],
           [pod2.pod.address, pod2]
@@ -110,7 +110,7 @@ describe("ShardManager", () => {
     })
 
     it("should rebalance when there is more than a one-shard difference", () => {
-      const state = new ShardManagerState(
+      const state = new State(
         HashMap.make(
           [pod1.pod.address, pod1],
           [pod2.pod.address, pod2]
@@ -130,7 +130,7 @@ describe("ShardManager", () => {
     })
 
     it("should pick the pod with less shards", () => {
-      const state = new ShardManagerState(
+      const state = new State(
         HashMap.make(
           [pod1.pod.address, pod1],
           [pod2.pod.address, pod2],
@@ -150,7 +150,7 @@ describe("ShardManager", () => {
     })
 
     it("should not rebalance if there are no pods", () => {
-      const state = new ShardManagerState(
+      const state = new State(
         HashMap.empty(),
         HashMap.make(
           [ShardId.make(1), Option.some(pod1.pod.address)]
@@ -163,14 +163,14 @@ describe("ShardManager", () => {
 
     it("should balance well when many nodes are starting sequentially", () => {
       const shards = Array.makeBy(300, (i) => [ShardId.make(i + 1), Option.none<PodAddress>()] as const)
-      const state = new ShardManagerState(HashMap.empty(), HashMap.fromIterable(shards))
+      const state = new State(HashMap.empty(), HashMap.fromIterable(shards))
       const result = Array.reduce(Array.range(1, 30), state, (state, i) => {
         const address = PodAddress.make({ host: `${i}`, port: i })
         const pod = PodWithMetadata({
           pod: Pod.make({ address, version: 1 }),
           registeredAt: Date.now()
         })
-        const state1 = new ShardManagerState(
+        const state1 = new State(
           HashMap.set(state.pods, address, pod),
           state.shards
         )
@@ -184,7 +184,7 @@ describe("ShardManager", () => {
             HashSet.reduce(
               shards,
               state,
-              (state, shard) => new ShardManagerState(state.pods, HashMap.set(state.shards, shard, Option.none()))
+              (state, shard) => new State(state.pods, HashMap.set(state.shards, shard, Option.none()))
             )
         )
         return HashMap.reduce(
@@ -194,8 +194,7 @@ describe("ShardManager", () => {
             HashSet.reduce(
               shards,
               state,
-              (state, shard) =>
-                new ShardManagerState(state.pods, HashMap.set(state.shards, shard, Option.some(address)))
+              (state, shard) => new State(state.pods, HashMap.set(state.shards, shard, Option.some(address)))
             )
         )
       })
@@ -237,7 +236,7 @@ describe("ShardManager", () => {
 
         // Setup 20 pods first
         yield* simulate(Array.range(1, 20).map(registerPod))
-        yield* TestClock.adjust("10 minutes")
+        yield* TestClock.adjust("20 seconds")
 
         // Check that all pods are assigned and have 15 shards each
         const assignments = yield* manager.getAssignments
@@ -271,7 +270,7 @@ describe("ShardManager", () => {
 
         // Setup 25 pods
         yield* simulate(Array.range(1, 25).map(registerPod))
-        yield* TestClock.adjust("10 minutes")
+        yield* TestClock.adjust("20 seconds")
 
         // Check that all pods are assigned and have 12 shards each
         const assignments = yield* manager.getAssignments
@@ -302,7 +301,7 @@ describe("ShardManager", () => {
           const storage = yield* Storage.Storage
 
           yield* simulate(Array.range(1, 10).map(registerPod))
-          yield* TestClock.adjust("10 minutes")
+          yield* TestClock.adjust("20 seconds")
 
           // Wait for the forked daemon fibers to do their work
           yield* Effect.iterate(HashMap.empty<ShardId, Option.Option<PodAddress>>(), {

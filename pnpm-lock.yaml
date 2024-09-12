@@ -256,6 +256,28 @@ importers:
         version: link:../effect/dist
     publishDirectory: dist
 
+  packages/cluster-old:
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node/dist
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      '@effect/sql-sqlite-node':
+        specifier: workspace:^
+        version: link:../sql-sqlite-node/dist
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
   packages/cluster-workflow:
     devDependencies:
       '@effect/cluster':
