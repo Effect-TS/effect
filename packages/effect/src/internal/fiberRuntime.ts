@@ -749,7 +749,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
     }
     let told = false
     for (const child of this._children) {
-      child.tell(FiberMessage.interruptSignal(internalCause.interrupt(this.id())))
+      child.unsafeInterruptAsFork(this.id())
       told = true
     }
     return told
@@ -1182,7 +1182,11 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         case OpCodes.OP_REVERT_FLAGS: {
           this.patchRuntimeFlags(this.currentRuntimeFlags, cont.patch)
           if (_runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted()) {
-            return core.exitFailCause(internalCause.sequential(cause, this.getInterruptedCause()))
+            const interruptedCause = this.getInterruptedCause()
+            if (internalCause.contains(cause, interruptedCause)) {
+              return core.exitFailCause(cause)
+            }
+            return core.exitFailCause(internalCause.sequential(cause, interruptedCause))
           } else {
             return core.exitFailCause(cause)
           }

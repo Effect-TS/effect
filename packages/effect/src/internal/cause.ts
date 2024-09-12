@@ -17,6 +17,7 @@ import { hasProperty, isFunction } from "../Predicate.js"
 import type { AnySpan, Span } from "../Tracer.js"
 import type { NoInfer } from "../Types.js"
 import { getBugErrorMessage } from "./errors.js"
+import * as internalFiberId from "./fiberId.js"
 import * as OpCodes from "./opCodes/cause.js"
 
 // -----------------------------------------------------------------------------
@@ -1083,17 +1084,13 @@ export const reduceWithContext = dual<
 /** @internal */
 export const pretty = <E>(cause: Cause.Cause<E>, options?: {
   readonly renderErrorCause?: boolean | undefined
-}): string => {
-  if (isInterruptedOnly(cause)) {
-    return "All fibers interrupted without errors."
-  }
-  return prettyErrors<E>(cause).map(function(e) {
+}): string =>
+  prettyErrors<E>(cause).map(function(e) {
     if (options?.renderErrorCause !== true || e.cause === undefined) {
       return e.stack
     }
     return `${e.stack} {\n${renderErrorCause(e.cause as PrettyError, "  ")}\n}`
   }).join("\n")
-}
 
 const renderErrorCause = (cause: PrettyError, prefix: string) => {
   const lines = cause.stack!.split("\n")
@@ -1143,6 +1140,37 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
       this.span
     )
   }
+}
+
+const makeErrorNoStack = (name: string, message: string, options?: ErrorOptions) => {
+  const limit = Error.stackTraceLimit
+  Error.stackTraceLimit = 0
+  const err = new Error(message, options)
+  err.name = name
+  Error.stackTraceLimit = limit
+  delete err.stack
+  return err
+}
+
+const makeInterruptedException = (fiberId: FiberId.FiberId, context: Context.Context<never>) => {
+  const threadName = internalFiberId.threadName(fiberId)
+  return new PrettyError(
+    makeErrorNoStack(
+      "InterruptedException",
+      "All fibers interrupted without errors.",
+      threadName.length === 0
+        ? undefined
+        : { cause: makeInterruptedCause(threadName, Context.getOption(context, InterruptorSpan)) }
+    ),
+    context
+  )
+}
+
+const makeInterruptedCause = (threadName: string, span: Option.Option<Span>) => {
+  return new PrettyError(
+    makeErrorNoStack("InterruptedCause", `The fiber was interrupted by: ${threadName}.`),
+    Option.isSome(span) ? Context.make(FailureSpan, span.value) : Context.empty()
+  )
 }
 
 /**
@@ -1235,11 +1263,11 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
 
 /** @internal */
 export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<PrettyError> =>
-  reduceWithContext(cause, new Map(), {
+  reduceWithContext(cause, void 0, {
     emptyCase: (): Array<PrettyError> => [],
     dieCase: (_, unknownError, context) => [new PrettyError(unknownError, context)],
     failCase: (_, error, context) => [new PrettyError(error, context)],
-    interruptCase: () => [],
+    interruptCase: (_, fiberId, context) => [makeInterruptedException(fiberId, context)],
     parallelCase: (_, l, r) => [...l, ...r],
     sequentialCase: (_, l, r) => [...l, ...r],
     annotatedCase: (_, out) => out

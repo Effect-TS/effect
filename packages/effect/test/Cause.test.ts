@@ -1,3 +1,4 @@
+import { Effect, Fiber } from "effect"
 import * as Cause from "effect/Cause"
 import * as Equal from "effect/Equal"
 import * as FiberId from "effect/FiberId"
@@ -6,8 +7,8 @@ import * as internal from "effect/internal/cause"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/utils/cause"
+import { assert, describe, expect, it } from "effect/test/utils/extend"
 import * as fc from "fast-check"
-import { assert, describe, expect, it } from "vitest"
 
 describe("Cause", () => {
   it("[internal] prettyErrorMessage", () => {
@@ -48,7 +49,7 @@ describe("Cause", () => {
 
   describe("pretty", () => {
     it("Empty", () => {
-      expect(Cause.pretty(Cause.empty)).toEqual("All fibers interrupted without errors.")
+      expect(Cause.pretty(Cause.empty)).toEqual("")
     })
 
     it("Fail", () => {
@@ -84,14 +85,41 @@ describe("Cause", () => {
     })
 
     it("Interrupt", () => {
-      expect(Cause.pretty(Cause.interrupt(FiberId.none))).toEqual("All fibers interrupted without errors.")
-      expect(Cause.pretty(Cause.interrupt(FiberId.runtime(1, 0)))).toEqual(
-        "All fibers interrupted without errors."
+      expect(Cause.pretty(Cause.interrupt(FiberId.none), { renderErrorCause: true })).toEqual(
+        `InterruptedException: All fibers interrupted without errors.`
       )
-      expect(Cause.pretty(Cause.interrupt(FiberId.composite(FiberId.none, FiberId.runtime(1, 0))))).toEqual(
-        "All fibers interrupted without errors."
+      expect(Cause.pretty(Cause.interrupt(FiberId.runtime(1, 0)), { renderErrorCause: true })).toEqual(
+        `InterruptedException: All fibers interrupted without errors. {
+  [cause]: InterruptedCause: The fiber was interrupted by: #1.
+}`
+      )
+      expect(
+        Cause.pretty(Cause.interrupt(FiberId.composite(FiberId.none, FiberId.runtime(1, 0))), {
+          renderErrorCause: true
+        })
+      ).toEqual(
+        `InterruptedException: All fibers interrupted without errors. {
+  [cause]: InterruptedCause: The fiber was interrupted by: #1.
+}`
       )
     })
+
+    it.effect("Interrupt with span", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.never.pipe(Effect.fork, Effect.withSpan("span"))
+        yield* Effect.yieldNow()
+        yield* Fiber.interrupt(fiber).pipe(
+          Effect.withSpan("interruptor")
+        )
+        const cause = yield* Fiber.join(fiber).pipe(
+          Effect.sandbox,
+          Effect.flip
+        )
+        const rendered = Cause.pretty(cause, { renderErrorCause: true })
+        expect(rendered.startsWith("InterruptedException: All fibers interrupted without errors.")).toBeTruthy()
+        expect(rendered).toMatch("at span (")
+        expect(rendered).toMatch("at interruptor (")
+      }))
   })
 
   describe("toJSON", () => {
@@ -202,7 +230,7 @@ describe("Cause", () => {
 
   describe("toString", () => {
     it("Empty", () => {
-      expect(String(Cause.empty)).toEqual(`All fibers interrupted without errors.`)
+      expect(String(Cause.empty)).toEqual("")
     })
 
     it("Fail", () => {
@@ -214,10 +242,14 @@ describe("Cause", () => {
     })
 
     it("Interrupt", () => {
-      expect(String(Cause.interrupt(FiberId.none))).toEqual(`All fibers interrupted without errors.`)
-      expect(String(Cause.interrupt(FiberId.runtime(1, 0)))).toEqual(`All fibers interrupted without errors.`)
+      expect(String(Cause.interrupt(FiberId.none))).toEqual(
+        `InterruptedException: All fibers interrupted without errors.`
+      )
+      expect(String(Cause.interrupt(FiberId.runtime(1, 0)))).toEqual(
+        `InterruptedException: All fibers interrupted without errors.`
+      )
       expect(String(Cause.interrupt(FiberId.composite(FiberId.none, FiberId.runtime(1, 0))))).toEqual(
-        `All fibers interrupted without errors.`
+        `InterruptedException: All fibers interrupted without errors.`
       )
     })
 
@@ -350,7 +382,7 @@ describe("Cause", () => {
       if (typeof window === "undefined") {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { inspect } = require("node:util")
-        expect(inspect(ex)).include("Cause.test.ts:348")
+        expect(inspect(ex)).include("Cause.test.ts:380")
       }
     })
   })
