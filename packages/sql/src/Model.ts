@@ -643,6 +643,7 @@ export const makeRepository = <
   Effect.gen(function*() {
     const sql = yield* SqlClient
     const idSchema = Model.fields[options.idColumn] as Schema.Schema.Any
+    const idColumn = options.idColumn as string
 
     const insertSchema = SqlSchema.single({
       Request: Model.insert,
@@ -654,7 +655,7 @@ export const makeRepository = <
               { insertId: number }
             >).pipe(
               Effect.flatMap(({ insertId }) =>
-                sql`select * from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${insertId}`
+                sql`select * from ${sql(options.tableName)} where ${sql(idColumn)} = ${insertId}`
               ),
               sql.withTransaction
             ),
@@ -693,18 +694,20 @@ export const makeRepository = <
       execute: (request) =>
         sql.onDialectOrElse({
           mysql: () =>
-            (sql`update ${sql(options.tableName)} set ${sql.update(request, [options.idColumn])} where ${
-              sql(options.idColumn as string)
-            } = ${sql(request[options.idColumn])}`.raw as Effect.Effect<{ insertId: number }>).pipe(
-              Effect.flatMap(({ insertId }) =>
-                sql`select * from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${insertId}`
+            sql`update ${sql(options.tableName)} set ${sql.update(request, [idColumn])} where ${sql(idColumn)} = ${
+              request[idColumn]
+            }`.raw.pipe(
+              Effect.zipRight(
+                sql`select * from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${
+                  request[idColumn]
+                }`
               ),
               sql.withTransaction
             ),
           orElse: () =>
-            sql`update ${sql(options.tableName)} set ${sql.update(request, [options.idColumn])} where ${
-              sql(options.idColumn as string)
-            } = ${sql(request[options.idColumn])} returning *`
+            sql`update ${sql(options.tableName)} set ${sql.update(request, [idColumn])} where ${sql(idColumn)} = ${
+              request[idColumn]
+            } returning *`
         })
     })
     const update = (
@@ -721,9 +724,9 @@ export const makeRepository = <
     const updateVoidSchema = SqlSchema.void({
       Request: Model.update,
       execute: (request) =>
-        sql`update ${sql(options.tableName)} set ${sql.update(request, [options.idColumn])} where ${
-          sql(options.idColumn as string)
-        } = ${sql(request[options.idColumn])}`
+        sql`update ${sql(options.tableName)} set ${sql.update(request, [idColumn])} where ${sql(idColumn)} = ${
+          request[idColumn]
+        }`
     })
     const updateVoid = (
       update: S["update"]["Type"]
@@ -739,7 +742,7 @@ export const makeRepository = <
     const findByIdSchema = SqlSchema.findOne({
       Request: idSchema,
       Result: Model,
-      execute: (id) => sql`select * from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${id}`
+      execute: (id) => sql`select * from ${sql(options.tableName)} where ${sql(idColumn)} = ${id}`
     })
     const findById = (
       id: Schema.Schema.Type<S["fields"][Id]>
@@ -754,7 +757,7 @@ export const makeRepository = <
 
     const deleteSchema = SqlSchema.void({
       Request: idSchema,
-      execute: (id) => sql`delete from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${id}`
+      execute: (id) => sql`delete from ${sql(options.tableName)} where ${sql(idColumn)} = ${id}`
     })
     const delete_ = (
       id: Schema.Schema.Type<S["fields"][Id]>
@@ -801,6 +804,7 @@ export const makeDataLoaders = <
   Effect.gen(function*() {
     const sql = yield* SqlClient
     const idSchema = Model.fields[options.idColumn] as Schema.Schema.Any
+    const idColumn = options.idColumn as string
 
     const insertResolver = yield* SqlResolver.ordered(`${options.spanPrefix}/insert`, {
       Request: Model.insert,
@@ -850,9 +854,9 @@ export const makeDataLoaders = <
       },
       Result: Model,
       ResultGroupKey(request) {
-        return request[options.idColumn]
+        return request[idColumn]
       },
-      execute: (ids) => sql`select * from ${sql(options.tableName)} where ${sql.in(options.idColumn as string, ids)}`
+      execute: (ids) => sql`select * from ${sql(options.tableName)} where ${sql.in(idColumn, ids)}`
     })
     const findByIdLoader = yield* RRX.dataLoader(findByIdResolver, {
       window: options.window,
@@ -870,7 +874,7 @@ export const makeDataLoaders = <
 
     const deleteResolver = yield* SqlResolver.void(`${options.spanPrefix}/delete`, {
       Request: idSchema,
-      execute: (ids) => sql`delete from ${sql(options.tableName)} where ${sql.in(options.idColumn as string, ids)}`
+      execute: (ids) => sql`delete from ${sql(options.tableName)} where ${sql.in(idColumn, ids)}`
     })
     const deleteLoader = yield* RRX.dataLoader(deleteResolver, {
       window: options.window,
