@@ -394,6 +394,14 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
   internal.omit
 
 /**
+ * @since 3.8.0
+ */
+export const has: {
+  <S, I>(tag: Tag<I, S>): <Services>(self: Context<Services>) => self is Context<Services | I>
+  <Services, S, I>(self: Context<Services>, tag: Tag<I, S>): self is Context<Services | I>
+} = internal.has
+
+/**
  * @since 2.0.0
  * @category constructors
  */

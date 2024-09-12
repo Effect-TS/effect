@@ -662,45 +662,25 @@ export const checkInterruptible = <A, E, R>(
   f: (isInterruptible: boolean) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => withFiberRuntime((_, status) => f(_runtimeFlags.interruption(status.runtimeFlags)))
 
-const spanSymbol = Symbol.for("effect/SpanAnnotation")
-const originalSymbol = Symbol.for("effect/OriginalAnnotation")
+/* @internal */
+export const originalInstance = <E>(obj: E): E =>
+  internalCause.originalAnnotation(obj, internalCause.OriginalInstance, obj) as E
 
 /* @internal */
-export const originalInstance = <E>(obj: E): E => {
-  if (hasProperty(obj, originalSymbol)) {
-    // @ts-expect-error
-    return obj[originalSymbol]
-  }
-  return obj
-}
-
-/* @internal */
-const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E => {
-  if (Option.isSome(span)) {
-    return new Proxy(obj, {
-      has(target, p) {
-        return p === spanSymbol || p === originalSymbol || p in target
-      },
-      get(target, p) {
-        if (p === spanSymbol) {
-          return span.value
-        }
-        if (p === originalSymbol) {
-          return obj
-        }
-        // @ts-expect-error
-        return target[p]
-      }
-    })
-  }
-  return obj
-}
+const capture = <E>(cause: Cause.Cause<E>): Effect.Effect<never, E> =>
+  withFiberRuntime((fiber) => {
+    const span = currentSpanFromFiber(fiber)
+    if (span._tag === "Some") {
+      cause = internalCause.annotate(cause, internalCause.FailureSpan, span.value)
+    }
+    return failCause(cause)
+  })
 
 /* @internal */
 export const die = (defect: unknown): Effect.Effect<never> =>
-  isObject(defect) && !(spanSymbol in defect) ?
-    withFiberRuntime((fiber) => failCause(internalCause.die(capture(defect, currentSpanFromFiber(fiber)))))
-    : failCause(internalCause.die(defect))
+  !internalCause.originalAnnotations(defect) ?
+    capture(internalCause.die(defect)) :
+    failCause(internalCause.die(defect))
 
 /* @internal */
 export const dieMessage = (message: string): Effect.Effect<never> =>
@@ -725,9 +705,9 @@ export const exit = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Exit.
 
 /* @internal */
 export const fail = <E>(error: E): Effect.Effect<never, E> =>
-  isObject(error) && !(spanSymbol in error) ?
-    withFiberRuntime((fiber) => failCause(internalCause.fail(capture(error, currentSpanFromFiber(fiber)))))
-    : failCause(internalCause.fail(error))
+  !internalCause.originalAnnotations(error) ?
+    capture(internalCause.fail(error)) :
+    failCause(internalCause.fail(error))
 
 /* @internal */
 export const failSync = <E>(evaluate: LazyArg<E>): Effect.Effect<never, E> => flatMap(sync(evaluate), fail)
@@ -1005,7 +985,9 @@ export const interrupt: Effect.Effect<never> = flatMap(fiberId, (fiberId) => int
 
 /* @internal */
 export const interruptWith = (fiberId: FiberId.FiberId): Effect.Effect<never> =>
-  failCause(internalCause.interrupt(fiberId))
+  !internalCause.originalAnnotations(fiberId) ?
+    capture(internalCause.interrupt(fiberId)) :
+    failCause(internalCause.interrupt(fiberId))
 
 /* @internal */
 export const interruptible = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {

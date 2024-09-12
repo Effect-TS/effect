@@ -33,3 +33,9 @@ export const OP_SEQUENTIAL = "Sequential" as const
 
 /** @internal */
 export type OP_SEQUENTIAL = typeof OP_SEQUENTIAL
+
+/** @internal */
+export const OP_ANNOTATED = "Annotated" as const
+
+/** @internal */
+export type OP_ANNOTATED = typeof OP_ANNOTATED
