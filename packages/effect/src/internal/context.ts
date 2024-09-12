@@ -282,3 +282,6 @@ export const has = dual<
   <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>): self is C.Context<Services | I> =>
     self.unsafeMap.has(tag.key)
 )
+
+/** @internal */
+export const isEmpty = (self: C.Context<never>): boolean => self.unsafeMap.size === 0

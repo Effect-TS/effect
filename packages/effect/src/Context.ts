@@ -402,6 +402,11 @@ export const has: {
 } = internal.has
 
 /**
+ * @since 3.8.0
+ */
+export const isEmpty: (self: Context<never>) => boolean = internal.isEmpty
+
+/**
  * @since 2.0.0
  * @category constructors
  */

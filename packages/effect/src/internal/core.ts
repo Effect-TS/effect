@@ -662,25 +662,21 @@ export const checkInterruptible = <A, E, R>(
   f: (isInterruptible: boolean) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => withFiberRuntime((_, status) => f(_runtimeFlags.interruption(status.runtimeFlags)))
 
-/* @internal */
-export const originalInstance = <E>(obj: E): E =>
-  internalCause.originalAnnotation(obj, internalCause.OriginalInstance, obj) as E
-
-/* @internal */
 const capture = <E>(cause: Cause.Cause<E>): Effect.Effect<never, E> =>
   withFiberRuntime((fiber) => {
     const span = currentSpanFromFiber(fiber)
+    let context = Context.empty()
     if (span._tag === "Some") {
-      cause = internalCause.annotate(cause, internalCause.FailureSpan, span.value)
+      context = Context.add(context, internalCause.FailureSpan, span.value)
     }
-    return failCause(cause)
+    cause = Context.isEmpty(context) ? cause : internalCause.annotated(cause, context)
+    const effect = new EffectPrimitiveFailure(OpCodes.OP_FAILURE) as any
+    effect.effect_instruction_i0 = cause
+    return effect
   })
 
 /* @internal */
-export const die = (defect: unknown): Effect.Effect<never> =>
-  !internalCause.originalAnnotations(defect) ?
-    capture(internalCause.die(defect)) :
-    failCause(internalCause.die(defect))
+export const die = (defect: unknown): Effect.Effect<never> => failCause(internalCause.die(defect))
 
 /* @internal */
 export const dieMessage = (message: string): Effect.Effect<never> =>
@@ -704,19 +700,25 @@ export const exit = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Exit.
   })
 
 /* @internal */
-export const fail = <E>(error: E): Effect.Effect<never, E> =>
-  !internalCause.originalAnnotations(error) ?
-    capture(internalCause.fail(error)) :
-    failCause(internalCause.fail(error))
+export const fail = <E>(error: E): Effect.Effect<never, E> => failCause(internalCause.fail(error))
 
 /* @internal */
 export const failSync = <E>(evaluate: LazyArg<E>): Effect.Effect<never, E> => flatMap(sync(evaluate), fail)
 
 /* @internal */
 export const failCause = <E>(cause: Cause.Cause<E>): Effect.Effect<never, E> => {
-  const effect = new EffectPrimitiveFailure(OpCodes.OP_FAILURE) as any
-  effect.effect_instruction_i0 = cause
-  return effect
+  switch (cause._tag) {
+    case "Fail":
+    case "Die":
+    case "Interrupt": {
+      return capture(cause)
+    }
+    default: {
+      const effect = new EffectPrimitiveFailure(OpCodes.OP_FAILURE) as any
+      effect.effect_instruction_i0 = cause
+      return effect
+    }
+  }
 }
 
 /* @internal */
@@ -985,9 +987,7 @@ export const interrupt: Effect.Effect<never> = flatMap(fiberId, (fiberId) => int
 
 /* @internal */
 export const interruptWith = (fiberId: FiberId.FiberId): Effect.Effect<never> =>
-  !internalCause.originalAnnotations(fiberId) ?
-    capture(internalCause.interrupt(fiberId)) :
-    failCause(internalCause.interrupt(fiberId))
+  failCause(internalCause.interrupt(fiberId))
 
 /* @internal */
 export const interruptible = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
@@ -1534,7 +1534,7 @@ export const never: Effect.Effect<never> = async<never>(() => {
 
 /* @internal */
 export const interruptFiber = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<Exit.Exit<A, E>> =>
-  flatMap(fiberId, (fiberId) => pipe(self, interruptAsFiber(fiberId)))
+  flatMap(fiberId, (fiberId) => interruptAsFiber(self, fiberId))
 
 /* @internal */
 export const interruptAsFiber = dual<

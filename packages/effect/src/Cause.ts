@@ -1043,4 +1043,22 @@ export const prettyErrors: <E>(cause: Cause<E>) => Array<PrettyError> = internal
  * @since 2.0.0
  * @category errors
  */
-export const originalError: <E>(obj: E) => E = core.originalInstance
+export const originalError: <E>(obj: E) => E = internal.originalInstance
+
+/**
+ * @since 3.8.0
+ * @category annotations
+ */
+export const FailureSpan: Context.Tag<"FailureSpan", Span> = internal.FailureSpan
+
+/**
+ * @since 3.8.0
+ * @category annotations
+ */
+export const InterruptorSpan: Context.Tag<"InterruptorSpan", Span> = internal.InterruptorSpan
+
+/**
+ * @since 3.8.0
+ * @category annotations
+ */
+export const withAnnotationPropagationDisabled: <A>(f: () => A) => A = internal.withAnnotationPropagationDisabled
