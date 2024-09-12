@@ -675,7 +675,7 @@ export const originalInstance = <E>(obj: E): E => {
 }
 
 /* @internal */
-const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E => {
+export const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E => {
   if (Option.isSome(span)) {
     return new Proxy(obj, {
       has(target, p) {
@@ -1005,7 +1005,11 @@ export const interrupt: Effect.Effect<never> = flatMap(fiberId, (fiberId) => int
 
 /* @internal */
 export const interruptWith = (fiberId: FiberId.FiberId): Effect.Effect<never> =>
-  failCause(internalCause.interrupt(fiberId))
+  withFiberRuntime((fiber) =>
+    failCause(internalCause.interrupt(
+      capture(fiberId, currentSpanFromFiber(fiber))
+    ))
+  )
 
 /* @internal */
 export const interruptible = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {

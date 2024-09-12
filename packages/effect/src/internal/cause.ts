@@ -16,6 +16,7 @@ import { hasProperty, isFunction } from "../Predicate.js"
 import type { AnySpan, Span } from "../Tracer.js"
 import type { NoInfer } from "../Types.js"
 import { getBugErrorMessage } from "./errors.js"
+import * as internalFiberId from "./fiberId.js"
 import * as OpCodes from "./opCodes/cause.js"
 
 // -----------------------------------------------------------------------------
@@ -973,9 +974,6 @@ export const reduceWithContext = dual<
 export const pretty = <E>(cause: Cause.Cause<E>, options?: {
   readonly renderErrorCause?: boolean | undefined
 }): string => {
-  if (isInterruptedOnly(cause)) {
-    return "All fibers interrupted without errors."
-  }
   return prettyErrors<E>(cause).map(function(e) {
     if (options?.renderErrorCause !== true || e.cause === undefined) {
       return e.stack
@@ -1134,7 +1132,20 @@ export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<PrettyError> =>
     failCase: (_, error) => {
       return [new PrettyError(error)]
     },
-    interruptCase: () => [],
+    interruptCase: (_, fiberId) => {
+      const limit = Error.stackTraceLimit
+      Error.stackTraceLimit = 0
+      const threadName = internalFiberId.threadName(fiberId)
+      const err = new Error(threadName.length > 0 ? `Fiber Interrupted by: ${threadName}` : "Fiber Interrupted")
+      err.name = "InterruptedException"
+      Error.stackTraceLimit = limit
+      delete err.stack
+      if (spanSymbol in fiberId) {
+        // @ts-expect-error
+        err[spanSymbol] = fiberId[spanSymbol]
+      }
+      return [new PrettyError(err)]
+    },
     parallelCase: (_, l, r) => [...l, ...r],
     sequentialCase: (_, l, r) => [...l, ...r]
   })

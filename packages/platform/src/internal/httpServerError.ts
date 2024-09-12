@@ -1,5 +1,6 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
 import type * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
 import { globalValue } from "effect/GlobalValue"
@@ -46,7 +47,7 @@ export const causeResponse = <E>(
           if (acc[1]._tag !== "Empty") {
             return Option.none()
           }
-          const response = cause.fiberId === clientAbortFiberId ? clientAbortError : serverAbortError
+          const response = Equal.equals(cause.fiberId, clientAbortFiberId) ? clientAbortError : serverAbortError
           return Option.some([Effect.succeed(response), cause] as const)
         }
         default: {
