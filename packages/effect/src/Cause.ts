@@ -1055,9 +1055,3 @@ export const FailureSpan: Context.Tag<"FailureSpan", Span> = internal.FailureSpa
  * @category annotations
  */
 export const InterruptorSpan: Context.Tag<"InterruptorSpan", Span> = internal.InterruptorSpan
-
-/**
- * @since 3.8.0
- * @category annotations
- */
-export const withAnnotationPropagationDisabled: <A>(f: () => A) => A = internal.withAnnotationPropagationDisabled

@@ -94,7 +94,7 @@ export const fail = <E>(error: E): Cause.Cause<E> => {
   const o = Object.create(proto)
   o._tag = OpCodes.OP_FAIL
   o.error = error
-  return rehydrateAnnotations(o, error)
+  return o
 }
 
 /** @internal */
@@ -102,7 +102,7 @@ export const die = (defect: unknown): Cause.Cause<never> => {
   const o = Object.create(proto)
   o._tag = OpCodes.OP_DIE
   o.defect = defect
-  return rehydrateAnnotations(o, defect)
+  return o
 }
 
 /** @internal */
@@ -987,95 +987,91 @@ export const reduce = dual<
 export const reduceWithContext = dual<
   <C, E, Z>(context: C, reducer: Cause.CauseReducer<C, E, Z>) => (self: Cause.Cause<E>) => Z,
   <C, E, Z>(self: Cause.Cause<E>, context: C, reducer: Cause.CauseReducer<C, E, Z>) => Z
->(
-  3,
-  <C, E, Z>(self: Cause.Cause<E>, context: C, reducer: Cause.CauseReducer<C, E, Z>) =>
-    withAnnotationPropagationDisabled(() => {
-      let annotations = Context.empty()
-      const input: Array<Cause.Cause<E>> = [self]
-      const output: Array<Either.Either<Z, CauseCase>> = []
-      while (input.length > 0) {
-        const cause = input.pop()!
-        switch (cause._tag) {
-          case OpCodes.OP_EMPTY: {
-            output.push(Either.right(reducer.emptyCase(context, annotations)))
+>(3, <C, E, Z>(self: Cause.Cause<E>, context: C, reducer: Cause.CauseReducer<C, E, Z>) => {
+  let annotations = Context.empty()
+  const input: Array<Cause.Cause<E>> = [self]
+  const output: Array<Either.Either<Z, CauseCase>> = []
+  while (input.length > 0) {
+    const cause = input.pop()!
+    switch (cause._tag) {
+      case OpCodes.OP_EMPTY: {
+        output.push(Either.right(reducer.emptyCase(context, annotations)))
+        break
+      }
+      case OpCodes.OP_FAIL: {
+        output.push(Either.right(reducer.failCase(context, cause.error, annotations)))
+        break
+      }
+      case OpCodes.OP_DIE: {
+        output.push(Either.right(reducer.dieCase(context, cause.defect, annotations)))
+        break
+      }
+      case OpCodes.OP_INTERRUPT: {
+        output.push(Either.right(reducer.interruptCase(context, cause.fiberId, annotations)))
+        break
+      }
+      case OpCodes.OP_SEQUENTIAL: {
+        input.push(cause.right)
+        input.push(cause.left)
+        output.push(Either.left({ _tag: OP_SEQUENTIAL_CASE, annotations }))
+        break
+      }
+      case OpCodes.OP_PARALLEL: {
+        input.push(cause.right)
+        input.push(cause.left)
+        output.push(Either.left({ _tag: OP_PARALLEL_CASE, annotations }))
+        break
+      }
+      case OpCodes.OP_ANNOTATED: {
+        input.push(cause.cause)
+        output.push(Either.left({ _tag: OP_ANNOTATED_CASE, context: cause.context, annotations }))
+        annotations = Context.merge(annotations, cause.context)
+        break
+      }
+    }
+  }
+  const accumulator: Array<Z> = []
+  while (output.length > 0) {
+    const either = output.pop()!
+    switch (either._tag) {
+      case "Left": {
+        switch (either.left._tag) {
+          case OP_SEQUENTIAL_CASE: {
+            const left = accumulator.pop()!
+            const right = accumulator.pop()!
+            const value = reducer.sequentialCase(context, left, right, either.left.annotations)
+            accumulator.push(value)
             break
           }
-          case OpCodes.OP_FAIL: {
-            output.push(Either.right(reducer.failCase(context, cause.error, annotations)))
+          case OP_PARALLEL_CASE: {
+            const left = accumulator.pop()!
+            const right = accumulator.pop()!
+            const value = reducer.parallelCase(context, left, right, either.left.annotations)
+            accumulator.push(value)
             break
           }
-          case OpCodes.OP_DIE: {
-            output.push(Either.right(reducer.dieCase(context, cause.defect, annotations)))
-            break
-          }
-          case OpCodes.OP_INTERRUPT: {
-            output.push(Either.right(reducer.interruptCase(context, cause.fiberId, annotations)))
-            break
-          }
-          case OpCodes.OP_SEQUENTIAL: {
-            input.push(cause.right)
-            input.push(cause.left)
-            output.push(Either.left({ _tag: OP_SEQUENTIAL_CASE, annotations }))
-            break
-          }
-          case OpCodes.OP_PARALLEL: {
-            input.push(cause.right)
-            input.push(cause.left)
-            output.push(Either.left({ _tag: OP_PARALLEL_CASE, annotations }))
-            break
-          }
-          case OpCodes.OP_ANNOTATED: {
-            input.push(cause.cause)
-            output.push(Either.left({ _tag: OP_ANNOTATED_CASE, context: cause.context, annotations }))
-            annotations = Context.merge(annotations, cause.context)
+          case OP_ANNOTATED_CASE: {
+            const out = accumulator.pop()!
+            const value = reducer.annotatedCase(context, out, either.left.context, either.left.annotations)
+            accumulator.push(value)
             break
           }
         }
+        break
       }
-      const accumulator: Array<Z> = []
-      while (output.length > 0) {
-        const either = output.pop()!
-        switch (either._tag) {
-          case "Left": {
-            switch (either.left._tag) {
-              case OP_SEQUENTIAL_CASE: {
-                const left = accumulator.pop()!
-                const right = accumulator.pop()!
-                const value = reducer.sequentialCase(context, left, right, either.left.annotations)
-                accumulator.push(value)
-                break
-              }
-              case OP_PARALLEL_CASE: {
-                const left = accumulator.pop()!
-                const right = accumulator.pop()!
-                const value = reducer.parallelCase(context, left, right, either.left.annotations)
-                accumulator.push(value)
-                break
-              }
-              case OP_ANNOTATED_CASE: {
-                const out = accumulator.pop()!
-                const value = reducer.annotatedCase(context, out, either.left.context, either.left.annotations)
-                accumulator.push(value)
-                break
-              }
-            }
-            break
-          }
-          case "Right": {
-            accumulator.push(either.right)
-            break
-          }
-        }
+      case "Right": {
+        accumulator.push(either.right)
+        break
       }
-      if (accumulator.length === 0) {
-        throw new Error(
-          "BUG: Cause.reduceWithContext - please report an issue at https://github.com/Effect-TS/effect/issues"
-        )
-      }
-      return accumulator.pop()!
-    })
-)
+    }
+  }
+  if (accumulator.length === 0) {
+    throw new Error(
+      "BUG: Cause.reduceWithContext - please report an issue at https://github.com/Effect-TS/effect/issues"
+    )
+  }
+  return accumulator.pop()!
+})
 
 // -----------------------------------------------------------------------------
 // Pretty Printing
@@ -1285,9 +1281,6 @@ export const InterruptorSpan = Context.GenericTag<"InterruptorSpan", Span>("effe
 
 const originalAnnotationsSymbol = Symbol.for("effect/Cause/originalAnnotationsSymbol")
 const originalInstanceSymbol = Symbol.for("effect/Cause/originalInstanceSymbol")
-const annotationState = globalValue("effect/Cause/annotationState", () => ({
-  disablePropagation: false
-}))
 
 /* @internal */
 export const originalAnnotations = <E>(obj: E): Context.Context<never> | undefined => {
@@ -1328,36 +1321,17 @@ function addOriginalAnnotations<E>(obj: E, annotations: Context.Context<never>):
   })
 }
 
-const AnnotationsReducer: Cause.CauseReducer<Context.Context<never>, unknown, Cause.Cause<any>> = {
-  emptyCase: (_) => empty,
-  failCase: (context, error, annotations) => fail(addOriginalAnnotations(error, Context.merge(context, annotations))),
-  dieCase: (context, defect, annotations) => die(addOriginalAnnotations(defect, Context.merge(context, annotations))),
-  interruptCase: (_, fiberId) => interrupt(fiberId),
-  sequentialCase: (_, left, right) => sequential(left, right),
-  parallelCase: (_, left, right) => parallel(left, right),
-  annotatedCase: (context, cause, annotations) => annotated(cause, Context.merge(context, annotations))
-}
-
-const propagateAnnotations = <E>(self: Cause.Cause<E>, context: Context.Context<never>): Cause.Cause<E> =>
-  annotationState.disablePropagation ? self : reduceWithContext(self, context, AnnotationsReducer)
-
-const rehydrateAnnotations = <E>(self: Cause.Cause<E>, obj: unknown): Cause.Cause<E> => {
-  if (annotationState.disablePropagation) {
-    return self
-  }
-  if (hasProperty(obj, originalAnnotationsSymbol)) {
-    return annotated(self, (obj as any)[originalAnnotationsSymbol])
-  }
-  return self
-}
-
-/** @internal */
-export const withAnnotationPropagationDisabled = <A>(f: () => A): A => {
-  try {
-    annotationState.disablePropagation = true
-    return f()
-  } finally {
-    annotationState.disablePropagation = false
+const propagateAnnotations = <E>(self: Cause.Cause<E>, context: Context.Context<never>): Cause.Cause<E> => {
+  switch (self._tag) {
+    case "Die": {
+      return die(addOriginalAnnotations(self.defect, context))
+    }
+    case "Fail": {
+      return fail(addOriginalAnnotations(self.error, context))
+    }
+    default: {
+      return self
+    }
   }
 }
 

@@ -662,14 +662,19 @@ export const checkInterruptible = <A, E, R>(
   f: (isInterruptible: boolean) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => withFiberRuntime((_, status) => f(_runtimeFlags.interruption(status.runtimeFlags)))
 
-const capture = <E>(cause: Cause.Cause<E>): Effect.Effect<never, E> =>
+const capture = <E>(cause: Cause.Cause<E>, obj?: unknown): Effect.Effect<never, E> =>
   withFiberRuntime((fiber) => {
-    const span = currentSpanFromFiber(fiber)
-    let context = Context.empty()
-    if (span._tag === "Some") {
-      context = Context.add(context, internalCause.FailureSpan, span.value)
+    const originalAnnotations = internalCause.originalAnnotations(obj)
+    if (originalAnnotations) {
+      cause = internalCause.annotated(cause, originalAnnotations)
+    } else {
+      const span = currentSpanFromFiber(fiber)
+      let context = Context.empty()
+      if (span._tag === "Some") {
+        context = Context.add(context, internalCause.FailureSpan, span.value)
+      }
+      cause = Context.isEmpty(context) ? cause : internalCause.annotated(cause, context)
     }
-    cause = Context.isEmpty(context) ? cause : internalCause.annotated(cause, context)
     const effect = new EffectPrimitiveFailure(OpCodes.OP_FAILURE) as any
     effect.effect_instruction_i0 = cause
     return effect
@@ -709,10 +714,11 @@ export const failSync = <E>(evaluate: LazyArg<E>): Effect.Effect<never, E> => fl
 export const failCause = <E>(cause: Cause.Cause<E>): Effect.Effect<never, E> => {
   switch (cause._tag) {
     case "Fail":
+      return capture(cause, cause.error)
     case "Die":
-    case "Interrupt": {
+      return capture(cause, cause.defect)
+    case "Interrupt":
       return capture(cause)
-    }
     default: {
       const effect = new EffectPrimitiveFailure(OpCodes.OP_FAILURE) as any
       effect.effect_instruction_i0 = cause
