@@ -23,8 +23,8 @@ export class MysqlContainer extends Context.Tag("test/MysqlContainer")<
   )
 
   static ClientLive = Layer.unwrapEffect(
-    Effect.gen(function*(_) {
-      const container = yield* _(MysqlContainer)
+    Effect.gen(function*() {
+      const container = yield* MysqlContainer
       return MysqlClient.layer({
         url: Config.succeed(Redacted.make(container.getConnectionUri()))
       })

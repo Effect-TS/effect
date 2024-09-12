@@ -621,9 +621,15 @@ export const makeRepository = <
     readonly insert: (
       insert: S["insert"]["Type"]
     ) => Effect.Effect<S["Type"], never, S["Context"] | S["insert"]["Context"]>
+    readonly insertVoid: (
+      insert: S["insert"]["Type"]
+    ) => Effect.Effect<void, never, S["Context"] | S["insert"]["Context"]>
     readonly update: (
       update: S["update"]["Type"]
     ) => Effect.Effect<S["Type"], never, S["Context"] | S["update"]["Context"]>
+    readonly updateVoid: (
+      update: S["update"]["Type"]
+    ) => Effect.Effect<void, never, S["Context"] | S["update"]["Context"]>
     readonly findById: (
       id: Schema.Schema.Type<S["fields"][Id]>
     ) => Effect.Effect<Option.Option<S["Type"]>, never, S["Context"] | Schema.Schema.Context<S["fields"][Id]>>
@@ -641,7 +647,19 @@ export const makeRepository = <
     const insertSchema = SqlSchema.single({
       Request: Model.insert,
       Result: Model,
-      execute: (request) => sql`insert into ${sql(options.tableName)} ${sql.insert(request).returning("*")}`
+      execute: (request) =>
+        sql.onDialectOrElse({
+          mysql: () =>
+            (sql`insert into ${sql(options.tableName)} ${sql.insert(request)}`.raw as Effect.Effect<
+              { insertId: number }
+            >).pipe(
+              Effect.flatMap(({ insertId }) =>
+                sql`select * from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${insertId}`
+              ),
+              sql.withTransaction
+            ),
+          orElse: () => sql`insert into ${sql(options.tableName)} ${sql.insert(request).returning("*")}`
+        })
     })
     const insert = (
       insert: S["insert"]["Type"]
@@ -654,13 +672,40 @@ export const makeRepository = <
         })
       ) as any
 
+    const insertVoidSchema = SqlSchema.void({
+      Request: Model.insert,
+      execute: (request) => sql`insert into ${sql(options.tableName)} ${sql.insert(request)}`
+    })
+    const insertVoid = (
+      insert: S["insert"]["Type"]
+    ): Effect.Effect<void, never, S["Context"] | S["insert"]["Context"]> =>
+      insertVoidSchema(insert).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.insertVoid`, {
+          captureStackTrace: false,
+          attributes: { insert }
+        })
+      ) as any
+
     const updateSchema = SqlSchema.single({
       Request: Model.update,
       Result: Model,
       execute: (request) =>
-        sql`update ${sql(options.tableName)} set ${sql.update(request, [options.idColumn])} where ${
-          sql(options.idColumn as string)
-        } = ${sql(request[options.idColumn])} returning *`
+        sql.onDialectOrElse({
+          mysql: () =>
+            (sql`update ${sql(options.tableName)} set ${sql.update(request, [options.idColumn])} where ${
+              sql(options.idColumn as string)
+            } = ${sql(request[options.idColumn])}`.raw as Effect.Effect<{ insertId: number }>).pipe(
+              Effect.flatMap(({ insertId }) =>
+                sql`select * from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${insertId}`
+              ),
+              sql.withTransaction
+            ),
+          orElse: () =>
+            sql`update ${sql(options.tableName)} set ${sql.update(request, [options.idColumn])} where ${
+              sql(options.idColumn as string)
+            } = ${sql(request[options.idColumn])} returning *`
+        })
     })
     const update = (
       update: S["update"]["Type"]
@@ -668,6 +713,24 @@ export const makeRepository = <
       updateSchema(update).pipe(
         Effect.orDie,
         Effect.withSpan(`${options.spanPrefix}.update`, {
+          captureStackTrace: false,
+          attributes: { update }
+        })
+      ) as any
+
+    const updateVoidSchema = SqlSchema.void({
+      Request: Model.update,
+      execute: (request) =>
+        sql`update ${sql(options.tableName)} set ${sql.update(request, [options.idColumn])} where ${
+          sql(options.idColumn as string)
+        } = ${sql(request[options.idColumn])}`
+    })
+    const updateVoid = (
+      update: S["update"]["Type"]
+    ): Effect.Effect<void, never, S["Context"] | S["update"]["Context"]> =>
+      updateVoidSchema(update).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.updateVoid`, {
           captureStackTrace: false,
           attributes: { update }
         })
@@ -704,7 +767,7 @@ export const makeRepository = <
         })
       ) as any
 
-    return { insert, update, findById, delete: delete_ } as const
+    return { insert, insertVoid, update, updateVoid, findById, delete: delete_ } as const
   })
 
 /**
@@ -728,6 +791,7 @@ export const makeDataLoaders = <
 ): Effect.Effect<
   {
     readonly insert: (insert: S["insert"]["Type"]) => Effect.Effect<S["Type"]>
+    readonly insertVoid: (insert: S["insert"]["Type"]) => Effect.Effect<void>
     readonly findById: (id: Schema.Schema.Type<S["fields"][Id]>) => Effect.Effect<Option.Option<S["Type"]>>
     readonly delete: (id: Schema.Schema.Type<S["fields"][Id]>) => Effect.Effect<void>
   },
@@ -754,6 +818,26 @@ export const makeDataLoaders = <
       insertExecute(insert).pipe(
         Effect.orDie,
         Effect.withSpan(`${options.spanPrefix}.insert`, {
+          captureStackTrace: false,
+          attributes: { insert }
+        })
+      ) as any
+
+    const insertVoidResolver = yield* SqlResolver.void(`${options.spanPrefix}/insertVoid`, {
+      Request: Model.insert,
+      execute: (request) => sql`insert into ${sql(options.tableName)} ${sql.insert(request)}`
+    })
+    const insertVoidLoader = yield* RRX.dataLoader(insertVoidResolver, {
+      window: options.window,
+      maxBatchSize: options.maxBatchSize!
+    })
+    const insertVoidExecute = insertVoidResolver.makeExecute(insertVoidLoader)
+    const insertVoid = (
+      insert: S["insert"]["Type"]
+    ): Effect.Effect<void, never, S["Context"] | S["insert"]["Context"]> =>
+      insertVoidExecute(insert).pipe(
+        Effect.orDie,
+        Effect.withSpan(`${options.spanPrefix}.insertVoid`, {
           captureStackTrace: false,
           attributes: { insert }
         })
@@ -802,5 +886,5 @@ export const makeDataLoaders = <
         })
       ) as any
 
-    return { insert, findById, delete: delete_ } as const
+    return { insert, insertVoid, findById, delete: delete_ } as const
   })
