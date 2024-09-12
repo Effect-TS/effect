@@ -174,15 +174,26 @@ export const catchTags: {
  * @category filters
  */
 export const filterOrElse: {
+  <A, B extends A, C, E2, R2>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    orElse: (a: NoInfer<A>) => Effect.Effect<C, E2, R2>
+  ): <E, R>(self: HttpClient<A, E, R>) => HttpClient<B | C, E | E2, R | R2>
   <A, B, E2, R2>(
-    f: Predicate.Predicate<A>,
-    orElse: (a: A) => Effect.Effect<B, E2, R2>
-  ): <E, R>(self: HttpClient<A, E, R>) => HttpClient<A | B, E2 | E, R2 | R>
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    orElse: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>
+  ): <E, R>(
+    self: HttpClient<A, E, R>
+  ) => HttpClient<A | B, E2 | E, R2 | R>
+  <A, E, R, B extends A, C, E2, R2>(
+    self: HttpClient<A, E, R>,
+    refinement: Predicate.Refinement<A, B>,
+    orElse: (a: A) => Effect.Effect<C, E2, R2>
+  ): HttpClient<B | C, E | E2, R | R2>
   <A, E, R, B, E2, R2>(
     self: HttpClient<A, E, R>,
-    f: Predicate.Predicate<A>,
+    predicate: Predicate.Predicate<A>,
     orElse: (a: A) => Effect.Effect<B, E2, R2>
-  ): HttpClient<A | B, E | E2, R | R2>
+  ): HttpClient<A | B, E2 | E, R2 | R>
 } = internal.filterOrElse
 
 /**
@@ -190,15 +201,24 @@ export const filterOrElse: {
  * @category filters
  */
 export const filterOrFail: {
+  <A, B extends A, E2>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <E, R>(self: HttpClient<A, E, R>) => HttpClient<B, E | E2, R>
   <A, E2>(
-    f: Predicate.Predicate<A>,
-    orFailWith: (a: A) => E2
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    orFailWith: (a: NoInfer<A>) => E2
   ): <E, R>(self: HttpClient<A, E, R>) => HttpClient<A, E2 | E, R>
+  <A, B extends A, E, R, E2>(
+    self: HttpClient<A, E, R>,
+    refinement: Predicate.Refinement<A, B>,
+    orFailWith: (a: A) => E2
+  ): HttpClient<B, E2 | E, R>
   <A, E, R, E2>(
     self: HttpClient<A, E, R>,
-    f: Predicate.Predicate<A>,
+    predicate: Predicate.Predicate<A>,
     orFailWith: (a: A) => E2
-  ): HttpClient<A, E | E2, R>
+  ): HttpClient<A, E2 | E, R>
 } = internal.filterOrFail
 
 /**
