@@ -1336,19 +1336,6 @@ const propagateAnnotations = <E>(self: Cause.Cause<E>, context: Context.Context<
 }
 
 /** @internal */
-export const originalAnnotation = <E, I, S>(self: E, tag: Context.Tag<I, S>, fallback: S): S => {
-  const context = originalAnnotations(self)
-  if (context === undefined || !context.unsafeMap.has(tag.key)) {
-    return fallback
-  }
-  return context.unsafeMap.get(tag.key) as S
-}
-
-/** @internal */
-export const addOriginalAnnotation = <E, I, S>(self: E, tag: Context.Tag<I, S>, value: S): E =>
-  addOriginalAnnotations(self, Context.make(tag, value))
-
-/** @internal */
 export const originalInstance = <E>(self: E): E => {
   if (hasProperty(self, originalInstanceSymbol)) {
     return self[originalInstanceSymbol] as E
