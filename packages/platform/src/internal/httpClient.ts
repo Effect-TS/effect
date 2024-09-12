@@ -476,32 +476,50 @@ export const catchAll: {
 )
 
 /** @internal */
-export const filterOrElse = dual<
+export const filterOrElse: {
+  <A, B extends A, C, E2, R2>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    orElse: (a: NoInfer<A>) => Effect.Effect<C, E2, R2>
+  ): <E, R>(self: Client.HttpClient<A, E, R>) => Client.HttpClient<B | C, E | E2, R | R2>
   <A, B, E2, R2>(
-    f: Predicate.Predicate<A>,
-    orElse: (a: A) => Effect.Effect<B, E2, R2>
-  ) => <E, R>(
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    orElse: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>
+  ): <E, R>(
     self: Client.HttpClient<A, E, R>
-  ) => Client.HttpClient<A | B, E2 | E, R2 | R>,
+  ) => Client.HttpClient<A | B, E2 | E, R2 | R>
+  <A, E, R, B extends A, C, E2, R2>(
+    self: Client.HttpClient<A, E, R>,
+    refinement: Predicate.Refinement<A, B>,
+    orElse: (a: A) => Effect.Effect<C, E2, R2>
+  ): Client.HttpClient<B | C, E | E2, R | R2>
   <A, E, R, B, E2, R2>(
     self: Client.HttpClient<A, E, R>,
-    f: Predicate.Predicate<A>,
+    predicate: Predicate.Predicate<A>,
     orElse: (a: A) => Effect.Effect<B, E2, R2>
-  ) => Client.HttpClient<A | B, E2 | E, R2 | R>
->(3, (self, f, orElse) => transformResponse(self, Effect.filterOrElse(f, orElse)))
+  ): Client.HttpClient<A | B, E2 | E, R2 | R>
+} = dual(3, (self, f, orElse) => transformResponse(self, Effect.filterOrElse(f, orElse)))
 
 /** @internal */
-export const filterOrFail = dual<
+export const filterOrFail: {
+  <A, B extends A, E2>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <E, R>(self: Client.HttpClient<A, E, R>) => Client.HttpClient<B, E | E2, R>
   <A, E2>(
-    f: Predicate.Predicate<A>,
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <E, R>(self: Client.HttpClient<A, E, R>) => Client.HttpClient<A, E2 | E, R>
+  <A, B extends A, E, R, E2>(
+    self: Client.HttpClient<A, E, R>,
+    refinement: Predicate.Refinement<A, B>,
     orFailWith: (a: A) => E2
-  ) => <E, R>(self: Client.HttpClient<A, E, R>) => Client.HttpClient<A, E2 | E, R>,
+  ): Client.HttpClient<B, E2 | E, R>
   <A, E, R, E2>(
     self: Client.HttpClient<A, E, R>,
-    f: Predicate.Predicate<A>,
+    predicate: Predicate.Predicate<A>,
     orFailWith: (a: A) => E2
-  ) => Client.HttpClient<A, E2 | E, R>
->(3, (self, f, orFailWith) => transformResponse(self, Effect.filterOrFail(f, orFailWith)))
+  ): Client.HttpClient<A, E2 | E, R>
+} = dual(3, (self, f, orFailWith) => transformResponse(self, Effect.filterOrFail(f, orFailWith)))
 
 /** @internal */
 export const map = dual<
