@@ -11,6 +11,7 @@ import * as cause_ from "effect/Cause"
 import * as chunk_ from "effect/Chunk"
 import * as config_ from "effect/Config"
 import * as configError_ from "effect/ConfigError"
+import * as context_ from "effect/Context"
 import * as data_ from "effect/Data"
 import * as dateTime from "effect/DateTime"
 import * as duration_ from "effect/Duration"
@@ -8310,6 +8311,10 @@ export type CauseEncoded<E, D> =
     readonly left: CauseEncoded<E, D>
     readonly right: CauseEncoded<E, D>
   }
+  | {
+    readonly _tag: "Annotated"
+    readonly cause: CauseEncoded<E, D>
+  }
 
 const causeDieEncoded = <D, DI, R>(defect: Schema<D, DI, R>) =>
   Struct({
@@ -8346,6 +8351,12 @@ const causeSequentialEncoded = <E, EI, D, DI, R>(causeEncoded: Schema<CauseEncod
     right: causeEncoded
   })
 
+const causeAnnotatedEncoded = <E, EI, D, DI, R>(causeEncoded: Schema<CauseEncoded<E, D>, CauseEncoded<EI, DI>, R>) =>
+  Struct({
+    _tag: Literal("Annotated"),
+    cause: causeEncoded
+  })
+
 const causeEncoded = <E, EI, D, DI, R1, R2>(
   error: Schema<E, EI, R1>,
   defect: Schema<D, DI, R2>
@@ -8357,15 +8368,16 @@ const causeEncoded = <E, EI, D, DI, R1, R2>(
     causeDieEncoded(defect),
     CauseInterruptEncoded,
     causeSequentialEncoded(recur),
-    causeParallelEncoded(recur)
+    causeParallelEncoded(recur),
+    causeAnnotatedEncoded(recur)
   ).annotations({ title: `CauseEncoded<${format(error)}>` })
   return out
 }
 
-const causeArbitrary = <E>(
+const causeEncodedArbitrary = <E>(
   error: LazyArbitrary<E>,
   defect: LazyArbitrary<unknown>
-): LazyArbitrary<cause_.Cause<E>> =>
+): LazyArbitrary<CauseEncoded<E, unknown>> =>
 (fc) =>
   fc.letrec((tie) => ({
     Empty: fc.record({ _tag: fc.constant("Empty" as const) }),
@@ -8374,15 +8386,23 @@ const causeArbitrary = <E>(
     Interrupt: fc.record({ _tag: fc.constant("Interrupt" as const), fiberId: fiberIdArbitrary(fc) }),
     Sequential: fc.record({ _tag: fc.constant("Sequential" as const), left: tie("Cause"), right: tie("Cause") }),
     Parallel: fc.record({ _tag: fc.constant("Parallel" as const), left: tie("Cause"), right: tie("Cause") }),
+    Annotated: fc.record({ _tag: fc.constant("Annotated" as const), cause: tie("Cause") }),
     Cause: fc.oneof(
       tie("Empty"),
       tie("Fail"),
       tie("Die"),
       tie("Interrupt"),
       tie("Sequential"),
-      tie("Parallel")
-    ) as any as fastCheck_.Arbitrary<cause_.Cause<E>>
-  })).Cause.map(causeDecode)
+      tie("Parallel"),
+      tie("Annotated")
+    ) as any as fastCheck_.Arbitrary<CauseEncoded<E, unknown>>
+  })).Cause
+
+const causeArbitrary = <E>(
+  error: LazyArbitrary<E>,
+  defect: LazyArbitrary<unknown>
+): LazyArbitrary<cause_.Cause<E>> =>
+(fc) => causeEncodedArbitrary(error, defect)(fc).map(causeDecode)
 
 const causePretty = <E>(error: pretty_.Pretty<E>): pretty_.Pretty<cause_.Cause<E>> => (cause) => {
   const f = (cause: cause_.Cause<E>): string => {
@@ -8399,6 +8419,8 @@ const causePretty = <E>(error: pretty_.Pretty<E>): pretty_.Pretty<cause_.Cause<E
         return `Cause.sequential(${f(cause.left)}, ${f(cause.right)})`
       case "Parallel":
         return `Cause.parallel(${f(cause.left)}, ${f(cause.right)})`
+      case "Annotated":
+        return `Cause.annotated(${cause_.pretty(cause.cause)})`
     }
   }
   return f(cause)
@@ -8461,6 +8483,8 @@ function causeDecode<E>(cause: CauseEncoded<E, unknown>): cause_.Cause<E> {
       return cause_.sequential(causeDecode(cause.left), causeDecode(cause.right))
     case "Parallel":
       return cause_.parallel(causeDecode(cause.left), causeDecode(cause.right))
+    case "Annotated":
+      return cause_.annotated(causeDecode(cause.cause), context_.empty())
   }
 }
 
@@ -8486,6 +8510,8 @@ function causeEncode<E>(cause: cause_.Cause<E>): CauseEncoded<E, unknown> {
         left: causeEncode(cause.left),
         right: causeEncode(cause.right)
       }
+    case "Annotated":
+      return causeEncode(cause.cause)
   }
 }
 
@@ -8626,7 +8652,7 @@ const exitArbitrary = <A, E>(
 ): LazyArbitrary<exit_.Exit<A, E>> =>
 (fc) =>
   fc.oneof(
-    fc.record({ _tag: fc.constant("Failure" as const), cause: causeArbitrary(error, defect)(fc) }),
+    fc.record({ _tag: fc.constant("Failure" as const), cause: causeEncodedArbitrary(error, defect)(fc) }),
     fc.record({ _tag: fc.constant("Success" as const), value: value(fc) })
   ).map(exitDecode)
 

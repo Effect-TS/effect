@@ -2,13 +2,14 @@ import { RpcResolver, RpcResolverNoStream, RpcRouter } from "@effect/rpc"
 import * as Rpc from "@effect/rpc/Rpc"
 import { Schema } from "@effect/schema"
 import * as S from "@effect/schema/Schema"
+import { it } from "@effect/vitest"
 import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { flow, pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
-import { assert, describe, expect, it, test } from "vitest"
+import { assert, describe, expect, test } from "vitest"
 
 interface Name {
   readonly _: unique symbol
@@ -198,10 +199,10 @@ describe("Router", () => {
       value: "Hello, John!"
     }, {
       _tag: "Failure",
-      cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } }
+      cause: { _tag: "Annotated", cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } } }
     }, {
       _tag: "Failure",
-      cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } }
+      cause: { _tag: "Annotated", cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } } }
     }, {
       _tag: "Success",
       value: date.toISOString()
@@ -247,10 +248,10 @@ describe("Router", () => {
       value: "Hello, John!"
     }, {
       _tag: "Failure",
-      cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } }
+      cause: { _tag: "Annotated", cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } } }
     }, {
       _tag: "Failure",
-      cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } }
+      cause: { _tag: "Annotated", cause: { _tag: "Fail", error: { _tag: "SomeError", message: "fail" } } }
     }, {
       _tag: "Success",
       value: date.toISOString()
@@ -380,7 +381,7 @@ describe.each([{
       ])
     }).pipe(Effect.runPromise))
 
-  test("stream fail", () =>
+  it.effect("stream fail", () =>
     Effect.gen(function*(_) {
       let n = 0
       const result = yield* _(
@@ -395,5 +396,5 @@ describe.each([{
       )
       assert.strictEqual(n, 2)
       assert.deepStrictEqual(result, new SomeError({ message: "fail" }))
-    }).pipe(Effect.runPromise))
+    }))
 })
