@@ -109,7 +109,7 @@ export const interrupt = (fiberId: FiberId.FiberId): Cause.Cause<never> => {
   const o = Object.create(proto)
   o._tag = OpCodes.OP_INTERRUPT
   o.fiberId = fiberId
-  return rehydrateAnnotations(o, fiberId)
+  return o
 }
 
 /** @internal */
@@ -1304,8 +1304,7 @@ const AnnotationsReducer: Cause.CauseReducer<Context.Context<never>, unknown, Ca
   emptyCase: (_) => empty,
   failCase: (context, error, annotations) => fail(addOriginalAnnotations(error, Context.merge(context, annotations))),
   dieCase: (context, defect, annotations) => die(addOriginalAnnotations(defect, Context.merge(context, annotations))),
-  interruptCase: (context, fiberId, annotations) =>
-    interrupt(addOriginalAnnotations(fiberId, Context.merge(context, annotations))),
+  interruptCase: (_, fiberId) => interrupt(fiberId),
   sequentialCase: (_, left, right) => sequential(left, right),
   parallelCase: (_, left, right) => parallel(left, right),
   annotatedCase: (context, cause, annotations) => annotated(cause, Context.merge(context, annotations))

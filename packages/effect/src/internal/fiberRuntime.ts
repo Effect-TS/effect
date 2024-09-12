@@ -493,11 +493,18 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
    */
   interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<void> {
     return core.withFiberRuntime<void>((fiber) => {
-      const span = fiber.currentSpan
-      if (span && span._tag === "Span") {
-        fiberId = internalCause.addOriginalAnnotation(fiberId, internalCause.InterruptorSpan, span)
+      let context = Context.empty()
+      if (fiber.currentSpan && fiber.currentSpan._tag === "Span") {
+        context = Context.add(context, internalCause.InterruptorSpan, fiber.currentSpan)
       }
-      this.unsafeInterruptAsFork(fiberId)
+      if (this.currentSpan && this.currentSpan._tag === "Span") {
+        context = Context.add(context, internalCause.FailureSpan, this.currentSpan)
+      }
+      this.tell(FiberMessage.interruptSignal(
+        Context.isEmpty(context)
+          ? internalCause.interrupt(fiberId)
+          : internalCause.annotated(internalCause.interrupt(fiberId), context)
+      ))
       return core.void
     })
   }
