@@ -30,6 +30,7 @@ export const fromFileSystem = (directory: string): Loader<FileSystem> =>
                     () =>
                       import(
                         /* @vite-ignore */
+                        /* webpackIgnore: true */
                         `${directory}/${basename}`
                       )
                   )
