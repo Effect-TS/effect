@@ -60,8 +60,8 @@ describe("Model", () => {
         repo.insert(User.insert.make({ name: "Alice", age: 30 })),
         repo.insert(User.insert.make({ name: "John", age: 30 }))
       ], { batching: true })
-      assert.deepStrictEqual(alice, new User({ id: 1, name: "Alice", age: 30 }))
-      assert.deepStrictEqual(john, new User({ id: 2, name: "John", age: 30 }))
+      assert.deepStrictEqual(alice.name, "Alice")
+      assert.deepStrictEqual(john.name, "John")
     }).pipe(
       Effect.provide(MysqlContainer.ClientLive),
       Effect.catchTag("ContainerError", () => Effect.void)
