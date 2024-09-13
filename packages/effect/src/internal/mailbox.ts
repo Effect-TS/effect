@@ -198,6 +198,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
     if (messages.length === 0 && this.state._tag === "Done") {
       return core.exitAs(this.state.exit, empty)
     }
+    this.releaseCapacity()
     return core.succeed(messages)
   })
   takeAll: Effect<readonly [messages: Chunk.Chunk<A>, done: boolean], E> = core.suspend(() => {
@@ -207,9 +208,10 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
         return core.exitAs(this.state.exit, constDone)
       }
       return core.zipRight(this.awaitTake, this.takeAll)
-    } else if (this.state._tag === "Done" && this.messages.length === 0 && this.messagesChunk.length === 0) {
+    } else if (this.state._tag === "Done") {
       return core.succeed([messages, this.state.exit._tag === "Success"])
     }
+    this.releaseCapacity()
     return core.succeed([messages, false])
   })
   takeN(n: number): Effect<readonly [messages: Chunk.Chunk<A>, done: boolean], E> {
@@ -225,9 +227,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
         messages = Chunk.take(this.messagesChunk, n)
         this.messagesChunk = Chunk.drop(this.messagesChunk, n)
       } else if (n <= this.messages.length + this.messagesChunk.length) {
-        this.messagesChunk = this.messagesChunk.length === 0
-          ? Chunk.unsafeFromArray(this.messages)
-          : Chunk.appendAll(this.messagesChunk, Chunk.unsafeFromArray(this.messages))
+        this.messagesChunk = Chunk.appendAll(this.messagesChunk, Chunk.unsafeFromArray(this.messages))
         this.messages = []
         messages = Chunk.take(this.messagesChunk, n)
         this.messagesChunk = Chunk.drop(this.messagesChunk, n)
@@ -237,10 +237,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
         return core.zipRight(this.awaitTake, this.takeN(n))
       }
       if (this.state._tag === "Done") {
-        return core.succeed([
-          messages,
-          this.state.exit._tag === "Success" && this.messages.length === 0 && this.messagesChunk.length === 0
-        ])
+        return core.succeed([messages, this.state.exit._tag === "Success"])
       }
       this.releaseCapacity()
       return core.succeed([messages, false])
@@ -393,12 +390,10 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
         this.messagesChunk
       this.messagesChunk = empty
       this.messages = []
-      if (this.state._tag !== "Done") this.releaseCapacity()
       return messages
     } else if (this.messages.length > 0) {
       const messages = Chunk.unsafeFromArray(this.messages)
       this.messages = []
-      if (this.state._tag !== "Done") this.releaseCapacity()
       return messages
     }
     return empty
