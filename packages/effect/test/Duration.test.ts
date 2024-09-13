@@ -388,7 +388,7 @@ describe("Duration", () => {
 
   it("toSeconds", () => {
     expect(Duration.millis(1).pipe(Duration.toSeconds)).toBe(0.001)
-    expect(Duration.nanos(1n).pipe(Duration.toSeconds)).toBe(9.999999999999999e-10)
+    expect(Duration.nanos(1n).pipe(Duration.toSeconds)).toBe(1e-9)
     expect(Duration.infinity.pipe(Duration.toSeconds)).toBe(Infinity)
 
     expect(Duration.toSeconds("1 seconds")).toBe(1)
