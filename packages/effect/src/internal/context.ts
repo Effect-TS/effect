@@ -272,3 +272,16 @@ export const omit =
     }
     return makeContext(newEnv)
   }
+
+/** @internal */
+export const has = dual<
+  <S, I>(tag: C.Tag<I, S>) => <Services>(self: C.Context<Services>) => self is C.Context<Services | I>,
+  <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>) => self is C.Context<Services | I>
+>(
+  2,
+  <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>): self is C.Context<Services | I> =>
+    self.unsafeMap.has(tag.key)
+)
+
+/** @internal */
+export const isEmpty = (self: C.Context<never>): boolean => self.unsafeMap.size === 0

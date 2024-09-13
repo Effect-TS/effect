@@ -492,14 +492,32 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
    * In the background, interrupts the fiber as if interrupted from the specified fiber.
    */
   interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<void> {
-    return core.sync(() => this.tell(FiberMessage.interruptSignal(internalCause.interrupt(fiberId))))
+    return core.withFiberRuntime<void>((fiber) => {
+      let context = Context.empty()
+      if (fiber.currentSpan && fiber.currentSpan._tag === "Span") {
+        context = Context.add(context, internalCause.InterruptorSpan, fiber.currentSpan)
+      }
+      if (this.currentSpan && this.currentSpan._tag === "Span") {
+        context = Context.add(context, internalCause.FailureSpan, this.currentSpan)
+      }
+      this.tell(FiberMessage.interruptSignal(
+        Context.isEmpty(context)
+          ? internalCause.interrupt(fiberId)
+          : internalCause.annotated(internalCause.interrupt(fiberId), context)
+      ))
+      return core.void
+    })
   }
 
   /**
    * In the background, interrupts the fiber as if interrupted from the specified fiber.
    */
   unsafeInterruptAsFork(fiberId: FiberId.FiberId) {
-    this.tell(FiberMessage.interruptSignal(internalCause.interrupt(fiberId)))
+    this.tell(FiberMessage.interruptSignal(
+      this.currentSpan && this.currentSpan._tag === "Span"
+        ? internalCause.annotate(internalCause.interrupt(fiberId), internalCause.FailureSpan, this.currentSpan)
+        : internalCause.interrupt(fiberId)
+    ))
   }
 
   /**
@@ -731,7 +749,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
     }
     let told = false
     for (const child of this._children) {
-      child.tell(FiberMessage.interruptSignal(internalCause.interrupt(this.id())))
+      child.unsafeInterruptAsFork(this.id())
       told = true
     }
     return told
@@ -1164,7 +1182,11 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         case OpCodes.OP_REVERT_FLAGS: {
           this.patchRuntimeFlags(this.currentRuntimeFlags, cont.patch)
           if (_runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted()) {
-            return core.exitFailCause(internalCause.sequential(cause, this.getInterruptedCause()))
+            const interruptedCause = this.getInterruptedCause()
+            if (internalCause.contains(cause, interruptedCause)) {
+              return core.exitFailCause(cause)
+            }
+            return core.exitFailCause(internalCause.sequential(cause, interruptedCause))
           } else {
             return core.exitFailCause(cause)
           }

@@ -1,6 +1,7 @@
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
+import * as Context from "../Context.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import type * as FiberId from "../FiberId.js"
@@ -16,6 +17,7 @@ import { hasProperty, isFunction } from "../Predicate.js"
 import type { AnySpan, Span } from "../Tracer.js"
 import type { NoInfer } from "../Types.js"
 import { getBugErrorMessage } from "./errors.js"
+import * as internalFiberId from "./fiberId.js"
 import * as OpCodes from "./opCodes/cause.js"
 
 // -----------------------------------------------------------------------------
@@ -64,6 +66,8 @@ const proto = {
       case "Sequential":
       case "Parallel":
         return { _id: "Cause", _tag: this._tag, left: toJSON(this.left), right: toJSON(this.right) }
+      case "Annotated":
+        return { _id: "Cause", _tag: this._tag, cause: this.cause.toJSON(), context: this.context.toJSON() }
     }
   },
   toString<E>(this: Cause.Cause<E>) {
@@ -90,7 +94,7 @@ export const fail = <E>(error: E): Cause.Cause<E> => {
   const o = Object.create(proto)
   o._tag = OpCodes.OP_FAIL
   o.error = error
-  return o
+  return rehydrateAnnotations(o, error)
 }
 
 /** @internal */
@@ -98,7 +102,7 @@ export const die = (defect: unknown): Cause.Cause<never> => {
   const o = Object.create(proto)
   o._tag = OpCodes.OP_DIE
   o.defect = defect
-  return o
+  return rehydrateAnnotations(o, defect)
 }
 
 /** @internal */
@@ -127,6 +131,33 @@ export const sequential = <E, E2>(left: Cause.Cause<E>, right: Cause.Cause<E2>):
   return o
 }
 
+/** @internal */
+export const annotated = dual<
+  (context: Context.Context<never>) => <E>(self: Cause.Cause<E>) => Cause.Cause<E>,
+  <E>(self: Cause.Cause<E>, context: Context.Context<never>) => Cause.Cause<E>
+>(2, (self, context) => {
+  if (self._tag === OpCodes.OP_ANNOTATED && self.context === context) {
+    return self
+  }
+  const o = Object.create(proto)
+  o._tag = OpCodes.OP_ANNOTATED
+  if (self._tag === OpCodes.OP_ANNOTATED) {
+    o.context = Context.merge(context, self.context)
+    o.cause = self.cause
+  } else {
+    o.context = context
+    o.cause = self
+  }
+  propagateAnnotations(o.cause, o.context)
+  return o
+})
+
+/** @internal */
+export const annotate = dual<
+  <I, S>(tag: Context.Tag<I, S>, value: S) => <E>(self: Cause.Cause<E>) => Cause.Cause<E>,
+  <E, I, S>(self: Cause.Cause<E>, tag: Context.Tag<I, S>, value: S) => Cause.Cause<E>
+>(3, (self, tag, value) => annotated(self, Context.make(tag, value)))
+
 // -----------------------------------------------------------------------------
 // Refinements
 // -----------------------------------------------------------------------------
@@ -153,6 +184,10 @@ export const isSequentialType = <E>(self: Cause.Cause<E>): self is Cause.Sequent
 /** @internal */
 export const isParallelType = <E>(self: Cause.Cause<E>): self is Cause.Parallel<E> => self._tag === OpCodes.OP_PARALLEL
 
+/** @internal */
+export const isAnnotatedType = <E>(self: Cause.Cause<E>): self is Cause.Annotated<E> =>
+  self._tag === OpCodes.OP_ANNOTATED
+
 // -----------------------------------------------------------------------------
 // Getters
 // -----------------------------------------------------------------------------
@@ -167,6 +202,7 @@ export const isEmpty = <E>(self: Cause.Cause<E>): boolean => {
   }
   return reduce(self, true, (acc, cause) => {
     switch (cause._tag) {
+      case OpCodes.OP_ANNOTATED:
       case OpCodes.OP_EMPTY: {
         return Option.some(acc)
       }
@@ -229,6 +265,25 @@ export const interruptors = <E>(self: Cause.Cause<E>): HashSet.HashSet<FiberId.F
       Option.none())
 
 /** @internal */
+export const annotations = <E>(self: Cause.Cause<E>): Context.Context<never> =>
+  Context.unsafeMake(
+    reduce(
+      self,
+      new Map<string, unknown>(),
+      (map, cause) => {
+        if (cause._tag !== OpCodes.OP_ANNOTATED) return Option.none()
+        const innerMap = cause.context.unsafeMap
+        for (const [key, value] of innerMap) {
+          if (!map.has(key)) {
+            map.set(key, value)
+          }
+        }
+        return Option.some(map)
+      }
+    )
+  )
+
+/** @internal */
 export const failureOption = <E>(self: Cause.Cause<E>): Option.Option<E> =>
   find<E, E>(self, (cause) =>
     cause._tag === OpCodes.OP_FAIL ?
@@ -260,7 +315,7 @@ export const dieOption = <E>(self: Cause.Cause<E>): Option.Option<unknown> =>
 export const flipCauseOption = <E>(self: Cause.Cause<Option.Option<E>>): Option.Option<Cause.Cause<E>> =>
   match(self, {
     onEmpty: Option.some(empty),
-    onFail: (failureOption) => pipe(failureOption, Option.map(fail)),
+    onFail: (failureOption) => Option.map(failureOption, fail),
     onDie: (defect) => Option.some(die(defect)),
     onInterrupt: (fiberId) => Option.some(interrupt(fiberId)),
     onSequential: (left, right) => {
@@ -286,7 +341,8 @@ export const flipCauseOption = <E>(self: Cause.Cause<Option.Option<E>>): Option.
         return Option.some(left.value)
       }
       return Option.none()
-    }
+    },
+    onAnnotated: (cause, context) => Option.map(cause, annotated(context))
   })
 
 /** @internal */
@@ -326,7 +382,8 @@ export const keepDefects = <E>(self: Cause.Cause<E>): Option.Option<Cause.Cause<
         return Option.some(right.value)
       }
       return Option.none()
-    }
+    },
+    onAnnotated: (cause) => cause
   })
 
 /** @internal */
@@ -359,7 +416,8 @@ export const keepDefectsAndElectFailures = <E>(self: Cause.Cause<E>): Option.Opt
         return Option.some(right.value)
       }
       return Option.none()
-    }
+    },
+    onAnnotated: (cause) => cause
   })
 
 /** @internal */
@@ -388,7 +446,8 @@ export const linearize = <E>(self: Cause.Cause<E>): HashSet.HashSet<Cause.Cause<
             HashSet.map((rightCause) => parallel(leftCause, rightCause))
           )
         )
-      )
+      ),
+    onAnnotated: (cause, context) => HashSet.map(cause, annotated(context))
   })
 
 /** @internal */
@@ -399,7 +458,8 @@ export const stripFailures = <E>(self: Cause.Cause<E>): Cause.Cause<never> =>
     onDie: (defect) => die(defect),
     onInterrupt: (fiberId) => interrupt(fiberId),
     onSequential: sequential,
-    onParallel: parallel
+    onParallel: parallel,
+    onAnnotated: (cause, context) => annotated(cause, context)
   })
 
 /** @internal */
@@ -410,7 +470,8 @@ export const electFailures = <E>(self: Cause.Cause<E>): Cause.Cause<never> =>
     onDie: (defect) => die(defect),
     onInterrupt: (fiberId) => interrupt(fiberId),
     onSequential: (left, right) => sequential(left, right),
-    onParallel: (left, right) => parallel(left, right)
+    onParallel: (left, right) => parallel(left, right),
+    onAnnotated: (cause, context) => annotated(cause, context)
   })
 
 /** @internal */
@@ -449,7 +510,8 @@ export const stripSomeDefects = dual<
         return Option.some(right.value)
       }
       return Option.none()
-    }
+    },
+    onAnnotated: (cause, context) => Option.map(cause, annotated(context))
   }))
 
 // -----------------------------------------------------------------------------
@@ -483,7 +545,8 @@ export const flatMap = dual<
     onDie: (defect) => die(defect),
     onInterrupt: (fiberId) => interrupt(fiberId),
     onSequential: (left, right) => sequential(left, right),
-    onParallel: (left, right) => parallel(left, right)
+    onParallel: (left, right) => parallel(left, right),
+    onAnnotated: (cause, context) => annotated(cause, context)
   }))
 
 /** @internal */
@@ -513,9 +576,7 @@ export const contains = dual<
   if (that._tag === OpCodes.OP_EMPTY || self === that) {
     return true
   }
-  return reduce(self, false, (accumulator, cause) => {
-    return Option.some(accumulator || causeEquals(cause, that))
-  })
+  return reduce(self, false, (accumulator, cause) => Option.some(accumulator || causeEquals(cause, that)))
 })
 
 /** @internal */
@@ -631,6 +692,10 @@ export const find = dual<
             stack.push(item.left)
             break
           }
+          case OpCodes.OP_ANNOTATED: {
+            stack.push(item.cause)
+            break
+          }
         }
         break
       }
@@ -740,6 +805,10 @@ const evaluateCause = (
         cause = cause.left
         break
       }
+      case OpCodes.OP_ANNOTATED: {
+        cause = cause.cause
+        break
+      }
     }
   }
   throw new Error(getBugErrorMessage("Cause.evaluateCauseLoop"))
@@ -756,7 +825,8 @@ const SizeCauseReducer: Cause.CauseReducer<unknown, unknown, number> = {
   dieCase: () => 1,
   interruptCase: () => 1,
   sequentialCase: (_, left, right) => left + right,
-  parallelCase: (_, left, right) => left + right
+  parallelCase: (_, left, right) => left + right,
+  annotatedCase: (_, count) => count
 }
 
 /** @internal */
@@ -766,7 +836,8 @@ const IsInterruptedOnlyCauseReducer: Cause.CauseReducer<unknown, unknown, boolea
   dieCase: constFalse,
   interruptCase: constTrue,
   sequentialCase: (_, left, right) => left && right,
-  parallelCase: (_, left, right) => left && right
+  parallelCase: (_, left, right) => left && right,
+  annotatedCase: (_, bool) => bool
 }
 
 /** @internal */
@@ -800,24 +871,41 @@ const FilterCauseReducer = <E>(
       return right
     }
     return empty
+  },
+  annotatedCase: (_, cause, context) => {
+    if (predicate(cause)) {
+      return annotated(cause, context)
+    }
+    return empty
   }
 })
 
 /** @internal */
-type CauseCase = SequentialCase | ParallelCase
+type CauseCase = SequentialCase | ParallelCase | AnnotatedCase
 
 const OP_SEQUENTIAL_CASE = "SequentialCase"
 
 const OP_PARALLEL_CASE = "ParallelCase"
 
+const OP_ANNOTATED_CASE = "AnnotatedCase"
+
 /** @internal */
 interface SequentialCase {
   readonly _tag: typeof OP_SEQUENTIAL_CASE
+  readonly annotations: Context.Context<never>
 }
 
 /** @internal */
 interface ParallelCase {
   readonly _tag: typeof OP_PARALLEL_CASE
+  readonly annotations: Context.Context<never>
+}
+
+/** @internal */
+interface AnnotatedCase {
+  readonly _tag: typeof OP_ANNOTATED_CASE
+  readonly context: Context.Context<never>
+  readonly annotations: Context.Context<never>
 }
 
 /** @internal */
@@ -825,40 +913,46 @@ export const match = dual<
   <Z, E>(
     options: {
       readonly onEmpty: Z
-      readonly onFail: (error: E) => Z
-      readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-      readonly onSequential: (left: Z, right: Z) => Z
-      readonly onParallel: (left: Z, right: Z) => Z
+      readonly onFail: (error: E, annotations: Context.Context<never>) => Z
+      readonly onDie: (defect: unknown, annotations: Context.Context<never>) => Z
+      readonly onInterrupt: (fiberId: FiberId.FiberId, annotations: Context.Context<never>) => Z
+      readonly onSequential: (left: Z, right: Z, annotations: Context.Context<never>) => Z
+      readonly onParallel: (left: Z, right: Z, annotations: Context.Context<never>) => Z
+      readonly onAnnotated: (out: Z, context: Context.Context<never>, annotations: Context.Context<never>) => Z
     }
   ) => (self: Cause.Cause<E>) => Z,
   <Z, E>(
     self: Cause.Cause<E>,
     options: {
       readonly onEmpty: Z
-      readonly onFail: (error: E) => Z
-      readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-      readonly onSequential: (left: Z, right: Z) => Z
-      readonly onParallel: (left: Z, right: Z) => Z
+      readonly onFail: (error: E, annotations: Context.Context<never>) => Z
+      readonly onDie: (defect: unknown, annotations: Context.Context<never>) => Z
+      readonly onInterrupt: (fiberId: FiberId.FiberId, annotations: Context.Context<never>) => Z
+      readonly onSequential: (left: Z, right: Z, annotations: Context.Context<never>) => Z
+      readonly onParallel: (left: Z, right: Z, annotations: Context.Context<never>) => Z
+      readonly onAnnotated: (out: Z, context: Context.Context<never>, annotations: Context.Context<never>) => Z
     }
   ) => Z
->(2, (self, { onDie, onEmpty, onFail, onInterrupt, onParallel, onSequential }) => {
-  return reduceWithContext(self, void 0, {
-    emptyCase: () => onEmpty,
-    failCase: (_, error) => onFail(error),
-    dieCase: (_, defect) => onDie(defect),
-    interruptCase: (_, fiberId) => onInterrupt(fiberId),
-    sequentialCase: (_, left, right) => onSequential(left, right),
-    parallelCase: (_, left, right) => onParallel(left, right)
-  })
-})
+>(
+  2,
+  (self, { onAnnotated, onDie, onEmpty, onFail, onInterrupt, onParallel, onSequential }) =>
+    reduceWithContext(self, void 0, {
+      emptyCase: () => onEmpty,
+      failCase: (_, error, annotations) => onFail(error, annotations),
+      dieCase: (_, defect, annotations) => onDie(defect, annotations),
+      interruptCase: (_, fiberId, annotations) => onInterrupt(fiberId, annotations),
+      sequentialCase: (_, left, right, annotations) => onSequential(left, right, annotations),
+      parallelCase: (_, left, right, annotations) => onParallel(left, right, annotations),
+      annotatedCase: (_, out, context, annotations) => onAnnotated(out, context, annotations)
+    })
+)
 
 /** @internal */
 export const reduce = dual<
   <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause.Cause<E>) => Option.Option<Z>) => (self: Cause.Cause<E>) => Z,
   <Z, E>(self: Cause.Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause.Cause<E>) => Option.Option<Z>) => Z
 >(3, <Z, E>(self: Cause.Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause.Cause<E>) => Option.Option<Z>) => {
+  let annotations = Context.empty()
   let accumulator: Z = zero
   let cause: Cause.Cause<E> | undefined = self
   const causes: Array<Cause.Cause<E>> = []
@@ -874,6 +968,11 @@ export const reduce = dual<
       case OpCodes.OP_PARALLEL: {
         causes.push(cause.right)
         cause = cause.left
+        break
+      }
+      case OpCodes.OP_ANNOTATED: {
+        annotations = Context.merge(annotations, cause.context)
+        cause = cause.cause
         break
       }
       default: {
@@ -893,37 +992,44 @@ export const reduceWithContext = dual<
   <C, E, Z>(context: C, reducer: Cause.CauseReducer<C, E, Z>) => (self: Cause.Cause<E>) => Z,
   <C, E, Z>(self: Cause.Cause<E>, context: C, reducer: Cause.CauseReducer<C, E, Z>) => Z
 >(3, <C, E, Z>(self: Cause.Cause<E>, context: C, reducer: Cause.CauseReducer<C, E, Z>) => {
+  let annotations = Context.empty()
   const input: Array<Cause.Cause<E>> = [self]
   const output: Array<Either.Either<Z, CauseCase>> = []
   while (input.length > 0) {
     const cause = input.pop()!
     switch (cause._tag) {
       case OpCodes.OP_EMPTY: {
-        output.push(Either.right(reducer.emptyCase(context)))
+        output.push(Either.right(reducer.emptyCase(context, annotations)))
         break
       }
       case OpCodes.OP_FAIL: {
-        output.push(Either.right(reducer.failCase(context, cause.error)))
+        output.push(Either.right(reducer.failCase(context, cause.error, annotations)))
         break
       }
       case OpCodes.OP_DIE: {
-        output.push(Either.right(reducer.dieCase(context, cause.defect)))
+        output.push(Either.right(reducer.dieCase(context, cause.defect, annotations)))
         break
       }
       case OpCodes.OP_INTERRUPT: {
-        output.push(Either.right(reducer.interruptCase(context, cause.fiberId)))
+        output.push(Either.right(reducer.interruptCase(context, cause.fiberId, annotations)))
         break
       }
       case OpCodes.OP_SEQUENTIAL: {
         input.push(cause.right)
         input.push(cause.left)
-        output.push(Either.left({ _tag: OP_SEQUENTIAL_CASE }))
+        output.push(Either.left({ _tag: OP_SEQUENTIAL_CASE, annotations }))
         break
       }
       case OpCodes.OP_PARALLEL: {
         input.push(cause.right)
         input.push(cause.left)
-        output.push(Either.left({ _tag: OP_PARALLEL_CASE }))
+        output.push(Either.left({ _tag: OP_PARALLEL_CASE, annotations }))
+        break
+      }
+      case OpCodes.OP_ANNOTATED: {
+        input.push(cause.cause)
+        output.push(Either.left({ _tag: OP_ANNOTATED_CASE, context: cause.context, annotations }))
+        annotations = Context.merge(annotations, cause.context)
         break
       }
     }
@@ -937,14 +1043,20 @@ export const reduceWithContext = dual<
           case OP_SEQUENTIAL_CASE: {
             const left = accumulator.pop()!
             const right = accumulator.pop()!
-            const value = reducer.sequentialCase(context, left, right)
+            const value = reducer.sequentialCase(context, left, right, either.left.annotations)
             accumulator.push(value)
             break
           }
           case OP_PARALLEL_CASE: {
             const left = accumulator.pop()!
             const right = accumulator.pop()!
-            const value = reducer.parallelCase(context, left, right)
+            const value = reducer.parallelCase(context, left, right, either.left.annotations)
+            accumulator.push(value)
+            break
+          }
+          case OP_ANNOTATED_CASE: {
+            const out = accumulator.pop()!
+            const value = reducer.annotatedCase(context, out, either.left.context, either.left.annotations)
             accumulator.push(value)
             break
           }
@@ -972,17 +1084,13 @@ export const reduceWithContext = dual<
 /** @internal */
 export const pretty = <E>(cause: Cause.Cause<E>, options?: {
   readonly renderErrorCause?: boolean | undefined
-}): string => {
-  if (isInterruptedOnly(cause)) {
-    return "All fibers interrupted without errors."
-  }
-  return prettyErrors<E>(cause).map(function(e) {
+}): string =>
+  prettyErrors<E>(cause).map(function(e) {
     if (options?.renderErrorCause !== true || e.cause === undefined) {
       return e.stack
     }
     return `${e.stack} {\n${renderErrorCause(e.cause as PrettyError, "  ")}\n}`
   }).join("\n")
-}
 
 const renderErrorCause = (cause: PrettyError, prefix: string) => {
   const lines = cause.stack!.split("\n")
@@ -998,14 +1106,14 @@ const renderErrorCause = (cause: PrettyError, prefix: string) => {
 
 class PrettyError extends globalThis.Error implements Cause.PrettyError {
   span: undefined | Span = undefined
-  constructor(originalError: unknown) {
+  constructor(originalError: unknown, annotations: Context.Context<never>) {
     const originalErrorIsObject = typeof originalError === "object" && originalError !== null
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 1
     super(
       prettyErrorMessage(originalError),
       originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
-        ? { cause: new PrettyError(originalError.cause) }
+        ? { cause: new PrettyError(originalError.cause, Context.empty()) }
         : undefined
     )
     if (this.message === "") {
@@ -1013,10 +1121,10 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
     }
     Error.stackTraceLimit = prevLimit
     this.name = originalError instanceof Error ? originalError.name : "Error"
+    if (Context.has(annotations, FailureSpan)) {
+      this.span = Context.get(annotations, FailureSpan)
+    }
     if (originalErrorIsObject) {
-      if (spanSymbol in originalError) {
-        this.span = originalError[spanSymbol] as Span
-      }
       Object.keys(originalError).forEach((key) => {
         if (!(key in this)) {
           // @ts-expect-error
@@ -1032,6 +1140,37 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
       this.span
     )
   }
+}
+
+const makeErrorNoStack = (name: string, message: string, options?: ErrorOptions) => {
+  const limit = Error.stackTraceLimit
+  Error.stackTraceLimit = 0
+  const err = new Error(message, options)
+  err.name = name
+  Error.stackTraceLimit = limit
+  delete err.stack
+  return err
+}
+
+const makeInterruptedException = (fiberId: FiberId.FiberId, context: Context.Context<never>) => {
+  const threadName = internalFiberId.threadName(fiberId)
+  return new PrettyError(
+    makeErrorNoStack(
+      "InterruptedException",
+      "All fibers interrupted without errors.",
+      threadName.length === 0
+        ? undefined
+        : { cause: makeInterruptedCause(threadName, Context.getOption(context, InterruptorSpan)) }
+    ),
+    context
+  )
+}
+
+const makeInterruptedCause = (threadName: string, span: Option.Option<Span>) => {
+  return new PrettyError(
+    makeErrorNoStack("InterruptedCause", `The fiber was interrupted by: ${threadName}.`),
+    Option.isSome(span) ? Context.make(FailureSpan, span.value) : Context.empty()
+  )
 }
 
 /**
@@ -1122,19 +1261,91 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
   return out.join("\n")
 }
 
-const spanSymbol = Symbol.for("effect/SpanAnnotation")
-
 /** @internal */
 export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<PrettyError> =>
   reduceWithContext(cause, void 0, {
     emptyCase: (): Array<PrettyError> => [],
-    dieCase: (_, unknownError) => {
-      return [new PrettyError(unknownError)]
-    },
-    failCase: (_, error) => {
-      return [new PrettyError(error)]
-    },
-    interruptCase: () => [],
+    dieCase: (_, unknownError, context) => [new PrettyError(unknownError, context)],
+    failCase: (_, error, context) => [new PrettyError(error, context)],
+    interruptCase: (_, fiberId, context) => [makeInterruptedException(fiberId, context)],
     parallelCase: (_, l, r) => [...l, ...r],
-    sequentialCase: (_, l, r) => [...l, ...r]
+    sequentialCase: (_, l, r) => [...l, ...r],
+    annotatedCase: (_, out) => out
   })
+
+// -----------------------------------------------------------------------------
+// Annotations
+// -----------------------------------------------------------------------------
+
+/** @internal */
+export const FailureSpan = Context.GenericTag<"FailureSpan", Span>("effect/Cause/FailureSpan")
+
+/** @internal */
+export const InterruptorSpan = Context.GenericTag<"InterruptorSpan", Span>("effect/Cause/InterruptorSpan")
+
+const originalAnnotationsSymbol = Symbol.for("effect/Cause/originalAnnotationsSymbol")
+const originalInstanceSymbol = Symbol.for("effect/Cause/originalInstanceSymbol")
+
+/* @internal */
+export const originalAnnotations = <E>(obj: E): Context.Context<never> | undefined => {
+  if (hasProperty(obj, originalAnnotationsSymbol)) {
+    // @ts-expect-error
+    return obj[originalAnnotationsSymbol]
+  }
+  return undefined
+}
+
+function addOriginalAnnotations<E>(obj: E, annotations: Context.Context<never>): E {
+  if (
+    typeof obj !== "object" ||
+    obj === null ||
+    annotations.unsafeMap.size === 0
+  ) {
+    return obj
+  }
+  if (originalAnnotationsSymbol in obj) {
+    annotations = Context.merge(annotations, obj[originalAnnotationsSymbol] as Context.Context<never>)
+  }
+  if (originalInstanceSymbol in obj) {
+    obj = obj[originalInstanceSymbol] as E
+  }
+  return new Proxy(obj as E & object, {
+    has(target, p) {
+      return p === originalAnnotationsSymbol || p === originalInstanceSymbol || p in target
+    },
+    get(target, p) {
+      if (p === originalInstanceSymbol) {
+        return obj
+      } else if (p === originalAnnotationsSymbol) {
+        return annotations
+      }
+      // @ts-expect-error
+      return target[p]
+    }
+  })
+}
+
+const rehydrateAnnotations = <E>(self: Cause.Cause<E>, obj: unknown): Cause.Cause<E> => {
+  const annotations = originalAnnotations(obj)
+  return annotations ? annotated(self, annotations) : self
+}
+
+const propagateAnnotations = <E>(self: Cause.Cause<E>, context: Context.Context<never>): void => {
+  switch (self._tag) {
+    case "Die": {
+      ;(self as any).defect = addOriginalAnnotations(self.defect, context)
+      break
+    }
+    case "Fail": {
+      ;(self as any).error = addOriginalAnnotations(self.error, context)
+    }
+  }
+}
+
+/** @internal */
+export const originalInstance = <E>(self: E): E => {
+  if (hasProperty(self, originalInstanceSymbol)) {
+    return self[originalInstanceSymbol] as E
+  }
+  return self
+}

@@ -23,6 +23,7 @@
  */
 import type * as Channel from "./Channel.js"
 import type * as Chunk from "./Chunk.js"
+import type * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
 import type * as Equal from "./Equal.js"
@@ -166,6 +167,7 @@ export type Cause<E> =
   | Interrupt
   | Sequential<E>
   | Parallel<E>
+  | Annotated<E>
 
 /**
  * @since 2.0.0
@@ -190,12 +192,13 @@ export declare namespace Cause {
  * @category models
  */
 export interface CauseReducer<in C, in E, in out Z> {
-  emptyCase(context: C): Z
-  failCase(context: C, error: E): Z
-  dieCase(context: C, defect: unknown): Z
-  interruptCase(context: C, fiberId: FiberId.FiberId): Z
-  sequentialCase(context: C, left: Z, right: Z): Z
-  parallelCase(context: C, left: Z, right: Z): Z
+  emptyCase(context: C, annotations: Context.Context<never>): Z
+  failCase(context: C, error: E, annotations: Context.Context<never>): Z
+  dieCase(context: C, defect: unknown, annotations: Context.Context<never>): Z
+  interruptCase(context: C, fiberId: FiberId.FiberId, annotations: Context.Context<never>): Z
+  sequentialCase(context: C, left: Z, right: Z, annotations: Context.Context<never>): Z
+  parallelCase(context: C, left: Z, right: Z, annotations: Context.Context<never>): Z
+  annotatedCase(context: C, out: Z, annotations: Context.Context<never>, parentAnnotations: Context.Context<never>): Z
 }
 
 /**
@@ -398,6 +401,19 @@ export interface Sequential<out E> extends Cause.Variance<E>, Equal.Equal, Pipea
 }
 
 /**
+ * The `Annotated` cause represents a `Cause` which has been annotated with
+ * additional context.
+ *
+ * @since 3.8.0
+ * @category models
+ */
+export interface Annotated<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+  readonly _tag: "Annotated"
+  readonly cause: Cause<E>
+  readonly context: Context.Context<never>
+}
+
+/**
  * Constructs a new `Empty` cause.
  *
  * @since 2.0.0
@@ -428,6 +444,28 @@ export const die: (defect: unknown) => Cause<never> = internal.die
  * @category constructors
  */
 export const interrupt: (fiberId: FiberId.FiberId) => Cause<never> = internal.interrupt
+
+/**
+ * Constructs a new `Annotated` cause from the specified `cause` and `context`.
+ *
+ * @since 3.8.0
+ * @category constructors
+ */
+export const annotated: {
+  (context: Context.Context<never>): <E>(self: Cause<E>) => Cause<E>
+  <E>(self: Cause<E>, context: Context.Context<never>): Cause<E>
+} = internal.annotated
+
+/**
+ * Constructs a `Annotated` cause from the specified `cause`, `tag` and `value`.
+ *
+ * @since 3.8.0
+ * @category constructors
+ */
+export const annotate: {
+  <I, S>(tag: Context.Tag<I, S>, value: S): <E>(self: Cause<E>) => Cause<E>
+  <E, I, S>(self: Cause<E>, tag: Context.Tag<I, S>, value: S): Cause<E>
+} = internal.annotate
 
 /**
  * Constructs a new `Parallel` cause from the specified `left` and `right`
@@ -510,6 +548,15 @@ export const isSequentialType: <E>(self: Cause<E>) => self is Sequential<E> = in
 export const isParallelType: <E>(self: Cause<E>) => self is Parallel<E> = internal.isParallelType
 
 /**
+ * Returns `true` if the specified `Cause` is a `Annotated` type, `false`
+ * otherwise.
+ *
+ * @since 3.8.0
+ * @category refinements
+ */
+export const isAnnotatedType: <E>(self: Cause<E>) => self is Annotated<E> = internal.isAnnotatedType
+
+/**
  * Returns the size of the cause, calculated as the number of individual `Cause`
  * nodes found in the `Cause` semiring structure.
  *
@@ -585,6 +632,16 @@ export const defects: <E>(self: Cause<E>) => Chunk.Chunk<unknown> = internal.def
  * @category getters
  */
 export const interruptors: <E>(self: Cause<E>) => HashSet.HashSet<FiberId.FiberId> = internal.interruptors
+
+/**
+ * Return the merged `Context` of all `Annotated` causes in the specified cause.
+ *
+ * Outer annotations shadow inner annotations.
+ *
+ * @since 3.8.0
+ * @category getters
+ */
+export const annotations: <E>(self: Cause<E>) => Context.Context<never> = internal.annotations
 
 /**
  * Returns the `E` associated with the first `Fail` in this `Cause`, if one
@@ -787,22 +844,24 @@ export const match: {
   <Z, E>(
     options: {
       readonly onEmpty: Z
-      readonly onFail: (error: E) => Z
-      readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-      readonly onSequential: (left: Z, right: Z) => Z
-      readonly onParallel: (left: Z, right: Z) => Z
+      readonly onFail: (error: E, annotations: Context.Context<never>) => Z
+      readonly onDie: (defect: unknown, annotations: Context.Context<never>) => Z
+      readonly onInterrupt: (fiberId: FiberId.FiberId, annotations: Context.Context<never>) => Z
+      readonly onSequential: (left: Z, right: Z, annotations: Context.Context<never>) => Z
+      readonly onParallel: (left: Z, right: Z, annotations: Context.Context<never>) => Z
+      readonly onAnnotated: (out: Z, context: Context.Context<never>, annotations: Context.Context<never>) => Z
     }
   ): (self: Cause<E>) => Z
   <Z, E>(
     self: Cause<E>,
     options: {
       readonly onEmpty: Z
-      readonly onFail: (error: E) => Z
-      readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-      readonly onSequential: (left: Z, right: Z) => Z
-      readonly onParallel: (left: Z, right: Z) => Z
+      readonly onFail: (error: E, annotations: Context.Context<never>) => Z
+      readonly onDie: (defect: unknown, annotations: Context.Context<never>) => Z
+      readonly onInterrupt: (fiberId: FiberId.FiberId, annotations: Context.Context<never>) => Z
+      readonly onSequential: (left: Z, right: Z, annotations: Context.Context<never>) => Z
+      readonly onParallel: (left: Z, right: Z, annotations: Context.Context<never>) => Z
+      readonly onAnnotated: (out: Z, context: Context.Context<never>, annotations: Context.Context<never>) => Z
     }
   ): Z
 } = internal.match
@@ -983,4 +1042,16 @@ export const prettyErrors: <E>(cause: Cause<E>) => Array<PrettyError> = internal
  * @since 2.0.0
  * @category errors
  */
-export const originalError: <E>(obj: E) => E = core.originalInstance
+export const originalError: <E>(obj: E) => E = internal.originalInstance
+
+/**
+ * @since 3.8.0
+ * @category annotations
+ */
+export const FailureSpan: Context.Tag<"FailureSpan", Span> = internal.FailureSpan
+
+/**
+ * @since 3.8.0
+ * @category annotations
+ */
+export const InterruptorSpan: Context.Tag<"InterruptorSpan", Span> = internal.InterruptorSpan

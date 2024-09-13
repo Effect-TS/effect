@@ -155,7 +155,8 @@ const isInternalInterruption = Cause.reduceWithContext(undefined, {
   dieCase: constFalse,
   interruptCase: (_, fiberId) => HashSet.has(FiberId.ids(fiberId), internalFiberIdId),
   sequentialCase: (_, left, right) => left || right,
-  parallelCase: (_, left, right) => left || right
+  parallelCase: (_, left, right) => left || right,
+  annotatedCase: (_, out) => out
 })
 
 /**

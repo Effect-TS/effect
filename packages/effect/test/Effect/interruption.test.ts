@@ -1,3 +1,4 @@
+import { Context } from "effect"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -603,5 +604,23 @@ describe("Effect", () => {
       yield* $(Effect.yieldNow())
       yield* $(Fiber.interrupt(fiber))
       assert.strictEqual(signal!.aborted, true)
+    }))
+
+  it.effect("span is captured", () =>
+    Effect.gen(function*() {
+      const fiber = yield* Effect.never.pipe(
+        Effect.fork,
+        Effect.withSpan("span")
+      )
+      yield* Fiber.interrupt(fiber).pipe(
+        Effect.withSpan("interruptor")
+      )
+      const cause = yield* Fiber.join(fiber).pipe(
+        Effect.sandbox,
+        Effect.flip
+      )
+      const annotations = Cause.annotations(cause)
+      assert.strictEqual(Context.unsafeGet(annotations, Cause.FailureSpan).name, "span")
+      assert.strictEqual(Context.unsafeGet(annotations, Cause.InterruptorSpan).name, "interruptor")
     }))
 })
