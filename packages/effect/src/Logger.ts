@@ -252,7 +252,7 @@ export const withConsoleLog: <M, O>(self: Logger<M, O>) => Logger<M, void> = fib
  *   yield* Effect.logInfo("an info")
  * }).pipe(Effect.provide(loggerLayer))
  *
- * @since 2.0.0
+ * @since 3.8.0
  * @category console
  */
 export const withLeveledConsole: <M, O>(self: Logger<M, O>) => Logger<M, void> = fiberRuntime.loggerWithLeveledLog

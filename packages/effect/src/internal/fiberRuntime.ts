@@ -1405,16 +1405,21 @@ export const loggerWithLeveledLog = <M, O>(self: Logger<M, O>): Logger<M, void> 
   internalLogger.makeLogger((opts) => {
     const services = FiberRefs.getOrDefault(opts.context, defaultServices.currentServices)
     const unsafeLogger = Context.get(services, consoleTag).unsafe
-    const levels: Partial<Record<LogLevel.LogLevel["_tag"], (v: unknown) => void>> = {
-      All: unsafeLogger.log,
-      Info: unsafeLogger.info,
-      Debug: unsafeLogger.debug,
-      Error: unsafeLogger.error,
-      Fatal: unsafeLogger.error,
-      Trace: unsafeLogger.trace,
-      Warning: unsafeLogger.warn
+    switch (opts.logLevel._tag) {
+      case "Debug":
+        return unsafeLogger.debug(self.log(opts))
+      case "Info":
+        return unsafeLogger.info(self.log(opts))
+      case "Trace":
+        return unsafeLogger.trace(self.log(opts))
+      case "Warning":
+        return unsafeLogger.warn(self.log(opts))
+      case "Error":
+      case "Fatal":
+        return unsafeLogger.error(self.log(opts))
+      default:
+        return unsafeLogger.log(self.log(opts))
     }
-    levels[opts.logLevel._tag]?.(self.log(opts))
   })
 
 /** @internal */
