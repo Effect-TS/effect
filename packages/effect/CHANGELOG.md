@@ -1,5 +1,11 @@
 # effect
 
+## 3.7.3
+
+### Patch Changes
+
+- [#3592](https://github.com/Effect-TS/effect/pull/3592) [`35a0f81`](https://github.com/Effect-TS/effect/commit/35a0f813141652d696461cd5d19fd146adaf85be) Thanks @mikearnaldi! - TestClock yield with setTimeout(0)
+
 ## 3.7.2
 
 ### Patch Changes
