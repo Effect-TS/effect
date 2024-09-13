@@ -239,6 +239,28 @@ export const batched: {
 export const withConsoleLog: <M, O>(self: Logger<M, O>) => Logger<M, void> = fiberRuntime.loggerWithConsoleLog
 
 /**
+ * Takes a `Logger<M, O>` and returns a logger that calls the respective `Console` method
+ * based on the log level.
+ *
+ * @example
+ * import { Logger, Effect } from "effect"
+ *
+ * const loggerLayer = Logger.replace(
+ *   Logger.defaultLogger,
+ *   Logger.withLeveledConsole(Logger.stringLogger),
+ * )
+ *
+ * Effect.gen(function* () {
+ *   yield* Effect.logError("an error")
+ *   yield* Effect.logInfo("an info")
+ * }).pipe(Effect.provide(loggerLayer))
+ *
+ * @since 3.8.0
+ * @category console
+ */
+export const withLeveledConsole: <M, O>(self: Logger<M, O>) => Logger<M, void> = fiberRuntime.loggerWithLeveledLog
+
+/**
  * @since 2.0.0
  * @category console
  */

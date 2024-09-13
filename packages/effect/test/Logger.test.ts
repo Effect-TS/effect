@@ -8,8 +8,10 @@ import * as HashMap from "effect/HashMap"
 import { logLevelInfo } from "effect/internal/core"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
+import * as LogLevel from "effect/LogLevel"
 import * as LogSpan from "effect/LogSpan"
-import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest"
+import { assert, describe, expect, it } from "effect/test/utils/extend"
+import { afterEach, beforeEach, vi } from "vitest"
 
 describe("Logger", () => {
   it("isLogger", () => {
@@ -19,6 +21,54 @@ describe("Logger", () => {
     expect(Logger.isLogger(null)).toBeFalsy()
     expect(Logger.isLogger(undefined)).toBeFalsy()
   })
+})
+
+describe("withLeveledConsole", () => {
+  it.effect("calls the respsective Console functions on a given level", () =>
+    Effect.gen(function*() {
+      const c = yield* Effect.console
+      const logs: Array<{ level: string; value: unknown }> = []
+      const pusher = (level: string) => (value: unknown) => {
+        logs.push({ level, value })
+      }
+      const newConsole: typeof c = {
+        ...c,
+        unsafe: {
+          ...c.unsafe,
+          log: pusher("log"),
+          warn: pusher("warn"),
+          error: pusher("error"),
+          info: pusher("info"),
+          debug: pusher("debug"),
+          trace: pusher("trace")
+        }
+      }
+
+      const logger = Logger.make((o) => String(o.message)).pipe(Logger.withLeveledConsole)
+      yield* Effect.gen(function*() {
+        yield* Effect.log("log plain")
+        yield* Effect.logInfo("log info")
+        yield* Effect.logWarning("log warn")
+        yield* Effect.logError("log err")
+        yield* Effect.logFatal("log fatal")
+        yield* Effect.logDebug("log debug")
+        yield* Effect.logTrace("log trace")
+      }).pipe(
+        Effect.provide(Logger.replace(Logger.defaultLogger, logger)),
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.withConsole(newConsole)
+      )
+
+      expect(logs).toEqual([
+        { level: "info", value: "log plain" },
+        { level: "info", value: "log info" },
+        { level: "warn", value: "log warn" },
+        { level: "error", value: "log err" },
+        { level: "error", value: "log fatal" },
+        { level: "debug", value: "log debug" },
+        { level: "trace", value: "log trace" }
+      ])
+    }))
 })
 
 describe("stringLogger", () => {
