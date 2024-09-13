@@ -2,7 +2,9 @@ import * as Fs from "node:fs"
 import * as Path from "node:path"
 
 function packages() {
-  return Fs.readdirSync("packages").filter((_) => Fs.existsSync(Path.join("packages", _, "docs/modules")))
+  return Fs.readdirSync("packages")
+    .concat(Fs.readdirSync("packages/ai"))
+    .filter((_) => Fs.existsSync(Path.join("packages", _, "docs/modules")))
 }
 
 function pkgName(pkg) {
