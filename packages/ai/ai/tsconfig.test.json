@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "include": ["test"],
+  "references": [
+    { "path": "tsconfig.src.json" },
+    { "path": "../../effect" },
+    { "path": "../../platform" },
+    { "path": "../../schema" },
+    { "path": "../../vitest" }
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",
+    "rootDir": "test",
+    "noEmit": true,
+    "exactOptionalPropertyTypes": false
+  }
+}
