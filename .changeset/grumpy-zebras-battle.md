@@ -1,5 +1,5 @@
 ---
-"@effect/schema": patch
+"@effect/schema": minor
 ---
 
 Updates the constraints for members within a union from the more restrictive `Schema.Any` to the more inclusive `Schema.All`, closes #3587.
