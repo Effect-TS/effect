@@ -6248,6 +6248,119 @@ export class DateTimeZoned extends transformOrFail(
 ).annotations({ identifier: "DateTimeZoned" }) {}
 
 /**
+ * @category type id
+ */
+export const BeforeTypeId: unique symbol = filters_.BeforeTypeId
+
+/**
+ * @category type id
+ */
+export type BeforeTypeId = typeof BeforeTypeId
+
+/**
+ * This filter checks whether the provided date is before the specified maximum date.
+ *
+ * @category date filters
+ */
+export const before =
+  <A extends Date>(max: Date, annotations?: Annotations.Filter<A>) =>
+  <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+    self.pipe(
+      filter((a) => a < max, {
+        typeId: BeforeTypeId,
+        description: `a date before ${max.toISOString()}`,
+        jsonSchema: { exclusiveMaximum: max.toISOString() },
+        ...annotations
+      })
+    )
+
+/**
+ * @category type id
+ */
+export const BeforeOrEqualToTypeId: unique symbol = filters_.BeforeOrEqualToTypeId
+
+/**
+ * @category type id
+ */
+export type BeforeOrEqualToTypeId = typeof BeforeOrEqualToTypeId
+
+/**
+ * This schema checks whether the provided date is before or equal to the specified maximum date.
+ *
+ * @category date filters
+ */
+export const beforeOrEqualTo = <A extends Date>(
+  max: Date,
+  annotations?: Annotations.Filter<A>
+) =>
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+  self.pipe(
+    filter((a) => a <= max, {
+      typeId: BeforeOrEqualToTypeId,
+      description: `a date before or equal to ${max.toISOString()}`,
+      jsonSchema: { maximum: max.toISOString() },
+      ...annotations
+    })
+  )
+
+/**
+ * @category type id
+ */
+export const AfterTypeId: unique symbol = filters_.AfterTypeId
+
+/**
+ * @category type id
+ */
+export type AfterTypeId = typeof AfterTypeId
+
+/**
+ * This filter checks whether the provided date is after the specified minimum date.
+ *
+ * @category date filters
+ */
+export const after =
+  <A extends Date>(min: Date, annotations?: Annotations.Filter<A>) =>
+  <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+    self.pipe(
+      filter((a) => a > min, {
+        typeId: AfterTypeId,
+        description: `a date after ${min.toISOString()}`,
+        jsonSchema: { exclusiveMinimum: min.toISOString() },
+        ...annotations
+      })
+    )
+
+/**
+ * @category type id
+ */
+export const AfterOrEqualToTypeId: unique symbol = filters_.AfterOrEqualToTypeId
+
+/**
+ * @category type id
+ */
+export type AfterOrEqualToTypeId = typeof AfterOrEqualToTypeId
+
+/**
+ * This schema checks whether the provided date is after or equal to the specified minimum date.
+ *
+ * @category date filters
+ */
+export const afterOrEqualTo = <A extends Date>(
+  min: Date,
+  annotations?: Annotations.Filter<A>
+) =>
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+  self.pipe(
+    filter((a) => a >= min, {
+      typeId: AfterOrEqualToTypeId,
+      description: `a date after or equal to ${min.toISOString()}`,
+      jsonSchema: { minimum: min.toISOString() },
+      ...annotations
+    })
+  )
+
+
+/**
  * @category Option utils
  * @since 0.67.0
  */

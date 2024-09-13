@@ -87,3 +87,19 @@ export const ItemsCountTypeId: Schema.ItemsCountTypeId = Symbol.for(
 
 /** @internal */
 export const ParseJsonTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/ParseJson")
+
+/** @internal */
+export const BeforeTypeId: Schema.BeforeTypeId = Symbol.for("@effect/schema/TypeId/Before") as Schema.BeforeTypeId
+
+/** @internal */
+export const BeforeOrEqualToTypeId: Schema.BeforeOrEqualToTypeId = Symbol.for(
+  "@effect/schema/TypeId/BeforeOrEqualTo"
+) as Schema.BeforeOrEqualToTypeId
+
+/** @internal */
+export const AfterTypeId: Schema.AfterTypeId = Symbol.for("@effect/schema/TypeId/After") as Schema.AfterTypeId
+
+/** @internal */
+export const AfterOrEqualToTypeId: Schema.AfterOrEqualToTypeId = Symbol.for(
+  "@effect/schema/TypeId/AfterOrEqualTo"
+) as Schema.AfterOrEqualToTypeId
