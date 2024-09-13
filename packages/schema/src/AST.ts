@@ -1425,8 +1425,6 @@ export const isTypeLiteral: (ast: AST) => ast is TypeLiteral = createASTGuard("T
  */
 export type Members<A> = readonly [A, A, ...Array<A>]
 
-const removeNevers = (candidates: ReadonlyArray<AST>): Array<AST> => candidates.filter((ast) => !(ast === neverKeyword))
-
 const sortCandidates = Arr.sort(
   Order.mapInput(Number.Order, (ast: AST) => {
     switch (ast._tag) {
@@ -1548,30 +1546,12 @@ export const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
  * @since 0.67.0
  */
 export class Union implements Annotated {
-  static make = (candidates: ReadonlyArray<AST>, annotations?: Annotations): AST => {
-    const types = []
-    const memo = new Set<AST>()
-    for (let i = 0; i < candidates.length; i++) {
-      const ast = candidates[i]
-      if (ast === neverKeyword || memo.has(ast)) {
-        continue
-      }
-      memo.add(ast)
-      types.push(ast)
-    }
-    return Union.union(types, annotations)
-  }
-  /** @internal */
-  static members = (candidates: ReadonlyArray<AST>, annotations?: Annotations): AST => {
-    return Union.union(removeNevers(candidates), annotations)
+  static make = (types: ReadonlyArray<AST>, annotations?: Annotations): AST => {
+    return isMembers(types) ? new Union(types, annotations) : types.length === 1 ? types[0] : neverKeyword
   }
   /** @internal */
   static unify = (candidates: ReadonlyArray<AST>, annotations?: Annotations): AST => {
-    return Union.union(unify(flatten(candidates)), annotations)
-  }
-  /** @internal */
-  static union = (types: ReadonlyArray<AST>, annotations?: Annotations): AST => {
-    return isMembers(types) ? new Union(types, annotations) : types.length === 1 ? types[0] : neverKeyword
+    return Union.make(unify(flatten(candidates)), annotations)
   }
   /**
    * @since 0.67.0

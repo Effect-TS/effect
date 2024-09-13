@@ -8,6 +8,16 @@ describe("optional", () => {
     expect(schema.from).toStrictEqual(S.String)
   })
 
+  it("if the input is Schema.Undefined should not duplicate the schema", () => {
+    const schema = S.optional(S.Undefined)
+    expect((schema.ast as any as S.PropertySignatureDeclaration).type).toStrictEqual(S.Undefined.ast)
+  })
+
+  it("if the input is Schema.Never should include the input in the schema", () => {
+    const schema = S.optional(S.Never)
+    expect((schema.ast as any as S.PropertySignatureDeclaration).type).toStrictEqual(S.Undefined.ast)
+  })
+
   it("should expose a from property after an annotations call", () => {
     const schema = S.optional(S.String).annotations({})
     expect(schema.from).toStrictEqual(S.String)
@@ -35,5 +45,23 @@ describe("optional", () => {
     await Util.expectEncodeSuccess(schema, {}, {})
     await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
     await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
+  })
+
+  it("Schema.Never as input", async () => {
+    const schema = S.Struct({
+      a: S.optional(S.Never)
+    })
+    await Util.expectDecodeUnknownSuccess(schema, {}, {})
+    await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: undefined })
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      { a: "a" },
+      `{ readonly a?: undefined }
+└─ ["a"]
+   └─ Expected undefined, actual "a"`
+    )
+
+    await Util.expectEncodeSuccess(schema, {}, {})
+    await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
   })
 })
