@@ -1,5 +1,6 @@
 /**
  * @since 3.8.0
+ * @experimental
  */
 import type { Cause, NoSuchElementException } from "./Cause.js"
 import type { Channel } from "./Channel.js"
@@ -14,36 +15,42 @@ import type { Stream } from "./Stream.js"
 
 /**
  * @since 3.8.0
+ * @experimental
  * @category type ids
  */
 export const TypeId: unique symbol = internal.TypeId
 
 /**
  * @since 3.8.0
+ * @experimental
  * @category type ids
  */
 export type TypeId = typeof TypeId
 
 /**
  * @since 3.8.0
+ * @experimental
  * @category type ids
  */
 export const ReadonlyTypeId: unique symbol = internal.ReadonlyTypeId
 
 /**
  * @since 3.8.0
+ * @experimental
  * @category type ids
  */
 export type ReadonlyTypeId = typeof ReadonlyTypeId
 
 /**
  * @since 3.8.0
+ * @experimental
  * @category guards
  */
 export const isMailbox = <A = unknown, E = unknown>(u: unknown): u is Mailbox<A, E> => hasProperty(u, TypeId)
 
 /**
  * @since 3.8.0
+ * @experimental
  * @category guards
  */
 export const isReadonlyMailbox = <A = unknown, E = unknown>(u: unknown): u is ReadonlyMailbox<A, E> =>
@@ -53,6 +60,7 @@ export const isReadonlyMailbox = <A = unknown, E = unknown>(u: unknown): u is Re
  * A `Mailbox` is a queue that can be signaled to be done or failed.
  *
  * @since 3.8.0
+ * @experimental
  * @category models
  */
 export interface Mailbox<in out A, in out E = never> extends ReadonlyMailbox<A, E> {
@@ -111,6 +119,7 @@ export interface Mailbox<in out A, in out E = never> extends ReadonlyMailbox<A, 
  * A `ReadonlyMailbox` represents a mailbox that can only be read from.
  *
  * @since 3.8.0
+ * @experimental
  * @category models
  */
 export interface ReadonlyMailbox<out A, out E = never>
@@ -165,6 +174,7 @@ export interface ReadonlyMailbox<out A, out E = never>
  * A `Mailbox` is a queue that can be signaled to be done or failed.
  *
  * @since 3.8.0
+ * @experimental
  * @category constructors
  * @example
  * import { Effect, Mailbox } from "effect"
@@ -199,6 +209,7 @@ export const make: <A, E = never>(capacity?: number | undefined) => Effect<Mailb
  * fails the mailbox.
  *
  * @since 3.8.0
+ * @experimental
  * @category combinators
  */
 export const into: {
@@ -210,6 +221,7 @@ export const into: {
  * Create a `Channel` from a `Mailbox`.
  *
  * @since 3.8.0
+ * @experimental
  * @category conversions
  */
 export const toChannel: <A, E>(self: ReadonlyMailbox<A, E>) => Channel<Chunk<A>, unknown, E> = internal.toChannel
@@ -218,6 +230,7 @@ export const toChannel: <A, E>(self: ReadonlyMailbox<A, E>) => Channel<Chunk<A>,
  * Create a `Stream` from a `Mailbox`.
  *
  * @since 3.8.0
+ * @experimental
  * @category conversions
  */
 export const toStream: <A, E>(self: ReadonlyMailbox<A, E>) => Stream<A, E> = internal.toStream

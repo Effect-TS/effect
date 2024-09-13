@@ -116,4 +116,19 @@ describe("Mailbox", () => {
       assert.strictEqual(yield* mailbox.await, void 0)
       assert.strictEqual(yield* mailbox.offer(10), false)
     }))
+
+  it.effect("fail doesnt drop items", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number, string>(2)
+      yield* Effect.fork(mailbox.offerAll([1, 2, 3, 4]))
+      yield* Effect.fork(mailbox.offer(5))
+      yield* Effect.fork(mailbox.fail("boom"))
+      const items: Array<number> = []
+      const error = yield* Mailbox.toStream(mailbox).pipe(
+        Stream.runForEach((item) => Effect.sync(() => items.push(item))),
+        Effect.flip
+      )
+      assert.deepStrictEqual(items, [1, 2, 3, 4, 5])
+      assert.strictEqual(error, "boom")
+    }))
 })
