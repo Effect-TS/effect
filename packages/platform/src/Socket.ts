@@ -53,11 +53,11 @@ export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
  */
 export interface Socket {
   readonly [TypeId]: TypeId
-  readonly run: <_, E, R>(
-    handler: (_: Uint8Array) => Effect.Effect<_, E, R>
+  readonly run: <_, E = never, R = never>(
+    handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void
   ) => Effect.Effect<void, SocketError | E, R>
-  readonly runRaw: <_, E, R>(
-    handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>
+  readonly runRaw: <_, E = never, R = never>(
+    handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void
   ) => Effect.Effect<void, SocketError | E, R>
   readonly writer: Effect.Effect<
     (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<boolean>,
@@ -218,7 +218,9 @@ export const toChannelMap = <IE, A>(
       })
     ),
     Effect.tap(({ mailbox, scope }) =>
-      self.runRaw((data) => mailbox.offer(f(data))).pipe(
+      self.runRaw((data) => {
+        mailbox.unsafeOffer(f(data))
+      }).pipe(
         Mailbox.into(mailbox),
         Effect.forkIn(scope),
         Effect.interruptible
@@ -395,7 +397,7 @@ export const fromWebSocket = <R>(
       (sendQueue) => {
         const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<R>
         const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
+        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void) =>
           acquire.pipe(
             Effect.bindTo("ws"),
             Effect.bind("fiberSet", () => FiberSet.make<any, E | SocketError>()),
@@ -405,13 +407,16 @@ export const fromWebSocket = <R>(
               let open = false
 
               function onMessage(event: MessageEvent) {
-                run(handler(
+                const result = handler(
                   typeof event.data === "string"
                     ? event.data
                     : event.data instanceof Uint8Array
                     ? event.data
                     : new Uint8Array(event.data)
-                ))
+                )
+                if (Effect.isEffect(result)) {
+                  run(result)
+                }
               }
               function onError(cause: Event) {
                 ws.removeEventListener("message", onMessage)
@@ -493,7 +498,7 @@ export const fromWebSocket = <R>(
           )
 
         const encoder = new TextEncoder()
-        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
           runRaw((data) =>
             typeof data === "string"
               ? handler(encoder.encode(data))
@@ -579,7 +584,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
       (sendQueue) => {
         const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<R>
         const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
+        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void) =>
           acquire.pipe(
             Effect.bindTo("stream"),
             Effect.bind("reader", ({ stream }) =>
@@ -660,7 +665,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
           )
 
         const encoder = new TextEncoder()
-        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
           runRaw((data) =>
             typeof data === "string"
               ? handler(encoder.encode(data))
