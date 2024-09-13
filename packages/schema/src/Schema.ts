@@ -830,7 +830,7 @@ export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArra
       encodedSchemas.push(encoded)
       typeSchemas.push(p)
     } else {
-      const literal = Literal(p as AST.LiteralValue)
+      const literal = Literal(p)
       encodedSchemas.push(literal)
       typeSchemas.push(literal)
     }
@@ -1098,7 +1098,7 @@ export {
  * @category api interface
  * @since 0.67.0
  */
-export interface Union<Members extends ReadonlyArray<Schema.Any>> extends
+export interface Union<Members extends ReadonlyArray<Schema.All>> extends
   AnnotableClass<
     Union<Members>,
     Schema.Type<Members[number]>,
@@ -1110,10 +1110,10 @@ export interface Union<Members extends ReadonlyArray<Schema.Any>> extends
   annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): Union<Members>
 }
 
-const getDefaultUnionAST = <Members extends ReadonlyArray<Schema.Any>>(members: Members) =>
-  AST.Union.members(members.map((m) => m.ast))
+const getDefaultUnionAST = <Members extends AST.Members<Schema.All>>(members: Members): AST.AST =>
+  AST.Union.make(members.map((m) => m.ast))
 
-const makeUnionClass = <Members extends ReadonlyArray<Schema.Any>>(
+const makeUnionClass = <Members extends AST.Members<Schema.All>>(
   members: Members,
   ast: AST.AST = getDefaultUnionAST(members)
 ): Union<Members> =>
@@ -1124,29 +1124,26 @@ const makeUnionClass = <Members extends ReadonlyArray<Schema.Any>>(
       return makeUnionClass(this.members, mergeSchemaAnnotations(this.ast, annotations))
     }
 
-    static members = [...members] as any as Members
+    static members = [...members]
   }
 
 /**
  * @category combinators
  * @since 0.67.0
  */
-export function Union<Members extends AST.Members<Schema.Any>>(...members: Members): Union<Members>
-export function Union<Member extends Schema.Any>(member: Member): Member
+export function Union<Members extends AST.Members<Schema.All>>(...members: Members): Union<Members>
+export function Union<Member extends Schema.All>(member: Member): Member
 export function Union(): typeof Never
-export function Union<Members extends ReadonlyArray<Schema.Any>>(
+export function Union<Members extends ReadonlyArray<Schema.All>>(
   ...members: Members
 ): Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>
-export function Union<Members extends ReadonlyArray<Schema.Any>>(
+export function Union<Members extends ReadonlyArray<Schema.All>>(
   ...members: Members
-):
-  | Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>
-  | typeof Never
-{
+) {
   return AST.isMembers(members)
     ? makeUnionClass(members)
     : array_.isNonEmptyReadonlyArray(members)
-    ? members[0] as any
+    ? members[0]
     : Never
 }
 
@@ -1154,7 +1151,7 @@ export function Union<Members extends ReadonlyArray<Schema.Any>>(
  * @category api interface
  * @since 0.67.0
  */
-export interface NullOr<S extends Schema.Any> extends Union<[S, typeof Null]> {
+export interface NullOr<S extends Schema.All> extends Union<[S, typeof Null]> {
   annotations(annotations: Annotations.Schema<Schema.Type<S> | null>): NullOr<S>
 }
 
@@ -1162,13 +1159,13 @@ export interface NullOr<S extends Schema.Any> extends Union<[S, typeof Null]> {
  * @category combinators
  * @since 0.67.0
  */
-export const NullOr = <S extends Schema.Any>(self: S): NullOr<S> => Union(self, Null)
+export const NullOr = <S extends Schema.All>(self: S): NullOr<S> => Union(self, Null)
 
 /**
  * @category api interface
  * @since 0.67.0
  */
-export interface UndefinedOr<S extends Schema.Any> extends Union<[S, typeof Undefined]> {
+export interface UndefinedOr<S extends Schema.All> extends Union<[S, typeof Undefined]> {
   annotations(annotations: Annotations.Schema<Schema.Type<S> | undefined>): UndefinedOr<S>
 }
 
@@ -1176,13 +1173,13 @@ export interface UndefinedOr<S extends Schema.Any> extends Union<[S, typeof Unde
  * @category combinators
  * @since 0.67.0
  */
-export const UndefinedOr = <S extends Schema.Any>(self: S): UndefinedOr<S> => Union(self, Undefined)
+export const UndefinedOr = <S extends Schema.All>(self: S): UndefinedOr<S> => Union(self, Undefined)
 
 /**
  * @category api interface
  * @since 0.67.0
  */
-export interface NullishOr<S extends Schema.Any> extends Union<[S, typeof Null, typeof Undefined]> {
+export interface NullishOr<S extends Schema.All> extends Union<[S, typeof Null, typeof Undefined]> {
   annotations(annotations: Annotations.Schema<Schema.Type<S> | null | undefined>): NullishOr<S>
 }
 
@@ -1190,7 +1187,7 @@ export interface NullishOr<S extends Schema.Any> extends Union<[S, typeof Null, 
  * @category combinators
  * @since 0.67.0
  */
-export const NullishOr = <S extends Schema.Any>(self: S): NullishOr<S> => Union(self, Null, Undefined)
+export const NullishOr = <S extends Schema.All>(self: S): NullishOr<S> => Union(self, Null, Undefined)
 
 /**
  * @category combinators
@@ -2351,11 +2348,12 @@ const optionalPropertySignatureAST = <A, I, R>(
  * @category PropertySignature
  * @since 0.69.0
  */
-export const optional = <S extends Schema.Any>(self: S): optional<S> =>
-  new PropertySignatureWithFromImpl(
-    new PropertySignatureDeclaration(UndefinedOr(self).ast, true, true, {}, undefined),
-    self
-  )
+export const optional = <S extends Schema.All>(self: S): optional<S> => {
+  const ast = self.ast === AST.undefinedKeyword || self.ast === AST.neverKeyword
+    ? AST.undefinedKeyword
+    : UndefinedOr(self).ast
+  return new PropertySignatureWithFromImpl(new PropertySignatureDeclaration(ast, true, true, {}, undefined), self)
+}
 
 /**
  * @category PropertySignature

@@ -8,20 +8,20 @@ describe("AST.Union", () => {
     expect(asts.length).toBe(4)
   })
 
-  it("make should remove never from members", () => {
-    expect(AST.Union.make([AST.neverKeyword, AST.neverKeyword])).toEqual(
+  it("unify should remove never from members", () => {
+    expect(AST.Union.unify([AST.neverKeyword, AST.neverKeyword])).toEqual(
       AST.neverKeyword
     )
-    expect(AST.Union.make([AST.neverKeyword, AST.stringKeyword])).toEqual(AST.stringKeyword)
-    expect(AST.Union.make([AST.stringKeyword, AST.neverKeyword])).toEqual(AST.stringKeyword)
+    expect(AST.Union.unify([AST.neverKeyword, AST.stringKeyword])).toEqual(AST.stringKeyword)
+    expect(AST.Union.unify([AST.stringKeyword, AST.neverKeyword])).toEqual(AST.stringKeyword)
     expect(
-      AST.Union.make([
+      AST.Union.unify([
         AST.neverKeyword,
         AST.stringKeyword,
         AST.neverKeyword,
         AST.numberKeyword
       ])
-    ).toEqual(AST.Union.make([AST.stringKeyword, AST.numberKeyword]))
+    ).toEqual(AST.Union.unify([AST.stringKeyword, AST.numberKeyword]))
   })
 
   it("toString() should support suspended schemas", () => {
