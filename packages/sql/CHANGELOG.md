@@ -1,5 +1,11 @@
 # @effect/sql
 
+## 0.11.3
+
+### Patch Changes
+
+- [#3600](https://github.com/Effect-TS/effect/pull/3600) [`ccd67df`](https://github.com/Effect-TS/effect/commit/ccd67df6b44ae7075a03759bc7866f6bc9ebb03e) Thanks @tim-smart! - remove network roundtrip from mysql update in Model repository
+
 ## 0.11.2
 
 ### Patch Changes
