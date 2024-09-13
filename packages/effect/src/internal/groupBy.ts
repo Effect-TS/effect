@@ -3,6 +3,7 @@ import type * as Channel from "../Channel.js"
 import * as Chunk from "../Chunk.js"
 import * as Deferred from "../Deferred.js"
 import * as Effect from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import * as Exit from "../Exit.js"
 import { dual, pipe } from "../Function.js"
 import type * as GroupBy from "../GroupBy.js"
@@ -316,7 +317,7 @@ export const bindEffect = dual<
 
 const mapDequeue = <A, B>(dequeue: Queue.Dequeue<A>, f: (a: A) => B): Queue.Dequeue<B> => new MapDequeue(dequeue, f)
 
-class MapDequeue<in out A, out B> implements Queue.Dequeue<B> {
+class MapDequeue<in out A, out B> extends Effectable.Class<B> implements Queue.Dequeue<B> {
   readonly [Queue.DequeueTypeId] = {
     _Out: (_: never) => _
   }
@@ -325,6 +326,7 @@ class MapDequeue<in out A, out B> implements Queue.Dequeue<B> {
     readonly dequeue: Queue.Dequeue<A>,
     readonly f: (a: A) => B
   ) {
+    super()
   }
 
   capacity(): number {
@@ -389,6 +391,10 @@ class MapDequeue<in out A, out B> implements Queue.Dequeue<B> {
 
   pipe() {
     return pipeArguments(this, arguments)
+  }
+
+  commit() {
+    return this.take
   }
 }
 
