@@ -44,4 +44,26 @@ describe("Model", () => {
       Effect.provide(MysqlContainer.ClientLive),
       Effect.catchTag("ContainerError", () => Effect.void)
     ), { timeout: 60_000 })
+
+  it.scopedLive("insert data loader returns result", () =>
+    Effect.gen(function*() {
+      const repo = yield* Model.makeDataLoaders(User, {
+        tableName: "users",
+        idColumn: "id",
+        spanPrefix: "UserRepository",
+        window: 10
+      })
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), age INT)`
+
+      const [alice, john] = yield* Effect.all([
+        repo.insert(User.insert.make({ name: "Alice", age: 30 })),
+        repo.insert(User.insert.make({ name: "John", age: 30 }))
+      ], { batching: true })
+      assert.deepStrictEqual(alice, new User({ id: 1, name: "Alice", age: 30 }))
+      assert.deepStrictEqual(john, new User({ id: 2, name: "John", age: 30 }))
+    }).pipe(
+      Effect.provide(MysqlContainer.ClientLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), { timeout: 20_000 })
 })

@@ -805,7 +805,16 @@ export const makeDataLoaders = <
     const insertResolver = yield* SqlResolver.ordered(`${options.spanPrefix}/insert`, {
       Request: Model.insert,
       Result: Model,
-      execute: (request) => sql`insert into ${sql(options.tableName)} ${sql.insert(request).returning("*")}`
+      execute: (request) =>
+        sql.onDialectOrElse({
+          mysql: () =>
+            Effect.forEach(request, (request) =>
+              sql`insert into ${sql(options.tableName)} ${sql.insert(request)};
+select * from ${sql(options.tableName)} where ${sql(idColumn)} = LAST_INSERT_ID();`.unprepared.pipe(
+                Effect.map(([, results]) => results[0] as any)
+              ), { concurrency: 10 }),
+          orElse: () => sql`insert into ${sql(options.tableName)} ${sql.insert(request).returning("*")}`
+        })
     })
     const insertLoader = yield* RRX.dataLoader(insertResolver, {
       window: options.window,
