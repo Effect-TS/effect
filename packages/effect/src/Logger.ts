@@ -245,7 +245,10 @@ export const withConsoleLog: <M, O>(self: Logger<M, O>) => Logger<M, void> = fib
  * @example
  * import { Logger, Effect } from "effect"
  *
- * const loggerLayer = Logger.withLeveledConsole(Logger.stringLogger)
+ * const loggerLayer = Logger.replace(
+ *   Logger.defaultLogger,
+ *   Logger.withLeveledConsole(Logger.stringLogger),
+ * )
  *
  * Effect.gen(function* () {
  *   yield* Effect.logError("an error")
