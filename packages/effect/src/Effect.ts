@@ -5401,6 +5401,56 @@ export const unsafeMakeSemaphore: (permits: number) => Semaphore = circular.unsa
 export const makeSemaphore: (permits: number) => Effect<Semaphore> = circular.makeSemaphore
 
 // -------------------------------------------------------------------------------------
+// latch
+// -------------------------------------------------------------------------------------
+
+/**
+ * @category latch
+ * @since 3.8.0
+ */
+export interface Latch {
+  /** open the latch, releasing all fibers waiting on it */
+  readonly open: Effect<void>
+  /** release all fibers waiting on the latch, without opening it */
+  readonly release: Effect<void>
+  /** wait for the latch to be opened */
+  readonly await: Effect<void>
+  /** close the latch */
+  readonly close: Effect<void>
+  /** only run the given effect when the latch is open */
+  readonly whenOpen: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+}
+
+/**
+ * @category latch
+ * @since 3.8.0
+ */
+export const unsafeMakeLatch: (open?: boolean | undefined) => Latch = circular.unsafeMakeLatch
+
+/**
+ * @category latch
+ * @since 3.8.0
+ * @example
+ * import { Effect } from "effect"
+ *
+ * Effect.gen(function*() {
+ *   // Create a latch, starting in the closed state
+ *   const latch = yield* Effect.makeLatch(false)
+ *
+ *   // Fork a fiber that logs "open sesame" when the latch is opened
+ *   const fiber = yield* Effect.log("open sesame").pipe(
+ *     latch.whenOpen,
+ *     Effect.fork
+ *   )
+ *
+ *   // Open the latch
+ *   yield* latch.open
+ *   yield* fiber.await
+ * })
+ */
+export const makeLatch: (open?: boolean | undefined) => Effect<Latch, never, never> = circular.makeLatch
+
+// -------------------------------------------------------------------------------------
 // execution
 // -------------------------------------------------------------------------------------
 
