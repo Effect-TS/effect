@@ -651,13 +651,9 @@ export const makeRepository = <
       execute: (request) =>
         sql.onDialectOrElse({
           mysql: () =>
-            (sql`insert into ${sql(options.tableName)} ${sql.insert(request)}`.raw as Effect.Effect<
-              { insertId: number }
-            >).pipe(
-              Effect.flatMap(({ insertId }) =>
-                sql`select * from ${sql(options.tableName)} where ${sql(idColumn)} = ${insertId}`
-              ),
-              sql.withTransaction
+            sql`insert into ${sql(options.tableName)} ${sql.insert(request)};
+select * from ${sql(options.tableName)} where ${sql(idColumn)} = LAST_INSERT_ID();`.unprepared.pipe(
+              Effect.map(([, results]) => results as any)
             ),
           orElse: () => sql`insert into ${sql(options.tableName)} ${sql.insert(request).returning("*")}`
         })
