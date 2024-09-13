@@ -411,6 +411,7 @@ export * as Logger from "./Logger.js"
 
 /**
  * @since 3.8.0
+ * @experimental
  */
 export * as Mailbox from "./Mailbox.js"
 
