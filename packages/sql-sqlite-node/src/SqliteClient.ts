@@ -118,12 +118,16 @@ export const make = (
 
       const runStatement = (
         statement: Sqlite.Statement,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<Statement.Primitive> = [],
+        raw = false
       ) =>
         Effect.try({
           try: () => {
             if (statement.reader) {
               return statement.all(...params) as ReadonlyArray<any>
+            }
+            if (raw) {
+              return statement.run(...params)
             }
             statement.run(...params)
             return []
@@ -133,8 +137,9 @@ export const make = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
-      ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params))
+        params: ReadonlyArray<Statement.Primitive> = [],
+        raw = false
+      ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params, raw))
 
       const runUnprepared = (
         sql: string,
@@ -173,7 +178,7 @@ export const make = (
           return runTransform(sql, params)
         },
         executeRaw(sql, params) {
-          return run(sql, params)
+          return run(sql, params, true)
         },
         executeValues(sql, params) {
           return runValues(sql, params)
