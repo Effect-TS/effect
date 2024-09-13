@@ -692,13 +692,9 @@ select * from ${sql(options.tableName)} where ${sql(idColumn)} = LAST_INSERT_ID(
           mysql: () =>
             sql`update ${sql(options.tableName)} set ${sql.update(request, [idColumn])} where ${sql(idColumn)} = ${
               request[idColumn]
-            }`.raw.pipe(
-              Effect.zipRight(
-                sql`select * from ${sql(options.tableName)} where ${sql(options.idColumn as string)} = ${
-                  request[idColumn]
-                }`
-              ),
-              sql.withTransaction
+            };
+select * from ${sql(options.tableName)} where ${sql(idColumn)} = ${request[idColumn]};`.unprepared.pipe(
+              Effect.map(([, results]) => results as any)
             ),
           orElse: () =>
             sql`update ${sql(options.tableName)} set ${sql.update(request, [idColumn])} where ${sql(idColumn)} = ${
