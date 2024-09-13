@@ -1,5 +1,14 @@
 # @effect/sql-mysql2
 
+## 0.11.2
+
+### Patch Changes
+
+- Updated dependencies [[`d8aff79`](https://github.com/Effect-TS/effect/commit/d8aff79d4cbedee33d0552ec43fdced007cae358), [`35a0f81`](https://github.com/Effect-TS/effect/commit/35a0f813141652d696461cd5d19fd146adaf85be), [`d8aff79`](https://github.com/Effect-TS/effect/commit/d8aff79d4cbedee33d0552ec43fdced007cae358), [`8261c5a`](https://github.com/Effect-TS/effect/commit/8261c5ae6fe86872292ec1fc1a58ab9cea2f5f51)]:
+  - @effect/sql@0.11.2
+  - effect@3.7.3
+  - @effect/platform@0.64.1
+
 ## 0.11.1
 
 ### Patch Changes
