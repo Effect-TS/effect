@@ -112,6 +112,67 @@ export const unsafeMakeSemaphore = (permits: number): Semaphore => new Semaphore
 /** @internal */
 export const makeSemaphore = (permits: number) => core.sync(() => unsafeMakeSemaphore(permits))
 
+class Latch implements Effect.Latch {
+  waiters: Array<(_: Effect.Effect<void>) => void> = []
+  scheduled = false
+  constructor(private isOpen: boolean) {}
+
+  private unsafeSchedule(fiber: Fiber.RuntimeFiber<void>) {
+    if (this.scheduled || this.waiters.length === 0) {
+      return core.void
+    }
+    this.scheduled = true
+    fiber.currentScheduler.scheduleTask(this.flushWaiters, fiber.getFiberRef(core.currentSchedulingPriority))
+    return core.void
+  }
+  private flushWaiters = () => {
+    this.scheduled = false
+    const waiters = this.waiters
+    this.waiters = []
+    for (let i = 0; i < waiters.length; i++) {
+      waiters[i](core.exitVoid)
+    }
+  }
+
+  open = core.withFiberRuntime<void>((fiber) => {
+    if (this.isOpen) {
+      return core.void
+    }
+    this.isOpen = true
+    return this.unsafeSchedule(fiber)
+  })
+  release = core.withFiberRuntime<void>((fiber) => {
+    if (this.isOpen) {
+      return core.void
+    }
+    return this.unsafeSchedule(fiber)
+  })
+  await = core.unsafeAsync<void>((resume) => {
+    if (this.isOpen) {
+      return resume(core.void)
+    }
+    this.waiters.push(resume)
+    return core.sync(() => {
+      const index = this.waiters.indexOf(resume)
+      if (index !== -1) {
+        this.waiters.splice(index, 1)
+      }
+    })
+  })
+  close = core.sync(() => {
+    this.isOpen = false
+  })
+  whenOpen = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
+    return core.zipRight(this.await, self)
+  }
+}
+
+/** @internal */
+export const unsafeMakeLatch = (open?: boolean | undefined): Effect.Latch => new Latch(open ?? false)
+
+/** @internal */
+export const makeLatch = (open?: boolean | undefined) => core.sync(() => unsafeMakeLatch(open))
+
 /** @internal */
 export const awaitAllChildren = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   ensuringChildren(self, fiberRuntime.fiberAwaitAll)
