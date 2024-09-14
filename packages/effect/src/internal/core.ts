@@ -516,9 +516,7 @@ export const unsafeAsync = <A, E = never, R = never>(
     cancelerRef = register(resume)
   }
   effect.effect_instruction_i1 = blockingOn
-  return cancelerRef !== undefined ?
-    onInterrupt(effect, (_) => cancelerRef!) :
-    effect
+  return onInterrupt(effect, (_) => isEffect(cancelerRef) ? cancelerRef : void_)
 }
 
 /* @internal */

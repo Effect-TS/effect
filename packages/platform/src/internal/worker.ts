@@ -1,8 +1,6 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
-import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
-import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -11,9 +9,9 @@ import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
 import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
-import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -62,7 +60,7 @@ export const makeManager = Effect.gen(function*() {
         let requestIdCounter = 0
         const requestMap = new Map<
           number,
-          Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>> | Deferred.Deferred<O, E | WorkerError>
+          Mailbox.Mailbox<O, E | WorkerError> | Deferred.Deferred<O, E | WorkerError>
         >()
 
         const collector = Transferable.unsafeMakeCollector()
@@ -84,10 +82,10 @@ export const makeManager = Effect.gen(function*() {
           return handleMessage(message[1])
         }).pipe(
           Effect.onError((cause) =>
-            Effect.forEach(requestMap.values(), (queue) =>
-              Deferred.DeferredTypeId in queue
-                ? Deferred.failCause(queue, cause)
-                : Queue.offer(queue, Exit.failCause(cause)))
+            Effect.forEach(requestMap.values(), (mailbox) =>
+              Deferred.DeferredTypeId in mailbox
+                ? Deferred.failCause(mailbox, cause)
+                : mailbox.failCause(cause))
           ),
           Effect.retry(Schedule.spaced(1000)),
           Effect.annotateLogs({
@@ -100,10 +98,10 @@ export const makeManager = Effect.gen(function*() {
 
         yield* Effect.addFinalizer(() =>
           Effect.zipRight(
-            Effect.forEach(requestMap.values(), (queue) =>
-              Deferred.DeferredTypeId in queue
-                ? Deferred.interrupt(queue)
-                : Queue.offer(queue, Exit.failCause(Cause.empty)), {
+            Effect.forEach(requestMap.values(), (mailbox) =>
+              Deferred.DeferredTypeId in mailbox
+                ? Deferred.interrupt(mailbox)
+                : mailbox.end, {
               discard: true
             }),
             Effect.sync(() => requestMap.clear())
@@ -112,61 +110,58 @@ export const makeManager = Effect.gen(function*() {
 
         const handleMessage = (response: Worker.Worker.Response<E, O>) =>
           Effect.suspend(() => {
-            const queue = requestMap.get(response[0])
-            if (!queue) return Effect.void
+            const mailbox = requestMap.get(response[0])
+            if (!mailbox) return Effect.void
 
             switch (response[1]) {
               // data
               case 0: {
-                return Deferred.DeferredTypeId in queue
-                  ? Deferred.succeed(queue, response[2][0])
-                  : Queue.offer(queue, Exit.succeed(response[2]))
+                return Deferred.DeferredTypeId in mailbox
+                  ? Deferred.succeed(mailbox, response[2][0])
+                  : mailbox.offerAll(response[2])
               }
               // end
               case 1: {
                 if (response.length === 2) {
-                  return Deferred.DeferredTypeId in queue
-                    ? Deferred.interrupt(queue)
-                    : Queue.offer(queue, Exit.failCause(Cause.empty))
+                  return Deferred.DeferredTypeId in mailbox
+                    ? Deferred.interrupt(mailbox)
+                    : mailbox.end
                 }
-                return Deferred.DeferredTypeId in queue
-                  ? Deferred.succeed(queue, response[2][0])
-                  : Effect.zipRight(
-                    Queue.offer(queue, Exit.succeed(response[2])),
-                    Queue.offer(queue, Exit.failCause(Cause.empty))
-                  )
+                return Deferred.DeferredTypeId in mailbox
+                  ? Deferred.succeed(mailbox, response[2][0])
+                  : Effect.zipRight(mailbox.offerAll(response[2]), mailbox.end)
               }
               // error / defect
               case 2:
               case 3: {
                 if (response[1] === 2) {
-                  return Deferred.DeferredTypeId in queue
-                    ? Deferred.fail(queue, response[2])
-                    : Queue.offer(queue, Exit.fail(response[2]))
+                  return Deferred.DeferredTypeId in mailbox
+                    ? Deferred.fail(mailbox, response[2])
+                    : mailbox.fail(response[2])
                 }
                 const cause = WorkerError.decodeCause(response[2])
-                return Deferred.DeferredTypeId in queue
-                  ? Deferred.failCause(queue, cause)
-                  : Queue.offer(queue, Exit.failCause(cause))
+                return Deferred.DeferredTypeId in mailbox
+                  ? Deferred.failCause(mailbox, cause)
+                  : mailbox.failCause(cause)
               }
             }
           })
 
         const executeAcquire = <
-          Q extends Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>> | Deferred.Deferred<O, E | WorkerError>
-        >(request: I, makeQueue: Effect.Effect<Q>) =>
+          Q extends Mailbox.Mailbox<O, E | WorkerError> | Deferred.Deferred<O, E | WorkerError>
+        >(request: I, makeMailbox: Effect.Effect<Q>) =>
           Effect.withFiberRuntime<{
             readonly id: number
-            readonly queue: Q
+            readonly mailbox: Q
           }>((fiber) => {
             const context = fiber.getFiberRef(FiberRef.currentContext)
             const span = Context.getOption(context, Tracer.ParentSpan).pipe(
               Option.filter((span): span is Tracer.Span => span._tag === "Span")
             )
             const id = requestIdCounter++
-            return makeQueue.pipe(
-              Effect.tap((queue) => {
-                requestMap.set(id, queue)
+            return makeMailbox.pipe(
+              Effect.tap((mailbox) => {
+                requestMap.set(id, mailbox)
                 return wrappedEncode(request).pipe(
                   Effect.tap((payload) =>
                     backing.send([
@@ -177,13 +172,13 @@ export const makeManager = Effect.gen(function*() {
                     ], collector.unsafeRead())
                   ),
                   Effect.catchAllCause((cause) =>
-                    Deferred.DeferredTypeId in queue ?
-                      Deferred.failCause(queue, cause) :
-                      Queue.offer(queue, Exit.failCause(cause))
+                    Mailbox.isMailbox<O, E | WorkerError>(mailbox)
+                      ? mailbox.failCause(cause)
+                      : Deferred.failCause(mailbox, cause)
                   )
                 )
               }),
-              Effect.map((queue) => ({ id, queue }))
+              Effect.map((mailbox) => ({ id, mailbox }))
             )
           })
 
@@ -197,18 +192,8 @@ export const makeManager = Effect.gen(function*() {
         const execute = (request: I) =>
           Stream.fromChannel(
             Channel.acquireUseRelease(
-              executeAcquire(request, Queue.unbounded<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>()),
-              ({ queue }) => {
-                const loop: Channel.Channel<Chunk.Chunk<O>, unknown, E | WorkerError, unknown, void, unknown> = Channel
-                  .flatMap(
-                    Queue.take(queue),
-                    Exit.match({
-                      onFailure: (cause) => Cause.isEmpty(cause) ? Channel.void : Channel.failCause(cause),
-                      onSuccess: (value) => Channel.flatMap(Channel.write(Chunk.unsafeFromArray(value)), () => loop)
-                    })
-                  )
-                return loop
-              },
+              executeAcquire(request, Mailbox.make<O, E | WorkerError>()),
+              ({ mailbox }) => Mailbox.toChannel(mailbox),
               executeRelease
             )
           )
@@ -216,7 +201,7 @@ export const makeManager = Effect.gen(function*() {
         const executeEffect = (request: I) =>
           Effect.acquireUseRelease(
             executeAcquire(request, Deferred.make<O, WorkerError | E>()),
-            ({ queue }) => Deferred.await(queue),
+            ({ mailbox }) => Deferred.await(mailbox),
             executeRelease
           )
 

@@ -84,7 +84,7 @@ export const fromDuplex = <RO>(
     Effect.bindTo("sendQueue"),
     Effect.bind("openContext", () => Effect.context<Exclude<RO, Scope.Scope>>()),
     Effect.map(({ openContext, sendQueue }) => {
-      const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+      const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
         Effect.scope.pipe(
           Effect.bindTo("scope"),
           Effect.bind("conn", ({ scope }) =>
@@ -121,7 +121,10 @@ export const fromDuplex = <RO>(
           ),
           Effect.tap(({ conn, fiberSet, run }) => {
             conn.on("data", (chunk) => {
-              run(handler(chunk))
+              const result = handler(chunk)
+              if (Effect.isEffect(result)) {
+                run(result)
+              }
             })
 
             return Effect.async<void, Socket.SocketError, never>((resume) => {
