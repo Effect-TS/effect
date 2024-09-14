@@ -1461,7 +1461,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   } else {
                     return Effect.flatMap(Effect.either(pr), (t) => {
                       if (Either.isRight(t)) {
-                        state.finalResult = t;
+                        state.finalResult = t
                       } else {
                         state.es.push([nk, t.left])
                       }
