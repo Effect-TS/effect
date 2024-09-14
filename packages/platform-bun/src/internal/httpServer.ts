@@ -412,16 +412,20 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
               })
             const writer = Effect.succeed(write)
             const runRaw = <R, E, _>(
-              handler: (_: Uint8Array | string) => Effect.Effect<_, E, R>
+              handler: (_: Uint8Array | string) => Effect.Effect<_, E, R> | void
             ): Effect.Effect<void, Socket.SocketError | E, R> =>
               FiberSet.make<any, E>().pipe(
                 Effect.flatMap((set) =>
                   FiberSet.runtime(set)<R>().pipe(
                     Effect.flatMap((run) => {
-                      ws.data.run = function(data: Uint8Array | string) {
-                        run(handler(data))
+                      function runRaw(data: Uint8Array | string) {
+                        const result = handler(data)
+                        if (Effect.isEffect(result)) {
+                          run(result)
+                        }
                       }
-                      ws.data.buffer.forEach((data) => run(handler(data)))
+                      ws.data.run = runRaw
+                      ws.data.buffer.forEach(runRaw)
                       ws.data.buffer.length = 0
                       return FiberSet.join(set)
                     })
@@ -434,7 +438,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
               )
 
             const encoder = new TextEncoder()
-            const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+            const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
               runRaw((data) => typeof data === "string" ? handler(encoder.encode(data)) : handler(data))
 
             return Socket.Socket.of({

@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as Channel from "effect/Channel"
-import * as Chunk from "effect/Chunk"
+import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import type { DurationInput } from "effect/Duration"
@@ -14,6 +14,7 @@ import * as FiberSet from "effect/FiberSet"
 import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
+import * as Mailbox from "effect/Mailbox"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
@@ -52,11 +53,11 @@ export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
  */
 export interface Socket {
   readonly [TypeId]: TypeId
-  readonly run: <_, E, R>(
-    handler: (_: Uint8Array) => Effect.Effect<_, E, R>
+  readonly run: <_, E = never, R = never>(
+    handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void
   ) => Effect.Effect<void, SocketError | E, R>
-  readonly runRaw: <_, E, R>(
-    handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>
+  readonly runRaw: <_, E = never, R = never>(
+    handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void
   ) => Effect.Effect<void, SocketError | E, R>
   readonly writer: Effect.Effect<
     (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<boolean>,
@@ -190,27 +191,25 @@ export const toChannelMap = <IE, A>(
 > =>
   Effect.scope.pipe(
     Effect.bindTo("scope"),
-    Effect.let("state", () => ({ finished: false, buffer: [] as Array<A> })),
-    Effect.bind("semaphore", () => Effect.makeSemaphore(0)),
+    Effect.bind("mailbox", () => Mailbox.make<A, SocketError | IE>()),
     Effect.bind("writeScope", ({ scope }) => Scope.fork(scope, ExecutionStrategy.sequential)),
     Effect.bind("write", ({ writeScope }) => Scope.extend(self.writer, writeScope)),
-    Effect.bind("deferred", () => Deferred.make<void, SocketError | IE>()),
     Effect.let(
       "input",
       (
-        { deferred, write, writeScope }
+        { mailbox, write, writeScope }
       ): AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array | string | CloseEvent>, unknown> => ({
         awaitRead: () => Effect.void,
         emit(chunk) {
           return Effect.catchAllCause(
             Effect.forEach(chunk, write, { discard: true }),
-            (cause) => Deferred.failCause(deferred, cause)
+            (cause) => mailbox.failCause(cause)
           )
         },
         error(error) {
           return Effect.zipRight(
             Scope.close(writeScope, Exit.void),
-            Deferred.failCause(deferred, error)
+            mailbox.failCause(error)
           )
         },
         done() {
@@ -218,35 +217,16 @@ export const toChannelMap = <IE, A>(
         }
       })
     ),
-    Effect.tap(({ deferred, scope, semaphore, state }) =>
+    Effect.tap(({ mailbox, scope }) =>
       self.runRaw((data) => {
-        state.buffer.push(f(data))
-        return semaphore.release(1)
+        mailbox.unsafeOffer(f(data))
       }).pipe(
-        Effect.intoDeferred(deferred),
-        Effect.raceFirst(Deferred.await(deferred)),
-        Effect.ensuring(Effect.suspend(() => {
-          state.finished = true
-          return semaphore.release(1)
-        })),
+        Mailbox.into(mailbox),
         Effect.forkIn(scope),
         Effect.interruptible
       )
     ),
-    Effect.map(({ deferred, input, semaphore, state }) => {
-      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, SocketError | IE, unknown, void, unknown> = Channel.flatMap(
-        semaphore.take(1),
-        (_) => {
-          if (state.buffer.length === 0) {
-            return state.finished ? Deferred.await(deferred) : loop
-          }
-          const chunk = Chunk.unsafeFromArray(state.buffer)
-          state.buffer = []
-          return Channel.zipRight(Channel.write(chunk), state.finished ? Deferred.await(deferred) : loop)
-        }
-      )
-      return Channel.embedInput(loop, input)
-    }),
+    Effect.map(({ input, mailbox }) => Channel.embedInput(Mailbox.toChannel(mailbox), input)),
     Channel.unwrapScoped
   )
 
@@ -395,14 +375,7 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
       (typeof url === "string" ? Effect.succeed(url) : url).pipe(
         Effect.flatMap((url) => Effect.map(WebSocketConstructor, (f) => f(url)))
       ),
-      (ws) =>
-        Effect.sync(() => {
-          ws.onclose = null
-          ws.onerror = null
-          ws.onmessage = null
-          ws.onopen = null
-          return ws.close()
-        })
+      (ws) => Effect.sync(() => ws.close())
     ),
     options
   )
@@ -424,7 +397,7 @@ export const fromWebSocket = <R>(
       (sendQueue) => {
         const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<R>
         const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
+        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void) =>
           acquire.pipe(
             Effect.bindTo("ws"),
             Effect.bind("fiberSet", () => FiberSet.make<any, E | SocketError>()),
@@ -433,16 +406,29 @@ export const fromWebSocket = <R>(
             Effect.tap(({ fiberSet, run, ws }) => {
               let open = false
 
-              ws.onmessage = (event) => {
-                run(handler(
+              function onMessage(event: MessageEvent) {
+                const result = handler(
                   typeof event.data === "string"
                     ? event.data
                     : event.data instanceof Uint8Array
                     ? event.data
                     : new Uint8Array(event.data)
-                ))
+                )
+                if (Effect.isEffect(result)) {
+                  run(result)
+                }
               }
-              ws.onclose = (event) => {
+              function onError(cause: Event) {
+                ws.removeEventListener("message", onMessage)
+                ws.removeEventListener("close", onClose)
+                Deferred.unsafeDone(
+                  fiberSet.deferred,
+                  Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", cause }))
+                )
+              }
+              function onClose(event: globalThis.CloseEvent) {
+                ws.removeEventListener("message", onMessage)
+                ws.removeEventListener("error", onError)
                 Deferred.unsafeDone(
                   fiberSet.deferred,
                   Effect.fail(
@@ -454,19 +440,17 @@ export const fromWebSocket = <R>(
                   )
                 )
               }
-              ws.onerror = (cause) => {
-                Deferred.unsafeDone(
-                  fiberSet.deferred,
-                  Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", cause }))
-                )
-              }
+
+              ws.addEventListener("close", onClose, { once: true })
+              ws.addEventListener("error", onError, { once: true })
+              ws.addEventListener("message", onMessage)
 
               if (ws.readyState !== 1) {
                 const openDeferred = Deferred.unsafeMake<void>(fiber.id())
-                ws.onopen = () => {
+                ws.addEventListener("open", () => {
                   open = true
                   Deferred.unsafeDone(openDeferred, Effect.void)
-                }
+                }, { once: true })
                 return Deferred.await(openDeferred).pipe(
                   Effect.timeoutFail({
                     duration: options?.openTimeout ?? 10000,
@@ -514,7 +498,7 @@ export const fromWebSocket = <R>(
           )
 
         const encoder = new TextEncoder()
-        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
           runRaw((data) =>
             typeof data === "string"
               ? handler(encoder.encode(data))
@@ -600,7 +584,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
       (sendQueue) => {
         const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<R>
         const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
+        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void) =>
           acquire.pipe(
             Effect.bindTo("stream"),
             Effect.bind("reader", ({ stream }) =>
@@ -681,7 +665,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
           )
 
         const encoder = new TextEncoder()
-        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
           runRaw((data) =>
             typeof data === "string"
               ? handler(encoder.encode(data))
