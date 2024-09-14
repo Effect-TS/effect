@@ -112,7 +112,7 @@ describe("Mailbox", () => {
       yield* Effect.fork(mailbox.offerAll([5, 6, 7, 8]))
       yield* Effect.fork(mailbox.shutdown)
       const items = yield* Stream.runCollect(Mailbox.toStream(mailbox))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(items), [1, 2])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(items), [])
       assert.strictEqual(yield* mailbox.await, void 0)
       assert.strictEqual(yield* mailbox.offer(10), false)
     }))
@@ -130,5 +130,22 @@ describe("Mailbox", () => {
       )
       assert.deepStrictEqual(items, [1, 2, 3, 4, 5])
       assert.strictEqual(error, "boom")
+    }))
+
+  it.effect("await waits for no items", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number>()
+      const fiber = yield* mailbox.await.pipe(Effect.fork)
+      yield* Effect.yieldNow()
+      yield* mailbox.offer(1)
+      yield* mailbox.end
+
+      yield* Effect.yieldNow()
+      assert.isNull(fiber.unsafePoll())
+      const [result, done] = yield* mailbox.takeAll
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1])
+      assert.isTrue(done)
+      yield* Effect.yieldNow()
+      assert.isNotNull(fiber.unsafePoll())
     }))
 })
