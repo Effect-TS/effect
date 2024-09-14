@@ -8,7 +8,7 @@ import type * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
-import { constTrue, dual } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import * as ChannelSchema from "./ChannelSchema.js"
 
 /**
@@ -62,8 +62,41 @@ export interface NdjsonOptions {
   readonly ignoreEmptyLines?: boolean
 }
 
-const defaultOptions: NdjsonOptions = {
-  ignoreEmptyLines: false
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const packString = <IE = never, Done = unknown>(): Channel.Channel<
+  Chunk.Chunk<string>,
+  Chunk.Chunk<unknown>,
+  IE | NdjsonError,
+  IE,
+  Done,
+  Done
+> => {
+  const loop: Channel.Channel<
+    Chunk.Chunk<string>,
+    Chunk.Chunk<unknown>,
+    IE | NdjsonError,
+    IE,
+    Done,
+    Done
+  > = Channel.readWithCause({
+    onInput: (input: Chunk.Chunk<unknown>) =>
+      Channel.zipRight(
+        Channel.flatMap(
+          Effect.try({
+            try: () => Chunk.of(Chunk.toReadonlyArray(input).map((_) => JSON.stringify(_)).join("\n") + "\n"),
+            catch: (cause) => new NdjsonError({ reason: "Pack", cause })
+          }),
+          Channel.write
+        ),
+        loop
+      ),
+    onFailure: Channel.failCause,
+    onDone: Channel.succeed
+  })
+  return loop
 }
 
 /**
@@ -77,36 +110,7 @@ export const pack = <IE = never, Done = unknown>(): Channel.Channel<
   IE,
   Done,
   Done
-> => {
-  const loop: Channel.Channel<
-    Chunk.Chunk<Uint8Array>,
-    Chunk.Chunk<unknown>,
-    IE | NdjsonError,
-    IE,
-    Done,
-    Done
-  > = Channel.readWithCause({
-    onInput: (input: Chunk.Chunk<unknown>) =>
-      Channel.zipRight(
-        Channel.flatMap(
-          Effect.try({
-            try: () =>
-              Chunk.of(
-                encoder.encode(
-                  Chunk.toReadonlyArray(input).map((_) => JSON.stringify(_)).join("\n") + "\n"
-                )
-              ),
-            catch: (cause) => new NdjsonError({ reason: "Pack", cause })
-          }),
-          Channel.write
-        ),
-        loop
-      ),
-    onFailure: (cause: Cause.Cause<IE>) => Channel.failCause(cause),
-    onDone: (_) => Channel.succeed(_)
-  })
-  return loop
-}
+> => Channel.mapOut(packString(), Chunk.map((_) => encoder.encode(_)))
 
 /**
  * @since 1.0.0
@@ -129,6 +133,94 @@ export const packSchema = <A, I, R>(
  * @since 1.0.0
  * @category constructors
  */
+export const packSchemaString = <A, I, R>(
+  schema: Schema.Schema<A, I, R>
+) =>
+<IE = never, Done = unknown>(): Channel.Channel<
+  Chunk.Chunk<string>,
+  Chunk.Chunk<A>,
+  IE | NdjsonError | ParseError,
+  IE,
+  Done,
+  Done,
+  R
+> => Channel.pipeTo(ChannelSchema.encode(schema)(), packString())
+
+const filterEmpty = Chunk.filter<string>((line) => line.length > 0)
+const filterEmptyChannel = <IE, Done>() => {
+  const loop: Channel.Channel<
+    Chunk.Chunk<string>,
+    Chunk.Chunk<string>,
+    IE,
+    IE,
+    Done,
+    Done,
+    never
+  > = Channel.readWithCause({
+    onInput(input: Chunk.Chunk<string>) {
+      const filtered = filterEmpty(input)
+      return Channel.zipRight(Chunk.isEmpty(filtered) ? Channel.void : Channel.write(filtered), loop)
+    },
+    onFailure(cause: Cause.Cause<IE>) {
+      return Channel.failCause(cause)
+    },
+    onDone(done: Done) {
+      return Channel.succeed(done)
+    }
+  })
+  return loop
+}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const unpackString = <IE = never, Done = unknown>(options?: NdjsonOptions): Channel.Channel<
+  Chunk.Chunk<unknown>,
+  Chunk.Chunk<string>,
+  IE | NdjsonError,
+  IE,
+  Done,
+  Done
+> => {
+  const lines = Channel.splitLines<IE, Done>().pipe(
+    options?.ignoreEmptyLines === true ?
+      Channel.pipeTo(filterEmptyChannel()) :
+      identity
+  )
+  return Channel.mapOutEffect(lines, (chunk) =>
+    Effect.try({
+      try: () => Chunk.map(chunk, (_) => JSON.parse(_)),
+      catch: (cause) => new NdjsonError({ reason: "Unpack", cause })
+    }))
+}
+
+const decodeString = <IE, Done>() => {
+  const decoder = new TextDecoder()
+  const loop: Channel.Channel<
+    Chunk.Chunk<string>,
+    Chunk.Chunk<Uint8Array>,
+    IE,
+    IE,
+    Done,
+    Done,
+    never
+  > = Channel.readWithCause({
+    onInput: (input) =>
+      Channel.zipRight(
+        Channel.write(Chunk.map(input, (_) => decoder.decode(_))),
+        loop
+      ),
+    onFailure: Channel.failCause,
+    onDone: Channel.succeed
+  })
+  return loop
+}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
 export const unpack = <IE = never, Done = unknown>(options?: NdjsonOptions): Channel.Channel<
   Chunk.Chunk<unknown>,
   Chunk.Chunk<Uint8Array>,
@@ -136,27 +228,9 @@ export const unpack = <IE = never, Done = unknown>(options?: NdjsonOptions): Cha
   IE,
   Done,
   Done
-> =>
-  Channel.suspend(() => {
-    const opts = { ...defaultOptions, ...options }
-    const decoder = new TextDecoder()
-    const loop: Channel.Channel<Chunk.Chunk<string>, Chunk.Chunk<Uint8Array>, IE, IE, Done, Done, never> = Channel
-      .readWithCause({
-        onInput: (input) =>
-          Channel.zipRight(
-            Channel.write(Chunk.map(input, (_) => decoder.decode(_))),
-            loop
-          ),
-        onFailure: (cause) => Channel.failCause(cause),
-        onDone: (_) => Channel.succeed(_)
-      })
-    const filter = opts.ignoreEmptyLines ? (line: string) => line.length > 0 : constTrue
-    return Channel.mapOutEffect(Channel.pipeTo(loop, Channel.splitLines()), (chunk) =>
-      Effect.try({
-        try: () => chunk.pipe(Chunk.filter(filter), Chunk.map((_) => JSON.parse(_))),
-        catch: (cause) => new NdjsonError({ reason: "Unpack", cause })
-      }))
-  })
+> => {
+  return Channel.pipeTo(decodeString(), unpackString(options))
+}
 
 /**
  * @since 1.0.0
@@ -177,6 +251,23 @@ export const unpackSchema = <A, I, R>(
 
 /**
  * @since 1.0.0
+ * @category constructors
+ */
+export const unpackSchemaString = <A, I, R>(
+  schema: Schema.Schema<A, I, R>
+) =>
+<IE = never, Done = unknown>(options?: NdjsonOptions): Channel.Channel<
+  Chunk.Chunk<A>,
+  Chunk.Chunk<string>,
+  NdjsonError | ParseError | IE,
+  IE,
+  Done,
+  Done,
+  R
+> => Channel.pipeTo(unpackString(options), ChannelSchema.decodeUnknown(schema)())
+
+/**
+ * @since 1.0.0
  * @category combinators
  */
 export const duplex: {
@@ -194,6 +285,27 @@ export const duplex: {
   Channel.pipeTo(
     Channel.pipeTo(pack(), self),
     unpack(options)
+  ))
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const duplexString: {
+  (options?: NdjsonOptions): <R, IE, OE, OutDone, InDone>(
+    self: Channel.Channel<Chunk.Chunk<string>, Chunk.Chunk<string>, OE, IE | NdjsonError, OutDone, InDone, R>
+  ) => Channel.Channel<Chunk.Chunk<unknown>, Chunk.Chunk<unknown>, NdjsonError | OE, IE, OutDone, InDone, R>
+  <R, IE, OE, OutDone, InDone>(
+    self: Channel.Channel<Chunk.Chunk<string>, Chunk.Chunk<string>, OE, IE | NdjsonError, OutDone, InDone, R>,
+    options?: NdjsonOptions
+  ): Channel.Channel<Chunk.Chunk<unknown>, Chunk.Chunk<unknown>, NdjsonError | OE, IE, OutDone, InDone, R>
+} = dual((args) => Channel.isChannel(args[0]), <R, IE, OE, OutDone, InDone>(
+  self: Channel.Channel<Chunk.Chunk<string>, Chunk.Chunk<string>, OE, IE | NdjsonError, OutDone, InDone, R>,
+  options?: NdjsonOptions
+): Channel.Channel<Chunk.Chunk<unknown>, Chunk.Chunk<unknown>, NdjsonError | OE, IE, OutDone, InDone, R> =>
+  Channel.pipeTo(
+    Channel.pipeTo(packString(), self),
+    unpackString(options)
   ))
 
 /**
@@ -271,3 +383,79 @@ export const duplexSchema: {
   InDone,
   R | IR | OR
 > => ChannelSchema.duplexUnknown(duplex(self, options), options))
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const duplexSchemaString: {
+  <IA, II, IR, OA, OI, OR>(
+    options: Partial<NdjsonOptions> & {
+      readonly inputSchema: Schema.Schema<IA, II, IR>
+      readonly outputSchema: Schema.Schema<OA, OI, OR>
+    }
+  ): <R, InErr, OutErr, OutDone, InDone>(
+    self: Channel.Channel<
+      Chunk.Chunk<string>,
+      Chunk.Chunk<string>,
+      OutErr,
+      NdjsonError | ParseError | InErr,
+      OutDone,
+      InDone,
+      R
+    >
+  ) => Channel.Channel<
+    Chunk.Chunk<OA>,
+    Chunk.Chunk<IA>,
+    NdjsonError | ParseError | OutErr,
+    InErr,
+    OutDone,
+    InDone,
+    R | IR | OR
+  >
+  <R, InErr, OutErr, OutDone, InDone, IA, II, IR, OA, OI, OR>(
+    self: Channel.Channel<
+      Chunk.Chunk<string>,
+      Chunk.Chunk<string>,
+      OutErr,
+      NdjsonError | ParseError | InErr,
+      OutDone,
+      InDone,
+      R
+    >,
+    options: Partial<NdjsonOptions> & {
+      readonly inputSchema: Schema.Schema<IA, II, IR>
+      readonly outputSchema: Schema.Schema<OA, OI, OR>
+    }
+  ): Channel.Channel<
+    Chunk.Chunk<OA>,
+    Chunk.Chunk<IA>,
+    NdjsonError | ParseError | OutErr,
+    InErr,
+    OutDone,
+    InDone,
+    R | IR | OR
+  >
+} = dual(2, <R, InErr, OutErr, OutDone, InDone, IA, II, IR, OA, OI, OR>(
+  self: Channel.Channel<
+    Chunk.Chunk<string>,
+    Chunk.Chunk<string>,
+    OutErr,
+    NdjsonError | ParseError | InErr,
+    OutDone,
+    InDone,
+    R
+  >,
+  options: Partial<NdjsonOptions> & {
+    readonly inputSchema: Schema.Schema<IA, II, IR>
+    readonly outputSchema: Schema.Schema<OA, OI, OR>
+  }
+): Channel.Channel<
+  Chunk.Chunk<OA>,
+  Chunk.Chunk<IA>,
+  NdjsonError | ParseError | OutErr,
+  InErr,
+  OutDone,
+  InDone,
+  R | IR | OR
+> => ChannelSchema.duplexUnknown(duplexString(self, options), options))
