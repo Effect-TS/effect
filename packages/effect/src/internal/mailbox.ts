@@ -164,7 +164,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   unsafeDone(exit: Exit<void, E>): boolean {
     if (this.state._tag !== "Open") {
       return false
-    } else if (this.state.offers.size === 0) {
+    } else if (this.state.offers.size === 0 && this.messages.length === 0 && this.messagesChunk.length === 0) {
       this.finalize(exit)
       return true
     }
@@ -175,6 +175,8 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
     if (this.state._tag === "Done") {
       return true
     }
+    this.messages = []
+    this.messagesChunk = empty
     const offers = this.state.offers
     this.finalize(this.state._tag === "Open" ? core.exitVoid : this.state.exit)
     if (offers.size > 0) {
@@ -194,32 +196,29 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   }
   end = this.done(core.exitVoid)
   clear: Effect<Chunk.Chunk<A>, E> = core.suspend(() => {
-    const messages = this.unsafeTakeAll()
-    if (messages.length === 0 && this.state._tag === "Done") {
+    if (this.state._tag === "Done") {
       return core.exitAs(this.state.exit, empty)
     }
+    const messages = this.unsafeTakeAll()
     this.releaseCapacity()
     return core.succeed(messages)
   })
   takeAll: Effect<readonly [messages: Chunk.Chunk<A>, done: boolean], E> = core.suspend(() => {
+    if (this.state._tag === "Done") {
+      return core.exitAs(this.state.exit, constDone)
+    }
     const messages = this.unsafeTakeAll()
     if (messages.length === 0) {
-      if (this.state._tag === "Done") {
-        return core.exitAs(this.state.exit, constDone)
-      }
       return core.zipRight(this.awaitTake, this.takeAll)
-    } else if (this.state._tag === "Done") {
-      return core.succeed([messages, this.state.exit._tag === "Success"])
     }
-    this.releaseCapacity()
-    return core.succeed([messages, false])
+    return core.succeed([messages, this.releaseCapacity()])
   })
   takeN(n: number): Effect<readonly [messages: Chunk.Chunk<A>, done: boolean], E> {
     return core.suspend(() => {
-      if (n <= 0) {
-        return this.state._tag === "Done"
-          ? core.exitAs(this.state.exit, constDone)
-          : core.succeed([empty, false])
+      if (this.state._tag === "Done") {
+        return core.exitAs(this.state.exit, constDone)
+      } else if (n <= 0) {
+        return core.succeed([empty, false])
       }
       n = Math.min(n, this.capacity)
       let messages: Chunk.Chunk<A>
@@ -231,19 +230,16 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
         this.messages = []
         messages = Chunk.take(this.messagesChunk, n)
         this.messagesChunk = Chunk.drop(this.messagesChunk, n)
-      } else if (this.state._tag === "Done") {
-        return core.exitAs(this.state.exit, constDone)
       } else {
         return core.zipRight(this.awaitTake, this.takeN(n))
       }
-      if (this.state._tag === "Done") {
-        return core.succeed([messages, this.state.exit._tag === "Success"])
-      }
-      this.releaseCapacity()
-      return core.succeed([messages, false])
+      return core.succeed([messages, this.releaseCapacity()])
     })
   }
   take: Effect<A, E | NoSuchElementException> = core.suspend(() => {
+    if (this.state._tag === "Done") {
+      return core.exitZipRight(this.state.exit, core.exitFail(new NoSuchElementException()))
+    }
     let message: A
     if (this.messagesChunk.length > 0) {
       message = Chunk.unsafeHead(this.messagesChunk)
@@ -252,8 +248,6 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       message = this.messages[0]
       this.messagesChunk = Chunk.drop(Chunk.unsafeFromArray(this.messages), 1)
       this.messages = []
-    } else if (this.state._tag === "Done") {
-      return core.exitZipRight(this.state.exit, core.exitFail(new NoSuchElementException()))
     } else {
       return core.zipRight(this.awaitTake, this.take)
     }
@@ -273,7 +267,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   })
   unsafeSize(): Option.Option<number> {
     const size = this.messages.length + this.messagesChunk.length
-    return this.state._tag === "Done" && size === 0 ? Option.none() : Option.some(size)
+    return this.state._tag === "Done" ? Option.none() : Option.some(size)
   }
   size = core.sync(() => this.unsafeSize())
 
@@ -325,13 +319,19 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       })
     })
   }
-  private releaseCapacity() {
-    if (this.state._tag === "Done" || this.state.offers.size === 0) {
-      return
+  private releaseCapacity(): boolean {
+    if (this.state._tag === "Done") {
+      return this.state.exit._tag === "Success"
+    } else if (this.state.offers.size === 0) {
+      if (this.state._tag === "Closing" && this.messages.length === 0 && this.messagesChunk.length === 0) {
+        this.finalize(this.state.exit)
+        return this.state.exit._tag === "Success"
+      }
+      return false
     }
     let n = this.capacity - this.messages.length - this.messagesChunk.length
     for (const entry of this.state.offers) {
-      if (n === 0) return
+      if (n === 0) return false
       else if (entry._tag === "Single") {
         this.messages.push(entry.message)
         n--
@@ -339,7 +339,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
         this.state.offers.delete(entry)
       } else {
         for (; entry.offset < entry.remaining.length; entry.offset++) {
-          if (n === 0) return
+          if (n === 0) return false
           this.messages.push(entry.remaining[entry.offset])
           n--
         }
@@ -347,9 +347,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
         this.state.offers.delete(entry)
       }
     }
-    if (this.state._tag === "Closing") {
-      this.finalize(this.state.exit)
-    }
+    return false
   }
   private awaitTake = core.unsafeAsync<void, E>((resume) => {
     if (this.state._tag === "Done") {
