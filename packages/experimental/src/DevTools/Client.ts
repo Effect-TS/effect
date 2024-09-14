@@ -2,16 +2,16 @@
  * @since 1.0.0
  */
 import * as Socket from "@effect/platform/Socket"
-import { type Scope } from "effect"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Mailbox from "effect/Mailbox"
 import * as Metric from "effect/Metric"
 import * as MetricState from "effect/MetricState"
-import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 import * as Ndjson from "../Ndjson.js"
@@ -39,17 +39,13 @@ export interface Client {
  */
 export const Client = Context.GenericTag<Client, ClientImpl>("@effect/experimental/DevTools/Client")
 
-interface PoisonPill {
-  readonly _tag: "PoisonPill"
-}
-
 /**
  * @since 1.0.0
  * @category constructors
  */
 export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket> = Effect.gen(function*() {
   const socket = yield* Socket.Socket
-  const requests = yield* Queue.unbounded<Domain.Request | PoisonPill>()
+  const requests = yield* Mailbox.make<Domain.Request>()
 
   function metricsSnapshot(): Domain.MetricsSnapshot {
     const snapshot = Metric.unsafeSnapshot()
@@ -108,14 +104,9 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
     }
   }
 
-  const fiber: Fiber.RuntimeFiber<void> = yield* Stream.fromQueue(requests).pipe(
-    Stream.mapEffect((request) =>
-      request._tag === "PoisonPill"
-        ? Effect.zipRight(Fiber.interrupt(fiber), Effect.interrupt)
-        : Effect.succeed(request)
-    ),
+  yield* Mailbox.toStream(requests).pipe(
     Stream.pipeThroughChannel(
-      Ndjson.duplexSchema(Socket.toChannel(socket), {
+      Ndjson.duplexSchemaString(Socket.toChannelString(socket), {
         inputSchema: Domain.Request,
         outputSchema: Domain.Response
       })
@@ -130,13 +121,18 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
         }
       }
     }),
-    Effect.retry(Schedule.spaced("3 seconds")),
+    Effect.retry(Schedule.spaced("1 seconds")),
     Effect.catchAllCause(Effect.logDebug),
-    Effect.forkDaemon,
-    Effect.interruptible
+    Effect.forkScoped,
+    Effect.uninterruptible
   )
-  yield* Effect.addFinalizer(() => requests.offerAll([metricsSnapshot(), { _tag: "PoisonPill" }]))
-  yield* Queue.offer(requests, { _tag: "Ping" }).pipe(
+
+  yield* Effect.addFinalizer(() =>
+    requests.offer(metricsSnapshot()).pipe(
+      Effect.zipRight(Effect.fiberIdWith((id) => requests.failCause(Cause.interrupt(id))))
+    )
+  )
+  yield* requests.offer({ _tag: "Ping" }).pipe(
     Effect.delay("3 seconds"),
     Effect.forever,
     Effect.forkScoped,
@@ -144,7 +140,7 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
   )
 
   return Client.of({
-    unsafeAddSpan: (request) => Queue.unsafeOffer(requests, request)
+    unsafeAddSpan: (request) => requests.unsafeOffer(request)
   })
 }).pipe(
   Effect.annotateLogs({
