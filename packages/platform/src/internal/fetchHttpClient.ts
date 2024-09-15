@@ -3,7 +3,6 @@ import * as FiberRef from "effect/FiberRef"
 import * as Stream from "effect/Stream"
 import type * as Client from "../HttpClient.js"
 import * as Error from "../HttpClientError.js"
-import * as Method from "../HttpMethod.js"
 import * as client from "./httpClient.js"
 import * as internalResponse from "./httpClientResponse.js"
 
@@ -38,16 +37,14 @@ const fetch: Client.HttpClient.Service = client.makeService((request, url, signa
       }),
       (response) => internalResponse.fromWeb(request, response)
     )
-  if (Method.hasBody(request.method)) {
-    switch (request.body._tag) {
-      case "Raw":
-      case "Uint8Array":
-        return send(request.body.body as any)
-      case "FormData":
-        return send(request.body.formData)
-      case "Stream":
-        return Effect.flatMap(Stream.toReadableStreamEffect(request.body.stream), send)
-    }
+  switch (request.body._tag) {
+    case "Raw":
+    case "Uint8Array":
+      return send(request.body.body as any)
+    case "FormData":
+      return send(request.body.formData)
+    case "Stream":
+      return Effect.flatMap(Stream.toReadableStreamEffect(request.body.stream), send)
   }
   return send(undefined)
 })
