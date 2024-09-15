@@ -775,4 +775,14 @@ describe("Queue", () => {
         expect(queue.pipe(identity)).toBe(queue)
       })
   )
+  it.effect(
+    "is subtype of Effect",
+    () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        yield* Queue.offer(queue, 1)
+        const result1 = yield* queue
+        assert.strictEqual(result1, 1)
+      })
+  )
 })

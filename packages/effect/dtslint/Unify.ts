@@ -6,6 +6,7 @@ import type * as Fiber from "effect/Fiber"
 import type * as FiberRef from "effect/FiberRef"
 import type * as Micro from "effect/Micro"
 import type * as Option from "effect/Option"
+import type * as Queue from "effect/Queue"
 import type * as RcRef from "effect/RcRef"
 import type * as Ref from "effect/Ref"
 import type * as Stream from "effect/Stream"
@@ -90,7 +91,18 @@ export type RuntimeFiberUnify = Unify.Unify<
   | Fiber.RuntimeFiber<"a", "b">
 >
 
-// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
+// $ExpectType Queue<1> | Queue<"a">
+export type QueueUnify = Unify.Unify<
+  | Queue.Queue<1>
+  | Queue.Queue<"a">
+>
+// $ExpectType Dequeue<"a" | 1>
+export type DequeueUnify = Unify.Unify<
+  | Queue.Dequeue<1>
+  | Queue.Dequeue<"a">
+>
+
+// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
 export type AllUnify = Unify.Unify<
   | Either.Either<1, 0>
   | Either.Either<"A", "E">
@@ -114,5 +126,9 @@ export type AllUnify = Unify.Unify<
   | Fiber.Fiber<"a", "b">
   | Fiber.RuntimeFiber<1, 2>
   | Fiber.RuntimeFiber<"a", "b">
+  | Queue.Queue<1>
+  | Queue.Queue<"a">
+  | Queue.Dequeue<1>
+  | Queue.Dequeue<"a">
   | 0
 >
