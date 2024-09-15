@@ -282,23 +282,61 @@ export const weeks = (weeks: number): Duration => make(weeks * 604_800_000)
  * @since 2.0.0
  * @category getters
  */
-export const toMillis = (self: DurationInput): number => {
-  const _self = decode(self)
-  switch (_self.value._tag) {
-    case "Infinity":
-      return Infinity
-    case "Nanos":
-      return Number(_self.value.nanos) / 1_000_000
-    case "Millis":
-      return _self.value.millis
-  }
-}
+export const toMillis = (self: DurationInput): number =>
+  match(self, {
+    onMillis: (millis) => millis,
+    onNanos: (nanos) => Number(nanos) / 1_000_000
+  })
 
 /**
  * @since 2.0.0
  * @category getters
  */
-export const toSeconds = (self: DurationInput): number => toMillis(self) / 1_000
+export const toSeconds = (self: DurationInput): number =>
+  match(self, {
+    onMillis: (millis) => millis / 1_000,
+    onNanos: (nanos) => Number(nanos) / 1_000_000_000
+  })
+
+/**
+ * @since 3.8.0
+ * @category getters
+ */
+export const toMinutes = (self: DurationInput): number =>
+  match(self, {
+    onMillis: (millis) => millis / 60_000,
+    onNanos: (nanos) => Number(nanos) / 60_000_000_000
+  })
+
+/**
+ * @since 3.8.0
+ * @category getters
+ */
+export const toHours = (self: DurationInput): number =>
+  match(self, {
+    onMillis: (millis) => millis / 3_600_000,
+    onNanos: (nanos) => Number(nanos) / 3_600_000_000_000
+  })
+
+/**
+ * @since 3.8.0
+ * @category getters
+ */
+export const toDays = (self: DurationInput): number =>
+  match(self, {
+    onMillis: (millis) => millis / 86_400_000,
+    onNanos: (nanos) => Number(nanos) / 86_400_000_000_000
+  })
+
+/**
+ * @since 3.8.0
+ * @category getters
+ */
+export const toWeeks = (self: DurationInput): number =>
+  match(self, {
+    onMillis: (millis) => millis / 604_800_000,
+    onNanos: (nanos) => Number(nanos) / 604_800_000_000_000
+  })
 
 /**
  * Get the duration in nanoseconds as a bigint.
