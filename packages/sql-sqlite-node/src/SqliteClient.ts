@@ -116,30 +116,43 @@ export const make = (
         })
       )
 
-      const runStatement = (
+      const runRawStatement = (
         statement: Sqlite.Statement,
-        params: ReadonlyArray<Statement.Primitive> = [],
-        raw = false
+        params: ReadonlyArray<Statement.Primitive> = []
       ) =>
         Effect.try({
           try: () => {
             if (statement.reader) {
-              return statement.all(...params) as ReadonlyArray<any>
+              return statement.all(...params)
             }
-            if (raw) {
-              return statement.run(...params)
-            }
-            statement.run(...params)
-            return []
+            return statement.run(...params)
           },
           catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
+      const runStatement = (
+        statement: Sqlite.Statement,
+        params: ReadonlyArray<Statement.Primitive> = []
+      ) =>
+        Effect.gen(function*() {
+          const results = yield* runRawStatement(statement, params)
+
+          if (statement.reader) {
+            return results as ReadonlyArray<any>
+          }
+
+          return []
+        })
+
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = [],
-        raw = false
-      ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params, raw))
+        params: ReadonlyArray<Statement.Primitive> = []
+      ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params))
+
+      const runRaw = (
+        sql: string,
+        params: ReadonlyArray<Statement.Primitive> = []
+      ) => Effect.flatMap(prepareCache.get(sql), (s) => runRawStatement(s, params))
 
       const runUnprepared = (
         sql: string,
@@ -178,7 +191,7 @@ export const make = (
           return runTransform(sql, params)
         },
         executeRaw(sql, params) {
-          return run(sql, params, true)
+          return runRaw(sql, params)
         },
         executeValues(sql, params) {
           return runValues(sql, params)
