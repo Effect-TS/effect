@@ -1,5 +1,96 @@
 # @effect/platform-node
 
+## 0.60.0
+
+### Minor Changes
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`7041393`](https://github.com/Effect-TS/effect/commit/7041393cff132e96566d3f36da0483a6ff6195e4) Thanks @tim-smart! - refactor /platform HttpClient
+
+  #### HttpClient.fetch removed
+
+  The `HttpClient.fetch` client implementation has been removed. Instead, you can
+  access a `HttpClient` using the corresponding `Context.Tag`.
+
+  ```ts
+  import { FetchHttpClient, HttpClient } from "@effect/platform"
+  import { Effect } from "effect"
+
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+
+    // make a get request
+    yield* client.get("https://jsonplaceholder.typicode.com/todos/1")
+  }).pipe(
+    Effect.scoped,
+    // the fetch client has been moved to the `FetchHttpClient` module
+    Effect.provide(FetchHttpClient.layer)
+  )
+  ```
+
+  #### `HttpClient` interface now uses methods
+
+  Instead of being a function that returns the response, the `HttpClient`
+  interface now uses methods to make requests.
+
+  Some shorthand methods have been added to the `HttpClient` interface to make
+  less complex requests easier.
+
+  ```ts
+  import {
+    FetchHttpClient,
+    HttpClient,
+    HttpClientRequest
+  } from "@effect/platform"
+  import { Effect } from "effect"
+
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+
+    // make a get request
+    yield* client.get("https://jsonplaceholder.typicode.com/todos/1")
+    // make a post request
+    yield* client.post("https://jsonplaceholder.typicode.com/todos")
+
+    // execute a request instance
+    yield* client.execute(
+      HttpClientRequest.get("https://jsonplaceholder.typicode.com/todos/1")
+    )
+  })
+  ```
+
+  #### Scoped `HttpClientResponse` helpers removed
+
+  The `HttpClientResponse` helpers that also supplied the `Scope` have been removed.
+
+  Instead, you can use the `HttpClientResponse` methods directly, and explicitly
+  add a `Effect.scoped` to the pipeline.
+
+  ```ts
+  import { FetchHttpClient, HttpClient } from "@effect/platform"
+  import { Effect } from "effect"
+
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+
+    yield* client.get("https://jsonplaceholder.typicode.com/todos/1").pipe(
+      Effect.flatMap((response) => response.json),
+      Effect.scoped // supply the `Scope`
+    )
+  })
+  ```
+
+  #### Some apis have been renamed
+
+  Including the `HttpClientRequest` body apis, which is to make them more
+  discoverable.
+
+### Patch Changes
+
+- Updated dependencies [[`fcfa6ee`](https://github.com/Effect-TS/effect/commit/fcfa6ee30ffd07d998bf22799357bf58580a116f), [`bb9931b`](https://github.com/Effect-TS/effect/commit/bb9931b62e249a3b801f2cb9d097aec0c8511af7), [`5798f76`](https://github.com/Effect-TS/effect/commit/5798f7619529de33e5ba06f551806f68fedc19db), [`5f0bfa1`](https://github.com/Effect-TS/effect/commit/5f0bfa17205398d4e4818bfbcf9e1b505b3b1fc5), [`812a4e8`](https://github.com/Effect-TS/effect/commit/812a4e86e2d1aa23b477ef5829aa0e5c07784936), [`6a128f6`](https://github.com/Effect-TS/effect/commit/6a128f63f9b41fec2db70790b3bbb96cb9afa1ab), [`273565e`](https://github.com/Effect-TS/effect/commit/273565e7901639e8d0541930ab715aea9c80fbaa), [`adf7d7a`](https://github.com/Effect-TS/effect/commit/adf7d7a7dfce3a7021e9f3b0d847dc85be89d754), [`569a801`](https://github.com/Effect-TS/effect/commit/569a8017ef0a0bc203e4312867cbdd37b0effbd7), [`aa1fa53`](https://github.com/Effect-TS/effect/commit/aa1fa5301e886b9657c8eb0d38cb87cef92a8305), [`02f6b06`](https://github.com/Effect-TS/effect/commit/02f6b0660e12bee1069532a9cc18d3ab855257be), [`12b893e`](https://github.com/Effect-TS/effect/commit/12b893e63cc6dfada4aca7773b4783940e2edf25), [`bbad27e`](https://github.com/Effect-TS/effect/commit/bbad27ec0a90860593f759405caa877e7f4a655f), [`7041393`](https://github.com/Effect-TS/effect/commit/7041393cff132e96566d3f36da0483a6ff6195e4), [`e0d21a5`](https://github.com/Effect-TS/effect/commit/e0d21a54c8323728fbb75a32f4820a9996257809), [`adf7d7a`](https://github.com/Effect-TS/effect/commit/adf7d7a7dfce3a7021e9f3b0d847dc85be89d754), [`007289a`](https://github.com/Effect-TS/effect/commit/007289a52d5877f8e90e2dacf38171ff9bf603fd), [`42a8f99`](https://github.com/Effect-TS/effect/commit/42a8f99740eefdaf2c4544d2c345313f97547a36), [`eebfd29`](https://github.com/Effect-TS/effect/commit/eebfd29633fd5d38b505c5c0842036f61f05e913), [`040703d`](https://github.com/Effect-TS/effect/commit/040703d0e100cd5511e52d812c15492414262b5e)]:
+  - effect@3.8.0
+  - @effect/platform@0.65.0
+  - @effect/platform-node-shared@0.15.0
+
 ## 0.59.1
 
 ### Patch Changes
