@@ -1444,7 +1444,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const eu = !queue || queue.length === 0 ? eitherOrUndefined(pr) : undefined
           if (eu) {
             if (Either.isRight(eu)) {
-              return Either.right(eu.right)
+              return eu
             } else {
               es.push([stepKey++, eu.left])
             }
@@ -1461,7 +1461,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   } else {
                     return Effect.flatMap(Effect.either(pr), (t) => {
                       if (Either.isRight(t)) {
-                        state.finalResult = Either.right(t.right)
+                        state.finalResult = t
                       } else {
                         state.es.push([nk, t.left])
                       }
