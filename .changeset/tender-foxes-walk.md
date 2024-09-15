@@ -62,7 +62,7 @@ Effect.gen(function* () {
 
 #### Scoped `HttpClientResponse` helpers removed
 
-The `HttpClientResponse` helpers that also eliminated the `Scope` have been removed.
+The `HttpClientResponse` helpers that also supplied the `Scope` have been removed.
 
 Instead, you can use the `HttpClientResponse` methods directly, and explicitly
 add a `Effect.scoped` to the pipeline.
@@ -76,7 +76,7 @@ Effect.gen(function* () {
 
   yield* client.get("https://jsonplaceholder.typicode.com/todos/1").pipe(
     Effect.flatMap((response) => response.json),
-    Effect.scoped // eliminate the `Scope`
+    Effect.scoped // supply the `Scope`
   )
 })
 ```

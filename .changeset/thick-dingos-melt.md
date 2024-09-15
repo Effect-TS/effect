@@ -5,7 +5,7 @@
 add Mailbox module, a queue which can have done or failure signals
 
 ```ts
-import { Effect, Mailbox } from "effect"
+import { Chunk, Effect, Mailbox } from "effect"
 import * as assert from "node:assert"
 
 Effect.gen(function* () {
@@ -18,13 +18,13 @@ Effect.gen(function* () {
 
   // take messages from the mailbox
   const [messages, done] = yield* mailbox.takeAll
-  assert.deepStrictEqual(messages, [1, 2, 3, 4, 5])
+  assert.deepStrictEqual(Chunk.toReadonlyArray(messages), [1, 2, 3, 4, 5])
   assert.strictEqual(done, false)
 
   // signal that the mailbox is done
   yield* mailbox.end
   const [messages2, done2] = yield* mailbox.takeAll
-  assert.deepStrictEqual(messages2, [])
+  assert.deepStrictEqual(messages2, Chunk.empty())
   assert.strictEqual(done2, true)
 
   // signal that the mailbox is failed
