@@ -1,5 +1,203 @@
 # effect
 
+## 3.8.0
+
+### Minor Changes
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`fcfa6ee`](https://github.com/Effect-TS/effect/commit/fcfa6ee30ffd07d998bf22799357bf58580a116f) Thanks @Schniz! - add `Logger.withLeveledConsole`
+
+  In browsers and different platforms, `console.error` renders differently than `console.info`. This helps to distinguish between different levels of logging. `Logger.withLeveledConsole` takes any logger and calls the respective `Console` method based on the log level. For instance, `Effect.logError` will call `Console.error` and `Effect.logInfo` will call `Console.info`.
+
+  To use it, you can replace the default logger with a `Logger.withLeveledConsole` logger:
+
+  ```ts
+  import { Logger, Effect } from "effect"
+
+  const loggerLayer = Logger.withLeveledConsole(Logger.stringLogger)
+
+  Effect.gen(function* () {
+    yield* Effect.logError("an error")
+    yield* Effect.logInfo("an info")
+  }).pipe(Effect.provide(loggerLayer))
+  ```
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`bb9931b`](https://github.com/Effect-TS/effect/commit/bb9931b62e249a3b801f2cb9d097aec0c8511af7) Thanks @KhraksMamtsov! - Made `Ref`, `SynchronizedRed` and `SubscriptionRef` a subtype of `Effect`
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`5798f76`](https://github.com/Effect-TS/effect/commit/5798f7619529de33e5ba06f551806f68fedc19db) Thanks @tim-smart! - add Semaphore.withPermitsIfAvailable
+
+  You can now use `Semaphore.withPermitsIfAvailable` to run an Effect only if the
+  Semaphore has enough permits available. This is useful when you want to run an
+  Effect only if you can acquire a permit without blocking.
+
+  It will return an `Option.Some` with the result of the Effect if the permits were
+  available, or `None` if they were not.
+
+  ```ts
+  import { Effect } from "effect"
+
+  Effect.gen(function* () {
+    const semaphore = yield* Effect.makeSemaphore(1)
+    semaphore.withPermitsIfAvailable(1)(Effect.void)
+  })
+  ```
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`5f0bfa1`](https://github.com/Effect-TS/effect/commit/5f0bfa17205398d4e4818bfbcf9e1b505b3b1fc5) Thanks @KhraksMamtsov! - The `Deferred<A>` is now a subtype of `Effect<A>`. This change simplifies handling of deferred values, removing the need for explicit call `Deffer.await`.
+
+  ```typescript
+  import { Effect, Deferred } from "effect"
+
+  Effect.gen(function* () {
+    const deferred = yield* Deferred.make<string>()
+
+    const before = yield* Deferred.await(deferred)
+    const after = yield* deferred
+  })
+  ```
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`812a4e8`](https://github.com/Effect-TS/effect/commit/812a4e86e2d1aa23b477ef5829aa0e5c07784936) Thanks @tim-smart! - add Logger.prettyLoggerDefault, to prevent duplicate pretty loggers
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`273565e`](https://github.com/Effect-TS/effect/commit/273565e7901639e8d0541930ab715aea9c80fbaa) Thanks @tim-smart! - add Effect.makeLatch, for creating a simple async latch
+
+  ```ts
+  import { Effect } from "effect"
+
+  Effect.gen(function* () {
+    // Create a latch, starting in the closed state
+    const latch = yield* Effect.makeLatch(false)
+
+    // Fork a fiber that logs "open sesame" when the latch is opened
+    const fiber = yield* Effect.log("open sesame").pipe(
+      latch.whenOpen,
+      Effect.fork
+    )
+
+    // Open the latch
+    yield* latch.open
+    yield* fiber.await
+  })
+  ```
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`569a801`](https://github.com/Effect-TS/effect/commit/569a8017ef0a0bc203e4312867cbdd37b0effbd7) Thanks @KhraksMamtsov! - `Dequeue<A>` and `Queue<A>` is subtype of `Effect<A>`. This means that now it can be used as an `Effect`, and when called, it will automatically extract and return an item from the queue, without having to explicitly use the `Queue.take` function.
+
+  ```ts
+  Effect.gen(function* () {
+    const queue = yield* Queue.unbounded<number>()
+    yield* Queue.offer(queue, 1)
+    yield* Queue.offer(queue, 2)
+    const oldWay = yield* Queue.take(queue)
+    const newWay = yield* queue
+  })
+  ```
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`aa1fa53`](https://github.com/Effect-TS/effect/commit/aa1fa5301e886b9657c8eb0d38cb87cef92a8305) Thanks @vinassefranche! - Add Number.round
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`02f6b06`](https://github.com/Effect-TS/effect/commit/02f6b0660e12bee1069532a9cc18d3ab855257be) Thanks @fubhy! - Add additional `Duration` conversion apis
+
+  - `Duration.toMinutes`
+  - `Duration.toHours`
+  - `Duration.toDays`
+  - `Duration.toWeeks`
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`12b893e`](https://github.com/Effect-TS/effect/commit/12b893e63cc6dfada4aca7773b4783940e2edf25) Thanks @KhraksMamtsov! - The `Fiber<A, E>` is now a subtype of `Effect<A, E>`. This change removes the need for explicit call `Fiber.join`.
+
+  ```typescript
+  import { Effect, Fiber } from "effect"
+
+  Effect.gen(function*() {
+    const fiber = yield* Effect.fork(Effect.succeed(1))
+
+    const oldWay = yield* Fiber.join(fiber)
+    const now = yield* fiber
+  }))
+  ```
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`bbad27e`](https://github.com/Effect-TS/effect/commit/bbad27ec0a90860593f759405caa877e7f4a655f) Thanks @dilame! - add `Stream.share` api
+
+  The `Stream.share` api is a ref counted variant of the broadcast apis.
+
+  It allows you to share a stream between multiple consumers, and will close the
+  upstream when the last consumer ends.
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`adf7d7a`](https://github.com/Effect-TS/effect/commit/adf7d7a7dfce3a7021e9f3b0d847dc85be89d754) Thanks @tim-smart! - add Mailbox module, a queue which can have done or failure signals
+
+  ```ts
+  import { Chunk, Effect, Mailbox } from "effect"
+  import * as assert from "node:assert"
+
+  Effect.gen(function* () {
+    const mailbox = yield* Mailbox.make<number, string>()
+
+    // add messages to the mailbox
+    yield* mailbox.offer(1)
+    yield* mailbox.offer(2)
+    yield* mailbox.offerAll([3, 4, 5])
+
+    // take messages from the mailbox
+    const [messages, done] = yield* mailbox.takeAll
+    assert.deepStrictEqual(Chunk.toReadonlyArray(messages), [1, 2, 3, 4, 5])
+    assert.strictEqual(done, false)
+
+    // signal that the mailbox is done
+    yield* mailbox.end
+    const [messages2, done2] = yield* mailbox.takeAll
+    assert.deepStrictEqual(messages2, Chunk.empty())
+    assert.strictEqual(done2, true)
+
+    // signal that the mailbox is failed
+    yield* mailbox.fail("boom")
+  })
+  ```
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`007289a`](https://github.com/Effect-TS/effect/commit/007289a52d5877f8e90e2dacf38171ff9bf603fd) Thanks @mikearnaldi! - Cache some fiber references in the runtime to optimize reading in hot-paths
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`42a8f99`](https://github.com/Effect-TS/effect/commit/42a8f99740eefdaf2c4544d2c345313f97547a36) Thanks @fubhy! - Added `RcMap.keys` and `MutableHashMap.keys`.
+
+  These functions allow you to get a list of keys currently stored in the underlying hash map.
+
+  ```ts
+  const map = MutableHashMap.make([
+    ["a", "a"],
+    ["b", "b"],
+    ["c", "c"]
+  ])
+  const keys = MutableHashMap.keys(map) // ["a", "b", "c"]
+  ```
+
+  ```ts
+  Effect.gen(function* () {
+    const map = yield* RcMap.make({
+      lookup: (key) => Effect.succeed(key)
+    })
+
+    yield* RcMap.get(map, "a")
+    yield* RcMap.get(map, "b")
+    yield* RcMap.get(map, "c")
+
+    const keys = yield* RcMap.keys(map) // ["a", "b", "c"]
+  })
+  ```
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`eebfd29`](https://github.com/Effect-TS/effect/commit/eebfd29633fd5d38b505c5c0842036f61f05e913) Thanks @fubhy! - Add `Duration.parts` api
+
+  ```ts
+  const parts = Duration.parts(Duration.sum("5 minutes", "20 seconds"))
+  assert.equal(parts.minutes, 5)
+  assert.equal(parts.seconds, 20)
+  ```
+
+- [#3541](https://github.com/Effect-TS/effect/pull/3541) [`040703d`](https://github.com/Effect-TS/effect/commit/040703d0e100cd5511e52d812c15492414262b5e) Thanks @KhraksMamtsov! - The `FiberRef<A>` is now a subtype of `Effect<A>`. This change simplifies handling of deferred values, removing the need for explicit call `FiberRef.get`.
+
+  ```typescript
+  import { Effect, FiberRef } from "effect"
+
+  Effect.gen(function* () {
+    const fiberRef = yield* FiberRef.make("value")
+
+    const before = yield* FiberRef.get(fiberRef)
+    const after = yield* fiberRef
+  })
+  ```
+
 ## 3.7.3
 
 ### Patch Changes
