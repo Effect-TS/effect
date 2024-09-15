@@ -1,8 +1,8 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Added the `Duration.parts`.
+Add `Duration.parts` api
 
 ```ts
 const parts = Duration.parts(Duration.sum("5 minutes", "20 seconds"))

@@ -501,6 +501,7 @@ const _max = order.max(Order)
 
 /**
  * @since 2.0.0
+ * @category order
  */
 export const max: {
   (that: DurationInput): (self: DurationInput) => Duration
@@ -511,6 +512,7 @@ const _clamp = order.clamp(Order)
 
 /**
  * @since 2.0.0
+ * @category order
  */
 export const clamp: {
   (options: {
@@ -710,7 +712,8 @@ export const equals: {
 /**
  * Converts a `Duration` to its parts.
  *
- * @since 3.7.4
+ * @since 3.8.0
+ * @category conversions
  */
 export const parts = (self: DurationInput): {
   days: number
@@ -751,8 +754,9 @@ export const parts = (self: DurationInput): {
 
 /**
  * Converts a `Duration` to a human readable string.
- * @since 2.0.0
  *
+ * @since 2.0.0
+ * @category conversions
  * @example
  * import { Duration } from "effect"
  *
