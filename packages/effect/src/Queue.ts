@@ -10,6 +10,7 @@ import type * as MutableRef from "./MutableRef.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -74,6 +75,26 @@ export interface Queue<in out A> extends Enqueue<A>, Dequeue<A>, Pipeable {
   readonly shutdownFlag: MutableRef.MutableRef<boolean>
   /** @internal */
   readonly strategy: Strategy<A>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: QueueUnify<this>
+  readonly [Unify.ignoreSymbol]?: QueueUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface QueueUnify<A extends { [Unify.typeSymbol]?: any }> extends DequeueUnify<A> {
+  Queue?: () => Extract<A[Unify.typeSymbol], Queue<any>>
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface QueueUnifyIgnore extends DequeueUnifyIgnore {
+  Dequeue?: true
 }
 
 /**
@@ -113,7 +134,7 @@ export interface Enqueue<in A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipe
  * @since 2.0.0
  * @category models
  */
-export interface Dequeue<out A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeable {
+export interface Dequeue<out A> extends Effect.Effect<A>, Queue.DequeueVariance<A>, BaseQueue, Pipeable {
   /**
    * Takes the oldest value in the queue. If the queue is empty, this will return
    * a computation that resumes when an item has been added to the queue.
@@ -137,6 +158,26 @@ export interface Dequeue<out A> extends Queue.DequeueVariance<A>, BaseQueue, Pip
    * suspends until at least the minimum number of elements have been collected.
    */
   takeBetween(min: number, max: number): Effect.Effect<Chunk.Chunk<A>>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: DequeueUnify<this>
+  readonly [Unify.ignoreSymbol]?: DequeueUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface DequeueUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  Dequeue?: () => A[Unify.typeSymbol] extends Dequeue<infer A0> | infer _ ? Dequeue<A0> : never
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface DequeueUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**

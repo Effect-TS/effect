@@ -1,6 +1,7 @@
 import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Effect from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import { dual, pipe } from "../Function.js"
 import * as MutableQueue from "../MutableQueue.js"
 import * as MutableRef from "../MutableRef.js"
@@ -909,7 +910,7 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
 }
 
 /** @internal */
-class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
+class SubscriptionImpl<in out A> extends Effectable.Class<A> implements Queue.Dequeue<A> {
   [queue.DequeueTypeId] = queue.dequeueVariance
 
   constructor(
@@ -921,7 +922,13 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
     readonly strategy: PubSubStrategy<A>,
     readonly replayWindow: ReplayWindow<A>
-  ) {}
+  ) {
+    super()
+  }
+
+  commit() {
+    return this.take
+  }
 
   pipe() {
     return pipeArguments(this, arguments)

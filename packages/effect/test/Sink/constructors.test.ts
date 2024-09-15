@@ -1,6 +1,7 @@
 import type * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
@@ -87,7 +88,7 @@ describe("Sink", () => {
 
 const createQueueSpy = <A>(queue: Queue.Queue<A>): Queue.Queue<A> => new QueueSpy(queue)
 
-class QueueSpy<A> implements Queue.Queue<A> {
+class QueueSpy<A> extends Effectable.Class<A> implements Queue.Queue<A> {
   readonly [Queue.DequeueTypeId] = internalQueue.dequeueVariance
   readonly [Queue.EnqueueTypeId] = internalQueue.enqueueVariance
   private isShutdownInternal = false
@@ -98,11 +99,16 @@ class QueueSpy<A> implements Queue.Queue<A> {
   readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<A, never>>
 
   constructor(readonly backingQueue: Queue.Queue<A>) {
+    super()
     this.queue = backingQueue.queue
     this.shutdownFlag = backingQueue.shutdownFlag
     this.shutdownHook = backingQueue.shutdownHook
     this.strategy = backingQueue.strategy
     this.takers = backingQueue.takers
+  }
+
+  commit() {
+    return this.take
   }
 
   pipe() {
