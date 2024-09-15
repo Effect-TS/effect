@@ -299,7 +299,7 @@ export const toSeconds = (self: DurationInput): number =>
   })
 
 /**
- * @since 3.7.4
+ * @since 3.8.0
  * @category getters
  */
 export const toMinutes = (self: DurationInput): number =>
@@ -309,7 +309,7 @@ export const toMinutes = (self: DurationInput): number =>
   })
 
 /**
- * @since 3.7.4
+ * @since 3.8.0
  * @category getters
  */
 export const toHours = (self: DurationInput): number =>
@@ -319,7 +319,7 @@ export const toHours = (self: DurationInput): number =>
   })
 
 /**
- * @since 3.7.4
+ * @since 3.8.0
  * @category getters
  */
 export const toDays = (self: DurationInput): number =>
@@ -329,7 +329,7 @@ export const toDays = (self: DurationInput): number =>
   })
 
 /**
- * @since 3.7.4
+ * @since 3.8.0
  * @category getters
  */
 export const toWeeks = (self: DurationInput): number =>
