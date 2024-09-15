@@ -501,6 +501,7 @@ const _max = order.max(Order)
 
 /**
  * @since 2.0.0
+ * @category order
  */
 export const max: {
   (that: DurationInput): (self: DurationInput) => Duration
@@ -511,6 +512,7 @@ const _clamp = order.clamp(Order)
 
 /**
  * @since 2.0.0
+ * @category order
  */
 export const clamp: {
   (options: {
@@ -708,9 +710,53 @@ export const equals: {
 } = dual(2, (self: DurationInput, that: DurationInput): boolean => Equivalence(decode(self), decode(that)))
 
 /**
- * Converts a `Duration` to a human readable string.
- * @since 2.0.0
+ * Converts a `Duration` to its parts.
  *
+ * @since 3.8.0
+ * @category conversions
+ */
+export const parts = (self: DurationInput): {
+  days: number
+  hours: number
+  minutes: number
+  seconds: number
+  millis: number
+  nanos: number
+} => {
+  const duration = decode(self)
+  if (duration.value._tag === "Infinity") {
+    return {
+      days: Infinity,
+      hours: Infinity,
+      minutes: Infinity,
+      seconds: Infinity,
+      millis: Infinity,
+      nanos: Infinity
+    }
+  }
+
+  const nanos = unsafeToNanos(duration)
+  const ms = nanos / bigint1e6
+  const sec = ms / bigint1e3
+  const min = sec / bigint60
+  const hr = min / bigint60
+  const days = hr / bigint24
+
+  return {
+    days: Number(days),
+    hours: Number(hr % bigint24),
+    minutes: Number(min % bigint60),
+    seconds: Number(sec % bigint60),
+    millis: Number(ms % bigint1e3),
+    nanos: Number(nanos % bigint1e6)
+  }
+}
+
+/**
+ * Converts a `Duration` to a human readable string.
+ *
+ * @since 2.0.0
+ * @category conversions
  * @example
  * import { Duration } from "effect"
  *
@@ -719,42 +765,35 @@ export const equals: {
  */
 export const format = (self: DurationInput): string => {
   const duration = decode(self)
-  const parts = []
-
   if (duration.value._tag === "Infinity") {
     return "Infinity"
   }
 
-  const nanos = unsafeToNanos(duration)
-
-  if (nanos % bigint1e6) {
-    parts.push(`${nanos % bigint1e6}ns`)
+  const fragments = parts(duration)
+  const pieces = []
+  if (fragments.days !== 0) {
+    pieces.push(`${fragments.days}d`)
   }
 
-  const ms = nanos / bigint1e6
-  if (ms % bigint1e3 !== bigint0) {
-    parts.push(`${ms % bigint1e3}ms`)
+  if (fragments.hours !== 0) {
+    pieces.push(`${fragments.hours}h`)
   }
 
-  const sec = ms / bigint1e3
-  if (sec % bigint60 !== bigint0) {
-    parts.push(`${sec % bigint60}s`)
+  if (fragments.minutes !== 0) {
+    pieces.push(`${fragments.minutes}m`)
   }
 
-  const min = sec / bigint60
-  if (min % bigint60 !== bigint0) {
-    parts.push(`${min % bigint60}m`)
+  if (fragments.seconds !== 0) {
+    pieces.push(`${fragments.seconds}s`)
   }
 
-  const hr = min / bigint60
-  if (hr % bigint24 !== bigint0) {
-    parts.push(`${hr % bigint24}h`)
+  if (fragments.millis !== 0) {
+    pieces.push(`${fragments.millis}ms`)
   }
 
-  const days = hr / bigint24
-  if (days !== bigint0) {
-    parts.push(`${days}d`)
+  if (fragments.nanos !== 0) {
+    pieces.push(`${fragments.nanos}ns`)
   }
 
-  return parts.reverse().join(" ")
+  return pieces.join(" ")
 }

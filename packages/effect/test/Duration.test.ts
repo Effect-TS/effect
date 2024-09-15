@@ -318,6 +318,35 @@ describe("Duration", () => {
     expect(Duration.format(Duration.weeks(1))).toEqual(`7d`)
   })
 
+  it("format", () => {
+    expect(Duration.parts(Duration.infinity)).toStrictEqual({
+      days: Infinity,
+      hours: Infinity,
+      minutes: Infinity,
+      seconds: Infinity,
+      millis: Infinity,
+      nanos: Infinity
+    })
+
+    expect(Duration.parts(Duration.minutes(5.325))).toStrictEqual({
+      days: 0,
+      hours: 0,
+      minutes: 5,
+      seconds: 19,
+      millis: 500,
+      nanos: 0
+    })
+
+    expect(Duration.parts(Duration.minutes(3.11125))).toStrictEqual({
+      days: 0,
+      hours: 0,
+      minutes: 3,
+      seconds: 6,
+      millis: 675,
+      nanos: 0
+    })
+  })
+
   it("toJSON", () => {
     expect(Duration.seconds(2).toJSON()).toEqual(
       { _id: "Duration", _tag: "Millis", millis: 2000 }
