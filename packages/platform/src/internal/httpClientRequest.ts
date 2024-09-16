@@ -6,6 +6,7 @@ import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
+import * as Redacted from "effect/Redacted"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../Error.js"
 import type * as FileSystem from "../FileSystem.js"
@@ -171,17 +172,31 @@ export const setHeaders = dual<
     self.body
   ))
 
+const stringOrRedacted = (value: string | Redacted.Redacted): string =>
+  typeof value === "string" ? value : Redacted.value(value)
+
 /** @internal */
 export const basicAuth = dual<
-  (username: string, password: string) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
-  (self: ClientRequest.HttpClientRequest, username: string, password: string) => ClientRequest.HttpClientRequest
->(3, (self, username, password) => setHeader(self, "Authorization", `Basic ${btoa(`${username}:${password}`)}`))
+  (
+    username: string | Redacted.Redacted,
+    password: string | Redacted.Redacted
+  ) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
+  (
+    self: ClientRequest.HttpClientRequest,
+    username: string | Redacted.Redacted,
+    password: string | Redacted.Redacted
+  ) => ClientRequest.HttpClientRequest
+>(
+  3,
+  (self, username, password) =>
+    setHeader(self, "Authorization", `Basic ${btoa(`${stringOrRedacted(username)}:${stringOrRedacted(password)}`)}`)
+)
 
 /** @internal */
 export const bearerToken = dual<
-  (token: string) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
-  (self: ClientRequest.HttpClientRequest, token: string) => ClientRequest.HttpClientRequest
->(2, (self, token) => setHeader(self, "Authorization", `Bearer ${token}`))
+  (token: string | Redacted.Redacted) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
+  (self: ClientRequest.HttpClientRequest, token: string | Redacted.Redacted) => ClientRequest.HttpClientRequest
+>(2, (self, token) => setHeader(self, "Authorization", `Bearer ${stringOrRedacted(token)}`))
 
 /** @internal */
 export const accept = dual<
