@@ -134,15 +134,10 @@ export const make = (
         statement: Sqlite.Statement,
         params: ReadonlyArray<Statement.Primitive> = []
       ) =>
-        Effect.gen(function*() {
-          const results = yield* runRawStatement(statement, params)
-
-          if (statement.reader) {
-            return results as ReadonlyArray<any>
-          }
-
-          return []
-        })
+        Effect.map(
+          runRawStatement(statement, params),
+          (results) => statement.reader ? results as ReadonlyArray<any> : []
+        )
 
       const run = (
         sql: string,
