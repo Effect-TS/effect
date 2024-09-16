@@ -6,6 +6,7 @@ import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Option from "effect/Option"
+import type { Redacted } from "effect/Redacted"
 import type { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "./Error.js"
@@ -173,8 +174,8 @@ export const setHeaders: {
  * @category combinators
  */
 export const basicAuth: {
-  (username: string, password: string): (self: HttpClientRequest) => HttpClientRequest
-  (self: HttpClientRequest, username: string, password: string): HttpClientRequest
+  (username: string | Redacted, password: string | Redacted): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, username: string | Redacted, password: string | Redacted): HttpClientRequest
 } = internal.basicAuth
 
 /**
@@ -182,8 +183,8 @@ export const basicAuth: {
  * @category combinators
  */
 export const bearerToken: {
-  (token: string): (self: HttpClientRequest) => HttpClientRequest
-  (self: HttpClientRequest, token: string): HttpClientRequest
+  (token: string | Redacted): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, token: string | Redacted): HttpClientRequest
 } = internal.bearerToken
 
 /**
