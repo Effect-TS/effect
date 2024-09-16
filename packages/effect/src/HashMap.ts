@@ -66,6 +66,22 @@ export declare namespace HashMap {
    * @category type-level
    */
   export type Value<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, infer _V>] ? _V : never
+
+  /**
+   * This type-level utility extracts the entry type `[K, V]` from a `HashMap<K, V>` type.
+   *
+   * @example
+   * import { HashMap } from "effect"
+   *
+   * declare const hm: HashMap.HashMap<string, number>
+   *
+   * // $ExpectType [string, number]
+   * type V = HashMap.HashMap.Entry<typeof hm>
+   *
+   * @since 3.9.0
+   * @category type-level
+   */
+  export type Entry<T extends HashMap<any, any>> = [Key<T>, Value<T>]
 }
 
 /**
