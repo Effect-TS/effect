@@ -1,6 +1,7 @@
-import { pipe } from "effect/Function"
+import { hole, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Predicate from "effect/Predicate"
+import type * as Types from "effect/Types"
 
 declare const hmLiterals: HashMap.HashMap<"k", "v">
 declare const numbers: HashMap.HashMap<string, number>
@@ -22,6 +23,13 @@ export type K = HashMap.HashMap.Key<typeof hmLiterals>
 
 // $ExpectType "v"
 export type V = HashMap.HashMap.Value<typeof hmLiterals>
+
+// -------------------------------------------------------------------------------------
+// HashMap.Entry
+// -------------------------------------------------------------------------------------
+
+// $ExpectType ["k", "v"]
+hole<Types.Simplify<HashMap.HashMap.Entry<typeof hmLiterals>>>()
 
 // -------------------------------------------------------------------------------------
 // filter
