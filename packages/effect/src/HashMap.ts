@@ -78,7 +78,7 @@ export declare namespace HashMap {
    * // $ExpectType [string, number]
    * type V = HashMap.HashMap.Entry<typeof hm>
    *
-   * @since 2.0.0
+   * @since 3.9.0
    * @category type-level
    */
   export type Entry<T extends HashMap<any, any>> = [Key<T>, Value<T>]
