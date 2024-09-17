@@ -88,74 +88,65 @@ interface SqliteConnection extends Connection {
 export const make = (
   options: SqliteClientConfig
 ): Effect.Effect<SqliteClient, never, Scope.Scope> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
 
-    const makeConnection = Effect.gen(function*(_) {
+    const makeConnection = Effect.gen(function*() {
+      const scope = yield* Effect.scope
       const db = new Sqlite(options.filename, {
         readonly: options.readonly ?? false
       })
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
+      yield* Scope.addFinalizer(scope, Effect.sync(() => db.close()))
 
       if (options.disableWAL !== true) {
         db.pragma("journal_mode = WAL")
       }
 
-      const prepareCache = yield* _(
-        Cache.make({
-          capacity: options.prepareCacheSize ?? 200,
-          timeToLive: options.prepareCacheTTL ?? Duration.minutes(10),
-          lookup: (sql: string) =>
-            Effect.try({
-              try: () => db.prepare(sql),
-              catch: (cause) => new SqlError({ cause, message: "Failed to prepare statement" })
-            })
-        })
-      )
+      const prepareCache = yield* Cache.make({
+        capacity: options.prepareCacheSize ?? 200,
+        timeToLive: options.prepareCacheTTL ?? Duration.minutes(10),
+        lookup: (sql: string) =>
+          Effect.try({
+            try: () => db.prepare(sql),
+            catch: (cause) => new SqlError({ cause, message: "Failed to prepare statement" })
+          })
+      })
 
-      const runRawStatement = (
+      const runStatement = (
         statement: Sqlite.Statement,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<Statement.Primitive>,
+        raw: boolean
       ) =>
         Effect.try({
           try: () => {
             if (statement.reader) {
               return statement.all(...params)
             }
-            return statement.run(...params)
+            const result = statement.run(...params)
+            return raw ? result as unknown as ReadonlyArray<any> : []
           },
           catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
-      const runStatement = (
-        statement: Sqlite.Statement,
-        params: ReadonlyArray<Statement.Primitive> = []
-      ) =>
-        Effect.map(
-          runRawStatement(statement, params),
-          (results) => statement.reader ? results as ReadonlyArray<any> : []
-        )
-
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
-      ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params))
-
-      const runRaw = (
-        sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
-      ) => Effect.flatMap(prepareCache.get(sql), (s) => runRawStatement(s, params))
-
-      const runUnprepared = (
-        sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
-      ) => Effect.map(runStatement(db.prepare(sql), params), transformRows)
+        params: ReadonlyArray<Statement.Primitive>,
+        raw = false
+      ) =>
+        Effect.flatMap(
+          prepareCache.get(sql),
+          (s) => runStatement(s, params, raw)
+        )
 
       const runTransform = options.transformResultNames
-        ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
+        ? (sql: string, params: ReadonlyArray<Statement.Primitive>) =>
+          Effect.map(
+            run(sql, params),
+            transformRows
+          )
         : run
 
       const runValues = (
@@ -186,7 +177,7 @@ export const make = (
           return runTransform(sql, params)
         },
         executeRaw(sql, params) {
-          return runRaw(sql, params)
+          return run(sql, params, true)
         },
         executeValues(sql, params) {
           return runValues(sql, params)
@@ -195,7 +186,10 @@ export const make = (
           return run(sql, params)
         },
         executeUnprepared(sql, params) {
-          return runUnprepared(sql, params)
+          return Effect.map(
+            runStatement(db.prepare(sql), params ?? [], false),
+            transformRows
+          )
         },
         executeStream(_sql, _params) {
           return Effect.dieMessage("executeStream not implemented")
@@ -219,8 +213,8 @@ export const make = (
       })
     })
 
-    const semaphore = yield* _(Effect.makeSemaphore(1))
-    const connection = yield* _(makeConnection)
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const connection = yield* makeConnection
 
     const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
     const transactionAcquirer = Effect.uninterruptibleMask((restore) =>
