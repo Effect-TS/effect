@@ -38,6 +38,15 @@ export const memoizeThunk = <A>(f: () => A): () => A => {
 }
 
 /** @internal */
+export const formatDate = (date: Date): string => {
+  try {
+    return date.toISOString()
+  } catch (e) {
+    return String(date)
+  }
+}
+
+/** @internal */
 export const formatUnknown = (u: unknown): string => {
   if (Predicate.isString(u)) {
     return JSON.stringify(u)
@@ -46,9 +55,10 @@ export const formatUnknown = (u: unknown): string => {
     || u == null
     || Predicate.isBoolean(u)
     || Predicate.isSymbol(u)
-    || Predicate.isDate(u)
   ) {
     return String(u)
+  } else if (Predicate.isDate(u)) {
+    return formatDate(u)
   } else if (Predicate.isBigInt(u)) {
     return String(u) + "n"
   } else if (

@@ -130,7 +130,7 @@ describe("EitherFromUnion", () => {
                └─ Encoded side transformation failure
                   └─ NumberFromString
                      └─ Type side transformation failure
-                        └─ Expected number, actual ${new Date(0).toString()}`
+                        └─ Expected number, actual ${new Date(0).toISOString()}`
     )
   })
 })

@@ -5961,6 +5961,126 @@ export const validDate =
     )
 
 /**
+ * @category type id
+ * @since 0.73.1
+ */
+export const LessThanDateTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/LessThanDate")
+
+/**
+ * @category Date filters
+ * @since 0.73.1
+ */
+export const lessThanDate = <A extends Date>(
+  max: Date,
+  annotations?: Annotations.Filter<A>
+) =>
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+  self.pipe(
+    filter((a) => a < max, {
+      typeId: { id: LessThanDateTypeId, annotation: { max } },
+      description: `a date before ${util_.formatDate(max)}`,
+      ...annotations
+    })
+  )
+
+/**
+ * @category type id
+ * @since 0.73.1
+ */
+export const LessThanOrEqualToDateTypeId: unique symbol = Symbol.for(
+  "@effect/schema/TypeId/LessThanOrEqualToDate"
+)
+
+/**
+ * @category Date filters
+ * @since 0.73.1
+ */
+export const lessThanOrEqualToDate = <A extends Date>(
+  max: Date,
+  annotations?: Annotations.Filter<A>
+) =>
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+  self.pipe(
+    filter((a) => a <= max, {
+      typeId: { id: LessThanDateTypeId, annotation: { max } },
+      description: `a date before or equal to ${util_.formatDate(max)}`,
+      ...annotations
+    })
+  )
+
+/**
+ * @category type id
+ * @since 0.73.1
+ */
+export const GreaterThanDateTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/GreaterThanDate")
+
+/**
+ * @category Date filters
+ * @since 0.73.1
+ */
+export const greaterThanDate = <A extends Date>(
+  min: Date,
+  annotations?: Annotations.Filter<A>
+) =>
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+  self.pipe(
+    filter((a) => a > min, {
+      typeId: { id: GreaterThanDateTypeId, annotation: { min } },
+      description: `a date after ${util_.formatDate(min)}`,
+      ...annotations
+    })
+  )
+
+/**
+ * @category type id
+ * @since 0.73.1
+ */
+export const GreaterThanOrEqualToDateTypeId: unique symbol = Symbol.for(
+  "@effect/schema/TypeId/GreaterThanOrEqualToDate"
+)
+
+/**
+ * @category Date filters
+ * @since 0.73.1
+ */
+export const greaterThanOrEqualToDate = <A extends Date>(
+  min: Date,
+  annotations?: Annotations.Filter<A>
+) =>
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+  self.pipe(
+    filter((a) => a >= min, {
+      typeId: { id: GreaterThanOrEqualToDateTypeId, annotation: { min } },
+      description: `a date after or equal to ${util_.formatDate(min)}`,
+      ...annotations
+    })
+  )
+
+/**
+ * @category type id
+ * @since 0.73.1
+ */
+export const BetweenDateTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/BetweenDate")
+
+/**
+ * @category Date filters
+ * @since 0.73.1
+ */
+export const betweenDate = <A extends Date>(
+  minimum: Date,
+  maximum: Date,
+  annotations?: Annotations.Filter<A>
+) =>
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+  self.pipe(
+    filter((a) => a <= maximum && a >= minimum, {
+      typeId: { id: BetweenDateTypeId, annotation: { maximum, minimum } },
+      description: `a date between ${util_.formatDate(minimum)} and ${util_.formatDate(maximum)}`,
+      ...annotations
+    })
+  )
+
+/**
  * Describes a schema that accommodates potentially invalid `Date` instances,
  * such as `new Date("Invalid Date")`, without rejection.
  *
@@ -6007,7 +6127,7 @@ export class ValidDateFromSelf extends DateFromSelf.pipe(
 export class DateFromString extends transform(
   String$,
   DateFromSelf,
-  { strict: true, decode: (s) => new Date(s), encode: (d) => d.toISOString() }
+  { strict: true, decode: (s) => new Date(s), encode: (d) => util_.formatDate(d) }
 ).annotations({ identifier: "DateFromString" }) {}
 
 /** @ignore */
