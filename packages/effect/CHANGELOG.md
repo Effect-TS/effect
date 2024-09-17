@@ -1,5 +1,13 @@
 # effect
 
+## 3.8.1
+
+### Patch Changes
+
+- [#3624](https://github.com/Effect-TS/effect/pull/3624) [`10bf621`](https://github.com/Effect-TS/effect/commit/10bf6213f36d8ddb00f058a4609b85220f3d8334) Thanks @fubhy! - Fixed double firing of cron schedules in cases where the current time matched the initial interval.
+
+- [#3623](https://github.com/Effect-TS/effect/pull/3623) [`ae36fa6`](https://github.com/Effect-TS/effect/commit/ae36fa68f754eeab9a54b6dc0f8b44db513aa2b6) Thanks @fubhy! - Allow CRLF characters in base64 encoded strings.
+
 ## 3.8.0
 
 ### Minor Changes
