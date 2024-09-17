@@ -572,6 +572,30 @@ describe("Schedule", () => {
       }))
   })
   describe("cron-like scheduling - repeats at point of time (minute of hour, day of week, ...)", () => {
+    it.effect("recur every minute after initial interval using cron", () =>
+      Effect.gen(function*($) {
+        const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
+        yield* $(TestClock.setTime(new Date(2024, 0, 1, 0, 0, 35).getTime()))
+        const schedule = Schedule.cron("* * * * *")
+        yield* $(
+          TestClock.currentTimeMillis,
+          Effect.tap((instant) => Ref.update(ref, Array.append(format(instant)))),
+          Effect.repeat(schedule),
+          Effect.fork
+        )
+        yield* $(TestClock.adjust("5 minutes"))
+        const result = yield* $(Ref.get(ref))
+        const expected = [
+          "Mon Jan 01 2024 00:00:35",
+          "Mon Jan 01 2024 00:01:00",
+          "Mon Jan 01 2024 00:02:00",
+          "Mon Jan 01 2024 00:03:00",
+          "Mon Jan 01 2024 00:04:00",
+          "Mon Jan 01 2024 00:05:00"
+        ]
+        assert.deepStrictEqual(result, expected)
+      }))
+
     it.effect("recur at time matching cron expression", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
