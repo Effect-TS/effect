@@ -1,5 +1,21 @@
 # @effect/sql-sqlite-node
 
+## 0.12.2
+
+### Patch Changes
+
+- [#3607](https://github.com/Effect-TS/effect/pull/3607) [`e38b3dc`](https://github.com/Effect-TS/effect/commit/e38b3dcacd93c7ae594ec8aca5d3dbda2a7a07ca) Thanks @thewilkybarkid! - Return raw SQL query results in sql-sqlite-node
+
+  ```ts
+  response = yield * sql`INSERT INTO test (name) VALUES ('hello')`.raw
+  assert.deepStrictEqual(response, { changes: 1, lastInsertRowid: 1 })
+  ```
+
+- Updated dependencies [[`10bf621`](https://github.com/Effect-TS/effect/commit/10bf6213f36d8ddb00f058a4609b85220f3d8334), [`ae36fa6`](https://github.com/Effect-TS/effect/commit/ae36fa68f754eeab9a54b6dc0f8b44db513aa2b6)]:
+  - effect@3.8.1
+  - @effect/platform@0.65.2
+  - @effect/sql@0.12.2
+
 ## 0.12.1
 
 ### Patch Changes
