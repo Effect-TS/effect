@@ -4,6 +4,7 @@ import type * as Resource from "../Resource.js"
 import type * as Schedule from "../Schedule.js"
 import type * as Scope from "../Scope.js"
 import * as core from "./core.js"
+import * as effectable from "./effectable.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as _schedule from "./schedule.js"
 import * as scopedRef from "./scopedRef.js"
@@ -46,11 +47,18 @@ export const manual = <A, E, R>(
   core.flatMap(core.context<R>(), (env) =>
     pipe(
       scopedRef.fromAcquire(core.exit(acquire)),
-      core.map((ref) => ({
-        [ResourceTypeId]: resourceVariance,
-        scopedRef: ref,
-        acquire: core.provideContext(acquire, env)
-      }))
+      core.map((ref) => {
+        const resource = {
+          ...effectable.CommitPrototype,
+          commit() {
+            return get(this)
+          },
+          [ResourceTypeId]: resourceVariance,
+          scopedRef: ref,
+          acquire: core.provideContext(acquire, env)
+        }
+        return resource
+      })
     ))
 
 /** @internal */

@@ -2,11 +2,11 @@ import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
 import type { LazyArg } from "../Function.js"
 import { dual, pipe } from "../Function.js"
-import { pipeArguments } from "../Pipeable.js"
 import type * as Scope from "../Scope.js"
 import type * as ScopedRef from "../ScopedRef.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
+import * as effectable from "./effectable.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as ref from "./ref.js"
 import * as synchronized from "./synchronizedRef.js"
@@ -41,11 +41,12 @@ export const fromAcquire = <A, E, R>(
         core.flatMap((value) =>
           circular.makeSynchronized([newScope, value] as const).pipe(
             core.flatMap((ref) => {
-              const scopedRef: ScopedRef.ScopedRef<A> = {
-                [ScopedRefTypeId]: scopedRefVariance,
-                pipe() {
-                  return pipeArguments(this, arguments)
+              const scopedRef = {
+                ...effectable.CommitPrototype,
+                commit() {
+                  return get(this)
                 },
+                [ScopedRefTypeId]: scopedRefVariance,
                 ref
               }
               return pipe(
