@@ -36,28 +36,29 @@ export const encode = (bytes: Uint8Array) => {
 
 /** @internal */
 export const decode = (str: string): Either.Either<Uint8Array, Encoding.DecodeException> => {
-  const length = str.length
+  const stripped = stripCrlf(str)
+  const length = stripped.length
   if (length % 4 !== 0) {
     return Either.left(
-      DecodeException(str, `Length must be a multiple of 4, but is ${length}`)
+      DecodeException(stripped, `Length must be a multiple of 4, but is ${length}`)
     )
   }
 
-  const index = str.indexOf("=")
-  if (index !== -1 && ((index < length - 2) || (index === length - 2 && str[length - 1] !== "="))) {
+  const index = stripped.indexOf("=")
+  if (index !== -1 && ((index < length - 2) || (index === length - 2 && stripped[length - 1] !== "="))) {
     return Either.left(
-      DecodeException(str, "Found a '=' character, but it is not at the end")
+      DecodeException(stripped, "Found a '=' character, but it is not at the end")
     )
   }
 
   try {
-    const missingOctets = str.endsWith("==") ? 2 : str.endsWith("=") ? 1 : 0
+    const missingOctets = stripped.endsWith("==") ? 2 : stripped.endsWith("=") ? 1 : 0
     const result = new Uint8Array(3 * (length / 4))
     for (let i = 0, j = 0; i < length; i += 4, j += 3) {
-      const buffer = getBase64Code(str.charCodeAt(i)) << 18 |
-        getBase64Code(str.charCodeAt(i + 1)) << 12 |
-        getBase64Code(str.charCodeAt(i + 2)) << 6 |
-        getBase64Code(str.charCodeAt(i + 3))
+      const buffer = getBase64Code(stripped.charCodeAt(i)) << 18 |
+        getBase64Code(stripped.charCodeAt(i + 1)) << 12 |
+        getBase64Code(stripped.charCodeAt(i + 2)) << 6 |
+        getBase64Code(stripped.charCodeAt(i + 3))
 
       result[j] = buffer >> 16
       result[j + 1] = (buffer >> 8) & 0xff
@@ -67,10 +68,13 @@ export const decode = (str: string): Either.Either<Uint8Array, Encoding.DecodeEx
     return Either.right(result.subarray(0, result.length - missingOctets))
   } catch (e) {
     return Either.left(
-      DecodeException(str, e instanceof Error ? e.message : "Invalid input")
+      DecodeException(stripped, e instanceof Error ? e.message : "Invalid input")
     )
   }
 }
+
+/** @internal */
+export const stripCrlf = (str: string) => str.replace(/[\n\r]/g, "")
 
 /** @internal */
 function getBase64Code(charCode: number) {
