@@ -9,19 +9,20 @@ export const encode = (data: Uint8Array) =>
 
 /** @internal */
 export const decode = (str: string): Either.Either<Uint8Array, Encoding.DecodeException> => {
-  const length = str.length
+  const stripped = Base64.stripCrlf(str)
+  const length = stripped.length
   if (length % 4 === 1) {
     return Either.left(
-      DecodeException(str, `Length should be a multiple of 4, but is ${length}`)
+      DecodeException(stripped, `Length should be a multiple of 4, but is ${length}`)
     )
   }
 
-  if (!/^[-_A-Z0-9]*?={0,2}$/i.test(str)) {
-    return Either.left(DecodeException(str, "Invalid input"))
+  if (!/^[-_A-Z0-9]*?={0,2}$/i.test(stripped)) {
+    return Either.left(DecodeException(stripped, "Invalid input"))
   }
 
   // Some variants allow or require omitting the padding '=' signs
-  let sanitized = length % 4 === 2 ? `${str}==` : length % 4 === 3 ? `${str}=` : str
+  let sanitized = length % 4 === 2 ? `${stripped}==` : length % 4 === 3 ? `${stripped}=` : stripped
   sanitized = sanitized.replace(/-/g, "+").replace(/_/g, "/")
 
   return Base64.decode(sanitized)
