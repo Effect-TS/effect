@@ -433,21 +433,24 @@ export const cron = (expression: string | Cron.Cron): Schedule.Schedule<[number,
       const cron = parsed.right
       const date = new Date(now)
 
-      let next: number
       if (initial && Cron.match(cron, date)) {
-        next = now
-      } else {
-        const result = Cron.next(cron, date)
-        next = result.getTime()
+        const next = now
+        const start = beginningOfMinute(next)
+        const end = endOfMinute(next)
+        return core.succeed([
+          [false, [next, start, end]],
+          [start, end],
+          ScheduleDecision.continueWith(Interval.make(start + 60000, end + 60000))
+        ])
       }
 
+      const next = Cron.next(cron, date).getTime()
       const start = beginningOfMinute(next)
       const end = endOfMinute(next)
-      const interval = Interval.make(start, end)
       return core.succeed([
         [false, [next, start, end]],
         [start, end],
-        ScheduleDecision.continueWith(interval)
+        ScheduleDecision.continueWith(Interval.make(start, end))
       ])
     }
   )
