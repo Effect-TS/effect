@@ -569,26 +569,25 @@ handle responses, and abstract over the differences between platforms.
 
 The `HttpClient` interface has a set of methods for sending requests:
 
-- `.execute` - takes a `HttpClientRequest` and returns a `HttpClientResponse`
-- `.{get, post, ...}` - convenience methods for creating a request and
+- `.execute` - takes a [HttpClientRequest](#httpclientrequest) and returns a `HttpClientResponse`
+- `.{get, del, head, options, patch, post, put}` - convenience methods for creating a request and
   executing it in one step
 
-To access the `HttpClient`, you can use the `HttpClient.HttpClient` `Context.Tag`.
+To access the `HttpClient`, you can use the `HttpClient.HttpClient` [tag](https://effect.website/docs/guides/context-management/services).
 This will give you access to a `HttpClient.Service` instance, which is the default
-type of the `HttpClient` interface.
+instance of the `HttpClient` interface.
 
-### A First Example: Retrieving JSON Data (GET)
-
-Here's a simple example demonstrating how to retrieve JSON data using `HttpClient` from `@effect/platform`.
+**Example: Retrieving JSON Data (GET)**
 
 ```ts
 import { FetchHttpClient, HttpClient } from "@effect/platform"
 import { Effect } from "effect"
 
 const program = Effect.gen(function* () {
-  // access the HttpClient
+  // Access HttpClient
   const client = yield* HttpClient.HttpClient
 
+  // Create and execute a GET request
   const response = yield* client.get(
     "https://jsonplaceholder.typicode.com/posts/1"
   )
@@ -597,9 +596,9 @@ const program = Effect.gen(function* () {
 
   console.log(json)
 }).pipe(
-  // ensure the request is aborted if the program is interrupted
+  // Ensure request is aborted if the program is interrupted
   Effect.scoped,
-  // provide the HttpClient
+  // Provide the HttpClient
   Effect.provide(FetchHttpClient.layer)
 )
 
@@ -618,33 +617,62 @@ Output:
 */
 ```
 
-### Custom `HttpClient.Service`'s
+**Example: Creating and Executing a Custom Request**
 
-You can create your own `HttpClient.Service` using the `HttpClient.makeService` constructor.
+Using [HttpClientRequest](#httpclientrequest), you can create and then execute a request. This is useful for customizing the request further.
 
 ```ts
-import { HttpClient, HttpClientResponse } from "@effect/platform"
+import {
+  FetchHttpClient,
+  HttpClient,
+  HttpClientRequest
+} from "@effect/platform"
 import { Effect } from "effect"
 
-const myClient = HttpClient.makeService((req) =>
-  Effect.succeed(
-    HttpClientResponse.fromWeb(
-      req,
-      // Simulate a response from a server
-      new Response(
-        JSON.stringify({
-          userId: 1,
-          id: 1,
-          title: "title...",
-          body: "body..."
-        })
-      )
-    )
+const program = Effect.gen(function* () {
+  // Access HttpClient
+  const client = yield* HttpClient.HttpClient
+
+  // Create a GET request
+  const req = HttpClientRequest.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
   )
+
+  // Optionally customize the request
+
+  // Execute the request and get the response
+  const response = yield* client.execute(req)
+
+  const json = yield* response.json
+
+  console.log(json)
+}).pipe(
+  // Ensure request is aborted if the program is interrupted
+  Effect.scoped,
+  // Provide the HttpClient
+  Effect.provide(FetchHttpClient.layer)
 )
+
+Effect.runPromise(program)
+/*
+Output:
+{
+  userId: 1,
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+  body: 'quia et suscipit\n' +
+    'suscipit recusandae consequuntur expedita et cum\n' +
+    'reprehenderit molestiae ut ut quas totam\n' +
+    'nostrum rerum est autem sunt rem eveniet architecto'
+}
+*/
 ```
 
-## Tapping
+## Customize a HttpClient
+
+The `HttpClient` module allows you to customize the client in various ways. For instance, you can log details of a request before execution using the `tapRequest` function.
+
+**Example: Tapping**
 
 ```ts
 import { FetchHttpClient, HttpClient } from "@effect/platform"
@@ -689,6 +717,171 @@ Output:
 */
 ```
 
+**Operations Summary**
+
+| Operation                | Description                                                                             |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| `filterOrElse`           | Filters the result of a response, or runs an alternative effect if the predicate fails. |
+| `filterOrFail`           | Filters the result of a response, or throws an error if the predicate fails.            |
+| `filterStatus`           | Filters responses by HTTP status code.                                                  |
+| `filterStatusOk`         | Filters responses that return a 2xx status code.                                        |
+| `followRedirects`        | Follows HTTP redirects up to a specified number of times.                               |
+| `map`                    | Transforms the result of a request.                                                     |
+| `mapEffect`              | Transforms the result of a request using an effectful function.                         |
+| `mapRequest`             | Appends a transformation of the request object before sending it.                       |
+| `mapRequestEffect`       | Appends an effectful transformation of the request object before sending it.            |
+| `mapRequestInput`        | Prepends a transformation of the request object before sending it.                      |
+| `mapRequestInputEffect`  | Prepends an effectful transformation of the request object before sending it.           |
+| `retry`                  | Retries the request based on a provided schedule or policy.                             |
+| `schemaFunction`         | Creates a function that validates request data against a schema before sending it.      |
+| `scoped`                 | Ensures resources are properly scoped and released after execution.                     |
+| `tap`                    | Performs an additional effect after a successful request.                               |
+| `tapRequest`             | Performs an additional effect on the request before sending it.                         |
+| `withCookiesRef`         | Associates a `Ref` of cookies with the client for handling cookies across requests.     |
+| `withTracerDisabledWhen` | Disables tracing for specific requests based on a provided predicate.                   |
+| `withTracerPropagation`  | Enables or disables tracing propagation for the request.                                |
+
+### Mapping Requests
+
+Note that `mapRequest` and `mapRequestEffect` add transformations at the end of the request chain, while `mapRequestInput` and `mapRequestInputEffect` apply transformations at the start:
+
+```ts
+import { FetchHttpClient, HttpClient } from "@effect/platform"
+import { Effect } from "effect"
+
+const program = Effect.gen(function* () {
+  const client = (yield* HttpClient.HttpClient).pipe(
+    // Append transformation
+    HttpClient.mapRequest((req) => {
+      console.log(1)
+      return req
+    }),
+    // Another append transformation
+    HttpClient.mapRequest((req) => {
+      console.log(2)
+      return req
+    }),
+    // Prepend transformation, this executes first
+    HttpClient.mapRequestInput((req) => {
+      console.log(3)
+      return req
+    })
+  )
+
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+
+  const json = yield* response.json
+
+  console.log(json)
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+
+Effect.runPromise(program)
+/*
+Output:
+3
+1
+2
+{
+  userId: 1,
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+  body: 'quia et suscipit\n' +
+    'suscipit recusandae consequuntur expedita et cum\n' +
+    'reprehenderit molestiae ut ut quas totam\n' +
+    'nostrum rerum est autem sunt rem eveniet architecto'
+}
+*/
+```
+
+### Integration with Schema
+
+The `HttpClient.schemaFunction` allows you to integrate schemas into your HTTP client requests. This function ensures that the data you send conforms to a specified schema, enhancing type safety and validation.
+
+```ts
+import {
+  FetchHttpClient,
+  HttpClient,
+  HttpClientRequest
+} from "@effect/platform"
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+
+const program = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const addTodo = HttpClient.schemaFunction(
+    client,
+    Schema.Struct({
+      title: Schema.String,
+      body: Schema.String,
+      userId: Schema.Number
+    })
+  )(HttpClientRequest.post("https://jsonplaceholder.typicode.com/posts"))
+
+  const response = yield* addTodo({
+    title: "foo",
+    body: "bar",
+    userId: 1
+  })
+
+  const json = yield* response.json
+
+  console.log(json)
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+
+Effect.runPromise(program)
+/*
+Output:
+{ title: 'foo', body: 'bar', userId: 1, id: 101 }
+*/
+```
+
+## Create a Custom HttpClient
+
+You can create a custom `HttpClient.Service` using the `HttpClient.makeService` function. This allows you to simulate or mock server responses within your application.
+
+```ts
+import { HttpClient, HttpClientResponse } from "@effect/platform"
+import { Effect, Layer } from "effect"
+
+const myClient = HttpClient.makeService((req) =>
+  Effect.succeed(
+    HttpClientResponse.fromWeb(
+      req,
+      // Simulate a response from a server
+      new Response(
+        JSON.stringify({
+          userId: 1,
+          id: 1,
+          title: "title...",
+          body: "body..."
+        })
+      )
+    )
+  )
+)
+
+const program = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+  const json = yield* response.json
+  console.log(json)
+}).pipe(
+  Effect.scoped,
+  // Provide the HttpClient
+  Effect.provide(Layer.succeed(HttpClient.HttpClient, myClient))
+)
+
+Effect.runPromise(program)
+/*
+Output:
+{ userId: 1, id: 1, title: 'title...', body: 'body...' }
+*/
+```
+
 ## HttpClientRequest
 
 ### Overview
@@ -697,13 +890,13 @@ You can create a `HttpClientRequest` using the following provided constructors:
 
 | Constructor                 | Description               |
 | --------------------------- | ------------------------- |
-| `HttpClientRequest.get`     | Create a GET request      |
-| `HttpClientRequest.post`    | Create a POST request     |
-| `HttpClientRequest.patch`   | Create a PATCH request    |
-| `HttpClientRequest.put`     | Create a PUT request      |
 | `HttpClientRequest.del`     | Create a DELETE request   |
+| `HttpClientRequest.get`     | Create a GET request      |
 | `HttpClientRequest.head`    | Create a HEAD request     |
 | `HttpClientRequest.options` | Create an OPTIONS request |
+| `HttpClientRequest.patch`   | Create a PATCH request    |
+| `HttpClientRequest.post`    | Create a POST request     |
+| `HttpClientRequest.put`     | Create a PUT request      |
 
 ### Setting Headers
 
@@ -815,9 +1008,11 @@ Output:
 
 ## GET
 
-### Converting to JSON
+### Converting the Response
 
-To convert a GET response to JSON:
+The `HttpClientResponse` provides several methods to convert a response into different formats.
+
+**Example: Converting to JSON**
 
 ```ts
 import { FetchHttpClient, HttpClient } from "@effect/platform"
@@ -850,16 +1045,14 @@ object {
 */
 ```
 
-### Converting to Text
-
-To convert a GET response to text:
+**Example: Converting to Text**
 
 ```ts
 import { FetchHttpClient, HttpClient } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
-const getPostAsJson = Effect.gen(function* () {
+const getPostAsText = Effect.gen(function* () {
   const client = yield* HttpClient.HttpClient
   const response = yield* client.get(
     "https://jsonplaceholder.typicode.com/posts/1"
@@ -867,7 +1060,7 @@ const getPostAsJson = Effect.gen(function* () {
   return yield* response.text
 }).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
 
-getPostAsJson.pipe(
+getPostAsText.pipe(
   Effect.andThen((post) => Console.log(typeof post, post)),
   NodeRuntime.runMain
 )
@@ -885,22 +1078,20 @@ string {
 */
 ```
 
-### More on Converting the Response
+**Methods Summary**
 
-Here are some APIs you can use to convert the response:
-
-| API                      | Description                           |
-| ------------------------ | ------------------------------------- |
-| `response.arrayBuffer`   | Convert to `ArrayBuffer`              |
-| `response.formData`      | Convert to `FormData`                 |
-| `response.json`          | Convert to JSON                       |
-| `response.stream`        | Convert to a `Stream` of `Uint8Array` |
-| `response.text`          | Convert to text                       |
-| `response.urlParamsBody` | Convert to `UrlParams`                |
+| Method          | Description                           |
+| --------------- | ------------------------------------- |
+| `arrayBuffer`   | Convert to `ArrayBuffer`              |
+| `formData`      | Convert to `FormData`                 |
+| `json`          | Convert to JSON                       |
+| `stream`        | Convert to a `Stream` of `Uint8Array` |
+| `text`          | Convert to text                       |
+| `urlParamsBody` | Convert to `UrlParams`                |
 
 ### Decoding Data with Schemas
 
-A common use case when fetching data is to validate the received format. For this purpose, the `HttpClient` module is integrated with `@effect/schema`.
+A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `@effect/schema`.
 
 ```ts
 import {
@@ -917,12 +1108,6 @@ const Post = Schema.Struct({
   title: Schema.String
 })
 
-/*
-const getPostAndValidate: Effect.Effect<{
-    readonly id: number;
-    readonly title: string;
-}, HttpClientError | ParseError, never>
-*/
 const getPostAndValidate = Effect.gen(function* () {
   const client = yield* HttpClient.HttpClient
   const response = yield* client.get(
@@ -947,9 +1132,9 @@ Note that we use `Effect.scoped` after consuming the response. This ensures that
 
 ### Filtering And Error Handling
 
-It's important to note that `HttpClient.fetch` doesn't consider non-`200` status codes as errors by default. This design choice allows for flexibility in handling different response scenarios. For instance, you might have a schema union where the status code serves as the discriminator, enabling you to define a schema that encompasses all possible response cases.
+It's important to note that `HttpClient.get` doesn't consider non-`200` status codes as errors by default. This design choice allows for flexibility in handling different response scenarios. For instance, you might have a schema union where the status code serves as the discriminator, enabling you to define a schema that encompasses all possible response cases.
 
-You can use `HttpClient.filterStatusOk`, or `HttpClient.fetchOk` to ensure only `2xx` responses are treated as successes.
+You can use `HttpClient.filterStatusOk` to ensure only `2xx` responses are treated as successes.
 
 In this example, we attempt to fetch a non-existent page and don't receive any error:
 
@@ -991,8 +1176,9 @@ const getText = Effect.gen(function* () {
 getText.pipe(Effect.andThen(Console.log), NodeRuntime.runMain)
 /*
 Output:
-timestamp=... level=ERROR fiber=#0 cause="ResponseError: StatusCode error (404 GET https://jsonplaceholder.typicode.com/non-existing-page): non 2xx status code
-    ... stack trace ...
+[17:37:59.923] ERROR (#0):
+  ResponseError: StatusCode: non 2xx status code (404 GET https://jsonplaceholder.typicode.com/non-existing-page)
+      ... stack trace ...
 */
 ```
 
@@ -1073,7 +1259,7 @@ Output:
 
 ### Decoding Data with Schemas
 
-A common use case when fetching data is to validate the received format. For this purpose, the `HttpClient` module is integrated with `@effect/schema`.
+A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `@effect/schema`.
 
 ```ts
 import {
