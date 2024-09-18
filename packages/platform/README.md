@@ -728,15 +728,114 @@ Output:
 | `followRedirects`        | Follows HTTP redirects up to a specified number of times.                               |
 | `map`                    | Transforms the result of a request.                                                     |
 | `mapEffect`              | Transforms the result of a request using an effectful function.                         |
-| `mapRequest`             | Transforms the request object before sending it.                                        |
-| `mapRequestEffect`       | Transforms the request object with an effectful function before sending it.             |
+| `mapRequest`             | Appends a transformation of the request object before sending it.                       |
+| `mapRequestEffect`       | Appends an effectful transformation of the request object before sending it.            |
+| `mapRequestInput`        | Prepends a transformation of the request object before sending it.                      |
+| `mapRequestInputEffect`  | Prepends an effectful transformation of the request object before sending it.           |
 | `retry`                  | Retries the request based on a provided schedule or policy.                             |
+| `schemaFunction`         | Creates a function that validates request data against a schema before sending it.      |
 | `scoped`                 | Ensures resources are properly scoped and released after execution.                     |
 | `tap`                    | Performs an additional effect after a successful request.                               |
 | `tapRequest`             | Performs an additional effect on the request before sending it.                         |
 | `withCookiesRef`         | Associates a `Ref` of cookies with the client for handling cookies across requests.     |
 | `withTracerDisabledWhen` | Disables tracing for specific requests based on a provided predicate.                   |
 | `withTracerPropagation`  | Enables or disables tracing propagation for the request.                                |
+
+### Mapping Requests
+
+Note that `mapRequest` and `mapRequestEffect` add transformations at the end of the request chain, while `mapRequestInput` and `mapRequestInputEffect` apply transformations at the start:
+
+```ts
+import { FetchHttpClient, HttpClient } from "@effect/platform"
+import { Effect } from "effect"
+
+const program = Effect.gen(function* () {
+  const client = (yield* HttpClient.HttpClient).pipe(
+    // Append transformation
+    HttpClient.mapRequest((req) => {
+      console.log(1)
+      return req
+    }),
+    // Another append transformation
+    HttpClient.mapRequest((req) => {
+      console.log(2)
+      return req
+    }),
+    // Prepend transformation, this executes first
+    HttpClient.mapRequestInput((req) => {
+      console.log(3)
+      return req
+    })
+  )
+
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+
+  const json = yield* response.json
+
+  console.log(json)
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+
+Effect.runPromise(program)
+/*
+Output:
+3
+1
+2
+{
+  userId: 1,
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+  body: 'quia et suscipit\n' +
+    'suscipit recusandae consequuntur expedita et cum\n' +
+    'reprehenderit molestiae ut ut quas totam\n' +
+    'nostrum rerum est autem sunt rem eveniet architecto'
+}
+*/
+```
+
+### Integration with Schema
+
+The `HttpClient.schemaFunction` allows you to integrate schemas into your HTTP client requests. This function ensures that the data you send conforms to a specified schema, enhancing type safety and validation.
+
+```ts
+import {
+  FetchHttpClient,
+  HttpClient,
+  HttpClientRequest
+} from "@effect/platform"
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+
+const program = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const addTodo = HttpClient.schemaFunction(
+    client,
+    Schema.Struct({
+      title: Schema.String,
+      body: Schema.String,
+      userId: Schema.Number
+    })
+  )(HttpClientRequest.post("https://jsonplaceholder.typicode.com/posts"))
+
+  const response = yield* addTodo({
+    title: "foo",
+    body: "bar",
+    userId: 1
+  })
+
+  const json = yield* response.json
+
+  console.log(json)
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+
+Effect.runPromise(program)
+/*
+Output:
+{ title: 'foo', body: 'bar', userId: 1, id: 101 }
+*/
+```
 
 ## Create a Custom HttpClient
 
