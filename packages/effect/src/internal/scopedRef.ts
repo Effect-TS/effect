@@ -26,6 +26,15 @@ const scopedRefVariance = {
 }
 
 /** @internal  */
+const proto: ThisType<ScopedRef.ScopedRef<any>> = {
+  ...effectable.CommitPrototype,
+  commit() {
+    return get(this)
+  },
+  [ScopedRefTypeId]: scopedRefVariance
+}
+
+/** @internal  */
 const close = <A>(self: ScopedRef.ScopedRef<A>): Effect.Effect<void> =>
   core.flatMap(ref.get(self.ref), (tuple) => tuple[0].close(core.exitVoid))
 
@@ -41,14 +50,8 @@ export const fromAcquire = <A, E, R>(
         core.flatMap((value) =>
           circular.makeSynchronized([newScope, value] as const).pipe(
             core.flatMap((ref) => {
-              const scopedRef = {
-                ...effectable.CommitPrototype,
-                commit() {
-                  return get(this)
-                },
-                [ScopedRefTypeId]: scopedRefVariance,
-                ref
-              }
+              const scopedRef = Object.create(proto)
+              scopedRef.ref = ref
               return pipe(
                 fiberRuntime.addFinalizer(() => close(scopedRef)),
                 core.as(scopedRef)

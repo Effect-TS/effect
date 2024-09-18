@@ -24,6 +24,15 @@ const resourceVariance = {
   _A: (_: any) => _
 }
 
+/** @internal  */
+const proto: ThisType<Resource.Resource<any, any>> = {
+  ...effectable.CommitPrototype,
+  commit() {
+    return get(this)
+  },
+  [ResourceTypeId]: resourceVariance
+}
+
 /** @internal */
 export const auto = <A, E, R, Out, R2>(
   acquire: Effect.Effect<A, E, R>,
@@ -48,15 +57,9 @@ export const manual = <A, E, R>(
     pipe(
       scopedRef.fromAcquire(core.exit(acquire)),
       core.map((ref) => {
-        const resource = {
-          ...effectable.CommitPrototype,
-          commit() {
-            return get(this)
-          },
-          [ResourceTypeId]: resourceVariance,
-          scopedRef: ref,
-          acquire: core.provideContext(acquire, env)
-        }
+        const resource = Object.create(proto)
+        resource.scopedRef = ref
+        resource.acquire = core.provideContext(acquire, env)
         return resource
       })
     ))
