@@ -837,6 +837,34 @@ Output:
 */
 ```
 
+## RequestInit Options
+
+You can customize the `HttpClient` by passing `RequestInit` options to configure aspects of the HTTP requests, such as credentials, headers, and more.
+
+In this example, we customize the `HttpClient` to include credentials with every request:
+
+```ts
+import { FetchHttpClient, HttpClient } from "@effect/platform"
+import { Effect, Layer } from "effect"
+
+const CustomFetchLive = FetchHttpClient.layer.pipe(
+  Layer.provide(
+    Layer.succeed(FetchHttpClient.RequestInit, {
+      credentials: "include"
+    })
+  )
+)
+
+const program = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+  const json = yield* response.json
+  console.log(json)
+}).pipe(Effect.scoped, Effect.provide(CustomFetchLive))
+```
+
 ## Create a Custom HttpClient
 
 You can create a custom `HttpClient.Service` using the `HttpClient.makeService` function. This allows you to simulate or mock server responses within your application.
