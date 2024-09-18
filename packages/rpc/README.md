@@ -75,7 +75,7 @@ This section introduces how to configure a router using an imaginary database se
 
 ```ts filename="router.ts"
 // router.ts
-import { Router, Rpc } from "@effect/rpc"
+import { RpcRouter, Rpc } from "@effect/rpc"
 import { Effect, Ref } from "effect"
 import { User, UserById, UserCreate, UserList } from "./request.js"
 
@@ -112,7 +112,7 @@ const db = {
 // Router
 // ---------------------------------------------
 
-export const appRouter = Router.make(
+export const appRouter = RpcRouter.make(
   Rpc.effect(UserList, () => db.user.findMany()),
   Rpc.effect(UserById, ({ id }) => db.user.findById(id)),
   Rpc.effect(UserCreate, ({ name }) => db.user.create(name))
