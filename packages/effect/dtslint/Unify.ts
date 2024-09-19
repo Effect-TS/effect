@@ -149,5 +149,6 @@ export type AllUnify = Unify.Unify<
   | ScopedRef.ScopedRef<"a">
   | Resource.Resource<1, 2>
   | Resource.Resource<"a">
+  | Effect.Latch
   | 0
 >
