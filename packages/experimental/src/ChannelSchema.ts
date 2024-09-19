@@ -97,7 +97,7 @@ export const decodeUnknown: <A, I, R>(
   schema: Schema.Schema<A, I, R>
 ) => <IE = never, Done = unknown>() => Channel.Channel<
   Chunk.Chunk<A>,
-  Chunk.Chunk<unknown>,
+  Chunk.Chunk<any>,
   ParseError | IE,
   IE,
   Done,
@@ -197,7 +197,7 @@ export const duplexUnknown: {
   }): <R, InErr, OutErr, OutDone, InDone>(
     self: Channel.Channel<
       Chunk.Chunk<unknown>,
-      Chunk.Chunk<unknown>,
+      Chunk.Chunk<any>,
       OutErr,
       ParseError | InErr,
       OutDone,
@@ -216,7 +216,7 @@ export const duplexUnknown: {
   <R, InErr, OutErr, OutDone, InDone, IA, II, IR, OA, OI, OR>(
     self: Channel.Channel<
       Chunk.Chunk<unknown>,
-      Chunk.Chunk<unknown>,
+      Chunk.Chunk<any>,
       OutErr,
       ParseError | InErr,
       OutDone,
