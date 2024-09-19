@@ -9,6 +9,8 @@ import type * as Option from "effect/Option"
 import type * as Queue from "effect/Queue"
 import type * as RcRef from "effect/RcRef"
 import type * as Ref from "effect/Ref"
+import type * as Resource from "effect/Resource"
+import type * as ScopedRef from "effect/ScopedRef"
 import type * as Stream from "effect/Stream"
 import type * as SubscriptionRef from "effect/SubscriptionRef"
 import type * as SynchronizedRef from "effect/SynchronizedRef"
@@ -109,8 +111,21 @@ export type DequeueUnify = Unify.Unify<
   | Queue.Dequeue<1>
   | Queue.Dequeue<"a">
 >
+// $ExpectType ScopedRef<1> | ScopedRef<"a">
+export type ScopedRefUnify = Unify.Unify<
+  | ScopedRef.ScopedRef<1>
+  | ScopedRef.ScopedRef<"a">
+>
+// $ExpectType Resource<1, never> | Resource<never, 2> | Resource<1, 2> | Resource<"a", "b"> | Resource<any, any>
+export type ResourceUnify = Unify.Unify<
+  | Resource.Resource<1>
+  | Resource.Resource<never, 2>
+  | Resource.Resource<1, 2>
+  | Resource.Resource<"a", "b">
+  | Resource.Resource<any, any>
+>
 
-// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
+// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | ScopedRef<1> | ScopedRef<"a"> | Resource<1, 2> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Resource<"a", never> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
 export type AllUnify = Unify.Unify<
   | Either.Either<1, 0>
   | Either.Either<"A", "E">
@@ -138,5 +153,9 @@ export type AllUnify = Unify.Unify<
   | Queue.Queue<"a">
   | Queue.Dequeue<1>
   | Queue.Dequeue<"a">
+  | ScopedRef.ScopedRef<1>
+  | ScopedRef.ScopedRef<"a">
+  | Resource.Resource<1, 2>
+  | Resource.Resource<"a">
   | 0
 >
