@@ -9,3 +9,4 @@ docs/
 scratchpad/
 .direnv/
 .idea/
+.env
