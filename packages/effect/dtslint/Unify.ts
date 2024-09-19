@@ -117,7 +117,7 @@ export type ResourceUnify = Unify.Unify<
   | Resource.Resource<any, any>
 >
 
-// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | ScopedRef<1> | ScopedRef<"a"> | Resource<1, 2> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Resource<"a", never> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
+// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | ScopedRef<1> | ScopedRef<"a"> | Resource<1, 2> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Resource<"a", never> | Latch | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
 export type AllUnify = Unify.Unify<
   | Either.Either<1, 0>
   | Either.Either<"A", "E">
