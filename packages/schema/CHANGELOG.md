@@ -1,5 +1,49 @@
 # @effect/schema
 
+## 0.73.3
+
+### Patch Changes
+
+- [#3635](https://github.com/Effect-TS/effect/pull/3635) [`e6440a7`](https://github.com/Effect-TS/effect/commit/e6440a74fb3f12f6422ed794c07cb44af91cbacc) Thanks @gcanti! - Stable filters such as `minItems`, `maxItems`, and `itemsCount` now generate multiple errors when the 'errors' option is set to 'all', closes #3633
+
+  **Example:**
+
+  ```ts
+  import { ArrayFormatter, Schema } from "@effect/schema"
+
+  const schema = Schema.Struct({
+    tags: Schema.Array(Schema.String.pipe(Schema.minLength(2))).pipe(
+      Schema.minItems(3)
+    )
+  })
+
+  const invalidData = { tags: ["AB", "B"] }
+
+  const either = Schema.decodeUnknownEither(schema, { errors: "all" })(
+    invalidData
+  )
+  if (either._tag === "Left") {
+    console.log(ArrayFormatter.formatErrorSync(either.left))
+    /*
+    Output:
+    [
+      {
+        _tag: 'Type',
+        path: [ 'tags', 1 ],
+        message: 'Expected a string at least 2 character(s) long, actual "B"'
+      },
+      {
+        _tag: 'Type',
+        path: [ 'tags' ],
+        message: 'Expected an array of at least 3 items, actual ["AB","B"]'
+      }
+    ]
+    */
+  }
+  ```
+
+  Previously, only the issue related to the `[ 'tags', 1 ]` path was reported.
+
 ## 0.73.2
 
 ### Patch Changes
