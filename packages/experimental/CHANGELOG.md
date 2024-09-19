@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.26.4
+
+### Patch Changes
+
+- [#3632](https://github.com/Effect-TS/effect/pull/3632) [`b86b47d`](https://github.com/Effect-TS/effect/commit/b86b47d57ca30e1c3587a134a4c79aaf7bfa8980) Thanks @tim-smart! - fix assignability of ChannelSchema apis
+
 ## 0.26.3
 
 ### Patch Changes
