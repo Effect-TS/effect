@@ -324,14 +324,18 @@ const go = (
           return merge(getJsonSchemaAnnotations(ast), handler)
         }
       } else if (!isOverrideAnnotation(handler)) {
-        return go(t, $defs, true, path)
+        return merge(merge(go(t, $defs, true, path), handler), getJsonSchemaAnnotations(ast))
       }
     }
     return handler
   }
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
-    return go(surrogate.value, $defs, handleIdentifier, path)
+    return {
+      ...(AST.isTransformation(ast) ? getJsonSchemaAnnotations(ast.to) : {}),
+      ...getJsonSchemaAnnotations(ast),
+      ...go(surrogate.value, $defs, handleIdentifier, path)
+    }
   }
   if (handleIdentifier && !AST.isTransformation(ast)) {
     const identifier = AST.getJSONIdentifier(ast)
@@ -557,15 +561,27 @@ const go = (
       if (Option.isNone(identifier)) {
         throw new Error(errors_.getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
       }
-      return go(ast.f(), $defs, true, path)
+      return merge(
+        getJsonSchemaAnnotations(ast) as JsonSchema7,
+        go(ast.f(), $defs, true, path)
+      )
     }
     case "Transformation": {
       // Properly handle S.parseJson transformations by focusing on
       // the 'to' side of the AST. This approach prevents the generation of useless schemas
       // derived from the 'from' side (type: string), ensuring the output matches the intended
       // complex schema type.
-      const next = isParseJsonTransformation(ast.from) ? ast.to : ast.from
-      return go(next, $defs, true, path)
+      if (isParseJsonTransformation(ast.from)) {
+        return {
+          ...getJsonSchemaAnnotations(ast),
+          ...go(ast.to, $defs, true, path)
+        }
+      }
+      return {
+        ...getJsonSchemaAnnotations(ast.to),
+        ...getJsonSchemaAnnotations(ast),
+        ...go(ast.from, $defs, true, path)
+      }
     }
   }
 }

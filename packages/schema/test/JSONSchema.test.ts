@@ -1515,7 +1515,9 @@ schema (Suspend): <suspended schema>`
             "type": "string"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "an instance of A",
+        "title": "A"
       })
     })
 
@@ -1532,7 +1534,9 @@ schema (Suspend): <suspended schema>`
             "type": "string"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "an instance of A",
+        "title": "A"
       })
     })
 
@@ -1929,17 +1933,24 @@ schema (Suspend): <suspended schema>`
     it("refinement of a transformation without an override annotation", () => {
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString()), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "string"
+        "type": "string",
+        "title": "Trimmed",
+        "description": "a non empty string",
+        "minLength": 1
       }, false)
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "string"
+        "description": "a non empty string",
+        "type": "string",
+        "title": "Description"
       }, false)
       expectJSONSchema(
         Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "type": "string"
+          "description": "a non empty string",
+          "type": "string",
+          "title": "Description"
         },
         false
       )
@@ -1960,7 +1971,9 @@ schema (Suspend): <suspended schema>`
           ],
           "properties": {
             "a": {
-              "type": "string"
+              "type": "string",
+              "title": "NumberFromString",
+              "description": "a number parsed from a string"
             }
           },
           "additionalProperties": false
@@ -2139,7 +2152,8 @@ schema (Suspend): <suspended schema>`
                   {
                     "enum": [null]
                   }
-                ]
+                ],
+                "description": "Option<NonEmptyString>"
               }
             },
             "additionalProperties": false
@@ -2159,7 +2173,13 @@ schema (Suspend): <suspended schema>`
         "$schema": "http://json-schema.org/draft-07/schema#",
         type: "object",
         required: ["a"],
-        properties: { a: { type: "string" } },
+        properties: {
+          a: {
+            description: "a number parsed from a string",
+            title: "NumberFromString",
+            type: "string"
+          }
+        },
         additionalProperties: false
       },
       false
@@ -2198,11 +2218,16 @@ schema (Suspend): <suspended schema>`
       }),
       {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        description: "ReadonlyMap<a string at least 2 character(s) long, number>",
         type: "object",
         required: [],
         properties: {},
         "patternProperties": {
-          "": { type: "string" }
+          "": {
+            description: "a number parsed from a string",
+            title: "NumberFromString",
+            type: "string"
+          }
         },
         "propertyNames": {
           "description": "a string at least 2 character(s) long",
@@ -2222,10 +2247,15 @@ schema (Suspend): <suspended schema>`
       {
         "$schema": "http://json-schema.org/draft-07/schema#",
         type: "object",
+        description: "Map<a string at least 2 character(s) long, number>",
         required: [],
         properties: {},
         "patternProperties": {
-          "": { type: "string" }
+          "": {
+            description: "a number parsed from a string",
+            title: "NumberFromString",
+            type: "string"
+          }
         },
         "propertyNames": {
           "description": "a string at least 2 character(s) long",
