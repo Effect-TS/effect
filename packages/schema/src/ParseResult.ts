@@ -808,23 +808,34 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     case "Refinement": {
       if (isDecoding) {
         const from = goMemo(ast.from, true)
-        return (i, options) =>
-          handleForbidden(
-            flatMap(
-              mapError(from(i, options), (e) => new Refinement(ast, i, "From", e)),
-              (a) =>
-                Option.match(
-                  ast.filter(a, options ?? AST.defaultParseOption, ast),
+        return (i, options) => {
+          options = options ?? AST.defaultParseOption
+          const allErrors = options?.errors === "all"
+          const result = flatMap(
+            orElse(from(i, options), (ef) => {
+              const issue = new Refinement(ast, i, "From", ef)
+              if (allErrors && AST.hasStableFilter(ast)) {
+                return Option.match(
+                  ast.filter(i, options, ast),
                   {
-                    onNone: () => Either.right(a),
-                    onSome: (e) => Either.left(new Refinement(ast, i, "Predicate", e))
+                    onNone: () => Either.left<ParseIssue>(issue),
+                    onSome: (ep) => Either.left(new Composite(ast, i, [issue, new Refinement(ast, i, "Predicate", ep)]))
                   }
                 )
-            ),
-            ast,
-            i,
-            options
+              }
+              return Either.left(issue)
+            }),
+            (a) =>
+              Option.match(
+                ast.filter(a, options, ast),
+                {
+                  onNone: () => Either.right(a),
+                  onSome: (ep) => Either.left(new Refinement(ast, i, "Predicate", ep))
+                }
+              )
           )
+          return handleForbidden(result, ast, i, options)
+        }
       } else {
         const from = goMemo(AST.typeAST(ast), true)
         const to = goMemo(dropRightRefinement(ast.from), false)

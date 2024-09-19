@@ -259,7 +259,13 @@ export type SurrogateAnnotation = AST
 /** @internal */
 export const StableFilterAnnotationId = Symbol.for("@effect/schema/annotation/StableFilter")
 
-/** @internal */
+/**
+ * A stable filter consistently applies fixed validation rules, such as
+ * 'minItems', 'maxItems', and 'itemsCount', to ensure array length complies
+ * with set criteria regardless of the input data's content.
+ *
+ * @internal
+ */
 export type StableFilterAnnotation = boolean
 
 /**
@@ -389,6 +395,10 @@ export const getDecodingFallbackAnnotation = getAnnotation<DecodingFallbackAnnot
 export const getSurrogateAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)
 
 const getStableFilterAnnotation = getAnnotation<StableFilterAnnotation>(StableFilterAnnotationId)
+
+/** @internal */
+export const hasStableFilter = (annotated: Annotated) =>
+  Option.exists(getStableFilterAnnotation(annotated), (b) => b === true)
 
 const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
 
@@ -2552,11 +2562,8 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
         if (from === ast.from) {
           return ast
         }
-        if (!isTransformation(ast.from)) {
-          const annotations = getStableFilterAnnotation(ast)
-          if (Option.isSome(annotations) && annotations.value === true) {
-            return new Refinement(from, ast.filter)
-          }
+        if (!isTransformation(ast.from) && hasStableFilter(ast)) {
+          return new Refinement(from, ast.filter)
         }
       }
       return from
