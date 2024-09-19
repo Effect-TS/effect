@@ -189,9 +189,9 @@ export const searchParamsParser = <E, R>(httpApp: App.Default<E, R>) =>
     E,
     ServerRequest.HttpServerRequest | Exclude<R, ServerRequest.ParsedSearchParams>
   >((fiber) => {
-    const context = fiber.getFiberRef(FiberRef.currentContext)
+    const context = fiber.currentContext
     const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
-    const params = ServerRequest.searchParamsFromURL(new URL(request.url))
+    const params = ServerRequest.searchParamsFromURL(new URL(request.originalUrl))
     return Effect.locally(
       httpApp,
       FiberRef.currentContext,
