@@ -79,4 +79,10 @@ describe("ScopedRef", () => {
       const ref = yield* _(Effect.scoped(ScopedRef.make(() => 0)))
       expect(ref.pipe(identity)).toBe(ref)
     }))
+  it.scoped("subtype of Effect", () =>
+    Effect.gen(function*() {
+      const ref = yield* ScopedRef.make(() => 0)
+      const result = yield* ref
+      assert.strictEqual(result, 0)
+    }))
 })
