@@ -1,5 +1,14 @@
 # @effect/opentelemetry
 
+## 0.37.3
+
+### Patch Changes
+
+- [#3644](https://github.com/Effect-TS/effect/pull/3644) [`bb5ec6b`](https://github.com/Effect-TS/effect/commit/bb5ec6b4b6a6f537394596c5a596faf52cb2aef4) Thanks @tim-smart! - fix encoding of logs to tracer span events
+
+- Updated dependencies [[`bb5ec6b`](https://github.com/Effect-TS/effect/commit/bb5ec6b4b6a6f537394596c5a596faf52cb2aef4)]:
+  - effect@3.8.3
+
 ## 0.37.2
 
 ### Patch Changes
