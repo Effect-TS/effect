@@ -5408,7 +5408,7 @@ export const makeSemaphore: (permits: number) => Effect<Semaphore> = circular.ma
  * @category latch
  * @since 3.8.0
  */
-export interface Latch {
+export interface Latch extends Effect<void> {
   /** open the latch, releasing all fibers waiting on it */
   readonly open: Effect<void>
   /** release all fibers waiting on the latch, without opening it */
@@ -5419,6 +5419,26 @@ export interface Latch {
   readonly close: Effect<void>
   /** only run the given effect when the latch is open */
   readonly whenOpen: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: LatchUnify<this>
+  readonly [Unify.ignoreSymbol]?: LatchUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface LatchUnify<A extends { [Unify.typeSymbol]?: any }> extends EffectUnify<A> {
+  Latch?: () => Latch
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface LatchUnifyIgnore extends EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**
