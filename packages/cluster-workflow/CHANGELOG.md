@@ -1,5 +1,15 @@
 # @effect/cluster
 
+## 0.7.6
+
+### Patch Changes
+
+- Updated dependencies [[`bb5ec6b`](https://github.com/Effect-TS/effect/commit/bb5ec6b4b6a6f537394596c5a596faf52cb2aef4)]:
+  - effect@3.8.3
+  - @effect/cluster@0.8.6
+  - @effect/sql@0.12.6
+  - @effect/schema@0.73.4
+
 ## 0.7.5
 
 ### Patch Changes
