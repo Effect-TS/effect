@@ -99,7 +99,7 @@ export const make = (
         params: ReadonlyArray<Statement.Primitive> = []
       ) =>
         Effect.try({
-          try: () => db.query(sql).all(...(params as any)) as Array<any>,
+          try: () => (db.query(sql).all(...(params as any)) ?? []) as Array<any>,
           catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
@@ -112,7 +112,7 @@ export const make = (
         params: ReadonlyArray<Statement.Primitive> = []
       ) =>
         Effect.try({
-          try: () => db.query(sql).values(...(params as any)) as Array<any>,
+          try: () => (db.query(sql).values(...(params as any)) ?? []) as Array<any>,
           catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
