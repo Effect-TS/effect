@@ -25,6 +25,7 @@
     { "path": "packages/sql-d1" },
     { "path": "packages/sql-drizzle" },
     { "path": "packages/sql-kysely" },
+    { "path": "packages/sql-libsql" },
     { "path": "packages/sql-mssql" },
     { "path": "packages/sql-mysql2" },
     { "path": "packages/sql-pg" },
