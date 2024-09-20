@@ -1,5 +1,11 @@
 # @effect/sql-sqlite-bun
 
+## 0.12.7
+
+### Patch Changes
+
+- [#3645](https://github.com/Effect-TS/effect/pull/3645) [`7720db6`](https://github.com/Effect-TS/effect/commit/7720db6bcb7d9211894f870668116bbd82c83264) Thanks @tim-smart! - ensure sqlite-bun returns array values
+
 ## 0.12.6
 
 ### Patch Changes
