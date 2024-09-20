@@ -121,7 +121,7 @@ class AiChatImpl implements AiChat.Service {
         )
       }),
       this.semaphore.withPermits(1),
-      Effect.withSpan("AiChat.send", { attributes: { input } })
+      Effect.withSpan("AiChat.send", { attributes: { input }, captureStackTrace: false })
     )
   }
 
@@ -148,7 +148,7 @@ class AiChatImpl implements AiChat.Service {
             this.semaphore.release(1)
           )
       ))
-    }).pipe(Stream.withSpan("AiChat.sendStream", { attributes: { input } }))
+    }).pipe(Stream.withSpan("AiChat.stream", { attributes: { input }, captureStackTrace: false }))
   }
 
   structured<A, I, R>(
@@ -171,7 +171,7 @@ class AiChatImpl implements AiChat.Service {
         )
       }),
       this.semaphore.withPermits(1),
-      Effect.withSpan("AiChat.structured", { attributes: { input, tool: tool._tag } })
+      Effect.withSpan("AiChat.structured", { attributes: { input, tool: tool._tag }, captureStackTrace: false })
     )
   }
 
@@ -200,7 +200,7 @@ class AiChatImpl implements AiChat.Service {
         )
       }),
       this.semaphore.withPermits(1),
-      Effect.withSpan("AiChat.toolkit", { attributes: { input: options.input } })
+      Effect.withSpan("AiChat.toolkit", { attributes: { input: options.input }, captureStackTrace: false })
     )
   }
 
@@ -238,7 +238,7 @@ class AiChatImpl implements AiChat.Service {
             this.semaphore.release(1)
           )
       ))
-    }).pipe(Stream.withSpan("AiChat.toolkitStream", { attributes: { input: options.input } }))
+    }).pipe(Stream.withSpan("AiChat.toolkitStream", { attributes: { input: options.input }, captureStackTrace: false }))
   }
 }
 
