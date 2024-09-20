@@ -165,7 +165,12 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "model": S.Union(
     S.String,
     S.Literal(
+      "o1-preview",
+      "o1-preview-2024-09-12",
+      "o1-mini",
+      "o1-mini-2024-09-12",
       "gpt-4o",
+      "gpt-4o-2024-08-06",
       "gpt-4o-2024-05-13",
       "gpt-4o-2024-08-06",
       "chatgpt-4o-latest",
@@ -200,6 +205,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "logprobs": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
   "top_logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(20)), { nullable: true }),
   "max_tokens": S.optionalWith(S.Int, { nullable: true }),
+  "max_completion_tokens": S.optionalWith(S.Int, { nullable: true }),
   "n": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(128)), {
     nullable: true,
     default: () => 1 as const
@@ -258,7 +264,10 @@ export class ChatCompletionTokenLogprob extends S.Struct({
 export class CompletionUsage extends S.Struct({
   "completion_tokens": S.Int,
   "prompt_tokens": S.Int,
-  "total_tokens": S.Int
+  "total_tokens": S.Int,
+  "completion_tokens_details": S.optional(S.Struct({
+    "reasoning_tokens": S.optional(S.Int)
+  }))
 }) {}
 
 export class CreateChatCompletionResponse
@@ -603,7 +612,7 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
       { default: () => "auto" as const }
     )
   })),
-  "suffix": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(40)), { nullable: true }),
+  "suffix": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(64)), { nullable: true }),
   "validation_file": S.optionalWith(S.String, { nullable: true }),
   "integrations": S.optionalWith(
     S.Array(S.Struct({
@@ -745,7 +754,7 @@ export class AssistantToolsCode extends S.Struct({
 
 export class FileSearchRankingOptions extends S.Struct({
   "ranker": S.optional(S.Literal("auto", "default_2024_08_21")),
-  "score_threshold": S.optional(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)))
+  "score_threshold": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1))
 }) {}
 
 export class AssistantToolsFileSearch extends S.Struct({
@@ -1948,7 +1957,9 @@ export class Project extends S.Struct({
   "name": S.String,
   "created_at": S.Int,
   "archived_at": S.optionalWith(S.Int, { nullable: true }),
-  "status": S.Literal("active", "archived")
+  "status": S.Literal("active", "archived"),
+  "app_use_case": S.optional(S.String),
+  "business_website": S.optional(S.String)
 }) {}
 
 export class ProjectListResponse extends S.Class<ProjectListResponse>("ProjectListResponse")({
@@ -1960,11 +1971,15 @@ export class ProjectListResponse extends S.Class<ProjectListResponse>("ProjectLi
 }) {}
 
 export class ProjectCreateRequest extends S.Class<ProjectCreateRequest>("ProjectCreateRequest")({
-  "name": S.String
+  "name": S.String,
+  "app_use_case": S.optional(S.String),
+  "business_website": S.optional(S.String)
 }) {}
 
 export class ProjectUpdateRequest extends S.Class<ProjectUpdateRequest>("ProjectUpdateRequest")({
-  "name": S.String
+  "name": S.String,
+  "app_use_case": S.optional(S.String),
+  "business_website": S.optional(S.String)
 }) {}
 
 export class Error extends S.Struct({
@@ -2108,17 +2123,17 @@ export const make = (httpClient: HttpClient.HttpClient.Service): Client => {
     request: HttpClientRequest.HttpClientRequest,
     response: HttpClientResponse.HttpClientResponse
   ) =>
-    response.json.pipe(
-      Effect.flatMap((json) =>
+    Effect.flatMap(
+      Effect.orElseSucceed(response.text, () => "Unexpected status code"),
+      (description) =>
         Effect.fail(
           new HttpClientError.ResponseError({
             request,
             response,
             reason: "StatusCode",
-            description: JSON.stringify(json)
+            description
           })
         )
-      )
     )
   const decodeError = <A, I, R>(response: HttpClientResponse.HttpClientResponse, schema: S.Schema<A, I, R>) =>
     Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)(response), Effect.fail)
