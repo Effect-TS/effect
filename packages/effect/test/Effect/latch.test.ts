@@ -30,4 +30,14 @@ describe("Latch", () => {
       yield* latch.release
       assert.deepStrictEqual(yield* fiber.await, Exit.void)
     }))
+
+  it.effect("subtype of Effect", () =>
+    Effect.gen(function*() {
+      const latch = yield* Effect.makeLatch()
+      const fiber = yield* Effect.fork(latch)
+
+      yield* latch.open
+
+      assert.deepStrictEqual(yield* fiber.await, Exit.void)
+    }))
 })
