@@ -3,6 +3,7 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { Exit } from "effect/Exit"
+import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
@@ -301,14 +302,5 @@ const unknownToAttributeValue = (value: unknown): OtelApi.AttributeValue => {
   } else if (typeof value === "bigint") {
     return Number(value)
   }
-
-  return objectToAttribute(value)
-}
-
-const objectToAttribute = (value: unknown): string => {
-  try {
-    return JSON.stringify(value, null, 2)
-  } catch {
-    return String(value)
-  }
+  return Inspectable.toStringUnknown(value)
 }
