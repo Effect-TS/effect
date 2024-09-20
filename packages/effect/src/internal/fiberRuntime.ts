@@ -1471,26 +1471,32 @@ export const tracerLogger = globalValue(
       logLevel,
       message
     }) => {
-      const span = Option.flatMap(fiberRefs.get(context, core.currentContext), Context.getOption(tracer.spanTag))
-      const clockService = Option.map(
-        fiberRefs.get(context, defaultServices.currentServices),
-        (_) => Context.get(_, clock.clockTag)
+      const span = Context.getOption(
+        fiberRefs.getOrDefault(context, core.currentContext),
+        tracer.spanTag
       )
-      if (span._tag === "None" || span.value._tag === "ExternalSpan" || clockService._tag === "None") {
+      if (span._tag === "None" || span.value._tag === "ExternalSpan") {
         return
       }
+      const clockService = Context.unsafeGet(
+        fiberRefs.getOrDefault(context, defaultServices.currentServices),
+        clock.clockTag
+      )
 
-      const attributes = Object.fromEntries(HashMap.map(annotations, Inspectable.toStringUnknown))
+      const attributes: Record<string, unknown> = {}
+      for (const [key, value] of annotations) {
+        attributes[key] = value
+      }
       attributes["effect.fiberId"] = FiberId.threadName(fiberId)
       attributes["effect.logLevel"] = logLevel.label
 
       if (cause !== null && cause._tag !== "Empty") {
-        attributes["effect.cause"] = internalCause.pretty(cause)
+        attributes["effect.cause"] = internalCause.pretty(cause, { renderErrorCause: true })
       }
 
       span.value.event(
-        String(message),
-        clockService.value.unsafeCurrentTimeNanos(),
+        Inspectable.toStringUnknown(Array.isArray(message) ? message[0] : message),
+        clockService.unsafeCurrentTimeNanos(),
         attributes
       )
     })
