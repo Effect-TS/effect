@@ -112,10 +112,16 @@ export const unsafeMakeSemaphore = (permits: number): Semaphore => new Semaphore
 /** @internal */
 export const makeSemaphore = (permits: number) => core.sync(() => unsafeMakeSemaphore(permits))
 
-class Latch implements Effect.Latch {
+class Latch extends Effectable.Class<void> implements Effect.Latch {
   waiters: Array<(_: Effect.Effect<void>) => void> = []
   scheduled = false
-  constructor(private isOpen: boolean) {}
+  constructor(private isOpen: boolean) {
+    super()
+  }
+
+  commit() {
+    return this.await
+  }
 
   private unsafeSchedule(fiber: Fiber.RuntimeFiber<void>) {
     if (this.scheduled || this.waiters.length === 0) {
