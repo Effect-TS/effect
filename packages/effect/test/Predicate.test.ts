@@ -334,4 +334,10 @@ describe("Predicate", () => {
     assert.deepStrictEqual(_.isTupleOfAtLeast([1, 2, 3], 2), true)
     assert.deepStrictEqual(_.isTupleOfAtLeast([1, 2, 3], 4), false)
   })
+
+  it("isRegExp", () => {
+    assert.deepStrictEqual(_.isRegExp(/a/), true)
+    assert.deepStrictEqual(_.isRegExp(null), false)
+    assert.deepStrictEqual(_.isRegExp("a"), false)
+  })
 })
