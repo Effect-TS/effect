@@ -837,6 +837,34 @@ Output:
 */
 ```
 
+### Persisting Cookies
+
+You can manage cookies across requests using the `HttpClient.withCookiesRef` function, which associates a reference to a `Cookies` object with the client.
+
+```ts
+import { Cookies, FetchHttpClient, HttpClient } from "@effect/platform"
+import { Effect, Ref } from "effect"
+
+const program = Effect.gen(function* () {
+  // Create a reference to store cookies
+  const ref = yield* Ref.make(Cookies.empty)
+
+  // Access the HttpClient and associate the cookies reference with it
+  const client = (yield* HttpClient.HttpClient).pipe(
+    HttpClient.withCookiesRef(ref)
+  )
+
+  // Make a GET request to the specified URL
+  yield* client.get("https://www.google.com/")
+
+  // Log the keys of the cookies stored in the reference
+  console.log(Object.keys((yield* ref).cookies))
+}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
+
+Effect.runPromise(program)
+// Output: [ 'SOCS', 'AEC', '__Secure-ENID' ]
+```
+
 ## RequestInit Options
 
 You can customize the `HttpClient` by passing `RequestInit` options to configure aspects of the HTTP requests, such as credentials, headers, and more.
