@@ -87,6 +87,9 @@ export abstract class Class {
  * @since 2.0.0
  */
 export const toStringUnknown = (u: unknown, whitespace: number | string | undefined = 2): string => {
+  if (typeof u === "string") {
+    return u
+  }
   try {
     return typeof u === "object" ? stringifyCircular(u, whitespace) : String(u)
   } catch (_) {
