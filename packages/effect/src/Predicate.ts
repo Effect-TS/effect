@@ -666,6 +666,22 @@ export const isPromiseLike = (
 ): input is PromiseLike<unknown> => hasProperty(input, "then") && isFunction(input.then)
 
 /**
+ * Tests if a value is a `RegExp`.
+ *
+ * @param input - The value to test.
+ *
+ * @example
+ * import { Predicate } from "effect"
+ *
+ * assert.deepStrictEqual(Predicate.isRegExp(/a/), true)
+ * assert.deepStrictEqual(Predicate.isRegExp("a"), false)
+ *
+ * @category guards
+ * @since 3.9.0
+ */
+export const isRegExp = (input: unknown): input is RegExp => input instanceof RegExp
+
+/**
  * @since 2.0.0
  */
 export const compose: {
