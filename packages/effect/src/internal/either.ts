@@ -70,10 +70,10 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
 export const isEither = (input: unknown): input is Either.Either<unknown, unknown> => hasProperty(input, TypeId)
 
 /** @internal */
-export const isLeft = <R, L>(ma: Either.Either<R, L>): ma is Either.Left<L, R> => ma._tag === "Left"
+export const isLeft = <R, L>(ma: Either.Either<R, L>): ma is Either.Left<R, L> => ma._tag === "Left"
 
 /** @internal */
-export const isRight = <R, L>(ma: Either.Either<R, L>): ma is Either.Right<L, R> => ma._tag === "Right"
+export const isRight = <R, L>(ma: Either.Either<R, L>): ma is Either.Right<R, L> => ma._tag === "Right"
 
 /** @internal */
 export const left = <L>(left: L): Either.Either<never, L> => {
