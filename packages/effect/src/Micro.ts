@@ -380,14 +380,14 @@ export declare namespace MicroExit {
    * @experimental
    * @category MicroExit
    */
-  export type Success<A, E = never> = Either.Right<MicroCause<E>, A>
+  export type Success<A, E = never> = Either.Right<A, MicroCause<E>>
 
   /**
    * @since 3.4.6
    * @experimental
    * @category MicroExit
    */
-  export type Failure<A, E = never> = Either.Left<MicroCause<E>, A>
+  export type Failure<A, E = never> = Either.Left<A, MicroCause<E>>
 }
 
 /**
@@ -456,7 +456,7 @@ export const exitIsFailure: <A, E>(self: MicroExit<A, E>) => self is MicroExit.F
  * @experimental
  * @category MicroExit
  */
-export const exitIsInterrupt = <A, E>(self: MicroExit<A, E>): self is Either.Left<MicroCause.Interrupt, A> =>
+export const exitIsInterrupt = <A, E>(self: MicroExit<A, E>): self is Either.Left<A, MicroCause.Interrupt> =>
   exitIsFailure(self) && self.left._tag === "Interrupt"
 
 /**
@@ -464,7 +464,7 @@ export const exitIsInterrupt = <A, E>(self: MicroExit<A, E>): self is Either.Lef
  * @experimental
  * @category MicroExit
  */
-export const exitIsFail = <A, E>(self: MicroExit<A, E>): self is Either.Left<MicroCause.Fail<E>, A> =>
+export const exitIsFail = <A, E>(self: MicroExit<A, E>): self is Either.Left<A, MicroCause.Fail<E>> =>
   exitIsFailure(self) && self.left._tag === "Fail"
 
 /**
@@ -472,7 +472,7 @@ export const exitIsFail = <A, E>(self: MicroExit<A, E>): self is Either.Left<Mic
  * @experimental
  * @category MicroExit
  */
-export const exitIsDie = <A, E>(self: MicroExit<A, E>): self is Either.Left<MicroCause.Die, A> =>
+export const exitIsDie = <A, E>(self: MicroExit<A, E>): self is Either.Left<A, MicroCause.Die> =>
   exitIsFailure(self) && self.left._tag === "Die"
 
 /**
