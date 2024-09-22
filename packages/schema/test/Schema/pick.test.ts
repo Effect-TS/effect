@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("pick", () => {
-  it("struct", async () => {
+  it("Struct", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(
       S.pick(a, "b")
@@ -31,15 +31,12 @@ describe("pick", () => {
     )
   })
 
-  it("struct with exact optionals", async () => {
+  it("Struct with exact optionals", async () => {
     const schema = S.Struct({
       a: S.optionalWith(S.String, { exact: true }),
       b: S.NumberFromString,
       c: S.Boolean
-    })
-      .pipe(
-        S.pick("a", "b")
-      )
+    }).pipe(S.pick("a", "b"))
     await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { b: 1 })
 
@@ -57,7 +54,7 @@ describe("pick", () => {
     )
   })
 
-  it("suspend", async () => {
+  it("Suspend", async () => {
     interface A {
       readonly a: string
       readonly as: ReadonlyArray<A>
@@ -86,19 +83,17 @@ describe("pick", () => {
     )
   })
 
-  it("struct with property signature transformations", async () => {
+  it("Struct with property signature transformations", async () => {
     const schema = S.Struct({
       a: S.optionalWith(S.String, { exact: true, default: () => "" }),
       b: S.NumberFromString,
       c: S.Boolean
-    }).pipe(
-      S.pick("a", "b")
-    )
+    }).pipe(S.pick("a", "b"))
     await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { a: "", b: 1 })
   })
 
-  it("record(string, number)", async () => {
+  it("Record(string, number)", async () => {
     const schema = S.Record({ key: S.String, value: S.Number }).pipe(S.pick("a", "b"))
     await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
     await Util.expectDecodeUnknownFailure(
@@ -117,7 +112,7 @@ describe("pick", () => {
     )
   })
 
-  it("record(symbol, number)", async () => {
+  it("Record(symbol, number)", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
     const schema = S.Record({ key: S.SymbolFromSelf, value: S.Number }).pipe(S.pick(a, b))
@@ -138,14 +133,12 @@ describe("pick", () => {
     )
   })
 
-  it("record(string, string) & record(`a${string}`, number)", async () => {
+  it("Record(string, string) & Record(`a${string}`, number)", async () => {
     const schema = S.Struct(
       {},
       S.Record({ key: S.String, value: S.String }),
       S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.Number })
-    ).pipe(
-      S.pick("a", "b")
-    )
+    ).pipe(S.pick("a", "b"))
     await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: "b" })
   })
 

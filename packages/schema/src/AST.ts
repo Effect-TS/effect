@@ -1383,8 +1383,8 @@ export class TypeLiteral implements Annotated {
       }
     }
 
-    this.propertySignatures = sortPropertySignatures(propertySignatures)
-    this.indexSignatures = sortIndexSignatures(indexSignatures)
+    this.propertySignatures = propertySignatures
+    this.indexSignatures = indexSignatures
   }
   /**
    * @since 0.67.0
@@ -2083,6 +2083,7 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
         return ops.value
       } else {
         if (Predicate.isString(name)) {
+          let out: PropertySignature | undefined = undefined
           for (const is of ast.indexSignatures) {
             const parameterBase = getParameterBase(is.parameter)
             switch (parameterBase._tag) {
@@ -2093,9 +2094,15 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
                 }
                 break
               }
-              case "StringKeyword":
-                return new PropertySignature(name, is.type, false, true)
+              case "StringKeyword": {
+                if (out === undefined) {
+                  out = new PropertySignature(name, is.type, false, true)
+                }
+              }
             }
+          }
+          if (out) {
+            return out
           }
         } else if (Predicate.isSymbol(name)) {
           for (const is of ast.indexSignatures) {
@@ -2590,103 +2597,6 @@ const toJSONAnnotations = (annotations: Annotations): object => {
     out[String(k)] = annotations[k]
   }
   return out
-}
-
-/** @internal */
-export const getCardinality = (ast: AST): number => {
-  switch (ast._tag) {
-    case "NeverKeyword":
-      return 0
-    case "Literal":
-    case "UndefinedKeyword":
-    case "VoidKeyword":
-    case "UniqueSymbol":
-      return 1
-    case "BooleanKeyword":
-      return 2
-    case "StringKeyword":
-    case "NumberKeyword":
-    case "BigIntKeyword":
-    case "SymbolKeyword":
-      return 3
-    case "ObjectKeyword":
-      return 5
-    case "UnknownKeyword":
-    case "AnyKeyword":
-      return 6
-    default:
-      return 4
-  }
-}
-
-const sortPropertySignatures = Arr.sort(
-  Order.mapInput(Number.Order, (ps: PropertySignature) => getCardinality(ps.type))
-)
-
-const sortIndexSignatures = Arr.sort(
-  Order.mapInput(Number.Order, (is: IndexSignature) => {
-    switch (getParameterBase(is.parameter)._tag) {
-      case "StringKeyword":
-        return 2
-      case "SymbolKeyword":
-        return 3
-      case "TemplateLiteral":
-        return 1
-    }
-  })
-)
-
-type Weight = readonly [number, number, number]
-
-const WeightOrder: Order.Order<Weight> = Order.tuple<
-  readonly [Order.Order<number>, Order.Order<number>, Order.Order<number>]
->(Number.Order, Number.Order, Number.Order)
-
-const maxWeight = Order.max<Weight>(WeightOrder)
-
-const emptyWeight: Weight = [0, 0, 0]
-
-const maxWeightAll = (weights: ReadonlyArray<Weight>): Weight => weights.reduce(maxWeight, emptyWeight)
-
-/** @internal */
-export const getWeight = (ast: AST): Weight => {
-  switch (ast._tag) {
-    case "TupleType": {
-      return [2, ast.elements.length, ast.rest.length]
-    }
-    case "TypeLiteral": {
-      const y = ast.propertySignatures.length
-      const z = ast.indexSignatures.length
-      return y + z === 0 ?
-        [-4, 0, 0] :
-        [4, y, z]
-    }
-    case "Declaration": {
-      const annotation = getSurrogateAnnotation(ast)
-      if (Option.isSome(annotation)) {
-        const [_, y, z] = getWeight(annotation.value)
-        return [6, y, z]
-      }
-      return [6, 0, 0]
-    }
-    case "Suspend":
-      return [8, 0, 0]
-    case "Union":
-      return maxWeightAll(ast.types.map(getWeight))
-    case "Refinement": {
-      const [x, y, z] = getWeight(ast.from)
-      return [x + 1, y, z]
-    }
-    case "Transformation":
-      return getWeight(ast.from)
-    case "ObjectKeyword":
-      return [-2, 0, 0]
-    case "UnknownKeyword":
-    case "AnyKeyword":
-      return [-4, 0, 0]
-    default:
-      return emptyWeight
-  }
 }
 
 /** @internal */

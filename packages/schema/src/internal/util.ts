@@ -19,7 +19,13 @@ export const getKeysForIndexSignature = (
   }
 }
 
-/** @internal */
+/**
+ * JavaScript does not store the insertion order of properties in a way that
+ * combines both string and symbol keys. The internal order groups string keys
+ * and symbol keys separately. Hence concatenating the keys is fine.
+ *
+ * @internal
+ */
 export const ownKeys = (o: object): Array<PropertyKey> =>
   (Object.keys(o) as Array<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
 
