@@ -6,15 +6,19 @@ export const runMain = makeRunMain(({
   teardown
 }) => {
   const keepAlive = setInterval(() => {}, 2 ** 31 - 1)
+  let receivedSignal = false
 
   fiber.addObserver((exit) => {
     clearInterval(keepAlive)
     teardown(exit, (code) => {
-      process.exit(code)
+      if (receivedSignal) {
+        process.exit(code)
+      }
     })
   })
 
   function onSigint() {
+    receivedSignal = true
     process.removeListener("SIGINT", onSigint)
     process.removeListener("SIGTERM", onSigint)
     fiber.unsafeInterruptAsFork(fiber.id())
