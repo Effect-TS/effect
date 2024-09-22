@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.74.0
+
+### Minor Changes
+
+- [#3654](https://github.com/Effect-TS/effect/pull/3654) [`de48aa5`](https://github.com/Effect-TS/effect/commit/de48aa54e98d97722a8a4c2c8f9e1fe1d4560ea2) Thanks @gcanti! - Remove internal sorting of property signatures, closes #3652
+
 ## 0.73.4
 
 ### Patch Changes
