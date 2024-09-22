@@ -1,5 +1,14 @@
 # @effect/platform-node-shared
 
+## 0.16.0
+
+### Patch Changes
+
+- [#3656](https://github.com/Effect-TS/effect/pull/3656) [`6d4d861`](https://github.com/Effect-TS/effect/commit/6d4d861db6860846da4ac0a25eaf41ced90eb97a) Thanks @tim-smart! - only call process.exit in runMain if signal has been intercepted
+
+- Updated dependencies []:
+  - @effect/platform@0.66.0
+
 ## 0.15.5
 
 ### Patch Changes
