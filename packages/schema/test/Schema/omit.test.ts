@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("omit", () => {
-  it("struct", async () => {
+  it("Struct", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(
       S.omit("c")
@@ -13,25 +13,25 @@ describe("omit", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      "Expected { readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }, actual null"
+      "Expected { readonly b: NumberFromString; readonly Symbol(@effect/schema/test/a): string }, actual null"
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: "a" },
-      `{ readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }
+      `{ readonly b: NumberFromString; readonly Symbol(@effect/schema/test/a): string }
 └─ ["b"]
    └─ is missing`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
-      { b: 1 },
-      `{ readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }
+      { b: "1" },
+      `{ readonly b: NumberFromString; readonly Symbol(@effect/schema/test/a): string }
 └─ [Symbol(@effect/schema/test/a)]
    └─ is missing`
     )
   })
 
-  it("struct with exact optionals", async () => {
+  it("Struct with exact optionals", async () => {
     const schema = S.Struct({
       a: S.optionalWith(S.String, { exact: true }),
       b: S.NumberFromString,

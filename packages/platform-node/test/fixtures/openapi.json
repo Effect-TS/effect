@@ -31,7 +31,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["name", "id"],
+                  "required": ["id", "name"],
                   "properties": {
                     "name": {
                       "type": "string"
@@ -53,7 +53,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["_tag", "message", "issues"],
+                  "required": ["issues", "message", "_tag"],
                   "properties": {
                     "_tag": {
                       "enum": ["HttpApiDecodeError"]
@@ -65,7 +65,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": ["message", "_tag", "path"],
+                        "required": ["_tag", "path", "message"],
                         "properties": {
                           "message": {
                             "type": "string"
@@ -145,7 +145,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["name", "id"],
+                  "required": ["id", "name"],
                   "properties": {
                     "name": {
                       "type": "string"
@@ -167,7 +167,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["_tag", "message", "issues"],
+                  "required": ["issues", "message", "_tag"],
                   "properties": {
                     "_tag": {
                       "enum": ["HttpApiDecodeError"]
@@ -179,7 +179,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": ["message", "_tag", "path"],
+                        "required": ["_tag", "path", "message"],
                         "properties": {
                           "message": {
                             "type": "string"
@@ -281,7 +281,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["name", "id", "createdAt"],
+                  "required": ["id", "name", "createdAt"],
                   "properties": {
                     "name": {
                       "type": "string"
@@ -306,7 +306,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["_tag", "message", "issues"],
+                  "required": ["issues", "message", "_tag"],
                   "properties": {
                     "_tag": {
                       "enum": ["HttpApiDecodeError"]
@@ -318,7 +318,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": ["message", "_tag", "path"],
+                        "required": ["_tag", "path", "message"],
                         "properties": {
                           "message": {
                             "type": "string"
@@ -391,7 +391,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["name", "id", "createdAt"],
+                  "required": ["id", "name", "createdAt"],
                   "properties": {
                     "name": {
                       "type": "string"
@@ -418,7 +418,7 @@
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": ["_tag", "message", "issues"],
+                      "required": ["issues", "message", "_tag"],
                       "properties": {
                         "_tag": {
                           "enum": ["HttpApiDecodeError"]
@@ -430,7 +430,7 @@
                           "type": "array",
                           "items": {
                             "type": "object",
-                            "required": ["message", "_tag", "path"],
+                            "required": ["_tag", "path", "message"],
                             "properties": {
                               "message": {
                                 "type": "string"
@@ -541,7 +541,7 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "required": ["name", "id", "createdAt"],
+                    "required": ["id", "name", "createdAt"],
                     "properties": {
                       "name": {
                         "type": "string"
@@ -567,7 +567,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["_tag", "message", "issues"],
+                  "required": ["issues", "message", "_tag"],
                   "properties": {
                     "_tag": {
                       "enum": ["HttpApiDecodeError"]
@@ -579,7 +579,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": ["message", "_tag", "path"],
+                        "required": ["_tag", "path", "message"],
                         "properties": {
                           "message": {
                             "type": "string"
@@ -691,7 +691,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["_tag", "message", "issues"],
+                  "required": ["issues", "message", "_tag"],
                   "properties": {
                     "_tag": {
                       "enum": ["HttpApiDecodeError"]
@@ -703,7 +703,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": ["message", "_tag", "path"],
+                        "required": ["_tag", "path", "message"],
                         "properties": {
                           "message": {
                             "type": "string"

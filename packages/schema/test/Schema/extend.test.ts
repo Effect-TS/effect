@@ -117,13 +117,13 @@ describe("extend", () => {
     })
   })
 
-  describe("struct", () => {
+  describe("Struct", () => {
     it("extend struct", async () => {
       const schema = Schema.extend(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.Number }))
       expect(String(schema)).toBe("{ readonly a: string; readonly b: number }")
     })
 
-    it(`extend TypeLiteralTransformation`, async () => {
+    it("extend TypeLiteralTransformation", async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
         Schema.extend(
           Schema.Struct({ b: Schema.String, c: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }) })
@@ -134,24 +134,24 @@ describe("extend", () => {
       )
     })
 
-    it("extend union", () => {
+    it("extend Union", () => {
       const schema = Schema.Struct({ b: Schema.Boolean }).pipe(
         Schema.extend(Schema.Union(
           Schema.Struct({ a: Schema.Literal("a") }),
           Schema.Struct({ a: Schema.Literal("b") })
         ))
       )
-      expect(String(schema)).toBe(`{ readonly a: "a"; readonly b: boolean } | { readonly a: "b"; readonly b: boolean }`)
+      expect(String(schema)).toBe(`{ readonly b: boolean; readonly a: "a" } | { readonly b: boolean; readonly a: "b" }`)
     })
 
-    it("extend record(string, string)", async () => {
+    it("extend Record(string, string)", async () => {
       const schema = Schema.Struct({ a: Schema.String }).pipe(
         Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String }))
       )
       expect(String(schema)).toBe(`{ readonly a: string; readonly [x: string]: string }`)
     })
 
-    it("extend record(templateLiteral, string)", async () => {
+    it("extend Record(templateLiteral, string)", async () => {
       const schema = Schema.Struct({ a: Schema.String }).pipe(
         Schema.extend(Schema.Record(
           {
@@ -172,21 +172,21 @@ describe("extend", () => {
       expect(String(schema)).toBe("{ readonly a: string; readonly [x: `${string}-${number}`]: string }")
     })
 
-    it("extend record(string, NumberFromChar)", async () => {
+    it("extend Record(string, NumberFromChar)", async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
         Schema.extend(Schema.Record({ key: Schema.String, value: Util.NumberFromChar }))
       )
       expect(String(schema)).toBe(`{ readonly a: number; readonly [x: string]: NumberFromChar }`)
     })
 
-    it("extend record(symbol, NumberFromChar)", async () => {
+    it("extend Record(symbol, NumberFromChar)", async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
         Schema.extend(Schema.Record({ key: Schema.SymbolFromSelf, value: Util.NumberFromChar }))
       )
       expect(String(schema)).toBe(`{ readonly a: number; readonly [x: symbol]: NumberFromChar }`)
     })
 
-    it("nested extend nested struct", async () => {
+    it("nested extend nested Struct", async () => {
       const A = Schema.Struct({ a: Schema.Struct({ b: Schema.String }) })
       const B = Schema.Struct({ a: Schema.Struct({ c: Schema.Number }) })
       const schema = Schema.extend(A, B)
@@ -208,7 +208,7 @@ describe("extend", () => {
       })
       const schema = Schema.extend(A, B)
       expect(String(schema)).toBe(
-        `{ readonly nested: { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" } }`
+        `{ readonly nested: { readonly same: a string ending with ":end"; readonly different1: string; readonly different2: string } }`
       )
       await Util.expectDecodeUnknownSuccess(
         schema,
@@ -229,9 +229,9 @@ describe("extend", () => {
             different2: ""
           }
         },
-        `{ readonly nested: { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" } }
+        `{ readonly nested: { readonly same: a string ending with ":end"; readonly different1: string; readonly different2: string } }
 └─ ["nested"]
-   └─ { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" }
+   └─ { readonly same: a string ending with ":end"; readonly different1: string; readonly different2: string }
       └─ ["same"]
          └─ a string ending with ":end"
             └─ From side refinement failure
@@ -248,9 +248,9 @@ describe("extend", () => {
             different2: ""
           }
         },
-        `{ readonly nested: { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" } }
+        `{ readonly nested: { readonly same: a string ending with ":end"; readonly different1: string; readonly different2: string } }
 └─ ["nested"]
-   └─ { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" }
+   └─ { readonly same: a string ending with ":end"; readonly different1: string; readonly different2: string }
       └─ ["same"]
          └─ a string ending with ":end"
             └─ Predicate refinement failure
@@ -260,7 +260,7 @@ describe("extend", () => {
   })
 
   describe("TypeLiteralTransformation", () => {
-    it("extend struct", async () => {
+    it("extend Struct", async () => {
       const schema = Schema.Struct({
         a: Schema.optionalWith(Schema.String, { exact: true, default: () => "" }),
         b: Schema.String
@@ -270,7 +270,7 @@ describe("extend", () => {
       )
     })
 
-    it("extend union", async () => {
+    it("extend Union", async () => {
       const schema = Schema.extend(
         Schema.Struct({
           a: Schema.optionalWith(Schema.String, { default: () => "default" })
@@ -281,7 +281,7 @@ describe("extend", () => {
         )
       )
       expect(String(schema)).toBe(
-        "({ readonly b: string; readonly a?: string | undefined } <-> { readonly a: string; readonly b: string }) | ({ readonly c: string; readonly a?: string | undefined } <-> { readonly a: string; readonly c: string })"
+        "({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | ({ readonly a?: string | undefined; readonly c: string } <-> { readonly a: string; readonly c: string })"
       )
     })
 
@@ -293,11 +293,11 @@ describe("extend", () => {
         Schema.Struct({ b: Schema.String }).pipe(Schema.filter(() => true))
       )
       expect(String(schema)).toBe(
-        "{ ({ readonly b: string; readonly a?: string | undefined } <-> { readonly a: string; readonly b: string }) | filter }"
+        "{ ({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string }) | filter }"
       )
     })
 
-    it("extend suspend", async () => {
+    it("extend Suspend", async () => {
       const suspend = Schema.suspend(() => Schema.Struct({ b: Schema.String }))
       const schema = Schema.extend(
         Schema.Struct({
@@ -306,7 +306,7 @@ describe("extend", () => {
         suspend
       )
       expect(String((schema.ast as AST.Suspend).f())).toBe(
-        "({ readonly b: string; readonly a?: string | undefined } <-> { readonly a: string; readonly b: string })"
+        "({ readonly a?: string | undefined; readonly b: string } <-> { readonly a: string; readonly b: string })"
       )
     })
 
@@ -323,13 +323,13 @@ describe("extend", () => {
         )
       )
       expect(String(schema)).toBe(
-        "({ readonly d: boolean; readonly a?: string; readonly b: string; readonly c?: number } <-> { readonly d: boolean; readonly a: string; readonly b: string; readonly c: number })"
+        "({ readonly a?: string; readonly b: string; readonly c?: number; readonly d: boolean } <-> { readonly a: string; readonly b: string; readonly c: number; readonly d: boolean })"
       )
     })
   })
 
-  describe("union", () => {
-    it("extend struct", () => {
+  describe("Union", () => {
+    it("extend Struct", () => {
       const schema = Schema.Union(
         Schema.Struct({ a: Schema.Literal("a") }),
         Schema.Struct({ b: Schema.Literal("b") })
@@ -337,7 +337,7 @@ describe("extend", () => {
       expect(String(schema)).toBe(`{ readonly a: "a"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`)
     })
 
-    it("with defaults extend union with defaults", async () => {
+    it("with defaults extend Union with defaults", async () => {
       const schema = Schema.Union(
         Schema.Struct({
           a: Schema.optionalWith(Schema.String, { exact: true, default: () => "a" }),
@@ -366,7 +366,7 @@ describe("extend", () => {
       )
     })
 
-    it("extend union", () => {
+    it("extend Union", () => {
       const schema = Schema.Union(
         Schema.Struct({ a: Schema.Literal("a") }),
         Schema.Struct({ a: Schema.Literal("b") })
@@ -383,7 +383,7 @@ describe("extend", () => {
       )
     })
 
-    it("nested extends struct", () => {
+    it("nested extends Struct", () => {
       const schema = Schema.Union(
         Schema.Union(
           Schema.Struct({ a: Schema.Literal("a") }),
@@ -463,26 +463,26 @@ describe("extend", () => {
       )
       const schema = Schema.extend(Schema.Union(S1, S2), R)
       expect(String(schema)).toBe(
-        `{ { readonly c: boolean; readonly a: string } | filter } | { { readonly c: boolean; readonly b: number } | filter }`
+        `{ { readonly a: string; readonly c: boolean } | filter } | { { readonly b: number; readonly c: boolean } | filter }`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", c: false },
-        `{ { readonly c: boolean; readonly a: string } | filter } | { { readonly c: boolean; readonly b: number } | filter }
+        `{ { readonly a: string; readonly c: boolean } | filter } | { { readonly b: number; readonly c: boolean } | filter }
 ├─ R filter
-└─ { { readonly c: boolean; readonly b: number } | filter }
+└─ { { readonly b: number; readonly c: boolean } | filter }
    └─ From side refinement failure
-      └─ { readonly c: boolean; readonly b: number }
+      └─ { readonly b: number; readonly c: boolean }
          └─ ["b"]
             └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: 1, c: false },
-        `{ { readonly c: boolean; readonly a: string } | filter } | { { readonly c: boolean; readonly b: number } | filter }
-├─ { { readonly c: boolean; readonly a: string } | filter }
+        `{ { readonly a: string; readonly c: boolean } | filter } | { { readonly b: number; readonly c: boolean } | filter }
+├─ { { readonly a: string; readonly c: boolean } | filter }
 │  └─ From side refinement failure
-│     └─ { readonly c: boolean; readonly a: string }
+│     └─ { readonly a: string; readonly c: boolean }
 │        └─ ["a"]
 │           └─ is missing
 └─ R filter`
@@ -501,30 +501,30 @@ describe("extend", () => {
       )
       const schema = Schema.extend(Schema.Union(R1, R2), R3)
       expect(String(schema)).toBe(
-        `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }`
+        `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "", c: true },
-        `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
+        `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }
 ├─ R1 filter
-└─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
+└─ { { { readonly b: number; readonly c: boolean } | filter } | filter }
    └─ From side refinement failure
-      └─ { { readonly c: boolean; readonly b: number } | filter }
+      └─ { { readonly b: number; readonly c: boolean } | filter }
          └─ From side refinement failure
-            └─ { readonly c: boolean; readonly b: number }
+            └─ { readonly b: number; readonly c: boolean }
                └─ ["b"]
                   └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: -1, c: true },
-        `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
+        `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }
+├─ { { { readonly a: string; readonly c: boolean } | filter } | filter }
 │  └─ From side refinement failure
-│     └─ { { readonly c: boolean; readonly a: string } | filter }
+│     └─ { { readonly a: string; readonly c: boolean } | filter }
 │        └─ From side refinement failure
-│           └─ { readonly c: boolean; readonly a: string }
+│           └─ { readonly a: string; readonly c: boolean }
 │              └─ ["a"]
 │                 └─ is missing
 └─ R2 filter`
@@ -532,25 +532,25 @@ describe("extend", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", c: false },
-        `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
+        `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }
 ├─ R3 filter
-└─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
+└─ { { { readonly b: number; readonly c: boolean } | filter } | filter }
    └─ From side refinement failure
-      └─ { { readonly c: boolean; readonly b: number } | filter }
+      └─ { { readonly b: number; readonly c: boolean } | filter }
          └─ From side refinement failure
-            └─ { readonly c: boolean; readonly b: number }
+            └─ { readonly b: number; readonly c: boolean }
                └─ ["b"]
                   └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: 1, c: false },
-        `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
+        `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }
+├─ { { { readonly a: string; readonly c: boolean } | filter } | filter }
 │  └─ From side refinement failure
-│     └─ { { readonly c: boolean; readonly a: string } | filter }
+│     └─ { { readonly a: string; readonly c: boolean } | filter }
 │        └─ From side refinement failure
-│           └─ { readonly c: boolean; readonly a: string }
+│           └─ { readonly a: string; readonly c: boolean }
 │              └─ ["a"]
 │                 └─ is missing
 └─ R3 filter`
@@ -558,7 +558,7 @@ describe("extend", () => {
     })
   })
 
-  describe("suspend", () => {
+  describe("Suspend", () => {
     it("List", async () => {
       type List = {
         readonly type: "nil"
