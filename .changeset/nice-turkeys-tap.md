@@ -4,7 +4,7 @@
 
 add `includeTypeAnnotations` option to `JSONSchema.make`
 
-This options allows to include type annotations in the generated schema.
+This option allows you to include type annotations in the generated schema.
 
 ```typescript
 import { JSONSchema, Schema } from "@effect/schema/JSONSchema"
