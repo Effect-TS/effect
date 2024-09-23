@@ -75,3 +75,10 @@ pipe(
     return false as const
   })
 )
+
+// $ExpectType [false, false, false]
+T.map(["a", 1, false], (x) => {
+  // $ExpectType string | number | boolean
+  x
+  return false as const
+})
