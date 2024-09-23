@@ -58,18 +58,35 @@ describe("Model", () => {
 
       const [alice, john] = yield* Effect.all([
         repo.insert(User.insert.make({ name: "Alice", age: 30 })),
-        repo.insert(User.insert.make({ name: "John", age: 30 })),
+        repo.insert(User.insert.make({ name: "John", age: 30 }))
       ], { batching: true })
       assert.deepStrictEqual(alice.name, "Alice")
       assert.deepStrictEqual(john.name, "John")
+    }).pipe(
+      Effect.provide(MysqlContainer.ClientLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), { timeout: 60_000 })
+
+  it.scopedLive("findById data loader", () =>
+    Effect.gen(function*() {
+      const repo = yield* Model.makeDataLoaders(User, {
+        tableName: "users",
+        idColumn: "id",
+        spanPrefix: "UserRepository",
+        window: 10
+      })
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), age INT)`
+      const alice = yield* repo.insert(User.insert.make({ name: "Alice", age: 30 }))
+      const john = yield* repo.insert(User.insert.make({ name: "John", age: 30 }))
 
       const [alice2, john2] = yield* Effect.all([
         repo.findById(alice.id),
         repo.findById(john.id)
       ], { batching: true })
 
-      assert.deepStrictEqual(Option.map(alice2, alice => alice.name), Option.some("Alice"))
-      assert.deepStrictEqual(Option.map(john2, john => john.name), Option.some("John"))
+      assert.deepStrictEqual(Option.map(alice2, (alice) => alice.name), Option.some("Alice"))
+      assert.deepStrictEqual(Option.map(john2, (john) => john.name), Option.some("John"))
     }).pipe(
       Effect.provide(MysqlContainer.ClientLive),
       Effect.catchTag("ContainerError", () => Effect.void)
