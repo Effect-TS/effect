@@ -362,7 +362,7 @@ const getDescriptionOrIdentifier = (ast: Option.Option<AST.PropertySignature | A
   )
 
 const makeJsonSchema = (schema: Schema.Schema.All): OpenAPIJSONSchema => {
-  const jsonSchema = JSONSchema.make(schema as any)
+  const jsonSchema = JSONSchema.make(schema as any, { includeTypeAnnotations: true })
   delete jsonSchema.$schema
   return jsonSchema
 }

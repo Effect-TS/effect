@@ -52,9 +52,12 @@ const expectJSONSchema = <A, I>(
   expected: object,
   options: boolean | {
     params?: fc.Parameters<[I]>
+    includeTypeAnnotations?: boolean
   } = true
 ) => {
-  const jsonSchema = JSONSchema.make(schema)
+  const jsonSchema = JSONSchema.make(schema, {
+    includeTypeAnnotations: typeof options === "object" && options.includeTypeAnnotations
+  })
   expect(jsonSchema).toEqual(expected)
   if (options !== false) {
     propertyType(schema, options === true ? undefined : options)
@@ -1515,9 +1518,7 @@ schema (Suspend): <suspended schema>`
             "type": "string"
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of A",
-        "title": "A"
+        "additionalProperties": false
       })
     })
 
@@ -1534,9 +1535,7 @@ schema (Suspend): <suspended schema>`
             "type": "string"
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of A",
-        "title": "A"
+        "additionalProperties": false
       })
     })
 
@@ -1933,23 +1932,17 @@ schema (Suspend): <suspended schema>`
     it("refinement of a transformation without an override annotation", () => {
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString()), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "string",
-        "title": "Trimmed",
-        "description": "a non empty string"
+        "type": "string"
       }, false)
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "a non empty string",
-        "type": "string",
-        "title": "Trimmed"
+        "type": "string"
       }, false)
       expectJSONSchema(
         Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "description": "a non empty string",
-          "type": "string",
-          "title": "Trimmed"
+          "type": "string"
         },
         false
       )
@@ -1970,9 +1963,7 @@ schema (Suspend): <suspended schema>`
           ],
           "properties": {
             "a": {
-              "type": "string",
-              "title": "NumberFromString",
-              "description": "a number parsed from a string"
+              "type": "string"
             }
           },
           "additionalProperties": false
@@ -2151,8 +2142,7 @@ schema (Suspend): <suspended schema>`
                   {
                     "enum": [null]
                   }
-                ],
-                "description": "Option<NonEmptyString>"
+                ]
               }
             },
             "additionalProperties": false
@@ -2172,13 +2162,7 @@ schema (Suspend): <suspended schema>`
         "$schema": "http://json-schema.org/draft-07/schema#",
         type: "object",
         required: ["a"],
-        properties: {
-          a: {
-            description: "a number parsed from a string",
-            title: "NumberFromString",
-            type: "string"
-          }
-        },
+        properties: { a: { type: "string" } },
         additionalProperties: false
       },
       false
@@ -2217,16 +2201,11 @@ schema (Suspend): <suspended schema>`
       }),
       {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        description: "ReadonlyMap<a string at least 2 character(s) long, number>",
         type: "object",
         required: [],
         properties: {},
         "patternProperties": {
-          "": {
-            description: "a number parsed from a string",
-            title: "NumberFromString",
-            type: "string"
-          }
+          "": { type: "string" }
         },
         "propertyNames": {
           "description": "a string at least 2 character(s) long",
@@ -2246,15 +2225,10 @@ schema (Suspend): <suspended schema>`
       {
         "$schema": "http://json-schema.org/draft-07/schema#",
         type: "object",
-        description: "Map<a string at least 2 character(s) long, number>",
         required: [],
         properties: {},
         "patternProperties": {
-          "": {
-            description: "a number parsed from a string",
-            title: "NumberFromString",
-            type: "string"
-          }
+          "": { type: "string" }
         },
         "propertyNames": {
           "description": "a string at least 2 character(s) long",
@@ -2275,6 +2249,127 @@ schema (Suspend): <suspended schema>`
         items: { type: "string" }
       }
     )
+  })
+
+  describe("includeTypeAnnotations", () => {
+    it("refinements", () => {
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString()), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "title": "Trimmed",
+        "description": "a non empty string"
+      }, { includeTypeAnnotations: true })
+      expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "title": "Trimmed",
+        "description": "a non empty string"
+      }, { includeTypeAnnotations: true })
+      expectJSONSchema(
+        Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "string",
+          "title": "Trimmed",
+          "description": "a non empty string"
+        },
+        { includeTypeAnnotations: true }
+      )
+    })
+
+    it("Class", () => {
+      class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
+      expectJSONSchema(A, {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "title": "A",
+        "description": "an instance of A",
+        "required": [
+          "a"
+        ],
+        "properties": {
+          "a": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }, { includeTypeAnnotations: true })
+    })
+
+    it("MapFromRecord", () => {
+      expectJSONSchema(
+        Schema.MapFromRecord({
+          key: Schema.String.pipe(Schema.minLength(2)),
+          value: Schema.NumberFromString
+        }),
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          type: "object",
+          "description": "Map<a string at least 2 character(s) long, number>",
+          required: [],
+          properties: {},
+          "patternProperties": {
+            "": {
+              type: "string",
+              title: "NumberFromString",
+              description: "a number parsed from a string"
+            }
+          },
+          "propertyNames": {
+            "description": "a string at least 2 character(s) long",
+            "minLength": 2,
+            "type": "string"
+          }
+        },
+        { includeTypeAnnotations: true }
+      )
+    })
+
+    it("compose", () => {
+      expectJSONSchema(
+        Schema.Struct({
+          a: Schema.Trim.pipe(Schema.compose(Schema.NumberFromString))
+        }),
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "required": [
+            "a"
+          ],
+          "properties": {
+            "a": {
+              type: "string",
+              title: "NumberFromString",
+              description: "a number parsed from a string"
+            }
+          },
+          "additionalProperties": false
+        },
+        { includeTypeAnnotations: true }
+      )
+    })
+
+    it("transformation", () => {
+      expectJSONSchema(
+        Schema.String.pipe(
+          Schema.transform(Schema.Number, {
+            decode: (s) => Number(s),
+            encode: (n) => n.toString()
+          }),
+          Schema.annotations({
+            title: "A custom number from string",
+            description: "a number parsed from a string"
+          })
+        ),
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "string",
+          "title": "A custom number from string",
+          "description": "a number parsed from a string"
+        },
+        { includeTypeAnnotations: true }
+      )
+    })
   })
 })
 
