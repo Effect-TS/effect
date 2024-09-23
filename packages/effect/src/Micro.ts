@@ -65,10 +65,10 @@ export type runSymbol = typeof runSymbol
 export interface Micro<out A, out E = never, out R = never> extends Effect<A, E, R> {
   readonly [TypeId]: Micro.Variance<A, E, R>
   readonly [runSymbol]: (env: Env<any>, onExit: (exit: MicroExit<A, E>) => void) => void
+  [Symbol.iterator](): MicroIterator<Micro<A, E, R>>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: MicroUnify<this>
   [Unify.ignoreSymbol]?: MicroUnifyIgnore
-  [Symbol.iterator](): MicroIterator<Micro<A, E, R>>
 }
 
 /**
@@ -142,6 +142,45 @@ export const isMicro = (u: unknown): u is Micro<any, any, any> => typeof u === "
  */
 export interface MicroIterator<T extends Micro<any, any, any>> {
   next(...args: ReadonlyArray<any>): IteratorResult<YieldWrap<T>, Micro.Success<T>>
+}
+
+/**
+ * @since 3.9.0
+ * @category models
+ */
+export interface MicroPrimitive {
+  new<A, E = never, R = never>(): Micro<A, E, R>
+}
+
+// ----------------------------------------------------------------------------
+// Microable
+// ----------------------------------------------------------------------------
+
+const MicroProto = {
+  ...Effectable.EffectPrototype,
+  _op: "Micro",
+  [TypeId]: {
+    _A: identity,
+    _E: identity,
+    _R: identity
+  },
+  [Symbol.iterator]() {
+    return new SingleShotGen(new YieldWrap(this)) as any
+  }
+}
+
+const MicroBase: MicroPrimitive = (function() {
+  function Base() {}
+  Base.prototype = MicroProto
+  return Base as any
+})()
+
+/**
+ * @since 3.9.0
+ * @category constructors
+ */
+export abstract class MicroableClass<out A, out E = never, out R = never> extends MicroBase<A, E, R> {
+  abstract readonly [runSymbol]: (env: Env<any>, onExit: (exit: MicroExit<A, E>) => void) => void
 }
 
 // ----------------------------------------------------------------------------
@@ -512,31 +551,6 @@ export interface Env<R> extends Pipeable {
   readonly refs: ReadonlyRecord<string, unknown>
 }
 
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const EnvRefTypeId: unique symbol = Symbol.for("effect/Micro/EnvRef")
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export type EnvRefTypeId = typeof EnvRefTypeId
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export interface EnvRef<A> {
-  readonly [EnvRefTypeId]: EnvRefTypeId
-  readonly key: string
-  readonly initial: A
-}
-
 const EnvProto = {
   [EnvTypeId]: {
     _R: identity
@@ -818,8 +832,57 @@ export class MicroSchedulerDefault implements MicroScheduler {
 // Env refs
 // ========================================================================
 
-const EnvRefProto = {
-  [EnvRefTypeId]: EnvRefTypeId
+/**
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export const EnvRefTypeId: unique symbol = Symbol.for("effect/Micro/EnvRef")
+
+/**
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export type EnvRefTypeId = typeof EnvRefTypeId
+
+/**
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export interface EnvRef<A> extends Micro<A> {
+  readonly [EnvRefTypeId]: EnvRefTypeId
+  readonly key: string
+  readonly initial: A
+
+  [Unify.typeSymbol]?: unknown
+  [Unify.unifySymbol]?: EnvRefUnify<this>
+  [Unify.ignoreSymbol]?: EnvRefUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface EnvRefUnify<A extends { [Unify.typeSymbol]?: any }> extends MicroUnify<A> {
+  EnvRef?: () => A[Unify.typeSymbol] extends EnvRef<infer A0> | infer _ ? EnvRef<A0> : never
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface EnvRefUnifyIgnore extends MicroUnifyIgnore {
+  Micro?: true
+}
+
+const EnvRefProto: ThisType<EnvRef<any>> = {
+  ...MicroProto,
+  [EnvRefTypeId]: EnvRefTypeId,
+  [runSymbol](env: Env<any>, onExit: (exit: MicroExit<any, any>) => void) {
+    onExit(Either.right(envGet(env, this)))
+  }
 }
 
 /**
@@ -928,19 +991,6 @@ export const withConcurrency: {
 // ----------------------------------------------------------------------------
 // constructors
 // ----------------------------------------------------------------------------
-
-const MicroProto = {
-  ...Effectable.EffectPrototype,
-  _op: "Micro",
-  [TypeId]: {
-    _A: identity,
-    _E: identity,
-    _R: identity
-  },
-  [Symbol.iterator]() {
-    return new SingleShotGen(new YieldWrap(this)) as any
-  }
-}
 
 const microDepthState = globalValue("effect/Micro/microDepthState", () => ({
   depth: 0,
@@ -3652,7 +3702,7 @@ export type HandleTypeId = typeof HandleTypeId
  * @experimental
  * @category handle & forking
  */
-export interface Handle<A, E = never> {
+export interface Handle<A, E = never> extends Micro<A, E> {
   readonly [HandleTypeId]: HandleTypeId
   readonly await: Micro<MicroExit<A, E>>
   readonly join: Micro<A, E>
@@ -3661,6 +3711,26 @@ export interface Handle<A, E = never> {
   readonly addObserver: (observer: (exit: MicroExit<A, E>) => void) => void
   readonly removeObserver: (observer: (exit: MicroExit<A, E>) => void) => void
   readonly unsafePoll: () => MicroExit<A, E> | null
+
+  [Unify.typeSymbol]?: unknown
+  [Unify.unifySymbol]?: HandleUnify<this>
+  [Unify.ignoreSymbol]?: HandleUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface HandleUnify<A extends { [Unify.typeSymbol]?: any }> extends MicroUnify<A> {
+  Handle?: () => A[Unify.typeSymbol] extends Handle<infer A0, infer E0> | infer _ ? Handle<A0, E0> : never
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface HandleUnifyIgnore extends MicroUnifyIgnore {
+  Micro?: true
 }
 
 /**
@@ -3671,7 +3741,14 @@ export interface Handle<A, E = never> {
 export const isHandle = (u: unknown): u is Handle<unknown, unknown> =>
   typeof u === "object" && u !== null && HandleTypeId in u
 
-class HandleImpl<A, E> implements Handle<A, E> {
+class HandleImpl<A, E> extends MicroableClass<A, E> implements Handle<A, E> {
+  readonly [runSymbol] = (_env: Env<any>, onExit: (exit: MicroExit<A, E>) => void) => {
+    const observer = (exit: MicroExit<A, E>) => {
+      this.removeObserver(observer)
+      onExit(exit)
+    }
+    this.addObserver(observer)
+  }
   readonly [HandleTypeId]: HandleTypeId
 
   readonly observers: Set<(exit: MicroExit<A, E>) => void> = new Set()
@@ -3680,6 +3757,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
   readonly isRoot: boolean
 
   constructor(readonly parentSignal: AbortSignal, controller?: AbortController) {
+    super()
     this[HandleTypeId] = HandleTypeId
     this.isRoot = controller !== undefined
     this._controller = controller ?? new AbortController()

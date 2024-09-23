@@ -1193,4 +1193,29 @@ describe.concurrent("Micro", () => {
       assert.deepStrictEqual(out, [100, 100, 100, 160, 320, 640, 1280])
     })
   })
+
+  describe("Handle", () => {
+    it("is subtype of Micro: (Success)", () =>
+      Micro.gen(function*() {
+        const handle = yield* Micro.succeed(1).pipe(Micro.fork)
+        const res = yield* handle
+        assert.equal(res, 1)
+      }).pipe(Micro.runPromise))
+
+    it("is subtype of Micro: (Failure)", () =>
+      Micro.gen(function*() {
+        const handle = yield* Micro.fail(1).pipe(Micro.fork)
+        const res = yield* Micro.flip(handle)
+        assert.equal(res, 1)
+      }).pipe(Micro.runPromise))
+  })
+
+  describe("EnvRef", () => {
+    it("is subtype of Micro", () =>
+      Micro.gen(function*() {
+        const envRef = Micro.envRefMake("test", () => 1)
+        const res = yield* envRef
+        assert.equal(res, 1)
+      }).pipe(Micro.runPromise))
+  })
 })
