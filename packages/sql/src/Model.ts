@@ -848,13 +848,10 @@ select * from ${sql(options.tableName)} where ${sql(idColumn)} = LAST_INSERT_ID(
         })
       ) as any
 
-    const findByIdResolver = yield* SqlResolver.grouped(`${options.spanPrefix}/findById`, {
-      Request: idSchema,
-      RequestGroupKey(id) {
-        return id
-      },
+    const findByIdResolver = yield* SqlResolver.findById(`${options.spanPrefix}/findById`, {
+      Id: idSchema,
       Result: Model,
-      ResultGroupKey(request) {
+      ResultId(request) {
         return request[idColumn]
       },
       execute: (ids) => sql`select * from ${sql(options.tableName)} where ${sql.in(idColumn, ids)}`
