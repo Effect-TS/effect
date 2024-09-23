@@ -11,47 +11,67 @@ import * as fiberRuntime from "./internal/fiberRuntime.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
+ * A unique identifier for the `Scope` type.
+ *
  * @since 2.0.0
  * @category symbols
  */
 export const ScopeTypeId: unique symbol = core.ScopeTypeId
 
 /**
+ * The type of the unique identifier for `Scope`.
+ *
  * @since 2.0.0
  * @category symbols
  */
 export type ScopeTypeId = typeof ScopeTypeId
 
 /**
+ * A unique identifier for the `CloseableScope` type.
+ *
  * @since 2.0.0
  * @category symbols
  */
 export const CloseableScopeTypeId: unique symbol = core.CloseableScopeTypeId
 
 /**
+ * The type of the unique identifier for `CloseableScope`.
+ *
  * @since 2.0.0
  * @category symbols
  */
 export type CloseableScopeTypeId = typeof CloseableScopeTypeId
 
 /**
+ * Represents a scope that manages finalizers and can fork child scopes.
+ *
  * @since 2.0.0
  * @category models
  */
 export interface Scope extends Pipeable {
   readonly [ScopeTypeId]: ScopeTypeId
+  /**
+   * The execution strategy for running finalizers in this scope.
+   */
   readonly strategy: ExecutionStrategy.ExecutionStrategy
   /**
+   * Forks a new child scope with the specified execution strategy. The child scope
+   * will automatically be closed when this scope is closed.
+   *
    * @internal
    */
   fork(strategy: ExecutionStrategy.ExecutionStrategy): Effect.Effect<Scope.Closeable>
   /**
+   * Adds a finalizer to this scope. The finalizer will be run when the scope is closed.
+   *
    * @internal
    */
   addFinalizer(finalizer: Scope.Finalizer): Effect.Effect<void>
 }
 
 /**
+ * A scope that can be explicitly closed with a specified exit value.
+ *
  * @since 2.0.0
  * @category models
  */
@@ -59,12 +79,16 @@ export interface CloseableScope extends Scope, Pipeable {
   readonly [CloseableScopeTypeId]: CloseableScopeTypeId
 
   /**
+   * Closes this scope with the given exit value, running all finalizers.
+   *
    * @internal
    */
   close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void>
 }
 
 /**
+ * A tag representing the current `Scope` in the environment.
+ *
  * @since 2.0.0
  * @category context
  */
@@ -75,11 +99,15 @@ export const Scope: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
  */
 export declare namespace Scope {
   /**
+   * A finalizer function that takes an `Exit` value and returns an `Effect`.
+   *
    * @since 2.0.0
    * @category model
    */
   export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
   /**
+   * A closeable scope that can be explicitly closed.
+   *
    * @since 2.0.0
    * @category model
    */
@@ -88,8 +116,10 @@ export declare namespace Scope {
 
 /**
  * Adds a finalizer to this scope. The finalizer is guaranteed to be run when
- * the scope is closed.
+ * the scope is closed. Use this when the finalizer does not need to know the
+ * `Exit` value that the scope is closed with.
  *
+ * @see {@link addFinalizerExit}
  * @since 2.0.0
  * @category utils
  */
@@ -99,9 +129,11 @@ export const addFinalizer: (
 ) => Effect.Effect<void> = core.scopeAddFinalizer
 
 /**
- * A simplified version of `addFinalizerWith` when the `finalizer` does not
- * depend on the `Exit` value that the scope is closed with.
+ * Adds a finalizer to this scope. The finalizer receives the `Exit` value
+ * when the scope is closed, allowing it to perform different actions based
+ * on the exit status.
  *
+ * @see {@link addFinalizer}
  * @since 2.0.0
  * @category utils
  */
@@ -109,7 +141,7 @@ export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effe
   core.scopeAddFinalizerExit
 
 /**
- * Closes a scope with the specified exit value, running all finalizers that
+ * Closes this scope with the specified exit value, running all finalizers that
  * have been added to the scope.
  *
  * @since 2.0.0
@@ -118,9 +150,9 @@ export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effe
 export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void> = core.scopeClose
 
 /**
- * Extends the scope of an `Effect` workflow that needs a scope into this
- * scope by providing it to the workflow but not closing the scope when the
- * workflow completes execution. This allows extending a scoped value into a
+ * Extends the scope of an `Effect` that requires a scope into this scope.
+ * It provides this scope to the effect but does not close the scope when the
+ * effect completes execution. This allows extending a scoped value into a
  * larger scope.
  *
  * @since 2.0.0
@@ -132,8 +164,8 @@ export const extend: {
 } = fiberRuntime.scopeExtend
 
 /**
- * Forks a new scope that is a child of this scope. The child scope will
- * automatically be closed when this scope is closed.
+ * Forks a new child scope with the specified execution strategy. The child scope
+ * will automatically be closed when this scope is closed.
  *
  * @since 2.0.0
  * @category utils
@@ -144,9 +176,9 @@ export const fork: (
 ) => Effect.Effect<CloseableScope> = core.scopeFork
 
 /**
- * Uses the scope by providing it to an `Effect` workflow that needs a scope,
- * guaranteeing that the scope is closed with the result of that workflow as
- * soon as the workflow completes execution, whether by success, failure, or
+ * Provides this closeable scope to an `Effect` that requires a scope,
+ * guaranteeing that the scope is closed with the result of that effect as
+ * soon as the effect completes execution, whether by success, failure, or
  * interruption.
  *
  * @since 2.0.0
@@ -158,9 +190,9 @@ export const use: {
 } = fiberRuntime.scopeUse
 
 /**
- * Creates a Scope where Finalizers will run according to the `ExecutionStrategy`.
- *
- * If an ExecutionStrategy is not provided `sequential` will be used.
+ * Creates a new closeable scope where finalizers will run according to the
+ * specified `ExecutionStrategy`. If no execution strategy is provided, `sequential`
+ * will be used by default.
  *
  * @since 2.0.0
  * @category constructors
