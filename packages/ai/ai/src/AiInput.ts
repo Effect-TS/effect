@@ -1,10 +1,15 @@
 /**
  * @since 1.0.0
  */
+import type { PlatformError } from "@effect/platform/Error"
+import * as FileSystem from "@effect/platform/FileSystem"
+import * as Path from "@effect/platform/Path"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema_ from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -59,6 +64,151 @@ export class TextPart extends Schema_.TaggedClass<TextPart>("@effect/ai/AiInput/
  * @since 1.0.0
  * @category parts
  */
+export const ImageQuality = Schema_.Literal("low", "high", "auto")
+
+/**
+ * @since 1.0.0
+ * @category parts
+ */
+export type ImageQuality = typeof ImageQuality.Type
+
+/**
+ * @since 1.0.0
+ * @category parts
+ */
+export class ImageUrlPart extends Schema_.TaggedClass<ImageUrlPart>("@effect/ai/AiInput/ImageUrlPart")("ImageUrl", {
+  url: Schema_.String,
+  quality: ImageQuality.pipe(
+    Schema_.propertySignature,
+    Schema_.withConstructorDefault(() => "auto" as const)
+  )
+}) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [PartTypeId]: PartTypeId = PartTypeId
+}
+
+const base64ContentTypeRegex = /^data:(.*?);base64$/
+
+/**
+ * @since 1.0.0
+ * @category base64
+ */
+export interface Base64DataUrl extends
+  Schema_.transformOrFail<
+    typeof Schema_.String,
+    Schema_.Struct<{
+      data: Schema_.Schema<Uint8Array>
+      contentType: typeof Schema_.String
+    }>
+  >
+{}
+
+/**
+ * @since 1.0.0
+ * @category base64
+ */
+export const Base64DataUrl: Base64DataUrl = Schema_.transformOrFail(
+  Schema_.String.annotations({
+    title: "Base64 Data URL",
+    description: "A base64 data URL"
+  }),
+  Schema_.Struct({
+    data: Schema_.Uint8ArrayFromSelf,
+    contentType: Schema_.String
+  }),
+  {
+    decode(base64Url, _, ast) {
+      const commaIndex = base64Url.indexOf(",")
+      if (commaIndex === -1) {
+        return ParseResult.fail(new ParseResult.Type(ast, base64Url))
+      }
+      const header = base64Url.slice(0, commaIndex)
+      const data = base64Url.slice(commaIndex + 1)
+      const contentType = base64ContentTypeRegex.exec(header)
+      if (contentType === null) {
+        return ParseResult.fail(new ParseResult.Type(ast, base64Url))
+      }
+      return Encoding.decodeBase64(data).pipe(
+        ParseResult.mapError((_) => new ParseResult.Type(ast, base64Url)),
+        ParseResult.map((data) => ({ data, contentType: contentType[1] }))
+      )
+    },
+    encode({ contentType, data }) {
+      const base64 = Encoding.encodeBase64(data)
+      return ParseResult.succeed(`data:${contentType};base64,${base64}`)
+    }
+  }
+)
+
+/**
+ * @since 1.0.0
+ * @category parts
+ */
+export class ImagePart extends Schema_.TaggedClass<ImagePart>("@effect/ai/AiInput/ImagePart")("Image", {
+  image: Base64DataUrl,
+  quality: ImageQuality.pipe(
+    Schema_.propertySignature,
+    Schema_.withConstructorDefault(() => "auto" as const)
+  )
+}) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [PartTypeId]: PartTypeId = PartTypeId
+
+  /**
+   * @since 1.0.0
+   */
+  static fromPath(
+    path: string,
+    quality: ImageQuality = "auto"
+  ): Effect.Effect<
+    ImagePart,
+    PlatformError,
+    FileSystem.FileSystem | Path.Path
+  > {
+    return FileSystem.FileSystem.pipe(
+      Effect.bindTo("fs"),
+      Effect.bind("Path", () => Path.Path),
+      Effect.bind("data", ({ fs }) => fs.readFile(path)),
+      Effect.map(({ Path, data }) => {
+        const ext = Path.extname(path)
+        let contentType: string
+        switch (ext) {
+          case ".jpg":
+          case ".jpeg": {
+            contentType = "image/jpeg"
+            break
+          }
+          default: {
+            if (ext.startsWith(".")) {
+              contentType = `image/${ext.slice(1)}`
+            } else {
+              contentType = "image/png"
+            }
+            break
+          }
+        }
+        return new ImagePart({
+          image: { data, contentType },
+          quality
+        }, constDisableValidation)
+      })
+    )
+  }
+
+  get asDataUri(): string {
+    const base64 = Encoding.encodeBase64(this.image.data)
+    return `data:${this.image.contentType};base64,${base64}`
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category parts
+ */
 export class ToolCallPart extends Schema_.TaggedClass<ToolCallPart>("@effect/ai/AiInput/ToolCallPart")("ToolCall", {
   id: ToolCallId,
   name: Schema_.String,
@@ -90,7 +240,7 @@ export class ToolCallResolvedPart
  * @since 1.0.0
  * @category parts
  */
-export type Part = TextPart | ToolCallPart | ToolCallResolvedPart
+export type Part = TextPart | ToolCallPart | ToolCallResolvedPart | ImagePart | ImageUrlPart
 
 /**
  * @since 1.0.0
@@ -107,14 +257,20 @@ export declare namespace Part {
    * @since 1.0.0
    * @category parts
    */
-  export type Schema = Schema_.Union<[typeof TextPart, typeof ToolCallPart, typeof ToolCallResolvedPart]>
+  export type Schema = Schema_.Union<[
+    typeof TextPart,
+    typeof ToolCallPart,
+    typeof ToolCallResolvedPart,
+    typeof ImagePart,
+    typeof ImageUrlPart
+  ]>
 }
 
 /**
  * @since 1.0.0
  * @category parts
  */
-export const Part: Part.Schema = Schema_.Union(TextPart, ToolCallPart, ToolCallResolvedPart)
+export const Part: Part.Schema = Schema_.Union(TextPart, ToolCallPart, ToolCallResolvedPart, ImagePart, ImageUrlPart)
 
 /**
  * @since 1.0.0
@@ -174,6 +330,9 @@ export class Message extends Schema_.Class<Message>("@effect/ai/AiInput/Message"
             }
             case "ToolCall": {
               return new ToolCallPart(part, constDisableValidation)
+            }
+            case "ImageUrl": {
+              return new ImageUrlPart(part, constDisableValidation)
             }
           }
         })
