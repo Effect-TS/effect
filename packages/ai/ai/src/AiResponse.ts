@@ -122,7 +122,20 @@ export class ToolCallPart extends Schema.TaggedClass<ToolCallPart>("@effect/ai/A
  * @since 1.0.0
  * @category parts
  */
-export type Part = TextPart | ToolCallPart
+export class ImageUrlPart extends Schema.TaggedClass<ImageUrlPart>("@effect/ai/AiResponse/ImageUrlPart")("ImageUrl", {
+  url: Schema.String
+}) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [PartTypeId]: PartTypeId = PartTypeId
+}
+
+/**
+ * @since 1.0.0
+ * @category parts
+ */
+export type Part = TextPart | ToolCallPart | ImageUrlPart
 
 /**
  * @since 1.0.0
@@ -130,8 +143,9 @@ export type Part = TextPart | ToolCallPart
  */
 export const Part: Schema.Union<[
   typeof TextPart,
-  typeof ToolCallPart
-]> = Schema.Union(TextPart, ToolCallPart)
+  typeof ToolCallPart,
+  typeof ImageUrlPart
+]> = Schema.Union(TextPart, ToolCallPart, ImageUrlPart)
 
 /**
  * @since 1.0.0
@@ -180,6 +194,17 @@ export class AiResponse extends Schema.Class<AiResponse>("@effect/ai/AiResponse"
       }
     }
     return text
+  }
+  /**
+   * @since 1.0.0
+   */
+  get imageUrl(): Option.Option<string> {
+    for (const part of this.parts) {
+      if (part._tag === "ImageUrl") {
+        return Option.some(part.url)
+      }
+    }
+    return Option.none()
   }
   /**
    * @since 1.0.0

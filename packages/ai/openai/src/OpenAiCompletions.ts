@@ -11,7 +11,7 @@ import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import type * as Option from "effect/Option"
+import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import type { Simplify } from "effect/Types"
 import * as Tokenizer from "gpt-tokenizer"
@@ -95,14 +95,20 @@ const make = (options: {
                 Chunk.toReadonlyArray,
                 Arr.flatMap((message) =>
                   message.parts.pipe(
-                    Chunk.toReadonlyArray,
-                    Arr.map((part) => ({
-                      role: message.role.kind === "user" ? "user" : "assistant",
-                      name: message.role._tag === "UserWithName" ? message.role.name : undefined,
-                      content: part._tag === "Text"
-                        ? part.content
-                        : JSON.stringify(part._tag === "ToolCall" ? part.params : part.value)
-                    } as const))
+                    Arr.filterMap((part) => {
+                      if (part._tag === "Image" || part._tag === "ImageUrl") {
+                        return Option.none()
+                      }
+                      return Option.some(
+                        {
+                          role: message.role.kind === "user" ? "user" : "assistant",
+                          name: message.role._tag === "UserWithName" ? message.role.name : undefined,
+                          content: part._tag === "Text"
+                            ? part.content
+                            : JSON.stringify(part._tag === "ToolCall" ? part.params : part.value)
+                        } as const
+                      )
+                    })
                   )
                 )
               ),
@@ -237,11 +243,30 @@ const convertMessage = (
 }
 
 const makeContentPart = (
-  part: AiInput.TextPart
+  part: AiInput.TextPart | AiInput.ImagePart | AiInput.ImageUrlPart
 ): typeof Generated.ChatCompletionRequestUserMessageContentPart.Encoded => {
-  return {
-    type: "text",
-    text: part.content
+  switch (part._tag) {
+    case "Image":
+      return {
+        type: "image_url",
+        image_url: {
+          url: part.asDataUri,
+          detail: part.quality
+        }
+      }
+    case "ImageUrl":
+      return {
+        type: "image_url",
+        image_url: {
+          url: part.url,
+          detail: part.quality
+        }
+      }
+    case "Text":
+      return {
+        type: "text",
+        text: part.content
+      }
   }
 }
 
