@@ -324,7 +324,7 @@ const go = (
           return merge(getJsonSchemaAnnotations(ast), handler)
         }
       } else if (!isOverrideAnnotation(handler)) {
-        return merge(merge(go(t, $defs, true, path), handler), getJsonSchemaAnnotations(ast))
+        return merge(go(t, $defs, true, path), getJsonSchemaAnnotations(ast))
       }
     }
     return handler
@@ -332,9 +332,9 @@ const go = (
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
     return {
-      ...(AST.isTransformation(ast) ? getJsonSchemaAnnotations(ast.to) : {}),
-      ...getJsonSchemaAnnotations(ast),
-      ...go(surrogate.value, $defs, handleIdentifier, path)
+      ...(ast._tag === "Transformation" ? getJsonSchemaAnnotations(ast.to) : {}),
+      ...go(surrogate.value, $defs, handleIdentifier, path),
+      ...getJsonSchemaAnnotations(ast)
     }
   }
   if (handleIdentifier && !AST.isTransformation(ast)) {
@@ -573,14 +573,14 @@ const go = (
       // complex schema type.
       if (isParseJsonTransformation(ast.from)) {
         return {
-          ...getJsonSchemaAnnotations(ast),
-          ...go(ast.to, $defs, true, path)
+          ...go(ast.to, $defs, true, path),
+          ...getJsonSchemaAnnotations(ast)
         }
       }
       return {
         ...getJsonSchemaAnnotations(ast.to),
-        ...getJsonSchemaAnnotations(ast),
-        ...go(ast.from, $defs, true, path)
+        ...go(ast.from, $defs, true, path),
+        ...getJsonSchemaAnnotations(ast)
       }
     }
   }

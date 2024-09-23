@@ -1935,14 +1935,13 @@ schema (Suspend): <suspended schema>`
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
         "title": "Trimmed",
-        "description": "a non empty string",
-        "minLength": 1
+        "description": "a non empty string"
       }, false)
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "description": "a non empty string",
         "type": "string",
-        "title": "Description"
+        "title": "Trimmed"
       }, false)
       expectJSONSchema(
         Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
@@ -1950,7 +1949,7 @@ schema (Suspend): <suspended schema>`
           "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "a non empty string",
           "type": "string",
-          "title": "Description"
+          "title": "Trimmed"
         },
         false
       )
