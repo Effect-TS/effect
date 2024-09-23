@@ -1,5 +1,14 @@
 # @effect/sql-mysql2
 
+## 0.13.1
+
+### Patch Changes
+
+- [#3657](https://github.com/Effect-TS/effect/pull/3657) [`d5c8e7e`](https://github.com/Effect-TS/effect/commit/d5c8e7e47373f9fd78637f24e36d6fb61ee35eb4) Thanks @jamiehodge! - fix Model findById data loader
+
+- Updated dependencies [[`d5c8e7e`](https://github.com/Effect-TS/effect/commit/d5c8e7e47373f9fd78637f24e36d6fb61ee35eb4)]:
+  - @effect/sql@0.13.1
+
 ## 0.13.0
 
 ### Patch Changes
