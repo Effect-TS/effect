@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import type * as Effect from "./Effect.js"
-import type * as effectable from "./Effectable.js"
+import type * as Effectable from "./Effectable.js"
 import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import * as internal from "./internal/managedRuntime.js"
@@ -60,12 +60,9 @@ export declare namespace ManagedRuntime {
  * @since 2.0.0
  * @category models
  */
-export interface ManagedRuntime<in out R, in out ER>
+export interface ManagedRuntime<in R, out ER>
   extends
-    Effect.Effect<Runtime.Runtime<R>, ER, never>,
-    effectable.Class<Runtime.Runtime<R>, ER, never>,
-    ManagedRuntime.Variance<R, ER>,
-    Pipeable
+    Effect.Effect<Runtime.Runtime<R>, ER>
 {
   readonly memoMap: Layer.MemoMap
   readonly runtimeEffect: Effect.Effect<Runtime.Runtime<R>, ER>
