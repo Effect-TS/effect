@@ -7,6 +7,7 @@ import type * as FiberRef from "effect/FiberRef"
 import type * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as Micro from "effect/Micro"
 import type * as Option from "effect/Option"
+import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import type * as RcRef from "effect/RcRef"
 import type * as Ref from "effect/Ref"
@@ -116,6 +117,14 @@ export type DequeueUnify = Unify.Unify<
   | Queue.Dequeue<1>
   | Queue.Dequeue<"a">
 >
+// $ExpectType Pool<1, 2> | Pool<"a", "b" | "c">
+export type PoolUnify = Unify.Unify<
+  | Pool.Pool<1, 2>
+  | Pool.Pool<"a", "b">
+  | Pool.Pool<"a", "c">
+>
+
+// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | Pool<1, 2> | Pool<"a", "b" | "c"> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
 // $ExpectType ScopedRef<1> | ScopedRef<"a">
 export type ScopedRefUnify = Unify.Unify<
   | ScopedRef.ScopedRef<1>
@@ -158,6 +167,9 @@ export type AllUnify = Unify.Unify<
   | Queue.Queue<"a">
   | Queue.Dequeue<1>
   | Queue.Dequeue<"a">
+  | Pool.Pool<1, 2>
+  | Pool.Pool<"a", "b">
+  | Pool.Pool<"a", "c">
   | ScopedRef.ScopedRef<1>
   | ScopedRef.ScopedRef<"a">
   | Resource.Resource<1, 0>
