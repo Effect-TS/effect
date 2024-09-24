@@ -485,7 +485,7 @@ export const make = <
                   false,
                   Schema.Schema.Context<S[K]>
                 >
-              : S[K] extends Schema.PropertySignature.All ? S[K] extends Schema.PropertySignature<
+              : S[K] extends Schema.PropertySignature.Any ? S[K] extends Schema.PropertySignature<
                   infer TypeToken,
                   infer Type,
                   any,
@@ -518,7 +518,7 @@ export const make = <
                   false,
                   Schema.Schema.Context<Self>
                 >
-              : Self extends Schema.PropertySignature.All ? Self extends Schema.PropertySignature<
+              : Self extends Schema.PropertySignature.Any ? Self extends Schema.PropertySignature<
                   infer TypeToken,
                   infer Type,
                   any,
