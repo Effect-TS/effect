@@ -1,4 +1,5 @@
 import type * as Effect from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import type { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import type * as Layer from "../Layer.js"
@@ -16,6 +17,19 @@ import * as internalRuntime from "./runtime.js"
 interface ManagedRuntimeImpl<R, E> extends M.ManagedRuntime<R, E> {
   readonly scope: Scope.CloseableScope
   cachedRuntime: Runtime.Runtime<R> | undefined
+}
+
+/** @internal */
+export const TypeId: M.TypeId = Symbol.for("effect/ManagedRuntime") as M.TypeId
+
+/** @internal */
+export const isManagedRuntime = (u: unknown): u is M.ManagedRuntime<unknown, unknown> => hasProperty(u, TypeId)
+
+const managedRuntimeVariance = {
+  /* c8 ignore next */
+  _R: (_: any) => _,
+  /* c8 ignore next */
+  _ER: (_: any) => _
 }
 
 function provide<R, ER, A, E>(
@@ -40,26 +54,32 @@ export const make = <R, ER>(
 ): M.ManagedRuntime<R, ER> => {
   memoMap = memoMap ?? internalLayer.unsafeMakeMemoMap()
   const scope = internalRuntime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
+  const runtimeEffect = internalRuntime
+    .unsafeRunSyncEffect(
+      effect.memoize(
+        core.tap(
+          Scope.extend(
+            internalLayer.toRuntimeWithMemoMap(layer, memoMap),
+            scope
+          ),
+          (rt) => {
+            self.cachedRuntime = rt
+          }
+        )
+      )
+    )
   const self: ManagedRuntimeImpl<R, ER> = {
+    ...Effectable.CommitPrototype,
+    [TypeId]: managedRuntimeVariance,
     memoMap,
     scope,
-    runtimeEffect: internalRuntime
-      .unsafeRunSyncEffect(
-        effect.memoize(
-          core.tap(
-            Scope.extend(
-              internalLayer.toRuntimeWithMemoMap(layer, memoMap),
-              scope
-            ),
-            (rt) => {
-              self.cachedRuntime = rt
-            }
-          )
-        )
-      ),
+    runtimeEffect,
     cachedRuntime: undefined,
     pipe() {
       return pipeArguments(this, arguments)
+    },
+    commit() {
+      return runtimeEffect
     },
     runtime() {
       return self.cachedRuntime === undefined ?
@@ -114,9 +134,3 @@ export const make = <R, ER>(
   }
   return self
 }
-
-/** @internal */
-export const TypeId: M.TypeId = Symbol.for("effect/ManagedRuntime") as M.TypeId
-
-/** @internal */
-export const isManagedRuntime = (u: unknown): u is M.ManagedRuntime<unknown, unknown> => hasProperty(u, TypeId)

@@ -2,12 +2,33 @@
  * @since 2.0.0
  */
 import type * as Effect from "./Effect.js"
+import type * as effectable from "./Effectable.js"
 import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import * as internal from "./internal/managedRuntime.js"
 import type * as Layer from "./Layer.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Runtime from "./Runtime.js"
+import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
+
+const TypeId: unique symbol = internal.TypeId as TypeId
+
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * Checks if the provided argument is a `ManagedRuntime`.
+ *
+ * @param input - The value to be checked if it is a `ManagedRuntime`.
+
+ * @since 2.0.0
+ * @category guards
+ */
+export const isManagedRuntime: (input: unknown) => input is ManagedRuntime<unknown, unknown> = internal.isManagedRuntime
 
 /**
  * @since 3.4.0
@@ -23,13 +44,29 @@ export declare namespace ManagedRuntime {
    * @since 3.4.0
    */
   export type Error<T extends ManagedRuntime<any, any>> = [T] extends [ManagedRuntime<infer _R, infer E>] ? E : never
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Variance<in out R, in out ER> {
+    readonly [TypeId]: {
+      _R: Types.Invariant<R>
+      _ER: Types.Invariant<ER>
+    }
+  }
 }
 
 /**
  * @since 2.0.0
  * @category models
  */
-export interface ManagedRuntime<in R, out ER> extends Pipeable {
+export interface ManagedRuntime<in out R, in out ER>
+  extends
+    Effect.Effect<Runtime.Runtime<R>, ER, never>,
+    effectable.Class<Runtime.Runtime<R>, ER, never>,
+    ManagedRuntime.Variance<R, ER>,
+    Pipeable
+{
   readonly memoMap: Layer.MemoMap
   readonly runtimeEffect: Effect.Effect<Runtime.Runtime<R>, ER>
   readonly runtime: () => Promise<Runtime.Runtime<R>>
@@ -103,6 +140,26 @@ export interface ManagedRuntime<in R, out ER> extends Pipeable {
    * Dispose of the resources associated with the runtime.
    */
   readonly disposeEffect: Effect.Effect<void, never, never>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: ManagedRuntimeUnify<this>
+  readonly [Unify.ignoreSymbol]?: ManagedRuntimeUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface ManagedRuntimeUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  ManagedRuntime?: () => Extract<A[Unify.typeSymbol], ManagedRuntime<any, any>>
+}
+
+/**
+ * @category models
+ * @since 3.8.0
+ */
+export interface ManagedRuntimeUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**
@@ -133,21 +190,3 @@ export const make: <R, E>(
   layer: Layer.Layer<R, E, never>,
   memoMap?: Layer.MemoMap | undefined
 ) => ManagedRuntime<R, E> = internal.make
-
-const TypeId: unique symbol = internal.TypeId as TypeId
-
-/**
- * @since 2.0.0
- * @category symbol
- */
-export type TypeId = typeof TypeId
-
-/**
- * Checks if the provided argument is a `ManagedRuntime`.
- *
- * @param input - The value to be checked if it is a `ManagedRuntime`.
-
- * @since 2.0.0
- * @category guards
- */
-export const isManagedRuntime: (input: unknown) => input is ManagedRuntime<unknown, unknown> = internal.isManagedRuntime
