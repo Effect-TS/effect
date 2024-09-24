@@ -347,7 +347,7 @@ const go = (
   if (Option.isSome(surrogate)) {
     return go(surrogate.value, $defs, handleIdentifier, path)
   }
-  if (handleIdentifier && !AST.isTransformation(ast)) {
+  if (handleIdentifier && !AST.isTransformation(ast) && !AST.isRefinement(ast)) {
     const identifier = AST.getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
@@ -550,7 +550,10 @@ const go = (
       }, getJsonSchemaAnnotations(ast))
     }
     case "Refinement": {
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+      if (AST.encodedBoundAST(ast) === ast) {
+        throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+      }
+      return go(ast.from, $defs, true, path)
     }
     case "TemplateLiteral": {
       const regex = AST.getTemplateLiteralRegExp(ast)
