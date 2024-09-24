@@ -306,6 +306,20 @@ const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
     ("enum" in jsonSchema) || ("$ref" in jsonSchema)
 }
 
+const removeDefaultJsonSchemaAnnotations = (out: JsonSchema7, def: AST.AST, ast: AST.AST): JsonSchema7 => {
+  if (def === ast) {
+    return out
+  }
+  const jsonSchemaAnnotations = getJsonSchemaAnnotations(ast)
+  if (jsonSchemaAnnotations["title"] === def.annotations[AST.TitleAnnotationId]) {
+    delete jsonSchemaAnnotations["title"]
+  }
+  if (jsonSchemaAnnotations["description"] === def.annotations[AST.DescriptionAnnotationId]) {
+    delete jsonSchemaAnnotations["description"]
+  }
+  return merge(out, jsonSchemaAnnotations)
+}
+
 const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
@@ -371,18 +385,12 @@ const go = (
       return merge(anyJsonSchema, getJsonSchemaAnnotations(ast))
     case "ObjectKeyword":
       return merge(objectJsonSchema, getJsonSchemaAnnotations(ast))
-    case "StringKeyword": {
-      const out: JsonSchema7 = { type: "string" }
-      return ast === AST.stringKeyword ? out : merge(out, getJsonSchemaAnnotations(ast))
-    }
-    case "NumberKeyword": {
-      const out: JsonSchema7 = { type: "number" }
-      return ast === AST.numberKeyword ? out : merge(out, getJsonSchemaAnnotations(ast))
-    }
-    case "BooleanKeyword": {
-      const out: JsonSchema7 = { type: "boolean" }
-      return ast === AST.booleanKeyword ? out : merge(out, getJsonSchemaAnnotations(ast))
-    }
+    case "StringKeyword":
+      return removeDefaultJsonSchemaAnnotations({ type: "string" }, AST.stringKeyword, ast)
+    case "NumberKeyword":
+      return removeDefaultJsonSchemaAnnotations({ type: "number" }, AST.numberKeyword, ast)
+    case "BooleanKeyword":
+      return removeDefaultJsonSchemaAnnotations({ type: "boolean" }, AST.booleanKeyword, ast)
     case "BigIntKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "SymbolKeyword":
