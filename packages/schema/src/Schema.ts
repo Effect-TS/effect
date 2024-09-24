@@ -4362,7 +4362,7 @@ export const nonEmptyString = <A extends string>(
  * @since 0.67.0
  */
 export class Lowercase extends transform(
-  String$,
+  String$.annotations({ description: "a string that will be converted to lowercase" }),
   Lowercased,
   { strict: true, decode: (s) => s.toLowerCase(), encode: identity }
 ).annotations({ identifier: "Lowercase" }) {}
@@ -4374,7 +4374,7 @@ export class Lowercase extends transform(
  * @since 0.67.0
  */
 export class Uppercase extends transform(
-  String$,
+  String$.annotations({ description: "a string that will be converted to uppercase" }),
   Uppercased,
   { strict: true, decode: (s) => s.toUpperCase(), encode: identity }
 ).annotations({ identifier: "Uppercase" }) {}
@@ -4386,7 +4386,7 @@ export class Uppercase extends transform(
  * @since 0.68.18
  */
 export class Capitalize extends transform(
-  String$,
+  String$.annotations({ description: "a string that will be converted to a capitalized format" }),
   Capitalized,
   { strict: true, decode: (s) => string_.capitalize(s), encode: identity }
 ).annotations({ identifier: "Capitalize" }) {}
@@ -4398,7 +4398,7 @@ export class Capitalize extends transform(
  * @since 0.68.18
  */
 export class Uncapitalize extends transform(
-  String$,
+  String$.annotations({ description: "a string that will be converted to an uncapitalized format" }),
   Uncapitalized,
   { strict: true, decode: (s) => string_.uncapitalize(s), encode: identity }
 ).annotations({ identifier: "Uncapitalize" }) {}
@@ -4436,7 +4436,7 @@ export class NonEmptyTrimmedString extends Trimmed.pipe(
  * @since 0.67.0
  */
 export class Trim extends transform(
-  String$,
+  String$.annotations({ description: "a string that will be trimmed" }),
   Trimmed,
   { strict: true, decode: (s) => s.trim(), encode: identity }
 ).annotations({ identifier: "Trim" }) {}
@@ -4449,7 +4449,7 @@ export class Trim extends transform(
  */
 export const split = (separator: string): transform<typeof String$, Array$<typeof String$>> =>
   transform(
-    String$,
+    String$.annotations({ description: "a string that will be split" }),
     Array$(String$),
     { strict: true, decode: string_.split(separator), encode: array_.join(separator) }
   )
@@ -5001,11 +5001,15 @@ export class JsonNumber extends Number$.pipe(
  * @category boolean transformations
  * @since 0.67.0
  */
-export class Not extends transform(Boolean$, Boolean$, { strict: true, decode: boolean_.not, encode: boolean_.not }) {}
+export class Not extends transform(Boolean$.annotations({ description: "a boolean that will be negated" }), Boolean$, {
+  strict: true,
+  decode: boolean_.not,
+  encode: boolean_.not
+}) {}
 
 /** @ignore */
 class Symbol$ extends transform(
-  String$,
+  String$.annotations({ description: "a string that will be converted to a symbol" }),
   SymbolFromSelf,
   { strict: false, decode: (s) => Symbol.for(s), encode: (sym) => sym.description }
 ).annotations({ identifier: "symbol" }) {}
@@ -5217,7 +5221,7 @@ export const clampBigInt =
 
 /** @ignore */
 class BigInt$ extends transformOrFail(
-  String$,
+  String$.annotations({ description: "a string that will be parsed into a bigint" }),
   BigIntFromSelf,
   {
     strict: true,
@@ -5311,7 +5315,7 @@ export const NonNegativeBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
  * @since 0.67.0
  */
 export class BigIntFromNumber extends transformOrFail(
-  Number$,
+  Number$.annotations({ description: "a number that will be parsed into a bigint" }),
   BigIntFromSelf,
   {
     strict: true,
@@ -5446,7 +5450,7 @@ export class DurationFromSelf extends declare(
  * @since 0.67.0
  */
 export class DurationFromNanos extends transformOrFail(
-  BigIntFromSelf,
+  BigIntFromSelf.annotations({ description: "a bigint that will be parsed into a Duration" }),
   DurationFromSelf,
   {
     strict: true,
@@ -5467,7 +5471,7 @@ export class DurationFromNanos extends transformOrFail(
  * @since 0.67.0
  */
 export class DurationFromMillis extends transform(
-  Number$,
+  Number$.annotations({ description: "a number that will be parsed into a Duration" }),
   DurationFromSelf,
   { strict: true, decode: (ms) => duration_.millis(ms), encode: (n) => duration_.toMillis(n) }
 ).annotations({ identifier: "DurationFromMillis" }) {}
@@ -5494,7 +5498,7 @@ const hrTime: Schema<readonly [seconds: number, nanos: number]> = Tuple(
  * @since 0.67.0
  */
 export class Duration extends transform(
-  hrTime,
+  hrTime.annotations({ description: "a tuple of seconds and nanos that will be parsed into a Duration" }),
   DurationFromSelf,
   {
     strict: true,
@@ -5658,7 +5662,7 @@ const Uint8Array$: Schema<Uint8Array, ReadonlyArray<number>> = transform(
       title: "8-bit unsigned integer",
       description: "a 8-bit unsigned integer"
     })
-  )).annotations({ description: "an array of 8-bit unsigned integers" }),
+  )).annotations({ description: "an array of 8-bit unsigned integers that will be parsed into a Uint8Array" }),
   Uint8ArrayFromSelf,
   { strict: true, decode: (numbers) => Uint8Array.from(numbers), encode: (uint8Array) => Array.from(uint8Array) }
 ).annotations({ identifier: "Uint8Array" })
@@ -5679,7 +5683,7 @@ const makeUint8ArrayTransformation = (
   encode: (u: Uint8Array) => string
 ) =>
   transformOrFail(
-    String$,
+    String$.annotations({ description: "a string that will be parsed into a Uint8Array" }),
     Uint8ArrayFromSelf,
     {
       strict: true,
@@ -5728,13 +5732,15 @@ export const Uint8ArrayFromHex: Schema<Uint8Array, string> = makeUint8ArrayTrans
   Encoding.encodeHex
 )
 
-const makeStringTransformation = (
+const makeEncodingTransformation = (
   id: string,
   decode: (s: string) => either_.Either<string, Encoding.DecodeException>,
   encode: (u: string) => string
 ) =>
   transformOrFail(
-    String$,
+    String$.annotations({
+      description: `A string that is interpreted as being ${id}-encoded and will be decoded into a UTF-8 string`
+    }),
     String$,
     {
       strict: true,
@@ -5745,7 +5751,7 @@ const makeStringTransformation = (
         ),
       encode: (u) => ParseResult.succeed(encode(u))
     }
-  ).annotations({ identifier: id })
+  ).annotations({ identifier: `StringFrom${id}` })
 
 /**
  * Decodes a base64 (RFC4648) encoded string into a UTF-8 string.
@@ -5753,8 +5759,8 @@ const makeStringTransformation = (
  * @category string transformations
  * @since 0.67.0
  */
-export const StringFromBase64: Schema<string> = makeStringTransformation(
-  "StringFromBase64",
+export const StringFromBase64: Schema<string> = makeEncodingTransformation(
+  "Base64",
   Encoding.decodeBase64String,
   Encoding.encodeBase64
 )
@@ -5765,8 +5771,8 @@ export const StringFromBase64: Schema<string> = makeStringTransformation(
  * @category string transformations
  * @since 0.67.0
  */
-export const StringFromBase64Url: Schema<string> = makeStringTransformation(
-  "StringFromBase64Url",
+export const StringFromBase64Url: Schema<string> = makeEncodingTransformation(
+  "Base64Url",
   Encoding.decodeBase64UrlString,
   Encoding.encodeBase64Url
 )
@@ -5777,8 +5783,8 @@ export const StringFromBase64Url: Schema<string> = makeStringTransformation(
  * @category string transformations
  * @since 0.67.0
  */
-export const StringFromHex: Schema<string> = makeStringTransformation(
-  "StringFromHex",
+export const StringFromHex: Schema<string> = makeEncodingTransformation(
+  "Hex",
   Encoding.decodeHexString,
   Encoding.encodeHex
 )
@@ -6161,7 +6167,7 @@ export {
  * @since 0.67.0
  */
 export class DateFromNumber extends transform(
-  Number$,
+  Number$.annotations({ description: "a number that will be parsed into a Date" }),
   DateFromSelf,
   { strict: true, decode: (n) => new Date(n), encode: (d) => d.getTime() }
 ).annotations({ identifier: "DateFromNumber" }) {}
@@ -6196,7 +6202,7 @@ const decodeDateTime = <A extends dateTime.DateTime.Input>(input: A, _: ParseOpt
  * @since 0.70.0
  */
 export class DateTimeUtcFromNumber extends transformOrFail(
-  Number$,
+  Number$.annotations({ description: "a number that will be parsed into a DateTime.Utc" }),
   DateTimeUtcFromSelf,
   {
     strict: true,
@@ -6212,7 +6218,7 @@ export class DateTimeUtcFromNumber extends transformOrFail(
  * @since 0.70.0
  */
 export class DateTimeUtc extends transformOrFail(
-  String$,
+  String$.annotations({ description: "a string that will be parsed into a DateTime.Utc" }),
   DateTimeUtcFromSelf,
   {
     strict: true,
@@ -6247,7 +6253,7 @@ export class TimeZoneOffsetFromSelf extends declare(
  * @since 0.70.0
  */
 export class TimeZoneOffset extends transform(
-  Number$,
+  Number$.annotations({ description: "a number that will be parsed into a TimeZone.Offset" }),
   TimeZoneOffsetFromSelf,
   { strict: true, decode: dateTime.zoneMakeOffset, encode: (tz) => tz.offset }
 ).annotations({ identifier: "TimeZoneOffset" }) {}
@@ -6278,7 +6284,7 @@ export class TimeZoneNamedFromSelf extends declare(
  * @since 0.70.0
  */
 export class TimeZoneNamed extends transformOrFail(
-  String$,
+  String$.annotations({ description: "a string that will be parsed into a TimeZone.Named" }),
   TimeZoneNamedFromSelf,
   {
     strict: true,
@@ -6312,7 +6318,7 @@ export const TimeZoneFromSelf: TimeZoneFromSelf = Union(TimeZoneOffsetFromSelf, 
  * @since 0.70.0
  */
 export class TimeZone extends transformOrFail(
-  String$,
+  String$.annotations({ description: "a string that will be parsed into a TimeZone" }),
   TimeZoneFromSelf,
   {
     strict: true,
@@ -6356,7 +6362,7 @@ export class DateTimeZonedFromSelf extends declare(
  * @since 0.70.0
  */
 export class DateTimeZoned extends transformOrFail(
-  String$,
+  String$.annotations({ description: "a string that will be parsed into a DateTime.Zoned" }),
   DateTimeZonedFromSelf,
   {
     strict: true,
@@ -6999,11 +7005,17 @@ export const ReadonlyMapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
   key: Schema<KA, string, KR>
   value: Schema<VA, VI, VR>
 }): Schema<ReadonlyMap<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
-  transform(Record({ key: encodedBoundSchema(key), value }), ReadonlyMapFromSelf({ key, value: typeSchema(value) }), {
-    strict: true,
-    decode: (record) => new Map(Object.entries(record)),
-    encode: record_.fromEntries
-  })
+  transform(
+    Record({ key: encodedBoundSchema(key), value }).annotations({
+      description: "a record that will be parsed into a ReadonlyMap"
+    }),
+    ReadonlyMapFromSelf({ key, value: typeSchema(value) }),
+    {
+      strict: true,
+      decode: (record) => new Map(Object.entries(record)),
+      encode: record_.fromEntries
+    }
+  )
 
 /**
  * @category Map transformations
@@ -7013,11 +7025,17 @@ export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
   key: Schema<KA, string, KR>
   value: Schema<VA, VI, VR>
 }): Schema<Map<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
-  transform(Record({ key: encodedBoundSchema(key), value }), MapFromSelf({ key, value: typeSchema(value) }), {
-    strict: true,
-    decode: (record) => new Map(Object.entries(record)),
-    encode: record_.fromEntries
-  })
+  transform(
+    Record({ key: encodedBoundSchema(key), value }).annotations({
+      description: "a record that will be parsed into a Map"
+    }),
+    MapFromSelf({ key, value: typeSchema(value) }),
+    {
+      strict: true,
+      decode: (record) => new Map(Object.entries(record)),
+      encode: record_.fromEntries
+    }
+  )
 
 const setArbitrary = <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<ReadonlySet<A>> => (fc) => {
   const items = fc.array(item(fc))
@@ -7178,7 +7196,7 @@ export class BigDecimalFromSelf extends declare(
  * @since 0.67.0
  */
 export class BigDecimal extends transformOrFail(
-  String$,
+  String$.annotations({ description: "a string that will be parsed into a BigDecimal" }),
   BigDecimalFromSelf,
   {
     strict: true,
@@ -7199,7 +7217,7 @@ export class BigDecimal extends transformOrFail(
  * @since 0.67.0
  */
 export class BigDecimalFromNumber extends transformOrFail(
-  Number$,
+  Number$.annotations({ description: "a number that will be parsed into a BigDecimal" }),
   BigDecimalFromSelf,
   {
     strict: true,

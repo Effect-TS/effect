@@ -207,9 +207,7 @@ schema (Declaration): DateFromSelf`
       type: "string"
     })
     expectJSONSchema(Schema.String.annotations({}), {
-      type: "string",
-      description: "a string",
-      title: "string"
+      type: "string"
     })
   })
 
@@ -218,9 +216,7 @@ schema (Declaration): DateFromSelf`
       type: "number"
     }, false)
     expectJSONSchema(Schema.Number.annotations({}), {
-      type: "number",
-      description: "a number",
-      title: "number"
+      type: "number"
     }, false)
   })
 
@@ -229,9 +225,7 @@ schema (Declaration): DateFromSelf`
       type: "boolean"
     })
     expectJSONSchema(Schema.Boolean.annotations({}), {
-      type: "boolean",
-      description: "a boolean",
-      title: "boolean"
+      type: "boolean"
     })
   })
 
@@ -514,7 +508,6 @@ schema (Declaration): DateFromSelf`
         "items": [
           {
             "type": "string",
-            "title": "string",
             "description": "e"
           },
           {
@@ -1376,8 +1369,6 @@ schema (Suspend): <suspended schema>`
     it("examples support", () => {
       expectJSONSchema(Schema.String.annotations({ examples: ["a", "b"] }), {
         "type": "string",
-        "title": "string",
-        "description": "a string",
         "examples": ["a", "b"]
       })
     })
@@ -1385,8 +1376,6 @@ schema (Suspend): <suspended schema>`
     it("default support", () => {
       expectJSONSchema(Schema.String.annotations({ default: "" }), {
         "type": "string",
-        "title": "string",
-        "description": "a string",
         "default": ""
       })
     })
@@ -1503,9 +1492,7 @@ schema (Suspend): <suspended schema>`
         "$ref": "#/$defs/Name",
         "$defs": {
           "Name": {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           }
         }
       })
@@ -1866,9 +1853,8 @@ schema (Suspend): <suspended schema>`
           ],
           "properties": {
             "a": {
-              "type": "string",
               description: "a string that will be parsed into a number",
-              title: "string"
+              "type": "string"
             }
           },
           "additionalProperties": false
@@ -2066,9 +2052,8 @@ schema (Suspend): <suspended schema>`
             a: {
               contentMediaType: "application/json",
               contentSchema: {
-                type: "string",
                 description: "a string that will be parsed into a number",
-                title: "string"
+                type: "string"
               },
               type: "string"
             }
@@ -2110,15 +2095,14 @@ schema (Suspend): <suspended schema>`
         value: Schema.NumberFromString
       }),
       {
-        description: "ReadonlyMap<a string at least 2 character(s) long, number>",
-        type: "object",
-        required: [],
-        properties: {},
+        "description": "a record that will be parsed into a ReadonlyMap",
+        "type": "object",
+        "required": [],
+        "properties": {},
         "patternProperties": {
           "": {
-            description: "a string that will be parsed into a number",
-            title: "string",
-            type: "string"
+            "description": "a string that will be parsed into a number",
+            "type": "string"
           }
         },
         "propertyNames": {
@@ -2137,15 +2121,14 @@ schema (Suspend): <suspended schema>`
         value: Schema.NumberFromString
       }),
       {
-        type: "object",
-        description: "Map<a string at least 2 character(s) long, number>",
-        required: [],
-        properties: {},
+        "type": "object",
+        "description": "a record that will be parsed into a Map",
+        "required": [],
+        "properties": {},
         "patternProperties": {
           "": {
-            description: "a string that will be parsed into a number",
-            title: "string",
-            type: "string"
+            "description": "a string that will be parsed into a number",
+            "type": "string"
           }
         },
         "propertyNames": {
@@ -2173,7 +2156,6 @@ schema (Suspend): <suspended schema>`
       Schema.DateFromString,
       {
         "type": "string",
-        "title": "string",
         "description": "a string that will be parsed into a Date"
       }
     )
@@ -2184,7 +2166,6 @@ schema (Suspend): <suspended schema>`
       Schema.Date,
       {
         "type": "string",
-        "title": "string",
         "description": "a string that will be parsed into a Date"
       }
     )

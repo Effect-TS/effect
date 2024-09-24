@@ -15,7 +15,6 @@
             "in": "path",
             "schema": {
               "description": "a string that will be parsed into a number",
-              "title": "string",
               "type": "string"
             },
             "required": true
@@ -283,7 +282,6 @@
             "in": "path",
             "schema": {
               "description": "a string that will be parsed into a number",
-              "title": "string",
               "type": "string"
             },
             "required": true
@@ -310,7 +308,7 @@
                       "type": "string"
                     },
                     "createdAt": {
-                      "description": "a DateTime.Utc instance",
+                      "description": "a string that will be parsed into a DateTime.Utc",
                       "type": "string"
                     }
                   },
@@ -427,7 +425,7 @@
                       "type": "string"
                     },
                     "createdAt": {
-                      "description": "a DateTime.Utc instance",
+                      "description": "a string that will be parsed into a DateTime.Utc",
                       "type": "string"
                     }
                   },
@@ -559,7 +557,6 @@
             "in": "header",
             "schema": {
               "description": "a string that will be parsed into a number",
-              "title": "string",
               "type": "string"
             },
             "required": false
@@ -588,7 +585,7 @@
                         "type": "string"
                       },
                       "createdAt": {
-                        "description": "a DateTime.Utc instance",
+                        "description": "a string that will be parsed into a DateTime.Utc",
                         "type": "string"
                       }
                     },
