@@ -4,6 +4,7 @@ import * as Either from "effect/Either"
 import type * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import type * as FiberRef from "effect/FiberRef"
+import type * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as Micro from "effect/Micro"
 import type * as Option from "effect/Option"
 import type * as Queue from "effect/Queue"
@@ -100,7 +101,11 @@ export type RuntimeFiberUnify = Unify.Unify<
   | Fiber.RuntimeFiber<1, 2>
   | Fiber.RuntimeFiber<"a", "b">
 >
-
+// $ExpectType ManagedRuntime<1, 2> | ManagedRuntime<"a", "b">
+export type ManagedRuntimeUnify = Unify.Unify<
+  | ManagedRuntime.ManagedRuntime<1, 2>
+  | ManagedRuntime.ManagedRuntime<"a", "b">
+>
 // $ExpectType Queue<1> | Queue<"a">
 export type QueueUnify = Unify.Unify<
   | Queue.Queue<1>
@@ -125,7 +130,7 @@ export type ResourceUnify = Unify.Unify<
   | Resource.Resource<any, any>
 >
 
-// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | ScopedRef<1> | ScopedRef<"a"> | Resource<1, 2> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Resource<"a", never> | Latch | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
+// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | ManagedRuntime<1, 2> | ManagedRuntime<"a", "b"> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | ScopedRef<1> | ScopedRef<"a"> | Resource<1, 2> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Resource<"a", never> | Latch | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
 export type AllUnify = Unify.Unify<
   | Either.Either<1, 0>
   | Either.Either<"A", "E">
@@ -158,5 +163,7 @@ export type AllUnify = Unify.Unify<
   | Resource.Resource<1, 2>
   | Resource.Resource<"a">
   | Effect.Latch
+  | ManagedRuntime.ManagedRuntime<1, 2>
+  | ManagedRuntime.ManagedRuntime<"a", "b">
   | 0
 >
