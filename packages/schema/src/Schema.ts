@@ -4909,7 +4909,9 @@ export const parseNumber = <A extends string, I, R>(
  * @category number constructors
  * @since 0.67.0
  */
-export class NumberFromString extends parseNumber(String$).annotations({ identifier: "NumberFromString" }) {}
+export class NumberFromString extends parseNumber(String$.annotations({
+  description: "a string that will be parsed into a number"
+})).annotations({ identifier: "NumberFromString" }) {}
 
 /**
  * @category number constructors

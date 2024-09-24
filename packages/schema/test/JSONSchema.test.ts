@@ -246,6 +246,14 @@ schema (Declaration): DateFromSelf`
     })
   })
 
+  it("NumberFromString", () => {
+    expectJSONSchema(Schema.NumberFromString, {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "string",
+      "description": "a string that will be parsed into a number"
+    }, false)
+  })
+
   describe("Literal", () => {
     it("Null", () => {
       expectJSONSchema(Schema.Null, {
@@ -1952,7 +1960,8 @@ schema (Suspend): <suspended schema>`
           ],
           "properties": {
             "a": {
-              "type": "string"
+              "type": "string",
+              "description": "a string that will be parsed into a number"
             }
           },
           "additionalProperties": false
@@ -2151,7 +2160,12 @@ schema (Suspend): <suspended schema>`
         "$schema": "http://json-schema.org/draft-07/schema#",
         type: "object",
         required: ["a"],
-        properties: { a: { type: "string" } },
+        properties: {
+          a: {
+            "type": "string",
+            "description": "a string that will be parsed into a number"
+          }
+        },
         additionalProperties: false
       },
       false
@@ -2194,7 +2208,10 @@ schema (Suspend): <suspended schema>`
         required: [],
         properties: {},
         "patternProperties": {
-          "": { type: "string" }
+          "": {
+            "type": "string",
+            "description": "a string that will be parsed into a number"
+          }
         },
         "propertyNames": {
           "description": "a string at least 2 character(s) long",
@@ -2217,7 +2234,10 @@ schema (Suspend): <suspended schema>`
         required: [],
         properties: {},
         "patternProperties": {
-          "": { type: "string" }
+          "": {
+            "type": "string",
+            "description": "a string that will be parsed into a number"
+          }
         },
         "propertyNames": {
           "description": "a string at least 2 character(s) long",

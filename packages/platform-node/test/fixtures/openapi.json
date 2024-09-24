@@ -14,8 +14,8 @@
             "name": "id",
             "in": "path",
             "schema": {
-              "description": "a number",
-              "title": "number",
+              "description": "a string that will be parsed into a number",
+              "title": "string",
               "type": "string"
             },
             "required": true
@@ -282,8 +282,8 @@
             "name": "id",
             "in": "path",
             "schema": {
-              "description": "a number",
-              "title": "number",
+              "description": "a string that will be parsed into a number",
+              "title": "string",
               "type": "string"
             },
             "required": true
@@ -558,8 +558,8 @@
             "name": "page",
             "in": "header",
             "schema": {
-              "description": "a number",
-              "title": "number",
+              "description": "a string that will be parsed into a number",
+              "title": "string",
               "type": "string"
             },
             "required": false
