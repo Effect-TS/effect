@@ -15,7 +15,7 @@ import type * as Unify from "./Unify.js"
 const TypeId: unique symbol = internal.TypeId as TypeId
 
 /**
- * @since 2.0.0
+ * @since 3.9.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
@@ -25,7 +25,7 @@ export type TypeId = typeof TypeId
  *
  * @param input - The value to be checked if it is a `ManagedRuntime`.
 
- * @since 2.0.0
+ * @since 3.9.0
  * @category guards
  */
 export const isManagedRuntime: (input: unknown) => input is ManagedRuntime<unknown, unknown> = internal.isManagedRuntime
@@ -45,7 +45,7 @@ export declare namespace ManagedRuntime {
    */
   export type Error<T extends ManagedRuntime<any, any>> = [T] extends [ManagedRuntime<infer _R, infer E>] ? E : never
   /**
-   * @since 2.0.0
+   * @since 3.9.0
    * @category models
    */
   export interface Variance<in out R, in out ER> {
@@ -148,7 +148,7 @@ export interface ManagedRuntime<in out R, in out ER>
 
 /**
  * @category models
- * @since 3.8.0
+ * @since 3.9.0
  */
 export interface ManagedRuntimeUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
   ManagedRuntime?: () => Extract<A[Unify.typeSymbol], ManagedRuntime<any, any>>
@@ -156,7 +156,7 @@ export interface ManagedRuntimeUnify<A extends { [Unify.typeSymbol]?: any }> ext
 
 /**
  * @category models
- * @since 3.8.0
+ * @since 3.9.0
  */
 export interface ManagedRuntimeUnifyIgnore extends Effect.EffectUnifyIgnore {
   Effect?: true
