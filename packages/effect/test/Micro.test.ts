@@ -331,7 +331,7 @@ describe.concurrent("Micro", () => {
   it.effect("raceAll", () =>
     Micro.gen(function*() {
       const interrupted: Array<number> = []
-      const result = yield* Micro.raceAll([100, 75, 50, 0, 25].map((ms) =>
+      const result = yield* Micro.raceAll([500, 200, 100, 0, 50].map((ms) =>
         (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
           Micro.delay(ms),
           Micro.onInterrupt(
@@ -341,14 +341,14 @@ describe.concurrent("Micro", () => {
           )
         )
       ))
-      assert.strictEqual(result, 25)
-      assert.deepStrictEqual(interrupted, [100, 75, 50])
+      assert.strictEqual(result, 50)
+      assert.deepStrictEqual(interrupted, [500, 200, 100])
     }))
 
   it("raceAllFirst", () =>
     Micro.gen(function*() {
       const interrupted: Array<number> = []
-      const result = yield* Micro.raceAllFirst([100, 75, 50, 0, 25].map((ms) =>
+      const result = yield* Micro.raceAllFirst([500, 200, 100, 0, 50].map((ms) =>
         (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
           Micro.delay(ms),
           Micro.onInterrupt(
@@ -359,7 +359,7 @@ describe.concurrent("Micro", () => {
         )
       )).pipe(Micro.exit)
       assert.deepStrictEqual(result, Micro.exitFail("boom"))
-      assert.deepStrictEqual(interrupted, [100, 75, 50, 25])
+      assert.deepStrictEqual(interrupted, [500, 200, 100, 50])
     }).pipe(Micro.runPromise))
 
   describe("valid Effect", () => {
