@@ -2260,6 +2260,28 @@ schema (Suspend): <suspended schema>`
       }
     )
   })
+
+  it("DateFromString", () => {
+    expectJSONSchema(
+      Schema.DateFromString,
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "description": "a string that will be parsed into a Date"
+      }
+    )
+  })
+
+  it("Date", () => {
+    expectJSONSchema(
+      Schema.Date,
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "description": "a string that will be parsed into a Date"
+      }
+    )
+  })
 })
 
 export const decode = <A>(schema: JSONSchema.JsonSchema7Root): Schema.Schema<A> =>
