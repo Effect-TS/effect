@@ -64,7 +64,7 @@ export type runSymbol = typeof runSymbol
  */
 export interface Micro<out A, out E = never, out R = never> extends Effect<A, E, R> {
   readonly [TypeId]: Micro.Variance<A, E, R>
-  readonly [runSymbol]: (env: Env<any>, onExit: (exit: MicroExit<A, E>) => void) => void
+  [runSymbol](env: Env<any>, onExit: (exit: MicroExit<A, E>) => void): void
   [Symbol.iterator](): MicroIterator<Micro<A, E, R>>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: MicroUnify<this>
@@ -148,7 +148,7 @@ export interface MicroIterator<T extends Micro<any, any, any>> {
  * @since 3.9.0
  * @category models
  */
-export interface MicroPrimitive {
+export interface MicroClass {
   new<A, E = never, R = never>(): Micro<A, E, R>
 }
 
@@ -169,7 +169,7 @@ const MicroProto = {
   }
 }
 
-const MicroBase: MicroPrimitive = (function() {
+const MicroBase: MicroClass = (function() {
   function Base() {}
   Base.prototype = MicroProto
   return Base as any
@@ -179,8 +179,8 @@ const MicroBase: MicroPrimitive = (function() {
  * @since 3.9.0
  * @category constructors
  */
-export abstract class MicroableClass<out A, out E = never, out R = never> extends MicroBase<A, E, R> {
-  abstract readonly [runSymbol]: (env: Env<any>, onExit: (exit: MicroExit<A, E>) => void) => void
+export abstract class Class<out A, out E = never, out R = never> extends MicroBase<A, E, R> {
+  abstract [runSymbol](env: Env<any>, onExit: (exit: MicroExit<A, E>) => void): void
 }
 
 // ----------------------------------------------------------------------------
@@ -3741,12 +3741,22 @@ export interface HandleUnifyIgnore extends MicroUnifyIgnore {
 export const isHandle = (u: unknown): u is Handle<unknown, unknown> =>
   typeof u === "object" && u !== null && HandleTypeId in u
 
-class HandleImpl<A, E> extends MicroableClass<A, E> implements Handle<A, E> {
-  readonly [runSymbol] = (_env: Env<any>, onExit: (exit: MicroExit<A, E>) => void) => {
+class HandleImpl<A, E> extends Class<A, E> implements Handle<A, E> {
+  [runSymbol](_env: Env<any>, onExit: (exit: MicroExit<A, E>) => void) {
+    if (this._controller.signal.aborted) {
+      return onExit(exitInterrupt)
+    }
+
     const observer = (exit: MicroExit<A, E>) => {
       this.removeObserver(observer)
       onExit(exit)
     }
+
+    this._controller.signal.addEventListener("abort", () => {
+      this.removeObserver(observer)
+      onExit(exitInterrupt)
+    }, { once: true })
+
     this.addObserver(observer)
   }
   readonly [HandleTypeId]: HandleTypeId
