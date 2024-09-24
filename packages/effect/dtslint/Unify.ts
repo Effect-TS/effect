@@ -43,6 +43,14 @@ export type StreamUnify = Unify.Unify<
 export type MicroUnify = Unify.Unify<
   Micro.Micro<0, 1, 2> | Micro.Micro<"a", "b", "c">
 >
+// $ExpectType EnvRef<0 | "a">
+export type MicroEnvRefUnify = Unify.Unify<
+  Micro.EnvRef<0> | Micro.EnvRef<"a">
+>
+// $ExpectType Handle<0 | "a", "b" | 1>
+export type MicroHandleUnify = Unify.Unify<
+  Micro.Handle<0, 1> | Micro.Handle<"a", "b">
+>
 // $ExpectType Effect<0 | "a", "b" | 1, "c" | 2>
 export type EffectUnify = Unify.Unify<
   | Effect.Effect<0, 1, 2>
