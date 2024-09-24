@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.66.1
+
+### Patch Changes
+
+- [#3664](https://github.com/Effect-TS/effect/pull/3664) [`3812788`](https://github.com/Effect-TS/effect/commit/3812788d79caaab8f559a62fd443018a04ac5647) Thanks @tim-smart! - add OpenApiJsonSchema module
+
 ## 0.66.0
 
 ### Patch Changes
