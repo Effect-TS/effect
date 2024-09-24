@@ -383,6 +383,165 @@ export const make = <
         }
     >
   }
+  readonly fieldFromKey: {
+    <
+      Self extends Field<any> | Field.ValueAny,
+      const Mapping extends Self extends Field<infer S> ? {
+          readonly [K in keyof S]?: string
+        }
+        : {
+          readonly [K in Variants[number]]?: string
+        }
+    >(
+      mapping: Mapping
+    ): (self: Self) => Field<
+      Self extends Field<infer S> ? {
+          readonly [K in keyof S]: K extends keyof Mapping
+            ? Mapping[K] extends string ? S[K] extends Schema.Schema.All ? Schema.PropertySignature<
+                  ":",
+                  Schema.Schema.Type<S[K]>,
+                  Mapping[K],
+                  ":",
+                  Schema.Schema.Encoded<S[K]>,
+                  false,
+                  Schema.Schema.Context<S[K]>
+                >
+              : S[K] extends Schema.PropertySignature.All ? S[K] extends Schema.PropertySignature<
+                  infer TypeToken,
+                  infer Type,
+                  any,
+                  infer EncodedToken,
+                  infer Encoded,
+                  infer HasDefault,
+                  infer R
+                > ? Schema.PropertySignature<
+                    TypeToken,
+                    Type,
+                    Mapping[K],
+                    EncodedToken,
+                    Encoded,
+                    HasDefault,
+                    R
+                  >
+                : never
+              : never
+            : S[K]
+            : S[K]
+        }
+        : {
+          readonly [K in Variants[number]]: K extends keyof Mapping
+            ? Mapping[K] extends string ? Self extends Schema.Schema.All ? Schema.PropertySignature<
+                  ":",
+                  Schema.Schema.Type<Self>,
+                  Mapping[K],
+                  ":",
+                  Schema.Schema.Encoded<Self>,
+                  false,
+                  Schema.Schema.Context<Self>
+                >
+              : Self extends Schema.PropertySignature.All ? Self extends Schema.PropertySignature<
+                  infer TypeToken,
+                  infer Type,
+                  any,
+                  infer EncodedToken,
+                  infer Encoded,
+                  infer HasDefault,
+                  infer R
+                > ? Schema.PropertySignature<
+                    TypeToken,
+                    Type,
+                    Mapping[K],
+                    EncodedToken,
+                    Encoded,
+                    HasDefault,
+                    R
+                  >
+                : never
+              : never
+            : Self
+            : Self
+        }
+    >
+    <
+      Self extends Field<any> | Field.ValueAny,
+      const Mapping extends Self extends Field<infer S> ? {
+          readonly [K in keyof S]?: string
+        }
+        : {
+          readonly [K in Variants[number]]?: string
+        }
+    >(
+      self: Self,
+      mapping: Mapping
+    ): Field<
+      Self extends Field<infer S> ? {
+          readonly [K in keyof S]: K extends keyof Mapping
+            ? Mapping[K] extends string ? S[K] extends Schema.Schema.All ? Schema.PropertySignature<
+                  ":",
+                  Schema.Schema.Type<S[K]>,
+                  Mapping[K],
+                  ":",
+                  Schema.Schema.Encoded<S[K]>,
+                  false,
+                  Schema.Schema.Context<S[K]>
+                >
+              : S[K] extends Schema.PropertySignature.All ? S[K] extends Schema.PropertySignature<
+                  infer TypeToken,
+                  infer Type,
+                  any,
+                  infer EncodedToken,
+                  infer Encoded,
+                  infer HasDefault,
+                  infer R
+                > ? Schema.PropertySignature<
+                    TypeToken,
+                    Type,
+                    Mapping[K],
+                    EncodedToken,
+                    Encoded,
+                    HasDefault,
+                    R
+                  >
+                : never
+              : never
+            : S[K]
+            : S[K]
+        }
+        : {
+          readonly [K in Variants[number]]: K extends keyof Mapping
+            ? Mapping[K] extends string ? Self extends Schema.Schema.All ? Schema.PropertySignature<
+                  ":",
+                  Schema.Schema.Type<Self>,
+                  Mapping[K],
+                  ":",
+                  Schema.Schema.Encoded<Self>,
+                  false,
+                  Schema.Schema.Context<Self>
+                >
+              : Self extends Schema.PropertySignature.All ? Self extends Schema.PropertySignature<
+                  infer TypeToken,
+                  infer Type,
+                  any,
+                  infer EncodedToken,
+                  infer Encoded,
+                  infer HasDefault,
+                  infer R
+                > ? Schema.PropertySignature<
+                    TypeToken,
+                    Type,
+                    Mapping[K],
+                    EncodedToken,
+                    Encoded,
+                    HasDefault,
+                    R
+                  >
+                : never
+              : never
+            : Self
+            : Self
+        }
+    >
+  }
   readonly Class: <Self = never>(
     identifier: string
   ) => <const Fields extends Struct.Fields>(
@@ -466,6 +625,44 @@ export const make = <
       return Field(Struct_.evolve(field.schemas, f))
     }
   )
+  const fieldFromKeyVariants = dual(
+    2,
+    (
+      self:
+        | Field<{
+          readonly [key: string]: Schema.Schema.All | Schema.PropertySignature.All | undefined
+        }>
+        | Schema.Schema.All
+        | Schema.PropertySignature.Any,
+      mapping: Record<string, string>
+    ): Field<any> => {
+      const rename = (key: string) => <F extends Schema.Schema.All | Schema.PropertySignature.Any>(field: F) =>
+        Schema.PropertySignatureTypeId in field
+          ? field.pipe(Schema.fromKey(key))
+          : Schema.propertySignature(field).pipe(Schema.fromKey(key))
+
+      const fieldMap: Record<
+        string,
+        any
+      > = {}
+
+      if (FieldTypeId in self) {
+        for (const [key, alias] of Object.entries(mapping)) {
+          if (self.schemas[key] && alias) {
+            fieldMap[key] = rename(alias)
+          }
+        }
+      } else {
+        for (const [key, alias] of Object.entries(mapping)) {
+          if (alias) {
+            fieldMap[key] = rename(alias)
+          }
+        }
+      }
+
+      return fieldEvolveVariants(self, fieldMap)
+    }
+  )
   const extractVariants = dual(
     2,
     (self: Struct<any>, variant: string): any =>
@@ -481,6 +678,7 @@ export const make = <
     Class,
     Union: UnionVariants,
     fieldEvolve: fieldEvolveVariants,
+    fieldFromKey: fieldFromKeyVariants,
     extract: extractVariants
   } as any
 }
