@@ -55,7 +55,7 @@ export interface Pool<in out A, out E = never> extends Pool.Variance<A, E>, Effe
  */
 export interface PoolUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
   Pool?: () => Extract<A[Unify.typeSymbol], Pool<any, any>> extends Pool<infer A0, infer _E0> | infer _ ?
-    A0 extends any ? Extract<A[Unify.typeSymbol], Pool<A0, any>> extends Pool<any, infer E1> ? Pool<A0, E1>
+    A0 extends any ? Extract<A[Unify.typeSymbol], Pool<A0, any>> extends Pool<A0, infer E1> ? Pool<A0, E1>
       : never
     : never :
     never
