@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@effect/schema": "workspace:^",
+    "ajv": "^8.17.1",
     "effect": "workspace:^"
   }
 }
