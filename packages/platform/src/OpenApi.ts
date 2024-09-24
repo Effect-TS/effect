@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as AST from "@effect/schema/AST"
-import * as JSONSchema from "@effect/schema/JSONSchema"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import { dual } from "effect/Function"
@@ -13,6 +12,7 @@ import * as HttpApi from "./HttpApi.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 import type { HttpApiSecurity } from "./HttpApiSecurity.js"
 import * as HttpMethod from "./HttpMethod.js"
+import * as JsonSchema from "./OpenApiJsonSchema.js"
 
 /**
  * @since 1.0.0
@@ -251,7 +251,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
         })
       )
       if (Option.isSome(endpoint.pathSchema)) {
-        const schema = makeJsonSchema(endpoint.pathSchema.value) as JSONSchema.JsonSchema7Object
+        const schema = makeJsonSchema(endpoint.pathSchema.value) as JsonSchema.Object
         if ("properties" in schema) {
           Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
             op.parameters!.push({
@@ -264,7 +264,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
         }
       }
       if (!HttpMethod.hasBody(endpoint.method) && Option.isSome(endpoint.payloadSchema)) {
-        const schema = makeJsonSchema(endpoint.payloadSchema.value) as JSONSchema.JsonSchema7Object
+        const schema = makeJsonSchema(endpoint.payloadSchema.value) as JsonSchema.Object
         if ("properties" in schema) {
           Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
             op.parameters!.push({
@@ -277,7 +277,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
         }
       }
       if (Option.isSome(endpoint.headersSchema)) {
-        const schema = makeJsonSchema(endpoint.headersSchema.value) as JSONSchema.JsonSchema7Object
+        const schema = makeJsonSchema(endpoint.headersSchema.value) as JsonSchema.Object
         if ("properties" in schema) {
           Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
             op.parameters!.push({
@@ -361,8 +361,8 @@ const getDescriptionOrIdentifier = (ast: Option.Option<AST.PropertySignature | A
     )
   )
 
-const makeJsonSchema = (schema: Schema.Schema.All): OpenAPIJSONSchema => {
-  const jsonSchema = JSONSchema.make(schema as any)
+const makeJsonSchema = (schema: Schema.Schema.All): JsonSchema.JsonSchema => {
+  const jsonSchema = JsonSchema.make(schema as any)
   delete jsonSchema.$schema
   return jsonSchema
 }
@@ -482,16 +482,10 @@ export type OpenAPISpecPathItem =
  * @category models
  * @since 1.0.0
  */
-export type OpenAPIJSONSchema = JSONSchema.JsonSchema7
-
-/**
- * @category models
- * @since 1.0.0
- */
 export interface OpenAPISpecParameter {
   readonly name: string
   readonly in: "query" | "header" | "path" | "cookie"
-  readonly schema: OpenAPIJSONSchema
+  readonly schema: JsonSchema.JsonSchema
   readonly description?: string
   readonly required?: boolean
   readonly deprecated?: boolean
@@ -524,7 +518,7 @@ export type OpenApiSpecContent = {
  */
 export interface OpenApiSpecResponseHeader {
   readonly description?: string
-  readonly schema: OpenAPIJSONSchema
+  readonly schema: JsonSchema.JsonSchema
 }
 
 /**
@@ -551,7 +545,7 @@ export interface OpenApiSpecResponse {
  * @since 1.0.0
  */
 export interface OpenApiSpecMediaType {
-  readonly schema?: OpenAPIJSONSchema
+  readonly schema?: JsonSchema.JsonSchema
   readonly example?: object
   readonly description?: string
 }
@@ -571,7 +565,7 @@ export interface OpenAPISpecRequestBody {
  * @since 1.0.0
  */
 export interface OpenAPIComponents {
-  readonly schemas?: ReadonlyRecord<string, OpenAPIJSONSchema>
+  readonly schemas?: ReadonlyRecord<string, JsonSchema.JsonSchema>
   readonly securitySchemes?: ReadonlyRecord<string, OpenAPISecurityScheme>
 }
 
