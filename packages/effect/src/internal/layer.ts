@@ -1339,7 +1339,7 @@ export const effect_provide = dual<
       return core.provideSomeContext(self, source)
     } else if (ManagedRuntime.isManagedRuntime(source)) {
       return core.flatMap(
-        (source as ManagedRuntime.ManagedRuntime<ROut, any>).runtimeEffect,
+        source as ManagedRuntime.ManagedRuntime<ROut, any>,
         (rt) => provideSomeRuntime(self, rt)
       )
     } else {
