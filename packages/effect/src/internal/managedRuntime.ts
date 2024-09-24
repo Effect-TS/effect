@@ -8,15 +8,20 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
 import * as Scope from "../Scope.js"
+import type * as Unify from "../Unify.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as internalLayer from "./layer.js"
 import * as internalRuntime from "./runtime.js"
 
-interface ManagedRuntimeImpl<R, E> extends M.ManagedRuntime<R, E> {
+interface ManagedRuntimeImpl<R, E> extends M.ManagedRuntime<R, E>, Effectable.Class<Runtime.Runtime<R>, E, never> {
   readonly scope: Scope.CloseableScope
   cachedRuntime: Runtime.Runtime<R> | undefined
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: M.ManagedRuntimeUnify<this>
+  readonly [Unify.ignoreSymbol]?: M.ManagedRuntimeUnifyIgnore
 }
 
 /** @internal */
