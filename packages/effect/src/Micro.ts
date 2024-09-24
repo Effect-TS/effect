@@ -180,7 +180,10 @@ const MicroBase: MicroClass = (function() {
  * @category constructors
  */
 export abstract class Class<out A, out E = never, out R = never> extends MicroBase<A, E, R> {
-  abstract [runSymbol](env: Env<any>, onExit: (exit: MicroExit<A, E>) => void): void
+  abstract asMicro(): Micro<A, E, R>
+  [runSymbol](env: Env<any>, onExit: (exit: MicroExit<A, E>) => void): void {
+    this.asMicro()[runSymbol](env, onExit)
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -881,7 +884,7 @@ const EnvRefProto: ThisType<EnvRef<any>> = {
   ...MicroProto,
   [EnvRefTypeId]: EnvRefTypeId,
   [runSymbol](env: Env<any>, onExit: (exit: MicroExit<any, any>) => void) {
-    onExit(Either.right(envGet(env, this)))
+    getEnvRef(this)[runSymbol](env, onExit)
   }
 }
 
@@ -3742,23 +3745,6 @@ export const isHandle = (u: unknown): u is Handle<unknown, unknown> =>
   typeof u === "object" && u !== null && HandleTypeId in u
 
 class HandleImpl<A, E> extends Class<A, E> implements Handle<A, E> {
-  [runSymbol](_env: Env<any>, onExit: (exit: MicroExit<A, E>) => void) {
-    if (this._controller.signal.aborted) {
-      return onExit(exitInterrupt)
-    }
-
-    const observer = (exit: MicroExit<A, E>) => {
-      this.removeObserver(observer)
-      onExit(exit)
-    }
-
-    this._controller.signal.addEventListener("abort", () => {
-      this.removeObserver(observer)
-      onExit(exitInterrupt)
-    }, { once: true })
-
-    this.addObserver(observer)
-  }
   readonly [HandleTypeId]: HandleTypeId
 
   readonly observers: Set<(exit: MicroExit<A, E>) => void> = new Set()
@@ -3833,6 +3819,10 @@ class HandleImpl<A, E> extends Class<A, E> implements Handle<A, E> {
       this.unsafeInterrupt()
       return this.await
     })
+  }
+
+  asMicro(): Micro<A, E> {
+    return this.join
   }
 }
 
