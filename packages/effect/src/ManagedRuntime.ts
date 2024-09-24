@@ -6,7 +6,6 @@ import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import * as internal from "./internal/managedRuntime.js"
 import type * as Layer from "./Layer.js"
-import type { Pipeable } from "./Pipeable.js"
 import type * as Runtime from "./Runtime.js"
 import type * as Unify from "./Unify.js"
 
@@ -52,7 +51,7 @@ export declare namespace ManagedRuntime {
  * @since 2.0.0
  * @category models
  */
-export interface ManagedRuntime<in R, out ER> extends Pipeable, Effect.Effect<Runtime.Runtime<R>, ER> {
+export interface ManagedRuntime<in R, out ER> extends Effect.Effect<Runtime.Runtime<R>, ER> {
   readonly [TypeId]: TypeId
   readonly memoMap: Layer.MemoMap
   readonly runtimeEffect: Effect.Effect<Runtime.Runtime<R>, ER>
