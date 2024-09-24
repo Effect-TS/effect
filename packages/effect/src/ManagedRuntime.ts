@@ -2,17 +2,14 @@
  * @since 2.0.0
  */
 import type * as Effect from "./Effect.js"
-import type * as Effectable from "./Effectable.js"
 import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import * as internal from "./internal/managedRuntime.js"
 import type * as Layer from "./Layer.js"
-import type { Pipeable } from "./Pipeable.js"
 import type * as Runtime from "./Runtime.js"
-import type * as Types from "./Types.js"
 import type * as Unify from "./Unify.js"
 
-const TypeId: unique symbol = internal.TypeId as TypeId
+export const TypeId: unique symbol = internal.TypeId as TypeId
 
 /**
  * @since 3.9.0
@@ -44,26 +41,14 @@ export declare namespace ManagedRuntime {
    * @since 3.4.0
    */
   export type Error<T extends ManagedRuntime<any, any>> = [T] extends [ManagedRuntime<infer _R, infer E>] ? E : never
-  /**
-   * @since 3.9.0
-   * @category models
-   */
-  export interface Variance<in out R, in out ER> {
-    readonly [TypeId]: {
-      _R: Types.Invariant<R>
-      _ER: Types.Invariant<ER>
-    }
-  }
 }
 
 /**
  * @since 2.0.0
  * @category models
  */
-export interface ManagedRuntime<in R, out ER>
-  extends
-    Effect.Effect<Runtime.Runtime<R>, ER>
-{
+export interface ManagedRuntime<in R, out ER> extends Effect.Effect<Runtime.Runtime<R>, ER> {
+  readonly [TypeId]: TypeId
   readonly memoMap: Layer.MemoMap
   readonly runtimeEffect: Effect.Effect<Runtime.Runtime<R>, ER>
   readonly runtime: () => Promise<Runtime.Runtime<R>>

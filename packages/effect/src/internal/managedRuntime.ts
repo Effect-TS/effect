@@ -25,13 +25,6 @@ export const TypeId: M.TypeId = Symbol.for("effect/ManagedRuntime") as M.TypeId
 /** @internal */
 export const isManagedRuntime = (u: unknown): u is M.ManagedRuntime<unknown, unknown> => hasProperty(u, TypeId)
 
-const managedRuntimeVariance = {
-  /* c8 ignore next */
-  _R: (_: any) => _,
-  /* c8 ignore next */
-  _ER: (_: any) => _
-}
-
 function provide<R, ER, A, E>(
   managed: ManagedRuntimeImpl<R, ER>,
   effect: Effect.Effect<A, E, R>
@@ -70,7 +63,7 @@ export const make = <R, ER>(
     )
   const self: ManagedRuntimeImpl<R, ER> = {
     ...Effectable.CommitPrototype,
-    [TypeId]: managedRuntimeVariance,
+    [TypeId]: TypeId,
     memoMap,
     scope,
     runtimeEffect,
