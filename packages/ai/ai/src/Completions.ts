@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
+import * as JsonSchema from "@effect/platform/OpenApiJsonSchema"
 import * as AST from "@effect/schema/AST"
-import * as JSONSchema from "@effect/schema/JSONSchema"
 import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -89,7 +89,7 @@ export interface CompletionOptions {
   readonly tools: Array<{
     readonly name: string
     readonly description: string
-    readonly parameters: JSONSchema.JsonSchema7
+    readonly parameters: JsonSchema.JsonSchema
   }>
   readonly required: boolean | string
 }
@@ -105,7 +105,7 @@ export const make = (options: {
     readonly tools: Array<{
       readonly name: string
       readonly description: string
-      readonly parameters: JSONSchema.JsonSchema7
+      readonly parameters: JsonSchema.JsonSchema
     }>
     readonly required: boolean | string
   }) => Effect.Effect<AiResponse, AiError>
@@ -115,7 +115,7 @@ export const make = (options: {
     readonly tools: Array<{
       readonly name: string
       readonly description: string
-      readonly parameters: JSONSchema.JsonSchema7
+      readonly parameters: JsonSchema.JsonSchema
     }>
     readonly required: boolean | string
   }) => Stream.Stream<AiResponse, AiError>
@@ -192,7 +192,7 @@ export const make = (options: {
     )
   },
   toolkit({ concurrency, required = false, tools }) {
-    const toolArr: Array<{ name: string; description: string; parameters: JSONSchema.JsonSchema7 }> = []
+    const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema }> = []
     for (const [, tool] of tools.toolkit.tools) {
       toolArr.push(convertTool(tool as any))
     }
@@ -215,7 +215,7 @@ export const make = (options: {
     ) as any
   },
   toolkitStream({ concurrency, required = false, tools }) {
-    const toolArr: Array<{ name: string; description: string; parameters: JSONSchema.JsonSchema7 }> = []
+    const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema }> = []
     for (const [, tool] of tools.toolkit.tools) {
       toolArr.push(convertTool(tool as any))
     }
@@ -247,7 +247,7 @@ export const make = (options: {
 const convertTool = <A, I, R>(tool: Completions.StructuredSchema<A, I, R>) => ({
   name: tool._tag ?? tool.identifier,
   description: getDescription(tool.ast),
-  parameters: JSONSchema.make(tool)
+  parameters: JsonSchema.make(tool)
 })
 
 const getDescription = (ast: AST.AST): string => {
