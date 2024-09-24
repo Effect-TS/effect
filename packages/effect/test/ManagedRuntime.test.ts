@@ -3,6 +3,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
+import * as it from "effect/test/utils/extend"
 import { assert, describe, test } from "vitest"
 
 describe.concurrent("ManagedRuntime", () => {
@@ -48,4 +49,17 @@ describe.concurrent("ManagedRuntime", () => {
     await runtimeB.dispose()
     assert.strictEqual(count, 1)
   })
+
+  it.effect(
+    "is subtype of effect",
+    () =>
+      Effect.gen(function*() {
+        const tag = Context.GenericTag<string>("string")
+        const layer = Layer.succeed(tag, "test")
+        const managedRuntime = ManagedRuntime.make(layer)
+        const runtime = yield* managedRuntime
+        const result = Context.get(runtime.context, tag)
+        assert.strictEqual(result, "test")
+      })
+  )
 })
