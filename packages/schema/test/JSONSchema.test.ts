@@ -1930,17 +1930,20 @@ schema (Suspend): <suspended schema>`
     it("refinement of a transformation without an override annotation", () => {
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString()), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "string"
+        "type": "string",
+        "description": "a string that will be trimmed"
       }, false)
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "string"
+        "type": "string",
+        "description": "a string that will be trimmed"
       }, false)
       expectJSONSchema(
         Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "type": "string"
+          "type": "string",
+          "description": "a string that will be trimmed"
         },
         false
       )
@@ -2205,9 +2208,10 @@ schema (Suspend): <suspended schema>`
       }),
       {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        type: "object",
-        required: [],
-        properties: {},
+        "type": "object",
+        "description": "a record that will be parsed into a ReadonlyMap",
+        "required": [],
+        "properties": {},
         "patternProperties": {
           "": {
             "type": "string",
@@ -2231,9 +2235,10 @@ schema (Suspend): <suspended schema>`
       }),
       {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        type: "object",
-        required: [],
-        properties: {},
+        "type": "object",
+        "description": "a record that will be parsed into a Map",
+        "required": [],
+        "properties": {},
         "patternProperties": {
           "": {
             "type": "string",

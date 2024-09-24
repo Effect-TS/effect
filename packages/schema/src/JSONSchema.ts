@@ -261,6 +261,33 @@ const getJsonSchemaAnnotations = (annotated: AST.Annotated): JsonSchemaAnnotatio
     default: AST.getDefaultAnnotation(annotated)
   })
 
+const removeDefaultJsonSchemaAnnotations = (
+  jsonSchemaAnnotations: JsonSchemaAnnotations,
+  ast: AST.AST
+): JsonSchemaAnnotations => {
+  if (jsonSchemaAnnotations["title"] === ast.annotations[AST.TitleAnnotationId]) {
+    delete jsonSchemaAnnotations["title"]
+  }
+  if (jsonSchemaAnnotations["description"] === ast.annotations[AST.DescriptionAnnotationId]) {
+    delete jsonSchemaAnnotations["description"]
+  }
+  return jsonSchemaAnnotations
+}
+
+const getASTJsonSchemaAnnotations = (ast: AST.AST): JsonSchemaAnnotations => {
+  const jsonSchemaAnnotations = getJsonSchemaAnnotations(ast)
+  switch (ast._tag) {
+    case "StringKeyword":
+      return removeDefaultJsonSchemaAnnotations(jsonSchemaAnnotations, AST.stringKeyword)
+    case "NumberKeyword":
+      return removeDefaultJsonSchemaAnnotations(jsonSchemaAnnotations, AST.numberKeyword)
+    case "BooleanKeyword":
+      return removeDefaultJsonSchemaAnnotations(jsonSchemaAnnotations, AST.booleanKeyword)
+    default:
+      return jsonSchemaAnnotations
+  }
+}
+
 const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST | undefined => {
   const type = ps.type
   if (AST.isUnion(type) && Option.isNone(AST.getJSONSchemaAnnotation(type))) {
@@ -306,20 +333,6 @@ const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
     ("enum" in jsonSchema) || ("$ref" in jsonSchema)
 }
 
-const removeDefaultJsonSchemaAnnotations = (out: JsonSchema7, def: AST.AST, ast: AST.AST): JsonSchema7 => {
-  if (def === ast) {
-    return out
-  }
-  const jsonSchemaAnnotations = getJsonSchemaAnnotations(ast)
-  if (jsonSchemaAnnotations["title"] === def.annotations[AST.TitleAnnotationId]) {
-    delete jsonSchemaAnnotations["title"]
-  }
-  if (jsonSchemaAnnotations["description"] === def.annotations[AST.DescriptionAnnotationId]) {
-    delete jsonSchemaAnnotations["description"]
-  }
-  return merge(out, jsonSchemaAnnotations)
-}
-
 const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
@@ -333,9 +346,16 @@ const go = (
       const t = getRefinementInnerTransformation(ast)
       if (t === undefined) {
         try {
-          return merge(merge(go(ast.from, $defs, true, path), getJsonSchemaAnnotations(ast)), handler)
+          return {
+            ...go(ast.from, $defs, true, path),
+            ...getJsonSchemaAnnotations(ast),
+            ...handler
+          }
         } catch (e) {
-          return merge(getJsonSchemaAnnotations(ast), handler)
+          return {
+            ...getJsonSchemaAnnotations(ast),
+            ...handler
+          }
         }
       } else if (!isOverrideAnnotation(handler)) {
         return go(t, $defs, true, path)
@@ -386,11 +406,11 @@ const go = (
     case "ObjectKeyword":
       return merge(objectJsonSchema, getJsonSchemaAnnotations(ast))
     case "StringKeyword":
-      return removeDefaultJsonSchemaAnnotations({ type: "string" }, AST.stringKeyword, ast)
+      return { type: "string", ...getASTJsonSchemaAnnotations(ast) }
     case "NumberKeyword":
-      return removeDefaultJsonSchemaAnnotations({ type: "number" }, AST.numberKeyword, ast)
+      return { type: "number", ...getASTJsonSchemaAnnotations(ast) }
     case "BooleanKeyword":
-      return removeDefaultJsonSchemaAnnotations({ type: "boolean" }, AST.booleanKeyword, ast)
+      return { type: "boolean", ...getASTJsonSchemaAnnotations(ast) }
     case "BigIntKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "SymbolKeyword":
