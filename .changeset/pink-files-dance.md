@@ -1,4 +1,5 @@
 ---
+"@effect/platform": patch
 "@effect/schema": patch
 ---
 

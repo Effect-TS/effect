@@ -256,6 +256,33 @@ const getJsonSchemaAnnotations = (annotated: AST.Annotated): Annotations =>
     default: AST.getDefaultAnnotation(annotated)
   })
 
+const removeDefaultJsonSchemaAnnotations = (
+  jsonSchemaAnnotations: Annotations,
+  ast: AST.AST
+): Annotations => {
+  if (jsonSchemaAnnotations["title"] === ast.annotations[AST.TitleAnnotationId]) {
+    delete jsonSchemaAnnotations["title"]
+  }
+  if (jsonSchemaAnnotations["description"] === ast.annotations[AST.DescriptionAnnotationId]) {
+    delete jsonSchemaAnnotations["description"]
+  }
+  return jsonSchemaAnnotations
+}
+
+const getASTJsonSchemaAnnotations = (ast: AST.AST): Annotations => {
+  const jsonSchemaAnnotations = getJsonSchemaAnnotations(ast)
+  switch (ast._tag) {
+    case "StringKeyword":
+      return removeDefaultJsonSchemaAnnotations(jsonSchemaAnnotations, AST.stringKeyword)
+    case "NumberKeyword":
+      return removeDefaultJsonSchemaAnnotations(jsonSchemaAnnotations, AST.numberKeyword)
+    case "BooleanKeyword":
+      return removeDefaultJsonSchemaAnnotations(jsonSchemaAnnotations, AST.booleanKeyword)
+    default:
+      return jsonSchemaAnnotations
+  }
+}
+
 const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST | undefined => {
   const type = ps.type
   if (AST.isUnion(type) && Option.isNone(AST.getJSONSchemaAnnotation(type))) {
@@ -390,24 +417,12 @@ const go = (
         ...constAnyObject,
         ...getJsonSchemaAnnotations(ast)
       }
-    case "StringKeyword": {
-      return ast === AST.stringKeyword ? { type: "string" } : {
-        type: "string",
-        ...getJsonSchemaAnnotations(ast)
-      }
-    }
-    case "NumberKeyword": {
-      return ast === AST.numberKeyword ? { type: "number" } : {
-        type: "number",
-        ...getJsonSchemaAnnotations(ast)
-      }
-    }
-    case "BooleanKeyword": {
-      return ast === AST.booleanKeyword ? { type: "boolean" } : {
-        type: "boolean",
-        ...getJsonSchemaAnnotations(ast)
-      }
-    }
+    case "StringKeyword":
+      return { type: "string", ...getASTJsonSchemaAnnotations(ast) }
+    case "NumberKeyword":
+      return { type: "number", ...getASTJsonSchemaAnnotations(ast) }
+    case "BooleanKeyword":
+      return { type: "boolean", ...getASTJsonSchemaAnnotations(ast) }
     case "BigIntKeyword":
       throw new Error(getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "SymbolKeyword":
@@ -611,7 +626,7 @@ const go = (
         }
       }
       return {
-        ...getJsonSchemaAnnotations(ast.to),
+        ...getASTJsonSchemaAnnotations(ast.to),
         ...go(ast.from, $defs, true, path),
         ...getJsonSchemaAnnotations(ast)
       }
