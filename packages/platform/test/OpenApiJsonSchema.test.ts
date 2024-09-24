@@ -2167,4 +2167,26 @@ schema (Suspend): <suspended schema>`
       }
     )
   })
+
+  it("DateFromString", () => {
+    expectJSONSchema(
+      Schema.DateFromString,
+      {
+        "type": "string",
+        "title": "string",
+        "description": "a string that will be parsed into a Date"
+      }
+    )
+  })
+
+  it("Date", () => {
+    expectJSONSchema(
+      Schema.Date,
+      {
+        "type": "string",
+        "title": "string",
+        "description": "a string that will be parsed into a Date"
+      }
+    )
+  })
 })

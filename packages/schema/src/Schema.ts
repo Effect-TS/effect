@@ -6127,7 +6127,7 @@ export class ValidDateFromSelf extends DateFromSelf.pipe(
  * @since 0.67.0
  */
 export class DateFromString extends transform(
-  String$,
+  String$.annotations({ description: "a string that will be parsed into a Date" }),
   DateFromSelf,
   { strict: true, decode: (s) => new Date(s), encode: (d) => util_.formatDate(d) }
 ).annotations({ identifier: "DateFromString" }) {}

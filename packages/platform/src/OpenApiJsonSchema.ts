@@ -333,7 +333,7 @@ const go = (
       ...getJsonSchemaAnnotations(ast)
     }
   }
-  if (handleIdentifier && !AST.isTransformation(ast)) {
+  if (handleIdentifier && !AST.isTransformation(ast) && !AST.isRefinement(ast)) {
     const identifier = getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
@@ -573,7 +573,10 @@ const go = (
       }
     }
     case "Refinement": {
-      throw new Error(getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+      if (AST.encodedBoundAST(ast) === ast) {
+        throw new Error(getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+      }
+      return go(ast.from, $defs, true, path)
     }
     case "TemplateLiteral": {
       const regex = AST.getTemplateLiteralRegExp(ast)
