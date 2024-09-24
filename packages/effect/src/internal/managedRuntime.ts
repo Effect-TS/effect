@@ -2,8 +2,9 @@ import type * as Effect from "../Effect.js"
 import type { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import type * as Layer from "../Layer.js"
-import type { ManagedRuntime } from "../ManagedRuntime.js"
+import type * as M from "../ManagedRuntime.js"
 import { pipeArguments } from "../Pipeable.js"
+import { hasProperty } from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
 import * as Scope from "../Scope.js"
 import * as effect from "./core-effect.js"
@@ -12,7 +13,7 @@ import * as fiberRuntime from "./fiberRuntime.js"
 import * as internalLayer from "./layer.js"
 import * as internalRuntime from "./runtime.js"
 
-interface ManagedRuntimeImpl<R, E> extends ManagedRuntime<R, E> {
+interface ManagedRuntimeImpl<R, E> extends M.ManagedRuntime<R, E> {
   readonly scope: Scope.CloseableScope
   cachedRuntime: Runtime.Runtime<R> | undefined
 }
@@ -36,7 +37,7 @@ function provide<R, ER, A, E>(
 export const make = <R, ER>(
   layer: Layer.Layer<R, ER, never>,
   memoMap?: Layer.MemoMap
-): ManagedRuntime<R, ER> => {
+): M.ManagedRuntime<R, ER> => {
   memoMap = memoMap ?? internalLayer.unsafeMakeMemoMap()
   const scope = internalRuntime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
   const self: ManagedRuntimeImpl<R, ER> = {
@@ -113,3 +114,9 @@ export const make = <R, ER>(
   }
   return self
 }
+
+/** @internal */
+export const TypeId: M.TypeId = Symbol.for("effect/ManagedRuntime") as M.TypeId
+
+/** @internal */
+export const isManagedRuntime = (u: unknown): u is M.ManagedRuntime<unknown, unknown> => hasProperty(u, TypeId)

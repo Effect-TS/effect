@@ -133,3 +133,21 @@ export const make: <R, E>(
   layer: Layer.Layer<R, E, never>,
   memoMap?: Layer.MemoMap | undefined
 ) => ManagedRuntime<R, E> = internal.make
+
+const TypeId: unique symbol = internal.TypeId as TypeId
+
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * Checks if the provided argument is a `ManagedRuntime`.
+ *
+ * @param input - The value to be checked if it is a `ManagedRuntime`.
+
+ * @since 2.0.0
+ * @category guards
+ */
+export const isManagedRuntime: (input: unknown) => input is ManagedRuntime<unknown, unknown> = internal.isManagedRuntime
