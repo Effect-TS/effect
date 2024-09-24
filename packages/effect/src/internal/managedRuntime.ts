@@ -48,14 +48,6 @@ const ManagedRuntimeProto = {
   },
   commit(this: ManagedRuntimeImpl<unknown, unknown>) {
     return this.runtimeEffect
-  },
-  runtime(this: ManagedRuntimeImpl<unknown, unknown>) {
-    return this.cachedRuntime === undefined ?
-      internalRuntime.unsafeRunPromiseEffect(this.runtimeEffect) :
-      Promise.resolve(this.cachedRuntime)
-  },
-  dispose(this: ManagedRuntimeImpl<unknown, unknown>): Promise<void> {
-    return internalRuntime.unsafeRunPromiseEffect(this.disposeEffect)
   }
 }
 
@@ -84,6 +76,14 @@ export const make = <R, ER>(
     scope,
     runtimeEffect,
     cachedRuntime: undefined,
+    runtime() {
+      return self.cachedRuntime === undefined ?
+        internalRuntime.unsafeRunPromiseEffect(self.runtimeEffect) :
+        Promise.resolve(self.cachedRuntime)
+    },
+    dispose(): Promise<void> {
+      return internalRuntime.unsafeRunPromiseEffect(self.disposeEffect)
+    },
     disposeEffect: core.suspend(() => {
       ;(self as any).runtime = core.die("ManagedRuntime disposed")
       self.cachedRuntime = undefined
