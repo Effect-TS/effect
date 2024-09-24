@@ -331,7 +331,7 @@ describe.concurrent("Micro", () => {
   it.effect("raceAll", () =>
     Micro.gen(function*() {
       const interrupted: Array<number> = []
-      const result = yield* Micro.raceAll([100, 75, 50, 0, 25].map((ms) =>
+      const result = yield* Micro.raceAll([500, 300, 200, 0, 100].map((ms) =>
         (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
           Micro.delay(ms),
           Micro.onInterrupt(
@@ -341,14 +341,14 @@ describe.concurrent("Micro", () => {
           )
         )
       ))
-      assert.strictEqual(result, 25)
-      assert.deepStrictEqual(interrupted, [100, 75, 50])
+      assert.strictEqual(result, 100)
+      assert.deepStrictEqual(interrupted, [500, 300, 200])
     }))
 
   it("raceAllFirst", () =>
     Micro.gen(function*() {
       const interrupted: Array<number> = []
-      const result = yield* Micro.raceAllFirst([100, 75, 50, 0, 25].map((ms) =>
+      const result = yield* Micro.raceAllFirst([500, 300, 200, 0, 100].map((ms) =>
         (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
           Micro.delay(ms),
           Micro.onInterrupt(
@@ -359,7 +359,7 @@ describe.concurrent("Micro", () => {
         )
       )).pipe(Micro.exit)
       assert.deepStrictEqual(result, Micro.exitFail("boom"))
-      assert.deepStrictEqual(interrupted, [100, 75, 50, 25])
+      assert.deepStrictEqual(interrupted, [500, 300, 200, 100])
     }).pipe(Micro.runPromise))
 
   describe("valid Effect", () => {
@@ -1192,5 +1192,30 @@ describe.concurrent("Micro", () => {
       ))
       assert.deepStrictEqual(out, [100, 100, 100, 160, 320, 640, 1280])
     })
+  })
+
+  describe("Handle", () => {
+    it("is subtype of Micro: (Success)", () =>
+      Micro.gen(function*() {
+        const handle = yield* Micro.succeed(1).pipe(Micro.fork)
+        const res = yield* handle
+        assert.equal(res, 1)
+      }).pipe(Micro.runPromise))
+
+    it("is subtype of Micro: (Failure)", () =>
+      Micro.gen(function*() {
+        const handle = yield* Micro.fail(1).pipe(Micro.fork)
+        const res = yield* Micro.flip(handle)
+        assert.equal(res, 1)
+      }).pipe(Micro.runPromise))
+  })
+
+  describe("EnvRef", () => {
+    it("is subtype of Micro", () =>
+      Micro.gen(function*() {
+        const envRef = Micro.envRefMake("test", () => 1)
+        const res = yield* envRef
+        assert.equal(res, 1)
+      }).pipe(Micro.runPromise))
   })
 })
