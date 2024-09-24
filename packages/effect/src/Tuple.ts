@@ -73,7 +73,7 @@ export const getSecond = <L, R>(self: readonly [L, R]): R => self[1]
  *
  * const result = pipe(
  *   ["a", 1, false] as const,
- *   T.map((el) => el.toString().toUppercase())
+ *   Tuple.map((el) => el.toString().toUpperCase())
  * )
  * assert.deepStrictEqual(result, ['A', '1', 'FALSE'])
  *
