@@ -9,6 +9,10 @@ import type * as Layer from "./Layer.js"
 import type * as Runtime from "./Runtime.js"
 import type * as Unify from "./Unify.js"
 
+/**
+ * @since 3.9.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = internal.TypeId as TypeId
 
 /**
