@@ -10,7 +10,7 @@ import type { LazyArg } from "../Function.js"
 import { dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import type * as Layer from "../Layer.js"
-import * as ManagedRuntime from "../ManagedRuntime.js"
+import type * as ManagedRuntime from "../ManagedRuntime.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
@@ -1289,6 +1289,8 @@ const provideSomeRuntime = dual<
   )
 })
 
+const ManagedRuntimeTypeId: ManagedRuntime.TypeId = Symbol.for("effect/ManagedRuntime") as ManagedRuntime.TypeId
+
 /** @internal */
 export const effect_provide = dual<
   {
@@ -1337,7 +1339,7 @@ export const effect_provide = dual<
       return provideSomeLayer(self, source as Layer.Layer<ROut, any, any>)
     } else if (Context.isContext(source)) {
       return core.provideSomeContext(self, source)
-    } else if (ManagedRuntime.isManagedRuntime(source)) {
+    } else if (ManagedRuntimeTypeId in source) {
       return core.flatMap(
         (source as ManagedRuntime.ManagedRuntime<ROut, any>).runtimeEffect,
         (rt) => provideSomeRuntime(self, rt)
