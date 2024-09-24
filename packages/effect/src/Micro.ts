@@ -145,7 +145,7 @@ export interface MicroIterator<T extends Micro<any, any, any>> {
 }
 
 /**
- * @since 3.9.0
+ * @since 3.8.4
  * @category models
  */
 export interface MicroClass {
@@ -176,16 +176,16 @@ const MicroBase: MicroClass = (function() {
 })()
 
 /**
- * @since 3.9.0
+ * @since 3.8.4
  * @category constructors
  */
 export abstract class Class<out A, out E = never, out R = never> extends MicroBase<A, E, R> {
   /**
-   * @since 3.9.0
+   * @since 3.8.4
    */
   abstract asMicro(): Micro<A, E, R>
   /**
-   * @since 3.9.0
+   * @since 3.8.4
    */
   [runSymbol](env: Env<any>, onExit: (exit: MicroExit<A, E>) => void): void {
     this.asMicro()[runSymbol](env, onExit)
@@ -872,7 +872,7 @@ export interface EnvRef<A> extends Micro<A> {
 
 /**
  * @category models
- * @since 3.9.0
+ * @since 3.8.4
  */
 export interface EnvRefUnify<A extends { [Unify.typeSymbol]?: any }> extends MicroUnify<A> {
   EnvRef?: () => A[Unify.typeSymbol] extends EnvRef<infer A0> | infer _ ? EnvRef<A0> : never
@@ -880,7 +880,7 @@ export interface EnvRefUnify<A extends { [Unify.typeSymbol]?: any }> extends Mic
 
 /**
  * @category models
- * @since 3.9.0
+ * @since 3.8.4
  */
 export interface EnvRefUnifyIgnore extends MicroUnifyIgnore {
   Micro?: true
@@ -3728,7 +3728,7 @@ export interface Handle<A, E = never> extends Micro<A, E> {
 
 /**
  * @category models
- * @since 3.9.0
+ * @since 3.8.4
  */
 export interface HandleUnify<A extends { [Unify.typeSymbol]?: any }> extends MicroUnify<A> {
   Handle?: () => A[Unify.typeSymbol] extends Handle<infer A0, infer E0> | infer _ ? Handle<A0, E0> : never
@@ -3736,7 +3736,7 @@ export interface HandleUnify<A extends { [Unify.typeSymbol]?: any }> extends Mic
 
 /**
  * @category models
- * @since 3.9.0
+ * @since 3.8.4
  */
 export interface HandleUnifyIgnore extends MicroUnifyIgnore {
   Micro?: true
