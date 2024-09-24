@@ -388,6 +388,9 @@ importers:
       '@effect/schema':
         specifier: workspace:^
         version: link:../schema/dist
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
       effect:
         specifier: workspace:^
         version: link:../effect/dist

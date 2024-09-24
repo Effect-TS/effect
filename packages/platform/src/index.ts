@@ -197,6 +197,11 @@ export * as OpenApi from "./OpenApi.js"
 /**
  * @since 1.0.0
  */
+export * as OpenApiJsonSchema from "./OpenApiJsonSchema.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Path from "./Path.js"
 
 /**

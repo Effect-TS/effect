@@ -14,6 +14,8 @@
             "name": "id",
             "in": "path",
             "schema": {
+              "description": "a number",
+              "title": "number",
               "type": "string"
             },
             "required": true
@@ -30,16 +32,18 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of Group",
+                  "title": "Group",
                   "type": "object",
                   "required": ["id", "name"],
                   "properties": {
-                    "name": {
-                      "type": "string"
-                    },
                     "id": {
                       "type": "integer",
                       "description": "an integer",
                       "title": "Int"
+                    },
+                    "name": {
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -52,24 +56,17 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "HttpApiDecodeError: The request did not match the expected schema",
+                  "title": "HttpApiDecodeError",
                   "type": "object",
                   "required": ["issues", "message", "_tag"],
                   "properties": {
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
                     "issues": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "required": ["_tag", "path", "message"],
                         "properties": {
-                          "message": {
-                            "type": "string"
-                          },
                           "_tag": {
                             "enum": [
                               "Pointer",
@@ -94,10 +91,19 @@
                                 }
                               ]
                             }
+                          },
+                          "message": {
+                            "type": "string"
                           }
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "_tag": {
+                      "enum": ["HttpApiDecodeError"]
                     }
                   },
                   "additionalProperties": false
@@ -110,6 +116,8 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of GlobalError",
+                  "title": "GlobalError",
                   "type": "object",
                   "required": ["_tag"],
                   "properties": {
@@ -144,16 +152,18 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of Group",
+                  "title": "Group",
                   "type": "object",
                   "required": ["id", "name"],
                   "properties": {
-                    "name": {
-                      "type": "string"
-                    },
                     "id": {
                       "type": "integer",
                       "description": "an integer",
                       "title": "Int"
+                    },
+                    "name": {
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -166,24 +176,17 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "HttpApiDecodeError: The request did not match the expected schema",
+                  "title": "HttpApiDecodeError",
                   "type": "object",
                   "required": ["issues", "message", "_tag"],
                   "properties": {
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
                     "issues": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "required": ["_tag", "path", "message"],
                         "properties": {
-                          "message": {
-                            "type": "string"
-                          },
                           "_tag": {
                             "enum": [
                               "Pointer",
@@ -208,10 +211,19 @@
                                 }
                               ]
                             }
+                          },
+                          "message": {
+                            "type": "string"
                           }
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "_tag": {
+                      "enum": ["HttpApiDecodeError"]
                     }
                   },
                   "additionalProperties": false
@@ -224,6 +236,8 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of GlobalError",
+                  "title": "GlobalError",
                   "type": "object",
                   "required": ["_tag"],
                   "properties": {
@@ -268,6 +282,8 @@
             "name": "id",
             "in": "path",
             "schema": {
+              "description": "a number",
+              "title": "number",
               "type": "string"
             },
             "required": true
@@ -280,18 +296,21 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of User",
+                  "title": "User",
                   "type": "object",
                   "required": ["id", "name", "createdAt"],
                   "properties": {
-                    "name": {
-                      "type": "string"
-                    },
                     "id": {
                       "type": "integer",
                       "description": "an integer",
                       "title": "Int"
                     },
+                    "name": {
+                      "type": "string"
+                    },
                     "createdAt": {
+                      "description": "a DateTime.Utc instance",
                       "type": "string"
                     }
                   },
@@ -305,24 +324,17 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "HttpApiDecodeError: The request did not match the expected schema",
+                  "title": "HttpApiDecodeError",
                   "type": "object",
                   "required": ["issues", "message", "_tag"],
                   "properties": {
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
                     "issues": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "required": ["_tag", "path", "message"],
                         "properties": {
-                          "message": {
-                            "type": "string"
-                          },
                           "_tag": {
                             "enum": [
                               "Pointer",
@@ -347,10 +359,19 @@
                                 }
                               ]
                             }
+                          },
+                          "message": {
+                            "type": "string"
                           }
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "_tag": {
+                      "enum": ["HttpApiDecodeError"]
                     }
                   },
                   "additionalProperties": false
@@ -363,6 +384,8 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of GlobalError",
+                  "title": "GlobalError",
                   "type": "object",
                   "required": ["_tag"],
                   "properties": {
@@ -390,18 +413,21 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of User",
+                  "title": "User",
                   "type": "object",
                   "required": ["id", "name", "createdAt"],
                   "properties": {
-                    "name": {
-                      "type": "string"
-                    },
                     "id": {
                       "type": "integer",
                       "description": "an integer",
                       "title": "Int"
                     },
+                    "name": {
+                      "type": "string"
+                    },
                     "createdAt": {
+                      "description": "a DateTime.Utc instance",
                       "type": "string"
                     }
                   },
@@ -417,24 +443,17 @@
                 "schema": {
                   "anyOf": [
                     {
+                      "description": "HttpApiDecodeError: The request did not match the expected schema",
+                      "title": "HttpApiDecodeError",
                       "type": "object",
                       "required": ["issues", "message", "_tag"],
                       "properties": {
-                        "_tag": {
-                          "enum": ["HttpApiDecodeError"]
-                        },
-                        "message": {
-                          "type": "string"
-                        },
                         "issues": {
                           "type": "array",
                           "items": {
                             "type": "object",
                             "required": ["_tag", "path", "message"],
                             "properties": {
-                              "message": {
-                                "type": "string"
-                              },
                               "_tag": {
                                 "enum": [
                                   "Pointer",
@@ -459,15 +478,26 @@
                                     }
                                   ]
                                 }
+                              },
+                              "message": {
+                                "type": "string"
                               }
                             },
                             "additionalProperties": false
                           }
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "_tag": {
+                          "enum": ["HttpApiDecodeError"]
                         }
                       },
                       "additionalProperties": false
                     },
                     {
+                      "description": "an instance of UserError",
+                      "title": "UserError",
                       "type": "object",
                       "required": ["_tag"],
                       "properties": {
@@ -487,6 +517,8 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of GlobalError",
+                  "title": "GlobalError",
                   "type": "object",
                   "required": ["_tag"],
                   "properties": {
@@ -526,6 +558,8 @@
             "name": "page",
             "in": "header",
             "schema": {
+              "description": "a number",
+              "title": "number",
               "type": "string"
             },
             "required": false
@@ -540,18 +574,21 @@
                 "schema": {
                   "type": "array",
                   "items": {
+                    "description": "an instance of User",
+                    "title": "User",
                     "type": "object",
                     "required": ["id", "name", "createdAt"],
                     "properties": {
-                      "name": {
-                        "type": "string"
-                      },
                       "id": {
                         "type": "integer",
                         "description": "an integer",
                         "title": "Int"
                       },
+                      "name": {
+                        "type": "string"
+                      },
                       "createdAt": {
+                        "description": "a DateTime.Utc instance",
                         "type": "string"
                       }
                     },
@@ -566,24 +603,17 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "HttpApiDecodeError: The request did not match the expected schema",
+                  "title": "HttpApiDecodeError",
                   "type": "object",
                   "required": ["issues", "message", "_tag"],
                   "properties": {
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
                     "issues": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "required": ["_tag", "path", "message"],
                         "properties": {
-                          "message": {
-                            "type": "string"
-                          },
                           "_tag": {
                             "enum": [
                               "Pointer",
@@ -608,10 +638,19 @@
                                 }
                               ]
                             }
+                          },
+                          "message": {
+                            "type": "string"
                           }
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "_tag": {
+                      "enum": ["HttpApiDecodeError"]
                     }
                   },
                   "additionalProperties": false
@@ -624,6 +663,8 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of GlobalError",
+                  "title": "GlobalError",
                   "type": "object",
                   "required": ["_tag"],
                   "properties": {
@@ -641,6 +682,8 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of NoStatusError",
+                  "title": "NoStatusError",
                   "type": "object",
                   "required": ["_tag"],
                   "properties": {
@@ -690,24 +733,17 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "HttpApiDecodeError: The request did not match the expected schema",
+                  "title": "HttpApiDecodeError",
                   "type": "object",
                   "required": ["issues", "message", "_tag"],
                   "properties": {
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
                     "issues": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "required": ["_tag", "path", "message"],
                         "properties": {
-                          "message": {
-                            "type": "string"
-                          },
                           "_tag": {
                             "enum": [
                               "Pointer",
@@ -732,10 +768,19 @@
                                 }
                               ]
                             }
+                          },
+                          "message": {
+                            "type": "string"
                           }
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "_tag": {
+                      "enum": ["HttpApiDecodeError"]
                     }
                   },
                   "additionalProperties": false
@@ -748,6 +793,8 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "an instance of GlobalError",
+                  "title": "GlobalError",
                   "type": "object",
                   "required": ["_tag"],
                   "properties": {
@@ -769,14 +816,14 @@
                 "required": ["file"],
                 "properties": {
                   "file": {
-                    "description": "an array of exactly 1 item(s)",
+                    "type": "array",
                     "items": {
-                      "format": "binary",
-                      "type": "string"
+                      "type": "string",
+                      "format": "binary"
                     },
-                    "maxItems": 1,
+                    "description": "an array of exactly 1 item(s)",
                     "minItems": 1,
-                    "type": "array"
+                    "maxItems": 1
                   }
                 },
                 "additionalProperties": false
