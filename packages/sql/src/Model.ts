@@ -23,7 +23,8 @@ const {
   Struct,
   Union,
   extract,
-  fieldEvolve
+  fieldEvolve,
+  fieldFromKey
 } = VariantSchema.make({
   variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
   defaultVariant: "select"
@@ -130,6 +131,11 @@ export {
    * @category fields
    */
   FieldExcept,
+  /**
+   * @since 1.0.0
+   * @category fields
+   */
+  fieldFromKey,
   /**
    * @since 1.0.0
    * @category fields

@@ -1,5 +1,6 @@
 ---
-"@effect/experimental": minor
+"@effect/experimental": patch
+"@effect/sql": patch
 ---
 
 Add VariantSchema fieldFromKey utility to rename the encoded side of a field by variant.
