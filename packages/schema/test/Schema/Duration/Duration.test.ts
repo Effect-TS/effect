@@ -17,7 +17,7 @@ describe("Duration", () => {
       [-500, 0],
       `Duration
 └─ Encoded side transformation failure
-   └─ readonly [seconds, nanos]
+   └─ a tuple of seconds and nanos that will be parsed into a Duration
       └─ [0]
          └─ seconds
             └─ From side refinement failure
@@ -30,7 +30,7 @@ describe("Duration", () => {
       [0, -123],
       `Duration
 └─ Encoded side transformation failure
-   └─ readonly [seconds, nanos]
+   └─ a tuple of seconds and nanos that will be parsed into a Duration
       └─ [1]
          └─ nanos
             └─ From side refinement failure
@@ -43,14 +43,14 @@ describe("Duration", () => {
       123,
       `Duration
 └─ Encoded side transformation failure
-   └─ Expected readonly [seconds, nanos], actual 123`
+   └─ Expected a tuple of seconds and nanos that will be parsed into a Duration, actual 123`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       123n,
       `Duration
 └─ Encoded side transformation failure
-   └─ Expected readonly [seconds, nanos], actual 123n`
+   └─ Expected a tuple of seconds and nanos that will be parsed into a Duration, actual 123n`
     )
   })
 
