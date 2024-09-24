@@ -85,6 +85,9 @@ export interface String extends Annotations {
   minLength?: number
   maxLength?: number
   pattern?: string
+  contentEncoding?: string
+  contentMediaType?: string
+  contentSchema?: JsonSchema
 }
 
 /**
@@ -250,7 +253,7 @@ const constEmpty: JsonSchema = {
   ]
 }
 
-const $schema = "http://json-schema.org/draft-07/schema#"
+const $schema = "https://json-schema.org/draft/2019-09/schema"
 
 const getJsonSchemaAnnotations = (annotated: AST.Annotated): Annotations =>
   Record.getSomes({
@@ -270,8 +273,7 @@ const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST | undefined =
   }
 }
 
-/** @internal */
-export const DEFINITION_PREFIX = "#/$defs/"
+const DEFINITION_PREFIX = "#/$defs/"
 
 const get$ref = (id: string): string => `${DEFINITION_PREFIX}${id}`
 
@@ -606,7 +608,9 @@ const go = (
       // complex schema type.
       if (isParseJsonTransformation(ast.from)) {
         return {
-          ...go(ast.to, $defs, true, path),
+          type: "string",
+          contentMediaType: "application/json",
+          contentSchema: go(ast.to, $defs, true, path),
           ...getJsonSchemaAnnotations(ast)
         }
       }
