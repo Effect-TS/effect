@@ -180,7 +180,13 @@ const MicroBase: MicroClass = (function() {
  * @category constructors
  */
 export abstract class Class<out A, out E = never, out R = never> extends MicroBase<A, E, R> {
+  /**
+   * @since 3.9.0
+   */
   abstract asMicro(): Micro<A, E, R>
+  /**
+   * @since 3.9.0
+   */
   [runSymbol](env: Env<any>, onExit: (exit: MicroExit<A, E>) => void): void {
     this.asMicro()[runSymbol](env, onExit)
   }
