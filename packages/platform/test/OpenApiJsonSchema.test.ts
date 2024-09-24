@@ -1454,7 +1454,7 @@ schema (Suspend): <suspended schema>`
 
     it("should support make(S.typeSchema(Class))", () => {
       class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
-      expectJSONSchema(A, {
+      expectJSONSchema(Schema.typeSchema(A), {
         "type": "object",
         "required": [
           "a"
