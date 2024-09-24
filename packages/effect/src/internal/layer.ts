@@ -10,6 +10,7 @@ import type { LazyArg } from "../Function.js"
 import { dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import type * as Layer from "../Layer.js"
+import type * as ManagedRuntime from "../ManagedRuntime.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
@@ -1288,6 +1289,8 @@ const provideSomeRuntime = dual<
   )
 })
 
+const ManagedRuntimeTypeId: ManagedRuntime.TypeId = Symbol.for("effect/ManagedRuntime") as ManagedRuntime.TypeId
+
 /** @internal */
 export const effect_provide = dual<
   {
@@ -1300,6 +1303,9 @@ export const effect_provide = dual<
     <R2>(
       runtime: Runtime.Runtime<R2>
     ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, R2>>
+    <E2, R2>(
+      managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
+    ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, R2>>
   },
   {
     <A, E, R, ROut, E2, RIn>(
@@ -1314,16 +1320,32 @@ export const effect_provide = dual<
       self: Effect.Effect<A, E, R>,
       runtime: Runtime.Runtime<R2>
     ): Effect.Effect<A, E, Exclude<R, R2>>
+    <A, E, E2, R, R2>(
+      self: Effect.Effect<A, E, R>,
+      managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
+    ): Effect.Effect<A, E | E2, Exclude<R, R2>>
   }
 >(
   2,
   <A, E, R, ROut>(
     self: Effect.Effect<A, E, R>,
-    source: Layer.Layer<ROut, any, any> | Context.Context<ROut> | Runtime.Runtime<ROut>
-  ): Effect.Effect<any, any, Exclude<R, ROut>> =>
-    isLayer(source)
-      ? provideSomeLayer(self, source as Layer.Layer<ROut, any, any>)
-      : Context.isContext(source)
-      ? core.provideSomeContext(self, source)
-      : provideSomeRuntime(self, source as Runtime.Runtime<ROut>)
+    source:
+      | Layer.Layer<ROut, any, any>
+      | Context.Context<ROut>
+      | Runtime.Runtime<ROut>
+      | ManagedRuntime.ManagedRuntime<ROut, any>
+  ): Effect.Effect<any, any, Exclude<R, ROut>> => {
+    if (isLayer(source)) {
+      return provideSomeLayer(self, source as Layer.Layer<ROut, any, any>)
+    } else if (Context.isContext(source)) {
+      return core.provideSomeContext(self, source)
+    } else if (ManagedRuntimeTypeId in source) {
+      return core.flatMap(
+        (source as ManagedRuntime.ManagedRuntime<ROut, any>).runtimeEffect,
+        (rt) => provideSomeRuntime(self, rt)
+      )
+    } else {
+      return provideSomeRuntime(self, source as Runtime.Runtime<ROut>)
+    }
+  }
 )
