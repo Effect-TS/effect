@@ -234,7 +234,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
           op.requestBody = {
             content: {
               [HttpApiSchema.getMultipart(schema.ast) ? "multipart/form-data" : "application/json"]: {
-                schema: makeJsonSchema(schema)
+                schema: JsonSchema.make(schema)
               }
             },
             required: true
@@ -245,13 +245,13 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
         Option.map((ast) => {
           op.responses![successStatus].content = {
             [successEncoding.contentType]: {
-              schema: makeJsonSchema(Schema.make(ast))
+              schema: JsonSchema.make(Schema.make(ast))
             }
           }
         })
       )
       if (Option.isSome(endpoint.pathSchema)) {
-        const schema = makeJsonSchema(endpoint.pathSchema.value) as JsonSchema.Object
+        const schema = JsonSchema.make(endpoint.pathSchema.value) as JsonSchema.Object
         if ("properties" in schema) {
           Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
             op.parameters!.push({
@@ -264,7 +264,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
         }
       }
       if (!HttpMethod.hasBody(endpoint.method) && Option.isSome(endpoint.payloadSchema)) {
-        const schema = makeJsonSchema(endpoint.payloadSchema.value) as JsonSchema.Object
+        const schema = JsonSchema.make(endpoint.payloadSchema.value) as JsonSchema.Object
         if ("properties" in schema) {
           Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
             op.parameters!.push({
@@ -277,7 +277,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
         }
       }
       if (Option.isSome(endpoint.headersSchema)) {
-        const schema = makeJsonSchema(endpoint.headersSchema.value) as JsonSchema.Object
+        const schema = JsonSchema.make(endpoint.headersSchema.value) as JsonSchema.Object
         if ("properties" in schema) {
           Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
             op.parameters!.push({
@@ -299,7 +299,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
           Option.map((ast) => {
             op.responses![status].content = {
               "application/json": {
-                schema: makeJsonSchema(Schema.make(ast))
+                schema: JsonSchema.make(Schema.make(ast))
               }
             }
           })
@@ -360,12 +360,6 @@ const getDescriptionOrIdentifier = (ast: Option.Option<AST.PropertySignature | A
       annotations[AST.DescriptionAnnotationId] ?? annotations[AST.IdentifierAnnotationId] as any
     )
   )
-
-const makeJsonSchema = (schema: Schema.Schema.All): JsonSchema.JsonSchema => {
-  const jsonSchema = JsonSchema.make(schema as any)
-  delete jsonSchema.$schema
-  return jsonSchema
-}
 
 /**
  * @category models

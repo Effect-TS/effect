@@ -204,7 +204,6 @@ export type JsonSchema =
  * @since 1.0.0
  */
 export type Root = JsonSchema & {
-  $schema?: string
   $defs?: Record<string, JsonSchema>
 }
 
@@ -214,11 +213,7 @@ export type Root = JsonSchema & {
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Root => {
   const $defs: Record<string, any> = {}
-  const jsonSchema = go(schema.ast, $defs, true, [])
-  const out: Root = {
-    $schema,
-    ...jsonSchema
-  }
+  const out = go(schema.ast, $defs, true, []) as Root
   // clean up self-referencing entries
   for (const id in $defs) {
     if ($defs[id]["$ref"] === get$ref(id)) {
@@ -252,8 +247,6 @@ const constEmpty: JsonSchema = {
     { "type": "array" }
   ]
 }
-
-const $schema = "https://json-schema.org/draft/2019-09/schema"
 
 const getJsonSchemaAnnotations = (annotated: AST.Annotated): Annotations =>
   Record.getSomes({

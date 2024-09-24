@@ -160,7 +160,6 @@ schema (Declaration): DateFromSelf`
   it("Any", () => {
     expectJSONSchema(Schema.Any, {
       "$id": "/schemas/any",
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       "title": "any"
     })
   })
@@ -168,7 +167,6 @@ schema (Declaration): DateFromSelf`
   it("Unknown", () => {
     expectJSONSchema(Schema.Unknown, {
       "$id": "/schemas/unknown",
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       "title": "unknown"
     })
   })
@@ -176,14 +174,12 @@ schema (Declaration): DateFromSelf`
   it("Void", () => {
     expectJSONSchema(Schema.Void, {
       "$id": "/schemas/void",
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       "title": "void"
     })
   })
 
   it("Object", () => {
     const jsonSchema: JsonSchema.Root = {
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       "$id": "/schemas/object",
       "anyOf": [
         {
@@ -208,11 +204,9 @@ schema (Declaration): DateFromSelf`
 
   it("String", () => {
     expectJSONSchema(Schema.String, {
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       type: "string"
     })
     expectJSONSchema(Schema.String.annotations({}), {
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       type: "string",
       description: "a string",
       title: "string"
@@ -221,11 +215,9 @@ schema (Declaration): DateFromSelf`
 
   it("Number", () => {
     expectJSONSchema(Schema.Number, {
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       type: "number"
     }, false)
     expectJSONSchema(Schema.Number.annotations({}), {
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       type: "number",
       description: "a number",
       title: "number"
@@ -234,11 +226,9 @@ schema (Declaration): DateFromSelf`
 
   it("Boolean", () => {
     expectJSONSchema(Schema.Boolean, {
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       type: "boolean"
     })
     expectJSONSchema(Schema.Boolean.annotations({}), {
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       type: "boolean",
       description: "a boolean",
       title: "boolean"
@@ -248,32 +238,27 @@ schema (Declaration): DateFromSelf`
   describe("Literal", () => {
     it("Null", () => {
       expectJSONSchema(Schema.Null, {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "enum": [null]
       })
     })
 
     it("string literals", () => {
       expectJSONSchema(Schema.Literal("a"), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "enum": ["a"]
       })
     })
 
     it("number literals", () => {
       expectJSONSchema(Schema.Literal(1), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "enum": [1]
       })
     })
 
     it("boolean literals", () => {
       expectJSONSchema(Schema.Literal(true), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "enum": [true]
       })
       expectJSONSchema(Schema.Literal(false), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "enum": [false]
       })
     })
@@ -286,7 +271,6 @@ schema (Declaration): DateFromSelf`
         Banana
       }
       expectJSONSchema(Schema.Enums(Fruits), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "$comment": "/schemas/enums",
         "anyOf": [
           {
@@ -307,7 +291,6 @@ schema (Declaration): DateFromSelf`
         Banana = "banana"
       }
       expectJSONSchema(Schema.Enums(Fruits), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "$comment": "/schemas/enums",
         "anyOf": [
           {
@@ -329,7 +312,6 @@ schema (Declaration): DateFromSelf`
         Cantaloupe = 0
       }
       expectJSONSchema(Schema.Enums(Fruits), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "$comment": "/schemas/enums",
         "anyOf": [
           {
@@ -355,7 +337,6 @@ schema (Declaration): DateFromSelf`
         Cantaloupe: 3
       } as const
       expectJSONSchema(Schema.Enums(Fruits), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "$comment": "/schemas/enums",
         "anyOf": [
           {
@@ -378,7 +359,6 @@ schema (Declaration): DateFromSelf`
   describe("Union", () => {
     it("string | number", () => {
       expectJSONSchema(Schema.Union(Schema.String, JsonNumber), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "anyOf": [
           {
             "type": "string"
@@ -392,14 +372,12 @@ schema (Declaration): DateFromSelf`
 
     it(`1 | "a"`, () => {
       expectJSONSchema(Schema.Literal(1, 2), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "enum": [1, 2]
       })
     })
 
     it(`1 | true | string`, () => {
       expectJSONSchema(Schema.Union(Schema.Literal(1, true), Schema.String), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "anyOf": [
           {
             "type": "string"
@@ -417,7 +395,6 @@ schema (Declaration): DateFromSelf`
           Schema.String
         ),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "anyOf": [
             { "enum": [true], "description": "description" },
             {
@@ -437,7 +414,6 @@ schema (Declaration): DateFromSelf`
           Schema.String
         ),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "anyOf": [
             { "enum": [true], "description": "description" },
             {
@@ -456,7 +432,6 @@ schema (Declaration): DateFromSelf`
           Schema.Literal("bar").annotations({ description: "I'm a bar" })
         ),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "anyOf": [
             {
               "enum": ["foo"],
@@ -484,7 +459,6 @@ schema (Declaration): DateFromSelf`
           })
         ),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "$defs": {
             "bar": {
               "enum": ["bar"],
@@ -512,7 +486,6 @@ schema (Declaration): DateFromSelf`
     it("e?", () => {
       const schema = Schema.Tuple(Schema.optionalElement(JsonNumber))
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "array",
         "minItems": 0,
         "items": [
@@ -536,7 +509,6 @@ schema (Declaration): DateFromSelf`
         Schema.optionalElement(JsonNumber.annotations({ description: "inner-e?" })).annotations({ description: "e?" })
       )
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "array",
         "minItems": 1,
         "items": [
@@ -567,7 +539,6 @@ schema (Declaration): DateFromSelf`
         Schema.element(JsonNumber.annotations({ description: "inner-r" })).annotations({ description: "r" })
       )
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "array",
         "minItems": 0,
         "items": [
@@ -600,7 +571,6 @@ schema (Declaration): DateFromSelf`
     it("empty", () => {
       const schema = Schema.Tuple()
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "array",
         "maxItems": 0
       }
@@ -613,7 +583,6 @@ schema (Declaration): DateFromSelf`
     it("e", () => {
       const schema = Schema.Tuple(JsonNumber)
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "array",
         "items": [{
           "type": "number"
@@ -632,7 +601,6 @@ schema (Declaration): DateFromSelf`
     it("e r", () => {
       const schema = Schema.Tuple([Schema.String], JsonNumber)
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "array",
         "items": [{
           "type": "string"
@@ -644,7 +612,6 @@ schema (Declaration): DateFromSelf`
       }
       expectJSONSchema(schema, jsonSchema)
       const validate = new Ajv({ strictTuples: false }).compile({
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "array",
         "items": [
           {
@@ -668,7 +635,6 @@ schema (Declaration): DateFromSelf`
     it("r", () => {
       const schema = Schema.Array(JsonNumber)
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "array",
         "items": {
           "type": "number"
@@ -690,7 +656,6 @@ schema (Declaration): DateFromSelf`
       const schema = Schema.Struct({})
       const jsonSchema: JsonSchema.Root = {
         "$id": "/schemas/{}",
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "anyOf": [{
           "type": "object"
         }, {
@@ -710,7 +675,6 @@ schema (Declaration): DateFromSelf`
     it("struct", () => {
       const schema = Schema.Struct({ a: Schema.String, b: JsonNumber })
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "properties": {
           "a": {
@@ -738,7 +702,6 @@ schema (Declaration): DateFromSelf`
         b: Schema.optionalWith(JsonNumber, { exact: true })
       })
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "properties": {
           "a": {
@@ -766,7 +729,6 @@ schema (Declaration): DateFromSelf`
           a: Schema.optional(Schema.String).annotations({ description: "an optional string" })
         }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           type: "object",
           required: [],
           properties: {
@@ -796,7 +758,6 @@ details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
             a: Schema.UndefinedOr(Schema.String).annotations({ jsonSchema: { "type": "number" } })
           }),
           {
-            "$schema": "https://json-schema.org/draft/2019-09/schema",
             "type": "object",
             "required": ["a"],
             "properties": {
@@ -816,7 +777,6 @@ details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
             a: Schema.optional(Schema.String)
           }),
           {
-            "$schema": "https://json-schema.org/draft/2019-09/schema",
             "type": "object",
             "properties": {
               "a": {
@@ -835,7 +795,6 @@ details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
             a: Schema.UndefinedOr(Schema.String)
           }),
           {
-            "$schema": "https://json-schema.org/draft/2019-09/schema",
             "type": "object",
             "required": [],
             "properties": {
@@ -863,7 +822,6 @@ schema (SymbolKeyword): symbol`
       expectJSONSchema(
         Schema.Record({ key: Schema.String.pipe(Schema.minLength(1)), value: JsonNumber }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           type: "object",
           required: [],
           properties: {},
@@ -883,7 +841,6 @@ schema (SymbolKeyword): symbol`
 
     it("Record(string, number)", () => {
       expectJSONSchema(Schema.Record({ key: Schema.String, value: JsonNumber }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "properties": {},
         "required": [],
@@ -901,7 +858,6 @@ schema (SymbolKeyword): symbol`
           { key: Schema.Union(Schema.Literal("a"), Schema.Literal("b")), value: JsonNumber }
         ),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "object",
           "properties": {
             "a": {
@@ -922,7 +878,6 @@ schema (SymbolKeyword): symbol`
         { key: Schema.TemplateLiteral(Schema.String, Schema.Literal("-"), Schema.String), value: JsonNumber }
       )
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [],
         "properties": {},
@@ -950,7 +905,6 @@ schema (SymbolKeyword): symbol`
         { key: Schema.String.pipe(Schema.pattern(new RegExp("^.*-.*$"))), value: JsonNumber }
       )
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [],
         "properties": {},
@@ -981,7 +935,6 @@ schema (SymbolKeyword): symbol`
   it("Struct Record", () => {
     const schema = Schema.Struct({ a: Schema.String }, Schema.Record({ key: Schema.String, value: Schema.String }))
     const jsonSchema: JsonSchema.Root = {
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       "type": "object",
       "required": [
         "a"
@@ -1019,7 +972,6 @@ schema (Refinement): { string | filter }`
 
     it("minLength", () => {
       expectJSONSchema(Schema.String.pipe(Schema.minLength(1)), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "string",
         "description": "a string at least 1 character(s) long",
         "minLength": 1
@@ -1028,7 +980,6 @@ schema (Refinement): { string | filter }`
 
     it("maxLength", () => {
       expectJSONSchema(Schema.String.pipe(Schema.maxLength(1)), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "string",
         "description": "a string at most 1 character(s) long",
         "maxLength": 1
@@ -1037,7 +988,6 @@ schema (Refinement): { string | filter }`
 
     it("length: number", () => {
       expectJSONSchema(Schema.String.pipe(Schema.length(1)), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "string",
         "description": "a single character",
         "maxLength": 1,
@@ -1047,7 +997,6 @@ schema (Refinement): { string | filter }`
 
     it("length: { min, max }", () => {
       expectJSONSchema(Schema.String.pipe(Schema.length({ min: 2, max: 4 })), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "string",
         "description": "a string at least 2 character(s) and at most 4 character(s) long",
         "maxLength": 4,
@@ -1057,7 +1006,6 @@ schema (Refinement): { string | filter }`
 
     it("greaterThan", () => {
       expectJSONSchema(JsonNumber.pipe(Schema.greaterThan(1)), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "number",
         "description": "a number greater than 1",
         "exclusiveMinimum": 1
@@ -1066,7 +1014,6 @@ schema (Refinement): { string | filter }`
 
     it("greaterThanOrEqualTo", () => {
       expectJSONSchema(JsonNumber.pipe(Schema.greaterThanOrEqualTo(1)), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "number",
         "description": "a number greater than or equal to 1",
         "minimum": 1
@@ -1075,7 +1022,6 @@ schema (Refinement): { string | filter }`
 
     it("lessThan", () => {
       expectJSONSchema(JsonNumber.pipe(Schema.lessThan(1)), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "number",
         "description": "a number less than 1",
         "exclusiveMaximum": 1
@@ -1084,7 +1030,6 @@ schema (Refinement): { string | filter }`
 
     it("lessThanOrEqualTo", () => {
       expectJSONSchema(JsonNumber.pipe(Schema.lessThanOrEqualTo(1)), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "number",
         "description": "a number less than or equal to 1",
         "maximum": 1
@@ -1093,7 +1038,6 @@ schema (Refinement): { string | filter }`
 
     it("pattern", () => {
       expectJSONSchema(Schema.String.pipe(Schema.pattern(/^abb+$/)), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "string",
         "description": "a string matching the pattern ^abb+$",
         "pattern": "^abb+$"
@@ -1102,7 +1046,6 @@ schema (Refinement): { string | filter }`
 
     it("integer", () => {
       expectJSONSchema(JsonNumber.pipe(Schema.int()), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "integer",
         "title": "integer",
         "description": "an integer"
@@ -1112,7 +1055,6 @@ schema (Refinement): { string | filter }`
     it("Trimmed", () => {
       const schema = Schema.Trimmed
       expectJSONSchema(schema, {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "description": "a string with no leading or trailing whitespace",
         "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
         "title": "Trimmed",
@@ -1124,7 +1066,6 @@ schema (Refinement): { string | filter }`
   it("TemplateLiteral", () => {
     const schema = Schema.TemplateLiteral(Schema.Literal("a"), Schema.Number)
     const jsonSchema: JsonSchema.Root = {
-      "$schema": "https://json-schema.org/draft/2019-09/schema",
       "type": "string",
       "pattern": "^a[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$",
       "description": "a template literal"
@@ -1169,7 +1110,6 @@ schema (Suspend): <suspended schema>`
         })
       ).annotations({ identifier: "A" })
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "$ref": "#/$defs/A",
         "$defs": {
           "A": {
@@ -1216,7 +1156,6 @@ schema (Suspend): <suspended schema>`
         as: Schema.Array(Schema.suspend((): Schema.Schema<A> => schema).annotations({ identifier: "A" }))
       })
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [
           "a",
@@ -1279,7 +1218,6 @@ schema (Suspend): <suspended schema>`
         categories: Schema.Array(Schema.suspend((): Schema.Schema<Category> => schema))
       }).annotations({ identifier: "Category" })
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "$ref": "#/$defs/Category",
         "$defs": {
           "Category": {
@@ -1355,7 +1293,6 @@ schema (Suspend): <suspended schema>`
       ).annotations({ identifier: "Operation" })
 
       const jsonSchema: JsonSchema.Root = {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "$ref": "#/$defs/Operation",
         "$defs": {
           "Operation": {
@@ -1438,7 +1375,6 @@ schema (Suspend): <suspended schema>`
   describe("annotations", () => {
     it("examples support", () => {
       expectJSONSchema(Schema.String.annotations({ examples: ["a", "b"] }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "string",
         "title": "string",
         "description": "a string",
@@ -1448,7 +1384,6 @@ schema (Suspend): <suspended schema>`
 
     it("default support", () => {
       expectJSONSchema(Schema.String.annotations({ default: "" }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "string",
         "title": "string",
         "description": "a string",
@@ -1470,7 +1405,6 @@ schema (Suspend): <suspended schema>`
         })
       })
       expectJSONSchema(schema, {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [
           "foo",
@@ -1503,7 +1437,6 @@ schema (Suspend): <suspended schema>`
     it("should support make(Class)", () => {
       class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
       expectJSONSchema(A, {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [
           "a"
@@ -1522,7 +1455,6 @@ schema (Suspend): <suspended schema>`
     it("should support make(S.typeSchema(Class))", () => {
       class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
       expectJSONSchema(A, {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [
           "a"
@@ -1543,7 +1475,6 @@ schema (Suspend): <suspended schema>`
         jsonSchema: { "type": "custom JSON Schema" }
       }) {}
       expectJSONSchema(Schema.typeSchema(A), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
@@ -1551,7 +1482,6 @@ schema (Suspend): <suspended schema>`
     it("should support make(S.encodedSchema(Class))", () => {
       class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
       expectJSONSchema(Schema.encodedSchema(A), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [
           "a"
@@ -1570,7 +1500,6 @@ schema (Suspend): <suspended schema>`
   describe("identifier annotations support", () => {
     it("on root level schema", () => {
       expectJSONSchema(Schema.String.annotations({ identifier: "Name" }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "$ref": "#/$defs/Name",
         "$defs": {
           "Name": {
@@ -1590,7 +1519,6 @@ schema (Suspend): <suspended schema>`
       })
       const schema = Schema.Struct({ a: Name, b: Schema.Struct({ c: Name }) })
       expectJSONSchema(schema, {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [
           "a",
@@ -1637,7 +1565,6 @@ schema (Suspend): <suspended schema>`
 
       const jsonSchema = JsonSchema.make(Schema.encodedSchema(schema))
       expect(jsonSchema).toEqual({
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [
           "name",
@@ -1683,28 +1610,24 @@ schema (Suspend): <suspended schema>`
   describe("should handle jsonSchema annotations", () => {
     it("Void", () => {
       expectJSONSchema(Schema.Void.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
 
     it("Never", () => {
       expectJSONSchema(Schema.Never.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
 
     it("Literal", () => {
       expectJSONSchema(Schema.Literal("a").annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
 
     it("SymbolFromSelf", () => {
       expectJSONSchema(Schema.SymbolFromSelf.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
@@ -1715,7 +1638,6 @@ schema (Suspend): <suspended schema>`
           jsonSchema: { "type": "custom JSON Schema" }
         }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "custom JSON Schema"
         },
         false
@@ -1728,7 +1650,6 @@ schema (Suspend): <suspended schema>`
           jsonSchema: { "type": "custom JSON Schema" }
         }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "custom JSON Schema"
         },
         false
@@ -1737,28 +1658,24 @@ schema (Suspend): <suspended schema>`
 
     it("Undefined", () => {
       expectJSONSchema(Schema.Undefined.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
 
     it("Unknown", () => {
       expectJSONSchema(Schema.Unknown.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
 
     it("Any", () => {
       expectJSONSchema(Schema.Any.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
 
     it("Object", () => {
       expectJSONSchema(Schema.Object.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
@@ -1769,7 +1686,6 @@ schema (Suspend): <suspended schema>`
           jsonSchema: { "type": "custom JSON Schema", "description": "description" }
         }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "custom JSON Schema",
           "description": "description"
         },
@@ -1779,21 +1695,18 @@ schema (Suspend): <suspended schema>`
 
     it("Number", () => {
       expectJSONSchema(Schema.Number.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
 
     it("BigintFromSelf", () => {
       expectJSONSchema(Schema.BigIntFromSelf.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
 
     it("Boolean", () => {
       expectJSONSchema(Schema.Boolean.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
@@ -1804,7 +1717,6 @@ schema (Suspend): <suspended schema>`
         Banana
       }
       expectJSONSchema(Schema.Enums(Fruits).annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
@@ -1813,7 +1725,6 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(
         Schema.Tuple(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom JSON Schema" } }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "custom JSON Schema"
         },
         false
@@ -1826,7 +1737,6 @@ schema (Suspend): <suspended schema>`
           jsonSchema: { "type": "custom JSON Schema" }
         }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "custom JSON Schema"
         },
         false
@@ -1837,7 +1747,6 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(
         Schema.Union(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom JSON Schema" } }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "custom JSON Schema"
         },
         false
@@ -1857,7 +1766,6 @@ schema (Suspend): <suspended schema>`
       })
 
       expectJSONSchema(schema, {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
         "required": [
           "a",
@@ -1880,7 +1788,6 @@ schema (Suspend): <suspended schema>`
 
     it("refinement", () => {
       expectJSONSchema(Schema.Int.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "description": "an integer",
         "title": "Int",
         "type": "custom JSON Schema"
@@ -1889,14 +1796,12 @@ schema (Suspend): <suspended schema>`
 
     it("transformation", () => {
       expectJSONSchema(Schema.NumberFromString.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "custom JSON Schema"
       }, false)
     })
 
     it("refinement of a transformation with an override annotation", () => {
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { type: "string", format: "date-time" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "format": "date-time",
         "type": "string"
       }, false)
@@ -1904,39 +1809,34 @@ schema (Suspend): <suspended schema>`
         Schema.Date.annotations({
           jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
         }),
-        { "$schema": "https://json-schema.org/draft/2019-09/schema", anyOf: [{ type: "object" }, { type: "array" }] },
+        { anyOf: [{ type: "object" }, { type: "array" }] },
         false
       )
       expectJSONSchema(
         Schema.Date.annotations({
           jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
         }),
-        { "$schema": "https://json-schema.org/draft/2019-09/schema", anyOf: [{ type: "object" }, { type: "array" }] },
+        { anyOf: [{ type: "object" }, { type: "array" }] },
         false
       )
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { $ref: "x" } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         $ref: "x"
       }, false)
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { const: 1 } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         const: 1
       }, false)
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { enum: [1] } }), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         enum: [1]
       }, false)
     })
 
     it("refinement of a transformation without an override annotation", () => {
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString()), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "string",
         "title": "Trimmed",
         "description": "a non empty string"
       }, false)
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "description": "a non empty string",
         "type": "string",
         "title": "Trimmed"
@@ -1944,7 +1844,6 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(
         Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "description": "a non empty string",
           "type": "string",
           "title": "Trimmed"
@@ -1961,7 +1860,6 @@ schema (Suspend): <suspended schema>`
           a: Schema.NumberFromString
         }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "object",
           "required": [
             "a"
@@ -1984,7 +1882,6 @@ schema (Suspend): <suspended schema>`
           a: Schema.NonEmptyString.pipe(Schema.compose(Schema.NumberFromString))
         }),
         {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "object",
           "required": [
             "a"
@@ -2011,7 +1908,6 @@ schema (Suspend): <suspended schema>`
             .annotations({ description: "a required field" })
         })
         expectJSONSchema(schema, {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "object",
           "required": [],
           "properties": {
@@ -2026,7 +1922,6 @@ schema (Suspend): <suspended schema>`
           "title": "Struct (Encoded side)"
         })
         expectJSONSchema(Schema.typeSchema(schema), {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "object",
           "required": [
             "a"
@@ -2043,7 +1938,6 @@ schema (Suspend): <suspended schema>`
           "title": "Struct (Type side)"
         })
         expectJSONSchema(Schema.encodedSchema(schema), {
-          "$schema": "https://json-schema.org/draft/2019-09/schema",
           "type": "object",
           "required": [],
           "properties": {
@@ -2061,7 +1955,6 @@ schema (Suspend): <suspended schema>`
             a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
           }),
           {
-            "$schema": "https://json-schema.org/draft/2019-09/schema",
             "type": "object",
             "required": [],
             "properties": {
@@ -2084,7 +1977,6 @@ schema (Suspend): <suspended schema>`
             a: Schema.optionalWith(Schema.NonEmptyString, { as: "Option" })
           }),
           {
-            "$schema": "https://json-schema.org/draft/2019-09/schema",
             "type": "object",
             "required": [],
             "properties": {
@@ -2107,7 +1999,6 @@ schema (Suspend): <suspended schema>`
             a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b"))
           }),
           {
-            "$schema": "https://json-schema.org/draft/2019-09/schema",
             "type": "object",
             "required": [
               "b"
@@ -2132,7 +2023,6 @@ schema (Suspend): <suspended schema>`
             a: Schema.OptionFromNullOr(Schema.NonEmptyString)
           }),
           {
-            "$schema": "https://json-schema.org/draft/2019-09/schema",
             "type": "object",
             "required": [
               "a"
@@ -2167,7 +2057,6 @@ schema (Suspend): <suspended schema>`
         a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
       })),
       {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         type: "string",
         contentMediaType: "application/json",
         contentSchema: {
@@ -2201,7 +2090,6 @@ schema (Suspend): <suspended schema>`
         }).pipe(Schema.filter(() => true, { jsonSchema: { title: "b" } }))
       )),
       {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         type: "object",
         required: ["a", "b"],
         properties: {
@@ -2222,7 +2110,6 @@ schema (Suspend): <suspended schema>`
         value: Schema.NumberFromString
       }),
       {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         description: "ReadonlyMap<a string at least 2 character(s) long, number>",
         type: "object",
         required: [],
@@ -2250,7 +2137,6 @@ schema (Suspend): <suspended schema>`
         value: Schema.NumberFromString
       }),
       {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         type: "object",
         description: "Map<a string at least 2 character(s) long, number>",
         required: [],
@@ -2275,7 +2161,6 @@ schema (Suspend): <suspended schema>`
     expectJSONSchema(
       Schema.NonEmptyArray(Schema.String),
       {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
         type: "array",
         minItems: 1,
         items: { type: "string" }
