@@ -1867,8 +1867,8 @@ schema (Suspend): <suspended schema>`
           "properties": {
             "a": {
               "type": "string",
-              description: "a number",
-              title: "number"
+              description: "a string that will be parsed into a number",
+              title: "string"
             }
           },
           "additionalProperties": false
@@ -2067,8 +2067,8 @@ schema (Suspend): <suspended schema>`
               contentMediaType: "application/json",
               contentSchema: {
                 type: "string",
-                description: "a number",
-                title: "number"
+                description: "a string that will be parsed into a number",
+                title: "string"
               },
               type: "string"
             }
@@ -2116,8 +2116,8 @@ schema (Suspend): <suspended schema>`
         properties: {},
         "patternProperties": {
           "": {
-            description: "a number",
-            title: "number",
+            description: "a string that will be parsed into a number",
+            title: "string",
             type: "string"
           }
         },
@@ -2143,8 +2143,8 @@ schema (Suspend): <suspended schema>`
         properties: {},
         "patternProperties": {
           "": {
-            description: "a number",
-            title: "number",
+            description: "a string that will be parsed into a number",
+            title: "string",
             type: "string"
           }
         },
