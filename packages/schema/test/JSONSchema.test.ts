@@ -181,6 +181,11 @@ schema (Declaration): DateFromSelf`
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "void"
     })
+    expectJSONSchema(Schema.Void.annotations({}), {
+      "$id": "/schemas/void",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "void"
+    })
   })
 
   it("Object", () => {
@@ -215,9 +220,7 @@ schema (Declaration): DateFromSelf`
     })
     expectJSONSchema(Schema.String.annotations({}), {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      type: "string",
-      description: "a string",
-      title: "string"
+      type: "string"
     })
   })
 
@@ -228,9 +231,7 @@ schema (Declaration): DateFromSelf`
     }, false)
     expectJSONSchema(Schema.Number.annotations({}), {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      type: "number",
-      description: "a number",
-      title: "number"
+      type: "number"
     }, false)
   })
 
@@ -241,9 +242,7 @@ schema (Declaration): DateFromSelf`
     })
     expectJSONSchema(Schema.Boolean.annotations({}), {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      type: "boolean",
-      description: "a boolean",
-      title: "boolean"
+      type: "boolean"
     })
   })
 
@@ -544,7 +543,6 @@ schema (Declaration): DateFromSelf`
         "items": [
           {
             "type": "string",
-            "title": "string",
             "description": "e"
           },
           {
@@ -1442,8 +1440,6 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(Schema.String.annotations({ examples: ["a", "b"] }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
-        "title": "string",
-        "description": "a string",
         "examples": ["a", "b"]
       })
     })
@@ -1452,8 +1448,6 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(Schema.String.annotations({ default: "" }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
-        "title": "string",
-        "description": "a string",
         "default": ""
       })
     })
@@ -1572,9 +1566,7 @@ schema (Suspend): <suspended schema>`
         "$ref": "#/$defs/Name",
         "$defs": {
           "Name": {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           }
         }
       })
