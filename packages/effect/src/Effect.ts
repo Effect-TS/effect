@@ -38,6 +38,7 @@ import * as _runtime from "./internal/runtime.js"
 import * as _schedule from "./internal/schedule.js"
 import type * as Layer from "./Layer.js"
 import type { LogLevel } from "./LogLevel.js"
+import type * as ManagedRuntime from "./ManagedRuntime.js"
 import type * as Metric from "./Metric.js"
 import type * as MetricLabel from "./MetricLabel.js"
 import type * as Option from "./Option.js"
@@ -3330,12 +3331,19 @@ export const provide: {
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E2 | E, RIn | Exclude<R, ROut>>
   <R2>(context: Context.Context<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <R2>(runtime: Runtime.Runtime<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
+  <E2, R2>(
+    managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, R2>>
   <A, E, R, ROut, E2, RIn>(
     self: Effect<A, E, R>,
     layer: Layer.Layer<ROut, E2, RIn>
   ): Effect<A, E | E2, RIn | Exclude<R, ROut>>
   <A, E, R, R2>(self: Effect<A, E, R>, context: Context.Context<R2>): Effect<A, E, Exclude<R, R2>>
   <A, E, R, R2>(self: Effect<A, E, R>, runtime: Runtime.Runtime<R2>): Effect<A, E, Exclude<R, R2>>
+  <A, E, E2, R, R2>(
+    self: Effect<A, E, R>,
+    runtime: ManagedRuntime.ManagedRuntime<R2, E2>
+  ): Effect<A, E | E2, Exclude<R, R2>>
 } = layer.effect_provide
 
 /**

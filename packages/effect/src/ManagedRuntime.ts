@@ -6,8 +6,30 @@ import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import * as internal from "./internal/managedRuntime.js"
 import type * as Layer from "./Layer.js"
-import type { Pipeable } from "./Pipeable.js"
 import type * as Runtime from "./Runtime.js"
+import type * as Unify from "./Unify.js"
+
+/**
+ * @since 3.9.0
+ * @category symbol
+ */
+export const TypeId: unique symbol = internal.TypeId as TypeId
+
+/**
+ * @since 3.9.0
+ * @category symbol
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * Checks if the provided argument is a `ManagedRuntime`.
+ *
+ * @param input - The value to be checked if it is a `ManagedRuntime`.
+
+ * @since 3.9.0
+ * @category guards
+ */
+export const isManagedRuntime: (input: unknown) => input is ManagedRuntime<unknown, unknown> = internal.isManagedRuntime
 
 /**
  * @since 3.4.0
@@ -29,7 +51,8 @@ export declare namespace ManagedRuntime {
  * @since 2.0.0
  * @category models
  */
-export interface ManagedRuntime<in R, out ER> extends Pipeable {
+export interface ManagedRuntime<in R, out ER> extends Effect.Effect<Runtime.Runtime<R>, ER> {
+  readonly [TypeId]: TypeId
   readonly memoMap: Layer.MemoMap
   readonly runtimeEffect: Effect.Effect<Runtime.Runtime<R>, ER>
   readonly runtime: () => Promise<Runtime.Runtime<R>>
@@ -103,6 +126,26 @@ export interface ManagedRuntime<in R, out ER> extends Pipeable {
    * Dispose of the resources associated with the runtime.
    */
   readonly disposeEffect: Effect.Effect<void, never, never>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: ManagedRuntimeUnify<this>
+  readonly [Unify.ignoreSymbol]?: ManagedRuntimeUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface ManagedRuntimeUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  ManagedRuntime?: () => Extract<A[Unify.typeSymbol], ManagedRuntime<any, any>>
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface ManagedRuntimeUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**

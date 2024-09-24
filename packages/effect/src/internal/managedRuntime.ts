@@ -1,9 +1,11 @@
 import type * as Effect from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import type { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import type * as Layer from "../Layer.js"
-import type { ManagedRuntime } from "../ManagedRuntime.js"
+import type * as M from "../ManagedRuntime.js"
 import { pipeArguments } from "../Pipeable.js"
+import { hasProperty } from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
 import * as Scope from "../Scope.js"
 import * as effect from "./core-effect.js"
@@ -12,10 +14,16 @@ import * as fiberRuntime from "./fiberRuntime.js"
 import * as internalLayer from "./layer.js"
 import * as internalRuntime from "./runtime.js"
 
-interface ManagedRuntimeImpl<R, E> extends ManagedRuntime<R, E> {
+interface ManagedRuntimeImpl<R, E> extends M.ManagedRuntime<R, E> {
   readonly scope: Scope.CloseableScope
   cachedRuntime: Runtime.Runtime<R> | undefined
 }
+
+/** @internal */
+export const TypeId: M.TypeId = Symbol.for("effect/ManagedRuntime") as M.TypeId
+
+/** @internal */
+export const isManagedRuntime = (u: unknown): u is M.ManagedRuntime<unknown, unknown> => hasProperty(u, TypeId)
 
 function provide<R, ER, A, E>(
   managed: ManagedRuntimeImpl<R, ER>,
@@ -32,34 +40,42 @@ function provide<R, ER, A, E>(
   )
 }
 
+const ManagedRuntimeProto = {
+  ...Effectable.CommitPrototype,
+  [TypeId]: TypeId,
+  pipe() {
+    return pipeArguments(this, arguments)
+  },
+  commit(this: ManagedRuntimeImpl<unknown, unknown>) {
+    return this.runtimeEffect
+  }
+}
+
 /** @internal */
 export const make = <R, ER>(
   layer: Layer.Layer<R, ER, never>,
   memoMap?: Layer.MemoMap
-): ManagedRuntime<R, ER> => {
+): M.ManagedRuntime<R, ER> => {
   memoMap = memoMap ?? internalLayer.unsafeMakeMemoMap()
   const scope = internalRuntime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
-  const self: ManagedRuntimeImpl<R, ER> = {
+  const runtimeEffect = internalRuntime.unsafeRunSyncEffect(
+    effect.memoize(
+      core.tap(
+        Scope.extend(
+          internalLayer.toRuntimeWithMemoMap(layer, memoMap),
+          scope
+        ),
+        (rt) => {
+          self.cachedRuntime = rt
+        }
+      )
+    )
+  )
+  const self: ManagedRuntimeImpl<R, ER> = Object.assign(Object.create(ManagedRuntimeProto), {
     memoMap,
     scope,
-    runtimeEffect: internalRuntime
-      .unsafeRunSyncEffect(
-        effect.memoize(
-          core.tap(
-            Scope.extend(
-              internalLayer.toRuntimeWithMemoMap(layer, memoMap),
-              scope
-            ),
-            (rt) => {
-              self.cachedRuntime = rt
-            }
-          )
-        )
-      ),
+    runtimeEffect,
     cachedRuntime: undefined,
-    pipe() {
-      return pipeArguments(this, arguments)
-    },
     runtime() {
       return self.cachedRuntime === undefined ?
         internalRuntime.unsafeRunPromiseEffect(self.runtimeEffect) :
@@ -110,6 +126,6 @@ export const make = <R, ER>(
         internalRuntime.unsafeRunPromiseEffect(provide(self, effect), options) :
         internalRuntime.unsafeRunPromise(self.cachedRuntime)(effect, options)
     }
-  }
+  })
   return self
 }
