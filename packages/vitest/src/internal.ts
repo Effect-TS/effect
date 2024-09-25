@@ -86,29 +86,33 @@ export const addEqualityTesters = () => {
 export const beforeAll = <E>(
   self: (
     suite: Readonly<V.RunnerTestSuite | V.RunnerTestFile>
-  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>
-): void => V.beforeAll((suite) => runHook(self(suite)))
+  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>,
+  timeout?: number
+): void => V.beforeAll((suite) => runHook(self(suite)), timeout)
 
 /** @internal */
 export const beforeEach = <E>(
   self: (
     ctx: V.TaskContext<V.RunnerCustomCase<object> | V.RunnerTestCase<object>> & V.TestContext & object,
     suite: V.RunnerTestSuite
-  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>
-): void => V.beforeEach((ctx, suite) => runHook(self(ctx, suite)))
+  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>,
+  timeout?: number
+): void => V.beforeEach((ctx, suite) => runHook(self(ctx, suite)), timeout)
 
 /** @internal */
 export const afterAll = <E>(
-  self: (suite: Readonly<V.RunnerTestSuite | V.RunnerTestFile>) => Effect.Effect<void | PromiseLike<void>, E, never>
-): void => V.afterAll((suite) => runHook(self(suite)))
+  self: (suite: Readonly<V.RunnerTestSuite | V.RunnerTestFile>) => Effect.Effect<void | PromiseLike<void>, E, never>,
+  timeout?: number
+): void => V.afterAll((suite) => runHook(self(suite)), timeout)
 
 /** @internal */
 export const afterEach = <E>(
   self: (
     ctx: V.TaskContext<V.RunnerCustomCase<object> | V.RunnerTestCase<object>> & V.TestContext & object,
     suite: V.RunnerTestSuite
-  ) => Effect.Effect<void | PromiseLike<void>, E, never>
-): void => V.afterEach((ctx, suite) => runHook(self(ctx, suite)))
+  ) => Effect.Effect<void | PromiseLike<void>, E, never>,
+  timeout?: number
+): void => V.afterEach((ctx, suite) => runHook(self(ctx, suite)), timeout)
 
 /** @internal */
 const makeTester = <R, E2 = never>(

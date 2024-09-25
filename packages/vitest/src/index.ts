@@ -61,7 +61,8 @@ export const addEqualityTesters: () => void = internal.addEqualityTesters
 export const beforeAllEffect: <E>(
   self: (
     suite: Readonly<V.RunnerTestSuite | V.RunnerTestFile>
-  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>
+  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>,
+  timeout?: number
 ) => void = internal.beforeAll
 
 /**
@@ -71,14 +72,16 @@ export const beforeEachEffect: <E>(
   self: (
     ctx: V.TaskContext<V.RunnerCustomCase<object> | V.RunnerTestCase<object>> & V.TestContext & object,
     suite: V.RunnerTestSuite
-  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>
+  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>,
+  timeout?: number
 ) => void = internal.beforeEach
 
 /**
  * @since 1.1.0
  */
 export const afterAllEffect: <E>(
-  self: (suite: Readonly<V.RunnerTestSuite | V.RunnerTestFile>) => Effect.Effect<void | PromiseLike<void>, E, never>
+  self: (suite: Readonly<V.RunnerTestSuite | V.RunnerTestFile>) => Effect.Effect<void | PromiseLike<void>, E, never>,
+  timeout?: number
 ) => void = internal.afterAll
 
 /**
@@ -88,7 +91,8 @@ export const afterEachEffect: <E>(
   self: (
     ctx: V.TaskContext<V.RunnerCustomCase<object> | V.RunnerTestCase<object>> & V.TestContext & object,
     suite: V.RunnerTestSuite
-  ) => Effect.Effect<void | PromiseLike<void>, E, never>
+  ) => Effect.Effect<void | PromiseLike<void>, E, never>,
+  timeout?: number
 ) => void = internal.afterEach
 
 /**
