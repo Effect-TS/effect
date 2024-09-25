@@ -59,6 +59,37 @@ describe("HashMap", () => {
 }`)
   })
 
+  it("empty", () => {
+    assert.isTrue(HM.isEmpty(HM.empty()))
+  })
+
+  describe("fromIterable", () => {
+    it("returns an immutable HashMap", () => {
+      const map = HM.fromIterable([[0, "a"]])
+      expect(HM.has(HM.remove(map, 0), 0)).toBe(false)
+      expect(HM.has(map, 0)).toBe(true)
+    })
+    it("returns an untouched empty HashMap", () => {
+      const emptyIterable = new Map().entries()
+      deepStrictEqual(HM.fromIterable([]), HM.empty())
+      deepStrictEqual(HM.fromIterable(emptyIterable), HM.empty())
+    })
+  })
+
+  describe("make", () => {
+    it("returns an immutable HashMap", () => {
+      const map = HM.make([0, "a"])
+      expect(HM.has(HM.remove(map, 0), 0)).toBe(false)
+      expect(HM.has(map, 0)).toBe(true)
+    })
+    it("returns an untouched empty HashMap", () => {
+      const emptyIterable = new Map().entries()
+      deepStrictEqual(HM.make(), HM.empty())
+      deepStrictEqual(HM.make(...[]), HM.empty())
+      deepStrictEqual(HM.make(...emptyIterable), HM.empty())
+    })
+  })
+
   it("toJSON", () => {
     const map = HM.make([0, "a"])
     expect(map.toJSON()).toEqual({ _id: "HashMap", values: [[0, "a"]] })

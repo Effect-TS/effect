@@ -191,11 +191,12 @@ export const make = <Entries extends ReadonlyArray<readonly [any, any]>>(
 
 /** @internal */
 export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): HM.HashMap<K, V> => {
-  const map = beginMutation(empty<K, V>())
+  const emptyMap = empty<K, V>()
+  const map = beginMutation(emptyMap)
   for (const entry of entries) {
     set(map, entry[0], entry[1])
   }
-  return endMutation(map)
+  return isEmpty(map) ? emptyMap : endMutation(map)
 }
 
 /** @internal */
