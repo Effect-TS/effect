@@ -1,5 +1,11 @@
 # effect
 
+## 3.8.4
+
+### Patch Changes
+
+- [#3661](https://github.com/Effect-TS/effect/pull/3661) [`4509656`](https://github.com/Effect-TS/effect/commit/45096569d50262275ee984f44c456f5c83b62683) Thanks @KhraksMamtsov! - `Micro.EnvRef` and `Micro.Handle` is subtype of `Micro`
+
 ## 3.8.3
 
 ### Patch Changes

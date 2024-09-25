@@ -1,5 +1,163 @@
 # @effect/schema
 
+## 0.74.1
+
+### Patch Changes
+
+- [#3669](https://github.com/Effect-TS/effect/pull/3669) [`734eae6`](https://github.com/Effect-TS/effect/commit/734eae654f215e4adca457d04d2a1728b1a55c83) Thanks @gcanti! - Add description annotation to the encoded part of NumberFromString.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.NumberFromString
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string"
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.NumberFromString
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a string that will be parsed into a number"
+  }
+  */
+  ```
+
+- [#3667](https://github.com/Effect-TS/effect/pull/3667) [`fd83d0e`](https://github.com/Effect-TS/effect/commit/fd83d0e548feff9ea2d53d370a0b626c4a1d940e) Thanks @gcanti! - Remove default json schema annotations from string, number and boolean.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.String.annotations({ examples: ["a", "b"] })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a string",
+    "title": "string",
+    "examples": [
+      "a",
+      "b"
+    ]
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.String.annotations({ examples: ["a", "b"] })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "examples": [
+      "a",
+      "b"
+    ]
+  }
+  */
+  ```
+
+- [#3673](https://github.com/Effect-TS/effect/pull/3673) [`ad7e1de`](https://github.com/Effect-TS/effect/commit/ad7e1de948745c0751bfdac96671028ff4b7a727) Thanks @gcanti! - Add more description annotations.
+
+- [#3672](https://github.com/Effect-TS/effect/pull/3672) [`090e41c`](https://github.com/Effect-TS/effect/commit/090e41c636d720b1c7d89684a739855765ed4382) Thanks @gcanti! - JSON Schema: handle refinements where the 'from' part includes a transformation, closes #3662
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.Date
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  throws
+  Error: Missing annotation
+  details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
+  schema (Refinement): Date
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.Date
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a string that will be parsed into a Date"
+  }
+  */
+  ```
+
+- [#3672](https://github.com/Effect-TS/effect/pull/3672) [`090e41c`](https://github.com/Effect-TS/effect/commit/090e41c636d720b1c7d89684a739855765ed4382) Thanks @gcanti! - Add description annotation to the encoded part of DateFromString.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.DateFromString
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string"
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema"
+
+  const schema = Schema.DateFromString
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a string that will be parsed into a Date"
+  }
+  */
+  ```
+
+- Updated dependencies [[`4509656`](https://github.com/Effect-TS/effect/commit/45096569d50262275ee984f44c456f5c83b62683)]:
+  - effect@3.8.4
+
 ## 0.74.0
 
 ### Minor Changes
