@@ -3,6 +3,7 @@
  */
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
+import type * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as Scope from "effect/Scope"
 import type * as TestServices from "effect/TestServices"
 import * as V from "vitest"
@@ -48,30 +49,11 @@ export namespace Vitest {
     ) => <A, E>(name: string, self: TestFunction<A, E, R, Array<T>>, timeout?: number | V.TestOptions) => void
   }
 }
+
 /**
  * @since 1.0.0
  */
 export const addEqualityTesters: () => void = internal.addEqualityTesters
-
-/**
- * @since 1.0.0
- */
-export const effect: Vitest.Tester<TestServices.TestServices> = internal.effect
-
-/**
- * @since 1.0.0
- */
-export const scoped: Vitest.Tester<TestServices.TestServices | Scope.Scope> = internal.scoped
-
-/**
- * @since 1.0.0
- */
-export const live: Vitest.Tester<never> = internal.live
-
-/**
- * @since 1.0.0
- */
-export const scopedLive: Vitest.Tester<Scope.Scope> = internal.scopedLive
 
 /**
  * @since 1.1.0
@@ -112,6 +94,33 @@ export const afterEachEffect: <E>(
 /**
  * @since 1.0.0
  */
+export const effect: Vitest.Tester<TestServices.TestServices> = internal.effect
+
+/**
+ * @since 1.0.0
+ */
+export const scoped: Vitest.Tester<TestServices.TestServices | Scope.Scope> = internal.scoped
+
+/**
+ * @since 1.0.0
+ */
+export const live: Vitest.Tester<never> = internal.live
+
+/**
+ * @since 1.0.0
+ */
+export const scopedLive: Vitest.Tester<Scope.Scope> = internal.scopedLive
+
+/**
+ * @since 1.1.0
+ */
+export const withManagedRuntime: <R, ER>(
+  managedRuntime: ManagedRuntime.ManagedRuntime<R, ER>
+) => Vitest.Tester<R> = internal.withManagedRuntime
+
+/**
+ * @since 1.0.0
+ */
 export const flakyTest: <A, E, R>(
   self: Effect.Effect<A, E, R>,
   timeout?: Duration.DurationInput
@@ -127,7 +136,8 @@ const methods = {
   beforeAllEffect,
   beforeEachEffect,
   afterAllEffect,
-  afterEachEffect
+  afterEachEffect,
+  withManagedRuntime
 } as const
 
 /**

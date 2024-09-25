@@ -1,6 +1,15 @@
 import { expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 
+// hooks
+
+it.beforeAllEffect(() => Effect.void)
+it.beforeEachEffect(() => Effect.void)
+it.afterEachEffect(() => Effect.void)
+it.afterAllEffect(() => Effect.void)
+
+// effects
+
 it.live(
   "live %s",
   () => Effect.sync(() => expect(1).toEqual(1))
