@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-The `Pool` has been made to a subtype of the `Effect`
+`Pool` is now a subtype of `Effect`, equivalent to `Pool.get`
