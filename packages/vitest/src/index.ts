@@ -74,6 +74,42 @@ export const live: Vitest.Tester<never> = internal.live
 export const scopedLive: Vitest.Tester<Scope.Scope> = internal.scopedLive
 
 /**
+ * @since 1.1.0
+ */
+export const beforeAllEffect: <E>(
+  self: (
+    suite: Readonly<V.RunnerTestSuite | V.RunnerTestFile>
+  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>
+) => void = internal.beforeAll
+
+/**
+ * @since 1.1.0
+ */
+export const beforeEachEffect: <E>(
+  self: (
+    ctx: V.TaskContext<V.RunnerCustomCase<object> | V.RunnerTestCase<object>> & V.TestContext & object,
+    suite: V.RunnerTestSuite
+  ) => Effect.Effect<V.HookCleanupCallback | PromiseLike<V.HookCleanupCallback>, E, never>
+) => void = internal.beforeEach
+
+/**
+ * @since 1.1.0
+ */
+export const afterAllEffect: <E>(
+  self: (suite: Readonly<V.RunnerTestSuite | V.RunnerTestFile>) => Effect.Effect<void | PromiseLike<void>, E, never>
+) => void = internal.afterAll
+
+/**
+ * @since 1.1.0
+ */
+export const afterEachEffect: <E>(
+  self: (
+    ctx: V.TaskContext<V.RunnerCustomCase<object> | V.RunnerTestCase<object>> & V.TestContext & object,
+    suite: V.RunnerTestSuite
+  ) => Effect.Effect<void | PromiseLike<void>, E, never>
+) => void = internal.afterEach
+
+/**
  * @since 1.0.0
  */
 export const flakyTest: <A, E, R>(
@@ -82,7 +118,17 @@ export const flakyTest: <A, E, R>(
 ) => Effect.Effect<A, never, R> = internal.flakyTest
 
 /** @ignored */
-const methods = { effect, live, flakyTest, scoped, scopedLive } as const
+const methods = {
+  effect,
+  live,
+  flakyTest,
+  scoped,
+  scopedLive,
+  beforeAllEffect,
+  beforeEachEffect,
+  afterAllEffect,
+  afterEachEffect
+} as const
 
 /**
  * @since 1.0.0
