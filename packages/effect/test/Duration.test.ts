@@ -423,6 +423,22 @@ describe("Duration", () => {
     expect(Duration.toMonths("60 days")).toBe(2)
   })
 
+  it("years", () => {
+    expect(Equal.equals(Duration.years(1), Duration.days(365))).toBe(true)
+    expect(Equal.equals(Duration.years(1), Duration.days(1))).toBe(false)
+  })
+
+  it("toYears", () => {
+    expect(Duration.days(365).pipe(Duration.toYears)).toBe(1)
+    expect(Duration.months(12).pipe(Duration.toYears)).toBeCloseTo(1, 1)
+    expect(Duration.infinity.pipe(Duration.toYears)).toBe(Infinity)
+
+    expect(Duration.toYears("1 year")).toBe(1)
+    expect(Duration.toYears("2 years")).toBe(2)
+    expect(Duration.toYears("365 days")).toBe(1)
+    expect(Duration.toYears("730 days")).toBe(2)
+  })
+
   it("toMillis", () => {
     expect(Duration.millis(1).pipe(Duration.toMillis)).toBe(1)
     expect(Duration.nanos(1n).pipe(Duration.toMillis)).toBe(0.000001)
