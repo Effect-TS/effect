@@ -4,7 +4,6 @@
 import type * as Effect from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import * as internal from "./internal/resource.js"
-import type { Pipeable } from "./Pipeable.js"
 import type * as Schedule from "./Schedule.js"
 import type * as Scope from "./Scope.js"
 import type * as ScopedRef from "./ScopedRef.js"
@@ -30,7 +29,7 @@ export type ResourceTypeId = typeof ResourceTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Resource<in out A, in out E = never> extends Effect.Effect<A, E>, Resource.Variance<A, E>, Pipeable {
+export interface Resource<in out A, in out E = never> extends Effect.Effect<A, E>, Resource.Variance<A, E> {
   /** @internal */
   readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<A, E>>
   /** @internal */
