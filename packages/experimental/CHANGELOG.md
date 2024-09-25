@@ -1,5 +1,44 @@
 # @effect/experimental
 
+## 0.27.2
+
+### Patch Changes
+
+- [#3676](https://github.com/Effect-TS/effect/pull/3676) [`0a68746`](https://github.com/Effect-TS/effect/commit/0a68746c89651c364db2ee8c72dcfe552e1782ea) Thanks @tomglaize! - Add VariantSchema fieldFromKey utility to rename the encoded side of a field by variant.
+
+  Example usage:
+
+  ```ts
+  import { Schema } from "@effect/schema"
+  import { VariantSchema } from "@effect/experimental"
+
+  const { Class, fieldFromKey } = VariantSchema.make({
+    variants: ["domain", "json"],
+    defaultVariant: "domain"
+  })
+
+  class User extends Class<User>("User")({
+    id: Schema.Int,
+    firstName: Schema.String.pipe(fieldFromKey({ json: "first_name" }))
+  }) {}
+
+  console.log(
+    Schema.encodeSync(User.json)({
+      id: 1,
+      firstName: "Bob"
+    })
+  )
+  /*
+  { id: 1, first_name: 'Bob' }
+  */
+  ```
+
+- Updated dependencies [[`734eae6`](https://github.com/Effect-TS/effect/commit/734eae654f215e4adca457d04d2a1728b1a55c83), [`fd83d0e`](https://github.com/Effect-TS/effect/commit/fd83d0e548feff9ea2d53d370a0b626c4a1d940e), [`4509656`](https://github.com/Effect-TS/effect/commit/45096569d50262275ee984f44c456f5c83b62683), [`ad7e1de`](https://github.com/Effect-TS/effect/commit/ad7e1de948745c0751bfdac96671028ff4b7a727), [`090e41c`](https://github.com/Effect-TS/effect/commit/090e41c636d720b1c7d89684a739855765ed4382), [`090e41c`](https://github.com/Effect-TS/effect/commit/090e41c636d720b1c7d89684a739855765ed4382)]:
+  - @effect/schema@0.74.1
+  - @effect/platform@0.66.2
+  - effect@3.8.4
+  - @effect/platform-node@0.61.2
+
 ## 0.27.1
 
 ### Patch Changes
