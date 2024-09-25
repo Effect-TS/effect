@@ -41,15 +41,17 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
+    "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"
   },
   "peerDependencies": {
+    "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.25.1",
-    "@libsql/client": "^0.12.0"
+    "@libsql/client": "^0.12.0",
+    "@opentelemetry/semantic-conventions": "^1.25.1"
   }
 }
