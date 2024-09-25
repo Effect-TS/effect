@@ -423,4 +423,14 @@ describe("Pool", () => {
       expect(yield* Ref.get(allocations)).toBe(11)
       expect(yield* Ref.get(released)).toBe(11)
     }))
+
+  it.scoped("is subtype of Effect", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({
+        acquire: Effect.succeed(1),
+        size: 1
+      })
+      const item = yield* pool
+      assert.strictEqual(item, 1)
+    }))
 })

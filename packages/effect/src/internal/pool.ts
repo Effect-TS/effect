@@ -2,6 +2,7 @@ import type { Cause } from "effect/Cause"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type { Effect, Semaphore } from "../Effect.js"
+import * as Effectable from "../Effectable.js"
 import type { Exit } from "../Exit.js"
 import { dual, identity } from "../Function.js"
 import * as Iterable from "../Iterable.js"
@@ -122,7 +123,7 @@ interface Strategy<A, E> {
   readonly reclaim: (pool: PoolImpl<A, E>) => Effect<Option.Option<PoolItem<A, E>>>
 }
 
-class PoolImpl<A, E> implements Pool<A, E> {
+class PoolImpl<A, E> extends Effectable.Class<A, E, Scope> implements Pool<A, E> {
   readonly [PoolTypeId]: Pool.Variance<A, E>[PoolTypeId_]
 
   isShuttingDown = false
@@ -140,6 +141,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
     readonly strategy: Strategy<A, E>,
     readonly targetUtilization: number
   ) {
+    super()
     this[PoolTypeId] = poolVariance
     this.semaphore = circular.unsafeMakeSemaphore(concurrency * maxSize)
   }
@@ -252,6 +254,10 @@ class PoolImpl<A, E> implements Pool<A, E> {
       )
     )
   )
+
+  commit() {
+    return this.get
+  }
 
   readonly get: Effect<A, E, Scope> = core.flatMap(
     core.suspend(() => this.isShuttingDown ? core.interrupt : this.getPoolItem),

@@ -7,6 +7,7 @@ import * as internal from "./internal/pool.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Scope from "./Scope.js"
 import type * as Types from "./Types.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -28,7 +29,7 @@ export type PoolTypeId = typeof PoolTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Pool<in out A, out E = never> extends Pool.Variance<A, E>, Pipeable {
+export interface Pool<in out A, out E = never> extends Pool.Variance<A, E>, Effect.Effect<A, E, Scope.Scope>, Pipeable {
   /**
    * Retrieves an item from the pool in a scoped effect. Note that if
    * acquisition fails, then the returned effect will fail for that same reason.
@@ -42,6 +43,30 @@ export interface Pool<in out A, out E = never> extends Pool.Variance<A, E>, Pipe
    * than eagerly.
    */
   invalidate(item: A): Effect.Effect<void>
+
+  readonly [Unify.typeSymbol]?: unknown
+  readonly [Unify.unifySymbol]?: PoolUnify<this>
+  readonly [Unify.ignoreSymbol]?: PoolUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface PoolUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  Pool?: () => Extract<A[Unify.typeSymbol], Pool<any, any>> extends Pool<infer A0, infer _E0> | infer _ ?
+    A0 extends any ? Extract<A[Unify.typeSymbol], Pool<A0, any>> extends Pool<A0, infer E1> ? Pool<A0, E1>
+      : never
+    : never :
+    never
+}
+
+/**
+ * @category models
+ * @since 3.9.0
+ */
+export interface PoolUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**
