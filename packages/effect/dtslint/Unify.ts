@@ -76,7 +76,7 @@ export type SubscriptionRefUnify = Unify.Unify<
   | SubscriptionRef.SubscriptionRef<1>
   | SubscriptionRef.SubscriptionRef<"a">
 >
-// $ExpectType RcRef<"a" | 1, "b" | 2>
+// $ExpectType RcRef<1, 2> | RcRef<"a", "b">
 export type RcRefUnify = Unify.Unify<
   | RcRef.RcRef<1, 2>
   | RcRef.RcRef<"a", "b">
@@ -130,29 +130,29 @@ export type ResourceUnify = Unify.Unify<
   | Resource.Resource<any, any>
 >
 
-// $ExpectType 0 | Option<string | number> | Ref<1> | SynchronizedRef<1> | SubscriptionRef<1> | Deferred<1, 2> | Deferred<"a", "b"> | Fiber<"a" | 1, "b" | 2> | RuntimeFiber<"a" | 1, "b" | 2> | ManagedRuntime<1, 2> | ManagedRuntime<"a", "b"> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | ScopedRef<1> | ScopedRef<"a"> | Resource<1, 2> | Ref<"A"> | SynchronizedRef<"A"> | SubscriptionRef<"A"> | FiberRef<12> | FiberRef<"a2"> | Resource<"a", never> | Latch | Either<1 | "A", 0 | "E"> | Effect<1 | "A", 0 | "E", "R" | "R1"> | RcRef<1 | "A", 0 | "E">
+// $ExpectType 0 | Option<string | number> | Ref<1> | Ref<"a"> | SynchronizedRef<1> | SynchronizedRef<"a"> | SubscriptionRef<1> | SubscriptionRef<"a"> | RcRef<"a", "b"> | Deferred<"a", "b"> | FiberRef<1> | FiberRef<"a"> | ManagedRuntime<"a", "b"> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | ScopedRef<1> | ScopedRef<"a"> | Resource<"a", "b"> | RcRef<1, 0> | Deferred<1, 0> | Resource<1, 0> | Latch | ManagedRuntime<1, 0> | Fiber<"a" | 1, 0 | "b"> | RuntimeFiber<"a" | 1, 0 | "b"> | Either<"a" | 1, 0 | "b"> | Effect<"a" | 1, 0 | "b", "R" | "R1">
 export type AllUnify = Unify.Unify<
   | Either.Either<1, 0>
-  | Either.Either<"A", "E">
+  | Either.Either<"a", "b">
   | Option.Option<number>
   | Option.Option<string>
-  | Effect.Effect<"A", "E", "R">
+  | Effect.Effect<"a", "b", "R">
   | Effect.Effect<1, 0, "R1">
   | Ref.Ref<1>
-  | Ref.Ref<"A">
+  | Ref.Ref<"a">
   | SynchronizedRef.SynchronizedRef<1>
-  | SynchronizedRef.SynchronizedRef<"A">
+  | SynchronizedRef.SynchronizedRef<"a">
   | SubscriptionRef.SubscriptionRef<1>
-  | SubscriptionRef.SubscriptionRef<"A">
+  | SubscriptionRef.SubscriptionRef<"a">
   | RcRef.RcRef<1, 0>
-  | RcRef.RcRef<"A", "E">
-  | Deferred.Deferred<1, 2>
+  | RcRef.RcRef<"a", "b">
+  | Deferred.Deferred<1, 0>
   | Deferred.Deferred<"a", "b">
-  | FiberRef.FiberRef<12>
-  | FiberRef.FiberRef<"a2">
-  | Fiber.Fiber<1, 2>
+  | FiberRef.FiberRef<1>
+  | FiberRef.FiberRef<"a">
+  | Fiber.Fiber<1, 0>
   | Fiber.Fiber<"a", "b">
-  | Fiber.RuntimeFiber<1, 2>
+  | Fiber.RuntimeFiber<1, 0>
   | Fiber.RuntimeFiber<"a", "b">
   | Queue.Queue<1>
   | Queue.Queue<"a">
@@ -160,10 +160,10 @@ export type AllUnify = Unify.Unify<
   | Queue.Dequeue<"a">
   | ScopedRef.ScopedRef<1>
   | ScopedRef.ScopedRef<"a">
-  | Resource.Resource<1, 2>
-  | Resource.Resource<"a">
+  | Resource.Resource<1, 0>
+  | Resource.Resource<"a", "b">
   | Effect.Latch
-  | ManagedRuntime.ManagedRuntime<1, 2>
+  | ManagedRuntime.ManagedRuntime<1, 0>
   | ManagedRuntime.ManagedRuntime<"a", "b">
   | 0
 >

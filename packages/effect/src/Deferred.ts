@@ -52,7 +52,7 @@ export interface Deferred<in out A, in out E = never> extends Effect.Effect<A, E
  * @since 3.8.0
  */
 export interface DeferredUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
-  Deferred?: () => Extract<A[Unify.typeSymbol], Deferred<any>>
+  Deferred?: () => Extract<A[Unify.typeSymbol], Deferred<any, any>>
 }
 
 /**
