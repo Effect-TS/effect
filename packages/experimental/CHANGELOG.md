@@ -1,5 +1,12 @@
 # @effect/experimental
 
+## 0.27.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform-node@0.61.3
+
 ## 0.27.2
 
 ### Patch Changes
