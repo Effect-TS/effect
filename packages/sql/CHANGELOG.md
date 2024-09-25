@@ -1,5 +1,12 @@
 # @effect/sql
 
+## 0.13.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/experimental@0.27.3
+
 ## 0.13.3
 
 ### Patch Changes

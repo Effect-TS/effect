@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-mysql2",
-  "version": "0.13.3",
+  "version": "0.13.4",
   "type": "module",
   "license": "MIT",
   "description": "A MySQL toolkit for Effect",
