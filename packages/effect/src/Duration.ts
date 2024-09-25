@@ -66,6 +66,8 @@ export type Unit =
   | "days"
   | "week"
   | "weeks"
+  | "month"
+  | "months"
 
 /**
  * @since 2.0.0
@@ -78,7 +80,7 @@ export type DurationInput =
   | [seconds: number, nanos: number]
   | `${number} ${Unit}`
 
-const DURATION_REGEX = /^(-?\d+(?:\.\d+)?)\s+(nanos?|micros?|millis?|seconds?|minutes?|hours?|days?|weeks?)$/
+const DURATION_REGEX = /^(-?\d+(?:\.\d+)?)\s+(nanos?|micros?|millis?|seconds?|minutes?|hours?|days?|weeks?|months?)$/
 
 /**
  * @since 2.0.0
@@ -125,6 +127,9 @@ export const decode = (input: DurationInput): Duration => {
         case "week":
         case "weeks":
           return weeks(value)
+        case "month":
+        case "months":
+          return months(value)
       }
     }
   }
@@ -279,6 +284,12 @@ export const days = (days: number): Duration => make(days * 86_400_000)
 export const weeks = (weeks: number): Duration => make(weeks * 604_800_000)
 
 /**
+ * @since 3.8.0
+ * @category constructors
+ */
+export const months = (months: number): Duration => make(months * 2_592_000_000)
+
+/**
  * @since 2.0.0
  * @category getters
  */
@@ -336,6 +347,16 @@ export const toWeeks = (self: DurationInput): number =>
   match(self, {
     onMillis: (millis) => millis / 604_800_000,
     onNanos: (nanos) => Number(nanos) / 604_800_000_000_000
+  })
+
+/**
+ * @since 3.8.0
+ * @category getters
+ */
+export const toMonths = (self: DurationInput): number =>
+  match(self, {
+    onMillis: (millis) => millis / 2_592_000_000,
+    onNanos: (nanos) => Number(nanos) / 2_592_000_000_000_000
   })
 
 /**

@@ -407,6 +407,22 @@ describe("Duration", () => {
     expect(Equal.equals(Duration.weeks(1), Duration.days(1))).toBe(false)
   })
 
+  it("months", () => {
+    expect(Equal.equals(Duration.months(1), Duration.days(30))).toBe(true)
+    expect(Equal.equals(Duration.months(1), Duration.days(1))).toBe(false)
+  })
+
+  it("toMonths", () => {
+    expect(Duration.days(15).pipe(Duration.toMonths)).toBe(0.5)
+    expect(Duration.days(365).pipe(Duration.toMonths)).toBeCloseTo(12, 0)
+    expect(Duration.infinity.pipe(Duration.toMonths)).toBe(Infinity)
+
+    expect(Duration.toMonths("1 month")).toBe(1)
+    expect(Duration.toMonths("2 months")).toBe(2)
+    expect(Duration.toMonths("30 days")).toBe(1)
+    expect(Duration.toMonths("60 days")).toBe(2)
+  })
+
   it("toMillis", () => {
     expect(Duration.millis(1).pipe(Duration.toMillis)).toBe(1)
     expect(Duration.nanos(1n).pipe(Duration.toMillis)).toBe(0.000001)
