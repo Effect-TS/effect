@@ -24,6 +24,7 @@
     { "path": "packages/sql-d1/tsconfig.build.json" },
     { "path": "packages/sql-drizzle/tsconfig.build.json" },
     { "path": "packages/sql-kysely/tsconfig.build.json" },
+    { "path": "packages/sql-libsql/tsconfig.build.json" },
     { "path": "packages/sql-mysql2/tsconfig.build.json" },
     { "path": "packages/sql-mssql/tsconfig.build.json" },
     { "path": "packages/sql-pg/tsconfig.build.json" },
