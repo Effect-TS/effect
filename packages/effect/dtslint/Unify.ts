@@ -7,6 +7,7 @@ import type * as FiberRef from "effect/FiberRef"
 import type * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as Micro from "effect/Micro"
 import type * as Option from "effect/Option"
+import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import type * as RcRef from "effect/RcRef"
 import type * as Ref from "effect/Ref"
@@ -116,6 +117,13 @@ export type DequeueUnify = Unify.Unify<
   | Queue.Dequeue<1>
   | Queue.Dequeue<"a">
 >
+// $ExpectType Pool<1, 2> | Pool<"a", "b" | "c">
+export type PoolUnify = Unify.Unify<
+  | Pool.Pool<1, 2>
+  | Pool.Pool<"a", "b">
+  | Pool.Pool<"a", "c">
+>
+
 // $ExpectType ScopedRef<1> | ScopedRef<"a">
 export type ScopedRefUnify = Unify.Unify<
   | ScopedRef.ScopedRef<1>
@@ -130,7 +138,7 @@ export type ResourceUnify = Unify.Unify<
   | Resource.Resource<any, any>
 >
 
-// $ExpectType 0 | Option<string | number> | Ref<1> | Ref<"a"> | SynchronizedRef<1> | SynchronizedRef<"a"> | SubscriptionRef<1> | SubscriptionRef<"a"> | RcRef<"a", "b"> | Deferred<"a", "b"> | FiberRef<1> | FiberRef<"a"> | ManagedRuntime<"a", "b"> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | ScopedRef<1> | ScopedRef<"a"> | Resource<"a", "b"> | RcRef<1, 0> | Deferred<1, 0> | Resource<1, 0> | Latch | ManagedRuntime<1, 0> | Fiber<"a" | 1, 0 | "b"> | RuntimeFiber<"a" | 1, 0 | "b"> | Either<"a" | 1, 0 | "b"> | Effect<"a" | 1, 0 | "b", "R" | "R1">
+// $ExpectType 0 | Option<string | number> | Ref<1> | Ref<"a"> | SynchronizedRef<1> | SynchronizedRef<"a"> | SubscriptionRef<1> | SubscriptionRef<"a"> | RcRef<"a", "b"> | Deferred<"a", "b"> | FiberRef<1> | FiberRef<"a"> | ManagedRuntime<"a", "b"> | Queue<1> | Queue<"a"> | Dequeue<"a" | 1> | Pool<1, 2> | Pool<"a", "b" | "c"> | ScopedRef<1> | ScopedRef<"a"> | Resource<"a", "b"> | RcRef<1, 0> | Deferred<1, 0> | Resource<1, 0> | Latch | ManagedRuntime<1, 0> | Fiber<"a" | 1, 0 | "b"> | RuntimeFiber<"a" | 1, 0 | "b"> | Either<"a" | 1, 0 | "b"> | Effect<"a" | 1, 0 | "b", "R" | "R1">
 export type AllUnify = Unify.Unify<
   | Either.Either<1, 0>
   | Either.Either<"a", "b">
@@ -158,6 +166,9 @@ export type AllUnify = Unify.Unify<
   | Queue.Queue<"a">
   | Queue.Dequeue<1>
   | Queue.Dequeue<"a">
+  | Pool.Pool<1, 2>
+  | Pool.Pool<"a", "b">
+  | Pool.Pool<"a", "c">
   | ScopedRef.ScopedRef<1>
   | ScopedRef.ScopedRef<"a">
   | Resource.Resource<1, 0>
