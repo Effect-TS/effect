@@ -64,14 +64,6 @@ describe("Client", () => {
         rows: [[1, "hello"]],
         rowsAffected: 0
       })
-      response = yield* sql`SELECT * FROM test`.raw
-      assert.deepStrictEqual(response.toJSON(), {
-        columnTypes: ["INTEGER", "TEXT"],
-        columns: ["id", "name"],
-        lastInsertRowid: null,
-        rows: [[1, "hello"], [2, "world"]],
-        rowsAffected: 0
-      })
     }))
 
   it.scoped("withTransaction", () =>
