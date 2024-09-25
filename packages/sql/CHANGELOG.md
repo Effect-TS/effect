@@ -1,5 +1,11 @@
 # @effect/sql
 
+## 0.14.0
+
+### Minor Changes
+
+- [#3683](https://github.com/Effect-TS/effect/pull/3683) [`f100e20`](https://github.com/Effect-TS/effect/commit/f100e2087172d7e4ab8c0d1ee9a5780b9712382a) Thanks @tim-smart! - use decoded ids in sql resolvers
+
 ## 0.13.4
 
 ### Patch Changes

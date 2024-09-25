@@ -1,7 +1,7 @@
 {
   "name": "@effect/cluster",
   "type": "module",
-  "version": "0.9.4",
+  "version": "0.10.0",
   "description": "Unified interfaces for common cluster-specific services",
   "publishConfig": {
     "access": "public",
