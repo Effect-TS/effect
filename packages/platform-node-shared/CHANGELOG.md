@@ -1,5 +1,11 @@
 # @effect/platform-node-shared
 
+## 0.16.3
+
+### Patch Changes
+
+- [#3679](https://github.com/Effect-TS/effect/pull/3679) [`660cd0f`](https://github.com/Effect-TS/effect/commit/660cd0f93610e5e5588f25b852ae7cf4f1dd05bc) Thanks @tim-smart! - add support for watch mode in .runMain
+
 ## 0.16.2
 
 ### Patch Changes
