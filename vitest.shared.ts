@@ -50,6 +50,7 @@ const config: UserConfig = {
       ...alias("sql-d1"),
       ...alias("sql-drizzle"),
       ...alias("sql-kysely"),
+      ...alias("sql-libsql"),
       ...alias("sql-mssql"),
       ...alias("sql-mysql2"),
       ...alias("sql-pg"),
