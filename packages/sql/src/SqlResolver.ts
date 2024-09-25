@@ -10,6 +10,7 @@ import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import * as Hash from "effect/Hash"
+import * as MutableHashMap from "effect/MutableHashMap"
 import * as Option from "effect/Option"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
@@ -26,6 +27,7 @@ export interface SqlRequest<T extends string, A, E> extends Request.Request<A, E
   readonly _tag: T
   readonly spanLink: Tracer.SpanLink
   readonly input: unknown
+  readonly encoded: unknown
 }
 
 const SqlRequestProto = {
@@ -41,9 +43,10 @@ const SqlRequestProto = {
   }
 }
 
-const makeRequest = <T extends string, I, A, E>(
+const makeRequest = <T extends string, I, II, A, E>(
   tag: T,
   input: I,
+  encoded: II,
   span: Tracer.Span
 ): SqlRequest<T, A, E> => {
   const self = Object.create(SqlRequestProto) as Types.Mutable<SqlRequest<T, A, E>>
@@ -54,6 +57,7 @@ const makeRequest = <T extends string, I, A, E>(
     attributes: {}
   }
   self.input = input
+  self.encoded = encoded
   return self
 }
 
@@ -64,24 +68,24 @@ const partitionRequests = <T extends string, A, E>(requests: ReadonlyArray<SqlRe
 
   for (let i = 0; i < len; i++) {
     const request = requests[i]
-    inputs[i] = request.input
+    inputs[i] = request.encoded
     spanLinks[i] = request.spanLink
   }
 
   return [inputs, spanLinks] as const
 }
 
-const partitionRequestsById = <I>() => <T extends string, A, E>(requests: ReadonlyArray<SqlRequest<T, A, E>>) => {
+const partitionRequestsById = <I, II>() => <T extends string, A, E>(requests: ReadonlyArray<SqlRequest<T, A, E>>) => {
   const len = requests.length
-  const inputs: Array<unknown> = new Array(len)
+  const inputs: Array<II> = new Array(len)
   const spanLinks: Array<Tracer.SpanLink> = new Array(len)
-  const byIdMap = new Map<I, SqlRequest<T, A, E>>()
+  const byIdMap = MutableHashMap.empty<I, SqlRequest<T, A, E>>()
 
   for (let i = 0; i < len; i++) {
     const request = requests[i]
-    inputs[i] = request.input
+    inputs[i] = request.encoded as II
     spanLinks[i] = request.spanLink
-    byIdMap.set(request.input as I, request)
+    MutableHashMap.set(byIdMap, request.input as I, request)
   }
 
   return [inputs, spanLinks, byIdMap] as const
@@ -101,8 +105,8 @@ export interface SqlResolver<T extends string, I, A, E, R>
   readonly cachePopulate: (
     id: I,
     result: A
-  ) => Effect.Effect<void, ParseError, R>
-  readonly cacheInvalidate: (id: I) => Effect.Effect<void, ParseError, R>
+  ) => Effect.Effect<void>
+  readonly cacheInvalidate: (id: I) => Effect.Effect<void>
   readonly request: (input: I) => Effect.Effect<SqlRequest<T, A, E>, ParseError, R>
 }
 
@@ -122,7 +126,7 @@ const makeResolver = <T extends string, A, E, I, II, RI, R>(
           (span) =>
             Effect.withFiberRuntime<A, E | ParseError, RI>((fiber) => {
               span.attribute("request.input", input)
-              const currentContext = fiber.getFiberRef(FiberRef.currentContext)
+              const currentContext = fiber.currentContext
               const connection = currentContext.unsafeMap.get(
                 internalClient.TransactionConnection.key
               )
@@ -146,7 +150,7 @@ const makeResolver = <T extends string, A, E, I, II, RI, R>(
                 : RequestResolver.provideContext(self, toProvide)
               return Effect.flatMap(
                 encode(input),
-                (input) => Effect.request(makeRequest<T, II, A, E>(tag, input, span), resolver)
+                (encoded) => Effect.request(makeRequest<T, I, II, A, E>(tag, input, encoded, span), resolver)
               )
             })
         )
@@ -156,23 +160,18 @@ const makeResolver = <T extends string, A, E, I, II, RI, R>(
       request(input: I) {
         return Effect.withFiberRuntime<SqlRequest<T, A, E>, ParseError, RI>(
           (fiber) => {
-            const span = fiber
-              .getFiberRef(FiberRef.currentContext)
-              .unsafeMap.get(Tracer.ParentSpan.key)
-            return Effect.map(encode(input), (input) => makeRequest(tag, input, span))
+            const span = fiber.currentContext.unsafeMap.get(Tracer.ParentSpan.key)
+            return Effect.map(encode(input), (encoded) => makeRequest(tag, input, encoded, span))
           }
         )
       },
       cachePopulate(input: I, value: A) {
-        return Effect.flatMap(
-          encode(input),
-          (input) => Effect.cacheRequestResult(makeRequest(tag, input, null as any), Exit.succeed(value))
-        )
+        return Effect.cacheRequestResult(makeRequest(tag, input, null as any, null as any), Exit.succeed(value))
       },
       cacheInvalidate(input: I) {
-        return Effect.withFiberRuntime<void, ParseError, RI>((fiber) => {
+        return Effect.withFiberRuntime<void>((fiber) => {
           const cache = fiber.getFiberRef(FiberRef.currentRequestCache)
-          return Effect.flatMap(encode(input), (input) => cache.invalidate(makeRequest(tag, input, null as any)))
+          return cache.invalidate(makeRequest(tag, input, null as any, null as any))
         })
       },
       makeExecute,
@@ -269,7 +268,7 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = neve
   options:
     | {
       readonly Request: Schema.Schema<I, II, RI>
-      readonly RequestGroupKey: (request: Types.NoInfer<II>) => K
+      readonly RequestGroupKey: (request: Types.NoInfer<I>) => K
       readonly Result: Schema.Schema<A, IA>
       readonly ResultGroupKey: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => K
       readonly execute: (
@@ -279,7 +278,7 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = neve
     }
     | {
       readonly Request: Schema.Schema<I, II, RI>
-      readonly RequestGroupKey: (request: Types.NoInfer<II>) => K
+      readonly RequestGroupKey: (request: Types.NoInfer<I>) => K
       readonly Result: Schema.Schema<A, IA, RA>
       readonly ResultGroupKey: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => K
       readonly execute: (
@@ -292,7 +291,7 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = neve
   const resolver = RequestResolver.makeBatched(
     (requests: NonEmptyArray<SqlRequest<T, Array<A>, E>>) => {
       const [inputs, spanLinks] = partitionRequests(requests)
-      const resultMap = new Map<K, Array<A>>()
+      const resultMap = MutableHashMap.empty<K, Array<A>>()
       return options.execute(inputs as any).pipe(
         Effect.bindTo("rawResults"),
         Effect.bind("results", ({ rawResults }) => decodeResults(rawResults)),
@@ -300,19 +299,20 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = neve
           for (let i = 0, len = results.length; i < len; i++) {
             const result = results[i]
             const key = options.ResultGroupKey(result, rawResults[i])
-            const group = resultMap.get(key)
-            if (group === undefined) {
-              resultMap.set(key, [result])
+            const group = MutableHashMap.get(resultMap, key)
+            if (group._tag === "None") {
+              MutableHashMap.set(resultMap, key, [result])
             } else {
-              group.push(result)
+              group.value.push(result)
             }
           }
 
           return Effect.forEach(
             requests,
             (request) => {
-              const key = options.RequestGroupKey(request.input as II)
-              return Request.succeed(request, resultMap.get(key) ?? [])
+              const key = options.RequestGroupKey(request.input as I)
+              const result = MutableHashMap.get(resultMap, key)
+              return Request.succeed(request, result._tag === "None" ? [] : result.value)
             },
             { discard: true }
           )
@@ -348,7 +348,7 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
     | {
       readonly Id: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA>
-      readonly ResultId: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => II
+      readonly ResultId: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => I
       readonly execute: (
         requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E>
@@ -357,7 +357,7 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
     | {
       readonly Id: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA, RA>
-      readonly ResultId: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => II
+      readonly ResultId: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => I
       readonly execute: (
         requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E, R>
@@ -367,7 +367,7 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
   const decodeResults = Schema.decodeUnknown(Schema.Array(options.Result))
   const resolver = RequestResolver.makeBatched(
     (requests: NonEmptyArray<SqlRequest<T, Option.Option<A>, E>>) => {
-      const [inputs, spanLinks, idMap] = partitionRequestsById<II>()(requests)
+      const [inputs, spanLinks, idMap] = partitionRequestsById<I, II>()(requests)
       return options.execute(inputs as any).pipe(
         Effect.bindTo("rawResults"),
         Effect.bind("results", ({ rawResults }) => decodeResults(rawResults)),
@@ -376,23 +376,23 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
             results,
             (result, i) => {
               const id = options.ResultId(result, rawResults[i])
-              const request = idMap.get(id)
-              if (request === undefined) {
+              const request = MutableHashMap.get(idMap, id)
+              if (request._tag === "None") {
                 return Effect.void
               }
-              idMap.delete(id)
-              return Request.succeed(request, Option.some(result))
+              MutableHashMap.remove(idMap, id)
+              return Request.succeed(request.value, Option.some(result))
             },
             { discard: true }
           )
         ),
         Effect.tap((_) => {
-          if (idMap.size === 0) {
+          if (MutableHashMap.size(idMap) === 0) {
             return Effect.void
           }
           return Effect.forEach(
-            idMap.values(),
-            (request) => Request.succeed(request, Option.none()),
+            idMap,
+            ([, request]) => Request.succeed(request, Option.none()),
             { discard: true }
           )
         }),
