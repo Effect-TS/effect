@@ -1,5 +1,5 @@
-import { expect, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { afterAll, describe, expect, it, layer } from "@effect/vitest"
+import { Context, Effect, Layer } from "effect"
 
 it.live(
   "live %s",
@@ -85,3 +85,66 @@ it.scopedLive("interrupts on timeout", (ctx) =>
     )
     yield* Effect.sleep(1000)
   }), { timeout: 100, fails: true })
+
+class Foo extends Context.Tag("Foo")<Foo, "foo">() {
+  static Live = Layer.succeed(Foo, "foo")
+}
+
+class Bar extends Context.Tag("Bar")<Bar, "bar">() {
+  static Live = Layer.effect(Bar, Effect.map(Foo, () => "bar" as const))
+}
+
+layer(Foo.Live)("layer", (it) => {
+  it.effect("adds context", () =>
+    Effect.gen(function*() {
+      const foo = yield* Foo
+      expect(foo).toEqual("foo")
+    }))
+
+  it.layer(Bar.Live)("nested", (it) => {
+    it.effect("adds context", () =>
+      Effect.gen(function*() {
+        const foo = yield* Foo
+        const bar = yield* Bar
+        expect(foo).toEqual("foo")
+        expect(bar).toEqual("bar")
+      }))
+  })
+
+  it.layer(Bar.Live)((it) => {
+    it.effect("without name", () =>
+      Effect.gen(function*() {
+        const foo = yield* Foo
+        const bar = yield* Bar
+        expect(foo).toEqual("foo")
+        expect(bar).toEqual("bar")
+      }))
+  })
+
+  describe("release", () => {
+    let released = false
+    afterAll(() => {
+      expect(released).toEqual(true)
+    })
+
+    class Scoped extends Context.Tag("Scoped")<Scoped, "scoped">() {
+      static Live = Layer.scoped(
+        Scoped,
+        Effect.acquireRelease(
+          Effect.succeed("scoped" as const),
+          () => Effect.sync(() => released = true)
+        )
+      )
+    }
+
+    it.layer(Scoped.Live)((it) => {
+      it.effect("adds context", () =>
+        Effect.gen(function*() {
+          const foo = yield* Foo
+          const scoped = yield* Scoped
+          expect(foo).toEqual("foo")
+          expect(scoped).toEqual("scoped")
+        }))
+    })
+  })
+})
