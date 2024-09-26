@@ -37,8 +37,8 @@ export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
     readonly _Service: Types.Invariant<Value>
     readonly _Identifier: Types.Invariant<Id>
   }
-  of(self: Value): Value
-  context(self: Value): Context<Id>
+  of<V extends Value>(self: V): Value
+  context<V extends Value>(self: V): Context<Id>
   readonly stack?: string | undefined
   readonly key: string
   [Unify.typeSymbol]?: unknown
