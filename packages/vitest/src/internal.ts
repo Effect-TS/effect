@@ -8,7 +8,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import { flow, identity, pipe } from "effect/Function"
+import { constVoid, flow, identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as ManagedRuntime from "effect/ManagedRuntime"
@@ -100,8 +100,12 @@ const makeTester = <R>(
 }
 
 /** @internal */
-export const layer = <R, E>(layer_: Layer.Layer<R, E>, memoMap?: Layer.MemoMap) => {
+export const layer = <R, E>(layer_: Layer.Layer<R, E>, memoMap?: Layer.MemoMap): {
+  (f: (it: Vitest.Vitest.Methods<R>) => void): void
+  (name: string, f: (it: Vitest.Vitest.Methods<R>) => void): void
+} => {
   const runtime = ManagedRuntime.make(Layer.orDie(layer_), memoMap)
+  V.beforeAll(() => runtime.runtime().then(constVoid))
   V.afterAll(() => runtime.dispose())
 
   const it: Vitest.Vitest.Methods<R> = Object.assign(V.it, {
@@ -118,21 +122,22 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, memoMap?: Layer.MemoMap) 
         Effect.provide(TestEnv)
       )
     ),
-    live: makeTester<R>((effect) => effect.pipe(Effect.provide(runtime))),
+    live: makeTester<R>(Effect.provide(runtime)),
     scopedLive: makeTester<Scope.Scope | R>((effect) => effect.pipe(Effect.scoped, Effect.provide(runtime))),
     flakyTest,
     layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>) {
-      return layer(
-        nestedLayer.pipe(
-          Layer.provideMerge(layer_),
-          Layer.orDie
-        ),
-        runtime.memoMap
-      )
+      return layer(Layer.provideMerge(nestedLayer, layer_), runtime.memoMap)
     }
   })
 
-  return (f: (it: Vitest.Vitest.Methods<R>) => void) => f(it)
+  return function(
+    ...args: [name: string, f: (it: Vitest.Vitest.Methods<R>) => void] | [f: (it: Vitest.Vitest.Methods<R>) => void]
+  ) {
+    if (args.length === 1) {
+      return args[0](it)
+    }
+    return V.describe(args[0], () => args[1](it))
+  }
 }
 
 /** @internal */

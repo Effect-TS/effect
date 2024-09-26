@@ -61,9 +61,13 @@ export namespace Vitest {
     ) => Effect.Effect<A, never, R2>
     readonly scoped: Vitest.Tester<TestServices.TestServices | Scope.Scope | R>
     readonly scopedLive: Vitest.Tester<Scope.Scope | R>
-    readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>) => (f: (it: Vitest.Methods<R2 | R>) => void) => void
+    readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>) => {
+      (f: (it: Vitest.Methods<R | R2>) => void): void
+      (name: string, f: (it: Vitest.Methods<R | R2>) => void): void
+    }
   }
 }
+
 /**
  * @since 1.0.0
  */
@@ -95,7 +99,10 @@ export const scopedLive: Vitest.Tester<Scope.Scope> = internal.scopedLive
 export const layer: <R, E>(
   layer_: Layer.Layer<R, E>,
   memoMap?: Layer.MemoMap
-) => (f: (it: Vitest.Methods<R>) => void) => void = internal.layer
+) => {
+  (f: (it: Vitest.Methods<R>) => void): void
+  (name: string, f: (it: Vitest.Methods<R>) => void): void
+} = internal.layer
 
 /**
  * @since 1.0.0

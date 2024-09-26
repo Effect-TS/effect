@@ -1,5 +1,6 @@
-import { expect, it, layer } from "@effect/vitest"
+import { afterAll, expect, it, layer } from "@effect/vitest"
 import { Context, Effect, Layer } from "effect"
+import { describe } from "node:test"
 
 it.live(
   "live %s",
@@ -97,20 +98,57 @@ class Bar extends Context.Tag("Bar")<Bar, "bar">() {
   )
 }
 
-layer(Foo.Live)((it) => {
-  it.effect("layer adds context", () =>
+layer(Foo.Live)("layer", (it) => {
+  it.effect("adds context", () =>
     Effect.gen(function*() {
       const foo = yield* Foo
       expect(foo).toEqual("foo")
     }))
 
-  it.layer(Bar.Live)((it) => {
-    it.effect("nested layer adds context", () =>
+  it.layer(Bar.Live)("nested", (it) => {
+    it.effect("adds context", () =>
       Effect.gen(function*() {
         const foo = yield* Foo
         const bar = yield* Bar
         expect(foo).toEqual("foo")
         expect(bar).toEqual("bar")
       }))
+  })
+
+  it.layer(Bar.Live)((it) => {
+    it.effect("without name", () =>
+      Effect.gen(function*() {
+        const foo = yield* Foo
+        const bar = yield* Bar
+        expect(foo).toEqual("foo")
+        expect(bar).toEqual("bar")
+      }))
+  })
+
+  describe("releases", () => {
+    let released = false
+    afterAll(() => {
+      expect(released).toEqual(true)
+    })
+
+    class Scoped extends Context.Tag("Scoped")<Scoped, "scoped">() {
+      static Live = Layer.scoped(
+        Scoped,
+        Effect.acquireRelease(
+          Effect.succeed("scoped" as const),
+          () => Effect.sync(() => released = true)
+        )
+      )
+    }
+
+    it.layer(Scoped.Live)((it) => {
+      it.effect("adds context", () =>
+        Effect.gen(function*() {
+          const foo = yield* Foo
+          const scoped = yield* Scoped
+          expect(foo).toEqual("foo")
+          expect(scoped).toEqual("scoped")
+        }))
+    })
   })
 })
