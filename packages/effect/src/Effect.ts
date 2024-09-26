@@ -7,7 +7,7 @@ import type * as Chunk from "./Chunk.js"
 import type * as Clock from "./Clock.js"
 import type { ConfigProvider } from "./ConfigProvider.js"
 import type { Console } from "./Console.js"
-import type * as Context from "./Context.js"
+import * as Context from "./Context.js"
 import type * as Deferred from "./Deferred.js"
 import type * as Duration from "./Duration.js"
 import type * as Either from "./Either.js"
@@ -3326,14 +3326,33 @@ export const mapInputContext: {
  * @category context
  */
 export const provide: {
+  <const Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]>(
+    layers: Layers
+  ): <A, E, R>(
+    self: Effect<A, E, R>
+  ) => Effect<
+    A,
+    E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+    | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+    | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+  >
   <ROut, E2, RIn>(
     layer: Layer.Layer<ROut, E2, RIn>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E2 | E, RIn | Exclude<R, ROut>>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, RIn | Exclude<R, ROut>>
   <R2>(context: Context.Context<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <R2>(runtime: Runtime.Runtime<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <E2, R2>(
     managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, R2>>
+  <A, E, R, const Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]>(
+    self: Effect<A, E, R>,
+    layers: Layers
+  ): Effect<
+    A,
+    E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+    | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+    | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+  >
   <A, E, R, ROut, E2, RIn>(
     self: Effect<A, E, R>,
     layer: Layer.Layer<ROut, E2, RIn>
@@ -6305,3 +6324,298 @@ export const Tag: <const Id extends string>(id: Id) => <
     })
     return done
   }
+
+/**
+ * @since 2.0.0
+ * @category models
+ */
+export declare namespace Service {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface ProhibitedType {
+    Service?: `property "Service" is forbidden`
+    Identifier?: `property "Identifier" is forbidden`
+    Layer?: `property "Layer" is forbidden`
+    _op_layer?: `property "_op_layer" is forbidden`
+    _op?: `property "_op" is forbidden`
+    _tag?: `property "_tag" is forbidden`
+    of?: `property "of" is forbidden`
+    context?: `property "context" is forbidden`
+    key?: `property "key" is forbidden`
+    stack?: `property "stack" is forbidden`
+    name?: `property "name" is forbidden`
+    pipe?: `property "pipe" is forbidden`
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type AllowedType = Record<PropertyKey, any> & ProhibitedType
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type Maker = {
+    effect: Effect<AllowedType, any, any>
+    dependencies?: never
+  } | {
+    effect: Effect<AllowedType, any, any>
+    dependencies: []
+  } | {
+    effect: Effect<AllowedType, any, any>
+    dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
+  } | {
+    scoped: Effect<AllowedType, any, any>
+    dependencies?: never
+  } | {
+    scoped: Effect<AllowedType, any, any>
+    dependencies: []
+  } | {
+    scoped: Effect<AllowedType, any, any>
+    dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
+  } | {
+    sync: () => AllowedType
+    dependencies?: never
+  } | {
+    sync: () => AllowedType
+    dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
+  } | {
+    sync: () => AllowedType
+    dependencies: []
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface TagClass<Self, Id, Type> extends Context.Tag<Self, Self> {
+    readonly of: (_: Pick<Self, (keyof Type) & (keyof Self)>) => Self
+
+    new(_: never): Type & {
+      readonly _tag: Id
+    }
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type Return<Self, Id extends string, Type extends AllowedType> =
+    & TagClass<Self, Id, Type>
+    & (Type extends Record<PropertyKey, any> ? {
+        [
+          k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret)
+            ? ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
+            : k
+        ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R>
+          ? (...args: Readonly<Args>) => Effect<A, E, Self | R>
+          : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+          : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+          : Effect<Type[k], never, Self>
+      } :
+      {})
+    & {
+      use: <X>(
+        body: (_: Type) => X
+      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+    }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type ReturnWithMaker<Self, Id extends string, Maker extends Service.Maker> =
+    & {}
+    & Maker extends {
+    scoped: Effect<infer Type extends AllowedType, infer E, infer R>
+    dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
+  } ?
+      & Return<Self, Id, Type>
+      & Layer.Layer<
+        Self,
+        E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+        | Exclude<R, Scope.Scope | { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+        | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+      >
+      & { readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>> }
+    : Maker extends {
+      scoped: Effect<infer Type extends AllowedType, infer E, infer R>
+    } ? Return<Self, Id, Type> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
+        readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>>
+      }
+    : Maker extends {
+      scoped: Effect<infer Type extends AllowedType, infer E, infer R>
+      dependencies: []
+    } ? Return<Self, Id, Type> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
+        readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>>
+      }
+    : Maker extends {
+      effect: Effect<infer Type extends AllowedType, infer E, infer R>
+      dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
+    } ?
+        & Return<Self, Id, Type>
+        & Layer.Layer<
+          Self,
+          E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+          | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+          | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+        >
+        & { readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>> }
+    : Maker extends {
+      effect: Effect<infer Type extends AllowedType, infer E, infer R>
+    } ? Return<Self, Id, Type> & Layer.Layer<Self, E, R> & {
+        readonly Layer: Layer.Layer<Self, E, R>
+      }
+    : Maker extends {
+      effect: Effect<infer Type extends AllowedType, infer E, infer R>
+      dependencies: []
+    } ? Return<Self, Id, Type> & Layer.Layer<Self, E, R> & {
+        readonly Layer: Layer.Layer<Self, E, R>
+      }
+    : Maker extends {
+      sync: () => infer Type extends AllowedType
+      dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
+    } ?
+        & Return<Self, Id, Type>
+        & Layer.Layer<
+          Self,
+          { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+          { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+        >
+        & {
+          readonly Layer: Layer.Layer<Self, never, never>
+        }
+    : Maker extends {
+      sync: () => infer Type extends AllowedType
+      dependencies: []
+    } ? Service.Return<Self, Id, Type> & Layer.Layer<Self, never, never> & {
+        readonly Layer: Layer.Layer<Self, never, never>
+      }
+    : Maker extends {
+      sync: () => infer Type extends AllowedType
+    } ? Return<Self, Id, Type> & Layer.Layer<Self, never, never> & {
+        readonly Layer: Layer.Layer<Self, never, never>
+      }
+    : never
+}
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const Service: {
+  <Self>(): <const Id extends string, Maker extends Service.Maker>(
+    id: Id,
+    maker: Maker
+  ) => Service.ReturnWithMaker<Self, Id, Maker>
+} = function() {
+  return function() {
+    const [id, maker] = arguments
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    const creationError = new Error()
+    Error.stackTraceLimit = limit
+    function TagClass() {}
+    Object.setPrototypeOf(TagClass, TagProto)
+    TagClass.key = id
+    Object.defineProperty(TagClass, "stack", {
+      get() {
+        return creationError.stack
+      }
+    })
+
+    TagClass["of"] = (args: any) =>
+      new Proxy(args, {
+        get(_target: any, prop: any, _receiver) {
+          if (prop === "_tag") {
+            return id
+          }
+          return args[prop]
+        }
+      })
+
+    const of = TagClass["of"]
+
+    if ("effect" in maker) {
+      // @ts-expect-error
+      TagClass["Layer"] = layer.fromEffect(TagClass, maker["effect"]).pipe(
+        // @ts-expect-error
+        layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
+      )
+      let live = TagClass["Layer"]
+      if ("dependencies" in maker) {
+        live = live.pipe(layer.provide(layer.mergeAll(...maker["dependencies"])))
+      }
+      Object.assign(TagClass, live)
+      Object.assign(TagClass, layer.proto)
+    }
+
+    if ("scoped" in maker) {
+      // @ts-expect-error
+      TagClass["Layer"] = layer.scoped(TagClass, maker["scoped"]).pipe(
+        // @ts-expect-error
+        layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
+      )
+      let live = TagClass["Layer"]
+      if ("dependencies" in maker) {
+        live = live.pipe(layer.provide(layer.mergeAll(...maker["dependencies"])))
+      }
+      Object.assign(TagClass, live)
+      Object.assign(TagClass, layer.proto)
+    }
+
+    if ("sync" in maker) {
+      // @ts-expect-error
+      TagClass["Layer"] = layer.sync(TagClass, maker["sync"]).pipe(
+        // @ts-expect-error
+        layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
+      )
+      let live = TagClass["Layer"]
+      if ("dependencies" in maker) {
+        live = live.pipe(layer.provide(layer.mergeAll(...maker["dependencies"])))
+      }
+      Object.assign(TagClass, live)
+      Object.assign(TagClass, layer.proto)
+    }
+
+    const cache = new Map()
+    const done = new Proxy(TagClass, {
+      get(_target: any, prop: any, _receiver) {
+        if (prop === "use") {
+          // @ts-expect-error
+          return (body) => core.andThen(TagClass, body)
+        }
+        if (prop in TagClass) {
+          // @ts-expect-error
+          return TagClass[prop]
+        }
+        if (cache.has(prop)) {
+          return cache.get(prop)
+        }
+        const fn = (...args: Array<any>) =>
+          // @ts-expect-error
+          core.andThen(TagClass, (s: any) => {
+            if (typeof s[prop] === "function") {
+              // @ts-expect-error
+              cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
+              return s[prop](...args)
+            }
+            // @ts-expect-error
+            cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
+            return s[prop]
+          })
+        // @ts-expect-error
+        const cn = core.andThen(TagClass, (s) => s[prop])
+        Object.assign(fn, cn)
+        Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
+        cache.set(prop, fn)
+        return fn
+      }
+    })
+    return done
+  }
+}
