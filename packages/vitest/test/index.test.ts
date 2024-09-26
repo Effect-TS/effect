@@ -1,6 +1,5 @@
-import { afterAll, expect, it, layer } from "@effect/vitest"
+import { afterAll, describe, expect, it, layer } from "@effect/vitest"
 import { Context, Effect, Layer } from "effect"
-import { describe } from "node:test"
 
 it.live(
   "live %s",
@@ -92,10 +91,7 @@ class Foo extends Context.Tag("Foo")<Foo, "foo">() {
 }
 
 class Bar extends Context.Tag("Bar")<Bar, "bar">() {
-  static Live = Layer.effect(
-    Bar,
-    Effect.map(Foo, () => "bar" as const)
-  )
+  static Live = Layer.effect(Bar, Effect.map(Foo, () => "bar" as const))
 }
 
 layer(Foo.Live)("layer", (it) => {
