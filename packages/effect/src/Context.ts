@@ -37,8 +37,8 @@ export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
     readonly _Service: Types.Invariant<Value>
     readonly _Identifier: Types.Invariant<Id>
   }
-  of<V extends Value>(self: V): Value
-  context<V extends Value>(self: V): Context<Id>
+  of(self: Value): Value
+  context(self: Value): Context<Id>
   readonly stack?: string | undefined
   readonly key: string
   [Unify.typeSymbol]?: unknown
@@ -85,13 +85,13 @@ export declare namespace Tag {
   /**
    * @since 2.0.0
    */
-  export type Service<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<any, infer A> ? A
+  export type Service<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<any, any> ? T["Service"]
     : T extends TagClassShape<any, infer A> ? A
     : never
   /**
    * @since 2.0.0
    */
-  export type Identifier<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<infer A, any> ? A
+  export type Identifier<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<any, any> ? T["Identifier"]
     : T extends TagClassShape<any, any> ? T
     : never
 }
