@@ -1263,3 +1263,28 @@ pipe(
     ) => "b" as const
   )
 )
+
+// -------------------------------------------------------------------------------------
+// mapAccum
+// -------------------------------------------------------------------------------------
+
+declare const nonEmptyReadonlyStrings: NonEmptyReadonlyArray<string>
+declare const strings: Array<string>
+
+// $ExpectType Effect<[number, string[]], never, never>
+Effect.mapAccum(strings, 0, (s, a, i) => Effect.succeed([s + i, a]))
+
+// $ExpectType Effect<[number, [string, ...string[]]], never, never>
+Effect.mapAccum(nonEmptyReadonlyStrings, 0, (s, a, i) => Effect.succeed([s + i, a]))
+
+// $ExpectType Effect<[number, string[]], never, never>
+pipe(
+  strings,
+  Effect.mapAccum(0, (s, a, i) => Effect.succeed([s + i, a]))
+)
+
+// $ExpectType Effect<[number, [string, ...string[]]], never, never>
+pipe(
+  nonEmptyReadonlyStrings,
+  Effect.mapAccum(0, (s, a, i) => Effect.succeed([s + i, a]))
+)

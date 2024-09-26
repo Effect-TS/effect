@@ -2365,15 +2365,15 @@ export const map: {
  * @category mapping
  */
 export const mapAccum: {
-  <S, A, B, E, R>(
+  <S, A, B, E, R, I extends Iterable<A> = Iterable<A>>(
     zero: S,
-    f: (s: S, a: A, i: number) => Effect<readonly [S, B], E, R>
-  ): (elements: Iterable<A>) => Effect<[S, Array<B>], E, R>
-  <A, S, B, E, R>(
-    elements: Iterable<A>,
+    f: (s: S, a: RA.ReadonlyArray.Infer<I>, i: number) => Effect<readonly [S, B], E, R>
+  ): (elements: I) => Effect<[S, RA.ReadonlyArray.With<I, B>], E, R>
+  <A, S, B, E, R, I extends Iterable<A> = Iterable<A>>(
+    elements: I,
     zero: S,
-    f: (s: S, a: A, i: number) => Effect<readonly [S, B], E, R>
-  ): Effect<[S, Array<B>], E, R>
+    f: (s: S, a: RA.ReadonlyArray.Infer<I>, i: number) => Effect<readonly [S, B], E, R>
+  ): Effect<[S, RA.ReadonlyArray.With<I, B>], E, R>
 } = effect.mapAccum
 
 /**

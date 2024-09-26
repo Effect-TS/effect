@@ -2859,11 +2859,15 @@ export const join: {
  * @category folding
  */
 export const mapAccum: {
-  <S, A, B>(
+  <S, A, B, I extends Iterable<A> = Iterable<A>>(
     s: S,
-    f: (s: S, a: A, i: number) => readonly [S, B]
-  ): (self: Iterable<A>) => [state: S, mappedArray: Array<B>]
-  <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A, i: number) => readonly [S, B]): [state: S, mappedArray: Array<B>]
+    f: (s: S, a: ReadonlyArray.Infer<I>, i: number) => readonly [S, B]
+  ): (self: I) => [state: S, mappedArray: ReadonlyArray.With<I, B>]
+  <S, A, B, I extends Iterable<A> = Iterable<A>>(
+    self: I,
+    s: S,
+    f: (s: S, a: ReadonlyArray.Infer<I>, i: number) => readonly [S, B]
+  ): [state: S, mappedArray: ReadonlyArray.With<I, B>]
 } = dual(
   3,
   <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A, i: number) => [S, B]): [state: S, mappedArray: Array<B>] => {
