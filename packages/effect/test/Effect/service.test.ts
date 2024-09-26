@@ -31,7 +31,7 @@ class Logger extends Effect.Service<Logger>()("Logger", {
   }),
   dependencies: [Prefix, Postfix]
 }) {
-  static Test = Layer.succeed(this, this.of({ info: () => Effect.void }))
+  static Test = Layer.succeed(this, Logger.make({ info: () => Effect.void }))
 }
 
 describe("Effect", () => {

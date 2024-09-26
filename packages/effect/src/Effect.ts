@@ -6395,7 +6395,7 @@ export declare namespace Service {
    * @category models
    */
   export interface TagClass<Self, Id, Type> extends Context.Tag<Self, Self> {
-    of(_: Pick<Self, (keyof Type) & (keyof Self)>): Self
+    make(_: Type): Self
 
     new(_: never): Type & {
       readonly _tag: Id
