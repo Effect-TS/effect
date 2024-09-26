@@ -1504,3 +1504,24 @@ pipe(
     _n // $ExpectType 1 | 2
   ) => "a" as const)
 )
+
+// -------------------------------------------------------------------------------------
+// mapAccum
+// -------------------------------------------------------------------------------------
+
+// $ExpectType [state: number, mappedArray: string[]]
+Array.mapAccum(strings, 0, (s, a, i) => [s + i, a])
+
+// $ExpectType [state: number, mappedArray: [string, ...string[]]]
+Array.mapAccum(nonEmptyReadonlyStrings, 0, (s, a, i) => [s + i, a])
+
+// $ExpectType [state: number, mappedArray: string[]]
+pipe(
+  strings,
+  Array.mapAccum(0, (s, a, i) => [s + i, a])
+)
+// $ExpectType [state: number, mappedArray: [string, ...string[]]]
+pipe(
+  nonEmptyReadonlyStrings,
+  Array.mapAccum(0, (s, a, i) => [s + i, a])
+)
