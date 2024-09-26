@@ -11,6 +11,7 @@ import * as Fiber from "effect/Fiber"
 import { flow, identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
@@ -96,6 +97,42 @@ const makeTester = <R>(
     )
 
   return Object.assign(f, { skip, skipIf, runIf, only, each })
+}
+
+/** @internal */
+export const layer = <R, E>(layer_: Layer.Layer<R, E>, memoMap?: Layer.MemoMap) => {
+  const runtime = ManagedRuntime.make(Layer.orDie(layer_), memoMap)
+  V.afterAll(() => runtime.dispose())
+
+  const it: Vitest.Vitest.Methods<R> = Object.assign(V.it, {
+    effect: makeTester<TestServices.TestServices | R>((effect) =>
+      effect.pipe(
+        Effect.provide(runtime),
+        Effect.provide(TestEnv)
+      )
+    ),
+    scoped: makeTester<TestServices.TestServices | Scope.Scope | R>((effect) =>
+      effect.pipe(
+        Effect.scoped,
+        Effect.provide(runtime),
+        Effect.provide(TestEnv)
+      )
+    ),
+    live: makeTester<R>((effect) => effect.pipe(Effect.provide(runtime))),
+    scopedLive: makeTester<Scope.Scope | R>((effect) => effect.pipe(Effect.scoped, Effect.provide(runtime))),
+    flakyTest,
+    layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>) {
+      return layer(
+        nestedLayer.pipe(
+          Layer.provideMerge(layer_),
+          Layer.orDie
+        ),
+        runtime.memoMap
+      )
+    }
+  })
+
+  return (f: (it: Vitest.Vitest.Methods<R>) => void) => f(it)
 }
 
 /** @internal */
