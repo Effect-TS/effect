@@ -103,7 +103,10 @@ const makeTester = <R>(
 export const layer = <R, E>(layer_: Layer.Layer<R, E>, memoMap?: Layer.MemoMap): {
   (f: (it: Vitest.Vitest.Methods<R>) => void): void
   (name: string, f: (it: Vitest.Vitest.Methods<R>) => void): void
-} => {
+} =>
+(
+  ...args: [name: string, f: (it: Vitest.Vitest.Methods<R>) => void] | [f: (it: Vitest.Vitest.Methods<R>) => void]
+) => {
   memoMap = memoMap ?? Effect.runSync(Layer.makeMemoMap)
   const scope = Effect.runSync(Scope.make())
   const runtimeEffect = Layer.toRuntimeWithMemoMap(layer_, memoMap).pipe(
@@ -112,8 +115,6 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, memoMap?: Layer.MemoMap):
     Effect.cached,
     Effect.runSync
   )
-  V.beforeAll(() => runPromise()(Effect.asVoid(runtimeEffect)))
-  V.afterAll(() => runPromise()(Scope.close(scope, Exit.void)))
 
   const it: Vitest.Vitest.Methods<R> = Object.assign(V.it, {
     effect: makeTester<TestServices.TestServices | R>((effect) =>
@@ -150,14 +151,17 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, memoMap?: Layer.MemoMap):
     }
   })
 
-  return function(
-    ...args: [name: string, f: (it: Vitest.Vitest.Methods<R>) => void] | [f: (it: Vitest.Vitest.Methods<R>) => void]
-  ) {
-    if (args.length === 1) {
-      return args[0](it)
-    }
-    return V.describe(args[0], () => args[1](it))
+  if (args.length === 1) {
+    V.beforeAll(() => runPromise()(Effect.asVoid(runtimeEffect)))
+    V.afterAll(() => runPromise()(Scope.close(scope, Exit.void)))
+    return args[0](it)
   }
+
+  return V.describe(args[0], () => {
+    V.beforeAll(() => runPromise()(Effect.asVoid(runtimeEffect)))
+    V.afterAll(() => runPromise()(Scope.close(scope, Exit.void)))
+    return args[1](it)
+  })
 }
 
 /** @internal */
