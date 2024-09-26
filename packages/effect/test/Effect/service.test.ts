@@ -1,4 +1,5 @@
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as it from "effect/test/utils/extend"
 import { describe, expect } from "vitest"
 
@@ -22,11 +23,16 @@ class Logger extends Effect.Service<Logger>()("Logger", {
     const { prefix } = yield* Prefix
     const { postfix } = yield* Postfix
     return {
-      info: (message: string) => Effect.sync(() => messages.push(`[${prefix}][${message}][${postfix}]`))
+      info: (message: string) =>
+        Effect.sync(() => {
+          messages.push(`[${prefix}][${message}][${postfix}]`)
+        })
     }
   }),
   dependencies: [Prefix, Postfix]
-}) {}
+}) {
+  static Test = Layer.succeed(this, this.of({ info: () => Effect.void }))
+}
 
 describe("Effect", () => {
   it.effect("Service correctly wires dependencies", () =>
