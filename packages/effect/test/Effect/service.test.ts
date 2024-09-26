@@ -17,6 +17,7 @@ class Postfix extends Effect.Service<Postfix>()("Postfix", {
 const messages: Array<string> = []
 
 class Logger extends Effect.Service<Logger>()("Logger", {
+  proxy: true,
   effect: Effect.gen(function*() {
     const { prefix } = yield* Prefix
     const { postfix } = yield* Postfix
