@@ -29,7 +29,6 @@ export type TagTypeId = typeof TagTypeId
  * @category models
  */
 export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
-  readonly _tag: "Tag"
   readonly _op: "Tag"
   readonly Service: Value
   readonly Identifier: Id
