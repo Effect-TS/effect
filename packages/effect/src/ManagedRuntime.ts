@@ -5,6 +5,7 @@ import type * as Effect from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import * as internal from "./internal/managedRuntime.js"
+import * as circular from "./internal/managedRuntime/circular.js"
 import type * as Layer from "./Layer.js"
 import type * as Runtime from "./Runtime.js"
 import type * as Unify from "./Unify.js"
@@ -13,7 +14,7 @@ import type * as Unify from "./Unify.js"
  * @since 3.9.0
  * @category symbol
  */
-export const TypeId: unique symbol = internal.TypeId as TypeId
+export const TypeId: unique symbol = circular.TypeId as TypeId
 
 /**
  * @since 3.9.0

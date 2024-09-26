@@ -12,6 +12,7 @@ import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as internalLayer from "./layer.js"
+import * as circular from "./managedRuntime/circular.js"
 import * as internalRuntime from "./runtime.js"
 
 interface ManagedRuntimeImpl<R, E> extends M.ManagedRuntime<R, E> {
@@ -20,10 +21,7 @@ interface ManagedRuntimeImpl<R, E> extends M.ManagedRuntime<R, E> {
 }
 
 /** @internal */
-export const TypeId: M.TypeId = Symbol.for("effect/ManagedRuntime") as M.TypeId
-
-/** @internal */
-export const isManagedRuntime = (u: unknown): u is M.ManagedRuntime<unknown, unknown> => hasProperty(u, TypeId)
+export const isManagedRuntime = (u: unknown): u is M.ManagedRuntime<unknown, unknown> => hasProperty(u, circular.TypeId)
 
 function provide<R, ER, A, E>(
   managed: ManagedRuntimeImpl<R, ER>,
@@ -42,7 +40,7 @@ function provide<R, ER, A, E>(
 
 const ManagedRuntimeProto = {
   ...Effectable.CommitPrototype,
-  [TypeId]: TypeId,
+  [circular.TypeId]: circular.TypeId,
   pipe() {
     return pipeArguments(this, arguments)
   },
