@@ -14,7 +14,6 @@ import type { EntityAddress } from "../EntityAddress.js"
 import { EntityId } from "../EntityId.js"
 import { EntityType } from "../EntityType.js"
 import type { Envelope } from "../Envelope.js"
-import type { Mailbox } from "../Mailbox.js"
 import type * as MailboxStorage from "../MailboxStorage.js"
 import { MessageId } from "../MessageId.js"
 import * as MessageState from "../MessageState.js"
@@ -73,7 +72,7 @@ const CompleteMessage = Schema.Struct({
 /**
  * Represents an entry in the persistent mailbox storage of the cluster.
  */
-const MailboxEntry = Schema.Struct({
+const MailboxStorageEntry = Schema.Struct({
   ...EntityIdentifiers.fields,
   message: Schema.parseJson(Schema.Unknown),
   sequenceNumber: Schema.Int
@@ -89,7 +88,7 @@ export const makeSql: Effect.Effect<
 
   const insert = SqlSchema.findOne({
     Request: SaveMessage,
-    Result: MailboxEntry,
+    Result: MailboxStorageEntry,
     execute: (request) => {
       const transformResults = Statement.defaultTransforms(
         String.snakeToCamel
@@ -229,9 +228,9 @@ export const makeSql: Effect.Effect<
     address: EntityAddress,
     message: Msg
   ): Effect.Effect<
-    Mailbox.Entry<Msg>,
+    MailboxStorage.MailboxStorage.Entry<Msg>,
     NoSuchElementException | MessagePersistenceError,
-    Serializable.WithResult.Context<Msg>
+    Serializable.Serializable.Context<Msg>
   > =>
     Serializable.serialize(message).pipe(
       Effect.flatMap((messageBody) =>

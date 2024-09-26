@@ -11,11 +11,13 @@ import type { Layer } from "effect/Layer"
 import type { Option } from "effect/Option"
 import type { Stream } from "effect/Stream"
 import * as InternalShardManager from "./internal/shardManager.js"
+import * as InternalShardManagerClient from "./internal/shardManagerClient.js"
 import type { Pod } from "./Pod.js"
 import type { PodAddress } from "./PodAddress.js"
 import type { Pods } from "./Pods.js"
 import type { PodsHealth } from "./PodsHealth.js"
 import type { ShardId } from "./ShardId.js"
+import type { ShardingConfig } from "./ShardingConfig.js"
 import type { Storage } from "./Storage.js"
 
 /**
@@ -29,6 +31,18 @@ export const TypeId: unique symbol = InternalShardManager.TypeId
  * @category type ids
  */
 export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const ClientTypeId: unique symbol = InternalShardManagerClient.TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type ClientTypeId = typeof ClientTypeId
 
 /**
  * @since 1.0.0
@@ -126,6 +140,50 @@ export declare namespace ShardManager {
   }
 
   /**
+   * Represents a client which can be used to communicate with the
+   * `ShardManager`.
+   *
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Client {
+    readonly [ClientTypeId]: ClientTypeId
+    /**
+     * Register a new pod with the cluster.
+     */
+    readonly register: (address: PodAddress) => Effect<void>
+    /**
+     * Unregister a pod from the cluster.
+     */
+    readonly unregister: (address: PodAddress) => Effect<void>
+    /**
+     * Notify the cluster of an unhealthy pod.
+     */
+    readonly notifyUnhealthyPod: (address: PodAddress) => Effect<void>
+    /**
+     * Get all shard assignments.
+     */
+    readonly getAssignments: Effect<HashMap<ShardId, Option<PodAddress>>>
+  }
+
+  /**
+   * Represents configuration required to connect to the `ShardManager`.
+   *
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ClientConfig {
+    /**
+     * The host of the `ShardManager` instance.
+     */
+    readonly host: string
+    /**
+     * The port that the `ShardManager` is exposed on.
+     */
+    readonly port: number
+  }
+
+  /**
    * @since 1.0.0
    * @category models
    */
@@ -163,3 +221,14 @@ export const ShardManager: Tag<ShardManager, ShardManager> = InternalShardManage
 export const layer: (
   config?: Partial<ShardManager.Config>
 ) => Layer<ShardManager, never, Storage | PodsHealth | Pods> = InternalShardManager.layer
+
+/**
+ * A layer that constructs a client which mocks connecting to the
+ * `ShardManager`.
+ *
+ * Useful for testing with a single pod.
+ *
+ * @since 1.0.0
+ * @category layer
+ */
+export const layerClientLocal: Layer<ShardManager.Client, never, ShardingConfig> = InternalShardManagerClient.layerLocal

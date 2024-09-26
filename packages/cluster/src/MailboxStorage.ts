@@ -1,17 +1,20 @@
 /**
  * @since 1.0.0
  */
-import type { WithResult } from "@effect/schema/Serializable"
+import type { Serializable, WithResult } from "@effect/schema/Serializable"
 import type { SqlClient } from "@effect/sql/SqlClient"
 import type { NoSuchElementException } from "effect/Cause"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import type { EntityAddress } from "./EntityAddress.js"
+import type { EntityId } from "./EntityId.js"
+import type { EntityType } from "./EntityType.js"
 import type { Envelope } from "./Envelope.js"
 import * as InternalMailboxStorage from "./internal/mailboxStorage.js"
-import type { Mailbox } from "./Mailbox.js"
 import type { MessageState } from "./MessageState.js"
+import type { ShardId } from "./ShardId.js"
+import type { MessagePersistenceError } from "./ShardingException.js"
 
 /**
  * @since 1.0.0
@@ -36,7 +39,11 @@ export interface MailboxStorage extends MailboxStorage.Proto {
   readonly saveMessage: <Msg extends Envelope.AnyMessage>(
     address: EntityAddress,
     message: Msg
-  ) => Effect<Mailbox.Entry<Msg>, NoSuchElementException>
+  ) => Effect<
+    MailboxStorage.Entry<Msg>,
+    NoSuchElementException | MessagePersistenceError,
+    Serializable.Context<Msg>
+  >
   /**
    * Updates the specified message using the provided `MessageState`.
    */
@@ -57,6 +64,18 @@ export declare namespace MailboxStorage {
    */
   export interface Proto {
     readonly [TypeId]: TypeId
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Entry<Msg extends Envelope.AnyMessage> {
+    readonly shardId: ShardId
+    readonly entityId: EntityId
+    readonly entityType: EntityType
+    readonly message: Msg
+    readonly sequenceNumber: number
   }
 }
 

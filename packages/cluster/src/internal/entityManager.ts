@@ -1,80 +1,99 @@
 import * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import * as Clock from "effect/Clock"
-import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
+import * as ExecutionStrategy from "effect/ExecutionStrategy"
+import * as Exit from "effect/Exit"
 import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
 import * as Metric from "effect/Metric"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
-import * as SynchronizedRef from "effect/SynchronizedRef"
-import type * as Entity from "../Entity.js"
+import * as Scope from "effect/Scope"
+import type { Entity } from "../Entity.js"
 import { EntityAddress } from "../EntityAddress.js"
 import type { Envelope } from "../Envelope.js"
-import type { Mailbox } from "../Mailbox.js"
-import { MailboxStorage } from "../MailboxStorage.js"
-import type { ShardId } from "../ShardId.js"
+import type { MailboxStorage } from "../MailboxStorage.js"
 import type { Sharding } from "../Sharding.js"
-import { ShardingConfig } from "../ShardingConfig.js"
+import type { ShardingConfig } from "../ShardingConfig.js"
 import { EntityNotManagedByPod, MalformedMessage } from "../ShardingException.js"
-import * as InternalMailbox from "./mailbox.js"
+import * as InternalMailboxStorage from "./mailboxStorage.js"
+import * as InternalMessageState from "./messageState.js"
 import * as InternalMetrics from "./metrics.js"
-import * as InternalCircularSharding from "./sharding/circular.js"
+import * as InternalShardingCircular from "./sharding/circular.js"
+import * as InternalShardingConfig from "./shardingConfig.js"
 
 /** @internal */
 export interface EntityManager {
   readonly send: (envelope: Envelope.Encoded) => Effect.Effect<void, EntityNotManagedByPod | MalformedMessage>
-  readonly terminateEntity: (address: EntityAddress) => Effect.Effect<void>
-  readonly terminateAllEntities: Effect.Effect<void>
-  readonly terminateEntitiesOnShards: (shards: HashSet.HashSet<ShardId>) => Effect.Effect<void>
 }
 
-type EntityState<Msg extends Envelope.AnyMessage> = Terminating | Active<Msg>
-
-interface Terminating {
-  readonly _tag: "Terminating"
-  readonly signal: Deferred.Deferred<void>
-}
-
-interface Active<Msg extends Envelope.AnyMessage> {
-  readonly _tag: "Active"
-  readonly mailbox: Mailbox<Msg>
+interface EntityState<Msg extends Envelope.AnyMessage> {
+  readonly mailbox: Queue.Queue<MailboxStorage.Entry<Msg>>
+  readonly scope: Scope.CloseableScope
 }
 
 /** @internal */
 export const make = <Msg extends Envelope.AnyMessage>(
-  entity: Entity.Entity<Msg>,
-  behavior: (address: EntityAddress, mailbox: Mailbox<Msg>) => Effect.Effect<never>,
-  options: Sharding.RegistrationOptions
+  entity: Entity<Msg>,
+  behavior: Entity.Behavior<Msg>,
+  options?: Sharding.RegistrationOptions
 ): Effect.Effect<
   EntityManager,
   never,
-  Serializable.Serializable.Context<Msg> | MailboxStorage | Sharding | ShardingConfig
+  | Scope.Scope
+  | Serializable.Serializable.Context<Msg>
+  | MailboxStorage
+  | Sharding
+  | ShardingConfig
 > =>
   Effect.gen(function*() {
-    const context = yield* Effect.context<Serializable.Serializable.Context<Msg>>()
-    const sharding = yield* InternalCircularSharding.Tag
-    const storage = yield* MailboxStorage
-    const config = yield* ShardingConfig
-
-    // const scope = yield* Effect.scope
+    const config = yield* InternalShardingConfig.Tag
+    const sharding = yield* InternalShardingCircular.Tag
+    const storage = yield* InternalMailboxStorage.Tag
+    const managerScope = yield* Effect.scope
+    const runtime = yield* Effect.runtime<Serializable.Serializable.Context<Msg>>()
+    const semaphore = yield* Effect.makeSemaphore(1)
     const gauge = InternalMetrics.entities.pipe(Metric.tagged("type", entity.type))
 
-    // Represents the last time (in millis) that each entity received a message
+    // Represents the last time in milliseconds that an entity processed a message
     const lastActiveTimes = yield* Ref.make(
       HashMap.empty<EntityAddress, number>()
     )
+
     // Represents the entities managed by this entity manager
-    const entities = yield* SynchronizedRef.make(
+    const entities = yield* Ref.make(
       HashMap.empty<EntityAddress, EntityState<Msg>>()
     )
 
-    function startExpirationFiber(address: EntityAddress) {
-      const maxIdleTime = Duration.toMillis(options.maxIdleTime ?? config.entityMaxIdleTime)
+    // TODO: The replier could be used to also perform communication with the client?
+    function makeReplier(address: EntityAddress): Entity.Replier {
+      function complete<Msg extends Envelope.AnyMessage>(
+        message: Msg,
+        result: Exit.Exit<
+          Serializable.WithResult.Success<Msg>,
+          Serializable.WithResult.Failure<Msg>
+        >
+      ) {
+        const state = InternalMessageState.processed(result)
+        return storage.updateMessage(address, message, state).pipe(
+          Effect.zipRight(Clock.currentTimeMillis),
+          Effect.flatMap((now) => Ref.update(lastActiveTimes, HashMap.set(address, now)))
+        )
+      }
+
+      return {
+        succeed: (message, value) => complete(message, Exit.succeed(value)),
+        fail: (message, error) => complete(message, Exit.fail(error)),
+        failCause: (message, cause) => complete(message, Exit.failCause(cause)),
+        complete,
+        completeEffect: (message, effect) => Effect.exit(effect).pipe(Effect.flatMap((exit) => complete(message, exit)))
+      } as const
+    }
+
+    function startExpirationFiber(address: EntityAddress, entityScope: Scope.Scope) {
+      const maxIdleTime = Duration.toMillis(options?.maxIdleTime ?? config.entityMaxIdleTime)
 
       function sleep(duration: Duration.DurationInput): Effect.Effect<void> {
         return Clock.sleep(duration).pipe(
@@ -94,176 +113,109 @@ export const make = <Msg extends Envelope.AnyMessage>(
       return sleep(maxIdleTime).pipe(
         Effect.zipRight(
           terminateEntity(address).pipe(
-            Effect.forkDaemon,
-            Effect.asVoid
+            Effect.forkIn(managerScope)
           )
         ),
-        Effect.asVoid,
-        Effect.interruptible,
-        Effect.forkDaemon
+        Effect.forkIn(entityScope),
+        Effect.interruptible
       )
     }
 
-    function terminateEntities(entities: HashMap.HashMap<EntityAddress, EntityState<Msg>>): Effect.Effect<void> {
-      return Effect.forEach(entities, ([, state]) => {
-        switch (state._tag) {
-          case "Active": {
-            return Deferred.make<void>().pipe(
-              Effect.tap((signal) =>
-                Queue.shutdown(state.mailbox).pipe(
-                  Effect.zipRight(Deferred.succeed(signal, void 0))
-                )
-              )
-            )
-          }
-          case "Terminating": {
-            return Effect.succeed(state.signal)
-          }
-        }
-      }).pipe(
-        Effect.flatMap((signals) =>
-          Effect.forEach(signals, (signal) => Deferred.await(signal), { discard: true }).pipe(
-            Effect.timeout(config.entityTerminationTimeout)
-          )
-        ),
-        Effect.orDie
+    function terminateEntity(address: EntityAddress) {
+      return semaphore.withPermits(1)(
+        Ref.get(entities).pipe(
+          Effect.flatMap(HashMap.get(address)),
+          Effect.flatMap((state) => Scope.close(state.scope, Exit.void)),
+          Effect.catchTag("NoSuchElementException", () => Effect.void)
+        )
       )
     }
 
     function getOrCreateState(address: EntityAddress) {
-      return SynchronizedRef.modifyEffect(entities, (map) => {
-        return Option.match(HashMap.get(map, address), {
-          onNone: () =>
+      return semaphore.withPermits(1)(
+        Ref.get(entities).pipe(
+          Effect.flatMap(HashMap.get(address)),
+          Effect.catchTag("NoSuchElementException", () =>
+            // If sharding is shutting down then no entities are managed by the pod
             new EntityNotManagedByPod({ address }).pipe(
               Effect.whenEffect(sharding.isShutdown),
-              Effect.zipRight(
-                InternalMailbox.make<Msg>(address).pipe(
-                  Effect.provideService(MailboxStorage, storage)
+              // Fork the scope for entity resources off the manager scope
+              Effect.zipRight(Scope.fork(managerScope, ExecutionStrategy.sequential)),
+              Effect.bindTo("scope"),
+              // Start the entity expiration fiber based on the idle time-to-live
+              Effect.tap(({ scope }) => startExpirationFiber(address, scope)),
+              // Create the mailbox for the entity
+              Effect.bind("mailbox", ({ scope }) =>
+                Effect.tap(
+                  Queue.unbounded<MailboxStorage.Entry<Msg>>(),
+                  (mailbox) => Scope.addFinalizer(scope, mailbox.shutdown)
+                )),
+              // Initiate the behavior for the entity
+              Effect.tap(({ mailbox, scope }) =>
+                behavior(mailbox, makeReplier(address)).pipe(
+                  Effect.ensuring(Scope.close(scope, Exit.void)),
+                  Effect.forkIn(scope)
                 )
               ),
-              Effect.bindTo("mailbox"),
-              Effect.bind("fiber", () => startExpirationFiber(address)),
-              Effect.zipLeft(Metric.increment(gauge)),
-              Effect.tap(({ fiber, mailbox }) =>
-                behavior(address, mailbox).pipe(
-                  Effect.ensuring(
-                    SynchronizedRef.update(entities, HashMap.remove(address)).pipe(
-                      Effect.zipRight(Metric.incrementBy(gauge, BigInt(-1))),
-                      Effect.zipRight(Ref.update(lastActiveTimes, HashMap.remove(address))),
-                      Effect.zipRight(Queue.shutdown(mailbox)),
-                      Effect.zipRight(Fiber.interrupt(fiber))
-                    )
-                  ),
-                  Effect.forkDaemon
+              // Perform metric bookkeeping
+              Effect.tap(({ scope }) =>
+                Effect.zipRight(
+                  Metric.increment(gauge),
+                  Scope.addFinalizer(scope, Metric.incrementBy(gauge, BigInt(-1)))
                 )
               ),
-              Effect.map(({ mailbox }) => {
-                const state: EntityState<Msg> = { _tag: "Active", mailbox }
-                return [state, HashMap.set(map, address, state)] as const
-              })
-            ),
-          onSome: (state) => Effect.succeed([state, map] as const)
-        })
-      })
+              // Ensure that the first finalizer run within the entity scope
+              // is removal of the entity from the collection of managed entities
+              Effect.tap(({ scope }) =>
+                Scope.addFinalizer(
+                  scope,
+                  Ref.update(entities, HashMap.remove(address))
+                )
+              ),
+              Effect.tap((state) => Ref.update(entities, HashMap.set(address, state)))
+            ))
+        )
+      )
     }
 
     const decodeEnvelope = Schema.decodeUnknown(Schema.Struct({
       address: EntityAddress,
-      message: entity.schema
+      message: entity.protocol
     }))
-    function send(
-      envelope: Envelope.Encoded
-    ): Effect.Effect<void, EntityNotManagedByPod | MalformedMessage> {
+
+    function sendMessageToEntity(
+      address: EntityAddress,
+      entry: MailboxStorage.Entry<Msg>
+    ): Effect.Effect<void, EntityNotManagedByPod> {
+      return getOrCreateState(address).pipe(
+        Effect.flatMap((state) =>
+          state.mailbox.offer(entry).pipe(
+            Effect.catchAllCause(() =>
+              sendMessageToEntity(address, entry).pipe(
+                Effect.delay("100 millis")
+              )
+            )
+          )
+        )
+      )
+    }
+
+    function send(envelope: Envelope.Encoded): Effect.Effect<void, EntityNotManagedByPod | MalformedMessage> {
       return decodeEnvelope(envelope).pipe(
         Effect.bindTo("envelope"),
         Effect.bind("entry", ({ envelope }) => storage.saveMessage(envelope.address, envelope.message)),
         Effect.flatMap(({ entry, envelope }) => sendMessageToEntity(envelope.address, entry)),
         Effect.catchTags({
           NoSuchElementException: () => Effect.void,
-          ParseError: (cause) => new MalformedMessage({ cause })
+          ParseError: (cause) => new MalformedMessage({ cause }),
+          // TODO: decide what to do on message persistence error
+          MessagePersistenceError: () => Effect.void
         }),
-        Effect.provide(context)
+        Effect.provide(runtime)
       )
     }
-
-    function sendMessageToEntity(
-      address: EntityAddress,
-      entry: Mailbox.Entry<Msg>
-    ): Effect.Effect<void, EntityNotManagedByPod> {
-      return SynchronizedRef.get(entities).pipe(
-        Effect.flatMap((map) =>
-          Option.match(HashMap.get(map, address), {
-            onNone: () => getOrCreateState(address),
-            onSome: Effect.succeed
-          })
-        ),
-        Effect.flatMap((state) => {
-          switch (state._tag) {
-            case "Active": {
-              return Clock.currentTimeMillis.pipe(
-                Effect.flatMap((now) => Ref.update(lastActiveTimes, HashMap.set(address, now))),
-                Effect.zipRight(state.mailbox.offer(entry)),
-                Effect.catchAllCause(() =>
-                  Clock.sleep("100 millis").pipe(
-                    Effect.zipRight(sendMessageToEntity(address, entry))
-                  )
-                )
-              )
-            }
-            case "Terminating": {
-              // The entity is terminating, try again later
-              return Clock.sleep("100 millis").pipe(
-                Effect.zipRight(sendMessageToEntity(address, entry))
-              )
-            }
-          }
-        })
-      )
-    }
-
-    function terminateEntity(address: EntityAddress): Effect.Effect<void> {
-      return SynchronizedRef.updateEffect(entities, (map) =>
-        Option.match(HashMap.get(map, address), {
-          onNone: () => Effect.succeed(map),
-          onSome: (state) => {
-            switch (state._tag) {
-              case "Active": {
-                return Queue.shutdown(state.mailbox).pipe(
-                  Effect.as(HashMap.remove(map, address))
-                )
-              }
-              case "Terminating": {
-                return Effect.succeed(map)
-              }
-            }
-          }
-        }))
-    }
-
-    function terminateEntitiesOnShards(shards: HashSet.HashSet<ShardId>) {
-      return SynchronizedRef.modify(entities, (entities) => {
-        const running: Array<[EntityAddress, EntityState<Msg>]> = []
-        const terminating: Array<[EntityAddress, EntityState<Msg>]> = []
-        for (const entity of entities) {
-          if (HashSet.has(shards, sharding.getShardId(entity[0].entityId))) {
-            terminating.push(entity)
-          } else {
-            running.push(entity)
-          }
-        }
-        return [HashMap.fromIterable(terminating), HashMap.fromIterable(running)]
-      }).pipe(Effect.flatMap(terminateEntities))
-    }
-
-    const terminateAllEntities: Effect.Effect<void> = SynchronizedRef.getAndSet(
-      entities,
-      HashMap.empty()
-    ).pipe(Effect.flatMap(terminateEntities))
 
     return {
-      send,
-      terminateEntity,
-      terminateEntitiesOnShards,
-      terminateAllEntities
+      send
     } as const
   })

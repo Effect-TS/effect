@@ -6,7 +6,8 @@ import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import type { Effect } from "effect/Effect"
 import * as Predicate from "effect/Predicate"
-import type * as PrimaryKey from "effect/PrimaryKey"
+import type { PrimaryKey } from "effect/PrimaryKey"
+import type * as Request from "effect/Request"
 import { EntityAddress } from "./EntityAddress.js"
 
 const SymbolKey = "@effect/cluster/Envelope"
@@ -48,7 +49,22 @@ export declare namespace Envelope {
    * @since 1.0.0
    * @category models
    */
-  export type AnyMessage = Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey
+  export interface AnyMessage
+    extends PrimaryKey, Schema.TaggedRequest<string, any, any, any, any, any, any, any, unknown>
+  {
+    [Request.RequestTypeId]: any
+    [Serializable.symbol]: any
+    [Serializable.symbolResult]: any
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface AnyMessageSchema {
+    readonly [Schema.TypeId]: any
+    readonly Type: AnyMessage
+  }
 
   /**
    * @since 1.0.0
@@ -60,14 +76,10 @@ export declare namespace Envelope {
   }
 }
 
-const variance = {
-  _R: (_: never) => _
-}
-
 const Proto = {
+  [TypeId]: TypeId,
   address: undefined,
-  message: undefined,
-  [TypeId]: variance
+  message: undefined
 }
 
 /**
@@ -104,5 +116,5 @@ export const serialize = <Msg extends Envelope.AnyMessage>(
     address: EntityAddress,
     message: Serializable.selfSchema(envelope.message)
   })
-  return Schema.encode(schema)(envelope)
+  return Schema.encode(schema)(envelope) as any
 }

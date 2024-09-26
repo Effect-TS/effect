@@ -6,13 +6,12 @@ import type { Tag } from "effect/Context"
 import type { Duration } from "effect/Duration"
 import type { Effect } from "effect/Effect"
 import type { HashSet } from "effect/HashSet"
+import type { Scope } from "effect/Scope"
 import type { Stream } from "effect/Stream"
 import type { Entity } from "./Entity.js"
-import type { EntityAddress } from "./EntityAddress.js"
 import type { EntityId } from "./EntityId.js"
 import type { Envelope } from "./Envelope.js"
 import * as InternalCircularSharding from "./internal/sharding/circular.js"
-import type { Mailbox } from "./Mailbox.js"
 import type { Messenger } from "./Messenger.js"
 import type { PodAddress } from "./PodAddress.js"
 import type { ShardId } from "./ShardId.js"
@@ -50,12 +49,25 @@ export interface Sharding {
     entity: Entity<Msg>
   ) => Effect<Messenger<Msg>, never, Serializable.Context<Msg>>
   /**
+   * Registers the shard manager with the cluster.
+   */
+  readonly register: Effect<void>
+  /**
+   * Registers the shard manager with the cluster, and unregisters the shard
+   * manager from the cluster when the provided scope is closed.
+   */
+  readonly registerScoped: Effect<void, never, Scope>
+  /**
+   * Unregisters the shard manager from the cluster.
+   */
+  readonly unregister: Effect<void>
+  /**
    * Registers a new entity with the pod.
    */
   readonly registerEntity: <Msg extends Envelope.AnyMessage>(
     entity: Entity<Msg>,
-    behavior: (address: EntityAddress, mailbox: Mailbox<Msg>) => Effect<never>,
-    options: Sharding.RegistrationOptions
+    behavior: Entity.Behavior<Msg>,
+    options?: Sharding.RegistrationOptions
   ) => Effect<void, never, Serializable.Context<Msg>>
   /**
    * Sends a message to the specified pod.

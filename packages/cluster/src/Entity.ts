@@ -1,13 +1,18 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
+import * as Schema from "@effect/schema/Schema"
+import type { Serializable, WithResult } from "@effect/schema/Serializable"
+import type { Cause } from "effect/Cause"
+import type { Effect } from "effect/Effect"
 import * as Equal from "effect/Equal"
+import type { Exit } from "effect/Exit"
 import * as Hash from "effect/Hash"
 import * as Predicate from "effect/Predicate"
+import type { Dequeue } from "effect/Queue"
 import { EntityType } from "./EntityType.js"
 import type { Envelope } from "./Envelope.js"
+import type { MailboxStorage } from "./MailboxStorage.js"
 
 const SymbolKey = "@effect/cluster/Entity"
 
@@ -29,17 +34,17 @@ export type TypeId = typeof TypeId
  */
 export interface Entity<Msg extends Envelope.AnyMessage> extends Equal.Equal, Entity.Proto {
   /**
-   * The entity type name.
+   * The name of the entity type.
    */
   readonly type: EntityType
   /**
-   * The schema definition for messages that the entity is capable of
-   * processing.
+   * A schema definition for messages which represents the messaging protocol
+   * that the entity is capable of processing.
    */
-  readonly schema: Schema.Schema<
+  readonly protocol: Schema.Schema<
     Msg,
-    Serializable.Serializable.Encoded<Msg>,
-    Serializable.Serializable.Context<Msg>
+    Serializable.Encoded<Msg>,
+    Serializable.Context<Msg>
   >
 }
 
@@ -53,6 +58,65 @@ export declare namespace Entity {
    */
   export interface Proto {
     readonly [TypeId]: TypeId
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type GetBehavior<E extends Entity<any>> = E extends Entity<infer _Msg> ? Behavior<_Msg> : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Behavior<Msg extends Envelope.AnyMessage> {
+    (
+      mailbox: Dequeue<MailboxStorage.Entry<Msg>>,
+      replier: Replier
+    ): Effect<never>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Replier {
+    /**
+     * Completes specified message with the provided value.
+     */
+    readonly succeed: <Msg extends Envelope.AnyMessage>(
+      message: Msg,
+      value: WithResult.Success<Msg>
+    ) => Effect<void>
+    /**
+     * Completes specified message with the provided error.
+     */
+    readonly fail: <Msg extends Envelope.AnyMessage>(
+      message: Msg,
+      error: WithResult.Failure<Msg>
+    ) => Effect<void>
+    /**
+     * Completes specified message with the provided `Cause`.
+     */
+    readonly failCause: <Msg extends Envelope.AnyMessage>(
+      message: Msg,
+      cause: Cause<WithResult.Failure<Msg>>
+    ) => Effect<void>
+    /**
+     * Completes specified message with the provided `Exit`.
+     */
+    readonly complete: <Msg extends Envelope.AnyMessage>(
+      message: Msg,
+      result: Exit<WithResult.Success<Msg>, WithResult.Failure<Msg>>
+    ) => Effect<void>
+    /**
+     * Completes specified message with the result of the provided `Effect`.
+     */
+    readonly completeEffect: <Msg extends Envelope.AnyMessage, R>(
+      message: Msg,
+      effect: Effect<WithResult.Success<Msg>, WithResult.Failure<Msg>, R>
+    ) => Effect<void, never, R | WithResult.Context<Msg>>
   }
 }
 
@@ -75,25 +139,24 @@ const Proto = {
 }
 
 /**
+ * Creates a new `Entity` of the specified `type` which will accept messages
+ * that adhere to the provided `schema`.
+ *
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Msg extends Envelope.AnyMessage>(props: {
+export const make = <const MessageTypes extends ReadonlyArray<Envelope.AnyMessageSchema>>(
   /**
    * The entity type name.
    */
-  readonly type: string
+  type: string,
   /**
    * The schema definition for messages that the entity is capable of
    * processing.
    */
-  readonly schema: Schema.Schema<
-    Msg,
-    Serializable.Serializable.Encoded<Msg>,
-    Serializable.Serializable.Context<Msg>
-  >
-}): Entity<Msg> =>
+  protocol: MessageTypes
+): Entity<MessageTypes[number]["Type"]> =>
   Object.assign(Object.create(Proto), {
-    type: EntityType.make(props.type),
-    schema: props.schema
+    type: EntityType.make(type),
+    schema: Schema.Union(...protocol as any)
   })

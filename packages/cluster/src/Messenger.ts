@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { WithResult } from "@effect/schema/Serializable"
 import type { Effect } from "effect/Effect"
 import type { Envelope } from "./Envelope.js"
 
@@ -21,9 +22,16 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface Messenger<Msg extends Envelope.AnyMessage> extends Messenger.Proto {
-  // TODO: refine signatures
-  ask: (entityIdentifer: string, message: Msg) => Effect<void>
-  tell: (entityIdentifer: string, message: Msg) => Effect<void>
+  /**
+   * Sends a message to an entity and waits for the result of processing the
+   * message.
+   */
+  readonly ask: (entityId: string, message: Msg) => Effect<WithResult.Success<Msg>, WithResult.Failure<Msg>>
+  /**
+   * Sends a message to an entity without waiting for a response (i.e. fire and
+   * forget).
+   */
+  readonly tell: (entityId: string, message: Msg) => Effect<void>
 }
 
 /**
