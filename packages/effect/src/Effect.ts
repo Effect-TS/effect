@@ -6235,12 +6235,13 @@ export declare namespace Tag {
     Service?: `property "Service" is forbidden`
     Identifier?: `property "Identifier" is forbidden`
     _op?: `property "_op" is forbidden`
-    _tag?: `property "_tag" is forbidden`
     of?: `property "of" is forbidden`
     context?: `property "context" is forbidden`
     key?: `property "key" is forbidden`
     stack?: `property "stack" is forbidden`
     name?: `property "name" is forbidden`
+    pipe?: `property "pipe" is forbidden`
+    use?: `property "use" is forbidden`
   }
 
   /**
@@ -6347,6 +6348,7 @@ export declare namespace Service {
     stack?: `property "stack" is forbidden`
     name?: `property "name" is forbidden`
     pipe?: `property "pipe" is forbidden`
+    use?: `property "use" is forbidden`
   }
 
   /**
@@ -6404,19 +6406,18 @@ export declare namespace Service {
    * @since 2.0.0
    * @category models
    */
-  export type Return<Self, Id extends string, Type, Proxy extends boolean> =
+  export type Return<Self, Id extends string, Type, Proxy extends boolean, T = Type & { readonly _tag: Id }> =
     & TagClass<Self, Id, Type>
-    & (Proxy extends true ? (Type extends Record<PropertyKey, any> ? {
+    & (Proxy extends true ? (T extends Record<PropertyKey, any> ? {
           [
-            k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret)
-              ? ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
+            k in keyof T as T[k] extends ((...args: [...infer Args]) => infer Ret)
+              ? ((...args: Readonly<Args>) => Ret) extends T[k] ? k : never
               : k
-          ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R>
+          ]: T[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R>
             ? (...args: Readonly<Args>) => Effect<A, E, Self | R>
-            : Type[k] extends (...args: [...infer Args]) => infer A ?
-              (...args: Readonly<Args>) => Effect<A, never, Self>
-            : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-            : Effect<Type[k], never, Self>
+            : T[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+            : T[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+            : Effect<T[k], never, Self>
         } :
         {}) :
       {})
