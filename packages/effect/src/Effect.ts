@@ -6514,16 +6514,16 @@ export const Service: {
   <Self>(): {
     <
       const Id extends string,
-      Maker extends (Service.Maker<Service.ProhibitedType> & { proxy?: true }) | (Service.Maker<{}> & { proxy: false })
+      Maker extends (Service.Maker<Service.ProhibitedType> & { proxy: true }) | (Service.Maker<{}> & { proxy?: false })
     >(
       id: Id,
       maker: Maker
-    ): Service.ReturnWithMaker<Self, Id, Maker, Maker extends { proxy: false } ? false : true>
+    ): Service.ReturnWithMaker<Self, Id, Maker, Maker extends { proxy: true } ? true : false>
   }
 } = function() {
   return function() {
     const [id, maker] = arguments
-    const proxy = "proxy" in maker ? maker["proxy"] : true
+    const proxy = "proxy" in maker ? maker["proxy"] : false
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
     const creationError = new Error()
