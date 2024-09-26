@@ -24,6 +24,7 @@ import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
 import * as fiberRuntime from "./fiberRuntime.js"
+import * as circularManagedRuntime from "./managedRuntime/circular.js"
 import * as EffectOpCodes from "./opCodes/effect.js"
 import * as OpCodes from "./opCodes/layer.js"
 import * as ref from "./ref.js"
@@ -1289,8 +1290,6 @@ const provideSomeRuntime = dual<
   )
 })
 
-const ManagedRuntimeTypeId: ManagedRuntime.TypeId = Symbol.for("effect/ManagedRuntime") as ManagedRuntime.TypeId
-
 /** @internal */
 export const effect_provide = dual<
   {
@@ -1339,7 +1338,7 @@ export const effect_provide = dual<
       return provideSomeLayer(self, source as Layer.Layer<ROut, any, any>)
     } else if (Context.isContext(source)) {
       return core.provideSomeContext(self, source)
-    } else if (ManagedRuntimeTypeId in source) {
+    } else if (circularManagedRuntime.TypeId in source) {
       return core.flatMap(
         (source as ManagedRuntime.ManagedRuntime<ROut, any>).runtimeEffect,
         (rt) => provideSomeRuntime(self, rt)
