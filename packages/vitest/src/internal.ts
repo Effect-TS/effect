@@ -21,7 +21,7 @@ import type * as Vitest from "./index.js"
 
 const runPromise = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
-    const exitFiber = yield* Effect.fork(effect)
+    const exitFiber = yield* Effect.fork(Effect.exit(effect))
 
     ctx?.onTestFinished(() =>
       Fiber.interrupt(exitFiber).pipe(
@@ -30,7 +30,7 @@ const runPromise = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A,
       )
     )
 
-    const exit = yield* exitFiber.await
+    const exit = yield* Fiber.join(exitFiber)
     if (Exit.isSuccess(exit)) {
       return () => exit.value
     } else {
