@@ -125,7 +125,7 @@ layer(Foo.Live)("layer", (it) => {
       }))
   })
 
-  describe("releases", () => {
+  describe("release", () => {
     let released = false
     afterAll(() => {
       expect(released).toEqual(true)
