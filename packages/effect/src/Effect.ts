@@ -6353,38 +6353,38 @@ export declare namespace Service {
    * @since 2.0.0
    * @category models
    */
-  export type AllowedType = Record<PropertyKey, any> & ProhibitedType
+  export type AllowedType<P> = Record<PropertyKey, any> & P
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export type Maker = {
-    effect: Effect<AllowedType, any, any>
+  export type Maker<P> = {
+    effect: Effect<AllowedType<P>, any, any>
     dependencies?: never
   } | {
-    effect: Effect<AllowedType, any, any>
+    effect: Effect<AllowedType<P>, any, any>
     dependencies: []
   } | {
-    effect: Effect<AllowedType, any, any>
+    effect: Effect<AllowedType<P>, any, any>
     dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
   } | {
-    scoped: Effect<AllowedType, any, any>
+    scoped: Effect<AllowedType<P>, any, any>
     dependencies?: never
   } | {
-    scoped: Effect<AllowedType, any, any>
+    scoped: Effect<AllowedType<P>, any, any>
     dependencies: []
   } | {
-    scoped: Effect<AllowedType, any, any>
+    scoped: Effect<AllowedType<P>, any, any>
     dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
   } | {
-    sync: () => AllowedType
+    sync: () => AllowedType<P>
     dependencies?: never
   } | {
-    sync: () => AllowedType
+    sync: () => AllowedType<P>
     dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
   } | {
-    sync: () => AllowedType
+    sync: () => AllowedType<P>
     dependencies: []
   }
 
@@ -6404,37 +6404,40 @@ export declare namespace Service {
    * @since 2.0.0
    * @category models
    */
-  export type Return<Self, Id extends string, Type extends AllowedType> =
+  export type Return<Self, Id extends string, Type, Proxy extends boolean> =
     & TagClass<Self, Id, Type>
-    & (Type extends Record<PropertyKey, any> ? {
-        [
-          k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret)
-            ? ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
-            : k
-        ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R>
-          ? (...args: Readonly<Args>) => Effect<A, E, Self | R>
-          : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
-          : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-          : Effect<Type[k], never, Self>
+    & (Proxy extends true ? (Type extends Record<PropertyKey, any> ? {
+          [
+            k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret)
+              ? ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
+              : k
+          ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R>
+            ? (...args: Readonly<Args>) => Effect<A, E, Self | R>
+            : Type[k] extends (...args: [...infer Args]) => infer A ?
+              (...args: Readonly<Args>) => Effect<A, never, Self>
+            : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+            : Effect<Type[k], never, Self>
+        } :
+        {}) :
+      {})
+    & (Proxy extends true ? {
+        use: <X>(
+          body: (_: Type) => X
+        ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
       } :
       {})
-    & {
-      use: <X>(
-        body: (_: Type) => X
-      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
-    }
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export type ReturnWithMaker<Self, Id extends string, Maker extends Service.Maker> =
+  export type ReturnWithMaker<Self, Id extends string, Maker, Proxy extends boolean> =
     & {}
     & Maker extends {
-    scoped: Effect<infer Type extends AllowedType, infer E, infer R>
+    scoped: Effect<infer Type, infer E, infer R>
     dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
   } ?
-      & Return<Self, Id, Type>
+      & Return<Self, Id, Type, Proxy>
       & Layer.Layer<
         Self,
         E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
@@ -6443,21 +6446,21 @@ export declare namespace Service {
       >
       & { readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>> }
     : Maker extends {
-      scoped: Effect<infer Type extends AllowedType, infer E, infer R>
-    } ? Return<Self, Id, Type> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
+      scoped: Effect<infer Type, infer E, infer R>
+    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
         readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>>
       }
     : Maker extends {
-      scoped: Effect<infer Type extends AllowedType, infer E, infer R>
+      scoped: Effect<infer Type, infer E, infer R>
       dependencies: []
-    } ? Return<Self, Id, Type> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
+    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
         readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>>
       }
     : Maker extends {
-      effect: Effect<infer Type extends AllowedType, infer E, infer R>
+      effect: Effect<infer Type, infer E, infer R>
       dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
     } ?
-        & Return<Self, Id, Type>
+        & Return<Self, Id, Type, Proxy>
         & Layer.Layer<
           Self,
           E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
@@ -6466,21 +6469,21 @@ export declare namespace Service {
         >
         & { readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>> }
     : Maker extends {
-      effect: Effect<infer Type extends AllowedType, infer E, infer R>
-    } ? Return<Self, Id, Type> & Layer.Layer<Self, E, R> & {
+      effect: Effect<infer Type, infer E, infer R>
+    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, R> & {
         readonly Layer: Layer.Layer<Self, E, R>
       }
     : Maker extends {
-      effect: Effect<infer Type extends AllowedType, infer E, infer R>
+      effect: Effect<infer Type, infer E, infer R>
       dependencies: []
-    } ? Return<Self, Id, Type> & Layer.Layer<Self, E, R> & {
+    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, R> & {
         readonly Layer: Layer.Layer<Self, E, R>
       }
     : Maker extends {
-      sync: () => infer Type extends AllowedType
+      sync: () => infer Type
       dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
     } ?
-        & Return<Self, Id, Type>
+        & Return<Self, Id, Type, Proxy>
         & Layer.Layer<
           Self,
           { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
@@ -6490,14 +6493,14 @@ export declare namespace Service {
           readonly Layer: Layer.Layer<Self, never, never>
         }
     : Maker extends {
-      sync: () => infer Type extends AllowedType
+      sync: () => infer Type
       dependencies: []
-    } ? Service.Return<Self, Id, Type> & Layer.Layer<Self, never, never> & {
+    } ? Service.Return<Self, Id, Type, Proxy> & Layer.Layer<Self, never, never> & {
         readonly Layer: Layer.Layer<Self, never, never>
       }
     : Maker extends {
-      sync: () => infer Type extends AllowedType
-    } ? Return<Self, Id, Type> & Layer.Layer<Self, never, never> & {
+      sync: () => infer Type
+    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, never, never> & {
         readonly Layer: Layer.Layer<Self, never, never>
       }
     : never
@@ -6508,13 +6511,19 @@ export declare namespace Service {
  * @category constructors
  */
 export const Service: {
-  <Self>(): <const Id extends string, Maker extends Service.Maker>(
-    id: Id,
-    maker: Maker
-  ) => Service.ReturnWithMaker<Self, Id, Maker>
+  <Self>(): {
+    <
+      const Id extends string,
+      Maker extends (Service.Maker<Service.ProhibitedType> & { proxy?: true }) | (Service.Maker<{}> & { proxy: false })
+    >(
+      id: Id,
+      maker: Maker
+    ): Service.ReturnWithMaker<Self, Id, Maker, Maker extends { proxy: false } ? false : true>
+  }
 } = function() {
   return function() {
     const [id, maker] = arguments
+    const proxy = "proxy" in maker ? maker["proxy"] : true
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
     const creationError = new Error()
@@ -6581,7 +6590,9 @@ export const Service: {
       Object.assign(TagClass, live)
       Object.assign(TagClass, layer.proto)
     }
-
+    if (proxy === false) {
+      return TagClass
+    }
     const cache = new Map()
     const done = new Proxy(TagClass, {
       get(_target: any, prop: any, _receiver) {
