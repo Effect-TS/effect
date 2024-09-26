@@ -6393,7 +6393,7 @@ export declare namespace Service {
    * @category models
    */
   export interface TagClass<Self, Id, Type> extends Context.Tag<Self, Self> {
-    readonly of: (_: Pick<Self, (keyof Type) & (keyof Self)>) => Self
+    of<V extends Pick<Self, (keyof Type) & (keyof Self)>>(_: V): Self
 
     new(_: never): Type & {
       readonly _tag: Id
