@@ -45,7 +45,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: pnpm codemod
       - run: pnpm circular
       - run: pnpm lint
 
