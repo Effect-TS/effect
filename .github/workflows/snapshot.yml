@@ -18,6 +18,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Build package
         run: pnpm build
+      - name: Run codemods
+        run: pnpm codemod
       - name: Create snapshot
         id: snapshot
-        run: pnpx pkg-pr-new@0.0.17 publish --pnpm --comment=off ./packages/*
+        run: pnpx pkg-pr-new@0.0.28 publish --pnpm --comment=off ./packages/*
