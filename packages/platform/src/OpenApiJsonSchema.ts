@@ -213,15 +213,28 @@ export type Root = JsonSchema & {
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Root => {
   const $defs: Record<string, any> = {}
-  const out = go(schema.ast, $defs, true, []) as Root
-  // clean up self-referencing entries
-  for (const id in $defs) {
-    if ($defs[id]["$ref"] === get$ref(id)) {
-      delete $defs[id]
-    }
-  }
+  const out = makeWithDefs(schema, { defs: $defs })
   if (!Record.isEmptyRecord($defs)) {
     out.$defs = $defs
+  }
+  return out
+}
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
+  readonly defs: Record<string, any>
+  readonly defsPath?: string
+}): Root => {
+  const defsPath = options.defsPath ?? "#/$defs/"
+  const getRef = (id: string) => `${defsPath}${id}`
+  const out = go(schema.ast, options.defs, true, [], { getRef }) as Root
+  for (const id in options.defs) {
+    if (options.defs[id]["$ref"] === getRef(id)) {
+      delete options.defs[id]
+    }
   }
   return out
 }
@@ -293,10 +306,6 @@ const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST | undefined =
   }
 }
 
-const DEFINITION_PREFIX = "#/$defs/"
-
-const get$ref = (id: string): string => `${DEFINITION_PREFIX}${id}`
-
 const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefined => {
   switch (ast.from._tag) {
     case "Transformation":
@@ -313,7 +322,8 @@ const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefi
 }
 
 const isParseJsonTransformation = (ast: AST.AST): boolean =>
-  ast.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
+  ast._tag === "Transformation" &&
+  ast.from.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
 
 const isOverrideAnnotation = (jsonSchema: JsonSchema): boolean => {
   return ("type" in jsonSchema) || ("oneOf" in jsonSchema) || ("anyOf" in jsonSchema) || ("const" in jsonSchema) ||
@@ -324,7 +334,10 @@ const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema>,
   handleIdentifier: boolean,
-  path: ReadonlyArray<PropertyKey>
+  path: ReadonlyArray<PropertyKey>,
+  options: {
+    readonly getRef: (id: string) => string
+  }
 ): JsonSchema => {
   const hook = AST.getJSONSchemaAnnotation(ast)
   if (Option.isSome(hook)) {
@@ -334,7 +347,7 @@ const go = (
       if (t === undefined) {
         try {
           return {
-            ...go(ast.from, $defs, true, path),
+            ...go(ast.from, $defs, true, path, options),
             ...getJsonSchemaAnnotations(ast),
             ...handler
           }
@@ -346,7 +359,7 @@ const go = (
         }
       } else if (!isOverrideAnnotation(handler)) {
         return {
-          ...go(t, $defs, true, path),
+          ...go(t, $defs, true, path, options),
           ...getJsonSchemaAnnotations(ast)
         }
       }
@@ -354,23 +367,32 @@ const go = (
     return handler
   }
   const surrogate = AST.getSurrogateAnnotation(ast)
+  if (handleIdentifier && !AST.isRefinement(ast)) {
+    const identifier = AST.getJSONIdentifier(
+      Option.isSome(surrogate) ?
+        {
+          annotations: {
+            ...(ast._tag === "Transformation" ? ast.to.annotations : {}),
+            ...ast.annotations
+          }
+        } :
+        ast
+    )
+    if (Option.isSome(identifier)) {
+      const id = identifier.value
+      const out = { $ref: options.getRef(id) }
+      if (!Record.has($defs, id)) {
+        $defs[id] = out
+        $defs[id] = go(ast, $defs, false, path, options)
+      }
+      return out
+    }
+  }
   if (Option.isSome(surrogate)) {
     return {
       ...(ast._tag === "Transformation" ? getJsonSchemaAnnotations(ast.to) : {}),
-      ...go(surrogate.value, $defs, handleIdentifier, path),
+      ...go(surrogate.value, $defs, handleIdentifier, path, options),
       ...getJsonSchemaAnnotations(ast)
-    }
-  }
-  if (handleIdentifier && !AST.isTransformation(ast) && !AST.isRefinement(ast)) {
-    const identifier = AST.getJSONIdentifier(ast)
-    if (Option.isSome(identifier)) {
-      const id = identifier.value
-      const out = { $ref: get$ref(id) }
-      if (!Record.has($defs, id)) {
-        $defs[id] = out
-        $defs[id] = go(ast, $defs, false, path)
-      }
-      return out
     }
   }
   switch (ast._tag) {
@@ -430,11 +452,11 @@ const go = (
       throw new Error(getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "TupleType": {
       const elements = ast.elements.map((e, i) => ({
-        ...go(e.type, $defs, true, path.concat(i)),
+        ...go(e.type, $defs, true, path.concat(i), options),
         ...getJsonSchemaAnnotations(e)
       }))
       const rest = ast.rest.map((annotatedAST) => ({
-        ...go(annotatedAST.type, $defs, true, path),
+        ...go(annotatedAST.type, $defs, true, path, options),
         ...getJsonSchemaAnnotations(annotatedAST)
       }))
       const output: Array = { type: "array" }
@@ -491,11 +513,11 @@ const go = (
         const parameter = is.parameter
         switch (parameter._tag) {
           case "StringKeyword": {
-            patternProperties = go(is.type, $defs, true, path)
+            patternProperties = go(is.type, $defs, true, path, options)
             break
           }
           case "TemplateLiteral": {
-            patternProperties = go(is.type, $defs, true, path)
+            patternProperties = go(is.type, $defs, true, path, options)
             propertyNames = {
               type: "string",
               pattern: AST.getTemplateLiteralRegExp(parameter).source
@@ -503,8 +525,8 @@ const go = (
             break
           }
           case "Refinement": {
-            patternProperties = go(is.type, $defs, true, path)
-            propertyNames = go(parameter, $defs, true, path)
+            patternProperties = go(is.type, $defs, true, path, options)
+            propertyNames = go(parameter, $defs, true, path, options)
             break
           }
           case "SymbolKeyword":
@@ -526,7 +548,7 @@ const go = (
         if (Predicate.isString(name)) {
           const pruned = pruneUndefinedKeyword(ps)
           output.properties[name] = {
-            ...go(pruned ? pruned : ps.type, $defs, true, path.concat(ps.name)),
+            ...go(pruned ? pruned : ps.type, $defs, true, path.concat(ps.name), options),
             ...getJsonSchemaAnnotations(ps)
           }
           // ---------------------------------------------
@@ -559,7 +581,7 @@ const go = (
       const enums: globalThis.Array<AST.LiteralValue> = []
       const anyOf: globalThis.Array<JsonSchema> = []
       for (const type of ast.types) {
-        const schema = go(type, $defs, true, path)
+        const schema = go(type, $defs, true, path, options)
         if ("enum" in schema) {
           if (Object.keys(schema).length > 1) {
             anyOf.push(schema)
@@ -592,7 +614,7 @@ const go = (
       if (AST.encodedBoundAST(ast) === ast) {
         throw new Error(getJSONSchemaMissingAnnotationErrorMessage(path, ast))
       }
-      return go(ast.from, $defs, true, path)
+      return go(ast.from, $defs, true, path, options)
     }
     case "TemplateLiteral": {
       const regex = AST.getTemplateLiteralRegExp(ast)
@@ -609,7 +631,7 @@ const go = (
         throw new Error(getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
       }
       return {
-        ...go(ast.f(), $defs, true, path),
+        ...go(ast.f(), $defs, true, path, options),
         ...getJsonSchemaAnnotations(ast)
       }
     }
@@ -618,17 +640,17 @@ const go = (
       // the 'to' side of the AST. This approach prevents the generation of useless schemas
       // derived from the 'from' side (type: string), ensuring the output matches the intended
       // complex schema type.
-      if (isParseJsonTransformation(ast.from)) {
+      if (isParseJsonTransformation(ast)) {
         return {
           type: "string",
           contentMediaType: "application/json",
-          contentSchema: go(ast.to, $defs, true, path),
+          contentSchema: go(ast.to, $defs, true, path, options),
           ...getJsonSchemaAnnotations(ast)
         }
       }
       return {
         ...getASTJsonSchemaAnnotations(ast.to),
-        ...go(ast.from, $defs, true, path),
+        ...go(ast.from, $defs, true, path, options),
         ...getJsonSchemaAnnotations(ast)
       }
     }

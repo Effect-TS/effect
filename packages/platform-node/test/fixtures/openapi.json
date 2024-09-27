@@ -5,431 +5,32 @@
     "version": "0.0.1"
   },
   "paths": {
-    "/groups/{id}": {
-      "get": {
-        "tags": ["groups"],
-        "operationId": "groups.findById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "schema": {
-              "description": "a string that will be parsed into a number",
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "security": [
-          {
-            "ApiKey": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "an instance of Group",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "an instance of Group",
-                  "title": "Group",
-                  "type": "object",
-                  "required": ["id", "name"],
-                  "properties": {
-                    "id": {
-                      "type": "integer",
-                      "description": "an integer",
-                      "title": "Int"
-                    },
-                    "name": {
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "HttpApiDecodeError: The request did not match the expected schema",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "HttpApiDecodeError: The request did not match the expected schema",
-                  "title": "HttpApiDecodeError",
-                  "type": "object",
-                  "required": ["issues", "message", "_tag"],
-                  "properties": {
-                    "issues": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": ["_tag", "path", "message"],
-                        "properties": {
-                          "_tag": {
-                            "enum": [
-                              "Pointer",
-                              "Unexpected",
-                              "Missing",
-                              "Composite",
-                              "Refinement",
-                              "Transformation",
-                              "Type",
-                              "Forbidden"
-                            ]
-                          },
-                          "path": {
-                            "type": "array",
-                            "items": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "number"
-                                }
-                              ]
-                            }
-                          },
-                          "message": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": false
-                      }
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "an instance of GlobalError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "an instance of GlobalError",
-                  "title": "GlobalError",
-                  "type": "object",
-                  "required": ["_tag"],
-                  "properties": {
-                    "_tag": {
-                      "enum": ["GlobalError"]
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "418": {
-            "description": "an instance of GroupError"
-          }
-        }
-      }
-    },
-    "/groups": {
-      "post": {
-        "tags": ["groups"],
-        "operationId": "groups.create",
-        "parameters": [],
-        "security": [
-          {
-            "ApiKey": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "an instance of Group",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "an instance of Group",
-                  "title": "Group",
-                  "type": "object",
-                  "required": ["id", "name"],
-                  "properties": {
-                    "id": {
-                      "type": "integer",
-                      "description": "an integer",
-                      "title": "Int"
-                    },
-                    "name": {
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "HttpApiDecodeError: The request did not match the expected schema",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "HttpApiDecodeError: The request did not match the expected schema",
-                  "title": "HttpApiDecodeError",
-                  "type": "object",
-                  "required": ["issues", "message", "_tag"],
-                  "properties": {
-                    "issues": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": ["_tag", "path", "message"],
-                        "properties": {
-                          "_tag": {
-                            "enum": [
-                              "Pointer",
-                              "Unexpected",
-                              "Missing",
-                              "Composite",
-                              "Refinement",
-                              "Transformation",
-                              "Type",
-                              "Forbidden"
-                            ]
-                          },
-                          "path": {
-                            "type": "array",
-                            "items": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "number"
-                                }
-                              ]
-                            }
-                          },
-                          "message": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": false
-                      }
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "an instance of GlobalError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "an instance of GlobalError",
-                  "title": "GlobalError",
-                  "type": "object",
-                  "required": ["_tag"],
-                  "properties": {
-                    "_tag": {
-                      "enum": ["GlobalError"]
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "418": {
-            "description": "an instance of GroupError"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["name"],
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          },
-          "required": true
-        }
-      }
-    },
-    "/users/{id}": {
-      "get": {
-        "tags": ["Users API"],
-        "operationId": "users.findById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "schema": {
-              "description": "a string that will be parsed into a number",
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "an instance of User",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "an instance of User",
-                  "title": "User",
-                  "type": "object",
-                  "required": ["id", "name", "createdAt"],
-                  "properties": {
-                    "id": {
-                      "type": "integer",
-                      "description": "an integer",
-                      "title": "Int"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "createdAt": {
-                      "description": "a string that will be parsed into a DateTime.Utc",
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "HttpApiDecodeError: The request did not match the expected schema",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "HttpApiDecodeError: The request did not match the expected schema",
-                  "title": "HttpApiDecodeError",
-                  "type": "object",
-                  "required": ["issues", "message", "_tag"],
-                  "properties": {
-                    "issues": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": ["_tag", "path", "message"],
-                        "properties": {
-                          "_tag": {
-                            "enum": [
-                              "Pointer",
-                              "Unexpected",
-                              "Missing",
-                              "Composite",
-                              "Refinement",
-                              "Transformation",
-                              "Type",
-                              "Forbidden"
-                            ]
-                          },
-                          "path": {
-                            "type": "array",
-                            "items": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "number"
-                                }
-                              ]
-                            }
-                          },
-                          "message": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": false
-                      }
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "an instance of GlobalError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "an instance of GlobalError",
-                  "title": "GlobalError",
-                  "type": "object",
-                  "required": ["_tag"],
-                  "properties": {
-                    "_tag": {
-                      "enum": ["GlobalError"]
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/users": {
       "post": {
         "tags": ["Users API"],
         "operationId": "users.create",
-        "parameters": [],
-        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/NumberFromString"
+            },
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "Authorization/cookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "an instance of User",
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "an instance of User",
-                  "title": "User",
-                  "type": "object",
-                  "required": ["id", "name", "createdAt"],
-                  "properties": {
-                    "id": {
-                      "type": "integer",
-                      "description": "an integer",
-                      "title": "Int"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "createdAt": {
-                      "description": "a string that will be parsed into a DateTime.Utc",
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/User"
                 }
               }
             }
@@ -441,69 +42,10 @@
                 "schema": {
                   "anyOf": [
                     {
-                      "description": "HttpApiDecodeError: The request did not match the expected schema",
-                      "title": "HttpApiDecodeError",
-                      "type": "object",
-                      "required": ["issues", "message", "_tag"],
-                      "properties": {
-                        "issues": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "required": ["_tag", "path", "message"],
-                            "properties": {
-                              "_tag": {
-                                "enum": [
-                                  "Pointer",
-                                  "Unexpected",
-                                  "Missing",
-                                  "Composite",
-                                  "Refinement",
-                                  "Transformation",
-                                  "Type",
-                                  "Forbidden"
-                                ]
-                              },
-                              "path": {
-                                "type": "array",
-                                "items": {
-                                  "anyOf": [
-                                    {
-                                      "type": "string"
-                                    },
-                                    {
-                                      "type": "number"
-                                    }
-                                  ]
-                                }
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            },
-                            "additionalProperties": false
-                          }
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "_tag": {
-                          "enum": ["HttpApiDecodeError"]
-                        }
-                      },
-                      "additionalProperties": false
+                      "$ref": "#/components/schemas/HttpApiDecodeError"
                     },
                     {
-                      "description": "an instance of UserError",
-                      "title": "UserError",
-                      "type": "object",
-                      "required": ["_tag"],
-                      "properties": {
-                        "_tag": {
-                          "enum": ["UserError"]
-                        }
-                      },
-                      "additionalProperties": false
+                      "$ref": "#/components/schemas/UserError"
                     }
                   ]
                 }
@@ -515,16 +57,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "an instance of GlobalError",
-                  "title": "GlobalError",
-                  "type": "object",
-                  "required": ["_tag"],
-                  "properties": {
-                    "_tag": {
-                      "enum": ["GlobalError"]
-                    }
-                  },
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/GlobalError"
                 }
               }
             }
@@ -556,13 +89,16 @@
             "name": "page",
             "in": "header",
             "schema": {
-              "description": "a string that will be parsed into a number",
-              "type": "string"
+              "$ref": "#/components/schemas/NumberFromString"
             },
             "required": false
           }
         ],
-        "security": [],
+        "security": [
+          {
+            "Authorization/cookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -571,25 +107,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "description": "an instance of User",
-                    "title": "User",
-                    "type": "object",
-                    "required": ["id", "name", "createdAt"],
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "description": "an integer",
-                        "title": "Int"
-                      },
-                      "name": {
-                        "type": "string"
-                      },
-                      "createdAt": {
-                        "description": "a string that will be parsed into a DateTime.Utc",
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
+                    "$ref": "#/components/schemas/User"
                   }
                 }
               }
@@ -600,57 +118,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "HttpApiDecodeError: The request did not match the expected schema",
-                  "title": "HttpApiDecodeError",
-                  "type": "object",
-                  "required": ["issues", "message", "_tag"],
-                  "properties": {
-                    "issues": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": ["_tag", "path", "message"],
-                        "properties": {
-                          "_tag": {
-                            "enum": [
-                              "Pointer",
-                              "Unexpected",
-                              "Missing",
-                              "Composite",
-                              "Refinement",
-                              "Transformation",
-                              "Type",
-                              "Forbidden"
-                            ]
-                          },
-                          "path": {
-                            "type": "array",
-                            "items": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "number"
-                                }
-                              ]
-                            }
-                          },
-                          "message": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": false
-                      }
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    }
-                  },
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
                 }
               }
             }
@@ -660,16 +128,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "an instance of GlobalError",
-                  "title": "GlobalError",
-                  "type": "object",
-                  "required": ["_tag"],
-                  "properties": {
-                    "_tag": {
-                      "enum": ["GlobalError"]
-                    }
-                  },
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/GlobalError"
                 }
               }
             }
@@ -679,16 +138,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "an instance of NoStatusError",
-                  "title": "NoStatusError",
-                  "type": "object",
-                  "required": ["_tag"],
-                  "properties": {
-                    "_tag": {
-                      "enum": ["NoStatusError"]
-                    }
-                  },
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/NoStatusError"
                 }
               }
             }
@@ -701,7 +151,11 @@
         "tags": ["Users API"],
         "operationId": "users.upload",
         "parameters": [],
-        "security": [],
+        "security": [
+          {
+            "Authorization/cookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -730,57 +184,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "HttpApiDecodeError: The request did not match the expected schema",
-                  "title": "HttpApiDecodeError",
-                  "type": "object",
-                  "required": ["issues", "message", "_tag"],
-                  "properties": {
-                    "issues": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": ["_tag", "path", "message"],
-                        "properties": {
-                          "_tag": {
-                            "enum": [
-                              "Pointer",
-                              "Unexpected",
-                              "Missing",
-                              "Composite",
-                              "Refinement",
-                              "Transformation",
-                              "Type",
-                              "Forbidden"
-                            ]
-                          },
-                          "path": {
-                            "type": "array",
-                            "items": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "number"
-                                }
-                              ]
-                            }
-                          },
-                          "message": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": false
-                      }
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "_tag": {
-                      "enum": ["HttpApiDecodeError"]
-                    }
-                  },
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
                 }
               }
             }
@@ -790,16 +194,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "an instance of GlobalError",
-                  "title": "GlobalError",
-                  "type": "object",
-                  "required": ["_tag"],
-                  "properties": {
-                    "_tag": {
-                      "enum": ["GlobalError"]
-                    }
-                  },
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/GlobalError"
                 }
               }
             }
@@ -830,20 +225,320 @@
           "required": true
         }
       }
+    },
+    "/users/{id}": {
+      "get": {
+        "tags": ["Users API"],
+        "operationId": "users.findById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/NumberFromString"
+            },
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "Authorization/cookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "an instance of User",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "HttpApiDecodeError: The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "an instance of GlobalError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups": {
+      "post": {
+        "tags": ["groups"],
+        "operationId": "groups.create",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "an instance of Group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Group"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "HttpApiDecodeError: The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "an instance of GlobalError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalError"
+                }
+              }
+            }
+          },
+          "418": {
+            "description": "an instance of GroupError"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/groups/{id}": {
+      "get": {
+        "tags": ["groups"],
+        "operationId": "groups.findById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/NumberFromString"
+            },
+            "required": true
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "an instance of Group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Group"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "HttpApiDecodeError: The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "an instance of GlobalError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalError"
+                }
+              }
+            }
+          },
+          "418": {
+            "description": "an instance of GroupError"
+          }
+        }
+      }
     }
   },
   "tags": [
     {
-      "name": "groups"
+      "name": "Users API"
     },
     {
-      "name": "Users API"
+      "name": "groups"
     }
   ],
   "components": {
-    "schemas": {},
+    "schemas": {
+      "User": {
+        "description": "an instance of User",
+        "title": "User",
+        "type": "object",
+        "required": ["id", "name", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "an integer",
+            "title": "Int"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/DateTimeUtc"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DateTimeUtc": {
+        "description": "a string that will be parsed into a DateTime.Utc",
+        "type": "string"
+      },
+      "NumberFromString": {
+        "type": "string",
+        "description": "a string that will be parsed into a number"
+      },
+      "HttpApiDecodeError": {
+        "description": "HttpApiDecodeError: The request did not match the expected schema",
+        "title": "HttpApiDecodeError",
+        "type": "object",
+        "required": ["issues", "message", "_tag"],
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["_tag", "path", "message"],
+              "properties": {
+                "_tag": {
+                  "enum": [
+                    "Pointer",
+                    "Unexpected",
+                    "Missing",
+                    "Composite",
+                    "Refinement",
+                    "Transformation",
+                    "Type",
+                    "Forbidden"
+                  ]
+                },
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  }
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "_tag": {
+            "enum": ["HttpApiDecodeError"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserError": {
+        "description": "an instance of UserError",
+        "title": "UserError",
+        "type": "object",
+        "required": ["_tag"],
+        "properties": {
+          "_tag": {
+            "enum": ["UserError"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "GlobalError": {
+        "description": "an instance of GlobalError",
+        "title": "GlobalError",
+        "type": "object",
+        "required": ["_tag"],
+        "properties": {
+          "_tag": {
+            "enum": ["GlobalError"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "NoStatusError": {
+        "description": "an instance of NoStatusError",
+        "title": "NoStatusError",
+        "type": "object",
+        "required": ["_tag"],
+        "properties": {
+          "_tag": {
+            "enum": ["NoStatusError"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Group": {
+        "description": "an instance of Group",
+        "title": "Group",
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "an integer",
+            "title": "Int"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "securitySchemes": {
-      "ApiKey": {
+      "Authorization/cookie": {
         "type": "apiKey",
         "name": "token",
         "in": "cookie"
