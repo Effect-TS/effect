@@ -6547,6 +6547,7 @@ export const Service: {
           return args[prop]
         }
       })
+    TagClass["make"] = TagClass["of"]
 
     const of = TagClass["of"]
 
