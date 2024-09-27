@@ -18,7 +18,7 @@ class Postfix extends Effect.Service<Postfix>()("Postfix", {
 const messages: Array<string> = []
 
 class Logger extends Effect.Service<Logger>()("Logger", {
-  proxy: true,
+  withAccessors: true,
   effect: Effect.gen(function*() {
     const { prefix } = yield* Prefix
     const { postfix } = yield* Postfix
@@ -29,16 +29,14 @@ class Logger extends Effect.Service<Logger>()("Logger", {
         })
     }
   }),
-  dependencies: [Prefix, Postfix]
+  dependencies: [Prefix.Live, Postfix.Live]
 }) {
-  static Test = Layer.succeed(this, Logger.make({ info: () => Effect.void }))
+  static Test = Layer.succeed(this, Logger.of({ info: () => Effect.void }))
 }
 
 describe("Effect", () => {
   it.effect("Service correctly wires dependencies", () =>
     Effect.gen(function*() {
-      const { _tag } = yield* Logger
-      expect(_tag).toEqual("Logger")
       yield* Logger.info("Ok")
       expect(messages).toEqual(["[PRE][Ok][POST]"])
       const { prefix } = yield* Prefix
@@ -46,6 +44,6 @@ describe("Effect", () => {
       const { postfix } = yield* Postfix
       expect(postfix).toEqual("POST")
     }).pipe(
-      Effect.provide([Logger, Prefix, Postfix])
+      Effect.provide([Logger.Live, Prefix.Live, Postfix.Live])
     ))
 })

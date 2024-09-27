@@ -77,22 +77,29 @@ export declare namespace Layer {
     }
   }
   /**
+   * @since 3.9.0
+   * @category type-level
+   */
+  export interface Any {
+    readonly [LayerTypeId]: any
+  }
+  /**
    * @since 2.0.0
    * @category type-level
    */
-  export type Context<T extends Layer<never, any, any>> = [T] extends [Layer<infer _ROut, infer _E, infer _RIn>] ? _RIn
+  export type Context<T extends Any> = [T] extends [Layer<infer _ROut, infer _E, infer _RIn>] ? _RIn
     : never
   /**
    * @since 2.0.0
    * @category type-level
    */
-  export type Error<T extends Layer<never, any, any>> = [T] extends [Layer<infer _ROut, infer _E, infer _RIn>] ? _E
+  export type Error<T extends Any> = [T] extends [Layer<infer _ROut, infer _E, infer _RIn>] ? _E
     : never
   /**
    * @since 2.0.0
    * @category type-level
    */
-  export type Success<T extends Layer<never, any, any>> = [T] extends [Layer<infer _ROut, infer _E, infer _RIn>] ? _ROut
+  export type Success<T extends Any> = [T] extends [Layer<infer _ROut, infer _E, infer _RIn>] ? _ROut
     : never
 }
 
