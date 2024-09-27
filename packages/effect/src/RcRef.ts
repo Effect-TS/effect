@@ -39,7 +39,8 @@ export interface RcRef<out A, out E = never>
  * @since 3.8.0
  */
 export interface RcRefUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
-  RcRef?: () => Extract<A[Unify.typeSymbol], RcRef<any, any>>
+  RcRef?: () => A[Unify.typeSymbol] extends RcRef<infer A0, infer E0> | infer _ ? RcRef<A0, E0>
+    : never
 }
 
 /**
