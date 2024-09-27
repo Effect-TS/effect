@@ -538,3 +538,91 @@ export const provideSystem: {
   <A, E, R>(effect: Effect.Effect<A, E, R>, input: string): Effect.Effect<A, E, Exclude<R, SystemInstruction>> =>
     Effect.provideService(effect, SystemInstruction, input)
 )
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const append: {
+  (input: AiInput.Input, options?: {
+    readonly role?: AiRole.AiRole | undefined
+  }): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, AiInput>>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
+    readonly role?: AiRole.AiRole | undefined
+  }): Effect.Effect<A, E, Exclude<R, AiInput>>
+} = dual((args) => Effect.isEffect(args[0]), <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
+  readonly role?: AiRole.AiRole | undefined
+}): Effect.Effect<A, E, Exclude<R, AiInput>> => appendEffect(effect, Effect.succeed(make(input, options))))
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const appendEffect: {
+  <E2, R2>(
+    input: Effect.Effect<AiInput.Type, E2, R2>
+  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
+  <A, E, R, E2, R2>(
+    effect: Effect.Effect<A, E, R>,
+    input: Effect.Effect<AiInput.Type, E2, R2>
+  ): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
+} = dual(2, <A, E, R, E2, R2>(
+  effect: Effect.Effect<A, E, R>,
+  input: Effect.Effect<AiInput.Type, E2, R2>
+): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2> =>
+  Effect.flatMap(
+    Effect.serviceOption(AiInput),
+    Option.match({
+      onNone: () => Effect.provideServiceEffect(effect, AiInput, input),
+      onSome: (existing) =>
+        Effect.provideServiceEffect(
+          effect,
+          AiInput,
+          Effect.map(input, (input) => Chunk.appendAll(existing, input))
+        )
+    })
+  ))
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const prepend: {
+  (input: AiInput.Input, options?: {
+    readonly role?: AiRole.AiRole | undefined
+  }): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, AiInput>>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
+    readonly role?: AiRole.AiRole | undefined
+  }): Effect.Effect<A, E, Exclude<R, AiInput>>
+} = dual((args) => Effect.isEffect(args[0]), <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
+  readonly role?: AiRole.AiRole | undefined
+}): Effect.Effect<A, E, Exclude<R, AiInput>> => prependEffect(effect, Effect.succeed(make(input, options))))
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const prependEffect: {
+  <E2, R2>(
+    input: Effect.Effect<AiInput.Type, E2, R2>
+  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
+  <A, E, R, E2, R2>(
+    effect: Effect.Effect<A, E, R>,
+    input: Effect.Effect<AiInput.Type, E2, R2>
+  ): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
+} = dual(2, <A, E, R, E2, R2>(
+  effect: Effect.Effect<A, E, R>,
+  input: Effect.Effect<AiInput.Type, E2, R2>
+): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2> =>
+  Effect.flatMap(
+    Effect.serviceOption(AiInput),
+    Option.match({
+      onNone: () => Effect.provideServiceEffect(effect, AiInput, input),
+      onSome: (existing) =>
+        Effect.provideServiceEffect(
+          effect,
+          AiInput,
+          Effect.map(input, (input) => Chunk.prependAll(existing, input))
+        )
+    })
+  ))
