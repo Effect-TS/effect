@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-fix Unify for RcRef & Deferred
+fix Unify for Deferred
