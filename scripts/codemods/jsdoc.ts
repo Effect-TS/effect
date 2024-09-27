@@ -6,7 +6,7 @@ import type cs from "jscodeshift"
 //
 declare module "ast-types/gen/namedTypes.js" {
   namespace namedTypes {
-    interface CallExpression extends TSHasOptionalTypeParameterInstantiation {}
+    interface CallExpression extends TSHasOptionalTypeParameterInstantiation { }
   }
 }
 
@@ -35,7 +35,10 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
   }).forEach((path) => {
     const comments = path.node.comments ?? []
     j(path).find(j.TSCallSignatureDeclaration).forEach((path) => {
-      path.node.comments = comments
+      // Don't override comments if they already exist
+      if (!Array.isArray(path.node.comments)) {
+        path.node.comments = comments
+      }
     })
   })
 
@@ -57,7 +60,10 @@ export default function transformer(file: cs.FileInfo, api: cs.API) {
     const comments = path.node.comments ?? []
     j(path).find(j.CallExpression).forEach((path) => {
       path.node.typeParameters?.params.forEach((param) => {
-        param.comments = comments
+        // Don't override comments if they already exist
+        if (!Array.isArray(param.comments)) {
+          param.comments = comments
+        }
       })
     })
   })
