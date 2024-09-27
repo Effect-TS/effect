@@ -6,7 +6,7 @@ import type cs from "jscodeshift"
 //
 declare module "ast-types/gen/namedTypes.js" {
   namespace namedTypes {
-    interface CallExpression extends TSHasOptionalTypeParameterInstantiation { }
+    interface CallExpression extends TSHasOptionalTypeParameterInstantiation {}
   }
 }
 

@@ -19,4 +19,4 @@ const transformer = Path.resolve("scripts/codemods/jsdoc.ts")
 jscodeshift.run(Path.resolve(transformer), paths, {
   babel: true,
   parser: "ts"
-}).then((result) => console.log(result))
+})
