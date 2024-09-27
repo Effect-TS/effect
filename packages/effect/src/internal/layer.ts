@@ -1293,7 +1293,7 @@ const provideSomeRuntime = dual<
 /** @internal */
 export const effect_provide = dual<
   {
-    <const Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]>(
+    <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       layers: Layers
     ): <A, E, R>(
       self: Effect.Effect<A, E, R>
@@ -1317,7 +1317,7 @@ export const effect_provide = dual<
     ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, R2>>
   },
   {
-    <A, E, R, const Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]>(
+    <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       self: Effect.Effect<A, E, R>,
       layers: Layers
     ): Effect.Effect<
@@ -1352,7 +1352,7 @@ export const effect_provide = dual<
       | Context.Context<ROut>
       | Runtime.Runtime<ROut>
       | ManagedRuntime.ManagedRuntime<ROut, any>
-      | Array<Layer.Layer<any, any, any>>
+      | Array<Layer.Layer.Any>
   ): Effect.Effect<any, any, Exclude<R, ROut>> => {
     if (Array.isArray(source)) {
       // @ts-expect-error

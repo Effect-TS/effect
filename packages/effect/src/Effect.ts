@@ -7,7 +7,7 @@ import type * as Chunk from "./Chunk.js"
 import type * as Clock from "./Clock.js"
 import type { ConfigProvider } from "./ConfigProvider.js"
 import type { Console } from "./Console.js"
-import * as Context from "./Context.js"
+import type * as Context from "./Context.js"
 import type * as Deferred from "./Deferred.js"
 import type * as Duration from "./Duration.js"
 import type * as Either from "./Either.js"
@@ -3326,7 +3326,7 @@ export const mapInputContext: {
  * @category context
  */
 export const provide: {
-  <const Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]>(
+  <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
     layers: Layers
   ): <A, E, R>(
     self: Effect<A, E, R>
@@ -3344,7 +3344,7 @@ export const provide: {
   <E2, R2>(
     managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, R2>>
-  <A, E, R, const Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]>(
+  <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
     self: Effect<A, E, R>,
     layers: Layers
   ): Effect<
@@ -6249,29 +6249,66 @@ export declare namespace Tag {
    * @category models
    */
   export type AllowedType = (Record<PropertyKey, any> & ProhibitedType) | string | number | symbol
+
+  /**
+   * @since 3.9.0
+   * @category models
+   */
+  export type Proxy<Self, Type> = {
+    [
+      k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
+        ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
+        : k
+    ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+      (...args: Readonly<Args>) => Effect<A, E, Self | R>
+      : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+      : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+      : Effect<Type[k], never, Self>
+  }
+}
+
+const makeTagProxy = (TagClass: Context.Tag<any, any> & Record<PropertyKey, any>) => {
+  const cache = new Map()
+  const done = new Proxy(TagClass, {
+    get(_target: any, prop: any, _receiver) {
+      if (prop === "use") {
+        return (body: (_: any) => any) => core.andThen(TagClass, body)
+      }
+      if (prop in TagClass) {
+        return TagClass[prop]
+      }
+      if (cache.has(prop)) {
+        return cache.get(prop)
+      }
+      const fn = (...args: Array<any>) =>
+        core.andThen(TagClass, (s: any) => {
+          if (typeof s[prop] === "function") {
+            cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
+            return s[prop](...args)
+          }
+          cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
+          return s[prop]
+        })
+      const cn = core.andThen(TagClass, (s) => s[prop])
+      Object.assign(fn, cn)
+      Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
+      cache.set(prop, fn)
+      return fn
+    }
+  })
+  return done
 }
 
 /**
  * @since 2.0.0
- * @category constructors
+ * @category context
  */
 export const Tag: <const Id extends string>(id: Id) => <
   Self,
   Type extends Tag.AllowedType
 >() =>
   & Context.TagClass<Self, Id, Type>
-  & (Type extends Record<PropertyKey, any> ? {
-      [
-        k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
-          ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
-          : k
-      ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
-        (...args: Readonly<Args>) => Effect<A, E, Self | R>
-        : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
-        : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-        : Effect<Type[k], never, Self>
-    } :
-    {})
+  & (Type extends Record<PropertyKey, any> ? Tag.Proxy<Self, Type> : {})
   & {
     use: <X>(
       body: (_: Type) => X
@@ -6289,51 +6326,98 @@ export const Tag: <const Id extends string>(id: Id) => <
         return creationError.stack
       }
     })
-    const cache = new Map()
-    const done = new Proxy(TagClass, {
-      get(_target: any, prop: any, _receiver) {
-        if (prop === "use") {
-          // @ts-expect-error
-          return (body) => core.andThen(TagClass, body)
-        }
-        if (prop in TagClass) {
-          // @ts-expect-error
-          return TagClass[prop]
-        }
-        if (cache.has(prop)) {
-          return cache.get(prop)
-        }
-        const fn = (...args: Array<any>) =>
-          // @ts-expect-error
-          core.andThen(TagClass, (s: any) => {
-            if (typeof s[prop] === "function") {
-              // @ts-expect-error
-              cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
-              return s[prop](...args)
-            }
-            // @ts-expect-error
-            cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
-            return s[prop]
-          })
-        // @ts-expect-error
-        const cn = core.andThen(TagClass, (s) => s[prop])
-        Object.assign(fn, cn)
-        Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
-        cache.set(prop, fn)
-        return fn
-      }
-    })
-    return done
+    return makeTagProxy(TagClass as any)
   }
 
 /**
- * @since 2.0.0
- * @category models
+ * @since 3.9.0
+ * @category context
+ */
+export const Service: <Self>() => {
+  <
+    const Key extends string,
+    const Accessors extends boolean,
+    Service extends Service.AllowedType<Accessors>,
+    E,
+    R,
+    const Deps extends ReadonlyArray<Layer.Layer.Any> = []
+  >(
+    key: Key,
+    maker: {
+      readonly scoped: Effect<Service, E, R>
+      readonly dependencies?: Deps
+      readonly withAccessors?: Accessors
+      readonly effect?: undefined
+      readonly sync?: undefined
+      readonly succeed?: undefined
+    }
+  ): Service.Class<Self, Key, Service, E, Exclude<R, Scope.Scope>, Deps, Accessors>
+  <
+    const Key extends string,
+    const Accessors extends boolean,
+    Service extends Service.AllowedType<Accessors>,
+    E = never,
+    R = never,
+    const Deps extends ReadonlyArray<Layer.Layer.Any> = []
+  >(
+    key: Key,
+    maker: {
+      readonly effect: Effect<Service, E, R>
+      readonly dependencies?: Deps
+      readonly withAccessors?: Accessors
+    } | {
+      readonly sync: LazyArg<Service>
+      readonly withAccessors?: Accessors
+    } | {
+      readonly succeed: Service
+      readonly withAccessors?: Accessors
+    }
+  ): Service.Class<Self, Key, Service, E, R, Deps, Accessors>
+} = function() {
+  return function() {
+    const [id, maker] = arguments
+    const proxy = "withAccessors" in maker ? maker["withAccessors"] : false
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    const creationError = new Error()
+    Error.stackTraceLimit = limit
+    function TagClass() {}
+    Object.setPrototypeOf(TagClass, TagProto)
+    TagClass.key = id
+    Object.defineProperty(TagClass, "stack", {
+      get() {
+        return creationError.stack
+      }
+    })
+    const tag = TagClass as unknown as Context.Tag<unknown, unknown>
+
+    if ("effect" in maker) {
+      TagClass.Layer = layer.fromEffect(tag, maker.effect)
+    } else if ("scoped" in maker) {
+      TagClass.Layer = layer.scoped(tag, maker.scoped)
+    } else if ("sync" in maker) {
+      TagClass.Layer = layer.sync(tag, maker.sync)
+    } else {
+      TagClass.Layer = layer.succeed(tag, maker.succeed)
+    }
+
+    if ("dependencies" in maker && maker.dependencies.length > 0) {
+      TagClass.Live = layer.provide(TagClass.Layer, layer.mergeAll(...maker.dependencies))
+    } else {
+      TagClass.Live = TagClass.Layer
+    }
+
+    return proxy === true ? makeTagProxy(TagClass as any) : TagClass
+  }
+}
+
+/**
+ * @since 3.9.0
+ * @category context
  */
 export declare namespace Service {
   /**
-   * @since 2.0.0
-   * @category models
+   * @since 3.9.0
    */
   export interface ProhibitedType {
     Service?: `property "Service" is forbidden`
@@ -6352,282 +6436,37 @@ export declare namespace Service {
   }
 
   /**
-   * @since 2.0.0
-   * @category models
+   * @since 3.9.0
    */
-  export type AllowedType<P> = Record<PropertyKey, any> & P
+  export type AllowedType<Accessors extends boolean> = Accessors extends true
+    ? Record<PropertyKey, any> & ProhibitedType
+    : any
 
   /**
-   * @since 2.0.0
-   * @category models
+   * @since 3.9.0
    */
-  export type Maker<P> = {
-    effect: Effect<AllowedType<P>, any, any>
-    dependencies?: never
-  } | {
-    effect: Effect<AllowedType<P>, any, any>
-    dependencies: []
-  } | {
-    effect: Effect<AllowedType<P>, any, any>
-    dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-  } | {
-    scoped: Effect<AllowedType<P>, any, any>
-    dependencies?: never
-  } | {
-    scoped: Effect<AllowedType<P>, any, any>
-    dependencies: []
-  } | {
-    scoped: Effect<AllowedType<P>, any, any>
-    dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-  } | {
-    sync: () => AllowedType<P>
-    dependencies?: never
-  } | {
-    sync: () => AllowedType<P>
-    dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-  } | {
-    sync: () => AllowedType<P>
-    dependencies: []
-  }
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TagClass<Self, Id, Type> extends Context.Tag<Self, Self> {
-    make(_: Type): Self
-
-    new(_: never): Type & {
-      readonly _tag: Id
-    }
-  }
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Return<Self, Id extends string, Type, Proxy extends boolean, T = Type & { readonly _tag: Id }> =
-    & TagClass<Self, Id, Type>
-    & (Proxy extends true ? (T extends Record<PropertyKey, any> ? {
-          [
-            k in keyof T as T[k] extends ((...args: [...infer Args]) => infer Ret)
-              ? ((...args: Readonly<Args>) => Ret) extends T[k] ? k : never
-              : k
-          ]: T[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R>
-            ? (...args: Readonly<Args>) => Effect<A, E, Self | R>
-            : T[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
-            : T[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-            : Effect<T[k], never, Self>
-        } :
-        {}) :
-      {})
-    & (Proxy extends true ? {
-        use: <X>(
-          body: (_: Type) => X
-        ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
-      } :
-      {})
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type ReturnWithMaker<Self, Id extends string, Maker, Proxy extends boolean> =
-    & {}
-    & Maker extends {
-    scoped: Effect<infer Type, infer E, infer R>
-    dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-  } ?
-      & Return<Self, Id, Type, Proxy>
-      & Layer.Layer<
+  export type Class<
+    Self,
+    Key extends string,
+    Service,
+    E,
+    R,
+    Deps extends ReadonlyArray<Layer.Layer.Any>,
+    Accessors extends boolean
+  > =
+    & {
+      new(_: never): Context.TagClassShape<Key, Service>
+      readonly Layer: Layer.Layer<Self, E, R>
+      readonly Live: Deps extends [] ? Layer.Layer<Self, E, R> : Layer.Layer<
         Self,
-        E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
-        | Exclude<R, Scope.Scope | { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
-        | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+        E | Deps[number] extends Layer.Layer<infer _Out, infer _E, infer _In> ? _E : never,
+        | Exclude<R, Deps[number] extends Layer.Layer<infer _Out, infer _E, infer _In> ? _Out : never>
+        | Deps[number] extends Layer.Layer<infer _Out, infer _E, infer _In> ? _In : never
       >
-      & { readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>> }
-    : Maker extends {
-      scoped: Effect<infer Type, infer E, infer R>
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
-        readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>>
-      }
-    : Maker extends {
-      scoped: Effect<infer Type, infer E, infer R>
-      dependencies: []
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
-        readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>>
-      }
-    : Maker extends {
-      effect: Effect<infer Type, infer E, infer R>
-      dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-    } ?
-        & Return<Self, Id, Type, Proxy>
-        & Layer.Layer<
-          Self,
-          E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
-          | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
-          | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
-        >
-        & { readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>> }
-    : Maker extends {
-      effect: Effect<infer Type, infer E, infer R>
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, R> & {
-        readonly Layer: Layer.Layer<Self, E, R>
-      }
-    : Maker extends {
-      effect: Effect<infer Type, infer E, infer R>
-      dependencies: []
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, R> & {
-        readonly Layer: Layer.Layer<Self, E, R>
-      }
-    : Maker extends {
-      sync: () => infer Type
-      dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-    } ?
-        & Return<Self, Id, Type, Proxy>
-        & Layer.Layer<
-          Self,
-          { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
-          { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
-        >
-        & {
-          readonly Layer: Layer.Layer<Self, never, never>
-        }
-    : Maker extends {
-      sync: () => infer Type
-      dependencies: []
-    } ? Service.Return<Self, Id, Type, Proxy> & Layer.Layer<Self, never, never> & {
-        readonly Layer: Layer.Layer<Self, never, never>
-      }
-    : Maker extends {
-      sync: () => infer Type
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, never, never> & {
-        readonly Layer: Layer.Layer<Self, never, never>
-      }
-    : never
-}
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const Service: {
-  <Self>(): {
-    <
-      const Id extends string,
-      Maker extends (Service.Maker<Service.ProhibitedType> & { proxy: true }) | (Service.Maker<{}> & { proxy?: false })
-    >(
-      id: Id,
-      maker: Maker
-    ): Service.ReturnWithMaker<Self, Id, Maker, Maker extends { proxy: true } ? true : false>
-  }
-} = function() {
-  return function() {
-    const [id, maker] = arguments
-    const proxy = "proxy" in maker ? maker["proxy"] : false
-    const limit = Error.stackTraceLimit
-    Error.stackTraceLimit = 2
-    const creationError = new Error()
-    Error.stackTraceLimit = limit
-    function TagClass() {}
-    Object.setPrototypeOf(TagClass, TagProto)
-    TagClass.key = id
-    Object.defineProperty(TagClass, "stack", {
-      get() {
-        return creationError.stack
-      }
-    })
-
-    TagClass["of"] = (args: any) =>
-      new Proxy(args, {
-        get(_target: any, prop: any, _receiver) {
-          if (prop === "_tag") {
-            return id
-          }
-          return args[prop]
-        }
-      })
-
-    const of = TagClass["of"]
-
-    if ("effect" in maker) {
-      // @ts-expect-error
-      TagClass["Layer"] = layer.fromEffect(TagClass, maker["effect"]).pipe(
-        // @ts-expect-error
-        layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
-      )
-      let live = TagClass["Layer"]
-      if ("dependencies" in maker) {
-        live = live.pipe(layer.provide(layer.mergeAll(...maker["dependencies"])))
-      }
-      Object.assign(TagClass, live)
-      Object.assign(TagClass, layer.proto)
+      readonly use: <X>(
+        body: (_: Service) => X
+      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
     }
-
-    if ("scoped" in maker) {
-      // @ts-expect-error
-      TagClass["Layer"] = layer.scoped(TagClass, maker["scoped"]).pipe(
-        // @ts-expect-error
-        layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
-      )
-      let live = TagClass["Layer"]
-      if ("dependencies" in maker) {
-        live = live.pipe(layer.provide(layer.mergeAll(...maker["dependencies"])))
-      }
-      Object.assign(TagClass, live)
-      Object.assign(TagClass, layer.proto)
-    }
-
-    if ("sync" in maker) {
-      // @ts-expect-error
-      TagClass["Layer"] = layer.sync(TagClass, maker["sync"]).pipe(
-        // @ts-expect-error
-        layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
-      )
-      let live = TagClass["Layer"]
-      if ("dependencies" in maker) {
-        live = live.pipe(layer.provide(layer.mergeAll(...maker["dependencies"])))
-      }
-      Object.assign(TagClass, live)
-      Object.assign(TagClass, layer.proto)
-    }
-    if (proxy === false) {
-      return TagClass
-    }
-    const cache = new Map()
-    const done = new Proxy(TagClass, {
-      get(_target: any, prop: any, _receiver) {
-        if (prop === "use") {
-          // @ts-expect-error
-          return (body) => core.andThen(TagClass, body)
-        }
-        if (prop in TagClass) {
-          // @ts-expect-error
-          return TagClass[prop]
-        }
-        if (cache.has(prop)) {
-          return cache.get(prop)
-        }
-        const fn = (...args: Array<any>) =>
-          // @ts-expect-error
-          core.andThen(TagClass, (s: any) => {
-            if (typeof s[prop] === "function") {
-              // @ts-expect-error
-              cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
-              return s[prop](...args)
-            }
-            // @ts-expect-error
-            cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
-            return s[prop]
-          })
-        // @ts-expect-error
-        const cn = core.andThen(TagClass, (s) => s[prop])
-        Object.assign(fn, cn)
-        Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
-        cache.set(prop, fn)
-        return fn
-      }
-    })
-    return done
-  }
+    & Context.Tag<Self, Service>
+    & ([Accessors] extends [true] ? Tag.Proxy<Self, Service> : {})
 }
