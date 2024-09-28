@@ -4,21 +4,17 @@ import * as it from "effect/test/utils/extend"
 import { describe, expect } from "vitest"
 
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
-  sync: () => ({
-    prefix: "PRE"
-  })
+  sync: () => ({ prefix: "PRE" })
 }) {}
 
 class Postfix extends Effect.Service<Postfix>()("Postfix", {
-  sync: () => ({
-    postfix: "POST"
-  })
+  sync: () => ({ postfix: "POST" })
 }) {}
 
 const messages: Array<string> = []
 
 class Logger extends Effect.Service<Logger>()("Logger", {
-  proxy: true,
+  accessors: true,
   effect: Effect.gen(function*() {
     const { prefix } = yield* Prefix
     const { postfix } = yield* Postfix

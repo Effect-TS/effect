@@ -6391,6 +6391,14 @@ export declare namespace Service {
    * @since 2.0.0
    * @category models
    */
+  export type Options =
+    | (Service.Maker<Service.ProhibitedType> & { accessors: true })
+    | (Service.Maker<{}> & { accessors?: false })
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
   export interface TagClass<Self, Id, Type> extends Context.Tag<Self, Self> {
     make(_: Type): Self
 
@@ -6435,20 +6443,25 @@ export declare namespace Service {
    * @since 2.0.0
    * @category models
    */
-  export type ReturnWithMaker<Self, Id extends string, Maker, Proxy extends boolean> =
+  export type ReturnWithOptions<
+    Self,
+    Id extends string,
+    Options,
+    Proxy extends boolean = Options extends { accessors: true } ? true : false
+  > =
     & {}
-    & Maker extends { scoped: Effect<infer Type, infer E, infer R> } ?
+    & Options extends { scoped: Effect<infer Type, infer E, infer R> } ?
       & Return<Self, Id, Type, Proxy>
-      & DefaultLayer<Self, E, Exclude<R, Scope.Scope>, Maker>
-      & InstanceLayers<Self, E, Exclude<R, Scope.Scope>, Maker>
-    : Maker extends { effect: Effect<infer Type, infer E, infer R> } ?
+      & DefaultLayer<Self, E, Exclude<R, Scope.Scope>, Options>
+      & InstanceLayers<Self, E, Exclude<R, Scope.Scope>, Options>
+    : Options extends { effect: Effect<infer Type, infer E, infer R> } ?
         & Return<Self, Id, Type, Proxy>
-        & DefaultLayer<Self, E, R, Maker>
-        & InstanceLayers<Self, E, R, Maker>
-    : Maker extends { sync: () => infer Type } ?
+        & DefaultLayer<Self, E, R, Options>
+        & InstanceLayers<Self, E, R, Options>
+    : Options extends { sync: () => infer Type } ?
         & Return<Self, Id, Type, Proxy>
-        & DefaultLayer<Self, never, never, Maker>
-        & InstanceLayers<Self, never, never, Maker>
+        & DefaultLayer<Self, never, never, Options>
+        & InstanceLayers<Self, never, never, Options>
     : never
 }
 
@@ -6458,18 +6471,15 @@ export declare namespace Service {
  */
 export const Service: {
   <Self>(): {
-    <
-      const Id extends string,
-      Maker extends (Service.Maker<Service.ProhibitedType> & { proxy: true }) | (Service.Maker<{}> & { proxy?: false })
-    >(
+    <const Id extends string, Options extends Service.Options>(
       id: Id,
-      maker: Maker
-    ): Service.ReturnWithMaker<Self, Id, Maker, Maker extends { proxy: true } ? true : false>
+      maker: Options
+    ): Service.ReturnWithOptions<Self, Id, Options>
   }
 } = function() {
   return function() {
     const [id, maker] = arguments
-    const proxy = "proxy" in maker ? maker["proxy"] : false
+    const proxy = "accessors" in maker ? maker["accessors"] : false
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
     const creationError = new Error()
