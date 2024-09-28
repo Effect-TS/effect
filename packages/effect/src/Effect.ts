@@ -57,7 +57,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
+import type { Concurrency, Covariant, NoInfer, NotFunction, Simplify } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import type { YieldWrap } from "./Utils.js"
 
@@ -3326,7 +3326,7 @@ export const mapInputContext: {
  * @category context
  */
 export const provide: {
-  <const Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]>(
+  <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
     layers: Layers
   ): <A, E, R>(
     self: Effect<A, E, R>
@@ -3344,7 +3344,7 @@ export const provide: {
   <E2, R2>(
     managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, R2>>
-  <A, E, R, const Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]>(
+  <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
     self: Effect<A, E, R>,
     layers: Layers
   ): Effect<
@@ -6249,6 +6249,32 @@ export declare namespace Tag {
    * @category models
    */
   export type AllowedType = (Record<PropertyKey, any> & ProhibitedType) | string | number | symbol
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type Proxy<Type, Self> = {
+    [
+      k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
+        ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
+        : k
+    ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+      (...args: Readonly<Args>) => Effect<A, E, Self | R>
+      : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+      : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+      : Effect<Type[k], never, Self>
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type ProxyUse<Type, Self> = {
+    use: <X>(
+      body: (_: Type) => X
+    ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+  }
 }
 
 /**
@@ -6260,23 +6286,8 @@ export const Tag: <const Id extends string>(id: Id) => <
   Type extends Tag.AllowedType
 >() =>
   & Context.TagClass<Self, Id, Type>
-  & (Type extends Record<PropertyKey, any> ? {
-      [
-        k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
-          ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
-          : k
-      ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
-        (...args: Readonly<Args>) => Effect<A, E, Self | R>
-        : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
-        : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-        : Effect<Type[k], never, Self>
-    } :
-    {})
-  & {
-    use: <X>(
-      body: (_: Type) => X
-    ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
-  } = (id) => () => {
+  & Tag.ProxyUse<Type, Self>
+  & (Type extends Record<PropertyKey, any> ? Tag.Proxy<Type, Self> : {}) = (id) => () => {
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
     const creationError = new Error()
@@ -6339,6 +6350,7 @@ export declare namespace Service {
     Service?: `property "Service" is forbidden`
     Identifier?: `property "Identifier" is forbidden`
     Layer?: `property "Layer" is forbidden`
+    Default?: `property "Layer" is forbidden`
     _op_layer?: `property "_op_layer" is forbidden`
     _op?: `property "_op" is forbidden`
     _tag?: `property "_tag" is forbidden`
@@ -6361,34 +6373,19 @@ export declare namespace Service {
    * @since 2.0.0
    * @category models
    */
-  export type Maker<P> = {
-    effect: Effect<AllowedType<P>, any, any>
-    dependencies?: never
-  } | {
-    effect: Effect<AllowedType<P>, any, any>
-    dependencies: []
-  } | {
-    effect: Effect<AllowedType<P>, any, any>
-    dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-  } | {
-    scoped: Effect<AllowedType<P>, any, any>
-    dependencies?: never
-  } | {
-    scoped: Effect<AllowedType<P>, any, any>
-    dependencies: []
-  } | {
-    scoped: Effect<AllowedType<P>, any, any>
-    dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-  } | {
-    sync: () => AllowedType<P>
-    dependencies?: never
-  } | {
-    sync: () => AllowedType<P>
-    dependencies: [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-  } | {
-    sync: () => AllowedType<P>
-    dependencies: []
-  }
+  export type WithDependencies<O> =
+    | Simplify<O & { dependencies?: never }>
+    | Simplify<O & { dependencies: [] }>
+    | Simplify<O & { dependencies: [Layer.Layer.Any, ...Array<Layer.Layer.Any>] }>
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type Maker<P> =
+    | WithDependencies<{ effect: Effect<AllowedType<P>, any, any> }>
+    | WithDependencies<{ scoped: Effect<AllowedType<P>, any, any> }>
+    | WithDependencies<{ sync: () => AllowedType<P> }>
 
   /**
    * @since 2.0.0
@@ -6397,7 +6394,7 @@ export declare namespace Service {
   export interface TagClass<Self, Id, Type> extends Context.Tag<Self, Self> {
     make(_: Type): Self
 
-    new(_: never): Type & {
+    new(_: Type): Type & {
       readonly _tag: Id
     }
   }
@@ -6408,25 +6405,31 @@ export declare namespace Service {
    */
   export type Return<Self, Id extends string, Type, Proxy extends boolean, T = Type & { readonly _tag: Id }> =
     & TagClass<Self, Id, Type>
-    & (Proxy extends true ? (T extends Record<PropertyKey, any> ? {
-          [
-            k in keyof T as T[k] extends ((...args: [...infer Args]) => infer Ret)
-              ? ((...args: Readonly<Args>) => Ret) extends T[k] ? k : never
-              : k
-          ]: T[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R>
-            ? (...args: Readonly<Args>) => Effect<A, E, Self | R>
-            : T[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
-            : T[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-            : Effect<T[k], never, Self>
-        } :
-        {}) :
-      {})
-    & (Proxy extends true ? {
-        use: <X>(
-          body: (_: Type) => X
-        ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
-      } :
-      {})
+    & ([Proxy] extends [true] ? Tag.Proxy<T, Self> : {})
+    & Tag.ProxyUse<Self, Self>
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type DefaultLayer<A, E, R, Maker> = Maker extends {
+    dependencies: infer Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]
+  } ? Layer.Layer<
+      A,
+      E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+      | Exclude<R, Scope.Scope | { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+      | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+    > :
+    Layer.Layer<A, E, R>
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type InstanceLayers<A, E, R, Maker> = {
+    readonly Layer: Layer.Layer<A, E, R>
+    readonly Default: DefaultLayer<A, E, R, Maker>
+  }
 
   /**
    * @since 2.0.0
@@ -6434,76 +6437,18 @@ export declare namespace Service {
    */
   export type ReturnWithMaker<Self, Id extends string, Maker, Proxy extends boolean> =
     & {}
-    & Maker extends {
-    scoped: Effect<infer Type, infer E, infer R>
-    dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-  } ?
+    & Maker extends { scoped: Effect<infer Type, infer E, infer R> } ?
       & Return<Self, Id, Type, Proxy>
-      & Layer.Layer<
-        Self,
-        E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
-        | Exclude<R, Scope.Scope | { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
-        | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
-      >
-      & { readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>> }
-    : Maker extends {
-      scoped: Effect<infer Type, infer E, infer R>
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
-        readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>>
-      }
-    : Maker extends {
-      scoped: Effect<infer Type, infer E, infer R>
-      dependencies: []
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, Exclude<R, Scope.Scope>> & {
-        readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>>
-      }
-    : Maker extends {
-      effect: Effect<infer Type, infer E, infer R>
-      dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-    } ?
+      & DefaultLayer<Self, E, Exclude<R, Scope.Scope>, Maker>
+      & InstanceLayers<Self, E, Exclude<R, Scope.Scope>, Maker>
+    : Maker extends { effect: Effect<infer Type, infer E, infer R> } ?
         & Return<Self, Id, Type, Proxy>
-        & Layer.Layer<
-          Self,
-          E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
-          | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
-          | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
-        >
-        & { readonly Layer: Layer.Layer<Self, E, Exclude<R, Scope.Scope>> }
-    : Maker extends {
-      effect: Effect<infer Type, infer E, infer R>
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, R> & {
-        readonly Layer: Layer.Layer<Self, E, R>
-      }
-    : Maker extends {
-      effect: Effect<infer Type, infer E, infer R>
-      dependencies: []
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, E, R> & {
-        readonly Layer: Layer.Layer<Self, E, R>
-      }
-    : Maker extends {
-      sync: () => infer Type
-      dependencies: infer Layers extends [Layer.Layer<any, any, any>, ...Array<Layer.Layer<any, any, any>>]
-    } ?
+        & DefaultLayer<Self, E, R, Maker>
+        & InstanceLayers<Self, E, R, Maker>
+    : Maker extends { sync: () => infer Type } ?
         & Return<Self, Id, Type, Proxy>
-        & Layer.Layer<
-          Self,
-          { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
-          { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
-        >
-        & {
-          readonly Layer: Layer.Layer<Self, never, never>
-        }
-    : Maker extends {
-      sync: () => infer Type
-      dependencies: []
-    } ? Service.Return<Self, Id, Type, Proxy> & Layer.Layer<Self, never, never> & {
-        readonly Layer: Layer.Layer<Self, never, never>
-      }
-    : Maker extends {
-      sync: () => infer Type
-    } ? Return<Self, Id, Type, Proxy> & Layer.Layer<Self, never, never> & {
-        readonly Layer: Layer.Layer<Self, never, never>
-      }
+        & DefaultLayer<Self, never, never, Maker>
+        & InstanceLayers<Self, never, never, Maker>
     : never
 }
 
@@ -6529,7 +6474,11 @@ export const Service: {
     Error.stackTraceLimit = 2
     const creationError = new Error()
     Error.stackTraceLimit = limit
-    function TagClass() {}
+    const TagClass: any = class {
+      constructor(args: any) {
+        return of(args)
+      }
+    }
     Object.setPrototypeOf(TagClass, TagProto)
     TagClass.key = id
     Object.defineProperty(TagClass, "stack", {
@@ -6538,7 +6487,7 @@ export const Service: {
       }
     })
 
-    TagClass["of"] = (args: any) =>
+    TagClass["make"] = (args: any) =>
       new Proxy(args, {
         get(_target: any, prop: any, _receiver) {
           if (prop === "_tag") {
@@ -6547,14 +6496,11 @@ export const Service: {
           return args[prop]
         }
       })
-    TagClass["make"] = TagClass["of"]
 
-    const of = TagClass["of"]
+    const of = TagClass["make"]
 
     if ("effect" in maker) {
-      // @ts-expect-error
       TagClass["Layer"] = layer.fromEffect(TagClass, maker["effect"]).pipe(
-        // @ts-expect-error
         layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
       )
       let live = TagClass["Layer"]
@@ -6566,9 +6512,7 @@ export const Service: {
     }
 
     if ("scoped" in maker) {
-      // @ts-expect-error
       TagClass["Layer"] = layer.scoped(TagClass, maker["scoped"]).pipe(
-        // @ts-expect-error
         layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
       )
       let live = TagClass["Layer"]
@@ -6580,9 +6524,7 @@ export const Service: {
     }
 
     if ("sync" in maker) {
-      // @ts-expect-error
       TagClass["Layer"] = layer.sync(TagClass, maker["sync"]).pipe(
-        // @ts-expect-error
         layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
       )
       let live = TagClass["Layer"]
@@ -6592,28 +6534,26 @@ export const Service: {
       Object.assign(TagClass, live)
       Object.assign(TagClass, layer.proto)
     }
+
+    // @ts-expect-error
+    TagClass["use"] = (body) => core.andThen(TagClass, body)
+
     if (proxy === false) {
       return TagClass
     }
+
     const cache = new Map()
     const done = new Proxy(TagClass, {
       get(_target: any, prop: any, _receiver) {
-        if (prop === "use") {
-          // @ts-expect-error
-          return (body) => core.andThen(TagClass, body)
-        }
         if (prop in TagClass) {
-          // @ts-expect-error
           return TagClass[prop]
         }
         if (cache.has(prop)) {
           return cache.get(prop)
         }
         const fn = (...args: Array<any>) =>
-          // @ts-expect-error
           core.andThen(TagClass, (s: any) => {
             if (typeof s[prop] === "function") {
-              // @ts-expect-error
               cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
               return s[prop](...args)
             }
