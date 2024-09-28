@@ -6336,43 +6336,25 @@ export const Tag: <const Id extends string>(id: Id) => <
 export const Service: <Self>() => {
   <
     const Key extends string,
-    const Accessors extends boolean,
-    Service extends Service.AllowedType<Accessors>,
-    E,
-    R,
-    const Deps extends ReadonlyArray<Layer.Layer.Any> = []
+    const Make extends {
+      readonly scoped: Effect<Service.AllowedType<Make["withAccessors"]>, any, any>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly withAccessors?: boolean
+    } | {
+      readonly effect: Effect<Service.AllowedType<Make["withAccessors"]>, any, any>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly withAccessors?: boolean
+    } | {
+      readonly sync: LazyArg<Service.AllowedType<Make["withAccessors"]>>
+      readonly withAccessors?: boolean
+    } | {
+      readonly succeed: Service.AllowedType<Make["withAccessors"]>
+      readonly withAccessors?: boolean
+    }
   >(
     key: Key,
-    maker: {
-      readonly scoped: Effect<Service, E, R>
-      readonly dependencies?: Deps
-      readonly withAccessors?: Accessors
-      readonly effect?: undefined
-      readonly sync?: undefined
-      readonly succeed?: undefined
-    }
-  ): Service.Class<Self, Key, Service, E, Exclude<R, Scope.Scope>, Deps, Accessors>
-  <
-    const Key extends string,
-    const Accessors extends boolean,
-    Service extends Service.AllowedType<Accessors>,
-    E = never,
-    R = never,
-    const Deps extends ReadonlyArray<Layer.Layer.Any> = []
-  >(
-    key: Key,
-    maker: {
-      readonly effect: Effect<Service, E, R>
-      readonly dependencies?: Deps
-      readonly withAccessors?: Accessors
-    } | {
-      readonly sync: LazyArg<Service>
-      readonly withAccessors?: Accessors
-    } | {
-      readonly succeed: Service
-      readonly withAccessors?: Accessors
-    }
-  ): Service.Class<Self, Key, Service, E, R, Deps, Accessors>
+    make: Make
+  ): Service.Class<Self, Key, Make>
 } = function() {
   return function() {
     const [id, maker] = arguments
@@ -6438,7 +6420,7 @@ export declare namespace Service {
   /**
    * @since 3.9.0
    */
-  export type AllowedType<Accessors extends boolean> = Accessors extends true
+  export type AllowedType<Accessors extends boolean | undefined> = [Accessors] extends [true]
     ? Record<PropertyKey, any> & ProhibitedType
     : any
 
@@ -6448,25 +6430,73 @@ export declare namespace Service {
   export type Class<
     Self,
     Key extends string,
-    Service,
-    E,
-    R,
-    Deps extends ReadonlyArray<Layer.Layer.Any>,
-    Accessors extends boolean
+    Make
   > =
     & {
-      new(_: never): Context.TagClassShape<Key, Service>
-      readonly Layer: Layer.Layer<Self, E, R>
-      readonly Live: Deps extends [] ? Layer.Layer<Self, E, R> : Layer.Layer<
-        Self,
-        E | Deps[number] extends Layer.Layer<infer _Out, infer _E, infer _In> ? _E : never,
-        | Exclude<R, Deps[number] extends Layer.Layer<infer _Out, infer _E, infer _In> ? _Out : never>
-        | Deps[number] extends Layer.Layer<infer _Out, infer _E, infer _In> ? _In : never
-      >
+      new(_: never): Context.TagClassShape<Key, MakeService<Make>>
+      readonly Layer: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+      readonly Live: MakeDeps<Make> extends never ? Layer.Layer<Self, MakeError<Make>, MakeContext<Make>> :
+        Layer.Layer<
+          Self,
+          MakeError<Make> | MakeDepsE<Make>,
+          | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+          | MakeDepsIn<Make>
+        >
       readonly use: <X>(
-        body: (_: Service) => X
+        body: (_: MakeService<Make>) => X
       ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
     }
-    & Context.Tag<Self, Service>
-    & ([Accessors] extends [true] ? Tag.Proxy<Self, Service> : {})
+    & Context.Tag<Self, MakeService<Make>>
+    & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeService<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _A
+    : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _A
+    : Make extends { readonly sync: LazyArg<infer A> } ? A
+    : Make extends { readonly succeed: infer A } ? A
+    : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeError<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _E
+    : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _E
+    : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeContext<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _R
+    : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? Exclude<_R, Scope.Scope>
+    : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeDeps<Make> = Make extends { readonly dependencies: ReadonlyArray<Layer.Layer<never, any, any>> }
+    ? Make["dependencies"][number]
+    : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeDepsOut<Make> = Parameters<MakeDeps<Make>[Layer.LayerTypeId]["_ROut"]>[0]
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeDepsE<Make> = MakeDeps<Make>[Layer.LayerTypeId]["_E"] extends Covariant<infer E> ? E : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeDepsIn<Make> = MakeDeps<Make>[Layer.LayerTypeId]["_RIn"] extends Covariant<infer R> ? R : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeAccessors<Make> = Make extends { readonly withAccessors: true } ? true
+    : false
 }
