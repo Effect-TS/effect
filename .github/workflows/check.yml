@@ -33,6 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
+      - run: pnpm codemod
       - run: pnpm check
       - run: pnpm dtslint
 
@@ -61,6 +62,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
+      - run: pnpm codemod
       - uses: oven-sh/setup-bun@v1
         if: matrix.runtime == 'Bun'
         with:
