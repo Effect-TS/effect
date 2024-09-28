@@ -549,9 +549,7 @@ describe("Layer", () => {
       const layer2 = makeLayer2(ref)
       const layer3 = makeLayer3(ref)
       const env = layer3.pipe(
-        Layer.provide(layer1),
-        Layer.provide(layer2),
-        Layer.provide(Layer.map(layer1, identity)),
+        Layer.provide([layer1, layer2, Layer.map(layer1, identity)]),
         Layer.build
       )
       yield* $(Effect.scoped(env))
