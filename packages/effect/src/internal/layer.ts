@@ -1028,12 +1028,12 @@ export const toRuntimeWithMemoMap = dual<
 export const provide = dual<
   {
     <RIn, E, ROut>(
-      self: Layer.Layer<ROut, E, RIn>
+      that: Layer.Layer<ROut, E, RIn>
     ): <RIn2, E2, ROut2>(
-      that: Layer.Layer<ROut2, E2, RIn2>
+      self: Layer.Layer<ROut2, E2, RIn2>
     ) => Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
     <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
-      layers: Layers
+      that: Layers
     ): <A, E, R>(
       self: Layer.Layer<A, E, R>
     ) => Layer.Layer<
@@ -1045,12 +1045,12 @@ export const provide = dual<
   },
   {
     <RIn2, E2, ROut2, RIn, E, ROut>(
-      that: Layer.Layer<ROut2, E2, RIn2>,
-      self: Layer.Layer<ROut, E, RIn>
+      self: Layer.Layer<ROut2, E2, RIn2>,
+      that: Layer.Layer<ROut, E, RIn>
     ): Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
     <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       self: Layer.Layer<A, E, R>,
-      layers: Layers
+      that: Layers
     ): Layer.Layer<
       A,
       E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
@@ -1059,8 +1059,8 @@ export const provide = dual<
     >
   }
 >(2, (
-  that: Layer.Layer.Any,
-  layers: Layer.Layer.Any | ReadonlyArray<Layer.Layer.Any>
+  self: Layer.Layer.Any,
+  that: Layer.Layer.Any | ReadonlyArray<Layer.Layer.Any>
 ) =>
   suspend(() => {
     const provideTo = Object.create(proto)
@@ -1068,10 +1068,10 @@ export const provide = dual<
     provideTo.first = Object.create(proto, {
       _op_layer: { value: OpCodes.OP_PROVIDE_MERGE, enumerable: true },
       first: { value: context(), enumerable: true },
-      second: { value: Array.isArray(layers) ? mergeAll(...layers as any) : layers },
+      second: { value: Array.isArray(that) ? mergeAll(...that as any) : that },
       zipK: { value: (a: Context.Context<any>, b: Context.Context<any>) => pipe(a, Context.merge(b)) }
     })
-    provideTo.second = that
+    provideTo.second = self
     return provideTo
   }))
 

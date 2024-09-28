@@ -841,10 +841,10 @@ export const toRuntimeWithMemoMap: {
  */
 export const provide: {
   <RIn, E, ROut>(
-    self: Layer<ROut, E, RIn>
-  ): <RIn2, E2, ROut2>(that: Layer<ROut2, E2, RIn2>) => Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
+    that: Layer<ROut, E, RIn>
+  ): <RIn2, E2, ROut2>(self: Layer<ROut2, E2, RIn2>) => Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
   <const Layers extends [Layer.Any, ...Array<Layer.Any>]>(
-    layers: Layers
+    that: Layers
   ): <A, E, R>(
     self: Layer<A, E, R>
   ) => Layer<
@@ -854,12 +854,12 @@ export const provide: {
     | Exclude<R, { [k in keyof Layers]: Layer.Success<Layers[k]> }[number]>
   >
   <RIn2, E2, ROut2, RIn, E, ROut>(
-    that: Layer<ROut2, E2, RIn2>,
-    self: Layer<ROut, E, RIn>
+    self: Layer<ROut2, E2, RIn2>,
+    that: Layer<ROut, E, RIn>
   ): Layer<ROut2, E2 | E, RIn | Exclude<RIn2, ROut>>
   <A, E, R, const Layers extends [Layer.Any, ...Array<Layer.Any>]>(
     self: Layer<A, E, R>,
-    layers: Layers
+    that: Layers
   ): Layer<
     A,
     E | { [k in keyof Layers]: Layer.Error<Layers[k]> }[number],
