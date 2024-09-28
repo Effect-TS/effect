@@ -25,7 +25,7 @@ class Logger extends Effect.Service<Logger>()("Logger", {
         })
     }
   }),
-  dependencies: [Prefix, Postfix]
+  dependencies: [Prefix.Default, Postfix.Default]
 }) {
   static Test = Layer.succeed(this, Logger.make({ info: () => Effect.void }))
   static TestWithNew = Layer.succeed(this, new Logger({ info: () => Effect.void }))
@@ -45,7 +45,7 @@ describe("Effect", () => {
       expect(postfix).toEqual("POST")
       expect(yield* Postfix.use((_) => _._tag)).toEqual("Postfix")
     }).pipe(
-      Effect.provide([Logger, Prefix, Postfix])
+      Effect.provide([Logger.Default, Prefix.Default, Postfix.Default])
     ))
 
   it.effect("Test instance works", () =>
@@ -68,5 +68,17 @@ describe("Effect", () => {
       expect(messages).toEqual([])
     }).pipe(
       Effect.provide([Logger.TestWithNew])
+    ))
+
+  it.effect("Service instances are real", () =>
+    Effect.gen(function*() {
+      const prefix = yield* Prefix
+      const postfix = yield* Postfix
+      expect(prefix).toBeInstanceOf(Prefix)
+      expect(prefix).not.toBeInstanceOf(Postfix)
+      expect(postfix).toBeInstanceOf(Postfix)
+      expect(postfix).not.toBeInstanceOf(Prefix)
+    }).pipe(
+      Effect.provide([Prefix.Default, Postfix.Default])
     ))
 })

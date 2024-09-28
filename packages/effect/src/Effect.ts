@@ -6452,15 +6452,12 @@ export declare namespace Service {
     & {}
     & Options extends { scoped: Effect<infer Type, infer E, infer R> } ?
       & Return<Self, Id, Type, Proxy>
-      & DefaultLayer<Self, E, Exclude<R, Scope.Scope>, Options>
       & InstanceLayers<Self, E, Exclude<R, Scope.Scope>, Options>
     : Options extends { effect: Effect<infer Type, infer E, infer R> } ?
         & Return<Self, Id, Type, Proxy>
-        & DefaultLayer<Self, E, R, Options>
         & InstanceLayers<Self, E, R, Options>
     : Options extends { sync: () => infer Type } ?
         & Return<Self, Id, Type, Proxy>
-        & DefaultLayer<Self, never, never, Options>
         & InstanceLayers<Self, never, never, Options>
     : never
 }
@@ -6486,7 +6483,9 @@ export const Service: {
     Error.stackTraceLimit = limit
     const TagClass: any = class {
       constructor(args: any) {
-        return of(args)
+        Object.assign(this, args)
+        // @ts-expect-error
+        this._tag = id
       }
     }
     Object.setPrototypeOf(TagClass, TagProto)
@@ -6497,86 +6496,78 @@ export const Service: {
       }
     })
 
-    TagClass["make"] = (args: any) =>
-      new Proxy(args, {
-        get(_target: any, prop: any, _receiver) {
-          if (prop === "_tag") {
-            return id
-          }
-          return args[prop]
+    const setLayers = (receiver: any) => {
+      const patchInstance = layer.flatMap((c) =>
+        layer.succeedContext(Context.add(c, TagClass, new receiver(Context.unsafeGet(c, TagClass))))
+      )
+      if ("effect" in maker) {
+        TagClass["Layer"] = layer.fromEffect(TagClass, maker["effect"]).pipe(patchInstance)
+        let live = TagClass["Layer"]
+        if ("dependencies" in maker) {
+          live = live.pipe(layer.provide(maker["dependencies"]))
         }
-      })
-
-    const of = TagClass["make"]
-
-    if ("effect" in maker) {
-      TagClass["Layer"] = layer.fromEffect(TagClass, maker["effect"]).pipe(
-        layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
-      )
-      let live = TagClass["Layer"]
-      if ("dependencies" in maker) {
-        live = live.pipe(layer.provide(maker["dependencies"]))
+        TagClass["Default"] = live
       }
-      Object.assign(TagClass, live)
-      Object.assign(TagClass, layer.proto)
-    }
-
-    if ("scoped" in maker) {
-      TagClass["Layer"] = layer.scoped(TagClass, maker["scoped"]).pipe(
-        layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
-      )
-      let live = TagClass["Layer"]
-      if ("dependencies" in maker) {
-        live = live.pipe(layer.provide(layer.mergeAll(...maker["dependencies"])))
+      if ("scoped" in maker) {
+        TagClass["Layer"] = layer.scoped(TagClass, maker["scoped"]).pipe(patchInstance)
+        let live = TagClass["Layer"]
+        if ("dependencies" in maker) {
+          live = live.pipe(layer.provide(maker["dependencies"]))
+        }
+        TagClass["Default"] = live
       }
-      Object.assign(TagClass, live)
-      Object.assign(TagClass, layer.proto)
-    }
-
-    if ("sync" in maker) {
-      TagClass["Layer"] = layer.sync(TagClass, maker["sync"]).pipe(
-        layer.flatMap((c) => layer.succeedContext(Context.add(c, TagClass, of(Context.unsafeGet(c, TagClass)))))
-      )
-      let live = TagClass["Layer"]
-      if ("dependencies" in maker) {
-        live = live.pipe(layer.provide(layer.mergeAll(...maker["dependencies"])))
+      if ("sync" in maker) {
+        TagClass["Layer"] = layer.sync(TagClass, maker["sync"]).pipe(patchInstance)
+        let live = TagClass["Layer"]
+        if ("dependencies" in maker) {
+          live = live.pipe(layer.provide(maker["dependencies"]))
+        }
+        TagClass["Default"] = live
       }
-      Object.assign(TagClass, live)
-      Object.assign(TagClass, layer.proto)
     }
 
     // @ts-expect-error
     TagClass["use"] = (body) => core.andThen(TagClass, body)
 
-    if (proxy === false) {
-      return TagClass
-    }
-
     const cache = new Map()
     const done = new Proxy(TagClass, {
-      get(_target: any, prop: any, _receiver) {
-        if (prop in TagClass) {
-          return TagClass[prop]
-        }
+      get(_target: any, prop: any, receiver) {
         if (cache.has(prop)) {
           return cache.get(prop)
         }
-        const fn = (...args: Array<any>) =>
-          core.andThen(TagClass, (s: any) => {
-            if (typeof s[prop] === "function") {
-              cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
-              return s[prop](...args)
-            }
-            // @ts-expect-error
-            cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
-            return s[prop]
-          })
-        // @ts-expect-error
-        const cn = core.andThen(TagClass, (s) => s[prop])
-        Object.assign(fn, cn)
-        Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
-        cache.set(prop, fn)
-        return fn
+        if (prop in TagClass) {
+          return TagClass[prop]
+        }
+        if (prop === "make") {
+          return (args: any) => new receiver(args)
+        }
+        if (prop === "Layer") {
+          setLayers(receiver)
+          return TagClass[prop]
+        }
+        if (prop === "Default") {
+          setLayers(receiver)
+          return TagClass[prop]
+        }
+        if (proxy === true) {
+          const fn = (...args: Array<any>) =>
+            core.andThen(TagClass, (s: any) => {
+              if (typeof s[prop] === "function") {
+                cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
+                return s[prop](...args)
+              }
+              // @ts-expect-error
+              cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
+              return s[prop]
+            })
+          // @ts-expect-error
+          const cn = core.andThen(TagClass, (s) => s[prop])
+          Object.assign(fn, cn)
+          Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
+          cache.set(prop, fn)
+          return fn
+        }
+        return undefined
       }
     })
     return done
