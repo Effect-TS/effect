@@ -78,6 +78,9 @@ importers:
       '@eslint/js':
         specifier: 9.9.1
         version: 9.9.1
+      '@types/jscodeshift':
+        specifier: ^0.11.11
+        version: 0.11.11
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
@@ -99,6 +102,9 @@ importers:
       '@vitest/web-worker':
         specifier: ^2.0.5
         version: 2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0))
+      ast-types:
+        specifier: ^0.14.2
+        version: 0.14.2
       babel-plugin-annotate-pure-calls:
         specifier: ^0.4.0
         version: 0.4.0(patch_hash=lz2aochwly4t7pzapzh4fqay4m)(@babel/core@7.25.2)
@@ -129,6 +135,9 @@ importers:
       glob:
         specifier: ^11.0.0
         version: 11.0.0
+      jscodeshift:
+        specifier: ^0.16.1
+        version: 0.16.1(@babel/preset-env@7.25.4(@babel/core@7.25.2))
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@5.6.2)
@@ -5190,6 +5199,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lighthouse-logger@1.4.2:

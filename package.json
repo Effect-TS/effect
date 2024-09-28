@@ -8,6 +8,7 @@
   "scripts": {
     "clean": "node scripts/clean.mjs",
     "codegen": "pnpm --recursive --parallel run codegen",
+    "codemod": "node scripts/codemod.mjs",
     "build": "tsc -b tsconfig.build.json && pnpm --recursive --parallel run build",
     "circular": "node scripts/circular.mjs",
     "test": "vitest",
@@ -20,7 +21,7 @@
     "dtslint": "pnpm --recursive --parallel run dtslint",
     "dtslint-clean": "dtslint --installAll",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm build && TEST_DIST= pnpm vitest && changeset publish"
+    "changeset-publish": "pnpm codemod && pnpm lint-fix && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",
@@ -51,6 +52,7 @@
     "@eslint/compat": "1.1.1",
     "@eslint/eslintrc": "3.1.0",
     "@eslint/js": "9.9.1",
+    "@types/jscodeshift": "^0.11.11",
     "@types/node": "^22.5.4",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
@@ -58,6 +60,7 @@
     "@vitest/coverage-v8": "^2.0.5",
     "@vitest/expect": "^2.0.5",
     "@vitest/web-worker": "^2.0.5",
+    "ast-types": "^0.14.2",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "eslint": "^9.9.1",
     "eslint-import-resolver-typescript": "^3.6.3",
@@ -68,6 +71,7 @@
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
     "fast-check": "^3.21.0",
     "glob": "^11.0.0",
+    "jscodeshift": "^0.16.1",
     "madge": "^8.0.0",
     "playwright": "^1.46.0",
     "prettier": "^3.3.3",
