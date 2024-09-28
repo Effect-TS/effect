@@ -6505,7 +6505,7 @@ export const Service: {
       )
       let live = TagClass["Layer"]
       if ("dependencies" in maker) {
-        live = live.pipe(layer.provide(layer.mergeAll(...maker["dependencies"])))
+        live = live.pipe(layer.provide(maker["dependencies"]))
       }
       Object.assign(TagClass, live)
       Object.assign(TagClass, layer.proto)

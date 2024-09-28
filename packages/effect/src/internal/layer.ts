@@ -1026,27 +1026,50 @@ export const toRuntimeWithMemoMap = dual<
 
 /** @internal */
 export const provide = dual<
-  <RIn, E, ROut>(
-    self: Layer.Layer<ROut, E, RIn>
-  ) => <RIn2, E2, ROut2>(
-    that: Layer.Layer<ROut2, E2, RIn2>
-  ) => Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>,
-  <RIn2, E2, ROut2, RIn, E, ROut>(
-    that: Layer.Layer<ROut2, E2, RIn2>,
-    self: Layer.Layer<ROut, E, RIn>
-  ) => Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
->(2, <RIn2, E2, ROut2, RIn, E, ROut>(
-  that: Layer.Layer<ROut2, E2, RIn2>,
-  self: Layer.Layer<ROut, E, RIn>
+  {
+    <RIn, E, ROut>(
+      self: Layer.Layer<ROut, E, RIn>
+    ): <RIn2, E2, ROut2>(
+      that: Layer.Layer<ROut2, E2, RIn2>
+    ) => Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
+    <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+      layers: Layers
+    ): <A, E, R>(
+      self: Layer.Layer<A, E, R>
+    ) => Layer.Layer<
+      A,
+      E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+      | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+      | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+    >
+  },
+  {
+    <RIn2, E2, ROut2, RIn, E, ROut>(
+      that: Layer.Layer<ROut2, E2, RIn2>,
+      self: Layer.Layer<ROut, E, RIn>
+    ): Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
+    <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+      self: Layer.Layer<A, E, R>,
+      layers: Layers
+    ): Layer.Layer<
+      A,
+      E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+      | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+      | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+    >
+  }
+>(2, (
+  that: Layer.Layer.Any,
+  layers: Layer.Layer.Any | ReadonlyArray<Layer.Layer.Any>
 ) =>
   suspend(() => {
     const provideTo = Object.create(proto)
     provideTo._op_layer = OpCodes.OP_PROVIDE
     provideTo.first = Object.create(proto, {
       _op_layer: { value: OpCodes.OP_PROVIDE_MERGE, enumerable: true },
-      first: { value: context<Exclude<RIn2, ROut>>(), enumerable: true },
-      second: { value: self },
-      zipK: { value: (a: Context.Context<ROut>, b: Context.Context<ROut2>) => pipe(a, Context.merge(b)) }
+      first: { value: context(), enumerable: true },
+      second: { value: Array.isArray(layers) ? mergeAll(...layers as any) : layers },
+      zipK: { value: (a: Context.Context<any>, b: Context.Context<any>) => pipe(a, Context.merge(b)) }
     })
     provideTo.second = that
     return provideTo
