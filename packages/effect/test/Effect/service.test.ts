@@ -5,13 +5,15 @@ import { describe, expect } from "vitest"
 
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
   sync: () => ({
-    prefix: "PRE"
+    prefix: "PRE",
+    key: "test"
   })
 }) {}
 
 class Postfix extends Effect.Service<Postfix>()("Postfix", {
   sync: () => ({
-    postfix: "POST"
+    postfix: "POST",
+    key: ""
   })
 }) {}
 
