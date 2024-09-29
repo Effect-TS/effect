@@ -1,7 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as it from "effect/test/utils/extend"
-import { describe, expect } from "vitest"
+import { describe, expect, it } from "effect/test/utils/extend"
 
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
   sync: () => ({
@@ -36,8 +35,8 @@ class Logger extends Effect.Service<Logger>()("Logger", {
   static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
 }
 
-describe("Effect", () => {
-  it.effect("Service correctly wires dependencies", () =>
+describe("Effect.Service", () => {
+  it.effect("correctly wires dependencies", () =>
     Effect.gen(function*() {
       yield* Logger.info("Ok")
       expect(messages).toEqual(["[PRE][Ok][POST]"])
@@ -48,4 +47,21 @@ describe("Effect", () => {
     }).pipe(
       Effect.provide([Logger, Prefix, Postfix])
     ))
+
+  it.effect("inherits prototype", () => {
+    class Time extends Effect.Service<Time>()("Time", {
+      sync: () => ({ time: new Date() }),
+      accessors: true
+    }) {
+      get foo() {
+        return this.time
+      }
+    }
+    return Effect.gen(function*() {
+      const time = yield* Time.use((_) => _.foo)
+      const accessed = yield* Time.time
+      expect(time).toBeInstanceOf(Date)
+      expect(accessed).toStrictEqual(time)
+    }).pipe(Effect.provide(Time))
+  })
 })
