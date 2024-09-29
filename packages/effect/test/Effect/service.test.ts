@@ -20,7 +20,7 @@ class Postfix extends Effect.Service<Postfix>()("Postfix", {
 const messages: Array<string> = []
 
 class Logger extends Effect.Service<Logger>()("Logger", {
-  withAccessors: true,
+  accessors: true,
   effect: Effect.gen(function*() {
     const { prefix } = yield* Prefix
     const { postfix } = yield* Postfix
@@ -31,9 +31,9 @@ class Logger extends Effect.Service<Logger>()("Logger", {
         })
     }
   }),
-  dependencies: [Prefix.Live, Postfix.Live]
+  dependencies: [Prefix, Postfix]
 }) {
-  static Test = Layer.succeed(this, Logger.of({ info: () => Effect.void }))
+  static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
 }
 
 describe("Effect", () => {
@@ -46,6 +46,6 @@ describe("Effect", () => {
       const { postfix } = yield* Postfix
       expect(postfix).toEqual("POST")
     }).pipe(
-      Effect.provide([Logger.Live, Prefix.Live, Postfix.Live])
+      Effect.provide([Logger, Prefix, Postfix])
     ))
 })

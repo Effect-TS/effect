@@ -57,7 +57,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
+import type { Concurrency, Contravariant, Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import type { YieldWrap } from "./Utils.js"
 
@@ -6337,19 +6337,19 @@ export const Service: <Self>() => {
   <
     const Key extends string,
     const Make extends {
-      readonly scoped: Effect<Service.AllowedType<Make["withAccessors"]>, any, any>
+      readonly scoped: Effect<Service.AllowedType<Make["accessors"]>, any, any>
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
-      readonly withAccessors?: boolean
+      readonly accessors?: boolean
     } | {
-      readonly effect: Effect<Service.AllowedType<Make["withAccessors"]>, any, any>
+      readonly effect: Effect<Service.AllowedType<Make["accessors"]>, any, any>
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
-      readonly withAccessors?: boolean
+      readonly accessors?: boolean
     } | {
-      readonly sync: LazyArg<Service.AllowedType<Make["withAccessors"]>>
-      readonly withAccessors?: boolean
+      readonly sync: LazyArg<Service.AllowedType<Make["accessors"]>>
+      readonly accessors?: boolean
     } | {
-      readonly succeed: Service.AllowedType<Make["withAccessors"]>
-      readonly withAccessors?: boolean
+      readonly succeed: Service.AllowedType<Make["accessors"]>
+      readonly accessors?: boolean
     }
   >(
     key: Key,
@@ -6358,38 +6358,49 @@ export const Service: <Self>() => {
 } = function() {
   return function() {
     const [id, maker] = arguments
-    const proxy = "withAccessors" in maker ? maker["withAccessors"] : false
+    const proxy = "accessors" in maker ? maker["accessors"] : false
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
     const creationError = new Error()
     Error.stackTraceLimit = limit
-    function TagClass() {}
-    Object.setPrototypeOf(TagClass, TagProto)
+
+    const TagClass: any = function(this: any, service: any) {
+      Object.assign(this, service)
+    }
+    TagClass.make = function(this: any, service: any) {
+      return new this(service)
+    }
+    Object.defineProperty(TagClass, "name", { value: id })
+    Object.setPrototypeOf(TagClass, {
+      ...layer.proto,
+      ...TagProto
+    })
     TagClass.key = id
+    TagClass.prototype._tag = id
     Object.defineProperty(TagClass, "stack", {
       get() {
         return creationError.stack
       }
     })
-    const tag = TagClass as unknown as Context.Tag<unknown, unknown>
 
     if ("effect" in maker) {
-      TagClass.Layer = layer.fromEffect(tag, maker.effect)
+      TagClass.layer = layer.fromEffect(TagClass, maker.effect)
     } else if ("scoped" in maker) {
-      TagClass.Layer = layer.scoped(tag, maker.scoped)
+      TagClass.layer = layer.scoped(TagClass, maker.scoped)
     } else if ("sync" in maker) {
-      TagClass.Layer = layer.sync(tag, maker.sync)
+      TagClass.layer = layer.sync(TagClass, maker.sync)
     } else {
-      TagClass.Layer = layer.succeed(tag, maker.succeed)
+      TagClass.layer = layer.succeed(TagClass, maker.succeed)
     }
 
     if ("dependencies" in maker && maker.dependencies.length > 0) {
-      TagClass.Live = layer.provide(TagClass.Layer, layer.mergeAll(...maker.dependencies))
-    } else {
-      TagClass.Live = TagClass.Layer
+      TagClass.layerWithoutDependencies = TagClass.layer
+      TagClass.layer = layer.provide(TagClass.layer, layer.mergeAll(...maker.dependencies))
     }
 
-    return proxy === true ? makeTagProxy(TagClass as any) : TagClass
+    Object.assign(TagClass, TagClass.layer)
+
+    return proxy === true ? makeTagProxy(TagClass) : TagClass
   }
 }
 
@@ -6433,21 +6444,35 @@ export declare namespace Service {
     Make
   > =
     & {
-      new(_: never): Context.TagClassShape<Key, MakeService<Make>>
-      readonly Layer: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-      readonly Live: MakeDeps<Make> extends never ? Layer.Layer<Self, MakeError<Make>, MakeContext<Make>> :
-        Layer.Layer<
+      new(_: MakeService<Make>): MakeService<Make> & {
+        readonly _tag: Key
+      }
+      readonly use: <X>(
+        body: (_: Self) => X
+      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+      readonly make: (_: MakeService<Make>) => Self
+    }
+    & Context.Tag<Self, Self>
+    & Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+    & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
+    & Layer.Layer<
+      Self,
+      MakeError<Make> | MakeDepsE<Make>,
+      | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+      | MakeDepsIn<Make>
+    >
+    & (MakeDeps<Make> extends never ? {
+        readonly layer: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+      } :
+      {
+        readonly layerWithoutDependencies: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+        readonly layer: Layer.Layer<
           Self,
           MakeError<Make> | MakeDepsE<Make>,
           | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
           | MakeDepsIn<Make>
         >
-      readonly use: <X>(
-        body: (_: MakeService<Make>) => X
-      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
-    }
-    & Context.Tag<Self, MakeService<Make>>
-    & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
+      })
 
   /**
    * @since 3.9.0
@@ -6475,28 +6500,28 @@ export declare namespace Service {
   /**
    * @since 3.9.0
    */
-  export type MakeDeps<Make> = Make extends { readonly dependencies: ReadonlyArray<Layer.Layer<never, any, any>> }
+  export type MakeDeps<Make> = Make extends { readonly dependencies: ReadonlyArray<Layer.Layer.Any> }
     ? Make["dependencies"][number]
     : never
 
   /**
    * @since 3.9.0
    */
-  export type MakeDepsOut<Make> = Parameters<MakeDeps<Make>[Layer.LayerTypeId]["_ROut"]>[0]
+  export type MakeDepsOut<Make> = Contravariant.Type<MakeDeps<Make>[Layer.LayerTypeId]["_ROut"]>
 
   /**
    * @since 3.9.0
    */
-  export type MakeDepsE<Make> = MakeDeps<Make>[Layer.LayerTypeId]["_E"] extends Covariant<infer E> ? E : never
+  export type MakeDepsE<Make> = Covariant.Type<MakeDeps<Make>[Layer.LayerTypeId]["_E"]>
 
   /**
    * @since 3.9.0
    */
-  export type MakeDepsIn<Make> = MakeDeps<Make>[Layer.LayerTypeId]["_RIn"] extends Covariant<infer R> ? R : never
+  export type MakeDepsIn<Make> = Covariant.Type<MakeDeps<Make>[Layer.LayerTypeId]["_RIn"]>
 
   /**
    * @since 3.9.0
    */
-  export type MakeAccessors<Make> = Make extends { readonly withAccessors: true } ? true
+  export type MakeAccessors<Make> = Make extends { readonly accessors: true } ? true
     : false
 }

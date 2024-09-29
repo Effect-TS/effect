@@ -255,6 +255,18 @@ export type NoInfer<A> = [A][A extends any ? 0 : never]
 export type Invariant<A> = (_: A) => A
 
 /**
+ * @since 3.9.0
+ * @category models
+ */
+export declare namespace Invariant {
+  /**
+   * @since 3.9.0
+   * @category models
+   */
+  export type Type<A> = A extends Invariant<infer U> ? U : never
+}
+
+/**
  * Covariant helper.
  *
  * @since 2.0.0
@@ -263,12 +275,36 @@ export type Invariant<A> = (_: A) => A
 export type Covariant<A> = (_: never) => A
 
 /**
+ * @since 3.9.0
+ * @category models
+ */
+export declare namespace Covariant {
+  /**
+   * @since 3.9.0
+   * @category models
+   */
+  export type Type<A> = A extends Covariant<infer U> ? U : never
+}
+
+/**
  * Contravariant helper.
  *
  * @since 2.0.0
  * @category models
  */
 export type Contravariant<A> = (_: A) => void
+
+/**
+ * @since 3.9.0
+ * @category models
+ */
+export declare namespace Contravariant {
+  /**
+   * @since 3.9.0
+   * @category models
+   */
+  export type Type<A> = A extends Contravariant<infer U> ? U : never
+}
 
 /**
  * @since 2.0.0
