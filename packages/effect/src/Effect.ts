@@ -6269,34 +6269,33 @@ export declare namespace Tag {
 
 const makeTagProxy = (TagClass: Context.Tag<any, any> & Record<PropertyKey, any>) => {
   const cache = new Map()
-  const done = new Proxy(TagClass, {
-    get(_target: any, prop: any, _receiver) {
+  return new Proxy(TagClass, {
+    get(target: any, prop: any, receiver) {
       if (prop === "use") {
-        return (body: (_: any) => any) => core.andThen(TagClass, body)
+        return (body: (_: any) => any) => core.andThen(target, body)
       }
-      if (prop in TagClass) {
-        return TagClass[prop]
+      if (prop in target) {
+        return Reflect.get(target, prop, receiver)
       }
       if (cache.has(prop)) {
         return cache.get(prop)
       }
       const fn = (...args: Array<any>) =>
-        core.andThen(TagClass, (s: any) => {
+        core.andThen(target, (s: any) => {
           if (typeof s[prop] === "function") {
-            cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
+            cache.set(prop, (...args: Array<any>) => core.andThen(target, (s: any) => s[prop](...args)))
             return s[prop](...args)
           }
-          cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
+          cache.set(prop, core.andThen(target, (s: any) => s[prop]))
           return s[prop]
         })
-      const cn = core.andThen(TagClass, (s) => s[prop])
+      const cn = core.andThen(target, (s: any) => s[prop])
       Object.assign(fn, cn)
       Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
       cache.set(prop, fn)
       return fn
     }
   })
-  return done
 }
 
 /**
@@ -6367,38 +6366,63 @@ export const Service: <Self>() => {
     const TagClass: any = function(this: any, service: any) {
       Object.assign(this, service)
     }
+    TagClass.prototype._tag = id
     TagClass.make = function(this: any, service: any) {
       return new this(service)
     }
-    Object.defineProperty(TagClass, "name", { value: id })
     Object.setPrototypeOf(TagClass, {
       ...layer.proto,
       ...TagProto
     })
     TagClass.key = id
-    TagClass.prototype._tag = id
     Object.defineProperty(TagClass, "stack", {
       get() {
         return creationError.stack
       }
     })
 
+    const hasDeps = "dependencies" in maker && maker.dependencies.length > 0
+    const layerName = hasDeps ? "layerWithoutDependencies" : "layer"
     if ("effect" in maker) {
-      TagClass.layer = layer.fromEffect(TagClass, maker.effect)
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          return layer.fromEffect(TagClass, map(maker.effect, (_) => new this(_)))
+        }
+      })
     } else if ("scoped" in maker) {
-      TagClass.layer = layer.scoped(TagClass, maker.scoped)
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          return layer.scoped(TagClass, map(maker.effect, (_) => new this(_)))
+        }
+      })
     } else if ("sync" in maker) {
-      TagClass.layer = layer.sync(TagClass, maker.sync)
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          return layer.sync(TagClass, () => new this(maker.sync()))
+        }
+      })
     } else {
-      TagClass.layer = layer.succeed(TagClass, maker.succeed)
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          return layer.succeed(TagClass, new this(maker.succeed))
+        }
+      })
     }
 
-    if ("dependencies" in maker && maker.dependencies.length > 0) {
-      TagClass.layerWithoutDependencies = TagClass.layer
-      TagClass.layer = layer.provide(TagClass.layer, layer.mergeAll(...maker.dependencies))
+    if (hasDeps) {
+      Object.defineProperty(TagClass, "layer", {
+        get(this: any) {
+          return layer.provide(this.layerWithoutDependencies, layer.mergeAll(...maker.dependencies))
+        }
+      })
     }
 
-    Object.assign(TagClass, TagClass.layer)
+    Object.assign(
+      TagClass,
+      layer.suspend(function(this: any) {
+        return this.layer
+      })
+    )
 
     return proxy === true ? makeTagProxy(TagClass) : TagClass
   }
