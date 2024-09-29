@@ -4,15 +4,14 @@ import { describe, expect, it } from "effect/test/utils/extend"
 
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
   sync: () => ({
-    prefix: "PRE",
-    key: "test"
+    prefix: "PRE"
   })
 }) {}
 
 class Postfix extends Effect.Service<Postfix>()("Postfix", {
+  accessors: true,
   sync: () => ({
-    postfix: "POST",
-    key: ""
+    postfix: "POST"
   })
 }) {}
 
@@ -53,12 +52,13 @@ describe("Effect.Service", () => {
       sync: () => ({ time: new Date() }),
       accessors: true
     }) {
-      get foo() {
-        return this.time
+      #now: Date | undefined
+      get now() {
+        return this.#now ||= new Date()
       }
     }
     return Effect.gen(function*() {
-      const time = yield* Time.use((_) => _.foo)
+      const time = yield* Time.use((_) => _.now)
       const accessed = yield* Time.time
       expect(time).toBeInstanceOf(Date)
       expect(accessed).toStrictEqual(time)
