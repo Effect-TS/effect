@@ -81,7 +81,11 @@ export declare namespace Layer {
    * @category type-level
    */
   export interface Any {
-    readonly [LayerTypeId]: any
+    readonly [LayerTypeId]: {
+      readonly _ROut: any
+      readonly _E: any
+      readonly _RIn: any
+    }
   }
   /**
    * @since 2.0.0
