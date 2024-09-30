@@ -4108,7 +4108,7 @@ export const mergeAll = dual<
 >((args) => Symbol.iterator in args[0], (streams, options) => flatten(fromIterable(streams), options))
 
 /** @internal */
-export const mergeStruct: {
+export const mergeWithTag: {
   <S extends { [k in string]: Stream.Stream<any, any, any> }>(
     streams: S,
     options: {

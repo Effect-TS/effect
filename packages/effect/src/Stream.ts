@@ -2902,12 +2902,12 @@ export const mergeAll: {
  *
  * @example
  * // Stream.Stream<{ _tag: "a"; value: number; } | { _tag: "b"; value: string; }>
- * const res = mergeStruct({
+ * const res = mergeWithTag({
  *    a: Stream.make(0),
  *    b: Stream.make("")
  * })
  */
-export const mergeStruct: {
+export const mergeWithTag: {
   <S extends { [k in string]: Stream<any, any, any> }>(
     streams: S,
     options: {
@@ -2927,7 +2927,7 @@ export const mergeStruct: {
     Stream.Error<S[keyof S]>,
     Stream.Context<S[keyof S]>
   >
-} = internal.mergeStruct
+} = internal.mergeWithTag
 
 /**
  * Merges this stream and the specified stream together to a common element

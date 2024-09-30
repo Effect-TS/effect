@@ -38,9 +38,9 @@ describe("Stream", () => {
       assert.deepStrictEqual(Array.from(result), [1])
     }))
 
-  it.effect("mergeStruct", (ctx) =>
+  it.effect("mergeWithTag", (ctx) =>
     Effect.gen(function*() {
-      const stream = Stream.mergeStruct({
+      const stream = Stream.mergeWithTag({
         a: Stream.make(0),
         b: Stream.make("")
       }, { concurrency: 1 })

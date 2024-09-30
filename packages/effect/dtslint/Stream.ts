@@ -256,7 +256,7 @@ Stream.zipLatestAll(numbers, numbersOrStrings, Stream.fail(new Error("")))
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Stream<{ _tag: "a"; value: number; } | { _tag: "b"; value: string; }, NoSuchElementException, never>
-Stream.mergeStruct({
+Stream.mergeWithTag({
   a: Stream.make(0).pipe(Stream.tap(() => new Cause.NoSuchElementException())),
   b: Stream.make("")
 }, { concurrency: 1 })
