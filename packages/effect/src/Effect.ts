@@ -6363,27 +6363,23 @@ export const Service: <Self>() => {
     const creationError = new Error()
     Error.stackTraceLimit = limit
 
-    let serviceProtoState: "unchecked" | "plain" | "patched" = "unchecked"
+    let patchState: "unchecked" | "plain" | "patched" = "unchecked"
     const TagClass: any = function(this: any, service: any) {
-      if (serviceProtoState === "unchecked") {
+      if (patchState === "unchecked") {
         const proto = Object.getPrototypeOf(service)
-        serviceProtoState = proto === Object.prototype || proto === null ? "plain" : "patched"
+        if (proto === Object.prototype || proto === null) {
+          patchState = "plain"
+        } else {
+          const selfProto = Object.getPrototypeOf(this)
+          Object.setPrototypeOf(selfProto, proto)
+          patchState = "patched"
+        }
       }
-      if (serviceProtoState === "plain") {
+      if (patchState === "plain") {
         Object.assign(this, service)
-      } else {
-        return new Proxy(this, {
-          get: (target, p, receiver) => {
-            if (p in target) {
-              return Reflect.get(target, p, receiver)
-            }
-            const value = service[p]
-            if (typeof value === "function") {
-              return value.bind(service)
-            }
-            return value
-          }
-        })
+      } else if (patchState === "patched") {
+        Object.setPrototypeOf(service, Object.getPrototypeOf(this))
+        return service
       }
     }
     TagClass.prototype._tag = id
