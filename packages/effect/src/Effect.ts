@@ -6363,8 +6363,28 @@ export const Service: <Self>() => {
     const creationError = new Error()
     Error.stackTraceLimit = limit
 
+    let serviceProtoState: "unchecked" | "plain" | "patched" = "unchecked"
     const TagClass: any = function(this: any, service: any) {
-      Object.assign(this, service)
+      if (serviceProtoState === "unchecked") {
+        const proto = Object.getPrototypeOf(service)
+        serviceProtoState = proto === Object.prototype || proto === null ? "plain" : "patched"
+      }
+      if (serviceProtoState === "plain") {
+        Object.assign(this, service)
+      } else {
+        return new Proxy(this, {
+          get: (target, p, receiver) => {
+            if (p in target) {
+              return Reflect.get(target, p, receiver)
+            }
+            const value = service[p]
+            if (typeof value === "function") {
+              return value.bind(service)
+            }
+            return value
+          }
+        })
+      }
     }
     TagClass.prototype._tag = id
     TagClass.make = function(this: any, service: any) {
@@ -6383,36 +6403,41 @@ export const Service: <Self>() => {
 
     const hasDeps = "dependencies" in maker && maker.dependencies.length > 0
     const layerName = hasDeps ? "layerWithoutDependencies" : "layer"
+    let layerCache: Layer.Layer.Any | undefined
     if ("effect" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
-          return layer.fromEffect(TagClass, map(maker.effect, (_) => new this(_)))
+          return layerCache ??= layer.fromEffect(TagClass, map(maker.effect, (_) => new this(_)))
         }
       })
     } else if ("scoped" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
-          return layer.scoped(TagClass, map(maker.effect, (_) => new this(_)))
+          return layerCache ??= layer.scoped(TagClass, map(maker.effect, (_) => new this(_)))
         }
       })
     } else if ("sync" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
-          return layer.sync(TagClass, () => new this(maker.sync()))
+          return layerCache ??= layer.sync(TagClass, () => new this(maker.sync()))
         }
       })
     } else {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
-          return layer.succeed(TagClass, new this(maker.succeed))
+          return layerCache ??= layer.succeed(TagClass, new this(maker.succeed))
         }
       })
     }
 
     if (hasDeps) {
+      let layerWithDepsCache: Layer.Layer.Any | undefined
       Object.defineProperty(TagClass, "layer", {
         get(this: any) {
-          return layer.provide(this.layerWithoutDependencies, layer.mergeAll(...maker.dependencies))
+          return layerWithDepsCache ??= layer.provide(
+            this.layerWithoutDependencies,
+            layer.mergeAll(...maker.dependencies)
+          )
         }
       })
     }
