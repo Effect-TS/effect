@@ -49,7 +49,7 @@ describe("Effect.Service", () => {
 
   it.effect("inherits prototype", () => {
     class Time extends Effect.Service<Time>()("Time", {
-      sync: () => ({ time: new Date() }),
+      sync: () => ({}),
       accessors: true
     }) {
       #now: Date | undefined
@@ -59,9 +59,29 @@ describe("Effect.Service", () => {
     }
     return Effect.gen(function*() {
       const time = yield* Time.use((_) => _.now)
-      const accessed = yield* Time.time
       expect(time).toBeInstanceOf(Date)
-      expect(accessed).toStrictEqual(time)
+    }).pipe(Effect.provide(Time))
+  })
+
+  it.effect("support values with prototype", () => {
+    class DateTest {
+      #now: Date | undefined
+      get now() {
+        return this.#now ||= new Date()
+      }
+    }
+    class Time extends Effect.Service<Time>()("Time", {
+      sync: () => new DateTest(),
+      accessors: true
+    }) {
+      get now2() {
+        return this.now
+      }
+    }
+    return Effect.gen(function*() {
+      const time = yield* Time.use((_) => _.now)
+      const time2 = yield* Time.use((_) => _.now2)
+      expect(time).toStrictEqual(time2)
     }).pipe(Effect.provide(Time))
   })
 })
