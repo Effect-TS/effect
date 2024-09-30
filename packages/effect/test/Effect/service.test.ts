@@ -84,4 +84,25 @@ describe("Effect.Service", () => {
       expect(time).toStrictEqual(time2)
     }).pipe(Effect.provide(Time))
   })
+
+  it.effect("patrick", () =>
+    Effect.gen(function*() {
+      class TimeLive {
+        #now: Date | undefined
+        constructor(now?: Date) {
+          this.#now = now
+        }
+
+        get now() {
+          return this.#now ||= new Date()
+        } // others omitted
+      }
+      abstract class Time extends Effect.Service<Time>()("Time", {
+        effect: Effect.sync(() => new TimeLive()),
+        accessors: true
+      }) {
+      }
+
+      expect(yield* Time.use((_) => _.now).pipe(Effect.provide(Time))).toBeInstanceOf(Date) // undefined, not Date
+    }))
 })
