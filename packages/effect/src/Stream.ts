@@ -2906,7 +2906,7 @@ export const mergeAll: {
  * const res = Stream.mergeWithTag({
  *    a: Stream.make(0),
  *    b: Stream.make("")
- * })
+ * }, { concurrency: "unbounded" })
  */
 export const mergeWithTag: {
   <S extends { [k in string]: Stream<any, any, any> }>(
