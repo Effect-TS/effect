@@ -2901,8 +2901,9 @@ export const mergeAll: {
  * @since 3.8.5
  *
  * @example
+ * import { Stream } from "effect"
  * // Stream.Stream<{ _tag: "a"; value: number; } | { _tag: "b"; value: string; }>
- * const res = mergeWithTag({
+ * const res = Stream.mergeWithTag({
  *    a: Stream.make(0),
  *    b: Stream.make("")
  * })
