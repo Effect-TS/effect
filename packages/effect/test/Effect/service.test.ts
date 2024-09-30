@@ -85,24 +85,42 @@ describe("Effect.Service", () => {
     }).pipe(Effect.provide(Time))
   })
 
-  it.effect("patrick", () =>
+  it.effect("prototype chain", () => {
+    class TimeLive {
+      #now: Date | undefined
+      constructor(now?: Date) {
+        this.#now = now
+      }
+      get now() {
+        return this.#now ||= new Date()
+      }
+    }
+
+    class Time extends Effect.Service<Time>()("Time", {
+      effect: Effect.sync(() => new TimeLive()),
+      accessors: true
+    }) {}
+
+    return Effect.gen(function*() {
+      const time = yield* Time
+      const date = yield* Time.use((_) => _.now)
+      expect(date).toBeInstanceOf(Date)
+      expect(time).toBeInstanceOf(Time)
+      expect(time).toBeInstanceOf(TimeLive)
+    }).pipe(Effect.provide(Time))
+  })
+
+  it.effect("js primitive", () =>
     Effect.gen(function*() {
-      class TimeLive {
-        #now: Date | undefined
-        constructor(now?: Date) {
-          this.#now = now
-        }
-
-        get now() {
-          return this.#now ||= new Date()
-        } // others omitted
-      }
-      abstract class Time extends Effect.Service<Time>()("Time", {
-        effect: Effect.sync(() => new TimeLive()),
+      class MapThing extends Effect.Service<MapThing>()("MapThing", {
+        sync: () => new Map<string, number>(),
         accessors: true
-      }) {
-      }
+      }) {}
 
-      expect(yield* Time.use((_) => _.now).pipe(Effect.provide(Time))).toBeInstanceOf(Date) // undefined, not Date
+      const map = yield* MapThing.use((_) => _.set("a", 1)).pipe(
+        Effect.provide(MapThing)
+      )
+      expect(map).toBeInstanceOf(MapThing)
+      expect(map).toBeInstanceOf(Map)
     }))
 })
