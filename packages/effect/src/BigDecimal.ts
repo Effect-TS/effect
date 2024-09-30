@@ -183,7 +183,10 @@ export const normalize = (self: BigDecimal): BigDecimal => {
  * @since 2.0.0
  * @category scaling
  */
-export const scale = (self: BigDecimal, scale: number): BigDecimal => {
+export const scale: {
+  (scale: number): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, scale: number): BigDecimal
+} = dual(2, (self: BigDecimal, scale: number): BigDecimal => {
   if (scale > self.scale) {
     return make(self.value * bigint10 ** BigInt(scale - self.scale), scale)
   }
@@ -193,7 +196,7 @@ export const scale = (self: BigDecimal, scale: number): BigDecimal => {
   }
 
   return self
-}
+})
 
 /**
  * Provides an addition operation on `BigDecimal`s.
