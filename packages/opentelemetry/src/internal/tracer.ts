@@ -311,6 +311,6 @@ export const withActiveSpan = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.
     if (!activeSpan) {
       return effect
     }
-    const span = EffectTracer.externalSpan(activeSpan.spanContext())
+    const span = makeExternalSpan(activeSpan.spanContext())
     return Effect.withParentSpan(effect, span)
   })

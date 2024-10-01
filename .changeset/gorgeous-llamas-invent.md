@@ -5,7 +5,7 @@
 add withActiveSpan function to attach Effect to current Span
 
 This function allows you to connect the Effect spans into a parent span
-that was created outside of Effect.ts, using the OpenTelemetry context propagation:
+that was created outside of Effect, using the OpenTelemetry context propagation:
 
 ```ts
 Effect.gen(function*() {
