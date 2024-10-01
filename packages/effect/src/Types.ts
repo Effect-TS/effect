@@ -319,4 +319,4 @@ export type NotFunction<T> = T extends Function ? never : T
 /**
  * @since 3.9.0
  */
-export type NoExtraKeys<T, U> = T & { readonly [K in Exclude<keyof U, keyof T>]: never }
+export type NoExcessProperties<T, U> = T & { readonly [K in Exclude<keyof U, keyof T>]: never }
