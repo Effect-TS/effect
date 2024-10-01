@@ -1,5 +1,11 @@
 # @effect/rpc-http
 
+## 0.38.3
+
+### Patch Changes
+
+- [#3710](https://github.com/Effect-TS/effect/pull/3710) [`dc14e96`](https://github.com/Effect-TS/effect/commit/dc14e96fe7869e09225bf1802b512ba20bf10078) Thanks @tim-smart! - ensure rpc chunks are always delimited on write
+
 ## 0.38.2
 
 ### Patch Changes
