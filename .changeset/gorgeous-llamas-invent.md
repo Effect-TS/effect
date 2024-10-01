@@ -1,5 +1,5 @@
 ---
-"@effect/opentelemetry": minor
+"@effect/opentelemetry": patch
 ---
 
 add withActiveSpan function to attach Effect to current Span

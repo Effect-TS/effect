@@ -90,7 +90,7 @@ export const TraceState: Tag<Otel.TraceState, Otel.TraceState> = internal.traceS
  * This is handy when you set up OpenTelemetry outside of Effect and want to
  * attach to a parent span.
  *
- * @since 0.38.0
+ * @since 0.37.5
  * @category effects
  */
 export const withActiveSpan: <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R> = internal.withActiveSpan
