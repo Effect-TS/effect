@@ -31,6 +31,10 @@ describe("Tuple", () => {
     })).toEqual(["a!", 2])
   })
 
+  it("map", () => {
+    expect(T.map(["a", 1, false], (x) => x.toString().toUpperCase())).toEqual(["A", "1", "FALSE"])
+  })
+
   it("swap", () => {
     expect(T.swap(T.make("a", 1))).toEqual([1, "a"])
   })
