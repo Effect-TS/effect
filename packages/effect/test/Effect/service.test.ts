@@ -1,3 +1,4 @@
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { describe, expect, it } from "effect/test/utils/extend"
@@ -35,6 +36,11 @@ class Logger extends Effect.Service<Logger>()("Logger", {
 }
 
 describe("Effect.Service", () => {
+  it("tags are both layers and tags", () => {
+    expect(Layer.isLayer(Logger)).toBe(true)
+    expect(Context.isTag(Logger)).toBe(true)
+  })
+
   it.effect("correctly wires dependencies", () =>
     Effect.gen(function*() {
       yield* Logger.info("Ok")
@@ -43,6 +49,7 @@ describe("Effect.Service", () => {
       expect(prefix).toEqual("PRE")
       const { postfix } = yield* Postfix
       expect(postfix).toEqual("POST")
+      expect(yield* Prefix.use((_) => _._tag)).toBe("Prefix")
     }).pipe(
       Effect.provide([Logger, Prefix, Postfix])
     ))
@@ -120,7 +127,15 @@ describe("Effect.Service", () => {
       const map = yield* MapThing.use((_) => _.set("a", 1)).pipe(
         Effect.provide(MapThing)
       )
+
       expect(map).toBeInstanceOf(MapThing)
       expect(map).toBeInstanceOf(Map)
+
+      const map2 = yield* MapThing.set("a", 1).pipe(
+        Effect.provide(MapThing)
+      )
+
+      expect(map2).toBeInstanceOf(MapThing)
+      expect(map2).toBeInstanceOf(Map)
     }))
 })
