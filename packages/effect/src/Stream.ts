@@ -2896,6 +2896,41 @@ export const mergeAll: {
 } = internal.mergeAll
 
 /**
+ * Merges a struct of streams into a single stream of tagged values.
+ * @category combinators
+ * @since 3.8.5
+ *
+ * @example
+ * import { Stream } from "effect"
+ * // Stream.Stream<{ _tag: "a"; value: number; } | { _tag: "b"; value: string; }>
+ * const res = Stream.mergeWithTag({
+ *    a: Stream.make(0),
+ *    b: Stream.make("")
+ * }, { concurrency: "unbounded" })
+ */
+export const mergeWithTag: {
+  <S extends { [k in string]: Stream<any, any, any> }>(
+    streams: S,
+    options: {
+      readonly concurrency: number | "unbounded"
+      readonly bufferSize?: number | undefined
+    }
+  ): Stream<
+    { [K in keyof S]: { _tag: K; value: Stream.Success<S[K]> } }[keyof S],
+    Stream.Error<S[keyof S]>,
+    Stream.Context<S[keyof S]>
+  >
+  (options: {
+    readonly concurrency: number | "unbounded"
+    readonly bufferSize?: number | undefined
+  }): <S extends { [k in string]: Stream<any, any, any> }>(streams: S) => Stream<
+    { [K in keyof S]: { _tag: K; value: Stream.Success<S[K]> } }[keyof S],
+    Stream.Error<S[keyof S]>,
+    Stream.Context<S[keyof S]>
+  >
+} = internal.mergeWithTag
+
+/**
  * Merges this stream and the specified stream together to a common element
  * type with the specified mapping functions.
  *

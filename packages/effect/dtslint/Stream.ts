@@ -1,6 +1,7 @@
 import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
+import { Cause } from "../src/index.js"
 
 declare const numbers: Stream.Stream<number>
 declare const numbersOrStrings: Stream.Stream<number | string>
@@ -249,3 +250,13 @@ Stream.zipLatestAll(numbers, numbersOrStrings)
 
 // $ExpectType Stream<[number, string | number, never], Error, never>
 Stream.zipLatestAll(numbers, numbersOrStrings, Stream.fail(new Error("")))
+
+// -------------------------------------------------------------------------------------
+// merge
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Stream<{ _tag: "a"; value: number; } | { _tag: "b"; value: string; }, NoSuchElementException, never>
+Stream.mergeWithTag({
+  a: Stream.make(0).pipe(Stream.tap(() => new Cause.NoSuchElementException())),
+  b: Stream.make("")
+}, { concurrency: 1 })
