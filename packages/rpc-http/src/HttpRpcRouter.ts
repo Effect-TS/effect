@@ -28,8 +28,7 @@ export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R): App.De
       ServerResponse.stream(
         handler(_).pipe(
           Stream.chunks,
-          Stream.map((_) => JSON.stringify(Chunk.toArray(_))),
-          Stream.intersperse("\n"),
+          Stream.map((_) => JSON.stringify(Chunk.toReadonlyArray(_)) + "\n"),
           Stream.encodeText,
           Stream.provideContext(context)
         ),
