@@ -85,7 +85,7 @@ describe("Tracer", () => {
           assert(span._tag === "Span")
           const parent = yield* span.parent
           return parent
-        }).pipe(Effect.withSpan("child"))
+        }).pipe(Effect.withSpan("child"), withActiveSpan)
 
         const runtime = yield* Effect.runtime()
 
@@ -95,7 +95,7 @@ describe("Tracer", () => {
             attributes: { "root": "yes" }
           }, async (span) => {
             try {
-              const parent = await Runtime.runPromise(runtime)(effect.pipe(withActiveSpan))
+              const parent = await Runtime.runPromise(runtime)(effect)
               const { spanId, traceId } = span.spanContext()
               expect(parent).toMatchObject({
                 spanId,
