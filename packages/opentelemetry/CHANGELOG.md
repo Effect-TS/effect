@@ -1,5 +1,25 @@
 # @effect/opentelemetry
 
+## 0.37.5
+
+### Patch Changes
+
+- [#3705](https://github.com/Effect-TS/effect/pull/3705) [`534abce`](https://github.com/Effect-TS/effect/commit/534abce3c9455ee2612f51d2d1449b4e0510fbe4) Thanks @Schniz! - add withActiveSpan function to attach Effect to current Span
+
+  This function allows you to connect the Effect spans into a parent span
+  that was created outside of Effect, using the OpenTelemetry context propagation:
+
+  ```ts
+  Effect.gen(function* () {
+    yield* Effect.sleep("100 millis").pipe(Effect.withSpan("sleep"))
+    yield* Console.log("done")
+  }).pipe(
+    Effect.withSpan("program"),
+    // This connects child spans to the current OpenTelemetry context
+    Tracer.withActiveSpan
+  )
+  ```
+
 ## 0.37.4
 
 ### Patch Changes
