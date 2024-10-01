@@ -6337,21 +6337,21 @@ export const Service: <Self>() => {
     const Key extends string,
     const Make extends
       | NoExcessProperties<{
-        readonly scoped: Effect<Service.AllowedType<Key, Make["accessors"]>, any, any>
+        readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
       }, Make>
       | NoExcessProperties<{
-        readonly effect: Effect<Service.AllowedType<Key, Make["accessors"]>, any, any>
+        readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
       }, Make>
       | NoExcessProperties<{
-        readonly sync: LazyArg<Service.AllowedType<Key, Make["accessors"]>>
+        readonly sync: LazyArg<Service.AllowedType<Key, Make>>
         readonly accessors?: boolean
       }, Make>
       | NoExcessProperties<{
-        readonly succeed: Service.AllowedType<Key, Make["accessors"]>
+        readonly succeed: Service.AllowedType<Key, Make>
         readonly accessors?: boolean
       }, Make>
   >(
@@ -6474,13 +6474,18 @@ export declare namespace Service {
     name?: `property "name" is forbidden`
     pipe?: `property "pipe" is forbidden`
     use?: `property "use" is forbidden`
+    _tag?: `property "_tag" is forbidden`
   }
 
   /**
    * @since 3.9.0
    */
-  export type AllowedType<Key extends string, Accessors extends boolean | undefined> = [Accessors] extends [true]
-    ? Record<PropertyKey, any> & ProhibitedType & { readonly _tag?: Key }
+  export type AllowedType<Key extends string, Make> = MakeAccessors<Make> extends true ?
+      & Record<PropertyKey, any>
+      & {
+        readonly [K in Extract<keyof MakeService<Make>, keyof ProhibitedType>]: K extends "_tag" ? Key
+          : ProhibitedType[K]
+      }
     : Record<PropertyKey, any> & { readonly _tag?: Key }
 
   /**
