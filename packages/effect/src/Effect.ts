@@ -6340,22 +6340,68 @@ export const Service: <Self>() => {
     const Make extends
       | NoExcessProperties<{
         readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
-        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
-        readonly accessors?: boolean
+        /** @deprecated */
+        readonly phantom: never
       }, Make>
       | NoExcessProperties<{
         readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
-        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
-        readonly accessors?: boolean
+        /** @deprecated */
+        readonly phantom: never
       }, Make>
       | NoExcessProperties<{
         readonly sync: LazyArg<Service.AllowedType<Key, Make>>
-        readonly accessors?: boolean
+        /** @deprecated */
+        readonly phantom: never
       }, Make>
       | NoExcessProperties<{
         readonly succeed: Service.AllowedType<Key, Make>
-        readonly accessors?: boolean
+        /** @deprecated */
+        readonly phantom: never
       }, Make>
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+  <
+    const Key extends string,
+    const Make extends NoExcessProperties<{
+      readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly accessors?: boolean
+    }, Make>
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+  <
+    const Key extends string,
+    const Make extends NoExcessProperties<{
+      readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly accessors?: boolean
+    }, Make>
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+  <
+    const Key extends string,
+    const Make extends NoExcessProperties<{
+      readonly sync: LazyArg<Service.AllowedType<Key, Make>>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly accessors?: boolean
+    }, Make>
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+  <
+    const Key extends string,
+    const Make extends NoExcessProperties<{
+      readonly succeed: Service.AllowedType<Key, Make>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly accessors?: boolean
+    }, Make>
   >(
     key: Key,
     make: Make
@@ -6514,7 +6560,6 @@ export declare namespace Service {
       readonly make: (_: MakeService<Make>) => Self
     }
     & Context.Tag<Self, Self>
-    & Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
     & Layer.Layer<
       Self,
