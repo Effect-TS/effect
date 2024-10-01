@@ -4108,6 +4108,33 @@ export const mergeAll = dual<
 >((args) => Symbol.iterator in args[0], (streams, options) => flatten(fromIterable(streams), options))
 
 /** @internal */
+export const mergeWithTag: {
+  <S extends { [k in string]: Stream.Stream<any, any, any> }>(
+    streams: S,
+    options: {
+      readonly concurrency: number | "unbounded"
+      readonly bufferSize?: number | undefined
+    }
+  ): Stream.Stream<
+    { [K in keyof S]: { _tag: K; value: Stream.Stream.Success<S[K]> } }[keyof S],
+    Stream.Stream.Error<S[keyof S]>,
+    Stream.Stream.Context<S[keyof S]>
+  >
+  (options: {
+    readonly concurrency: number | "unbounded"
+    readonly bufferSize?: number | undefined
+  }): <S extends { [k in string]: Stream.Stream<any, any, any> }>(streams: S) => Stream.Stream<
+    { [K in keyof S]: { _tag: K; value: Stream.Stream.Success<S[K]> } }[keyof S],
+    Stream.Stream.Error<S[keyof S]>,
+    Stream.Stream.Context<S[keyof S]>
+  >
+} = dual(2, (streams, options) => {
+  const keys = Object.keys(streams)
+  const values = keys.map((key) => streams[key].pipe(map((value) => ({ _tag: key, value })))) as any
+  return mergeAll(values, options)
+})
+
+/** @internal */
 export const mergeEither = dual<
   <A2, E2, R2>(
     that: Stream.Stream<A2, E2, R2>
