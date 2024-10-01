@@ -57,7 +57,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Contravariant, Covariant, NoInfer, NotFunction } from "./Types.js"
+import type { Concurrency, Contravariant, Covariant, NoExtraKeys, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import type { YieldWrap } from "./Utils.js"
 
@@ -6335,21 +6335,25 @@ export const Tag: <const Id extends string>(id: Id) => <
 export const Service: <Self>() => {
   <
     const Key extends string,
-    const Make extends {
-      readonly scoped: Effect<Service.AllowedType<Key, Make["accessors"]>, any, any>
-      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
-      readonly accessors?: boolean
-    } | {
-      readonly effect: Effect<Service.AllowedType<Key, Make["accessors"]>, any, any>
-      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
-      readonly accessors?: boolean
-    } | {
-      readonly sync: LazyArg<Service.AllowedType<Key, Make["accessors"]>>
-      readonly accessors?: boolean
-    } | {
-      readonly succeed: Service.AllowedType<Key, Make["accessors"]>
-      readonly accessors?: boolean
-    }
+    const Make extends
+      | NoExtraKeys<{
+        readonly scoped: Effect<Service.AllowedType<Key, Make["accessors"]>, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
+      }, Make>
+      | NoExtraKeys<{
+        readonly effect: Effect<Service.AllowedType<Key, Make["accessors"]>, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
+      }, Make>
+      | NoExtraKeys<{
+        readonly sync: LazyArg<Service.AllowedType<Key, Make["accessors"]>>
+        readonly accessors?: boolean
+      }, Make>
+      | NoExtraKeys<{
+        readonly succeed: Service.AllowedType<Key, Make["accessors"]>
+        readonly accessors?: boolean
+      }, Make>
   >(
     key: Key,
     make: Make
