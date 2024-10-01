@@ -1,10 +1,11 @@
-import { currentOtelSpan, OtelSpan } from "@effect/opentelemetry/internal/tracer"
+import { currentOtelSpan, OtelSpan, withActiveSpan } from "@effect/opentelemetry/internal/tracer"
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import * as it from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Effect from "effect/Effect"
+import * as Runtime from "effect/Runtime"
 import { assert, describe, expect } from "vitest"
 
 const TracingLive = NodeSdk.layer(Effect.sync(() => ({
@@ -76,6 +77,36 @@ describe("Tracer", () => {
         ),
         TracingLive
       ))
+
+    it.scoped("withActiveSpan", () =>
+      Effect.gen(function*() {
+        const effect = Effect.gen(function*() {
+          const span = yield* Effect.currentParentSpan
+          assert(span._tag === "Span")
+          const parent = yield* span.parent
+          return parent
+        }).pipe(Effect.withSpan("child"), withActiveSpan)
+
+        const runtime = yield* Effect.runtime()
+
+        yield* Effect.promise(async () => {
+          await OtelApi.trace.getTracer("test").startActiveSpan("otel-span", {
+            root: true,
+            attributes: { "root": "yes" }
+          }, async (span) => {
+            try {
+              const parent = await Runtime.runPromise(runtime)(effect)
+              const { spanId, traceId } = span.spanContext()
+              expect(parent).toMatchObject({
+                spanId,
+                traceId
+              })
+            } finally {
+              span.end()
+            }
+          })
+        })
+      }).pipe(Effect.provide(TracingLive)))
   })
 
   describe("not provided", () => {

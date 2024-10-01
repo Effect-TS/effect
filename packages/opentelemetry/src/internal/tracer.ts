@@ -304,3 +304,13 @@ const unknownToAttributeValue = (value: unknown): OtelApi.AttributeValue => {
   }
   return Inspectable.toStringUnknown(value)
 }
+
+export const withActiveSpan = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  Effect.suspend(() => {
+    const activeSpan = OtelApi.trace.getActiveSpan()
+    if (!activeSpan) {
+      return effect
+    }
+    const span = makeExternalSpan(activeSpan.spanContext())
+    return Effect.withParentSpan(effect, span)
+  })
