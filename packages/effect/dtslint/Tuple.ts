@@ -60,3 +60,25 @@ pipe(hole<Array<number>>(), T.at(1))
 
 // $ExpectType number
 pipe(hole<Array<number>>(), T.at(-1))
+
+// -------------------------------------------------------------------------------------
+// map
+// -------------------------------------------------------------------------------------
+
+// $ExpectType [false, false, false]
+pipe(
+  T.make("a", 1),
+  T.appendElement(true),
+  T.map((x) => {
+    // $ExpectType string | number | boolean
+    x
+    return false as const
+  })
+)
+
+// $ExpectType [false, false, false]
+T.map(["a", 1, false], (x) => {
+  // $ExpectType string | number | boolean
+  x
+  return false as const
+})

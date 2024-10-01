@@ -7,6 +7,7 @@ import * as Equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as order from "./Order.js"
+import type { TupleOf } from "./Types.js"
 
 /**
  * @category type lambdas
@@ -60,6 +61,40 @@ export const getFirst = <L, R>(self: readonly [L, R]): L => self[0]
  * @since 2.0.0
  */
 export const getSecond = <L, R>(self: readonly [L, R]): R => self[1]
+
+/**
+ * Transforms each element of tuple using the given function, treating tuple homomorphically
+ *
+ * @param self - A tuple.
+ * @param f - The function to transform elements of the tuple.
+ *
+ * @example
+ * import { pipe, Tuple } from "effect"
+ *
+ * const result = pipe(
+ *   ["a", 1, false] as const,
+ *   Tuple.map((el) => el.toString().toUpperCase())
+ * )
+ * assert.deepStrictEqual(result, ['A', '1', 'FALSE'])
+ *
+ * @category mapping
+ * @since 3.9.0
+ */
+export const map: {
+  <T extends ReadonlyArray<any> | [], B>(
+    fn: (element: T[number]) => B
+  ): (self: T) => TupleOf<T["length"], B>
+  <B, T extends ReadonlyArray<any> | []>(
+    self: T,
+    fn: (element: T[number]) => B
+  ): TupleOf<T["length"], B>
+} = dual(
+  2,
+  <N extends number, A, B>(
+    self: TupleOf<N, A>,
+    fn: (element: A) => B
+  ): TupleOf<N, B> => self.map((element) => fn(element)) as TupleOf<N, B>
+)
 
 /**
  * Transforms both elements of a tuple using the given functions.
