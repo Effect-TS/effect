@@ -6271,9 +6271,6 @@ const makeTagProxy = (TagClass: Context.Tag<any, any> & Record<PropertyKey, any>
   const cache = new Map()
   return new Proxy(TagClass, {
     get(target: any, prop: any, receiver) {
-      if (prop === "use") {
-        return (body: (_: any) => any) => core.andThen(target, body)
-      }
       if (prop in target) {
         return Reflect.get(target, prop, receiver)
       }
@@ -6320,6 +6317,11 @@ export const Tag: <const Id extends string>(id: Id) => <
     function TagClass() {}
     Object.setPrototypeOf(TagClass, TagProto)
     TagClass.key = id
+    Object.defineProperty(TagClass, "use", {
+      get() {
+        return (body: (_: any) => any) => core.andThen(this, body)
+      }
+    })
     Object.defineProperty(TagClass, "stack", {
       get() {
         return creationError.stack
@@ -6386,15 +6388,21 @@ export const Service: <Self>() => {
         return service
       }
     }
+
     TagClass.prototype._tag = id
-    TagClass.make = function(this: any, service: any) {
+    TagClass.make = function(service: any) {
       return new this(service)
     }
+    TagClass.use = function(body: (_: any) => any) {
+      return core.andThen(this, body)
+    }
+    TagClass.key = id
+
     Object.setPrototypeOf(TagClass, {
       ...layer.proto,
       ...TagProto
     })
-    TagClass.key = id
+
     Object.defineProperty(TagClass, "stack", {
       get() {
         return creationError.stack
@@ -6402,7 +6410,7 @@ export const Service: <Self>() => {
     })
 
     const hasDeps = "dependencies" in maker && maker.dependencies.length > 0
-    const layerName = hasDeps ? "layerWithoutDependencies" : "layer"
+    const layerName = hasDeps ? "DefaultWithoutDependencies" : "Default"
     let layerCache: Layer.Layer.Any | undefined
     if ("effect" in maker) {
       Object.defineProperty(TagClass, layerName, {
@@ -6432,11 +6440,11 @@ export const Service: <Self>() => {
 
     if (hasDeps) {
       let layerWithDepsCache: Layer.Layer.Any | undefined
-      Object.defineProperty(TagClass, "layer", {
+      Object.defineProperty(TagClass, "Default", {
         get(this: any) {
           return layerWithDepsCache ??= layer.provide(
-            this.layerWithoutDependencies,
-            layer.mergeAll(...maker.dependencies)
+            this.DefaultWithoutDependencies,
+            maker.dependencies
           )
         }
       })
@@ -6445,7 +6453,7 @@ export const Service: <Self>() => {
     Object.assign(
       TagClass,
       layer.suspend(function(this: any) {
-        return this.layer
+        return this.Default
       })
     )
 
@@ -6515,11 +6523,11 @@ export declare namespace Service {
       | MakeDepsIn<Make>
     >
     & (MakeDeps<Make> extends never ? {
-        readonly layer: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+        readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
       } :
       {
-        readonly layerWithoutDependencies: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-        readonly layer: Layer.Layer<
+        readonly DefaultWithoutDependencies: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+        readonly Default: Layer.Layer<
           Self,
           MakeError<Make> | MakeDepsE<Make>,
           | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
