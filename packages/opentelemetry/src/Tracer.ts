@@ -82,3 +82,15 @@ export const TraceFlags: Tag<Otel.TraceFlags, Otel.TraceFlags> = internal.traceF
  * @category tags
  */
 export const TraceState: Tag<Otel.TraceState, Otel.TraceState> = internal.traceStateTag
+
+/**
+ * Attach the provided Effect to the current Span as reported from OpenTelemetry's
+ * context propagation.
+ *
+ * This is handy when you set up OpenTelemetry outside of Effect and want to
+ * attach to a parent span.
+ *
+ * @since 1.0.0
+ * @category propagation
+ */
+export const withActiveSpan: <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R> = internal.withActiveSpan
