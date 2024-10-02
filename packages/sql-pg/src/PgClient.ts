@@ -18,6 +18,7 @@ import * as Redacted from "effect/Redacted"
 import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as NodeStream from "node:stream"
+import type { ConnectionOptions } from "node:tls"
 import postgres from "postgres"
 
 /**
@@ -61,7 +62,7 @@ export interface PgClientConfig {
   readonly host?: string | undefined
   readonly port?: number | undefined
   readonly path?: string | undefined
-  readonly ssl?: boolean | undefined
+  readonly ssl?: boolean | ConnectionOptions | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | undefined
