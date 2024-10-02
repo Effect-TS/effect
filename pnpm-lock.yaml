@@ -645,7 +645,7 @@ importers:
         version: 10.11.0
       drizzle-orm:
         specifier: ^0.31.0
-        version: 0.31.4(@cloudflare/workers-types@4.20240903.0)(@libsql/client@0.12.0)(@op-engineering/op-sqlite@7.1.0(react-native@0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.2.1)(bun-types@1.1.22)(kysely@0.27.4)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1)
+        version: 0.31.4(@cloudflare/workers-types@4.20240903.0)(@libsql/client@0.12.0)(@op-engineering/op-sqlite@7.1.0(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.2.1)(bun-types@1.1.22)(kysely@0.27.4)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1)
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -701,6 +701,9 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect/dist
+      testcontainers:
+        specifier: ^10.11.0
+        version: 10.11.0
     publishDirectory: dist
 
   packages/sql-mssql:
@@ -5202,7 +5205,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lighthouse-logger@1.4.2:
@@ -5944,18 +5946,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright-core@1.47.0:
-    resolution: {integrity: sha512-1DyHT8OqkcfCkYUD9zzUTfg7EfTd+6a8MkD/NWOvjo0u/SCNd5YmY/lJwFvUZOxJbWNds+ei7ic2+R/cRz/PDg==}
-    engines: {node: '>=18'}
-    hasBin: true
-
   playwright@1.46.0:
     resolution: {integrity: sha512-XYJ5WvfefWONh1uPAUAi0H2xXV5S3vrtcnXe6uAOgdGi3aSpqOSXX08IAjXW34xitfuOJsvXU5anXZxPSEQiJw==}
-    engines: {node: '>=18'}
-    hasBin: true
-
-  playwright@1.47.0:
-    resolution: {integrity: sha512-jOWiRq2pdNAX/mwLiwFYnPHpEZ4rM+fRSQpRHwEwZlP2PUANvL3+aJOF/bvISMhFD30rqMxUB4RJx9aQbfh4Ww==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -10004,24 +9996,6 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@vitest/browser@2.0.5(playwright@1.47.0)(typescript@5.6.2)(vitest@2.0.5)':
-    dependencies:
-      '@testing-library/dom': 10.4.0
-      '@testing-library/user-event': 14.5.2(@testing-library/dom@10.4.0)
-      '@vitest/utils': 2.0.5
-      magic-string: 0.30.11
-      msw: 2.3.5(typescript@5.6.2)
-      sirv: 2.0.4
-      vitest: 2.0.5(@edge-runtime/vm@4.0.3)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0)
-      ws: 8.18.0
-    optionalDependencies:
-      playwright: 1.47.0
-    transitivePeerDependencies:
-      - bufferutil
-      - typescript
-      - utf-8-validate
-    optional: true
-
   '@vitest/coverage-v8@2.0.5(vitest@2.0.5(@edge-runtime/vm@4.0.1)(@types/node@22.5.4)(@vitest/browser@2.0.5)(happy-dom@14.12.3)(terser@5.32.0))':
     dependencies:
       '@ampproject/remapping': 2.3.0
@@ -10868,11 +10842,11 @@ snapshots:
 
   docker-compose@0.24.8:
     dependencies:
-      yaml: 2.5.0
+      yaml: 2.5.1
 
   docker-modem@3.0.8:
     dependencies:
-      debug: 4.3.6
+      debug: 4.3.7
       readable-stream: 3.6.2
       split-ca: 1.0.1
       ssh2: 1.15.0
@@ -10899,7 +10873,7 @@ snapshots:
 
   dotenv@8.6.0: {}
 
-  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20240903.0)(@libsql/client@0.12.0)(@op-engineering/op-sqlite@7.1.0(react-native@0.75.2(@babel/core@7.25.2)(@babel/preset-env@7.25.4(@babel/core@7.25.2))(react@18.3.1)(typescript@5.6.2))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.2.1)(bun-types@1.1.22)(kysely@0.27.4)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1):
+  drizzle-orm@0.31.4(@cloudflare/workers-types@4.20240903.0)(@libsql/client@0.12.0)(@op-engineering/op-sqlite@7.1.0(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.11)(better-sqlite3@11.2.1)(bun-types@1.1.22)(kysely@0.27.4)(mysql2@3.11.0)(postgres@3.4.4)(react@18.3.1):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20240903.0
       '@libsql/client': 0.12.0
@@ -13142,21 +13116,11 @@ snapshots:
 
   playwright-core@1.46.0: {}
 
-  playwright-core@1.47.0:
-    optional: true
-
   playwright@1.46.0:
     dependencies:
       playwright-core: 1.46.0
     optionalDependencies:
       fsevents: 2.3.2
-
-  playwright@1.47.0:
-    dependencies:
-      playwright-core: 1.47.0
-    optionalDependencies:
-      fsevents: 2.3.2
-    optional: true
 
   pluralize@8.0.0: {}
 
@@ -14034,7 +13998,7 @@ snapshots:
       archiver: 7.0.1
       async-lock: 1.4.1
       byline: 5.0.0
-      debug: 4.3.6
+      debug: 4.3.7
       docker-compose: 0.24.8
       dockerode: 3.3.5
       get-port: 5.1.1
@@ -14385,7 +14349,7 @@ snapshots:
     optionalDependencies:
       '@edge-runtime/vm': 4.0.3
       '@types/node': 22.5.4
-      '@vitest/browser': 2.0.5(playwright@1.47.0)(typescript@5.6.2)(vitest@2.0.5)
+      '@vitest/browser': 2.0.5(playwright@1.46.0)(typescript@5.6.2)(vitest@2.0.5)
       happy-dom: 14.12.3
     transitivePeerDependencies:
       - less
