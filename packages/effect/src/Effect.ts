@@ -6554,10 +6554,10 @@ export declare namespace Service {
       new(_: MakeService<Make>): MakeService<Make> & {
         readonly _tag: Key
       }
-      readonly use: <X>(
+      use<X>(
         body: (_: Self) => X
-      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
-      readonly make: (_: MakeService<Make>) => Self
+      ): X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+      make(_: MakeService<Make>): Self
     }
     & Context.Tag<Self, Self>
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
