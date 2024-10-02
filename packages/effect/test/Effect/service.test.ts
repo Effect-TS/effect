@@ -51,8 +51,7 @@ class Scoped extends Effect.Service<Scoped>()("Scoped", {
     }
   }),
   dependencies: [Prefix, Postfix]
-}) {
-}
+}) {}
 
 describe("Effect.Service", () => {
   it("make is a function", () => {
