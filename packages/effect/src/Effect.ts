@@ -6330,6 +6330,8 @@ export const Tag: <const Id extends string>(id: Id) => <
     return makeTagProxy(TagClass as any)
   }
 
+declare const phantom: unique symbol
+
 /**
  * @since 3.9.0
  * @category context
@@ -6341,22 +6343,22 @@ export const Service: <Self>() => {
       | NoExcessProperties<{
         readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
         /** @deprecated */
-        readonly phantom: never
+        readonly [phantom]: never
       }, Make>
       | NoExcessProperties<{
         readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
         /** @deprecated */
-        readonly phantom: never
+        readonly [phantom]: never
       }, Make>
       | NoExcessProperties<{
         readonly sync: LazyArg<Service.AllowedType<Key, Make>>
         /** @deprecated */
-        readonly phantom: never
+        readonly [phantom]: never
       }, Make>
       | NoExcessProperties<{
         readonly succeed: Service.AllowedType<Key, Make>
         /** @deprecated */
-        readonly phantom: never
+        readonly [phantom]: never
       }, Make>
   >(
     key: Key,
