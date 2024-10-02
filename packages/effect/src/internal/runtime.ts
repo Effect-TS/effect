@@ -250,7 +250,7 @@ export const unsafeRunSyncExit =
     if (result) {
       return result
     }
-    throw asyncFiberException(fiberRuntime)
+    return core.exitDie(core.capture(asyncFiberException(fiberRuntime), core.currentSpanFromFiber(fiberRuntime)))
   }
 
 /** @internal */
