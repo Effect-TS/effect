@@ -47,18 +47,19 @@ const Proto = Object.assign(Object.create(null), {
 const make = (input: Record.ReadonlyRecord<string, HeaderValues>): Mutable<Headers> =>
   Object.assign(Object.create(Proto), input) as Headers
 
+const equiv = Redacted.getEquivalence(String.Equivalence)
+
 /**
  * @since 1.0.0
  * @category schemas
  */
 export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, {
   identifier: "Headers",
-  // TODO
   equivalence: () =>
     Record.getEquivalence(
       Equivalence.make<string | Redacted.Redacted<string>>((self, that) =>
         Redacted.isRedacted(self)
-          ? Redacted.isRedacted(that) && Redacted.value(self) === Redacted.value(that)
+          ? Redacted.isRedacted(that) && equiv(self, that)
           : String.isString(that) && String.Equivalence(self, that)
       )
     )
