@@ -6467,7 +6467,7 @@ export const Service: <Self>() => {
     } else if ("scoped" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
-          return layerCache ??= layer.scoped(TagClass, map(maker.effect, (_) => new this(_)))
+          return layerCache ??= layer.scoped(TagClass, map(maker.scoped, (_) => new this(_)))
         }
       })
     } else if ("sync" in maker) {
