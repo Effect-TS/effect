@@ -4,7 +4,7 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Equivalence from "effect/Equivalence"
 import * as FiberRef from "effect/FiberRef"
-import { dual } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -37,7 +37,7 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  */
 export interface Headers {
   readonly [HeadersTypeId]: HeadersTypeId
-  readonly [key: string]: Redacted.Redacted<string> | string
+  readonly [key: string]: HeaderValues
 }
 
 const Proto = Object.assign(Object.create(null), {
@@ -65,10 +65,7 @@ export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, 
     )
 })
 
-const HeaderValues = Schema.Union(
-  Schema.Union(Schema.String, Schema.Array(Schema.String)),
-  Schema.Union(Schema.Redacted(Schema.String), Schema.Array(Schema.Redacted(Schema.String)))
-)
+const HeaderValues = Schema.Union(Schema.String, Schema.Redacted(Schema.String))
 type HeaderValues = typeof HeaderValues.Type
 
 /**
@@ -79,13 +76,13 @@ export const schema: Schema.Schema<
   Headers,
   Record.ReadonlyRecord<
     string,
-    HeaderValues
+    HeaderValues | ReadonlyArray<HeaderValues>
   >
 > = Schema
   .transform(
-    Schema.Record({ key: Schema.String, value: HeaderValues }),
+    Schema.Record({ key: Schema.String, value: Schema.Union(Schema.String, Schema.Array(Schema.String)) }),
     schemaFromSelf,
-    { strict: true, decode: (record) => fromInput(record), encode: (a) => a }
+    { strict: true, decode: (record) => fromInput(record), encode: identity }
   )
 
 /**
@@ -110,16 +107,19 @@ export const fromInput: (input?: Input) => Headers = (input) => {
   if (input === undefined) {
     return empty
   } else if (Symbol.iterator in input) {
-    const out: Record<string, string> = Object.create(Proto)
+    const out: Record<string, HeaderValues> = Object.create(Proto)
     for (const [k, v] of input) {
-      out[k.toLowerCase()] = Redacted.isRedacted(v) ? Redacted.value(v) : v
+      out[k.toLowerCase()] = v
     }
     return out as Headers
   }
-  const out: Record<string, string> = Object.create(Proto)
+  const out: Record<string, HeaderValues> = Object.create(Proto)
   for (const [k, v] of Object.entries(input)) {
     if (Array.isArray(v)) {
-      out[k.toLowerCase()] = v.join(", ")
+      const redacted = v.some((_) => Redacted.isRedacted(_))
+      out[k.toLowerCase()] = redacted
+        ? Redacted.make(v.map((_) => Redacted.isRedacted(_) ? Redacted.value(_) : _).join(", "))
+        : v.join(", ")
     } else if (v !== undefined) {
       out[k.toLowerCase()] = v as string
     }
