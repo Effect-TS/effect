@@ -1,6 +1,7 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Scope from "effect/Scope"
 import { describe, expect, it } from "effect/test/utils/extend"
 
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
@@ -33,6 +34,23 @@ class Logger extends Effect.Service<Logger>()("Logger", {
   dependencies: [Prefix, Postfix]
 }) {
   static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
+}
+
+class Scoped extends Effect.Service<Scoped>()("Scoped", {
+  accessors: true,
+  scoped: Effect.gen(function*() {
+    const { prefix } = yield* Prefix
+    const { postfix } = yield* Postfix
+    yield* Scope.Scope
+    return {
+      info: (message: string) =>
+        Effect.sync(() => {
+          messages.push(`[${prefix}][${message}][${postfix}]`)
+        })
+    }
+  }),
+  dependencies: [Prefix, Postfix]
+}) {
 }
 
 describe("Effect.Service", () => {
@@ -137,5 +155,10 @@ describe("Effect.Service", () => {
 
       expect(map2).toBeInstanceOf(MapThing)
       expect(map2).toBeInstanceOf(Map)
+    }))
+
+  it.effect("scoped", () =>
+    Effect.gen(function*() {
+      yield* Scoped.info("Ok").pipe(Effect.provide(Scoped.Default))
     }))
 })
