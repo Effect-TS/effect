@@ -673,7 +673,7 @@ export const originalInstance = <E>(obj: E): E => {
 }
 
 /* @internal */
-const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E => {
+export const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E => {
   if (Option.isSome(span)) {
     return new Proxy(obj, {
       has(target, p) {
