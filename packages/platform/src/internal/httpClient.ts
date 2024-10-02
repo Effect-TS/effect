@@ -1,3 +1,4 @@
+import { Redacted } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
@@ -688,7 +689,9 @@ export const followRedirects = dual<
               ? loop(
                 internalRequest.setUrl(
                   request,
-                  response.headers.location
+                  Redacted.isRedacted(response.headers.location)
+                    ? Redacted.value(response.headers.location)
+                    : response.headers.location
                 ),
                 redirects + 1
               )
