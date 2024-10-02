@@ -2,8 +2,9 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
+import * as Equivalence from "effect/Equivalence"
 import * as FiberRef from "effect/FiberRef"
-import { dual, identity } from "effect/Function"
+import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -36,14 +37,14 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  */
 export interface Headers {
   readonly [HeadersTypeId]: HeadersTypeId
-  readonly [key: string]: string
+  readonly [key: string]: Redacted.Redacted<string> | string
 }
 
 const Proto = Object.assign(Object.create(null), {
   [HeadersTypeId]: HeadersTypeId
 })
 
-const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
+const make = (input: Record.ReadonlyRecord<string, HeaderValues>): Mutable<Headers> =>
   Object.assign(Object.create(Proto), input) as Headers
 
 /**
@@ -52,18 +53,38 @@ const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
  */
 export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, {
   identifier: "Headers",
-  equivalence: () => Record.getEquivalence(String.Equivalence)
+  // TODO
+  equivalence: () =>
+    Record.getEquivalence(
+      Equivalence.make<string | Redacted.Redacted<string>>((self, that) =>
+        Redacted.isRedacted(self)
+          ? Redacted.isRedacted(that) && Redacted.value(self) === Redacted.value(that)
+          : String.isString(that) && String.Equivalence(self, that)
+      )
+    )
 })
+
+const HeaderValues = Schema.Union(
+  Schema.Union(Schema.String, Schema.Array(Schema.String)),
+  Schema.Union(Schema.Redacted(Schema.String), Schema.Array(Schema.Redacted(Schema.String)))
+)
+type HeaderValues = typeof HeaderValues.Type
 
 /**
  * @since 1.0.0
  * @category schemas
  */
-export const schema: Schema.Schema<Headers, Record.ReadonlyRecord<string, string | ReadonlyArray<string>>> = Schema
+export const schema: Schema.Schema<
+  Headers,
+  Record.ReadonlyRecord<
+    string,
+    HeaderValues
+  >
+> = Schema
   .transform(
-    Schema.Record({ key: Schema.String, value: Schema.Union(Schema.String, Schema.Array(Schema.String)) }),
+    Schema.Record({ key: Schema.String, value: HeaderValues }),
     schemaFromSelf,
-    { strict: true, decode: (record) => fromInput(record), encode: identity }
+    { strict: true, decode: (record) => fromInput(record), encode: (a) => a }
   )
 
 /**
@@ -71,8 +92,8 @@ export const schema: Schema.Schema<Headers, Record.ReadonlyRecord<string, string
  * @category models
  */
 export type Input =
-  | Record.ReadonlyRecord<string, string | ReadonlyArray<string> | undefined>
-  | Iterable<readonly [string, string]>
+  | Record.ReadonlyRecord<string, HeaderValues | ReadonlyArray<HeaderValues> | undefined>
+  | Iterable<readonly [string, HeaderValues]>
 
 /**
  * @since 1.0.0
@@ -90,7 +111,7 @@ export const fromInput: (input?: Input) => Headers = (input) => {
   } else if (Symbol.iterator in input) {
     const out: Record<string, string> = Object.create(Proto)
     for (const [k, v] of input) {
-      out[k.toLowerCase()] = v
+      out[k.toLowerCase()] = Redacted.isRedacted(v) ? Redacted.value(v) : v
     }
     return out as Headers
   }
@@ -141,11 +162,11 @@ export const get: {
  * @category combinators
  */
 export const set: {
-  (key: string, value: string): (self: Headers) => Headers
-  (self: Headers, key: string, value: string): Headers
+  (key: string, value: HeaderValues): (self: Headers) => Headers
+  (self: Headers, key: string, value: HeaderValues): Headers
 } = dual<
-  (key: string, value: string) => (self: Headers) => Headers,
-  (self: Headers, key: string, value: string) => Headers
+  (key: string, value: HeaderValues) => (self: Headers) => Headers,
+  (self: Headers, key: string, value: HeaderValues) => Headers
 >(3, (self, key, value) => {
   const out = make(self)
   out[key.toLowerCase()] = value
@@ -223,12 +244,12 @@ export const redact: {
       if (typeof key === "string") {
         const k = key.toLowerCase()
         if (k in self) {
-          out[k] = Redacted.make(self[k])
+          out[k] = Redacted.isRedacted(self[k]) ? self[k] : Redacted.make(self[k])
         }
       } else {
         for (const name in self) {
           if (key.test(name)) {
-            out[name] = Redacted.make(self[name])
+            out[name] = Redacted.isRedacted(self[name]) ? self[name] : Redacted.make(self[name])
           }
         }
       }

@@ -1,6 +1,7 @@
 import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
+import { Redacted } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
@@ -787,7 +788,9 @@ export const followRedirects = dual<
               ? loop(
                 internalRequest.setUrl(
                   request,
-                  response.headers.location
+                  Redacted.isRedacted(response.headers.location)
+                    ? Redacted.value(response.headers.location)
+                    : response.headers.location
                 ),
                 redirects + 1
               )
