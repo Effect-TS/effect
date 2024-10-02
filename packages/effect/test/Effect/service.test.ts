@@ -1,5 +1,6 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import { describe, expect, it } from "effect/test/utils/extend"
@@ -54,6 +55,9 @@ class Scoped extends Effect.Service<Scoped>()("Scoped", {
 }
 
 describe("Effect.Service", () => {
+  it("make is a function", () => {
+    expect(pipe({ prefix: "OK" }, Prefix.make)).toBeInstanceOf(Prefix)
+  })
   it("tags are both layers and tags", () => {
     expect(Layer.isLayer(Logger)).toBe(true)
     expect(Context.isTag(Logger)).toBe(true)

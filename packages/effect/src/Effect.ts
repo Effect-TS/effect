@@ -6436,12 +6436,16 @@ export const Service: <Self>() => {
     }
 
     TagClass.prototype._tag = id
-    TagClass.make = function(service: any) {
-      return new this(service)
-    }
-    TagClass.use = function(body: (_: any) => any) {
-      return core.andThen(this, body)
-    }
+    Object.defineProperty(TagClass, "make", {
+      get() {
+        return (service: any) => new this(service)
+      }
+    })
+    Object.defineProperty(TagClass, "use", {
+      get() {
+        return (body: any) => core.andThen(this, body)
+      }
+    })
     TagClass.key = id
 
     Object.setPrototypeOf(TagClass, {
@@ -6554,10 +6558,10 @@ export declare namespace Service {
       new(_: MakeService<Make>): MakeService<Make> & {
         readonly _tag: Key
       }
-      use<X>(
+      readonly use: <X>(
         body: (_: Self) => X
-      ): X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
-      make(_: MakeService<Make>): Self
+      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+      readonly make: (_: MakeService<Make>) => Self
     }
     & Context.Tag<Self, Self>
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
