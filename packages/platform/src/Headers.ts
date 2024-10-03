@@ -222,6 +222,24 @@ export const remove: {
   return out
 })
 
+export const unredactHeader: {
+  (self: string | Redacted.Redacted<string>): string
+  (self: string | Redacted.Redacted<string> | undefined): string | undefined
+} = (self) => (self !== undefined ? Redacted.isRedacted(self) ? Redacted.value(self) : self : undefined) as any
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const unredact = (self: Headers): Record<string, string> => {
+  const out: Record<string, string> = {}
+  for (const name in self) {
+    out[name] = unredactHeader(self[name])
+  }
+
+  return out
+}
+
 /**
  * @since 1.0.0
  * @category combinators

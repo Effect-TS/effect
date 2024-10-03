@@ -49,7 +49,7 @@ export const b3: FromHeaders = (headers) => {
   if (!("b3" in headers)) {
     return Option.none()
   }
-  const parts = headers["b3"].split("-")
+  const parts = Headers.unredactHeader(headers["b3"])!.split("-")
   if (parts.length < 2) {
     return Option.none()
   }
@@ -69,9 +69,9 @@ export const xb3: FromHeaders = (headers) => {
     return Option.none()
   }
   return Option.some(Tracer.externalSpan({
-    traceId: headers["x-b3-traceid"],
-    spanId: headers["x-b3-spanid"],
-    sampled: headers["x-b3-sampled"] ? headers["x-b3-sampled"] === "1" : true
+    traceId: Headers.unredactHeader(headers["x-b3-traceid"]),
+    spanId: Headers.unredactHeader(headers["x-b3-spanid"]),
+    sampled: headers["x-b3-sampled"] ? Headers.unredactHeader(headers["x-b3-sampled"]) === "1" : true
   }))
 }
 
@@ -86,7 +86,7 @@ export const w3c: FromHeaders = (headers) => {
   if (!(headers["traceparent"])) {
     return Option.none()
   }
-  const parts = headers["traceparent"].split("-")
+  const parts = Headers.unredactHeader(headers["traceparent"]).split("-")
   if (parts.length !== 4) {
     return Option.none()
   }

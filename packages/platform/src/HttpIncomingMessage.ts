@@ -12,7 +12,7 @@ import type { Inspectable } from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
 import * as FileSystem from "./FileSystem.js"
-import type * as Headers from "./Headers.js"
+import * as Headers from "./Headers.js"
 import type * as UrlParams from "./UrlParams.js"
 
 /**
@@ -99,7 +99,7 @@ export const withMaxBodySize = dual<
  * @since 1.0.0
  */
 export const inspect = <E>(self: HttpIncomingMessage<E>, that: object): object => {
-  const contentType = self.headers["content-type"] ?? ""
+  const contentType = Headers.unredactHeader(self.headers["content-type"]) ?? ""
   let body: unknown
   if (contentType.includes("application/json")) {
     try {

@@ -2,7 +2,7 @@ import * as MultipartNode from "@effect/platform-node-shared/NodeMultipart"
 import * as Cookies from "@effect/platform/Cookies"
 import * as Etag from "@effect/platform/Etag"
 import * as FileSystem from "@effect/platform/FileSystem"
-import type * as Headers from "@effect/platform/Headers"
+import * as Headers from "@effect/platform/Headers"
 import * as App from "@effect/platform/HttpApp"
 import * as IncomingMessage from "@effect/platform/HttpIncomingMessage"
 import type { HttpMethod } from "@effect/platform/HttpMethod"
@@ -227,7 +227,7 @@ class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> impl
     if (this.cachedCookies) {
       return this.cachedCookies
     }
-    return this.cachedCookies = Cookies.parseHeader(this.headers.cookie ?? "")
+    return this.cachedCookies = Cookies.parseHeader(Headers.unredactHeader(this.headers.cookie) ?? "")
   }
 
   get resolvedResponse(): Http.ServerResponse {
@@ -359,7 +359,7 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
       return Effect.void
     }
 
-    let headers: Record<string, string | Array<string>> = response.headers
+    let headers: Record<string, string | Array<string>> = Headers.unredact(response.headers)
     if (!Cookies.isEmpty(response.cookies)) {
       headers = { ...headers }
       const toSet = Cookies.toSetCookieHeaders(response.cookies)

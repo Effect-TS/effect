@@ -100,7 +100,7 @@ export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?
 }
 
 const isMultipart = (request: ServerRequest.HttpServerRequest) =>
-  request.headers["content-type"]?.toLowerCase().includes("multipart/form-data")
+  Headers.unredactHeader(request.headers["content-type"])?.toLowerCase().includes("multipart/form-data")
 
 /** @internal */
 export const schemaBodyForm = <A, I extends Partial<Multipart.Persisted>, R>(
@@ -234,7 +234,9 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     if (this.cachedCookies) {
       return this.cachedCookies
     }
-    return this.cachedCookies = Cookies.parseHeader(this.headers.cookie ?? "")
+    return this.cachedCookies = Cookies.parseHeader(
+      Headers.unredactHeader(this.headers.cookie) ?? ""
+    )
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.RequestError> {
@@ -322,7 +324,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return Stream.pipeThroughChannel(
       Stream.mapError(this.stream, (cause) => new Multipart.MultipartError({ reason: "InternalError", cause })),
-      Multipart.makeChannel(this.headers)
+      Multipart.makeChannel(Headers.unredact(this.headers))
     )
   }
 
