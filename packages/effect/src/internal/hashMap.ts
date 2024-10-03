@@ -3,7 +3,7 @@ import * as Dual from "../Function.js"
 import { identity, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import type * as HM from "../HashMap.js"
-import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
@@ -84,6 +84,9 @@ const HashMapProto: HM.HashMap<unknown, unknown> = {
       _id: "HashMap",
       values: Array.from(this).map(toJSON)
     }
+  },
+  [DenoInspectSymbol]() {
+    return this.toJSON()
   },
   [NodeInspectSymbol]() {
     return this.toJSON()

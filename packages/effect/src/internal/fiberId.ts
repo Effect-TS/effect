@@ -4,7 +4,7 @@ import { dual, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
-import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { hasProperty } from "../Predicate.js"
@@ -58,6 +58,9 @@ class None implements FiberId.None {
       _tag: this._tag
     }
   }
+  [DenoInspectSymbol]() {
+    return this.toJSON()
+  }
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
@@ -90,6 +93,9 @@ class Runtime implements FiberId.Runtime {
       id: this.id,
       startTimeMillis: this.startTimeMillis
     }
+  }
+  [DenoInspectSymbol]() {
+    return this.toJSON()
   }
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -130,6 +136,9 @@ class Composite implements FiberId.Composite {
       left: toJSON(this.left),
       right: toJSON(this.right)
     }
+  }
+  [DenoInspectSymbol]() {
+    return this.toJSON()
   }
   [NodeInspectSymbol]() {
     return this.toJSON()
