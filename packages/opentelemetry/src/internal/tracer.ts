@@ -153,6 +153,14 @@ export const make = Effect.map(Tracer, (tracer) =>
         populateContext(OtelApi.context.active(), currentSpan),
         execution
       )
+    },
+    getActiveSpan() {
+      const activeSpan = OtelApi.trace.getActiveSpan()
+      if (!activeSpan) {
+        return Option.none()
+      }
+      const span = makeExternalSpan(activeSpan.spanContext())
+      return Option.some(span)
     }
   }))
 

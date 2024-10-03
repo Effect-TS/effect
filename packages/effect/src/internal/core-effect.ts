@@ -2067,11 +2067,15 @@ export const unsafeMakeSpan = <XA, XE>(
   const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
   const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
 
-  const parent = options.parent
+  let parent = options.parent
     ? Option.some(options.parent)
     : options.root
     ? Option.none()
     : Context.getOption(context, internalTracer.spanTag)
+
+  if (parent._tag === "None" && !(options.root === true) && tracer.getActiveSpan !== undefined) {
+    parent = tracer.getActiveSpan()
+  }
 
   const links = linksFromEnv._tag === "Some" ?
     options.links !== undefined ?

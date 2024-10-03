@@ -34,6 +34,7 @@ export interface Tracer {
     kind: SpanKind
   ): Span
   context<X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>): X
+  getActiveSpan?(): Option.Option<AnySpan>
 }
 
 /**
