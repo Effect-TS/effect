@@ -6522,10 +6522,12 @@ export declare namespace Service {
   export interface ProhibitedType {
     Service?: `property "Service" is forbidden`
     Identifier?: `property "Identifier" is forbidden`
-    Layer?: `property "Layer" is forbidden`
+    Default?: `property "Default" is forbidden`
+    DefaultWithoutDependencies?: `property "DefaultWithoutDependencies" is forbidden`
     _op_layer?: `property "_op_layer" is forbidden`
     _op?: `property "_op" is forbidden`
     of?: `property "of" is forbidden`
+    make?: `property "make" is forbidden`
     context?: `property "context" is forbidden`
     key?: `property "key" is forbidden`
     stack?: `property "stack" is forbidden`
