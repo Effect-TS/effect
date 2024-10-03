@@ -1,4 +1,5 @@
 import * as Cookies from "@effect/platform/Cookies"
+import * as Headers from "@effect/platform/Headers"
 import type * as Body from "@effect/platform/HttpBody"
 import * as Client from "@effect/platform/HttpClient"
 import * as Error from "@effect/platform/HttpClientError"
@@ -60,13 +61,13 @@ const fromAgent = (agent: NodeClient.HttpAgent): Client.HttpClient =>
       Https.request(url, {
         agent: agent.https,
         method: request.method,
-        headers: request.headers,
+        headers: Headers.unredact(request.headers),
         signal
       }) :
       Http.request(url, {
         agent: agent.http,
         method: request.method,
-        headers: request.headers,
+        headers: Headers.unredact(request.headers),
         signal
       })
     return pipe(

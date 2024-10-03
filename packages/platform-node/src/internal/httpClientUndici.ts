@@ -52,7 +52,7 @@ export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient =>
               ...options,
               signal,
               method: request.method,
-              headers: request.headers,
+              headers: Headers.unredact(request.headers),
               origin: url.origin,
               path: url.pathname + url.search + url.hash,
               body,

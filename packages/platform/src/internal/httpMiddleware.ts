@@ -177,7 +177,7 @@ export const xForwardedHeaders = make((httpApp) =>
           "host",
           request.headers["x-forwarded-host"]
         ),
-        remoteAddress: request.headers["x-forwarded-for"]?.split(",")[0].trim()
+        remoteAddress: Headers.unredactHeader(request.headers["x-forwarded-for"])?.split(",")[0].trim()
       })
       : request)
 )
@@ -283,8 +283,8 @@ export const cors = (options?: {
         context,
         ServerRequest.HttpServerRequest
       )
-      const origin = request.headers["origin"]
-      const accessControlRequestHeaders = request.headers["access-control-request-headers"]
+      const origin = Headers.unredactHeader(request.headers["origin"])!
+      const accessControlRequestHeaders = Headers.unredactHeader(request.headers["access-control-request-headers"])
       const corsHeaders = Headers.unsafeFromRecord({
         ...allowOrigin(origin),
         ...allowCredentials,

@@ -291,7 +291,7 @@ export const getContentType = (options?: ServerResponse.Options | undefined): st
   if (options?.contentType) {
     return options.contentType
   } else if (options?.headers) {
-    return options.headers["content-type"]
+    return Headers.unredactHeader(options.headers["content-type"])
   } else {
     return
   }
@@ -512,7 +512,7 @@ export const toWeb = (response: ServerResponse.HttpServerResponse, options?: {
   readonly withoutBody?: boolean | undefined
   readonly runtime?: Runtime.Runtime<never> | undefined
 }): Response => {
-  const headers = new globalThis.Headers(response.headers)
+  const headers = new globalThis.Headers(Headers.unredact(response.headers))
   if (!Cookies.isEmpty(response.cookies)) {
     const toAdd = Cookies.toSetCookieHeaders(response.cookies)
     for (const header of toAdd) {

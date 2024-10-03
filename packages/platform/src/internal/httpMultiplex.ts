@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
+import * as Headers from "../Headers.js"
 import type * as App from "../HttpApp.js"
 import type * as Multiplex from "../HttpMultiplex.js"
 import * as Error from "../HttpServerError.js"
@@ -138,7 +139,7 @@ export const headerRegex = dual<
   (self, header, regex, app) =>
     add(self, (req) =>
       req.headers[header] !== undefined
-        ? Effect.succeed(regex.test(req.headers[header]))
+        ? Effect.succeed(regex.test(Headers.unredactHeader(req.headers[header])))
         : Effect.succeed(false), app)
 )
 
@@ -160,7 +161,7 @@ export const headerStartsWith = dual<
   (self, header, prefix, app) =>
     add(self, (req) =>
       req.headers[header] !== undefined
-        ? Effect.succeed(req.headers[header].startsWith(prefix))
+        ? Effect.succeed(Headers.unredactHeader(req.headers[header]).startsWith(prefix))
         : Effect.succeed(false), app)
 )
 
@@ -182,7 +183,7 @@ export const headerEndsWith = dual<
   (self, header, suffix, app) =>
     add(self, (req) =>
       req.headers[header] !== undefined
-        ? Effect.succeed(req.headers[header].endsWith(suffix))
+        ? Effect.succeed(Headers.unredactHeader(req.headers[header])!.endsWith(suffix))
         : Effect.succeed(false), app)
 )
 
