@@ -7,10 +7,6 @@ Implement Effect.Service as a Tag and Layer with Opaque Type.
 Namely the following is now possible:
 
 ```ts
-import * as Effect from "effect/Effect"
-import * as it from "effect/test/utils/extend"
-import { describe, expect } from "vitest"
-
 class Prefix extends Effect.Service<Prefix>()("Prefix", {
   sync: () => ({
     prefix: "PRE"
@@ -26,15 +22,18 @@ class Postfix extends Effect.Service<Postfix>()("Postfix", {
 const messages: Array<string> = []
 
 class Logger extends Effect.Service<Logger>()("Logger", {
+  accessors: true,
   effect: Effect.gen(function* () {
     const { prefix } = yield* Prefix
     const { postfix } = yield* Postfix
     return {
       info: (message: string) =>
-        Effect.sync(() => messages.push(`[${prefix}][${message}][${postfix}]`))
+        Effect.sync(() => {
+          messages.push(`[${prefix}][${message}][${postfix}]`)
+        })
     }
   }),
-  dependencies: [Prefix, Postfix]
+  dependencies: [Prefix.Default, Postfix.Default]
 }) {}
 
 describe("Effect", () => {
@@ -48,7 +47,7 @@ describe("Effect", () => {
       expect(prefix).toEqual("PRE")
       const { postfix } = yield* Postfix
       expect(postfix).toEqual("POST")
-    }).pipe(Effect.provide([Logger, Prefix, Postfix]))
+    }).pipe(Effect.provide([Logger.Default, Prefix.Default, Postfix.Default]))
   )
 })
 ```
