@@ -1772,7 +1772,6 @@ export const copy: {
  * assert.deepStrictEqual(result, [1, 2, 3, 0, 0, 0])
  *
  * @since 3.8.4
- *
  */
 export const pad: {
   <A, T>(
