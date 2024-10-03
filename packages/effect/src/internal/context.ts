@@ -25,7 +25,6 @@ export const STMTypeId: STM.STMTypeId = Symbol.for(
 /** @internal */
 export const TagProto: any = {
   ...EffectPrototype,
-  _tag: "Tag",
   _op: "Tag",
   [STMTypeId]: effectVariance,
   [TagTypeId]: {

@@ -6458,10 +6458,7 @@ export const Service: <Self>() => {
     })
     TagClass.key = id
 
-    Object.setPrototypeOf(TagClass, {
-      ...layer.proto,
-      ...TagProto
-    })
+    Object.assign(TagClass, TagProto)
 
     Object.defineProperty(TagClass, "stack", {
       get() {
@@ -6509,13 +6506,6 @@ export const Service: <Self>() => {
         }
       })
     }
-
-    Object.assign(
-      TagClass,
-      layer.suspend(function(this: any) {
-        return this.Default
-      })
-    )
 
     return proxy === true ? makeTagProxy(TagClass) : TagClass
   }
@@ -6575,12 +6565,6 @@ export declare namespace Service {
     }
     & Context.Tag<Self, Self>
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
-    & Layer.Layer<
-      Self,
-      MakeError<Make> | MakeDepsE<Make>,
-      | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
-      | MakeDepsIn<Make>
-    >
     & (MakeDeps<Make> extends never ? {
         readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
       } :
