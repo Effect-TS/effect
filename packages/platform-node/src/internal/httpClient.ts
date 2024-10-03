@@ -8,6 +8,7 @@ import * as ClientResponse from "@effect/platform/HttpClientResponse"
 import * as IncomingMessage from "@effect/platform/HttpIncomingMessage"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
@@ -74,7 +75,11 @@ const fromAgent = (agent: NodeClient.HttpAgent): Client.HttpClient =>
       Effect.zipRight(sendBody(nodeRequest, request, request.body), waitForResponse(nodeRequest, request), {
         concurrent: true
       }),
-      Effect.map((_) => new ClientResponseImpl(request, _))
+      Effect.flatMap((_) =>
+        FiberRef.get(Headers.currentRedactedNames).pipe(
+          Effect.map((redactedKeys) => new ClientResponseImpl(request, _, redactedKeys))
+        )
+      )
     )
   })
 
@@ -189,7 +194,8 @@ class ClientResponseImpl extends HttpIncomingMessageImpl<Error.ResponseError>
 
   constructor(
     readonly request: ClientRequest.HttpClientRequest,
-    source: Http.IncomingMessage
+    source: Http.IncomingMessage,
+    redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
   ) {
     super(source, (cause) =>
       new Error.ResponseError({
@@ -197,7 +203,7 @@ class ClientResponseImpl extends HttpIncomingMessageImpl<Error.ResponseError>
         response: this,
         reason: "Decode",
         cause
-      }))
+      }), redactedKeys)
     this[ClientResponse.TypeId] = ClientResponse.TypeId
   }
 

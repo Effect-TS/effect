@@ -21,8 +21,9 @@ export const TypeId: ClientResponse.TypeId = Symbol.for("@effect/platform/HttpCl
 /** @internal */
 export const fromWeb = (
   request: ClientRequest.HttpClientRequest,
-  source: globalThis.Response
-): ClientResponse.HttpClientResponse => new ClientResponseImpl(request, source)
+  source: globalThis.Response,
+  redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
+): ClientResponse.HttpClientResponse => new ClientResponseImpl(request, source, redactedKeys)
 
 class ClientResponseImpl extends Inspectable.Class implements ClientResponse.HttpClientResponse {
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
@@ -30,7 +31,8 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
 
   constructor(
     readonly request: ClientRequest.HttpClientRequest,
-    private readonly source: globalThis.Response
+    private readonly source: globalThis.Response,
+    protected redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
   ) {
     super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
@@ -50,7 +52,7 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
   }
 
   get headers(): Headers.Headers {
-    return Headers.fromInput(this.source.headers)
+    return Headers.fromInput(this.source.headers, this.redactedKeys)
   }
 
   cachedCookies?: Cookies.Cookies

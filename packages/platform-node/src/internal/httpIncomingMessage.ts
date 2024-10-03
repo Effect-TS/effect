@@ -18,6 +18,7 @@ export abstract class HttpIncomingMessageImpl<E> extends Inspectable.Class
   constructor(
     readonly source: Http.IncomingMessage,
     readonly onError: (error: unknown) => E,
+    protected readonly redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>,
     readonly remoteAddressOverride?: string
   ) {
     super()
@@ -25,7 +26,7 @@ export abstract class HttpIncomingMessageImpl<E> extends Inspectable.Class
   }
 
   get headers() {
-    return Headers.fromInput(this.source.headers as any)
+    return Headers.fromInput(this.source.headers as any, this.redactedKeys)
   }
 
   get remoteAddress() {

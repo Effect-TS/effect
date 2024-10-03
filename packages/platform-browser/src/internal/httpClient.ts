@@ -50,7 +50,7 @@ const makeXMLHttpRequest = Client.make((request, url, signal, fiber) =>
     }, { once: true })
     xhr.open(request.method, url.toString(), true)
     xhr.responseType = fiber.getFiberRef(currentXHRResponseType)
-    Object.entries(request.headers).forEach(([k, v]) => {
+    Object.entries(Headers.unredact(request.headers)).forEach(([k, v]) => {
       xhr.setRequestHeader(k, v)
     })
     return Effect.zipRight(
@@ -60,7 +60,9 @@ const makeXMLHttpRequest = Client.make((request, url, signal, fiber) =>
         const onChange = () => {
           if (!sent && xhr.readyState >= 2) {
             sent = true
-            resume(Effect.succeed(new ClientResponseImpl(request, xhr)))
+            resume(
+              Effect.succeed(new ClientResponseImpl(request, xhr, fiber.getFiberRef(Headers.currentRedactedNames)))
+            )
           }
         }
         xhr.onreadystatechange = onChange
@@ -127,7 +129,8 @@ export abstract class IncomingMessageImpl<E> extends Inspectable.Class
 
   constructor(
     readonly source: XMLHttpRequest,
-    readonly onError: (error: unknown) => E
+    readonly onError: (error: unknown) => E,
+    private readonly redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
   ) {
     super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
@@ -147,7 +150,7 @@ export abstract class IncomingMessageImpl<E> extends Inspectable.Class
     const parser = HeaderParser.make()
     const result = parser(encoder.encode(this._rawHeaderString + "\r\n"), 0)
     this._rawHeaders = result._tag === "Headers" ? result.headers : undefined
-    const parsed = result._tag === "Headers" ? Headers.fromInput(result.headers) : Headers.empty
+    const parsed = result._tag === "Headers" ? Headers.fromInput(result.headers, this.redactedKeys) : Headers.empty
     return this._headers = parsed
   }
 
@@ -289,7 +292,8 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
 
   constructor(
     readonly request: ClientRequest.HttpClientRequest,
-    source: XMLHttpRequest
+    source: XMLHttpRequest,
+    redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
   ) {
     super(source, (cause) =>
       new Error.ResponseError({
@@ -297,7 +301,7 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
         response: this,
         reason: "Decode",
         cause
-      }))
+      }), redactedKeys)
     this[ClientResponse.TypeId] = ClientResponse.TypeId
   }
 

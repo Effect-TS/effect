@@ -69,7 +69,11 @@ export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient =>
             })
         })
       ),
-      Effect.map((response) => new ClientResponseImpl(request, response))
+      Effect.flatMap((response) =>
+        FiberRef.get(Headers.currentRedactedNames).pipe(
+          Effect.map((redactedKeys) => new ClientResponseImpl(request, response, redactedKeys))
+        )
+      )
     )
   })
 
@@ -101,7 +105,8 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
 
   constructor(
     readonly request: ClientRequest.HttpClientRequest,
-    readonly source: Undici.Dispatcher.ResponseData
+    readonly source: Undici.Dispatcher.ResponseData,
+    protected redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
   ) {
     super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
@@ -130,7 +135,7 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
   }
 
   get headers(): Headers.Headers {
-    return Headers.fromInput(this.source.headers)
+    return Headers.fromInput(this.source.headers, this.redactedKeys)
   }
 
   get remoteAddress(): Option.Option<string> {
