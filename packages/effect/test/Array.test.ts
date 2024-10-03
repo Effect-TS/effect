@@ -1084,6 +1084,14 @@ describe("ReadonlyArray", () => {
     deepStrictEqual(pipe([1, 2, 3], RA.chop((as) => [as[0] * 2, as.slice(1)])), [2, 4, 6])
   })
 
+  it("pad", () => {
+    deepStrictEqual(pipe([], RA.pad(0, 0)), [])
+    deepStrictEqual(pipe([1, 2, 3], RA.pad(0, 0)), [])
+    deepStrictEqual(pipe([1, 2, 3], RA.pad(2, 0)), [1, 2])
+    deepStrictEqual(pipe([1, 2, 3], RA.pad(6, 0)), [1, 2, 3, 0, 0, 0])
+    deepStrictEqual(pipe([1, 2, 3], RA.pad(-2, 0)), [])
+  })
+
   describe("chunksOf", () => {
     it("should split a `ReadonlyArray` into length-n pieces", () => {
       deepStrictEqual(RA.chunksOf(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4], [5]])
