@@ -1759,6 +1759,39 @@ export const copy: {
 } = (<A>(self: ReadonlyArray<A>): Array<A> => self.slice()) as any
 
 /**
+ * Pads an array.
+ * Returns a new array of length `n` with the elements of `array` followed by `fill` elements if `array` is shorter than `n`.
+ * If `array` is longer than `n`, the returned array will be a slice of `array` containing the `n` first elements of `array`.
+ * If `n` is less than or equal to 0, the returned array will be an empty array.
+ *
+ * @example
+ * import { Array } from "effect"
+ *
+ * const arr = [1, 2, 3]
+ * const result = Array.pad(arr, 6, 0)
+ * assert.deepStrictEqual(result, [1, 2, 3, 0, 0, 0])
+ *
+ * @since 3.8.4
+ */
+export const pad: {
+  <A, T>(
+    n: number,
+    fill: T
+  ): (
+    self: Array<A>
+  ) => Array<A | T>
+  <A, T>(self: Array<A>, n: number, fill: T): Array<A | T>
+} = dual(3, <A, T>(self: Array<A>, n: number, fill: T): Array<A | T> => {
+  if (self.length >= n) {
+    return take(self, n)
+  }
+  return appendAll(
+    self,
+    makeBy(n - self.length, () => fill)
+  )
+})
+
+/**
  * Splits an `Iterable` into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
  * the `Iterable`. Note that `chunksOf(n)([])` is `[]`, not `[[]]`. This is intentional, and is consistent with a recursive
  * definition of `chunksOf`; it satisfies the property that
