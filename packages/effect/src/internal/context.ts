@@ -3,7 +3,7 @@ import * as Equal from "../Equal.js"
 import type { LazyArg } from "../Function.js"
 import { dual } from "../Function.js"
 import * as Hash from "../Hash.js"
-import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as O from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
@@ -41,6 +41,9 @@ export const TagProto: any = {
       key: this.key,
       stack: this.stack
     }
+  },
+  [DenoInspectSymbol]() {
+    return this.toJSON()
   },
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -125,6 +128,9 @@ export const ContextProto: Omit<C.Context<unknown>, "unsafeMap"> = {
       _id: "Context",
       services: Array.from(this.unsafeMap).map(toJSON)
     }
+  },
+  [DenoInspectSymbol]() {
+    return (this as any).toJSON()
   },
   [NodeInspectSymbol]() {
     return (this as any).toJSON()

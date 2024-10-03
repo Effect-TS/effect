@@ -230,6 +230,9 @@ const Proto = {
   pipe() {
     return pipeArguments(this, arguments)
   },
+  [Inspectable.DenoInspectSymbol](this: DateTime) {
+    return this.toString()
+  },
   [Inspectable.NodeInspectSymbol](this: DateTime) {
     return this.toString()
   },
@@ -273,6 +276,9 @@ const ProtoZoned = {
 
 const ProtoTimeZone = {
   [TimeZoneTypeId]: TimeZoneTypeId,
+  [Inspectable.DenoInspectSymbol](this: TimeZone) {
+    return this.toString()
+  },
   [Inspectable.NodeInspectSymbol](this: TimeZone) {
     return this.toString()
   }

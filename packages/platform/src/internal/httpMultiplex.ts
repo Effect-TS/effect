@@ -52,6 +52,9 @@ class MultiplexImpl<E = never, R = never> extends Effectable.Class<
     return this.execute
   }
 
+  [Inspectable.DenoInspectSymbol]() {
+    return Inspectable.toJSON(this)
+  }
   [Inspectable.NodeInspectSymbol]() {
     return Inspectable.toJSON(this)
   }

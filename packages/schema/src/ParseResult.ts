@@ -263,6 +263,12 @@ export class ParseError extends TaggedError("ParseError")<{ readonly issue: Pars
   [Inspectable.NodeInspectSymbol]() {
     return this.toJSON()
   }
+  /**
+   * @since 0.75.0
+   */
+  [Inspectable.DenoInspectSymbol]() {
+    return this.toJSON()
+  }
 }
 
 /**

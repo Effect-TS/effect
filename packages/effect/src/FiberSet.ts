@@ -72,6 +72,9 @@ const Proto = {
       state: this.state
     }
   },
+  [Inspectable.DenoInspectSymbol](this: FiberSet<unknown, unknown>) {
+    return this.toJSON()
+  },
   [Inspectable.NodeInspectSymbol](this: FiberSet<unknown, unknown>) {
     return this.toJSON()
   },

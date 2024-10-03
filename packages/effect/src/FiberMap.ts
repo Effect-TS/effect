@@ -74,6 +74,9 @@ const Proto = {
       state: this.state
     }
   },
+  [Inspectable.DenoInspectSymbol](this: FiberMap<unknown>) {
+    return this.toJSON()
+  },
   [Inspectable.NodeInspectSymbol](this: FiberMap<unknown>) {
     return this.toJSON()
   },

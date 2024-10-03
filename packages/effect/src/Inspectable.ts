@@ -17,6 +17,18 @@ export const NodeInspectSymbol = Symbol.for("nodejs.util.inspect.custom")
 export type NodeInspectSymbol = typeof NodeInspectSymbol
 
 /**
+ * @since 3.9.0
+ * @category symbols
+ */
+export const DenoInspectSymbol = Symbol.for("Deno.customInspect")
+
+/**
+ * @since 3.9.0
+ * @category symbols
+ */
+export type DenoInspectSymbol = typeof DenoInspectSymbol
+
+/**
  * @since 2.0.0
  * @category models
  */
@@ -24,6 +36,7 @@ export interface Inspectable {
   toString(): string
   toJSON(): unknown
   [NodeInspectSymbol](): unknown
+  [DenoInspectSymbol](): unknown
 }
 
 /**
@@ -56,6 +69,9 @@ export const BaseProto: Inspectable = {
   [NodeInspectSymbol]() {
     return this.toJSON()
   },
+  [DenoInspectSymbol]() {
+    return this.toJSON()
+  },
   toString() {
     return format(this.toJSON())
   }
@@ -73,6 +89,12 @@ export abstract class Class {
    * @since 2.0.0
    */
   [NodeInspectSymbol]() {
+    return this.toJSON()
+  }
+  /**
+   * @since 3.9.0
+   */
+  [DenoInspectSymbol]() {
     return this.toJSON()
   }
   /**

@@ -33,6 +33,9 @@ abstract class BodyBase implements Body.HttpBody.Proto {
     this[TypeId] = TypeId
   }
   abstract toJSON(): unknown
+  [Inspectable.DenoInspectSymbol](): unknown {
+    return this.toJSON()
+  }
   [Inspectable.NodeInspectSymbol](): unknown {
     return this.toJSON()
   }
