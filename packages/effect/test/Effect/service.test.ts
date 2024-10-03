@@ -12,7 +12,6 @@ class Prefix extends Effect.Service<Prefix>()("Prefix", {
 }) {}
 
 class Postfix extends Effect.Service<Postfix>()("Postfix", {
-  accessors: true,
   sync: () => ({
     postfix: "POST"
   })
@@ -32,7 +31,7 @@ class Logger extends Effect.Service<Logger>()("Logger", {
         })
     }
   }),
-  dependencies: [Prefix, Postfix]
+  dependencies: [Prefix.Default, Postfix.Default]
 }) {
   static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
 }
@@ -50,15 +49,16 @@ class Scoped extends Effect.Service<Scoped>()("Scoped", {
         })
     }
   }),
-  dependencies: [Prefix, Postfix]
+  dependencies: [Prefix.Default, Postfix.Default]
 }) {}
 
 describe("Effect.Service", () => {
   it("make is a function", () => {
     expect(pipe({ prefix: "OK" }, Prefix.make)).toBeInstanceOf(Prefix)
   })
-  it("tags are both layers and tags", () => {
-    expect(Layer.isLayer(Logger)).toBe(true)
+  it("tags is a tag and default is a layer", () => {
+    expect(Layer.isLayer(Logger.Default)).toBe(true)
+    expect(Layer.isLayer(Logger.DefaultWithoutDependencies)).toBe(true)
     expect(Context.isTag(Logger)).toBe(true)
   })
 
@@ -72,7 +72,11 @@ describe("Effect.Service", () => {
       expect(postfix).toEqual("POST")
       expect(yield* Prefix.use((_) => _._tag)).toBe("Prefix")
     }).pipe(
-      Effect.provide([Logger, Prefix, Postfix])
+      Effect.provide([
+        Logger.Default,
+        Prefix.Default,
+        Postfix.Default
+      ])
     ))
 
   it.effect("inherits prototype", () => {
@@ -88,7 +92,7 @@ describe("Effect.Service", () => {
     return Effect.gen(function*() {
       const time = yield* Time.use((_) => _.now)
       expect(time).toBeInstanceOf(Date)
-    }).pipe(Effect.provide(Time))
+    }).pipe(Effect.provide(Time.Default))
   })
 
   it.effect("support values with prototype", () => {
@@ -110,7 +114,7 @@ describe("Effect.Service", () => {
       const time = yield* Time.use((_) => _.now)
       const time2 = yield* Time.use((_) => _.now2)
       expect(time).toStrictEqual(time2)
-    }).pipe(Effect.provide(Time))
+    }).pipe(Effect.provide(Time.Default))
   })
 
   it.effect("prototype chain", () => {
@@ -135,7 +139,7 @@ describe("Effect.Service", () => {
       expect(date).toBeInstanceOf(Date)
       expect(time).toBeInstanceOf(Time)
       expect(time).toBeInstanceOf(TimeLive)
-    }).pipe(Effect.provide(Time))
+    }).pipe(Effect.provide(Time.Default))
   })
 
   it.effect("js primitive", () =>
@@ -146,14 +150,14 @@ describe("Effect.Service", () => {
       }) {}
 
       const map = yield* MapThing.use((_) => _.set("a", 1)).pipe(
-        Effect.provide(MapThing)
+        Effect.provide(MapThing.Default)
       )
 
       expect(map).toBeInstanceOf(MapThing)
       expect(map).toBeInstanceOf(Map)
 
       const map2 = yield* MapThing.set("a", 1).pipe(
-        Effect.provide(MapThing)
+        Effect.provide(MapThing.Default)
       )
 
       expect(map2).toBeInstanceOf(MapThing)
