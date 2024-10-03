@@ -18,7 +18,7 @@ import * as Equal from "./Equal.js"
 import * as equivalence from "./Equivalence.js"
 import { dual, pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
-import { type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
+import { DenoInspectSymbol, type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
 import * as Option from "./Option.js"
 import * as order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
@@ -73,6 +73,9 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
       value: String(this.value),
       scale: this.scale
     }
+  },
+  [DenoInspectSymbol](this: BigDecimal) {
+    return this.toJSON()
   },
   [NodeInspectSymbol](this: BigDecimal) {
     return this.toJSON()

@@ -3,7 +3,7 @@
  */
 import * as Chunk from "./Chunk.js"
 import * as Dual from "./Function.js"
-import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
+import { DenoInspectSymbol, format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import * as MutableList from "./MutableList.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -58,6 +58,9 @@ const MutableQueueProto: Omit<MutableQueue<unknown>, "queue" | "capacity"> = {
       _id: "MutableQueue",
       values: Array.from(this).map(toJSON)
     }
+  },
+  [DenoInspectSymbol]() {
+    return this.toJSON()
   },
   [NodeInspectSymbol]() {
     return this.toJSON()
