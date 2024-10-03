@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
 import * as Equivalence from "effect/Equivalence"
 import * as FiberRef from "effect/FiberRef"
 import { dual, identity } from "effect/Function"
@@ -79,13 +80,14 @@ export const schema: Schema.Schema<
     string | ReadonlyArray<string>
   >
 > = Schema
-  .transform(
+  .transformOrFail(
     Schema.Record({ key: Schema.String, value: Schema.Union(Schema.String, Schema.Array(Schema.String)) }),
     schemaFromSelf,
     {
       strict: true,
-      decode: (_) => fromInput(_),
-      encode: (_) => unredact(_)
+      decode: (record) =>
+        FiberRef.get(currentRedactedNames).pipe(Effect.map((redactedKeys) => fromInput(record, redactedKeys))),
+      encode: (_) => Effect.succeed(unredact(_))
     }
   )
 
@@ -107,7 +109,14 @@ export const empty: Headers = Object.create(Proto)
  * @since 1.0.0
  * @category constructors
  */
-export const fromInput: (input?: Input) => Headers = (input) => {
+export const fromInput: (
+  input: Input | undefined,
+  redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
+) => Headers = (
+  input,
+  redactedKey
+) => {
+  const redact_ = redactedKey ? redact(redactedKey) : identity
   if (input === undefined) {
     return empty
   } else if (Symbol.iterator in input) {
@@ -115,7 +124,7 @@ export const fromInput: (input?: Input) => Headers = (input) => {
     for (const [k, v] of input) {
       out[k.toLowerCase()] = v
     }
-    return out as Headers
+    return redact_(out) as Headers
   }
   const out: Record<string, HeaderValues> = Object.create(Proto)
   for (const [k, v] of Object.entries(input)) {
@@ -128,7 +137,7 @@ export const fromInput: (input?: Input) => Headers = (input) => {
       out[k.toLowerCase()] = v as string
     }
   }
-  return out as Headers
+  return redact_(out) as Headers
 }
 
 /**
@@ -251,15 +260,15 @@ export const unredact = (self: Headers): Record<string, string> => {
 export const redact: {
   (
     key: string | RegExp | ReadonlyArray<string | RegExp>
-  ): (self: Headers) => Record<string, string | Redacted.Redacted>
+  ): (self: Record<string, string | Redacted.Redacted<string>>) => Record<string, string | Redacted.Redacted>
   (
-    self: Headers,
+    self: Record<string, string | Redacted.Redacted<string>>,
     key: string | RegExp | ReadonlyArray<string | RegExp>
   ): Record<string, string | Redacted.Redacted>
 } = dual(
   2,
   (
-    self: Headers,
+    self: Record<string, string | Redacted.Redacted<string>>,
     key: string | RegExp | ReadonlyArray<string | RegExp>
   ): Record<string, string | Redacted.Redacted> => {
     const out: Record<string, string | Redacted.Redacted> = { ...self }

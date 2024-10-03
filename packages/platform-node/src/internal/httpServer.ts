@@ -17,6 +17,7 @@ import * as Socket from "@effect/platform/Socket"
 import type * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
 import { type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -140,10 +141,14 @@ export const makeHandler: {
       nodeResponse: Http.ServerResponse
     ) {
       const fiber = runFork(
-        Effect.provideService(
-          handledApp,
-          ServerRequest.HttpServerRequest,
-          new ServerRequestImpl(nodeRequest, nodeResponse)
+        FiberRef.get(Headers.currentRedactedNames).pipe(
+          Effect.flatMap((keys) =>
+            Effect.provideService(
+              handledApp,
+              ServerRequest.HttpServerRequest,
+              new ServerRequestImpl(nodeRequest, nodeResponse, keys)
+            )
+          )
         )
       )
       nodeResponse.on("close", () => {
@@ -188,10 +193,14 @@ export const makeUpgradeHandler = <R, E>(
           )
       ))
       const fiber = runFork(
-        Effect.provideService(
-          handledApp,
-          ServerRequest.HttpServerRequest,
-          new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
+        FiberRef.get(Headers.currentRedactedNames).pipe(
+          Effect.flatMap((keys) =>
+            Effect.provideService(
+              handledApp,
+              ServerRequest.HttpServerRequest,
+              new ServerRequestImpl(nodeRequest, nodeResponse, keys, upgradeEffect)
+            )
+          )
         )
       )
       socket.on("close", () => {
@@ -208,17 +217,23 @@ class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> impl
   constructor(
     readonly source: Http.IncomingMessage,
     readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>,
+    redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>,
     private upgradeEffect?: Effect.Effect<Socket.Socket, Error.RequestError>,
     readonly url = source.url!,
     private headersOverride?: Headers.Headers,
     remoteAddressOverride?: string
   ) {
-    super(source, (cause) =>
-      new Error.RequestError({
-        request: this,
-        reason: "Decode",
-        cause
-      }), remoteAddressOverride)
+    super(
+      source,
+      (cause) =>
+        new Error.RequestError({
+          request: this,
+          reason: "Decode",
+          cause
+        }),
+      redactedKeys,
+      remoteAddressOverride
+    )
     this[ServerRequest.TypeId] = ServerRequest.TypeId
   }
 
@@ -244,6 +259,7 @@ class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> impl
     return new ServerRequestImpl(
       this.source,
       this.response,
+      this.redactedKeys,
       this.upgradeEffect,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,

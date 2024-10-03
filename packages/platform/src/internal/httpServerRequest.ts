@@ -170,8 +170,10 @@ export const schemaBodyFormJson = <A, I, R>(schema: Schema.Schema<A, I, R>, opti
 }
 
 /** @internal */
-export const fromWeb = (request: globalThis.Request): ServerRequest.HttpServerRequest =>
-  new ServerRequestImpl(request, removeHost(request.url))
+export const fromWeb = (
+  request: globalThis.Request,
+  redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
+): ServerRequest.HttpServerRequest => new ServerRequestImpl(request, removeHost(request.url), redactedKeys)
 
 const removeHost = (url: string) => {
   if (url[0] === "/") {
@@ -187,6 +189,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
   constructor(
     readonly source: Request,
     readonly url: string,
+    private readonly redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>,
     public headersOverride?: Headers.Headers,
     private remoteAddressOverride?: string
   ) {
@@ -211,6 +214,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return new ServerRequestImpl(
       this.source,
       options.url ?? this.url,
+      this.redactedKeys,
       options.headers ?? this.headersOverride,
       options.remoteAddress ?? this.remoteAddressOverride
     )
@@ -225,7 +229,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return this.remoteAddressOverride ? Option.some(this.remoteAddressOverride) : Option.none()
   }
   get headers(): Headers.Headers {
-    this.headersOverride ??= Headers.fromInput(this.source.headers)
+    this.headersOverride ??= Headers.fromInput(this.source.headers, this.redactedKeys)
     return this.headersOverride
   }
 
