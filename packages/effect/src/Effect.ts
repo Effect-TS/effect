@@ -6340,26 +6340,34 @@ export const Service: <Self>() => {
   <
     const Key extends string,
     const Make extends
-      | NoExcessProperties<{
+      | {
         readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
         /** @deprecated */
         readonly [phantom]: never
-      }, Make>
-      | NoExcessProperties<{
+      }
+      | {
         readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
         /** @deprecated */
         readonly [phantom]: never
-      }, Make>
-      | NoExcessProperties<{
+      }
+      | {
         readonly sync: LazyArg<Service.AllowedType<Key, Make>>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
         /** @deprecated */
         readonly [phantom]: never
-      }, Make>
-      | NoExcessProperties<{
+      }
+      | {
         readonly succeed: Service.AllowedType<Key, Make>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
         /** @deprecated */
         readonly [phantom]: never
-      }, Make>
+      }
   >(
     key: Key,
     make: Make
