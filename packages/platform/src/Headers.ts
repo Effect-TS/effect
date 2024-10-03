@@ -76,13 +76,17 @@ export const schema: Schema.Schema<
   Headers,
   Record.ReadonlyRecord<
     string,
-    HeaderValues | ReadonlyArray<HeaderValues>
+    string | ReadonlyArray<string>
   >
 > = Schema
   .transform(
     Schema.Record({ key: Schema.String, value: Schema.Union(Schema.String, Schema.Array(Schema.String)) }),
     schemaFromSelf,
-    { strict: true, decode: (record) => fromInput(record), encode: identity }
+    {
+      strict: true,
+      decode: (_) => fromInput(_),
+      encode: (_) => unredact(_)
+    }
   )
 
 /**
