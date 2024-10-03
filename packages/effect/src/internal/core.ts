@@ -21,7 +21,7 @@ import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashMap from "../HashMap.js"
 import type * as HashSet from "../HashSet.js"
-import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as List from "../List.js"
 import type * as LogLevel from "../LogLevel.js"
 import type * as LogSpan from "../LogSpan.js"
@@ -177,6 +177,9 @@ class EffectPrimitive {
   toString() {
     return format(this.toJSON())
   }
+  [DenoInspectSymbol]() {
+    return this.toJSON()
+  }
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
@@ -226,6 +229,9 @@ class EffectPrimitiveFailure {
   toString() {
     return format(this.toJSON())
   }
+  [DenoInspectSymbol]() {
+    return this.toJSON()
+  }
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
@@ -274,6 +280,9 @@ class EffectPrimitiveSuccess {
   }
   toString() {
     return format(this.toJSON())
+  }
+  [DenoInspectSymbol]() {
+    return this.toJSON()
   }
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -2193,6 +2202,9 @@ export const YieldableError: new(message?: string, options?: ErrorOptions) => Ca
     }
     toJSON() {
       return { ...this }
+    }
+    [DenoInspectSymbol]() {
+      return this[NodeInspectSymbol]()
     }
     [NodeInspectSymbol]() {
       if (this.toString !== globalThis.Error.prototype.toString) {

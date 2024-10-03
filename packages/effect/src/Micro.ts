@@ -13,7 +13,7 @@ import { constTrue, constVoid, dual, identity, type LazyArg } from "./Function.j
 import { globalValue } from "./GlobalValue.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
-import { NodeInspectSymbol, toStringUnknown } from "./Inspectable.js"
+import { DenoInspectSymbol, NodeInspectSymbol, toStringUnknown } from "./Inspectable.js"
 import * as doNotation from "./internal/doNotation.js"
 import { StructuralPrototype } from "./internal/effectable.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
@@ -321,6 +321,9 @@ abstract class MicroCauseImpl<Tag extends string, E> extends globalThis.Error im
     return pipeArguments(this, arguments)
   }
   toString() {
+    return this.stack
+  }
+  [DenoInspectSymbol]() {
     return this.stack
   }
   [NodeInspectSymbol]() {
@@ -4096,6 +4099,9 @@ const YieldableError: new(message?: string) => YieldableError = (function() {
     }
     toJSON() {
       return { ...this }
+    }
+    [DenoInspectSymbol](): string {
+      return this[NodeInspectSymbol]()
     }
     [NodeInspectSymbol](): string {
       const stack = this.stack
