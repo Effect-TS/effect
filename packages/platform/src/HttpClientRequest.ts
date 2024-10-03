@@ -4,6 +4,7 @@
 import type { ParseOptions } from "@effect/schema/AST"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Option from "effect/Option"
 import type { Redacted } from "effect/Redacted"
@@ -11,7 +12,7 @@ import type { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "./Error.js"
 import type * as FileSystem from "./FileSystem.js"
-import type * as Headers from "./Headers.js"
+import * as Headers from "./Headers.js"
 import type * as Body from "./HttpBody.js"
 import type { HttpClient } from "./HttpClient.js"
 import type { HttpClientError } from "./HttpClientError.js"
@@ -404,3 +405,22 @@ export const bodyFileWeb: {
   (file: Body.HttpBody.FileLike): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, file: Body.HttpBody.FileLike): HttpClientRequest
 } = internal.bodyFileWeb
+
+export const print: {
+  (
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): (self: HttpClientRequest) => unknown
+  (
+    self: HttpClientRequest,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): unknown
+} = dual(2, (
+  self: HttpClientRequest,
+  key: string | RegExp | ReadonlyArray<string | RegExp>
+): Record<string, string | Redacted> => {
+  const r = self.toJSON()
+  return {
+    ...r as any,
+    headers: Headers.redact(key)(self.headers)
+  }
+})

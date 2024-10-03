@@ -5,13 +5,17 @@ import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
+import type * as Redacted from "effect/Redacted"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type { Unify } from "effect/Unify"
 import type * as Cookies from "./Cookies.js"
+import * as Headers from "./Headers.js"
 import type * as Error from "./HttpClientError.js"
 import type * as ClientRequest from "./HttpClientRequest.js"
 import type * as IncomingMessage from "./HttpIncomingMessage.js"
+import { HttpClientResponse } from "./index.js"
 import * as internal from "./internal/httpClientResponse.js"
 
 export {
@@ -130,3 +134,23 @@ export const matchStatus: {
     }
   >(self: HttpClientResponse, cases: Cases): Cases[keyof Cases] extends (_: any) => infer R ? Unify<R> : never
 } = internal.matchStatus
+
+export const print: {
+  (
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): (self: HttpClientResponse) => Record<string, string | Redacted.Redacted>
+  (
+    self: HttpClientResponse,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Record<string, string | Redacted.Redacted>
+} = dual(2, (
+  self: HttpClientResponse,
+  key: string | RegExp | ReadonlyArray<string | RegExp>
+): Record<string, string | Redacted.Redacted> => {
+  const r = self.toJSON()
+  return {
+    ...r as any,
+    headers: Headers.redact(key)(self.headers),
+    request: HttpClientResponse.print(key)((r as any).request)
+  }
+})
