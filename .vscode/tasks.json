@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Watch",
+      "type": "shell",
+      "command": "pnpm check -w",
+      "options": {
+        "cwd": "${workspaceRoot}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "isBackground": true,
+      "presentation": {
+        "group": "watch-build"
+      },
+      "problemMatcher": [
+        {
+          "base": "$tsc-watch",
+          "fileLocation": [
+            "relative",
+            "${workspaceRoot}",
+          ],
+        }
+      ]
+    }
+  ]
+}
