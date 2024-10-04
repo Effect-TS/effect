@@ -6227,22 +6227,21 @@ export const optionFromOptional: <A, E, R>(
  * @category models
  */
 export declare namespace Tag {
-  type ForbiddenProperty<T extends string> = `property "${T}" is forbidden`
   /**
    * @since 2.0.0
    * @category models
    */
   export interface ProhibitedType {
-    Service?: ForbiddenProperty<"Service">
-    Identifier?: ForbiddenProperty<"Identifier">
-    _op?: ForbiddenProperty<"_op">
-    of?: ForbiddenProperty<"of">
-    context?: ForbiddenProperty<"context">
-    key?: ForbiddenProperty<"key">
-    stack?: ForbiddenProperty<"stack">
-    name?: ForbiddenProperty<"name">
-    pipe?: ForbiddenProperty<"pipe">
-    use?: ForbiddenProperty<"use">
+    Service?: `property "Service" is forbidden`
+    Identifier?: `property "Identifier" is forbidden`
+    _op?: `property "_op" is forbidden`
+    of?: `property "of" is forbidden`
+    context?: `property "context" is forbidden`
+    key?: `property "key" is forbidden`
+    stack?: `property "stack" is forbidden`
+    name?: `property "name" is forbidden`
+    pipe?: `property "pipe" is forbidden`
+    use?: `property "use" is forbidden`
   }
 
   /**
