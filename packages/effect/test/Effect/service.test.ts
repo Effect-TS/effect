@@ -48,25 +48,46 @@ class LoggerIncomplete extends Effect.Service<LoggerIncomplete>()("LoggerIncompl
         })
     }
   }),
+  // @ts-expect-error
   dependencies: [Prefix.Default, Layer.empty]
 }) {
 }
 
-class LoggerIncompleteNotStrict extends Effect.Service<LoggerIncompleteNotStrict>()("LoggerIncompleteNotStrict", {
-  accessors: true,
-  strict: false,
-  effect: Effect.gen(function*() {
-    const { prefix } = yield* Prefix
-    const { postfix } = yield* Postfix
-    return {
-      info: (message: string) =>
-        Effect.sync(() => {
-          messages.push(`[${prefix}][${message}][${postfix}]`)
-        })
-    }
-  }),
-  dependencies: [Prefix.Default, Layer.empty]
-}) {
+class LoggerIncomplete2 extends Effect.Service<LoggerIncomplete2>()(
+  "LoggerIncomplete2",
+  {
+    accessors: true,
+    effect: Effect.gen(function*() {
+      const { prefix } = yield* Prefix
+      const { postfix } = yield* Postfix
+      return {
+        info: (message: string) =>
+          Effect.sync(() => {
+            messages.push(`[${prefix}][${message}][${postfix}]`)
+          })
+      }
+    })
+  }
+) {
+}
+
+export class LoggerIncompleteNotStrict
+  extends Effect.Service<LoggerIncompleteNotStrict>()("LoggerIncompleteNotStrict", {
+    accessors: true,
+    strict: false,
+    effect: Effect.gen(function*() {
+      const { prefix } = yield* Prefix
+      const { postfix } = yield* Postfix
+      return {
+        info: (message: string) =>
+          Effect.sync(() => {
+            messages.push(`[${prefix}][${message}][${postfix}]`)
+          })
+      }
+    }),
+    dependencies: [Prefix.Default, Layer.empty]
+  })
+{
 }
 
 class Scoped extends Effect.Service<Scoped>()("Scoped", {
