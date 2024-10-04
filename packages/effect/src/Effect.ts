@@ -6571,9 +6571,6 @@ export declare namespace Service {
       }
     : Record<PropertyKey, any> & { readonly _tag?: Key }
 
-  type Problem<Make> = Exclude<MakeContext<Make>, MakeDepsOut<Make>> extends never ? false
-    : Make extends { strict: false } ? false
-    : true
   /**
    * @since 3.9.0
    */
