@@ -67,5 +67,16 @@ describe("Client", () => {
         assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
       }).pipe(Effect.provide(Migrations)))
 
+    it.scoped("withTransaction rollback", () =>
+      Effect.gen(function*() {
+        const sql = yield* LibsqlClient.LibsqlClient
+        yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
+          Effect.andThen(Effect.fail("boom")),
+          sql.withTransaction,
+          Effect.ignore
+        )
+        const rows = yield* sql`SELECT * FROM test`
+        assert.deepStrictEqual(rows, [])
+      }).pipe(Effect.provide(Migrations)))
   })
 })
