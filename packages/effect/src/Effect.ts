@@ -6426,15 +6426,23 @@ export const Service: <Self>() => {
   ): Service.Class<Self, Key, Make>
   <
     const Key extends string,
-    const Make extends NoExcessProperties<{
-      readonly scoped?: Effect<Service.AllowedType<Key, Make>, any, any>
-      readonly effect?: Effect<Service.AllowedType<Key, Make>, any, any>
-      readonly sync?: LazyArg<Service.AllowedType<Key, Make>>
-      readonly succeed?: Service.AllowedType<Key, Make>
-      readonly dependencies?: ReadonlyArray<Layer.Layer<Service.MakeContext<Make>>>
-      readonly accessors?: boolean
-      readonly strict?: false
-    }, Make>
+    const Make extends NoExcessProperties<
+      | {
+        readonly effect?: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer<Service.MakeContext<Make>>>
+        readonly accessors?: boolean
+        readonly strict?: false
+      }
+      | {
+        readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly scoped?: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer<Service.MakeContext<Make>>>
+        readonly accessors?: boolean
+        readonly strict?: false
+      },
+      Make
+    >
   >(
     key: Key,
     make: Make
