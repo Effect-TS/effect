@@ -6227,21 +6227,22 @@ export const optionFromOptional: <A, E, R>(
  * @category models
  */
 export declare namespace Tag {
+  type ForbiddenProperty<T extends string> = `property "${T}" is forbidden`
   /**
    * @since 2.0.0
    * @category models
    */
   export interface ProhibitedType {
-    Service?: `property "Service" is forbidden`
-    Identifier?: `property "Identifier" is forbidden`
-    _op?: `property "_op" is forbidden`
-    of?: `property "of" is forbidden`
-    context?: `property "context" is forbidden`
-    key?: `property "key" is forbidden`
-    stack?: `property "stack" is forbidden`
-    name?: `property "name" is forbidden`
-    pipe?: `property "pipe" is forbidden`
-    use?: `property "use" is forbidden`
+    Service?: ForbiddenProperty<"Service">
+    Identifier?: ForbiddenProperty<"Identifier">
+    _op?: ForbiddenProperty<"_op">
+    of?: ForbiddenProperty<"of">
+    context?: ForbiddenProperty<"context">
+    key?: ForbiddenProperty<"key">
+    stack?: ForbiddenProperty<"stack">
+    name?: ForbiddenProperty<"name">
+    pipe?: ForbiddenProperty<"pipe">
+    use?: ForbiddenProperty<"use">
   }
 
   /**
@@ -6344,6 +6345,7 @@ export const Service: <Self>() => {
         readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
+        readonly strict?: false
         /** @deprecated */
         readonly [phantom]: never
       }
@@ -6351,6 +6353,7 @@ export const Service: <Self>() => {
         readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
+        readonly strict?: false
         /** @deprecated */
         readonly [phantom]: never
       }
@@ -6358,6 +6361,7 @@ export const Service: <Self>() => {
         readonly sync: LazyArg<Service.AllowedType<Key, Make>>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
+        readonly strict?: false
         /** @deprecated */
         readonly [phantom]: never
       }
@@ -6365,6 +6369,7 @@ export const Service: <Self>() => {
         readonly succeed: Service.AllowedType<Key, Make>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
+        readonly strict?: false
         /** @deprecated */
         readonly [phantom]: never
       }
@@ -6378,6 +6383,7 @@ export const Service: <Self>() => {
       readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
+      readonly strict?: false
     }, Make>
   >(
     key: Key,
@@ -6389,6 +6395,7 @@ export const Service: <Self>() => {
       readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
+      readonly strict?: false
     }, Make>
   >(
     key: Key,
@@ -6400,6 +6407,7 @@ export const Service: <Self>() => {
       readonly sync: LazyArg<Service.AllowedType<Key, Make>>
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
+      readonly strict?: false
     }, Make>
   >(
     key: Key,
@@ -6411,6 +6419,7 @@ export const Service: <Self>() => {
       readonly succeed: Service.AllowedType<Key, Make>
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
+      readonly strict?: false
     }, Make>
   >(
     key: Key,
@@ -6548,6 +6557,9 @@ export declare namespace Service {
       }
     : Record<PropertyKey, any> & { readonly _tag?: Key }
 
+  type Problem<Make> = Exclude<MakeContext<Make>, MakeDepsOut<Make>> extends never ? false
+    : Make extends { strict: false } ? false
+    : true
   /**
    * @since 3.9.0
    */
@@ -6555,30 +6567,34 @@ export declare namespace Service {
     Self,
     Key extends string,
     Make
-  > =
-    & {
-      new(_: MakeService<Make>): MakeService<Make> & {
-        readonly _tag: Key
+  > = Problem<Make> extends false ?
+      & {
+        new(_: MakeService<Make>): MakeService<Make> & {
+          readonly _tag: Key
+        }
+        readonly use: <X>(
+          body: (_: Self) => X
+        ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+        readonly make: (_: MakeService<Make>) => Self
       }
-      readonly use: <X>(
-        body: (_: Self) => X
-      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
-      readonly make: (_: MakeService<Make>) => Self
+      & Context.Tag<Self, Self>
+      & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
+      & (MakeDeps<Make> extends never ? {
+          readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+        } :
+        {
+          readonly DefaultWithoutDependencies: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+          readonly Default: Layer.Layer<
+            Self,
+            MakeError<Make> | MakeDepsE<Make>,
+            | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+            | MakeDepsIn<Make>
+          >
+        })
+    : {
+      error: `Please provide all dependencies or set strict: false`
+      missing: Exclude<MakeContext<Make>, MakeDepsOut<Make>>
     }
-    & Context.Tag<Self, Self>
-    & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
-    & (MakeDeps<Make> extends never ? {
-        readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-      } :
-      {
-        readonly DefaultWithoutDependencies: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-        readonly Default: Layer.Layer<
-          Self,
-          MakeError<Make> | MakeDepsE<Make>,
-          | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
-          | MakeDepsIn<Make>
-        >
-      })
 
   /**
    * @since 3.9.0

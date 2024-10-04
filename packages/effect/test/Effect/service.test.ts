@@ -38,6 +38,7 @@ class Logger extends Effect.Service<Logger>()("Logger", {
 
 class Scoped extends Effect.Service<Scoped>()("Scoped", {
   accessors: true,
+  // strict: false,
   scoped: Effect.gen(function*() {
     const { prefix } = yield* Prefix
     const { postfix } = yield* Postfix
@@ -49,7 +50,7 @@ class Scoped extends Effect.Service<Scoped>()("Scoped", {
         })
     }
   }),
-  dependencies: [Prefix.Default, Postfix.Default]
+  dependencies: [Prefix.Default]
 }) {}
 
 describe("Effect.Service", () => {
