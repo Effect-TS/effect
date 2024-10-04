@@ -6342,7 +6342,7 @@ export const Service: <Self>() => {
     const Key extends string,
     const Make extends
       | {
-        readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly scoped: Effect<Service.AllowedType<Key, Make>, any, Service.MakeDepsOut<Make> | Scope.Scope>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         readonly strict?: false
@@ -6350,7 +6350,7 @@ export const Service: <Self>() => {
         readonly [phantom]: never
       }
       | {
-        readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly effect: Effect<Service.AllowedType<Key, Make>, any, Service.MakeDepsOut<Make>>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         readonly strict?: false
@@ -6380,7 +6380,7 @@ export const Service: <Self>() => {
   <
     const Key extends string,
     const Make extends NoExcessProperties<{
-      readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly scoped: Effect<Service.AllowedType<Key, Make>, any, Service.MakeDepsOut<Make> | Scope.Scope>
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
       readonly strict?: false
@@ -6392,7 +6392,7 @@ export const Service: <Self>() => {
   <
     const Key extends string,
     const Make extends NoExcessProperties<{
-      readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly effect: Effect<Service.AllowedType<Key, Make>, any, Service.MakeDepsOut<Make>>
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
       readonly strict?: false
@@ -6418,6 +6418,21 @@ export const Service: <Self>() => {
     const Make extends NoExcessProperties<{
       readonly succeed: Service.AllowedType<Key, Make>
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly accessors?: boolean
+      readonly strict?: false
+    }, Make>
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+  <
+    const Key extends string,
+    const Make extends NoExcessProperties<{
+      readonly scoped?: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly effect?: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly sync?: LazyArg<Service.AllowedType<Key, Make>>
+      readonly succeed?: Service.AllowedType<Key, Make>
+      readonly dependencies?: ReadonlyArray<Layer.Layer<Service.MakeContext<Make>>>
       readonly accessors?: boolean
       readonly strict?: false
     }, Make>
@@ -6567,33 +6582,30 @@ export declare namespace Service {
     Self,
     Key extends string,
     Make
-  > = Problem<Make> extends false ?
-      & {
-        new(_: MakeService<Make>): MakeService<Make> & {
-          readonly _tag: Key
-        }
-        readonly use: <X>(
-          body: (_: Self) => X
-        ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
-        readonly make: (_: MakeService<Make>) => Self
+  > =
+    & {
+      new(_: MakeService<Make>): MakeService<Make> & {
+        readonly _tag: Key
       }
-      & Context.Tag<Self, Self>
-      & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
-      & (MakeDeps<Make> extends never ? {
-          readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-        } :
-        {
-          readonly DefaultWithoutDependencies: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
-          readonly Default: Layer.Layer<
-            Self,
-            MakeError<Make> | MakeDepsE<Make>,
-            | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
-            | MakeDepsIn<Make>
-          >
-        })
-    :
-      & `Please provide all dependencies or set strict: false`
-      & [Exclude<MakeContext<Make>, MakeDepsOut<Make>>]
+      readonly use: <X>(
+        body: (_: Self) => X
+      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+      readonly make: (_: MakeService<Make>) => Self
+    }
+    & Context.Tag<Self, Self>
+    & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
+    & (MakeDeps<Make> extends never ? {
+        readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+      } :
+      {
+        readonly DefaultWithoutDependencies: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+        readonly Default: Layer.Layer<
+          Self,
+          MakeError<Make> | MakeDepsE<Make>,
+          | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+          | MakeDepsIn<Make>
+        >
+      })
 
   /**
    * @since 3.9.0

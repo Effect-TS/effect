@@ -31,7 +31,7 @@ class Logger extends Effect.Service<Logger>()("Logger", {
         })
     }
   }),
-  dependencies: [Prefix.Default, Postfix.Default]
+  dependencies: [Prefix.Default, Postfix.Default, Layer.empty]
 }) {
   static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
 }
@@ -50,7 +50,7 @@ class Scoped extends Effect.Service<Scoped>()("Scoped", {
         })
     }
   }),
-  dependencies: [Prefix.Default]
+  dependencies: [Prefix.Default, Postfix.Default]
 }) {}
 
 describe("Effect.Service", () => {
