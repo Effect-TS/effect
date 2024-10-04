@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import type * as RA from "./Array.js"
+import type { BrandTypeId } from "./Brand.js"
 import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Clock from "./Clock.js"
@@ -6330,8 +6331,6 @@ export const Tag: <const Id extends string>(id: Id) => <
     return makeTagProxy(TagClass as any)
   }
 
-declare const phantom: unique symbol
-
 /**
  * @since 3.9.0
  * @category context
@@ -6345,28 +6344,28 @@ export const Service: <Self>() => {
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
-        readonly [phantom]: never
+        readonly [BrandTypeId]: never
       }
       | {
         readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
-        readonly [phantom]: never
+        readonly [BrandTypeId]: never
       }
       | {
         readonly sync: LazyArg<Service.AllowedType<Key, Make>>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
-        readonly [phantom]: never
+        readonly [BrandTypeId]: never
       }
       | {
         readonly succeed: Service.AllowedType<Key, Make>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
-        readonly [phantom]: never
+        readonly [BrandTypeId]: never
       }
   >(
     key: Key,
