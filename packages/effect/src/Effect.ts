@@ -6446,13 +6446,13 @@ export const Service: <Self>() => {
       | {
         readonly effect?: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
-        readonly dependencies: ReadonlyArray<Layer.Layer<Service.MakeContext<Make>>>
+        readonly dependencies: RA.NonEmptyReadonlyArray<Layer.Layer<Service.MakeContext<Make>>>
         readonly accessors?: boolean
       }
       | {
         readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly scoped?: Effect<Service.AllowedType<Key, Make>, any, any>
-        readonly dependencies: ReadonlyArray<Layer.Layer<Service.MakeContext<Make>>>
+        readonly dependencies: RA.NonEmptyReadonlyArray<Layer.Layer<Service.MakeContext<Make>>>
         readonly accessors?: boolean
       },
       Make

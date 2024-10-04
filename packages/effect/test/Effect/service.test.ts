@@ -36,6 +36,21 @@ class Logger extends Effect.Service<Logger>()("Logger", {
   static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
 }
 
+class LoggerNoDeps extends Effect.Service<LoggerNoDeps>()("LoggerNoDeps", {
+  accessors: true,
+  effect: Effect.gen(function*() {
+    const prefix = yield* Effect.succeed("PRE")
+    const postfix = "POST"
+    return {
+      info: (message: string) =>
+        Effect.sync(() => {
+          messages.push(`[${prefix}][${message}][${postfix}]`)
+        })
+    }
+  })
+}) {
+}
+
 class LoggerIncomplete extends Effect.Service<LoggerIncomplete>()("LoggerIncomplete", {
   accessors: true,
   effect: Effect.gen(function*() {
@@ -49,7 +64,7 @@ class LoggerIncomplete extends Effect.Service<LoggerIncomplete>()("LoggerIncompl
     }
   }),
   // @ts-expect-error
-  dependencies: [Prefix.Default, Layer.empty]
+  dependencies: []
 }) {
 }
 
