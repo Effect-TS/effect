@@ -1,7 +1,16 @@
 import { LibsqlClient } from "@effect/sql-libsql"
 import { assert, describe, layer } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 import { LibsqlContainer } from "./util.js"
+
+const Migrations = Layer.scopedDiscard(LibsqlClient.LibsqlClient.pipe(
+  Effect.andThen((sql) =>
+    Effect.acquireRelease(
+      sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`,
+      () => sql`DROP TABLE test;`.pipe(Effect.ignore)
+    )
+  )
+))
 
 describe("Client", () => {
   layer(LibsqlContainer.ClientLive)((it) => {
@@ -9,9 +18,6 @@ describe("Client", () => {
       Effect.gen(function*() {
         const sql = yield* LibsqlClient.LibsqlClient
         let response
-        response = yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-        yield* Effect.addFinalizer(() => sql`DROP TABLE test;`.pipe(Effect.ignore))
-        assert.deepStrictEqual(response, [])
         response = yield* sql`INSERT INTO test (name) VALUES ('hello')`
         assert.deepStrictEqual(response, [])
         response = yield* sql`SELECT * FROM test`
@@ -20,14 +26,14 @@ describe("Client", () => {
         assert.deepStrictEqual(yield* sql`select * from test`.values, [
           [1, "hello"]
         ])
-      }))
+      }).pipe(Effect.provide(Migrations)))
 
     it.scoped("should work with raw", () =>
       Effect.gen(function*() {
         const sql = yield* LibsqlClient.LibsqlClient
         let response: any
-        response = yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`.raw
-        yield* Effect.addFinalizer(() => sql`DROP TABLE test;`.pipe(Effect.ignore))
+        response = yield* sql`CREATE TABLE test2 (id INTEGER PRIMARY KEY, name TEXT)`.raw
+        yield* Effect.addFinalizer(() => sql`DROP TABLE test2;`.pipe(Effect.ignore))
         assert.deepStrictEqual(response.toJSON(), {
           columnTypes: [],
           columns: [],
@@ -51,15 +57,15 @@ describe("Client", () => {
           rows: [[1, "hello"]],
           rowsAffected: 0
         })
-      }))
+      }).pipe(Effect.provide(Migrations)))
 
     it.scoped("withTransaction", () =>
       Effect.gen(function*() {
         const sql = yield* LibsqlClient.LibsqlClient
-        yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
         yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('hello')`)
         const rows = yield* sql`SELECT * FROM test`
         assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
-      }))
+      }).pipe(Effect.provide(Migrations)))
+
   })
 })
