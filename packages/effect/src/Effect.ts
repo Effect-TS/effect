@@ -6448,7 +6448,7 @@ export const Service: <Self>() => {
         readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly dependencies: [
           ...Make["dependencies"],
-          Layer.Layer<Exclude<Service.MakeContext<Make>, Service.MakeDepsOut<Make>>>
+          Layer.Layer<Exclude<Service.MakeContext<Make>, Service.MakeDepsOut<Make>>, any, any>
         ]
         readonly accessors?: boolean
       }
@@ -6457,7 +6457,7 @@ export const Service: <Self>() => {
         readonly scoped?: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly dependencies: [
           ...Make["dependencies"],
-          Layer.Layer<Exclude<Service.MakeContext<Make>, Service.MakeDepsOut<Make>>>
+          Layer.Layer<Exclude<Service.MakeContext<Make>, Service.MakeDepsOut<Make>>, any, any>
         ]
         readonly accessors?: boolean
       },
