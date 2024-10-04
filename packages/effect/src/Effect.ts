@@ -6341,7 +6341,11 @@ export const Service: <Self>() => {
     const Key extends string,
     const Make extends
       | {
-        readonly scoped: Effect<Service.AllowedType<Key, Make>, any, Service.MakeDepsOut<Make> | Scope.Scope>
+        readonly scoped: Effect<
+          Service.AllowedType<Key, Make>,
+          any,
+          Make["strict"] extends false ? any : Service.MakeDepsOut<Make> | Scope.Scope
+        >
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         readonly strict?: false
@@ -6349,7 +6353,11 @@ export const Service: <Self>() => {
         readonly [phantom]: never
       }
       | {
-        readonly effect: Effect<Service.AllowedType<Key, Make>, any, Service.MakeDepsOut<Make>>
+        readonly effect: Effect<
+          Service.AllowedType<Key, Make>,
+          any,
+          Make["strict"] extends false ? any : Service.MakeDepsOut<Make>
+        >
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         readonly strict?: false
@@ -6379,7 +6387,11 @@ export const Service: <Self>() => {
   <
     const Key extends string,
     const Make extends NoExcessProperties<{
-      readonly scoped: Effect<Service.AllowedType<Key, Make>, any, Service.MakeDepsOut<Make> | Scope.Scope>
+      readonly scoped: Effect<
+        Service.AllowedType<Key, Make>,
+        any,
+        Make["strict"] extends false ? any : Service.MakeDepsOut<Make> | Scope.Scope
+      >
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
       readonly strict?: false
@@ -6391,7 +6403,11 @@ export const Service: <Self>() => {
   <
     const Key extends string,
     const Make extends NoExcessProperties<{
-      readonly effect: Effect<Service.AllowedType<Key, Make>, any, Service.MakeDepsOut<Make>>
+      readonly effect: Effect<
+        Service.AllowedType<Key, Make>,
+        any,
+        Make["strict"] extends false ? any : Service.MakeDepsOut<Make>
+      >
       readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
       readonly strict?: false

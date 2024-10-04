@@ -36,6 +36,39 @@ class Logger extends Effect.Service<Logger>()("Logger", {
   static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
 }
 
+class LoggerIncomplete extends Effect.Service<LoggerIncomplete>()("LoggerIncomplete", {
+  accessors: true,
+  effect: Effect.gen(function*() {
+    const { prefix } = yield* Prefix
+    const { postfix } = yield* Postfix
+    return {
+      info: (message: string) =>
+        Effect.sync(() => {
+          messages.push(`[${prefix}][${message}][${postfix}]`)
+        })
+    }
+  }),
+  dependencies: [Prefix.Default, Layer.empty]
+}) {
+}
+
+class LoggerIncompleteNotStrict extends Effect.Service<LoggerIncompleteNotStrict>()("LoggerIncompleteNotStrict", {
+  accessors: true,
+  strict: false,
+  effect: Effect.gen(function*() {
+    const { prefix } = yield* Prefix
+    const { postfix } = yield* Postfix
+    return {
+      info: (message: string) =>
+        Effect.sync(() => {
+          messages.push(`[${prefix}][${message}][${postfix}]`)
+        })
+    }
+  }),
+  dependencies: [Prefix.Default, Layer.empty]
+}) {
+}
+
 class Scoped extends Effect.Service<Scoped>()("Scoped", {
   accessors: true,
   // strict: false,
