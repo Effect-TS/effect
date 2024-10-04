@@ -64,12 +64,13 @@ class LoggerIncomplete extends Effect.Service<LoggerIncomplete>()("LoggerIncompl
     }
   }),
   // @ts-expect-error
-  dependencies: []
+  dependencies: [Postfix.Default, LoggerNoDeps.Default]
 }) {
 }
 
 class LoggerIncomplete2 extends Effect.Service<LoggerIncomplete2>()(
   "LoggerIncomplete2",
+  // @ts-expect-error
   {
     accessors: true,
     effect: Effect.gen(function*() {
