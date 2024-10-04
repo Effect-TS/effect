@@ -1,6 +1,6 @@
 import { LibsqlClient } from "@effect/sql-libsql"
 import { assert, describe, layer } from "@effect/vitest"
-import { Cause, Effect } from "effect"
+import { Effect } from "effect"
 import { LibsqlContainer } from "./util.js"
 
 describe("Client", () => {
@@ -53,17 +53,13 @@ describe("Client", () => {
         })
       }))
 
-    it.scoped("should defect on transactions", () =>
+    it.scoped("withTransaction", () =>
       Effect.gen(function*() {
         const sql = yield* LibsqlClient.LibsqlClient
         yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-        const res = yield* sql`INSERT INTO test ${sql.insert({ name: "hello" })}`.pipe(
-          sql.withTransaction,
-          Effect.catchAllDefect((defect) => Effect.succeed(defect))
-        )
+        yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('hello')`)
         const rows = yield* sql`SELECT * FROM test`
-        assert.deepStrictEqual(rows, [])
-        assert.equal(Cause.isRuntimeException(res), true)
+        assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
       }))
   })
 })
