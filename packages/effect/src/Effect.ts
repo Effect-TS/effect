@@ -6591,10 +6591,9 @@ export declare namespace Service {
             | MakeDepsIn<Make>
           >
         })
-    : {
-      error: `Please provide all dependencies or set strict: false`
-      missing: Exclude<MakeContext<Make>, MakeDepsOut<Make>>
-    }
+    :
+      & `Please provide all dependencies or set strict: false`
+      & [Exclude<MakeContext<Make>, MakeDepsOut<Make>>]
 
   /**
    * @since 3.9.0
