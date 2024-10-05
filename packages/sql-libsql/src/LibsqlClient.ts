@@ -36,6 +36,7 @@ export type TypeId = typeof TypeId
 export interface LibsqlClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: LibsqlClientConfig
+  readonly sdk: Libsql.Client
 }
 
 /**
@@ -102,6 +103,7 @@ export interface LibsqlClientConfig {
 }
 
 interface LibsqlConnection extends Connection {
+  readonly sdk: Libsql.Client
 }
 
 /**
@@ -176,7 +178,8 @@ export const make = (
         },
         executeStream(_sql, _params) {
           return Effect.dieMessage("executeStream not implemented")
-        }
+        },
+        sdk: db
       })
     }
 
@@ -238,11 +241,12 @@ export const make = (
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
         ]
-      }) as LibsqlClient,
+      }),
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        withTransaction
+        withTransaction,
+        sdk: connection.sdk
       }
     )
   })
