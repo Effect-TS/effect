@@ -406,12 +406,14 @@ export const fromWebSocket = <R>(
             Effect.tap(({ fiberSet, run, ws }) => {
               let open = false
 
-              function onMessage(event: MessageEvent) {
+              async function onMessage(event: MessageEvent) {
                 const result = handler(
                   typeof event.data === "string"
                     ? event.data
                     : event.data instanceof Uint8Array
                     ? event.data
+                    : event.data instanceof Blob
+                    ? new Uint8Array(await event.data.arrayBuffer())
                     : new Uint8Array(event.data)
                 )
                 if (Effect.isEffect(result)) {
