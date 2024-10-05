@@ -420,17 +420,26 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * @since 2.0.0
  */
 export function pipe<A>(a: A): A
-export function pipe<A, B>(a: A, ab: (a: A) => B): B
-export function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C
-export function pipe<A, B, C, D>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D): D
-export function pipe<A, B, C, D, E>(
+export function pipe<A, B = never>(a: A, ab: (a: A) => B): B
+export function pipe<A, B = never, C = never>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C
+): C
+export function pipe<A, B = never, C = never, D = never>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D
+): D
+export function pipe<A, B = never, C = never, D = never, E = never>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E
 ): E
-export function pipe<A, B, C, D, E, F>(
+export function pipe<A, B = never, C = never, D = never, E = never, F = never>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -438,7 +447,15 @@ export function pipe<A, B, C, D, E, F>(
   de: (d: D) => E,
   ef: (e: E) => F
 ): F
-export function pipe<A, B, C, D, E, F, G>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -447,7 +464,16 @@ export function pipe<A, B, C, D, E, F, G>(
   ef: (e: E) => F,
   fg: (f: F) => G
 ): G
-export function pipe<A, B, C, D, E, F, G, H>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -457,7 +483,17 @@ export function pipe<A, B, C, D, E, F, G, H>(
   fg: (f: F) => G,
   gh: (g: G) => H
 ): H
-export function pipe<A, B, C, D, E, F, G, H, I>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -468,7 +504,18 @@ export function pipe<A, B, C, D, E, F, G, H, I>(
   gh: (g: G) => H,
   hi: (h: H) => I
 ): I
-export function pipe<A, B, C, D, E, F, G, H, I, J>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -480,7 +527,19 @@ export function pipe<A, B, C, D, E, F, G, H, I, J>(
   hi: (h: H) => I,
   ij: (i: I) => J
 ): J
-export function pipe<A, B, C, D, E, F, G, H, I, J, K>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -493,7 +552,20 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K>(
   ij: (i: I) => J,
   jk: (j: J) => K
 ): K
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -507,7 +579,21 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
   jk: (j: J) => K,
   kl: (k: K) => L
 ): L
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -522,7 +608,22 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
   kl: (k: K) => L,
   lm: (l: L) => M
 ): M
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -538,7 +639,23 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
   lm: (l: L) => M,
   mn: (m: M) => N
 ): N
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -555,7 +672,24 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
   mn: (m: M) => N,
   no: (n: N) => O
 ): O
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -573,7 +707,25 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
   no: (n: N) => O,
   op: (o: O) => P
 ): P
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never,
+  Q = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -592,7 +744,26 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   op: (o: O) => P,
   pq: (p: P) => Q
 ): Q
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never,
+  Q = never,
+  R = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -612,7 +783,27 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
   pq: (p: P) => Q,
   qr: (q: Q) => R
 ): R
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never,
+  Q = never,
+  R = never,
+  S = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -633,7 +824,28 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
   qr: (q: Q) => R,
   rs: (r: R) => S
 ): S
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>(
+export function pipe<
+  A,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never,
+  K = never,
+  L = never,
+  M = never,
+  N = never,
+  O = never,
+  P = never,
+  Q = never,
+  R = never,
+  S = never,
+  T = never
+>(
   a: A,
   ab: (a: A) => B,
   bc: (b: B) => C,
@@ -712,27 +924,54 @@ export function pipe(
  *
  * @since 2.0.0
  */
-export function flow<A extends ReadonlyArray<unknown>, B>(ab: (...a: A) => B): (...a: A) => B
-export function flow<A extends ReadonlyArray<unknown>, B, C>(ab: (...a: A) => B, bc: (b: B) => C): (...a: A) => C
-export function flow<A extends ReadonlyArray<unknown>, B, C, D>(
+export function flow<A extends ReadonlyArray<unknown>, B = never>(
+  ab: (...a: A) => B
+): (...a: A) => B
+export function flow<A extends ReadonlyArray<unknown>, B = never, C = never>(
   ab: (...a: A) => B,
-  bc: (b: B) => C,
-  cd: (c: C) => D
-): (...a: A) => D
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E>(
+  bc: (b: B) => C
+): (...a: A) => C
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never
+>(ab: (...a: A) => B, bc: (b: B) => C, cd: (c: C) => D): (...a: A) => D
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E
 ): (...a: A) => E
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E,
   ef: (e: E) => F
 ): (...a: A) => F
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
@@ -740,7 +979,16 @@ export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G>(
   ef: (e: E) => F,
   fg: (f: F) => G
 ): (...a: A) => G
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
@@ -749,7 +997,17 @@ export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H>(
   fg: (f: F) => G,
   gh: (g: G) => H
 ): (...a: A) => H
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
@@ -759,7 +1017,18 @@ export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I>(
   gh: (g: G) => H,
   hi: (h: H) => I
 ): (...a: A) => I
-export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I, J>(
+export function flow<
+  A extends ReadonlyArray<unknown>,
+  B = never,
+  C = never,
+  D = never,
+  E = never,
+  F = never,
+  G = never,
+  H = never,
+  I = never,
+  J = never
+>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
