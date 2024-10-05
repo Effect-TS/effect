@@ -119,15 +119,13 @@ export const make = (
       options.transformResultNames!
     ).array
 
-    const db = Libsql.createClient(options as Libsql.Config)
-    yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
+    const makeConnection = Effect.gen(function*() {
+      const sdk = yield* Effect.sync(() => Libsql.createClient(options as Libsql.Config))
+      yield* Effect.addFinalizer(() => Effect.sync(() => sdk.close()))
 
-    const makeConnection = (db: Libsql.Client) => {
       const getExecutor = Effect.serviceOption(LibsqlTransaction).pipe(
-        Effect.map(Option.map(([tx]) => tx))
-      ).pipe(
-        Effect.flatMap(Option.orElse(() => Option.some(db))),
-        Effect.orDie
+        Effect.map(Option.map(([tx]) => tx)),
+        Effect.map(Option.getOrElse(() => sdk))
       )
 
       const run = (
@@ -179,14 +177,14 @@ export const make = (
         executeStream(_sql, _params) {
           return Effect.dieMessage("executeStream not implemented")
         },
-        sdk: db
+        sdk
       })
-    }
+    })
 
-    const connection = makeConnection(db)
-    const acquirer = Effect.succeed(connection)
+    const connection = yield* makeConnection
 
     const semaphore = yield* Effect.makeSemaphore(1)
+
     const transactionAcquirer = Effect.uninterruptibleMask((restore) =>
       Effect.as(
         Effect.zipRight(
@@ -247,7 +245,7 @@ export const make = (
 
     return Object.assign(
       Client.make({
-        acquirer,
+        acquirer: Effect.succeed(connection),
         compiler,
         transactionAcquirer,
         spanAttributes: [
