@@ -183,19 +183,33 @@ export const make = (
       })
     }
 
-    const semaphore = yield* Effect.makeSemaphore(1)
     const connection = makeConnection(db)
+    const acquirer = Effect.succeed(connection)
 
-    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
-
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const transactionAcquirer = Effect.uninterruptibleMask((restore) =>
+      Effect.as(
+        Effect.zipRight(
+          restore(semaphore.take(1)),
+          Effect.tap(
+            Effect.scope,
+            (scope) => Scope.addFinalizer(scope, semaphore.release(1))
+          )
+        ),
+        connection
+      )
+    )
     const makeRootTx: Effect.Effect<
       readonly [Scope.CloseableScope | undefined, Libsql.Transaction, number],
       SqlError
     > = Effect.flatMap(
       Scope.make(),
       (scope) =>
-        Effect.map(Scope.extend(Effect.promise(() => db.transaction("write")), scope), (conn) =>
-          [scope, conn, 0] as const)
+        Effect.flatMap(Scope.extend(transactionAcquirer, scope), (conn) =>
+          Effect.gen(function*() {
+            const tx = yield* Effect.promise(() => conn.sdk.transaction("write"))
+            return [scope, tx, 0] as const
+          }))
     )
 
     const withTransaction = <R, E, A>(
@@ -206,8 +220,7 @@ export const make = (
           Effect.serviceOption(LibsqlTransaction),
           Effect.flatMap(
             Option.match({
-              onNone: () =>
-                makeRootTx,
+              onNone: () => makeRootTx,
               onSome: ([conn, count]) => Effect.succeed([undefined, conn, count + 1] as const)
             })
           ),
@@ -236,7 +249,7 @@ export const make = (
       Client.make({
         acquirer,
         compiler,
-        transactionAcquirer: Effect.succeed(connection),
+        transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
