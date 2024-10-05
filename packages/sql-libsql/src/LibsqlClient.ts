@@ -15,7 +15,7 @@ import * as Exit from "effect/Exit"
 import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 
 /**
  * @category type ids
@@ -48,7 +48,7 @@ export const LibsqlClient = Context.GenericTag<LibsqlClient>("@effect/sql-libsql
  * @category tags
  * @since 1.0.0
  */
-const LibsqlTransaction = Context.GenericTag<Libsql.Transaction>(
+const LibsqlTransaction = Context.GenericTag<readonly [Libsql.Transaction, counter: number]>(
   "@effect/sql-libsql/LibsqlTransaction"
 )
 
@@ -121,13 +121,18 @@ export const make = (
     yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
 
     const makeConnection = (db: Libsql.Client) => {
+      const getExecutor = Effect.serviceOption(LibsqlTransaction).pipe(
+        Effect.map(Option.map(([tx]) => tx))
+      ).pipe(
+        Effect.flatMap(Option.orElse(() => Option.some(db))),
+        Effect.orDie
+      )
+
       const run = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
       ) =>
-        pipe(
-          Effect.serviceOption(LibsqlTransaction),
-          Effect.map(Option.getOrElse(() => db)),
+        getExecutor.pipe(
           Effect.flatMap((conn) =>
             Effect.tryPromise({
               try: () => conn.execute({ sql, args: params as Array<any> }).then((results) => results.rows),
@@ -140,9 +145,7 @@ export const make = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
       ) =>
-        pipe(
-          Effect.serviceOption(LibsqlTransaction),
-          Effect.map(Option.getOrElse(() => db)),
+        getExecutor.pipe(
           Effect.flatMap((conn) =>
             Effect.tryPromise({
               try: () => conn.execute({ sql, args: params as Array<any> }),
@@ -182,19 +185,47 @@ export const make = (
 
     const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
 
+    const makeRootTx: Effect.Effect<
+      readonly [Scope.CloseableScope | undefined, Libsql.Transaction, number],
+      SqlError
+    > = Effect.flatMap(
+      Scope.make(),
+      (scope) =>
+        Effect.map(Scope.extend(Effect.promise(() => db.transaction("write")), scope), (conn) =>
+          [scope, conn, 0] as const)
+    )
+
     const withTransaction = <R, E, A>(
       effect: Effect.Effect<A, E, R>
     ): Effect.Effect<A, E | SqlError, R> =>
       Effect.acquireUseRelease(
-        Effect.tryPromise({
-          try: () => db.transaction("write"),
-          catch: (cause) => new SqlError({ cause, message: "Failed to start an interactive transactions" })
-        }),
-        (transaction) => Effect.provideService(effect, LibsqlTransaction, transaction),
-        (transaction, exit) => {
-          return Exit.isSuccess(exit)
-            ? Effect.promise(() => transaction.commit())
-            : Effect.promise(() => transaction.rollback())
+        pipe(
+          Effect.serviceOption(LibsqlTransaction),
+          Effect.flatMap(
+            Option.match({
+              onNone: () =>
+                makeRootTx,
+              onSome: ([conn, count]) => Effect.succeed([undefined, conn, count + 1] as const)
+            })
+          ),
+          Effect.tap(([, conn, id]) =>
+            id > 0
+              ? Effect.promise(() => conn.execute(`SAVEPOINT effect_sql_${id};`))
+              : conn
+          )
+        ),
+        ([, conn, id]) => Effect.provideService(effect, LibsqlTransaction, [conn, id]),
+        ([scope, conn, id], exit) => {
+          const effect = Exit.isSuccess(exit)
+            ? id > 0
+              ? Effect.void
+              : Effect.orDie(Effect.promise(() => conn.commit()))
+            : Effect.orDie(
+              Effect.promise<void | Libsql.ResultSet>(() =>
+                id > 0 ? conn.execute(`ROLLBACK TO effect_sql_${id}`) : conn.rollback()
+              )
+            )
+          return scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect
         }
       )
 

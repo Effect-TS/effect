@@ -78,5 +78,15 @@ describe("Client", () => {
         const rows = yield* sql`SELECT * FROM test`
         assert.deepStrictEqual(rows, [])
       }).pipe(Effect.provide(Migrations)))
+
+    it.scoped("withTransaction nested", () =>
+      Effect.gen(function*() {
+        const sql = yield* LibsqlClient.LibsqlClient
+        const stmt = sql`INSERT INTO test (name) VALUES ('hello')`
+
+        yield* stmt.pipe(Effect.andThen(() => stmt.pipe(sql.withTransaction)), sql.withTransaction)
+        const rows = yield* sql<{ total_rows: number }>`select count(*) as total_rows FROM test`
+        assert.deepStrictEqual(rows.at(0)?.total_rows, 2)
+      }).pipe(Effect.provide(Migrations)))
   })
 })
