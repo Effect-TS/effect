@@ -319,4 +319,4 @@ export const withSpanContext = dual<
   effect: Effect.Effect<A, E, R>,
   spanContext: OtelApi.SpanContext
 ): Effect.Effect<A, E, Exclude<R, EffectTracer.ParentSpan>> =>
-  Effect.provideService(effect, EffectTracer.ParentSpan, makeExternalSpan(spanContext)))
+  Effect.withParentSpan(effect, makeExternalSpan(spanContext)))
