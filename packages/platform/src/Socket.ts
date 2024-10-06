@@ -406,16 +406,16 @@ export const fromWebSocket = <R>(
             Effect.tap(({ fiberSet, run, ws }) => {
               let open = false
 
-              async function onMessage(event: MessageEvent) {
-                const result = handler(
-                  typeof event.data === "string"
-                    ? event.data
-                    : event.data instanceof Uint8Array
-                    ? event.data
-                    : event.data instanceof Blob
-                    ? new Uint8Array(await event.data.arrayBuffer())
-                    : new Uint8Array(event.data)
-                )
+              function onMessage(event: MessageEvent) {
+                if (event.data instanceof Blob) {
+                  return Effect.promise(() =>
+                    event.data.arrayBuffer() as Promise<ArrayBuffer>
+                  ).pipe(
+                    Effect.andThen((buffer) => handler(new Uint8Array(buffer))),
+                    run
+                  )
+                }
+                const result = handler(event.data)
                 if (Effect.isEffect(result)) {
                   run(result)
                 }
@@ -478,8 +478,7 @@ export const fromWebSocket = <R>(
                       })
                     }) :
                     Effect.try({
-                      try: () =>
-                        ws.send(chunk),
+                      try: () => ws.send(chunk),
                       catch: (cause) => new SocketGenericError({ reason: "Write", cause })
                     })
                 ),
