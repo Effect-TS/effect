@@ -1,5 +1,16 @@
 # @effect/sql-pg
 
+## 0.14.1
+
+### Patch Changes
+
+- [#3704](https://github.com/Effect-TS/effect/pull/3704) [`b00f7a0`](https://github.com/Effect-TS/effect/commit/b00f7a0a73b0f6031552ec2535a6f918a0360585) Thanks @wewelll! - accept tls options for ssl configuration of PgClient
+
+- Updated dependencies [[`88e85db`](https://github.com/Effect-TS/effect/commit/88e85db34bd402526e27a323e950d053fa34d232), [`f40da15`](https://github.com/Effect-TS/effect/commit/f40da15fbeb7c491840b8f409d47de79720891c3), [`8e94585`](https://github.com/Effect-TS/effect/commit/8e94585abe62753bf3af28bfae77926a7c570ac3), [`83887ca`](https://github.com/Effect-TS/effect/commit/83887ca1b1793916913d8550a4db4450cd14a044), [`5266b6c`](https://github.com/Effect-TS/effect/commit/5266b6cd86d76c3886da041c8829bca04b1a3110), [`cdead5c`](https://github.com/Effect-TS/effect/commit/cdead5c9cfd54dc6c4f215d9732f654c4a12e991), [`f40da15`](https://github.com/Effect-TS/effect/commit/f40da15fbeb7c491840b8f409d47de79720891c3), [`766a8af`](https://github.com/Effect-TS/effect/commit/766a8af307b414aca3648d91c4eab7493a5ec862)]:
+  - effect@3.8.5
+  - @effect/platform@0.66.3
+  - @effect/sql@0.14.1
+
 ## 0.14.0
 
 ### Patch Changes
