@@ -3,6 +3,15 @@ import { expect, it } from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe("Random", () => {
+  it.effect("integer is correctly distributed", () =>
+    Effect.gen(function*() {
+      const tenYearsMillis = 10 * 365 * 24 * 60 * 60 * 1000
+      let lastRandom = 0
+      while (lastRandom < tenYearsMillis / 2) {
+        lastRandom = yield* Random.nextIntBetween(0, tenYearsMillis)
+      }
+      assert.isTrue(lastRandom >= tenYearsMillis / 2)
+    }))
   it.effect("shuffle", () =>
     Effect.gen(function*() {
       const start = Array.range(0, 100)
