@@ -57,7 +57,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
+import type { Concurrency, Contravariant, Covariant, NoExcessProperties, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import type { YieldWrap } from "./Utils.js"
 
@@ -3326,14 +3326,33 @@ export const mapInputContext: {
  * @category context
  */
 export const provide: {
+  <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    layers: Layers
+  ): <A, E, R>(
+    self: Effect<A, E, R>
+  ) => Effect<
+    A,
+    E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+    | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+    | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+  >
   <ROut, E2, RIn>(
     layer: Layer.Layer<ROut, E2, RIn>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E2 | E, RIn | Exclude<R, ROut>>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, RIn | Exclude<R, ROut>>
   <R2>(context: Context.Context<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <R2>(runtime: Runtime.Runtime<R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, R2>>
   <E2, R2>(
     managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, R2>>
+  <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    self: Effect<A, E, R>,
+    layers: Layers
+  ): Effect<
+    A,
+    E | { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
+    | { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
+    | Exclude<R, { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number]>
+  >
   <A, E, R, ROut, E2, RIn>(
     self: Effect<A, E, R>,
     layer: Layer.Layer<ROut, E2, RIn>
@@ -6216,12 +6235,13 @@ export declare namespace Tag {
     Service?: `property "Service" is forbidden`
     Identifier?: `property "Identifier" is forbidden`
     _op?: `property "_op" is forbidden`
-    _tag?: `property "_tag" is forbidden`
     of?: `property "of" is forbidden`
     context?: `property "context" is forbidden`
     key?: `property "key" is forbidden`
     stack?: `property "stack" is forbidden`
     name?: `property "name" is forbidden`
+    pipe?: `property "pipe" is forbidden`
+    use?: `property "use" is forbidden`
   }
 
   /**
@@ -6229,29 +6249,62 @@ export declare namespace Tag {
    * @category models
    */
   export type AllowedType = (Record<PropertyKey, any> & ProhibitedType) | string | number | symbol
+
+  /**
+   * @since 3.9.0
+   * @category models
+   */
+  export type Proxy<Self, Type> = {
+    [
+      k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
+        ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
+        : k
+    ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+      (...args: Readonly<Args>) => Effect<A, E, Self | R>
+      : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+      : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
+      : Effect<Type[k], never, Self>
+  }
+}
+
+const makeTagProxy = (TagClass: Context.Tag<any, any> & Record<PropertyKey, any>) => {
+  const cache = new Map()
+  return new Proxy(TagClass, {
+    get(target: any, prop: any, receiver) {
+      if (prop in target) {
+        return Reflect.get(target, prop, receiver)
+      }
+      if (cache.has(prop)) {
+        return cache.get(prop)
+      }
+      const fn = (...args: Array<any>) =>
+        core.andThen(target, (s: any) => {
+          if (typeof s[prop] === "function") {
+            cache.set(prop, (...args: Array<any>) => core.andThen(target, (s: any) => s[prop](...args)))
+            return s[prop](...args)
+          }
+          cache.set(prop, core.andThen(target, (s: any) => s[prop]))
+          return s[prop]
+        })
+      const cn = core.andThen(target, (s: any) => s[prop])
+      Object.assign(fn, cn)
+      Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
+      cache.set(prop, fn)
+      return fn
+    }
+  })
 }
 
 /**
  * @since 2.0.0
- * @category constructors
+ * @category context
  */
 export const Tag: <const Id extends string>(id: Id) => <
   Self,
   Type extends Tag.AllowedType
 >() =>
   & Context.TagClass<Self, Id, Type>
-  & (Type extends Record<PropertyKey, any> ? {
-      [
-        k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
-          ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
-          : k
-      ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
-        (...args: Readonly<Args>) => Effect<A, E, Self | R>
-        : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
-        : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-        : Effect<Type[k], never, Self>
-    } :
-    {})
+  & (Type extends Record<PropertyKey, any> ? Tag.Proxy<Self, Type> : {})
   & {
     use: <X>(
       body: (_: Type) => X
@@ -6264,44 +6317,316 @@ export const Tag: <const Id extends string>(id: Id) => <
     function TagClass() {}
     Object.setPrototypeOf(TagClass, TagProto)
     TagClass.key = id
+    Object.defineProperty(TagClass, "use", {
+      get() {
+        return (body: (_: any) => any) => core.andThen(this, body)
+      }
+    })
     Object.defineProperty(TagClass, "stack", {
       get() {
         return creationError.stack
       }
     })
-    const cache = new Map()
-    const done = new Proxy(TagClass, {
-      get(_target: any, prop: any, _receiver) {
-        if (prop === "use") {
-          // @ts-expect-error
-          return (body) => core.andThen(TagClass, body)
+    return makeTagProxy(TagClass as any)
+  }
+
+/**
+ * @since 3.9.0
+ * @category context
+ * @experimental might be up for breaking changes
+ */
+export const Service: <Self>() => {
+  <
+    const Key extends string,
+    const Make extends
+      | {
+        readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
+        /** @deprecated */
+        readonly ಠ_ಠ: never
+      }
+      | {
+        readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
+        /** @deprecated */
+        readonly ಠ_ಠ: never
+      }
+      | {
+        readonly sync: LazyArg<Service.AllowedType<Key, Make>>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
+        /** @deprecated */
+        readonly ಠ_ಠ: never
+      }
+      | {
+        readonly succeed: Service.AllowedType<Key, Make>
+        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly accessors?: boolean
+        /** @deprecated */
+        readonly ಠ_ಠ: never
+      }
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+  <
+    const Key extends string,
+    const Make extends NoExcessProperties<{
+      readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly accessors?: boolean
+    }, Make>
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+  <
+    const Key extends string,
+    const Make extends NoExcessProperties<{
+      readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly accessors?: boolean
+    }, Make>
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+  <
+    const Key extends string,
+    const Make extends NoExcessProperties<{
+      readonly sync: LazyArg<Service.AllowedType<Key, Make>>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly accessors?: boolean
+    }, Make>
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+  <
+    const Key extends string,
+    const Make extends NoExcessProperties<{
+      readonly succeed: Service.AllowedType<Key, Make>
+      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly accessors?: boolean
+    }, Make>
+  >(
+    key: Key,
+    make: Make
+  ): Service.Class<Self, Key, Make>
+} = function() {
+  return function() {
+    const [id, maker] = arguments
+    const proxy = "accessors" in maker ? maker["accessors"] : false
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    const creationError = new Error()
+    Error.stackTraceLimit = limit
+
+    let patchState: "unchecked" | "plain" | "patched" = "unchecked"
+    const TagClass: any = function(this: any, service: any) {
+      if (patchState === "unchecked") {
+        const proto = Object.getPrototypeOf(service)
+        if (proto === Object.prototype || proto === null) {
+          patchState = "plain"
+        } else {
+          const selfProto = Object.getPrototypeOf(this)
+          Object.setPrototypeOf(selfProto, proto)
+          patchState = "patched"
         }
-        if (prop in TagClass) {
-          // @ts-expect-error
-          return TagClass[prop]
-        }
-        if (cache.has(prop)) {
-          return cache.get(prop)
-        }
-        const fn = (...args: Array<any>) =>
-          // @ts-expect-error
-          core.andThen(TagClass, (s: any) => {
-            if (typeof s[prop] === "function") {
-              // @ts-expect-error
-              cache.set(prop, (...args: Array<any>) => core.andThen(TagClass, (s: any) => s[prop](...args)))
-              return s[prop](...args)
-            }
-            // @ts-expect-error
-            cache.set(prop, core.andThen(TagClass, (s) => s[prop]))
-            return s[prop]
-          })
-        // @ts-expect-error
-        const cn = core.andThen(TagClass, (s) => s[prop])
-        Object.assign(fn, cn)
-        Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
-        cache.set(prop, fn)
-        return fn
+      }
+      if (patchState === "plain") {
+        Object.assign(this, service)
+      } else if (patchState === "patched") {
+        Object.setPrototypeOf(service, Object.getPrototypeOf(this))
+        return service
+      }
+    }
+
+    TagClass.prototype._tag = id
+    Object.defineProperty(TagClass, "make", {
+      get() {
+        return (service: any) => new this(service)
       }
     })
-    return done
+    Object.defineProperty(TagClass, "use", {
+      get() {
+        return (body: any) => core.andThen(this, body)
+      }
+    })
+    TagClass.key = id
+
+    Object.assign(TagClass, TagProto)
+
+    Object.defineProperty(TagClass, "stack", {
+      get() {
+        return creationError.stack
+      }
+    })
+
+    const hasDeps = "dependencies" in maker && maker.dependencies.length > 0
+    const layerName = hasDeps ? "DefaultWithoutDependencies" : "Default"
+    let layerCache: Layer.Layer.Any | undefined
+    if ("effect" in maker) {
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          return layerCache ??= layer.fromEffect(TagClass, map(maker.effect, (_) => new this(_)))
+        }
+      })
+    } else if ("scoped" in maker) {
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          return layerCache ??= layer.scoped(TagClass, map(maker.scoped, (_) => new this(_)))
+        }
+      })
+    } else if ("sync" in maker) {
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          return layerCache ??= layer.sync(TagClass, () => new this(maker.sync()))
+        }
+      })
+    } else {
+      Object.defineProperty(TagClass, layerName, {
+        get(this: any) {
+          return layerCache ??= layer.succeed(TagClass, new this(maker.succeed))
+        }
+      })
+    }
+
+    if (hasDeps) {
+      let layerWithDepsCache: Layer.Layer.Any | undefined
+      Object.defineProperty(TagClass, "Default", {
+        get(this: any) {
+          return layerWithDepsCache ??= layer.provide(
+            this.DefaultWithoutDependencies,
+            maker.dependencies
+          )
+        }
+      })
+    }
+
+    return proxy === true ? makeTagProxy(TagClass) : TagClass
   }
+}
+
+/**
+ * @since 3.9.0
+ * @category context
+ */
+export declare namespace Service {
+  /**
+   * @since 3.9.0
+   */
+  export interface ProhibitedType {
+    Service?: `property "Service" is forbidden`
+    Identifier?: `property "Identifier" is forbidden`
+    Default?: `property "Default" is forbidden`
+    DefaultWithoutDependencies?: `property "DefaultWithoutDependencies" is forbidden`
+    _op_layer?: `property "_op_layer" is forbidden`
+    _op?: `property "_op" is forbidden`
+    of?: `property "of" is forbidden`
+    make?: `property "make" is forbidden`
+    context?: `property "context" is forbidden`
+    key?: `property "key" is forbidden`
+    stack?: `property "stack" is forbidden`
+    name?: `property "name" is forbidden`
+    pipe?: `property "pipe" is forbidden`
+    use?: `property "use" is forbidden`
+    _tag?: `property "_tag" is forbidden`
+  }
+
+  /**
+   * @since 3.9.0
+   */
+  export type AllowedType<Key extends string, Make> = MakeAccessors<Make> extends true ?
+      & Record<PropertyKey, any>
+      & {
+        readonly [K in Extract<keyof MakeService<Make>, keyof ProhibitedType>]: K extends "_tag" ? Key
+          : ProhibitedType[K]
+      }
+    : Record<PropertyKey, any> & { readonly _tag?: Key }
+
+  /**
+   * @since 3.9.0
+   */
+  export type Class<
+    Self,
+    Key extends string,
+    Make
+  > =
+    & {
+      new(_: MakeService<Make>): MakeService<Make> & {
+        readonly _tag: Key
+      }
+      readonly use: <X>(
+        body: (_: Self) => X
+      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+      readonly make: (_: MakeService<Make>) => Self
+    }
+    & Context.Tag<Self, Self>
+    & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
+    & (MakeDeps<Make> extends never ? {
+        readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+      } :
+      {
+        readonly DefaultWithoutDependencies: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
+        readonly Default: Layer.Layer<
+          Self,
+          MakeError<Make> | MakeDepsE<Make>,
+          | Exclude<MakeContext<Make>, MakeDepsOut<Make>>
+          | MakeDepsIn<Make>
+        >
+      })
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeService<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _A
+    : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _A
+    : Make extends { readonly sync: LazyArg<infer A> } ? A
+    : Make extends { readonly succeed: infer A } ? A
+    : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeError<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _E
+    : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _E
+    : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeContext<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _R
+    : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? Exclude<_R, Scope.Scope>
+    : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeDeps<Make> = Make extends { readonly dependencies: ReadonlyArray<Layer.Layer.Any> }
+    ? Make["dependencies"][number]
+    : never
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeDepsOut<Make> = Contravariant.Type<MakeDeps<Make>[Layer.LayerTypeId]["_ROut"]>
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeDepsE<Make> = Covariant.Type<MakeDeps<Make>[Layer.LayerTypeId]["_E"]>
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeDepsIn<Make> = Covariant.Type<MakeDeps<Make>[Layer.LayerTypeId]["_RIn"]>
+
+  /**
+   * @since 3.9.0
+   */
+  export type MakeAccessors<Make> = Make extends { readonly accessors: true } ? true
+    : false
+}
