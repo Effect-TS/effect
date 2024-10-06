@@ -428,6 +428,26 @@ export const retry: {
 } = internal.retry
 
 /**
+ * Retries common transient errors, such as rate limiting or network issues.
+ *
+ * @since 1.0.0
+ * @category error handling
+ */
+export const retryTransient: {
+  <B, E, R1 = never>(
+    options:
+      | { readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>; readonly times?: number }
+      | Schedule.Schedule<B, NoInfer<E>, R1>
+  ): <A, R>(self: HttpClient<A, E, R>) => HttpClient<A, E, R1 | R>
+  <A, E, R, B, R1 = never>(
+    self: HttpClient<A, E, R>,
+    options:
+      | { readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>; readonly times?: number }
+      | Schedule.Schedule<B, NoInfer<E>, R1>
+  ): HttpClient<A, E, R1 | R>
+} = internal.retryTransient
+
+/**
  * Ensures resources are properly scoped and released after execution.
  *
  * @since 1.0.0
