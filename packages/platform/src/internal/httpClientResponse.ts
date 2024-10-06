@@ -29,7 +29,7 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
   readonly [TypeId]: ClientResponse.TypeId
 
   constructor(
-    private readonly request: ClientRequest.HttpClientRequest,
+    readonly request: ClientRequest.HttpClientRequest,
     private readonly source: globalThis.Response
   ) {
     super()
@@ -240,3 +240,42 @@ export const matchStatus = dual<
   }
   return cases.orElse(self)
 })
+
+/** @internal */
+export const filterStatus = dual<
+  (
+    f: (status: number) => boolean
+  ) => (
+    self: ClientResponse.HttpClientResponse
+  ) => Effect.Effect<ClientResponse.HttpClientResponse, Error.ResponseError>,
+  (
+    self: ClientResponse.HttpClientResponse,
+    f: (status: number) => boolean
+  ) => Effect.Effect<ClientResponse.HttpClientResponse, Error.ResponseError>
+>(
+  2,
+  (self, f) =>
+    Effect.suspend(() =>
+      f(self.status) ? Effect.succeed(self) : Effect.fail(
+        new Error.ResponseError({
+          response: self,
+          request: self.request,
+          reason: "StatusCode",
+          description: "invalid status code"
+        })
+      )
+    )
+)
+
+/** @internal */
+export const filterStatusOk = (
+  self: ClientResponse.HttpClientResponse
+): Effect.Effect<ClientResponse.HttpClientResponse, Error.ResponseError> =>
+  self.status >= 200 && self.status < 300 ? Effect.succeed(self) : Effect.fail(
+    new Error.ResponseError({
+      response: self,
+      request: self.request,
+      reason: "StatusCode",
+      description: "non 2xx status code"
+    })
+  )

@@ -35,10 +35,12 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
     HttpClient.mapEffect(HttpClientResponse.schemaBodyJson(Todo)),
     HttpClient.scoped
   )
-  const createTodo = HttpClient.schemaFunction(
-    todoClient,
-    Todo.pipe(Schema.omit("id"))
-  )(HttpClientRequest.post("/todos"))
+  const createTodo = HttpClientRequest.post("/todos").pipe(
+    HttpClient.schemaFunction(
+      todoClient,
+      Todo.pipe(Schema.omit("id"))
+    )
+  )
   return {
     client,
     todoClient,
