@@ -29,7 +29,6 @@ export type TagTypeId = typeof TagTypeId
  * @category models
  */
 export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
-  readonly _tag: "Tag"
   readonly _op: "Tag"
   readonly Service: Value
   readonly Identifier: Id
@@ -85,13 +84,13 @@ export declare namespace Tag {
   /**
    * @since 2.0.0
    */
-  export type Service<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<any, infer A> ? A
+  export type Service<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<any, any> ? T["Service"]
     : T extends TagClassShape<any, infer A> ? A
     : never
   /**
    * @since 2.0.0
    */
-  export type Identifier<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<infer A, any> ? A
+  export type Identifier<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<any, any> ? T["Identifier"]
     : T extends TagClassShape<any, any> ? T
     : never
 }
