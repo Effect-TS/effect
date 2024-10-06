@@ -1,5 +1,34 @@
 # effect
 
+## 3.8.5
+
+### Patch Changes
+
+- [#3734](https://github.com/Effect-TS/effect/pull/3734) [`88e85db`](https://github.com/Effect-TS/effect/commit/88e85db34bd402526e27a323e950d053fa34d232) Thanks @mikearnaldi! - Ensure random numbers are correctly distributed
+
+- [#3717](https://github.com/Effect-TS/effect/pull/3717) [`83887ca`](https://github.com/Effect-TS/effect/commit/83887ca1b1793916913d8550a4db4450cd14a044) Thanks @mikearnaldi! - Consider async operation in runSync as a defect, add span based stack
+
+- [#3731](https://github.com/Effect-TS/effect/pull/3731) [`5266b6c`](https://github.com/Effect-TS/effect/commit/5266b6cd86d76c3886da041c8829bca04b1a3110) Thanks @patroza! - Improve DX of type errors from inside `pipe` and `flow`
+
+- [#3699](https://github.com/Effect-TS/effect/pull/3699) [`cdead5c`](https://github.com/Effect-TS/effect/commit/cdead5c9cfd54dc6c4f215d9732f654c4a12e991) Thanks @jessekelly881! - added Stream.mergeWithTag
+
+  Combines a struct of streams into a single stream of tagged values where the tag is the key of the struct.
+
+  ```ts
+  import { Stream } from "effect"
+
+  // Stream.Stream<{ _tag: "a"; value: number; } | { _tag: "b"; value: string; }>
+  const stream = Stream.mergeWithTag(
+    {
+      a: Stream.make(0),
+      b: Stream.make("")
+    },
+    { concurrency: 1 }
+  )
+  ```
+
+- [#3706](https://github.com/Effect-TS/effect/pull/3706) [`766a8af`](https://github.com/Effect-TS/effect/commit/766a8af307b414aca3648d91c4eab7493a5ec862) Thanks @fubhy! - Made `BigDecimal.scale` dual.
+
 ## 3.8.4
 
 ### Patch Changes
