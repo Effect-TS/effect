@@ -100,7 +100,7 @@ export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?
 }
 
 const isMultipart = (request: ServerRequest.HttpServerRequest) =>
-  request.headers["content-type"]?.toLowerCase().includes("multipart/form-data")
+  Headers.unredactHeader(request.headers["content-type"])?.toLowerCase().includes("multipart/form-data")
 
 /** @internal */
 export const schemaBodyForm = <A, I extends Partial<Multipart.Persisted>, R>(
@@ -170,8 +170,10 @@ export const schemaBodyFormJson = <A, I, R>(schema: Schema.Schema<A, I, R>, opti
 }
 
 /** @internal */
-export const fromWeb = (request: globalThis.Request): ServerRequest.HttpServerRequest =>
-  new ServerRequestImpl(request, removeHost(request.url))
+export const fromWeb = (
+  request: globalThis.Request,
+  redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
+): ServerRequest.HttpServerRequest => new ServerRequestImpl(request, removeHost(request.url), redactedKeys)
 
 const removeHost = (url: string) => {
   if (url[0] === "/") {
@@ -187,6 +189,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
   constructor(
     readonly source: Request,
     readonly url: string,
+    private readonly redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>,
     public headersOverride?: Headers.Headers,
     private remoteAddressOverride?: string
   ) {
@@ -211,6 +214,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return new ServerRequestImpl(
       this.source,
       options.url ?? this.url,
+      this.redactedKeys,
       options.headers ?? this.headersOverride,
       options.remoteAddress ?? this.remoteAddressOverride
     )
@@ -225,7 +229,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return this.remoteAddressOverride ? Option.some(this.remoteAddressOverride) : Option.none()
   }
   get headers(): Headers.Headers {
-    this.headersOverride ??= Headers.fromInput(this.source.headers)
+    this.headersOverride ??= Headers.fromInput(this.source.headers, this.redactedKeys)
     return this.headersOverride
   }
 
@@ -234,7 +238,9 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     if (this.cachedCookies) {
       return this.cachedCookies
     }
-    return this.cachedCookies = Cookies.parseHeader(this.headers.cookie ?? "")
+    return this.cachedCookies = Cookies.parseHeader(
+      Headers.unredactHeader(this.headers.cookie) ?? ""
+    )
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.RequestError> {
@@ -322,7 +328,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return Stream.pipeThroughChannel(
       Stream.mapError(this.stream, (cause) => new Multipart.MultipartError({ reason: "InternalError", cause })),
-      Multipart.makeChannel(this.headers)
+      Multipart.makeChannel(Headers.unredact(this.headers))
     )
   }
 

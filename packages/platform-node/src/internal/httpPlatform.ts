@@ -28,7 +28,8 @@ export const make = Platform.make({
       headers: Headers.merge(
         headers,
         Headers.unsafeFromRecord({
-          "content-type": headers["content-type"] ?? Mime.getType(file.name) ?? "application/octet-stream",
+          "content-type": Headers.unredactHeader(headers["content-type"]) ?? Mime.getType(file.name) ??
+            "application/octet-stream",
           "content-length": file.size.toString()
         })
       ),

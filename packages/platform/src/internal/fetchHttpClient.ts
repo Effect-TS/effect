@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Stream from "effect/Stream"
+import * as Headers from "../Headers.js"
 import type * as Client from "../HttpClient.js"
 import * as Error from "../HttpClientError.js"
 import * as client from "./httpClient.js"
@@ -15,9 +16,9 @@ const fetch: Client.HttpClient.Service = client.makeService((request, url, signa
   const context = fiber.getFiberRef(FiberRef.currentContext)
   const fetch: typeof globalThis.fetch = context.unsafeMap.get(fetchTagKey) ?? globalThis.fetch
   const options: RequestInit = context.unsafeMap.get(requestInitTagKey) ?? {}
-  const headers = new globalThis.Headers(request.headers)
+  const headers = new globalThis.Headers(Headers.unredact(request.headers))
   const send = (body: BodyInit | undefined) =>
-    Effect.map(
+    Effect.flatMap(
       Effect.tryPromise({
         try: () =>
           fetch(url, {
@@ -35,7 +36,10 @@ const fetch: Client.HttpClient.Service = client.makeService((request, url, signa
             cause
           })
       }),
-      (response) => internalResponse.fromWeb(request, response)
+      (response) =>
+        FiberRef.get(Headers.currentRedactedNames).pipe(
+          Effect.map((redactedKeys) => internalResponse.fromWeb(request, response, redactedKeys))
+        )
     )
   switch (request.body._tag) {
     case "Raw":

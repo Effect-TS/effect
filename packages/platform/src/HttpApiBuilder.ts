@@ -22,6 +22,7 @@ import type { Covariant, Mutable, NoInfer } from "effect/Types"
 import { unify } from "effect/Unify"
 import type { Cookie } from "./Cookies.js"
 import type { FileSystem } from "./FileSystem.js"
+import { unredactHeader } from "./Headers.js"
 import * as HttpApi from "./HttpApi.js"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.js"
 import { HttpApiDecodeError } from "./HttpApiError.js"
@@ -606,7 +607,7 @@ export const securityDecode = <Security extends HttpApiSecurity.HttpApiSecurity>
     case "Bearer": {
       return Effect.map(
         HttpServerRequest.HttpServerRequest,
-        (request) => Redacted.make((request.headers.authorization ?? "").slice(bearerLen)) as any
+        (request) => Redacted.make((unredactHeader(request.headers.authorization) ?? "").slice(bearerLen)) as any
       )
     }
     case "ApiKey": {
@@ -631,7 +632,7 @@ export const securityDecode = <Security extends HttpApiSecurity.HttpApiSecurity>
         password: Redacted.make("")
       } as any
       return HttpServerRequest.HttpServerRequest.pipe(
-        Effect.flatMap((request) => Encoding.decodeBase64String(request.headers.authorization ?? "")),
+        Effect.flatMap((request) => Encoding.decodeBase64String(unredactHeader(request.headers.authorization) ?? "")),
         Effect.match({
           onFailure: () => empty,
           onSuccess: (header) => {

@@ -21,6 +21,7 @@ import * as Config from "effect/Config"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
 import { pipe } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
@@ -88,11 +89,17 @@ export const make = (
             Effect.async<never>((_) => {
               function handler(request: Request, server: BunServer) {
                 return new Promise<Response>((resolve, _reject) => {
-                  const fiber = runFork(Effect.provideService(
-                    app,
-                    ServerRequest.HttpServerRequest,
-                    new ServerRequestImpl(request, resolve, removeHost(request.url), server)
-                  ))
+                  const fiber = runFork(
+                    FiberRef.get(Headers.currentRedactedNames).pipe(
+                      Effect.flatMap((keys) =>
+                        Effect.provideService(
+                          app,
+                          ServerRequest.HttpServerRequest,
+                          new ServerRequestImpl(request, resolve, removeHost(request.url), server, keys)
+                        )
+                      )
+                    )
+                  )
                   request.signal.addEventListener("abort", () => {
                     runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
                   }, { once: true })
@@ -124,7 +131,7 @@ const makeResponse = (
     status?: number
     statusText?: string
   } = {
-    headers: new globalThis.Headers(response.headers),
+    headers: new globalThis.Headers(Headers.unredact(response.headers)),
     status: response.status
   }
 
@@ -216,6 +223,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     public resolve: (response: Response) => void,
     readonly url: string,
     private bunServer: BunServer,
+    private redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>,
     public headersOverride?: Headers.Headers,
     private remoteAddressOverride?: string
   ) {
@@ -242,6 +250,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
       this.resolve,
       options.url ?? this.url,
       this.bunServer,
+      this.redactedKeys,
       options.headers ?? this.headersOverride,
       options.remoteAddress ?? this.remoteAddressOverride
     )
@@ -256,7 +265,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return this.remoteAddressOverride ? Option.some(this.remoteAddressOverride) : Option.none()
   }
   get headers(): Headers.Headers {
-    this.headersOverride ??= Headers.fromInput(this.source.headers)
+    this.headersOverride ??= Headers.fromInput(this.source.headers, this.redactedKeys)
     return this.headersOverride
   }
 
@@ -265,7 +274,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     if (this.cachedCookies) {
       return this.cachedCookies
     }
-    return this.cachedCookies = Cookies.parseHeader(this.headers.cookie ?? "")
+    return this.cachedCookies = Cookies.parseHeader(Headers.unredactHeader(this.headers.cookie) ?? "")
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.RequestError> {
@@ -345,13 +354,13 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
       return this.multipartEffect
     }
     this.multipartEffect = Effect.runSync(Effect.cached(
-      MultipartNode.persisted(Readable.fromWeb(this.source.body! as any), this.headers)
+      MultipartNode.persisted(Readable.fromWeb(this.source.body! as any), Headers.unredact(this.headers))
     ))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return MultipartNode.stream(Readable.fromWeb(this.source.body! as any), this.headers)
+    return MultipartNode.stream(Readable.fromWeb(this.source.body! as any), Headers.unredact(this.headers))
   }
 
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.RequestError> | undefined

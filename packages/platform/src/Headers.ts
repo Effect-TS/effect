@@ -2,6 +2,8 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
+import * as Equivalence from "effect/Equivalence"
 import * as FiberRef from "effect/FiberRef"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
@@ -36,15 +38,17 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  */
 export interface Headers {
   readonly [HeadersTypeId]: HeadersTypeId
-  readonly [key: string]: string
+  readonly [key: string]: HeaderValues
 }
 
 const Proto = Object.assign(Object.create(null), {
   [HeadersTypeId]: HeadersTypeId
 })
 
-const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
+const make = (input: Record.ReadonlyRecord<string, HeaderValues>): Mutable<Headers> =>
   Object.assign(Object.create(Proto), input) as Headers
+
+const equiv = Redacted.getEquivalence(String.Equivalence)
 
 /**
  * @since 1.0.0
@@ -52,18 +56,39 @@ const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
  */
 export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, {
   identifier: "Headers",
-  equivalence: () => Record.getEquivalence(String.Equivalence)
+  equivalence: () =>
+    Record.getEquivalence(
+      Equivalence.make<string | Redacted.Redacted<string>>((self, that) =>
+        Redacted.isRedacted(self)
+          ? Redacted.isRedacted(that) && equiv(self, that)
+          : String.isString(that) && String.Equivalence(self, that)
+      )
+    )
 })
+
+const HeaderValues = Schema.Union(Schema.String, Schema.Redacted(Schema.String))
+type HeaderValues = typeof HeaderValues.Type
 
 /**
  * @since 1.0.0
  * @category schemas
  */
-export const schema: Schema.Schema<Headers, Record.ReadonlyRecord<string, string | ReadonlyArray<string>>> = Schema
-  .transform(
+export const schema: Schema.Schema<
+  Headers,
+  Record.ReadonlyRecord<
+    string,
+    string | ReadonlyArray<string>
+  >
+> = Schema
+  .transformOrFail(
     Schema.Record({ key: Schema.String, value: Schema.Union(Schema.String, Schema.Array(Schema.String)) }),
     schemaFromSelf,
-    { strict: true, decode: (record) => fromInput(record), encode: identity }
+    {
+      strict: true,
+      decode: (record) =>
+        FiberRef.get(currentRedactedNames).pipe(Effect.map((redactedKeys) => fromInput(record, redactedKeys))),
+      encode: (_) => Effect.succeed(unredact(_))
+    }
   )
 
 /**
@@ -71,8 +96,8 @@ export const schema: Schema.Schema<Headers, Record.ReadonlyRecord<string, string
  * @category models
  */
 export type Input =
-  | Record.ReadonlyRecord<string, string | ReadonlyArray<string> | undefined>
-  | Iterable<readonly [string, string]>
+  | Record.ReadonlyRecord<string, HeaderValues | ReadonlyArray<HeaderValues> | undefined>
+  | Iterable<readonly [string, HeaderValues]>
 
 /**
  * @since 1.0.0
@@ -84,25 +109,35 @@ export const empty: Headers = Object.create(Proto)
  * @since 1.0.0
  * @category constructors
  */
-export const fromInput: (input?: Input) => Headers = (input) => {
+export const fromInput: (
+  input: Input | undefined,
+  redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
+) => Headers = (
+  input,
+  redactedKey
+) => {
+  const redact_ = redactedKey ? redact(redactedKey) : identity
   if (input === undefined) {
     return empty
   } else if (Symbol.iterator in input) {
-    const out: Record<string, string> = Object.create(Proto)
+    const out: Record<string, HeaderValues> = Object.create(Proto)
     for (const [k, v] of input) {
       out[k.toLowerCase()] = v
     }
-    return out as Headers
+    return redact_(out) as Headers
   }
-  const out: Record<string, string> = Object.create(Proto)
+  const out: Record<string, HeaderValues> = Object.create(Proto)
   for (const [k, v] of Object.entries(input)) {
     if (Array.isArray(v)) {
-      out[k.toLowerCase()] = v.join(", ")
+      const redacted = v.some((_) => Redacted.isRedacted(_))
+      out[k.toLowerCase()] = redacted
+        ? Redacted.make(v.map((_) => Redacted.isRedacted(_) ? Redacted.value(_) : _).join(", "))
+        : v.join(", ")
     } else if (v !== undefined) {
       out[k.toLowerCase()] = v as string
     }
   }
-  return out as Headers
+  return redact_(out) as Headers
 }
 
 /**
@@ -141,11 +176,11 @@ export const get: {
  * @category combinators
  */
 export const set: {
-  (key: string, value: string): (self: Headers) => Headers
-  (self: Headers, key: string, value: string): Headers
+  (key: string, value: HeaderValues): (self: Headers) => Headers
+  (self: Headers, key: string, value: HeaderValues): Headers
 } = dual<
-  (key: string, value: string) => (self: Headers) => Headers,
-  (self: Headers, key: string, value: string) => Headers
+  (key: string, value: HeaderValues) => (self: Headers) => Headers,
+  (self: Headers, key: string, value: HeaderValues) => Headers
 >(3, (self, key, value) => {
   const out = make(self)
   out[key.toLowerCase()] = value
@@ -200,6 +235,24 @@ export const remove: {
   return out
 })
 
+export const unredactHeader: {
+  (self: string | Redacted.Redacted<string>): string
+  (self: string | Redacted.Redacted<string> | undefined): string | undefined
+} = (self) => (self !== undefined ? Redacted.isRedacted(self) ? Redacted.value(self) : self : undefined) as any
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const unredact = (self: Headers): Record<string, string> => {
+  const out: Record<string, string> = {}
+  for (const name in self) {
+    out[name] = unredactHeader(self[name])
+  }
+
+  return out
+}
+
 /**
  * @since 1.0.0
  * @category combinators
@@ -207,15 +260,15 @@ export const remove: {
 export const redact: {
   (
     key: string | RegExp | ReadonlyArray<string | RegExp>
-  ): (self: Headers) => Record<string, string | Redacted.Redacted>
+  ): (self: Record<string, string | Redacted.Redacted<string>>) => Record<string, string | Redacted.Redacted>
   (
-    self: Headers,
+    self: Record<string, string | Redacted.Redacted<string>>,
     key: string | RegExp | ReadonlyArray<string | RegExp>
   ): Record<string, string | Redacted.Redacted>
 } = dual(
   2,
   (
-    self: Headers,
+    self: Record<string, string | Redacted.Redacted<string>>,
     key: string | RegExp | ReadonlyArray<string | RegExp>
   ): Record<string, string | Redacted.Redacted> => {
     const out: Record<string, string | Redacted.Redacted> = { ...self }
@@ -223,12 +276,12 @@ export const redact: {
       if (typeof key === "string") {
         const k = key.toLowerCase()
         if (k in self) {
-          out[k] = Redacted.make(self[k])
+          out[k] = Redacted.isRedacted(self[k]) ? self[k] : Redacted.make(self[k])
         }
       } else {
         for (const name in self) {
           if (key.test(name)) {
-            out[name] = Redacted.make(self[name])
+            out[name] = Redacted.isRedacted(self[name]) ? self[name] : Redacted.make(self[name])
           }
         }
       }
