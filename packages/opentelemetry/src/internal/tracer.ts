@@ -3,6 +3,7 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { Exit } from "effect/Exit"
+import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -305,12 +306,17 @@ const unknownToAttributeValue = (value: unknown): OtelApi.AttributeValue => {
   return Inspectable.toStringUnknown(value)
 }
 
-export const withActiveSpan = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  Effect.suspend(() => {
-    const activeSpan = OtelApi.trace.getActiveSpan()
-    if (!activeSpan) {
-      return effect
-    }
-    const span = makeExternalSpan(activeSpan.spanContext())
-    return Effect.withParentSpan(effect, span)
-  })
+/** @internal */
+export const withSpanContext = dual<
+  (
+    spanContext: OtelApi.SpanContext
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, EffectTracer.ParentSpan>>,
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    spanContext: OtelApi.SpanContext
+  ) => Effect.Effect<A, E, Exclude<R, EffectTracer.ParentSpan>>
+>(2, <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  spanContext: OtelApi.SpanContext
+): Effect.Effect<A, E, Exclude<R, EffectTracer.ParentSpan>> =>
+  Effect.withParentSpan(effect, makeExternalSpan(spanContext)))

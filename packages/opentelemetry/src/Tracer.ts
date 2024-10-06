@@ -6,7 +6,7 @@ import type { NoSuchElementException } from "effect/Cause"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
-import type { ExternalSpan, Tracer as EffectTracer } from "effect/Tracer"
+import type { ExternalSpan, ParentSpan, Tracer as EffectTracer } from "effect/Tracer"
 import * as internal from "./internal/tracer.js"
 import type { Resource } from "./Resource.js"
 
@@ -84,8 +84,7 @@ export const TraceFlags: Tag<Otel.TraceFlags, Otel.TraceFlags> = internal.traceF
 export const TraceState: Tag<Otel.TraceState, Otel.TraceState> = internal.traceStateTag
 
 /**
- * Attach the provided Effect to the current Span as reported from OpenTelemetry's
- * context propagation.
+ * Set the effect's parent span from the given opentelemetry `SpanContext`.
  *
  * This is handy when you set up OpenTelemetry outside of Effect and want to
  * attach to a parent span.
@@ -93,4 +92,14 @@ export const TraceState: Tag<Otel.TraceState, Otel.TraceState> = internal.traceS
  * @since 1.0.0
  * @category propagation
  */
-export const withActiveSpan: <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R> = internal.withActiveSpan
+export const withSpanContext: {
+  (
+    spanContext: Otel.SpanContext
+  ): <A, E, R>(
+    effect: Effect<A, E, R>
+  ) => Effect<A, E, Exclude<R, ParentSpan>>
+  <A, E, R>(
+    effect: Effect<A, E, R>,
+    spanContext: Otel.SpanContext
+  ): Effect<A, E, Exclude<R, ParentSpan>>
+} = internal.withSpanContext
