@@ -2,7 +2,6 @@
  * @since 2.0.0
  */
 import type * as RA from "./Array.js"
-import type { BrandTypeId } from "./Brand.js"
 import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Clock from "./Clock.js"
@@ -6334,6 +6333,7 @@ export const Tag: <const Id extends string>(id: Id) => <
 /**
  * @since 3.9.0
  * @category context
+ * @experimental might be up for breaking changes
  */
 export const Service: <Self>() => {
   <
@@ -6344,28 +6344,28 @@ export const Service: <Self>() => {
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
-        readonly [BrandTypeId]: never
+        readonly ಠ_ಠ: never
       }
       | {
         readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
-        readonly [BrandTypeId]: never
+        readonly ಠ_ಠ: never
       }
       | {
         readonly sync: LazyArg<Service.AllowedType<Key, Make>>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
-        readonly [BrandTypeId]: never
+        readonly ಠ_ಠ: never
       }
       | {
         readonly succeed: Service.AllowedType<Key, Make>
         readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
-        readonly [BrandTypeId]: never
+        readonly ಠ_ಠ: never
       }
   >(
     key: Key,
