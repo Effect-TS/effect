@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Error from "@effect/platform/Error"
+import { hasProperty } from "effect/Predicate"
 import type * as ClientRequest from "./HttpClientRequest.js"
 import type * as ClientResponse from "./HttpClientResponse.js"
 import * as internal from "./internal/httpClientError.js"
@@ -17,6 +18,12 @@ export const TypeId: unique symbol = internal.TypeId
  * @category type id
  */
 export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
+ * @category guards
+ */
+export const isHttpClientError = (u: unknown): u is HttpClientError => hasProperty(u, TypeId)
 
 /**
  * @since 1.0.0

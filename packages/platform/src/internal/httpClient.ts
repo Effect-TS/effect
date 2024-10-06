@@ -12,7 +12,7 @@ import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
-import type * as Schedule from "effect/Schedule"
+import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Cookies from "../Cookies.js"
 import * as Headers from "../Headers.js"
@@ -629,6 +629,43 @@ export const retry: {
     self: Client.HttpClient<A, E, R>,
     policy: Schedule.Schedule<B, E0, R1>
   ): Client.HttpClient<A, E, R | R1> => transformResponse(self, Effect.retry(policy))
+)
+
+/** @internal */
+export const retryTransient: {
+  <B, E, R1 = never>(
+    options: {
+      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly times?: number
+    } | Schedule.Schedule<B, NoInfer<E>, R1>
+  ): <A, R>(self: Client.HttpClient<A, E, R>) => Client.HttpClient<A, E, R1 | R>
+  <A, E, R, B, R1 = never>(
+    self: Client.HttpClient<A, E, R>,
+    options: {
+      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly times?: number
+    } | Schedule.Schedule<B, NoInfer<E>, R1>
+  ): Client.HttpClient<A, E, R1 | R>
+} = dual(
+  2,
+  <A, E extends E0, E0, R, B, R1 = never>(
+    self: Client.HttpClient<A, E, R>,
+    options: {
+      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly times?: number
+    } | Schedule.Schedule<B, NoInfer<E>, R1>
+  ): Client.HttpClient<A, E, R | R1> =>
+    transformResponse(
+      self,
+      Effect.retry({
+        while: (error) =>
+          Error.isHttpClientError(error) &&
+          ((error._tag === "RequestError" && error.reason === "Transport") ||
+            (error._tag === "ResponseError" && error.response.status >= 429)),
+        schedule: Schedule.ScheduleTypeId in options ? options : options.schedule,
+        times: Schedule.ScheduleTypeId in options ? undefined : options.times
+      })
+    )
 )
 
 /** @internal */
