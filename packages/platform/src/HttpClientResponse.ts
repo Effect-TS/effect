@@ -50,6 +50,7 @@ export type TypeId = typeof TypeId
  */
 export interface HttpClientResponse extends IncomingMessage.HttpIncomingMessage<Error.ResponseError> {
   readonly [TypeId]: TypeId
+  readonly request: ClientRequest.HttpClientRequest
   readonly status: number
   readonly cookies: Cookies.Cookies
   readonly formData: Effect.Effect<FormData, Error.ResponseError>
@@ -130,3 +131,19 @@ export const matchStatus: {
     }
   >(self: HttpClientResponse, cases: Cases): Cases[keyof Cases] extends (_: any) => infer R ? Unify<R> : never
 } = internal.matchStatus
+
+/**
+ * @since 1.0.0
+ * @category filters
+ */
+export const filterStatus: {
+  (f: (status: number) => boolean): (self: HttpClientResponse) => Effect.Effect<HttpClientResponse, Error.ResponseError>
+  (self: HttpClientResponse, f: (status: number) => boolean): Effect.Effect<HttpClientResponse, Error.ResponseError>
+} = internal.filterStatus
+
+/**
+ * @since 1.0.0
+ * @category filters
+ */
+export const filterStatusOk: (self: HttpClientResponse) => Effect.Effect<HttpClientResponse, Error.ResponseError> =
+  internal.filterStatusOk

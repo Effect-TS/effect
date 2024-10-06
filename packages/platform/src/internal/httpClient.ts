@@ -24,6 +24,7 @@ import * as TraceContext from "../HttpTraceContext.js"
 import * as UrlParams from "../UrlParams.js"
 import * as internalBody from "./httpBody.js"
 import * as internalRequest from "./httpClientRequest.js"
+import * as internalResponse from "./httpClientResponse.js"
 
 /** @internal */
 export const TypeId: Client.TypeId = Symbol.for(
@@ -235,36 +236,13 @@ export const filterStatus = dual<
     self: Client.HttpClient.WithResponse<E, R>,
     f: (status: number) => boolean
   ) => Client.HttpClient.WithResponse<E | Error.ResponseError, R>
->(2, (self, f) =>
-  transform(self, (effect, request) =>
-    Effect.filterOrFail(
-      effect,
-      (response) => f(response.status),
-      (response) =>
-        new Error.ResponseError({
-          request,
-          response,
-          reason: "StatusCode",
-          description: "invalid status code"
-        })
-    )))
+>(2, (self, f) => transformResponse(self, Effect.flatMap(internalResponse.filterStatus(f))))
 
 /** @internal */
 export const filterStatusOk = <E, R>(
   self: Client.HttpClient.WithResponse<E, R>
 ): Client.HttpClient.WithResponse<E | Error.ResponseError, R> =>
-  transform(self, (effect, request) =>
-    Effect.filterOrFail(
-      effect,
-      (response) => response.status >= 200 && response.status < 300,
-      (response) =>
-        new Error.ResponseError({
-          request,
-          response,
-          reason: "StatusCode",
-          description: "non 2xx status code"
-        })
-    ))
+  transformResponse(self, Effect.flatMap(internalResponse.filterStatusOk))
 
 /** @internal */
 export const transformResponse = dual<
