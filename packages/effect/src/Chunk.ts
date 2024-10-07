@@ -9,7 +9,7 @@ import * as Equivalence from "./Equivalence.js"
 import { dual, identity, pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
 import type { TypeLambda } from "./HKT.js"
-import { DenoInspectSymbol, format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
+import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import type { NonEmptyIterable } from "./NonEmptyIterable.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
@@ -134,9 +134,6 @@ const ChunkProto: Omit<Chunk<unknown>, "backing" | "depth" | "left" | "length" |
       _id: "Chunk",
       values: toReadonlyArray(this).map(toJSON)
     }
-  },
-  [DenoInspectSymbol]<A>(this: Chunk<A>) {
-    return this.toJSON()
   },
   [NodeInspectSymbol]<A>(this: Chunk<A>) {
     return this.toJSON()

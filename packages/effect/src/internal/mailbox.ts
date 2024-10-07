@@ -287,9 +287,6 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   toString(): string {
     return Inspectable.format(this)
   }
-  [Inspectable.DenoInspectSymbol]() {
-    return Inspectable.format(this)
-  }
   [Inspectable.NodeInspectSymbol]() {
     return Inspectable.format(this)
   }

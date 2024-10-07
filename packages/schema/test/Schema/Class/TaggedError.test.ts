@@ -118,7 +118,5 @@ describe("TaggedError", () => {
     expect(Cause.pretty(Cause.fail(err), { renderErrorCause: true })).includes("[cause]: Error: child")
     // ensure node renders the error directly
     expect(err[Inspectable.NodeInspectSymbol]()).toEqual(err)
-    // ensure deno renders the error directly
-    expect(err[Inspectable.DenoInspectSymbol]()).toEqual(err)
   })
 })

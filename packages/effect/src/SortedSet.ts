@@ -7,7 +7,7 @@ import * as Dual from "./Function.js"
 import { pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
-import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "./Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import type { Order } from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -61,9 +61,6 @@ const SortedSetProto: Omit<SortedSet<unknown>, "keyTree"> = {
       _id: "SortedSet",
       values: Array.from(this).map(toJSON)
     }
-  },
-  [DenoInspectSymbol]() {
-    return this.toJSON()
   },
   [NodeInspectSymbol]() {
     return this.toJSON()

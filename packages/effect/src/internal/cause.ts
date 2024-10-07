@@ -8,7 +8,7 @@ import { constFalse, constTrue, dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
-import { DenoInspectSymbol, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
@@ -68,9 +68,6 @@ const proto = {
   },
   toString<E>(this: Cause.Cause<E>) {
     return pretty(this)
-  },
-  [DenoInspectSymbol]<E>(this: Cause.Cause<E>) {
-    return this.toJSON()
   },
   [NodeInspectSymbol]<E>(this: Cause.Cause<E>) {
     return this.toJSON()
