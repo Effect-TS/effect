@@ -64,7 +64,6 @@ describe.concurrent("TSubscriptionRef", () => {
         TSubscriptionRef.changesStream(subscriptionRef),
         Stream.tap(() => Deferred.succeed<void, never>(deferred1, void 0)),
         Stream.take(3),
-        Stream.tap((v) => Effect.sync(() => console.log(`received value on subscriber 1: ${v}`))),
         Stream.runCollect,
         Effect.fork
       ))
@@ -74,17 +73,13 @@ describe.concurrent("TSubscriptionRef", () => {
         TSubscriptionRef.changesStream(subscriptionRef),
         Stream.tap(() => Deferred.succeed<void, never>(deferred2, void 0)),
         Stream.take(2),
-        Stream.tap((v) => Effect.sync(() => console.log(`received value on subscriber 2: ${v}`))),
         Stream.runCollect,
         Effect.fork
       ))
       yield* $(Deferred.await(deferred2))
       yield* $(TSubscriptionRef.update(subscriptionRef, (n) => n + 1))
-      console.log(`joining fibers`)
       const result1 = yield* $(Fiber.join(subscriber1))
-      console.log(`joined 1`)
       const result2 = yield* $(Fiber.join(subscriber2))
-      console.log(`joined 2`)
       assert.deepStrictEqual(Array.from(result1), [0, 1, 2])
       assert.deepStrictEqual(Array.from(result2), [1, 2])
     }))

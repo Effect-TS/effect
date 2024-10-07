@@ -185,3 +185,9 @@ export const changesScoped: <A>(self: TSubscriptionRef<A>) => Effect.Effect<TQue
  */
 export const changesStream: <A>(self: TSubscriptionRef<A>) => Stream.Stream<A, never, Scope.Scope> =
   internal.changesStream
+
+/**
+ * @since 3.9.0
+ * @category mutations
+ */
+export const changes: <A>(self: TSubscriptionRef<A>) => STM.STM<TQueue.TDequeue<A>> = (self) => self.changes

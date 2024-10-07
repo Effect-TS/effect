@@ -279,60 +279,8 @@ export const updateSomeAndGet = dual<
 
 /** @internal */
 export const changesScoped = <A>(self: TSubscriptionRef.TSubscriptionRef<A>) =>
-  Effect.acquireRelease(
-    pipe(
-      Effect.flatMap(TQueue.unbounded<A>(), (queue) =>
-        Effect.flatMap(TPubSub.subscribeScoped(self.pubsub), (dequeue) =>
-          pipe(
-            STM.flatMap(TRef.get(self.ref), (a) =>
-              TQueue.offer(queue, a)),
-            STM.flatMap(() =>
-              pipe(
-                TQueue.takeAll(dequeue),
-                STM.tap((as) => TQueue.offerAll(queue, as))
-              )
-            ),
-            STM.as(queue)
-          )))
-    ),
-    (dequeue) =>
-      TQueue.shutdown(dequeue)
-  )
+  Effect.acquireRelease(self.changes, TQueue.shutdown)
 
 /** @internal */
 export const changesStream = <A>(self: TSubscriptionRef.TSubscriptionRef<A>) =>
-  pipe(
-    TRef.get(self.ref),
-    Effect.flatMap((a) =>
-      Effect.map(
-        stream.fromTPubSub(self.pubsub, { scoped: true }),
-        (s) =>
-          stream.concat(
-            stream.make(a),
-            s
-          )
-      )
-    ),
-    stream.unwrapScoped
-  )
-
-//   pipe(
-//   changesScoped(self),
-//   Effect.map(t => stream.fromTQueue(t, { shutdown: true })),
-//   stream.unwrap
-// )
-
-//   pipe(
-//       TRef.get(self.ref),
-//       Effect.flatMap((a) =>
-//         Effect.map(
-//           stream.fromTPubSub(self.pubsub, { scoped: true }),
-//           (s) =>
-//             stream.concat(
-//               stream.make(a),
-//               s
-//             )
-//         )
-//       ),
-//       stream.unwrapScoped
-// )
+  stream.unwrap(Effect.map(self.changes, (queue) => stream.fromTQueue(queue, { shutdown: true })))
