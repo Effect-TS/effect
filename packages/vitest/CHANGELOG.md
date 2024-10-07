@@ -1,5 +1,11 @@
 # @effect/vitest
 
+## 0.12.0
+
+### Minor Changes
+
+- [#3744](https://github.com/Effect-TS/effect/pull/3744) [`9fef880`](https://github.com/Effect-TS/effect/commit/9fef88016a5c36ba21537dd20bd7a9122825a05d) Thanks @tim-smart! - expose hook timeout option to vitest layer api
+
 ## 0.11.1
 
 ### Patch Changes
