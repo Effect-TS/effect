@@ -118,7 +118,7 @@ const TransactionConnection = Client.TransactionConnection as unknown as Context
  */
 export const make = (
   options: MssqlClientConfig
-): Effect.Effect<MssqlClient, never, Scope.Scope> =>
+): Effect.Effect<MssqlClient, SqlError, Scope.Scope> =>
   Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
     const compiler = makeCompiler(options.transformQueryNames)
@@ -130,7 +130,7 @@ export const make = (
     // eslint-disable-next-line prefer-const
     let pool: Pool.Pool<MssqlConnection, SqlError>
 
-    const makeConnection = Effect.gen(function*(_) {
+    const makeConnection = Effect.gen(function*() {
       const conn = new Tedious.Connection({
         options: {
           port: options.port,
@@ -318,10 +318,9 @@ export const make = (
           })
       })
 
-      yield* _(
-        Effect.async<never, unknown>((resume) => {
-          conn.on("error", (_) => resume(Effect.fail(_)))
-        }),
+      yield* Effect.async<never, unknown>((resume) => {
+        conn.on("error", (_) => resume(Effect.fail(_)))
+      }).pipe(
         Effect.catchAll(() => Pool.invalidate(pool, connection)),
         Effect.interruptible,
         Effect.forkScoped
@@ -337,6 +336,12 @@ export const make = (
       timeToLive: options.connectionTTL ?? Duration.minutes(45),
       timeToLiveStrategy: "creation"
     })
+
+    yield* pool.get.pipe(
+      Effect.tap((connection) => connection.executeRaw("SELECT 1", [])),
+      Effect.mapError(({ cause }) => new SqlError({ cause, message: "MssqlClient: Failed to connect" })),
+      Effect.scoped
+    )
 
     const makeRootTx: Effect.Effect<
       readonly [Scope.CloseableScope | undefined, MssqlConnection, number],
@@ -414,7 +419,7 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<MssqlClientConfig>
-): Layer.Layer<Client.SqlClient | MssqlClient, ConfigError> =>
+): Layer.Layer<Client.SqlClient | MssqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),

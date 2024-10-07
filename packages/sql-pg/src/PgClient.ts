@@ -7,7 +7,6 @@ import { SqlError } from "@effect/sql/SqlError"
 import type { Custom, Fragment, Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
 import * as Otel from "@opentelemetry/semantic-conventions"
-import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -16,7 +15,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as NodeStream from "node:stream"
 import type { ConnectionOptions } from "node:tls"
@@ -132,9 +131,8 @@ interface PostgresOptions extends postgres.Options<{}> {
  */
 export const make = (
   options: PgClientConfig
-): Effect.Effect<PgClient, never, Scope> =>
+): Effect.Effect<PgClient, SqlError, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const scope = yield* Effect.scope
     const compiler = makeCompiler(
       options.transformQueryNames,
       options.transformJson
@@ -184,15 +182,12 @@ export const make = (
       ? postgres(Redacted.value(options.url), opts as any)
       : postgres(opts as any)
 
-    yield* Scope.addFinalizer(
-      scope,
-      Effect.promise(() => client.end()).pipe(
-        Effect.interruptible,
-        Effect.timeoutFailCause({
-          duration: 5000,
-          onTimeout: () => Cause.die(new Error("@effect/sql-pg/PgClient finalizer timed out"))
-        })
-      )
+    yield* Effect.acquireRelease(
+      Effect.tryPromise({
+        try: () => client`select 1`,
+        catch: (cause) => new SqlError({ cause, message: "PgClient: Failed to connect" })
+      }),
+      () => Effect.promise(() => client.end())
     )
 
     class ConnectionImpl implements Connection {
@@ -305,7 +300,7 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<PgClientConfig>
-): Layer.Layer<PgClient | Client.SqlClient, ConfigError> =>
+): Layer.Layer<PgClient | Client.SqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
