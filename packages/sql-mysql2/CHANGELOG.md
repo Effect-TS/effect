@@ -1,5 +1,11 @@
 # @effect/sql-mysql2
 
+## 0.15.2
+
+### Patch Changes
+
+- [#3744](https://github.com/Effect-TS/effect/pull/3744) [`9fef880`](https://github.com/Effect-TS/effect/commit/9fef88016a5c36ba21537dd20bd7a9122825a05d) Thanks @tim-smart! - test sql connection as part of client construction
+
 ## 0.15.1
 
 ### Patch Changes
