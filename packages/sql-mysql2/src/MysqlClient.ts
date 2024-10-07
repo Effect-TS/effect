@@ -79,8 +79,8 @@ export interface MysqlClientConfig {
  */
 export const make = (
   options: MysqlClientConfig
-): Effect.Effect<MysqlClient, never, Scope> =>
-  Effect.gen(function*(_) {
+): Effect.Effect<MysqlClient, SqlError, Scope> =>
+  Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
@@ -178,11 +178,26 @@ export const make = (
           : undefined
       } as Mysql.PoolOptions)
 
-    yield* _(Effect.addFinalizer(() =>
-      Effect.async<void>((resume) => {
-        pool.end(() => resume(Effect.void))
-      })
-    ))
+    yield* Effect.acquireRelease(
+      Effect.async<void, SqlError>((resume) => {
+        ;(pool as any).execute("SELECT 1", (cause: Error) => {
+          if (cause) {
+            resume(Effect.fail(
+              new SqlError({
+                cause,
+                message: "MysqlClient: Failed to connect"
+              })
+            ))
+          } else {
+            resume(Effect.void)
+          }
+        })
+      }),
+      () =>
+        Effect.async<void>((resume) => {
+          pool.end(() => resume(Effect.void))
+        })
+    )
 
     const poolConnection = new ConnectionImpl(pool)
 
@@ -232,7 +247,7 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<MysqlClientConfig>
-): Layer.Layer<MysqlClient | Client.SqlClient, ConfigError> =>
+): Layer.Layer<MysqlClient | Client.SqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),

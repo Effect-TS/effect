@@ -100,14 +100,17 @@ const makeTester = <R>(
 }
 
 /** @internal */
-export const layer = <R, E>(layer_: Layer.Layer<R, E>, memoMap?: Layer.MemoMap): {
+export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
+  readonly memoMap?: Layer.MemoMap
+  readonly timeout?: Duration.DurationInput
+}): {
   (f: (it: Vitest.Vitest.Methods<R>) => void): void
   (name: string, f: (it: Vitest.Vitest.Methods<R>) => void): void
 } =>
 (
   ...args: [name: string, f: (it: Vitest.Vitest.Methods<R>) => void] | [f: (it: Vitest.Vitest.Methods<R>) => void]
 ) => {
-  memoMap = memoMap ?? Effect.runSync(Layer.makeMemoMap)
+  const memoMap = options?.memoMap ?? Effect.runSync(Layer.makeMemoMap)
   const scope = Effect.runSync(Scope.make())
   const runtimeEffect = Layer.toRuntimeWithMemoMap(layer_, memoMap).pipe(
     Scope.extend(scope),
@@ -146,20 +149,34 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, memoMap?: Layer.MemoMap):
         ))
     ),
     flakyTest,
-    layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>) {
-      return layer(Layer.provideMerge(nestedLayer, layer_), memoMap)
+    layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
+      readonly timeout?: Duration.DurationInput
+    }) {
+      return layer(Layer.provideMerge(nestedLayer, layer_), { ...options, memoMap })
     }
   })
 
   if (args.length === 1) {
-    V.beforeAll(() => runPromise()(Effect.asVoid(runtimeEffect)))
-    V.afterAll(() => runPromise()(Scope.close(scope, Exit.void)))
+    V.beforeAll(
+      () => runPromise()(Effect.asVoid(runtimeEffect)),
+      options?.timeout ? Duration.toMillis(options.timeout) : undefined
+    )
+    V.afterAll(
+      () => runPromise()(Scope.close(scope, Exit.void)),
+      options?.timeout ? Duration.toMillis(options.timeout) : undefined
+    )
     return args[0](it)
   }
 
   return V.describe(args[0], () => {
-    V.beforeAll(() => runPromise()(Effect.asVoid(runtimeEffect)))
-    V.afterAll(() => runPromise()(Scope.close(scope, Exit.void)))
+    V.beforeAll(
+      () => runPromise()(Effect.asVoid(runtimeEffect)),
+      options?.timeout ? Duration.toMillis(options.timeout) : undefined
+    )
+    V.afterAll(
+      () => runPromise()(Scope.close(scope, Exit.void)),
+      options?.timeout ? Duration.toMillis(options.timeout) : undefined
+    )
     return args[1](it)
   })
 }

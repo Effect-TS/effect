@@ -41,6 +41,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
+    "@testcontainers/postgresql": "^10.11.0",
     "@types/node": "^20.14.10",
     "effect": "workspace:^"
   },

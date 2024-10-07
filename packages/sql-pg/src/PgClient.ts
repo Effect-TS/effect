@@ -15,7 +15,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
-import type { Scope } from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as NodeStream from "node:stream"
 import type { ConnectionOptions } from "node:tls"
@@ -131,7 +131,7 @@ interface PostgresOptions extends postgres.Options<{}> {
  */
 export const make = (
   options: PgClientConfig
-): Effect.Effect<PgClient, never, Scope> =>
+): Effect.Effect<PgClient, SqlError, Scope.Scope> =>
   Effect.gen(function*(_) {
     const compiler = makeCompiler(
       options.transformQueryNames,
@@ -182,7 +182,13 @@ export const make = (
       ? postgres(Redacted.value(options.url), opts as any)
       : postgres(opts as any)
 
-    yield* _(Effect.addFinalizer(() => Effect.promise(() => client.end())))
+    yield* Effect.acquireRelease(
+      Effect.tryPromise({
+        try: () => client`select 1`,
+        catch: (cause) => new SqlError({ cause, message: "PgClient: Failed to connect" })
+      }),
+      () => Effect.promise(() => client.end())
+    )
 
     class ConnectionImpl implements Connection {
       constructor(private readonly pg: postgres.Sql<{}>) {}
@@ -294,7 +300,7 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<PgClientConfig>
-): Layer.Layer<PgClient | Client.SqlClient, ConfigError> =>
+): Layer.Layer<PgClient | Client.SqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),

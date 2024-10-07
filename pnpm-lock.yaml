@@ -761,6 +761,9 @@ importers:
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
+      '@testcontainers/postgresql':
+        specifier: ^10.11.0
+        version: 10.11.0
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
