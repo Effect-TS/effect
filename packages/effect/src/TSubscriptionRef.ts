@@ -183,8 +183,7 @@ export const changesScoped: <A>(self: TSubscriptionRef<A>) => Effect.Effect<TQue
  * @since 3.9.0
  * @category mutations
  */
-export const changesStream: <A>(self: TSubscriptionRef<A>) => Stream.Stream<A, never, Scope.Scope> =
-  internal.changesStream
+export const changesStream: <A>(self: TSubscriptionRef<A>) => Stream.Stream<A, never, never> = internal.changesStream
 
 /**
  * @since 3.9.0
