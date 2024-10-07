@@ -7,6 +7,7 @@ import { SqlError } from "@effect/sql/SqlError"
 import type { Custom, Fragment, Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
 import * as Otel from "@opentelemetry/semantic-conventions"
+import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -15,7 +16,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
-import type { Scope } from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as NodeStream from "node:stream"
 import type { ConnectionOptions } from "node:tls"
@@ -133,6 +134,7 @@ export const make = (
   options: PgClientConfig
 ): Effect.Effect<PgClient, never, Scope> =>
   Effect.gen(function*(_) {
+    const scope = yield* Effect.scope
     const compiler = makeCompiler(
       options.transformQueryNames,
       options.transformJson
@@ -182,7 +184,16 @@ export const make = (
       ? postgres(Redacted.value(options.url), opts as any)
       : postgres(opts as any)
 
-    yield* _(Effect.addFinalizer(() => Effect.promise(() => client.end())))
+    yield* Scope.addFinalizer(
+      scope,
+      Effect.promise(() => client.end()).pipe(
+        Effect.interruptible,
+        Effect.timeoutFailCause({
+          duration: 5000,
+          onTimeout: () => Cause.die(new Error("@effect/sql-pg/PgClient finalizer timed out"))
+        })
+      )
+    )
 
     class ConnectionImpl implements Connection {
       constructor(private readonly pg: postgres.Sql<{}>) {}
