@@ -8,7 +8,7 @@ const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
 const transformsNested = Statement.defaultTransforms(String.snakeToCamel)
 const transforms = Statement.defaultTransforms(String.snakeToCamel, false)
 
-it.layer(PgContainer.ClientLive)("PgClient", (it) => {
+it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => {
   it.effect("insert helper", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
