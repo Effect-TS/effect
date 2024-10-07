@@ -267,7 +267,7 @@ export class ParseError extends TaggedError("ParseError")<{ readonly issue: Pars
    * @since 0.75.0
    */
   [Inspectable.DenoInspectSymbol]() {
-    return this.toJSON()
+    return Inspectable.formatDeno(this.toJSON())
   }
 }
 

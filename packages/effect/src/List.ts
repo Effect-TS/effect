@@ -28,7 +28,7 @@ import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
 import { dual, identity, unsafeCoerce } from "./Function.js"
 import * as Hash from "./Hash.js"
-import { DenoInspectSymbol, format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
+import { DenoInspectSymbol, format, formatDeno, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import type { nonEmpty, NonEmptyIterable } from "./NonEmptyIterable.js"
 import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -111,7 +111,7 @@ const ConsProto: Omit<Cons<unknown>, "head" | "tail" | typeof nonEmpty> = {
     }
   },
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   },
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -180,7 +180,7 @@ const NilProto: Nil<unknown> = {
     }
   },
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   },
   [NodeInspectSymbol]() {
     return this.toJSON()

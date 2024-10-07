@@ -201,7 +201,7 @@ class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
     return Inspectable.format(this)
   }
   [Inspectable.DenoInspectSymbol]() {
-    return this.toJSON()
+    return Inspectable.formatDeno(this.toJSON())
   }
   [Inspectable.NodeInspectSymbol]() {
     return this.toJSON()

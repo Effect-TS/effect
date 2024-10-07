@@ -4,7 +4,7 @@
 
 import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
-import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { DenoInspectSymbol, format, formatDeno, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as Option from "../Option.js"
 import { hasProperty } from "../Predicate.js"
 import { EffectPrototype } from "./effectable.js"
@@ -17,7 +17,7 @@ const CommonProto = {
     _A: (_: never) => _
   },
   [DenoInspectSymbol]<A>(this: Option.Option<A>) {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   },
   [NodeInspectSymbol]<A>(this: Option.Option<A>) {
     return this.toJSON()

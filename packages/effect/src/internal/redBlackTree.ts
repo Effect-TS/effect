@@ -2,7 +2,7 @@ import * as Chunk from "../Chunk.js"
 import * as Equal from "../Equal.js"
 import { dual, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
-import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { DenoInspectSymbol, format, formatDeno, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import type * as Order from "../Order.js"
 import type * as Ordering from "../Ordering.js"
@@ -72,7 +72,7 @@ const RedBlackTreeProto: RBT.RedBlackTree<unknown, unknown> = {
     }
   },
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   },
   [NodeInspectSymbol]() {
     return this.toJSON()

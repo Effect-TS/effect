@@ -119,6 +119,9 @@ describe("TaggedError", () => {
     // ensure node renders the error directly
     expect(err[Inspectable.NodeInspectSymbol]()).toEqual(err)
     // ensure deno renders the error directly
-    expect(err[Inspectable.DenoInspectSymbol]()).toEqual(err)
+    expect(err[Inspectable.DenoInspectSymbol]()).toEqual(`{
+  "cause": {},
+  "_tag": "MyError"
+}`)
   })
 })

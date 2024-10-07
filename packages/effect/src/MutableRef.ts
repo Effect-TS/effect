@@ -3,7 +3,7 @@
  */
 import * as Equal from "./Equal.js"
 import * as Dual from "./Function.js"
-import { DenoInspectSymbol, format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
+import { DenoInspectSymbol, format, formatDeno, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
@@ -38,7 +38,7 @@ const MutableRefProto: Omit<MutableRef<unknown>, "current"> = {
     }
   },
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   },
   [NodeInspectSymbol]() {
     return this.toJSON()

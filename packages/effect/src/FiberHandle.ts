@@ -65,7 +65,7 @@ const Proto = {
     }
   },
   [Inspectable.DenoInspectSymbol](this: FiberHandle) {
-    return this.toJSON()
+    return Inspectable.formatDeno(this.toJSON())
   },
   [Inspectable.NodeInspectSymbol](this: FiberHandle) {
     return this.toJSON()

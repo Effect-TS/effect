@@ -5,7 +5,7 @@ import type { NonEmptyArray } from "./Array.js"
 import * as Equal from "./Equal.js"
 import { dual } from "./Function.js"
 import * as Hash from "./Hash.js"
-import { DenoInspectSymbol, format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
+import { DenoInspectSymbol, format, formatDeno, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -47,7 +47,7 @@ const MutableHashMapProto: Omit<MutableHashMap<unknown, unknown>, "referential" 
     }
   },
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   },
   [NodeInspectSymbol]() {
     return this.toJSON()

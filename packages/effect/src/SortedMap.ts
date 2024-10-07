@@ -5,7 +5,7 @@ import * as Equal from "./Equal.js"
 import * as Dual from "./Function.js"
 import { pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
-import { DenoInspectSymbol, format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
+import { DenoInspectSymbol, format, formatDeno, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import * as Option from "./Option.js"
 import type { Order } from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -63,7 +63,7 @@ const SortedMapProto: Omit<SortedMap<unknown, unknown>, "tree"> = {
     }
   },
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   },
   [NodeInspectSymbol]() {
     return this.toJSON()

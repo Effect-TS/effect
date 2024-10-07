@@ -21,7 +21,7 @@ import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashMap from "../HashMap.js"
 import type * as HashSet from "../HashSet.js"
-import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { DenoInspectSymbol, format, formatDeno, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as List from "../List.js"
 import type * as LogLevel from "../LogLevel.js"
 import type * as LogSpan from "../LogSpan.js"
@@ -178,7 +178,7 @@ class EffectPrimitive {
     return format(this.toJSON())
   }
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   }
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -230,7 +230,7 @@ class EffectPrimitiveFailure {
     return format(this.toJSON())
   }
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   }
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -282,7 +282,7 @@ class EffectPrimitiveSuccess {
     return format(this.toJSON())
   }
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   }
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -2204,7 +2204,8 @@ export const YieldableError: new(message?: string, options?: ErrorOptions) => Ca
       return { ...this }
     }
     [DenoInspectSymbol]() {
-      return this[NodeInspectSymbol]()
+      const result = this[NodeInspectSymbol]()
+      return typeof result === "string" ? result : formatDeno(result)
     }
     [NodeInspectSymbol]() {
       if (this.toString !== globalThis.Error.prototype.toString) {

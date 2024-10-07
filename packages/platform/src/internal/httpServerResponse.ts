@@ -63,7 +63,7 @@ class ServerResponseImpl extends Effectable.StructuralClass<ServerResponse.HttpS
   }
 
   [Inspectable.DenoInspectSymbol]() {
-    return this.toJSON()
+    return Inspectable.formatDeno(this.toJSON())
   }
   [Inspectable.NodeInspectSymbol]() {
     return this.toJSON()

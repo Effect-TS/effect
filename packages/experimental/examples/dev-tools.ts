@@ -7,7 +7,6 @@ const program = Effect.log("Hello!").pipe(
   Effect.withSpan("Hi", { attributes: { foo: "bar" } }),
   Effect.forever
 )
-
 program.pipe(
   Effect.provide(
     DevTools.layerWebSocket().pipe(

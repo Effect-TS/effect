@@ -7,7 +7,7 @@ import * as Equal from "./Equal.js"
 import * as equivalence from "./Equivalence.js"
 import { dual, pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
-import { DenoInspectSymbol, format, type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
+import { DenoInspectSymbol, format, formatDeno, type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
 import * as N from "./Number.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
@@ -68,7 +68,7 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
     }
   },
   [DenoInspectSymbol](this: Cron) {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   },
   [NodeInspectSymbol](this: Cron) {
     return this.toJSON()

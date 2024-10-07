@@ -36,7 +36,7 @@ export interface Inspectable {
   toString(): string
   toJSON(): unknown
   [NodeInspectSymbol](): unknown
-  [DenoInspectSymbol](): unknown
+  [DenoInspectSymbol](): string
 }
 
 /**
@@ -60,6 +60,17 @@ export const toJSON = (x: unknown): unknown => {
 export const format = (x: unknown): string => JSON.stringify(x, null, 2)
 
 /**
+ * @since 3.9.1
+ */
+export const formatDeno = (x: unknown): string => {
+  const Deno = "Deno" in globalThis ? (globalThis as any).Deno : undefined
+  if (typeof Deno === "object" && typeof Deno.inspect === "function") {
+    return Deno.inspect(x)
+  }
+  return format(x)
+}
+
+/**
  * @since 2.0.0
  */
 export const BaseProto: Inspectable = {
@@ -70,7 +81,7 @@ export const BaseProto: Inspectable = {
     return this.toJSON()
   },
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   },
   toString() {
     return format(this.toJSON())
@@ -95,7 +106,7 @@ export abstract class Class {
    * @since 3.9.0
    */
   [DenoInspectSymbol]() {
-    return this.toJSON()
+    return formatDeno(this.toJSON())
   }
   /**
    * @since 2.0.0
