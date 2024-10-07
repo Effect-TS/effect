@@ -4,7 +4,6 @@
 import type * as Effect from "./Effect.js"
 import * as internal from "./internal/stm/tSubscriptionRef.js"
 import type * as Option from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type * as Scope from "./Scope.js"
 import type * as STM from "./STM.js"
 import type * as Stream from "./Stream.js"
@@ -32,19 +31,19 @@ export type TSubscriptionRefTypeId = typeof TSubscriptionRefTypeId
  * @since 3.9.0
  * @category models
  */
-export interface TSubscriptionRef<in out A> extends TSubscriptionRef.Variance<A>, Pipeable {
+export interface TSubscriptionRef<in out A> extends TSubscriptionRef.Variance<A>, TRef.TRef<A> {
   /** @internal */
   readonly ref: TRef.TRef<A>
   /** @internal */
   readonly pubsub: TPubSub.TPubSub<A>
+  /** @internal */
+  modify<B>(f: (a: A) => readonly [B, A]): STM.STM<B>
+
   /**
    * A TDequeue containing the current value of the `Ref` as well as all changes
    * to that value.
    */
-  readonly changes: STM.STM<TQueue.TQueue<A>>
-
-  /** @internal */
-  modify<B>(f: (a: A) => readonly [B, A]): STM.STM<B>
+  readonly changes: STM.STM<TQueue.TDequeue<A>>
 }
 
 /**
@@ -177,10 +176,12 @@ export const updateSomeAndGet: {
  * @since 3.9.0
  * @category mutations
  */
-export const changesScoped: <A>(self: TSubscriptionRef<A>) => Effect.Effect<TQueue.TDequeue<A>, never, Scope.Scope> = internal.changesScoped
+export const changesScoped: <A>(self: TSubscriptionRef<A>) => Effect.Effect<TQueue.TDequeue<A>, never, Scope.Scope> =
+  internal.changesScoped
 
 /**
  * @since 3.9.0
  * @category mutations
  */
-export const changesStream: <A>(self: TSubscriptionRef<A>) => Stream.Stream<A, never, Scope.Scope> = internal.changesStream
+export const changesStream: <A>(self: TSubscriptionRef<A>) => Stream.Stream<A, never, Scope.Scope> =
+  internal.changesStream

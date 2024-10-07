@@ -8,6 +8,8 @@ import * as TQueue from "../../TQueue.js"
 import * as TRef from "../../TRef.js"
 import type * as TSubscriptionRef from "../../TSubscriptionRef.js"
 import * as stream from "../stream.js"
+import { tDequeueVariance } from "./tQueue.js"
+import { tRefVariance } from "./tRef.js"
 
 /** @internal */
 const TSubscriptionRefSymbolKey = "effect/TSubscriptionRef"
@@ -22,70 +24,117 @@ const TSubscriptionRefVariance = {
   _A: (_: any) => _
 }
 
+class TDequeueMerge<A> implements TQueue.TDequeue<A> {
+  [TQueue.TDequeueTypeId] = tDequeueVariance
+
+  constructor(
+    readonly first: TQueue.TDequeue<A>,
+    readonly second: TQueue.TDequeue<A>
+  ) {}
+
+  peek: STM.STM<A, never, never> = STM.gen(this, function*() {
+    const first = yield* this.peekOption
+    if (first._tag === "Some") {
+      return first.value
+    }
+    return yield* STM.retry
+  })
+
+  peekOption: STM.STM<Option.Option<A>, never, never> = STM.gen(this, function*() {
+    const first = yield* this.first.peekOption
+    if (first._tag === "Some") {
+      return first
+    }
+    const second = yield* this.second.peekOption
+    if (second._tag === "Some") {
+      return second
+    }
+    return Option.none()
+  })
+
+  take: STM.STM<A, never, never> = STM.gen(this, function*() {
+    if (!(yield* this.first.isEmpty)) {
+      return yield* this.first.take
+    }
+    if (!(yield* this.second.isEmpty)) {
+      return yield* this.second.take
+    }
+    return yield* STM.retry
+  })
+
+  takeAll: STM.STM<Array<A>, never, never> = STM.gen(this, function*() {
+    return [...yield* this.first.takeAll, ...yield* this.second.takeAll]
+  })
+
+  takeUpTo(max: number): STM.STM<Array<A>, never, never> {
+    return STM.gen(this, function*() {
+      const first = yield* this.first.takeUpTo(max)
+      if (first.length >= max) {
+        return first
+      }
+      return [...first, ...yield* this.second.takeUpTo(max - first.length)]
+    })
+  }
+
+  capacity(): number {
+    return this.first.capacity() + this.second.capacity()
+  }
+
+  size: STM.STM<number, never, never> = STM.gen(this, function*() {
+    return (yield* this.first.size) + (yield* this.second.size)
+  })
+
+  isFull: STM.STM<boolean, never, never> = STM.gen(this, function*() {
+    return (yield* this.first.isFull) && (yield* this.second.isFull)
+  })
+
+  isEmpty: STM.STM<boolean, never, never> = STM.gen(this, function*() {
+    return (yield* this.first.isEmpty) && (yield* this.second.isEmpty)
+  })
+
+  shutdown: STM.STM<void, never, never> = STM.gen(this, function*() {
+    yield* this.first.shutdown
+    yield* this.second.shutdown
+  })
+
+  isShutdown: STM.STM<boolean, never, never> = STM.gen(this, function*() {
+    return (yield* this.first.isShutdown) && (yield* this.second.isShutdown)
+  })
+
+  awaitShutdown: STM.STM<void, never, never> = STM.gen(this, function*() {
+    yield* this.first.awaitShutdown
+    yield* this.second.awaitShutdown
+  })
+}
+
 /** @internal */
 class TSubscriptionRefImpl<in out A> implements TSubscriptionRef.TSubscriptionRef<A> {
   readonly [TSubscriptionRefTypeId] = TSubscriptionRefVariance
+  readonly [TRef.TRefTypeId] = tRefVariance
+
   constructor(
     readonly ref: TRef.TRef<A>,
     readonly pubsub: TPubSub.TPubSub<A>
-  ) {
+  ) {}
+
+  get todos() {
+    return this.ref.todos
   }
-  
+
+  get versioned() {
+    return this.ref.versioned
+  }
+
   pipe() {
     return pipeArguments(this, arguments)
   }
-  
-  get changes(): STM.STM<TQueue.TQueue<A>>{
-    return STM.flatMap(TQueue.unbounded<A>(), queue => pipe(
-      STM.flatMap(TRef.get(this.ref), a => TQueue.offer(queue, a)),
-      STM.flatMap(() => TPubSub.subscribe(this.pubsub)),
-      STM.flatMap(dequeue => pipe(
-          TQueue.poll(dequeue),
-          STM.tap(a => Option.isNone(a) ? TQueue.shutdown(dequeue) : TQueue.offer(queue, a.value)),
-      )),
-      STM.as(queue)
-    ))
-    // return TPubSub.subscribe(this.pubsub)
-    // return STM.flatMap(TQueue.unbounded<A>(), queue => pipe(
-    //   STM.flatMap(TRef.get(this.ref), a => TQueue.offer(queue, a)),
-    //     STM.flatMap(() => TPubSub.subscribe(this.pubsub)),
-    //     STM.flatMap(dequeue => pipe(
-    //       TQueue.takeAll(dequeue),
-    //       STM.tap(as => TQueue.offerAll(queue, as)),
-    //       STM.map(() => queue)
-    //     ))
-    //   ))
-    // return pipe(
-    //   TRef.get(this.ref),
-    //   STM.flatMap(a =>
-    //     pipe(
-    //       TPubSub.subscribe(this.pubsub),
-    //       STM.flatMap(dequeue => pipe(
-    //         TQueue.unbounded<A>(),
-    //         STM.flatMap(queue => pipe(
-    //           TQueue.offer(queue, a),
-    //           STM.flatMap(() => TQueue.takeAll(dequeue)),
-    //           STM.tap(as => TQueue.offerAll(queue, as)),
-    //           STM.map(() => queue)
-    //         ))
-    //       ))
-    //     )
-    //   )
-    // )
-    // return pipe(
-    //   TRef.get(this.ref),
-    //   Effect.flatMap((a) =>
-    //     Effect.map(
-    //       streamInternal.fromTPubSub(this.pubsub, { scoped: true }),
-    //       (s) =>
-    //         streamInternal.concat(
-    //           streamInternal.make(a),
-    //           s
-    //         )
-    //     )
-    //   ),
-    //   streamInternal.unwrapScoped
-    // )
+
+  get changes(): STM.STM<TQueue.TDequeue<A>> {
+    return STM.gen(this, function*() {
+      const first = yield* TQueue.unbounded<A>()
+      yield* TQueue.offer(first, yield* TRef.get(this.ref))
+      return new TDequeueMerge(first, yield* TPubSub.subscribe(this.pubsub))
+    })
   }
 
   modify<B>(f: (a: A) => readonly [B, A]): STM.STM<B> {
@@ -232,43 +281,47 @@ export const updateSomeAndGet = dual<
 export const changesScoped = <A>(self: TSubscriptionRef.TSubscriptionRef<A>) =>
   Effect.acquireRelease(
     pipe(
-      Effect.flatMap(TQueue.unbounded<A>(), queue =>
-        Effect.flatMap(TPubSub.subscribeScoped(self.pubsub), dequeue => pipe(
-          STM.flatMap(TRef.get(self.ref), a => TQueue.offer(queue, a)),
-          STM.flatMap(() => pipe(
-            TQueue.takeAll(dequeue),
-            STM.tap(as => TQueue.offerAll(queue, as)),
-          )),
-          STM.as(queue)
-        )
-      )),
+      Effect.flatMap(TQueue.unbounded<A>(), (queue) =>
+        Effect.flatMap(TPubSub.subscribeScoped(self.pubsub), (dequeue) =>
+          pipe(
+            STM.flatMap(TRef.get(self.ref), (a) =>
+              TQueue.offer(queue, a)),
+            STM.flatMap(() =>
+              pipe(
+                TQueue.takeAll(dequeue),
+                STM.tap((as) => TQueue.offerAll(queue, as))
+              )
+            ),
+            STM.as(queue)
+          )))
     ),
-    (dequeue) => TQueue.shutdown(dequeue)
+    (dequeue) =>
+      TQueue.shutdown(dequeue)
   )
 
 /** @internal */
 export const changesStream = <A>(self: TSubscriptionRef.TSubscriptionRef<A>) =>
-    pipe(
-      TRef.get(self.ref),
-      Effect.flatMap((a) =>
-        Effect.map(
-          stream.fromTPubSub(self.pubsub, { scoped: true }),
-          (s) =>
-            stream.concat(
-              stream.make(a),
-              s
-            )
-        )
-      ),
-      stream.unwrapScoped
-)
+  pipe(
+    TRef.get(self.ref),
+    Effect.flatMap((a) =>
+      Effect.map(
+        stream.fromTPubSub(self.pubsub, { scoped: true }),
+        (s) =>
+          stream.concat(
+            stream.make(a),
+            s
+          )
+      )
+    ),
+    stream.unwrapScoped
+  )
 
-  //   pipe(
-  //   changesScoped(self),
-  //   Effect.map(t => stream.fromTQueue(t, { shutdown: true })),
-  //   stream.unwrap
-  // )
-  
+//   pipe(
+//   changesScoped(self),
+//   Effect.map(t => stream.fromTQueue(t, { shutdown: true })),
+//   stream.unwrap
+// )
+
 //   pipe(
 //       TRef.get(self.ref),
 //       Effect.flatMap((a) =>
