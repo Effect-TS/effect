@@ -1,5 +1,5 @@
 /**
- * @since 3.9.0
+ * @since 3.10.0
  */
 import type * as Effect from "./Effect.js"
 import * as internal from "./internal/stm/tSubscriptionRef.js"
@@ -13,13 +13,13 @@ import type * as TRef from "./TRef.js"
 import type * as Types from "./Types.js"
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category symbols
  */
 export const TSubscriptionRefTypeId: unique symbol = internal.TSubscriptionRefTypeId
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category symbols
  */
 export type TSubscriptionRefTypeId = typeof TSubscriptionRefTypeId
@@ -28,7 +28,7 @@ export type TSubscriptionRefTypeId = typeof TSubscriptionRefTypeId
  * A `TSubscriptionRef<A>` is a `TRef` that can be subscribed to in order to
  * receive a `TDequeue<A>` of the current value and all committed changes to the value.
  *
- * @since 3.9.0
+ * @since 3.10.0
  * @category models
  */
 export interface TSubscriptionRef<in out A> extends TSubscriptionRef.Variance<A>, TRef.TRef<A> {
@@ -47,11 +47,11 @@ export interface TSubscriptionRef<in out A> extends TSubscriptionRef.Variance<A>
 }
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  */
 export declare namespace TSubscriptionRef {
   /**
-   * @since 3.9.0
+   * @since 3.10.0
    * @category models
    */
   export interface Variance<in out A> {
@@ -62,13 +62,13 @@ export declare namespace TSubscriptionRef {
 }
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const get: <A>(self: TSubscriptionRef<A>) => STM.STM<A> = internal.get
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const getAndSet: {
@@ -77,7 +77,7 @@ export const getAndSet: {
 } = internal.getAndSet
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const getAndUpdate: {
@@ -86,7 +86,7 @@ export const getAndUpdate: {
 } = internal.getAndUpdate
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const getAndUpdateSome: {
@@ -95,13 +95,13 @@ export const getAndUpdateSome: {
 } = internal.getAndUpdateSome
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category constructors
  */
 export const make: <A>(value: A) => STM.STM<TSubscriptionRef<A>> = internal.make
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const modify: {
@@ -110,7 +110,7 @@ export const modify: {
 } = internal.modify
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const modifySome: {
@@ -119,7 +119,7 @@ export const modifySome: {
 } = internal.modifySome
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const set: {
@@ -128,7 +128,7 @@ export const set: {
 } = internal.set
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const setAndGet: {
@@ -137,7 +137,7 @@ export const setAndGet: {
 } = internal.setAndGet
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const update: {
@@ -146,7 +146,7 @@ export const update: {
 } = internal.update
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const updateAndGet: {
@@ -155,7 +155,7 @@ export const updateAndGet: {
 } = internal.updateAndGet
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const updateSome: {
@@ -164,7 +164,7 @@ export const updateSome: {
 } = internal.updateSome
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const updateSomeAndGet: {
@@ -173,20 +173,20 @@ export const updateSomeAndGet: {
 } = internal.updateSomeAndGet
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const changesScoped: <A>(self: TSubscriptionRef<A>) => Effect.Effect<TQueue.TDequeue<A>, never, Scope.Scope> =
   internal.changesScoped
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const changesStream: <A>(self: TSubscriptionRef<A>) => Stream.Stream<A, never, never> = internal.changesStream
 
 /**
- * @since 3.9.0
+ * @since 3.10.0
  * @category mutations
  */
 export const changes: <A>(self: TSubscriptionRef<A>) => STM.STM<TQueue.TDequeue<A>> = (self) => self.changes
