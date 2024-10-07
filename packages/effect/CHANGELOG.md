@@ -1,5 +1,11 @@
 # effect
 
+## 3.9.1
+
+### Patch Changes
+
+- [#3740](https://github.com/Effect-TS/effect/pull/3740) [`3b2ad1d`](https://github.com/Effect-TS/effect/commit/3b2ad1d58a2e33dc1a72b7037396bd25ca1702a9) Thanks @tim-smart! - revert deno Inspectable changes
+
 ## 3.9.0
 
 ### Minor Changes
