@@ -3,7 +3,7 @@ import { dual } from "../Function.js"
 import * as Hash from "../Hash.js"
 import type { HashMap } from "../HashMap.js"
 import type * as HS from "../HashSet.js"
-import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import { hasProperty } from "../Predicate.js"
@@ -48,9 +48,6 @@ const HashSetProto: Omit<HashSetImpl<unknown>, "_keyMap"> = {
       _id: "HashSet",
       values: Array.from(this).map(toJSON)
     }
-  },
-  [DenoInspectSymbol]() {
-    return this.toJSON()
   },
   [NodeInspectSymbol]() {
     return this.toJSON()
