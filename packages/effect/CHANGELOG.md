@@ -1,5 +1,104 @@
 # effect
 
+## 3.9.0
+
+### Minor Changes
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`ff3d1aa`](https://github.com/Effect-TS/effect/commit/ff3d1aab290b4d1173b2dfc7e4c76abb4babdc16) Thanks @vinassefranche! - Adds HashMap.HashMap.Entry type helper
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`0ba66f2`](https://github.com/Effect-TS/effect/commit/0ba66f2451641fd6990e02ec1ed01c014db9dab0) Thanks @tim-smart! - add deno support to Inspectable
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`bf77f51`](https://github.com/Effect-TS/effect/commit/bf77f51b323c383224ebf08adf77a7a6e8c9b3cd) Thanks @KhraksMamtsov! - `Latch` implements `Effect<void>` with `.await` semantic
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`0779681`](https://github.com/Effect-TS/effect/commit/07796813f07de035719728733096ba64ce333469) Thanks @KhraksMamtsov! - Effect.mapAccum & Array.mapAccum preserve non-emptiness
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`534129f`](https://github.com/Effect-TS/effect/commit/534129f8113ce1a8ec50828083e16da9c86326c6) Thanks @KhraksMamtsov! - `Pool` is now a subtype of `Effect`, equivalent to `Pool.get`
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`d75140c`](https://github.com/Effect-TS/effect/commit/d75140c7a664ceda43142d999f4ff8dcd36d6dda) Thanks @mikearnaldi! - Support providing an array of layers via Effect.provide and Layer.provide
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`be0451c`](https://github.com/Effect-TS/effect/commit/be0451c149b6618af79cb839cdf04af2db1efb03) Thanks @leonitousconforti! - support ManagedRuntime in Effect.provide
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`be0451c`](https://github.com/Effect-TS/effect/commit/be0451c149b6618af79cb839cdf04af2db1efb03) Thanks @leonitousconforti! - `ManagedRuntime<R, E>` is subtype of `Effect<Runtime<R>, E, never>`
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`5b36494`](https://github.com/Effect-TS/effect/commit/5b364942e9a9003fdb8217324f8a2d8369c969da) Thanks @KhraksMamtsov! - `Tuple.map` transforms each element of tuple using the given function, treating tuple homomorphically
+
+  ```ts
+  import { pipe, Tuple } from "effect"
+
+  const result = pipe(
+    //  ^? [string, string, string]
+    ["a", 1, false] as const,
+    T.map((el) => {
+      //^? "a" | 1 | false
+      return el.toString().toUppercase()
+    })
+  )
+  assert.deepStrictEqual(result, ["A", "1", "FALSE"])
+  ```
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`c716adb`](https://github.com/Effect-TS/effect/commit/c716adb250ebbea1d1048d818ef7fed4f621d186) Thanks @AlexGeb! - Add Array.pad function
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`4986391`](https://github.com/Effect-TS/effect/commit/49863919cd8628c962a712fb1df30d2983820933) Thanks @ianbollinger! - Add an `isRegExp` type guard
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`d75140c`](https://github.com/Effect-TS/effect/commit/d75140c7a664ceda43142d999f4ff8dcd36d6dda) Thanks @mikearnaldi! - Implement Effect.Service as a Tag and Layer with Opaque Type.
+
+  Namely the following is now possible:
+
+  ```ts
+  class Prefix extends Effect.Service<Prefix>()("Prefix", {
+    sync: () => ({
+      prefix: "PRE"
+    })
+  }) {}
+
+  class Postfix extends Effect.Service<Postfix>()("Postfix", {
+    sync: () => ({
+      postfix: "POST"
+    })
+  }) {}
+
+  const messages: Array<string> = []
+
+  class Logger extends Effect.Service<Logger>()("Logger", {
+    accessors: true,
+    effect: Effect.gen(function* () {
+      const { prefix } = yield* Prefix
+      const { postfix } = yield* Postfix
+      return {
+        info: (message: string) =>
+          Effect.sync(() => {
+            messages.push(`[${prefix}][${message}][${postfix}]`)
+          })
+      }
+    }),
+    dependencies: [Prefix.Default, Postfix.Default]
+  }) {}
+
+  describe("Effect", () => {
+    it.effect("Service correctly wires dependencies", () =>
+      Effect.gen(function* () {
+        const { _tag } = yield* Logger
+        expect(_tag).toEqual("Logger")
+        yield* Logger.info("Ok")
+        expect(messages).toEqual(["[PRE][Ok][POST]"])
+        const { prefix } = yield* Prefix
+        expect(prefix).toEqual("PRE")
+        const { postfix } = yield* Postfix
+        expect(postfix).toEqual("POST")
+      }).pipe(Effect.provide([Logger.Default, Prefix.Default, Postfix.Default]))
+    )
+  })
+  ```
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`d1387ae`](https://github.com/Effect-TS/effect/commit/d1387aebd1ff01bbebde26be46d488956e4daef6) Thanks @KhraksMamtsov! - `Resource<A, E>` is subtype of `Effect<A, E>`.
+  `ScopedRed<A>` is subtype of `Effect<A>`.
+
+### Patch Changes
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`016f9ad`](https://github.com/Effect-TS/effect/commit/016f9ad931a4b3d09a34e5caf13d87c5b8e9c984) Thanks @tim-smart! - fix Unify for Deferred
+
+- [#3620](https://github.com/Effect-TS/effect/pull/3620) [`9237ac6`](https://github.com/Effect-TS/effect/commit/9237ac69bc07de5b3b60076a0ad2921c21de7457) Thanks @leonitousconforti! - move ManagedRuntime.TypeId to fix circular imports
+
 ## 3.8.5
 
 ### Patch Changes
