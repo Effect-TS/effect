@@ -6,7 +6,7 @@ import type * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as Hash from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
-import { DenoInspectSymbol, NodeInspectSymbol } from "./Inspectable.js"
+import { NodeInspectSymbol } from "./Inspectable.js"
 import * as Option from "./Option.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -159,9 +159,6 @@ const DurationProto: Omit<Duration, "value"> = {
       case "Infinity":
         return { _id: "Duration", _tag: "Infinity" }
     }
-  },
-  [DenoInspectSymbol]() {
-    return this.toJSON()
   },
   [NodeInspectSymbol]() {
     return this.toJSON()

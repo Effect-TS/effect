@@ -195,9 +195,6 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
   toString(): string {
     return "(FiberFailure) " + (this.stack ?? this.message)
   }
-  [Inspectable.DenoInspectSymbol](): unknown {
-    return this.toString()
-  }
   [Inspectable.NodeInspectSymbol](): unknown {
     return this.toString()
   }

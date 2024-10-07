@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import * as Dual from "./Function.js"
-import { DenoInspectSymbol, format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
+import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import * as MutableHashMap from "./MutableHashMap.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -39,9 +39,6 @@ const MutableHashSetProto: Omit<MutableHashSet<unknown>, "keyMap"> = {
       _id: "MutableHashSet",
       values: Array.from(this).map(toJSON)
     }
-  },
-  [DenoInspectSymbol]() {
-    return this.toJSON()
   },
   [NodeInspectSymbol]() {
     return this.toJSON()

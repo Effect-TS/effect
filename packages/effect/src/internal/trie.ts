@@ -1,7 +1,7 @@
 import * as Equal from "../Equal.js"
 import { dual, identity, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
-import { DenoInspectSymbol, format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import type * as Ordering from "../Ordering.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -59,9 +59,6 @@ const TrieProto: TR.Trie<unknown> = {
       _id: "Trie",
       values: Array.from(this).map(toJSON)
     }
-  },
-  [DenoInspectSymbol]() {
-    return this.toJSON()
   },
   [NodeInspectSymbol]() {
     return this.toJSON()
