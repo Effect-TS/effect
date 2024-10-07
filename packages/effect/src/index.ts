@@ -896,7 +896,7 @@ export * as TSemaphore from "./TSemaphore.js"
 export * as TSet from "./TSet.js"
 
 /**
- * @since 2.0.0
+ * @since 3.9.0
  */
 export * as TSubscriptionRef from "./TSubscriptionRef.js"
 
