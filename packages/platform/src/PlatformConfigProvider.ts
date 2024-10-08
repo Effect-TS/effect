@@ -15,6 +15,7 @@ import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import { isPlatformError, type PlatformError } from "./Error.js"
 import * as FileSystem from "./FileSystem.js"
+import * as internal from "./internal/platformConfigProvider.js"
 import * as Path from "./Path.js"
 
 /**
@@ -111,3 +112,32 @@ export const layerFileTree = (options?: {
     Effect.map(Layer.setConfigProvider),
     Layer.unwrapEffect
   )
+
+/**
+ * Create a dotenv ConfigProvider.
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const fromDotEnv: (
+  paths: string
+) => Effect.Effect<ConfigProvider.ConfigProvider, PlatformError, FileSystem.FileSystem> = internal.fromDotEnv
+
+/**
+ * Add the dotenv ConfigProvider to the environment, as a fallback to the current ConfigProvider.
+ * If the file is not found, a debug log is produced and empty layer is returned.
+ *
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerDotEnvAdd: (path: string) => Layer.Layer<never, never, FileSystem.FileSystem> =
+  internal.layerDotEnvAdd
+
+/**
+ * Add the dotenv ConfigProvider to the environment, replacing the current ConfigProvider.
+ *
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerDotEnv: (path: string) => Layer.Layer<never, PlatformError, FileSystem.FileSystem> =
+  internal.layerDotEnv
