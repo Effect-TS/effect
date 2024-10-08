@@ -22,4 +22,4 @@ export class RequestInit extends Context.Tag(internal.requestInitTagKey)<Request
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<HttpClient.Service> = internal.layer
+export const layer: Layer.Layer<HttpClient> = internal.layer

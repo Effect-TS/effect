@@ -56,10 +56,10 @@ export type Client<A extends HttpApi.HttpApi.Any> = [A] extends
 export const make = <A extends HttpApi.HttpApi.Any>(
   api: A,
   options?: {
-    readonly transformClient?: ((client: HttpClient.HttpClient.Service) => HttpClient.HttpClient.Service) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly baseUrl?: string | undefined
   }
-): Effect.Effect<Simplify<Client<A>>, never, HttpApi.HttpApi.Context<A> | HttpClient.HttpClient.Service> =>
+): Effect.Effect<Simplify<Client<A>>, never, HttpApi.HttpApi.Context<A> | HttpClient.HttpClient> =>
   Effect.gen(function*() {
     const context = yield* Effect.context<any>()
     const httpClient = (yield* HttpClient.HttpClient).pipe(
