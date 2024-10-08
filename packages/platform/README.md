@@ -574,8 +574,7 @@ The `HttpClient` interface has a set of methods for sending requests:
   executing it in one step
 
 To access the `HttpClient`, you can use the `HttpClient.HttpClient` [tag](https://effect.website/docs/guides/context-management/services).
-This will give you access to a `HttpClient.Service` instance, which is the default
-instance of the `HttpClient` interface.
+This will give you access to a `HttpClient` instance.
 
 **Example: Retrieving JSON Data (GET)**
 
@@ -599,6 +598,42 @@ const program = Effect.gen(function* () {
   // Ensure request is aborted if the program is interrupted
   Effect.scoped,
   // Provide the HttpClient
+  Effect.provide(FetchHttpClient.layer)
+)
+
+Effect.runPromise(program)
+/*
+Output:
+{
+  userId: 1,
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+  body: 'quia et suscipit\n' +
+    'suscipit recusandae consequuntur expedita et cum\n' +
+    'reprehenderit molestiae ut ut quas totam\n' +
+    'nostrum rerum est autem sunt rem eveniet architecto'
+}
+*/
+```
+
+**Example: Retrieving JSON Data with accessor apis (GET)**
+
+The `HttpClient` module also provides a set of accessor apis that allow you to
+easily send requests without first accessing the `HttpClient` service.
+
+Below is an example of using the `get` accessor api to send a GET request:
+
+(The following examples will continue to use the `HttpClient` service approach).
+
+```ts
+import { FetchHttpClient, HttpClient } from "@effect/platform"
+import { Effect } from "effect"
+
+const program = HttpClient.get(
+  "https://jsonplaceholder.typicode.com/posts/1"
+).pipe(
+  Effect.andThen((response) => response.json),
+  Effect.scoped,
   Effect.provide(FetchHttpClient.layer)
 )
 
@@ -745,20 +780,17 @@ Output:
 
 | Operation                | Description                                                                             |
 | ------------------------ | --------------------------------------------------------------------------------------- |
+| `get`,`post`,`put`...    | Send a request without first accessing the `HttpClient` service.                        |
 | `filterOrElse`           | Filters the result of a response, or runs an alternative effect if the predicate fails. |
 | `filterOrFail`           | Filters the result of a response, or throws an error if the predicate fails.            |
 | `filterStatus`           | Filters responses by HTTP status code.                                                  |
 | `filterStatusOk`         | Filters responses that return a 2xx status code.                                        |
 | `followRedirects`        | Follows HTTP redirects up to a specified number of times.                               |
-| `map`                    | Transforms the result of a request.                                                     |
-| `mapEffect`              | Transforms the result of a request using an effectful function.                         |
 | `mapRequest`             | Appends a transformation of the request object before sending it.                       |
 | `mapRequestEffect`       | Appends an effectful transformation of the request object before sending it.            |
 | `mapRequestInput`        | Prepends a transformation of the request object before sending it.                      |
 | `mapRequestInputEffect`  | Prepends an effectful transformation of the request object before sending it.           |
 | `retry`                  | Retries the request based on a provided schedule or policy.                             |
-| `schemaFunction`         | Creates a function that validates request data against a schema before sending it.      |
-| `scoped`                 | Ensures resources are properly scoped and released after execution.                     |
 | `tap`                    | Performs an additional effect after a successful request.                               |
 | `tapRequest`             | Performs an additional effect on the request before sending it.                         |
 | `withCookiesRef`         | Associates a `Ref` of cookies with the client for handling cookies across requests.     |
@@ -819,48 +851,6 @@ Output:
 */
 ```
 
-### Integration with Schema
-
-The `HttpClient.schemaFunction` allows you to integrate schemas into your HTTP client requests. This function ensures that the data you send conforms to a specified schema, enhancing type safety and validation.
-
-```ts
-import {
-  FetchHttpClient,
-  HttpClient,
-  HttpClientRequest
-} from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { Effect } from "effect"
-
-const program = Effect.gen(function* () {
-  const client = yield* HttpClient.HttpClient
-  const addTodo = HttpClient.schemaFunction(
-    client,
-    Schema.Struct({
-      title: Schema.String,
-      body: Schema.String,
-      userId: Schema.Number
-    })
-  )(HttpClientRequest.post("https://jsonplaceholder.typicode.com/posts"))
-
-  const response = yield* addTodo({
-    title: "foo",
-    body: "bar",
-    userId: 1
-  })
-
-  const json = yield* response.json
-
-  console.log(json)
-}).pipe(Effect.scoped, Effect.provide(FetchHttpClient.layer))
-
-Effect.runPromise(program)
-/*
-Output:
-{ title: 'foo', body: 'bar', userId: 1, id: 101 }
-*/
-```
-
 ### Persisting Cookies
 
 You can manage cookies across requests using the `HttpClient.withCookiesRef` function, which associates a reference to a `Cookies` object with the client.
@@ -891,9 +881,9 @@ Effect.runPromise(program)
 
 ## RequestInit Options
 
-You can customize the `HttpClient` by passing `RequestInit` options to configure aspects of the HTTP requests, such as credentials, headers, and more.
+You can customize the `FetchHttpClient` by passing `RequestInit` options to configure aspects of the HTTP requests, such as credentials, headers, and more.
 
-In this example, we customize the `HttpClient` to include credentials with every request:
+In this example, we customize the `FetchHttpClient` to include credentials with every request:
 
 ```ts
 import { FetchHttpClient, HttpClient } from "@effect/platform"
@@ -919,13 +909,13 @@ const program = Effect.gen(function* () {
 
 ## Create a Custom HttpClient
 
-You can create a custom `HttpClient.Service` using the `HttpClient.makeService` function. This allows you to simulate or mock server responses within your application.
+You can create a custom `HttpClient` using the `HttpClient.make` function. This allows you to simulate or mock server responses within your application.
 
 ```ts
 import { HttpClient, HttpClientResponse } from "@effect/platform"
 import { Effect, Layer } from "effect"
 
-const myClient = HttpClient.makeService((req) =>
+const myClient = HttpClient.make((req) =>
   Effect.succeed(
     HttpClientResponse.fromWeb(
       req,

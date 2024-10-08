@@ -63,19 +63,19 @@ export const makeAgentLayer: (options?: Https.AgentOptions) => Layer.Layer<HttpA
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<Client.HttpClient.Service, never, HttpAgent> = internal.make
+export const make: Effect.Effect<Client.HttpClient, never, HttpAgent> = internal.make
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<Client.HttpClient.Service> = internal.layer
+export const layer: Layer.Layer<Client.HttpClient> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerWithoutAgent: Layer.Layer<Client.HttpClient.Service, never, HttpAgent> = internal.layerWithoutAgent
+export const layerWithoutAgent: Layer.Layer<Client.HttpClient, never, HttpAgent> = internal.layerWithoutAgent
 
 /**
  * @since 1.0.0
@@ -122,17 +122,17 @@ export class UndiciRequestOptions extends Context.Tag(internalUndici.undiciOptio
  * @since 1.0.0
  * @category constructors
  */
-export const makeUndici: (dispatcher: Undici.Dispatcher) => Client.HttpClient.Service = internalUndici.make
+export const makeUndici: (dispatcher: Undici.Dispatcher) => Client.HttpClient = internalUndici.make
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerUndici: Layer.Layer<Client.HttpClient.Service> = internalUndici.layer
+export const layerUndici: Layer.Layer<Client.HttpClient> = internalUndici.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerUndiciWithoutDispatcher: Layer.Layer<Client.HttpClient.Service, never, Dispatcher> =
+export const layerUndiciWithoutDispatcher: Layer.Layer<Client.HttpClient, never, Dispatcher> =
   internalUndici.layerWithoutDispatcher
