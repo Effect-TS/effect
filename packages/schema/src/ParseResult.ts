@@ -1392,7 +1392,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         let candidates: Array<AST.AST> = []
         if (len > 0) {
           // if there is at least one key then input must be an object
-          if (Predicate.isRecord(input)) {
+          if (isObject(input)) {
             for (let i = 0; i < len; i++) {
               const name = ownKeys[i]
               const buckets = searchTree.keys[name].buckets
@@ -1418,7 +1418,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 }
               } else {
                 const literals = AST.Union.make(searchTree.keys[name].literals)
-                const fakeps = new AST.PropertySignature(name, literals, false, true) // TODO: inherit message annotation from the union?
+                const fakeps = new AST.PropertySignature(name, literals, false, true)
                 es.push([
                   stepKey++,
                   new Composite(
@@ -1520,6 +1520,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
   }
 }
 
+const isObject = (input: unknown): input is { [x: PropertyKey]: unknown } => typeof input === "object" && input !== null
+
 const fromRefinement = <A>(ast: AST.AST, refinement: (u: unknown) => u is A): Parser => (u) =>
   refinement(u) ? Either.right(u) : Either.left(new Type(ast, u))
 
@@ -1543,6 +1545,17 @@ export const getLiterals = (
         const type = isDecoding ? AST.encodedAST(propertySignature.type) : AST.typeAST(propertySignature.type)
         if (AST.isLiteral(type) && !propertySignature.isOptional) {
           out.push([propertySignature.name, type])
+        }
+      }
+      return out
+    }
+    case "TupleType": {
+      const out: Array<[PropertyKey, AST.Literal]> = []
+      for (let i = 0; i < ast.elements.length; i++) {
+        const element = ast.elements[i]
+        const type = isDecoding ? AST.encodedAST(element.type) : AST.typeAST(element.type)
+        if (AST.isLiteral(type) && !element.isOptional) {
+          out.push([i, type])
         }
       }
       return out
