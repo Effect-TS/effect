@@ -73,7 +73,7 @@ describe("HttpApi", () => {
   describe("errors", () => {
     it.scoped("empty errors have no body", () =>
       Effect.gen(function*() {
-        const response = yield* HttpClientRequest.get("/groups/0")
+        const response = yield* HttpClient.get("/groups/0")
         assert.strictEqual(response.status, 418)
         const text = yield* response.text
         assert.strictEqual(text, "")
@@ -91,7 +91,8 @@ describe("HttpApi", () => {
     it.scoped("default to 500 status code", () =>
       Effect.gen(function*() {
         const response = yield* HttpClientRequest.get("/users").pipe(
-          HttpClientRequest.setHeaders({ page: "0" })
+          HttpClientRequest.setHeaders({ page: "0" }),
+          HttpClient.execute
         )
         assert.strictEqual(response.status, 500)
         const body = yield* response.json
@@ -103,7 +104,8 @@ describe("HttpApi", () => {
     it.scoped("class level annotations", () =>
       Effect.gen(function*() {
         const response = yield* HttpClientRequest.post("/users").pipe(
-          HttpClientRequest.bodyUnsafeJson({ name: "boom" })
+          HttpClientRequest.bodyUnsafeJson({ name: "boom" }),
+          HttpClient.execute
         )
         assert.strictEqual(response.status, 400)
       }).pipe(Effect.provide(HttpLive)))

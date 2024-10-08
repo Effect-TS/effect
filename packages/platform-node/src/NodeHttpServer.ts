@@ -105,7 +105,7 @@ export const layerConfig: (
  * @category layers
  */
 export const layerTest: Layer.Layer<
-  | HttpClient.HttpClient.Service
+  | HttpClient.HttpClient
   | Server.HttpServer
   | Platform.HttpPlatform
   | Etag.Generator

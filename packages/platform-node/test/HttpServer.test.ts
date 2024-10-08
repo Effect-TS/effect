@@ -18,7 +18,7 @@ import {
 import { NodeHttpServer } from "@effect/platform-node"
 import * as Schema from "@effect/schema/Schema"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Deferred, Duration, Fiber, flow, Stream } from "effect"
+import { Deferred, Duration, Fiber, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Tracer from "effect/Tracer"
@@ -33,14 +33,6 @@ const IdParams = Schema.Struct({
 })
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
-const makeTodoClient = Effect.map(
-  HttpClient.HttpClient,
-  flow(
-    HttpClient.mapEffect(HttpClientResponse.schemaBodyJson(Todo)),
-    HttpClient.scoped
-  )
-)
-
 describe("HttpServer", () => {
   it.scoped("schema", () =>
     Effect.gen(function*() {
@@ -54,8 +46,10 @@ describe("HttpServer", () => {
         ),
         HttpServer.serveEffect()
       )
-      const client = yield* makeTodoClient
-      const todo = yield* client.get("/todos/1")
+      const todo = yield* HttpClient.get("/todos/1").pipe(
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
+        Effect.scoped
+      )
       expect(todo).toEqual({ id: 1, title: "test" })
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -306,10 +300,10 @@ describe("HttpServer", () => {
         ),
         HttpServer.serveEffect()
       )
-      const client = yield* makeTodoClient
       const todo = yield* HttpClientRequest.post("/todos").pipe(
         HttpClientRequest.bodyUrlParams({ id: "1", title: "test" }),
-        client.execute,
+        HttpClient.execute,
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
         Effect.scoped
       )
       expect(todo).toEqual({ id: 1, title: "test" })
@@ -674,10 +668,10 @@ describe("HttpServer", () => {
     Effect.gen(function*() {
       yield* HttpRouter.concat(routerA, routerB).pipe(HttpServer.serveEffect())
       const [responseA, responseMountA, responseB, responseMountB] = yield* Effect.all([
-        HttpClientRequest.get("/a"),
-        HttpClientRequest.get("/ma"),
-        HttpClientRequest.get("/b"),
-        HttpClientRequest.get("/mb")
+        HttpClient.get("/a"),
+        HttpClient.get("/ma"),
+        HttpClient.get("/b"),
+        HttpClient.get("/mb")
       ])
       expect(yield* responseA.text).toEqual("a")
       expect(yield* responseMountA.text).toEqual("ma")
@@ -689,10 +683,10 @@ describe("HttpServer", () => {
     Effect.gen(function*() {
       yield* HttpRouter.concatAll(routerA, routerB).pipe(HttpServer.serveEffect())
       const [responseA, responseMountA, responseB, responseMountB] = yield* Effect.all([
-        HttpClientRequest.get("/a"),
-        HttpClientRequest.get("/ma"),
-        HttpClientRequest.get("/b"),
-        HttpClientRequest.get("/mb")
+        HttpClient.get("/a"),
+        HttpClient.get("/ma"),
+        HttpClient.get("/b"),
+        HttpClient.get("/mb")
       ])
       expect(yield* responseA.text).toEqual("a")
       expect(yield* responseMountA.text).toEqual("ma")
@@ -706,9 +700,9 @@ describe("HttpServer", () => {
         HttpRouter.get("/:param", HttpServerResponse.empty()),
         HttpServer.serveEffect()
       )
-      let res = yield* HttpClientRequest.get("/123456").pipe(Effect.scoped)
+      let res = yield* HttpClient.get("/123456").pipe(Effect.scoped)
       assert.strictEqual(res.status, 404)
-      res = yield* HttpClientRequest.get("/12345").pipe(Effect.scoped)
+      res = yield* HttpClient.get("/12345").pipe(Effect.scoped)
       assert.strictEqual(res.status, 204)
     }).pipe(
       Effect.provide(NodeHttpServer.layerTest),
