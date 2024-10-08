@@ -13,7 +13,7 @@ import * as internal from "./internal/httpClient.js"
  * @since 1.0.0
  * @category layers
  */
-export const layerXMLHttpRequest: Layer.Layer<HttpClient.HttpClient.Service> = internal.layerXMLHttpRequest
+export const layerXMLHttpRequest: Layer.Layer<HttpClient.HttpClient> = internal.layerXMLHttpRequest
 
 /**
  * @since 1.0.0

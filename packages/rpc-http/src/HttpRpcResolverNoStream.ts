@@ -18,7 +18,7 @@ import * as Schedule from "effect/Schedule"
  * @since 1.0.0
  */
 export const make = <R extends Router.RpcRouter<any, any>>(
-  client: Client.HttpClient.Service
+  client: Client.HttpClient
 ): RequestResolver.RequestResolver<
   Rpc.Request<Router.RpcRouter.Request<R>>,
   Serializable.SerializableWithResult.Context<Router.RpcRouter.Request<R>>
