@@ -37,7 +37,7 @@ describe("Union", () => {
       await Util.expectDecodeUnknownFailure(schema, 1, "Expected never, actual 1")
     })
 
-    it("members with literals but the input doesn't have any", async () => {
+    it("struct members", async () => {
       const schema = S.Union(
         S.Struct({ a: S.Literal(1), c: S.String }),
         S.Struct({ b: S.Literal(2), d: S.Number })
@@ -82,7 +82,7 @@ describe("Union", () => {
       )
     })
 
-    it("members with multiple tags", async () => {
+    it("struct members with multiple tags", async () => {
       const schema = S.Union(
         S.Struct({ category: S.Literal("catA"), tag: S.Literal("a") }),
         S.Struct({ category: S.Literal("catA"), tag: S.Literal("b") }),
@@ -155,6 +155,99 @@ describe("Union", () => {
    └─ { readonly b: "B" }
       └─ ["b"]
          └─ is missing`
+      )
+    })
+
+    it("tuple members", async () => {
+      const schema = S.Union(
+        S.Tuple(S.Literal("a"), S.String),
+        S.Tuple(S.Literal("b"), S.Number)
+      ).annotations({ identifier: "MyUnion" })
+
+      await Util.expectDecodeUnknownSuccess(schema, ["a", "s"])
+      await Util.expectDecodeUnknownSuccess(schema, ["b", 1])
+
+      await Util.expectDecodeUnknownFailure(schema, null, `Expected MyUnion, actual null`)
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        [],
+        `MyUnion
+└─ { readonly 0: "a" | "b" }
+   └─ ["0"]
+      └─ is missing`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        ["c"],
+        `MyUnion
+└─ { readonly 0: "a" | "b" }
+   └─ ["0"]
+      └─ Expected "a" | "b", actual "c"`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        ["a", 0],
+        `MyUnion
+└─ readonly ["a", string]
+   └─ [1]
+      └─ Expected string, actual 0`
+      )
+    })
+
+    it("tuple members with multiple tags", async () => {
+      const schema = S.Union(
+        S.Tuple(S.Literal("a"), S.Literal("b"), S.String),
+        S.Tuple(S.Literal("a"), S.Literal("c"), S.Number),
+        S.Tuple(S.Literal("a"), S.Literal("d"), S.Boolean)
+      ).annotations({ identifier: "MyUnion" })
+
+      await Util.expectDecodeUnknownSuccess(schema, ["a", "b", "s"])
+      await Util.expectDecodeUnknownSuccess(schema, ["a", "c", 1])
+
+      await Util.expectDecodeUnknownFailure(schema, null, `Expected MyUnion, actual null`)
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        [],
+        `MyUnion
+├─ { readonly 0: "a" }
+│  └─ ["0"]
+│     └─ is missing
+└─ { readonly 1: "c" | "d" }
+   └─ ["1"]
+      └─ is missing`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        ["c"],
+        `MyUnion
+├─ { readonly 0: "a" }
+│  └─ ["0"]
+│     └─ Expected "a", actual "c"
+└─ { readonly 1: "c" | "d" }
+   └─ ["1"]
+      └─ is missing`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        ["a", "c"],
+        `MyUnion
+├─ readonly ["a", "b", string]
+│  └─ [2]
+│     └─ is missing
+└─ readonly ["a", "c", number]
+   └─ [2]
+      └─ is missing`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        ["a", "b", 0],
+        `MyUnion
+├─ { readonly 1: "c" | "d" }
+│  └─ ["1"]
+│     └─ Expected "c" | "d", actual "b"
+└─ readonly ["a", "b", string]
+   └─ [2]
+      └─ Expected string, actual 0`
       )
     })
   })
