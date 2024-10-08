@@ -242,9 +242,14 @@ describe("ParseIssue.actual", () => {
       expect(P.getLiterals(S.String.ast, true)).toEqual([])
     })
 
-    it("TypeLiteral", () => {
+    it("Struct", () => {
       expect(P.getLiterals(S.Struct({ _tag: S.Literal("a") }).ast, true))
         .toEqual([["_tag", new AST.Literal("a")]])
+    })
+
+    it("Tuple", () => {
+      expect(P.getLiterals(S.Tuple(S.Literal("a"), S.String).ast, true))
+        .toEqual([[0, new AST.Literal("a")]])
     })
 
     it("Refinement", () => {
@@ -363,6 +368,97 @@ describe("ParseIssue.actual", () => {
               B: [B.ast]
             },
             literals: [new AST.Literal("B")]
+          }
+        },
+        otherwise: []
+      })
+    })
+
+    it("struct + struct (multiple tags)", () => {
+      const A = S.Struct({ _tag: S.Literal("A"), _tag2: S.Literal("A1"), c: S.String })
+      const B = S.Struct({ _tag: S.Literal("A"), _tag2: S.Literal("A2"), d: S.Number })
+      expect(
+        P.getSearchTree([A.ast, B.ast], true)
+      ).toEqual({
+        keys: {
+          _tag: {
+            buckets: {
+              A: [A.ast]
+            },
+            literals: [new AST.Literal("A")]
+          },
+          _tag2: {
+            buckets: {
+              A2: [B.ast]
+            },
+            literals: [new AST.Literal("A2")]
+          }
+        },
+        otherwise: []
+      })
+    })
+
+    it("tuple + tuple (same tag key)", () => {
+      const a = S.Tuple(S.Literal("a"), S.String)
+      const b = S.Tuple(S.Literal("b"), S.Number)
+      expect(
+        P.getSearchTree([a.ast, b.ast], true)
+      ).toEqual({
+        keys: {
+          0: {
+            buckets: {
+              a: [a.ast],
+              b: [b.ast]
+            },
+            literals: [new AST.Literal("a"), new AST.Literal("b")]
+          }
+        },
+        otherwise: []
+      })
+    })
+
+    it("tuple + tuple (different tag key)", () => {
+      const a = S.Tuple(S.Literal("a"), S.String)
+      const b = S.Tuple(S.Number, S.Literal("b"))
+      expect(
+        P.getSearchTree([a.ast, b.ast], true)
+      ).toEqual({
+        keys: {
+          0: {
+            buckets: {
+              a: [a.ast]
+            },
+            literals: [new AST.Literal("a")]
+          },
+          1: {
+            buckets: {
+              b: [b.ast]
+            },
+            literals: [new AST.Literal("b")]
+          }
+        },
+        otherwise: []
+      })
+    })
+
+    it("tuple + tuple (multiple tags)", () => {
+      const a = S.Tuple(S.Literal("a"), S.Literal("b"), S.String)
+      const b = S.Tuple(S.Literal("a"), S.Literal("c"), S.Number)
+      expect(
+        P.getSearchTree([a.ast, b.ast], true)
+      ).toEqual({
+        keys: {
+          0: {
+            buckets: {
+              a: [a.ast]
+            },
+            literals: [new AST.Literal("a")]
+          },
+          1: {
+            buckets: {
+              c: [b.ast]
+            },
+            literals: [new AST.Literal("c")]
           }
         },
         otherwise: []
