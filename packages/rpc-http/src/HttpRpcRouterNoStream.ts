@@ -13,11 +13,13 @@ import * as Effect from "effect/Effect"
  * @since 1.0.0
  * @category conversions
  */
-export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R): App.Default<
+export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R, options?: {
+  readonly spanPrefix?: string
+}): App.Default<
   ServerError.RequestError | ParseError,
   Router.RpcRouter.Context<R>
 > => {
-  const handler = Router.toHandlerNoStream(self)
+  const handler = Router.toHandlerNoStream(self, options)
   return ServerRequest.HttpServerRequest.pipe(
     Effect.flatMap((_) => _.json),
     Effect.flatMap(handler),
