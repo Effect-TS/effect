@@ -13,7 +13,7 @@ const Migrations = Layer.scopedDiscard(LibsqlClient.LibsqlClient.pipe(
 ))
 
 describe("Client", () => {
-  layer(LibsqlContainer.ClientLive)((it) => {
+  layer(LibsqlContainer.ClientLive, { timeout: "30 seconds" })((it) => {
     it.scoped("should work", () =>
       Effect.gen(function*() {
         const sql = yield* LibsqlClient.LibsqlClient

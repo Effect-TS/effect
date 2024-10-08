@@ -11,10 +11,8 @@ import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import { identity, pipe } from "effect/Function"
+import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
 import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
@@ -126,6 +124,13 @@ export const make = (
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
+    const spanAttributes: ReadonlyArray<[string, unknown]> = [
+      ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
+      [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_MSSQL],
+      [Otel.SEMATTRS_DB_NAME, options.database ?? "master"],
+      ["server.address", options.server],
+      ["server.port", options.port ?? 1433]
+    ]
 
     // eslint-disable-next-line prefer-const
     let pool: Pool.Pool<MssqlConnection, SqlError>
@@ -343,55 +348,29 @@ export const make = (
       Effect.scoped
     )
 
-    const makeRootTx: Effect.Effect<
-      readonly [Scope.CloseableScope | undefined, MssqlConnection, number],
-      SqlError
-    > = Effect.flatMap(
-      Scope.make(),
-      (scope) => Effect.map(Scope.extend(Pool.get(pool), scope), (conn) => [scope, conn, 0] as const)
-    )
-
-    const withTransaction = <R, E, A>(
-      effect: Effect.Effect<A, E, R>
-    ): Effect.Effect<A, E | SqlError, R> =>
-      Effect.acquireUseRelease(
-        pipe(
-          Effect.serviceOption(TransactionConnection),
-          Effect.flatMap(
-            Option.match({
-              onNone: () => makeRootTx,
-              onSome: ([conn, count]) => Effect.succeed([undefined, conn, count + 1] as const)
-            })
-          ),
-          Effect.tap(([, conn, id]) =>
-            id > 0
-              ? conn.savepoint(`effect_sql_${id}`)
-              : conn.begin
+    const withTransaction = Client.makeWithTransaction({
+      transactionTag: TransactionConnection,
+      spanAttributes,
+      acquireConnection: Effect.flatMap(
+        Scope.make(),
+        (scope) =>
+          Effect.map(
+            Scope.extend(Pool.get(pool), scope),
+            (conn) => [scope, conn] as const
           )
-        ),
-        ([, conn, id]) => Effect.provideService(effect, TransactionConnection, [conn, id]),
-        ([scope, conn, id], exit) => {
-          const effect = Exit.isSuccess(exit)
-            ? id > 0
-              ? Effect.void
-              : Effect.orDie(conn.commit)
-            : Effect.orDie(conn.rollback(id > 0 ? `effect_sql_${id}` : undefined))
-          return scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect
-        }
-      )
+      ),
+      begin: (conn) => conn.begin,
+      savepoint: (conn, id) => conn.savepoint(`effect_sql_${id}`),
+      commit: (conn) => conn.commit,
+      rollback: (conn) => conn.rollback(),
+      rollbackSavepoint: (conn, id) => conn.rollback(`effect_sql_${id}`)
+    })
 
     return identity<MssqlClient>(Object.assign(
       Client.make({
         acquirer: pool.get,
         compiler,
-        transactionAcquirer: pool.get,
-        spanAttributes: [
-          ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_MSSQL],
-          [Otel.SEMATTRS_DB_NAME, options.database ?? "master"],
-          ["server.address", options.server],
-          ["server.port", options.port ?? 1433]
-        ]
+        spanAttributes
       }),
       {
         [TypeId]: TypeId as TypeId,
