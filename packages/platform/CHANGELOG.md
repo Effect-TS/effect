@@ -1,5 +1,51 @@
 # @effect/platform
 
+## 0.68.0
+
+### Minor Changes
+
+- [#3756](https://github.com/Effect-TS/effect/pull/3756) [`90ceeab`](https://github.com/Effect-TS/effect/commit/90ceeab3a04051b740af18c8af8bd73ee8ec6363) Thanks @tim-smart! - remove HttpClient.Service type
+
+- [#3756](https://github.com/Effect-TS/effect/pull/3756) [`90ceeab`](https://github.com/Effect-TS/effect/commit/90ceeab3a04051b740af18c8af8bd73ee8ec6363) Thanks @tim-smart! - constrain HttpClient success type to HttpClientResponse
+
+- [#3756](https://github.com/Effect-TS/effect/pull/3756) [`90ceeab`](https://github.com/Effect-TS/effect/commit/90ceeab3a04051b740af18c8af8bd73ee8ec6363) Thanks @tim-smart! - add HttpClient accessor apis
+
+  These apis allow you to easily send requests without first accessing the `HttpClient` service.
+
+  Below is an example of using the `get` accessor api to send a GET request:
+
+  ```ts
+  import { FetchHttpClient, HttpClient } from "@effect/platform"
+  import { Effect } from "effect"
+
+  const program = HttpClient.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  ).pipe(
+    Effect.andThen((response) => response.json),
+    Effect.scoped,
+    Effect.provide(FetchHttpClient.layer)
+  )
+
+  Effect.runPromise(program)
+  /*
+  Output:
+  {
+    userId: 1,
+    id: 1,
+    title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+    body: 'quia et suscipit\n' +
+      'suscipit recusandae consequuntur expedita et cum\n' +
+      'reprehenderit molestiae ut ut quas totam\n' +
+      'nostrum rerum est autem sunt rem eveniet architecto'
+  }
+  */
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`f02b354`](https://github.com/Effect-TS/effect/commit/f02b354ab5b0451143b82bb73dc866be29adec85)]:
+  - @effect/schema@0.75.2
+
 ## 0.67.1
 
 ### Patch Changes
