@@ -130,7 +130,7 @@ export const fromDotEnv: (
  * @since 1.0.0
  * @category layers
  */
-export const layerDotEnvAdd: (path: string) => Layer.Layer<never, PlatformError, FileSystem.FileSystem> =
+export const layerDotEnvAdd: (path: string) => Layer.Layer<never, never, FileSystem.FileSystem> =
   internal.layerDotEnvAdd
 
 /**

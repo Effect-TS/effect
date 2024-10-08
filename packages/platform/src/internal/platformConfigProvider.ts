@@ -34,9 +34,15 @@ export const layerDotEnv = (path: string): Layer.Layer<never, PlatformError, Fil
   )
 
 /** @internal */
-export const layerDotEnvAdd = (path: string): Layer.Layer<never, PlatformError, FileSystem.FileSystem> =>
+export const layerDotEnvAdd = (path: string): Layer.Layer<never, never, FileSystem.FileSystem> =>
   Effect.gen(function*(_) {
-    const dotEnvConfigProvider = yield* fromDotEnv(path)
+    const dotEnvConfigProvider = yield* Effect.orElseSucceed(fromDotEnv(path), () => null)
+
+    if (dotEnvConfigProvider === null) {
+      yield* Effect.logDebug(`File '${path}' not found, skipping dotenv ConfigProvider.`)
+      return Layer.empty
+    }
+
     const currentConfigProvider = yield* FiberRef.get(DefaultServices.currentServices).pipe(
       Effect.map((services) => Context.get(services, ConfigProvider.ConfigProvider))
     )

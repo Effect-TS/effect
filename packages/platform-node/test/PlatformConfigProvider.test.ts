@@ -66,11 +66,21 @@ describe("dotenv", () => {
       expect(result).toEqual({ value: "hello", number: 69 })
     }).pipe(Effect.provide(NodeContext.layer)))
 
-  it.scopedLive("fails if no .env file is found", () =>
+  it.scopedLive("fromDotEnv fails if no .env file is found", () =>
     Effect.gen(function*() {
       const result = yield* PlatformConfigProvider.fromDotEnv(".non-existing-env-file").pipe(Effect.either)
       expect(Either.isLeft(result)).toBe(true)
     }).pipe(Effect.provide(NodeContext.layer)))
+
+  it.scopedLive("layerDotEnvAdd succeeds if no .env file is found", () =>
+    Effect.gen(function*() {
+      yield* modifyEnv("VALUE", "hello")
+      const value = yield* Config.string("VALUE")
+      expect(value).toEqual("hello")
+    }).pipe(
+      Effect.provide(PlatformConfigProvider.layerDotEnvAdd(".non-existing-env-file")),
+      Effect.provide(NodeContext.layer)
+    ))
 })
 
 // utils
