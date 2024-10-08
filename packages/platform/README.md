@@ -668,6 +668,30 @@ Output:
 */
 ```
 
+## Understanding Scope
+
+When working with a request, note that there is a `Scope` requirement:
+
+```ts
+import { FetchHttpClient, HttpClient } from "@effect/platform"
+import { Effect } from "effect"
+
+// const program: Effect<void, HttpClientError, Scope>
+const program = Effect.gen(function* () {
+  const client = yield* HttpClient.HttpClient
+  const response = yield* client.get(
+    "https://jsonplaceholder.typicode.com/posts/1"
+  )
+  const json = yield* response.json
+  console.log(json)
+}).pipe(
+  // Provide the HttpClient implementation without scoping
+  Effect.provide(FetchHttpClient.layer)
+)
+```
+
+A `Scope` is required because there is an open connection between the HTTP response and the body processing. For instance, if you have a streaming body, you receive the response before processing the body. This connection is managed within a scope, and using `Effect.scoped` controls when it is closed.
+
 ## Customize a HttpClient
 
 The `HttpClient` module allows you to customize the client in various ways. For instance, you can log details of a request before execution using the `tapRequest` function.
