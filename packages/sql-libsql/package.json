@@ -43,7 +43,8 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "testcontainers": "^10.11.0"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
