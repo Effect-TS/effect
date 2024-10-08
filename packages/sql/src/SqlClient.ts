@@ -3,7 +3,8 @@
  */
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
-import type { Scope } from "effect/Scope"
+import type { CloseableScope, Scope } from "effect/Scope"
+import type { NoInfer } from "effect/Types"
 import * as internal from "./internal/client.js"
 import type { Connection } from "./SqlConnection.js"
 import type { SqlError } from "./SqlError.js"
@@ -61,7 +62,7 @@ export namespace SqlClient {
   export interface MakeOptions {
     readonly acquirer: Connection.Acquirer
     readonly compiler: Compiler
-    readonly transactionAcquirer: Connection.Acquirer
+    readonly transactionAcquirer?: Connection.Acquirer
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
     readonly beginTransaction?: string | undefined
     readonly rollback?: string | undefined
@@ -84,6 +85,23 @@ export const make: ({
   savepoint,
   transactionAcquirer
 }: SqlClient.MakeOptions) => SqlClient = internal.make
+
+/**
+ * @since 1.0.0
+ * @category transactions
+ */
+export const makeWithTransaction: <I, S>(
+  options: {
+    readonly transactionTag: Tag<I, readonly [conn: S, counter: number]>
+    readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
+    readonly acquireConnection: Effect<readonly [CloseableScope | undefined, S], SqlError>
+    readonly begin: (conn: NoInfer<S>) => Effect<void, SqlError>
+    readonly savepoint: (conn: NoInfer<S>, id: number) => Effect<void, SqlError>
+    readonly commit: (conn: NoInfer<S>) => Effect<void, SqlError>
+    readonly rollback: (conn: NoInfer<S>) => Effect<void, SqlError>
+    readonly rollbackSavepoint: (conn: NoInfer<S>, id: number) => Effect<void, SqlError>
+  }
+) => <R, E, A>(effect: Effect<A, E, R>) => Effect<A, E | SqlError, R> = internal.makeWithTransaction
 
 /**
  * @since 1.0.0
