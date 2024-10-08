@@ -16,11 +16,13 @@ import * as Stream from "effect/Stream"
  * @since 1.0.0
  * @category conversions
  */
-export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R): App.Default<
+export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R, options?: {
+  readonly spanPrefix?: string
+}): App.Default<
   ServerError.RequestError,
   Router.RpcRouter.Context<R>
 > => {
-  const handler = Router.toHandler(self)
+  const handler = Router.toHandler(self, options)
   return Effect.withFiberRuntime((fiber) => {
     const context = fiber.getFiberRef(FiberRef.currentContext)
     const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
