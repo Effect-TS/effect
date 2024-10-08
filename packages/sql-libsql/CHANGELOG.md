@@ -1,5 +1,19 @@
 # @effect/sql-libsql
 
+## 0.4.0
+
+### Minor Changes
+
+- [#3720](https://github.com/Effect-TS/effect/pull/3720) [`e0a5dad`](https://github.com/Effect-TS/effect/commit/e0a5dadd786c1ec9cbfdd80e9a53f1cacb7ee2ed) Thanks @jkonowitch! - Fix transactions
+
+### Patch Changes
+
+- [#3720](https://github.com/Effect-TS/effect/pull/3720) [`e0a5dad`](https://github.com/Effect-TS/effect/commit/e0a5dadd786c1ec9cbfdd80e9a53f1cacb7ee2ed) Thanks @jkonowitch! - add SqlClient.makeWithTransaction api
+
+- Updated dependencies [[`90ceeab`](https://github.com/Effect-TS/effect/commit/90ceeab3a04051b740af18c8af8bd73ee8ec6363), [`90ceeab`](https://github.com/Effect-TS/effect/commit/90ceeab3a04051b740af18c8af8bd73ee8ec6363), [`90ceeab`](https://github.com/Effect-TS/effect/commit/90ceeab3a04051b740af18c8af8bd73ee8ec6363)]:
+  - @effect/platform@0.68.0
+  - @effect/sql@0.16.0
+
 ## 0.3.1
 
 ### Patch Changes
