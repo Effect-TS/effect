@@ -17,7 +17,8 @@ Effect.gen(function* () {
 
   console.log(`Api config: ${config}`)
 }).pipe(
-  PlatformConfigProvider.layerDotEnvAdd(".env"),
-  Effect.provide(NodeContext.layer)
+  Effect.provide(PlatformConfigProvider.layerDotEnvAdd(".env").pipe(
+    Layer.provide(NodeContext.layer)
+  )),
 )
 ```
