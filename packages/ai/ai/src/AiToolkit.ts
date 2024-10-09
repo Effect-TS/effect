@@ -169,9 +169,6 @@ class AiToolkitImpl<Tools extends Tool.AnySchema>
   toString(): string {
     return Inspectable.format(this)
   }
-  [Inspectable.DenoInspectSymbol](): string {
-    return Inspectable.format(this)
-  }
   [Inspectable.NodeInspectSymbol](): string {
     return Inspectable.format(this)
   }

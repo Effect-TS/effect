@@ -51,7 +51,7 @@
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
     "@effect/schema": "workspace:^",
-    "@tim-smart/openapi-gen": "^0.1.2",
+    "@tim-smart/openapi-gen": "^0.2.0",
     "effect": "workspace:^"
   },
   "dependencies": {

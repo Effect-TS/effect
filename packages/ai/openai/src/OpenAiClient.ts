@@ -58,7 +58,7 @@ export const make = (options: {
   readonly apiKey: Redacted.Redacted
   readonly organizationId?: Redacted.Redacted | undefined
   readonly projectId?: Redacted.Redacted | undefined
-}): Effect.Effect<OpenAiClient.Service, never, HttpClient.HttpClient.Service> =>
+}): Effect.Effect<OpenAiClient.Service, never, HttpClient.HttpClient> =>
   Effect.gen(function*() {
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
@@ -154,7 +154,7 @@ export const layer = (options: {
   readonly apiKey: Redacted.Redacted
   readonly organizationId?: Redacted.Redacted | undefined
   readonly projectId?: Redacted.Redacted | undefined
-}): Layer.Layer<OpenAiClient, never, HttpClient.HttpClient.Service> => Layer.effect(OpenAiClient, make(options))
+}): Layer.Layer<OpenAiClient, never, HttpClient.HttpClient> => Layer.effect(OpenAiClient, make(options))
 
 /**
  * @since 1.0.0
@@ -166,7 +166,7 @@ export const layerConfig = (
     readonly organizationId?: Redacted.Redacted | undefined
     readonly projectId?: Redacted.Redacted | undefined
   }>
-): Layer.Layer<OpenAiClient, ConfigError, HttpClient.HttpClient.Service> =>
+): Layer.Layer<OpenAiClient, ConfigError, HttpClient.HttpClient> =>
   Config.unwrap(options).pipe(
     Effect.flatMap(make),
     Layer.effect(OpenAiClient)
