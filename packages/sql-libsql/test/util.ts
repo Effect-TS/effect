@@ -23,8 +23,7 @@ export class LibsqlContainer extends Context.Tag("test/LibsqlContainer")<
     Effect.gen(function*() {
       const container = yield* LibsqlContainer
       return LibsqlClient.layer({
-        url: Config.succeed(`http://localhost:${container.getMappedPort(8080)}`),
-        _tag: Config.succeed("Config")
+        url: Config.succeed(`http://localhost:${container.getMappedPort(8080)}`)
       })
     })
   ).pipe(Layer.provide(this.Live))

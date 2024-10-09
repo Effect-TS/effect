@@ -48,17 +48,30 @@ const LibsqlTransaction = Context.GenericTag<readonly [LibsqlConnection, counter
 
 /**
  * @category models
- * @description either Libsql client or configuration options to build one
  * @since 1.0.0
  */
-export type LibsqlClientConfig =
-  & {
+export type LibsqlClientConfig = LibsqlClientConfig.Full | LibsqlClientConfig.Live
+
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export declare namespace LibsqlClientConfig {
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Base {
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly transformResultNames?: ((str: string) => string) | undefined
     readonly transformQueryNames?: ((str: string) => string) | undefined
   }
-  & ({
-    _tag: "Config"
+
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Full extends Base {
     /** The database URL.
      *
      * The client supports `libsql:`, `http:`/`https:`, `ws:`/`wss:` and `file:` URL. For more infomation,
@@ -96,10 +109,16 @@ export type LibsqlClientConfig =
      * number to increase the concurrency limit or set it to 0 to disable concurrency limits completely.
      */
     readonly concurrency?: number | undefined
-  } | {
-    _tag: "LiveClient"
-    liveClient: Libsql.Client
-  })
+  }
+
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Live extends Base {
+    readonly liveClient: Libsql.Client
+  }
+}
 
 interface LibsqlConnection extends Connection {
   readonly beginTransaction: Effect.Effect<LibsqlConnection, SqlError>
@@ -201,20 +220,15 @@ export const make = (
       }
     }
 
-    let connection: LibsqlConnectionImpl
-
-    if (options._tag === "Config") {
-      connection = yield* Effect.map(
+    const connection = "liveClient" in options
+      ? new LibsqlConnectionImpl(options.liveClient)
+      : yield* Effect.map(
         Effect.acquireRelease(
           Effect.sync(() => Libsql.createClient(options as Libsql.Config)),
           (sdk) => Effect.sync(() => sdk.close())
         ),
         (sdk) => new LibsqlConnectionImpl(sdk)
       )
-    } else {
-      connection = new LibsqlConnectionImpl(options.liveClient)
-    }
-
     const semaphore = yield* Effect.makeSemaphore(1)
 
     const withTransaction = Client.makeWithTransaction({
