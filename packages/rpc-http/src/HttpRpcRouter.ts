@@ -10,13 +10,27 @@ import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
+import { dual } from "effect/Function"
 import * as Stream from "effect/Stream"
 
 /**
  * @since 1.0.0
  * @category conversions
  */
-export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R, options?: {
+export const toHttpApp: {
+  (options?: {
+    readonly spanPrefix?: string
+  }): <R extends Router.RpcRouter<any, any>>(self: R) => App.Default<
+    ServerError.RequestError,
+    Router.RpcRouter.Context<R>
+  >
+  <R extends Router.RpcRouter<any, any>>(self: R, options?: {
+    readonly spanPrefix?: string
+  }): App.Default<
+    ServerError.RequestError,
+    Router.RpcRouter.Context<R>
+  >
+} = dual((args) => Router.isRpcRouter(args[0]), <R extends Router.RpcRouter<any, any>>(self: R, options?: {
   readonly spanPrefix?: string
 }): App.Default<
   ServerError.RequestError,
@@ -37,4 +51,4 @@ export const toHttpApp = <R extends Router.RpcRouter<any, any>>(self: R, options
         { contentType: "application/ndjson" }
       ))
   })
-}
+})
