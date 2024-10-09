@@ -3138,29 +3138,24 @@ export const fromPubSub: {
 /** @internal */
 export const fromTPubSub: {
   <A>(pubsub: TPubSub.TPubSub<A>, options: {
-    readonly maxChunkSize?: number | undefined
     readonly scoped: true
     readonly shutdown?: boolean | undefined
   }): Effect.Effect<Stream.Stream<A>, never, Scope.Scope>
   <A>(pubsub: TPubSub.TPubSub<A>, options?: {
-    readonly maxChunkSize?: number | undefined
     readonly scoped?: false | undefined
     readonly shutdown?: boolean | undefined
   }): Stream.Stream<A>
 } = (pubsub, options): any => {
-  const maxChunkSize = options?.maxChunkSize ?? DefaultChunkSize
-
   if (options?.scoped) {
     const effect = Effect.map(
       TPubSub.subscribeScoped(pubsub),
-      (queue) => fromTQueue(queue, { maxChunkSize, shutdown: true })
+      (queue) => fromTQueue(queue, { shutdown: true })
     )
-
     return options.shutdown ? Effect.map(effect, ensuring(TPubSub.shutdown(pubsub))) : effect
   }
   const stream = flatMap(
     TPubSub.subscribe(pubsub),
-    (queue) => fromTQueue(queue, { maxChunkSize, shutdown: true })
+    (queue) => fromTQueue(queue, { shutdown: true })
   )
   return options?.shutdown ? ensuring(stream, TPubSub.shutdown(pubsub)) : stream
 }
@@ -3260,13 +3255,12 @@ export const fromQueue = <A>(
 export const fromTQueue = <A>(
   queue: TQueue.TDequeue<A>,
   options?: {
-    readonly maxChunkSize?: number | undefined
     readonly shutdown?: boolean | undefined
   }
 ): Stream.Stream<A> =>
   pipe(
-    TQueue.takeBetween(queue, 1, options?.maxChunkSize ?? DefaultChunkSize),
-    Effect.map(Chunk.unsafeFromArray),
+    TQueue.take(queue),
+    Effect.map(Chunk.of),
     Effect.catchAllCause((cause) =>
       pipe(
         TQueue.isShutdown(queue),

@@ -2026,7 +2026,6 @@ export const fromTPubSub: {
   <A>(
     pubsub: TPubSub<A>,
     options: {
-      readonly maxChunkSize?: number | undefined
       readonly scoped: true
       readonly shutdown?: boolean | undefined
     }
@@ -2034,7 +2033,6 @@ export const fromTPubSub: {
   <A>(
     pubsub: TPubSub<A>,
     options?: {
-      readonly maxChunkSize?: number | undefined
       readonly scoped?: false | undefined
       readonly shutdown?: boolean | undefined
     }
@@ -2130,10 +2128,7 @@ export const fromQueue: <A>(
  */
 export const fromTQueue: <A>(
   queue: TDequeue<A>,
-  options?: {
-    readonly maxChunkSize?: number | undefined
-    readonly shutdown?: boolean | undefined
-  }
+  options?: { readonly shutdown?: boolean | undefined }
 ) => Stream<A> = internal.fromTQueue
 
 /**
