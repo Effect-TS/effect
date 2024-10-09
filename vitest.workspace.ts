@@ -24,5 +24,6 @@ export default defineWorkspace([
   // project({ name: "effect|browser", environment: "happy-dom" }),
   // project({ name: "schema|browser", environment: "happy-dom" }),
   // Add the default configuration for all packages.
-  "packages/*"
+  "packages/*",
+  "packages/ai/*"
 ])
