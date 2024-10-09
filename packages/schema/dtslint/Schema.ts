@@ -2064,6 +2064,12 @@ S.asSchema(S.EitherFromSelf({ right: S.NumberFromString, left: S.String }))
 // $ExpectType EitherFromSelf<typeof NumberFromString, typeof String$>
 S.EitherFromSelf({ right: S.NumberFromString, left: S.String })
 
+// $ExpectType EitherFromSelf<typeof String$, typeof Never>
+S.EitherFromSelf({ right: S.String, left: S.Never })
+
+// $ExpectType EitherFromSelf<typeof Never, typeof String$>
+S.EitherFromSelf({ right: S.Never, left: S.String })
+
 // ---------------------------------------------
 // Either
 // ---------------------------------------------
@@ -2074,6 +2080,12 @@ S.asSchema(S.Either({ right: S.NumberFromString, left: S.String }))
 // $ExpectType Either<typeof NumberFromString, typeof String$>
 S.Either({ right: S.NumberFromString, left: S.String })
 
+// $ExpectType Either<typeof String$, typeof Never>
+S.Either({ right: S.String, left: S.Never })
+
+// $ExpectType Either<typeof Never, typeof String$>
+S.Either({ right: S.Never, left: S.String })
+
 // ---------------------------------------------
 // EitherFromUnion
 // ---------------------------------------------
@@ -2083,6 +2095,12 @@ S.asSchema(S.EitherFromUnion({ right: S.NumberFromString, left: S.Boolean }))
 
 // $ExpectType EitherFromUnion<typeof NumberFromString, typeof Boolean$>
 S.EitherFromUnion({ right: S.NumberFromString, left: S.Boolean })
+
+// $ExpectType EitherFromUnion<typeof String$, typeof Never>
+S.EitherFromUnion({ right: S.String, left: S.Never })
+
+// $ExpectType EitherFromUnion<typeof Never, typeof String$>
+S.EitherFromUnion({ right: S.Never, left: S.String })
 
 // ---------------------------------------------
 // ReadonlyMapFromSelf
