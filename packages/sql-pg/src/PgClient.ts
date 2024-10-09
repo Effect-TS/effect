@@ -348,7 +348,7 @@ export const makeCompiler = (
       switch (type.kind) {
         case "PgJson": {
           return [
-            placeholder(),
+            placeholder(undefined),
             [
               pg.json(
                 withoutTransform || transformValue === undefined
@@ -375,7 +375,7 @@ export const makeCompiler = (
               break
             }
           }
-          return [placeholder(), [param]]
+          return [placeholder(undefined), [param]]
         }
       }
     }
