@@ -1,5 +1,15 @@
 # @effect/sql-libsql
 
+## 0.4.1
+
+### Patch Changes
+
+- [#3759](https://github.com/Effect-TS/effect/pull/3759) [`d200f38`](https://github.com/Effect-TS/effect/commit/d200f38af7c87fbf4720cf12e3608310565ef8b3) Thanks @jkonowitch! - allow client instance to be passed in to LibsqlClient
+
+- Updated dependencies [[`b75ac5d`](https://github.com/Effect-TS/effect/commit/b75ac5d0909115507bedc90f18f2d34deb217769)]:
+  - @effect/platform@0.68.1
+  - @effect/sql@0.16.1
+
 ## 0.4.0
 
 ### Minor Changes

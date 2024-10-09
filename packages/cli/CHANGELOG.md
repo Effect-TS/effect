@@ -1,5 +1,12 @@
 # @effect/cli
 
+## 0.47.1
+
+### Patch Changes
+
+- Updated dependencies [[`b75ac5d`](https://github.com/Effect-TS/effect/commit/b75ac5d0909115507bedc90f18f2d34deb217769)]:
+  - @effect/platform@0.68.1
+
 ## 0.47.0
 
 ### Patch Changes
