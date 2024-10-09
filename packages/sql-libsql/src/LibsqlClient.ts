@@ -50,49 +50,74 @@ const LibsqlTransaction = Context.GenericTag<readonly [LibsqlConnection, counter
  * @category models
  * @since 1.0.0
  */
-export interface LibsqlClientConfig {
-  /** The database URL.
-   *
-   * The client supports `libsql:`, `http:`/`https:`, `ws:`/`wss:` and `file:` URL. For more infomation,
-   * please refer to the project README:
-   *
-   * https://github.com/libsql/libsql-client-ts#supported-urls
-   */
-  readonly url: string
-  /** Authentication token for the database. */
-  readonly authToken?: string | undefined
-  /** Encryption key for the database. */
-  readonly encryptionKey?: string | undefined
-  /** URL of a remote server to synchronize database with. */
-  readonly syncUrl?: string | undefined
-  /** Sync interval in seconds. */
-  readonly syncInterval?: number | undefined
-  /** Enables or disables TLS for `libsql:` URLs.
-   *
-   * By default, `libsql:` URLs use TLS. You can set this option to `false` to disable TLS.
-   */
-  readonly tls?: boolean | undefined
-  /** How to convert SQLite integers to JavaScript values:
-   *
-   * - `"number"` (default): returns SQLite integers as JavaScript `number`-s (double precision floats).
-   * `number` cannot precisely represent integers larger than 2^53-1 in absolute value, so attempting to read
-   * larger integers will throw a `RangeError`.
-   * - `"bigint"`: returns SQLite integers as JavaScript `bigint`-s (arbitrary precision integers). Bigints can
-   * precisely represent all SQLite integers.
-   * - `"string"`: returns SQLite integers as strings.
-   */
-  readonly intMode?: "number" | "bigint" | "string" | undefined
-  /** Concurrency limit.
-   *
-   * By default, the client performs up to 20 concurrent requests. You can set this option to a higher
-   * number to increase the concurrency limit or set it to 0 to disable concurrency limits completely.
-   */
-  readonly concurrency?: number | undefined
+export type LibsqlClientConfig = LibsqlClientConfig.Full | LibsqlClientConfig.Live
 
-  readonly spanAttributes?: Record<string, unknown> | undefined
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export declare namespace LibsqlClientConfig {
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Base {
+    readonly spanAttributes?: Record<string, unknown> | undefined
+    readonly transformResultNames?: ((str: string) => string) | undefined
+    readonly transformQueryNames?: ((str: string) => string) | undefined
+  }
 
-  readonly transformResultNames?: ((str: string) => string) | undefined
-  readonly transformQueryNames?: ((str: string) => string) | undefined
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Full extends Base {
+    /** The database URL.
+     *
+     * The client supports `libsql:`, `http:`/`https:`, `ws:`/`wss:` and `file:` URL. For more infomation,
+     * please refer to the project README:
+     *
+     * https://github.com/libsql/libsql-client-ts#supported-urls
+     */
+    readonly url: string
+    /** Authentication token for the database. */
+    readonly authToken?: string | undefined
+    /** Encryption key for the database. */
+    readonly encryptionKey?: string | undefined
+    /** URL of a remote server to synchronize database with. */
+    readonly syncUrl?: string | undefined
+    /** Sync interval in seconds. */
+    readonly syncInterval?: number | undefined
+    /** Enables or disables TLS for `libsql:` URLs.
+     *
+     * By default, `libsql:` URLs use TLS. You can set this option to `false` to disable TLS.
+     */
+    readonly tls?: boolean | undefined
+    /** How to convert SQLite integers to JavaScript values:
+     *
+     * - `"number"` (default): returns SQLite integers as JavaScript `number`-s (double precision floats).
+     * `number` cannot precisely represent integers larger than 2^53-1 in absolute value, so attempting to read
+     * larger integers will throw a `RangeError`.
+     * - `"bigint"`: returns SQLite integers as JavaScript `bigint`-s (arbitrary precision integers). Bigints can
+     * precisely represent all SQLite integers.
+     * - `"string"`: returns SQLite integers as strings.
+     */
+    readonly intMode?: "number" | "bigint" | "string" | undefined
+    /** Concurrency limit.
+     *
+     * By default, the client performs up to 20 concurrent requests. You can set this option to a higher
+     * number to increase the concurrency limit or set it to 0 to disable concurrency limits completely.
+     */
+    readonly concurrency?: number | undefined
+  }
+
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Live extends Base {
+    readonly liveClient: Libsql.Client
+  }
 }
 
 interface LibsqlConnection extends Connection {
@@ -195,13 +220,15 @@ export const make = (
       }
     }
 
-    const connection = yield* Effect.map(
-      Effect.acquireRelease(
-        Effect.sync(() => Libsql.createClient(options as Libsql.Config)),
-        (sdk) => Effect.sync(() => sdk.close())
-      ),
-      (sdk) => new LibsqlConnectionImpl(sdk)
-    )
+    const connection = "liveClient" in options
+      ? new LibsqlConnectionImpl(options.liveClient)
+      : yield* Effect.map(
+        Effect.acquireRelease(
+          Effect.sync(() => Libsql.createClient(options as Libsql.Config)),
+          (sdk) => Effect.sync(() => sdk.close())
+        ),
+        (sdk) => new LibsqlConnectionImpl(sdk)
+      )
     const semaphore = yield* Effect.makeSemaphore(1)
 
     const withTransaction = Client.makeWithTransaction({
