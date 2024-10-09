@@ -29,6 +29,8 @@ import type * as Sink from "./Sink.js"
 import type * as Emit from "./StreamEmit.js"
 import type * as HaltStrategy from "./StreamHaltStrategy.js"
 import type * as Take from "./Take.js"
+import type { TPubSub } from "./TPubSub.js"
+import type { TDequeue } from "./TQueue.js"
 import type * as Tracer from "./Tracer.js"
 import type { Covariant, NoInfer, TupleOf } from "./Types.js"
 import type * as Unify from "./Unify.js"
@@ -2014,6 +2016,32 @@ export const fromPubSub: {
 } = internal.fromPubSub
 
 /**
+ * Creates a stream from a subscription to a `TPubSub`.
+ *
+ * @param shutdown If `true`, the `TPubSub` will be shutdown after the stream is evaluated (defaults to `false`)
+ * @since 3.10.0
+ * @category constructors
+ */
+export const fromTPubSub: {
+  <A>(
+    pubsub: TPubSub<A>,
+    options: {
+      readonly maxChunkSize?: number | undefined
+      readonly scoped: true
+      readonly shutdown?: boolean | undefined
+    }
+  ): Effect.Effect<Stream<A>, never, Scope.Scope>
+  <A>(
+    pubsub: TPubSub<A>,
+    options?: {
+      readonly maxChunkSize?: number | undefined
+      readonly scoped?: false | undefined
+      readonly shutdown?: boolean | undefined
+    }
+  ): Stream<A>
+} = internal.fromTPubSub
+
+/**
  * Creates a new `Stream` from an iterable collection of values.
  *
  * @example
@@ -2093,6 +2121,20 @@ export const fromQueue: <A>(
     readonly shutdown?: boolean | undefined
   }
 ) => Stream<A> = internal.fromQueue
+
+/**
+ * Creates a stream from a TQueue of values
+ *
+ * @since 3.10.0
+ * @category constructors
+ */
+export const fromTQueue: <A>(
+  queue: TDequeue<A>,
+  options?: {
+    readonly maxChunkSize?: number | undefined
+    readonly shutdown?: boolean | undefined
+  }
+) => Stream<A> = internal.fromTQueue
 
 /**
  * Creates a stream from a `ReadableStream`.

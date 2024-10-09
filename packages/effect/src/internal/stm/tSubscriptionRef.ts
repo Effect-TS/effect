@@ -32,7 +32,7 @@ class TDequeueMerge<A> implements TQueue.TDequeue<A> {
     readonly second: TQueue.TDequeue<A>
   ) {}
 
-  peek: STM.STM<A, never, never> = STM.gen(this, function*() {
+  peek: STM.STM<A> = STM.gen(this, function*() {
     const first = yield* this.peekOption
     if (first._tag === "Some") {
       return first.value
@@ -40,7 +40,7 @@ class TDequeueMerge<A> implements TQueue.TDequeue<A> {
     return yield* STM.retry
   })
 
-  peekOption: STM.STM<Option.Option<A>, never, never> = STM.gen(this, function*() {
+  peekOption: STM.STM<Option.Option<A>> = STM.gen(this, function*() {
     const first = yield* this.first.peekOption
     if (first._tag === "Some") {
       return first
@@ -52,7 +52,7 @@ class TDequeueMerge<A> implements TQueue.TDequeue<A> {
     return Option.none()
   })
 
-  take: STM.STM<A, never, never> = STM.gen(this, function*() {
+  take: STM.STM<A> = STM.gen(this, function*() {
     if (!(yield* this.first.isEmpty)) {
       return yield* this.first.take
     }
@@ -62,11 +62,11 @@ class TDequeueMerge<A> implements TQueue.TDequeue<A> {
     return yield* STM.retry
   })
 
-  takeAll: STM.STM<Array<A>, never, never> = STM.gen(this, function*() {
+  takeAll: STM.STM<Array<A>> = STM.gen(this, function*() {
     return [...yield* this.first.takeAll, ...yield* this.second.takeAll]
   })
 
-  takeUpTo(max: number): STM.STM<Array<A>, never, never> {
+  takeUpTo(max: number): STM.STM<Array<A>> {
     return STM.gen(this, function*() {
       const first = yield* this.first.takeUpTo(max)
       if (first.length >= max) {
@@ -80,28 +80,28 @@ class TDequeueMerge<A> implements TQueue.TDequeue<A> {
     return this.first.capacity() + this.second.capacity()
   }
 
-  size: STM.STM<number, never, never> = STM.gen(this, function*() {
+  size: STM.STM<number> = STM.gen(this, function*() {
     return (yield* this.first.size) + (yield* this.second.size)
   })
 
-  isFull: STM.STM<boolean, never, never> = STM.gen(this, function*() {
+  isFull: STM.STM<boolean> = STM.gen(this, function*() {
     return (yield* this.first.isFull) && (yield* this.second.isFull)
   })
 
-  isEmpty: STM.STM<boolean, never, never> = STM.gen(this, function*() {
+  isEmpty: STM.STM<boolean> = STM.gen(this, function*() {
     return (yield* this.first.isEmpty) && (yield* this.second.isEmpty)
   })
 
-  shutdown: STM.STM<void, never, never> = STM.gen(this, function*() {
+  shutdown: STM.STM<void> = STM.gen(this, function*() {
     yield* this.first.shutdown
     yield* this.second.shutdown
   })
 
-  isShutdown: STM.STM<boolean, never, never> = STM.gen(this, function*() {
+  isShutdown: STM.STM<boolean> = STM.gen(this, function*() {
     return (yield* this.first.isShutdown) && (yield* this.second.isShutdown)
   })
 
-  awaitShutdown: STM.STM<void, never, never> = STM.gen(this, function*() {
+  awaitShutdown: STM.STM<void> = STM.gen(this, function*() {
     yield* this.first.awaitShutdown
     yield* this.second.awaitShutdown
   })
