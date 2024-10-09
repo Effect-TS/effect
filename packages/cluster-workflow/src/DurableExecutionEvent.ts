@@ -133,9 +133,13 @@ export type DurableExecutionEventFrom<IE, IA> = {
 /**
  * @since 1.0.0
  */
-export function schema<A, IA, E, IE>(success: Schema.Schema<A, IA>, failure: Schema.Schema<E, IE>): Schema.Schema<
+export function schema<A, IA, RA, E, IE, RE>(
+  success: Schema.Schema<A, IA, RA>,
+  failure: Schema.Schema<E, IE, RE>
+): Schema.Schema<
   DurableExecutionEvent<A, E>,
-  DurableExecutionEventFrom<IA, IE>
+  DurableExecutionEventFrom<IA, IE>,
+  RA | RE
 > {
   return Schema.Union(
     Schema.Struct({
