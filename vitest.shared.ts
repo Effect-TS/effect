@@ -47,6 +47,7 @@ const config: UserConfig = {
       ...alias("rpc-http"),
       ...alias("schema"),
       ...alias("sql"),
+      ...alias("sql-clickhouse"),
       ...alias("sql-d1"),
       ...alias("sql-drizzle"),
       ...alias("sql-kysely"),

@@ -88,7 +88,7 @@ export const make = <RD = never>({
 > =>
   Effect.gen(function*(_) {
     const sql = yield* Client.SqlClient
-    const ensureMigrationsTable = sql.onDialect({
+    const ensureMigrationsTable = sql.onDialectOrElse({
       mssql: () =>
         sql`IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL
   CREATE TABLE ${sql(table)} (
@@ -113,7 +113,7 @@ export const make = <RD = never>({
   name text not null
 )`
         ),
-      sqlite: () =>
+      orElse: () =>
         sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
   migration_id integer PRIMARY KEY NOT NULL,
   created_at datetime NOT NULL DEFAULT current_timestamp,
@@ -189,11 +189,9 @@ export const make = <RD = never>({
     // === run
 
     const run = Effect.gen(function*(_) {
-      yield* sql.onDialect({
-        mssql: () => Effect.void,
-        mysql: () => Effect.void,
+      yield* sql.onDialectOrElse({
         pg: () => sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`,
-        sqlite: () => Effect.void
+        orElse: () => Effect.void
       })
 
       const [latestMigrationId, current] = yield* Effect.all([
