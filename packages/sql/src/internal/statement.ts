@@ -571,16 +571,19 @@ class CompilerImpl implements Statement.Compiler {
             for (let i = 0; i < segment.value.length; i++) {
               const row: Array<Statement.Primitive> = new Array(keys.length)
               values[i] = row
+              placeholders += i === 0 ? "(" : ",("
               for (let j = 0; j < keys.length; j++) {
                 const key = keys[j]
                 const value = segment.value[i][key]
-                row[j] = extractPrimitive(value, this.onCustom, placeholderNoIncrement, withoutTransform)
-                placeholders += `,${placeholder(value)}`
+                const primitive = extractPrimitive(value, this.onCustom, placeholderNoIncrement, withoutTransform)
+                row[j] = primitive
+                placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
               }
+              placeholders += ")"
             }
             const [s, b] = this.onInsert(
               keys.map((_) => this.onIdentifier(_, withoutTransform)),
-              placeholders.slice(1),
+              placeholders,
               values,
               typeof segment.returningIdentifier === "string"
                 ? [segment.returningIdentifier, []]
@@ -591,26 +594,24 @@ class CompilerImpl implements Statement.Compiler {
             sql += s
             binds.push.apply(binds, b as any)
           } else {
+            let placeholders = ""
+            for (let i = 0; i < segment.value.length; i++) {
+              placeholders += i === 0 ? "(" : ",("
+              for (let j = 0; j < keys.length; j++) {
+                const value = segment.value[i][keys[j]]
+                const primitive = extractPrimitive(value, this.onCustom, placeholderNoIncrement, withoutTransform)
+                binds.push(primitive)
+                placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
+              }
+              placeholders += ")"
+            }
             sql += `${
               generateColumns(
                 keys,
                 this.onIdentifier,
                 withoutTransform
               )
-            } VALUES ${placeholders(segment.value)}`
-
-            for (let i = 0, len = segment.value.length; i < len; i++) {
-              for (let j = 0, len = keys.length; j < len; j++) {
-                binds.push(
-                  extractPrimitive(
-                    segment.value[i]?.[keys[j]] ?? null,
-                    this.onCustom,
-                    placeholderNoIncrement,
-                    withoutTransform
-                  )
-                )
-              }
-            }
+            } VALUES ${placeholders}`
 
             if (typeof segment.returningIdentifier === "string") {
               sql += ` RETURNING ${segment.returningIdentifier}`
@@ -688,15 +689,17 @@ class CompilerImpl implements Statement.Compiler {
           for (let i = 0; i < segment.value.length; i++) {
             const row: Array<Statement.Primitive> = new Array(keys.length)
             values[i] = row
+            placeholders += i === 0 ? "(" : ",("
             for (let j = 0; j < keys.length; j++) {
               const key = keys[j]
               const value = segment.value[i][key]
               row[j] = extractPrimitive(value, this.onCustom, placeholderNoIncrement, withoutTransform)
-              placeholders += `,${placeholder(value)}`
+              placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
             }
+            placeholders += ")"
           }
           const [s, b] = this.onRecordUpdate(
-            placeholders.slice(1),
+            placeholders,
             segment.alias,
             generateColumns(keys, this.onIdentifier, withoutTransform),
             values,
@@ -776,7 +779,7 @@ const makePlaceholdersArray = (evaluate: (u: unknown) => string) => (values: Rea
 
   let result = evaluate(values[0])
   for (let i = 1; i < values.length; i++) {
-    result += `,(${evaluate(values[i])})`
+    result += `,${evaluate(values[i])}`
   }
 
   return result
