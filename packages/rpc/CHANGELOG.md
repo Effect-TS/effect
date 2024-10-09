@@ -1,5 +1,16 @@
 # @effect/rpc
 
+## 0.43.0
+
+### Minor Changes
+
+- [#3747](https://github.com/Effect-TS/effect/pull/3747) [`09e8636`](https://github.com/Effect-TS/effect/commit/09e863648fa6ead9894b8b5104f8c11f6cc6120f) Thanks @patroza! - make RpcRouter conversion apis dual
+
+### Patch Changes
+
+- Updated dependencies [[`b75ac5d`](https://github.com/Effect-TS/effect/commit/b75ac5d0909115507bedc90f18f2d34deb217769)]:
+  - @effect/platform@0.68.1
+
 ## 0.42.0
 
 ### Patch Changes
