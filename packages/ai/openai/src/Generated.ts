@@ -701,10 +701,34 @@ export class DeleteModelResponse extends S.Class<DeleteModelResponse>("DeleteMod
 }) {}
 
 export class CreateModerationRequest extends S.Class<CreateModerationRequest>("CreateModerationRequest")({
-  "input": S.Union(S.String, S.Array(S.String)),
-  "model": S.optionalWith(S.Union(S.String, S.Literal("text-moderation-latest", "text-moderation-stable")), {
-    default: () => "text-moderation-latest" as const
-  })
+  "input": S.Union(
+    S.String,
+    S.Array(S.String),
+    S.Array(S.Union(
+      S.Struct({
+        "type": S.Literal("image_url"),
+        "image_url": S.Struct({
+          "url": S.String
+        })
+      }),
+      S.Struct({
+        "type": S.Literal("text"),
+        "text": S.String
+      })
+    ))
+  ),
+  "model": S.optionalWith(
+    S.Union(
+      S.String,
+      S.Literal(
+        "omni-moderation-latest",
+        "omni-moderation-2024-09-26",
+        "text-moderation-latest",
+        "text-moderation-stable"
+      )
+    ),
+    { default: () => "omni-moderation-latest" as const }
+  )
 }) {}
 
 export class CreateModerationResponse extends S.Class<CreateModerationResponse>("CreateModerationResponse")({
@@ -717,6 +741,8 @@ export class CreateModerationResponse extends S.Class<CreateModerationResponse>(
       "hate/threatening": S.Boolean,
       "harassment": S.Boolean,
       "harassment/threatening": S.Boolean,
+      "illicit": S.Boolean,
+      "illicit/violent": S.Boolean,
       "self-harm": S.Boolean,
       "self-harm/intent": S.Boolean,
       "self-harm/instructions": S.Boolean,
@@ -730,6 +756,8 @@ export class CreateModerationResponse extends S.Class<CreateModerationResponse>(
       "hate/threatening": S.Number,
       "harassment": S.Number,
       "harassment/threatening": S.Number,
+      "illicit": S.Number,
+      "illicit/violent": S.Number,
       "self-harm": S.Number,
       "self-harm/intent": S.Number,
       "self-harm/instructions": S.Number,
@@ -737,6 +765,21 @@ export class CreateModerationResponse extends S.Class<CreateModerationResponse>(
       "sexual/minors": S.Number,
       "violence": S.Number,
       "violence/graphic": S.Number
+    }),
+    "category_applied_input_types": S.Struct({
+      "hate": S.Array(S.Literal("text")),
+      "hate/threatening": S.Array(S.Literal("text")),
+      "harassment": S.Array(S.Literal("text")),
+      "harassment/threatening": S.Array(S.Literal("text")),
+      "illicit": S.Array(S.Literal("text")),
+      "illicit/violent": S.Array(S.Literal("text")),
+      "self-harm": S.Array(S.Literal("text", "image")),
+      "self-harm/intent": S.Array(S.Literal("text", "image")),
+      "self-harm/instructions": S.Array(S.Literal("text", "image")),
+      "sexual": S.Array(S.Literal("text", "image")),
+      "sexual/minors": S.Array(S.Literal("text")),
+      "violence": S.Array(S.Literal("text", "image")),
+      "violence/graphic": S.Array(S.Literal("text", "image"))
     })
   }))
 }) {}
@@ -1957,9 +2000,7 @@ export class Project extends S.Struct({
   "name": S.String,
   "created_at": S.Int,
   "archived_at": S.optionalWith(S.Int, { nullable: true }),
-  "status": S.Literal("active", "archived"),
-  "app_use_case": S.optional(S.String),
-  "business_website": S.optional(S.String)
+  "status": S.Literal("active", "archived")
 }) {}
 
 export class ProjectListResponse extends S.Class<ProjectListResponse>("ProjectListResponse")({
@@ -1971,15 +2012,11 @@ export class ProjectListResponse extends S.Class<ProjectListResponse>("ProjectLi
 }) {}
 
 export class ProjectCreateRequest extends S.Class<ProjectCreateRequest>("ProjectCreateRequest")({
-  "name": S.String,
-  "app_use_case": S.optional(S.String),
-  "business_website": S.optional(S.String)
+  "name": S.String
 }) {}
 
 export class ProjectUpdateRequest extends S.Class<ProjectUpdateRequest>("ProjectUpdateRequest")({
-  "name": S.String,
-  "app_use_case": S.optional(S.String),
-  "business_website": S.optional(S.String)
+  "name": S.String
 }) {}
 
 export class Error extends S.Struct({
@@ -2118,7 +2155,7 @@ export class ProjectApiKeyDeleteResponse extends S.Class<ProjectApiKeyDeleteResp
   "deleted": S.Boolean
 }) {}
 
-export const make = (httpClient: HttpClient.HttpClient.Service): Client => {
+export const make = (httpClient: HttpClient.HttpClient): Client => {
   const unexpectedStatus = (
     request: HttpClientRequest.HttpClientRequest,
     response: HttpClientResponse.HttpClientResponse
