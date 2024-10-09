@@ -2,18 +2,24 @@
  * @since 1.0.0
  */
 import * as Clickhouse from "@clickhouse/client"
+import * as NodeStream from "@effect/platform-node/NodeStream"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import type { Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
 import * as Otel from "@opentelemetry/semantic-conventions"
+import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
+import { identity } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 
 /**
  * @category type ids
@@ -35,6 +41,7 @@ export interface ClickhouseClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: ClickhouseClientConfig
   readonly param: (dataType: string, value: Statement.Primitive) => Statement.Fragment
+  readonly asCommand: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 }
 
 /**
@@ -62,7 +69,9 @@ export const make = (
 ): Effect.Effect<ClickhouseClient, SqlError, Scope.Scope> =>
   Effect.gen(function*(_) {
     const compiler = makeCompiler(options.transformQueryNames)
-    const transformRows = Statement.defaultTransforms(options.transformResultNames!).array
+    const transformRows = options.transformResultNames
+      ? Statement.defaultTransforms(options.transformResultNames).array
+      : identity
 
     const client = Clickhouse.createClient(options)
 
@@ -78,32 +87,46 @@ export const make = (
       constructor(private readonly conn: Clickhouse.ClickHouseClient) {}
 
       private runRaw(sql: string, params: ReadonlyArray<Primitive>, format: Clickhouse.DataFormat = "JSON") {
-        return Effect.tryPromise({
-          try: (abort_signal) => {
-            const paramsObj: Record<string, unknown> = {}
-            for (let i = 0; i < params.length; i++) {
-              paramsObj[`p${i + 1}`] = params[i]
-            }
-            return this.conn.query({
-              query: sql,
-              query_params: paramsObj,
-              abort_signal,
-              format
-            })
-          },
-          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
+        return Effect.withFiberRuntime<Clickhouse.ResultSet<"JSON"> | Clickhouse.CommandResult, SqlError>((fiber) => {
+          const method = fiber.getFiberRef(currentClientMethod)
+          return Effect.tryPromise({
+            try: (abort_signal) => {
+              const paramsObj: Record<string, unknown> = {}
+              for (let i = 0; i < params.length; i++) {
+                paramsObj[`p${i + 1}`] = params[i]
+              }
+              if (method === "command") {
+                return this.conn.command({
+                  query: sql,
+                  query_params: paramsObj,
+                  abort_signal
+                })
+              }
+              return this.conn.query({
+                query: sql,
+                query_params: paramsObj,
+                abort_signal,
+                format
+              })
+            },
+            catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
+          })
         })
       }
 
       private run(sql: string, params: ReadonlyArray<Primitive>, format?: Clickhouse.DataFormat) {
         return this.runRaw(sql, params, format).pipe(
-          Effect.flatMap((result) =>
-            Effect.orElseSucceed(
-              Effect.tryPromise(() => result.json()),
-              () => []
-            )
-          ),
-          Effect.map((result) => "data" in result ? result.data : result as any)
+          Effect.flatMap((result) => {
+            if ("json" in result) {
+              return Effect.promise(() =>
+                result.json().then(
+                  (result) => "data" in result ? result.data : result as any,
+                  () => []
+                )
+              )
+            }
+            return Effect.succeed([])
+          })
         )
       }
 
@@ -128,8 +151,33 @@ export const make = (
       executeUnprepared(sql: string, params?: ReadonlyArray<Primitive>) {
         return this.runTransform(sql, params ?? [])
       }
-      executeStream(_sql: string, _params: ReadonlyArray<Primitive>) {
-        return Effect.dieMessage("Not implemented")
+      executeStream(sql: string, params: ReadonlyArray<Primitive>) {
+        return this.runRaw(sql, params, "JSONEachRow").pipe(
+          Effect.map((result) => {
+            if (!("stream" in result)) {
+              return Stream.empty
+            }
+            return NodeStream.fromReadable<SqlError, ReadonlyArray<Clickhouse.Row<any, "JSONEachRow">>>(
+              () => result.stream() as any,
+              (cause) => new SqlError({ cause, message: "Failed to execute stream" })
+            )
+          }),
+          Stream.unwrap,
+          Stream.chunks,
+          Stream.mapEffect((chunk) => {
+            const promises: Array<Promise<any>> = []
+            for (const rows of chunk) {
+              for (const row of rows) {
+                promises.push(row.json())
+              }
+            }
+            return Effect.tryPromise({
+              try: () => Promise.all(promises).then((rows) => Chunk.unsafeFromArray(transformRows(rows))),
+              catch: (cause) => new SqlError({ cause, message: "Failed to parse row" })
+            })
+          }),
+          Stream.flattenChunks
+        )
       }
     }
 
@@ -151,10 +199,22 @@ export const make = (
         config: options,
         param(dataType: string, value: Statement.Primitive) {
           return clickhouseParam(dataType, value)
+        },
+        asCommand<A, E, R>(effect: Effect.Effect<A, E, R>) {
+          return Effect.locally(effect, currentClientMethod, "command")
         }
       }
     )
   })
+
+/**
+ * @category fiber refs
+ * @since 1.0.0
+ */
+export const currentClientMethod = globalValue(
+  "@effect/sql-clickhouse/ClickhouseClient/currentClientMethod",
+  () => FiberRef.unsafeMake<"query" | "command">("query")
+)
 
 /**
  * @category constructor
@@ -175,7 +235,11 @@ export const layer = (
   )
 
 const typeFromUnknown = (value: unknown): string => {
-  if (Array.isArray(value)) {
+  if (Statement.isFragment(value)) {
+    return typeFromUnknown(value.segments[0])
+  } else if (isClickhouseParam(value)) {
+    return value.i0
+  } else if (Array.isArray(value)) {
     return `Array(${typeFromUnknown(value[0])})`
   }
   switch (typeof value) {
@@ -203,9 +267,6 @@ export const makeCompiler = (transform?: (_: string) => string) =>
   Statement.makeCompiler<ClickhouseCustom>({
     dialect: "sqlite",
     placeholder(i, u) {
-      if (isClickhouseParam(u)) {
-        return `{p${i}: ${u.i0}}`
-      }
       return `{p${i}: ${typeFromUnknown(u)}}`
     },
     onIdentifier: transform ?
