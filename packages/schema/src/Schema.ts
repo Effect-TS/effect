@@ -242,7 +242,7 @@ export const asSchema = <S extends Schema.All>(
  * @category formatting
  * @since 0.67.0
  */
-export const format = <A, I, R>(schema: Schema<A, I, R>): string => String(schema.ast)
+export const format = <S extends Schema.All>(schema: S): string => String(schema.ast)
 
 /**
  * @since 0.67.0
@@ -6703,7 +6703,7 @@ const eitherParse = <RR, R, LR, L>(
  * @category api interface
  * @since 0.67.0
  */
-export interface EitherFromSelf<R extends Schema.Any, L extends Schema.Any> extends
+export interface EitherFromSelf<R extends Schema.All, L extends Schema.All> extends
   AnnotableClass<
     EitherFromSelf<R, L>,
     either_.Either<Schema.Type<R>, Schema.Type<L>>,
@@ -6716,7 +6716,7 @@ export interface EitherFromSelf<R extends Schema.Any, L extends Schema.Any> exte
  * @category Either transformations
  * @since 0.67.0
  */
-export const EitherFromSelf = <R extends Schema.Any, L extends Schema.Any>({ left, right }: {
+export const EitherFromSelf = <R extends Schema.All, L extends Schema.All>({ left, right }: {
   readonly left: L
   readonly right: R
 }): EitherFromSelf<R, L> => {
@@ -6748,7 +6748,7 @@ const makeRightEncoded = <A>(right: A) => (({
  * @category api interface
  * @since 0.67.0
  */
-export interface Either<R extends Schema.Any, L extends Schema.Any> extends
+export interface Either<R extends Schema.All, L extends Schema.All> extends
   AnnotableClass<
     Either<R, L>,
     either_.Either<Schema.Type<R>, Schema.Type<L>>,
@@ -6761,7 +6761,7 @@ export interface Either<R extends Schema.Any, L extends Schema.Any> extends
  * @category Either transformations
  * @since 0.67.0
  */
-export const Either = <R extends Schema.Any, L extends Schema.Any>({ left, right }: {
+export const Either = <R extends Schema.All, L extends Schema.All>({ left, right }: {
   readonly left: L
   readonly right: R
 }): Either<R, L> => {
@@ -6782,7 +6782,7 @@ export const Either = <R extends Schema.Any, L extends Schema.Any>({ left, right
  * @category api interface
  * @since 0.67.0
  */
-export interface EitherFromUnion<R extends Schema.Any, L extends Schema.Any> extends
+export interface EitherFromUnion<R extends Schema.All, L extends Schema.All> extends
   AnnotableClass<
     EitherFromUnion<R, L>,
     either_.Either<Schema.Type<R>, Schema.Type<L>>,
@@ -6801,7 +6801,7 @@ export interface EitherFromUnion<R extends Schema.Any, L extends Schema.Any> ext
  * @category Either transformations
  * @since 0.67.0
  */
-export const EitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ left, right }: {
+export const EitherFromUnion = <R extends Schema.All, L extends Schema.All>({ left, right }: {
   readonly left: L
   readonly right: R
 }): EitherFromUnion<R, L> => {
