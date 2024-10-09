@@ -163,9 +163,7 @@ const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
     spanId: `spanId${i}`,
     sampled: true,
     headers: {}
-  }))).pipe(
-    Effect.map(Array.filter((_): _ is S.ExitEncoded<any, any, unknown> => Array.isArray(_) === false))
-  )
+  })))
 const resolver = RpcResolver.make(handler)<typeof router>()
 const resolverEffect = RpcResolverNoStream.make(handlerEffect)<typeof router>()
 const resolverWithHeaders = RpcResolver.annotateHeadersEffect(
@@ -309,13 +307,16 @@ describe("Router", () => {
         headers: {}
       }])
     )
-    assert.deepStrictEqual(result, [[
-      { _tag: "Success", value: 1 },
-      { _tag: "Success", value: 2 },
-      { _tag: "Success", value: 3 },
-      { _tag: "Success", value: 4 },
-      { _tag: "Success", value: 5 }
-    ]])
+    assert.deepStrictEqual(
+      result,
+      [[
+        { _tag: "Success", value: 1 },
+        { _tag: "Success", value: 2 },
+        { _tag: "Success", value: 3 },
+        { _tag: "Success", value: 4 },
+        { _tag: "Success", value: 5 }
+      ]] as any
+    )
   })
 
   test("handlerUndecoded", () =>
