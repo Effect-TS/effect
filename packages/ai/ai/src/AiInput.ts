@@ -22,15 +22,6 @@ const constDisableValidation = { disableValidation: true } as const
 
 /**
  * @since 1.0.0
- * @category system
- */
-export class SystemInstruction extends Context.Tag("@effect/ai/AiContent/SystemInstruction")<
-  SystemInstruction,
-  string
->() {}
-
-/**
- * @since 1.0.0
  * @category parts
  */
 export const PartTypeId: unique symbol = Symbol("@effect/ai/AiInput/Part")
@@ -373,26 +364,17 @@ export declare namespace Message {
 
 /**
  * @since 1.0.0
- * @category tags
- */
-export class AiInput extends Context.Tag("@effect/ai/AiInput")<
-  AiInput,
-  Chunk.Chunk<Message>
->() {}
-
-/**
- * @since 1.0.0
  * @category constructors
  */
-export const make = (input: AiInput.Input, options?: {
+export const make = (input: Input, options?: {
   readonly role?: AiRole.AiRole
-}): AiInput.Type => {
+}): AiInput => {
   if (typeof input !== "string" && Predicate.isIterable(input)) {
     const chunk = Chunk.fromIterable(input as any)
     if (Chunk.isEmpty(chunk)) {
-      return chunk as AiInput.Type
+      return chunk as AiInput
     } else if (Message.is(Chunk.unsafeHead(chunk))) {
-      return chunk as AiInput.Type
+      return chunk as AiInput
     }
     return Chunk.of(Message.fromInput(chunk as any, options?.role))
   } else if (AiResponse.is(input)) {
@@ -412,7 +394,7 @@ export const make = (input: AiInput.Input, options?: {
  * @since 1.0.0
  * @category constructors
  */
-export const empty: AiInput.Type = Chunk.empty()
+export const empty: AiInput = Chunk.empty()
 
 /**
  * @since 1.0.0
@@ -430,26 +412,20 @@ export const SchemaJson: Schema_.Schema<Chunk.Chunk<Message>, string> = Schema_.
  * @since 1.0.0
  * @category models
  */
-export declare namespace AiInput {
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type Input =
-    | string
-    | Part
-    | Iterable<Part>
-    | Message
-    | Iterable<Message>
-    | AiResponse
-    | WithResolved<unknown>
+export type Input =
+  | string
+  | Part
+  | Iterable<Part>
+  | Message
+  | Iterable<Message>
+  | AiResponse
+  | WithResolved<unknown>
 
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type Type = Chunk.Chunk<Message>
-}
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type AiInput = Chunk.Chunk<Message>
 
 const completionsTag = Context.GenericTag<Completions, Completions.Service>("@effect/ai/Completions")
 
@@ -457,7 +433,7 @@ const completionsTag = Context.GenericTag<Completions, Completions.Service>("@ef
  * @since 1.0.0
  * @category tokens
  */
-export const tokens = (self: AiInput.Type): Effect.Effect<Array<number>, AiError, Completions> =>
+export const tokens = (self: AiInput): Effect.Effect<Array<number>, AiError, Completions> =>
   Effect.flatMap(completionsTag, (completions) => completions.tokenize(self))
 
 /**
@@ -465,16 +441,16 @@ export const tokens = (self: AiInput.Type): Effect.Effect<Array<number>, AiError
  * @category tokens
  */
 export const truncate: {
-  (maxTokens: number): (self: AiInput.Type) => Effect.Effect<AiInput.Type, AiError, Completions>
-  (self: AiInput.Type, maxTokens: number): Effect.Effect<AiInput.Type, AiError, Completions>
+  (maxTokens: number): (self: AiInput) => Effect.Effect<AiInput, AiError, Completions>
+  (self: AiInput, maxTokens: number): Effect.Effect<AiInput, AiError, Completions>
 } = dual(
   2,
-  (self: AiInput.Type, maxTokens: number): Effect.Effect<AiInput.Type, AiError, Completions> =>
+  (self: AiInput, maxTokens: number): Effect.Effect<AiInput, AiError, Completions> =>
     Effect.flatMap(completionsTag, (completions) => {
       let count = 0
       let inParts = self
       let outParts: Chunk.Chunk<Message> = Chunk.empty()
-      const loop: Effect.Effect<AiInput.Type, AiError> = Effect.suspend(() => {
+      const loop: Effect.Effect<AiInput, AiError> = Effect.suspend(() => {
         const o = Chunk.last(inParts)
         if (Option.isNone(o)) {
           return Effect.succeed(make(outParts))
@@ -496,133 +472,9 @@ export const truncate: {
 
 /**
  * @since 1.0.0
- * @category context
+ * @category system
  */
-export const provide: {
-  (input: AiInput.Input, options?: {
-    readonly role?: AiRole.AiRole | undefined
-  }): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, AiInput>>
-  <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
-    readonly role?: AiRole.AiRole | undefined
-  }): Effect.Effect<A, E, Exclude<R, AiInput>>
-} = dual((args) => Effect.isEffect(args[0]), <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
-  readonly role?: AiRole.AiRole | undefined
-}): Effect.Effect<A, E, Exclude<R, AiInput>> => Effect.provideService(effect, AiInput, make(input, options)))
-
-/**
- * @since 1.0.0
- * @category context
- */
-export const provideEffect: {
-  <E2, R2>(
-    input: Effect.Effect<AiInput.Type, E2, R2>
-  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
-  <A, E, R, E2, R2>(
-    effect: Effect.Effect<A, E, R>,
-    input: Effect.Effect<AiInput.Type, E2, R2>
-  ): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
-} = dual(2, <A, E, R, E2, R2>(
-  effect: Effect.Effect<A, E, R>,
-  input: Effect.Effect<AiInput.Type, E2, R2>
-): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2> => Effect.provideServiceEffect(effect, AiInput, input))
-
-/**
- * @since 1.0.0
- * @category context
- */
-export const provideSystem: {
-  (input: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, SystemInstruction>>
-  <A, E, R>(effect: Effect.Effect<A, E, R>, input: string): Effect.Effect<A, E, Exclude<R, SystemInstruction>>
-} = dual(
-  2,
-  <A, E, R>(effect: Effect.Effect<A, E, R>, input: string): Effect.Effect<A, E, Exclude<R, SystemInstruction>> =>
-    Effect.provideService(effect, SystemInstruction, input)
-)
-
-/**
- * @since 1.0.0
- * @category context
- */
-export const append: {
-  (input: AiInput.Input, options?: {
-    readonly role?: AiRole.AiRole | undefined
-  }): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, AiInput>>
-  <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
-    readonly role?: AiRole.AiRole | undefined
-  }): Effect.Effect<A, E, Exclude<R, AiInput>>
-} = dual((args) => Effect.isEffect(args[0]), <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
-  readonly role?: AiRole.AiRole | undefined
-}): Effect.Effect<A, E, Exclude<R, AiInput>> => appendEffect(effect, Effect.succeed(make(input, options))))
-
-/**
- * @since 1.0.0
- * @category context
- */
-export const appendEffect: {
-  <E2, R2>(
-    input: Effect.Effect<AiInput.Type, E2, R2>
-  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
-  <A, E, R, E2, R2>(
-    effect: Effect.Effect<A, E, R>,
-    input: Effect.Effect<AiInput.Type, E2, R2>
-  ): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
-} = dual(2, <A, E, R, E2, R2>(
-  effect: Effect.Effect<A, E, R>,
-  input: Effect.Effect<AiInput.Type, E2, R2>
-): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2> =>
-  Effect.flatMap(
-    Effect.serviceOption(AiInput),
-    Option.match({
-      onNone: () => Effect.provideServiceEffect(effect, AiInput, input),
-      onSome: (existing) =>
-        Effect.provideServiceEffect(
-          effect,
-          AiInput,
-          Effect.map(input, (input) => Chunk.appendAll(existing, input))
-        )
-    })
-  ))
-
-/**
- * @since 1.0.0
- * @category context
- */
-export const prepend: {
-  (input: AiInput.Input, options?: {
-    readonly role?: AiRole.AiRole | undefined
-  }): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, AiInput>>
-  <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
-    readonly role?: AiRole.AiRole | undefined
-  }): Effect.Effect<A, E, Exclude<R, AiInput>>
-} = dual((args) => Effect.isEffect(args[0]), <A, E, R>(effect: Effect.Effect<A, E, R>, input: AiInput.Input, options?: {
-  readonly role?: AiRole.AiRole | undefined
-}): Effect.Effect<A, E, Exclude<R, AiInput>> => prependEffect(effect, Effect.succeed(make(input, options))))
-
-/**
- * @since 1.0.0
- * @category context
- */
-export const prependEffect: {
-  <E2, R2>(
-    input: Effect.Effect<AiInput.Type, E2, R2>
-  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
-  <A, E, R, E2, R2>(
-    effect: Effect.Effect<A, E, R>,
-    input: Effect.Effect<AiInput.Type, E2, R2>
-  ): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2>
-} = dual(2, <A, E, R, E2, R2>(
-  effect: Effect.Effect<A, E, R>,
-  input: Effect.Effect<AiInput.Type, E2, R2>
-): Effect.Effect<A, E | E2, Exclude<R, AiInput> | R2> =>
-  Effect.flatMap(
-    Effect.serviceOption(AiInput),
-    Option.match({
-      onNone: () => Effect.provideServiceEffect(effect, AiInput, input),
-      onSome: (existing) =>
-        Effect.provideServiceEffect(
-          effect,
-          AiInput,
-          Effect.map(input, (input) => Chunk.prependAll(existing, input))
-        )
-    })
-  ))
+export class SystemInstruction extends Context.Tag("@effect/ai/AiInput/SystemInstruction")<
+  SystemInstruction,
+  string
+>() {}

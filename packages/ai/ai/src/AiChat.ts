@@ -34,18 +34,18 @@ export declare namespace AiChat {
    * @category models
    */
   export interface Service {
-    readonly history: Effect.Effect<AiInput.AiInput.Type>
+    readonly history: Effect.Effect<AiInput.AiInput>
     readonly export: Effect.Effect<unknown>
     readonly exportJson: Effect.Effect<string>
-    readonly send: (input: AiInput.AiInput.Input) => Effect.Effect<AiResponse, AiError>
-    readonly stream: (input: AiInput.AiInput.Input) => Stream.Stream<AiResponse, AiError>
+    readonly send: (input: AiInput.Input) => Effect.Effect<AiResponse, AiError>
+    readonly stream: (input: AiInput.Input) => Stream.Stream<AiResponse, AiError>
     readonly structured: <A, I, R>(
       tool: Completions.StructuredSchema<A, I, R>,
-      input: AiInput.AiInput.Input
+      input: AiInput.Input
     ) => Effect.Effect<A, AiError, R>
     readonly toolkit: <Tools extends AiToolkit.Tool.AnySchema>(
       options: {
-        readonly input: AiInput.AiInput.Input
+        readonly input: AiInput.Input
         readonly tools: AiToolkit.Handlers<Tools>
         readonly required?: Tools["_tag"] | boolean | undefined
         readonly concurrency?: Concurrency | undefined
@@ -57,7 +57,7 @@ export declare namespace AiChat {
     >
     readonly toolkitStream: <Tools extends AiToolkit.Tool.AnySchema>(
       options: {
-        readonly input: AiInput.AiInput.Input
+        readonly input: AiInput.Input
         readonly tools: AiToolkit.Handlers<Tools>
         readonly required?: Tools["_tag"] | boolean | undefined
         readonly concurrency?: Concurrency | undefined
@@ -74,7 +74,7 @@ export declare namespace AiChat {
  * @since 1.0.0
  * @category constructors
  */
-export const fromInput = (input: AiInput.AiInput.Input): Effect.Effect<AiChat.Service, never, Completions> =>
+export const fromInput = (input: AiInput.Input): Effect.Effect<AiChat.Service, never, Completions> =>
   Ref.make(AiInput.make(input)).pipe(
     Effect.bindTo("historyRef"),
     Effect.bind("completions", () => Completions),
@@ -85,7 +85,7 @@ class AiChatImpl implements AiChat.Service {
   readonly semaphore = Effect.unsafeMakeSemaphore(1)
 
   constructor(
-    readonly historyRef: Ref.Ref<AiInput.AiInput.Type>,
+    readonly historyRef: Ref.Ref<AiInput.AiInput>,
     readonly completions: Completions.Service
   ) {}
 
@@ -107,13 +107,12 @@ class AiChatImpl implements AiChat.Service {
     )
   }
 
-  send(input: AiInput.AiInput.Input) {
+  send(input: AiInput.Input) {
     const newParts = AiInput.make(input)
     return Ref.get(this.historyRef).pipe(
       Effect.flatMap((parts) => {
         const allParts = Chunk.appendAll(parts, newParts)
-        return this.completions.create.pipe(
-          Effect.provideService(AiInput.AiInput, allParts),
+        return this.completions.create(allParts).pipe(
           Effect.tap((response) => {
             const responseParts = AiInput.make(response)
             return Ref.set(this.historyRef, Chunk.appendAll(allParts, responseParts))
@@ -125,7 +124,7 @@ class AiChatImpl implements AiChat.Service {
     )
   }
 
-  stream(input: AiInput.AiInput.Input) {
+  stream(input: AiInput.Input) {
     return Stream.suspend(() => {
       let combined = AiResponse.empty
       return Stream.fromChannel(Channel.acquireUseRelease(
@@ -134,8 +133,7 @@ class AiChatImpl implements AiChat.Service {
           Effect.map(Chunk.appendAll(AiInput.make(input)))
         ),
         (parts) =>
-          this.completions.stream.pipe(
-            Stream.provideService(AiInput.AiInput, parts),
+          this.completions.stream(parts).pipe(
             Stream.map((chunk) => {
               combined = combined.concat(chunk)
               return chunk
@@ -152,15 +150,17 @@ class AiChatImpl implements AiChat.Service {
   }
 
   structured<A, I, R>(
-    tool: Completions.StructuredSchema<A, I, R>,
-    input: AiInput.AiInput.Input
+    schema: Completions.StructuredSchema<A, I, R>,
+    input: AiInput.Input
   ): Effect.Effect<A, AiError, R> {
     const newParts = AiInput.make(input)
     return Ref.get(this.historyRef).pipe(
       Effect.flatMap((parts) => {
         const allParts = Chunk.appendAll(parts, newParts)
-        return this.completions.structured(tool).pipe(
-          Effect.provideService(AiInput.AiInput, allParts),
+        return this.completions.structured({
+          input: allParts,
+          schema
+        }).pipe(
           Effect.flatMap((response) => {
             const responseParts = AiInput.make(response)
             return Effect.as(
@@ -171,13 +171,16 @@ class AiChatImpl implements AiChat.Service {
         )
       }),
       this.semaphore.withPermits(1),
-      Effect.withSpan("AiChat.structured", { attributes: { input, tool: tool._tag }, captureStackTrace: false })
+      Effect.withSpan("AiChat.structured", {
+        attributes: { input, schema: schema._tag ?? schema.identifier },
+        captureStackTrace: false
+      })
     )
   }
 
   toolkit<Tools extends AiToolkit.Tool.AnySchema>(
     options: {
-      readonly input: AiInput.AiInput.Input
+      readonly input: AiInput.Input
       readonly tools: AiToolkit.Handlers<Tools>
       readonly required?: Tools["_tag"] | boolean | undefined
       readonly concurrency?: Concurrency | undefined
@@ -191,8 +194,10 @@ class AiChatImpl implements AiChat.Service {
     return Ref.get(this.historyRef).pipe(
       Effect.flatMap((parts) => {
         const allParts = Chunk.appendAll(parts, newParts)
-        return this.completions.toolkit(options).pipe(
-          Effect.provideService(AiInput.AiInput, allParts),
+        return this.completions.toolkit({
+          ...options,
+          input: allParts
+        }).pipe(
           Effect.tap((response) => {
             const responseParts = AiInput.make(response)
             return Ref.set(this.historyRef, Chunk.appendAll(allParts, responseParts))
@@ -206,7 +211,7 @@ class AiChatImpl implements AiChat.Service {
 
   toolkitStream<Tools extends AiToolkit.Tool.AnySchema>(
     options: {
-      readonly input: AiInput.AiInput.Input
+      readonly input: AiInput.Input
       readonly tools: AiToolkit.Handlers<Tools>
       readonly required?: Tools["_tag"] | boolean | undefined
       readonly concurrency?: Concurrency | undefined
@@ -224,8 +229,10 @@ class AiChatImpl implements AiChat.Service {
           Effect.map(Chunk.appendAll(AiInput.make(options.input)))
         ),
         (parts) =>
-          this.completions.toolkitStream(options).pipe(
-            Stream.provideService(AiInput.AiInput, parts),
+          this.completions.toolkitStream({
+            ...options,
+            input: parts
+          }).pipe(
             Stream.map((chunk) => {
               combined = combined.concat(chunk)
               return chunk
@@ -247,15 +254,6 @@ class AiChatImpl implements AiChat.Service {
  * @category constructors
  */
 export const empty: Effect.Effect<AiChat.Service, never, Completions> = fromInput(AiInput.empty)
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const fromInputContext: Effect.Effect<AiChat.Service, never, Completions | AiInput.AiInput> = Effect.flatMap(
-  AiInput.AiInput,
-  fromInput
-)
 
 /**
  * @since 1.0.0

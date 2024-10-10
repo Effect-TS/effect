@@ -13,7 +13,7 @@ import * as Stream from "effect/Stream"
 import type { Concurrency } from "effect/Types"
 import { AiError } from "./AiError.js"
 import type { Message } from "./AiInput.js"
-import { AiInput, SystemInstruction } from "./AiInput.js"
+import * as AiInput from "./AiInput.js"
 import type { AiResponse, ToolCallId, ToolCallPart } from "./AiResponse.js"
 import { WithResolved } from "./AiResponse.js"
 import type * as AiToolkit from "./AiToolkit.js"
@@ -46,13 +46,17 @@ export declare namespace Completions {
    * @models
    */
   export interface Service {
-    readonly create: Effect.Effect<AiResponse, AiError, AiInput>
-    readonly stream: Stream.Stream<AiResponse, AiError, AiInput>
+    readonly create: (input: AiInput.Input) => Effect.Effect<AiResponse, AiError>
+    readonly stream: (input: AiInput.Input) => Stream.Stream<AiResponse, AiError>
     readonly structured: <A, I, R>(
-      tool: StructuredSchema<A, I, R>
-    ) => Effect.Effect<WithResolved<A>, AiError, AiInput | R>
+      options: {
+        readonly input: AiInput.Input
+        readonly schema: StructuredSchema<A, I, R>
+      }
+    ) => Effect.Effect<WithResolved<A>, AiError, R>
     readonly toolkit: <Tools extends AiToolkit.Tool.AnySchema>(
       options: {
+        readonly input: AiInput.Input
         readonly tools: AiToolkit.Handlers<Tools>
         readonly required?: Tools["_tag"] | boolean | undefined
         readonly concurrency?: Concurrency | undefined
@@ -60,10 +64,11 @@ export declare namespace Completions {
     ) => Effect.Effect<
       WithResolved<AiToolkit.Tool.Success<Tools>>,
       AiError | AiToolkit.Tool.Failure<Tools>,
-      AiInput | AiToolkit.Tool.Context<Tools>
+      AiToolkit.Tool.Context<Tools>
     >
     readonly toolkitStream: <Tools extends AiToolkit.Tool.AnySchema>(
       options: {
+        readonly input: AiInput.Input
         readonly tools: AiToolkit.Handlers<Tools>
         readonly required?: Tools["_tag"] | boolean | undefined
         readonly concurrency?: Concurrency | undefined
@@ -71,9 +76,9 @@ export declare namespace Completions {
     ) => Stream.Stream<
       WithResolved<AiToolkit.Tool.Success<Tools>>,
       AiError | AiToolkit.Tool.Failure<Tools>,
-      AiInput | AiToolkit.Tool.Context<Tools>
+      AiToolkit.Tool.Context<Tools>
     >
-    readonly tokenize: (content: AiInput.Type) => Effect.Effect<Array<number>, AiError>
+    readonly tokenize: (content: AiInput.Input) => Effect.Effect<Array<number>, AiError>
   }
 }
 
@@ -119,130 +124,151 @@ export const make = (options: {
     }>
     readonly required: boolean | string
   }) => Stream.Stream<AiResponse, AiError>
-  readonly tokenize: (content: AiInput.Type) => Effect.Effect<Array<number>, AiError>
-}): Completions.Service => ({
-  create: Effect.withFiberRuntime<AiResponse, AiError, AiInput>((fiber) =>
-    options.create({
-      input: Context.unsafeGet(fiber.currentContext, AiInput) as Chunk.NonEmptyChunk<Message>,
-      system: Context.getOption(fiber.currentContext, SystemInstruction),
-      tools: [],
-      required: false
-    })
-  ).pipe(Effect.withSpan("Completions.create", { captureStackTrace: false })),
-  stream: Stream.unwrap(
-    Effect.withFiberRuntime<Stream.Stream<AiResponse, AiError>, never, AiInput>((fiber) =>
-      Effect.succeed(options.stream({
-        input: Context.unsafeGet(fiber.currentContext, AiInput) as Chunk.NonEmptyChunk<Message>,
-        system: Context.getOption(fiber.currentContext, SystemInstruction),
-        tools: [],
-        required: false
-      }))
-    )
-  ).pipe(Stream.withSpan("Completions.stream", { captureStackTrace: false })),
-  structured(tool) {
-    const decode = Schema.decodeUnknown(tool)
-    const toolId = tool._tag ?? tool.identifier
-    return Effect.withFiberRuntime<AiResponse, AiError, AiInput>((fiber) =>
-      options.create({
-        input: Context.unsafeGet(fiber.currentContext, AiInput) as Chunk.NonEmptyChunk<Message>,
-        system: Context.getOption(fiber.currentContext, SystemInstruction),
-        tools: [convertTool(tool)],
-        required: true
-      })
-    ).pipe(
-      Effect.flatMap((response) =>
-        Chunk.findFirst(
-          response.parts,
-          (part): part is ToolCallPart => part._tag === "ToolCall" && part.name === toolId
-        ).pipe(
-          Option.match({
-            onNone: () =>
-              Effect.fail(
-                new AiError({
-                  module: "Completions",
-                  method: "structured",
-                  description: `Tool call '${toolId}' not found in response`
-                })
-              ),
-            onSome: (toolCall) =>
-              Effect.matchEffect(decode(toolCall.params), {
-                onFailure: (cause) =>
-                  new AiError({
-                    module: "Completions",
-                    method: "structured",
-                    description: `Failed to decode tool call '${toolId}' parameters`,
-                    cause
-                  }),
-                onSuccess: (resolved) =>
-                  Effect.succeed(
-                    new WithResolved({
-                      response,
-                      resolved: new Map([[toolCall.id, resolved]]),
-                      encoded: new Map([[toolCall.id, toolCall.params]])
-                    })
-                  )
-              })
-          }),
-          Effect.withSpan("Completions.structured", {
-            attributes: { tool: toolId },
-            captureStackTrace: false
-          })
+  readonly tokenize: (content: AiInput.AiInput) => Effect.Effect<Array<number>, AiError>
+}): Effect.Effect<Completions.Service> =>
+  Effect.map(Effect.serviceOption(AiInput.SystemInstruction), (parentSystem) => {
+    return Completions.of({
+      create(input) {
+        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
+          Effect.flatMap((system) =>
+            options.create({
+              input: AiInput.make(input) as Chunk.NonEmptyChunk<Message>,
+              system: Option.orElse(system, () => parentSystem),
+              tools: [],
+              required: false
+            })
+          ),
+          Effect.withSpan("Completions.create", { captureStackTrace: false })
         )
-      )
-    )
-  },
-  toolkit({ concurrency, required = false, tools }) {
-    const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema }> = []
-    for (const [, tool] of tools.toolkit.tools) {
-      toolArr.push(convertTool(tool as any))
-    }
-    return Effect.withFiberRuntime<AiResponse, AiError, AiInput>((fiber) =>
-      options.create({
-        input: Context.unsafeGet(fiber.currentContext, AiInput) as Chunk.NonEmptyChunk<Message>,
-        system: Context.getOption(fiber.currentContext, SystemInstruction),
-        tools: toolArr,
-        required: required as any
-      })
-    ).pipe(
-      Effect.flatMap((response) => resolveParts({ response, tools, concurrency, method: "toolkit" })),
-      Effect.withSpan("Completions.toolkit", {
-        captureStackTrace: false,
-        attributes: {
-          concurrency,
-          required
+      },
+      stream(input_) {
+        const input = AiInput.make(input_)
+        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
+          Effect.map((system) =>
+            options.stream({
+              input: input as Chunk.NonEmptyChunk<Message>,
+              system: Option.orElse(system, () => parentSystem),
+              tools: [],
+              required: false
+            })
+          ),
+          Stream.unwrap,
+          Stream.withSpan("Completions.stream", { captureStackTrace: false })
+        )
+      },
+      structured(opts) {
+        const input = AiInput.make(opts.input)
+        const schema = opts.schema
+        const decode = Schema.decodeUnknown(schema)
+        const toolId = schema._tag ?? schema.identifier
+        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
+          Effect.flatMap((system) =>
+            options.create({
+              input: input as Chunk.NonEmptyChunk<Message>,
+              system: Option.orElse(system, () => parentSystem),
+              tools: [convertTool(schema)],
+              required: true
+            })
+          ),
+          Effect.flatMap((response) =>
+            Chunk.findFirst(
+              response.parts,
+              (part): part is ToolCallPart => part._tag === "ToolCall" && part.name === toolId
+            ).pipe(
+              Option.match({
+                onNone: () =>
+                  Effect.fail(
+                    new AiError({
+                      module: "Completions",
+                      method: "structured",
+                      description: `Tool call '${toolId}' not found in response`
+                    })
+                  ),
+                onSome: (toolCall) =>
+                  Effect.matchEffect(decode(toolCall.params), {
+                    onFailure: (cause) =>
+                      new AiError({
+                        module: "Completions",
+                        method: "structured",
+                        description: `Failed to decode tool call '${toolId}' parameters`,
+                        cause
+                      }),
+                    onSuccess: (resolved) =>
+                      Effect.succeed(
+                        new WithResolved({
+                          response,
+                          resolved: new Map([[toolCall.id, resolved]]),
+                          encoded: new Map([[toolCall.id, toolCall.params]])
+                        })
+                      )
+                  })
+              }),
+              Effect.withSpan("Completions.structured", {
+                attributes: { tool: toolId },
+                captureStackTrace: false
+              })
+            )
+          )
+        )
+      },
+      toolkit({ concurrency, input: inputInput, required = false, tools }) {
+        const input = AiInput.make(inputInput)
+        const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema }> = []
+        for (const [, tool] of tools.toolkit.tools) {
+          toolArr.push(convertTool(tool as any))
         }
-      })
-    ) as any
-  },
-  toolkitStream({ concurrency, required = false, tools }) {
-    const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema }> = []
-    for (const [, tool] of tools.toolkit.tools) {
-      toolArr.push(convertTool(tool as any))
-    }
-    return Effect.withFiberRuntime<Stream.Stream<AiResponse, AiError>, never, AiInput>((fiber) =>
-      Effect.succeed(options.stream({
-        input: Context.unsafeGet(fiber.currentContext, AiInput) as Chunk.NonEmptyChunk<Message>,
-        system: Context.getOption(fiber.currentContext, SystemInstruction),
-        tools: toolArr,
-        required: required as any
-      }))
-    ).pipe(
-      Stream.unwrap,
-      Stream.mapEffect(
-        (chunk) => resolveParts({ response: chunk, tools, concurrency, method: "toolkitStream" }),
-        { concurrency: "unbounded" }
-      ),
-      Stream.withSpan("Completions.toolkitStream", {
-        captureStackTrace: false,
-        attributes: {
-          concurrency,
-          required
+        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
+          Effect.flatMap((system) =>
+            options.create({
+              input: input as Chunk.NonEmptyChunk<Message>,
+              system: Option.orElse(system, () => parentSystem),
+              tools: toolArr,
+              required: required as any
+            })
+          ),
+          Effect.flatMap((response) => resolveParts({ response, tools, concurrency, method: "toolkit" })),
+          Effect.withSpan("Completions.toolkit", {
+            captureStackTrace: false,
+            attributes: {
+              concurrency,
+              required
+            }
+          })
+        ) as any
+      },
+      toolkitStream({ concurrency, input, required = false, tools }) {
+        const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema }> = []
+        for (const [, tool] of tools.toolkit.tools) {
+          toolArr.push(convertTool(tool as any))
         }
-      })
-    ) as any
-  },
-  tokenize: options.tokenize
-})
+        return Effect.serviceOption(AiInput.SystemInstruction).pipe(
+          Effect.map((system) =>
+            options.stream({
+              input: AiInput.make(input) as Chunk.NonEmptyChunk<Message>,
+              system: Option.orElse(system, () => parentSystem),
+              tools: toolArr,
+              required: required as any
+            })
+          ),
+          Stream.unwrap,
+          Stream.mapEffect(
+            (chunk) => resolveParts({ response: chunk, tools, concurrency, method: "toolkitStream" }),
+            { concurrency: "unbounded" }
+          ),
+          Stream.withSpan("Completions.toolkitStream", {
+            captureStackTrace: false,
+            attributes: {
+              concurrency,
+              required
+            }
+          })
+        ) as any
+      },
+      tokenize(input) {
+        return options.tokenize(AiInput.make(input))
+      }
+    })
+  })
 
 const convertTool = <A, I, R>(tool: Completions.StructuredSchema<A, I, R>) => ({
   name: tool._tag ?? tool.identifier,

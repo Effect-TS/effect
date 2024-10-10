@@ -53,7 +53,7 @@ const make = (options: {
         })
       )
 
-    return Completions.make({
+    return yield* Completions.make({
       create(options) {
         return makeRequest(options).pipe(
           Effect.flatMap(client.client.createChatCompletion),
@@ -159,7 +159,7 @@ export const layer = (options: {
 }) => Layer.effect(Completions.Completions, make(options))
 
 const makeMessages = (
-  input: AiInput.AiInput.Type,
+  input: AiInput.AiInput,
   system: Option.Option<string>
 ): Arr.NonEmptyReadonlyArray<typeof Generated.ChatCompletionRequestMessage.Encoded> => {
   const messages: Array<typeof Generated.ChatCompletionRequestMessage.Encoded> = system._tag === "Some" ?
