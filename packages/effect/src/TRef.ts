@@ -7,6 +7,7 @@ import type * as TxnId from "./internal/stm/stm/txnId.js"
 import type * as Versioned from "./internal/stm/stm/versioned.js"
 import * as internal from "./internal/stm/tRef.js"
 import type * as Option from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
 import type * as STM from "./STM.js"
 import type * as Types from "./Types.js"
 
@@ -34,7 +35,7 @@ export type TRefTypeId = typeof TRefTypeId
  * @since 2.0.0
  * @category models
  */
-export interface TRef<in out A> extends TRef.Variance<A> {
+export interface TRef<in out A> extends TRef.Variance<A>, Pipeable {
   /**
    * Note: the method is unbound, exposed only for potential extensions.
    */

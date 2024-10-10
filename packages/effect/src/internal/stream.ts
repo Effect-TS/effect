@@ -31,6 +31,8 @@ import type * as Stream from "../Stream.js"
 import type * as Emit from "../StreamEmit.js"
 import * as HaltStrategy from "../StreamHaltStrategy.js"
 import type * as Take from "../Take.js"
+import * as TPubSub from "../TPubSub.js"
+import * as TQueue from "../TQueue.js"
 import type * as Tracer from "../Tracer.js"
 import * as Tuple from "../Tuple.js"
 import type { NoInfer, TupleOf } from "../Types.js"
@@ -3134,6 +3136,14 @@ export const fromPubSub: {
 }
 
 /** @internal */
+export const fromTPubSub = <A>(pubsub: TPubSub.TPubSub<A>): Stream.Stream<A> => {
+  return unwrapScoped(Effect.map(
+    TPubSub.subscribeScoped(pubsub),
+    (queue) => fromTQueue(queue)
+  ))
+}
+
+/** @internal */
 export const fromIterable = <A>(iterable: Iterable<A>): Stream.Stream<A> =>
   suspend(() =>
     Chunk.isChunk(iterable) ?
@@ -3222,6 +3232,24 @@ export const fromQueue = <A>(
     ),
     repeatEffectChunkOption,
     options?.shutdown ? ensuring(Queue.shutdown(queue)) : identity
+  )
+
+/** @internal */
+export const fromTQueue = <A>(queue: TQueue.TDequeue<A>): Stream.Stream<A> =>
+  pipe(
+    TQueue.take(queue),
+    Effect.map(Chunk.of),
+    Effect.catchAllCause((cause) =>
+      pipe(
+        TQueue.isShutdown(queue),
+        Effect.flatMap((isShutdown) =>
+          isShutdown && Cause.isInterrupted(cause) ?
+            pull.end() :
+            pull.failCause(cause)
+        )
+      )
+    ),
+    repeatEffectChunkOption
   )
 
 /** @internal */
