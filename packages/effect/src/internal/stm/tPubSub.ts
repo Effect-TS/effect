@@ -201,6 +201,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
   capacity(): number {
     return this.requestedCapacity
   }
+
   size: STM.STM<number> = core.withSTMRuntime((runtime) => {
     let currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, runtime.journal)
     if (currentSubscriberHead === undefined) {

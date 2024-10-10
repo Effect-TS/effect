@@ -1,5 +1,7 @@
 import { dual } from "../../Function.js"
 import * as Option from "../../Option.js"
+import type { Pipeable } from "../../Pipeable.js"
+import { pipeArguments } from "../../Pipeable.js"
 import type * as STM from "../../STM.js"
 import type * as TRef from "../../TRef.js"
 import * as core from "./core.js"
@@ -16,13 +18,13 @@ export const TRefTypeId: TRef.TRefTypeId = Symbol.for(
   TRefSymbolKey
 ) as TRef.TRefTypeId
 
-const tRefVariance = {
+export const tRefVariance = {
   /* c8 ignore next */
   _A: (_: any) => _
 }
 
 /** @internal */
-export class TRefImpl<in out A> implements TRef.TRef<A> {
+export class TRefImpl<in out A> implements TRef.TRef<A>, Pipeable {
   readonly [TRefTypeId] = tRefVariance
   /** @internal */
   todos: Map<TxnId.TxnId, Journal.Todo>
@@ -39,6 +41,9 @@ export class TRefImpl<in out A> implements TRef.TRef<A> {
       Entry.unsafeSet(entry, newValue)
       return retValue
     })
+  }
+  pipe() {
+    return pipeArguments(this, arguments)
   }
 }
 
