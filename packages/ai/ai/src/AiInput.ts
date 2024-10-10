@@ -478,3 +478,16 @@ export class SystemInstruction extends Context.Tag("@effect/ai/AiInput/SystemIns
   SystemInstruction,
   string
 >() {}
+
+/**
+ * @since 1.0.0
+ * @category system
+ */
+export const provideSystem: {
+  (input: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, SystemInstruction>>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, input: string): Effect.Effect<A, E, Exclude<R, SystemInstruction>>
+} = dual(
+  2,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, input: string): Effect.Effect<A, E, Exclude<R, SystemInstruction>> =>
+    Effect.provideService(effect, SystemInstruction, input)
+)
