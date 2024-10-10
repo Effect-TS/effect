@@ -283,4 +283,4 @@ export const changesScoped = <A>(self: TSubscriptionRef.TSubscriptionRef<A>) =>
 
 /** @internal */
 export const changesStream = <A>(self: TSubscriptionRef.TSubscriptionRef<A>) =>
-  stream.unwrap(Effect.map(self.changes, (queue) => stream.fromTQueue(queue, { shutdown: true })))
+  stream.unwrap(Effect.map(self.changes, stream.fromTQueue))

@@ -2018,26 +2018,10 @@ export const fromPubSub: {
 /**
  * Creates a stream from a subscription to a `TPubSub`.
  *
- * @param shutdown If `true`, the `TPubSub` will be shutdown after the stream is evaluated (defaults to `false`)
  * @since 3.10.0
  * @category constructors
  */
-export const fromTPubSub: {
-  <A>(
-    pubsub: TPubSub<A>,
-    options: {
-      readonly scoped: true
-      readonly shutdown?: boolean | undefined
-    }
-  ): Effect.Effect<Stream<A>, never, Scope.Scope>
-  <A>(
-    pubsub: TPubSub<A>,
-    options?: {
-      readonly scoped?: false | undefined
-      readonly shutdown?: boolean | undefined
-    }
-  ): Stream<A>
-} = internal.fromTPubSub
+export const fromTPubSub: <A>(pubsub: TPubSub<A>) => Stream<A> = internal.fromTPubSub
 
 /**
  * Creates a new `Stream` from an iterable collection of values.
@@ -2126,10 +2110,7 @@ export const fromQueue: <A>(
  * @since 3.10.0
  * @category constructors
  */
-export const fromTQueue: <A>(
-  queue: TDequeue<A>,
-  options?: { readonly shutdown?: boolean | undefined }
-) => Stream<A> = internal.fromTQueue
+export const fromTQueue: <A>(queue: TDequeue<A>) => Stream<A> = internal.fromTQueue
 
 /**
  * Creates a stream from a `ReadableStream`.

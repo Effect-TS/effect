@@ -3136,28 +3136,11 @@ export const fromPubSub: {
 }
 
 /** @internal */
-export const fromTPubSub: {
-  <A>(pubsub: TPubSub.TPubSub<A>, options: {
-    readonly scoped: true
-    readonly shutdown?: boolean | undefined
-  }): Effect.Effect<Stream.Stream<A>, never, Scope.Scope>
-  <A>(pubsub: TPubSub.TPubSub<A>, options?: {
-    readonly scoped?: false | undefined
-    readonly shutdown?: boolean | undefined
-  }): Stream.Stream<A>
-} = (pubsub, options): any => {
-  if (options?.scoped) {
-    const effect = Effect.map(
-      TPubSub.subscribeScoped(pubsub),
-      (queue) => fromTQueue(queue, { shutdown: true })
-    )
-    return options.shutdown ? Effect.map(effect, ensuring(TPubSub.shutdown(pubsub))) : effect
-  }
-  const stream = flatMap(
-    TPubSub.subscribe(pubsub),
-    (queue) => fromTQueue(queue, { shutdown: true })
-  )
-  return options?.shutdown ? ensuring(stream, TPubSub.shutdown(pubsub)) : stream
+export const fromTPubSub = <A>(pubsub: TPubSub.TPubSub<A>): Stream.Stream<A> => {
+  return unwrapScoped(Effect.map(
+    TPubSub.subscribeScoped(pubsub),
+    (queue) => fromTQueue(queue)
+  ))
 }
 
 /** @internal */
@@ -3252,12 +3235,7 @@ export const fromQueue = <A>(
   )
 
 /** @internal */
-export const fromTQueue = <A>(
-  queue: TQueue.TDequeue<A>,
-  options?: {
-    readonly shutdown?: boolean | undefined
-  }
-): Stream.Stream<A> =>
+export const fromTQueue = <A>(queue: TQueue.TDequeue<A>): Stream.Stream<A> =>
   pipe(
     TQueue.take(queue),
     Effect.map(Chunk.of),
@@ -3271,8 +3249,7 @@ export const fromTQueue = <A>(
         )
       )
     ),
-    repeatEffectChunkOption,
-    options?.shutdown ? ensuring(TQueue.shutdown(queue)) : identity
+    repeatEffectChunkOption
   )
 
 /** @internal */
