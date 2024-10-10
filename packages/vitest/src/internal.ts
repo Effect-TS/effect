@@ -19,6 +19,7 @@ import * as Utils from "effect/Utils"
 import * as V from "vitest"
 import type * as Vitest from "./index.js"
 
+/** @internal */
 const runPromise = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
     const exitFiber = yield* Effect.fork(Effect.exit(effect))
@@ -45,11 +46,10 @@ const runPromise = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A,
   }).pipe(Effect.runPromise).then((f) => f())
 
 /** @internal */
-const runTest = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A, E>) =>
-  runPromise(ctx)(Effect.asVoid(effect))
+export const runTest = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A, E>) => runPromise(ctx)(effect)
 
 /** @internal */
-const TestEnv = TestEnvironment.TestContext.pipe(
+export const TestEnv = TestEnvironment.TestContext.pipe(
   Layer.provide(Logger.remove(Logger.defaultLogger))
 )
 
@@ -93,7 +93,7 @@ const makeTester = <R>(
     V.it.for(cases)(
       name,
       typeof timeout === "number" ? { timeout } : timeout ?? {},
-      (args, ctx) => run(ctx, [args], self)
+      (args, ctx) => run(ctx, [args], self) as any
     )
 
   return Object.assign(f, { skip, skipIf, runIf, only, each })

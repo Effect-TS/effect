@@ -861,6 +861,9 @@ importers:
 
   packages/vitest:
     devDependencies:
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist
