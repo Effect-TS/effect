@@ -3,7 +3,7 @@ import * as Chunk from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
 import { hasProperty, type Predicate } from "../../Predicate.js"
-import * as STM from "../../STM.js"
+import type * as STM from "../../STM.js"
 import type * as TQueue from "../../TQueue.js"
 import type * as TRef from "../../TRef.js"
 import * as core from "./core.js"
@@ -99,7 +99,7 @@ class TQueueImpl<in out A> implements TQueue.TQueue<A> {
   size: STM.STM<number> = core.withSTMRuntime((runtime) => {
     const queue = tRef.unsafeGet(this.ref, runtime.journal)
     if (queue === undefined) {
-      return STM.interruptAs(runtime.fiberId)
+      return core.interruptAs(runtime.fiberId)
     }
     return core.succeed(queue.length)
   })
