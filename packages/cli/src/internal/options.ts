@@ -1832,45 +1832,31 @@ const parseCommandLine = (
       )
       let optionName: string | undefined = undefined
       let values = Arr.empty<string>()
-      let leftover = args as ReadonlyArray<string>
-      let unparsed = Arr.empty<string>()
-      while (Arr.isNonEmptyReadonlyArray(leftover)) {
-        const name = Arr.headNonEmpty(leftover)
+      let unparsed = args as ReadonlyArray<string>
+      let leftover = Arr.empty<string>()
+      while (Arr.isNonEmptyReadonlyArray(unparsed)) {
+        const name = Arr.headNonEmpty(unparsed)
         const normalizedName = InternalCliConfig.normalizeCase(config, name)
 
         if (Arr.contains(normalizedNames, normalizedName)) {
           if (optionName === undefined) {
             optionName = name
           }
-          const value = leftover[1]
+          const value = unparsed[1]
           if (value !== undefined && value.length > 0) {
             values = Arr.append(values, value.trim())
           }
+          unparsed = unparsed.slice(2)
         } else {
-          unparsed = Arr.appendAll(unparsed, leftover.slice(0, 2))
+          leftover = Arr.append(leftover, Arr.headNonEmpty(unparsed))
+          unparsed = unparsed.slice(1)
         }
-        leftover = leftover.slice(2)
-
-        // if (leftover.length >= 2 && Arr.contains(normalizedNames, normalizedName)) {
-        //   if (optionName === undefined) {
-        //     optionName = name
-        //   }
-        //   const value = leftover[1]
-        //   if (value !== undefined && value.length > 0) {
-        //     values = Arr.append(values, value.trim())
-        //     leftover = leftover.slice(2)
-        //     continue
-        //   }
-        //   break
-        // } else {
-        //   break
-        // }
       }
       const parsed = Option.fromNullable(optionName).pipe(
         Option.orElse(() => Option.some(self.argumentOption.fullName)),
         Option.map((name) => ({ name, values }))
       )
-      return Effect.succeed<ParsedCommandLine>({ parsed, leftover: unparsed })
+      return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
     }
   }
 }
