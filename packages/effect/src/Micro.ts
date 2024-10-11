@@ -3662,24 +3662,24 @@ export const bindTo: {
 export const bind: {
   <N extends string, A extends Record<string, any>, B, E2, R2>(
     name: N,
-    f: (a: A) => Micro<B, E2, R2>
+    f: (a: NoInfer<A>) => Micro<B, E2, R2>
   ): <E, R>(self: Micro<A, E, R>) => Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
   <A extends Record<string, any>, E, R, B, E2, R2, N extends string>(
     self: Micro<A, E, R>,
     name: N,
-    f: (a: A) => Micro<B, E2, R2>
+    f: (a: NoInfer<A>) => Micro<B, E2, R2>
   ): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
 } = doNotation.bind<MicroTypeLambda>(map, flatMap)
 
 const let_: {
   <N extends string, A extends Record<string, any>, B>(
     name: N,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): <E, R>(self: Micro<A, E, R>) => Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E, R>
   <A extends Record<string, any>, E, R, B, N extends string>(
     self: Micro<A, E, R>,
     name: N,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E, R>
 } = doNotation.let_<MicroTypeLambda>(map)
 
