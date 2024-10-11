@@ -1833,29 +1833,44 @@ const parseCommandLine = (
       let optionName: string | undefined = undefined
       let values = Arr.empty<string>()
       let leftover = args as ReadonlyArray<string>
+      let unparsed = Arr.empty<string>()
       while (Arr.isNonEmptyReadonlyArray(leftover)) {
         const name = Arr.headNonEmpty(leftover)
         const normalizedName = InternalCliConfig.normalizeCase(config, name)
-        if (leftover.length >= 2 && Arr.contains(normalizedNames, normalizedName)) {
+
+        if (Arr.contains(normalizedNames, normalizedName)) {
           if (optionName === undefined) {
             optionName = name
           }
           const value = leftover[1]
           if (value !== undefined && value.length > 0) {
             values = Arr.append(values, value.trim())
-            leftover = leftover.slice(2)
-            continue
           }
-          break
         } else {
-          break
+          unparsed = Arr.appendAll(unparsed, leftover.slice(0, 2))
         }
+        leftover = leftover.slice(2)
+
+        // if (leftover.length >= 2 && Arr.contains(normalizedNames, normalizedName)) {
+        //   if (optionName === undefined) {
+        //     optionName = name
+        //   }
+        //   const value = leftover[1]
+        //   if (value !== undefined && value.length > 0) {
+        //     values = Arr.append(values, value.trim())
+        //     leftover = leftover.slice(2)
+        //     continue
+        //   }
+        //   break
+        // } else {
+        //   break
+        // }
       }
       const parsed = Option.fromNullable(optionName).pipe(
         Option.orElse(() => Option.some(self.argumentOption.fullName)),
         Option.map((name) => ({ name, values }))
       )
-      return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+      return Effect.succeed<ParsedCommandLine>({ parsed, leftover: unparsed })
     }
   }
 }
