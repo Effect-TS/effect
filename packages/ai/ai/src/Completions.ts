@@ -78,7 +78,6 @@ export declare namespace Completions {
       AiError | AiToolkit.Tool.Failure<Tools>,
       AiToolkit.Tool.Context<Tools>
     >
-    readonly tokenize: (content: AiInput.Input) => Effect.Effect<Array<number>, AiError>
   }
 }
 
@@ -124,7 +123,6 @@ export const make = (options: {
     }>
     readonly required: boolean | string
   }) => Stream.Stream<AiResponse, AiError>
-  readonly tokenize: (content: AiInput.AiInput) => Effect.Effect<Array<number>, AiError>
 }): Effect.Effect<Completions.Service> =>
   Effect.map(Effect.serviceOption(AiInput.SystemInstruction), (parentSystem) => {
     return Completions.of({
@@ -263,9 +261,6 @@ export const make = (options: {
             }
           })
         ) as any
-      },
-      tokenize(input) {
-        return options.tokenize(AiInput.make(input))
       }
     })
   })

@@ -6,6 +6,7 @@ import type * as AiInput from "@effect/ai/AiInput"
 import * as AiResponse from "@effect/ai/AiResponse"
 import * as AiRole from "@effect/ai/AiRole"
 import * as Completions from "@effect/ai/Completions"
+import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -14,7 +15,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import type { Simplify } from "effect/Types"
-import * as Tokenizer from "gpt-tokenizer"
+import * as GptTokenizer from "gpt-tokenizer"
 import type * as Generated from "./Generated.js"
 import { OpenAiClient } from "./OpenAiClient.js"
 
@@ -86,44 +87,50 @@ const make = (options: {
           ),
           Stream.map((response) => response.asAiResponse)
         )
-      },
-      tokenize(content) {
-        return Effect.tryMap(OpenAiConfig.getOrUndefined, {
-          try: (localConfig) =>
-            Tokenizer.encodeChat(
-              content.pipe(
-                Chunk.toReadonlyArray,
-                Arr.flatMap((message) =>
-                  message.parts.pipe(
-                    Arr.filterMap((part) => {
-                      if (part._tag === "Image" || part._tag === "ImageUrl") {
-                        return Option.none()
-                      }
-                      return Option.some(
-                        {
-                          role: message.role.kind === "user" ? "user" : "assistant",
-                          name: message.role._tag === "UserWithName" ? message.role.name : undefined,
-                          content: part._tag === "Text"
-                            ? part.content
-                            : JSON.stringify(part._tag === "ToolCall" ? part.params : part.value)
-                        } as const
-                      )
-                    })
-                  )
-                )
-              ),
-              localConfig?.model ?? options.model as any
-            ),
-          catch: (cause) =>
-            new AiError({
-              module: "OpenAiCompletions",
-              method: "tokenize",
-              description: "Could not tokenize",
-              cause
-            })
-        })
       }
     })
+  })
+
+const makeTokenizer = (options: {
+  readonly model: string
+}) =>
+  Tokenizer.make({
+    tokenize(content) {
+      return Effect.tryMap(OpenAiConfig.getOrUndefined, {
+        try: (localConfig) =>
+          GptTokenizer.encodeChat(
+            content.pipe(
+              Chunk.toReadonlyArray,
+              Arr.flatMap((message) =>
+                message.parts.pipe(
+                  Arr.filterMap((part) => {
+                    if (part._tag === "Image" || part._tag === "ImageUrl") {
+                      return Option.none()
+                    }
+                    return Option.some(
+                      {
+                        role: message.role.kind === "user" ? "user" : "assistant",
+                        name: message.role._tag === "UserWithName" ? message.role.name : undefined,
+                        content: part._tag === "Text"
+                          ? part.content
+                          : JSON.stringify(part._tag === "ToolCall" ? part.params : part.value)
+                      } as const
+                    )
+                  })
+                )
+              )
+            ),
+            localConfig?.model ?? options.model as any
+          ),
+        catch: (cause) =>
+          new AiError({
+            module: "OpenAiCompletions",
+            method: "tokenize",
+            description: "Could not tokenize",
+            cause
+          })
+      })
+    }
   })
 
 /**
@@ -154,9 +161,26 @@ export class OpenAiConfig extends Context.Tag("@effect/ai-openai/OpenAiCompletio
  * @since 1.0.0
  * @category layers
  */
+export const layerCompletions = (options: {
+  readonly model: string
+}): Layer.Layer<Completions.Completions, never, OpenAiClient> => Layer.effect(Completions.Completions, make(options))
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerTokenizer = (options: {
+  readonly model: string
+}): Layer.Layer<Tokenizer.Tokenizer> => Layer.succeed(Tokenizer.Tokenizer, makeTokenizer(options))
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
 export const layer = (options: {
   readonly model: string
-}) => Layer.effect(Completions.Completions, make(options))
+}): Layer.Layer<Completions.Completions | Tokenizer.Tokenizer, never, OpenAiClient> =>
+  Layer.merge(layerCompletions(options), layerTokenizer(options))
 
 const makeMessages = (
   input: AiInput.AiInput,

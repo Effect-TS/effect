@@ -13,10 +13,8 @@ import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import type { AiError } from "./AiError.js"
 import { AiResponse, ToolCallId, WithResolved } from "./AiResponse.js"
 import * as AiRole from "./AiRole.js"
-import type { Completions } from "./Completions.js"
 
 const constDisableValidation = { disableValidation: true } as const
 
@@ -426,49 +424,6 @@ export type Input =
  * @category models
  */
 export type AiInput = Chunk.Chunk<Message>
-
-const completionsTag = Context.GenericTag<Completions, Completions.Service>("@effect/ai/Completions")
-
-/**
- * @since 1.0.0
- * @category tokens
- */
-export const tokens = (self: AiInput): Effect.Effect<Array<number>, AiError, Completions> =>
-  Effect.flatMap(completionsTag, (completions) => completions.tokenize(self))
-
-/**
- * @since 1.0.0
- * @category tokens
- */
-export const truncate: {
-  (maxTokens: number): (self: AiInput) => Effect.Effect<AiInput, AiError, Completions>
-  (self: AiInput, maxTokens: number): Effect.Effect<AiInput, AiError, Completions>
-} = dual(
-  2,
-  (self: AiInput, maxTokens: number): Effect.Effect<AiInput, AiError, Completions> =>
-    Effect.flatMap(completionsTag, (completions) => {
-      let count = 0
-      let inParts = self
-      let outParts: Chunk.Chunk<Message> = Chunk.empty()
-      const loop: Effect.Effect<AiInput, AiError> = Effect.suspend(() => {
-        const o = Chunk.last(inParts)
-        if (Option.isNone(o)) {
-          return Effect.succeed(make(outParts))
-        }
-        const part = o.value
-        inParts = Chunk.dropRight(inParts, 1)
-        return Effect.flatMap(completions.tokenize(Chunk.of(part)), (tokens) => {
-          count += tokens.length
-          if (count > maxTokens) {
-            return Effect.succeed(make(outParts))
-          }
-          outParts = Chunk.prepend(outParts, part)
-          return loop
-        })
-      })
-      return loop
-    })
-)
 
 /**
  * @since 1.0.0
