@@ -3,6 +3,8 @@
   "include": [],
   "references": [
     { "path": "packages/effect/tsconfig.build.json" },
+    { "path": "packages/ai/ai/tsconfig.build.json" },
+    { "path": "packages/ai/openai/tsconfig.build.json" },
     { "path": "packages/cli/tsconfig.build.json" },
     { "path": "packages/cluster/tsconfig.build.json" },
     { "path": "packages/cluster-browser/tsconfig.build.json" },
