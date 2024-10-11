@@ -1,17 +1,17 @@
 /**
  * @since 1.0.0
  */
-import type * as ParseResult from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
 import type * as Context from "effect/Context"
 import type * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import type * as Layer from "effect/Layer"
+import type * as ParseResult from "effect/ParseResult"
 import type * as Pool from "effect/Pool"
+import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+import type * as Serializable from "effect/Serializable"
 import type * as Stream from "effect/Stream"
 import * as internal from "./internal/worker.js"
 import type { WorkerError, WorkerErrorFrom } from "./WorkerError.js"

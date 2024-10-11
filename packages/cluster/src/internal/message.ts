@@ -1,6 +1,6 @@
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as PrimaryKey from "effect/PrimaryKey"
+import * as Schema from "effect/Schema"
+import * as Serializable from "effect/Serializable"
 import type * as Types from "effect/Types"
 import type * as Message from "../Message.js"
 

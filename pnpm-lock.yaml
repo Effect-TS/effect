@@ -333,6 +333,10 @@ importers:
     publishDirectory: dist
 
   packages/effect:
+    dependencies:
+      fast-check:
+        specifier: ^3.21.0
+        version: 3.21.0
     devDependencies:
       '@types/jscodeshift':
         specifier: ^0.11.11
@@ -340,12 +344,21 @@ importers:
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
       ast-types:
         specifier: ^0.14.2
         version: 0.14.2
       jscodeshift:
         specifier: ^0.16.1
         version: 0.16.1(@babel/preset-env@7.25.4(@babel/core@7.25.2))
+      tinybench:
+        specifier: ^2.9.0
+        version: 2.9.0
+      zod:
+        specifier: ^3.23.5
+        version: 3.23.8
     publishDirectory: dist
 
   packages/experimental:
@@ -617,18 +630,9 @@ importers:
         specifier: ^3.21.0
         version: 3.21.0
     devDependencies:
-      ajv:
-        specifier: ^8.17.1
-        version: 8.17.1
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-      tinybench:
-        specifier: ^2.9.0
-        version: 2.9.0
-      zod:
-        specifier: ^3.23.5
-        version: 3.23.8
     publishDirectory: dist
 
   packages/sql:
@@ -5254,6 +5258,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lighthouse-logger@1.4.2:

@@ -4,12 +4,12 @@
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcResolver from "@effect/rpc/RpcResolver"
 import * as RpcRouter from "@effect/rpc/RpcRouter"
-import * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import type * as RequestResolver from "effect/RequestResolver"
+import * as Schema from "effect/Schema"
+import type * as Serializable from "effect/Serializable"
 import * as Stream from "effect/Stream"
 
 class ClientRequest extends Schema.TaggedClass<ClientRequest>()("ClientRequest", {

@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import * as ArrayFormatter from "@effect/schema/ArrayFormatter"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
+import type * as ParseResult from "effect/ParseResult"
+import * as Schema from "effect/Schema"
+import * as ArrayFormatter from "effect/SchemaArrayFormatter"
+import * as TreeFormatter from "effect/SchemaTreeFormatter"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 
 /**

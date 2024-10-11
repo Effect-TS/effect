@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
+import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+import type * as Serializable from "effect/Serializable"
 import type * as Stream from "effect/Stream"
 import * as internal from "./internal/workerRunner.js"
 import type { WorkerError } from "./WorkerError.js"

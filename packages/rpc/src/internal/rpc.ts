@@ -1,10 +1,10 @@
 import type * as Headers from "@effect/platform/Headers"
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as Request from "effect/Request"
+import * as Schema from "effect/Schema"
+import * as Serializable from "effect/Serializable"
 import type * as Rpc from "../Rpc.js"
 
 /** @internal */

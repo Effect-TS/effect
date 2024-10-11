@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Arr from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
@@ -13,6 +12,7 @@ import * as Option from "effect/Option"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import type * as Scope from "effect/Scope"
+import type * as Serializable from "effect/Serializable"
 import * as Persistence from "./Persistence.js"
 
 interface DataLoaderItem<A extends Request.Request<any, any>> {

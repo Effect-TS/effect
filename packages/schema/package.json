@@ -38,7 +38,6 @@
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
-    "dtslint": "dtslint dtslint",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage",
@@ -51,10 +50,7 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "ajv": "^8.17.1",
     "effect": "workspace:^",
-    "fast-check": "workspace:^",
-    "tinybench": "^2.9.0",
-    "zod": "^3.23.5"
+    "fast-check": "workspace:^"
   }
 }

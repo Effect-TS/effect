@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
 import type * as Exit_ from "effect/Exit"
 import type * as PrimaryKey from "effect/PrimaryKey"
+import type * as Schema from "effect/Schema"
+import type * as Serializable from "effect/Serializable"
 import type * as Types from "effect/Types"
 import * as internal from "./internal/message.js"
 

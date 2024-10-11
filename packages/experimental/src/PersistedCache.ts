@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Cache from "effect/Cache"
 import * as Data from "effect/Data"
 import type * as Duration from "effect/Duration"
@@ -11,6 +10,7 @@ import { identity, pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
+import type * as Serializable from "effect/Serializable"
 import * as Tracer from "effect/Tracer"
 import * as Persistence from "./Persistence.js"
 

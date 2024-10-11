@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import type { NonEmptyArray } from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -11,6 +9,8 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
+import * as Schema from "effect/Schema"
+import * as Serializable from "effect/Serializable"
 import * as Stream from "effect/Stream"
 import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
 import type * as Rpc from "./Rpc.js"

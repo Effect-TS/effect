@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
 import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type { Request } from "effect/Request"
+import type * as Schema from "effect/Schema"
+import type * as Serializable from "effect/Serializable"
 
 /**
  * @since 1.0.0

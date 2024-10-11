@@ -1,12 +1,12 @@
 import { RpcResolver, RpcResolverNoStream, RpcRouter } from "@effect/rpc"
 import * as Rpc from "@effect/rpc/Rpc"
 import { Schema } from "@effect/schema"
-import * as S from "@effect/schema/Schema"
 import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { flow, pipe } from "effect/Function"
+import * as S from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { assert, describe, expect, it, test } from "vitest"
 

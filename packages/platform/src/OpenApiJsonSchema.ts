@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
 import * as Arr from "effect/Array"
 import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
+import type * as Schema from "effect/Schema"
+import * as AST from "effect/SchemaAST"
 
 /**
  * @category model
@@ -704,9 +704,9 @@ const isNonEmpty = <A>(x: ParseResult.SingleOrNonEmpty<A>): x is Arr.NonEmptyRea
 
 const formatPropertyKey = (name: PropertyKey): string => typeof name === "string" ? JSON.stringify(name) : String(name)
 
-const ParseJsonTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/ParseJson")
-const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
-const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
+const ParseJsonTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/ParseJson")
+const SurrogateAnnotationId = Symbol.for("effect/Schema/annotation/Surrogate")
+const JSONIdentifierAnnotationId = Symbol.for("effect/Schema/annotation/JSONIdentifier")
 
 const getSurrogateAnnotation = AST.getAnnotation<AST.AST>(SurrogateAnnotationId)
 const getJSONIdentifierAnnotation = AST.getAnnotation<string>(JSONIdentifierAnnotationId)

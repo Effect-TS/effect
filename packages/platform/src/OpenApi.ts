@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
-import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
+import * as Schema from "effect/Schema"
+import * as AST from "effect/SchemaAST"
 import type { DeepMutable, Mutable } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"

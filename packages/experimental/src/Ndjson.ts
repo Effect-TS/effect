@@ -2,13 +2,13 @@
  * @since 1.0.0
  */
 import { TypeIdError } from "@effect/platform/Error"
-import type { ParseError } from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { dual, identity } from "effect/Function"
+import type { ParseError } from "effect/ParseResult"
+import type * as Schema from "effect/Schema"
 import * as ChannelSchema from "./ChannelSchema.js"
 
 /**

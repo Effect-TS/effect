@@ -7,11 +7,11 @@ import * as ClientRequest from "@effect/platform/HttpClientRequest"
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as Resolver from "@effect/rpc/RpcResolver"
 import type * as Router from "@effect/rpc/RpcRouter"
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import type * as RequestResolver from "effect/RequestResolver"
 import * as Schedule from "effect/Schedule"
+import type * as Serializable from "effect/Serializable"
 import * as Stream from "effect/Stream"
 
 /**

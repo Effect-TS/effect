@@ -3,9 +3,6 @@
  */
 import { TypeIdError } from "@effect/platform/Error"
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Serializable from "@effect/schema/Serializable"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import type * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -14,8 +11,11 @@ import type * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
 import * as PrimaryKey from "effect/PrimaryKey"
+import * as TreeFormatter from "effect/SchemaTreeFormatter"
 import type * as Scope from "effect/Scope"
+import * as Serializable from "effect/Serializable"
 
 /**
  * @since 1.0.0

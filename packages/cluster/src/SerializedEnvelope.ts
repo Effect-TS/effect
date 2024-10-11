@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as PrimaryKey from "effect/PrimaryKey"
+import * as Schema from "effect/Schema"
+import * as Serializable from "effect/Serializable"
 import { TypeIdSchema } from "./internal/utils.js"
 import * as RecipientAddress from "./RecipientAddress.js"
 import * as SerializedMessage from "./SerializedMessage.js"

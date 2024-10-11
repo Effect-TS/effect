@@ -1,9 +1,9 @@
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
-import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import { afterEach, describe, expect, it } from "vitest"
 
 export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {

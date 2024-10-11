@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { ParseError } from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -12,8 +9,11 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { dual, pipe } from "effect/Function"
 import * as Mailbox from "effect/Mailbox"
+import type { ParseError } from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
+import * as Serializable from "effect/Serializable"
 import * as Stream from "effect/Stream"
 import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
 import * as Rpc from "./Rpc.js"
