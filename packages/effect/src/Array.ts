@@ -3057,14 +3057,14 @@ export const Do: ReadonlyArray<{}> = of({})
 export const bind: {
   <A extends object, N extends string, B>(
     tag: Exclude<N, keyof A>,
-    f: (a: A) => ReadonlyArray<B>
+    f: (a: NoInfer<A>) => ReadonlyArray<B>
   ): (
     self: ReadonlyArray<A>
   ) => Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
     self: ReadonlyArray<A>,
     tag: Exclude<N, keyof A>,
-    f: (a: A) => ReadonlyArray<B>
+    f: (a: NoInfer<A>) => ReadonlyArray<B>
   ): Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = doNotation.bind<ReadonlyArrayTypeLambda>(map, flatMap) as any
 
@@ -3119,12 +3119,12 @@ export const bindTo: {
 const let_: {
   <N extends string, B, A extends object>(
     tag: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): (self: ReadonlyArray<A>) => Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <N extends string, A extends object, B>(
     self: ReadonlyArray<A>,
     tag: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = doNotation.let_<ReadonlyArrayTypeLambda>(map) as any
 

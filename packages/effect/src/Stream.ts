@@ -5996,7 +5996,7 @@ export const Do: Stream<{}> = internal.Do
 export const bind: {
   <N extends string, A, B, E2, R2>(
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Stream<B, E2, R2>,
+    f: (_: NoInfer<A>) => Stream<B, E2, R2>,
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
       | undefined
@@ -6004,7 +6004,7 @@ export const bind: {
   <A, E, R, N extends string, B, E2, R2>(
     self: Stream<A, E, R>,
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Stream<B, E2, R2>,
+    f: (_: NoInfer<A>) => Stream<B, E2, R2>,
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
       | undefined
@@ -6025,19 +6025,15 @@ export const bind: {
 export const bindEffect: {
   <N extends string, A, B, E2, R2>(
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Effect.Effect<B, E2, R2>,
-    options?:
-      | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
-      | undefined
-  ): <E, R>(self: Stream<A, E, R>) => Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E, R2 | R>
+    f: (_: NoInfer<A>) => Effect.Effect<B, E2, R2>,
+    options?: { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
+  ): <E, R>(self: Stream<A, E, R>) => Stream<{ [K in keyof A | N]: K extends keyof A ? A[K] : B }, E | E2, R | R2>
   <A, E, R, N extends string, B, E2, R2>(
     self: Stream<A, E, R>,
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Effect.Effect<B, E2, R2>,
-    options?:
-      | { readonly concurrency?: number | "unbounded" | undefined; readonly unordered?: boolean | undefined }
-      | undefined
-  ): Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E | E2, R | R2>
+    f: (_: NoInfer<A>) => Effect.Effect<B, E2, R2>,
+    options?: { readonly concurrency?: number | "unbounded" | undefined; readonly unordered?: boolean | undefined }
+  ): Stream<{ [K in keyof A | N]: K extends keyof A ? A[K] : B }, E | E2, R | R2>
 } = _groupBy.bindEffect
 
 /**
@@ -6077,12 +6073,12 @@ export const bindTo: {
 const let_: {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): <E, R>(self: Stream<A, E, R>) => Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
   <A extends object, E, R, N extends string, B>(
     self: Stream<A, E, R>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = internal.let_
 

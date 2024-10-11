@@ -277,7 +277,7 @@ export const mapEffectOptions = dual<
 export const bindEffect = dual<
   <N extends string, A, B, E2, R2>(
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Effect.Effect<B, E2, R2>,
+    f: (_: NoInfer<A>) => Effect.Effect<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
@@ -290,7 +290,7 @@ export const bindEffect = dual<
   <A, E, R, N extends string, B, E2, R2>(
     self: Stream.Stream<A, E, R>,
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Effect.Effect<B, E2, R2>,
+    f: (_: NoInfer<A>) => Effect.Effect<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly unordered?: boolean | undefined

@@ -1233,12 +1233,12 @@ export const bindTo: {
 const let_: {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): (self: Option<A>) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
     self: Option<A>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = doNotation.let_<OptionTypeLambda>(map)
 
@@ -1309,12 +1309,12 @@ export {
 export const bind: {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => Option<B>
+    f: (a: NoInfer<A>) => Option<B>
   ): (self: Option<A>) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
     self: Option<A>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => Option<B>
+    f: (a: NoInfer<A>) => Option<B>
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 } = doNotation.bind<OptionTypeLambda>(map, flatMap)
 

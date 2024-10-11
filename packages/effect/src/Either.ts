@@ -851,12 +851,12 @@ export const Do: Either<{}> = right({})
 export const bind: {
   <N extends string, A extends object, B, L2>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => Either<B, L2>
+    f: (a: NoInfer<A>) => Either<B, L2>
   ): <L1>(self: Either<A, L1>) => Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
   <A extends object, L1, N extends string, B, L2>(
     self: Either<A, L1>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => Either<B, L2>
+    f: (a: NoInfer<A>) => Either<B, L2>
   ): Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
 } = doNotation.bind<EitherTypeLambda>(map, flatMap)
 
@@ -896,12 +896,12 @@ export const bindTo: {
 const let_: {
   <N extends string, R extends object, B>(
     name: Exclude<N, keyof R>,
-    f: (r: R) => B
+    f: (r: NoInfer<R>) => B
   ): <L>(self: Either<R, L>) => Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
   <R extends object, L, N extends string, B>(
     self: Either<R, L>,
     name: Exclude<N, keyof R>,
-    f: (r: R) => B
+    f: (r: NoInfer<R>) => B
   ): Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
 } = doNotation.let_<EitherTypeLambda>(map)
 

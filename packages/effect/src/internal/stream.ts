@@ -8409,7 +8409,7 @@ export const Do: Stream.Stream<{}> = succeed({})
 export const bind = dual<
   <N extends string, A, B, E2, R2>(
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Stream.Stream<B, E2, R2>,
+    f: (_: NoInfer<A>) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
@@ -8422,7 +8422,7 @@ export const bind = dual<
   <A, E, R, N extends string, B, E2, R2>(
     self: Stream.Stream<A, E, R>,
     tag: Exclude<N, keyof A>,
-    f: (_: A) => Stream.Stream<B, E2, R2>,
+    f: (_: NoInfer<A>) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
@@ -8457,14 +8457,14 @@ export const bindTo: {
 export const let_: {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): <E, R>(
     self: Stream.Stream<A, E, R>
   ) => Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
   <A extends object, E, R, N extends string, B>(
     self: Stream.Stream<A, E, R>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => B
+    f: (a: NoInfer<A>) => B
   ): Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = doNotation.let_<Stream.StreamTypeLambda>(map)
 
