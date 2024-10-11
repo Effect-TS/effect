@@ -350,7 +350,10 @@ export interface WebSocketConstructor {
  * @since 1.0.0
  * @category tags
  */
-export const WebSocketConstructor: Context.Tag<WebSocketConstructor, (url: string) => globalThis.WebSocket> = Context
+export const WebSocketConstructor: Context.Tag<
+  WebSocketConstructor,
+  (url: string, protocols?: string | Array<string> | undefined) => globalThis.WebSocket
+> = Context
   .GenericTag("@effect/platform/Socket/WebSocketConstructor")
 
 /**
@@ -359,7 +362,7 @@ export const WebSocketConstructor: Context.Tag<WebSocketConstructor, (url: strin
  */
 export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> = Layer.succeed(
   WebSocketConstructor,
-  (url: string) => new globalThis.WebSocket(url)
+  (url, protocols) => new globalThis.WebSocket(url, protocols)
 )
 
 /**
@@ -367,13 +370,14 @@ export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> 
  * @category constructors
  */
 export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
-  readonly closeCodeIsError?: (code: number) => boolean
-  readonly openTimeout?: DurationInput
+  readonly closeCodeIsError?: ((code: number) => boolean) | undefined
+  readonly openTimeout?: DurationInput | undefined
+  readonly protocols?: string | Array<string> | undefined
 }): Effect.Effect<Socket, never, WebSocketConstructor> =>
   fromWebSocket(
     Effect.acquireRelease(
       (typeof url === "string" ? Effect.succeed(url) : url).pipe(
-        Effect.flatMap((url) => Effect.map(WebSocketConstructor, (f) => f(url)))
+        Effect.flatMap((url) => Effect.map(WebSocketConstructor, (f) => f(url, options?.protocols)))
       ),
       (ws) => Effect.sync(() => ws.close())
     ),
