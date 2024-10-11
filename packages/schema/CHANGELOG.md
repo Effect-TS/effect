@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.75.3
+
+### Patch Changes
+
+- [#3761](https://github.com/Effect-TS/effect/pull/3761) [`360ec14`](https://github.com/Effect-TS/effect/commit/360ec14dd4102c526aef7433a8881ad4d9beab75) Thanks @gcanti! - Allow Schema.Either to support Schema.Never without type errors, closes #3755.
+
+  - Updated the type parameters of `format` to extend `Schema.All` instead of `Schema<A, I, R>`.
+  - Updated the type parameters of `Schema.EitherFromSelf` to extend `Schema.All` instead of `Schema.Any`.
+  - Updated the type parameters of `Schema.Either` to extend `Schema.All` instead of `Schema.Any`.
+  - Updated the type parameters of `Schema.EitherFromUnion` to extend `Schema.All` instead of `Schema.Any`.
+
 ## 0.75.2
 
 ### Patch Changes
