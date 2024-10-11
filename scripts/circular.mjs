@@ -3,7 +3,7 @@ import * as glob from "glob"
 import madge from "madge"
 
 madge(
-  glob.globSync("packages/*/src/**/*.ts", {
+  glob.globSync(["packages/*/src/**/*.ts", "packages/ai/*/src/**/*.ts"], {
     ignore: ["packages/sql-sqlite-bun/**"]
   }),
   {

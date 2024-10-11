@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "include": ["src", "../../experimental/src/Sse.ts"],
+  "references": [
+    { "path": "../../effect" },
+    { "path": "../ai" },
+    { "path": "../../experimental" },
+    { "path": "../../platform" },
+    { "path": "../../schema" }
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
+    "rootDir": "src",
+    "outDir": "build/src",
+    "exactOptionalPropertyTypes": false
+  }
+}

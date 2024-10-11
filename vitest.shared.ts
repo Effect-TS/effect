@@ -1,12 +1,12 @@
 import * as path from "node:path"
 import type { UserConfig } from "vitest/config"
 
-const alias = (pkg: string) => {
+const alias = (pkg: string, dir = pkg) => {
   const name = pkg === "effect" ? "effect" : `@effect/${pkg}`
   const target = process.env.TEST_DIST !== undefined ? "dist/dist/esm" : "src"
   return ({
-    [`${name}/test`]: path.join(__dirname, "packages", pkg, "test"),
-    [`${name}`]: path.join(__dirname, "packages", pkg, target)
+    [`${name}/test`]: path.join(__dirname, "packages", dir, "test"),
+    [`${name}`]: path.join(__dirname, "packages", dir, target)
   })
 }
 
@@ -29,6 +29,8 @@ const config: UserConfig = {
     include: ["test/**/*.test.ts"],
     alias: {
       ...alias("effect"),
+      ...alias("ai", path.join("ai", "ai")),
+      ...alias("ai-openai", path.join("ai", "openai")),
       ...alias("cli"),
       ...alias("cluster"),
       ...alias("cluster-browser"),
