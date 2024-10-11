@@ -29,8 +29,8 @@ export const layerWebSocketConstructor: Layer.Layer<Socket.WebSocketConstructor>
   Socket.WebSocketConstructor,
   () => {
     if ("WebSocket" in globalThis) {
-      return (url) => new globalThis.WebSocket(url)
+      return (url, protocols) => new globalThis.WebSocket(url, protocols)
     }
-    return (url) => new WS.WebSocket(url) as unknown as globalThis.WebSocket
+    return (url, protocols) => new WS.WebSocket(url, protocols) as unknown as globalThis.WebSocket
   }
 )
