@@ -32,3 +32,8 @@ export * as AiToolkit from "./AiToolkit.js"
  * @since 1.0.0
  */
 export * as Completions from "./Completions.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Tokenizer from "./Tokenizer.js"
