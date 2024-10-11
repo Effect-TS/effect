@@ -1,5 +1,13 @@
 # @effect/sql-d1
 
+## 0.13.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/sql@0.16.2
+  - @effect/platform@0.68.2
+
 ## 0.13.1
 
 ### Patch Changes
