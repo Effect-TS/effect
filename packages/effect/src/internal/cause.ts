@@ -4,11 +4,12 @@ import * as Chunk from "../Chunk.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import type * as FiberId from "../FiberId.js"
+import type * as FiberRefs from "../FiberRefs.js"
 import { constFalse, constTrue, dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
-import { NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { NodeInspectSymbol, stringifyCircular, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
@@ -970,13 +971,13 @@ export const reduceWithContext = dual<
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const pretty = <E>(cause: Cause.Cause<E>, options?: {
+export const pretty = <E>(cause: Cause.Cause<E>, context?: FiberRefs.FiberRefs, options?: {
   readonly renderErrorCause?: boolean | undefined
 }): string => {
   if (isInterruptedOnly(cause)) {
     return "All fibers interrupted without errors."
   }
-  return prettyErrors<E>(cause).map(function(e) {
+  return prettyErrors<E>(cause, context).map(function(e) {
     if (options?.renderErrorCause !== true || e.cause === undefined) {
       return e.stack
     }
@@ -998,14 +999,14 @@ const renderErrorCause = (cause: PrettyError, prefix: string) => {
 
 class PrettyError extends globalThis.Error implements Cause.PrettyError {
   span: undefined | Span = undefined
-  constructor(originalError: unknown) {
+  constructor(originalError: unknown, context?: FiberRefs.FiberRefs) {
     const originalErrorIsObject = typeof originalError === "object" && originalError !== null
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 1
     super(
-      prettyErrorMessage(originalError),
+      prettyErrorMessage(originalError, context),
       originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
-        ? { cause: new PrettyError(originalError.cause) }
+        ? { cause: new PrettyError(originalError.cause, context) }
         : undefined
     )
     if (this.message === "") {
@@ -1042,12 +1043,12 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
  * 1) If the input `u` is already a string, it's considered a message.
  * 2) If `u` is an Error instance with a message defined, it uses the message.
  * 3) If `u` has a user-defined `toString()` method, it uses that method.
- * 4) Otherwise, it uses `JSON.stringify` to produce a string representation and uses it as the error message,
+ * 4) Otherwise, it uses `Inspectable.stringifyCircular` to produce a string representation and uses it as the error message,
  *   with "Error" added as a prefix.
  *
  * @internal
  */
-export const prettyErrorMessage = (u: unknown): string => {
+export const prettyErrorMessage = (u: unknown, context?: FiberRefs.FiberRefs): string => {
   // 1)
   if (typeof u === "string") {
     return u
@@ -1070,7 +1071,7 @@ export const prettyErrorMessage = (u: unknown): string => {
     // something's off, rollback to json
   }
   // 4)
-  return JSON.stringify(u)
+  return stringifyCircular(u, undefined, context)
 }
 
 const locationRegex = /\((.*)\)/
@@ -1125,14 +1126,14 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
 const spanSymbol = Symbol.for("effect/SpanAnnotation")
 
 /** @internal */
-export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<PrettyError> =>
+export const prettyErrors = <E>(cause: Cause.Cause<E>, context?: FiberRefs.FiberRefs): Array<PrettyError> =>
   reduceWithContext(cause, void 0, {
     emptyCase: (): Array<PrettyError> => [],
     dieCase: (_, unknownError) => {
-      return [new PrettyError(unknownError)]
+      return [new PrettyError(unknownError, context)]
     },
     failCase: (_, error) => {
-      return [new PrettyError(error)]
+      return [new PrettyError(error, context)]
     },
     interruptCase: () => [],
     parallelCase: (_, l, r) => [...l, ...r],
