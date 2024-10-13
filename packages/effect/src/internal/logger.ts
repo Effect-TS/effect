@@ -164,7 +164,7 @@ export const zipRight = dual<
 
 /** @internal */
 export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
-  ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
+  ({ annotations, cause, context, date, fiberId, logLevel, message, spans }) => {
     const nowMillis = date.getTime()
 
     const outputArray = [
@@ -177,7 +177,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
 
     const messageArr = Arr.ensure(message)
     for (let i = 0; i < messageArr.length; i++) {
-      const stringMessage = Inspectable.toStringUnknown(messageArr[i])
+      const stringMessage = Inspectable.toStringUnknown(messageArr[i], undefined, context)
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuoted(stringMessage, output)
@@ -215,7 +215,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
         }
         output = output + filterKeyName(key)
         output = output + "="
-        output = appendQuoted(Inspectable.toStringUnknown(value), output)
+        output = appendQuoted(Inspectable.toStringUnknown(value, undefined, context), output)
       }
     }
 
@@ -234,7 +234,7 @@ const appendQuoted = (label: string, output: string): string =>
 
 /** @internal */
 export const logfmtLogger = makeLogger<unknown, string>(
-  ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
+  ({ annotations, cause, context, date, fiberId, logLevel, message, spans }) => {
     const nowMillis = date.getTime()
 
     const outputArray = [
@@ -247,7 +247,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
 
     const messageArr = Arr.ensure(message)
     for (let i = 0; i < messageArr.length; i++) {
-      const stringMessage = Inspectable.toStringUnknown(messageArr[i], 0)
+      const stringMessage = Inspectable.toStringUnknown(messageArr[i], 0, context)
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuotedLogfmt(stringMessage, output)
@@ -285,7 +285,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
         }
         output = output + filterKeyName(key)
         output = output + "="
-        output = appendQuotedLogfmt(Inspectable.toStringUnknown(value, 0), output)
+        output = appendQuotedLogfmt(Inspectable.toStringUnknown(value, 0, context), output)
       }
     }
 
