@@ -1,10 +1,12 @@
 /**
  * @since 1.0.0
  */
+import { FiberRefs } from "effect"
 import * as FiberRef from "effect/FiberRef"
-import { dual, identity } from "effect/Function"
+import { dual, identity, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import type * as Option from "effect/Option"
+import { type Redactable, RedactableId } from "effect/Inspectable"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
 import * as Redacted from "effect/Redacted"
@@ -34,13 +36,21 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  * @since 1.0.0
  * @category models
  */
-export interface Headers {
+export interface Headers extends Redactable {
   readonly [HeadersTypeId]: HeadersTypeId
   readonly [key: string]: string
 }
 
 const Proto = Object.assign(Object.create(null), {
-  [HeadersTypeId]: HeadersTypeId
+  [HeadersTypeId]: HeadersTypeId,
+  [RedactableId](fiberRefs: FiberRefs.FiberRefs): Record<string, string | Redacted.Redacted<string>> {
+    const redactedNames = FiberRefs.get(fiberRefs, currentRedactedNames)
+    return pipe(
+      redactedNames,
+      Option.map((redactedNames) => redact(this as any, redactedNames)),
+      Option.getOrElse(() => this)
+    )
+  }
 })
 
 const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>

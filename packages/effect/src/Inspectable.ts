@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 
+import type { FiberRefs } from "./index.js"
 import { hasProperty, isFunction } from "./Predicate.js"
 
 /**
@@ -86,29 +87,49 @@ export abstract class Class {
 /**
  * @since 2.0.0
  */
-export const toStringUnknown = (u: unknown, whitespace: number | string | undefined = 2): string => {
+export const toStringUnknown = (
+  u: unknown,
+  whitespace: number | string | undefined = 2,
+  context?: FiberRefs.FiberRefs
+): string => {
   if (typeof u === "string") {
     return u
   }
   try {
-    return typeof u === "object" ? stringifyCircular(u, whitespace) : String(u)
+    return typeof u === "object" ? stringifyCircular(u, whitespace, context) : String(u)
   } catch (_) {
     return String(u)
   }
 }
 
+export interface Redactable {
+  readonly [RedactableId]: (fiberRefs: FiberRefs.FiberRefs) => unknown
+}
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const RedactableId: unique symbol = Symbol.for("@effect/platform/Headers")
+
+export const isRedactable = (u: unknown): u is Redactable => typeof u === "object" && u !== null && RedactableId in u
+
 /**
  * @since 2.0.0
  */
-export const stringifyCircular = (obj: unknown, whitespace?: number | string | undefined): string => {
-  let cache: Array<unknown> = []
+export const stringifyCircular = (
+  obj: unknown,
+  whitespace?: number | string | undefined,
+  context?: FiberRefs.FiberRefs
+): string => {
+  let cache: Map<unknown, unknown> = new Map()
   const retVal = JSON.stringify(
     obj,
     (_key, value) =>
       typeof value === "object" && value !== null
-        ? cache.includes(value)
+        ? cache.has(value)
           ? undefined // circular reference
-          : cache.push(value) && value
+          : cache.set(value, context && isRedactable(value) ? value[RedactableId](context) : value) && value
         : value,
     whitespace
   )
