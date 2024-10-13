@@ -19,10 +19,7 @@ class Postfix extends Effect.Service<Postfix>()("Postfix", {}, {
 
 const messages: Array<string> = []
 
-class Logger extends Effect.Service<Logger>()("Logger", {
-  Postfix,
-  Prefix
-}, {
+class Logger extends Effect.Service<Logger>()("Logger", { Postfix, Prefix }, {
   accessors: true,
   sync: ({ postfix, prefix }) => ({
     info: (message: string) =>
@@ -34,10 +31,7 @@ class Logger extends Effect.Service<Logger>()("Logger", {
   static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
 }
 
-class Scoped extends Effect.Service<Scoped>()("Scoped", {
-  Prefix,
-  Postfix
-}, {
+class Scoped extends Effect.Service<Scoped>()("Scoped", { Prefix, Postfix }, {
   accessors: true,
   scoped: ({ postfix, prefix }) =>
     Effect.gen(function*() {
