@@ -25,10 +25,10 @@ class Logger extends Effect.Service<Logger>()("Logger", {
   Something: Layer.empty
 }, {
   accessors: true,
-  sync: ({ postfix: { postfix }, prefix: { prefix } }) => ({
+  sync: ({ postfix, prefix }) => ({
     info: (message: string) =>
       Effect.sync(() => {
-        messages.push(`[${prefix}][${message}][${postfix}]`)
+        messages.push(`[${prefix.prefix}][${message}][${postfix.postfix}]`)
       })
   })
 }) {
