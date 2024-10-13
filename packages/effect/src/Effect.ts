@@ -6605,8 +6605,9 @@ export declare namespace Service {
   /**
    * @since 3.9.0
    */
-  export type MakeService<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _A
-    : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _A
+  export type MakeService<Make> = Make extends
+    { readonly effect: (deps: any) => Effect<infer _A, infer _E, infer _R> } ? _A
+    : Make extends { readonly scoped: (deps: any) => Effect<infer _A, infer _E, infer _R> } ? _A
     : Make extends { readonly sync: (deps: any) => infer A } ? A
     : Make extends { readonly succeed: infer A } ? A
     : never
@@ -6614,15 +6615,17 @@ export declare namespace Service {
   /**
    * @since 3.9.0
    */
-  export type MakeError<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _E
-    : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _E
+  export type MakeError<Make> = Make extends { readonly effect: (deps: any) => Effect<infer _A, infer _E, infer _R> } ?
+    _E
+    : Make extends { readonly scoped: (deps: any) => Effect<infer _A, infer _E, infer _R> } ? _E
     : never
 
   /**
    * @since 3.9.0
    */
-  export type MakeContext<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _R
-    : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? Exclude<_R, Scope.Scope>
+  export type MakeContext<Make> = Make extends
+    { readonly effect: (deps: any) => Effect<infer _A, infer _E, infer _R> } ? _R
+    : Make extends { readonly scoped: (deps: any) => Effect<infer _A, infer _E, infer _R> } ? Exclude<_R, Scope.Scope>
     : never
 
   type Values<T> = T[keyof T]
