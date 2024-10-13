@@ -110,18 +110,16 @@ export const stringifyCircular = (
   whitespace?: number | string | undefined,
   context?: FiberRefs.FiberRefs
 ): string => {
-  let cache: Map<unknown, unknown> = new Map()
+  let cache: Array<unknown> = []
   const retVal = JSON.stringify(
     obj,
     (_key, value) =>
       typeof value === "object" && value !== null
-        ? cache.has(value)
+        ? cache.includes(value)
           ? undefined // circular reference
-          : (() => {
-            const redacted = context && isRedactable(value) ? value[RedactableId](context) : value
-            cache.set(value, redacted)
-            return redacted
-          })()
+          : cache.push(value) && (context && isRedactable(value)
+            ? value[RedactableId](context)
+            : value)
         : value,
     whitespace
   )
