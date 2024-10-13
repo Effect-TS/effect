@@ -129,7 +129,11 @@ export const stringifyCircular = (
       typeof value === "object" && value !== null
         ? cache.has(value)
           ? undefined // circular reference
-          : cache.set(value, context && isRedactable(value) ? value[RedactableId](context) : value) && value
+          : (() => {
+            const redacted = context && isRedactable(value) ? value[RedactableId](context) : value
+            cache.set(value, redacted)
+            return redacted
+          })()
         : value,
     whitespace
   )
