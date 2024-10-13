@@ -1,5 +1,18 @@
 # @effect/platform-node
 
+## 0.63.3
+
+### Patch Changes
+
+- [#3769](https://github.com/Effect-TS/effect/pull/3769) [`8c33087`](https://github.com/Effect-TS/effect/commit/8c330879425e80bed2f65e407cd59e991f0d7bec) Thanks @tim-smart! - add support for WebSocket protocols option
+
+- [#3779](https://github.com/Effect-TS/effect/pull/3779) [`3bcdfb3`](https://github.com/Effect-TS/effect/commit/3bcdfb3b6453959f449b075130e2db941653f722) Thanks @tim-smart! - remove Scope requirement from NodeHttpServer.makeHandler
+
+- Updated dependencies [[`61a99b2`](https://github.com/Effect-TS/effect/commit/61a99b2bf9d757870ef0c2ec9d4c877cdd364a3d), [`8c33087`](https://github.com/Effect-TS/effect/commit/8c330879425e80bed2f65e407cd59e991f0d7bec)]:
+  - effect@3.9.2
+  - @effect/platform@0.68.3
+  - @effect/platform-node-shared@0.18.3
+
 ## 0.63.2
 
 ### Patch Changes

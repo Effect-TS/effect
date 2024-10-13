@@ -1,5 +1,11 @@
 # effect
 
+## 3.9.2
+
+### Patch Changes
+
+- [#3768](https://github.com/Effect-TS/effect/pull/3768) [`61a99b2`](https://github.com/Effect-TS/effect/commit/61a99b2bf9d757870ef0c2ec9d4c877cdd364a3d) Thanks @tim-smart! - allow tacit usage with do notation apis (.bind / .let)
+
 ## 3.9.1
 
 ### Patch Changes

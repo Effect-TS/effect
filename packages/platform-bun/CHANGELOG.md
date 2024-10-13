@@ -1,5 +1,16 @@
 # @effect/platform-bun
 
+## 0.48.3
+
+### Patch Changes
+
+- [#3769](https://github.com/Effect-TS/effect/pull/3769) [`8c33087`](https://github.com/Effect-TS/effect/commit/8c330879425e80bed2f65e407cd59e991f0d7bec) Thanks @tim-smart! - add support for WebSocket protocols option
+
+- Updated dependencies [[`61a99b2`](https://github.com/Effect-TS/effect/commit/61a99b2bf9d757870ef0c2ec9d4c877cdd364a3d), [`8c33087`](https://github.com/Effect-TS/effect/commit/8c330879425e80bed2f65e407cd59e991f0d7bec)]:
+  - effect@3.9.2
+  - @effect/platform@0.68.3
+  - @effect/platform-node-shared@0.18.3
+
 ## 0.48.2
 
 ### Patch Changes
