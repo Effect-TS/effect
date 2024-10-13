@@ -5,13 +5,13 @@ import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import { describe, expect, it } from "effect/test/utils/extend"
 
-class Prefix extends Effect.Service<Prefix>()("Prefix", {
+class Prefix extends Effect.Service<Prefix>()("Prefix", {}, {
   sync: () => ({
     prefix: "PRE"
   })
 }) {}
 
-class Postfix extends Effect.Service<Postfix>()("Postfix", {
+class Postfix extends Effect.Service<Postfix>()("Postfix", {}, {
   sync: () => ({
     postfix: "POST"
   })
@@ -20,36 +20,36 @@ class Postfix extends Effect.Service<Postfix>()("Postfix", {
 const messages: Array<string> = []
 
 class Logger extends Effect.Service<Logger>()("Logger", {
+  Postfix,
+  Prefix,
+  Something: Layer.empty
+}, {
   accessors: true,
-  effect: Effect.gen(function*() {
-    const { prefix } = yield* Prefix
-    const { postfix } = yield* Postfix
-    return {
-      info: (message: string) =>
-        Effect.sync(() => {
-          messages.push(`[${prefix}][${message}][${postfix}]`)
-        })
-    }
-  }),
-  dependencies: [Prefix.Default, Postfix.Default]
+  sync: ({ postfix: { postfix }, prefix: { prefix } }) => ({
+    info: (message: string) =>
+      Effect.sync(() => {
+        messages.push(`[${prefix}][${message}][${postfix}]`)
+      })
+  })
 }) {
   static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
 }
 
 class Scoped extends Effect.Service<Scoped>()("Scoped", {
+  Prefix,
+  Postfix
+}, {
   accessors: true,
-  scoped: Effect.gen(function*() {
-    const { prefix } = yield* Prefix
-    const { postfix } = yield* Postfix
-    yield* Scope.Scope
-    return {
-      info: (message: string) =>
-        Effect.sync(() => {
-          messages.push(`[${prefix}][${message}][${postfix}]`)
-        })
-    }
-  }),
-  dependencies: [Prefix.Default, Postfix.Default]
+  scoped: ({ postfix, prefix }) =>
+    Effect.gen(function*() {
+      yield* Scope.Scope
+      return {
+        info: (message: string) =>
+          Effect.sync(() => {
+            messages.push(`[${prefix.prefix}][${message}][${postfix.postfix}]`)
+          })
+      }
+    })
 }) {}
 
 describe("Effect.Service", () => {
@@ -80,7 +80,7 @@ describe("Effect.Service", () => {
     ))
 
   it.effect("inherits prototype", () => {
-    class Time extends Effect.Service<Time>()("Time", {
+    class Time extends Effect.Service<Time>()("Time", {}, {
       sync: () => ({}),
       accessors: true
     }) {
@@ -102,7 +102,7 @@ describe("Effect.Service", () => {
         return this.#now ||= new Date()
       }
     }
-    class Time extends Effect.Service<Time>()("Time", {
+    class Time extends Effect.Service<Time>()("Time", {}, {
       sync: () => new DateTest(),
       accessors: true
     }) {
@@ -128,8 +128,8 @@ describe("Effect.Service", () => {
       }
     }
 
-    class Time extends Effect.Service<Time>()("Time", {
-      effect: Effect.sync(() => new TimeLive()),
+    class Time extends Effect.Service<Time>()("Time", {}, {
+      effect: () => Effect.sync(() => new TimeLive()),
       accessors: true
     }) {}
 
@@ -144,7 +144,7 @@ describe("Effect.Service", () => {
 
   it.effect("js primitive", () =>
     Effect.gen(function*() {
-      class MapThing extends Effect.Service<MapThing>()("MapThing", {
+      class MapThing extends Effect.Service<MapThing>()("MapThing", {}, {
         sync: () => new Map<string, number>(),
         accessors: true
       }) {}

@@ -26,7 +26,7 @@ import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import type { TypeLambda } from "./HKT.js"
 import * as _console from "./internal/console.js"
-import { TagProto } from "./internal/context.js"
+import { TagProto, TagTypeId } from "./internal/context.js"
 import * as effect from "./internal/core-effect.js"
 import * as core from "./internal/core.js"
 import * as defaultServices from "./internal/defaultServices.js"
@@ -6330,6 +6330,10 @@ export const Tag: <const Id extends string>(id: Id) => <
     return makeTagProxy(TagClass as any)
   }
 
+type SupportDependencies = Record<
+  string,
+  Layer.Layer.Any | Layer.Layer<never> | Context.Tag<any, any> & { Default: Layer.Layer.Any | Layer.Layer<never> }
+>
 /**
  * @since 3.9.0
  * @category context
@@ -6338,86 +6342,96 @@ export const Tag: <const Id extends string>(id: Id) => <
 export const Service: <Self>() => {
   <
     const Key extends string,
+    Dependencies extends SupportDependencies,
     const Make extends
       | {
-        readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
-        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly scoped: (
+          deps: Service.MakeDepsM<{ dependencies: Dependencies }>
+        ) => Effect<Service.AllowedType<Key, Make>, any, any>
         readonly accessors?: boolean
         /** @deprecated */
         readonly ಠ_ಠ: never
       }
       | {
-        readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
-        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly effect: (
+          deps: Service.MakeDepsM<{ dependencies: Dependencies }>
+        ) => Effect<Service.AllowedType<Key, Make>, any, any>
         readonly accessors?: boolean
         /** @deprecated */
         readonly ಠ_ಠ: never
       }
       | {
-        readonly sync: LazyArg<Service.AllowedType<Key, Make>>
-        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+        readonly sync: (deps: Service.MakeDepsM<{ dependencies: Dependencies }>) => Service.AllowedType<Key, Make>
         readonly accessors?: boolean
         /** @deprecated */
         readonly ಠ_ಠ: never
       }
       | {
         readonly succeed: Service.AllowedType<Key, Make>
-        readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
         readonly accessors?: boolean
         /** @deprecated */
         readonly ಠ_ಠ: never
       }
   >(
     key: Key,
+    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make>
+  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
   <
     const Key extends string,
+    Dependencies extends SupportDependencies,
     const Make extends NoExcessProperties<{
-      readonly scoped: Effect<Service.AllowedType<Key, Make>, any, any>
-      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly scoped: (
+        deps: Service.MakeDepsM<{ dependencies: Dependencies }>
+      ) => Effect<Service.AllowedType<Key, Make>, any, any>
       readonly accessors?: boolean
     }, Make>
   >(
     key: Key,
+    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make>
+  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
   <
     const Key extends string,
+    Dependencies extends SupportDependencies,
     const Make extends NoExcessProperties<{
-      readonly effect: Effect<Service.AllowedType<Key, Make>, any, any>
-      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly effect: (
+        deps: Service.MakeDepsM<{ dependencies: Dependencies }>
+      ) => Effect<Service.AllowedType<Key, Make>, any, any>
       readonly accessors?: boolean
     }, Make>
   >(
     key: Key,
+    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make>
+  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
   <
     const Key extends string,
+    Dependencies extends SupportDependencies,
     const Make extends NoExcessProperties<{
-      readonly sync: LazyArg<Service.AllowedType<Key, Make>>
-      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
+      readonly sync: (deps: Service.MakeDepsM<{ dependencies: Dependencies }>) => Service.AllowedType<Key, Make>
       readonly accessors?: boolean
     }, Make>
   >(
     key: Key,
+    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make>
+  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
   <
     const Key extends string,
+    Dependencies extends SupportDependencies,
     const Make extends NoExcessProperties<{
       readonly succeed: Service.AllowedType<Key, Make>
-      readonly dependencies?: ReadonlyArray<Layer.Layer.Any>
       readonly accessors?: boolean
     }, Make>
   >(
     key: Key,
+    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make>
+  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
 } = function() {
   return function() {
-    const [id, maker] = arguments
+    const [id, dependencies, maker] = arguments
     const proxy = "accessors" in maker ? maker["accessors"] : false
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
@@ -6465,25 +6479,34 @@ export const Service: <Self>() => {
       }
     })
 
-    const hasDeps = "dependencies" in maker && maker.dependencies.length > 0
+    const hasDeps = Object.keys(dependencies).length > 0
     const layerName = hasDeps ? "DefaultWithoutDependencies" : "Default"
     let layerCache: Layer.Layer.Any | undefined
+    const deps = hasDeps ?
+      Object.keys(dependencies as Record<string, Layer.Layer.Any | Context.Tag<any, any>>).reduce((acc, cur) => {
+        if (TagTypeId in dependencies[cur]) acc[cur] = dependencies[cur]
+        return acc
+      }, {} as Record<string, any>) :
+      {}
     if ("effect" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
-          return layerCache ??= layer.fromEffect(TagClass, map(maker.effect, (_) => new this(_)))
+          return layerCache ??= layer.fromEffect(
+            TagClass,
+            all(deps).pipe(flatMap(maker.effect), map((_) => new this(_)))
+          )
         }
       })
     } else if ("scoped" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
-          return layerCache ??= layer.scoped(TagClass, map(maker.scoped, (_) => new this(_)))
+          return layerCache ??= layer.scoped(TagClass, all(deps).pipe(flatMap(maker.scoped), map((_) => new this(_))))
         }
       })
     } else if ("sync" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
-          return layerCache ??= layer.sync(TagClass, () => new this(maker.sync()))
+          return layerCache ??= layer.fromEffect(TagClass, all(deps).pipe(map(maker.sync), map((_) => new this(_))))
         }
       })
     } else {
@@ -6500,7 +6523,7 @@ export const Service: <Self>() => {
         get(this: any) {
           return layerWithDepsCache ??= layer.provide(
             this.DefaultWithoutDependencies,
-            maker.dependencies
+            dependencies
           )
         }
       })
@@ -6584,7 +6607,7 @@ export declare namespace Service {
    */
   export type MakeService<Make> = Make extends { readonly effect: Effect<infer _A, infer _E, infer _R> } ? _A
     : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? _A
-    : Make extends { readonly sync: LazyArg<infer A> } ? A
+    : Make extends { readonly sync: (deps: any) => infer A } ? A
     : Make extends { readonly succeed: infer A } ? A
     : never
 
@@ -6602,17 +6625,41 @@ export declare namespace Service {
     : Make extends { readonly scoped: Effect<infer _A, infer _E, infer _R> } ? Exclude<_R, Scope.Scope>
     : never
 
+  type Values<T> = T[keyof T]
+
   /**
    * @since 3.9.0
    */
-  export type MakeDeps<Make> = Make extends { readonly dependencies: ReadonlyArray<Layer.Layer.Any> }
-    ? Make["dependencies"][number]
+  export type MakeDeps<Make> = Make extends
+    { readonly dependencies: Record<string, Layer.Layer.Any | { Default: Layer.Layer.Any }> } ? Values<
+      {
+        [K in keyof Make["dependencies"]]: Make["dependencies"][K] extends { Default: Layer.Layer.Any }
+          ? Make["dependencies"][K]["Default"]
+          : Make["dependencies"][K] extends Layer.Layer.Any ? Make["dependencies"][K]
+          : never
+      }
+    >
     : never
 
   /**
    * @since 3.9.0
    */
-  export type MakeDepsOut<Make> = Contravariant.Type<MakeDeps<Make>[Layer.LayerTypeId]["_ROut"]>
+  export type MakeDepsOut<Make> = MakeDeps<Make>[Layer.LayerTypeId]["_ROut"]
+
+  // TODO: toLowercaseFirst
+
+  export type LowerFirst<S extends PropertyKey> = S extends `${infer First}${infer Rest}` ? `${Lowercase<First>}${Rest}`
+    : S
+  export type ToLowerFirst<T extends Record<string, any>> = {
+    [key in keyof T as LowerFirst<key>]: T[key]
+  }
+  export type MakeDepsM<Make> = Make extends { readonly dependencies: Record<string, any> } ? ToLowerFirst<
+      {
+        [K in keyof Make["dependencies"] as Make["dependencies"][K] extends Context.Tag<any, any> ? K : never]:
+          Context.Tag.Service<Make["dependencies"][K]>
+      }
+    >
+    : never
 
   /**
    * @since 3.9.0
