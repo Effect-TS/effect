@@ -1491,7 +1491,7 @@ export const tracerLogger = globalValue(
       attributes["effect.logLevel"] = logLevel.label
 
       if (cause !== null && cause._tag !== "Empty") {
-        attributes["effect.cause"] = internalCause.pretty(cause, { renderErrorCause: true })
+        attributes["effect.cause"] = internalCause.pretty(cause, context, { renderErrorCause: true })
       }
 
       span.value.event(

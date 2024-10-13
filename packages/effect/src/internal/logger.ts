@@ -186,7 +186,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
 
     if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
-      output = appendQuoted(Cause.pretty(cause, { renderErrorCause: true }), output)
+      output = appendQuoted(Cause.pretty(cause, context, { renderErrorCause: true }), output)
     }
 
     if (List.isCons(spans)) {
@@ -256,7 +256,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
 
     if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
-      output = appendQuotedLogfmt(Cause.pretty(cause, { renderErrorCause: true }), output)
+      output = appendQuotedLogfmt(Cause.pretty(cause, context, { renderErrorCause: true }), output)
     }
 
     if (List.isCons(spans)) {
@@ -327,7 +327,7 @@ export const structuredLogger = makeLogger<unknown, {
         : messageArr.map((_) => structuredMessage(_, context)),
       logLevel: logLevel.label,
       timestamp: date.toISOString(),
-      cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause, { renderErrorCause: true }),
+      cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause, context, { renderErrorCause: true }),
       annotations: annotationsObj,
       spans: spansObj,
       fiberId: _fiberId.threadName(fiberId)
@@ -487,7 +487,7 @@ const prettyLoggerTty = (options: {
       if (!processIsBun) console.group()
 
       if (!Cause.isEmpty(cause)) {
-        log(Cause.pretty(cause, { renderErrorCause: true }))
+        log(Cause.pretty(cause, context, { renderErrorCause: true }))
       }
 
       if (messageIndex < message.length) {
@@ -552,7 +552,7 @@ const prettyLoggerBrowser = (options: {
       console.groupCollapsed(firstLine, ...firstParams)
 
       if (!Cause.isEmpty(cause)) {
-        console.error(Cause.pretty(cause, { renderErrorCause: true }))
+        console.error(Cause.pretty(cause, context, { renderErrorCause: true }))
       }
 
       if (messageIndex < message.length) {
