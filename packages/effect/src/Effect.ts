@@ -6342,9 +6342,10 @@ type SupportDependencies = Record<
 export const Service: <Self>() => {
   <
     const Key extends string,
-    Dependencies extends SupportDependencies,
+    const Dependencies extends SupportDependencies,
     const Make extends
       | {
+        readonly dependencies: Dependencies
         readonly scoped: (
           deps: Service.MakeDepsM<{ dependencies: Dependencies }>
         ) => Effect<Service.AllowedType<Key, Make>, any, any>
@@ -6353,6 +6354,7 @@ export const Service: <Self>() => {
         readonly ಠ_ಠ: never
       }
       | {
+        readonly dependencies: Dependencies
         readonly effect: (
           deps: Service.MakeDepsM<{ dependencies: Dependencies }>
         ) => Effect<Service.AllowedType<Key, Make>, any, any>
@@ -6361,12 +6363,16 @@ export const Service: <Self>() => {
         readonly ಠ_ಠ: never
       }
       | {
-        readonly sync: (deps: Service.MakeDepsM<{ dependencies: Dependencies }>) => Service.AllowedType<Key, Make>
+        readonly dependencies: Dependencies
+        readonly sync: (
+          deps: Service.MakeDepsM<{ dependencies: Dependencies }>
+        ) => Service.AllowedType<Key, Make>
         readonly accessors?: boolean
         /** @deprecated */
         readonly ಠ_ಠ: never
       }
       | {
+        readonly dependencies: Dependencies
         readonly succeed: Service.AllowedType<Key, Make>
         readonly accessors?: boolean
         /** @deprecated */
@@ -6374,13 +6380,13 @@ export const Service: <Self>() => {
       }
   >(
     key: Key,
-    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
+  ): Service.Class<Self, Key, Make>
   <
     const Key extends string,
-    Dependencies extends SupportDependencies,
+    const Dependencies extends SupportDependencies,
     const Make extends NoExcessProperties<{
+      readonly dependencies: Dependencies
       readonly scoped: (
         deps: Service.MakeDepsM<{ dependencies: Dependencies }>
       ) => Effect<Service.AllowedType<Key, Make>, any, any>
@@ -6388,13 +6394,13 @@ export const Service: <Self>() => {
     }, Make>
   >(
     key: Key,
-    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
+  ): Service.Class<Self, Key, Make>
   <
     const Key extends string,
-    Dependencies extends SupportDependencies,
+    const Dependencies extends SupportDependencies,
     const Make extends NoExcessProperties<{
+      readonly dependencies: Dependencies
       readonly effect: (
         deps: Service.MakeDepsM<{ dependencies: Dependencies }>
       ) => Effect<Service.AllowedType<Key, Make>, any, any>
@@ -6402,33 +6408,32 @@ export const Service: <Self>() => {
     }, Make>
   >(
     key: Key,
-    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
+  ): Service.Class<Self, Key, Make>
   <
     const Key extends string,
-    Dependencies extends SupportDependencies,
+    const Dependencies extends SupportDependencies,
     const Make extends NoExcessProperties<{
+      readonly dependencies: Dependencies
       readonly sync: (deps: Service.MakeDepsM<{ dependencies: Dependencies }>) => Service.AllowedType<Key, Make>
       readonly accessors?: boolean
     }, Make>
   >(
     key: Key,
-    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
+  ): Service.Class<Self, Key, Make>
   <
     const Key extends string,
     Dependencies extends SupportDependencies,
     const Make extends NoExcessProperties<{
+      readonly dependencies: Dependencies
       readonly succeed: Service.AllowedType<Key, Make>
       readonly accessors?: boolean
     }, Make>
   >(
     key: Key,
-    dependencies: Dependencies,
     make: Make
-  ): Service.Class<Self, Key, Make & { dependencies: Dependencies }>
+  ): Service.Class<Self, Key, Make>
 } = function() {
   return function() {
     const [id, dependencies, maker] = arguments
