@@ -102,18 +102,6 @@ export const toStringUnknown = (
   }
 }
 
-export interface Redactable {
-  readonly [RedactableId]: (fiberRefs: FiberRefs.FiberRefs) => unknown
-}
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export const RedactableId: unique symbol = Symbol.for("@effect/platform/Headers")
-
-export const isRedactable = (u: unknown): u is Redactable => typeof u === "object" && u !== null && RedactableId in u
-
 /**
  * @since 2.0.0
  */
@@ -140,3 +128,21 @@ export const stringifyCircular = (
   ;(cache as any) = undefined
   return retVal
 }
+
+/**
+ * @since 3.10.0
+ */
+export interface Redactable {
+  readonly [RedactableId]: (fiberRefs: FiberRefs.FiberRefs) => unknown
+}
+
+/**
+ * @since 3.10.0
+ * @category type ids
+ */
+export const RedactableId: unique symbol = Symbol.for("@effect/platform/Headers")
+
+/**
+ * @since 3.10.0
+ */
+export const isRedactable = (u: unknown): u is Redactable => typeof u === "object" && u !== null && RedactableId in u
