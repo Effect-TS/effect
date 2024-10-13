@@ -303,14 +303,14 @@ export const structuredLogger = makeLogger<unknown, {
   readonly annotations: Record<string, unknown>
   readonly spans: Record<string, number>
 }>(
-  ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
+  ({ annotations, cause, context, date, fiberId, logLevel, message, spans }) => {
     const now = date.getTime()
     const annotationsObj: Record<string, unknown> = {}
     const spansObj: Record<string, number> = {}
 
     if (HashMap.size(annotations) > 0) {
       for (const [k, v] of annotations) {
-        annotationsObj[k] = structuredMessage(v)
+        annotationsObj[k] = structuredMessage(v, context)
       }
     }
 
@@ -322,7 +322,9 @@ export const structuredLogger = makeLogger<unknown, {
 
     const messageArr = Arr.ensure(message)
     return {
-      message: messageArr.length === 1 ? structuredMessage(messageArr[0]) : messageArr.map(structuredMessage),
+      message: messageArr.length === 1
+        ? structuredMessage(messageArr[0], context)
+        : messageArr.map((_) => structuredMessage(_, context)),
       logLevel: logLevel.label,
       timestamp: date.toISOString(),
       cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause, { renderErrorCause: true }),
@@ -333,7 +335,7 @@ export const structuredLogger = makeLogger<unknown, {
   }
 )
 
-export const structuredMessage = (u: unknown): unknown => {
+export const structuredMessage = (u: unknown, context: FiberRefs.FiberRefs): unknown => {
   switch (typeof u) {
     case "bigint":
     case "function":
@@ -341,7 +343,7 @@ export const structuredMessage = (u: unknown): unknown => {
       return String(u)
     }
     default: {
-      return u
+      return Inspectable.isRedactable(u) ? u[Inspectable.RedactableId](context) : u
     }
   }
 }
@@ -474,7 +476,7 @@ const prettyLoggerTty = (options: {
       firstLine += ":"
       let messageIndex = 0
       if (message.length > 0) {
-        const firstMaybeString = structuredMessage(message[0])
+        const firstMaybeString = structuredMessage(message[0], context)
         if (typeof firstMaybeString === "string") {
           firstLine += " " + color(firstMaybeString, colors.bold, colors.cyan)
           messageIndex++
@@ -537,7 +539,7 @@ const prettyLoggerBrowser = (options: {
 
       let messageIndex = 0
       if (message.length > 0) {
-        const firstMaybeString = structuredMessage(message[0])
+        const firstMaybeString = structuredMessage(message[0], context)
         if (typeof firstMaybeString === "string") {
           firstLine += ` ${color}${firstMaybeString}`
           if (options.colors) {
