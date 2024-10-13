@@ -2,19 +2,19 @@
  * @since 3.10.0
  */
 
-import * as Arr from "effect/Array"
-import type { Effect } from "effect/Effect"
-import { dual, identity } from "effect/Function"
-import { globalValue } from "effect/GlobalValue"
-import * as Number from "effect/Number"
-import * as Option from "effect/Option"
-import * as Order from "effect/Order"
-import * as Predicate from "effect/Predicate"
-import * as regexp from "effect/RegExp"
-import type { Concurrency } from "effect/Types"
+import * as Arr from "./Array.js"
+import type { Effect } from "./Effect.js"
+import { dual, identity } from "./Function.js"
+import { globalValue } from "./GlobalValue.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as util_ from "./internal/schema/util.js"
+import * as Number from "./Number.js"
+import * as Option from "./Option.js"
+import * as Order from "./Order.js"
 import type { ParseIssue } from "./ParseResult.js"
+import * as Predicate from "./Predicate.js"
+import * as regexp from "./RegExp.js"
+import type { Concurrency } from "./Types.js"
 
 /**
  * @category model

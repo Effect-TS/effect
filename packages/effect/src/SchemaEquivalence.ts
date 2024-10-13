@@ -2,14 +2,14 @@
  * @since 3.10.0
  */
 
-import * as Arr from "effect/Array"
-import * as Equal from "effect/Equal"
-import * as Equivalence from "effect/Equivalence"
-import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
+import * as Arr from "./Array.js"
+import * as Equal from "./Equal.js"
+import * as Equivalence from "./Equivalence.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as util_ from "./internal/schema/util.js"
+import * as Option from "./Option.js"
 import * as ParseResult from "./ParseResult.js"
+import * as Predicate from "./Predicate.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
 

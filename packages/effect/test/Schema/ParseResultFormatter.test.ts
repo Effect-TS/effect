@@ -5,23 +5,21 @@ import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as ArrayFormatter from "effect/SchemaArrayFormatter"
 import type { ParseOptions } from "effect/SchemaAST"
 import * as AST from "effect/SchemaAST"
-import * as TreeFormatter from "effect/SchemaTreeFormatter"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 
-const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Array<ArrayFormatter.Issue>) => {
+const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Array<ParseResult.ArrayFormatterIssue>) => {
   const result = S.decodeUnknownEither(schema)(input, options).pipe(
-    Either.mapLeft((e) => ArrayFormatter.formatIssueSync(e.issue))
+    Either.mapLeft((e) => ParseResult.ArrayFormatter.formatIssueSync(e.issue))
   )
   expect(result).toStrictEqual(Either.left(issues))
 }
 
-describe("SchemaFormatters", () => {
+describe("ParseResultFormatter", () => {
   describe("Forbidden", () => {
     it("default message", () => {
       const schema = Util.effectify(S.String)
@@ -1278,7 +1276,7 @@ it("Effect as message", () => {
   const result = S.decodeUnknownEither(Name)("")
 
   // no service
-  expect(Either.mapLeft(result, (error) => Effect.runSync(TreeFormatter.formatError(error))))
+  expect(Either.mapLeft(result, (error) => Effect.runSync(ParseResult.TreeFormatter.formatError(error))))
     .toStrictEqual(Either.left("Invalid string"))
 
   // it locale
@@ -1287,7 +1285,7 @@ it("Effect as message", () => {
       result,
       (error) =>
         Effect.runSync(
-          TreeFormatter.formatError(error).pipe(Effect.provideService(Translator, {
+          ParseResult.TreeFormatter.formatError(error).pipe(Effect.provideService(Translator, {
             locale: "it",
             translations
           }))
@@ -1301,7 +1299,7 @@ it("Effect as message", () => {
       result,
       (error) =>
         Effect.runSync(
-          TreeFormatter.formatError(error).pipe(Effect.provideService(Translator, {
+          ParseResult.TreeFormatter.formatError(error).pipe(Effect.provideService(Translator, {
             locale: "en",
             translations
           }))

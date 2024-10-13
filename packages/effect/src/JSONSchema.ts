@@ -2,11 +2,11 @@
  * @since 3.10.0
  */
 
-import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
-import * as Record from "effect/Record"
 import * as errors_ from "./internal/schema/errors.js"
 import * as filters_ from "./internal/schema/filters.js"
+import * as Option from "./Option.js"
+import * as Predicate from "./Predicate.js"
+import * as Record from "./Record.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
 

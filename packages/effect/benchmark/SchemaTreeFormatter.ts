@@ -1,7 +1,6 @@
 import type * as Either from "effect/Either"
-import type * as ParseResult from "effect/ParseResult"
+import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as TreeFormatter from "effect/SchemaTreeFormatter"
 import { Bench } from "tinybench"
 
 /*
@@ -35,7 +34,7 @@ bench
     decodeUnknownEither(input)
   })
   .add("TreeFormatter.formatIssueSync(issue)", function() {
-    TreeFormatter.formatIssueSync(issue)
+    ParseResult.TreeFormatter.formatIssueSync(issue)
   })
 
 await bench.run()

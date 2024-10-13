@@ -1,6 +1,5 @@
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as TreeFormatter from "effect/SchemaTreeFormatter"
 import { Bench } from "tinybench"
 
 /*
@@ -37,7 +36,7 @@ bench
     schema.ast.toJSON()
   })
   .add("TreeFormatter.formatIssueSync", function() {
-    TreeFormatter.formatIssueSync(result.left)
+    ParseResult.TreeFormatter.formatIssueSync(result.left)
   })
 
 await bench.run()

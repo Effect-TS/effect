@@ -1,10 +1,10 @@
 /**
  * @since 3.10.0
  */
-import type * as Effect from "effect/Effect"
-import type * as Exit from "effect/Exit"
-import { dual } from "effect/Function"
-import { globalValue } from "effect/GlobalValue"
+import type * as Effect from "./Effect.js"
+import type * as Exit from "./Exit.js"
+import { dual } from "./Function.js"
+import { globalValue } from "./GlobalValue.js"
 import * as serializable_ from "./internal/schema/serializable.js"
 import type * as ParseResult from "./ParseResult.js"
 import * as Schema from "./Schema.js"

@@ -3,10 +3,8 @@
  */
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
-import type * as ParseResult from "effect/ParseResult"
+import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
-import * as ArrayFormatter from "effect/SchemaArrayFormatter"
-import * as TreeFormatter from "effect/SchemaTreeFormatter"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 
 /**
@@ -99,8 +97,8 @@ export class HttpApiDecodeError extends Schema.TaggedError<HttpApiDecodeError>()
    * @since 1.0.0
    */
   static fromParseError(error: ParseResult.ParseError): Effect.Effect<HttpApiDecodeError> {
-    return ArrayFormatter.formatError(error).pipe(
-      Effect.zip(TreeFormatter.formatError(error)),
+    return ParseResult.ArrayFormatter.formatError(error).pipe(
+      Effect.zip(ParseResult.TreeFormatter.formatError(error)),
       Effect.map(([issues, message]) => new HttpApiDecodeError({ issues, message }))
     )
   }

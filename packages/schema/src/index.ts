@@ -11,11 +11,6 @@ export * as Arbitrary from "./Arbitrary.js"
 /**
  * @since 0.67.0
  */
-export * as ArrayFormatter from "./ArrayFormatter.js"
-
-/**
- * @since 0.67.0
- */
 export * as Equivalence from "./Equivalence.js"
 
 /**
@@ -47,8 +42,3 @@ export * as Schema from "./Schema.js"
  * @since 0.67.0
  */
 export * as Serializable from "./Serializable.js"
-
-/**
- * @since 0.67.0
- */
-export * as TreeFormatter from "./TreeFormatter.js"

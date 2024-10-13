@@ -10,7 +10,6 @@ import * as Runtime from "effect/Runtime"
 import * as S from "effect/Schema"
 import type { ParseOptions } from "effect/SchemaAST"
 import * as AST from "effect/SchemaAST"
-import { formatErrorSync } from "effect/SchemaTreeFormatter"
 import * as fc from "fast-check"
 import { assert, expect } from "vitest"
 
@@ -298,9 +297,10 @@ export const expectEffectFailure = async <A>(
   effect: Effect.Effect<A, ParseResult.ParseError>,
   message: string
 ) => {
-  expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, formatErrorSync)))).toStrictEqual(
-    Either.left(message)
-  )
+  expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, ParseResult.TreeFormatter.formatErrorSync))))
+    .toStrictEqual(
+      Either.left(message)
+    )
 }
 
 export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<A, E>, a: A) => {
@@ -311,7 +311,7 @@ export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<A, E>, a: 
 
 export const expectEitherLeft = <A>(e: Either.Either<A, ParseResult.ParseError>, message: string) => {
   if (Either.isLeft(e)) {
-    expect(formatErrorSync(e.left)).toStrictEqual(message)
+    expect(ParseResult.TreeFormatter.formatErrorSync(e.left)).toStrictEqual(message)
   } else {
     // eslint-disable-next-line no-console
     console.log(e.right)

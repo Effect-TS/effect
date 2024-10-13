@@ -4,12 +4,13 @@
 
 Merge Schema into Effect.
 
+### Modules
+
 Before
 
 ```ts
 import {
   Arbitrary,
-  ArrayFormatter,
   AST,
   Equivalence,
   FastCheck,
@@ -17,8 +18,7 @@ import {
   ParseResult,
   Pretty,
   Schema,
-  Serializable,
-  TreeFormatter
+  Serializable
 } from "@effect/schema"
 ```
 
@@ -27,7 +27,6 @@ After
 ```ts
 import {
   Arbitrary,
-  SchemaArrayFormatter, // changed
   SchemaAST, // changed
   SchemaEquivalence, // changed
   FastCheck,
@@ -35,7 +34,22 @@ import {
   ParseResult,
   Pretty,
   Schema,
-  Serializable,
-  SchemaTreeFormatter // changed
+  Serializable
 } from "effect"
+```
+
+### Formatters
+
+`ArrayFormatter` / `TreeFormatter` merged into `ParseResult` module.
+
+Before
+
+```ts
+import { ArrayFormatter, TreeFormatter } from "@effect/schema"
+```
+
+After
+
+```ts
+import { ArrayFormatter, TreeFormatter } from "effect/ParseResult"
 ```

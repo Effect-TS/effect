@@ -2,21 +2,21 @@
  * @since 3.10.0
  */
 
-import * as array_ from "effect/Array"
-import { TaggedError } from "effect/Data"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import type { LazyArg } from "effect/Function"
-import { dual } from "effect/Function"
-import { globalValue } from "effect/GlobalValue"
-import * as Inspectable from "effect/Inspectable"
-import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
-import type { Concurrency } from "effect/Types"
+import * as array_ from "./Array.js"
+import type * as cause_ from "./Cause.js"
+import { TaggedError } from "./Data.js"
+import * as Effect from "./Effect.js"
+import * as Either from "./Either.js"
+import type { LazyArg } from "./Function.js"
+import { dual } from "./Function.js"
+import { globalValue } from "./GlobalValue.js"
+import * as Inspectable from "./Inspectable.js"
 import * as util_ from "./internal/schema/util.js"
+import * as Option from "./Option.js"
+import * as Predicate from "./Predicate.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
-import * as TreeFormatter from "./SchemaTreeFormatter.js"
+import type { Concurrency } from "./Types.js"
 
 /**
  * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
@@ -129,14 +129,6 @@ export class Composite {
     readonly output?: unknown
   ) {}
 }
-
-/**
- * Returns `true` if the value is a `Composite`.
- *
- * @category guards
- * @since 3.10.0
- */
-export const isComposite = (u: unknown): u is Composite => Predicate.hasProperty(u, "_tag")
 
 /**
  * Error that occurs when a refinement has an error.
@@ -1716,5 +1708,275 @@ export const getFinalTransformation = (
         }
         return out
       }
+  }
+}
+
+// ----------------
+// Formatters
+// ----------------
+
+interface Forest<A> extends ReadonlyArray<Tree<A>> {}
+
+interface Tree<A> {
+  readonly value: A
+  readonly forest: Forest<A>
+}
+
+const makeTree = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
+  value,
+  forest
+})
+
+/**
+ * @category formatting
+ * @since 3.10.0
+ */
+export interface ParseResultFormatter<A> {
+  readonly formatIssue: (issue: ParseIssue) => Effect.Effect<A>
+  readonly formatIssueSync: (issue: ParseIssue) => A
+  readonly formatError: (error: ParseError) => Effect.Effect<A>
+  readonly formatErrorSync: (error: ParseError) => A
+}
+
+/**
+ * @category formatting
+ * @since 3.10.0
+ */
+export const TreeFormatter: ParseResultFormatter<string> = {
+  formatIssue: (issue) => Effect.map(formatTree(issue), drawTree),
+  formatIssueSync: (issue) => Effect.runSync(TreeFormatter.formatIssue(issue)),
+  formatError: (error) => TreeFormatter.formatIssue(error.issue),
+  formatErrorSync: (error) => TreeFormatter.formatIssueSync(error.issue)
+}
+
+const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
+
+const draw = (indentation: string, forest: Forest<string>): string => {
+  let r = ""
+  const len = forest.length
+  let tree: Tree<string>
+  for (let i = 0; i < len; i++) {
+    tree = forest[i]
+    const isLast = i === len - 1
+    r += indentation + (isLast ? "└" : "├") + "─ " + tree.value
+    r += draw(indentation + (len > 1 && !isLast ? "│  " : "   "), tree.forest)
+  }
+  return r
+}
+
+const formatTransformationKind = (kind: Transformation["kind"]): string => {
+  switch (kind) {
+    case "Encoded":
+      return "Encoded side transformation failure"
+    case "Transformation":
+      return "Transformation process failure"
+    case "Type":
+      return "Type side transformation failure"
+  }
+}
+
+const formatRefinementKind = (kind: Refinement["kind"]): string => {
+  switch (kind) {
+    case "From":
+      return "From side refinement failure"
+    case "Predicate":
+      return "Predicate refinement failure"
+  }
+}
+
+const getAnnotated = (issue: ParseIssue): Option.Option<AST.Annotated> =>
+  "ast" in issue ? Option.some(issue.ast) : Option.none()
+
+interface CurrentMessage {
+  readonly message: string
+  readonly override: boolean
+}
+
+const getCurrentMessage = (
+  issue: ParseIssue
+): Effect.Effect<CurrentMessage, cause_.NoSuchElementException> =>
+  getAnnotated(issue).pipe(
+    Option.flatMap(AST.getMessageAnnotation),
+    Effect.flatMap((annotation) => {
+      const out = annotation(issue)
+      return Predicate.isString(out)
+        ? Effect.succeed({ message: out, override: false })
+        : Effect.isEffect(out)
+        ? Effect.map(out, (message) => ({ message, override: false }))
+        : Predicate.isString(out.message)
+        ? Effect.succeed({ message: out.message, override: out.override })
+        : Effect.map(out.message, (message) => ({ message, override: out.override }))
+    })
+  )
+
+const createParseIssueGuard =
+  <T extends ParseIssue["_tag"]>(tag: T) => (issue: ParseIssue): issue is Extract<ParseIssue, { _tag: T }> =>
+    issue._tag === tag
+
+/**
+ * Returns `true` if the value is a `Composite`.
+ *
+ * @category guards
+ * @since 3.10.0
+ */
+export const isComposite = createParseIssueGuard("Composite")
+
+const isRefinement = createParseIssueGuard("Refinement")
+const isTransformation = createParseIssueGuard("Transformation")
+
+const getMessage: (
+  issue: ParseIssue
+) => Effect.Effect<string, cause_.NoSuchElementException> = (issue: ParseIssue) =>
+  getCurrentMessage(issue).pipe(
+    Effect.flatMap((currentMessage) => {
+      const useInnerMessage = !currentMessage.override && (
+        isComposite(issue) ||
+        (isRefinement(issue) && issue.kind === "From") ||
+        (isTransformation(issue) && issue.kind !== "Transformation")
+      )
+      return useInnerMessage
+        ? isTransformation(issue) || isRefinement(issue) ? getMessage(issue.issue) : Option.none()
+        : Effect.succeed(currentMessage.message)
+    })
+  )
+
+const getParseIssueTitleAnnotation = (issue: ParseIssue): Option.Option<string> =>
+  getAnnotated(issue).pipe(
+    Option.flatMap(AST.getParseIssueTitleAnnotation),
+    Option.filterMap(
+      (annotation) => Option.fromNullable(annotation(issue))
+    )
+  )
+
+const formatTypeMessage = (e: Type): Effect.Effect<string> =>
+  getMessage(e).pipe(
+    Effect.orElse(() => getParseIssueTitleAnnotation(e)),
+    Effect.catchAll(() =>
+      Effect.succeed(e.message ?? `Expected ${String(e.ast)}, actual ${util_.formatUnknown(e.actual)}`)
+    )
+  )
+
+const getParseIssueTitle = (
+  issue: Forbidden | Transformation | Refinement | Composite
+): string => Option.getOrElse(getParseIssueTitleAnnotation(issue), () => String(issue.ast))
+
+const formatForbiddenMessage = (e: Forbidden): string => e.message ?? "is forbidden"
+
+const formatUnexpectedMessage = (e: Unexpected): string => e.message ?? "is unexpected"
+
+const formatMissingMessage = (e: Missing): Effect.Effect<string> =>
+  AST.getMissingMessageAnnotation(e.ast).pipe(
+    Effect.flatMap((annotation) => {
+      const out = annotation()
+      return Predicate.isString(out) ? Effect.succeed(out) : out
+    }),
+    Effect.catchAll(() => Effect.succeed(e.message ?? "is missing"))
+  )
+
+const getTree = (issue: ParseIssue, onFailure: () => Effect.Effect<Tree<string>>) =>
+  Effect.matchEffect(getMessage(issue), {
+    onFailure,
+    onSuccess: (message) => Effect.succeed(makeTree(message))
+  })
+
+const formatTree = (
+  e: ParseIssue | Pointer
+): Effect.Effect<Tree<string>> => {
+  switch (e._tag) {
+    case "Type":
+      return Effect.map(formatTypeMessage(e), makeTree)
+    case "Forbidden":
+      return Effect.succeed(makeTree(getParseIssueTitle(e), [makeTree(formatForbiddenMessage(e))]))
+    case "Unexpected":
+      return Effect.succeed(makeTree(formatUnexpectedMessage(e)))
+    case "Missing":
+      return Effect.map(formatMissingMessage(e), makeTree)
+    case "Transformation":
+      return getTree(e, () =>
+        Effect.map(
+          formatTree(e.issue),
+          (tree) => makeTree(getParseIssueTitle(e), [makeTree(formatTransformationKind(e.kind), [tree])])
+        ))
+    case "Refinement":
+      return getTree(
+        e,
+        () =>
+          Effect.map(
+            formatTree(e.issue),
+            (tree) => makeTree(getParseIssueTitle(e), [makeTree(formatRefinementKind(e.kind), [tree])])
+          )
+      )
+    case "Pointer":
+      return Effect.map(formatTree(e.issue), (tree) => makeTree(util_.formatPath(e.path), [tree]))
+    case "Composite": {
+      const parseIssueTitle = getParseIssueTitle(e)
+      return getTree(
+        e,
+        () =>
+          util_.isNonEmpty(e.issues)
+            ? Effect.map(Effect.forEach(e.issues, formatTree), (forest) => makeTree(parseIssueTitle, forest))
+            : Effect.map(formatTree(e.issues), (tree) => makeTree(parseIssueTitle, [tree]))
+      )
+    }
+  }
+}
+
+/**
+ * @category model
+ * @since 3.10.0
+ */
+export interface ArrayFormatterIssue {
+  readonly _tag: ParseIssue["_tag"]
+  readonly path: ReadonlyArray<PropertyKey>
+  readonly message: string
+}
+
+/**
+ * @category formatting
+ * @since 3.10.0
+ */
+export const ArrayFormatter: ParseResultFormatter<Array<ArrayFormatterIssue>> = {
+  formatIssue: (issue) => formatArray(issue),
+  formatIssueSync: (issue) => Effect.runSync(ArrayFormatter.formatIssue(issue)),
+  formatError: (error) => ArrayFormatter.formatIssue(error.issue),
+  formatErrorSync: (error) => ArrayFormatter.formatIssueSync(error.issue)
+}
+
+const succeedArrayFormatterIssue = (issue: ArrayFormatterIssue) => Effect.succeed([issue])
+
+const getArray = (
+  issue: ParseIssue,
+  path: ReadonlyArray<PropertyKey>,
+  onFailure: () => Effect.Effect<Array<ArrayFormatterIssue>>
+) =>
+  Effect.matchEffect(getMessage(issue), {
+    onFailure,
+    onSuccess: (message) => succeedArrayFormatterIssue({ _tag: issue._tag, path, message })
+  })
+
+const formatArray = (
+  e: ParseIssue | Pointer,
+  path: ReadonlyArray<PropertyKey> = []
+): Effect.Effect<Array<ArrayFormatterIssue>> => {
+  const _tag = e._tag
+  switch (_tag) {
+    case "Type":
+      return Effect.map(formatTypeMessage(e), (message) => [{ _tag, path, message }])
+    case "Forbidden":
+      return succeedArrayFormatterIssue({ _tag, path, message: formatForbiddenMessage(e) })
+    case "Unexpected":
+      return succeedArrayFormatterIssue({ _tag, path, message: formatUnexpectedMessage(e) })
+    case "Missing":
+      return Effect.map(formatMissingMessage(e), (message) => [{ _tag, path, message }])
+    case "Pointer":
+      return formatArray(e.issue, path.concat(e.path))
+    case "Composite":
+      return getArray(e, path, () =>
+        util_.isNonEmpty(e.issues)
+          ? Effect.map(Effect.forEach(e.issues, (issue) => formatArray(issue, path)), array_.flatten)
+          : formatArray(e.issues, path))
+    case "Refinement":
+    case "Transformation":
+      return getArray(e, path, () => formatArray(e.issue, path))
   }
 }

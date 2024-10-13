@@ -773,17 +773,7 @@ export * as SchemaAST from "./SchemaAST.js"
 /**
  * @since 3.10.0
  */
-export * as SchemaArrayFormatter from "./SchemaArrayFormatter.js"
-
-/**
- * @since 3.10.0
- */
 export * as SchemaEquivalence from "./SchemaEquivalence.js"
-
-/**
- * @since 3.10.0
- */
-export * as SchemaTreeFormatter from "./SchemaTreeFormatter.js"
 
 /**
  * @since 2.0.0

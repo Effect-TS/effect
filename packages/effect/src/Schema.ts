@@ -2,57 +2,56 @@
  * @since 3.10.0
  */
 
-import * as array_ from "effect/Array"
-import * as bigDecimal_ from "effect/BigDecimal"
-import * as bigInt_ from "effect/BigInt"
-import * as boolean_ from "effect/Boolean"
-import type { Brand } from "effect/Brand"
-import * as cause_ from "effect/Cause"
-import * as chunk_ from "effect/Chunk"
-import * as config_ from "effect/Config"
-import * as configError_ from "effect/ConfigError"
-import * as data_ from "effect/Data"
-import * as dateTime from "effect/DateTime"
-import * as duration_ from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as either_ from "effect/Either"
-import * as Encoding from "effect/Encoding"
-import * as Equal from "effect/Equal"
-import * as Equivalence from "effect/Equivalence"
-import * as exit_ from "effect/Exit"
-import * as fiberId_ from "effect/FiberId"
-import type { LazyArg } from "effect/Function"
-import { dual, identity } from "effect/Function"
-import * as hashMap_ from "effect/HashMap"
-import * as hashSet_ from "effect/HashSet"
-import * as list_ from "effect/List"
-import * as number_ from "effect/Number"
-import * as option_ from "effect/Option"
-import type * as Order from "effect/Order"
-import type { Pipeable } from "effect/Pipeable"
-import { pipeArguments } from "effect/Pipeable"
-import * as Predicate from "effect/Predicate"
-import * as record_ from "effect/Record"
-import * as redacted_ from "effect/Redacted"
-import * as Request from "effect/Request"
-import * as sortedSet_ from "effect/SortedSet"
-import * as string_ from "effect/String"
-import * as struct_ from "effect/Struct"
-import type * as Types from "effect/Types"
 import * as arbitrary_ from "./Arbitrary.js"
 import type { GenerationContext, LazyArbitrary } from "./Arbitrary.js"
+import * as array_ from "./Array.js"
+import * as bigDecimal_ from "./BigDecimal.js"
+import * as bigInt_ from "./BigInt.js"
+import * as boolean_ from "./Boolean.js"
+import type { Brand } from "./Brand.js"
+import * as cause_ from "./Cause.js"
+import * as chunk_ from "./Chunk.js"
+import * as config_ from "./Config.js"
+import * as configError_ from "./ConfigError.js"
+import * as data_ from "./Data.js"
+import * as dateTime from "./DateTime.js"
+import * as duration_ from "./Duration.js"
+import * as Effect from "./Effect.js"
+import * as either_ from "./Either.js"
+import * as Encoding from "./Encoding.js"
+import * as Equal from "./Equal.js"
+import * as Equivalence from "./Equivalence.js"
+import * as exit_ from "./Exit.js"
 import * as fastCheck_ from "./FastCheck.js"
+import * as fiberId_ from "./FiberId.js"
+import type { LazyArg } from "./Function.js"
+import { dual, identity } from "./Function.js"
+import * as hashMap_ from "./HashMap.js"
+import * as hashSet_ from "./HashSet.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as filters_ from "./internal/schema/filters.js"
 import * as serializable_ from "./internal/schema/serializable.js"
 import * as util_ from "./internal/schema/util.js"
+import * as list_ from "./List.js"
+import * as number_ from "./Number.js"
+import * as option_ from "./Option.js"
+import type * as Order from "./Order.js"
 import * as ParseResult from "./ParseResult.js"
+import type { Pipeable } from "./Pipeable.js"
+import { pipeArguments } from "./Pipeable.js"
+import * as Predicate from "./Predicate.js"
 import * as pretty_ from "./Pretty.js"
+import * as record_ from "./Record.js"
+import * as redacted_ from "./Redacted.js"
+import * as Request from "./Request.js"
 import type { ParseOptions } from "./SchemaAST.js"
 import * as AST from "./SchemaAST.js"
 import * as equivalence_ from "./SchemaEquivalence.js"
-import * as TreeFormatter from "./SchemaTreeFormatter.js"
 import type * as Serializable from "./Serializable.js"
+import * as sortedSet_ from "./SortedSet.js"
+import * as string_ from "./String.js"
+import * as struct_ from "./Struct.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 3.10.0
@@ -644,14 +643,14 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
  * Creates a new `Schema` from a literal schema.
  *
  * @example
- * import * as S from "effect/Schema"
+ * import * as Schema from "effect/Schema"
  * import { Either } from "effect"
  *
- * const schema = S.Literal("a", "b", "c").pipe(S.pickLiteral("a", "b"))
+ * const schema = Schema.Literal("a", "b", "c").pipe(Schema.pickLiteral("a", "b"))
  *
- * assert.deepStrictEqual(S.decodeSync(schema)("a"), "a")
- * assert.deepStrictEqual(S.decodeSync(schema)("b"), "b")
- * assert.strictEqual(Either.isLeft(S.decodeUnknownEither(schema)("c")), true)
+ * assert.deepStrictEqual(Schema.decodeSync(schema)("a"), "a")
+ * assert.deepStrictEqual(Schema.decodeSync(schema)("b"), "b")
+ * assert.strictEqual(Either.isLeft(Schema.decodeUnknownEither(schema)("c")), true)
  *
  * @category constructors
  * @since 3.10.0
@@ -2833,24 +2832,24 @@ export const omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...key
  * producing a new schema that represents a transformation from the `{ readonly [key]: I[K] }` type to `A[K]`.
  *
  * @example
- * import * as S from "effect/Schema"
+ * import * as Schema from "effect/Schema"
  *
  * // ---------------------------------------------
  * // use case: pull out a single field from a
  * // struct through a transformation
  * // ---------------------------------------------
  *
- * const mytable = S.Struct({
- *   column1: S.NumberFromString,
- *   column2: S.Number
+ * const mytable = Schema.Struct({
+ *   column1: Schema.NumberFromString,
+ *   column2: Schema.Number
  * })
  *
  * // const pullOutColumn: S.Schema<number, {
  * //     readonly column1: string;
  * // }, never>
- * const pullOutColumn = mytable.pipe(S.pluck("column1"))
+ * const pullOutColumn = mytable.pipe(Schema.pluck("column1"))
  *
- * console.log(S.decodeUnknownEither(S.Array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
+ * console.log(Schema.decodeUnknownEither(Schema.Array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
  * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
  *
  * @category struct transformations
@@ -4494,10 +4493,10 @@ const getParseJsonTransformation = (options?: ParseJsonOptions) =>
  * Optionally, you can pass a schema `Schema<A, I, R>` to obtain an `A` type instead of `unknown`.
  *
  * @example
- * import * as S from "effect/Schema"
+ * import * as Schema from "effect/Schema"
  *
- * assert.deepStrictEqual(S.decodeUnknownSync(S.parseJson())(`{"a":"1"}`), { a: "1" })
- * assert.deepStrictEqual(S.decodeUnknownSync(S.parseJson(S.Struct({ a: S.NumberFromString })))(`{"a":"1"}`), { a: 1 })
+ * assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.parseJson())(`{"a":"1"}`), { a: "1" })
+ * assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.parseJson(Schema.Struct({ a: Schema.NumberFromString })))(`{"a":"1"}`), { a: 1 })
  *
  * @category string transformations
  * @since 3.10.0
@@ -4972,9 +4971,9 @@ export const JsonNumberTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/
  * format.
  *
  * @example
- * import * as S from "effect/Schema"
+ * import * as Schema from "effect/Schema"
  *
- * const is = S.is(S.JsonNumber)
+ * const is = Schema.is(S.JsonNumber)
  *
  * assert.deepStrictEqual(is(42), true)
  * assert.deepStrictEqual(is(Number.NaN), false)
@@ -9263,7 +9262,7 @@ export const Config = <A>(name: string, schema: Schema<A, string>): config_.Conf
   return config_.string(name).pipe(
     config_.mapOrFail((a) =>
       decodeEither_(a).pipe(
-        either_.mapLeft((error) => configError_.InvalidData([], TreeFormatter.formatErrorSync(error)))
+        either_.mapLeft((error) => configError_.InvalidData([], ParseResult.TreeFormatter.formatErrorSync(error)))
       )
     )
   )

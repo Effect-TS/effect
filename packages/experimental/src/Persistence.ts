@@ -11,9 +11,8 @@ import type * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import type * as ParseResult from "effect/ParseResult"
+import * as ParseResult from "effect/ParseResult"
 import * as PrimaryKey from "effect/PrimaryKey"
-import * as TreeFormatter from "effect/SchemaTreeFormatter"
 import type * as Scope from "effect/Scope"
 import * as Serializable from "effect/Serializable"
 
@@ -52,7 +51,7 @@ export class PersistenceParseError extends TypeIdError(ErrorTypeId, "Persistence
   }
 
   get message() {
-    return TreeFormatter.formatIssueSync(this.error)
+    return ParseResult.TreeFormatter.formatIssueSync(this.error)
   }
 }
 

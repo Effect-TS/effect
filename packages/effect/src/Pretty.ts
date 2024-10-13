@@ -1,10 +1,10 @@
 /**
  * @since 3.10.0
  */
-import * as Arr from "effect/Array"
-import * as Option from "effect/Option"
+import * as Arr from "./Array.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as util_ from "./internal/schema/util.js"
+import * as Option from "./Option.js"
 import * as ParseResult from "./ParseResult.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"

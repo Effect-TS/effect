@@ -10,12 +10,12 @@ import { dual, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
+import * as ParseResult from "effect/ParseResult"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Redacted from "effect/Redacted"
 import * as Ref from "effect/Ref"
-import * as Schema from "effect/Schema"
-import * as TreeFormatter from "effect/SchemaTreeFormatter"
+import type * as Schema from "effect/Schema"
 import type * as Secret from "effect/Secret"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
@@ -671,11 +671,12 @@ export const withSchema = dual<
     schema: Schema.Schema<B, I, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => Options.Options<B>
 >(2, (self, schema) => {
-  const decode = Schema.decode(schema)
+  const decode = ParseResult.decode(schema)
   return mapEffect(self, (_) =>
     Effect.mapError(
       decode(_ as any),
-      (error) => InternalValidationError.invalidValue(InternalHelpDoc.p(TreeFormatter.formatErrorSync(error)))
+      (issue) =>
+        InternalValidationError.invalidValue(InternalHelpDoc.p(ParseResult.TreeFormatter.formatIssueSync(issue)))
     ))
 })
 
