@@ -138,7 +138,7 @@ export interface Redactable {
  * @since 3.10.0
  * @category type ids
  */
-export const RedactableId: unique symbol = Symbol.for("@effect/platform/Headers")
+export const RedactableId: unique symbol = Symbol.for("effect/Inspectable/Redactable")
 
 /**
  * @since 3.10.0
