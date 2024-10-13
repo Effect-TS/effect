@@ -41,17 +41,17 @@ export const makeHandler: {
   <R, E>(
     httpApp: App.Default<E, R>
   ): Effect.Effect<
-    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse<Http.IncomingMessage>) => void,
+    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void,
     never,
-    Exclude<R, Scope.Scope | ServerRequest.HttpServerRequest>
+    Exclude<R, ServerRequest.HttpServerRequest | Scope.Scope>
   >
   <R, E, App extends App.Default<any, any>>(
     httpApp: App.Default<E, R>,
     middleware: Middleware.HttpMiddleware.Applied<App, E, R>
   ): Effect.Effect<
-    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse<Http.IncomingMessage>) => void,
+    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void,
     never,
-    Exclude<Effect.Effect.Context<App>, Scope.Scope | ServerRequest.HttpServerRequest>
+    Exclude<Effect.Effect.Context<App>, ServerRequest.HttpServerRequest | Scope.Scope>
   >
 } = internal.makeHandler
 
