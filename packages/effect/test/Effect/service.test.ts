@@ -21,8 +21,7 @@ const messages: Array<string> = []
 
 class Logger extends Effect.Service<Logger>()("Logger", {
   Postfix,
-  Prefix,
-  Something: Layer.empty
+  Prefix
 }, {
   accessors: true,
   sync: ({ postfix, prefix }) => ({
