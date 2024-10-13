@@ -6482,12 +6482,12 @@ export const Service: <Self>() => {
     const hasDeps = Object.keys(dependencies).length > 0
     const layerName = hasDeps ? "DefaultWithoutDependencies" : "Default"
     let layerCache: Layer.Layer.Any | undefined
-    const deps = hasDeps ?
-      Object.keys(dependencies as Record<string, Layer.Layer.Any | Context.Tag<any, any>>).reduce((acc, cur) => {
-        if (TagTypeId in dependencies[cur]) acc[cur] = dependencies[cur]
+    const deps = hasDeps
+      ? Object.keys(dependencies as Record<string, Layer.Layer.Any | Context.Tag<any, any>>).reduce((acc, cur) => {
+        if (TagTypeId in dependencies[cur]) acc[cur[0].toLowerCase() + cur.slice(1)] = dependencies[cur]
         return acc
-      }, {} as Record<string, any>) :
-      {}
+      }, {} as Record<string, any>)
+      : {}
     if ("effect" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
@@ -6506,7 +6506,10 @@ export const Service: <Self>() => {
     } else if ("sync" in maker) {
       Object.defineProperty(TagClass, layerName, {
         get(this: any) {
-          return layerCache ??= layer.fromEffect(TagClass, all(deps).pipe(map(maker.sync), map((_) => new this(_))))
+          return layerCache ??= layer.fromEffect(
+            TagClass,
+            all(deps).pipe(map(maker.sync), map((_) => new this(_)))
+          )
         }
       })
     } else {
@@ -6523,7 +6526,7 @@ export const Service: <Self>() => {
         get(this: any) {
           return layerWithDepsCache ??= layer.provide(
             this.DefaultWithoutDependencies,
-            dependencies
+            Object.values(dependencies).map((_) => "Default" in _ ? _["Default"] : _) as any
           )
         }
       })
@@ -6648,8 +6651,6 @@ export declare namespace Service {
    * @since 3.9.0
    */
   export type MakeDepsOut<Make> = MakeDeps<Make>[Layer.LayerTypeId]["_ROut"]
-
-  // TODO: toLowercaseFirst
 
   export type LowerFirst<S extends PropertyKey> = S extends `${infer First}${infer Rest}` ? `${Lowercase<First>}${Rest}`
     : S
