@@ -5,15 +5,13 @@ import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import { describe, expect, it } from "effect/test/utils/extend"
 
-class Prefix extends Effect.Service<Prefix>()("Prefix", {
-  dependencies: {},
+class Prefix extends Effect.Service<Prefix>()("Prefix", {}, {
   sync: () => ({
     prefix: "PRE"
   })
 }) {}
 
-class Postfix extends Effect.Service<Postfix>()("Postfix", {
-  dependencies: {},
+class Postfix extends Effect.Service<Postfix>()("Postfix", {}, {
   sync: () => ({
     postfix: "POST"
   })
@@ -22,10 +20,10 @@ class Postfix extends Effect.Service<Postfix>()("Postfix", {
 const messages: Array<string> = []
 
 class Logger extends Effect.Service<Logger>()("Logger", {
-  dependencies: {
-    Prefix,
-    Postfix
-  },
+  Postfix,
+  Prefix,
+  Something: Layer.empty
+}, {
   accessors: true,
   sync: ({ postfix: { postfix }, prefix: { prefix } }) => ({
     info: (message: string) =>
@@ -38,11 +36,10 @@ class Logger extends Effect.Service<Logger>()("Logger", {
 }
 
 class Scoped extends Effect.Service<Scoped>()("Scoped", {
+  Prefix,
+  Postfix
+}, {
   accessors: true,
-  dependencies: {
-    Prefix,
-    Postfix
-  },
   scoped: ({ postfix, prefix }) =>
     Effect.gen(function*() {
       yield* Scope.Scope
