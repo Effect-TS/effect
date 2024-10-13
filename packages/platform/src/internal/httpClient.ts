@@ -174,7 +174,7 @@ export const make = (
                 span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
               }
               request = fiber.getFiberRef(currentTracerPropagation)
-                ? internalRequest.setHeaders(request, TraceContext.toHeaders(span))
+                ? internalRequest.setHeaders(request, TraceContext.toHeaders(span), redactedHeaderNames)
                 : request
               return Effect.tap(
                 Effect.withParentSpan(

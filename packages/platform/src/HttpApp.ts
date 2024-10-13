@@ -11,6 +11,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import * as Scope from "effect/Scope"
+import { currentRedactedNames } from "./Headers.js"
 import type { HttpMiddleware } from "./HttpMiddleware.js"
 import * as ServerError from "./HttpServerError.js"
 import * as ServerRequest from "./HttpServerRequest.js"
@@ -160,13 +161,13 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   return <E>(self: Default<E, R | Scope.Scope>, middleware?: HttpMiddleware | undefined) =>
   (request: Request): Promise<Response> =>
     new Promise((resolve) => {
-      const fiber = run(Effect.provideService(
+      const fiber = run(Effect.provideServiceEffect(
         toHandled(self, (request, response) => {
           resolve(ServerResponse.toWeb(response, { withoutBody: request.method === "HEAD", runtime }))
           return Effect.void
         }, middleware),
         ServerRequest.HttpServerRequest,
-        ServerRequest.fromWeb(request)
+        currentRedactedNames.pipe(Effect.map((redactedKeys) => ServerRequest.fromWeb(request, redactedKeys)))
       ))
       request.signal.addEventListener("abort", () => {
         fiber.unsafeInterruptAsFork(ServerError.clientAbortFiberId)

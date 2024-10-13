@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import type { Simplify } from "effect/Types"
+import { currentRedactedNames } from "./Headers.js"
 import * as HttpApi from "./HttpApi.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
 import type { HttpApiGroup } from "./HttpApiGroup.js"
@@ -181,7 +182,11 @@ export const make = <A extends HttpApi.HttpApi.Any>(
                 ? Effect.flatMap((httpRequest) =>
                   encodeHeaders.value(request.headers).pipe(
                     Effect.orDie,
-                    Effect.map((headers) => HttpClientRequest.setHeaders(httpRequest, headers as any))
+                    Effect.flatMap((headers) =>
+                      currentRedactedNames.pipe(Effect.map((redactedKeys) =>
+                        HttpClientRequest.setHeaders(httpRequest, headers as any, redactedKeys)
+                      ))
+                    )
                   )
                 )
                 : identity,

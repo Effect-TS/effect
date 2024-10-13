@@ -220,7 +220,7 @@ export const schemaBodyFormJson: <A, I, R>(
  * @since 1.0.0
  * @category conversions
  */
-export const fromWeb: (request: Request) => HttpServerRequest = internal.fromWeb
+export const fromWeb: (request: Request, redactedKeys: Headers.RedactedKeys) => HttpServerRequest = internal.fromWeb
 
 /**
  * @since 1.0.0

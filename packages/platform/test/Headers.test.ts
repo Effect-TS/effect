@@ -9,7 +9,7 @@ describe("Headers", () => {
         "Content-Type": "application/json",
         "Authorization": "Bearer some-token",
         "X-Api-Key": "some-key"
-      })
+      }, [])
 
       const redacted = Headers.redact(headers, "Authorization")
 
@@ -26,7 +26,7 @@ describe("Headers", () => {
         "Content-Type": "application/json",
         "Authorization": "Bearer some-token",
         "X-Api-Key": "some-key"
-      })
+      }, [])
 
       const redacted = Headers.redact(headers, ["Authorization", "authorization", "X-Api-Token", "x-api-key"])
 
@@ -44,7 +44,7 @@ describe("Headers", () => {
         "Authorization": "Bearer some-token",
         "sec-ret": "some",
         "sec-ret-2": "some"
-      })
+      }, [])
 
       const redacted = Headers.redact(headers, [/^sec-/])
 

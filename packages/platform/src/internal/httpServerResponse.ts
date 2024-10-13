@@ -462,13 +462,20 @@ export const removeCookie = dual<
 
 /** @internal */
 export const setHeaders = dual<
-  (input: Headers.Input) => (self: ServerResponse.HttpServerResponse) => ServerResponse.HttpServerResponse,
-  (self: ServerResponse.HttpServerResponse, input: Headers.Input) => ServerResponse.HttpServerResponse
->(2, (self, input) =>
+  (
+    input: Headers.Input,
+    redactedKeys: Headers.RedactedKeys
+  ) => (self: ServerResponse.HttpServerResponse) => ServerResponse.HttpServerResponse,
+  (
+    self: ServerResponse.HttpServerResponse,
+    input: Headers.Input,
+    redactedKeys: Headers.RedactedKeys
+  ) => ServerResponse.HttpServerResponse
+>(3, (self, input, redactedKeys) =>
   new ServerResponseImpl(
     self.status,
     self.statusText,
-    Headers.setAll(self.headers, input),
+    Headers.setAll(self.headers, input, redactedKeys),
     self.cookies,
     self.body
   ))

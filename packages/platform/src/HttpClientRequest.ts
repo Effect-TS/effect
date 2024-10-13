@@ -56,6 +56,7 @@ export interface Options {
   readonly body?: Body.HttpBody | undefined
   readonly accept?: string | undefined
   readonly acceptJson?: boolean | undefined
+  readonly redactedKeys?: Headers.RedactedKeys | undefined
 }
 
 /**
@@ -160,8 +161,8 @@ export const setHeader: {
  * @category combinators
  */
 export const setHeaders: {
-  (input: Headers.Input): (self: HttpClientRequest) => HttpClientRequest
-  (self: HttpClientRequest, input: Headers.Input): HttpClientRequest
+  (input: Headers.Input, redactedKeys: Headers.RedactedKeys): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, input: Headers.Input, redactedKeys: Headers.RedactedKeys): HttpClientRequest
 } = internal.setHeaders
 
 /**

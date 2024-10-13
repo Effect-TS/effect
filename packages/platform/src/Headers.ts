@@ -36,6 +36,12 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  * @since 1.0.0
  * @category models
  */
+export type RedactedKeys = string | RegExp | ReadonlyArray<string | RegExp>
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export interface Headers {
   readonly [HeadersTypeId]: HeadersTypeId
   readonly [key: string]: HeaderValues
@@ -105,13 +111,16 @@ export type Input =
  */
 export const empty: Headers = Object.create(Proto)
 
+// export const fromInputEffect: (input: Input | undefined) => Effect.Effect<Headers> = (input) =>
+//   currentRedactedNames.pipe(Effect.map((redactedKeys) => fromInput(input, redactedKeys)))
+
 /**
  * @since 1.0.0
  * @category constructors
  */
 export const fromInput: (
   input: Input | undefined,
-  redactedKeys: string | RegExp | ReadonlyArray<string | RegExp>
+  redactedKeys: RedactedKeys
 ) => Headers = (
   input,
   redactedKey
@@ -192,15 +201,15 @@ export const set: {
  * @category combinators
  */
 export const setAll: {
-  (headers: Input): (self: Headers) => Headers
-  (self: Headers, headers: Input): Headers
+  (headers: Input, redactedKeys: RedactedKeys): (self: Headers) => Headers
+  (self: Headers, headers: Input, redactedKeys: RedactedKeys): Headers
 } = dual<
-  (headers: Input) => (self: Headers) => Headers,
-  (self: Headers, headers: Input) => Headers
->(2, (self, headers) =>
+  (headers: Input, redactedKeys: RedactedKeys) => (self: Headers) => Headers,
+  (self: Headers, headers: Input, redactedKeys: RedactedKeys) => Headers
+>(3, (self, headers, redactedKeys) =>
   make({
     ...self,
-    ...fromInput(headers)
+    ...fromInput(headers, redactedKeys)
   }))
 
 /**
@@ -259,17 +268,17 @@ export const unredact = (self: Headers): Record<string, string> => {
  */
 export const redact: {
   (
-    key: string | RegExp | ReadonlyArray<string | RegExp>
+    key: RedactedKeys
   ): (self: Record<string, string | Redacted.Redacted<string>>) => Record<string, string | Redacted.Redacted>
   (
     self: Record<string, string | Redacted.Redacted<string>>,
-    key: string | RegExp | ReadonlyArray<string | RegExp>
+    key: RedactedKeys
   ): Record<string, string | Redacted.Redacted>
 } = dual(
   2,
   (
     self: Record<string, string | Redacted.Redacted<string>>,
-    key: string | RegExp | ReadonlyArray<string | RegExp>
+    key: RedactedKeys
   ): Record<string, string | Redacted.Redacted> => {
     const out: Record<string, string | Redacted.Redacted> = { ...self }
     const modify = (key: string | RegExp) => {

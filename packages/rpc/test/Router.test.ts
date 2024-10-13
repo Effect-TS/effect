@@ -351,7 +351,7 @@ describe.each([{
     Effect.gen(function*(_) {
       const headers = yield* _(
         Rpc.call(new EchoHeaders(), resolver),
-        Rpc.annotateHeaders({ FOO: "bar" })
+        Rpc.annotateHeaders({ FOO: "bar" }, [])
       )
       assert.deepStrictEqual(headers, { foo: "bar" })
     }).pipe(Effect.runPromise))
@@ -360,7 +360,7 @@ describe.each([{
     Effect.gen(function*(_) {
       const headers = yield* _(
         Rpc.call(new EchoHeaders(), resolverWithHeaders),
-        Rpc.annotateHeaders({ FOO: "bar" })
+        Rpc.annotateHeaders({ FOO: "bar" }, [])
       )
       assert.deepStrictEqual(headers, { foo: "bar", baz: "qux" })
     }).pipe(Effect.tapErrorCause(Effect.logError), Effect.runPromise))

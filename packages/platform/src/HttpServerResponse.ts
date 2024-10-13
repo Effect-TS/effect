@@ -205,8 +205,8 @@ export const setHeader: {
  * @category combinators
  */
 export const setHeaders: {
-  (input: Headers.Input): (self: HttpServerResponse) => HttpServerResponse
-  (self: HttpServerResponse, input: Headers.Input): HttpServerResponse
+  (input: Headers.Input, redactedKeys: Headers.RedactedKeys): (self: HttpServerResponse) => HttpServerResponse
+  (self: HttpServerResponse, input: Headers.Input, redactedKeys: Headers.RedactedKeys): HttpServerResponse
 } = internal.setHeaders
 
 /**

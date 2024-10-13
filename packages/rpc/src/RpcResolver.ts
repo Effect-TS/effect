@@ -111,19 +111,22 @@ export const make = <HR, E>(
  */
 export const annotateHeaders: {
   (
-    headers: Headers.Input
+    headers: Headers.Input,
+    redactedKeys: Headers.RedactedKeys
   ): <Req extends Schema.TaggedRequest.All, R>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>
   ) => RequestResolver.RequestResolver<Rpc.Request<Req>, R>
   <Req extends Schema.TaggedRequest.All, R>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
-    headers: Headers.Input
+    headers: Headers.Input,
+    redactedKeys: Headers.RedactedKeys
   ): RequestResolver.RequestResolver<Rpc.Request<Req>, R>
-} = dual(2, <Req extends Schema.TaggedRequest.All, R>(
+} = dual(3, <Req extends Schema.TaggedRequest.All, R>(
   self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
-  headers: Headers.Input
+  headers: Headers.Input,
+  redactedKeys: Headers.RedactedKeys
 ): RequestResolver.RequestResolver<Rpc.Request<Req>, R> => {
-  const resolved = Headers.fromInput(headers)
+  const resolved = Headers.fromInput(headers, redactedKeys)
   return RequestResolver.makeWithEntry((requests) => {
     requests.forEach((entries) =>
       entries.forEach((entry) => {
@@ -154,7 +157,9 @@ export const annotateHeadersEffect: {
 ): RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2> =>
   RequestResolver.makeWithEntry((requests) =>
     headers.pipe(
-      Effect.map(Headers.fromInput),
+      Effect.flatMap((headers) =>
+        Headers.currentRedactedNames.pipe(Effect.map((redactedKeys) => Headers.fromInput(headers, redactedKeys)))
+      ),
       Effect.orDie,
       Effect.matchCauseEffect({
         onFailure: (cause) =>

@@ -117,7 +117,7 @@ export const modify = dual<
     result = setUrl(result, options.url)
   }
   if (options.headers) {
-    result = setHeaders(result, options.headers)
+    result = setHeaders(result, options.headers, options.redactedKeys ?? [])
   }
   if (options.urlParams) {
     result = setUrlParams(result, options.urlParams)
@@ -154,15 +154,22 @@ export const setHeader = dual<
 
 /** @internal */
 export const setHeaders = dual<
-  (input: Headers.Input) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
-  (self: ClientRequest.HttpClientRequest, input: Headers.Input) => ClientRequest.HttpClientRequest
->(2, (self, input) =>
+  (
+    input: Headers.Input,
+    redactedKeys: Headers.RedactedKeys
+  ) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
+  (
+    self: ClientRequest.HttpClientRequest,
+    input: Headers.Input,
+    redactedKeys: Headers.RedactedKeys
+  ) => ClientRequest.HttpClientRequest
+>(3, (self, input, redactedKeys) =>
   makeInternal(
     self.method,
     self.url,
     self.urlParams,
     self.hash,
-    Headers.setAll(self.headers, input),
+    Headers.setAll(self.headers, input, redactedKeys),
     self.body
   ))
 

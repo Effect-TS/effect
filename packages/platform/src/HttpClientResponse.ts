@@ -9,6 +9,7 @@ import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type { Unify } from "effect/Unify"
 import type * as Cookies from "./Cookies.js"
+import type { RedactedKeys } from "./Headers.js"
 import type * as Error from "./HttpClientError.js"
 import type * as ClientRequest from "./HttpClientRequest.js"
 import type * as IncomingMessage from "./HttpIncomingMessage.js"
@@ -60,8 +61,11 @@ export interface HttpClientResponse extends IncomingMessage.HttpIncomingMessage<
  * @since 1.0.0
  * @category constructors
  */
-export const fromWeb: (request: ClientRequest.HttpClientRequest, source: Response) => HttpClientResponse =
-  internal.fromWeb
+export const fromWeb: (
+  request: ClientRequest.HttpClientRequest,
+  source: Response,
+  redactedKeys: RedactedKeys
+) => HttpClientResponse = internal.fromWeb
 
 /**
  * @since 1.0.0

@@ -283,6 +283,7 @@ export const cors = (options?: {
         context,
         ServerRequest.HttpServerRequest
       )
+      const redactedKeys = fiber.getFiberRef(Headers.currentRedactedNames)
       const origin = Headers.unredactHeader(request.headers["origin"])!
       const accessControlRequestHeaders = Headers.unredactHeader(request.headers["access-control-request-headers"])
       const corsHeaders = Headers.unsafeFromRecord({
@@ -298,6 +299,6 @@ export const cors = (options?: {
         })
         return Effect.succeed(ServerResponse.empty({ status: 204, headers: corsHeaders }))
       }
-      return Effect.map(httpApp, ServerResponse.setHeaders(corsHeaders))
+      return Effect.map(httpApp, ServerResponse.setHeaders(corsHeaders, redactedKeys))
     })
 }

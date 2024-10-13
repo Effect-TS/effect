@@ -314,10 +314,17 @@ export const currentHeaders: FiberRef.FiberRef<Headers.Headers> = globalValue(
  * @category headers
  */
 export const annotateHeaders: {
-  (headers: Headers.Input): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, headers: Headers.Input): Effect.Effect<A, E, R>
-} = dual(2, (self, headers) => {
-  const resolved = Headers.fromInput(headers)
+  (
+    headers: Headers.Input,
+    redactedKeys: Headers.RedactedKeys
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    headers: Headers.Input,
+    redactedKeys: Headers.RedactedKeys
+  ): Effect.Effect<A, E, R>
+} = dual(3, (self, headers, redactedKeys) => {
+  const resolved = Headers.fromInput(headers, redactedKeys)
   return Effect.locallyWith(self, currentHeaders, (prev) => ({ ...prev, ...resolved }))
 })
 
