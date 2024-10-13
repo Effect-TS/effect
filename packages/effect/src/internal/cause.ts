@@ -971,13 +971,14 @@ export const reduceWithContext = dual<
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const pretty = <E>(cause: Cause.Cause<E>, context?: FiberRefs.FiberRefs, options?: {
+export const pretty = <E>(cause: Cause.Cause<E>, options?: {
   readonly renderErrorCause?: boolean | undefined
+  readonly context?: FiberRefs.FiberRefs
 }): string => {
   if (isInterruptedOnly(cause)) {
     return "All fibers interrupted without errors."
   }
-  return prettyErrors<E>(cause, context).map(function(e) {
+  return prettyErrors<E>(cause, options?.context).map(function(e) {
     if (options?.renderErrorCause !== true || e.cause === undefined) {
       return e.stack
     }
