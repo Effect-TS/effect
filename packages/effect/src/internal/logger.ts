@@ -347,7 +347,9 @@ export const structuredMessage = (u: unknown): unknown => {
 }
 
 /** @internal */
-export const jsonLogger = map(structuredLogger, Inspectable.stringifyCircular)
+export const jsonLogger = makeLogger((options) =>
+  Inspectable.stringifyCircular(structuredLogger.log(options), undefined, options.context)
+)
 
 /** @internal */
 const filterKeyName = (key: string) => key.replace(/[\s="]/g, "_")
