@@ -1,4 +1,4 @@
-import type { HttpApp } from "@effect/platform"
+import { HttpApp } from "@effect/platform"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
@@ -276,28 +276,41 @@ export const cors = (options?: {
     ? { "access-control-max-age": opts.maxAge.toString() }
     : undefined
 
+  const headersFromRequest = (request: ServerRequest.HttpServerRequest) => {
+    const origin = request.headers["origin"]
+    return Headers.unsafeFromRecord({
+      ...allowOrigin(origin),
+      ...allowCredentials,
+      ...exposeHeaders
+    })
+  }
+
+  const headersFromRequestOptions = (request: ServerRequest.HttpServerRequest) => {
+    const origin = request.headers["origin"]
+    const accessControlRequestHeaders = request.headers["access-control-request-headers"]
+    return Headers.unsafeFromRecord({
+      ...allowOrigin(origin),
+      ...allowCredentials,
+      ...exposeHeaders,
+      ...allowMethods,
+      ...allowHeaders(accessControlRequestHeaders),
+      ...maxAge
+    })
+  }
+
+  const preResponseHandler = (request: ServerRequest.HttpServerRequest, response: HttpServerResponse) =>
+    Effect.succeed(ServerResponse.setHeaders(response, headersFromRequest(request)))
+
   return <E, R>(httpApp: HttpApp.Default<E, R>): HttpApp.Default<E, R> =>
     Effect.withFiberRuntime((fiber) => {
       const context = fiber.getFiberRef(FiberRef.currentContext)
-      const request = Context.unsafeGet(
-        context,
-        ServerRequest.HttpServerRequest
-      )
-      const origin = request.headers["origin"]
-      const accessControlRequestHeaders = request.headers["access-control-request-headers"]
-      const corsHeaders = Headers.unsafeFromRecord({
-        ...allowOrigin(origin),
-        ...allowCredentials,
-        ...exposeHeaders
-      })
+      const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
       if (request.method === "OPTIONS") {
-        Object.assign(corsHeaders, {
-          ...allowMethods,
-          ...allowHeaders(accessControlRequestHeaders),
-          ...maxAge
-        })
-        return Effect.succeed(ServerResponse.empty({ status: 204, headers: corsHeaders }))
+        return Effect.succeed(ServerResponse.empty({
+          status: 204,
+          headers: headersFromRequestOptions(request)
+        }))
       }
-      return Effect.map(httpApp, ServerResponse.setHeaders(corsHeaders))
+      return Effect.zipRight(HttpApp.appendPreResponseHandler(preResponseHandler), httpApp)
     })
 }
