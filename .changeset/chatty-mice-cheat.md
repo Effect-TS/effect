@@ -2,4 +2,4 @@
 "@effect/platform": patch
 ---
 
-fix: circular import
+fix HttpMiddleware circular import
