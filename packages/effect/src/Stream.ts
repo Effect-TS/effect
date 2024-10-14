@@ -2120,10 +2120,16 @@ export const fromTQueue: <A>(queue: TDequeue<A>) => Stream<A> = internal.fromTQu
  * @since 2.0.0
  * @category constructors
  */
-export const fromReadableStream: <A, E>(
-  evaluate: LazyArg<ReadableStream<A>>,
-  onError: (error: unknown) => E
-) => Stream<A, E> = internal.fromReadableStream
+export const fromReadableStream: {
+  <A, E>(
+    options: {
+      readonly evaluate: LazyArg<ReadableStream<A>>
+      readonly onError: (error: unknown) => E
+      readonly releaseLockOnEnd?: boolean | undefined
+    }
+  ): Stream<A, E>
+  <A, E>(evaluate: LazyArg<ReadableStream<A>>, onError: (error: unknown) => E): Stream<A, E>
+} = internal.fromReadableStream
 
 /**
  * Creates a stream from a `ReadableStreamBYOBReader`.
@@ -2134,11 +2140,21 @@ export const fromReadableStream: <A, E>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromReadableStreamByob: <E>(
-  evaluate: LazyArg<ReadableStream<Uint8Array>>,
-  onError: (error: unknown) => E,
-  allocSize?: number
-) => Stream<Uint8Array, E> = internal.fromReadableStreamByob
+export const fromReadableStreamByob: {
+  <E>(
+    options: {
+      readonly evaluate: LazyArg<ReadableStream<Uint8Array>>
+      readonly onError: (error: unknown) => E
+      readonly bufferSize?: number | undefined
+      readonly releaseLockOnEnd?: boolean | undefined
+    }
+  ): Stream<Uint8Array, E>
+  <E>(
+    evaluate: LazyArg<ReadableStream<Uint8Array>>,
+    onError: (error: unknown) => E,
+    allocSize?: number
+  ): Stream<Uint8Array, E>
+} = internal.fromReadableStreamByob
 
 /**
  * Creates a stream from a `Schedule` that does not require any further

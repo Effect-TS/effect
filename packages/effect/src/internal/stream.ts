@@ -18,7 +18,7 @@ import * as MergeDecision from "../MergeDecision.js"
 import * as Option from "../Option.js"
 import type * as Order from "../Order.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isTagged, type Predicate, type Refinement } from "../Predicate.js"
+import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import * as PubSub from "../PubSub.js"
 import * as Queue from "../Queue.js"
 import * as RcRef from "../RcRef.js"
@@ -3261,14 +3261,38 @@ export const fromSchedule = <A, R>(schedule: Schedule.Schedule<A, unknown, R>): 
   )
 
 /** @internal */
-export const fromReadableStream = <A, E>(
-  evaluate: LazyArg<ReadableStream<A>>,
-  onError: (error: unknown) => E
-): Stream.Stream<A, E> =>
-  unwrapScoped(Effect.map(
+export const fromReadableStream: {
+  <A, E>(
+    options: {
+      readonly evaluate: LazyArg<ReadableStream<A>>
+      readonly onError: (error: unknown) => E
+      readonly releaseLockOnEnd?: boolean | undefined
+    }
+  ): Stream.Stream<A, E>
+  <A, E>(
+    evaluate: LazyArg<ReadableStream<A>>,
+    onError: (error: unknown) => E
+  ): Stream.Stream<A, E>
+} = <A, E>(
+  ...args: [options: {
+    readonly evaluate: LazyArg<ReadableStream<A>>
+    readonly onError: (error: unknown) => E
+    readonly releaseLockOnEnd?: boolean | undefined
+  }] | [
+    evaluate: LazyArg<ReadableStream<A>>,
+    onError: (error: unknown) => E
+  ]
+): Stream.Stream<A, E> => {
+  const evaluate = args.length === 1 ? args[0].evaluate : args[0]
+  const onError = args.length === 1 ? args[0].onError : args[1]
+  const releaseLockOnEnd = args.length === 1 ? args[0].releaseLockOnEnd === true : false
+  return unwrapScoped(Effect.map(
     Effect.acquireRelease(
       Effect.sync(() => evaluate().getReader()),
-      (reader) => Effect.promise(() => reader.cancel())
+      (reader) =>
+        releaseLockOnEnd
+          ? Effect.sync(() => reader.releaseLock())
+          : Effect.promise(() => reader.cancel())
     ),
     (reader) =>
       repeatEffectOption(
@@ -3281,34 +3305,59 @@ export const fromReadableStream = <A, E>(
         )
       )
   ))
+}
 
 /** @internal */
-export const fromReadableStreamByob = <E>(
-  evaluate: LazyArg<ReadableStream<Uint8Array>>,
-  onError: (error: unknown) => E,
-  allocSize = 4096
-): Stream.Stream<Uint8Array, E> =>
-  unwrapScoped(Effect.map(
+export const fromReadableStreamByob: {
+  <E>(
+    options: {
+      readonly evaluate: LazyArg<ReadableStream<Uint8Array>>
+      readonly onError: (error: unknown) => E
+      readonly bufferSize?: number | undefined
+      readonly releaseLockOnEnd?: boolean | undefined
+    }
+  ): Stream.Stream<Uint8Array, E>
+  <E>(
+    evaluate: LazyArg<ReadableStream<Uint8Array>>,
+    onError: (error: unknown) => E,
+    allocSize?: number
+  ): Stream.Stream<Uint8Array, E>
+} = <E>(
+  ...args: [options: {
+    readonly evaluate: LazyArg<ReadableStream<Uint8Array>>
+    readonly onError: (error: unknown) => E
+    readonly bufferSize?: number | undefined
+    readonly releaseLockOnEnd?: boolean | undefined
+  }] | [
+    evaluate: LazyArg<ReadableStream<Uint8Array>>,
+    onError: (error: unknown) => E,
+    allocSize?: number | undefined
+  ]
+): Stream.Stream<Uint8Array, E> => {
+  const evaluate = args.length === 1 ? args[0].evaluate : args[0]
+  const onError = args.length === 1 ? args[0].onError : args[1]
+  const allocSize = (args.length === 1 ? args[0].bufferSize : args[2]) ?? 4096
+  const releaseLockOnEnd = args.length === 1 ? args[0].releaseLockOnEnd === true : false
+  return unwrapScoped(Effect.map(
     Effect.acquireRelease(
       Effect.sync(() => evaluate().getReader({ mode: "byob" })),
-      (reader) => Effect.promise(() => reader.cancel())
+      (reader) => releaseLockOnEnd ? Effect.sync(() => reader.releaseLock()) : Effect.promise(() => reader.cancel())
     ),
     (reader) =>
       catchAll(
         forever(readChunkStreamByobReader(reader, onError, allocSize)),
-        (error) => isTagged(error, "EOF") ? empty : fail(error as E)
+        (error) => error === EOF ? empty : fail(error)
       )
   ))
-
-interface EOF {
-  readonly _tag: "EOF"
 }
+
+const EOF = Symbol.for("effect/Stream/EOF")
 
 const readChunkStreamByobReader = <E>(
   reader: ReadableStreamBYOBReader,
   onError: (error: unknown) => E,
   size: number
-): Stream.Stream<Uint8Array, E | EOF> => {
+): Stream.Stream<Uint8Array, E | typeof EOF> => {
   const buffer = new ArrayBuffer(size)
   return paginateEffect(0, (offset) =>
     Effect.flatMap(
@@ -3318,7 +3367,7 @@ const readChunkStreamByobReader = <E>(
       }),
       ({ done, value }) => {
         if (done) {
-          return Effect.fail({ _tag: "EOF" })
+          return Effect.fail(EOF)
         }
         const newOffset = offset + value.byteLength
         return Effect.succeed([
