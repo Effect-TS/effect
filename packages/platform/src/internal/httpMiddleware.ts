@@ -1,4 +1,3 @@
-import { HttpApp } from "@effect/platform"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
@@ -9,7 +8,7 @@ import * as Option from "effect/Option"
 import type * as Predicate from "effect/Predicate"
 import type { ReadonlyRecord } from "effect/Record"
 import * as Headers from "../Headers.js"
-import type * as App from "../HttpApp.js"
+import * as App from "../HttpApp.js"
 import type * as Middleware from "../HttpMiddleware.js"
 import * as ServerError from "../HttpServerError.js"
 import * as ServerRequest from "../HttpServerRequest.js"
@@ -301,7 +300,7 @@ export const cors = (options?: {
   const preResponseHandler = (request: ServerRequest.HttpServerRequest, response: HttpServerResponse) =>
     Effect.succeed(ServerResponse.setHeaders(response, headersFromRequest(request)))
 
-  return <E, R>(httpApp: HttpApp.Default<E, R>): HttpApp.Default<E, R> =>
+  return <E, R>(httpApp: App.Default<E, R>): App.Default<E, R> =>
     Effect.withFiberRuntime((fiber) => {
       const context = fiber.getFiberRef(FiberRef.currentContext)
       const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
@@ -311,6 +310,6 @@ export const cors = (options?: {
           headers: headersFromRequestOptions(request)
         }))
       }
-      return Effect.zipRight(HttpApp.appendPreResponseHandler(preResponseHandler), httpApp)
+      return Effect.zipRight(App.appendPreResponseHandler(preResponseHandler), httpApp)
     })
 }
