@@ -1,4 +1,3 @@
-import { HttpApp } from "@effect/platform"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
@@ -16,6 +15,7 @@ import * as ServerRequest from "../HttpServerRequest.js"
 import * as ServerResponse from "../HttpServerResponse.js"
 import type { HttpServerResponse } from "../HttpServerResponse.js"
 import * as TraceContext from "../HttpTraceContext.js"
+import * as internalHttpApp from "./httpApp.js"
 
 /** @internal */
 export const make = <M extends Middleware.HttpMiddleware>(middleware: M): M => middleware
@@ -301,7 +301,7 @@ export const cors = (options?: {
   const preResponseHandler = (request: ServerRequest.HttpServerRequest, response: HttpServerResponse) =>
     Effect.succeed(ServerResponse.setHeaders(response, headersFromRequest(request)))
 
-  return <E, R>(httpApp: HttpApp.Default<E, R>): HttpApp.Default<E, R> =>
+  return <E, R>(httpApp: App.Default<E, R>): App.Default<E, R> =>
     Effect.withFiberRuntime((fiber) => {
       const context = fiber.getFiberRef(FiberRef.currentContext)
       const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
@@ -311,6 +311,6 @@ export const cors = (options?: {
           headers: headersFromRequestOptions(request)
         }))
       }
-      return Effect.zipRight(HttpApp.appendPreResponseHandler(preResponseHandler), httpApp)
+      return Effect.zipRight(internalHttpApp.appendPreResponseHandler(preResponseHandler), httpApp)
     })
 }
