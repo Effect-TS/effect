@@ -2,7 +2,7 @@ import * as AST from "effect/SchemaAST"
 import { describe, expect, it } from "vitest"
 
 describe("annotations", () => {
-  it("should ad annotations", () => {
+  it("should add annotations", () => {
     const symA = Symbol.for("a")
     const ast = AST.annotations(AST.stringKeyword, { [symA]: "A" })
     expect(ast instanceof AST.StringKeyword).toBe(true)

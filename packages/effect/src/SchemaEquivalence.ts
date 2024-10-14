@@ -14,24 +14,18 @@ import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
 
 /**
- * @category hooks
+ * @category annotations
  * @since 3.10.0
  */
-export const EquivalenceHookId: unique symbol = Symbol.for("effect/Schema/EquivalenceHookId")
-
-/**
- * @category hooks
- * @since 3.10.0
- */
-export type EquivalenceHookId = typeof EquivalenceHookId
+export type EquivalenceAnnotation<A, TypeParameters extends ReadonlyArray<any> = readonly []> = (
+  ...equivalences: { readonly [K in keyof TypeParameters]: Equivalence.Equivalence<TypeParameters[K]> }
+) => Equivalence.Equivalence<A>
 
 /**
  * @category annotations
  * @since 3.10.0
  */
-export const equivalence =
-  <A>(handler: (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<A>) =>
-  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> => self.annotations({ [EquivalenceHookId]: handler })
+export const EquivalenceAnnotationId: unique symbol = Symbol.for("effect/annotation/Equivalence")
 
 /**
  * @category Equivalence
@@ -39,14 +33,10 @@ export const equivalence =
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Equivalence.Equivalence<A> => go(schema.ast, [])
 
-const getHook = AST.getAnnotation<
-  (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<any>
->(
-  EquivalenceHookId
-)
+const getAnnotation = AST.getAnnotation<EquivalenceAnnotation<any, any>>(EquivalenceAnnotationId)
 
 const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equivalence<any> => {
-  const hook = getHook(ast)
+  const hook = getAnnotation(ast)
   if (Option.isSome(hook)) {
     switch (ast._tag) {
       case "Declaration":

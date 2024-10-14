@@ -22,30 +22,30 @@ it("exports", () => {
   expect(S.validateOption).exist
   expect(S.validateEither).exist
 
-  expect(S.GreaterThanBigIntTypeId).exist
-  expect(S.GreaterThanOrEqualToBigIntTypeId).exist
-  expect(S.LessThanBigIntTypeId).exist
-  expect(S.LessThanOrEqualToBigIntTypeId).exist
-  expect(S.BetweenBigIntTypeId).exist
-  expect(S.BrandTypeId).exist
-  expect(S.FiniteTypeId).exist
-  expect(S.GreaterThanTypeId).exist
-  expect(S.GreaterThanOrEqualToTypeId).exist
-  expect(S.MultipleOfTypeId).exist
-  expect(S.IntTypeId).exist
-  expect(S.LessThanTypeId).exist
-  expect(S.LessThanOrEqualToTypeId).exist
-  expect(S.BetweenTypeId).exist
-  expect(S.NonNaNTypeId).exist
-  expect(S.InstanceOfTypeId).exist
-  expect(S.MinItemsTypeId).exist
-  expect(S.MaxItemsTypeId).exist
-  expect(S.ItemsCountTypeId).exist
-  expect(S.TrimmedTypeId).exist
-  expect(S.PatternTypeId).exist
-  expect(S.StartsWithTypeId).exist
-  expect(S.EndsWithTypeId).exist
-  expect(S.IncludesTypeId).exist
-  expect(S.UUIDTypeId).exist
-  expect(S.ULIDTypeId).exist
+  expect(S.GreaterThanBigIntSchemaId).exist
+  expect(S.GreaterThanOrEqualToBigIntSchemaId).exist
+  expect(S.LessThanBigIntSchemaId).exist
+  expect(S.LessThanOrEqualToBigIntSchemaId).exist
+  expect(S.BetweenBigIntSchemaId).exist
+  expect(S.BrandSchemaId).exist
+  expect(S.FiniteSchemaId).exist
+  expect(S.GreaterThanSchemaId).exist
+  expect(S.GreaterThanOrEqualToSchemaId).exist
+  expect(S.MultipleOfSchemaId).exist
+  expect(S.IntSchemaId).exist
+  expect(S.LessThanSchemaId).exist
+  expect(S.LessThanOrEqualToSchemaId).exist
+  expect(S.BetweenSchemaId).exist
+  expect(S.NonNaNSchemaId).exist
+  expect(S.InstanceOfSchemaId).exist
+  expect(S.MinItemsSchemaId).exist
+  expect(S.MaxItemsSchemaId).exist
+  expect(S.ItemsCountSchemaId).exist
+  expect(S.TrimmedSchemaId).exist
+  expect(S.PatternSchemaId).exist
+  expect(S.StartsWithSchemaId).exist
+  expect(S.EndsWithSchemaId).exist
+  expect(S.IncludesSchemaId).exist
+  expect(S.UUIDSchemaId).exist
+  expect(S.ULIDSchemaId).exist
 })

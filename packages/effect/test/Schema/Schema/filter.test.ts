@@ -8,7 +8,7 @@ describe("filter", () => {
   it("annotation options", () => {
     const schema = S.String.pipe(
       S.filter((s): s is string => s.length === 1, {
-        typeId: Symbol.for("Char"),
+        schemaId: Symbol.for("Char"),
         description: "description",
         documentation: "documentation",
         examples: ["examples"],
@@ -18,7 +18,7 @@ describe("filter", () => {
       })
     )
     expect(schema.ast.annotations).toEqual({
-      [AST.TypeAnnotationId]: Symbol.for("Char"),
+      [AST.SchemaIdAnnotationId]: Symbol.for("Char"),
       [AST.DescriptionAnnotationId]: "description",
       [AST.DocumentationAnnotationId]: "documentation",
       [AST.ExamplesAnnotationId]: [

@@ -711,7 +711,7 @@ schema (NeverKeyword): never`)
 
   describe("should handle annotations", () => {
     const expectHook = <A, I>(source: S.Schema<A, I>) => {
-      const schema = source.pipe(E.equivalence(() => () => true))
+      const schema = source.annotations({ equivalence: () => () => true })
       const eq = E.make(schema)
       expect(eq("a" as any, "b" as any)).toEqual(true)
     }

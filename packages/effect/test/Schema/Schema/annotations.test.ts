@@ -142,3 +142,16 @@ describe(".annotations()", () => {
     expect(Pretty.make(AFromSelf)(new A("value"))).toEqual(`new A("value")`)
   })
 })
+
+declare module "effect/Schema" {
+  namespace Annotations {
+    interface Schema<A> extends Doc<A> {
+      formName?: string
+    }
+  }
+}
+
+it("should support custom annotations", () => {
+  const schema = S.String.annotations({ formName: "a" })
+  expect(schema.ast.annotations["formName"]).toEqual("a")
+})

@@ -21,41 +21,30 @@ export interface LazyArbitrary<A> {
 }
 
 /**
- * @category hooks
+ * @category annotations
  * @since 3.10.0
  */
-export const ArbitraryHookId: unique symbol = Symbol.for("effect/Schema/ArbitraryHookId")
-
-/**
- * @category hooks
- * @since 3.10.0
- */
-export type ArbitraryHookId = typeof ArbitraryHookId
-
-/**
- * @category hooks
- * @since 3.10.0
- */
-export interface GenerationContext {
+export interface ArbitraryGenerationContext {
   readonly depthIdentifier?: string
   readonly maxDepth: number
 }
 
 /**
- * @category hooks
+ * @category annotations
  * @since 3.10.0
  */
-export type ArbitraryAnnotation<A> = (
-  ...args: [...ReadonlyArray<LazyArbitrary<any>>, GenerationContext]
+export type ArbitraryAnnotation<A, TypeParameters extends ReadonlyArray<any> = readonly []> = (
+  ...arbitraries: [
+    ...{ readonly [K in keyof TypeParameters]: LazyArbitrary<TypeParameters[K]> },
+    ctx: ArbitraryGenerationContext
+  ]
 ) => LazyArbitrary<A>
 
 /**
  * @category annotations
  * @since 3.10.0
  */
-export const arbitrary =
-  <A>(annotation: ArbitraryAnnotation<A>) => <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> =>
-    self.annotations({ [ArbitraryHookId]: annotation })
+export const ArbitraryAnnotationId: unique symbol = Symbol.for("effect/annotation/Arbitrary")
 
 /**
  * Returns a LazyArbitrary for the `A` type of the provided schema.
@@ -74,7 +63,7 @@ export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): FastCheck.Arbitrary<A> => makeLazy(schema)(FastCheck)
 
-const getHook = AST.getAnnotation<ArbitraryAnnotation<any>>(ArbitraryHookId)
+const getAnnotation = AST.getAnnotation<ArbitraryAnnotation<any, any>>(ArbitraryAnnotationId)
 
 const getRefinementFromArbitrary = (
   ast: AST.Refinement,
@@ -121,7 +110,7 @@ const getSuspendedArray = (
   )
 }
 
-interface Context extends GenerationContext {
+interface Context extends ArbitraryGenerationContext {
   readonly constraints?: Constraints
 }
 
@@ -130,15 +119,15 @@ const go = (
   ctx: Context,
   path: ReadonlyArray<PropertyKey>
 ): LazyArbitrary<any> => {
-  const hook = getHook(ast)
-  if (Option.isSome(hook)) {
+  const annotation = getAnnotation(ast)
+  if (Option.isSome(annotation)) {
     switch (ast._tag) {
       case "Declaration":
-        return hook.value(...ast.typeParameters.map((p) => go(p, ctx, path)), ctx)
+        return annotation.value(...ast.typeParameters.map((p) => go(p, ctx, path)), ctx)
       case "Refinement":
-        return hook.value(getRefinementFromArbitrary(ast, ctx, path), ctx)
+        return annotation.value(getRefinementFromArbitrary(ast, ctx, path), ctx)
       default:
-        return hook.value(ctx)
+        return annotation.value(ctx)
     }
   }
   switch (ast._tag) {
@@ -442,40 +431,40 @@ export type Constraints =
 
 /** @internal */
 export const getConstraints = (ast: AST.Refinement): Constraints | undefined => {
-  const TypeAnnotationId = ast.annotations[AST.TypeAnnotationId]
+  const TypeAnnotationId = ast.annotations[AST.SchemaIdAnnotationId]
   const jsonSchema: any = ast.annotations[AST.JSONSchemaAnnotationId]
   switch (TypeAnnotationId) {
     // int
-    case filters_.IntTypeId:
+    case filters_.IntSchemaId:
       return new IntegerConstraints({})
     // number
-    case filters_.GreaterThanTypeId:
-    case filters_.GreaterThanOrEqualToTypeId:
-    case filters_.LessThanTypeId:
-    case filters_.LessThanOrEqualToTypeId:
-    case filters_.BetweenTypeId:
+    case filters_.GreaterThanSchemaId:
+    case filters_.GreaterThanOrEqualToSchemaId:
+    case filters_.LessThanSchemaId:
+    case filters_.LessThanOrEqualToSchemaId:
+    case filters_.BetweenSchemaId:
       return new NumberConstraints({
         min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
         max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum
       })
     // bigint
-    case filters_.GreaterThanBigintTypeId:
-    case filters_.GreaterThanOrEqualToBigIntTypeId:
-    case filters_.LessThanBigIntTypeId:
-    case filters_.LessThanOrEqualToBigIntTypeId:
-    case filters_.BetweenBigintTypeId: {
+    case filters_.GreaterThanBigintSchemaId:
+    case filters_.GreaterThanOrEqualToBigIntSchemaId:
+    case filters_.LessThanBigIntSchemaId:
+    case filters_.LessThanOrEqualToBigIntSchemaId:
+    case filters_.BetweenBigintSchemaId: {
       const constraints: any = ast.annotations[TypeAnnotationId]
       return new BigIntConstraints(constraints)
     }
     // string
-    case filters_.MinLengthTypeId:
-    case filters_.MaxLengthTypeId:
-    case filters_.LengthTypeId:
+    case filters_.MinLengthSchemaId:
+    case filters_.MaxLengthSchemaId:
+    case filters_.LengthSchemaId:
       return new StringConstraints(jsonSchema)
     // array
-    case filters_.MinItemsTypeId:
-    case filters_.MaxItemsTypeId:
-    case filters_.ItemsCountTypeId:
+    case filters_.MinItemsSchemaId:
+    case filters_.MaxItemsSchemaId:
+    case filters_.ItemsCountSchemaId:
       return new ArrayConstraints({
         minLength: jsonSchema.minItems,
         maxLength: jsonSchema.maxItems

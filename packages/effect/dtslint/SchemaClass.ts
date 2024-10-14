@@ -6,7 +6,7 @@ import * as S from "effect/Schema"
 // ---------------------------------------------
 
 type HasFields<Fields extends S.Struct.Fields> = S.Struct<Fields> | {
-  readonly [S.refineTypeId]: HasFields<Fields>
+  readonly [S.RefineSchemaId]: HasFields<Fields>
 }
 
 declare const checkForConflicts: <Fields extends S.Struct.Fields>(

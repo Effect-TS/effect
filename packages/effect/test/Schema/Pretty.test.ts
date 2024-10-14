@@ -434,7 +434,7 @@ schema (Declaration): <declaration schema>`)
 
   describe("should handle annotations", () => {
     const expectHook = <A, I>(source: S.Schema<A, I>) => {
-      const schema = source.pipe(Pretty.pretty(() => () => "custom pretty"))
+      const schema = source.annotations({ pretty: () => () => "custom pretty" })
       const pretty = Pretty.make(schema)
       expect(pretty(null as any)).toEqual("custom pretty")
     }

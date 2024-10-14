@@ -62,8 +62,13 @@ hole<S.Schema.Context<S.Schema<number, string, "ctx">>>()
 // S.annotations
 // ---------------------------------------------
 
-// @ts-expect-error
+// should allow to add custom string annotations to a schema
+// $ExpectType SchemaClass<string, string, never>
 S.String.annotations({ a: 1 })
+
+// should allow to add custom symbol annotations to a schema
+// $ExpectType SchemaClass<string, string, never>
+S.String.annotations({ [Symbol.for("a")]: 1 })
 
 /**
  * @category api interface

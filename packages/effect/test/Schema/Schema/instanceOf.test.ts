@@ -17,7 +17,7 @@ describe("instanceOf", () => {
   it("annotations", () => {
     const schema = S.instanceOf(Set, { description: "my description" })
     expect(schema.ast.annotations[AST.DescriptionAnnotationId]).toEqual("my description")
-    expect(schema.ast.annotations[S.InstanceOfTypeId]).toEqual({ constructor: Set })
+    expect(schema.ast.annotations[S.InstanceOfSchemaId]).toEqual({ constructor: Set })
   })
 
   it("decoding", async () => {

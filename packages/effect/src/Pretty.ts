@@ -18,24 +18,18 @@ export interface Pretty<To> {
 }
 
 /**
- * @category hooks
+ * @category annotations
  * @since 3.10.0
  */
-export const PrettyHookId: unique symbol = Symbol.for("effect/Schema/PrettyHookId")
-
-/**
- * @category hooks
- * @since 3.10.0
- */
-export type PrettyHookId = typeof PrettyHookId
+export type PrettyAnnotation<A, TypeParameters extends ReadonlyArray<any> = readonly []> = (
+  ...pretties: { readonly [K in keyof TypeParameters]: Pretty<TypeParameters[K]> }
+) => Pretty<A>
 
 /**
  * @category annotations
  * @since 3.10.0
  */
-export const pretty =
-  <A>(handler: (...args: ReadonlyArray<Pretty<any>>) => Pretty<A>) =>
-  <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> => self.annotations({ [PrettyHookId]: handler })
+export const PrettyAnnotationId: unique symbol = Symbol.for("effect/annotation/Pretty")
 
 /**
  * @category prettify
@@ -43,12 +37,10 @@ export const pretty =
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): (a: A) => string => compile(schema.ast, [])
 
-const getHook = AST.getAnnotation<(...args: ReadonlyArray<Pretty<any>>) => Pretty<any>>(
-  PrettyHookId
-)
+const getAnnotation = AST.getAnnotation<PrettyAnnotation<any, any>>(PrettyAnnotationId)
 
 const getMatcher = (defaultPretty: Pretty<any>) => (ast: AST.AST): Pretty<any> =>
-  Option.match(getHook(ast), {
+  Option.match(getAnnotation(ast), {
     onNone: () => defaultPretty,
     onSome: (handler) => handler()
   })
@@ -64,9 +56,9 @@ const formatUnknown = getMatcher(util_.formatUnknown)
  */
 export const match: AST.Match<Pretty<any>> = {
   "Declaration": (ast, go, path) => {
-    const hook = getHook(ast)
-    if (Option.isSome(hook)) {
-      return hook.value(...ast.typeParameters.map((tp) => go(tp, path)))
+    const annotation = getAnnotation(ast)
+    if (Option.isSome(annotation)) {
+      return annotation.value(...ast.typeParameters.map((tp) => go(tp, path)))
     }
     throw new Error(errors_.getPrettyMissingAnnotationErrorMessage(path, ast))
   },
@@ -92,7 +84,7 @@ export const match: AST.Match<Pretty<any>> = {
   "BigIntKeyword": getMatcher((a) => `${String(a)}n`),
   "Enums": stringify,
   "TupleType": (ast, go, path) => {
-    const hook = getHook(ast)
+    const hook = getAnnotation(ast)
     if (Option.isSome(hook)) {
       return hook.value()
     }
@@ -134,7 +126,7 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "TypeLiteral": (ast, go, path) => {
-    const hook = getHook(ast)
+    const hook = getAnnotation(ast)
     if (Option.isSome(hook)) {
       return hook.value()
     }
@@ -179,7 +171,7 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "Union": (ast, go, path) => {
-    const hook = getHook(ast)
+    const hook = getAnnotation(ast)
     if (Option.isSome(hook)) {
       return hook.value()
     }
@@ -193,7 +185,7 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "Suspend": (ast, go, path) => {
-    return Option.match(getHook(ast), {
+    return Option.match(getAnnotation(ast), {
       onNone: () => {
         const get = util_.memoizeThunk(() => go(ast.f(), path))
         return (a) => get()(a)
@@ -202,13 +194,13 @@ export const match: AST.Match<Pretty<any>> = {
     })
   },
   "Refinement": (ast, go, path) => {
-    return Option.match(getHook(ast), {
+    return Option.match(getAnnotation(ast), {
       onNone: () => go(ast.from, path),
       onSome: (handler) => handler()
     })
   },
   "Transformation": (ast, go, path) => {
-    return Option.match(getHook(ast), {
+    return Option.match(getAnnotation(ast), {
       onNone: () => go(ast.to, path),
       onSome: (handler) => handler()
     })

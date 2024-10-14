@@ -3,7 +3,6 @@
  */
 
 import * as errors_ from "./internal/schema/errors.js"
-import * as filters_ from "./internal/schema/filters.js"
 import * as Option from "./Option.js"
 import * as Predicate from "./Predicate.js"
 import * as Record from "./Record.js"
@@ -319,7 +318,7 @@ const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefi
 }
 
 const isParseJsonTransformation = (ast: AST.AST): boolean =>
-  ast.annotations[AST.TypeAnnotationId] === filters_.ParseJsonTypeId
+  ast.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
 
 function merge(a: JsonSchemaAnnotations, b: JsonSchema7): JsonSchema7
 function merge(a: JsonSchema7, b: JsonSchemaAnnotations): JsonSchema7

@@ -60,19 +60,19 @@ export type BrandAnnotation = Arr.NonEmptyReadonlyArray<string | symbol>
  * @category annotations
  * @since 3.10.0
  */
-export const BrandAnnotationId = Symbol.for("effect/Schema/annotation/Brand")
+export const BrandAnnotationId: unique symbol = Symbol.for("effect/annotation/Brand")
 
 /**
  * @category annotations
  * @since 3.10.0
  */
-export type TypeAnnotation = symbol
+export type SchemaIdAnnotation = string | symbol
 
 /**
  * @category annotations
  * @since 3.10.0
  */
-export const TypeAnnotationId = Symbol.for("effect/Schema/annotation/Type")
+export const SchemaIdAnnotationId: unique symbol = Symbol.for("effect/annotation/SchemaId")
 
 /**
  * @category annotations
@@ -87,7 +87,7 @@ export type MessageAnnotation = (issue: ParseIssue) => string | Effect<string> |
  * @category annotations
  * @since 3.10.0
  */
-export const MessageAnnotationId = Symbol.for("effect/Schema/annotation/Message")
+export const MessageAnnotationId: unique symbol = Symbol.for("effect/annotation/Message")
 
 /**
  * @category annotations
@@ -99,7 +99,7 @@ export type MissingMessageAnnotation = () => string | Effect<string>
  * @category annotations
  * @since 3.10.0
  */
-export const MissingMessageAnnotationId = Symbol.for("effect/Schema/annotation/MissingMessage")
+export const MissingMessageAnnotationId: unique symbol = Symbol.for("effect/annotation/MissingMessage")
 
 /**
  * @category annotations
@@ -111,7 +111,7 @@ export type IdentifierAnnotation = string
  * @category annotations
  * @since 3.10.0
  */
-export const IdentifierAnnotationId = Symbol.for("effect/Schema/annotation/Identifier")
+export const IdentifierAnnotationId: unique symbol = Symbol.for("effect/annotation/Identifier")
 
 /**
  * @category annotations
@@ -123,7 +123,7 @@ export type TitleAnnotation = string
  * @category annotations
  * @since 3.10.0
  */
-export const TitleAnnotationId = Symbol.for("effect/Schema/annotation/Title")
+export const TitleAnnotationId: unique symbol = Symbol.for("effect/annotation/Title")
 
 /**
  * @category annotations
@@ -135,7 +135,7 @@ export type DescriptionAnnotation = string
  * @category annotations
  * @since 3.10.0
  */
-export const DescriptionAnnotationId = Symbol.for("effect/Schema/annotation/Description")
+export const DescriptionAnnotationId: unique symbol = Symbol.for("effect/annotation/Description")
 
 /**
  * @category annotations
@@ -147,7 +147,7 @@ export type ExamplesAnnotation<A> = Arr.NonEmptyReadonlyArray<A>
  * @category annotations
  * @since 3.10.0
  */
-export const ExamplesAnnotationId = Symbol.for("effect/Schema/annotation/Examples")
+export const ExamplesAnnotationId: unique symbol = Symbol.for("effect/annotation/Examples")
 
 /**
  * @category annotations
@@ -159,7 +159,7 @@ export type DefaultAnnotation<A> = A
  * @category annotations
  * @since 3.10.0
  */
-export const DefaultAnnotationId = Symbol.for("effect/Schema/annotation/Default")
+export const DefaultAnnotationId: unique symbol = Symbol.for("effect/annotation/Default")
 
 /**
  * @category annotations
@@ -171,7 +171,7 @@ export type JSONSchemaAnnotation = object
  * @category annotations
  * @since 3.10.0
  */
-export const JSONSchemaAnnotationId = Symbol.for("effect/Schema/annotation/JSONSchema")
+export const JSONSchemaAnnotationId: unique symbol = Symbol.for("effect/annotation/JSONSchema")
 
 /**
  * @category annotations
@@ -183,7 +183,7 @@ export type DocumentationAnnotation = string
  * @category annotations
  * @since 3.10.0
  */
-export const DocumentationAnnotationId = Symbol.for("effect/Schema/annotation/Documentation")
+export const DocumentationAnnotationId: unique symbol = Symbol.for("effect/annotation/Documentation")
 
 /**
  * @category annotations
@@ -195,7 +195,7 @@ export type ConcurrencyAnnotation = Concurrency | undefined
  * @category annotations
  * @since 3.10.0
  */
-export const ConcurrencyAnnotationId = Symbol.for("effect/Schema/annotation/Concurrency")
+export const ConcurrencyAnnotationId: unique symbol = Symbol.for("effect/annotation/Concurrency")
 
 /**
  * @category annotations
@@ -207,7 +207,7 @@ export type BatchingAnnotation = boolean | "inherit" | undefined
  * @category annotations
  * @since 3.10.0
  */
-export const BatchingAnnotationId = Symbol.for("effect/Schema/annotation/Batching")
+export const BatchingAnnotationId: unique symbol = Symbol.for("effect/annotation/Batching")
 
 /**
  * @category annotations
@@ -219,13 +219,13 @@ export type ParseIssueTitleAnnotation = (issue: ParseIssue) => string | undefine
  * @category annotations
  * @since 3.10.0
  */
-export const ParseIssueTitleAnnotationId = Symbol.for("effect/Schema/annotation/ParseIssueTitle")
+export const ParseIssueTitleAnnotationId: unique symbol = Symbol.for("effect/annotation/ParseIssueTitle")
 
 /**
  * @category annotations
  * @since 3.10.0
  */
-export const ParseOptionsAnnotationId = Symbol.for("effect/Schema/annotation/ParseOptions")
+export const ParseOptionsAnnotationId: unique symbol = Symbol.for("effect/annotation/ParseOptions")
 
 /**
  * @category annotations
@@ -237,27 +237,22 @@ export type DecodingFallbackAnnotation<A> = (issue: ParseIssue) => Effect<A, Par
  * @category annotations
  * @since 3.10.0
  */
-export const DecodingFallbackAnnotationId = Symbol.for("effect/Schema/annotation/DecodingFallback")
-
-/** @internal */
-export const SurrogateAnnotationId = Symbol.for("effect/Schema/annotation/Surrogate")
+export const DecodingFallbackAnnotationId: unique symbol = Symbol.for("effect/annotation/DecodingFallback")
 
 /**
- * Used by:
- *
- * - AST.keyof
- * - AST.getPropertyKeyIndexedAccess
- * - AST.getPropertyKeys
- * - AST.getPropertySignatures
- * - AST.getWeight
- * - Parser.getLiterals
- *
- * @internal
+ * @category annotations
+ * @since 3.10.0
+ */
+export const SurrogateAnnotationId: unique symbol = Symbol.for("effect/annotation/Surrogate")
+
+/**
+ * @category annotations
+ * @since 3.10.0
  */
 export type SurrogateAnnotation = AST
 
 /** @internal */
-export const StableFilterAnnotationId = Symbol.for("effect/Schema/annotation/StableFilter")
+export const StableFilterAnnotationId: unique symbol = Symbol.for("effect/annotation/StableFilter")
 
 /**
  * A stable filter consistently applies fixed validation rules, such as
@@ -273,6 +268,7 @@ export type StableFilterAnnotation = boolean
  * @since 3.10.0
  */
 export interface Annotations {
+  readonly [_: string]: unknown
   readonly [_: symbol]: unknown
 }
 
@@ -391,7 +387,10 @@ export const getDecodingFallbackAnnotation = getAnnotation<DecodingFallbackAnnot
   DecodingFallbackAnnotationId
 )
 
-/** @internal */
+/**
+ * @category annotations
+ * @since 3.10.0
+ */
 export const getSurrogateAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)
 
 const getStableFilterAnnotation = getAnnotation<StableFilterAnnotation>(StableFilterAnnotationId)
@@ -400,10 +399,34 @@ const getStableFilterAnnotation = getAnnotation<StableFilterAnnotation>(StableFi
 export const hasStableFilter = (annotated: Annotated) =>
   Option.exists(getStableFilterAnnotation(annotated), (b) => b === true)
 
-const JSONIdentifierAnnotationId = Symbol.for("effect/Schema/annotation/JSONIdentifier")
+/**
+ * @category annotations
+ * @since 3.10.0
+ */
+export const JSONIdentifierAnnotationId: unique symbol = Symbol.for("effect/annotation/JSONIdentifier")
 
-/** @internal */
+/**
+ * @category annotations
+ * @since 3.10.0
+ */
 export const getJSONIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(JSONIdentifierAnnotationId)
+
+/**
+ * @category annotations
+ * @since 3.10.0
+ */
+export const getJSONIdentifier = (annotated: Annotated) =>
+  Option.orElse(getJSONIdentifierAnnotation(annotated), () => getIdentifierAnnotation(annotated))
+
+// -------------------------------------------------------------------------------------
+// schema ids
+// -------------------------------------------------------------------------------------
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
+export const ParseJsonSchemaId: unique symbol = Symbol.for("effect/schema/ParseJson")
 
 /**
  * @category model
@@ -2484,10 +2507,6 @@ export const blackListAnnotations =
     }
     return out
   }
-
-/** @internal */
-export const getJSONIdentifier = (annotated: Annotated) =>
-  Option.orElse(getJSONIdentifierAnnotation(annotated), () => getIdentifierAnnotation(annotated))
 
 // To generate a JSON Schema from a recursive schema, an `identifier` annotation
 // is required. So, when we calculate the encodedAST, we need to preserve the

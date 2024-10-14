@@ -3,7 +3,7 @@
  */
 
 import * as arbitrary_ from "./Arbitrary.js"
-import type { GenerationContext, LazyArbitrary } from "./Arbitrary.js"
+import type { ArbitraryGenerationContext, LazyArbitrary } from "./Arbitrary.js"
 import * as array_ from "./Array.js"
 import * as bigDecimal_ from "./BigDecimal.js"
 import * as bigInt_ from "./BigInt.js"
@@ -69,7 +69,7 @@ export type SimplifyMutable<A> = {
  * @since 3.10.0
  * @category symbol
  */
-export const TypeId: unique symbol = Symbol.for("effect/Schema/Schema")
+export const TypeId: unique symbol = Symbol.for("effect/Schema")
 
 /**
  * @since 3.10.0
@@ -135,52 +135,42 @@ interface AllAnnotations<A, TypeParameters extends ReadonlyArray<any>>
   extends Annotations.Schema<A, TypeParameters>, PropertySignature.Annotations<A>
 {}
 
+const builtInAnnotations = {
+  schemaId: AST.SchemaIdAnnotationId,
+  message: AST.MessageAnnotationId,
+  missingMessage: AST.MissingMessageAnnotationId,
+  identifier: AST.IdentifierAnnotationId,
+  title: AST.TitleAnnotationId,
+  description: AST.DescriptionAnnotationId,
+  examples: AST.ExamplesAnnotationId,
+  default: AST.DefaultAnnotationId,
+  documentation: AST.DocumentationAnnotationId,
+  jsonSchema: AST.JSONSchemaAnnotationId,
+  arbitrary: arbitrary_.ArbitraryAnnotationId,
+  pretty: pretty_.PrettyAnnotationId,
+  equivalence: equivalence_.EquivalenceAnnotationId,
+  concurrency: AST.ConcurrencyAnnotationId,
+  batching: AST.BatchingAnnotationId,
+  parseIssueTitle: AST.ParseIssueTitleAnnotationId,
+  parseOptions: AST.ParseOptionsAnnotationId,
+  decodingFallback: AST.DecodingFallbackAnnotationId
+}
+
 const toASTAnnotations = <A, TypeParameters extends ReadonlyArray<any>>(
   annotations?: AllAnnotations<A, TypeParameters>
 ): AST.Annotations => {
   if (!annotations) {
     return {}
   }
-  const out: Types.Mutable<AST.Annotations> = {}
+  const out: Types.Mutable<AST.Annotations> = { ...annotations }
 
-  // symbols are reserved for custom annotations
-  const custom = Object.getOwnPropertySymbols(annotations)
-  for (const sym of custom) {
-    out[sym] = annotations[sym]
-  }
-
-  // string keys are reserved as /schema namespace
-  if (annotations.typeId !== undefined) {
-    const typeId = annotations.typeId
-    if (typeof typeId === "object") {
-      out[AST.TypeAnnotationId] = typeId.id
-      out[typeId.id] = typeId.annotation
-    } else {
-      out[AST.TypeAnnotationId] = typeId
+  for (const key in builtInAnnotations) {
+    if (key in annotations) {
+      const id = builtInAnnotations[key as keyof typeof builtInAnnotations]
+      out[id] = annotations[key as keyof typeof annotations]
+      delete out[key]
     }
   }
-  const move = (from: keyof typeof annotations, to: symbol) => {
-    if (annotations[from] !== undefined) {
-      out[to] = annotations[from]
-    }
-  }
-  move("message", AST.MessageAnnotationId)
-  move("missingMessage", AST.MissingMessageAnnotationId)
-  move("identifier", AST.IdentifierAnnotationId)
-  move("title", AST.TitleAnnotationId)
-  move("description", AST.DescriptionAnnotationId)
-  move("examples", AST.ExamplesAnnotationId)
-  move("default", AST.DefaultAnnotationId)
-  move("documentation", AST.DocumentationAnnotationId)
-  move("jsonSchema", AST.JSONSchemaAnnotationId)
-  move("arbitrary", arbitrary_.ArbitraryHookId)
-  move("pretty", pretty_.PrettyHookId)
-  move("equivalence", equivalence_.EquivalenceHookId)
-  move("concurrency", AST.ConcurrencyAnnotationId)
-  move("batching", AST.BatchingAnnotationId)
-  move("parseIssueTitle", AST.ParseIssueTitleAnnotationId)
-  move("parseOptions", AST.ParseOptionsAnnotationId)
-  move("decodingFallback", AST.DecodingFallbackAnnotationId)
 
   return out
 }
@@ -951,10 +941,10 @@ export const declare: {
 } as any
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const BrandTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/Brand")
+export const BrandSchemaId: unique symbol = Symbol.for("effect/SchemaId/Brand")
 
 /**
  * @category constructors
@@ -974,15 +964,19 @@ export const fromBrand = <C extends Brand<string | symbol>, A extends Brand.Unbr
           option_.some(new ParseResult.Type(ast, a, either.left.map((v) => v.message).join(", "))) :
           option_.none()
       },
-      toASTAnnotations({ typeId: { id: BrandTypeId, annotation: { constructor } }, ...annotations })
+      toASTAnnotations({
+        schemaId: BrandSchemaId,
+        [BrandSchemaId]: { constructor },
+        ...annotations
+      })
     )
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const InstanceOfTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/InstanceOf")
+export const InstanceOfSchemaId: unique symbol = Symbol.for("effect/SchemaId/InstanceOf")
 
 /**
  * @category api interface
@@ -1004,7 +998,8 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
       title: constructor.name,
       description: `an instance of ${constructor.name}`,
       pretty: (): pretty_.Pretty<InstanceType<A>> => String,
-      typeId: { id: InstanceOfTypeId, annotation: { constructor } },
+      schemaId: InstanceOfSchemaId,
+      [InstanceOfSchemaId]: { constructor },
       ...annotations
     }
   )
@@ -1669,7 +1664,7 @@ const mergeSignatureAnnotations = (
  * @since 3.10.0
  * @category symbol
  */
-export const PropertySignatureTypeId: unique symbol = Symbol.for("effect/Schema/PropertySignature")
+export const PropertySignatureTypeId: unique symbol = Symbol.for("effect/PropertySignature")
 
 /**
  * @since 3.10.0
@@ -3309,13 +3304,13 @@ export const suspend = <A, I, R>(f: () => Schema<A, I, R>): suspend<A, I, R> => 
  * @since 3.10.0
  * @category symbol
  */
-export const refineTypeId: unique symbol = Symbol.for("effect/Schema/refine")
+export const RefineSchemaId: unique symbol = Symbol.for("effect/SchemaId/Refine")
 
 /**
  * @since 3.10.0
  * @category symbol
  */
-export type refineTypeId = typeof refineTypeId
+export type RefineSchemaId = typeof RefineSchemaId
 
 /**
  * @category api interface
@@ -3324,7 +3319,7 @@ export type refineTypeId = typeof refineTypeId
 export interface refine<A, From extends Schema.Any>
   extends AnnotableClass<refine<A, From>, A, Schema.Encoded<From>, Schema.Context<From>>
 {
-  readonly [refineTypeId]: From
+  readonly [RefineSchemaId]: From // required for `type HasFields = ...`
   readonly from: From
   readonly filter: (
     a: Schema.Type<From>,
@@ -3348,7 +3343,7 @@ const makeRefineClass = <From extends Schema.Any, A>(
       return makeRefineClass(this.from, this.filter, mergeSchemaAnnotations(this.ast, annotations))
     }
 
-    static [refineTypeId] = from
+    static [RefineSchemaId] = from
 
     static from = from
 
@@ -3872,20 +3867,11 @@ export declare namespace Annotations {
   export interface Schema<A, TypeParameters extends ReadonlyArray<any> = readonly []> extends Doc<A> {
     readonly identifier?: AST.IdentifierAnnotation
     readonly message?: AST.MessageAnnotation
-    readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
+    readonly schemaId?: AST.SchemaIdAnnotation
     readonly jsonSchema?: AST.JSONSchemaAnnotation
-    readonly arbitrary?: (
-      ...arbitraries: [
-        ...{ readonly [K in keyof TypeParameters]: LazyArbitrary<TypeParameters[K]> },
-        ctx: GenerationContext
-      ]
-    ) => LazyArbitrary<A>
-    readonly pretty?: (
-      ...pretties: { readonly [K in keyof TypeParameters]: pretty_.Pretty<TypeParameters[K]> }
-    ) => pretty_.Pretty<A>
-    readonly equivalence?: (
-      ...equivalences: { readonly [K in keyof TypeParameters]: Equivalence.Equivalence<TypeParameters[K]> }
-    ) => Equivalence.Equivalence<A>
+    readonly arbitrary?: arbitrary_.ArbitraryAnnotation<A, TypeParameters>
+    readonly pretty?: pretty_.PrettyAnnotation<A, TypeParameters>
+    readonly equivalence?: equivalence_.EquivalenceAnnotation<A, TypeParameters>
     readonly concurrency?: AST.ConcurrencyAnnotation
     readonly batching?: AST.BatchingAnnotation
     readonly parseIssueTitle?: AST.ParseIssueTitleAnnotation
@@ -3962,10 +3948,10 @@ export const rename: {
 )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const TrimmedTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/Trimmed")
+export const TrimmedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Trimmed")
 
 /**
  * Verifies that a string contains no leading or trailing whitespaces.
@@ -3980,7 +3966,7 @@ export const trimmed =
   <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
       filter((a) => a === a.trim(), {
-        typeId: TrimmedTypeId,
+        schemaId: TrimmedSchemaId,
         description: "a string with no leading or trailing whitespace",
         jsonSchema: { pattern: "^\\S[\\s\\S]*\\S$|^\\S$|^$" },
         ...annotations
@@ -3988,16 +3974,16 @@ export const trimmed =
     )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const MaxLengthTypeId: unique symbol = filters_.MaxLengthTypeId
+export const MaxLengthSchemaId: unique symbol = filters_.MaxLengthSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type MaxLengthTypeId = typeof MaxLengthTypeId
+export type MaxLengthSchemaId = typeof MaxLengthSchemaId
 
 /**
  * @category string filters
@@ -4012,7 +3998,7 @@ export const maxLength = <A extends string>(
     filter(
       (a) => a.length <= maxLength,
       {
-        typeId: MaxLengthTypeId,
+        schemaId: MaxLengthSchemaId,
         description: `a string at most ${maxLength} character(s) long`,
         jsonSchema: { maxLength },
         ...annotations
@@ -4021,16 +4007,16 @@ export const maxLength = <A extends string>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const MinLengthTypeId: unique symbol = filters_.MinLengthTypeId
+export const MinLengthSchemaId: unique symbol = filters_.MinLengthSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type MinLengthTypeId = typeof MinLengthTypeId
+export type MinLengthSchemaId = typeof MinLengthSchemaId
 
 /**
  * @category string filters
@@ -4045,7 +4031,7 @@ export const minLength = <A extends string>(
     filter(
       (a) => a.length >= minLength,
       {
-        typeId: MinLengthTypeId,
+        schemaId: MinLengthSchemaId,
         description: `a string at least ${minLength} character(s) long`,
         jsonSchema: { minLength },
         ...annotations
@@ -4054,10 +4040,10 @@ export const minLength = <A extends string>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const PatternTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/Pattern")
+export const PatternSchemaId: unique symbol = Symbol.for("effect/SchemaId/Pattern")
 
 /**
  * @category string filters
@@ -4077,7 +4063,8 @@ export const pattern = <A extends string>(
         return regex.test(a)
       },
       {
-        typeId: { id: PatternTypeId, annotation: { regex } },
+        schemaId: PatternSchemaId,
+        [PatternSchemaId]: { regex },
         description: `a string matching the pattern ${pattern}`,
         jsonSchema: { pattern },
         arbitrary: () => (fc) => fc.stringMatching(regex) as any,
@@ -4088,10 +4075,10 @@ export const pattern = <A extends string>(
 }
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const StartsWithTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/StartsWith")
+export const StartsWithSchemaId: unique symbol = Symbol.for("effect/SchemaId/StartsWith")
 
 /**
  * @category string filters
@@ -4106,7 +4093,8 @@ export const startsWith = <A extends string>(
     filter(
       (a) => a.startsWith(startsWith),
       {
-        typeId: { id: StartsWithTypeId, annotation: { startsWith } },
+        schemaId: StartsWithSchemaId,
+        [StartsWithSchemaId]: { startsWith },
         description: `a string starting with ${JSON.stringify(startsWith)}`,
         jsonSchema: { pattern: `^${startsWith}` },
         ...annotations
@@ -4115,10 +4103,10 @@ export const startsWith = <A extends string>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const EndsWithTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/EndsWith")
+export const EndsWithSchemaId: unique symbol = Symbol.for("effect/SchemaId/EndsWith")
 
 /**
  * @category string filters
@@ -4133,7 +4121,8 @@ export const endsWith = <A extends string>(
     filter(
       (a) => a.endsWith(endsWith),
       {
-        typeId: { id: EndsWithTypeId, annotation: { endsWith } },
+        schemaId: EndsWithSchemaId,
+        [EndsWithSchemaId]: { endsWith },
         description: `a string ending with ${JSON.stringify(endsWith)}`,
         jsonSchema: { pattern: `^.*${endsWith}$` },
         ...annotations
@@ -4142,10 +4131,10 @@ export const endsWith = <A extends string>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const IncludesTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/Includes")
+export const IncludesSchemaId: unique symbol = Symbol.for("effect/SchemaId/Includes")
 
 /**
  * @category string filters
@@ -4160,7 +4149,8 @@ export const includes = <A extends string>(
     filter(
       (a) => a.includes(searchString),
       {
-        typeId: { id: IncludesTypeId, annotation: { includes: searchString } },
+        schemaId: IncludesSchemaId,
+        [IncludesSchemaId]: { includes: searchString },
         description: `a string including ${JSON.stringify(searchString)}`,
         jsonSchema: { pattern: `.*${searchString}.*` },
         ...annotations
@@ -4169,10 +4159,10 @@ export const includes = <A extends string>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LowercasedTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/Lowercased")
+export const LowercasedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Lowercased")
 
 /**
  * Verifies that a string is lowercased.
@@ -4184,7 +4174,7 @@ export const lowercased =
   <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
       filter((a) => a === a.toLowerCase(), {
-        typeId: LowercasedTypeId,
+        schemaId: LowercasedSchemaId,
         description: "a lowercase string",
         ...annotations
       })
@@ -4199,10 +4189,10 @@ export class Lowercased extends String$.pipe(
 ) {}
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const CapitalizedTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/Capitalized")
+export const CapitalizedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Capitalized")
 
 /**
  * Verifies that a string is capitalized.
@@ -4214,7 +4204,7 @@ export const capitalized =
   <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
       filter((a) => a[0]?.toUpperCase() === a[0], {
-        typeId: CapitalizedTypeId,
+        schemaId: CapitalizedSchemaId,
         description: "a capitalized string",
         ...annotations
       })
@@ -4229,10 +4219,10 @@ export class Capitalized extends String$.pipe(
 ) {}
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const UncapitalizedTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/Uncapitalized")
+export const UncapitalizedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Uncapitalized")
 
 /**
  * Verifies that a string is uncapitalized.
@@ -4244,7 +4234,7 @@ export const uncapitalized =
   <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
       filter((a) => a[0]?.toLowerCase() === a[0], {
-        typeId: UncapitalizedTypeId,
+        schemaId: UncapitalizedSchemaId,
         description: "a uncapitalized string",
         ...annotations
       })
@@ -4259,10 +4249,10 @@ export class Uncapitalized extends String$.pipe(
 ) {}
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const UppercasedTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/Uppercased")
+export const UppercasedSchemaId: unique symbol = Symbol.for("effect/SchemaId/Uppercased")
 
 /**
  * Verifies that a string is uppercased.
@@ -4274,7 +4264,7 @@ export const uppercased =
   <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
       filter((a) => a === a.toUpperCase(), {
-        typeId: UppercasedTypeId,
+        schemaId: UppercasedSchemaId,
         description: "an uppercase string",
         ...annotations
       })
@@ -4289,16 +4279,16 @@ export class Uppercased extends String$.pipe(
 ) {}
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LengthTypeId: unique symbol = filters_.LengthTypeId
+export const LengthSchemaId: unique symbol = filters_.LengthSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type LengthTypeId = typeof LengthTypeId
+export type LengthSchemaId = typeof LengthSchemaId
 
 /**
  * @category string filters
@@ -4314,7 +4304,7 @@ export const length = <A extends string>(
   if (minLength !== maxLength) {
     return self.pipe(
       filter((a) => a.length >= minLength && a.length <= maxLength, {
-        typeId: LengthTypeId,
+        schemaId: LengthSchemaId,
         description: `a string at least ${minLength} character(s) and at most ${maxLength} character(s) long`,
         jsonSchema: { minLength, maxLength },
         ...annotations
@@ -4323,7 +4313,7 @@ export const length = <A extends string>(
   }
   return self.pipe(
     filter((a) => a.length === minLength, {
-      typeId: LengthTypeId,
+      schemaId: LengthSchemaId,
       description: minLength === 1 ? `a single character` : `a string ${minLength} character(s) long`,
       jsonSchema: { minLength, maxLength: minLength },
       ...annotations
@@ -4482,7 +4472,7 @@ const getParseJsonTransformation = (options?: ParseJsonOptions) =>
           catch: (e: any) => new ParseResult.Type(ast, u, e.message)
         })
     }
-  ).annotations({ typeId: filters_.ParseJsonTypeId })
+  ).annotations({ schemaId: AST.ParseJsonSchemaId })
 
 /**
  * The `ParseJson` combinator provides a method to convert JSON strings into the `unknown` type using the underlying
@@ -4504,10 +4494,10 @@ const getParseJsonTransformation = (options?: ParseJsonOptions) =>
 export const parseJson: {
   <A, I, R>(schema: Schema<A, I, R>, options?: ParseJsonOptions): SchemaClass<A, string, R>
   (options?: ParseJsonOptions): SchemaClass<unknown, string>
-} = <A, I, R>(schema?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) =>
-  isSchema(schema)
-    ? compose(parseJson(o), schema) as any
-    : getParseJsonTransformation(schema as ParseJsonOptions | undefined)
+} = <A, I, R>(schemaOrOptions?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) =>
+  isSchema(schemaOrOptions)
+    ? compose(parseJson(o), schemaOrOptions) as any
+    : getParseJsonTransformation(schemaOrOptions as ParseJsonOptions | undefined)
 
 /**
  * @category string constructors
@@ -4518,10 +4508,10 @@ export class NonEmptyString extends String$.pipe(
 ) {}
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const UUIDTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/UUID")
+export const UUIDSchemaId: unique symbol = Symbol.for("effect/SchemaId/UUID")
 
 const uuidRegexp = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
 
@@ -4535,7 +4525,7 @@ const uuidRegexp = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}
  */
 export class UUID extends String$.pipe(
   pattern(uuidRegexp, {
-    typeId: UUIDTypeId,
+    schemaId: UUIDSchemaId,
     identifier: "UUID",
     title: "UUID",
     description: "a Universally Unique Identifier",
@@ -4544,10 +4534,10 @@ export class UUID extends String$.pipe(
 ) {}
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const ULIDTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/ULID")
+export const ULIDSchemaId: unique symbol = Symbol.for("effect/SchemaId/ULID")
 
 const ulidRegexp = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
 
@@ -4562,7 +4552,7 @@ const ulidRegexp = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
  */
 export class ULID extends String$.pipe(
   pattern(ulidRegexp, {
-    typeId: ULIDTypeId,
+    schemaId: ULIDSchemaId,
     identifier: "ULID",
     title: "ULID",
     description: "a Universally Unique Lexicographically Sortable Identifier",
@@ -4571,10 +4561,10 @@ export class ULID extends String$.pipe(
 ) {}
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const FiniteTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/Finite")
+export const FiniteSchemaId: unique symbol = Symbol.for("effect/SchemaId/Finite")
 
 /**
  * Ensures that the provided value is a finite number.
@@ -4588,23 +4578,23 @@ export const finite =
   <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
       filter((a) => Number.isFinite(a), {
-        typeId: FiniteTypeId,
+        schemaId: FiniteSchemaId,
         description: "a finite number",
         ...annotations
       })
     )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanTypeId: unique symbol = filters_.GreaterThanTypeId
+export const GreaterThanSchemaId: unique symbol = filters_.GreaterThanSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type GreaterThanTypeId = typeof GreaterThanTypeId
+export type GreaterThanSchemaId = typeof GreaterThanSchemaId
 
 /**
  * This filter checks whether the provided number is greater than the specified minimum.
@@ -4619,7 +4609,7 @@ export const greaterThan = <A extends number>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a > min, {
-      typeId: GreaterThanTypeId,
+      schemaId: GreaterThanSchemaId,
       description: min === 0 ? "a positive number" : `a number greater than ${min}`,
       jsonSchema: { exclusiveMinimum: min },
       ...annotations
@@ -4627,16 +4617,16 @@ export const greaterThan = <A extends number>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanOrEqualToTypeId: unique symbol = filters_.GreaterThanOrEqualToTypeId
+export const GreaterThanOrEqualToSchemaId: unique symbol = filters_.GreaterThanOrEqualToSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type GreaterThanOrEqualToTypeId = typeof GreaterThanOrEqualToTypeId
+export type GreaterThanOrEqualToSchemaId = typeof GreaterThanOrEqualToSchemaId
 
 /**
  * This filter checks whether the provided number is greater than or equal to the specified minimum.
@@ -4651,7 +4641,7 @@ export const greaterThanOrEqualTo = <A extends number>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a >= min, {
-      typeId: GreaterThanOrEqualToTypeId,
+      schemaId: GreaterThanOrEqualToSchemaId,
       description: min === 0 ? "a non-negative number" : `a number greater than or equal to ${min}`,
       jsonSchema: { minimum: min },
       ...annotations
@@ -4659,10 +4649,10 @@ export const greaterThanOrEqualTo = <A extends number>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const MultipleOfTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/MultipleOf")
+export const MultipleOfSchemaId: unique symbol = Symbol.for("effect/SchemaId/MultipleOf")
 
 /**
  * @category number filters
@@ -4675,7 +4665,7 @@ export const multipleOf = <A extends number>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => number_.remainder(a, divisor) === 0, {
-      typeId: MultipleOfTypeId,
+      schemaId: MultipleOfSchemaId,
       description: `a number divisible by ${divisor}`,
       jsonSchema: { multipleOf: Math.abs(divisor) }, // spec requires positive divisor
       ...annotations
@@ -4683,16 +4673,16 @@ export const multipleOf = <A extends number>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const IntTypeId: unique symbol = filters_.IntTypeId
+export const IntSchemaId: unique symbol = filters_.IntSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type IntTypeId = typeof IntTypeId
+export type IntSchemaId = typeof IntSchemaId
 
 /**
  * @category number filters
@@ -4702,7 +4692,7 @@ export const int =
   <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
       filter((a) => Number.isSafeInteger(a), {
-        typeId: IntTypeId,
+        schemaId: IntSchemaId,
         title: "integer",
         description: "an integer",
         jsonSchema: { type: "integer" },
@@ -4711,16 +4701,16 @@ export const int =
     )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanTypeId: unique symbol = filters_.LessThanTypeId
+export const LessThanSchemaId: unique symbol = filters_.LessThanSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type LessThanTypeId = typeof LessThanTypeId
+export type LessThanSchemaId = typeof LessThanSchemaId
 
 /**
  * This filter checks whether the provided number is less than the specified maximum.
@@ -4733,7 +4723,7 @@ export const lessThan =
   <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
       filter((a) => a < max, {
-        typeId: LessThanTypeId,
+        schemaId: LessThanSchemaId,
         description: max === 0 ? "a negative number" : `a number less than ${max}`,
         jsonSchema: { exclusiveMaximum: max },
         ...annotations
@@ -4741,16 +4731,16 @@ export const lessThan =
     )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanOrEqualToTypeId: unique symbol = filters_.LessThanOrEqualToTypeId
+export const LessThanOrEqualToSchemaId: unique symbol = filters_.LessThanOrEqualToSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type LessThanOrEqualToTypeId = typeof LessThanOrEqualToTypeId
+export type LessThanOrEqualToSchemaId = typeof LessThanOrEqualToSchemaId
 
 /**
  * This schema checks whether the provided number is less than or equal to the specified maximum.
@@ -4765,7 +4755,7 @@ export const lessThanOrEqualTo = <A extends number>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a <= max, {
-      typeId: LessThanOrEqualToTypeId,
+      schemaId: LessThanOrEqualToSchemaId,
       description: max === 0 ? "a non-positive number" : `a number less than or equal to ${max}`,
       jsonSchema: { maximum: max },
       ...annotations
@@ -4773,16 +4763,16 @@ export const lessThanOrEqualTo = <A extends number>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const BetweenTypeId: unique symbol = filters_.BetweenTypeId
+export const BetweenSchemaId: unique symbol = filters_.BetweenSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type BetweenTypeId = typeof BetweenTypeId
+export type BetweenSchemaId = typeof BetweenSchemaId
 
 /**
  * This filter checks whether the provided number falls within the specified minimum and maximum values.
@@ -4798,7 +4788,7 @@ export const between = <A extends number>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a >= min && a <= max, {
-      typeId: BetweenTypeId,
+      schemaId: BetweenSchemaId,
       description: `a number between ${min} and ${max}`,
       jsonSchema: { maximum: max, minimum: min },
       ...annotations
@@ -4806,10 +4796,10 @@ export const between = <A extends number>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const NonNaNTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/NonNaN")
+export const NonNaNSchemaId: unique symbol = Symbol.for("effect/SchemaId/NonNaN")
 
 /**
  * @category number filters
@@ -4819,7 +4809,7 @@ export const nonNaN =
   <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
       filter((a) => !Number.isNaN(a), {
-        typeId: NonNaNTypeId,
+        schemaId: NonNaNSchemaId,
         description: "a number excluding NaN",
         ...annotations
       })
@@ -4960,10 +4950,10 @@ export class NonNegative extends Number$.pipe(
 ) {}
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const JsonNumberTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/JsonNumber")
+export const JsonNumberSchemaId: unique symbol = Symbol.for("effect/SchemaId/JsonNumber")
 
 /**
  * The `JsonNumber` is a schema for representing JSON numbers. It ensures that the provided value is a valid
@@ -4985,7 +4975,7 @@ export const JsonNumberTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/
  */
 export class JsonNumber extends Number$.pipe(
   filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
-    typeId: JsonNumberTypeId,
+    schemaId: JsonNumberSchemaId,
     identifier: "JsonNumber",
     title: "JSON-compatible number",
     description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
@@ -5021,16 +5011,16 @@ export {
 }
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanBigIntTypeId: unique symbol = filters_.GreaterThanBigintTypeId
+export const GreaterThanBigIntSchemaId: unique symbol = filters_.GreaterThanBigintSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type GreaterThanBigIntTypeId = typeof GreaterThanBigIntTypeId
+export type GreaterThanBigIntSchemaId = typeof GreaterThanBigIntSchemaId
 
 /**
  * @category bigint filters
@@ -5043,23 +5033,24 @@ export const greaterThanBigInt = <A extends bigint>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a > min, {
-      typeId: { id: GreaterThanBigIntTypeId, annotation: { min } },
+      schemaId: GreaterThanBigIntSchemaId,
+      [GreaterThanBigIntSchemaId]: { min },
       description: min === 0n ? "a positive bigint" : `a bigint greater than ${min}n`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanOrEqualToBigIntTypeId: unique symbol = filters_.GreaterThanOrEqualToBigIntTypeId
+export const GreaterThanOrEqualToBigIntSchemaId: unique symbol = filters_.GreaterThanOrEqualToBigIntSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type GreaterThanOrEqualToBigIntTypeId = typeof GreaterThanOrEqualToBigIntTypeId
+export type GreaterThanOrEqualToBigIntSchemaId = typeof GreaterThanOrEqualToBigIntSchemaId
 
 /**
  * @category bigint filters
@@ -5072,7 +5063,8 @@ export const greaterThanOrEqualToBigInt = <A extends bigint>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a >= min, {
-      typeId: { id: GreaterThanOrEqualToBigIntTypeId, annotation: { min } },
+      schemaId: GreaterThanOrEqualToBigIntSchemaId,
+      [GreaterThanOrEqualToBigIntSchemaId]: { min },
       description: min === 0n
         ? "a non-negative bigint"
         : `a bigint greater than or equal to ${min}n`,
@@ -5081,16 +5073,16 @@ export const greaterThanOrEqualToBigInt = <A extends bigint>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanBigIntTypeId: unique symbol = filters_.LessThanBigIntTypeId
+export const LessThanBigIntSchemaId: unique symbol = filters_.LessThanBigIntSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type LessThanBigIntTypeId = typeof LessThanBigIntTypeId
+export type LessThanBigIntSchemaId = typeof LessThanBigIntSchemaId
 
 /**
  * @category bigint filters
@@ -5103,23 +5095,24 @@ export const lessThanBigInt = <A extends bigint>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a < max, {
-      typeId: { id: LessThanBigIntTypeId, annotation: { max } },
+      schemaId: LessThanBigIntSchemaId,
+      [LessThanBigIntSchemaId]: { max },
       description: max === 0n ? "a negative bigint" : `a bigint less than ${max}n`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanOrEqualToBigIntTypeId: unique symbol = filters_.LessThanOrEqualToBigIntTypeId
+export const LessThanOrEqualToBigIntSchemaId: unique symbol = filters_.LessThanOrEqualToBigIntSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type LessThanOrEqualToBigIntTypeId = typeof LessThanOrEqualToBigIntTypeId
+export type LessThanOrEqualToBigIntSchemaId = typeof LessThanOrEqualToBigIntSchemaId
 
 /**
  * @category bigint filters
@@ -5132,23 +5125,24 @@ export const lessThanOrEqualToBigInt = <A extends bigint>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a <= max, {
-      typeId: { id: LessThanOrEqualToBigIntTypeId, annotation: { max } },
+      schemaId: LessThanOrEqualToBigIntSchemaId,
+      [LessThanOrEqualToBigIntSchemaId]: { max },
       description: max === 0n ? "a non-positive bigint" : `a bigint less than or equal to ${max}n`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const BetweenBigIntTypeId: unique symbol = filters_.BetweenBigintTypeId
+export const BetweenBigIntSchemaId: unique symbol = filters_.BetweenBigintSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type BetweenBigIntTypeId = typeof BetweenBigIntTypeId
+export type BetweenBigIntSchemaId = typeof BetweenBigIntSchemaId
 
 /**
  * @category bigint filters
@@ -5162,7 +5156,8 @@ export const betweenBigInt = <A extends bigint>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a >= min && a <= max, {
-      typeId: { id: BetweenBigIntTypeId, annotation: { max, min } },
+      schemaId: BetweenBigIntSchemaId,
+      [BetweenBigIntSchemaId]: { max, min },
       description: `a bigint between ${min}n and ${max}n`,
       ...annotations
     })
@@ -5519,10 +5514,10 @@ export const clampDuration =
     )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanDurationTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/LessThanDuration")
+export const LessThanDurationSchemaId: unique symbol = Symbol.for("effect/SchemaId/LessThanDuration")
 
 /**
  * @category Duration filters
@@ -5535,18 +5530,19 @@ export const lessThanDuration = <A extends duration_.Duration>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => duration_.lessThan(a, max), {
-      typeId: { id: LessThanDurationTypeId, annotation: { max } },
+      schemaId: LessThanDurationSchemaId,
+      [LessThanDurationSchemaId]: { max },
       description: `a Duration less than ${duration_.decode(max)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanOrEqualToDurationTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/LessThanOrEqualToDuration"
+export const LessThanOrEqualToDurationSchemaId: unique symbol = Symbol.for(
+  "effect/schema/LessThanOrEqualToDuration"
 )
 
 /**
@@ -5560,17 +5556,18 @@ export const lessThanOrEqualToDuration = <A extends duration_.Duration>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => duration_.lessThanOrEqualTo(a, max), {
-      typeId: { id: LessThanDurationTypeId, annotation: { max } },
+      schemaId: LessThanDurationSchemaId,
+      [LessThanDurationSchemaId]: { max },
       description: `a Duration less than or equal to ${duration_.decode(max)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanDurationTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/GreaterThanDuration")
+export const GreaterThanDurationSchemaId: unique symbol = Symbol.for("effect/SchemaId/GreaterThanDuration")
 
 /**
  * @category Duration filters
@@ -5583,18 +5580,19 @@ export const greaterThanDuration = <A extends duration_.Duration>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => duration_.greaterThan(a, min), {
-      typeId: { id: GreaterThanDurationTypeId, annotation: { min } },
+      schemaId: GreaterThanDurationSchemaId,
+      [GreaterThanDurationSchemaId]: { min },
       description: `a Duration greater than ${duration_.decode(min)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanOrEqualToDurationTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/GreaterThanOrEqualToDuration"
+export const GreaterThanOrEqualToDurationSchemaId: unique symbol = Symbol.for(
+  "effect/schema/GreaterThanOrEqualToDuration"
 )
 
 /**
@@ -5608,17 +5606,18 @@ export const greaterThanOrEqualToDuration = <A extends duration_.Duration>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => duration_.greaterThanOrEqualTo(a, min), {
-      typeId: { id: GreaterThanOrEqualToDurationTypeId, annotation: { min } },
+      schemaId: GreaterThanOrEqualToDurationSchemaId,
+      [GreaterThanOrEqualToDurationSchemaId]: { min },
       description: `a Duration greater than or equal to ${duration_.decode(min)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const BetweenDurationTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/BetweenDuration")
+export const BetweenDurationSchemaId: unique symbol = Symbol.for("effect/SchemaId/BetweenDuration")
 
 /**
  * @category Duration filters
@@ -5632,7 +5631,8 @@ export const betweenDuration = <A extends duration_.Duration>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => duration_.between(a, { minimum, maximum }), {
-      typeId: { id: BetweenDurationTypeId, annotation: { maximum, minimum } },
+      schemaId: BetweenDurationSchemaId,
+      [BetweenDurationSchemaId]: { maximum, minimum },
       description: `a Duration between ${duration_.decode(minimum)} and ${duration_.decode(maximum)}`,
       ...annotations
     })
@@ -5786,16 +5786,16 @@ export const StringFromHex: Schema<string> = makeEncodingTransformation(
 )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const MinItemsTypeId: unique symbol = filters_.MinItemsTypeId
+export const MinItemsSchemaId: unique symbol = filters_.MinItemsSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type MinItemsTypeId = typeof MinItemsTypeId
+export type MinItemsSchemaId = typeof MinItemsSchemaId
 
 /**
  * @category ReadonlyArray filters
@@ -5816,7 +5816,7 @@ export const minItems = <A>(
     filter(
       (a) => a.length >= minItems,
       {
-        typeId: MinItemsTypeId,
+        schemaId: MinItemsSchemaId,
         description: `an array of at least ${minItems} items`,
         jsonSchema: { minItems },
         [AST.StableFilterAnnotationId]: true,
@@ -5827,16 +5827,16 @@ export const minItems = <A>(
 }
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const MaxItemsTypeId: unique symbol = filters_.MaxItemsTypeId
+export const MaxItemsSchemaId: unique symbol = filters_.MaxItemsSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type MaxItemsTypeId = typeof MaxItemsTypeId
+export type MaxItemsSchemaId = typeof MaxItemsSchemaId
 
 /**
  * @category ReadonlyArray filters
@@ -5849,7 +5849,7 @@ export const maxItems = <A>(
 <I, R>(self: Schema<ReadonlyArray<A>, I, R>): filter<Schema<ReadonlyArray<A>, I, R>> =>
   self.pipe(
     filter((a) => a.length <= n, {
-      typeId: MaxItemsTypeId,
+      schemaId: MaxItemsSchemaId,
       description: `an array of at most ${n} items`,
       jsonSchema: { maxItems: n },
       [AST.StableFilterAnnotationId]: true,
@@ -5858,16 +5858,16 @@ export const maxItems = <A>(
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const ItemsCountTypeId: unique symbol = filters_.ItemsCountTypeId
+export const ItemsCountSchemaId: unique symbol = filters_.ItemsCountSchemaId
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export type ItemsCountTypeId = typeof ItemsCountTypeId
+export type ItemsCountSchemaId = typeof ItemsCountSchemaId
 
 /**
  * @category ReadonlyArray filters
@@ -5880,7 +5880,7 @@ export const itemsCount = <A>(
 <I, R>(self: Schema<ReadonlyArray<A>, I, R>): filter<Schema<ReadonlyArray<A>, I, R>> =>
   self.pipe(
     filter((a) => a.length === n, {
-      typeId: ItemsCountTypeId,
+      schemaId: ItemsCountSchemaId,
       description: `an array of exactly ${n} item(s)`,
       jsonSchema: { minItems: n, maxItems: n },
       [AST.StableFilterAnnotationId]: true,
@@ -5940,10 +5940,10 @@ export const headOrElse: {
 )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const ValidDateTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/ValidDate")
+export const ValidDateSchemaId: unique symbol = Symbol.for("effect/SchemaId/ValidDate")
 
 /**
  * Defines a filter that specifically rejects invalid dates, such as `new
@@ -5958,17 +5958,17 @@ export const validDate =
   (annotations?: Annotations.Filter<Date>) => <I, R>(self: Schema<Date, I, R>): filter<Schema<Date, I, R>> =>
     self.pipe(
       filter((a) => !Number.isNaN(a.getTime()), {
-        typeId: ValidDateTypeId,
+        schemaId: ValidDateSchemaId,
         description: "a valid Date",
         ...annotations
       })
     )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanDateTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/LessThanDate")
+export const LessThanDateSchemaId: unique symbol = Symbol.for("effect/SchemaId/LessThanDate")
 
 /**
  * @category Date filters
@@ -5981,18 +5981,19 @@ export const lessThanDate = <A extends Date>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a < max, {
-      typeId: { id: LessThanDateTypeId, annotation: { max } },
+      schemaId: LessThanDateSchemaId,
+      [LessThanDateSchemaId]: { max },
       description: `a date before ${util_.formatDate(max)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanOrEqualToDateTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/LessThanOrEqualToDate"
+export const LessThanOrEqualToDateSchemaId: unique symbol = Symbol.for(
+  "effect/schema/LessThanOrEqualToDate"
 )
 
 /**
@@ -6006,17 +6007,18 @@ export const lessThanOrEqualToDate = <A extends Date>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a <= max, {
-      typeId: { id: LessThanDateTypeId, annotation: { max } },
+      schemaId: LessThanDateSchemaId,
+      [LessThanDateSchemaId]: { max },
       description: `a date before or equal to ${util_.formatDate(max)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanDateTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/GreaterThanDate")
+export const GreaterThanDateSchemaId: unique symbol = Symbol.for("effect/SchemaId/GreaterThanDate")
 
 /**
  * @category Date filters
@@ -6029,18 +6031,19 @@ export const greaterThanDate = <A extends Date>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a > min, {
-      typeId: { id: GreaterThanDateTypeId, annotation: { min } },
+      schemaId: GreaterThanDateSchemaId,
+      [GreaterThanDateSchemaId]: { min },
       description: `a date after ${util_.formatDate(min)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanOrEqualToDateTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/GreaterThanOrEqualToDate"
+export const GreaterThanOrEqualToDateSchemaId: unique symbol = Symbol.for(
+  "effect/schema/GreaterThanOrEqualToDate"
 )
 
 /**
@@ -6054,17 +6057,18 @@ export const greaterThanOrEqualToDate = <A extends Date>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a >= min, {
-      typeId: { id: GreaterThanOrEqualToDateTypeId, annotation: { min } },
+      schemaId: GreaterThanOrEqualToDateSchemaId,
+      [GreaterThanOrEqualToDateSchemaId]: { min },
       description: `a date after or equal to ${util_.formatDate(min)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const BetweenDateTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/BetweenDate")
+export const BetweenDateSchemaId: unique symbol = Symbol.for("effect/SchemaId/BetweenDate")
 
 /**
  * @category Date filters
@@ -6078,7 +6082,8 @@ export const betweenDate = <A extends Date>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a <= maximum && a >= minimum, {
-      typeId: { id: BetweenDateTypeId, annotation: { maximum, minimum } },
+      schemaId: BetweenDateSchemaId,
+      [BetweenDateSchemaId]: { maximum, minimum },
       description: `a date between ${util_.formatDate(minimum)} and ${util_.formatDate(maximum)}`,
       ...annotations
     })
@@ -6406,7 +6411,7 @@ const optionDecode = <A>(input: OptionEncoded<A>): option_.Option<A> =>
   input._tag === "None" ? option_.none() : option_.some(input.value)
 
 const optionArbitrary =
-  <A>(value: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<option_.Option<A>> => (fc) =>
+  <A>(value: LazyArbitrary<A>, ctx: ArbitraryGenerationContext): LazyArbitrary<option_.Option<A>> => (fc) =>
     fc.oneof(
       ctx,
       fc.record({ _tag: fc.constant("None" as const) }),
@@ -6829,7 +6834,7 @@ export const EitherFromUnion = <R extends Schema.All, L extends Schema.All>({ le
 const mapArbitrary = <K, V>(
   key: LazyArbitrary<K>,
   value: LazyArbitrary<V>,
-  ctx: GenerationContext
+  ctx: ArbitraryGenerationContext
 ): LazyArbitrary<Map<K, V>> => {
   return (fc) => {
     const items = fc.array(fc.tuple(key(fc), value(fc)))
@@ -7033,10 +7038,11 @@ export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
     }
   )
 
-const setArbitrary = <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<ReadonlySet<A>> => (fc) => {
-  const items = fc.array(item(fc))
-  return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map((as) => new Set(as))
-}
+const setArbitrary =
+  <A>(item: LazyArbitrary<A>, ctx: ArbitraryGenerationContext): LazyArbitrary<ReadonlySet<A>> => (fc) => {
+    const items = fc.array(item(fc))
+    return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map((as) => new Set(as))
+  }
 
 const readonlySetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<ReadonlySet<A>> => (set) =>
   `new Set([${Array.from(set.values()).map((a) => item(a)).join(", ")}])`
@@ -7223,10 +7229,10 @@ export class BigDecimalFromNumber extends transformOrFail(
 ).annotations({ identifier: "BigDecimalFromNumber" }) {}
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanBigDecimalTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/GreaterThanBigDecimal")
+export const GreaterThanBigDecimalSchemaId: unique symbol = Symbol.for("effect/SchemaId/GreaterThanBigDecimal")
 
 /**
  * @category BigDecimal filters
@@ -7239,18 +7245,19 @@ export const greaterThanBigDecimal = <A extends bigDecimal_.BigDecimal>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => bigDecimal_.greaterThan(a, min), {
-      typeId: { id: GreaterThanBigDecimalTypeId, annotation: { min } },
+      schemaId: GreaterThanBigDecimalSchemaId,
+      [GreaterThanBigDecimalSchemaId]: { min },
       description: `a BigDecimal greater than ${bigDecimal_.format(min)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanOrEqualToBigDecimalTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/GreaterThanOrEqualToBigDecimal"
+export const GreaterThanOrEqualToBigDecimalSchemaId: unique symbol = Symbol.for(
+  "effect/schema/GreaterThanOrEqualToBigDecimal"
 )
 
 /**
@@ -7264,17 +7271,18 @@ export const greaterThanOrEqualToBigDecimal = <A extends bigDecimal_.BigDecimal>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => bigDecimal_.greaterThanOrEqualTo(a, min), {
-      typeId: { id: GreaterThanOrEqualToBigDecimalTypeId, annotation: { min } },
+      schemaId: GreaterThanOrEqualToBigDecimalSchemaId,
+      [GreaterThanOrEqualToBigDecimalSchemaId]: { min },
       description: `a BigDecimal greater than or equal to ${bigDecimal_.format(min)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanBigDecimalTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/LessThanBigDecimal")
+export const LessThanBigDecimalSchemaId: unique symbol = Symbol.for("effect/SchemaId/LessThanBigDecimal")
 
 /**
  * @category BigDecimal filters
@@ -7287,18 +7295,19 @@ export const lessThanBigDecimal = <A extends bigDecimal_.BigDecimal>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => bigDecimal_.lessThan(a, max), {
-      typeId: { id: LessThanBigDecimalTypeId, annotation: { max } },
+      schemaId: LessThanBigDecimalSchemaId,
+      [LessThanBigDecimalSchemaId]: { max },
       description: `a BigDecimal less than ${bigDecimal_.format(max)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const LessThanOrEqualToBigDecimalTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/LessThanOrEqualToBigDecimal"
+export const LessThanOrEqualToBigDecimalSchemaId: unique symbol = Symbol.for(
+  "effect/schema/LessThanOrEqualToBigDecimal"
 )
 
 /**
@@ -7312,18 +7321,19 @@ export const lessThanOrEqualToBigDecimal = <A extends bigDecimal_.BigDecimal>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => bigDecimal_.lessThanOrEqualTo(a, max), {
-      typeId: { id: LessThanOrEqualToBigDecimalTypeId, annotation: { max } },
+      schemaId: LessThanOrEqualToBigDecimalSchemaId,
+      [LessThanOrEqualToBigDecimalSchemaId]: { max },
       description: `a BigDecimal less than or equal to ${bigDecimal_.format(max)}`,
       ...annotations
     })
   )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const PositiveBigDecimalTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/PositiveBigDecimal"
+export const PositiveBigDecimalSchemaId: unique symbol = Symbol.for(
+  "effect/schema/PositiveBigDecimal"
 )
 
 /**
@@ -7336,7 +7346,7 @@ export const positiveBigDecimal = <A extends bigDecimal_.BigDecimal>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => bigDecimal_.isPositive(a), {
-      typeId: { id: PositiveBigDecimalTypeId, annotation: {} },
+      schemaId: PositiveBigDecimalSchemaId,
       description: `a positive BigDecimal`,
       ...annotations
     })
@@ -7354,11 +7364,11 @@ export const PositiveBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal>> 
 )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const NonNegativeBigDecimalTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/NonNegativeBigDecimal"
+export const NonNegativeBigDecimalSchemaId: unique symbol = Symbol.for(
+  "effect/schema/NonNegativeBigDecimal"
 )
 
 /**
@@ -7371,7 +7381,7 @@ export const nonNegativeBigDecimal = <A extends bigDecimal_.BigDecimal>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a.value >= 0n, {
-      typeId: { id: NonNegativeBigDecimalTypeId, annotation: {} },
+      schemaId: NonNegativeBigDecimalSchemaId,
       description: `a non-negative BigDecimal`,
       ...annotations
     })
@@ -7389,11 +7399,11 @@ export const NonNegativeBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal
 )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const NegativeBigDecimalTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/NegativeBigDecimal"
+export const NegativeBigDecimalSchemaId: unique symbol = Symbol.for(
+  "effect/schema/NegativeBigDecimal"
 )
 
 /**
@@ -7406,7 +7416,7 @@ export const negativeBigDecimal = <A extends bigDecimal_.BigDecimal>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => bigDecimal_.isNegative(a), {
-      typeId: { id: NegativeBigDecimalTypeId, annotation: {} },
+      schemaId: NegativeBigDecimalSchemaId,
       description: `a negative BigDecimal`,
       ...annotations
     })
@@ -7424,11 +7434,11 @@ export const NegativeBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal>> 
 )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const NonPositiveBigDecimalTypeId: unique symbol = Symbol.for(
-  "effect/Schema/TypeId/NonPositiveBigDecimal"
+export const NonPositiveBigDecimalSchemaId: unique symbol = Symbol.for(
+  "effect/schema/NonPositiveBigDecimal"
 )
 
 /**
@@ -7441,7 +7451,7 @@ export const nonPositiveBigDecimal = <A extends bigDecimal_.BigDecimal>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => a.value <= 0n, {
-      typeId: { id: NonPositiveBigDecimalTypeId, annotation: {} },
+      schemaId: NonPositiveBigDecimalSchemaId,
       description: `a non-positive BigDecimal`,
       ...annotations
     })
@@ -7459,10 +7469,10 @@ export const NonPositiveBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal
 )
 
 /**
- * @category type id
+ * @category schema id
  * @since 3.10.0
  */
-export const BetweenBigDecimalTypeId: unique symbol = Symbol.for("effect/Schema/TypeId/BetweenBigDecimal")
+export const BetweenBigDecimalSchemaId: unique symbol = Symbol.for("effect/SchemaId/BetweenBigDecimal")
 
 /**
  * @category BigDecimal filters
@@ -7476,7 +7486,8 @@ export const betweenBigDecimal = <A extends bigDecimal_.BigDecimal>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter((a) => bigDecimal_.between(a, { minimum, maximum }), {
-      typeId: { id: BetweenBigDecimalTypeId, annotation: { maximum, minimum } },
+      schemaId: BetweenBigDecimalSchemaId,
+      [BetweenBigDecimalSchemaId]: { maximum, minimum },
       description: `a BigDecimal between ${bigDecimal_.format(minimum)} and ${bigDecimal_.format(maximum)}`,
       ...annotations
     })
@@ -7497,10 +7508,11 @@ export const clampBigDecimal =
       { strict: false, decode: (self) => bigDecimal_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
-const chunkArbitrary = <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<chunk_.Chunk<A>> => (fc) => {
-  const items = fc.array(item(fc))
-  return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map(chunk_.fromIterable)
-}
+const chunkArbitrary =
+  <A>(item: LazyArbitrary<A>, ctx: ArbitraryGenerationContext): LazyArbitrary<chunk_.Chunk<A>> => (fc) => {
+    const items = fc.array(item(fc))
+    return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map(chunk_.fromIterable)
+  }
 
 const chunkPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<chunk_.Chunk<A>> => (c) =>
   `Chunk(${chunk_.toReadonlyArray(c).map(item).join(", ")})`
@@ -7819,7 +7831,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
 }
 
 type HasFields<Fields extends Struct.Fields> = Struct<Fields> | {
-  readonly [refineTypeId]: HasFields<Fields>
+  readonly [RefineSchemaId]: HasFields<Fields>
 }
 
 const isField = (u: unknown) => isSchema(u) || isPropertySignature(u)
@@ -7828,7 +7840,7 @@ const isFields = <Fields extends Struct.Fields>(fields: object): fields is Field
   util_.ownKeys(fields).every((key) => isField((fields as any)[key]))
 
 const getFields = <Fields extends Struct.Fields>(hasFields: HasFields<Fields>): Fields =>
-  "fields" in hasFields ? hasFields.fields : getFields(hasFields[refineTypeId])
+  "fields" in hasFields ? hasFields.fields : getFields(hasFields[RefineSchemaId])
 
 const getSchemaFromFieldsOr = <Fields extends Struct.Fields>(fieldsOr: Fields | HasFields<Fields>): Schema.Any =>
   isFields(fieldsOr) ? Struct(fieldsOr) : isSchema(fieldsOr) ? fieldsOr : Struct(getFields(fieldsOr))
@@ -8867,7 +8879,7 @@ export const Exit = <A extends Schema.All, E extends Schema.All, D extends Schem
 }
 
 const hashSetArbitrary =
-  <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<hashSet_.HashSet<A>> => (fc) => {
+  <A>(item: LazyArbitrary<A>, ctx: ArbitraryGenerationContext): LazyArbitrary<hashSet_.HashSet<A>> => (fc) => {
     const items = fc.array(item(fc))
     return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map(
       hashSet_.fromIterable
@@ -8956,7 +8968,7 @@ export const HashSet = <Value extends Schema.Any>(value: Value): HashSet<Value> 
 const hashMapArbitrary = <K, V>(
   key: LazyArbitrary<K>,
   value: LazyArbitrary<V>,
-  ctx: GenerationContext
+  ctx: ArbitraryGenerationContext
 ): LazyArbitrary<hashMap_.HashMap<K, V>> =>
 (fc) => {
   const items = fc.array(fc.tuple(key(fc), value(fc)))
@@ -9058,10 +9070,11 @@ export const HashMap = <K extends Schema.Any, V extends Schema.Any>({ key, value
   )
 }
 
-const listArbitrary = <A>(item: LazyArbitrary<A>, ctx: GenerationContext): LazyArbitrary<list_.List<A>> => (fc) => {
-  const items = fc.array(item(fc))
-  return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map(list_.fromIterable)
-}
+const listArbitrary =
+  <A>(item: LazyArbitrary<A>, ctx: ArbitraryGenerationContext): LazyArbitrary<list_.List<A>> => (fc) => {
+    const items = fc.array(item(fc))
+    return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map(list_.fromIterable)
+  }
 
 const listPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<list_.List<A>> => (set) =>
   `List(${Array.from(set).map((a) => item(a)).join(", ")})`
@@ -9142,14 +9155,17 @@ export const List = <Value extends Schema.Any>(value: Value): List<Value> => {
   )
 }
 
-const sortedSetArbitrary =
-  <A>(item: LazyArbitrary<A>, ord: Order.Order<A>, ctx: GenerationContext): LazyArbitrary<sortedSet_.SortedSet<A>> =>
-  (fc) => {
-    const items = fc.array(item(fc))
-    return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map((as) =>
-      sortedSet_.fromIterable(as, ord)
-    )
-  }
+const sortedSetArbitrary = <A>(
+  item: LazyArbitrary<A>,
+  ord: Order.Order<A>,
+  ctx: ArbitraryGenerationContext
+): LazyArbitrary<sortedSet_.SortedSet<A>> =>
+(fc) => {
+  const items = fc.array(item(fc))
+  return (ctx.depthIdentifier !== undefined ? fc.oneof(ctx, fc.constant([]), items) : items).map((as) =>
+    sortedSet_.fromIterable(as, ord)
+  )
+}
 
 const sortedSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<sortedSet_.SortedSet<A>> => (set) =>
   `new SortedSet([${Array.from(sortedSet_.values(set)).map((a) => item(a)).join(", ")}])`

@@ -256,7 +256,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       const schema = S.Struct({
         a: S.String,
         as: S.Array(
-          S.suspend((): S.Schema<A> => schema).pipe(Arbitrary.arbitrary(() => () => arb))
+          S.suspend((): S.Schema<A> => schema).annotations({ arbitrary: () => () => arb })
         )
       })
       expectValidArbitrary(schema)
@@ -620,7 +620,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
 
   describe("should handle annotations", () => {
     const expectHook = <A, I>(source: S.Schema<A, I>) => {
-      const schema = source.pipe(Arbitrary.arbitrary(() => (fc) => fc.constant("custom arbitrary") as any))
+      const schema = source.annotations({ arbitrary: () => (fc) => fc.constant("custom arbitrary") as any })
       const arb = Arbitrary.makeLazy(schema)(fc)
       expect(fc.sample(arb, 1)[0]).toEqual("custom arbitrary")
     }
