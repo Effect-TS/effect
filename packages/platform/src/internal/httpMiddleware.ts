@@ -8,13 +8,14 @@ import * as Option from "effect/Option"
 import type * as Predicate from "effect/Predicate"
 import type { ReadonlyRecord } from "effect/Record"
 import * as Headers from "../Headers.js"
-import * as App from "../HttpApp.js"
+import type * as App from "../HttpApp.js"
 import type * as Middleware from "../HttpMiddleware.js"
 import * as ServerError from "../HttpServerError.js"
 import * as ServerRequest from "../HttpServerRequest.js"
 import * as ServerResponse from "../HttpServerResponse.js"
 import type { HttpServerResponse } from "../HttpServerResponse.js"
 import * as TraceContext from "../HttpTraceContext.js"
+import * as internalHttpApp from "./httpApp.js"
 
 /** @internal */
 export const make = <M extends Middleware.HttpMiddleware>(middleware: M): M => middleware
@@ -310,6 +311,6 @@ export const cors = (options?: {
           headers: headersFromRequestOptions(request)
         }))
       }
-      return Effect.zipRight(App.appendPreResponseHandler(preResponseHandler), httpApp)
+      return Effect.zipRight(internalHttpApp.appendPreResponseHandler(preResponseHandler), httpApp)
     })
 }
