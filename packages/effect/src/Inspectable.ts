@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 
+import type { FiberRefs } from "./index.js"
 import { hasProperty, isFunction } from "./Predicate.js"
 
 /**
@@ -86,12 +87,16 @@ export abstract class Class {
 /**
  * @since 2.0.0
  */
-export const toStringUnknown = (u: unknown, whitespace: number | string | undefined = 2): string => {
+export const toStringUnknown = (
+  u: unknown,
+  whitespace: number | string | undefined = 2,
+  context?: FiberRefs.FiberRefs
+): string => {
   if (typeof u === "string") {
     return u
   }
   try {
-    return typeof u === "object" ? stringifyCircular(u, whitespace) : String(u)
+    return typeof u === "object" ? stringifyCircular(u, whitespace, context) : String(u)
   } catch (_) {
     return String(u)
   }
@@ -100,7 +105,11 @@ export const toStringUnknown = (u: unknown, whitespace: number | string | undefi
 /**
  * @since 2.0.0
  */
-export const stringifyCircular = (obj: unknown, whitespace?: number | string | undefined): string => {
+export const stringifyCircular = (
+  obj: unknown,
+  whitespace?: number | string | undefined,
+  context?: FiberRefs.FiberRefs
+): string => {
   let cache: Array<unknown> = []
   const retVal = JSON.stringify(
     obj,
@@ -108,10 +117,30 @@ export const stringifyCircular = (obj: unknown, whitespace?: number | string | u
       typeof value === "object" && value !== null
         ? cache.includes(value)
           ? undefined // circular reference
-          : cache.push(value) && value
+          : cache.push(value) && (context && isRedactable(value)
+            ? value[RedactableId](context)
+            : value)
         : value,
     whitespace
   )
   ;(cache as any) = undefined
   return retVal
 }
+
+/**
+ * @since 3.10.0
+ */
+export interface Redactable {
+  readonly [RedactableId]: (fiberRefs: FiberRefs.FiberRefs) => unknown
+}
+
+/**
+ * @since 3.10.0
+ * @category type ids
+ */
+export const RedactableId: unique symbol = Symbol.for("effect/Inspectable/Redactable")
+
+/**
+ * @since 3.10.0
+ */
+export const isRedactable = (u: unknown): u is Redactable => typeof u === "object" && u !== null && RedactableId in u

@@ -1,8 +1,60 @@
 import * as Headers from "@effect/platform/Headers"
+import { FiberId, FiberRefs, Inspectable } from "effect"
 import * as Redacted from "effect/Redacted"
 import { assert, describe, it } from "vitest"
 
 describe("Headers", () => {
+  describe("Redactable", () => {
+    it("one key", () => {
+      const headers = Headers.fromInput({
+        "Content-Type": "application/json",
+        "Authorization": "Bearer some-token",
+        "X-Api-Key": "some-key"
+      })
+
+      const fiberRefs = FiberRefs.unsafeMake(
+        new Map([
+          [
+            Headers.currentRedactedNames,
+            [[FiberId.none, ["Authorization"]] as const]
+          ] as const
+        ])
+      )
+      const r = Inspectable.toStringUnknown(headers, undefined, fiberRefs)
+      const redacted = JSON.parse(r)
+
+      assert.deepEqual(redacted, {
+        "content-type": "application/json",
+        "authorization": "<redacted>",
+        "x-api-key": "some-key"
+      })
+    })
+
+    it("one key nested", () => {
+      const headers = Headers.fromInput({
+        "Content-Type": "application/json",
+        "Authorization": "Bearer some-token",
+        "X-Api-Key": "some-key"
+      })
+
+      const fiberRefs = FiberRefs.unsafeMake(
+        new Map([
+          [
+            Headers.currentRedactedNames,
+            [[FiberId.none, ["Authorization"]] as const]
+          ] as const
+        ])
+      )
+      const r = Inspectable.toStringUnknown({ headers }, undefined, fiberRefs)
+      const redacted = JSON.parse(r) as { headers: unknown }
+
+      assert.deepEqual(redacted.headers, {
+        "content-type": "application/json",
+        "authorization": "<redacted>",
+        "x-api-key": "some-key"
+      })
+    })
+  })
   describe("redact", () => {
     it("one key", () => {
       const headers = Headers.fromInput({
