@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.68.4
+
+### Patch Changes
+
+- [#3780](https://github.com/Effect-TS/effect/pull/3780) [`1b1ef29`](https://github.com/Effect-TS/effect/commit/1b1ef29ae302322f69dc938f9337aa97b4c63266) Thanks @tim-smart! - ensure cors middleware also affects error responses
+
 ## 0.68.3
 
 ### Patch Changes
