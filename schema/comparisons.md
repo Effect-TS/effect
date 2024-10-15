@@ -33,7 +33,7 @@ mySchema.safeParse(12) // => { success: false; error: ZodError }
 Schema
 
 ```ts
-import { Schema as S } from "@effect/schema"
+import { Schema as S } from "effect"
 
 // creating a schema for strings
 const mySchema = S.String
@@ -68,7 +68,7 @@ type User = z.infer<typeof User>
 Schema
 
 ```ts
-import { Schema as S } from "@effect/schema"
+import { Schema as S } from "effect"
 
 const User = S.Struct({
   username: S.String
@@ -114,7 +114,7 @@ z.never()
 Schema
 
 ```ts
-import { Schema as S } from "@effect/schema"
+import { Schema as S } from "effect"
 
 // primitive values
 S.String
@@ -163,7 +163,7 @@ tuna.value // "tuna"
 Schema
 
 ```ts
-import { Schema as S } from "@effect/schema"
+import { Schema as S } from "effect"
 
 const tuna = S.Literal("tuna")
 const twelve = S.Literal(12)
@@ -214,7 +214,7 @@ z.string().toUpperCase() // toUpperCase
 Schema
 
 ```ts
-import { Schema as S } from "@effect/schema"
+import { Schema as S } from "effect"
 
 // validations
 S.String.pipe(S.maxLength(5))
@@ -298,7 +298,7 @@ date.parse("2020-01-32") // fail
 Schema
 
 ```ts
-import { Schema as S } from "@effect/schema"
+import { Schema as S } from "effect"
 
 S.decodeUnknownSync(S.Date)("2020-01-01") // pass
 S.decodeUnknownSync(S.Date)("2020-1-1") // pass
@@ -339,7 +339,7 @@ z.number().safe() // value must be between Number.MIN_SAFE_INTEGER and Number.MA
 Schema
 
 ```ts
-import { Schema as S } from "@effect/schema"
+import { Schema as S } from "effect"
 
 S.Number.pipe(S.greaterThan(5))
 S.Number.pipe(S.greaterThanOrEqualTo(5))
@@ -394,7 +394,7 @@ z.bigint().multipleOf(5n) // Evenly divisible by 5n.
 Schema
 
 ```ts
-import { Schema as S } from "@effect/schema"
+import { Schema as S } from "effect"
 
 S.BigInt.pipe(S.greaterThanBigInt(5n))
 S.BigInt.pipe(S.greaterThanOrEqualToBigInt(5n))
@@ -782,7 +782,7 @@ console.log(schema.parse("tuna")) // => 42
 Schema
 
 ```ts
-import { Schema } from "@effect/schema"
+import { Schema } from "effect"
 import { Either } from "effect"
 
 const schema = Schema.Number.annotations({
@@ -1176,7 +1176,7 @@ documentedString.description // A useful bit of text…
 Schema
 
 ```ts
-import { AST, Schema as S } from "@effect/schema"
+import { AST, Schema as S } from "effect"
 
 const documentedString = S.String.annotations({
   description: "A useful bit of text, if you know what to do with it."
