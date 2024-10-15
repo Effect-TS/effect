@@ -37,8 +37,3 @@ export * as Pretty from "./Pretty.js"
  * @since 0.67.0
  */
 export * as Schema from "./Schema.js"
-
-/**
- * @since 0.67.0
- */
-export * as Serializable from "./Serializable.js"

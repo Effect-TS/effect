@@ -24,7 +24,6 @@ import type { Request } from "effect/Request"
 import type * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
-import * as Serializable from "effect/Serializable"
 import * as Stream from "effect/Stream"
 import * as Subscribable from "effect/Subscribable"
 import * as Tracer from "effect/Tracer"
@@ -586,7 +585,7 @@ export const boot = <
           Effect.flatMap((req) =>
             Effect.flatMap(
               Effect.exit(send(req)),
-              (exit) => Serializable.serializeExit(req, exit)
+              (exit) => Schema.serializeExit(req, exit)
             )
           ),
           Effect.provide(context)

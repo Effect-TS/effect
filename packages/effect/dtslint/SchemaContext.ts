@@ -2,7 +2,6 @@ import { Context, Effect, Option } from "effect"
 import { hole } from "effect/Function"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as Serializable from "effect/Serializable"
 
 interface aContext extends S.Schema<string, string, "aContext"> {}
 interface bContext extends S.Schema<number, number, "bContext"> {}
@@ -414,7 +413,7 @@ MyRequest.fields
 declare const myRequest: MyRequest
 
 // $ExpectType Schema<Exit<boolean, number>, ExitEncoded<boolean, number, unknown>, "bContext" | "cContext">
-Serializable.exitSchema(myRequest)
+S.exitSchema(myRequest)
 
 // ---------------------------------------------
 // TemplateLiteralParser

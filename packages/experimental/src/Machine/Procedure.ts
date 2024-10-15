@@ -7,7 +7,6 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type { Request } from "effect/Request"
 import type * as Schema from "effect/Schema"
-import type * as Serializable from "effect/Serializable"
 
 /**
  * @since 1.0.0
@@ -243,7 +242,7 @@ export const makeSerializable = <
 >(
   schema: Schema.Schema<Req, IS, RS> & { readonly _tag: Req["_tag"] },
   handler: Handler<Req, State, Requests, R>
-): SerializableProcedure<Req, State, R | Serializable.SerializableWithResult.Context<Req>> => ({
+): SerializableProcedure<Req, State, R | Schema.SerializableWithResult.Context<Req>> => ({
   [TypeId]: TypeId,
   [SerializableTypeId]: SerializableTypeId,
   schema: schema as any,

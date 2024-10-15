@@ -1,6 +1,5 @@
 import { Effect, Exit } from "effect"
 import * as S from "effect/Schema"
-import * as Serializable from "effect/Serializable"
 import { assert, describe, test } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
@@ -11,10 +10,10 @@ class Person extends S.Class<Person>("Person")({
 class GetPersonById extends S.Class<GetPersonById>("GetPersonById")({
   id: S.Number
 }) {
-  get [Serializable.symbol]() {
+  get [S.symbolSerializable]() {
     return GetPersonById
   }
-  get [Serializable.symbolResult]() {
+  get [S.symbolWithResult]() {
     return {
       success: Person,
       failure: S.String,
@@ -26,7 +25,7 @@ class GetPersonById extends S.Class<GetPersonById>("GetPersonById")({
 describe("Serializable", () => {
   test("serialize", () => {
     const req = new GetPersonById({ id: 123 })
-    assert.deepStrictEqual(Effect.runSync(Serializable.serialize(req)), {
+    assert.deepStrictEqual(Effect.runSync(S.serialize(req)), {
       id: 123
     })
   })
@@ -34,7 +33,7 @@ describe("Serializable", () => {
   test("deserialize", () => {
     const req = new GetPersonById({ id: 123 })
     assert.deepStrictEqual(
-      Effect.runSync(Serializable.deserialize(req, {
+      Effect.runSync(S.deserialize(req, {
         id: 456
       })),
       new GetPersonById({ id: 456 })
@@ -45,7 +44,7 @@ describe("Serializable", () => {
     const req = new GetPersonById({ id: 123 })
     assert.deepStrictEqual(
       Effect.runSync(
-        Serializable.serializeFailure(req, "fail")
+        S.serializeFailure(req, "fail")
       ),
       "fail"
     )
@@ -55,7 +54,7 @@ describe("Serializable", () => {
     const req = new GetPersonById({ id: 123 })
     assert.deepStrictEqual(
       Effect.runSync(
-        Serializable.serializeSuccess(req, new Person({ id: 123, name: "foo" }))
+        S.serializeSuccess(req, new Person({ id: 123, name: "foo" }))
       ),
       { id: 123, name: "foo" }
     )
@@ -65,13 +64,13 @@ describe("Serializable", () => {
     const req = new GetPersonById({ id: 123 })
     assert.deepStrictEqual(
       Effect.runSync(
-        Serializable.serializeExit(req, Exit.succeed(new Person({ id: 123, name: "foo" })))
+        S.serializeExit(req, Exit.succeed(new Person({ id: 123, name: "foo" })))
       ),
       { _tag: "Success", value: { id: 123, name: "foo" } }
     )
     assert.deepStrictEqual(
       Effect.runSync(
-        Serializable.serializeExit(req, Exit.fail("fail"))
+        S.serializeExit(req, Exit.fail("fail"))
       ),
       { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
     )
@@ -81,7 +80,7 @@ describe("Serializable", () => {
     const req = new GetPersonById({ id: 123 })
     assert.deepStrictEqual(
       Effect.runSync(
-        Serializable.deserializeFailure(req, "fail")
+        S.deserializeFailure(req, "fail")
       ),
       "fail"
     )
@@ -91,7 +90,7 @@ describe("Serializable", () => {
     const req = new GetPersonById({ id: 123 })
     assert.deepStrictEqual(
       Effect.runSync(
-        Serializable.deserializeSuccess(req, { id: 123, name: "foo" })
+        S.deserializeSuccess(req, { id: 123, name: "foo" })
       ),
       new Person({ id: 123, name: "foo" })
     )
@@ -101,13 +100,13 @@ describe("Serializable", () => {
     const req = new GetPersonById({ id: 123 })
     assert.deepStrictEqual(
       Effect.runSync(
-        Serializable.deserializeExit(req, { _tag: "Success", value: { id: 123, name: "foo" } })
+        S.deserializeExit(req, { _tag: "Success", value: { id: 123, name: "foo" } })
       ),
       Exit.succeed(new Person({ id: 123, name: "foo" }))
     )
     assert.deepStrictEqual(
       Effect.runSync(
-        Serializable.deserializeExit(req, {
+        S.deserializeExit(req, {
           _tag: "Failure",
           cause: { _tag: "Fail", error: "fail" }
         })

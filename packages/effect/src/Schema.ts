@@ -26,11 +26,11 @@ import * as fastCheck_ from "./FastCheck.js"
 import * as fiberId_ from "./FiberId.js"
 import type { LazyArg } from "./Function.js"
 import { dual, identity } from "./Function.js"
+import { globalValue } from "./GlobalValue.js"
 import * as hashMap_ from "./HashMap.js"
 import * as hashSet_ from "./HashSet.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as filters_ from "./internal/schema/filters.js"
-import * as serializable_ from "./internal/schema/serializable.js"
 import * as util_ from "./internal/schema/util.js"
 import * as list_ from "./List.js"
 import * as number_ from "./Number.js"
@@ -47,7 +47,6 @@ import * as Request from "./Request.js"
 import type { ParseOptions } from "./SchemaAST.js"
 import * as AST from "./SchemaAST.js"
 import * as equivalence_ from "./SchemaEquivalence.js"
-import type * as Serializable from "./Serializable.js"
 import * as sortedSet_ from "./SortedSet.js"
 import * as string_ from "./String.js"
 import * as struct_ from "./Struct.js"
@@ -3218,7 +3217,7 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
  *   b: Schema.String
  * })
  *
- * // const extended: Schema.Schema<
+ * // const extended: Schema<
  * //   {
  * //     readonly a: string
  * //     readonly b: string
@@ -7984,134 +7983,6 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   } as any
 }
 
-/**
- * @since 3.10.0
- */
-export interface TaggedRequest<
-  Tag extends string,
-  A,
-  I,
-  R,
-  SuccessType,
-  SuccessEncoded,
-  FailureType,
-  FailureEncoded,
-  ResultR
-> extends
-  Request.Request<SuccessType, FailureType>,
-  Serializable.SerializableWithResult<
-    A,
-    I,
-    R,
-    SuccessType,
-    SuccessEncoded,
-    FailureType,
-    FailureEncoded,
-    ResultR
-  >
-{
-  readonly _tag: Tag
-}
-
-/**
- * @since 3.10.0
- */
-export declare namespace TaggedRequest {
-  /**
-   * @since 3.10.0
-   */
-  export type Any = TaggedRequest<string, any, any, any, any, any, any, any, unknown>
-  /**
-   * @since 3.10.0
-   */
-  export type All =
-    | Any
-    | TaggedRequest<string, any, any, any, any, any, never, never, unknown>
-}
-
-/**
- * @category api interface
- * @since 3.10.0
- */
-export interface TaggedRequestClass<
-  Self,
-  Tag extends string,
-  Payload extends Struct.Fields,
-  Success extends Schema.All,
-  Failure extends Schema.All
-> extends
-  Class<
-    Self,
-    Payload,
-    Struct.Encoded<Payload>,
-    Struct.Context<Payload>,
-    Struct.Constructor<Omit<Payload, "_tag">>,
-    TaggedRequest<
-      Tag,
-      Self,
-      Struct.Encoded<Payload>,
-      Struct.Context<Payload>,
-      Schema.Type<Success>,
-      Schema.Encoded<Success>,
-      Schema.Type<Failure>,
-      Schema.Encoded<Failure>,
-      Schema.Context<Success> | Schema.Context<Failure>
-    >,
-    {}
-  >
-{
-  readonly _tag: Tag
-  readonly success: Success
-  readonly failure: Failure
-}
-
-/**
- * @category classes
- * @since 3.10.0
- */
-export const TaggedRequest =
-  <Self = never>(identifier?: string) =>
-  <Tag extends string, Payload extends Struct.Fields, Success extends Schema.All, Failure extends Schema.All>(
-    tag: Tag,
-    options: {
-      failure: Failure
-      success: Success
-      payload: Payload
-    },
-    annotations?: Annotations.Schema<Self>
-  ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-    : TaggedRequestClass<
-      Self,
-      Tag,
-      { readonly _tag: tag<Tag> } & Payload,
-      Success,
-      Failure
-    > =>
-  {
-    const taggedFields = extendFields({ _tag: getClassTag(tag) }, options.payload)
-    return class TaggedRequestClass extends makeClass({
-      kind: "TaggedRequest",
-      identifier: identifier ?? tag,
-      schema: Struct(taggedFields),
-      fields: taggedFields,
-      Base: Request.Class<any, any, { readonly _tag: string }>,
-      annotations
-    }) {
-      static _tag = tag
-      static success = options.success
-      static failure = options.failure
-      get [serializable_.symbol]() {
-        return this.constructor
-      }
-      get [serializable_.symbolResult]() {
-        return {
-          failure: options.failure,
-          success: options.success
-        }
-      }
-    } as any
-  }
-
 const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   const out = { ...a }
   for (const key of util_.ownKeys(b)) {
@@ -9283,3 +9154,505 @@ export const Config = <A>(name: string, schema: Schema<A, string>): config_.Conf
     )
   )
 }
+
+// ---------------------------------------------
+// Serializable
+// ---------------------------------------------
+
+/**
+ * @since 3.10.0
+ * @category symbol
+ */
+export const symbolSerializable: unique symbol = Symbol.for(
+  "effect/Schema/Serializable/symbol"
+)
+
+/**
+ * The `Serializable` trait allows objects to define their own schema for
+ * serialization.
+ *
+ * @since 3.10.0
+ * @category model
+ */
+export interface Serializable<A, I, R> {
+  readonly [symbolSerializable]: Schema<A, I, R>
+}
+
+/**
+ * @since 3.10.0
+ * @category model
+ */
+export declare namespace Serializable {
+  /**
+   * @since 3.10.0
+   */
+  export type Type<T> = T extends Serializable<infer A, infer _I, infer _R> ? A : never
+  /**
+   * @since 3.10.0
+   */
+  export type Encoded<T> = T extends Serializable<infer _A, infer I, infer _R> ? I : never
+  /**
+   * @since 3.10.0
+   */
+  export type Context<T> = T extends Serializable<infer _A, infer _I, infer R> ? R : never
+  /**
+   * @since 3.10.0
+   */
+  export type Any = Serializable<any, any, unknown>
+  /**
+   * @since 3.10.0
+   */
+  export type All =
+    | Any
+    | Serializable<any, never, unknown>
+    | Serializable<never, any, unknown>
+    | Serializable<never, never, unknown>
+}
+
+/**
+ * @since 3.10.0
+ */
+export const asSerializable = <S extends Serializable.All>(
+  serializable: S
+): Serializable<Serializable.Type<S>, Serializable.Encoded<S>, Serializable.Context<S>> => serializable as any
+
+/**
+ * @since 3.10.0
+ * @category accessor
+ */
+export const serializableSchema = <A, I, R>(self: Serializable<A, I, R>): Schema<A, I, R> => self[symbolSerializable]
+
+/**
+ * @since 3.10.0
+ * @category encoding
+ */
+export const serialize = <A, I, R>(self: Serializable<A, I, R>): Effect.Effect<I, ParseResult.ParseError, R> =>
+  encodeUnknown(self[symbolSerializable])(self)
+
+/**
+ * @since 3.10.0
+ * @category decoding
+ */
+export const deserialize: {
+  (value: unknown): <A, I, R>(self: Serializable<A, I, R>) => Effect.Effect<A, ParseResult.ParseError, R>
+  <A, I, R>(self: Serializable<A, I, R>, value: unknown): Effect.Effect<A, ParseResult.ParseError, R>
+} = dual(
+  2,
+  <A, I, R>(self: Serializable<A, I, R>, value: unknown): Effect.Effect<A, ParseResult.ParseError, R> =>
+    decodeUnknown(self[symbolSerializable])(value)
+)
+
+/**
+ * @since 3.10.0
+ * @category symbol
+ */
+export const symbolWithResult: unique symbol = Symbol.for(
+  "effect/Schema/Serializable/symbolResult"
+)
+
+/**
+ * The `WithResult` trait is designed to encapsulate the outcome of an
+ * operation, distinguishing between success and failure cases. Each case is
+ * associated with a schema that defines the structure and types of the success
+ * or failure data.
+ *
+ * @since 3.10.0
+ * @category model
+ */
+export interface WithResult<Success, SuccessEncoded, Failure, FailureEncoded, ResultR> {
+  readonly [symbolWithResult]: {
+    readonly success: Schema<Success, SuccessEncoded, ResultR>
+    readonly failure: Schema<Failure, FailureEncoded, ResultR>
+  }
+}
+
+/**
+ * @since 3.10.0
+ * @category model
+ */
+export declare namespace WithResult {
+  /**
+   * @since 3.10.0
+   */
+  export type Success<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _A : never
+  /**
+   * @since 3.10.0
+   */
+  export type SuccessEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _I : never
+  /**
+   * @since 3.10.0
+   */
+  export type Failure<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _E : never
+  /**
+   * @since 3.10.0
+   */
+  export type FailureEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _EI : never
+
+  /**
+   * @since 3.10.0
+   */
+  export type Context<T> = T extends WithResult<infer _SA, infer _SI, infer _FA, infer _FI, infer R> ? R : never
+  /**
+   * @since 3.10.0
+   */
+  export type Any = WithResult<any, any, any, any, unknown>
+  /**
+   * @since 3.10.0
+   */
+  export type All =
+    | Any
+    | WithResult<any, any, never, never, unknown>
+}
+
+/**
+ * @since 3.10.0
+ */
+export const asWithResult = <WR extends WithResult.All>(
+  withExit: WR
+): WithResult<
+  WithResult.Success<WR>,
+  WithResult.SuccessEncoded<WR>,
+  WithResult.Failure<WR>,
+  WithResult.FailureEncoded<WR>,
+  WithResult.Context<WR>
+> => withExit as any
+
+/**
+ * @since 3.10.0
+ * @category accessor
+ */
+export const failureSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema<FA, FI, R> =>
+  self[symbolWithResult].failure
+
+/**
+ * @since 3.10.0
+ * @category accessor
+ */
+export const successSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema<SA, SI, R> =>
+  self[symbolWithResult].success
+
+const exitSchemaCache = globalValue(
+  "effect/Schema/Serializable/exitSchemaCache",
+  () => new WeakMap<object, Schema<any, any, any>>()
+)
+
+/**
+ * @since 3.10.0
+ * @category accessor
+ */
+export const exitSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema<
+  exit_.Exit<SA, FA>,
+  ExitEncoded<SI, FI, unknown>,
+  R
+> => {
+  const proto = Object.getPrototypeOf(self)
+  if (!(symbolWithResult in proto)) {
+    return Exit({
+      failure: failureSchema(self),
+      success: successSchema(self),
+      defect: Defect
+    })
+  }
+  let schema = exitSchemaCache.get(proto)
+  if (schema === undefined) {
+    schema = Exit({
+      failure: failureSchema(self),
+      success: successSchema(self),
+      defect: Defect
+    })
+    exitSchemaCache.set(proto, schema)
+  }
+  return schema
+}
+
+/**
+ * @since 3.10.0
+ * @category encoding
+ */
+export const serializeFailure: {
+  <FA>(value: FA): <SA, SI, FI, R>(
+    self: WithResult<SA, SI, FA, FI, R>
+  ) => Effect.Effect<FI, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: FA): Effect.Effect<FI, ParseResult.ParseError, R>
+} = dual(
+  2,
+  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: FA): Effect.Effect<FI, ParseResult.ParseError, R> =>
+    encode(self[symbolWithResult].failure)(value)
+)
+
+/**
+ * @since 3.10.0
+ * @category decoding
+ */
+export const deserializeFailure: {
+  (
+    value: unknown
+  ): <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>) => Effect.Effect<FA, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: unknown): Effect.Effect<FA, ParseResult.ParseError, R>
+} = dual(
+  2,
+  <SA, SI, FA, FI, R>(
+    self: WithResult<SA, SI, FA, FI, R>,
+    value: unknown
+  ): Effect.Effect<FA, ParseResult.ParseError, R> => decodeUnknown(self[symbolWithResult].failure)(value)
+)
+
+/**
+ * @since 3.10.0
+ * @category encoding
+ */
+export const serializeSuccess: {
+  <SA>(value: SA): <SI, FA, FI, R>(
+    self: WithResult<SA, SI, FA, FI, R>
+  ) => Effect.Effect<SI, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: SA): Effect.Effect<SI, ParseResult.ParseError, R>
+} = dual(
+  2,
+  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: SA): Effect.Effect<SI, ParseResult.ParseError, R> =>
+    encode(self[symbolWithResult].success)(value)
+)
+
+/**
+ * @since 3.10.0
+ * @category decoding
+ */
+export const deserializeSuccess: {
+  (value: unknown): <SA, SI, FA, FI, R>(
+    self: WithResult<SA, SI, FA, FI, R>
+  ) => Effect.Effect<SA, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: unknown): Effect.Effect<SA, ParseResult.ParseError, R>
+} = dual(
+  2,
+  <SA, SI, FA, FI, R>(
+    self: WithResult<SA, SI, FA, FI, R>,
+    value: unknown
+  ): Effect.Effect<SA, ParseResult.ParseError, R> => decodeUnknown(self[symbolWithResult].success)(value)
+)
+
+/**
+ * @since 3.10.0
+ * @category encoding
+ */
+export const serializeExit: {
+  <SA, FA>(value: exit_.Exit<SA, FA>): <SI, FI, R>(
+    self: WithResult<SA, SI, FA, FI, R>
+  ) => Effect.Effect<ExitEncoded<SI, FI, unknown>, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(
+    self: WithResult<SA, SI, FA, FI, R>,
+    value: exit_.Exit<SA, FA>
+  ): Effect.Effect<ExitEncoded<SI, FI, unknown>, ParseResult.ParseError, R>
+} = dual(2, <SA, SI, FA, FI, R>(
+  self: WithResult<SA, SI, FA, FI, R>,
+  value: exit_.Exit<SA, FA>
+): Effect.Effect<ExitEncoded<SI, FI, unknown>, ParseResult.ParseError, R> => encode(exitSchema(self))(value))
+
+/**
+ * @since 3.10.0
+ * @category decoding
+ */
+export const deserializeExit: {
+  (value: unknown): <SA, SI, FA, FI, R>(
+    self: WithResult<SA, SI, FA, FI, R>
+  ) => Effect.Effect<exit_.Exit<SA, FA>, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(
+    self: WithResult<SA, SI, FA, FI, R>,
+    value: unknown
+  ): Effect.Effect<exit_.Exit<SA, FA>, ParseResult.ParseError, R>
+} = dual(2, <SA, SI, FA, FI, R>(
+  self: WithResult<SA, SI, FA, FI, R>,
+  value: unknown
+): Effect.Effect<exit_.Exit<SA, FA>, ParseResult.ParseError, R> => decodeUnknown(exitSchema(self))(value))
+
+// ---------------------------------------------
+// SerializableWithResult
+// ---------------------------------------------
+
+/**
+ * The `SerializableWithResult` trait is specifically designed to model remote
+ * procedures that require serialization of their input and output, managing
+ * both successful and failed outcomes.
+ *
+ * This trait combines functionality from both the `Serializable` and `WithResult`
+ * traits to handle data serialization and the bifurcation of operation results
+ * into success or failure categories.
+ *
+ * @since 3.10.0
+ * @category model
+ */
+export interface SerializableWithResult<
+  A,
+  I,
+  R,
+  Success,
+  SuccessEncoded,
+  Failure,
+  FailureEncoded,
+  ResultR
+> extends Serializable<A, I, R>, WithResult<Success, SuccessEncoded, Failure, FailureEncoded, ResultR> {}
+
+/**
+ * @since 3.10.0
+ * @category model
+ */
+export declare namespace SerializableWithResult {
+  /**
+   * @since 3.10.0
+   */
+  export type Context<P> = P extends
+    SerializableWithResult<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
+    : never
+  /**
+   * @since 3.10.0
+   */
+  export type Any = SerializableWithResult<any, any, any, any, any, any, any, unknown>
+  /**
+   * @since 3.10.0
+   */
+  export type All =
+    | Any
+    | SerializableWithResult<any, any, any, any, any, never, never, unknown>
+}
+
+/**
+ * @since 3.10.0
+ */
+export const asSerializableWithResult = <SWR extends SerializableWithResult.All>(
+  procedure: SWR
+): SerializableWithResult<
+  Serializable.Type<SWR>,
+  Serializable.Encoded<SWR>,
+  Serializable.Context<SWR>,
+  WithResult.Success<SWR>,
+  WithResult.SuccessEncoded<SWR>,
+  WithResult.Failure<SWR>,
+  WithResult.FailureEncoded<SWR>,
+  WithResult.Context<SWR>
+> => procedure as any
+
+/**
+ * @since 3.10.0
+ */
+export interface TaggedRequest<
+  Tag extends string,
+  A,
+  I,
+  R,
+  SuccessType,
+  SuccessEncoded,
+  FailureType,
+  FailureEncoded,
+  ResultR
+> extends
+  Request.Request<SuccessType, FailureType>,
+  SerializableWithResult<
+    A,
+    I,
+    R,
+    SuccessType,
+    SuccessEncoded,
+    FailureType,
+    FailureEncoded,
+    ResultR
+  >
+{
+  readonly _tag: Tag
+}
+
+/**
+ * @since 3.10.0
+ */
+export declare namespace TaggedRequest {
+  /**
+   * @since 3.10.0
+   */
+  export type Any = TaggedRequest<string, any, any, any, any, any, any, any, unknown>
+  /**
+   * @since 3.10.0
+   */
+  export type All =
+    | Any
+    | TaggedRequest<string, any, any, any, any, any, never, never, unknown>
+}
+
+/**
+ * @category api interface
+ * @since 3.10.0
+ */
+export interface TaggedRequestClass<
+  Self,
+  Tag extends string,
+  Payload extends Struct.Fields,
+  Success extends Schema.All,
+  Failure extends Schema.All
+> extends
+  Class<
+    Self,
+    Payload,
+    Struct.Encoded<Payload>,
+    Struct.Context<Payload>,
+    Struct.Constructor<Omit<Payload, "_tag">>,
+    TaggedRequest<
+      Tag,
+      Self,
+      Struct.Encoded<Payload>,
+      Struct.Context<Payload>,
+      Schema.Type<Success>,
+      Schema.Encoded<Success>,
+      Schema.Type<Failure>,
+      Schema.Encoded<Failure>,
+      Schema.Context<Success> | Schema.Context<Failure>
+    >,
+    {}
+  >
+{
+  readonly _tag: Tag
+  readonly success: Success
+  readonly failure: Failure
+}
+
+/**
+ * @category classes
+ * @since 3.10.0
+ */
+export const TaggedRequest =
+  <Self = never>(identifier?: string) =>
+  <Tag extends string, Payload extends Struct.Fields, Success extends Schema.All, Failure extends Schema.All>(
+    tag: Tag,
+    options: {
+      failure: Failure
+      success: Success
+      payload: Payload
+    },
+    annotations?: Annotations.Schema<Self>
+  ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
+    : TaggedRequestClass<
+      Self,
+      Tag,
+      { readonly _tag: tag<Tag> } & Payload,
+      Success,
+      Failure
+    > =>
+  {
+    const taggedFields = extendFields({ _tag: getClassTag(tag) }, options.payload)
+    return class TaggedRequestClass extends makeClass({
+      kind: "TaggedRequest",
+      identifier: identifier ?? tag,
+      schema: Struct(taggedFields),
+      fields: taggedFields,
+      Base: Request.Class<any, any, { readonly _tag: string }>,
+      annotations
+    }) {
+      static _tag = tag
+      static success = options.success
+      static failure = options.failure
+      get [symbolSerializable]() {
+        return this.constructor
+      }
+      get [symbolWithResult]() {
+        return {
+          failure: options.failure,
+          success: options.success
+        }
+      }
+    } as any
+  }

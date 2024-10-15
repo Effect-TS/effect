@@ -6,7 +6,6 @@ import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
-import type * as Serializable from "effect/Serializable"
 import type * as Stream from "effect/Stream"
 import * as internal from "./internal/workerRunner.js"
 import type { WorkerError } from "./WorkerError.js"
@@ -128,7 +127,7 @@ export declare namespace SerializedRunner {
     readonly [K in A["_tag"]]: Extract<
       A,
       { readonly _tag: K }
-    > extends Serializable.SerializableWithResult<
+    > extends Schema.SerializableWithResult<
       infer S,
       infer _SI,
       infer _SR,

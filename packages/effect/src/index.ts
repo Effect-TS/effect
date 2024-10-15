@@ -797,11 +797,6 @@ export * as ScopedRef from "./ScopedRef.js"
 export * as Secret from "./Secret.js"
 
 /**
- * @since 3.10.0
- */
-export * as Serializable from "./Serializable.js"
-
-/**
  * @since 2.0.0
  */
 export * as SingleProducerAsyncInput from "./SingleProducerAsyncInput.js"

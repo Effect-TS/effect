@@ -4,13 +4,12 @@ import * as Hash from "effect/Hash"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as Request from "effect/Request"
 import * as Schema from "effect/Schema"
-import * as Serializable from "effect/Serializable"
 import type * as Rpc from "../Rpc.js"
 
 /** @internal */
 export const withRequestTag = <A>(
   f: (
-    request: Serializable.SerializableWithResult<any, any, any, any, any, any, any, any>
+    request: Schema.SerializableWithResult<any, any, any, any, any, any, any, any>
   ) => A
 ) => {
   const cache = new Map<string, A>()
@@ -46,11 +45,11 @@ export const makeRequest = <A extends Schema.TaggedRequest.All>(
     ...options,
     [Request.RequestTypeId]: undefined as any,
     [PrimaryKey.symbol]: () => `${options.request._tag}:${hash}`,
-    [Serializable.symbolResult]: {
+    [Schema.symbolWithResult]: {
       success: isStream
         ? Schema.Never
-        : Serializable.successSchema(options.request as any),
-      failure: isStream ? Schema.Never : Serializable.failureSchema(options.request as any)
+        : Schema.successSchema(options.request as any),
+      failure: isStream ? Schema.Never : Schema.failureSchema(options.request as any)
     },
     [Equal.symbol](that: Rpc.Request<A>) {
       return Equal.equals(options.request, that.request)

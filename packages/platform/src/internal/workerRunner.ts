@@ -9,7 +9,6 @@ import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
-import * as Serializable from "effect/Serializable"
 import * as Stream from "effect/Stream"
 import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
@@ -189,13 +188,13 @@ export const makeSerialized = <
       },
       encodeError(request, message) {
         return Effect.mapError(
-          Serializable.serializeFailure(request as any, message),
+          Schema.serializeFailure(request as any, message),
           (cause) => new WorkerError({ reason: "encode", cause })
         )
       },
       encodeOutput(request, message) {
         return Effect.catchAllCause(
-          Serializable.serializeSuccess(request as any, message),
+          Schema.serializeSuccess(request as any, message),
           (cause) => new WorkerError({ reason: "encode", cause })
         )
       }

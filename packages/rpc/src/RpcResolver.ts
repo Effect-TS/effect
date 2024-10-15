@@ -11,7 +11,6 @@ import type { ParseError } from "effect/ParseResult"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Schema from "effect/Schema"
-import * as Serializable from "effect/Serializable"
 import * as Stream from "effect/Stream"
 import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
 import * as Rpc from "./Rpc.js"
@@ -26,10 +25,10 @@ export const make = <HR, E>(
 ) =>
 <R extends Router.RpcRouter<any, any>>(): RequestResolver.RequestResolver<
   Rpc.Request<Router.RpcRouter.Request<R>>,
-  Serializable.SerializableWithResult.Context<Router.RpcRouter.Request<R>> | HR
+  Schema.SerializableWithResult.Context<Router.RpcRouter.Request<R>> | HR
 > => {
-  const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
-  const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
+  const getDecode = withRequestTag((req) => Schema.decodeUnknown(Schema.exitSchema(req)))
+  const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Schema.exitSchema(req))))
 
   return RequestResolver.makeBatched(
     (requests: Arr.NonEmptyArray<Rpc.Request<Schema.TaggedRequest.All>>) => {
@@ -41,7 +40,7 @@ export const make = <HR, E>(
       const processEffects = pipe(
         Effect.forEach(effectRequests, (_) =>
           Effect.map(
-            Serializable.serialize(_.request),
+            Schema.serialize(_.request),
             (request) => ({ ..._, request })
           )),
         Effect.flatMap((payload) =>
@@ -73,7 +72,7 @@ export const make = <HR, E>(
         Effect.forEach(streamRequests, (request) => {
           const decode = getDecodeChunk(request.request)
           const stream = pipe(
-            Serializable.serialize(request.request),
+            Schema.serialize(request.request),
             Effect.map((_) => ({ ...request, request: _ })),
             Effect.map((payload) =>
               pipe(

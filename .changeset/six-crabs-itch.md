@@ -17,8 +17,7 @@ import {
   JSONSchema,
   ParseResult,
   Pretty,
-  Schema,
-  Serializable
+  Schema
 } from "@effect/schema"
 ```
 
@@ -33,8 +32,7 @@ import {
   JSONSchema,
   ParseResult,
   Pretty,
-  Schema,
-  Serializable
+  Schema
 } from "effect"
 ```
 
@@ -53,3 +51,7 @@ After
 ```ts
 import { ArrayFormatter, TreeFormatter } from "effect/ParseResult"
 ```
+
+### Serializable
+
+Merged into `Schema` module.

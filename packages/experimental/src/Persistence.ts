@@ -13,8 +13,8 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as PrimaryKey from "effect/PrimaryKey"
+import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
-import * as Serializable from "effect/Serializable"
 
 /**
  * @since 1.0.0
@@ -177,7 +177,7 @@ export declare namespace ResultPersistence {
    * @since 1.0.0
    * @category models
    */
-  export interface Key<R, IE, E, IA, A> extends Serializable.WithResult<A, IA, E, IE, R>, PrimaryKey.PrimaryKey {}
+  export interface Key<R, IE, E, IA, A> extends Schema.WithResult<A, IA, E, IE, R>, PrimaryKey.PrimaryKey {}
 
   /**
    * @since 1.0.0
@@ -225,7 +225,7 @@ export const layerResult = Layer.effect(
             value: unknown
           ) =>
             Effect.mapError(
-              Serializable.deserializeExit(key, value),
+              Schema.deserializeExit(key, value),
               (_) => PersistenceParseError.make(method, _.issue)
             )
           const encode = <R, IE, E, IA, A>(
@@ -234,7 +234,7 @@ export const layerResult = Layer.effect(
             value: Exit.Exit<A, E>
           ) =>
             Effect.mapError(
-              Serializable.serializeExit(key, value),
+              Schema.serializeExit(key, value),
               (_) => PersistenceParseError.make(method, _.issue)
             )
           const makeKey = <R, IE, E, IA, A>(
