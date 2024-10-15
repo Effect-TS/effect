@@ -1127,7 +1127,7 @@ S.rename(S.Struct({ a: S.String, b: S.Number }), { a: "c" })
 // $ExpectType SchemaClass<{ readonly c: string; readonly d: number; }, { readonly a: string; readonly b: number; }, never>
 S.rename(S.Struct({ a: S.String, b: S.Number }), { a: "c", b: "d" })
 
-const a = Symbol.for("@effect/schema/dtslint/a")
+const a = Symbol.for("effect/Schema/dtslint/a")
 
 // $ExpectType SchemaClass<{ readonly [a]: string; readonly b: number; }, { readonly a: string; readonly b: number; }, never>
 S.rename(S.Struct({ a: S.String, b: S.Number }), { a })
