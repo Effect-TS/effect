@@ -41,12 +41,6 @@ export type ArbitraryAnnotation<A, TypeParameters extends ReadonlyArray<any> = r
 ) => LazyArbitrary<A>
 
 /**
- * @category annotations
- * @since 3.10.0
- */
-export const ArbitraryAnnotationId: unique symbol = Symbol.for("effect/annotation/Arbitrary")
-
-/**
  * Returns a LazyArbitrary for the `A` type of the provided schema.
  *
  * @category arbitrary
@@ -63,7 +57,7 @@ export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): FastCheck.Arbitrary<A> => makeLazy(schema)(FastCheck)
 
-const getAnnotation = AST.getAnnotation<ArbitraryAnnotation<any, any>>(ArbitraryAnnotationId)
+const getAnnotation = AST.getAnnotation<ArbitraryAnnotation<any, any>>(AST.ArbitraryAnnotationId)
 
 const getRefinementFromArbitrary = (
   ast: AST.Refinement,
@@ -119,15 +113,15 @@ const go = (
   ctx: Context,
   path: ReadonlyArray<PropertyKey>
 ): LazyArbitrary<any> => {
-  const annotation = getAnnotation(ast)
-  if (Option.isSome(annotation)) {
+  const hook = getAnnotation(ast)
+  if (Option.isSome(hook)) {
     switch (ast._tag) {
       case "Declaration":
-        return annotation.value(...ast.typeParameters.map((p) => go(p, ctx, path)), ctx)
+        return hook.value(...ast.typeParameters.map((p) => go(p, ctx, path)), ctx)
       case "Refinement":
-        return annotation.value(getRefinementFromArbitrary(ast, ctx, path), ctx)
+        return hook.value(getRefinementFromArbitrary(ast, ctx, path), ctx)
       default:
-        return annotation.value(ctx)
+        return hook.value(ctx)
     }
   }
   switch (ast._tag) {

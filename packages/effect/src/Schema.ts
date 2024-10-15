@@ -2,8 +2,7 @@
  * @since 3.10.0
  */
 
-import * as arbitrary_ from "./Arbitrary.js"
-import type { ArbitraryGenerationContext, LazyArbitrary } from "./Arbitrary.js"
+import type { ArbitraryAnnotation, ArbitraryGenerationContext, LazyArbitrary } from "./Arbitrary.js"
 import * as array_ from "./Array.js"
 import * as bigDecimal_ from "./BigDecimal.js"
 import * as bigInt_ from "./BigInt.js"
@@ -40,13 +39,13 @@ import * as ParseResult from "./ParseResult.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
-import * as pretty_ from "./Pretty.js"
+import type * as pretty_ from "./Pretty.js"
 import * as record_ from "./Record.js"
 import * as redacted_ from "./Redacted.js"
 import * as Request from "./Request.js"
 import type { ParseOptions } from "./SchemaAST.js"
 import * as AST from "./SchemaAST.js"
-import * as equivalence_ from "./SchemaEquivalence.js"
+import type * as equivalence_ from "./SchemaEquivalence.js"
 import * as sortedSet_ from "./SortedSet.js"
 import * as string_ from "./String.js"
 import * as struct_ from "./Struct.js"
@@ -145,9 +144,9 @@ const builtInAnnotations = {
   default: AST.DefaultAnnotationId,
   documentation: AST.DocumentationAnnotationId,
   jsonSchema: AST.JSONSchemaAnnotationId,
-  arbitrary: arbitrary_.ArbitraryAnnotationId,
-  pretty: pretty_.PrettyAnnotationId,
-  equivalence: equivalence_.EquivalenceAnnotationId,
+  arbitrary: AST.ArbitraryAnnotationId,
+  pretty: AST.PrettyAnnotationId,
+  equivalence: AST.EquivalenceAnnotationId,
   concurrency: AST.ConcurrencyAnnotationId,
   batching: AST.BatchingAnnotationId,
   parseIssueTitle: AST.ParseIssueTitleAnnotationId,
@@ -3868,7 +3867,7 @@ export declare namespace Annotations {
     readonly message?: AST.MessageAnnotation
     readonly schemaId?: AST.SchemaIdAnnotation
     readonly jsonSchema?: AST.JSONSchemaAnnotation
-    readonly arbitrary?: arbitrary_.ArbitraryAnnotation<A, TypeParameters>
+    readonly arbitrary?: ArbitraryAnnotation<A, TypeParameters>
     readonly pretty?: pretty_.PrettyAnnotation<A, TypeParameters>
     readonly equivalence?: equivalence_.EquivalenceAnnotation<A, TypeParameters>
     readonly concurrency?: AST.ConcurrencyAnnotation

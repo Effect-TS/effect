@@ -177,6 +177,24 @@ export const JSONSchemaAnnotationId: unique symbol = Symbol.for("effect/annotati
  * @category annotations
  * @since 3.10.0
  */
+export const ArbitraryAnnotationId: unique symbol = Symbol.for("effect/annotation/Arbitrary")
+
+/**
+ * @category annotations
+ * @since 3.10.0
+ */
+export const PrettyAnnotationId: unique symbol = Symbol.for("effect/annotation/Pretty")
+
+/**
+ * @category annotations
+ * @since 3.10.0
+ */
+export const EquivalenceAnnotationId: unique symbol = Symbol.for("effect/annotation/Equivalence")
+
+/**
+ * @category annotations
+ * @since 3.10.0
+ */
 export type DocumentationAnnotation = string
 
 /**

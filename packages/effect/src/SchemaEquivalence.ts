@@ -22,18 +22,12 @@ export type EquivalenceAnnotation<A, TypeParameters extends ReadonlyArray<any> =
 ) => Equivalence.Equivalence<A>
 
 /**
- * @category annotations
- * @since 3.10.0
- */
-export const EquivalenceAnnotationId: unique symbol = Symbol.for("effect/annotation/Equivalence")
-
-/**
  * @category Equivalence
  * @since 3.10.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Equivalence.Equivalence<A> => go(schema.ast, [])
 
-const getAnnotation = AST.getAnnotation<EquivalenceAnnotation<any, any>>(EquivalenceAnnotationId)
+const getAnnotation = AST.getAnnotation<EquivalenceAnnotation<any, any>>(AST.EquivalenceAnnotationId)
 
 const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equivalence<any> => {
   const hook = getAnnotation(ast)

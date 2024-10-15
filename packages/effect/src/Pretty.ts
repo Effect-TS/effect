@@ -26,18 +26,12 @@ export type PrettyAnnotation<A, TypeParameters extends ReadonlyArray<any> = read
 ) => Pretty<A>
 
 /**
- * @category annotations
- * @since 3.10.0
- */
-export const PrettyAnnotationId: unique symbol = Symbol.for("effect/annotation/Pretty")
-
-/**
  * @category prettify
  * @since 3.10.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): (a: A) => string => compile(schema.ast, [])
 
-const getAnnotation = AST.getAnnotation<PrettyAnnotation<any, any>>(PrettyAnnotationId)
+const getAnnotation = AST.getAnnotation<PrettyAnnotation<any, any>>(AST.PrettyAnnotationId)
 
 const getMatcher = (defaultPretty: Pretty<any>) => (ast: AST.AST): Pretty<any> =>
   Option.match(getAnnotation(ast), {
