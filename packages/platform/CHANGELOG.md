@@ -1,5 +1,27 @@
 # @effect/platform
 
+## 0.68.5
+
+### Patch Changes
+
+- [#3784](https://github.com/Effect-TS/effect/pull/3784) [`2036402`](https://github.com/Effect-TS/effect/commit/20364020b8b75a684791aa93d90626758023e9e9) Thanks @patroza! - fix HttpMiddleware circular import
+
+## 0.68.4
+
+### Patch Changes
+
+- [#3780](https://github.com/Effect-TS/effect/pull/3780) [`1b1ef29`](https://github.com/Effect-TS/effect/commit/1b1ef29ae302322f69dc938f9337aa97b4c63266) Thanks @tim-smart! - ensure cors middleware also affects error responses
+
+## 0.68.3
+
+### Patch Changes
+
+- [#3769](https://github.com/Effect-TS/effect/pull/3769) [`8c33087`](https://github.com/Effect-TS/effect/commit/8c330879425e80bed2f65e407cd59e991f0d7bec) Thanks @tim-smart! - add support for WebSocket protocols option
+
+- Updated dependencies [[`61a99b2`](https://github.com/Effect-TS/effect/commit/61a99b2bf9d757870ef0c2ec9d4c877cdd364a3d)]:
+  - effect@3.9.2
+  - @effect/schema@0.75.4
+
 ## 0.68.2
 
 ### Patch Changes
