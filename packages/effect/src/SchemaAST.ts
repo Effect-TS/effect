@@ -4,6 +4,7 @@
 
 import * as Arr from "./Array.js"
 import type { Effect } from "./Effect.js"
+import type { Equivalence } from "./Equivalence.js"
 import { dual, identity } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as errors_ from "./internal/schema/errors.js"
@@ -184,6 +185,14 @@ export const ArbitraryAnnotationId: unique symbol = Symbol.for("effect/annotatio
  * @since 3.10.0
  */
 export const PrettyAnnotationId: unique symbol = Symbol.for("effect/annotation/Pretty")
+
+/**
+ * @category annotations
+ * @since 3.10.0
+ */
+export type EquivalenceAnnotation<A, TypeParameters extends ReadonlyArray<any> = readonly []> = (
+  ...equivalences: { readonly [K in keyof TypeParameters]: Equivalence<TypeParameters[K]> }
+) => Equivalence<A>
 
 /**
  * @category annotations

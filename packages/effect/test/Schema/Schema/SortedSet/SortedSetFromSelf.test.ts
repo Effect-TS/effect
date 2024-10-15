@@ -2,7 +2,6 @@ import * as N from "effect/Number"
 import * as P from "effect/ParseResult"
 import * as Pretty from "effect/Pretty"
 import * as Schema from "effect/Schema"
-import * as Equivalence from "effect/SchemaEquivalence"
 import * as SortedSet from "effect/SortedSet"
 import * as S from "effect/String"
 import * as Util from "effect/test/Schema/TestUtils"
@@ -79,7 +78,7 @@ describe("SortedSetFromSelf", () => {
 
   it("equivalence", () => {
     const schema = Schema.SortedSetFromSelf(Schema.String, S.Order, S.Order)
-    const eq = Equivalence.make(schema)
+    const eq = Schema.equivalence(schema)
 
     const a = SortedSet.fromIterable([] as Array<string>, S.Order)
     const b = SortedSet.fromIterable(["a"] as Array<string>, S.Order)

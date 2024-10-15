@@ -1,7 +1,6 @@
 import { BigDecimal } from "effect"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
-import * as Equivalence from "effect/SchemaEquivalence"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
@@ -43,7 +42,7 @@ describe("BigDecimalFromSelf", () => {
 
   it("equivalence", () => {
     const schema = S.BigDecimalFromSelf
-    const equivalence = Equivalence.make(schema)
+    const equivalence = S.equivalence(schema)
 
     expect(equivalence(BigDecimal.fromNumber(1), BigDecimal.unsafeFromString("1"))).toBe(true)
     expect(equivalence(BigDecimal.fromNumber(2), BigDecimal.unsafeFromString("1"))).toBe(false)

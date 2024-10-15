@@ -57,7 +57,7 @@ export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): FastCheck.Arbitrary<A> => makeLazy(schema)(FastCheck)
 
-const getAnnotation = AST.getAnnotation<ArbitraryAnnotation<any, any>>(AST.ArbitraryAnnotationId)
+const getArbitraryAnnotation = AST.getAnnotation<ArbitraryAnnotation<any, any>>(AST.ArbitraryAnnotationId)
 
 const getRefinementFromArbitrary = (
   ast: AST.Refinement,
@@ -113,7 +113,7 @@ const go = (
   ctx: Context,
   path: ReadonlyArray<PropertyKey>
 ): LazyArbitrary<any> => {
-  const hook = getAnnotation(ast)
+  const hook = getArbitraryAnnotation(ast)
   if (Option.isSome(hook)) {
     switch (ast._tag) {
       case "Declaration":

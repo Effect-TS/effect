@@ -7,3 +7,5 @@ Re-export modules from `effect`.
 `ArrayFormatter` / `TreeFormatter` merged into `ParseResult` module.
 
 `Serializable` module merged into `Schema` module.
+
+`Equivalence` module merged into `Schema` module.

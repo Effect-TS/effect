@@ -12,7 +12,6 @@ Before
 import {
   Arbitrary,
   AST,
-  Equivalence,
   FastCheck,
   JSONSchema,
   ParseResult,
@@ -27,7 +26,6 @@ After
 import {
   Arbitrary,
   SchemaAST, // changed
-  SchemaEquivalence, // changed
   FastCheck,
   JSONSchema,
   ParseResult,
@@ -55,3 +53,23 @@ import { ArrayFormatter, TreeFormatter } from "effect/ParseResult"
 ### Serializable
 
 Merged into `Schema` module.
+
+### Equivalence
+
+Merged into `Schema` module.
+
+Before
+
+```ts
+import { Equivalence } from "@effect/schema"
+
+Equivalence.make(myschema)
+```
+
+After
+
+```ts
+import { Schema } from "@effect/schema"
+
+Schema.equivalence(myschema)
+```

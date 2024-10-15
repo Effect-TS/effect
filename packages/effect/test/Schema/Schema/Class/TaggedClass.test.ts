@@ -1,6 +1,5 @@
 import { pipe, Struct } from "effect"
 import * as S from "effect/Schema"
-import * as Equivalence from "effect/SchemaEquivalence"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
@@ -153,7 +152,7 @@ details: Duplicate key "_tag"`)
     class A extends S.TaggedClass<A>()("A", {
       a: S.String
     }) {}
-    const eqA = Equivalence.make(A)
+    const eqA = S.equivalence(A)
     expect(eqA(new A({ a: "a" }), new A({ a: "a" }))).toBe(true)
     expect(eqA(new A({ a: "a" }), new A({ a: "b" }))).toBe(false)
 
@@ -161,7 +160,7 @@ details: Duplicate key "_tag"`)
       b: S.Number,
       as: S.Array(A)
     }) {}
-    const eqB = Equivalence.make(B)
+    const eqB = S.equivalence(B)
     expect(eqB(new B({ b: 1, as: [] }), new B({ b: 1, as: [] }))).toBe(true)
     expect(eqB(new B({ b: 1, as: [] }), new B({ b: 2, as: [] }))).toBe(false)
     expect(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "a" })] }))).toBe(true)

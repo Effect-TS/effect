@@ -31,10 +31,10 @@ export type PrettyAnnotation<A, TypeParameters extends ReadonlyArray<any> = read
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): (a: A) => string => compile(schema.ast, [])
 
-const getAnnotation = AST.getAnnotation<PrettyAnnotation<any, any>>(AST.PrettyAnnotationId)
+const getPrettyAnnotation = AST.getAnnotation<PrettyAnnotation<any, any>>(AST.PrettyAnnotationId)
 
 const getMatcher = (defaultPretty: Pretty<any>) => (ast: AST.AST): Pretty<any> =>
-  Option.match(getAnnotation(ast), {
+  Option.match(getPrettyAnnotation(ast), {
     onNone: () => defaultPretty,
     onSome: (handler) => handler()
   })
@@ -50,7 +50,7 @@ const formatUnknown = getMatcher(util_.formatUnknown)
  */
 export const match: AST.Match<Pretty<any>> = {
   "Declaration": (ast, go, path) => {
-    const annotation = getAnnotation(ast)
+    const annotation = getPrettyAnnotation(ast)
     if (Option.isSome(annotation)) {
       return annotation.value(...ast.typeParameters.map((tp) => go(tp, path)))
     }
@@ -78,7 +78,7 @@ export const match: AST.Match<Pretty<any>> = {
   "BigIntKeyword": getMatcher((a) => `${String(a)}n`),
   "Enums": stringify,
   "TupleType": (ast, go, path) => {
-    const hook = getAnnotation(ast)
+    const hook = getPrettyAnnotation(ast)
     if (Option.isSome(hook)) {
       return hook.value()
     }
@@ -120,7 +120,7 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "TypeLiteral": (ast, go, path) => {
-    const hook = getAnnotation(ast)
+    const hook = getPrettyAnnotation(ast)
     if (Option.isSome(hook)) {
       return hook.value()
     }
@@ -165,7 +165,7 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "Union": (ast, go, path) => {
-    const hook = getAnnotation(ast)
+    const hook = getPrettyAnnotation(ast)
     if (Option.isSome(hook)) {
       return hook.value()
     }
@@ -179,7 +179,7 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "Suspend": (ast, go, path) => {
-    return Option.match(getAnnotation(ast), {
+    return Option.match(getPrettyAnnotation(ast), {
       onNone: () => {
         const get = util_.memoizeThunk(() => go(ast.f(), path))
         return (a) => get()(a)
@@ -188,13 +188,13 @@ export const match: AST.Match<Pretty<any>> = {
     })
   },
   "Refinement": (ast, go, path) => {
-    return Option.match(getAnnotation(ast), {
+    return Option.match(getPrettyAnnotation(ast), {
       onNone: () => go(ast.from, path),
       onSome: (handler) => handler()
     })
   },
   "Transformation": (ast, go, path) => {
-    return Option.match(getAnnotation(ast), {
+    return Option.match(getPrettyAnnotation(ast), {
       onNone: () => go(ast.to, path),
       onSome: (handler) => handler()
     })

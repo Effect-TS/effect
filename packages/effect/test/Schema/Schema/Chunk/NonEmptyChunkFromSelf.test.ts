@@ -3,7 +3,6 @@ import * as C from "effect/Chunk"
 import * as FastCheck from "effect/FastCheck"
 import * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
-import * as Equivalence from "effect/SchemaEquivalence"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
@@ -64,7 +63,7 @@ describe("NonEmptyChunkFromSelf", () => {
 
   it("equivalence", () => {
     const schema = S.NonEmptyChunkFromSelf(S.String)
-    const equivalence = Equivalence.make(schema)
+    const equivalence = S.equivalence(schema)
     expect(equivalence(C.make("a", "b"), C.make("a", "b"))).toEqual(true)
     expect(equivalence(C.make("a", "b"), C.make("a", "c"))).toEqual(false)
     expect(equivalence(C.make("a", "b"), C.make("a"))).toEqual(false)

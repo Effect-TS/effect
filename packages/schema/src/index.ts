@@ -11,11 +11,6 @@ export * as Arbitrary from "./Arbitrary.js"
 /**
  * @since 0.67.0
  */
-export * as Equivalence from "./Equivalence.js"
-
-/**
- * @since 0.67.0
- */
 export * as FastCheck from "./FastCheck.js"
 
 /**

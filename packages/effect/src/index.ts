@@ -771,11 +771,6 @@ export * as Schema from "./Schema.js"
 export * as SchemaAST from "./SchemaAST.js"
 
 /**
- * @since 3.10.0
- */
-export * as SchemaEquivalence from "./SchemaEquivalence.js"
-
-/**
  * @since 2.0.0
  */
 export * as Scope from "./Scope.js"
