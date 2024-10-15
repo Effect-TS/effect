@@ -690,8 +690,7 @@ export const securitySetCookie = (
  * @category middleware
  * @example
  * import { HttpApiBuilder, HttpApiSecurity } from "@effect/platform"
- * import { Schema } from "@effect/schema"
- * import { Context, Effect, Redacted } from "effect"
+ * import { Context, Effect, Redacted, Schema } from "effect"
  *
  * class User extends Schema.Class<User>("User")({
  *   id: Schema.Number

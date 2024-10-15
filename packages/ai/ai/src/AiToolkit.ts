@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -10,6 +9,7 @@ import * as HashMap from "effect/HashMap"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
+import type * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import type * as Types from "effect/Types"
 

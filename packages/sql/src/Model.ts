@@ -77,7 +77,7 @@ export {
    * @since 1.0.0
    * @category constructors
    * @example
-   * import { Schema } from "@effect/schema"
+   * import { Schema } from "effect"
    * import { Model } from "@effect/sql"
    *
    * export const GroupId = Schema.Number.pipe(Schema.brand("GroupId"))
