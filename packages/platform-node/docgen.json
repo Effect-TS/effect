@@ -21,9 +21,7 @@
       ],
       "@effect/platform-node-shared/*": [
         "../../../platform-node-shared/src/*.js"
-      ],
-      "@effect/schema": ["../../../schema/src/index.js"],
-      "@effect/schema/*": ["../../../schema/src/*.js"]
+      ]
     }
   }
 }
