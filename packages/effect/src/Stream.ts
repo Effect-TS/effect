@@ -314,7 +314,7 @@ export const as: {
 
 const _async: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<void, never, R> | void,
-  bufferSize?: number | "unbounded" | {
+  options?: { readonly bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   } | undefined
@@ -369,7 +369,7 @@ export {
  */
 export const asyncEffect: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R>,
-  bufferSize?: number | "unbounded" | {
+  options?: { readonly bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   } | undefined
@@ -426,7 +426,7 @@ export const asyncPush: <A, E = never, R = never>(
  */
 export const asyncScoped: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R | Scope.Scope>,
-  bufferSize?: number | "unbounded" | {
+  options?: { readonly bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   } | undefined

@@ -238,7 +238,7 @@ const initialState: State = {
 
 function handleRender(options: Options) {
   return (state: State, action: Prompt.Prompt.Action<State, string>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: () => renderSubmission(state, options)
