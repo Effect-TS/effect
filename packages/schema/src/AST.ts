@@ -2067,51 +2067,57 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
   throw new Error(errors_.getASTUnsupportedSchema(ast))
 }
 
-/** @internal */
-export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
-  switch (ast._tag) {
-    case "Declaration": {
-      const annotation = getSurrogateAnnotation(ast)
-      if (Option.isSome(annotation)) {
-        return getPropertyKeyIndexedAccess(annotation.value, name)
-      }
-      break
-    }
-    case "TypeLiteral": {
-      const ops = Arr.findFirst(ast.propertySignatures, (ps) => ps.name === name)
-      if (Option.isSome(ops)) {
-        return ops.value
-      } else {
-        if (Predicate.isString(name)) {
-          let out: PropertySignature | undefined = undefined
-          for (const is of ast.indexSignatures) {
-            const parameterBase = getParameterBase(is.parameter)
-            switch (parameterBase._tag) {
-              case "TemplateLiteral": {
-                const regex = getTemplateLiteralRegExp(parameterBase)
-                if (regex.test(name)) {
-                  return new PropertySignature(name, is.type, false, true)
-                }
-                break
-              }
-              case "StringKeyword": {
-                if (out === undefined) {
-                  out = new PropertySignature(name, is.type, false, true)
-                }
-              }
-            }
+const getTypeLiteralPropertySignature = (ast: TypeLiteral, name: PropertyKey): PropertySignature | undefined => {
+  // from property signatures...
+  const ops = Arr.findFirst(ast.propertySignatures, (ps) => ps.name === name)
+  if (Option.isSome(ops)) {
+    return ops.value
+  }
+
+  // from index signatures...
+  if (Predicate.isString(name)) {
+    let out: PropertySignature | undefined = undefined
+    for (const is of ast.indexSignatures) {
+      const parameterBase = getParameterBase(is.parameter)
+      switch (parameterBase._tag) {
+        case "TemplateLiteral": {
+          const regex = getTemplateLiteralRegExp(parameterBase)
+          if (regex.test(name)) {
+            return new PropertySignature(name, is.type, false, true)
           }
-          if (out) {
-            return out
-          }
-        } else if (Predicate.isSymbol(name)) {
-          for (const is of ast.indexSignatures) {
-            const parameterBase = getParameterBase(is.parameter)
-            if (isSymbolKeyword(parameterBase)) {
-              return new PropertySignature(name, is.type, false, true)
-            }
+          break
+        }
+        case "StringKeyword": {
+          if (out === undefined) {
+            out = new PropertySignature(name, is.type, false, true)
           }
         }
+      }
+    }
+    if (out) {
+      return out
+    }
+  } else if (Predicate.isSymbol(name)) {
+    for (const is of ast.indexSignatures) {
+      const parameterBase = getParameterBase(is.parameter)
+      if (isSymbolKeyword(parameterBase)) {
+        return new PropertySignature(name, is.type, false, true)
+      }
+    }
+  }
+}
+
+/** @internal */
+export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
+  const annotation = getSurrogateAnnotation(ast)
+  if (Option.isSome(annotation)) {
+    return getPropertyKeyIndexedAccess(annotation.value, name)
+  }
+  switch (ast._tag) {
+    case "TypeLiteral": {
+      const ps = getTypeLiteralPropertySignature(ast, name)
+      if (ps) {
+        return ps
       }
       break
     }
@@ -2124,6 +2130,8 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
       )
     case "Suspend":
       return getPropertyKeyIndexedAccess(ast.f(), name)
+    case "Refinement":
+      return getPropertyKeyIndexedAccess(ast.from, name)
   }
   return new PropertySignature(name, neverKeyword, false, true)
 }
@@ -2202,44 +2210,68 @@ export const record = (key: AST, value: AST): {
  * @since 0.67.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | Transformation => {
-  if (isTransformation(ast)) {
-    switch (ast.transformation._tag) {
-      case "ComposeTransformation":
-        return new Transformation(
-          pick(ast.from, keys),
-          pick(ast.to, keys),
-          composeTransformation
-        )
-      case "TypeLiteralTransformation": {
-        const ts: Array<PropertySignatureTransformation> = []
-        const fromKeys: Array<PropertyKey> = []
-        for (const k of keys) {
-          const t = ast.transformation.propertySignatureTransformations.find((t) => t.to === k)
-          if (t) {
-            ts.push(t)
-            fromKeys.push(t.from)
-          } else {
-            fromKeys.push(k)
+  const annotation = getSurrogateAnnotation(ast)
+  if (Option.isSome(annotation)) {
+    return pick(annotation.value, keys)
+  }
+  switch (ast._tag) {
+    case "TypeLiteral": {
+      const pss: Array<PropertySignature> = []
+      const names: Record<PropertyKey, null> = {}
+      for (const ps of ast.propertySignatures) {
+        names[ps.name] = null
+        if (keys.includes(ps.name)) {
+          pss.push(ps)
+        }
+      }
+      for (const key of keys) {
+        if (!(key in names)) {
+          const ps = getTypeLiteralPropertySignature(ast, key)
+          if (ps) {
+            pss.push(ps)
           }
         }
-        return Arr.isNonEmptyReadonlyArray(ts) ?
-          new Transformation(
-            pick(ast.from, fromKeys),
-            pick(ast.to, keys),
-            new TypeLiteralTransformation(ts)
-          ) :
-          pick(ast.from, fromKeys)
       }
-      case "FinalTransformation": {
-        const annotation = getSurrogateAnnotation(ast)
-        if (Option.isSome(annotation)) {
-          return pick(annotation.value, keys)
+      return new TypeLiteral(pss, [])
+    }
+    case "Union":
+      return new TypeLiteral(keys.map((name) => getPropertyKeyIndexedAccess(ast, name)), [])
+    case "Suspend":
+      return pick(ast.f(), keys)
+    case "Refinement":
+      return pick(ast.from, keys)
+    case "Transformation": {
+      switch (ast.transformation._tag) {
+        case "ComposeTransformation":
+          return new Transformation(
+            pick(ast.from, keys),
+            pick(ast.to, keys),
+            composeTransformation
+          )
+        case "TypeLiteralTransformation": {
+          const ts: Array<PropertySignatureTransformation> = []
+          const fromKeys: Array<PropertyKey> = []
+          for (const k of keys) {
+            const t = ast.transformation.propertySignatureTransformations.find((t) => t.to === k)
+            if (t) {
+              ts.push(t)
+              fromKeys.push(t.from)
+            } else {
+              fromKeys.push(k)
+            }
+          }
+          return Arr.isNonEmptyReadonlyArray(ts) ?
+            new Transformation(
+              pick(ast.from, fromKeys),
+              pick(ast.to, keys),
+              new TypeLiteralTransformation(ts)
+            ) :
+            pick(ast.from, fromKeys)
         }
-        throw new Error(errors_.getASTUnsupportedSchema(ast))
       }
     }
   }
-  return new TypeLiteral(keys.map((key) => getPropertyKeyIndexedAccess(ast, key)), [])
+  throw new Error(errors_.getASTUnsupportedSchema(ast))
 }
 
 /**

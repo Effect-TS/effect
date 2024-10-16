@@ -13,19 +13,19 @@ describe("pick", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      "Expected { readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }, actual null"
+      "Expected { readonly b: NumberFromString; readonly Symbol(@effect/schema/test/a): string }, actual null"
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: "a" },
-      `{ readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }
+      `{ readonly b: NumberFromString; readonly Symbol(@effect/schema/test/a): string }
 └─ ["b"]
    └─ is missing`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
-      { b: 1 },
-      `{ readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }
+      { b: "1" },
+      `{ readonly b: NumberFromString; readonly Symbol(@effect/schema/test/a): string }
 └─ [Symbol(@effect/schema/test/a)]
    └─ is missing`
     )
