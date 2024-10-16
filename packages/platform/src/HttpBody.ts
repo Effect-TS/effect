@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type * as ParseResult from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
+import type * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
+import type * as Schema from "effect/Schema"
 import type * as Stream_ from "effect/Stream"
 import type * as PlatformError from "./Error.js"
 import type * as FileSystem from "./FileSystem.js"

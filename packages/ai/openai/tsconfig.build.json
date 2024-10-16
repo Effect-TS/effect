@@ -4,8 +4,7 @@
     { "path": "../../effect/tsconfig.build.json" },
     { "path": "../ai/tsconfig.build.json" },
     { "path": "../../experimental/tsconfig.build.json" },
-    { "path": "../../platform/tsconfig.build.json" },
-    { "path": "../../schema/tsconfig.build.json" }
+    { "path": "../../platform/tsconfig.build.json" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/build.tsbuildinfo",

@@ -44,7 +44,6 @@
     "@effect/platform": "workspace:^",
     "@effect/printer": "workspace:^",
     "@effect/printer-ansi": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
@@ -52,7 +51,6 @@
     "@effect/platform-node": "workspace:^",
     "@effect/printer": "workspace:^",
     "@effect/printer-ansi": "workspace:^",
-    "@effect/schema": "workspace:^",
     "@types/ini": "^4.1.1",
     "@types/node": "^20.14.10",
     "effect": "workspace:^"

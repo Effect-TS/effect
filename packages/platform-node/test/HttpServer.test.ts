@@ -16,11 +16,11 @@ import {
   UrlParams
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
-import * as Schema from "@effect/schema/Schema"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Deferred, Duration, Fiber, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import * as Tracer from "effect/Tracer"
 import * as Buffer from "node:buffer"
 
