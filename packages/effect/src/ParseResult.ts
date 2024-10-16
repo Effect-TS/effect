@@ -1383,8 +1383,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         let stepKey = 0
         let candidates: Array<AST.AST> = []
         if (len > 0) {
-          // if there is at least one key then input must be an object
-          if (isObject(input)) {
+          if (Predicate.isRecordOrArray(input)) {
             for (let i = 0; i < len; i++) {
               const name = ownKeys[i]
               const buckets = searchTree.keys[name].buckets
@@ -1511,8 +1510,6 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     }
   }
 }
-
-const isObject = (input: unknown): input is { [x: PropertyKey]: unknown } => typeof input === "object" && input !== null
 
 const fromRefinement = <A>(ast: AST.AST, refinement: (u: unknown) => u is A): Parser => (u) =>
   refinement(u) ? Either.right(u) : Either.left(new Type(ast, u))
