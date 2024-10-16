@@ -15,7 +15,7 @@ import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
-import { identity } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
@@ -49,6 +49,10 @@ export interface ClickhouseClient extends Client.SqlClient {
     readonly values: Clickhouse.InsertValues<Readable, T>
     readonly format?: Clickhouse.DataFormat
   }) => Effect.Effect<Clickhouse.InsertResult, SqlError>
+  readonly withQueryId: {
+    (queryId: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+    <A, E, R>(effect: Effect.Effect<A, E, R>, queryId: string): Effect.Effect<A, E, R>
+  }
 }
 
 /**
@@ -101,7 +105,7 @@ export const make = (
         return Effect.withFiberRuntime<Clickhouse.ResultSet<"JSON"> | Clickhouse.CommandResult, SqlError>((fiber) => {
           const method = fiber.getFiberRef(currentClientMethod)
           return Effect.async<Clickhouse.ResultSet<"JSON"> | Clickhouse.CommandResult, SqlError>((resume) => {
-            const queryId = Crypto.randomUUID()
+            const queryId = fiber.getFiberRef(currentQueryId) ?? Crypto.randomUUID()
             const controller = new AbortController()
             if (method === "command") {
               this.conn.command({
@@ -227,24 +231,28 @@ export const make = (
           readonly values: Clickhouse.InsertValues<Readable, T>
           readonly format?: Clickhouse.DataFormat
         }) {
-          return Effect.async<Clickhouse.InsertResult, SqlError>((resume) => {
-            const queryId = Crypto.randomUUID()
-            const controller = new AbortController()
-            client.insert({
-              format: "JSONEachRow",
-              ...options,
-              abort_signal: controller.signal,
-              query_id: queryId
-            }).then(
-              (result) => resume(Effect.succeed(result)),
-              (cause) => resume(Effect.fail(new SqlError({ cause, message: "Failed to insert data" })))
-            )
-            return Effect.suspend(() => {
-              controller.abort()
-              return Effect.promise(() => client.command({ query: `KILL QUERY WHERE query_id = '${queryId}'` }))
-            })
-          })
-        }
+          return FiberRef.getWith(currentQueryId, (queryId_) =>
+            Effect.async<Clickhouse.InsertResult, SqlError>((resume) => {
+              const queryId = queryId_ ?? Crypto.randomUUID()
+              const controller = new AbortController()
+              client.insert({
+                format: "JSONEachRow",
+                ...options,
+                abort_signal: controller.signal,
+                query_id: queryId
+              }).then(
+                (result) =>
+                  resume(Effect.succeed(result)),
+                (cause) => resume(Effect.fail(new SqlError({ cause, message: "Failed to insert data" })))
+              )
+              return Effect.suspend(() => {
+                controller.abort()
+                return Effect.promise(() => client.command({ query: `KILL QUERY WHERE query_id = '${queryId}'` }))
+              })
+            }))
+        },
+        withQueryId: dual(2, <A, E, R>(effect: Effect.Effect<A, E, R>, queryId: string) =>
+          Effect.locally(effect, currentQueryId, queryId))
       }
     )
   })
@@ -256,6 +264,15 @@ export const make = (
 export const currentClientMethod: FiberRef.FiberRef<"query" | "command" | "insert"> = globalValue(
   "@effect/sql-clickhouse/ClickhouseClient/currentClientMethod",
   () => FiberRef.unsafeMake<"query" | "command" | "insert">("query")
+)
+
+/**
+ * @category fiber refs
+ * @since 1.0.0
+ */
+export const currentQueryId: FiberRef.FiberRef<string | undefined> = globalValue(
+  "@effect/sql-clickhouse/ClickhouseClient/currentQueryId",
+  () => FiberRef.unsafeMake<string | undefined>(undefined)
 )
 
 /**
