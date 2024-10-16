@@ -7,8 +7,8 @@ import {
   Multipart
 } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import * as Schema from "@effect/schema/Schema"
 import { Effect, Layer, Schedule, Stream } from "effect"
+import * as Schema from "effect/Schema"
 import { createServer } from "node:http"
 
 const ServerLive = NodeHttpServer.layer(() => createServer(), { port: 3000 })
