@@ -1,5 +1,33 @@
 # @effect/schema
 
+## 0.75.5
+
+### Patch Changes
+
+- [#3792](https://github.com/Effect-TS/effect/pull/3792) [`382556f`](https://github.com/Effect-TS/effect/commit/382556f8930780c0634de681077706113a8c8239) Thanks @gcanti! - resolve parse error when using `pick` with union of class schemas, closes #3751
+
+- [#3790](https://github.com/Effect-TS/effect/pull/3790) [`97cb014`](https://github.com/Effect-TS/effect/commit/97cb0145114b2cd2f378e98f6c4ff5bf2c1865f5) Thanks @gcanti! - Equivalence: Fixed a bug related to discriminated tuples.
+
+  Example:
+
+  The following equivalence check was incorrectly returning `false`:
+
+  ```ts
+  import * as E from "@effect/schema/Equivalence"
+  import * as S from "@effect/schema/Schema"
+
+  // Union of discriminated tuples
+  const schema = S.Union(
+    S.Tuple(S.Literal("a"), S.String),
+    S.Tuple(S.Literal("b"), S.Number)
+  )
+
+  const equivalence = E.make(schema)
+
+  console.log(equivalence(["a", "x"], ["a", "x"]))
+  // false
+  ```
+
 ## 0.75.4
 
 ### Patch Changes

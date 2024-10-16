@@ -1,5 +1,12 @@
 # @effect/platform-node-shared
 
+## 0.18.6
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.68.6
+
 ## 0.18.5
 
 ### Patch Changes
