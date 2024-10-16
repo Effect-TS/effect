@@ -4,8 +4,7 @@
   "references": [
     { "path": "tsconfig.src.json" },
     { "path": "../effect" },
-    { "path": "../platform" },
-    { "path": "../schema" }
+    { "path": "../platform" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

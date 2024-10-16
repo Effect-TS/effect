@@ -47,7 +47,6 @@ const config: UserConfig = {
       ...alias("printer-ansi"),
       ...alias("rpc"),
       ...alias("rpc-http"),
-      ...alias("schema"),
       ...alias("sql"),
       ...alias("sql-clickhouse"),
       ...alias("sql-d1"),

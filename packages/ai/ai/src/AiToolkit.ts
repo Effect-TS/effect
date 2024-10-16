@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -11,6 +9,7 @@ import * as HashMap from "effect/HashMap"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
+import type * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import type * as Types from "effect/Types"
 
@@ -82,7 +81,7 @@ export declare namespace Tool {
   export interface AnySchema {
     readonly [Schema.TypeId]: any
     readonly _tag: string
-    readonly Type: Serializable.SerializableWithResult.All
+    readonly Type: Schema.SerializableWithResult.All
     readonly success: Schema.Schema.Any
   }
 
@@ -90,19 +89,19 @@ export declare namespace Tool {
    * @since 1.0.0
    * @category tool
    */
-  export type Success<Tool extends AnySchema> = Serializable.WithResult.Success<Tool["Type"]>
+  export type Success<Tool extends AnySchema> = Schema.WithResult.Success<Tool["Type"]>
 
   /**
    * @since 1.0.0
    * @category tool
    */
-  export type Failure<Tool extends AnySchema> = Serializable.WithResult.Failure<Tool["Type"]>
+  export type Failure<Tool extends AnySchema> = Schema.WithResult.Failure<Tool["Type"]>
 
   /**
    * @since 1.0.0
    * @category tool
    */
-  export type Context<Tool extends AnySchema> = Serializable.WithResult.Context<Tool["Type"]>
+  export type Context<Tool extends AnySchema> = Schema.WithResult.Context<Tool["Type"]>
 
   /**
    * @since 1.0.0

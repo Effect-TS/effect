@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
+import * as Schema from "effect/Schema"
 import { TypeIdSchema } from "./internal/utils.js"
 
 /** @internal */

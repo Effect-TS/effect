@@ -1,11 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "include": ["src"],
-  "references": [
-    { "path": "../effect" },
-    { "path": "../rpc" },
-    { "path": "../schema" }
-  ],
+  "references": [{ "path": "../effect" }, { "path": "../rpc" }],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
     "rootDir": "src",

@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
 import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import * as internal from "./internal/workerError.js"
 
 /**
