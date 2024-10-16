@@ -20,6 +20,8 @@ import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import * as Crypto from "node:crypto"
+import type { Readable } from "node:stream"
 
 /**
  * @category type ids
@@ -42,6 +44,11 @@ export interface ClickhouseClient extends Client.SqlClient {
   readonly config: ClickhouseClientConfig
   readonly param: (dataType: string, value: Statement.Primitive) => Statement.Fragment
   readonly asCommand: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  readonly insertQuery: <T = unknown>(options: {
+    readonly table: string
+    readonly values: Clickhouse.InsertValues<Readable, T>
+    readonly format?: Clickhouse.DataFormat
+  }) => Effect.Effect<Clickhouse.InsertResult, SqlError>
 }
 
 /**
@@ -87,29 +94,41 @@ export const make = (
       constructor(private readonly conn: Clickhouse.ClickHouseClient) {}
 
       private runRaw(sql: string, params: ReadonlyArray<Primitive>, format: Clickhouse.DataFormat = "JSON") {
+        const paramsObj: Record<string, unknown> = {}
+        for (let i = 0; i < params.length; i++) {
+          paramsObj[`p${i + 1}`] = params[i]
+        }
         return Effect.withFiberRuntime<Clickhouse.ResultSet<"JSON"> | Clickhouse.CommandResult, SqlError>((fiber) => {
           const method = fiber.getFiberRef(currentClientMethod)
-          return Effect.tryPromise({
-            try: (abort_signal) => {
-              const paramsObj: Record<string, unknown> = {}
-              for (let i = 0; i < params.length; i++) {
-                paramsObj[`p${i + 1}`] = params[i]
-              }
-              if (method === "command") {
-                return this.conn.command({
-                  query: sql,
-                  query_params: paramsObj,
-                  abort_signal
-                })
-              }
-              return this.conn.query({
+          return Effect.async<Clickhouse.ResultSet<"JSON"> | Clickhouse.CommandResult, SqlError>((resume) => {
+            const queryId = Crypto.randomUUID()
+            const controller = new AbortController()
+            if (method === "command") {
+              this.conn.command({
                 query: sql,
                 query_params: paramsObj,
-                abort_signal,
+                abort_signal: controller.signal,
+                query_id: queryId
+              }).then(
+                (result) => resume(Effect.succeed(result)),
+                (cause) => resume(Effect.fail(new SqlError({ cause, message: "Failed to execute statement" })))
+              )
+            } else {
+              this.conn.query({
+                query: sql,
+                query_params: paramsObj,
+                abort_signal: controller.signal,
+                query_id: queryId,
                 format
-              })
-            },
-            catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
+              }).then(
+                (result) => resume(Effect.succeed(result)),
+                (cause) => resume(Effect.fail(new SqlError({ cause, message: "Failed to execute statement" })))
+              )
+            }
+            return Effect.suspend(() => {
+              controller.abort()
+              return Effect.promise(() => this.conn.command({ query: `KILL QUERY WHERE query_id = '${queryId}'` }))
+            })
           })
         })
       }
@@ -202,6 +221,29 @@ export const make = (
         },
         asCommand<A, E, R>(effect: Effect.Effect<A, E, R>) {
           return Effect.locally(effect, currentClientMethod, "command")
+        },
+        insertQuery<T = unknown>(options: {
+          readonly table: string
+          readonly values: Clickhouse.InsertValues<Readable, T>
+          readonly format?: Clickhouse.DataFormat
+        }) {
+          return Effect.async<Clickhouse.InsertResult, SqlError>((resume) => {
+            const queryId = Crypto.randomUUID()
+            const controller = new AbortController()
+            client.insert({
+              format: "JSONEachRow",
+              ...options,
+              abort_signal: controller.signal,
+              query_id: queryId
+            }).then(
+              (result) => resume(Effect.succeed(result)),
+              (cause) => resume(Effect.fail(new SqlError({ cause, message: "Failed to insert data" })))
+            )
+            return Effect.suspend(() => {
+              controller.abort()
+              return Effect.promise(() => client.command({ query: `KILL QUERY WHERE query_id = '${queryId}'` }))
+            })
+          })
         }
       }
     )
@@ -211,9 +253,9 @@ export const make = (
  * @category fiber refs
  * @since 1.0.0
  */
-export const currentClientMethod = globalValue(
+export const currentClientMethod: FiberRef.FiberRef<"query" | "command" | "insert"> = globalValue(
   "@effect/sql-clickhouse/ClickhouseClient/currentClientMethod",
-  () => FiberRef.unsafeMake<"query" | "command">("query")
+  () => FiberRef.unsafeMake<"query" | "command" | "insert">("query")
 )
 
 /**

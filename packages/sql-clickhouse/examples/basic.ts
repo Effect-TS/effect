@@ -13,30 +13,22 @@ Effect.gen(function*() {
   yield* sql`CREATE TABLE IF NOT EXISTS clickhouse_js_example_cloud_table
     (id UInt64, name String)
     ORDER BY (id)`
+  yield* sql`TRUNCATE TABLE clickhouse_js_example_cloud_table`
 
-  yield* sql.asCommand(
-    sql`INSERT INTO clickhouse_js_example_cloud_table ${
-      sql.insert({
-        id: sql.param("UInt64", 1),
-        name: "Alice"
-      })
-    }`.raw
-  )
-  yield* sql.asCommand(
-    sql`INSERT INTO clickhouse_js_example_cloud_table ${
-      sql.insert({
-        id: 2,
-        name: "Bob"
-      })
-    }`.raw
-  )
+  yield* sql.insertQuery({
+    table: "clickhouse_js_example_cloud_table",
+    values: [
+      { id: 1, name: "Alice" },
+      { id: 2, name: "Bob" }
+    ]
+  })
   yield* sql.asCommand(
     sql`INSERT INTO clickhouse_js_example_cloud_table ${
       sql.insert({
         id: 3,
         name: "Charlie"
       })
-    }`.raw
+    }`
   )
 
   yield* sql`SELECT * FROM clickhouse_js_example_cloud_table ORDER BY id`.stream.pipe(
