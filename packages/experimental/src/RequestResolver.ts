@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Arr from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
@@ -12,6 +11,7 @@ import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
+import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Persistence from "./Persistence.js"
 
@@ -110,9 +110,7 @@ export const dataLoader = dual<
  * @since 1.0.0
  * @category model
  */
-export interface PersistedRequest<R, IE, E, IA, A>
-  extends Request.Request<A, E>, Serializable.WithResult<A, IA, E, IE, R>
-{}
+export interface PersistedRequest<R, IE, E, IA, A> extends Request.Request<A, E>, Schema.WithResult<A, IA, E, IE, R> {}
 
 /**
  * @since 1.0.0
@@ -137,7 +135,7 @@ export const persisted: {
   }): (
     self: RequestResolver.RequestResolver<Req, never>
   ) => Effect.Effect<
-    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
+    RequestResolver.RequestResolver<Req, Schema.WithResult.Context<Req>>,
     never,
     Persistence.ResultPersistence | Scope.Scope
   >
@@ -148,7 +146,7 @@ export const persisted: {
       readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<Req>) => Duration.DurationInput
     }
   ): Effect.Effect<
-    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
+    RequestResolver.RequestResolver<Req, Schema.WithResult.Context<Req>>,
     never,
     Persistence.ResultPersistence | Scope.Scope
   >
@@ -159,7 +157,7 @@ export const persisted: {
     readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<Req>) => Duration.DurationInput
   }
 ): Effect.Effect<
-  RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
+  RequestResolver.RequestResolver<Req, Schema.WithResult.Context<Req>>,
   never,
   Persistence.ResultPersistence | Scope.Scope
 > =>

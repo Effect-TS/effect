@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -14,9 +11,12 @@ import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import type { ManagedRuntime } from "effect/ManagedRuntime"
 import * as Option from "effect/Option"
+import * as ParseResult from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type { ReadonlyRecord } from "effect/Record"
 import * as Redacted from "effect/Redacted"
+import * as Schema from "effect/Schema"
+import * as AST from "effect/SchemaAST"
 import type { Scope } from "effect/Scope"
 import type { Covariant, Mutable, NoInfer } from "effect/Types"
 import { unify } from "effect/Unify"
@@ -690,8 +690,7 @@ export const securitySetCookie = (
  * @category middleware
  * @example
  * import { HttpApiBuilder, HttpApiSecurity } from "@effect/platform"
- * import { Schema } from "@effect/schema"
- * import { Context, Effect, Redacted } from "effect"
+ * import { Context, Effect, Redacted, Schema } from "effect"
  *
  * class User extends Schema.Class<User>("User")({
  *   id: Schema.Number

@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import { dual } from "effect/Function"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.js"
 import type { HttpApiDecodeError } from "./HttpApiError.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"

@@ -6,7 +6,6 @@
     { "path": "../platform" },
     { "path": "../platform-node-shared" },
     { "path": "../effect" },
-    { "path": "../schema" },
     { "path": "../vitest" }
   ],
   "compilerOptions": {

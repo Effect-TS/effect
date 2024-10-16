@@ -4,8 +4,7 @@
   "references": [
     { "path": "../effect" },
     { "path": "../experimental" },
-    { "path": "../platform" },
-    { "path": "../schema" }
+    { "path": "../platform" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",

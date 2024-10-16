@@ -46,13 +46,11 @@
   "devDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "effect": {

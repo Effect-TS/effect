@@ -15,9 +15,8 @@ import {
   OpenApi
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
-import { Schema } from "@effect/schema"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, DateTime, Effect, Layer, Redacted, Ref, Struct } from "effect"
+import { Context, DateTime, Effect, Layer, Redacted, Ref, Schema, Struct } from "effect"
 import OpenApiFixture from "./fixtures/openapi.json"
 
 describe("HttpApi", () => {

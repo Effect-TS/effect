@@ -21,7 +21,6 @@
     { "path": "packages/printer-ansi/tsconfig.build.json" },
     { "path": "packages/rpc/tsconfig.build.json" },
     { "path": "packages/rpc-http/tsconfig.build.json" },
-    { "path": "packages/schema/tsconfig.build.json" },
     { "path": "packages/sql/tsconfig.build.json" },
     { "path": "packages/sql-clickhouse/tsconfig.build.json" },
     { "path": "packages/sql-d1/tsconfig.build.json" },

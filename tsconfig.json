@@ -21,8 +21,6 @@
     { "path": "packages/printer-ansi" },
     { "path": "packages/rpc" },
     { "path": "packages/rpc-http" },
-    { "path": "packages/schema" },
-    { "path": "packages/schema" },
     { "path": "packages/sql" },
     { "path": "packages/sql-clickhouse" },
     { "path": "packages/sql-d1" },

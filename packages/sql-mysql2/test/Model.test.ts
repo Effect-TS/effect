@@ -1,7 +1,6 @@
-import { Schema } from "@effect/schema"
 import { Model, SqlClient } from "@effect/sql"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option } from "effect"
+import { Effect, Option, Schema } from "effect"
 import { MysqlContainer } from "./utils.js"
 
 class User extends Model.Class<User>("User")({

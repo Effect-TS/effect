@@ -3,13 +3,13 @@
  */
 import * as RRX from "@effect/experimental/RequestResolver"
 import * as VariantSchema from "@effect/experimental/VariantSchema"
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as ParseResult from "effect/ParseResult"
+import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import { SqlClient } from "./SqlClient.js"
 import * as SqlResolver from "./SqlResolver.js"
@@ -77,7 +77,7 @@ export {
    * @since 1.0.0
    * @category constructors
    * @example
-   * import { Schema } from "@effect/schema"
+   * import { Schema } from "effect"
    * import { Model } from "@effect/sql"
    *
    * export const GroupId = Schema.Number.pipe(Schema.brand("GroupId"))

@@ -1,15 +1,15 @@
 /**
  * @since 1.0.0
  */
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { dual } from "effect/Function"
 import * as Global from "effect/GlobalValue"
 import type { Inspectable } from "effect/Inspectable"
 import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
+import * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Stream from "effect/Stream"
 import * as FileSystem from "./FileSystem.js"
 import type * as Headers from "./Headers.js"

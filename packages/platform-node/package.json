@@ -55,7 +55,6 @@
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
-    "@effect/schema": "workspace:^",
     "@types/mime": "^3.0.4",
     "@types/node": "^20.14.10",
     "@types/ws": "^8.5.12",

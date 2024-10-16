@@ -1,9 +1,0 @@
-{
-  "extends": "../../../tsconfig.base.json",
-  "include": ["."],
-  "compilerOptions": {
-    "incremental": false,
-    "composite": false,
-    "noUnusedLocals": false
-  }
-}

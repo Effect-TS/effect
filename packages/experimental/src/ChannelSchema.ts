@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type { ParseError } from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import { dual, pipe } from "effect/Function"
+import type { ParseError } from "effect/ParseResult"
+import * as Schema from "effect/Schema"
 
 /**
  * @since 1.0.0

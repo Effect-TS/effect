@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Iterable from "effect/Iterable"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import { AiError } from "./AiError.js"
 import * as AiRole from "./AiRole.js"
 

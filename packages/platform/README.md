@@ -32,7 +32,7 @@ Let's define a simple CRUD API for managing users. First, we need to make an
 
 ```ts
 import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
-import { Schema } from "@effect/schema"
+import { Schema } from "effect"
 
 // Our domain "User" Schema
 class User extends Schema.Class<User>("User")({
@@ -306,8 +306,7 @@ import {
   HttpApiEndpoint,
   HttpApiGroup
 } from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { DateTime, Effect } from "effect"
+import { DateTime, Effect, Schema } from "effect"
 
 // here is our api definition
 class User extends Schema.Class<User>("User")({
@@ -1161,7 +1160,7 @@ string {
 
 ### Decoding Data with Schemas
 
-A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `@effect/schema`.
+A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `effect/Schema`.
 
 ```ts
 import {
@@ -1170,8 +1169,7 @@ import {
   HttpClientResponse
 } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
-import { Schema } from "@effect/schema"
-import { Console, Effect } from "effect"
+import { Console, Effect, Schema } from "effect"
 
 const Post = Schema.Struct({
   id: Schema.Number,
@@ -1329,7 +1327,7 @@ Output:
 
 ### Decoding Data with Schemas
 
-A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `@effect/schema`.
+A common use case when fetching data is to validate the received format. For this purpose, the `HttpClientResponse` module is integrated with `effect/Schema`.
 
 ```ts
 import {
@@ -1339,8 +1337,7 @@ import {
   HttpClientResponse
 } from "@effect/platform"
 import { NodeRuntime } from "@effect/platform-node"
-import { Schema } from "@effect/schema"
-import { Console, Effect } from "effect"
+import { Console, Effect, Schema } from "effect"
 
 const Post = Schema.Struct({
   id: Schema.Number,
@@ -1717,8 +1714,7 @@ To define routes with parameters, include the parameter names in the path and us
 
 ```ts
 import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { listen } from "./listen.js"
 
 // Define the schema for route parameters
@@ -2408,7 +2404,7 @@ curl -i http://localhost:3000/fail
 
 ## Validations
 
-Validation is a critical aspect of handling HTTP requests to ensure that the data your server receives is as expected. We'll explore how to validate headers and cookies using the `@effect/platform` and `@effect/schema` libraries, which provide structured and robust methods for these tasks.
+Validation is a critical aspect of handling HTTP requests to ensure that the data your server receives is as expected. We'll explore how to validate headers and cookies using the `@effect/platform` and `effect/Schema` libraries, which provide structured and robust methods for these tasks.
 
 ### Headers
 
@@ -2421,8 +2417,7 @@ import {
   HttpServerRequest,
   HttpServerResponse
 } from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { listen } from "./listen.js"
 
 const router = HttpRouter.empty.pipe(
@@ -2472,8 +2467,7 @@ import {
   HttpServerRequest,
   HttpServerResponse
 } from "@effect/platform"
-import { Schema } from "@effect/schema"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { listen } from "./listen.js"
 
 const router = HttpRouter.empty.pipe(

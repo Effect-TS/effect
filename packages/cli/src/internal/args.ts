@@ -1,8 +1,6 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
-import * as Schema from "@effect/schema/Schema"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Arr from "effect/Array"
 import type * as Config from "effect/Config"
 import * as Console from "effect/Console"
@@ -10,9 +8,11 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import * as ParseResult from "effect/ParseResult"
 import { pipeArguments } from "effect/Pipeable"
 import type * as Redacted from "effect/Redacted"
 import * as Ref from "effect/Ref"
+import type * as Schema from "effect/Schema"
 import type * as Secret from "effect/Secret"
 import type * as Args from "../Args.js"
 import type * as CliConfig from "../CliConfig.js"
@@ -436,11 +436,11 @@ export const withSchema = dual<
     schema: Schema.Schema<B, I, FileSystem.FileSystem | Path.Path | Terminal.Terminal>
   ) => Args.Args<B>
 >(2, (self, schema) => {
-  const decode = Schema.decode(schema)
+  const decode = ParseResult.decode(schema)
   return mapEffect(self, (_) =>
     Effect.mapError(
       decode(_ as any),
-      (error) => InternalHelpDoc.p(TreeFormatter.formatErrorSync(error))
+      (issue) => InternalHelpDoc.p(ParseResult.TreeFormatter.formatIssueSync(issue))
     ))
 })
 

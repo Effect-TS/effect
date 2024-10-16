@@ -1,8 +1,8 @@
-import * as Schema from "@effect/schema/Schema"
 import { SqlError, SqlResolver } from "@effect/sql"
 import { D1Client } from "@effect/sql-d1"
 import { assert, describe, it } from "@effect/vitest"
 import { Array, Effect, Option } from "effect"
+import * as Schema from "effect/Schema"
 import { D1Miniflare } from "./utils.js"
 
 const seededClient = Effect.gen(function*(_) {

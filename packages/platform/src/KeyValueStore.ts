@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import type * as ParseResult from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
+import type * as Schema from "effect/Schema"
 import type * as PlatformError from "./Error.js"
 import type * as FileSystem from "./FileSystem.js"
 import * as internal from "./internal/keyValueStore.js"

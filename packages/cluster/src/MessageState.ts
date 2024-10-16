@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
+import type * as Schema from "effect/Schema"
 import * as internal from "./internal/messageState.js"
 
 /**

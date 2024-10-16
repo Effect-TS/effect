@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
 import * as FiberRef from "effect/FiberRef"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
@@ -9,6 +8,7 @@ import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
 import * as Redacted from "effect/Redacted"
+import * as Schema from "effect/Schema"
 import * as String from "effect/String"
 import type { Mutable } from "effect/Types"
 

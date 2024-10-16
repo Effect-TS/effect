@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Serializable from "@effect/schema/Serializable"
 import * as Cache from "effect/Cache"
 import * as Data from "effect/Data"
 import type * as Duration from "effect/Duration"
@@ -10,6 +9,7 @@ import * as Equal from "effect/Equal"
 import { identity, pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
+import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import * as Persistence from "./Persistence.js"
@@ -34,8 +34,8 @@ export interface PersistedCache<K extends Persistence.ResultPersistence.KeyAny> 
   readonly get: (
     key: K
   ) => Effect.Effect<
-    Serializable.WithResult.Success<K>,
-    Serializable.WithResult.Failure<K> | Persistence.PersistenceError
+    Schema.WithResult.Success<K>,
+    Schema.WithResult.Failure<K> | Persistence.PersistenceError
   >
   readonly invalidate: (key: K) => Effect.Effect<void, Persistence.PersistenceError>
 }
@@ -46,14 +46,14 @@ export interface PersistedCache<K extends Persistence.ResultPersistence.KeyAny> 
  */
 export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options: {
   readonly storeId: string
-  readonly lookup: (key: K) => Effect.Effect<Serializable.WithResult.Success<K>, Serializable.WithResult.Failure<K>, R>
+  readonly lookup: (key: K) => Effect.Effect<Schema.WithResult.Success<K>, Schema.WithResult.Failure<K>, R>
   readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<K>) => Duration.DurationInput
   readonly inMemoryCapacity?: number | undefined
   readonly inMemoryTTL?: Duration.DurationInput | undefined
 }): Effect.Effect<
   PersistedCache<K>,
   never,
-  Serializable.SerializableWithResult.Context<K> | R | Persistence.ResultPersistence | Scope.Scope
+  Schema.SerializableWithResult.Context<K> | R | Persistence.ResultPersistence | Scope.Scope
 > =>
   Persistence.ResultPersistence.pipe(
     Effect.flatMap((_) =>
@@ -67,9 +67,9 @@ export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options:
       Cache.make({
         lookup: (request: CacheRequest<K>) => {
           const effect: Effect.Effect<
-            Serializable.WithResult.Success<K>,
-            Serializable.WithResult.Failure<K> | Persistence.PersistenceError,
-            Serializable.SerializableWithResult.Context<K> | R
+            Schema.WithResult.Success<K>,
+            Schema.WithResult.Failure<K> | Persistence.PersistenceError,
+            Schema.SerializableWithResult.Context<K> | R
           > = pipe(
             store.get(request.key as any),
             Effect.flatMap(Option.match({

@@ -1,6 +1,5 @@
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as PrimaryKey from "effect/PrimaryKey"
+import * as Schema from "effect/Schema"
 import type * as Types from "effect/Types"
 import type * as Message from "../Message.js"
 
@@ -8,7 +7,7 @@ import type * as Message from "../Message.js"
 export function isMessageWithResult(value: unknown): value is Message.Message<unknown, unknown, unknown, unknown> {
   return (
     typeof value === "object" && value !== null &&
-    Serializable.symbolResult in value
+    Schema.symbolWithResult in value
   )
 }
 
@@ -16,21 +15,21 @@ export function isMessageWithResult(value: unknown): value is Message.Message<un
 export function exitSchema<A extends Message.Message.Any>(
   message: A
 ): Schema.Schema<Message.Message.Exit<A>, unknown> {
-  return Serializable.exitSchema(message as any) as any
+  return Schema.exitSchema(message as any) as any
 }
 
 /** @internal */
 export function successSchema<A extends Message.Message.Any>(
   message: A
 ): Schema.Schema<Message.Message.Success<A>, unknown> {
-  return Serializable.successSchema(message as any) as any
+  return Schema.successSchema(message as any) as any
 }
 
 /** @internal */
 export function failureSchema<A extends Message.Message.Any>(
   message: A
 ): Schema.Schema<Message.Message.Error<A>, unknown> {
-  return Serializable.failureSchema(message as any) as any
+  return Schema.failureSchema(message as any) as any
 }
 
 /**

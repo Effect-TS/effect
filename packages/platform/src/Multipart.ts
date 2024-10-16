@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
 import type { YieldableError } from "effect/Cause"
 import type * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
@@ -11,6 +8,9 @@ import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
+import type * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type * as Multipasta from "multipasta"

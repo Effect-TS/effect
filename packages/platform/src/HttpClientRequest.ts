@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { Redacted } from "effect/Redacted"
+import type * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "./Error.js"
 import type * as FileSystem from "./FileSystem.js"

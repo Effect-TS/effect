@@ -6,13 +6,13 @@ import {
   HttpClientResponse,
   UrlParams
 } from "@effect/platform"
-import * as Schema from "@effect/schema/Schema"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Either, Ref, Struct } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 
 const Todo = Schema.Struct({

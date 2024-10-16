@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { ParseError } from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import type { NonEmptyArray } from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -12,8 +10,10 @@ import * as FiberRef from "effect/FiberRef"
 import * as Hash from "effect/Hash"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as Option from "effect/Option"
+import type { ParseError } from "effect/ParseResult"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
+import * as Schema from "effect/Schema"
 import * as Tracer from "effect/Tracer"
 import type * as Types from "effect/Types"
 import * as internalClient from "./internal/client.js"
