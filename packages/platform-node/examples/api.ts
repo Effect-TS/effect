@@ -13,8 +13,7 @@ import {
   OpenApi
 } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Schema } from "@effect/schema"
-import { Context, Effect, Layer, Redacted } from "effect"
+import { Context, Effect, Layer, Redacted, Schema } from "effect"
 import { createServer } from "node:http"
 
 class User extends Schema.Class<User>("User")({

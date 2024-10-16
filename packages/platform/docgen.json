@@ -1,8 +1,6 @@
 {
   "$schema": "../../node_modules/@effect/docgen/schema.json",
-  "exclude": [
-    "src/internal/**/*.ts"
-  ],
+  "exclude": ["src/internal/**/*.ts"],
   "examplesCompilerOptions": {
     "noEmit": true,
     "strict": true,
@@ -10,48 +8,22 @@
     "moduleResolution": "Bundler",
     "module": "ES2022",
     "target": "ES2022",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "paths": {
-      "effect": [
-        "../../../effect/src/index.js"
-      ],
-      "effect/*": [
-        "../../../effect/src/*.js"
-      ],
-      "@effect/platform": [
-        "../../../platform/src/index.js"
-      ],
-      "@effect/platform/*": [
-        "../../../platform/src/*.js"
-      ],
-      "@effect/platform-node": [
-        "../../../platform-node/src/index.js"
-      ],
-      "@effect/platform-node/*": [
-        "../../../platform-node/src/*.js"
-      ],
+      "effect": ["../../../effect/src/index.js"],
+      "effect/*": ["../../../effect/src/*.js"],
+      "@effect/platform": ["../../../platform/src/index.js"],
+      "@effect/platform/*": ["../../../platform/src/*.js"],
+      "@effect/platform-node": ["../../../platform-node/src/index.js"],
+      "@effect/platform-node/*": ["../../../platform-node/src/*.js"],
       "@effect/platform-node-shared": [
         "../../../platform-node-shared/src/index.js"
       ],
       "@effect/platform-node-shared/*": [
         "../../../platform-node-shared/src/*.js"
       ],
-      "@effect/schema": [
-        "../../../schema/src/index.js"
-      ],
-      "@effect/schema/*": [
-        "../../../schema/src/*.js"
-      ],
-      "@effect/typeclass": [
-        "../../../typeclass/src/index.js"
-      ],
-      "@effect/typeclass/*": [
-        "../../../typeclass/src/*.js"
-      ]
+      "@effect/typeclass": ["../../../typeclass/src/index.js"],
+      "@effect/typeclass/*": ["../../../typeclass/src/*.js"]
     }
   }
 }

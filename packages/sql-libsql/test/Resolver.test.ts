@@ -1,8 +1,8 @@
-import * as Schema from "@effect/schema/Schema"
 import { SqlError, SqlResolver } from "@effect/sql"
 import { LibsqlClient } from "@effect/sql-libsql"
 import { assert, describe, layer } from "@effect/vitest"
 import { Array, Effect, Option } from "effect"
+import * as Schema from "effect/Schema"
 import { LibsqlContainer } from "./util.js"
 
 const seededClient = Effect.gen(function*(_) {

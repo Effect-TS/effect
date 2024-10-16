@@ -1,9 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as PrimaryKey from "effect/PrimaryKey"
+import * as Schema from "effect/Schema"
 import { TypeIdSchema } from "./internal/utils.js"
 import * as RecipientAddress from "./RecipientAddress.js"
 import * as SerializedMessage from "./SerializedMessage.js"
@@ -41,10 +40,10 @@ export class SerializedEnvelope extends Schema.Class<SerializedEnvelope>(Seriali
   messageId: Schema.String,
   body: SerializedMessage.schema
 }) {
-  get [Serializable.symbol]() {
+  get [Schema.symbolSerializable]() {
     return this.constructor
   }
-  get [Serializable.symbolResult]() {
+  get [Schema.symbolWithResult]() {
     return { Success: Schema.Void, Failure: Schema.Never }
   }
   get [PrimaryKey.symbol]() {

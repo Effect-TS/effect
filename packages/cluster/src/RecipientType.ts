@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
+import type * as Schema from "effect/Schema"
 import type * as Message from "./Message.js"
 import * as ShardId from "./ShardId.js"
 

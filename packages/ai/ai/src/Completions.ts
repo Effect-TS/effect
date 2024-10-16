@@ -2,13 +2,13 @@
  * @since 1.0.0
  */
 import * as JsonSchema from "@effect/platform/OpenApiJsonSchema"
-import * as AST from "@effect/schema/AST"
-import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
+import * as AST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import type { Concurrency } from "effect/Types"
 import { AiError } from "./AiError.js"

@@ -7,7 +7,6 @@
     { "path": "../ai" },
     { "path": "../../experimental" },
     { "path": "../../platform" },
-    { "path": "../../schema" },
     { "path": "../../vitest" }
   ],
   "compilerOptions": {

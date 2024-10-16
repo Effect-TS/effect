@@ -6,14 +6,14 @@ import * as PodAddress from "@effect/cluster/PodAddress"
 import * as ShardId from "@effect/cluster/ShardId"
 import * as ShardingException from "@effect/cluster/ShardingException"
 import * as Storage from "@effect/cluster/Storage"
-import * as Schema from "@effect/schema/Schema"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
+import * as ParseResult from "effect/ParseResult"
 import * as Queue from "effect/Queue"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as fs from "node:fs"
 
@@ -21,8 +21,10 @@ import * as fs from "node:fs"
 export function jsonStringify<A, I>(value: A, schema: Schema.Schema<A, I>) {
   return pipe(
     value,
-    Schema.encode(schema),
-    Effect.mapError((e) => new ShardingException.SerializationException({ error: TreeFormatter.formatError(e) })),
+    ParseResult.encode(schema),
+    Effect.mapError((issue) =>
+      new ShardingException.SerializationException({ error: ParseResult.TreeFormatter.formatIssue(issue) })
+    ),
     Effect.map((_) => JSON.stringify(_))
   )
 }
@@ -31,8 +33,10 @@ export function jsonStringify<A, I>(value: A, schema: Schema.Schema<A, I>) {
 export function jsonParse<A, I>(value: string, schema: Schema.Schema<A, I>) {
   return pipe(
     Effect.sync(() => JSON.parse(value)),
-    Effect.flatMap(Schema.decode(schema)),
-    Effect.mapError((e) => new ShardingException.SerializationException({ error: TreeFormatter.formatError(e) }))
+    Effect.flatMap(ParseResult.decode(schema)),
+    Effect.mapError((issue) =>
+      new ShardingException.SerializationException({ error: ParseResult.TreeFormatter.formatIssue(issue) })
+    )
   )
 }
 

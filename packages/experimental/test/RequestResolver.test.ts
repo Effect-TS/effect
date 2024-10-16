@@ -1,9 +1,8 @@
 import * as Persistence from "@effect/experimental/Persistence"
 import * as RequestResolverX from "@effect/experimental/RequestResolver"
 import { KeyValueStore } from "@effect/platform"
-import { Schema } from "@effect/schema"
 import * as it from "@effect/vitest"
-import { Array, Effect, Exit, Layer, PrimaryKey, Request, RequestResolver, TestClock } from "effect"
+import { Array, Effect, Exit, Layer, PrimaryKey, Request, RequestResolver, Schema, TestClock } from "effect"
 import type { NonEmptyArray } from "effect/Array"
 import { assert, describe } from "vitest"
 

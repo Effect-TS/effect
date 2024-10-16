@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
-import * as Schema from "@effect/schema/Schema"
 import type { Brand } from "effect/Brand"
 import type { LazyArg } from "effect/Function"
 import { constVoid, dual } from "effect/Function"
+import * as Schema from "effect/Schema"
+import * as AST from "effect/SchemaAST"
 import * as Struct from "effect/Struct"
 
 /**

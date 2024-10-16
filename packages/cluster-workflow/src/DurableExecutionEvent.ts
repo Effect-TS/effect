@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
 import type * as Exit from "effect/Exit"
+import * as Schema from "effect/Schema"
 
 const ATTEMPTED = "@effect/cluster-workflow/DurableExecutionEvent/Attempted"
 

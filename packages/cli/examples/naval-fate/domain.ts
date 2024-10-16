@@ -1,5 +1,5 @@
-import * as Schema from "@effect/schema/Schema"
 import * as Data from "effect/Data"
+import * as Schema from "effect/Schema"
 
 /**
  * An error that occurs when attempting to create a Naval Fate ship that already
