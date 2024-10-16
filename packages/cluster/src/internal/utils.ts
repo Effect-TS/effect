@@ -1,7 +1,7 @@
-import * as Schema from "@effect/schema/Schema"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 
 /** @internal */
 export function NotAMessageWithReplierDefect(message: unknown): unknown {

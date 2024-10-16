@@ -5,7 +5,6 @@
     { "path": "tsconfig.src.json" },
     { "path": "../../effect" },
     { "path": "../../platform" },
-    { "path": "../../schema" },
     { "path": "../../vitest" }
   ],
   "compilerOptions": {
