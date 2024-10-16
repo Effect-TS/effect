@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 describe("pick", () => {
   it("Struct", async () => {
-    const a = Symbol.for("effect/Schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(
       S.pick(a, "b")
     )
@@ -113,22 +113,22 @@ describe("pick", () => {
   })
 
   it("Record(symbol, number)", async () => {
-    const a = Symbol.for("effect/Schema/test/a")
-    const b = Symbol.for("effect/Schema/test/b")
+    const a = Symbol.for("@effect/schema/test/a")
+    const b = Symbol.for("@effect/schema/test/b")
     const schema = S.Record({ key: S.SymbolFromSelf, value: S.Number }).pipe(S.pick(a, b))
     await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
     await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: "a", [b]: 2 },
-      `{ readonly Symbol(effect/Schema/test/a): number; readonly Symbol(effect/Schema/test/b): number }
-└─ [Symbol(effect/Schema/test/a)]
+      `{ readonly Symbol(@effect/schema/test/a): number; readonly Symbol(@effect/schema/test/b): number }
+└─ [Symbol(@effect/schema/test/a)]
    └─ Expected number, actual "a"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: 1, [b]: "b" },
-      `{ readonly Symbol(effect/Schema/test/a): number; readonly Symbol(effect/Schema/test/b): number }
-└─ [Symbol(effect/Schema/test/b)]
+      `{ readonly Symbol(@effect/schema/test/a): number; readonly Symbol(@effect/schema/test/b): number }
+└─ [Symbol(@effect/schema/test/b)]
    └─ Expected number, actual "b"`
     )
   })
