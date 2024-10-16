@@ -37,7 +37,7 @@ describe("Union", () => {
       await Util.expectDecodeUnknownFailure(schema, 1, "Expected never, actual 1")
     })
 
-    it("struct members", async () => {
+    it("discriminated structs", async () => {
       const schema = S.Union(
         S.Struct({ a: S.Literal(1), c: S.String }),
         S.Struct({ b: S.Literal(2), d: S.Number })
@@ -82,7 +82,7 @@ describe("Union", () => {
       )
     })
 
-    it("struct members with multiple tags", async () => {
+    it("discriminated structs with multiple tags", async () => {
       const schema = S.Union(
         S.Struct({ category: S.Literal("catA"), tag: S.Literal("a") }),
         S.Struct({ category: S.Literal("catA"), tag: S.Literal("b") }),
@@ -158,7 +158,7 @@ describe("Union", () => {
       )
     })
 
-    it("tuple members", async () => {
+    it("discriminated tuples", async () => {
       const schema = S.Union(
         S.Tuple(S.Literal("a"), S.String),
         S.Tuple(S.Literal("b"), S.Number)
@@ -194,7 +194,7 @@ describe("Union", () => {
       )
     })
 
-    it("tuple members with multiple tags", async () => {
+    it("discriminated tuples with multiple tags", async () => {
       const schema = S.Union(
         S.Tuple(S.Literal("a"), S.Literal("b"), S.String),
         S.Tuple(S.Literal("a"), S.Literal("c"), S.Number),
