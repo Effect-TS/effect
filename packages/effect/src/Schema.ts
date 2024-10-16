@@ -9813,7 +9813,7 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
       const len = ownKeys.length
       return Equivalence.make((a, b) => {
         let candidates: Array<AST.AST> = []
-        if (len > 0 && Predicate.isRecord(a)) {
+        if (len > 0 && Predicate.isRecordOrArray(a)) {
           for (let i = 0; i < len; i++) {
             const name = ownKeys[i]
             const buckets = searchTree.keys[name].buckets
