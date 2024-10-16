@@ -4,6 +4,7 @@
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
+import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as TestServices from "effect/TestServices"
 import * as V from "vitest"
@@ -39,6 +40,11 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
+  export type SchemaObj<A, E, R> = Array<Schema.Schema<A, E, R>> | { [K in string]: Schema.Schema<A, E, R> }
+
+  /**
+   * @since 1.0.0
+   */
   export interface Tester<R> extends Vitest.Test<R> {
     skip: Vitest.Test<R>
     skipIf: (condition: unknown) => Vitest.Test<R>
@@ -47,6 +53,21 @@ export namespace Vitest {
     each: <T>(
       cases: ReadonlyArray<T>
     ) => <A, E>(name: string, self: TestFunction<A, E, R, Array<T>>, timeout?: number | V.TestOptions) => void
+
+    /**
+     * @since 1.0.0
+     */
+    prop: <const S extends SchemaObj<any, any, any>, A, E>(
+      name: string,
+      schemas: S,
+      self: TestFunction<
+        A,
+        E,
+        R,
+        [{ [K in keyof S]: Schema.Schema.Type<S[K]> }, V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext]
+      >,
+      timeout?: number | V.TestOptions
+    ) => void
   }
 
   /**
@@ -67,6 +88,26 @@ export namespace Vitest {
       (f: (it: Vitest.Methods<R | R2>) => void): void
       (name: string, f: (it: Vitest.Methods<R | R2>) => void): void
     }
+
+    /**
+     * @since 1.0.0
+     * @example
+     *
+     * import { Schema } from "@effect/schema"
+     * import { it } from "@effect/vitest"
+     *
+     * const realNumber = Schema.Finite.pipe(Schema.nonNaN())
+     * it.prop("symmetry", [realNumber, realNumber], ([a, b]) => a + b === b + a)
+     */
+    readonly prop: <const S extends SchemaObj<any, any, any>>(
+      name: string,
+      schemas: S,
+      self: (
+        schemas: { [K in keyof S]: Schema.Schema.Type<S[K]> },
+        ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
+      ) => void,
+      timeout?: number | V.TestOptions
+    ) => void
   }
 }
 
@@ -151,8 +192,25 @@ export const flakyTest: <A, E, R>(
   timeout?: Duration.DurationInput
 ) => Effect.Effect<A, never, R> = internal.flakyTest
 
+/**
+ * @since 1.0.0
+ */
+export const prop: <const S extends Vitest.SchemaObj<any, any, any>>(
+  name: string,
+  schemas: S,
+  self: (
+    schemas: { [K in keyof S]: Schema.Schema.Type<S[K]> },
+    ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
+  ) => void,
+  timeout?: number | V.TestOptions
+) => void = internal.prop
+
+/**
+ * @since 1.0.0
+ */
+
 /** @ignored */
-const methods = { effect, live, flakyTest, scoped, scopedLive, layer } as const
+const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop } as const
 
 /**
  * @since 1.0.0

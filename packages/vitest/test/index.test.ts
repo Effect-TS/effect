@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it, layer } from "@effect/vitest"
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 
 it.live(
   "live %s",
@@ -146,5 +146,34 @@ layer(Foo.Live)("layer", (it) => {
           expect(scoped).toEqual("scoped")
         }))
     })
+
+    it.effect.prop("adds context", [Schema.Number], ([num]) =>
+      Effect.gen(function*() {
+        const foo = yield* Foo
+        expect(foo).toEqual("foo")
+        return num === num
+      }))
   })
 })
+
+// property testing
+
+const realNumber = Schema.Finite.pipe(Schema.nonNaN())
+
+it.prop("symmetry", [realNumber, realNumber], ([a, b]) => a + b === b + a)
+
+it.effect.prop("symmetry", [realNumber, realNumber], ([a, b]) =>
+  Effect.gen(function*() {
+    yield* Effect.void
+    return a + b === b + a
+  }))
+
+it.scoped.prop(
+  "should detect the substring",
+  { a: Schema.String, b: Schema.String, c: Schema.String },
+  ({ a, b, c }) =>
+    Effect.gen(function*() {
+      yield* Effect.scope
+      return (a + b + c).includes(b)
+    })
+)
