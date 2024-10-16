@@ -2183,18 +2183,15 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
     case "Refinement":
       return getPropertyKeyIndexedAccess(ast.from, name)
   }
-  return new PropertySignature(name, neverKeyword, false, true)
+  throw new Error(errors_.getASTUnsupportedSchema(ast))
 }
 
 const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
+  const annotation = getSurrogateAnnotation(ast)
+  if (Option.isSome(annotation)) {
+    return getPropertyKeys(annotation.value)
+  }
   switch (ast._tag) {
-    case "Declaration": {
-      const annotation = getSurrogateAnnotation(ast)
-      if (Option.isSome(annotation)) {
-        return getPropertyKeys(annotation.value)
-      }
-      break
-    }
     case "TypeLiteral":
       return ast.propertySignatures.map((ps) => ps.name)
     case "Suspend":
