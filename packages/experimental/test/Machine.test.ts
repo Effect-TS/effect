@@ -1,7 +1,6 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import * as Machine from "@effect/experimental/Machine"
-import { Schema } from "@effect/schema"
-import { Cause, Chunk, Context, Deferred, Effect, Exit, Layer, Stream } from "effect"
+import { Cause, Chunk, Context, Deferred, Effect, Exit, Layer, Schema, Stream } from "effect"
 import { assert, describe, test } from "vitest"
 
 class Increment

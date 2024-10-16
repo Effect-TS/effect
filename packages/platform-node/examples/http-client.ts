@@ -2,11 +2,11 @@ import type { HttpBody, HttpClientError } from "@effect/platform"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
 import { NodeHttpClient } from "@effect/platform-node"
 import { runMain } from "@effect/platform-node/NodeRuntime"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import type * as ParseResult from "effect/ParseResult"
+import * as Schema from "effect/Schema"
 
 class Todo extends Schema.Class<Todo>("Todo")({
   userId: Schema.Number,

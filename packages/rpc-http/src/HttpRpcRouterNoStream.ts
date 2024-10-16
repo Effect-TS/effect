@@ -6,9 +6,9 @@ import type * as ServerError from "@effect/platform/HttpServerError"
 import * as ServerRequest from "@effect/platform/HttpServerRequest"
 import * as ServerResponse from "@effect/platform/HttpServerResponse"
 import * as Router from "@effect/rpc/RpcRouter"
-import type { ParseError } from "@effect/schema/ParseResult"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
+import type { ParseError } from "effect/ParseResult"
 
 /**
  * @since 1.0.0

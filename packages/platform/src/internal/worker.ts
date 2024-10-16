@@ -1,5 +1,3 @@
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
@@ -13,6 +11,7 @@ import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
 import * as Schedule from "effect/Schedule"
+import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
@@ -298,14 +297,14 @@ export const makeSerialized = <
       ...options as any,
       encode(message) {
         return Effect.mapError(
-          Serializable.serialize(message as any),
+          Schema.serialize(message as any),
           (cause) => new WorkerError({ reason: "encode", cause })
         )
       }
     })
     const execute = <Req extends I>(message: Req) => {
-      const parseSuccess = Schema.decode(Serializable.successSchema(message as any))
-      const parseFailure = Schema.decode(Serializable.failureSchema(message as any))
+      const parseSuccess = Schema.decode(Schema.successSchema(message as any))
+      const parseFailure = Schema.decode(Schema.failureSchema(message as any))
       return pipe(
         backing.execute(message),
         Stream.catchAll((error) => Effect.flatMap(parseFailure(error), Effect.fail)),
@@ -313,8 +312,8 @@ export const makeSerialized = <
       )
     }
     const executeEffect = <Req extends I>(message: Req) => {
-      const parseSuccess = Schema.decode(Serializable.successSchema(message as any))
-      const parseFailure = Schema.decode(Serializable.failureSchema(message as any))
+      const parseSuccess = Schema.decode(Schema.successSchema(message as any))
+      const parseFailure = Schema.decode(Schema.failureSchema(message as any))
       return Effect.matchEffect(backing.executeEffect(message), {
         onFailure: (error) => Effect.flatMap(parseFailure(error), Effect.fail),
         onSuccess: parseSuccess

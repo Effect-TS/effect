@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
-import type * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import { dual } from "effect/Function"
@@ -10,6 +8,8 @@ import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import type * as Schema from "effect/Schema"
+import * as AST from "effect/SchemaAST"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.js"
 import { HttpApiDecodeError } from "./HttpApiError.js"
 import * as HttpApiGroup from "./HttpApiGroup.js"

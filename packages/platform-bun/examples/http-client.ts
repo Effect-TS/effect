@@ -1,9 +1,9 @@
 import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
 import type { HttpBody, HttpClientError } from "@effect/platform"
 import { BunRuntime } from "@effect/platform-bun"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import { Context, Effect, Layer } from "effect"
+import type * as ParseResult from "effect/ParseResult"
+import * as Schema from "effect/Schema"
 
 class Todo extends Schema.Class<Todo>("Todo")({
   userId: Schema.Number,

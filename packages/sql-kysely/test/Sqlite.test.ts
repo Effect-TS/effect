@@ -1,9 +1,8 @@
-import { Schema } from "@effect/schema"
 import { SqlResolver } from "@effect/sql"
 import * as SqliteKysely from "@effect/sql-kysely/Sqlite"
 import * as Sqlite from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Config, Context, Effect, Exit, Layer, Option } from "effect"
+import { Config, Context, Effect, Exit, Layer, Option, Schema } from "effect"
 import type { Generated } from "kysely"
 
 export interface User {

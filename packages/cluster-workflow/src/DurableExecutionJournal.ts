@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 import * as DurableExecutionEvent from "@effect/cluster-workflow/DurableExecutionEvent"
-import * as Schema from "@effect/schema/Schema"
 import * as SqlClient from "@effect/sql/SqlClient"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 
 const SymbolKey = "@effect/cluster-workflow/DurableExecutionJournal"

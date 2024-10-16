@@ -1,8 +1,7 @@
 import * as Redis from "@effect/experimental/Persistence/Redis"
 import { persisted } from "@effect/experimental/RequestResolver"
 import { runMain } from "@effect/platform-node/NodeRuntime"
-import { Schema } from "@effect/schema"
-import { Array, Effect, Exit, pipe, PrimaryKey, RequestResolver } from "effect"
+import { Array, Effect, Exit, pipe, PrimaryKey, RequestResolver, Schema } from "effect"
 
 class User extends Schema.Class<User>("User")({
   id: Schema.Number,

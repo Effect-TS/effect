@@ -6,7 +6,7 @@ The `@effect/rpc` library facilitates the development of remote procedure call (
 
 ## Declaring Requests
 
-The `TaggedRequest` API in the `@effect/schema` library is designed to facilitate the creation of structured requests that can serialize function signatures involving input arguments, successful outcomes, and potential failures. Essentially, it's a tool for defining a serializable function that can be reliably transported across different systems or network layers.
+The `TaggedRequest` API in the `effect/Schema` module is designed to facilitate the creation of structured requests that can serialize function signatures involving input arguments, successful outcomes, and potential failures. Essentially, it's a tool for defining a serializable function that can be reliably transported across different systems or network layers.
 
 Here’s a simplified explanation:
 
@@ -32,7 +32,7 @@ sequenceDiagram
 
 ```ts filename="request.ts"
 // request.ts
-import { Schema } from "@effect/schema"
+import { Schema } from "effect"
 
 // Define a user with an ID and name
 export class User extends Schema.Class<User>("User")({
@@ -209,7 +209,7 @@ Effect.runPromise(program).then(console.log)
 ```ts filename="request.ts"
 // request.ts
 import * as Rpc from "@effect/rpc/Rpc"
-import { Schema } from "@effect/schema"
+import { Schema } from "effect"
 
 export class Counts extends Rpc.StreamRequest<Counts>()("Counts", {
   failure: Schema.Never, // Indicates that no errors are expected

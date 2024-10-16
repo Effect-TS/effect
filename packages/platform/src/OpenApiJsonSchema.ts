@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
 import * as Arr from "effect/Array"
 import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
+import type * as Schema from "effect/Schema"
+import * as AST from "effect/SchemaAST"
 
 /**
  * @category model
@@ -312,7 +312,8 @@ const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefi
   }
 }
 
-const isParseJsonTransformation = (ast: AST.AST): boolean => ast.annotations[AST.TypeAnnotationId] === ParseJsonTypeId
+const isParseJsonTransformation = (ast: AST.AST): boolean =>
+  ast.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
 
 const isOverrideAnnotation = (jsonSchema: JsonSchema): boolean => {
   return ("type" in jsonSchema) || ("oneOf" in jsonSchema) || ("anyOf" in jsonSchema) || ("const" in jsonSchema) ||
@@ -352,7 +353,7 @@ const go = (
     }
     return handler
   }
-  const surrogate = getSurrogateAnnotation(ast)
+  const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
     return {
       ...(ast._tag === "Transformation" ? getJsonSchemaAnnotations(ast.to) : {}),
@@ -361,7 +362,7 @@ const go = (
     }
   }
   if (handleIdentifier && !AST.isTransformation(ast) && !AST.isRefinement(ast)) {
-    const identifier = getJSONIdentifier(ast)
+    const identifier = AST.getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
       const out = { $ref: get$ref(id) }
@@ -603,7 +604,7 @@ const go = (
       }
     }
     case "Suspend": {
-      const identifier = Option.orElse(getJSONIdentifier(ast), () => getJSONIdentifier(ast.f()))
+      const identifier = Option.orElse(AST.getJSONIdentifier(ast), () => AST.getJSONIdentifier(ast.f()))
       if (Option.isNone(identifier)) {
         throw new Error(getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
       }
@@ -703,12 +704,3 @@ const formatPath = (path: ParseResult.Path): string =>
 const isNonEmpty = <A>(x: ParseResult.SingleOrNonEmpty<A>): x is Arr.NonEmptyReadonlyArray<A> => Array.isArray(x)
 
 const formatPropertyKey = (name: PropertyKey): string => typeof name === "string" ? JSON.stringify(name) : String(name)
-
-const ParseJsonTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/ParseJson")
-const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
-const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
-
-const getSurrogateAnnotation = AST.getAnnotation<AST.AST>(SurrogateAnnotationId)
-const getJSONIdentifierAnnotation = AST.getAnnotation<string>(JSONIdentifierAnnotationId)
-const getJSONIdentifier = (annotated: AST.Annotated) =>
-  Option.orElse(getJSONIdentifierAnnotation(annotated), () => AST.getIdentifierAnnotation(annotated))
