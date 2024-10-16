@@ -6,7 +6,6 @@ import * as Arr from "effect/Array"
 import * as Equal from "effect/Equal"
 import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
 import * as AST from "./AST.js"
 import * as errors_ from "./internal/errors.js"
 import * as util_ from "./internal/util.js"
@@ -189,7 +188,7 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
       const len = ownKeys.length
       return Equivalence.make((a, b) => {
         let candidates: Array<AST.AST> = []
-        if (len > 0 && Predicate.isRecord(a)) {
+        if (len > 0 && isRecordOrArray(a)) {
           for (let i = 0; i < len; i++) {
             const name = ownKeys[i]
             const buckets = searchTree.keys[name].buckets
@@ -218,3 +217,6 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
     }
   }
 }
+
+const isRecordOrArray = (input: unknown): input is { [x: PropertyKey]: unknown } =>
+  typeof input === "object" && input !== null
