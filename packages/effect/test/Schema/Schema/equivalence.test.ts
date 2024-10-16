@@ -70,8 +70,8 @@ const MySymbol = S.SymbolFromSelf.annotations({
   }
 })
 
-describe("SchemaEquivalence", () => {
-  it("the errors should disply a path", () => {
+describe("equivalence", () => {
+  it("the errors should display a path", () => {
     expect(() => S.equivalence(S.Tuple(S.Never as any))).toThrow(
       new Error(`Unsupported schema
 at path: [0]
@@ -301,7 +301,7 @@ schema (NeverKeyword): never`)
       // propertyType(schema)
     })
 
-    it("discriminated", () => {
+    it("discriminated structs", () => {
       const schema = S.Union(
         S.Struct({ tag: S.Literal("a"), a: MyString }),
         S.Struct({ tag: S.Literal("b"), b: S.Number })
@@ -314,6 +314,22 @@ schema (NeverKeyword): never`)
       expect(equivalence({ tag: "a", a: "a" }, { tag: "a", a: "b" })).toBe(false)
       expect(equivalence({ tag: "b", b: 1 }, { tag: "b", b: 2 })).toBe(false)
       expect(equivalence({ tag: "a", a: "a" }, { tag: "b", b: 1 })).toBe(false)
+    })
+
+    it("discriminated tuples", () => {
+      const schema = S.Union(
+        S.Tuple(S.Literal("a"), S.String),
+        S.Tuple(S.Literal("b"), S.Number)
+      )
+      const equivalence = S.equivalence(schema)
+
+      expect(equivalence(["a", "x"], ["a", "x"])).toBe(true)
+      expect(equivalence(["a", "x"], ["a", "y"])).toBe(false)
+
+      expect(equivalence(["b", 1], ["b", 1])).toBe(true)
+      expect(equivalence(["b", 1], ["b", 2])).toBe(false)
+
+      expect(equivalence(["a", "x"], ["b", 1])).toBe(false)
     })
   })
 

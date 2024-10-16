@@ -415,7 +415,9 @@ export const isNever: (input: unknown) => input is never = (_: unknown): _ is ne
  */
 export const isUnknown: (input: unknown) => input is unknown = (_): _ is unknown => true
 
-const isRecordOrArray = (input: unknown) => typeof input === "object" && input !== null
+/** @internal */
+export const isRecordOrArray = (input: unknown): input is { [x: PropertyKey]: unknown } =>
+  typeof input === "object" && input !== null
 
 /**
  * Tests if a value is an `object`.
