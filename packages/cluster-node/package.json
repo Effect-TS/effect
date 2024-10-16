@@ -28,7 +28,6 @@
   "peerDependencies": {
     "@effect/cluster": "workspace:^",
     "@effect/rpc": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
@@ -36,7 +35,6 @@
     "@effect/platform-node": "workspace:^",
     "@effect/rpc": "workspace:^",
     "@effect/rpc-http": "workspace:^",
-    "@effect/schema": "workspace:^",
     "@types/node": "^20.14.10",
     "effect": "workspace:^"
   }

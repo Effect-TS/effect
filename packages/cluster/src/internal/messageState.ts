@@ -1,6 +1,6 @@
-import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import * as Schema from "effect/Schema"
 import type * as MessageState from "../MessageState.js"
 
 /** @internal */

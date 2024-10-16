@@ -1,12 +1,11 @@
 import { RpcResolver, RpcResolverNoStream, RpcRouter } from "@effect/rpc"
 import * as Rpc from "@effect/rpc/Rpc"
-import { Schema } from "@effect/schema"
-import * as S from "@effect/schema/Schema"
 import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { flow, pipe } from "effect/Function"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { assert, describe, expect, it, test } from "vitest"
 
@@ -15,20 +14,20 @@ interface Name {
 }
 const Name = Context.GenericTag<Name, string>("Name")
 
-class SomeError extends S.TaggedError<SomeError>()("SomeError", {
-  message: S.String
+class SomeError extends Schema.TaggedError<SomeError>()("SomeError", {
+  message: Schema.String
 }) {}
 
-class Post extends S.Class<Post>("Post")({
-  id: S.Number,
-  body: S.String
+class Post extends Schema.Class<Post>("Post")({
+  id: Schema.Number,
+  body: Schema.String
 }) {}
 
-class CreatePost extends S.TaggedRequest<CreatePost>()("CreatePost", {
-  failure: S.Never,
+class CreatePost extends Schema.TaggedRequest<CreatePost>()("CreatePost", {
+  failure: Schema.Never,
   success: Post,
   payload: {
-    body: S.String
+    body: Schema.String
   }
 }) {}
 
@@ -36,68 +35,72 @@ const posts = RpcRouter.make(
   Rpc.effect(CreatePost, ({ body }) => Effect.succeed(new Post({ id: 1, body })))
 )
 
-class Greet extends S.TaggedRequest<Greet>()("Greet", {
-  failure: S.Never,
-  success: S.String,
+class Greet extends Schema.TaggedRequest<Greet>()("Greet", {
+  failure: Schema.Never,
+  success: Schema.String,
   payload: {
-    name: S.String
+    name: Schema.String
   }
 }) {}
 
-class Fail extends S.TaggedRequest<Fail>()("Fail", {
+class Fail extends Schema.TaggedRequest<Fail>()("Fail", {
   failure: SomeError,
-  success: S.Void,
+  success: Schema.Void,
   payload: {
-    name: S.String
+    name: Schema.String
   }
 }) {}
 
 class FailNoInput
-  extends S.TaggedRequest<FailNoInput>()("FailNoInput", { failure: SomeError, success: S.Void, payload: {} })
+  extends Schema.TaggedRequest<FailNoInput>()("FailNoInput", { failure: SomeError, success: Schema.Void, payload: {} })
 {}
 
-class EncodeInput extends S.TaggedRequest<EncodeInput>()("EncodeInput", {
-  failure: S.Never,
-  success: S.Date,
+class EncodeInput extends Schema.TaggedRequest<EncodeInput>()("EncodeInput", {
+  failure: Schema.Never,
+  success: Schema.Date,
   payload: {
-    date: S.Date
+    date: Schema.Date
   }
 }) {}
 
-class EncodeDate extends S.TaggedRequest<EncodeDate>()("EncodeDate", {
+class EncodeDate extends Schema.TaggedRequest<EncodeDate>()("EncodeDate", {
   failure: SomeError,
-  success: S.Date,
+  success: Schema.Date,
   payload: {
-    date: S.String
+    date: Schema.String
   }
 }) {}
 
-class Refined extends S.TaggedRequest<Refined>()("Refined", {
-  failure: S.Never,
-  success: S.Number,
+class Refined extends Schema.TaggedRequest<Refined>()("Refined", {
+  failure: Schema.Never,
+  success: Schema.Number,
   payload: {
-    number: pipe(S.Number, S.int(), S.greaterThan(10))
+    number: pipe(Schema.Number, Schema.int(), Schema.greaterThan(10))
   }
 }) {}
 
-class SpanName extends S.TaggedRequest<SpanName>()("SpanName", { failure: S.Never, success: S.String, payload: {} }) {}
+class SpanName
+  extends Schema.TaggedRequest<SpanName>()("SpanName", { failure: Schema.Never, success: Schema.String, payload: {} })
+{}
 
-class GetName extends S.TaggedRequest<GetName>()("GetName", { failure: S.Never, success: S.String, payload: {} }) {}
+class GetName
+  extends Schema.TaggedRequest<GetName>()("GetName", { failure: Schema.Never, success: Schema.String, payload: {} })
+{}
 
-class EchoHeaders extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", {
-  failure: S.Never,
-  success: S.Record({ key: S.String, value: S.Union(S.String, S.Undefined) }),
+class EchoHeaders extends Schema.TaggedRequest<EchoHeaders>()("EchoHeaders", {
+  failure: Schema.Never,
+  success: Schema.Record({ key: Schema.String, value: Schema.Union(Schema.String, Schema.Undefined) }),
   payload: {}
 }) {}
 
 class Counts extends Rpc.StreamRequest<Counts>()(
   "Counts",
-  { failure: S.Never, success: S.Number, payload: {} }
+  { failure: Schema.Never, success: Schema.Number, payload: {} }
 ) {}
 
 class FailStream extends Rpc.StreamRequest<FailStream>()(
   "FailStream",
-  { failure: SomeError, success: S.Number, payload: {} }
+  { failure: SomeError, success: Schema.Number, payload: {} }
 ) {}
 
 const router = RpcRouter.make(
@@ -126,7 +129,7 @@ const router = RpcRouter.make(
       Stream.tap((_) => Effect.sleep(10))
     )),
   Rpc.effect(EchoHeaders, () =>
-    Rpc.schemaHeaders(S.Struct({
+    Rpc.schemaHeaders(Schema.Struct({
       foo: Schema.String,
       baz: Schema.optional(Schema.String)
     })).pipe(Effect.orDie)),
@@ -153,7 +156,7 @@ const handlerArray = (u: ReadonlyArray<unknown>) =>
     Effect.map(flow(
       Array.fromIterable,
       Array.map(([, response]) => response),
-      Array.filter((_): _ is S.ExitEncoded<any, any, unknown> => Array.isArray(_) === false)
+      Array.filter((_): _ is Schema.ExitEncoded<any, any, unknown> => Array.isArray(_) === false)
     ))
   )
 const handlerEffectArray = (u: ReadonlyArray<unknown>) =>

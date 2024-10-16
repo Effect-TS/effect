@@ -5,8 +5,7 @@
     { "path": "../../effect" },
     { "path": "../ai" },
     { "path": "../../experimental" },
-    { "path": "../../platform" },
-    { "path": "../../schema" }
+    { "path": "../../platform" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",

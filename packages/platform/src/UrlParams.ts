@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type { ParseOptions } from "@effect/schema/AST"
-import type * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import * as Arr from "effect/Array"
 import type * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
+import * as Schema from "effect/Schema"
+import type { ParseOptions } from "effect/SchemaAST"
 
 /**
  * @since 1.0.0

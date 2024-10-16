@@ -30,6 +30,11 @@ export {
 } from "./Function.js"
 
 /**
+ * @since 3.10.0
+ */
+export * as Arbitrary from "./Arbitrary.js"
+
+/**
  * This module provides utility functions for working with arrays in TypeScript.
  *
  * @since 2.0.0
@@ -263,6 +268,11 @@ export * as ExecutionStrategy from "./ExecutionStrategy.js"
 export * as Exit from "./Exit.js"
 
 /**
+ * @since 3.10.0
+ */
+export * as FastCheck from "./FastCheck.js"
+
+/**
  * @since 2.0.0
  */
 export * as Fiber from "./Fiber.js"
@@ -353,6 +363,11 @@ export * as Inspectable from "./Inspectable.js"
  * @since 2.0.0
  */
 export * as Iterable from "./Iterable.js"
+
+/**
+ * @since 3.10.0
+ */
+export * as JSONSchema from "./JSONSchema.js"
 
 /**
  * @since 2.0.0
@@ -575,6 +590,11 @@ export * as Order from "./Order.js"
 export * as Ordering from "./Ordering.js"
 
 /**
+ * @since 3.10.0
+ */
+export * as ParseResult from "./ParseResult.js"
+
+/**
  * @since 2.0.0
  */
 export * as Pipeable from "./Pipeable.js"
@@ -588,6 +608,11 @@ export * as Pool from "./Pool.js"
  * @since 2.0.0
  */
 export * as Predicate from "./Predicate.js"
+
+/**
+ * @since 3.10.0
+ */
+export * as Pretty from "./Pretty.js"
 
 /**
  * @since 2.0.0
@@ -734,6 +759,16 @@ export * as ScheduleIntervals from "./ScheduleIntervals.js"
  * @since 2.0.0
  */
 export * as Scheduler from "./Scheduler.js"
+
+/**
+ * @since 3.10.0
+ */
+export * as Schema from "./Schema.js"
+
+/**
+ * @since 3.10.0
+ */
+export * as SchemaAST from "./SchemaAST.js"
 
 /**
  * @since 2.0.0

@@ -42,7 +42,6 @@
     "@effect/ai": "workspace:^",
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
@@ -50,7 +49,6 @@
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
-    "@effect/schema": "workspace:^",
     "@tim-smart/openapi-gen": "^0.2.0",
     "effect": "workspace:^"
   },
