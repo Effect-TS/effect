@@ -91,13 +91,6 @@ export namespace Vitest {
 
     /**
      * @since 1.0.0
-     * @example
-     *
-     * import { Schema } from "@effect/schema"
-     * import { it } from "@effect/vitest"
-     *
-     * const realNumber = Schema.Finite.pipe(Schema.nonNaN())
-     * it.prop("symmetry", [realNumber, realNumber], ([a, b]) => a + b === b + a)
      */
     readonly prop: <const S extends SchemaObj<any, any, any>>(
       name: string,
