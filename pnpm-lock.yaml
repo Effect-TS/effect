@@ -651,6 +651,32 @@ importers:
         version: link:../effect/dist
     publishDirectory: dist
 
+  packages/sql-clickhouse:
+    dependencies:
+      '@clickhouse/client':
+        specifier: ^1.6.0
+        version: 1.6.0
+      '@opentelemetry/semantic-conventions':
+        specifier: ^1.25.1
+        version: 1.25.1
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node/dist
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      '@types/node':
+        specifier: ^22.5.4
+        version: 22.5.4
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
   packages/sql-d1:
     dependencies:
       '@cloudflare/workers-types':
@@ -1859,6 +1885,13 @@ packages:
 
   '@changesets/write@0.3.1':
     resolution: {integrity: sha512-SyGtMXzH3qFqlHKcvFY2eX+6b0NGiFcNav8AFsYwy5l8hejOeoeTDemu5Yjmke2V5jpzY+pBvM0vCCQ3gdZpfw==}
+
+  '@clickhouse/client-common@1.6.0':
+    resolution: {integrity: sha512-DPdfPUIrBumWff8JdE2oLqnOIN1DwxXt48juV+tB6zaonufQR1QImtUGEhIFIqRWJU7zErtQ1eKfkwjLY0MYDg==}
+
+  '@clickhouse/client@1.6.0':
+    resolution: {integrity: sha512-cjuOL5O11Y/axYIvSaNgZjZqD53BBbScrG0DCgZ7XBCz5KWlA5lIG3fP6A4jME277q8ZUYAQxUOlJjeF18872A==}
+    engines: {node: '>=16'}
 
   '@cloudflare/workerd-darwin-64@1.20240806.0':
     resolution: {integrity: sha512-FqcVBBCO//I39K5F+HqE/v+UkqY1UrRnS653Jv+XsNNH9TpX5fTs7VCKG4kDSnmxlAaKttyIN5sMEt7lpuNExQ==}
@@ -8637,6 +8670,12 @@ snapshots:
       fs-extra: 7.0.1
       human-id: 1.0.2
       prettier: 2.8.8
+
+  '@clickhouse/client-common@1.6.0': {}
+
+  '@clickhouse/client@1.6.0':
+    dependencies:
+      '@clickhouse/client-common': 1.6.0
 
   '@cloudflare/workerd-darwin-64@1.20240806.0':
     optional: true

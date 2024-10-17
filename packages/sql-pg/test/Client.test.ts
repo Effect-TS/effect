@@ -252,7 +252,8 @@ it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => 
           sqlite: () => "A",
           pg: () => "B",
           mysql: () => "C",
-          mssql: () => "D"
+          mssql: () => "D",
+          clickhouse: () => "E"
         }),
         "B"
       )
