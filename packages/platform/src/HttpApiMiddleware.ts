@@ -113,51 +113,99 @@ export declare namespace HttpApiMiddleware {
  * @since 1.0.0
  * @category models
  */
-export interface TagClass<
+export type TagClass<
   Self,
   Name extends string,
-  Provides,
-  S,
-  Failure extends Schema.Schema.All,
-  Optional extends boolean
-> extends Context.Tag<Self, HttpApiMiddleware<S, Schema.Schema.Type<Failure>>> {
-  new(_: never): Context.TagClassShape<Name, HttpApiMiddleware<S, Schema.Schema.Type<Failure>>> & {
-    readonly [TypeId]: {
-      readonly provides: Optional extends true ? never : Provides
-      readonly failure: Optional extends true ? never : Schema.Schema.Type<Failure>
+  Options
+> = Options extends { readonly security: Record<string, HttpApiSecurity.HttpApiSecurity> } ?
+    & TagClass.Base<
+      Self,
+      Name,
+      Options,
+      Simplify<
+        HttpApiMiddlewareSecurity<
+          Options["security"],
+          TagClass.Service<Options>,
+          TagClass.Failure<Options>
+        >
+      >
+    >
+    & {
+      readonly [SecurityTypeId]: SecurityTypeId
+      readonly security: Options["security"]
     }
-  }
-  readonly [TypeId]: TypeId
-  readonly optional: boolean
-  readonly provides: Context.Tag<Optional extends true ? never : Provides, S> | undefined
-  readonly failure: Optional extends true ? typeof Schema.Never : Failure
-}
+  : TagClass.Base<
+    Self,
+    Name,
+    Options,
+    HttpApiMiddleware<
+      TagClass.Service<Options>,
+      TagClass.Failure<Options>
+    >
+  >
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface TagClassSecurity<
-  Self,
-  Name extends string,
-  Security extends Record<string, HttpApiSecurity.HttpApiSecurity>,
-  Provides,
-  S,
-  Failure extends Schema.Schema.All,
-  Optional extends boolean
-> extends Context.Tag<Self, Simplify<HttpApiMiddlewareSecurity<Security, S, Schema.Schema.Type<Failure>>>> {
-  new(_: never): Context.TagClassShape<Name, HttpApiMiddlewareSecurity<Security, S, Schema.Schema.Type<Failure>>> & {
-    readonly [TypeId]: {
-      readonly provides: Optional extends true ? never : Provides
-      readonly failure: Optional extends true ? never : Schema.Schema.Type<Failure>
+export declare namespace TagClass {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Provides<Options> = Options extends { readonly provides: Context.Tag<any, any> }
+    ? Context.Tag.Identifier<Options["provides"]>
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Service<Options> = Options extends { readonly provides: Context.Tag<any, any> }
+    ? Context.Tag.Service<Options["provides"]>
+    : void
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type FailureSchema<Options> = Options extends { readonly failure: Schema.Schema.All } ? Options["failure"]
+    : typeof Schema.Never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Failure<Options> = Schema.Schema.Type<FailureSchema<Options>>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Optional<Options> = Options extends { readonly optional: true } ? true : false
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Base<Self, Name extends string, Options, Service> =
+    & {
+      new(_: never):
+        & Context.TagClassShape<Name, Service>
+        & {
+          readonly [TypeId]: {
+            readonly provides: Optional<Options> extends true ? never : Provides<Options>
+            readonly failure: Optional<Options> extends true ? never : Failure<Options>
+          }
+        }
+      readonly [TypeId]: TypeId
+      readonly optional: Optional<Options>
+      readonly provides:
+        | Context.Tag<Optional<Options> extends true ? never : Provides<Options>, Service>
+        | undefined
+      readonly failure: Optional<Options> extends true ? typeof Schema.Never : FailureSchema<Options>
     }
-  }
-  readonly [TypeId]: TypeId
-  readonly [SecurityTypeId]: SecurityTypeId
-  readonly security: Security
-  readonly optional: boolean
-  readonly provides: Context.Tag<Optional extends true ? never : Provides, S> | undefined
-  readonly failure: Optional extends true ? typeof Schema.Never : Failure
+    & Context.Tag<Self, Service>
 }
 
 /**
@@ -184,47 +232,18 @@ export interface TagClassSecurityAny extends TagClassAny {
  * @since 1.0.0
  * @category tags
  */
-export const Tag = <Self>(): {
-  <
-    const Name extends string,
-    Provides = never,
-    S = void,
-    Failure extends Schema.Schema.All = typeof Schema.Never,
-    const Optional extends boolean = false
-  >(
-    id: Name,
-    options?: {
-      readonly optional?: Optional | undefined
-      readonly failure?: Failure
-      readonly provides?: Context.Tag<Provides, S>
-      readonly security?: undefined
-    }
-  ): TagClass<Self, Name, Provides, S, Failure, Optional>
-  <
-    const Name extends string,
-    const Security extends Record<string, HttpApiSecurity.HttpApiSecurity>,
-    Provides = never,
-    S = void,
-    Failure extends Schema.Schema.All = typeof Schema.Never,
-    const Optional extends boolean = false
-  >(
-    id: Name,
-    options: {
-      readonly optional?: Optional | undefined
-      readonly security: Security
-      readonly failure?: Failure
-      readonly provides?: Context.Tag<Provides, S>
-    }
-  ): TagClassSecurity<
-    Self,
-    Name,
-    Security,
-    Provides,
-    S,
-    Failure,
-    Optional
-  >
-} =>
+export const Tag = <Self>(): <
+  const Name extends string,
+  const Options extends {
+    readonly optional?: boolean
+    readonly failure?: Schema.Schema.All
+    readonly provides?: Context.Tag<any, any>
+    readonly security?: Record<string, HttpApiSecurity.HttpApiSecurity>
+  }
+>(
+  id: Name,
+  options?: Options | undefined
+) => TagClass<Self, Name, Options> =>
 (
   id: string,
   options?: {
