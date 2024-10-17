@@ -58,13 +58,14 @@ export class Router extends HttpRouter.Tag("@effect/platform/HttpApiBuilder/Rout
 export const api = <Api extends HttpApi.HttpApi.Any>(api: Api): Layer.Layer<
   HttpApi.Api,
   never,
-  HttpApi.HttpApi.ToService<Api>
+  HttpApi.HttpApi.ToService<Api> | HttpApi.HttpApi.Context<Api>
 > =>
   Layer.effect(
     HttpApi.Api,
     Effect.map(Effect.context(), (context) => ({
       api: api as any,
-      middleware: makeMiddlewareMap((api as any).middlewares, context)
+      middleware: makeMiddlewareMap((api as any).middlewares, context),
+      context
     }))
   )
 
@@ -105,7 +106,8 @@ export const httpApp: Effect.Effect<
   never,
   Router | HttpApi.Api
 > = Effect.gen(function*() {
-  const { api, middleware } = yield* HttpApi.Api
+  const { api, context } = yield* HttpApi.Api
+  const middleware = makeMiddlewareMap(api.middlewares, context)
   const router = applyMiddleware(middleware, yield* Router.router)
   const apiMiddleware = yield* Effect.serviceOption(Middleware)
   const errorSchema = makeErrorSchema(api as any)
@@ -113,7 +115,7 @@ export const httpApp: Effect.Effect<
   return router.pipe(
     apiMiddleware._tag === "Some" ? apiMiddleware.value : identity,
     Effect.catchAll((error) =>
-      Effect.matchEffect(encodeError(error), {
+      Effect.matchEffect(Effect.provide(encodeError(error), context), {
         onFailure: () => Effect.die(error),
         onSuccess: Effect.succeed
       })
@@ -201,8 +203,8 @@ export type HandlersTypeId = typeof HandlersTypeId
  */
 export interface Handlers<
   E,
+  Provides,
   R,
-  Provided,
   Endpoints extends HttpApiEndpoint.HttpApiEndpoint.Any = never
 > extends Pipeable {
   readonly [HandlersTypeId]: {
@@ -214,13 +216,13 @@ export interface Handlers<
   /**
    * Add the implementation for an `HttpApiEndpoint` to a `Handlers` group.
    */
-  handle<Name extends HttpApiEndpoint.HttpApiEndpoint.Name<Endpoints>, E1, R1>(
+  handle<Name extends HttpApiEndpoint.HttpApiEndpoint.Name<Endpoints>, R1>(
     name: Name,
-    handler: HttpApiEndpoint.HttpApiEndpoint.HandlerWithName<Endpoints, Name, E1, R1>
+    handler: HttpApiEndpoint.HttpApiEndpoint.HandlerWithName<Endpoints, Name, E, R1>
   ): Handlers<
-    E | Exclude<E1, HttpApiEndpoint.HttpApiEndpoint.ErrorWithName<Endpoints, Name> | HttpApiDecodeError>,
-    R | Exclude<HttpApiEndpoint.HttpApiEndpoint.ExcludeProvided<Endpoints, Name, R1>, Provided>,
-    Provided,
+    E,
+    Provides,
+    R | Exclude<HttpApiEndpoint.HttpApiEndpoint.ExcludeProvided<Endpoints, Name, R1>, Provides>,
     HttpApiEndpoint.HttpApiEndpoint.ExcludeName<Endpoints, Name>
   >
 
@@ -228,13 +230,13 @@ export interface Handlers<
    * Add the implementation for an `HttpApiEndpoint` to a `Handlers` group.
    * This version of the api allows you to return the full response object.
    */
-  handleRaw<Name extends HttpApiEndpoint.HttpApiEndpoint.Name<Endpoints>, E1, R1>(
+  handleRaw<Name extends HttpApiEndpoint.HttpApiEndpoint.Name<Endpoints>, R1>(
     name: Name,
-    handler: HttpApiEndpoint.HttpApiEndpoint.HandlerResponseWithName<Endpoints, Name, E1, R1>
+    handler: HttpApiEndpoint.HttpApiEndpoint.HandlerResponseWithName<Endpoints, Name, E, R1>
   ): Handlers<
-    E | Exclude<E1, HttpApiEndpoint.HttpApiEndpoint.ErrorWithName<Endpoints, Name> | HttpApiDecodeError>,
-    R | Exclude<HttpApiEndpoint.HttpApiEndpoint.ExcludeProvided<Endpoints, Name, R1>, Provided>,
-    Provided,
+    E,
+    Provides,
+    R | Exclude<HttpApiEndpoint.HttpApiEndpoint.ExcludeProvided<Endpoints, Name, R1>, Provides>,
     HttpApiEndpoint.HttpApiEndpoint.ExcludeName<Endpoints, Name>
   >
 }
@@ -244,6 +246,14 @@ export interface Handlers<
  * @category handlers
  */
 export declare namespace Handlers {
+  /**
+   * @since 1.0.0
+   * @category handlers
+   */
+  export interface Any {
+    readonly [HandlersTypeId]: any
+  }
+
   /**
    * @since 1.0.0
    * @category handlers
@@ -259,6 +269,48 @@ export declare namespace Handlers {
     readonly handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, E, R>
     readonly withFullResponse: boolean
   }
+
+  /**
+   * @since 1.0.0
+   * @category handlers
+   */
+  export type FromGroup<
+    ApiError,
+    ApiR,
+    Group extends HttpApiGroup.HttpApiGroup.Any
+  > = Handlers<
+    | ApiError
+    | HttpApiGroup.HttpApiGroup.Error<Group>,
+    | HttpApiMiddleware.HttpApiMiddleware.ExtractProvides<ApiR>
+    | HttpApiGroup.HttpApiGroup.Provides<Group>,
+    never,
+    HttpApiGroup.HttpApiGroup.Endpoints<Group>
+  >
+
+  /**
+   * @since 1.0.0
+   * @category handlers
+   */
+  export type ValidateReturn<A extends Any> = A extends Handlers<
+    infer _E,
+    infer _Provides,
+    infer _R,
+    infer _Endpoints
+  > ? [_Endpoints] extends [never] ? {}
+    : `Endpoint not handled: ${HttpApiEndpoint.HttpApiEndpoint.Name<_Endpoints>}` :
+    {}
+
+  /**
+   * @since 1.0.0
+   * @category handlers
+   */
+  export type Context<A extends Any> = A extends Handlers<
+    infer _E,
+    infer _Provides,
+    infer _R,
+    infer _Endpoints
+  > ? _R :
+    never
 }
 
 const HandlersProto = {
@@ -269,7 +321,7 @@ const HandlersProto = {
     return pipeArguments(this, arguments)
   },
   handle(
-    this: Handlers<any, any, HttpApiEndpoint.HttpApiEndpoint.Any>,
+    this: Handlers<any, any, any, HttpApiEndpoint.HttpApiEndpoint.Any>,
     name: string,
     handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, any, any>
   ) {
@@ -284,7 +336,7 @@ const HandlersProto = {
     })
   },
   handleRaw(
-    this: Handlers<any, any, HttpApiEndpoint.HttpApiEndpoint.Any>,
+    this: Handlers<any, any, any, HttpApiEndpoint.HttpApiEndpoint.Any>,
     name: string,
     handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, any, any>
   ) {
@@ -300,12 +352,12 @@ const HandlersProto = {
   }
 }
 
-const makeHandlers = <E, R, Endpoints extends HttpApiEndpoint.HttpApiEndpoint.Any>(
+const makeHandlers = <E, Provides, R, Endpoints extends HttpApiEndpoint.HttpApiEndpoint.Any>(
   options: {
     readonly group: HttpApiGroup.HttpApiGroup.Any
     readonly handlers: Chunk.Chunk<Handlers.Item<E, R>>
   }
-): Handlers<E, R, Endpoints> => {
+): Handlers<E, Provides, R, Endpoints> => {
   const self = Object.create(HandlersProto)
   self.group = options.group
   self.handlers = options.handlers
@@ -328,38 +380,35 @@ export const group = <
   ApiError,
   ApiR,
   const Name extends HttpApiGroup.HttpApiGroup.Name<Groups>,
-  RH,
+  Return extends Handlers.Any,
   EX = never,
   RX = never
 >(
   api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
   groupName: Name,
   build: (
-    handlers: Handlers<
-      never,
-      never,
-      | HttpApiMiddleware.HttpApiMiddleware.Provides<HttpApiGroup.HttpApiGroup.ContextWithName<Groups, Name>>
-      | HttpApiMiddleware.HttpApiMiddleware.Provides<ApiR>,
-      HttpApiGroup.HttpApiGroup.EndpointsWithName<Groups, Name>
-    >
+    handlers: Handlers.FromGroup<ApiError, ApiR, HttpApiGroup.HttpApiGroup.WithName<Groups, Name>>
   ) =>
-    | Handlers<NoInfer<ApiError> | HttpApiGroup.HttpApiGroup.ErrorWithName<Groups, Name>, RH, any>
-    | Effect.Effect<
-      Handlers<NoInfer<ApiError> | HttpApiGroup.HttpApiGroup.ErrorWithName<Groups, Name>, RH, any>,
-      EX,
-      RX
-    >
+    & (
+      | Return
+      | Effect.Effect<Return, EX, RX>
+    )
+    & Handlers.ValidateReturn<Return>
 ): Layer.Layer<
   HttpApiGroup.Group<Name>,
   EX,
-  RX | RH | HttpApiGroup.HttpApiGroup.ContextWithName<Groups, Name> | HttpApiMiddleware.HttpApiMiddleware.Without<ApiR>
+  | RX
+  | Handlers.Context<Return>
+  | HttpApiGroup.HttpApiGroup.ContextWithName<Groups, Name>
 > =>
   Router.use((router) =>
     Effect.gen(function*() {
       const context = yield* Effect.context<any>()
       const group = HashMap.unsafeGet(api.groups, groupName)
       const result = build(makeHandlers({ group, handlers: Chunk.empty() }))
-      const handlers = Effect.isEffect(result) ? (yield* result) : result
+      const handlers: Handlers<any, any, any, HttpApiEndpoint.HttpApiEndpoint.AnyWithProps> = Effect.isEffect(result)
+        ? (yield* result)
+        : result as any
       const groupMiddleware = makeMiddlewareMap((group as any).middlewares, context)
       const routes: Array<HttpRouter.Route<any, any>> = []
       for (const item of handlers.handlers) {
@@ -499,9 +548,19 @@ const applyMiddleware = <A extends Effect.Effect<any, any, any>>(
 ) => {
   for (const entry of middleware.values()) {
     const effect = HttpApiMiddleware.SecurityTypeId in entry.tag ? makeSecurityMiddleware(entry as any) : entry.effect
-    handler = entry.tag.provides !== undefined
-      ? Effect.provideServiceEffect(handler, entry.tag.provides as any, effect) as any
-      : Effect.zipRight(effect, handler) as any
+    if (entry.tag.optional) {
+      const previous = handler
+      handler = Effect.matchEffect(effect, {
+        onFailure: () => previous,
+        onSuccess: entry.tag.provides !== undefined
+          ? (value) => Effect.provideService(previous, entry.tag.provides as any, value)
+          : (_) => previous
+      }) as any
+    } else {
+      handler = entry.tag.provides !== undefined
+        ? Effect.provideServiceEffect(handler, entry.tag.provides as any, effect) as any
+        : Effect.zipRight(effect, handler) as any
+    }
   }
   return handler
 }

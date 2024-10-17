@@ -409,7 +409,7 @@ export declare namespace HttpApiEndpoint {
    */
   export type Handler<Endpoint extends Any, E, R> = (
     request: Types.Simplify<Request<Endpoint>>
-  ) => Effect<Success<Endpoint>, E, R>
+  ) => Effect<Success<Endpoint>, Error<Endpoint> | E, R>
 
   /**
    * @since 1.0.0

@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import type { Effect } from "effect/Effect"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
@@ -99,10 +98,7 @@ export class Api extends Context.Tag("@effect/platform/HttpApi/Api")<
   Api,
   {
     readonly api: HttpApi<HttpApiGroup.HttpApiGroup.AnyWithProps>
-    readonly middleware: Map<string, {
-      readonly tag: HttpApiMiddleware.TagClassAny
-      readonly effect: Effect<any, any, any>
-    }>
+    readonly context: Context.Context<never>
   }
 >() {}
 
@@ -143,6 +139,28 @@ export declare namespace HttpApi {
    */
   export type Error<A extends Any> = A extends HttpApi<infer _Groups, infer _E, infer _R> ? _E
     : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ErrorWithGroup<Api extends Any, Group extends HttpApiGroup.HttpApiGroup.Any> =
+    | Error<Api>
+    | HttpApiGroup.HttpApiGroup.Error<Group>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Provides<Api extends Any> = HttpApiMiddleware.HttpApiMiddleware.ExtractProvides<Context<Api>>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ProvidesWithGroup<Api extends Any, Group extends HttpApiGroup.HttpApiGroup.Any> =
+    | Provides<Api>
+    | HttpApiGroup.HttpApiGroup.Provides<Group>
 
   /**
    * @since 1.0.0

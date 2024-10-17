@@ -213,9 +213,9 @@ The `HttpApiMiddleware` module provides a way to add middleware to your API.
 You can create a `HttpApiMiddleware.Tag` that represents your middleware, which
 allows you to set:
 
-- `failure` (optional) - a Schema for any errors that the middleware can return
-- `provides` (optional) - a `Context.Tag` that the middleware will provide
-- `security` (optional) - `HttpApiSecurity` definitions that the middleware will
+- `failure` - a Schema for any errors that the middleware can return
+- `provides` - a `Context.Tag` that the middleware will provide
+- `security` - `HttpApiSecurity` definitions that the middleware will
   implement
 
 Here is an example of defining a simple logger middleware:

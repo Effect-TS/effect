@@ -212,6 +212,12 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
+  export type Provides<Group extends Any> = HttpApiMiddleware.HttpApiMiddleware.ExtractProvides<Context<Group>>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type ErrorWithName<Group extends Any, Name extends string> = Error<WithName<Group, Name>>
 
   /**
