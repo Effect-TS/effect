@@ -85,7 +85,7 @@ export const try_: {
     readonly try: LazyArg<A>
     readonly catch: (error: unknown) => E
   }): Effect.Effect<A, E>
-  <A>(evaluate: LazyArg<A>): Effect.Effect<A, Cause.UnknownException>
+  <A>(thunk: LazyArg<A>): Effect.Effect<A, Cause.UnknownException>
 } = <A, E>(
   arg: LazyArg<A> | {
     readonly try: LazyArg<A>
@@ -1656,7 +1656,7 @@ export const tryPromise: {
       readonly catch: (error: unknown) => E
     }
   ): Effect.Effect<A, E>
-  <A>(try_: (signal: AbortSignal) => PromiseLike<A>): Effect.Effect<A, Cause.UnknownException>
+  <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): Effect.Effect<A, Cause.UnknownException>
 } = <A, E>(
   arg: ((signal: AbortSignal) => PromiseLike<A>) | {
     readonly try: (signal: AbortSignal) => PromiseLike<A>

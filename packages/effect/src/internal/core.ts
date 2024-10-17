@@ -521,13 +521,13 @@ export const unsafeAsync = <A, E = never, R = never>(
 
 /* @internal */
 export const async = <A, E = never, R = never>(
-  register: (
+  resume: (
     callback: (_: Effect.Effect<A, E, R>) => void,
     signal: AbortSignal
   ) => void | Effect.Effect<void, never, R>,
   blockingOn: FiberId.FiberId = FiberId.none
 ): Effect.Effect<A, E, R> => {
-  return custom(register, function() {
+  return custom(resume, function() {
     let backingResume: ((_: Effect.Effect<A, E, R>) => void) | undefined = undefined
     let pendingEffect: Effect.Effect<A, E, R> | undefined = undefined
     function proxyResume(effect: Effect.Effect<A, E, R>) {
@@ -1216,9 +1216,9 @@ export const suspend = <A, E, R>(effect: LazyArg<Effect.Effect<A, E, R>>): Effec
   flatMap(sync(effect), identity)
 
 /* @internal */
-export const sync = <A>(evaluate: LazyArg<A>): Effect.Effect<A> => {
+export const sync = <A>(thunk: LazyArg<A>): Effect.Effect<A> => {
   const effect = new EffectPrimitive(OpCodes.OP_SYNC) as any
-  effect.effect_instruction_i0 = evaluate
+  effect.effect_instruction_i0 = thunk
   return effect
 }
 

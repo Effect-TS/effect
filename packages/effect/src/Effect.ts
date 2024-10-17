@@ -1168,26 +1168,46 @@ export const validateFirst: {
 // -------------------------------------------------------------------------------------
 
 /**
- * Imports an asynchronous side-effect into a pure `Effect` value. The callback
- * function `Effect<A, E, R> => void` **MUST** be called at most once.
+ * Creates an `Effect` from a callback-based asynchronous API.
  *
- * The registration function can optionally return an Effect, which will be
- * executed if the `Fiber` executing this Effect is interrupted.
+ * Useful for integrating Node.js-style callback functions into the Effect system.
  *
- * The registration function can also receive an `AbortSignal` if required for
+ * The `resume` function **MUST** be called at most once.
+ *
+ * The `resume` function can optionally return an `Effect`, which will be
+ * executed if the `Fiber` executing this `Effect` is interrupted.
+ *
+ * The `resume` function can also receive an `AbortSignal` if required for
  * interruption.
  *
  * The `FiberId` of the fiber that may complete the async callback may also be
  * specified. This is called the "blocking fiber" because it suspends the fiber
- * executing the `async` Effect (i.e. semantically blocks the fiber from making
+ * executing the `async` effect (i.e. semantically blocks the fiber from making
  * progress). Specifying this fiber id in cases where it is known will improve
  * diagnostics, but not affect the behavior of the returned effect.
+ *
+ * @example
+ * import { Effect } from "effect"
+ * import * as fs from "fs"
+ *
+ * // Wrapping a callback-based API using Effect.async
+ * const readFile = (filename: string) => Effect.async<Buffer, Error>((resume) => {
+ *   fs.readFile(filename, (error, data) => {
+ *     if (error) {
+ *       resume(Effect.fail(error))
+ *     } else {
+ *       resume(Effect.succeed(data))
+ *     }
+ *   });
+ * });
+ *
+ * const program = readFile("todos.txt")
  *
  * @since 2.0.0
  * @category constructors
  */
 export const async: <A, E = never, R = never>(
-  register: (callback: (_: Effect<A, E, R>) => void, signal: AbortSignal) => void | Effect<void, never, R>,
+  resume: (callback: (_: Effect<A, E, R>) => void, signal: AbortSignal) => void | Effect<void, never, R>,
   blockingOn?: FiberId.FiberId
 ) => Effect<A, E, R> = core.async
 
@@ -1247,6 +1267,29 @@ export const withFiberRuntime: <A, E = never, R = never>(
 ) => Effect<A, E, R> = core.withFiberRuntime
 
 /**
+ * Creates an `Effect` that represents a recoverable error.
+ *
+ * This `Effect` does not succeed but instead fails with the provided error. The
+ * failure can be of any type, and will propagate through the effect pipeline
+ * unless handled.
+ *
+ * Use this function when you want to explicitly signal an error in an `Effect`
+ * computation. The failed effect can later be handled with functions like
+ * {@link catchAll} or {@link catchTag}.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Example of creating a failed effect
+ * const failedEffect = Effect.fail("Something went wrong")
+ *
+ * // Handle the failure
+ * failedEffect.pipe(
+ *   Effect.catchAll((error) => Effect.succeed(`Recovered from: ${error}`)),
+ *   Effect.runPromise
+ * ).then(console.log)
+ * // Output: "Recovered from: Something went wrong"
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -1600,10 +1643,23 @@ export const none: <A, E, R>(
 ) => Effect<void, E | Cause.NoSuchElementException, R> = effect.none
 
 /**
- * Like `tryPromise` but produces a defect in case of errors.
+ * Creates an `Effect` that represents an asynchronous computation guaranteed to succeed.
+ *
+ * The provided function (`thunk`) returns a `Promise` that should never reject.
+ * If the `Promise` does reject, the rejection is treated as a defect.
  *
  * An optional `AbortSignal` can be provided to allow for interruption of the
- * wrapped Promise api.
+ * wrapped `Promise` API.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Creating an effect that resolves after a delay
+ * const delay = (message: string) => Effect.promise(() => new Promise((resolve) => {
+ *   setTimeout(() => resolve(message), 2000)
+ * }))
+ *
+ * const program = delay("Async operation completed successfully!")
  *
  * @since 2.0.0
  * @category constructors
@@ -1613,6 +1669,17 @@ export const promise: <A>(
 ) => Effect<A> = effect.promise
 
 /**
+ * Creates an `Effect` that succeeds with the provided value.
+ *
+ * Use this function to represent a successful computation that yields a value of type `A`.
+ * The effect does not fail and does not require any environmental context.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Creating an effect that succeeds with the number 42
+ * const success = Effect.succeed(42)
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -1635,16 +1702,50 @@ export const succeedNone: Effect<Option.Option<never>> = effect.succeedNone
 export const succeedSome: <A>(value: A) => Effect<Option.Option<A>> = effect.succeedSome
 
 /**
+ * Creates an `Effect` that defers the creation of another effect until it is needed.
+ *
+ * Useful for lazy evaluation, handling circular dependencies, or avoiding eager execution in recursive functions.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Handling recursion without stack overflow
+ * const fibonacci = (n: number): Effect.Effect<number> =>
+ *   n < 2
+ *     ? Effect.succeed(1)
+ *     : Effect.zipWith(
+ *         Effect.suspend(() => fibonacci(n - 1)),
+ *         Effect.suspend(() => fibonacci(n - 2)),
+ *         (a, b) => a + b
+ *       )
+ *
+ * console.log(Effect.runSync(fibonacci(10))) // Output: 89
+ *
  * @since 2.0.0
  * @category constructors
  */
 export const suspend: <A, E, R>(effect: LazyArg<Effect<A, E, R>>) => Effect<A, E, R> = core.suspend
 
 /**
+ * Creates an `Effect` that represents a synchronous side-effectful computation.
+ *
+ * The provided function (`thunk`) should not throw errors; if it does, the error is treated as a defect.
+ * Use `Effect.sync` when you are certain the operation will not fail.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Creating an effect that logs a message
+ * const log = (message: string) => Effect.sync(() => {
+ *   console.log(message) // side effect
+ * })
+ *
+ * const program = log("Hello, World!")
+ *
  * @since 2.0.0
  * @category constructors
  */
-export const sync: <A>(evaluate: LazyArg<A>) => Effect<A> = core.sync
+export const sync: <A>(thunk: LazyArg<A>) => Effect<A> = core.sync
 
 const _void: Effect<void> = core.void
 export {
@@ -2031,13 +2132,20 @@ export const retryOrElse: {
 
 const try_: {
   <A, E>(options: { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E }): Effect<A, E>
-  <A>(evaluate: LazyArg<A>): Effect<A, Cause.UnknownException>
+  <A>(thunk: LazyArg<A>): Effect<A, Cause.UnknownException>
 } = effect.try_
 
 export {
   /**
-   * Imports a synchronous side-effect into a pure `Effect` value, translating any
-   * thrown exceptions into typed failed effects creating with `Effect.fail`.
+   * Creates an `Effect` that represents a synchronous computation that might fail.
+   *
+   * If the function (`thunk`) throws an error, it is caught and the effect fails with an `UnknownException`.
+   *
+   * **Overload with custom error handling:**
+   *
+   * Creates an `Effect` that represents a synchronous computation that might fail, with custom error mapping.
+   *
+   * If the `try` function throws an error, the `catch` function maps it to an error of type `E`.
    *
    * @since 2.0.0
    * @category error handling
@@ -2069,7 +2177,7 @@ export const tryMap: {
  * via the `catch` function.
  *
  * An optional `AbortSignal` can be provided to allow for interruption of the
- * wrapped Promise api.
+ * wrapped `Promise` API.
  *
  * @since 2.0.0
  * @category error handling
@@ -2085,20 +2193,38 @@ export const tryMapPromise: {
 } = effect.tryMapPromise
 
 /**
- * Create an `Effect` that when executed will construct `promise` and wait for
- * its result, errors will produce failure as `unknown`.
+ * Creates an `Effect` that represents an asynchronous computation that might fail.
+ *
+ * If the `Promise` returned by `evaluate` rejects, the error is caught and the effect fails with an `UnknownException`.
  *
  * An optional `AbortSignal` can be provided to allow for interruption of the
- * wrapped Promise api.
+ * wrapped `Promise` API.
+ *
+ * **Overload with custom error handling:**
+ *
+ * Creates an `Effect` that represents an asynchronous computation that might fail, with custom error mapping.
+ *
+ * If the `Promise` rejects, the `catch` function maps the error to an error of type `E`.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Fetching data from an API that may fail
+ * const getTodo = (id: number) => Effect.tryPromise(() =>
+ *   fetch(`https://jsonplaceholder.typicode.com/todos/${id}`)
+ * )
  *
  * @since 2.0.0
  * @category error handling
  */
 export const tryPromise: {
   <A, E>(
-    options: { readonly try: (signal: AbortSignal) => PromiseLike<A>; readonly catch: (error: unknown) => E }
+    options: {
+      readonly try: (signal: AbortSignal) => PromiseLike<A>
+      readonly catch: (error: unknown) => E
+    }
   ): Effect<A, E>
-  <A>(try_: (signal: AbortSignal) => PromiseLike<A>): Effect<A, Cause.UnknownException>
+  <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): Effect<A, Cause.UnknownException>
 } = effect.tryPromise
 
 /**
@@ -5502,6 +5628,28 @@ export const makeLatch: (open?: boolean | undefined) => Effect<Latch, never, nev
 // -------------------------------------------------------------------------------------
 
 /**
+ * Executes an effect and returns a `RuntimeFiber` that represents the running computation.
+ *
+ * Use `runFork` when you want to start an effect without blocking the current execution flow.
+ * It returns a fiber that you can observe, interrupt, or join as needed.
+ *
+ * @example
+ * import { Effect, Console, Schedule, Fiber } from "effect"
+ *
+ * // Define an effect that repeats a message every 200 milliseconds
+ * const program = Effect.repeat(
+ *   Console.log("running..."),
+ *   Schedule.spaced("200 millis")
+ * )
+ *
+ * // Start the effect without blocking
+ * const fiber = Effect.runFork(program)
+ *
+ * // Interrupt the fiber after 500 milliseconds
+ * setTimeout(() => {
+ *   Effect.runFork(Fiber.interrupt(fiber))
+ * }, 500)
+ *
  * @since 2.0.0
  * @category execution
  */
@@ -5520,8 +5668,21 @@ export const runCallback: <A, E>(
 ) => Runtime.Cancel<A, E> = _runtime.unsafeRunEffect
 
 /**
- * Runs an `Effect` workflow, returning a `Promise` which resolves with the
- * result of the workflow or rejects with an error.
+ * Executes an effect and returns a `Promise` that resolves with the result.
+ *
+ * Use `runPromise` when working with asynchronous effects and you need to integrate with code that uses Promises.
+ * If the effect fails, the returned Promise will be rejected with the error.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Execute an effect and handle the result with a Promise
+ * Effect.runPromise(Effect.succeed(1)).then(console.log) // Output: 1
+ *
+ * // Execute a failing effect and handle the rejection
+ * Effect.runPromise(Effect.fail("my error")).catch((error) => {
+ *   console.error("Effect failed with error:", error)
+ * })
  *
  * @since 2.0.0
  * @category execution
@@ -5532,8 +5693,35 @@ export const runPromise: <A, E>(
 ) => Promise<A> = _runtime.unsafeRunPromiseEffect
 
 /**
- * Runs an `Effect` workflow, returning a `Promise` which resolves with the
- * `Exit` value of the workflow.
+ * Executes an effect and returns a `Promise` that resolves with an `Exit` describing the result.
+ *
+ * Use `runPromiseExit` when you need detailed information about the outcome of the effect, including success or failure,
+ * and you want to work with Promises.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Execute a successful effect and get the Exit result as a Promise
+ * Effect.runPromiseExit(Effect.succeed(1)).then(console.log)
+ * // Output:
+ * // {
+ * //   _id: "Exit",
+ * //   _tag: "Success",
+ * //   value: 1
+ * // }
+ *
+ * // Execute a failing effect and get the Exit result as a Promise
+ * Effect.runPromiseExit(Effect.fail("my error")).then(console.log)
+ * // Output:
+ * // {
+ * //   _id: "Exit",
+ * //   _tag: "Failure",
+ * //   cause: {
+ * //     _id: "Cause",
+ * //     _tag: "Fail",
+ * //     failure: "my error"
+ * //   }
+ * // }
  *
  * @since 2.0.0
  * @category execution
@@ -5544,12 +5732,65 @@ export const runPromiseExit: <A, E>(
 ) => Promise<Exit.Exit<A, E>> = _runtime.unsafeRunPromiseExitEffect
 
 /**
+ * Executes an effect synchronously and returns its result.
+ *
+ * Use `runSync` when you are certain that the effect is purely synchronous and will not perform any asynchronous operations.
+ * If the effect fails or contains asynchronous tasks, it will throw an error.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Define a synchronous effect
+ * const program = Effect.sync(() => {
+ *   console.log("Hello, World!")
+ *   return 1
+ * })
+ *
+ * // Execute the effect synchronously
+ * const result = Effect.runSync(program)
+ * // Output: Hello, World!
+ *
+ * console.log(result)
+ * // Output: 1
+ *
  * @since 2.0.0
  * @category execution
  */
 export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSyncEffect
 
 /**
+ * Executes an effect synchronously and returns an `Exit` describing the result.
+ *
+ * Use `runSyncExit` when you need detailed information about the outcome of the effect,
+ * including whether it succeeded or failed, without throwing exceptions.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Execute a successful effect and get the Exit result
+ * const result1 = Effect.runSyncExit(Effect.succeed(1))
+ * console.log(result1)
+ * // Output:
+ * // {
+ * //   _id: "Exit",
+ * //   _tag: "Success",
+ * //   value: 1
+ * // }
+ *
+ * // Execute a failing effect and get the Exit result
+ * const result2 = Effect.runSyncExit(Effect.fail("my error"))
+ * console.log(result2)
+ * // Output:
+ * // {
+ * //   _id: "Exit",
+ * //   _tag: "Failure",
+ * //   cause: {
+ * //     _id: "Cause",
+ * //     _tag: "Fail",
+ * //     failure: "my error"
+ * //   }
+ * // }
+ *
  * @since 2.0.0
  * @category execution
  */
