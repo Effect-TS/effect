@@ -217,11 +217,18 @@ allows you to set:
 - `provides` - a `Context.Tag` that the middleware will provide
 - `security` - `HttpApiSecurity` definitions that the middleware will
   implement
+- `optional` - a boolean that indicates if the middleware fails with an expected
+  error, the request should continue. When using optional middleware, `provides`
+  & `failure` options will not affect the handlers or final error type.
 
 Here is an example of defining a simple logger middleware:
 
 ```ts
-import { HttpApiMiddleware } from "@effect/platform"
+import {
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiMiddleware
+} from "@effect/platform"
 import { Schema } from "effect"
 
 class LoggerError extends Schema.TaggedError<LoggerError>()(
@@ -234,6 +241,16 @@ class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger", {
   // optionally define any errors that the middleware can return
   failure: LoggerError
 }) {}
+
+// apply the middleware to an `HttpApiGroup`
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById", "/:id")
+      // apply the middleware to a single endpoint
+      .middleware(Logger)
+  )
+  // or apply the middleware to the group
+  .middleware(Logger) {}
 ```
 
 ### Defining security middleware
