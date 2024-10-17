@@ -20,11 +20,7 @@
             "required": true
           }
         ],
-        "security": [
-          {
-            "ApiKey": []
-          }
-        ],
+        "security": [],
         "responses": {
           "200": {
             "description": "an instance of Group",
@@ -140,11 +136,7 @@
         "tags": ["groups"],
         "operationId": "groups.create",
         "parameters": [],
-        "security": [
-          {
-            "ApiKey": []
-          }
-        ],
+        "security": [],
         "responses": {
           "200": {
             "description": "an instance of Group",
@@ -287,7 +279,11 @@
             "required": true
           }
         ],
-        "security": [],
+        "security": [
+          {
+            "Authorization/cookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "an instance of User",
@@ -403,8 +399,22 @@
       "post": {
         "tags": ["Users API"],
         "operationId": "users.create",
-        "parameters": [],
-        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "a string that will be parsed into a number",
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "Authorization/cookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "an instance of User",
@@ -562,7 +572,11 @@
             "required": false
           }
         ],
-        "security": [],
+        "security": [
+          {
+            "Authorization/cookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -701,7 +715,11 @@
         "tags": ["Users API"],
         "operationId": "users.upload",
         "parameters": [],
-        "security": [],
+        "security": [
+          {
+            "Authorization/cookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -834,16 +852,16 @@
   },
   "tags": [
     {
-      "name": "groups"
+      "name": "Users API"
     },
     {
-      "name": "Users API"
+      "name": "groups"
     }
   ],
   "components": {
     "schemas": {},
     "securitySchemes": {
-      "ApiKey": {
+      "Authorization/cookie": {
         "type": "apiKey",
         "name": "token",
         "in": "cookie"

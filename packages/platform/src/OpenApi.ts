@@ -2,13 +2,14 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import { dual } from "effect/Function"
+import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import type { DeepMutable, Mutable } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
+import * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 import type { HttpApiSecurity } from "./HttpApiSecurity.js"
 import * as HttpMethod from "./HttpMethod.js"
@@ -48,14 +49,16 @@ export class License extends Context.Tag("@effect/platform/OpenApi/License")<Lic
  * @since 1.0.0
  * @category annotations
  */
-export class Security extends Context.Tag("@effect/platform/OpenApi/Security")<Security, HttpApiSecurity>() {}
+export class ExternalDocs
+  extends Context.Tag("@effect/platform/OpenApi/ExternalDocs")<ExternalDocs, OpenAPISpecExternalDocs>()
+{}
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export class ExternalDocs
-  extends Context.Tag("@effect/platform/OpenApi/ExternalDocs")<ExternalDocs, OpenAPISpecExternalDocs>()
+export class Servers
+  extends Context.Tag("@effect/platform/OpenApi/Servers")<ExternalDocs, ReadonlyArray<OpenAPISpecServer>>()
 {}
 
 /**
@@ -68,8 +71,8 @@ export const annotations = (annotations: {
   readonly description?: string | undefined
   readonly version?: string | undefined
   readonly license?: OpenAPISpecLicense | undefined
-  readonly security?: HttpApiSecurity | undefined
   readonly externalDocs?: OpenAPISpecExternalDocs | undefined
+  readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined
 }): Context.Context<never> => {
   let context = Context.empty()
   if (annotations.identifier !== undefined) {
@@ -87,11 +90,11 @@ export const annotations = (annotations: {
   if (annotations.license !== undefined) {
     context = Context.add(context, License, annotations.license)
   }
-  if (annotations.security !== undefined) {
-    context = Context.add(context, Security, annotations.security)
-  }
   if (annotations.externalDocs !== undefined) {
     context = Context.add(context, ExternalDocs, annotations.externalDocs)
+  }
+  if (annotations.servers !== undefined) {
+    context = Context.add(context, Servers, annotations.servers)
   }
   return context
 }
@@ -105,53 +108,11 @@ export interface Annotatable {
 }
 
 /**
- * @since 1.0.0
- * @category annotations
- */
-export const annotate: {
-  (annotations: {
-    readonly identifier?: string | undefined
-    readonly title?: string | undefined
-    readonly description?: string | undefined
-    readonly version?: string | undefined
-    readonly license?: OpenAPISpecLicense | undefined
-    readonly security?: HttpApiSecurity | undefined
-    readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-  }): <A extends Annotatable>(self: A) => A
-  <A extends Annotatable>(self: A, annotations: {
-    readonly identifier?: string | undefined
-    readonly title?: string | undefined
-    readonly description?: string | undefined
-    readonly version?: string | undefined
-    readonly license?: OpenAPISpecLicense | undefined
-    readonly security?: HttpApiSecurity | undefined
-    readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-  }): A
-} = dual(2, <A extends Annotatable>(self: A, annotations_: {
-  readonly identifier?: string | undefined
-  readonly title?: string | undefined
-  readonly description?: string | undefined
-  readonly version?: string | undefined
-  readonly license?: OpenAPISpecLicense | undefined
-  readonly security?: HttpApiSecurity | undefined
-  readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-}): A => {
-  const base = typeof self === "function" ? function() {} : self
-  Object.setPrototypeOf(base, Object.getPrototypeOf(self))
-  const context = Context.merge(
-    self.annotations,
-    annotations(annotations_)
-  )
-  return Object.assign(base, self, {
-    annotations: context
-  })
-})
-
-/**
  * @category constructors
  * @since 1.0.0
  */
-export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
+export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => {
+  const api = self as unknown as HttpApi.HttpApi.AnyWithProps
   const spec: DeepMutable<OpenAPISpec> = {
     openapi: "3.0.3",
     info: {
@@ -166,17 +127,17 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
     },
     security: []
   }
-  const securityMap = new Map<HttpApiSecurity, string>()
-  let securityCount = 0
-  function registerSecurity(security: HttpApiSecurity): string {
-    if (securityMap.has(security)) {
-      return securityMap.get(security)!
+  function registerSecurity(
+    tag: HttpApiMiddleware.TagClassSecurityAny,
+    name: string,
+    security: HttpApiSecurity
+  ): string {
+    const id = `${tag.key}/${name}`
+    if (spec.components!.securitySchemes![id]) {
+      return id
     }
-    const count = securityCount++
-    const id = `${security._tag}${count === 0 ? "" : count}`
     const scheme = makeSecurityScheme(security)
     spec.components!.securitySchemes![id] = scheme
-    securityMap.set(security, id)
     return id
   }
   Option.map(Context.getOption(api.annotations, Description), (description) => {
@@ -185,10 +146,19 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
   Option.map(Context.getOption(api.annotations, License), (license) => {
     spec.info.license = license
   })
-  Option.map(Context.getOption(api.annotations, Security), (apiSecurity) => {
-    spec.security!.push({
-      [registerSecurity(apiSecurity)]: []
-    })
+  Option.map(Context.getOption(api.annotations, Servers), (servers) => {
+    spec.servers = servers as any
+  })
+  HashSet.forEach(api.middlewares, (middleware) => {
+    if (!HttpApiMiddleware.isSecurity(middleware)) {
+      return
+    }
+    for (const [name, security] of Object.entries(middleware.security)) {
+      const id = registerSecurity(middleware, name, security)
+      spec.security!.push({
+        [id]: []
+      })
+    }
   })
   HttpApi.reflect(api as any, {
     onGroup({ group }) {
@@ -203,19 +173,19 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
       })
       spec.tags!.push(tag)
     },
-    onEndpoint({ endpoint, errors, group, mergedAnnotations, successAST, successEncoding, successStatus }) {
+    onEndpoint({ endpoint, errors, group, middleware, successes }) {
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       const op: DeepMutable<OpenAPISpecOperation> = {
         tags: [Context.getOrElse(group.annotations, Title, () => group.identifier)],
-        operationId: Context.getOrElse(endpoint.annotations, Identifier, () => `${group.identifier}.${endpoint.name}`),
+        operationId: Context.getOrElse(
+          endpoint.annotations,
+          Identifier,
+          () => group.topLevel ? endpoint.name : `${group.identifier}.${endpoint.name}`
+        ),
         parameters: [],
         security: [],
-        responses: {
-          [successStatus]: {
-            description: Option.getOrElse(getDescriptionOrIdentifier(successAST), () => "Success")
-          }
-        }
+        responses: {}
       }
       Option.map(Context.getOption(endpoint.annotations, Description), (description) => {
         op.description = description
@@ -223,10 +193,16 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
       Option.map(Context.getOption(endpoint.annotations, ExternalDocs), (externalDocs) => {
         op.externalDocs = externalDocs
       })
-      Option.map(Context.getOption(mergedAnnotations, Security), (apiSecurity) => {
-        op.security!.push({
-          [registerSecurity(apiSecurity)]: []
-        })
+      HashSet.forEach(middleware, (middleware) => {
+        if (!HttpApiMiddleware.isSecurity(middleware)) {
+          return
+        }
+        for (const [name, security] of Object.entries(middleware.security)) {
+          const id = registerSecurity(middleware, name, security)
+          op.security!.push({
+            [id]: []
+          })
+        }
       })
       endpoint.payloadSchema.pipe(
         Option.filter(() => HttpMethod.hasBody(endpoint.method)),
@@ -241,15 +217,22 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
           }
         })
       )
-      successAST.pipe(
-        Option.map((ast) => {
-          op.responses![successStatus].content = {
-            [successEncoding.contentType]: {
-              schema: JsonSchema.make(Schema.make(ast))
+      for (const [status, ast] of successes) {
+        if (op.responses![status]) continue
+        op.responses![status] = {
+          description: Option.getOrElse(getDescriptionOrIdentifier(ast), () => "Success")
+        }
+        ast.pipe(
+          Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
+          Option.map((ast) => {
+            op.responses![status].content = {
+              "application/json": {
+                schema: JsonSchema.make(Schema.make(ast))
+              }
             }
-          }
-        })
-      )
+          })
+        )
+      }
       if (Option.isSome(endpoint.pathSchema)) {
         const schema = JsonSchema.make(endpoint.pathSchema.value) as JsonSchema.Object
         if ("properties" in schema) {
@@ -283,6 +266,19 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(api: A): OpenAPISpec => {
             op.parameters!.push({
               name,
               in: "header",
+              schema: jsonSchema,
+              required: schema.required.includes(name)
+            })
+          })
+        }
+      }
+      if (Option.isSome(endpoint.urlParamsSchema)) {
+        const schema = JsonSchema.make(endpoint.urlParamsSchema.value) as JsonSchema.Object
+        if ("properties" in schema) {
+          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
+            op.parameters!.push({
+              name,
+              in: "query",
               schema: jsonSchema,
               required: schema.required.includes(name)
             })

@@ -4,6 +4,7 @@
 import type { Brand } from "effect/Brand"
 import type { LazyArg } from "effect/Function"
 import { constVoid, dual } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Struct from "effect/Struct"
@@ -382,3 +383,36 @@ export const Text = (options?: {
 export const Uint8Array = (options?: {
   readonly contentType?: string
 }): typeof Schema.Uint8ArrayFromSelf => withEncoding(Schema.Uint8ArrayFromSelf, { kind: "Uint8Array", ...options })
+
+const astCache = globalValue(
+  "@effect/platform/HttpApiSchema/astCache",
+  () => new WeakMap<AST.AST, Schema.Schema.Any>()
+)
+
+/**
+ * @since 1.0.0
+ */
+export const deunionize = (
+  schemas: Set<Schema.Schema.Any>,
+  schema: Schema.Schema.Any
+): void => {
+  if (astCache.has(schema.ast)) {
+    schemas.add(astCache.get(schema.ast)!)
+    return
+  }
+  const ast = schema.ast
+  if (ast._tag === "Union") {
+    for (const astType of ast.types) {
+      const memberSchema = Schema.make(astType).annotations({
+        ...ast.annotations,
+        ...(astType._tag === "Transformation" ? astType.to.annotations : {}),
+        ...astType.annotations
+      })
+      astCache.set(astType, memberSchema)
+      schemas.add(memberSchema)
+    }
+  } else {
+    astCache.set(ast, schema)
+    schemas.add(schema)
+  }
+}
