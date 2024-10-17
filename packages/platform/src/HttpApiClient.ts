@@ -8,6 +8,7 @@ import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
+import type { Scope } from "effect/Scope"
 import type { Simplify } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
@@ -91,6 +92,9 @@ export const make = <A extends HttpApi.HttpApi.Any>(
   api: A,
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+    readonly transformResponse?:
+      | ((effect: Effect.Effect<unknown, unknown, Scope>) => Effect.Effect<unknown, unknown, Scope>)
+      | undefined
     readonly baseUrl?: string | undefined
   }
 ): Effect.Effect<Simplify<Client<A>>, never, HttpApi.HttpApi.Context<A> | HttpClient.HttpClient> =>
@@ -177,6 +181,7 @@ export const make = <A extends HttpApi.HttpApi.Any>(
                 : identity,
               Effect.flatMap(httpClient.execute),
               Effect.flatMap(HttpClientResponse.matchStatus(decodeMap)),
+              options?.transformResponse === undefined ? identity : options.transformResponse,
               Effect.scoped,
               Effect.catchIf(ParseResult.isParseError, Effect.die),
               Effect.mapInputContext((input) => Context.merge(context, input))
