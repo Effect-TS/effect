@@ -126,7 +126,7 @@ export type TagClass<
         HttpApiMiddlewareSecurity<
           Options["security"],
           TagClass.Service<Options>,
-          TagClass.Failure<Options>
+          TagClass.FailureService<Options>
         >
       >
     >
@@ -140,7 +140,7 @@ export type TagClass<
     Options,
     HttpApiMiddleware<
       TagClass.Service<Options>,
-      TagClass.Failure<Options>
+      TagClass.FailureService<Options>
     >
   >
 
@@ -177,6 +177,12 @@ export declare namespace TagClass {
    * @category models
    */
   export type Failure<Options> = Schema.Schema.Type<FailureSchema<Options>>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type FailureService<Options> = Optional<Options> extends true ? unknown : Failure<Options>
 
   /**
    * @since 1.0.0
