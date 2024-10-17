@@ -175,7 +175,7 @@ export const make = <A extends HttpApi.HttpApi.Any>(
                 ? Effect.flatMap((httpRequest) =>
                   encodeUrlParams.value(request.urlParams).pipe(
                     Effect.orDie,
-                    Effect.map((params) => HttpClientRequest.setUrlParams(httpRequest, params as any))
+                    Effect.map((params) => HttpClientRequest.appendUrlParams(httpRequest, params as any))
                   )
                 )
                 : identity,
