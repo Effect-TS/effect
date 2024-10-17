@@ -1,18 +1,18 @@
 # Introduction
 
-Welcome to your guide on testing Effect applications using `vitest` and the `@effect/vitest` package! `@effect/vitest` is designed to help simplify running Effect-based tests through `vitest`.
+Welcome to your guide on testing Effect-based applications using `vitest` and the `@effect/vitest` package. This package simplifies running tests for Effect-based code with Vitest.
 
-In the guide below, we will first start by setting up the required dependencies. Then, we will dive into a few examples of how to use `@effect/vitest` to create some Effect-based test cases.
+In this guide, we'll walk you through setting up the necessary dependencies and provide examples of how to write Effect-based tests using `@effect/vitest`.
 
 # Requirements
 
-First, install [`vitest`](https://vitest.dev/guide/) (version `1.6.0` or newer)
+First, ensure you have [`vitest`](https://vitest.dev/guide/) installed (version `1.6.0` or later).
 
 ```sh
 pnpm add -D vitest
 ```
 
-Next, install the `@effect/vitest` package which facilitates running Effect-based tests through `vitest`.
+Next, install the `@effect/vitest` package, which integrates Effect with Vitest.
 
 ```sh
 pnpm add -D @effect/vitest
@@ -40,39 +40,133 @@ This import enhances the standard `it` function from `vitest` with several power
 
 Here's how to use `it.effect` to write your tests:
 
+**Syntax**
+
 ```ts
 import { it } from "@effect/vitest"
 
 it.effect("test name", () => EffectContainingAssertions, timeout: number | TestOptions = 5_000)
 ```
 
-When using `it.effect`, the `TestContext` is automatically injected, which allows tests to have access to services designed to facilitate testing (such as the [`TestClock`](#using-the-testclock)).
+`it.effect` automatically provides a `TestContext`, allowing access to services like [`TestClock`](#using-the-testclock).
 
 ## Testing Successful Operations
 
-Let's create a test for a function that divides two numbers but fails if the divisor is zero:
+To write a test, place your assertions directly within the main effect. This ensures that your assertions are evaluated as part of the test's execution.
+
+**Example** (Testing a Successful Operation)
+
+In the following example, we test a function that divides two numbers, but fails if the divisor is zero. The goal is to check that the function returns the correct result when given valid input.
 
 ```ts
 import { it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 
+// A simple divide function that returns an Effect, failing when dividing by zero
 function divide(a: number, b: number) {
   if (b === 0) return Effect.fail("Cannot divide by zero")
   return Effect.succeed(a / b)
 }
 
+// Testing a successful division
 it.effect("test success", () =>
   Effect.gen(function* () {
-    const result = yield* divide(4, 2)
-    expect(result).toBe(2)
+    const result = yield* divide(4, 2) // Expect 4 divided by 2 to succeed
+    expect(result).toBe(2) // Assert that the result is 2
   })
 )
 ```
 
 ## Testing Successes and Failures as `Exit`
 
-To test both success and failure scenarios, convert the outcomes into an `Exit` object using `Effect.exit`:
+When you need to handle both success and failure cases in a test, you can use `Effect.exit` to capture the outcome as an `Exit` object. This allows you to verify both successful and failed results within the same test structure.
+
+**Example** (Testing Success and Failure with `Exit`)
+
+```ts
+import { it } from "@effect/vitest"
+import { Effect, Exit } from "effect"
+import { expect } from "vitest"
+
+// A function that divides two numbers and returns an Effect.
+// It fails if the divisor is zero.
+function divide(a: number, b: number) {
+  if (b === 0) return Effect.fail("Cannot divide by zero")
+  return Effect.succeed(a / b)
+}
+
+// Test case for a successful division, using `Effect.exit` to capture the result
+it.effect("test success as Exit", () =>
+  Effect.gen(function* () {
+    const result = yield* Effect.exit(divide(4, 2)) // Capture the result as an Exit
+    expect(result).toStrictEqual(Exit.succeed(2)) // Expect success with the value 2
+  })
+)
+
+// Test case for a failure (division by zero), using `Effect.exit`
+it.effect("test failure as Exit", () =>
+  Effect.gen(function* () {
+    const result = yield* Effect.exit(divide(4, 0)) // Capture the result as an Exit
+    expect(result).toStrictEqual(Exit.fail("Cannot divide by zero")) // Expect failure with the correct message
+  })
+)
+```
+
+## Using the TestClock
+
+When writing tests with `it.effect`, a `TestContext` is automatically provided. This context gives access to various testing services, including the [`TestClock`](https://effect.website/docs/guides/testing/testclock), which allows you to simulate the passage of time in your tests.
+
+**Note**: If you want to use the real-time clock (instead of the simulated one), you can switch to `it.live`.
+
+**Example** (Using `TestClock` and `it.live`)
+
+Here are examples that demonstrate how you can work with time in your tests using `it.effect` and `TestClock`:
+
+1. **Using `it.live` to show the current time**: This will display the actual system time, since it runs in the live environment.
+
+2. **Using `it.effect` without adjustments**: By default, the `TestClock` starts at `0`, simulating the beginning of time for your test without any time passing.
+
+3. **Using `it.effect` and adjusting time**: In this test, we simulate the passage of time by advancing the clock by 1000 milliseconds (1 second).
+
+```ts
+import { it } from "@effect/vitest"
+import { Clock, Effect, TestClock } from "effect"
+
+// Effect to log the current time
+const logNow = Effect.gen(function* () {
+  const now = yield* Clock.currentTimeMillis // Fetch the current time from the clock
+  console.log(now) // Log the current time
+})
+
+// Example of using the real system clock with `it.live`
+it.live("runs the test with the live Effect environment", () =>
+  Effect.gen(function* () {
+    yield* logNow // Prints the actual current time
+  })
+)
+
+// Example of using `it.effect` with the default test environment
+it.effect("run the test with the test environment", () =>
+  Effect.gen(function* () {
+    yield* logNow // Prints 0, as the test clock starts at 0
+  })
+)
+
+// Example of advancing the test clock by 1000 milliseconds
+it.effect("run the test with the test environment and the time adjusted", () =>
+  Effect.gen(function* () {
+    yield* TestClock.adjust("1000 millis") // Move the clock forward by 1000 milliseconds
+    yield* logNow // Prints 1000, reflecting the adjusted time
+  })
+)
+```
+
+## Skipping Tests
+
+If you need to temporarily disable a test but don't want to delete or comment out the code, you can use `it.effect.skip`. This is helpful when you're working on other parts of your test suite but want to keep the test for future execution.
+
+**Example** (Skipping a Test)
 
 ```ts
 import { it } from "@effect/vitest"
@@ -84,72 +178,10 @@ function divide(a: number, b: number) {
   return Effect.succeed(a / b)
 }
 
-it.effect("test success as Exit", () =>
-  Effect.gen(function* () {
-    const result = yield* divide(4, 2).pipe(Effect.exit)
-    expect(result).toStrictEqual(Exit.succeed(2))
-  })
-)
-
+// Temporarily skip the test for dividing numbers
 it.effect("test failure as Exit", () =>
   Effect.gen(function* () {
-    const result = yield* divide(4, 0).pipe(Effect.exit)
-    expect(result).toStrictEqual(Exit.fail("Cannot divide by zero"))
-  })
-)
-```
-
-## Using the TestClock
-
-When using `it.effect`, a `TestContext` is provided to your program which provides access to several services designed to facilitate testing. One such service is the `[TestClock`](https://effect.website/docs/guides/testing/testclock) which is designed to simulate the passage of time.
-
-**Note**: To utilize the default, non-testing services in your tests you can use `it.live`.
-
-Below, you'll find examples illustrating different ways to use time in your tests:
-
-1. **Using `it.live` to show the current time:** This mode uses the real-time clock of your system, reflecting the actual current time.
-
-2. **Using `it.effect` with no adjustments:** By default, this test starts the clock at a time of `0`, effectively simulating a starting point without any elapsed time.
-
-3. **Using `it.effect` and adjusting time forward:** Here, we advance the clock by 1000 milliseconds to test scenarios that depend on the passing of time.
-
-```ts
-import { it } from "@effect/vitest"
-import { Clock, Effect, TestClock } from "effect"
-
-const logNow = Effect.gen(function* () {
-  const now = yield* Clock.currentTimeMillis
-  console.log(now)
-})
-
-it.live("runs the test with the live Effect environment", () =>
-  Effect.gen(function* () {
-    yield* logNow // prints the actual time
-  })
-)
-
-it.effect("run the test with the test environment", () =>
-  Effect.gen(function* () {
-    yield* logNow // prints 0
-  })
-)
-
-it.effect("run the test with the test environment and the time adjusted", () =>
-  Effect.gen(function* () {
-    yield* TestClock.adjust("1000 millis")
-    yield* logNow // prints 1000
-  })
-)
-```
-
-## Skipping Tests
-
-You can skip a test using `it.effect.skip`, which is useful when you want to temporarily disable a test without deleting any code.
-
-```ts
-it.effect.skip("test failure as Exit", () =>
-  Effect.gen(function* () {
-    const result = yield* divide(4, 0).pipe(Effect.exit)
+    const result = yield* Effect.exit(divide(4, 0))
     expect(result).toStrictEqual(Exit.fail("Cannot divide by zero"))
   })
 )
@@ -157,32 +189,78 @@ it.effect.skip("test failure as Exit", () =>
 
 ## Running a Single Test
 
-To run only a specific test and ignore all others, use `it.effect.only`. This is helpful during development to focus on a single test case.
+When you're developing or debugging, it's often useful to run a specific test without executing the entire test suite. You can achieve this by using `it.effect.only`, which will run just the selected test and ignore the others.
+
+**Example** (Running a Single Test)
 
 ```ts
+import { it } from "@effect/vitest"
+import { Effect, Exit } from "effect"
+import { expect } from "vitest"
+
+function divide(a: number, b: number) {
+  if (b === 0) return Effect.fail("Cannot divide by zero")
+  return Effect.succeed(a / b)
+}
+
+// Run only this test, skipping all others
 it.effect.only("test failure as Exit", () =>
   Effect.gen(function* () {
-    const result = yield* divide(4, 0).pipe(Effect.exit)
+    const result = yield* Effect.exit(divide(4, 0))
     expect(result).toStrictEqual(Exit.fail("Cannot divide by zero"))
+  })
+)
+```
+
+## Logging
+
+By default, `it.effect` suppresses log output, which can be useful for keeping test results clean. However, if you want to enable logging during tests, you can use `it.live` or provide a custom logger to control the output.
+
+**Example** (Controlling Logging in Tests)
+
+```ts
+import { it } from "@effect/vitest"
+import { Effect, Logger } from "effect"
+
+// This test won't display the log message, as logging is suppressed by default in `it.effect`
+it.effect("does not display a log", () =>
+  Effect.gen(function* () {
+    yield* Effect.log("it.effect") // Log won't be shown
+  })
+)
+
+// This test will display the log because a custom logger is provided
+it.effect("providing a logger displays a log", () =>
+  Effect.gen(function* () {
+    yield* Effect.log("it.effect with custom logger") // Log will be displayed
+  }).pipe(
+    Effect.provide(Logger.pretty) // Providing a pretty logger for log output
+  )
+)
+
+// This test runs using `it.live`, which enables logging by default
+it.live("it.live displays a log", () =>
+  Effect.gen(function* () {
+    yield* Effect.log("it.live") // Log will be displayed
   })
 )
 ```
 
 # Writing Tests with `it.scoped`
 
-The `it.scoped` method allows you to run tests that involve Effect programs requiring a `Scope`. A `Scope` is essential when your Effect needs to manage resources that must be acquired before the test and released after it completes. This ensures that all resources are properly cleaned up, preventing leaks and ensuring test isolation.
+The `it.scoped` method is used for tests that involve `Effect` programs needing a `Scope`. A `Scope` ensures that any resources your test acquires are managed properly, meaning they will be released when the test completes. This helps prevent resource leaks and guarantees test isolation.
 
-Here’s a simple example to demonstrate how `it.scoped` can be used in your tests:
+**Example** (Using `it.scoped` to Manage Resource Lifecycle)
 
 ```ts
 import { it } from "@effect/vitest"
 import { Console, Effect } from "effect"
 
-// Simulate acquiring and releasing a resource with console logging
+// Simulating the acquisition and release of a resource with console logging
 const acquire = Console.log("acquire resource")
 const release = Console.log("release resource")
 
-// Define a resource that needs to be managed
+// Defining a resource that requires proper management
 const resource = Effect.acquireRelease(acquire, () => release)
 
 // Incorrect usage: This will result in a type error because it lacks a scope
@@ -192,7 +270,7 @@ it.effect("run with scope", () =>
   })
 )
 
-// Correct usage: Using 'it.scoped' to properly manage the scope
+// Correct usage: Using 'it.scoped' to manage the scope correctly
 it.scoped("run with scope", () =>
   Effect.gen(function* () {
     yield* resource
@@ -202,17 +280,17 @@ it.scoped("run with scope", () =>
 
 # Writing Tests with `it.flakyTest`
 
-`it.flakyTest` is a function from the `@effect/vitest` package designed to handle tests that might not succeed on the first try. These tests are often called "flaky" tests because their outcome can vary (e.g., due to timing issues, external dependencies, or randomness). `it.flakyTest` allows these tests to be retried until they succeed or until a specified timeout period expires.
+`it.flakyTest` is a utility designed to manage tests that may not succeed consistently on the first attempt. These tests, often referred to as "flaky," can fail due to factors like timing issues, external dependencies, or randomness. `it.flakyTest` allows for retrying these tests until they pass or a specified timeout is reached.
 
-Here's how you can use `it.flakyTest` in your test suite:
+**Example** (Handling Flaky Tests with Retries)
 
-First, let’s set up a basic test scenario that could potentially fail randomly:
+Let's start by setting up a basic test scenario that has the potential to fail randomly:
 
 ```ts
 import { it } from "@effect/vitest"
 import { Effect, Random } from "effect"
 
-// Define a flaky test effect
+// Simulating a flaky effect
 const flaky = Effect.gen(function* () {
   const random = yield* Random.nextBoolean
   if (random) {
@@ -220,14 +298,16 @@ const flaky = Effect.gen(function* () {
   }
 })
 
-// Standard test, which may fail intermittently
+// Standard test that may fail intermittently
 it.effect("possibly failing test", () => flaky)
 ```
 
-To address the flakiness, we apply `it.flakyTest` which will retry the test until it succeeds or the specified timeout is reached:
+In this test, the outcome is random, so the test might fail depending on the result of `Random.nextBoolean`.
+
+To handle this flakiness, we use `it.flakyTest` to retry the test until it passes, or until a defined timeout expires:
 
 ```ts
-// Retrying the flaky test with a timeout
+// Retrying the flaky test with a 5-second timeout
 it.effect("retrying until success or timeout", () =>
   it.flakyTest(flaky, "5 seconds")
 )
