@@ -44,7 +44,13 @@
   "devDependencies": {
     "@types/jscodeshift": "^0.11.11",
     "@types/node": "^20.14.10",
+    "ajv": "^8.17.1",
     "ast-types": "^0.14.2",
-    "jscodeshift": "^0.16.1"
+    "jscodeshift": "^0.16.1",
+    "tinybench": "^2.9.0",
+    "zod": "^3.23.5"
+  },
+  "dependencies": {
+    "fast-check": "^3.21.0"
   }
 }

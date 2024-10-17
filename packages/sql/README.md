@@ -95,8 +95,7 @@ In `sqlfx` you could pass an array to the `sql(array)` function to pass an list 
 ## INSERT resolver
 
 ```ts
-import { Effect, pipe } from "effect"
-import { Schema } from "@effect/schema"
+import { Effect, Schema, pipe } from "effect"
 import { SqlClient } from "@effect/sql"
 
 class Person extends Schema.Class<Person>("Person")({
@@ -114,15 +113,15 @@ export const makePersonService = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
 
   const InsertPerson = yield* SqlResolver.ordered("InsertPerson", {
-      Request: InsertPersonSchema,
-      Result: Person,
-      execute: (requests) =>
-        sql`
+    Request: InsertPersonSchema,
+    Result: Person,
+    execute: (requests) =>
+      sql`
         INSERT INTO people
         ${sql.insert(requests)}
         RETURNING people.*
       `
-    })
+  })
 
   const insert = InsertPerson.execute
 
@@ -133,8 +132,7 @@ export const makePersonService = Effect.gen(function* () {
 ## SELECT resolver
 
 ```ts
-import { Effect, pipe } from "effect"
-import { Schema } from "@effect/schema"
+import { Effect, Schema, pipe } from "effect"
 import { SqlResolver, SqlClient } from "@effect/sql"
 
 class Person extends Schema.Class<Person>("Person")({

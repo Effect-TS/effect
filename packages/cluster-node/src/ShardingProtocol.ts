@@ -6,7 +6,7 @@ import * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
 import * as SerializedMessage from "@effect/cluster/SerializedMessage"
 import * as ShardId from "@effect/cluster/ShardId"
 import * as ShardingException from "@effect/cluster/ShardingException"
-import * as Schema from "@effect/schema/Schema"
+import * as Schema from "effect/Schema"
 
 /**
  * @since 1.0.0

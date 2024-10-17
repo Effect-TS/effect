@@ -206,7 +206,7 @@ export const isTEnqueue: (u: unknown) => u is TEnqueue<unknown> = internal.isTEn
  * @since 2.0.0
  * @category mutations
  */
-export const awaitShutdown: <A>(self: TQueue<A>) => STM.STM<void> = internal.awaitShutdown
+export const awaitShutdown: <A>(self: TDequeue<A> | TEnqueue<A>) => STM.STM<void> = internal.awaitShutdown
 
 /**
  * Creates a bounded queue with the back pressure strategy. The queue will
@@ -226,7 +226,7 @@ export const bounded: <A>(requestedCapacity: number) => STM.STM<TQueue<A>> = int
  * @since 2.0.0
  * @category getters
  */
-export const capacity: <A>(self: TQueue<A>) => number = internal.capacity
+export const capacity: <A>(self: TDequeue<A> | TEnqueue<A>) => number = internal.capacity
 
 /**
  * Creates a bounded queue with the dropping strategy. The queue will drop new
@@ -245,7 +245,7 @@ export const dropping: <A>(requestedCapacity: number) => STM.STM<TQueue<A>> = in
  * @since 2.0.0
  * @category getters
  */
-export const isEmpty: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isEmpty
+export const isEmpty: <A>(self: TDequeue<A> | TEnqueue<A>) => STM.STM<boolean> = internal.isEmpty
 
 /**
  * Returns `true` if the `TQueue` contains at least one element, `false`
@@ -254,7 +254,7 @@ export const isEmpty: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isEmpt
  * @since 2.0.0
  * @category getters
  */
-export const isFull: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isFull
+export const isFull: <A>(self: TDequeue<A> | TEnqueue<A>) => STM.STM<boolean> = internal.isFull
 
 /**
  * Returns `true` if `shutdown` has been called, otherwise returns `false`.
@@ -262,7 +262,7 @@ export const isFull: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isFull
  * @since 2.0.0
  * @category getters
  */
-export const isShutdown: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isShutdown
+export const isShutdown: <A>(self: TDequeue<A> | TEnqueue<A>) => STM.STM<boolean> = internal.isShutdown
 
 /**
  * Places one value in the queue.
@@ -345,7 +345,7 @@ export const seek: {
  * @since 2.0.0
  * @category mutations
  */
-export const shutdown: <A>(self: TQueue<A>) => STM.STM<void> = internal.shutdown
+export const shutdown: <A>(self: TDequeue<A> | TEnqueue<A>) => STM.STM<void> = internal.shutdown
 
 /**
  * Retrieves the size of the queue, which is equal to the number of elements
@@ -355,7 +355,7 @@ export const shutdown: <A>(self: TQueue<A>) => STM.STM<void> = internal.shutdown
  * @since 2.0.0
  * @category getters
  */
-export const size: <A>(self: TQueue<A>) => STM.STM<number> = internal.size
+export const size: <A>(self: TDequeue<A> | TEnqueue<A>) => STM.STM<number> = internal.size
 
 /**
  * Creates a bounded queue with the sliding strategy. The queue will add new

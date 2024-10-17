@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
 import type { Brand } from "effect/Brand"
 import * as Context from "effect/Context"
 import type { Effect } from "effect/Effect"
@@ -10,6 +9,7 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type { Redacted } from "effect/Redacted"
+import * as Schema from "effect/Schema"
 import type * as Types from "effect/Types"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 import type { HttpMethod } from "./HttpMethod.js"

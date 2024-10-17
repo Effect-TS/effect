@@ -8,8 +8,7 @@ import {
   Multipart
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { Schema } from "@effect/schema"
-import { Effect, Layer, Schedule, Stream } from "effect"
+import { Effect, Layer, Schedule, Schema, Stream } from "effect"
 
 const ServerLive = BunHttpServer.layer({ port: 3000 })
 

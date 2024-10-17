@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Option from "effect/Option"
+import * as ParseResult from "effect/ParseResult"
+import * as Schema from "effect/Schema"
 import type { Simplify } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"

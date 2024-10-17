@@ -3,7 +3,6 @@
   "include": ["src"],
   "references": [
     { "path": "../effect" },
-    { "path": "../schema" },
     { "path": "../platform" },
     { "path": "../platform-node" }
   ],

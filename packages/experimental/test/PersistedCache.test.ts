@@ -1,9 +1,8 @@
 import * as PersistedCache from "@effect/experimental/PersistedCache"
 import * as Persistence from "@effect/experimental/Persistence"
 import { KeyValueStore } from "@effect/platform"
-import { Schema } from "@effect/schema"
 import * as it from "@effect/vitest"
-import { Effect, Exit, Layer, Option, PrimaryKey } from "effect"
+import { Effect, Exit, Layer, Option, PrimaryKey, Schema } from "effect"
 import { assert, describe } from "vitest"
 
 class User extends Schema.Class<User>("User")({

@@ -1,7 +1,7 @@
 import * as JsonSchema from "@effect/platform/OpenApiJsonSchema"
-import * as A from "@effect/schema/Arbitrary"
-import * as Schema from "@effect/schema/Schema"
 import AjvNonEsm from "ajv/dist/2019.js"
+import * as A from "effect/Arbitrary"
+import * as Schema from "effect/Schema"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -102,10 +102,10 @@ schema (SymbolKeyword): symbol`
 
     it("a unique symbol should raise an error", () => {
       expectError(
-        Schema.UniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")),
+        Schema.UniqueSymbolFromSelf(Symbol.for("effect/Schema/test/a")),
         `Missing annotation
 details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (UniqueSymbol): Symbol(@effect/schema/test/a)`
+schema (UniqueSymbol): Symbol(effect/Schema/test/a)`
       )
     })
 
@@ -736,11 +736,11 @@ schema (Declaration): DateFromSelf`
     })
 
     it("should raise an error if there is a property named with a symbol", () => {
-      const a = Symbol.for("@effect/schema/test/a")
+      const a = Symbol.for("effect/Schema/test/a")
       expectError(
         Schema.Struct({ [a]: Schema.String }),
         `Unsupported key
-details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
+details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 

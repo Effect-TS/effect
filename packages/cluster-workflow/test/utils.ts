@@ -1,8 +1,8 @@
 import * as Activity from "@effect/cluster-workflow/Activity"
-import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
+import type * as Schema from "effect/Schema"
 import { vi } from "vitest"
 import type { Mock } from "vitest"
 
