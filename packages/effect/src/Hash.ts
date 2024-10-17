@@ -4,7 +4,6 @@
 import { pipe } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import { hasProperty } from "./Predicate.js"
-import { structuralRegionState } from "./Utils.js"
 
 /** @internal */
 const randomHashCache = globalValue(
@@ -31,10 +30,6 @@ export interface Hash {
  * @category hashing
  */
 export const hash: <A>(self: A) => number = <A>(self: A) => {
-  if (structuralRegionState.enabled === true) {
-    return 0
-  }
-
   switch (typeof self) {
     case "number":
       return number(self)
