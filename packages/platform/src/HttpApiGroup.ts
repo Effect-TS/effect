@@ -88,7 +88,7 @@ export interface HttpApiGroup<
   middleware<I extends HttpApiMiddleware.HttpApiMiddleware.AnyId, S>(middleware: Context.Tag<I, S>): HttpApiGroup<
     Id,
     Endpoints,
-    Error | HttpApiMiddleware.HttpApiMiddleware.Error<S>,
+    Error | HttpApiMiddleware.HttpApiMiddleware.Error<I>,
     R | I,
     TopLevel
   >
