@@ -445,7 +445,7 @@ const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 ```
 
-## Implementing `HttpApiMiddleware`
+### Implementing `HttpApiMiddleware`
 
 If you are using `HttpApiMiddleware` in your API, you can use the
 `HttpApiMiddleware.Tag` definition to implement your middleware.
@@ -478,7 +478,7 @@ const LoggerLive = Layer.effect(
 )
 ```
 
-## Implementing `HttpApiSecurity` middleware
+### Implementing `HttpApiSecurity` middleware
 
 If you are using `HttpApiSecurity` in your middleware, implementing the `Layer`
 looks a bit different.
@@ -533,7 +533,7 @@ const AuthorizationLive = Layer.effect(
 )
 ```
 
-## Setting `HttpApiSecurity` cookies
+### Setting `HttpApiSecurity` cookies
 
 If you need to set the security cookie from within a handler, you can use the
 `HttpApiBuilder.securitySetCookie` api.
