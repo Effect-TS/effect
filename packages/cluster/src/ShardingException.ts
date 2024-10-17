@@ -3,7 +3,7 @@
  */
 import * as Schema from "@effect/schema/Schema"
 import * as PodAddress from "./PodAddress.js"
-import * as RecipientAddress from "./RecipientAddress.js"
+import { RecipientAddress } from "./RecipientAddress.js"
 
 /**
  * @since 1.0.0
@@ -12,7 +12,7 @@ import * as RecipientAddress from "./RecipientAddress.js"
 export class EntityNotManagedByThisPodException extends Schema.TaggedError<EntityNotManagedByThisPodException>()(
   "@effect/cluster/EntityNotManagedByThisPodException",
   {
-    recipientAddress: RecipientAddress.RecipientAddress
+    recipientAddress: RecipientAddress
   }
 ) {
 }

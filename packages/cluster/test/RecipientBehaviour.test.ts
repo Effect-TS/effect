@@ -1,9 +1,9 @@
-import * as Message from "@effect/cluster/Message"
+import * as Entity from "@effect/cluster/Entity"
+import * as Envelope from "@effect/cluster/Envelope"
 import * as PoisonPill from "@effect/cluster/PoisonPill"
-import * as RecipientAddress from "@effect/cluster/RecipientAddress"
+import { RecipientAddress } from "@effect/cluster/RecipientAddress"
 import * as RecipientBehaviour from "@effect/cluster/RecipientBehaviour"
 import * as RecipientBehaviourContext from "@effect/cluster/RecipientBehaviourContext"
-import * as RecipientType from "@effect/cluster/RecipientType"
 import * as ShardId from "@effect/cluster/ShardId"
 import * as Schema from "@effect/schema/Schema"
 import * as Deferred from "effect/Deferred"
@@ -17,16 +17,19 @@ import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import { describe, expect, it } from "vitest"
 
-class Sample extends Message.TaggedMessage<Sample>()("Sample", Schema.Never, Schema.Number, {
-  id: Schema.String
-}, (_) => _.id) {
+class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
+  "SampleMessage",
+  Schema.Never,
+  Schema.Number,
+  { id: Schema.String }
+) {
 }
 
 describe.concurrent("RecipientBehaviour", () => {
   const withTestEnv = <R, E, A>(fa: Effect.Effect<R, E, A>) =>
     pipe(fa, Effect.scoped, Logger.withMinimumLogLevel(LogLevel.Info))
 
-  const makeTestActor = <Msg, R>(
+  const makeTestActor = <Msg extends Schema.TaggedRequest.Any, R>(
     fa: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     scope: Scope.Scope
   ) =>
@@ -35,10 +38,17 @@ describe.concurrent("RecipientBehaviour", () => {
       Effect.provideService(
         RecipientBehaviourContext.RecipientBehaviourContext,
         RecipientBehaviourContext.make({
-          recipientAddress: RecipientAddress.makeRecipientAddress("Entity", "entity1"),
+          address: new RecipientAddress({
+            recipientType: "Entity",
+            entityId: "entity1"
+          }),
           forkShutdown: Effect.void,
           shardId: ShardId.make(1),
-          recipientType: RecipientType.makeEntityType("Sample", Sample) as any
+          entity: new Entity.Standard({
+            name: "Sample",
+            schema: SampleMessage,
+            messageId: (_) => _.id
+          }) as any
         })
       ),
       Scope.extend(scope)
@@ -48,7 +58,7 @@ describe.concurrent("RecipientBehaviour", () => {
     return Effect.gen(function*(_) {
       const received = yield* _(Deferred.make<boolean>())
 
-      const behaviour = RecipientBehaviour.fromInMemoryQueue<Sample, never>(
+      const behaviour = RecipientBehaviour.fromInMemoryQueue<SampleMessage, never>(
         (entityId, dequeue) =>
           pipe(
             Queue.take(dequeue),
@@ -58,8 +68,8 @@ describe.concurrent("RecipientBehaviour", () => {
 
       const scope = yield* _(Scope.make())
       const offer = yield* _(makeTestActor(behaviour, scope))
-      const msg = new Sample({ id: "1" })
-      yield* _(offer(msg))
+      const msg = new SampleMessage({ id: "1" })
+      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a" }), msg.id, msg)))
       yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
 
       expect(yield* _(Deferred.await(received))).toBe(true)
@@ -71,7 +81,7 @@ describe.concurrent("RecipientBehaviour", () => {
     return Effect.gen(function*(_) {
       const started = yield* _(Deferred.make<boolean>())
 
-      const behaviour = RecipientBehaviour.fromInMemoryQueue<Sample, never>(
+      const behaviour = RecipientBehaviour.fromInMemoryQueue<SampleMessage, never>(
         (entityId, dequeue) =>
           pipe(
             Queue.take(dequeue),
@@ -88,8 +98,8 @@ describe.concurrent("RecipientBehaviour", () => {
 
       const scope = yield* _(Scope.make())
       const offer = yield* _(makeTestActor(behaviour, scope))
-      const msg = new Sample({ id: "1" })
-      yield* _(offer(msg))
+      const msg = new SampleMessage({ id: "1" })
+      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a" }), msg.id, msg)))
       yield* _(Deferred.await(started))
       yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(interrupted).toBe(true))

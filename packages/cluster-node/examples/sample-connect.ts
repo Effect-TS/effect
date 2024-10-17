@@ -20,8 +20,8 @@ const liveLayer = Effect.gen(function*() {
     const id = yield* Ref.getAndUpdate(idRef, (_) => _ + 1)
     const entityId = `entity-${id % 10}`
 
-    yield* messenger.sendDiscard(entityId)(new Increment({ messageId: `increment-${id}` }))
-    const result = yield* messenger.send(entityId)(new GetCurrent({ messageId: `get-count-${id}` }))
+    yield* messenger.fireAndForget(entityId, new Increment({ messageId: `increment-${id}` }))
+    const result = yield* messenger.ask(entityId, new GetCurrent({ messageId: `get-count-${id}` }))
     yield* Effect.logInfo(`Counter ${entityId} is now: ${result}`)
 
     yield* Effect.sleep(200)
