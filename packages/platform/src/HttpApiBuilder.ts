@@ -289,25 +289,63 @@ export declare namespace Handlers {
    * @since 1.0.0
    * @category handlers
    */
-  export type ValidateReturn<A extends Any> = A extends Handlers<
-    infer _E,
-    infer _Provides,
-    infer _R,
-    infer _Endpoints
-  > ? [_Endpoints] extends [never] ? {}
+  export type ValidateReturn<A> = A extends (
+    | Handlers<
+      infer _E,
+      infer _Provides,
+      infer _R,
+      infer _Endpoints
+    >
+    | Effect.Effect<
+      Handlers<
+        infer _E,
+        infer _Provides,
+        infer _R,
+        infer _Endpoints
+      >,
+      infer _EX,
+      infer _RX
+    >
+  ) ? [_Endpoints] extends [never] ? A
     : `Endpoint not handled: ${HttpApiEndpoint.HttpApiEndpoint.Name<_Endpoints>}` :
-    {}
+    `Must return the implemented handlers`
 
   /**
    * @since 1.0.0
    * @category handlers
    */
-  export type Context<A extends Any> = A extends Handlers<
+  export type Error<A> = A extends Effect.Effect<
+    Handlers<
+      infer _E,
+      infer _Provides,
+      infer _R,
+      infer _Endpoints
+    >,
+    infer _EX,
+    infer _RX
+  > ? _EX :
+    never
+
+  /**
+   * @since 1.0.0
+   * @category handlers
+   */
+  export type Context<A> = A extends Handlers<
     infer _E,
     infer _Provides,
     infer _R,
     infer _Endpoints
   > ? _R :
+    A extends Effect.Effect<
+      Handlers<
+        infer _E,
+        infer _Provides,
+        infer _R,
+        infer _Endpoints
+      >,
+      infer _EX,
+      infer _RX
+    > ? _R | _RX :
     never
 }
 
@@ -378,24 +416,16 @@ export const group = <
   ApiError,
   ApiR,
   const Name extends HttpApiGroup.HttpApiGroup.Name<Groups>,
-  Return extends Handlers.Any,
-  EX = never,
-  RX = never
+  Return
 >(
   api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
   groupName: Name,
   build: (
     handlers: Handlers.FromGroup<ApiError, ApiR, HttpApiGroup.HttpApiGroup.WithName<Groups, Name>>
-  ) =>
-    & (
-      | Return
-      | Effect.Effect<Return, EX, RX>
-    )
-    & Handlers.ValidateReturn<Return>
+  ) => Handlers.ValidateReturn<Return>
 ): Layer.Layer<
   HttpApiGroup.Group<Name>,
-  EX,
-  | RX
+  Handlers.Error<Return>,
   | Handlers.Context<Return>
   | HttpApiGroup.HttpApiGroup.ContextWithName<Groups, Name>
 > =>
@@ -405,8 +435,8 @@ export const group = <
       const group = HashMap.unsafeGet(api.groups, groupName)
       const result = build(makeHandlers({ group, handlers: Chunk.empty() }))
       const handlers: Handlers<any, any, any> = Effect.isEffect(result)
-        ? (yield* result)
-        : result as any
+        ? (yield* result as Effect.Effect<any, any, any>)
+        : result
       const groupMiddleware = makeMiddlewareMap((group as any).middlewares, context)
       const routes: Array<HttpRouter.Route<any, any>> = []
       for (const item of handlers.handlers) {
