@@ -364,13 +364,22 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type Request<Endpoint extends Any> =
-    & {
-      readonly path: PathParsed<Endpoint>
-    }
-    & ([UrlParams<Endpoint>] extends [infer U] ? [U] extends [never] ? {} : { readonly urlParams: U } : {})
-    & ([Payload<Endpoint>] extends [infer P] ? [P] extends [never] ? {} : { readonly payload: P } : {})
-    & ([Headers<Endpoint>] extends [infer H] ? [H] extends [never] ? {} : { readonly headers: H } : {})
+  export type Request<Endpoint extends Any> = Endpoint extends HttpApiEndpoint<
+    infer _Name,
+    infer _Method,
+    infer _Path,
+    infer _UrlParams,
+    infer _Payload,
+    infer _Headers,
+    infer _Success,
+    infer _Error,
+    infer _R
+  > ?
+      & ([_Path] extends [never] ? {} : { readonly path: _Path })
+      & ([_UrlParams] extends [never] ? {} : { readonly urlParams: _UrlParams })
+      & ([_Payload] extends [never] ? {} : { readonly payload: _Payload })
+      & ([_Headers] extends [never] ? {} : { readonly headers: _Headers })
+    : {}
 
   /**
    * @since 1.0.0
