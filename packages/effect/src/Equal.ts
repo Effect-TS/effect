@@ -4,7 +4,6 @@
 import type { Equivalence } from "./Equivalence.js"
 import * as Hash from "./Hash.js"
 import { hasProperty } from "./Predicate.js"
-import { structuralRegionState } from "./Utils.js"
 
 /**
  * @since 2.0.0
@@ -44,41 +43,14 @@ function compareBoth(self: unknown, that: unknown): boolean {
   if (selfType === "object" || selfType === "function") {
     if (self !== null && that !== null) {
       if (isEqual(self) && isEqual(that)) {
-        if (Hash.hash(self) === Hash.hash(that) && self[symbol](that)) {
-          return true
-        } else {
-          return structuralRegionState.enabled && structuralRegionState.tester
-            ? structuralRegionState.tester(self, that)
-            : false
-        }
+        return Hash.hash(self) === Hash.hash(that) && self[symbol](that)
       } else if (self instanceof Date && that instanceof Date) {
         return self.toISOString() === that.toISOString()
       }
     }
-    if (structuralRegionState.enabled) {
-      if (Array.isArray(self) && Array.isArray(that)) {
-        return self.length === that.length && self.every((v, i) => compareBoth(v, that[i]))
-      }
-      if (Object.getPrototypeOf(self) === Object.prototype && Object.getPrototypeOf(self) === Object.prototype) {
-        const keysSelf = Object.keys(self as any)
-        const keysThat = Object.keys(that as any)
-        if (keysSelf.length === keysThat.length) {
-          for (const key of keysSelf) {
-            // @ts-expect-error
-            if (!(key in that && compareBoth(self[key], that[key]))) {
-              return structuralRegionState.tester ? structuralRegionState.tester(self, that) : false
-            }
-          }
-          return true
-        }
-      }
-      return structuralRegionState.tester ? structuralRegionState.tester(self, that) : false
-    }
   }
 
-  return structuralRegionState.enabled && structuralRegionState.tester
-    ? structuralRegionState.tester(self, that)
-    : false
+  return false
 }
 
 /**
