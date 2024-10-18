@@ -1,10 +1,11 @@
+import type * as Schema from "@effect/schema/Schema"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as AtLeastOnceStorage from "../AtLeastOnceStorage.js"
-import type * as Message from "../Message.js"
+import type * as Envelope from "../Envelope.js"
 import * as MessageState from "../MessageState.js"
 import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
@@ -33,24 +34,24 @@ export function runPendingMessageSweeperScoped(
 }
 
 /** @internal */
-export function atLeastOnceRecipientBehaviour<Msg extends Message.Message.Any, R>(
+export function atLeastOnceRecipientBehaviour<Msg extends Schema.TaggedRequest.Any, R>(
   fa: RecipientBehaviour.RecipientBehaviour<Msg, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R | AtLeastOnceStorage.AtLeastOnceStorage> {
   return Effect.gen(function*(_) {
     const storage = yield* _(AtLeastOnceStorage.AtLeastOnceStorage)
     const entityId = yield* _(RecipientBehaviourContext.entityId)
     const shardId = yield* _(RecipientBehaviourContext.shardId)
-    const recipientType = yield* _(RecipientBehaviourContext.recipientType)
+    const recipientType = yield* _(RecipientBehaviourContext.entity)
     const offer = yield* _(fa)
-    return <A extends Msg>(message: A) =>
+    return <A extends Msg>(envelope: Envelope.Envelope<A>) =>
       pipe(
-        storage.upsert(recipientType, shardId, entityId, message),
+        storage.upsert<A>(recipientType as any, shardId, entityId, envelope),
         Effect.zipRight(
           pipe(
-            offer(message),
+            offer(envelope),
             Effect.tap(MessageState.match({
               onAcknowledged: () => Effect.void,
-              onProcessed: () => storage.markAsProcessed(recipientType, shardId, entityId, message)
+              onProcessed: () => storage.markAsProcessed<A>(recipientType as any, shardId, entityId, envelope)
             }))
           )
         )

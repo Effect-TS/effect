@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as DurableExecutionEvent from "@effect/cluster-workflow/DurableExecutionEvent"
 import * as Schema from "@effect/schema/Schema"
 import * as SqlClient from "@effect/sql/SqlClient"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
+import * as DurableExecutionEvent from "./DurableExecutionEvent.js"
 
 const SymbolKey = "@effect/cluster-workflow/DurableExecutionJournal"
 
@@ -28,19 +28,19 @@ export type DurableExecutionJournalTypeId = typeof DurableExecutionJournalTypeId
  */
 export interface DurableExecutionJournal {
   readonly [DurableExecutionJournalTypeId]: DurableExecutionJournalTypeId
-  read<A, IA, E, IE>(
+  read<A, IA, RA, E, IE, RE>(
     persistenceId: string,
-    success: Schema.Schema<A, IA>,
-    failure: Schema.Schema<E, IE>,
+    success: Schema.Schema<A, IA, RA>,
+    failure: Schema.Schema<E, IE, RE>,
     fromSequence: number,
     keepReading: boolean
-  ): Stream.Stream<DurableExecutionEvent.DurableExecutionEvent<A, E>>
-  append<A, IA, E, IE>(
+  ): Stream.Stream<DurableExecutionEvent.DurableExecutionEvent<A, E>, never, RA | RE>
+  append<A, IA, RA, E, IE, RE>(
     persistenceId: string,
-    success: Schema.Schema<A, IA>,
-    failure: Schema.Schema<E, IE>,
+    success: Schema.Schema<A, IA, RA>,
+    failure: Schema.Schema<E, IE, RE>,
     event: DurableExecutionEvent.DurableExecutionEvent<A, E>
-  ): Effect.Effect<void>
+  ): Effect.Effect<void, never, RA | RE>
 }
 
 /**
@@ -110,10 +110,10 @@ export const make = ({ table }: DurableExecutionJournal.MakeOptions) =>
     })
 
     // TODO: handle duplicate keys?
-    const append = <A, IA, E, IE>(
+    const append = <A, IA, RA, E, IE, RE>(
       executionId: string,
-      success: Schema.Schema<A, IA>,
-      failure: Schema.Schema<E, IE>,
+      success: Schema.Schema<A, IA, RA>,
+      failure: Schema.Schema<E, IE, RE>,
       event: DurableExecutionEvent.DurableExecutionEvent<A, E>
     ) => {
       const schema = Schema.parseJson(DurableExecutionEvent.schema(success, failure))
@@ -135,10 +135,10 @@ export const make = ({ table }: DurableExecutionJournal.MakeOptions) =>
       )
     }
 
-    const read = <A, IA, E, IE>(
+    const read = <A, IA, RA, E, IE, RE>(
       executionId: string,
-      success: Schema.Schema<A, IA>,
-      failure: Schema.Schema<E, IE>,
+      success: Schema.Schema<A, IA, RA>,
+      failure: Schema.Schema<E, IE, RE>,
       fromSequence: number,
       _keepReading: boolean
     ) => {
