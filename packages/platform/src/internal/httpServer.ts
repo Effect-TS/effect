@@ -9,6 +9,10 @@ import * as ClientRequest from "../HttpClientRequest.js"
 import type * as Middleware from "../HttpMiddleware.js"
 import type * as Server from "../HttpServer.js"
 import type * as ServerRequest from "../HttpServerRequest.js"
+import * as internalEtag from "./etag.js"
+import * as internalFileSystem from "./fileSystem.js"
+import * as internalPlatform from "./httpPlatform.js"
+import * as internalPath from "./path.js"
 
 /** @internal */
 export const TypeId: Server.TypeId = Symbol.for("@effect/platform/HttpServer") as Server.TypeId
@@ -181,3 +185,12 @@ export const makeTestClient = addressWith((address) =>
 
 /** @internal */
 export const layerTestClient = Layer.effect(Client.HttpClient, makeTestClient)
+
+/** @internal */
+export const layerContext = Layer.mergeAll(
+  internalPlatform.layer,
+  internalPath.layer,
+  internalEtag.layerWeak
+).pipe(
+  Layer.provideMerge(internalFileSystem.layerNoop({}))
+)

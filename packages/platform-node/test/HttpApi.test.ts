@@ -6,6 +6,7 @@ import {
   HttpApiClient,
   HttpApiEndpoint,
   HttpApiGroup,
+  HttpApiMiddleware,
   HttpApiSchema,
   HttpApiSecurity,
   HttpClient,
@@ -25,12 +26,13 @@ describe("HttpApi", () => {
       Effect.gen(function*() {
         const client = yield* HttpApiClient.make(Api)
         const user = yield* client.users.create({
+          urlParams: { id: 123 },
           payload: { name: "Joe" }
         })
         assert.deepStrictEqual(
           user,
           new User({
-            id: 1,
+            id: 123,
             name: "Joe",
             createdAt: DateTime.unsafeMake(0)
           })
@@ -103,6 +105,7 @@ describe("HttpApi", () => {
     it.scoped("class level annotations", () =>
       Effect.gen(function*() {
         const response = yield* HttpClientRequest.post("/users").pipe(
+          HttpClientRequest.setUrlParams({ id: "0" }),
           HttpClientRequest.bodyUnsafeJson({ name: "boom" }),
           HttpClient.execute
         )
@@ -163,7 +166,7 @@ describe("HttpApi", () => {
 
     it.effect("apiKey query security", () =>
       Effect.gen(function*() {
-        const decode = HttpApiBuilder.securityDecode(securityQuery).pipe(
+        const redacted = yield* HttpApiBuilder.securityDecode(securityQuery).pipe(
           Effect.provideService(
             HttpServerRequest.HttpServerRequest,
             HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
@@ -172,7 +175,6 @@ describe("HttpApi", () => {
             api_key: "foo"
           })
         )
-        const redacted = yield* decode
         assert.strictEqual(Redacted.value(redacted), "foo")
       }).pipe(Effect.provide(HttpLive)))
   })
@@ -199,11 +201,6 @@ class Group extends Schema.Class<Group>("Group")({
   name: Schema.String
 }) {}
 
-const securityCookie = HttpApiSecurity.apiKey({
-  in: "cookie",
-  key: "token"
-})
-
 const securityHeader = HttpApiSecurity.apiKey({
   in: "header",
   key: "x-api-key"
@@ -214,80 +211,89 @@ const securityQuery = HttpApiSecurity.apiKey({
   key: "api_key"
 })
 
-class GroupsApi extends HttpApiGroup.make("groups").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/:id").pipe(
-      HttpApiEndpoint.setPath(Schema.Struct({
-        id: Schema.NumberFromString
-      })),
-      HttpApiEndpoint.setSuccess(Group)
-    )
-  ),
-  HttpApiGroup.add(
-    HttpApiEndpoint.post("create", "/").pipe(
-      HttpApiEndpoint.setPayload(Schema.Struct(Struct.pick(Group.fields, "name"))),
-      HttpApiEndpoint.setSuccess(Group)
-    )
-  ),
-  HttpApiGroup.addError(GroupError.pipe(
-    HttpApiSchema.asEmpty({ status: 418, decode: () => new GroupError() })
-  )),
-  HttpApiGroup.prefix("/groups"),
-  OpenApi.annotate({ security: securityCookie })
-) {}
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/:id").pipe(
-      HttpApiEndpoint.setPath(Schema.Struct({
+class Authorization extends HttpApiMiddleware.Tag<Authorization>()("Authorization", {
+  security: {
+    cookie: HttpApiSecurity.apiKey({
+      in: "cookie",
+      key: "token"
+    })
+  },
+  provides: CurrentUser
+}) {}
+
+class GroupsApi extends HttpApiGroup.make("groups")
+  .add(
+    HttpApiEndpoint.get("findById", "/:id")
+      .setPath(Schema.Struct({
         id: Schema.NumberFromString
-      })),
-      HttpApiEndpoint.setSuccess(User)
-    )
-  ),
-  HttpApiGroup.add(
-    HttpApiEndpoint.post("create", "/").pipe(
-      HttpApiEndpoint.setPayload(Schema.Struct(Struct.omit(
+      }))
+      .addSuccess(Group)
+  )
+  .add(
+    HttpApiEndpoint.post("create", "/")
+      .setPayload(Schema.Struct(Struct.pick(Group.fields, "name")))
+      .addSuccess(Group)
+  )
+  .addError(GroupError.pipe(
+    HttpApiSchema.asEmpty({ status: 418, decode: () => new GroupError() })
+  ))
+  .prefix("/groups")
+{}
+
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById", "/:id")
+      .setPath(Schema.Struct({
+        id: Schema.NumberFromString
+      }))
+      .addSuccess(User)
+  )
+  .add(
+    HttpApiEndpoint.post("create", "/")
+      .setPayload(Schema.Struct(Struct.omit(
         User.fields,
         "id",
         "createdAt"
-      ))),
-      HttpApiEndpoint.setSuccess(User),
-      HttpApiEndpoint.addError(UserError)
-    )
-  ),
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("list", "/").pipe(
-      HttpApiEndpoint.setHeaders(Schema.Struct({
+      )))
+      .setUrlParams(Schema.Struct({
+        id: Schema.NumberFromString
+      }))
+      .addSuccess(User)
+      .addError(UserError)
+  )
+  .add(
+    HttpApiEndpoint.get("list", "/")
+      .setHeaders(Schema.Struct({
         page: Schema.NumberFromString.pipe(
           Schema.optionalWith({ default: () => 1 })
         )
-      })),
-      HttpApiEndpoint.setSuccess(Schema.Array(User)),
-      HttpApiEndpoint.addError(NoStatusError),
-      OpenApi.annotate({ identifier: "listUsers" })
-    )
-  ),
-  HttpApiGroup.add(
-    HttpApiEndpoint.post("upload", "/upload").pipe(
-      HttpApiEndpoint.setPayload(HttpApiSchema.Multipart(Schema.Struct({
+      }))
+      .addSuccess(Schema.Array(User))
+      .addError(NoStatusError)
+      .annotateContext(OpenApi.annotations({ identifier: "listUsers" }))
+  )
+  .add(
+    HttpApiEndpoint.post("upload", "/upload")
+      .setPayload(HttpApiSchema.Multipart(Schema.Struct({
         file: Multipart.SingleFileSchema
-      }))),
-      HttpApiEndpoint.setSuccess(Schema.Struct({
+      })))
+      .addSuccess(Schema.Struct({
         contentType: Schema.String,
         length: Schema.Int
       }))
-    )
-  ),
-  OpenApi.annotate({ title: "Users API" })
-) {}
+  )
+  .middleware(Authorization)
+  .annotateContext(OpenApi.annotations({ title: "Users API" }))
+{}
 
-class Api extends HttpApi.empty.pipe(
-  HttpApi.addGroup(GroupsApi),
-  HttpApi.addGroup("/users", UsersApi),
-  HttpApi.addError(GlobalError, { status: 413 }),
-  OpenApi.annotate({ title: "API" })
-) {}
+class Api extends HttpApi.empty
+  .add(GroupsApi)
+  .add(UsersApi.prefix("/users"))
+  .addError(GlobalError, { status: 413 })
+  .annotateContext(OpenApi.annotations({ title: "API" }))
+{}
 
 // impl
 
@@ -299,79 +305,83 @@ class UserRepo extends Context.Tag("UserRepo")<UserRepo, {
   })
 }
 
-class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
-
-const securityMiddleware = HttpApiBuilder.middlewareSecurity(
-  securityCookie,
-  CurrentUser,
-  (token) =>
-    Effect.succeed(
-      new User({
-        id: 1,
-        name: Redacted.value(token),
-        createdAt: DateTime.unsafeNow()
-      })
-    )
+const AuthorizationLive = Layer.succeed(
+  Authorization,
+  Authorization.of({
+    cookie: (token) =>
+      Effect.succeed(
+        new User({
+          id: 1,
+          name: Redacted.value(token),
+          createdAt: DateTime.unsafeNow()
+        })
+      )
+  })
 )
 
-const HttpUsersLive = HttpApiBuilder.group(Api, "users", (handlers) =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const repo = yield* UserRepo
-    return handlers.pipe(
-      HttpApiBuilder.handle("findById", (_) =>
-        _.path.id === -1
-          ? CurrentUser :
-          repo.findById(_.path.id)),
-      HttpApiBuilder.handle("create", (_) =>
-        _.payload.name === "boom"
-          ? Effect.fail(new UserError())
-          : Effect.map(DateTime.now, (now) =>
-            new User({
-              id: 1,
-              name: _.payload.name,
-              createdAt: now
-            }))),
-      HttpApiBuilder.handle("list", (_) =>
-        _.headers.page === 0
-          ? Effect.fail(new NoStatusError())
-          // test handler level context
-          : Effect.map(DateTime.nowInCurrentZone, (now) => [
-            new User({
-              id: 1,
-              name: `page ${_.headers.page}`,
-              createdAt: DateTime.unsafeMake(now.epochMillis)
-            })
-          ])),
-      HttpApiBuilder.handle("upload", (_) =>
-        Effect.gen(function*() {
-          const stat = yield* fs.stat(_.payload.file.path).pipe(Effect.orDie)
-          return {
-            contentType: _.payload.file.contentType,
-            length: Number(stat.size)
-          }
-        })),
-      securityMiddleware
-    )
-  })).pipe(
-    Layer.provide(DateTime.layerCurrentZoneOffset(0)),
-    Layer.provide(UserRepo.Live)
-  )
+const HttpUsersLive = HttpApiBuilder.group(
+  Api,
+  "users",
+  (handlers) =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const repo = yield* UserRepo
+      return handlers
+        .handle("findById", (_) =>
+          _.path.id === -1
+            ? CurrentUser :
+            repo.findById(_.path.id))
+        .handle("create", (_) =>
+          _.payload.name === "boom"
+            ? Effect.fail(new UserError())
+            : Effect.map(DateTime.now, (now) =>
+              new User({
+                id: _.urlParams.id,
+                name: _.payload.name,
+                createdAt: now
+              })))
+        .handle("list", (_) =>
+          _.headers.page === 0
+            ? Effect.fail(new NoStatusError())
+            // test handler level context
+            : Effect.map(DateTime.nowInCurrentZone, (now) => [
+              new User({
+                id: 1,
+                name: `page ${_.headers.page}`,
+                createdAt: DateTime.unsafeMake(now.epochMillis)
+              })
+            ]))
+        .handle("upload", (_) =>
+          Effect.gen(function*() {
+            const stat = yield* fs.stat(_.payload.file.path).pipe(Effect.orDie)
+            return {
+              contentType: _.payload.file.contentType,
+              length: Number(stat.size)
+            }
+          }))
+    })
+).pipe(Layer.provide([
+  DateTime.layerCurrentZoneOffset(0),
+  UserRepo.Live,
+  AuthorizationLive
+]))
 
-const HttpGroupsLive = HttpApiBuilder.group(Api, "groups", (handlers) =>
-  handlers.pipe(
-    HttpApiBuilder.handle("findById", (_) =>
-      _.path.id === 0
-        ? Effect.fail(new GroupError())
-        : Effect.succeed(new Group({ id: 1, name: "foo" }))),
-    HttpApiBuilder.handle("create", (_) => Effect.succeed(new Group({ id: 1, name: _.payload.name }))),
-    securityMiddleware
-  ))
-
-const HttpApiLive = HttpApiBuilder.api(Api).pipe(
-  Layer.provide(HttpUsersLive),
-  Layer.provide(HttpGroupsLive)
+const HttpGroupsLive = HttpApiBuilder.group(
+  Api,
+  "groups",
+  (handlers) =>
+    handlers
+      .handle("findById", ({ path }) =>
+        path.id === 0
+          ? Effect.fail(new GroupError())
+          : Effect.succeed(new Group({ id: 1, name: "foo" })))
+      .handle("create", ({ payload }) => Effect.succeed(new Group({ id: 1, name: payload.name })))
 )
+
+const HttpApiLive = Layer.provide(HttpApiBuilder.api(Api), [
+  HttpGroupsLive,
+  HttpUsersLive
+])
 
 const HttpLive = HttpApiBuilder.serve().pipe(
   Layer.provide(HttpApiBuilder.middlewareCors()),
