@@ -105,6 +105,7 @@ describe("HttpApi", () => {
     it.scoped("class level annotations", () =>
       Effect.gen(function*() {
         const response = yield* HttpClientRequest.post("/users").pipe(
+          HttpClientRequest.setUrlParams({ id: "0" }),
           HttpClientRequest.bodyUnsafeJson({ name: "boom" }),
           HttpClient.execute
         )
