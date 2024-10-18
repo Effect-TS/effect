@@ -30,7 +30,7 @@ class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
   message: Schema.String
 }, HttpApiSchema.annotations({ status: 401 })) {}
 
-class Authentication extends HttpApiMiddleware.Tag<Authentication>()("Authentication", {
+export class Authentication extends HttpApiMiddleware.Tag<Authentication>()("Authentication", {
   failure: Unauthorized,
   provides: CurrentUser,
   security: {

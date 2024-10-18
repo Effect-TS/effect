@@ -130,10 +130,7 @@ export type TagClass<
         >
       >
     >
-    & {
-      readonly [SecurityTypeId]: SecurityTypeId
-      readonly security: Options["security"]
-    }
+    & TagClass.SecurityFields<Options["security"]>
   : TagClass.Base<
     Self,
     Name,
@@ -198,23 +195,37 @@ export declare namespace TagClass {
    * @category models
    */
   export type Base<Self, Name extends string, Options, Service> =
-    & {
-      new(_: never):
-        & Context.TagClassShape<Name, Service>
-        & {
-          readonly [TypeId]: {
-            readonly provides: Provides<Options>
-            readonly failure: Failure<Options>
-          }
-        }
-      readonly [TypeId]: TypeId
-      readonly optional: Optional<Options>
-      readonly failure: FailureSchema<Options>
-    }
+    & BaseConstructor<Self, Name, Options, Service>
     & (Optional<Options> extends true ? {}
       : Options extends { readonly provides: Context.Tag<any, any> } ? { readonly provides: Options["provides"] }
       : {})
-    & Context.Tag<Self, Service>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface BaseConstructor<Self, Name extends string, Options, Service> extends Context.Tag<Self, Service> {
+    new(_: never):
+      & Context.TagClassShape<Name, Service>
+      & {
+        readonly [TypeId]: {
+          readonly provides: Provides<Options>
+          readonly failure: Failure<Options>
+        }
+      }
+    readonly [TypeId]: TypeId
+    readonly optional: Optional<Options>
+    readonly failure: FailureSchema<Options>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface SecurityFields<Security extends Record<string, HttpApiSecurity.HttpApiSecurity>> {
+    readonly [SecurityTypeId]: SecurityTypeId
+    readonly security: Security
+  }
 }
 
 /**
