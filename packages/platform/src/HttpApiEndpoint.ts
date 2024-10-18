@@ -425,7 +425,7 @@ export declare namespace HttpApiEndpoint {
    */
   export type HandlerResponse<Endpoint extends Any, E, R> = (
     request: Types.Simplify<Request<Endpoint>>
-  ) => Effect<HttpServerResponse, E, R>
+  ) => Effect<HttpServerResponse, Error<Endpoint> | E, R>
 
   /**
    * @since 1.0.0
