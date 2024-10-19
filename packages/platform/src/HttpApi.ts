@@ -79,7 +79,11 @@ export interface HttpApi<
    */
   middleware<I extends HttpApiMiddleware.HttpApiMiddleware.AnyId, S>(
     middleware: Context.Tag<I, S>
-  ): HttpApi<Groups, E | HttpApiMiddleware.HttpApiMiddleware.Error<I>, R | I>
+  ): HttpApi<
+    Groups,
+    E | HttpApiMiddleware.HttpApiMiddleware.Error<I>,
+    R | I | HttpApiMiddleware.HttpApiMiddleware.ErrorContext<I>
+  >
   /**
    * Annotate the `HttpApi`.
    */

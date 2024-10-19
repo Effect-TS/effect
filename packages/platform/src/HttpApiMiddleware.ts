@@ -100,6 +100,12 @@ export declare namespace HttpApiMiddleware {
    * @since 1.0.0
    * @category models
    */
+  export type ErrorContext<A> = A extends { readonly [TypeId]: { readonly failureContext: infer R } } ? R : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type Only<R> = Extract<R, AnyId>
 
   /**
@@ -182,6 +188,12 @@ export declare namespace TagClass {
    * @since 1.0.0
    * @category models
    */
+  export type FailureContext<Options> = Schema.Schema.Context<FailureSchema<Options>>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type FailureService<Options> = Optional<Options> extends true ? unknown : Failure<Options>
 
   /**
@@ -211,6 +223,7 @@ export declare namespace TagClass {
         readonly [TypeId]: {
           readonly provides: Provides<Options>
           readonly failure: Failure<Options>
+          readonly failureContext: FailureContext<Options>
         }
       }
     readonly [TypeId]: TypeId

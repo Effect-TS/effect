@@ -60,7 +60,7 @@ export const api = <Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
 ): Layer.Layer<
   HttpApi.Api,
   never,
-  R | HttpApiGroup.HttpApiGroup.ToService<Groups>
+  HttpApiGroup.HttpApiGroup.ToService<Groups> | R | HttpApiGroup.HttpApiGroup.ErrorContext<Groups>
 > =>
   Layer.effect(
     HttpApi.Api,

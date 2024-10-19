@@ -50,7 +50,8 @@ export interface HttpApiEndpoint<
   in out Headers = never,
   in out Success = void,
   in out Error = never,
-  out R = never
+  out R = never,
+  out RE = never
 > extends Pipeable {
   readonly [TypeId]: TypeId
   readonly name: Name
@@ -61,7 +62,7 @@ export interface HttpApiEndpoint<
   readonly payloadSchema: Option.Option<Schema.Schema<Payload, unknown, R>>
   readonly headersSchema: Option.Option<Schema.Schema<Headers, unknown, R>>
   readonly successSchema: Schema.Schema<Success, unknown, R>
-  readonly errorSchema: Schema.Schema<Error, unknown, R>
+  readonly errorSchema: Schema.Schema<Error, unknown, RE>
   readonly annotations: Context.Context<never>
   readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
 
@@ -83,7 +84,8 @@ export interface HttpApiEndpoint<
     Headers,
     Exclude<Success, void> | Schema.Schema.Type<S>,
     Error,
-    R | Schema.Schema.Context<S>
+    R | Schema.Schema.Context<S>,
+    RE
   >
 
   /**
@@ -104,7 +106,8 @@ export interface HttpApiEndpoint<
     Headers,
     Success,
     Error | Schema.Schema.Type<E>,
-    R | Schema.Schema.Context<E>
+    R,
+    RE | Schema.Schema.Context<E>
   >
 
   /**
@@ -128,7 +131,8 @@ export interface HttpApiEndpoint<
     Headers,
     Success,
     Error,
-    R | Schema.Schema.Context<P>
+    R | Schema.Schema.Context<P>,
+    RE
   >
 
   /**
@@ -146,7 +150,8 @@ export interface HttpApiEndpoint<
     Headers,
     Success,
     Error,
-    R | Schema.Schema.Context<Path>
+    R | Schema.Schema.Context<Path>,
+    RE
   >
 
   /**
@@ -163,7 +168,8 @@ export interface HttpApiEndpoint<
     Headers,
     Success,
     Error,
-    R | Schema.Schema.Context<Path>
+    R | Schema.Schema.Context<Path>,
+    RE
   >
 
   /**
@@ -181,7 +187,8 @@ export interface HttpApiEndpoint<
     Schema.Schema.Type<H>,
     Success,
     Error,
-    R | Schema.Schema.Context<H>
+    R | Schema.Schema.Context<H>,
+    RE
   >
 
   /**
@@ -189,7 +196,7 @@ export interface HttpApiEndpoint<
    */
   prefix(
     prefix: HttpRouter.PathInput
-  ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R>
+  ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
 
   /**
    * Add an `HttpApiMiddleware` to the endpoint.
@@ -203,7 +210,8 @@ export interface HttpApiEndpoint<
     Headers,
     Success,
     Error | HttpApiMiddleware.HttpApiMiddleware.Error<I>,
-    R | I
+    R | I,
+    RE | HttpApiMiddleware.HttpApiMiddleware.ErrorContext<I>
   >
 
   /**
@@ -212,14 +220,14 @@ export interface HttpApiEndpoint<
   annotate<I, S>(
     tag: Context.Tag<I, S>,
     value: S
-  ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R>
+  ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
 
   /**
    * Merge the annotations of the endpoint with the provided context.
    */
   annotateContext<I>(
     context: Context.Context<I>
-  ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R>
+  ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
 }
 
 /**
@@ -239,7 +247,7 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export interface AnyWithProps extends HttpApiEndpoint<string, HttpMethod, any, any, any, any, any, any> {}
+  export interface AnyWithProps extends HttpApiEndpoint<string, HttpMethod, any, any, any, any, any, any, any> {}
 
   /**
    * @since 1.0.0
@@ -254,7 +262,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? _Name
     : never
 
@@ -271,7 +280,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? _Success
     : never
 
@@ -288,7 +298,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? _Error
     : never
 
@@ -305,7 +316,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? _Path
     : never
 
@@ -322,7 +334,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? _UrlParams
     : never
 
@@ -339,7 +352,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? _Payload
     : never
 
@@ -356,7 +370,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? _Headers
     : never
 
@@ -373,7 +388,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ?
       & ([_Path] extends [never] ? {} : { readonly path: _Path })
       & ([_UrlParams] extends [never] ? {} : { readonly urlParams: _UrlParams })
@@ -407,8 +423,27 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? _R
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ErrorContext<Endpoint> = Endpoint extends HttpApiEndpoint<
+    infer _Name,
+    infer _Method,
+    infer _Path,
+    infer _UrlParams,
+    infer _Payload,
+    infer _Headers,
+    infer _Success,
+    infer _Error,
+    infer _R,
+    infer _RE
+  > ? _RE
     : never
 
   /**
@@ -540,7 +575,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? HttpApiEndpoint<
       _Name,
       _Method,
@@ -550,7 +586,8 @@ export declare namespace HttpApiEndpoint {
       _Headers,
       _Success,
       _Error | E,
-      _R | R
+      _R,
+      _RE | R
     > :
     never
 
@@ -567,7 +604,8 @@ export declare namespace HttpApiEndpoint {
     infer _Headers,
     infer _Success,
     infer _Error,
-    infer _R
+    infer _R,
+    infer _RE
   > ? HttpApiEndpoint<
       _Name,
       _Method,
@@ -577,7 +615,8 @@ export declare namespace HttpApiEndpoint {
       _Headers,
       _Success,
       _Error | HttpApiMiddleware.HttpApiMiddleware.Error<R>,
-      _R | R
+      _R | R,
+      _RE | HttpApiMiddleware.HttpApiMiddleware.ErrorContext<R>
     > :
     never
 }
@@ -684,7 +723,8 @@ const makeProto = <
   Headers,
   Success,
   Error,
-  R
+  R,
+  RE
 >(options: {
   readonly name: Name
   readonly path: HttpRouter.PathInput
@@ -694,10 +734,10 @@ const makeProto = <
   readonly payloadSchema: Option.Option<Schema.Schema<Payload, unknown, R>>
   readonly headersSchema: Option.Option<Schema.Schema<Headers, unknown, R>>
   readonly successSchema: Schema.Schema<Success, unknown, R>
-  readonly errorSchema: Schema.Schema<Error, unknown, R>
+  readonly errorSchema: Schema.Schema<Error, unknown, RE>
   readonly annotations: Context.Context<never>
   readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
-}): HttpApiEndpoint<Name, Method, Path, Payload, Headers, Success, Error, R> =>
+}): HttpApiEndpoint<Name, Method, Path, Payload, Headers, Success, Error, R, RE> =>
   Object.assign(Object.create(Proto), options)
 
 /**

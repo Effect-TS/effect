@@ -61,7 +61,8 @@ export declare namespace Client {
       infer _Headers,
       infer _Success,
       infer _Error,
-      infer _R
+      infer _R,
+      infer _RE
     >
   ] ? (
       request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers>>
@@ -99,7 +100,7 @@ export const make = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
 ): Effect.Effect<
   Simplify<Client<Groups, ApiError>>,
   never,
-  HttpApiMiddleware.HttpApiMiddleware.Without<ApiR | HttpApiGroup.Context<Groups>> | HttpClient.HttpClient
+  HttpApiMiddleware.HttpApiMiddleware.Without<ApiR | HttpApiGroup.ClientContext<Groups>> | HttpClient.HttpClient
 > =>
   Effect.gen(function*() {
     const context = yield* Effect.context<any>()

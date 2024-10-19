@@ -89,7 +89,7 @@ export interface HttpApiGroup<
     Id,
     Endpoints,
     Error | HttpApiMiddleware.HttpApiMiddleware.Error<I>,
-    R | I,
+    R | I | HttpApiMiddleware.HttpApiMiddleware.ErrorContext<I>,
     TopLevel
   >
 
@@ -225,8 +225,32 @@ export declare namespace HttpApiGroup {
    * @category models
    */
   export type Context<Group> = Group extends
+    HttpApiGroup<infer _Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ?
+      | HttpApiMiddleware.HttpApiMiddleware.Only<_R>
+      | Exclude<
+        HttpApiEndpoint.HttpApiEndpoint.Context<_Endpoints>,
+        HttpApiMiddleware.HttpApiMiddleware.ExtractProvides<HttpApiEndpoint.HttpApiEndpoint.Context<_Endpoints> | _R>
+      >
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ClientContext<Group> = Group extends
+    HttpApiGroup<infer _Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ?
+      | _R
+      | HttpApiEndpoint.HttpApiEndpoint.Context<_Endpoints>
+      | HttpApiEndpoint.HttpApiEndpoint.ErrorContext<_Endpoints>
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ErrorContext<Group> = Group extends
     HttpApiGroup<infer _Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel>
-    ? _R | HttpApiEndpoint.HttpApiEndpoint.Context<_Endpoints>
+    ? HttpApiMiddleware.HttpApiMiddleware.Without<_R> | HttpApiEndpoint.HttpApiEndpoint.ErrorContext<_Endpoints>
     : never
 
   /**
