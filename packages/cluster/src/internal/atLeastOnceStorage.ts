@@ -37,7 +37,7 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
     const sql = yield* SqlClient.SqlClient
     const serialization = yield* InternalSerialization.serializationTag
 
-    yield* sql.onDialect({
+    yield* sql.onDialectOrElse({
       mssql: () =>
         sql`
           IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL
@@ -67,7 +67,7 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
       pg: () =>
         Effect.catchAll(sql`SELECT ${table}::regclass`, () =>
           sql`
-            CREATE TABLE ${sql(table)} (
+            CREATE TABLE IF NOT EXISTS ${sql(table)} (
               recipient_name VARCHAR(255) NOT NULL,
               shard_id INT NOT NULL DEFAULT 0,
               entity_id VARCHAR(255) NOT NULL,
@@ -77,7 +77,7 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
               CONSTRAINT ${sql(table)}_pkey PRIMARY KEY (recipient_name, entity_id, message_id)
             )
           `),
-      sqlite: () =>
+      orElse: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sql.literal(table)} (
             recipient_name VARCHAR(255) NOT NULL,
@@ -100,7 +100,7 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
         message_body: Schema.String
       }),
       execute: (requests) =>
-        sql.onDialect({
+        sql.onDialectOrElse({
           mssql: () =>
             sql`
               INSERT INTO ${sql(table)}
@@ -121,7 +121,7 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
               ${sql.insert(requests)}
               ON CONFLICT ON CONSTRAINT ${sql(table)}_pkey DO NOTHING
             `,
-          sqlite: () =>
+          orElse: () =>
             sql`
               INSERT INTO ${sql(table)}
               ${sql.insert(requests)}

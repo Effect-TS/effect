@@ -38,7 +38,7 @@ export interface Fragment {
  * @category model
  * @since 1.0.0
  */
-export type Dialect = "sqlite" | "pg" | "mysql" | "mssql"
+export type Dialect = "sqlite" | "pg" | "mysql" | "mssql" | "clickhouse"
 
 /**
  * @category model
@@ -356,20 +356,22 @@ export interface Constructor {
     fallback?: string
   ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
 
-  readonly onDialect: <A, B, C, D>(options: {
+  readonly onDialect: <A, B, C, D, E>(options: {
     readonly sqlite: () => A
     readonly pg: () => B
     readonly mysql: () => C
     readonly mssql: () => D
-  }) => A | B | C | D
+    readonly clickhouse: () => E
+  }) => A | B | C | D | E
 
-  readonly onDialectOrElse: <A, B = never, C = never, D = never, E = never>(options: {
+  readonly onDialectOrElse: <A, B = never, C = never, D = never, E = never, F = never>(options: {
     readonly orElse: () => A
     readonly sqlite?: () => B
     readonly pg?: () => C
     readonly mysql?: () => D
     readonly mssql?: () => E
-  }) => A | B | C | D | E
+    readonly clickhouse?: () => F
+  }) => A | B | C | D | E | F
 }
 
 /**
@@ -441,7 +443,7 @@ export interface Compiler {
 export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
   options: {
     readonly dialect: Dialect
-    readonly placeholder: (index: number) => string
+    readonly placeholder: (index: number, value: unknown) => string
     readonly onIdentifier: (value: string, withoutTransform: boolean) => string
     readonly onRecordUpdate: (
       placeholders: string,
@@ -452,7 +454,7 @@ export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
     ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
     readonly onCustom: (
       type: C,
-      placeholder: () => string,
+      placeholder: (u: unknown) => string,
       withoutTransform: boolean
     ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
     readonly onInsert?: (

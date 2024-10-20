@@ -486,7 +486,7 @@ const statementCacheNoTransformSymbol = Symbol.for("@effect/sql/Statement/statem
 class CompilerImpl implements Statement.Compiler {
   constructor(
     readonly dialect: Statement.Dialect,
-    readonly parameterPlaceholder: (index: number) => string,
+    readonly parameterPlaceholder: (index: number, value: unknown) => string,
     readonly onIdentifier: (value: string, withoutTransform: boolean) => string,
     readonly onRecordUpdate: (
       placeholders: string,
@@ -497,7 +497,7 @@ class CompilerImpl implements Statement.Compiler {
     ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
     readonly onCustom: (
       type: Statement.Custom<string, unknown, unknown>,
-      placeholder: () => string,
+      placeholder: (u: unknown) => string,
       withoutTransform: boolean
     ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
     readonly onInsert?: (
@@ -516,7 +516,7 @@ class CompilerImpl implements Statement.Compiler {
   compile(
     statement: Statement.Fragment,
     withoutTransform = false,
-    placeholderOverride?: () => string
+    placeholderOverride?: (u: unknown) => string
   ): readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>] {
     const cacheSymbol = withoutTransform ? statementCacheNoTransformSymbol : statementCacheSymbol
     if (cacheSymbol in statement) {
@@ -529,8 +529,9 @@ class CompilerImpl implements Statement.Compiler {
     let sql = ""
     const binds: Array<Statement.Primitive> = []
     let placeholderCount = 0
-    const placeholder = placeholderOverride ?? (() => this.parameterPlaceholder(++placeholderCount))
-    const placeholderNoIncrement = () => this.parameterPlaceholder(placeholderCount)
+    const placeholder = placeholderOverride ?? ((u: unknown) => this.parameterPlaceholder(++placeholderCount, u))
+    const placeholderNoIncrement = (u: unknown) => this.parameterPlaceholder(placeholderCount, u)
+    const placeholders = makePlaceholdersArray(placeholder)
 
     for (let i = 0; i < len; i++) {
       const segment = segments[i]
@@ -550,13 +551,13 @@ class CompilerImpl implements Statement.Compiler {
         }
 
         case "Parameter": {
-          sql += placeholder()
+          sql += placeholder(segment.value)
           binds.push(segment.value)
           break
         }
 
         case "ArrayHelper": {
-          sql += `(${generatePlaceholder(placeholder, segment.value.length)()})`
+          sql += `(${placeholders(segment.value)})`
           binds.push.apply(binds, segment.value as any)
           break
         }
@@ -565,17 +566,25 @@ class CompilerImpl implements Statement.Compiler {
           const keys = Object.keys(segment.value[0])
 
           if (this.onInsert) {
+            const values: Array<ReadonlyArray<Statement.Primitive>> = new Array(segment.value.length)
+            let placeholders = ""
+            for (let i = 0; i < segment.value.length; i++) {
+              const row: Array<Statement.Primitive> = new Array(keys.length)
+              values[i] = row
+              placeholders += i === 0 ? "(" : ",("
+              for (let j = 0; j < keys.length; j++) {
+                const key = keys[j]
+                const value = segment.value[i][key]
+                const primitive = extractPrimitive(value, this.onCustom, placeholderNoIncrement, withoutTransform)
+                row[j] = primitive
+                placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
+              }
+              placeholders += ")"
+            }
             const [s, b] = this.onInsert(
               keys.map((_) => this.onIdentifier(_, withoutTransform)),
-              placeholders(
-                generatePlaceholder(placeholder, keys.length),
-                segment.value.length
-              ),
-              segment.value.map((record) =>
-                keys.map((key) =>
-                  extractPrimitive(record[key], this.onCustom, placeholderNoIncrement, withoutTransform)
-                )
-              ),
+              placeholders,
+              values,
               typeof segment.returningIdentifier === "string"
                 ? [segment.returningIdentifier, []]
                 : segment.returningIdentifier
@@ -585,31 +594,24 @@ class CompilerImpl implements Statement.Compiler {
             sql += s
             binds.push.apply(binds, b as any)
           } else {
+            let placeholders = ""
+            for (let i = 0; i < segment.value.length; i++) {
+              placeholders += i === 0 ? "(" : ",("
+              for (let j = 0; j < keys.length; j++) {
+                const value = segment.value[i][keys[j]]
+                const primitive = extractPrimitive(value, this.onCustom, placeholderNoIncrement, withoutTransform)
+                binds.push(primitive)
+                placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
+              }
+              placeholders += ")"
+            }
             sql += `${
               generateColumns(
                 keys,
                 this.onIdentifier,
                 withoutTransform
               )
-            } VALUES ${
-              placeholders(
-                generatePlaceholder(placeholder, keys.length),
-                segment.value.length
-              )
-            }`
-
-            for (let i = 0, len = segment.value.length; i < len; i++) {
-              for (let j = 0, len = keys.length; j < len; j++) {
-                binds.push(
-                  extractPrimitive(
-                    segment.value[i]?.[keys[j]] ?? null,
-                    this.onCustom,
-                    placeholderNoIncrement,
-                    withoutTransform
-                  )
-                )
-              }
-            }
+            } VALUES ${placeholders}`
 
             if (typeof segment.returningIdentifier === "string") {
               sql += ` RETURNING ${segment.returningIdentifier}`
@@ -651,9 +653,9 @@ class CompilerImpl implements Statement.Compiler {
             for (let i = 0, len = keys.length; i < len; i++) {
               const column = this.onIdentifier(keys[i], withoutTransform)
               if (i === 0) {
-                sql += `${column} = ${placeholder()}`
+                sql += `${column} = ${placeholder(segment.value[keys[i]])}`
               } else {
-                sql += `, ${column} = ${placeholder()}`
+                sql += `, ${column} = ${placeholder(segment.value[keys[i]])}`
               }
               binds.push(
                 extractPrimitive(
@@ -682,18 +684,25 @@ class CompilerImpl implements Statement.Compiler {
 
         case "RecordUpdateHelper": {
           const keys = Object.keys(segment.value[0])
+          const values: Array<ReadonlyArray<Statement.Primitive>> = new Array(segment.value.length)
+          let placeholders = ""
+          for (let i = 0; i < segment.value.length; i++) {
+            const row: Array<Statement.Primitive> = new Array(keys.length)
+            values[i] = row
+            placeholders += i === 0 ? "(" : ",("
+            for (let j = 0; j < keys.length; j++) {
+              const key = keys[j]
+              const value = segment.value[i][key]
+              row[j] = extractPrimitive(value, this.onCustom, placeholderNoIncrement, withoutTransform)
+              placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
+            }
+            placeholders += ")"
+          }
           const [s, b] = this.onRecordUpdate(
-            placeholders(
-              generatePlaceholder(placeholder, keys.length),
-              segment.value.length
-            ),
+            placeholders,
             segment.alias,
             generateColumns(keys, this.onIdentifier, withoutTransform),
-            segment.value.map((record) =>
-              keys.map((key) =>
-                extractPrimitive(record?.[key], this.onCustom, placeholderNoIncrement, withoutTransform)
-              )
-            ),
+            values,
             typeof segment.returningIdentifier === "string"
               ? [segment.returningIdentifier, []]
               : segment.returningIdentifier
@@ -726,7 +735,7 @@ class CompilerImpl implements Statement.Compiler {
 export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = any>(
   options: {
     readonly dialect: Statement.Dialect
-    readonly placeholder: (index: number) => string
+    readonly placeholder: (index: number, value: unknown) => string
     readonly onIdentifier: (value: string, withoutTransform: boolean) => string
     readonly onRecordUpdate: (
       placeholders: string,
@@ -737,7 +746,7 @@ export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = an
     ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
     readonly onCustom: (
       type: C,
-      placeholder: () => string,
+      placeholder: (u: unknown) => string,
       withoutTransform: boolean
     ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
     readonly onInsert?: (
@@ -763,34 +772,17 @@ export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = an
     options.onRecordUpdateSingle
   )
 
-const placeholders = (evaluate: () => string, count: number): string => {
-  if (count === 0) {
+const makePlaceholdersArray = (evaluate: (u: unknown) => string) => (values: ReadonlyArray<unknown>): string => {
+  if (values.length === 0) {
     return ""
   }
 
-  let result = `(${evaluate()})`
-  for (let i = 1; i < count; i++) {
-    result += `,(${evaluate()})`
+  let result = evaluate(values[0])
+  for (let i = 1; i < values.length; i++) {
+    result += `,${evaluate(values[i])}`
   }
 
   return result
-}
-
-const generatePlaceholder = (evaluate: () => string, len: number) => {
-  if (len === 0) {
-    return () => ""
-  } else if (len === 1) {
-    return evaluate
-  }
-
-  return () => {
-    let result = evaluate()
-    for (let i = 1; i < len; i++) {
-      result += `,${evaluate()}`
-    }
-
-    return result
-  }
 }
 
 const generateColumns = (
@@ -851,10 +843,10 @@ const extractPrimitive = (
   value: Statement.Primitive | Statement.Fragment | undefined,
   onCustom: (
     type: Statement.Custom<string, unknown, unknown>,
-    placeholder: () => string,
+    placeholder: (u: unknown) => string,
     withoutTransform: boolean
   ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
-  placeholder: () => string,
+  placeholder: (u: unknown) => string,
   withoutTransform: boolean
 ): Statement.Primitive => {
   if (value === undefined) {
