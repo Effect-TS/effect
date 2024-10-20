@@ -629,11 +629,7 @@ const makeSuccessSchema = (
 ): Schema.Schema<unknown, HttpServerResponse.HttpServerResponse> => {
   const schemas = new Set<Schema.Schema.Any>()
   HttpApiSchema.deunionize(schemas, schema)
-  return Schema.Union(...Array.from(schemas, (schema) =>
-    Schema.transformOrFail(responseSchema, schema, {
-      decode: decodeForbidden,
-      encode: encodeSuccess
-    }))) as any
+  return Schema.Union(...Array.from(schemas, toResponseSuccess)) as any
 }
 
 const makeErrorSchema = (
@@ -647,62 +643,70 @@ const makeErrorSchema = (
     })
     HttpApiSchema.deunionize(schemas, group.errorSchema)
   })
-  return Schema.Union(...[...schemas].map((schema) =>
-    Schema.transformOrFail(responseSchema, schema, {
-      decode: decodeForbidden,
-      encode: encodeError
-    })
-  )) as any
+  return Schema.Union(...Array.from(schemas, toResponseError)) as any
 }
 
 const decodeForbidden = <A>(_: A, __: AST.ParseOptions, ast: AST.Transformation) =>
   ParseResult.fail(new ParseResult.Forbidden(ast, _, "Encode only schema"))
 
-const schemaToResponse = (getStatus: (ast: AST.AST) => number) =>
-(
-  data: any,
-  _: AST.ParseOptions,
-  ast: AST.Transformation
-): Effect.Effect<HttpServerResponse.HttpServerResponse, ParseResult.ParseIssue> => {
-  const isEmpty = HttpApiSchema.isVoid(ast.to)
-  const status = getStatus(ast.to)
-  if (isEmpty) {
-    return HttpServerResponse.empty({ status })
-  }
-  const encoding = HttpApiSchema.getEncoding(ast.to)
-  switch (encoding.kind) {
-    case "Json": {
-      return Effect.mapError(
-        HttpServerResponse.json(data, {
+const toResponseSchema = (getStatus: (ast: AST.AST) => number) => {
+  const cache = new WeakMap<AST.AST, Schema.Schema.All>()
+  const schemaToResponse = (
+    data: any,
+    _: AST.ParseOptions,
+    ast: AST.Transformation
+  ): Effect.Effect<HttpServerResponse.HttpServerResponse, ParseResult.ParseIssue> => {
+    const isEmpty = HttpApiSchema.isVoid(ast.to)
+    const status = getStatus(ast.to)
+    if (isEmpty) {
+      return HttpServerResponse.empty({ status })
+    }
+    const encoding = HttpApiSchema.getEncoding(ast.to)
+    switch (encoding.kind) {
+      case "Json": {
+        return Effect.mapError(
+          HttpServerResponse.json(data, {
+            status,
+            contentType: encoding.contentType
+          }),
+          (error) => new ParseResult.Type(ast, error, "Could not encode to JSON")
+        )
+      }
+      case "Text": {
+        return ParseResult.succeed(HttpServerResponse.text(data as any, {
           status,
           contentType: encoding.contentType
-        }),
-        (error) => new ParseResult.Type(ast, error, "Could not encode to JSON")
-      )
+        }))
+      }
+      case "Uint8Array": {
+        return ParseResult.succeed(HttpServerResponse.uint8Array(data as any, {
+          status,
+          contentType: encoding.contentType
+        }))
+      }
+      case "UrlParams": {
+        return ParseResult.succeed(HttpServerResponse.urlParams(data as any, {
+          status,
+          contentType: encoding.contentType
+        }))
+      }
     }
-    case "Text": {
-      return ParseResult.succeed(HttpServerResponse.text(data as any, {
-        status,
-        contentType: encoding.contentType
-      }))
+  }
+  return <A, I, R>(schema: Schema.Schema<A, I, R>): Schema.Schema<A, HttpServerResponse.HttpServerResponse, R> => {
+    if (cache.has(schema.ast)) {
+      return cache.get(schema.ast)! as any
     }
-    case "Uint8Array": {
-      return ParseResult.succeed(HttpServerResponse.uint8Array(data as any, {
-        status,
-        contentType: encoding.contentType
-      }))
-    }
-    case "UrlParams": {
-      return ParseResult.succeed(HttpServerResponse.urlParams(data as any, {
-        status,
-        contentType: encoding.contentType
-      }))
-    }
+    const transform = Schema.transformOrFail(responseSchema, schema, {
+      decode: decodeForbidden,
+      encode: schemaToResponse
+    })
+    cache.set(transform.ast, transform)
+    return transform
   }
 }
 
-const encodeSuccess = schemaToResponse(HttpApiSchema.getStatusSuccessAST)
-const encodeError = schemaToResponse(HttpApiSchema.getStatusErrorAST)
+const toResponseSuccess = toResponseSchema(HttpApiSchema.getStatusSuccessAST)
+const toResponseError = toResponseSchema(HttpApiSchema.getStatusErrorAST)
 
 // ----------------------------------------------------------------------------
 // Global middleware

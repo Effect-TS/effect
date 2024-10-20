@@ -403,11 +403,14 @@ export const deunionize = (
   const ast = schema.ast
   if (ast._tag === "Union") {
     for (const astType of ast.types) {
-      const memberSchema = Schema.make(astType).annotations({
+      if (astCache.has(astType)) {
+        schemas.add(astCache.get(astType)!)
+        continue
+      }
+      const memberSchema = Schema.make(AST.annotations(astType, {
         ...ast.annotations,
-        ...(astType._tag === "Transformation" ? astType.to.annotations : {}),
         ...astType.annotations
-      })
+      }))
       astCache.set(astType, memberSchema)
       schemas.add(memberSchema)
     }
