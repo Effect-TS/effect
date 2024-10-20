@@ -437,7 +437,7 @@ export const makeCompiler = (transform?: (_: string) => string) =>
     onCustom(type, placeholder) {
       switch (type.kind) {
         case "MssqlParam": {
-          return [placeholder(), [type] as any]
+          return [placeholder(undefined), [type] as any]
         }
       }
     },

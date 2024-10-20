@@ -24,6 +24,7 @@
     { "path": "packages/schema" },
     { "path": "packages/schema" },
     { "path": "packages/sql" },
+    { "path": "packages/sql-clickhouse" },
     { "path": "packages/sql-d1" },
     { "path": "packages/sql-drizzle" },
     { "path": "packages/sql-kysely" },

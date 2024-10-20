@@ -69,7 +69,7 @@ export const make = ({ table }: DurableExecutionJournal.MakeOptions) =>
   Effect.gen(function*() {
     const sql = yield* SqlClient.SqlClient
 
-    yield* sql.onDialect({
+    yield* sql.onDialectOrElse({
       mssql: () =>
         sql`
           IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL
@@ -98,7 +98,7 @@ export const make = ({ table }: DurableExecutionJournal.MakeOptions) =>
             CONSTRAINT ${sql(table)}_pkey PRIMARY KEY (execution_id, sequence)
           )
         `,
-      sqlite: () =>
+      orElse: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sql(table)} (
             execution_id VARCHAR(255) NOT NULL,
