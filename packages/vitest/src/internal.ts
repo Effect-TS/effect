@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { Tester, TesterContext } from "@vitest/expect"
+import * as Arbitrary from "effect/Arbitrary"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -16,6 +17,7 @@ import * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
 import * as Utils from "effect/Utils"
+import fc from "fast-check"
 import * as V from "vitest"
 import type * as Vitest from "./index.js"
 
@@ -45,8 +47,7 @@ const runPromise = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A,
   }).pipe(Effect.runPromise).then((f) => f())
 
 /** @internal */
-const runTest = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A, E>) =>
-  runPromise(ctx)(Effect.asVoid(effect))
+const runTest = (ctx?: Vitest.TaskContext) => <E, A>(effect: Effect.Effect<A, E>) => runPromise(ctx)(effect)
 
 /** @internal */
 const TestEnv = TestEnvironment.TestContext.pipe(
@@ -93,10 +94,62 @@ const makeTester = <R>(
     V.it.for(cases)(
       name,
       typeof timeout === "number" ? { timeout } : timeout ?? {},
-      (args, ctx) => run(ctx, [args], self)
+      (args, ctx) => run(ctx, [args], self) as any
     )
 
-  return Object.assign(f, { skip, skipIf, runIf, only, each })
+  const prop: Vitest.Vitest.Tester<R>["prop"] = (name, schemaObj, self, timeout) => {
+    if (Array.isArray(schemaObj)) {
+      const arbs = schemaObj.map((schema) => Arbitrary.make(schema))
+      return V.it(
+        name,
+        // @ts-ignore
+        (ctx) => fc.assert(fc.asyncProperty(...arbs, (...as) => run(ctx, [as as any, ctx], self))),
+        timeout
+      )
+    }
+
+    const arbs = fc.record(
+      Object.keys(schemaObj).reduce(function(result, key) {
+        result[key] = Arbitrary.make(schemaObj[key])
+        return result
+      }, {} as Record<string, fc.Arbitrary<any>>)
+    )
+
+    return V.it(
+      name,
+      // @ts-ignore
+      (ctx) => fc.assert(fc.asyncProperty(arbs, (...as) => run(ctx, [as[0] as any, ctx], self))),
+      timeout
+    )
+  }
+
+  return Object.assign(f, { skip, skipIf, runIf, only, each, prop })
+}
+
+export const prop: Vitest.Vitest.Methods["prop"] = (name, schemaObj, self, timeout) => {
+  if (Array.isArray(schemaObj)) {
+    const arbs = schemaObj.map((schema) => Arbitrary.make(schema))
+    return V.it(
+      name,
+      // @ts-ignore
+      (ctx) => fc.assert(fc.property(...arbs, (...as) => self(as, ctx))),
+      timeout
+    )
+  }
+
+  const arbs = fc.record(
+    Object.keys(schemaObj).reduce(function(result, key) {
+      result[key] = Arbitrary.make(schemaObj[key])
+      return result
+    }, {} as Record<string, fc.Arbitrary<any>>)
+  )
+
+  return V.it(
+    name,
+    // @ts-ignore
+    (ctx) => fc.assert(fc.property(arbs, (...as) => self(as[0], ctx))),
+    timeout
+  )
 }
 
 /** @internal */
@@ -127,6 +180,9 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
           Effect.provide(TestEnv)
         ))
     ),
+
+    prop,
+
     scoped: makeTester<TestServices.TestServices | Scope.Scope | R>((effect) =>
       Effect.flatMap(runtimeEffect, (runtime) =>
         effect.pipe(
