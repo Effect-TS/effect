@@ -147,7 +147,7 @@ layer(Foo.Live)("layer", (it) => {
         }))
     })
 
-    it.effect.prop("adds context", [Schema.Number], ([num]) =>
+    it.effect.prop("adds context", [realNumber], ([num]) =>
       Effect.gen(function*() {
         const foo = yield* Foo
         expect(foo).toEqual("foo")
