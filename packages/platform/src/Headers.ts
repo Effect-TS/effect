@@ -1,9 +1,11 @@
 /**
  * @since 1.0.0
  */
+import { FiberRefs } from "effect"
 import * as FiberRef from "effect/FiberRef"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import { type Redactable, symbolRedactable } from "effect/Inspectable"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
@@ -34,13 +36,19 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  * @since 1.0.0
  * @category models
  */
-export interface Headers {
+export interface Headers extends Redactable {
   readonly [HeadersTypeId]: HeadersTypeId
   readonly [key: string]: string
 }
 
 const Proto = Object.assign(Object.create(null), {
-  [HeadersTypeId]: HeadersTypeId
+  [HeadersTypeId]: HeadersTypeId,
+  [symbolRedactable](
+    this: Headers,
+    fiberRefs: FiberRefs.FiberRefs
+  ): Record<string, string | Redacted.Redacted<string>> {
+    return redact(this, FiberRefs.getOrDefault(fiberRefs, currentRedactedNames))
+  }
 })
 
 const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
@@ -248,7 +256,7 @@ export const redact: {
  * @since 1.0.0
  * @category fiber refs
  */
-export const currentRedactedNames = globalValue(
+export const currentRedactedNames: FiberRef.FiberRef<ReadonlyArray<string | RegExp>> = globalValue(
   "@effect/platform/Headers/currentRedactedNames",
   () =>
     FiberRef.unsafeMake<ReadonlyArray<string | RegExp>>([
