@@ -41,58 +41,52 @@ class User extends Schema.Class<User>("User")({
   createdAt: Schema.DateTimeUtc
 }) {}
 
-const usersApi = HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
+const usersApi = HttpApiGroup.make("users")
+  .add(
     // each endpoint has a name and a path
-    HttpApiEndpoint.get("findById", "/users/:id").pipe(
+    HttpApiEndpoint.get("findById", "/users/:id")
       // the endpoint can have a Schema for a successful response
-      HttpApiEndpoint.setSuccess(User),
+      .addSuccess(User)
       // and here is a Schema for the path parameters
-      HttpApiEndpoint.setPath(
+      .setPath(
         Schema.Struct({
           id: Schema.NumberFromString
         })
       )
-    )
-  ),
-  HttpApiGroup.add(
-    HttpApiEndpoint.post("create", "/users").pipe(
-      HttpApiEndpoint.setSuccess(User),
+  )
+  .add(
+    HttpApiEndpoint.post("create", "/users")
+      .addSuccess(User)
       // and here is a Schema for the request payload / body
       //
       // this is a POST request, so the payload is in the body
       // but for a GET request, the payload would be in the URL search params
-      HttpApiEndpoint.setPayload(
+      .setPayload(
         Schema.Struct({
           name: Schema.String
         })
       )
-    )
-  ),
-  // by default, the endpoint will respond with a 204 No Content
-  HttpApiGroup.add(HttpApiEndpoint.del("delete", "/users/:id")),
-  HttpApiGroup.add(
-    HttpApiEndpoint.patch("update", "/users/:id").pipe(
-      HttpApiEndpoint.setSuccess(User),
-      HttpApiEndpoint.setPayload(
-        Schema.Struct({
-          name: Schema.String
-        })
-      )
-    )
   )
-)
+  // by default, the endpoint will respond with a 204 No Content
+  .add(HttpApiEndpoint.del("delete", "/users/:id"))
+  .add(
+    HttpApiEndpoint.patch("update", "/users/:id")
+      .addSuccess(User)
+      .setPayload(
+        Schema.Struct({
+          name: Schema.String
+        })
+      )
+  )
 ```
 
 You can also extend the `HttpApiGroup` with a class to gain an opaque type.
 We will use this API style in the following examples:
 
 ```ts
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/users/:id")
-    // ... same as above
-  )
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById", "/users/:id")
+  // ... same as above
 ) {}
 ```
 
@@ -103,13 +97,13 @@ Once you have defined your groups, you can combine them into a single `HttpApi`.
 ```ts
 import { HttpApi } from "@effect/platform"
 
-class MyApi extends HttpApi.empty.pipe(HttpApi.addGroup(UsersApi)) {}
+class MyApi extends HttpApi.empty.add(UsersApi) {}
 ```
 
 Or with the non-opaque style:
 
 ```ts
-const api = HttpApi.empty.pipe(HttpApi.addGroup(usersApi))
+const api = HttpApi.empty.add(usersApi)
 ```
 
 ### Adding OpenApi annotations
@@ -121,17 +115,21 @@ Let's add a title to our `UsersApi` group:
 ```ts
 import { OpenApi } from "@effect/platform"
 
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
     HttpApiEndpoint.get("findById", "/users/:id")
     // ... same as above
-  ),
+  )
   // add an OpenApi title & description
-  OpenApi.annotate({
-    title: "Users API",
-    description: "API for managing users"
-  })
-) {}
+  // You can set one attribute at a time
+  .annotate(OpenApi.Title, "Users API")
+  // or multiple at once
+  .annotateContext(
+    OpenApi.annotations({
+      title: "Users API",
+      description: "API for managing users"
+    })
+  ) {}
 ```
 
 Now when you generate OpenApi documentation, the title and description will be
@@ -140,13 +138,9 @@ included.
 You can also add OpenApi annotations to the top-level `HttpApi`:
 
 ```ts
-class MyApi extends HttpApi.empty.pipe(
-  HttpApi.addGroup(UsersApi),
-  OpenApi.annotate({
-    title: "My API",
-    description: "My awesome API"
-  })
-) {}
+class MyApi extends HttpApi.empty
+  .add(UsersApi)
+  .annotate(OpenApi.Title, "My API") {}
 ```
 
 ### Adding errors
@@ -174,18 +168,16 @@ class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   {}
 ) {}
 
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/users/:id").pipe(
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById", "/users/:id")
       // here we are adding our error response
-      HttpApiEndpoint.addError(UserNotFound, { status: 404 }),
-      HttpApiEndpoint.setSuccess(User),
-      HttpApiEndpoint.setPath(Schema.Struct({ id: Schema.NumberFromString }))
-    )
-  ),
+      .addError(UserNotFound, { status: 404 })
+      .addSuccess(User)
+      .setPath(Schema.Struct({ id: Schema.NumberFromString }))
+  )
   // or we could add an error to the group
-  HttpApiGroup.addError(Unauthorized, { status: 401 })
-) {}
+  .addError(Unauthorized, { status: 401 }) {}
 ```
 
 It is worth noting that you can add multiple error responses to an endpoint,
@@ -202,59 +194,15 @@ shape of the multipart request.
 ```ts
 import { HttpApiSchema, Multipart } from "@effect/platform"
 
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.post("upload", "/users/upload").pipe(
-      HttpApiEndpoint.setPayload(
-        HttpApiSchema.Multipart(
-          Schema.Struct({
-            // add a "files" field to the schema
-            files: Multipart.FilesSchema
-          })
-        )
-      )
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.post("upload", "/users/upload").setPayload(
+    HttpApiSchema.Multipart(
+      Schema.Struct({
+        // add a "files" field to the schema
+        files: Multipart.FilesSchema
+      })
     )
   )
-) {}
-```
-
-### Adding security annotations
-
-The `HttpApiSecurity` module provides a way to add security annotations to your
-API.
-
-It offers the following authorization types:
-
-- `HttpApiSecurity.apiKey` - API key authorization through headers, query
-  parameters, or cookies.
-- `HttpApiSecurity.basicAuth` - HTTP Basic authentication.
-- `HttpApiSecurity.bearerAuth` - Bearer token authentication.
-
-You can annotate your API with these security types using the
-`OpenApi.annotate` api as before.
-
-```ts
-import { HttpApiSecurity } from "@effect/platform"
-
-const security = HttpApiSecurity.apiKey({
-  in: "cookie",
-  key: "token"
-})
-
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/users/:id").pipe(
-      // add the security annotation to the endpoint
-      OpenApi.annotate({ security })
-    )
-  ),
-  // or at the group level
-  OpenApi.annotate({ security }),
-
-  // or just for the endpoints above this line
-  HttpApiGroup.annotateEndpoints(OpenApi.Security, security),
-  // this endpoint will not have the security annotation
-  HttpApiGroup.add(HttpApiEndpoint.get("list", "/users"))
 ) {}
 ```
 
@@ -266,17 +214,13 @@ the `HttpApiSchema.withEncoding` api.
 Here is an example of changing the encoding to text/csv:
 
 ```ts
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("csv", "/users/csv").pipe(
-      HttpApiEndpoint.setSuccess(
-        Schema.String.pipe(
-          HttpApiSchema.withEncoding({
-            kind: "Text",
-            contentType: "text/csv"
-          })
-        )
-      )
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("csv", "/users/csv").addSuccess(
+    Schema.String.pipe(
+      HttpApiSchema.withEncoding({
+        kind: "Text",
+        contentType: "text/csv"
+      })
     )
   )
 ) {}
@@ -306,7 +250,7 @@ import {
   HttpApiEndpoint,
   HttpApiGroup
 } from "@effect/platform"
-import { DateTime, Effect, Schema } from "effect"
+import { DateTime, Effect, Layer, Schema } from "effect"
 
 // here is our api definition
 class User extends Schema.Class<User>("User")({
@@ -315,31 +259,28 @@ class User extends Schema.Class<User>("User")({
   createdAt: Schema.DateTimeUtc
 }) {}
 
-class UsersApi extends HttpApiGroup.make("users").pipe(
-  HttpApiGroup.add(
-    HttpApiEndpoint.get("findById", "/users/:id").pipe(
-      HttpApiEndpoint.setSuccess(User),
-      HttpApiEndpoint.setPath(
-        Schema.Struct({
-          id: Schema.NumberFromString
-        })
-      )
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById", "/users/:id")
+    .addSuccess(User)
+    .setPath(
+      Schema.Struct({
+        id: Schema.NumberFromString
+      })
     )
-  )
 ) {}
 
-class MyApi extends HttpApi.empty.pipe(HttpApi.addGroup(UsersApi)) {}
+class MyApi extends HttpApi.empty.add(UsersApi) {}
 
 // --------------------------------------------
 // Implementation
 // --------------------------------------------
 
 // the `HttpApiBuilder.group` api returns a `Layer`
-const UsersApiLive: Layer.Layer<HttpApiGroup.HttpApiGroup.Service<"users">> =
+const UsersApiLive: Layer.Layer<HttpApiGroup.Group<"users">> =
   HttpApiBuilder.group(MyApi, "users", (handlers) =>
-    handlers.pipe(
+    handlers
       // the parameters & payload are passed to the handler function.
-      HttpApiBuilder.handle("findById", ({ path: { id } }) =>
+      .handle("findById", ({ path: { id } }) =>
         Effect.succeed(
           new User({
             id,
@@ -348,7 +289,6 @@ const UsersApiLive: Layer.Layer<HttpApiGroup.HttpApiGroup.Service<"users">> =
           })
         )
       )
-    )
   )
 ```
 
@@ -367,17 +307,15 @@ class UsersRepository extends Context.Tag("UsersRepository")<
 
 // the dependencies will show up in the resulting `Layer`
 const UsersApiLive: Layer.Layer<
-  HttpApiGroup.HttpApiGroup.Service<"users">,
+  HttpApiGroup.Group<"users">,
   never,
   UsersRepository
 > = HttpApiBuilder.group(MyApi, "users", (handlers) =>
   // we can return an Effect that creates our handlers
   Effect.gen(function* () {
     const repository = yield* UsersRepository
-    return handlers.pipe(
-      HttpApiBuilder.handle("findById", ({ path: { id } }) =>
-        repository.findById(id)
-      )
+    return handlers.handle("findById", ({ path: { id } }) =>
+      repository.findById(id)
     )
   })
 )
@@ -391,9 +329,9 @@ This is done using the `HttpApiBuilder.api` api, and then using `Layer.provide`
 to add all the group implementations.
 
 ```ts
-const MyApiLive: Layer.Layer<HttpApi.HttpApi.Service> = HttpApiBuilder.api(
-  MyApi
-).pipe(Layer.provide(UsersApiLive))
+const MyApiLive: Layer.Layer<HttpApi.Api> = HttpApiBuilder.api(MyApi).pipe(
+  Layer.provide(UsersApiLive)
+)
 ```
 
 ### Serving the API
@@ -425,95 +363,6 @@ const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 ```
 
-## Implementing `HttpApiSecurity`
-
-If you are using `HttpApiSecurity` in your API, you can use the security
-definition to implement a middleware that will protect your endpoints.
-
-The `HttpApiBuilder.middlewareSecurity` api will assist you in creating this
-middleware.
-
-Here is an example:
-
-```ts
-// our cookie security definition
-const security = HttpApiSecurity.apiKey({
-  in: "cookie",
-  key: "token"
-})
-
-// the user repository service
-class UsersRepository extends Context.Tag("UsersRepository")<
-  UsersRepository,
-  {
-    readonly findByToken: (token: Redacted.Redacted) => Effect.Effect<User>
-  }
->() {}
-
-// the security middleware will supply the current user to the handlers
-class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
-
-// implement the middleware
-const makeSecurityMiddleware: Effect.Effect<
-  HttpApiBuilder.SecurityMiddleware<CurrentUser>,
-  never,
-  UsersRepository
-> = Effect.gen(function* () {
-  const repository = yield* UsersRepository
-  return HttpApiBuilder.middlewareSecurity(
-    // the security definition
-    security,
-    // the Context.Tag this middleware will provide
-    CurrentUser,
-    // the function to get the user from the token
-    (token) => repository.findByToken(token)
-  )
-})
-
-// use the middleware
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  Effect.gen(function* () {
-    // construct the security middleware
-    const securityMiddleware = yield* makeSecurityMiddleware
-
-    return handlers.pipe(
-      HttpApiBuilder.handle("findById", ({ path: { id } }) =>
-        Effect.succeed(
-          new User({ id, name: "John Doe", createdAt: DateTime.unsafeNow() })
-        )
-      ),
-      // apply the middleware to the findById endpoint
-      securityMiddleware
-      // any endpoint after this will not be protected
-    )
-  })
-)
-```
-
-If you need to set the security cookie from within a handler, you can use the
-`HttpApiBuilder.securitySetCookie` api.
-
-By default, the cookie will be set with the `HttpOnly` and `Secure` flags.
-
-```ts
-const security = HttpApiSecurity.apiKey({
-  in: "cookie",
-  key: "token"
-})
-
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  handlers.pipe(
-    HttpApiBuilder.handle("login", () =>
-      // set the security cookie
-      HttpApiBuilder.securitySetCookie(
-        security,
-        Redacted.make("keep me secret")
-      )
-    )
-  )
-)
-```
-
 ### Serving Swagger documentation
 
 You can add Swagger documentation to your API using the `HttpApiSwagger` module.
@@ -535,6 +384,236 @@ const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
   Layer.provide(HttpApiBuilder.middlewareCors()),
   Layer.provide(MyApiLive),
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+```
+
+## Adding middleware
+
+### Defining middleware
+
+The `HttpApiMiddleware` module provides a way to add middleware to your API.
+
+You can create a `HttpApiMiddleware.Tag` that represents your middleware, which
+allows you to set:
+
+- `failure` - a Schema for any errors that the middleware can return
+- `provides` - a `Context.Tag` that the middleware will provide
+- `security` - `HttpApiSecurity` definitions that the middleware will
+  implement
+- `optional` - a boolean that indicates that if the middleware fails with an
+  expected error, the request should continue. When using optional middleware,
+  `provides` & `failure` options will not affect the handlers or final error type.
+
+Here is an example of defining a simple logger middleware:
+
+```ts
+import {
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiMiddleware
+} from "@effect/platform"
+import { Schema } from "effect"
+
+class LoggerError extends Schema.TaggedError<LoggerError>()(
+  "LoggerError",
+  {}
+) {}
+
+// first extend the HttpApiMiddleware.Tag class
+class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger", {
+  // optionally define any errors that the middleware can return
+  failure: LoggerError
+}) {}
+
+// apply the middleware to an `HttpApiGroup`
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById", "/:id")
+      // apply the middleware to a single endpoint
+      .middleware(Logger)
+  )
+  // or apply the middleware to the group
+  .middleware(Logger) {}
+```
+
+### Defining security middleware
+
+The `HttpApiSecurity` module provides a way to add security annotations to your
+API.
+
+It offers the following authorization types:
+
+- `HttpApiSecurity.apiKey` - API key authorization through headers, query
+  parameters, or cookies.
+- `HttpApiSecurity.basicAuth` - HTTP Basic authentication.
+- `HttpApiSecurity.bearerAuth` - Bearer token authentication.
+
+You can then use these security annotations in combination with `HttpApiMiddleware`
+to define middleware that will protect your endpoints.
+
+```ts
+import {
+  HttpApiGroup,
+  HttpApiEndpoint,
+  HttpApiMiddleware,
+  HttpApiSchema,
+  HttpApiSecurity
+} from "@effect/platform"
+import { Context, Schema } from "effect"
+
+class User extends Schema.Class<User>("User")({ id: Schema.Number }) {}
+
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+  "Unauthorized",
+  {},
+  HttpApiSchema.annotations({ status: 401 })
+) {}
+
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
+
+// first extend the HttpApiMiddleware.Tag class
+class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
+  "Authorization",
+  {
+    // add your error schema
+    failure: Unauthorized,
+    // add the Context.Tag that the middleware will provide
+    provides: CurrentUser,
+    // add the security definitions
+    security: {
+      // the object key is a custom name for the security definition
+      myBearer: HttpApiSecurity.bearer
+      // You can add more security definitions here.
+      // They will attempt to be resolved in the order they are defined
+    }
+  }
+) {}
+
+// apply the middleware to an `HttpApiGroup`
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById", "/:id")
+      // apply the middleware to a single endpoint
+      .middleware(Authorization)
+  )
+  // or apply the middleware to the group
+  .middleware(Authorization) {}
+```
+
+### Implementing `HttpApiMiddleware`
+
+Once your `HttpApiMiddleware` is defined, you can use the
+`HttpApiMiddleware.Tag` definition to implement your middleware.
+
+By using the `Layer` apis, you can create a Layer that implements your
+middleware.
+
+Here is an example:
+
+```ts
+import { HttpApiMiddleware, HttpServerRequest } from "@effect/platform"
+import { Effect, Layer } from "effect"
+
+class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger") {}
+
+const LoggerLive = Layer.effect(
+  Logger,
+  Effect.gen(function* () {
+    yield* Effect.log("creating Logger middleware")
+
+    // standard middleware is just an Effect, that can access the `HttpRouter`
+    // context.
+    return Logger.of(
+      Effect.gen(function* () {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        yield* Effect.log(`Request: ${request.method} ${request.url}`)
+      })
+    )
+  })
+)
+```
+
+When the `Layer` is created, you can then provide it to your group layers:
+
+```ts
+const UsersApiLive = HttpApiBuilder.group(...).pipe(
+  Layer.provide(LoggerLive)
+)
+```
+
+### Implementing `HttpApiSecurity` middleware
+
+If you are using `HttpApiSecurity` in your middleware, implementing the `Layer`
+looks a bit different.
+
+Here is an example of implementing a `HttpApiSecurity.bearer` middleware:
+
+```ts
+import {
+  HttpApiMiddleware,
+  HttpApiSchema,
+  HttpApiSecurity
+} from "@effect/platform"
+import { Context, Effect, Layer, Redacted, Schema } from "effect"
+
+class User extends Schema.Class<User>("User")({ id: Schema.Number }) {}
+
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+  "Unauthorized",
+  {},
+  HttpApiSchema.annotations({ status: 401 })
+) {}
+
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
+
+class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
+  "Authorization",
+  {
+    failure: Unauthorized,
+    provides: CurrentUser,
+    security: { myBearer: HttpApiSecurity.bearer }
+  }
+) {}
+
+const AuthorizationLive = Layer.effect(
+  Authorization,
+  Effect.gen(function* () {
+    yield* Effect.log("creating Authorization middleware")
+
+    // return the security handlers
+    return Authorization.of({
+      myBearer: (bearerToken) =>
+        Effect.gen(function* () {
+          yield* Effect.log(
+            "checking bearer token",
+            Redacted.value(bearerToken)
+          )
+          // return the `User` that will be provided as the `CurrentUser`
+          return new User({ id: 1 })
+        })
+    })
+  })
+)
+```
+
+### Setting `HttpApiSecurity` cookies
+
+If you need to set the security cookie from within a handler, you can use the
+`HttpApiBuilder.securitySetCookie` api.
+
+By default, the cookie will be set with the `HttpOnly` and `Secure` flags.
+
+```ts
+const security = HttpApiSecurity.apiKey({
+  in: "cookie",
+  key: "token"
+})
+
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  handlers.handle("login", () =>
+    // set the security cookie
+    HttpApiBuilder.securitySetCookie(security, Redacted.make("keep me secret"))
+  )
 )
 ```
 

@@ -5,11 +5,15 @@ import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
+import type { Generator } from "./Etag.js"
+import type { FileSystem } from "./FileSystem.js"
 import type * as App from "./HttpApp.js"
 import type * as Client from "./HttpClient.js"
 import type * as Middleware from "./HttpMiddleware.js"
+import type { HttpPlatform } from "./HttpPlatform.js"
 import type * as ServerRequest from "./HttpServerRequest.js"
 import * as internal from "./internal/httpServer.js"
+import type { Path } from "./Path.js"
 
 /**
  * @since 1.0.0
@@ -203,3 +207,20 @@ export const withLogAddress: <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Lay
  */
 export const layerTestClient: Layer.Layer<Client.HttpClient, never, Client.HttpClient | HttpServer> =
   internal.layerTestClient
+
+/**
+ * A Layer providing the `HttpPlatform`, `FileSystem`, `Etag.Generator`, and `Path`
+ * services.
+ *
+ * The `FileSystem` service is a no-op implementation, so this layer is only
+ * useful for platforms that have no file system.
+ *
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerContext: Layer.Layer<
+  | HttpPlatform
+  | FileSystem
+  | Generator
+  | Path
+> = internal.layerContext

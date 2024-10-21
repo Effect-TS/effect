@@ -506,7 +506,10 @@ export const make = <
       }
       for (const variant of options.variants) {
         Object.defineProperty(Base, variant, {
-          value: extract(variantStruct, variant)
+          value: extract(variantStruct, variant).annotations({
+            identifier: `${identifier}.${variant}`,
+            title: `${identifier}.${variant}`
+          })
         })
       }
       return Base
