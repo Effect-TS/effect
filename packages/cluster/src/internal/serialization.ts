@@ -1,9 +1,9 @@
-import * as Schema from "@effect/schema/Schema"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as ParseResult from "effect/ParseResult"
+import type * as Schema from "effect/Schema"
 import type * as Serialization from "../Serialization.js"
 import * as SerializedMessage from "../SerializedMessage.js"
 import * as ShardingException from "../ShardingException.js"
@@ -23,8 +23,10 @@ export const serializationTag = Context.GenericTag<Serialization.Serialization>(
 function jsonStringify<A, I>(value: A, schema: Schema.Schema<A, I>) {
   return pipe(
     value,
-    Schema.encode(schema),
-    Effect.mapError((e) => new ShardingException.SerializationException({ error: TreeFormatter.formatError(e) })),
+    ParseResult.encode(schema),
+    Effect.mapError((issue) =>
+      new ShardingException.SerializationException({ error: ParseResult.TreeFormatter.formatIssue(issue) })
+    ),
     Effect.map((_) => JSON.stringify(_))
   )
 }
@@ -33,8 +35,10 @@ function jsonStringify<A, I>(value: A, schema: Schema.Schema<A, I>) {
 function jsonParse<A, I>(value: string, schema: Schema.Schema<A, I>) {
   return pipe(
     Effect.sync(() => JSON.parse(value)),
-    Effect.flatMap(Schema.decode(schema)),
-    Effect.mapError((e) => new ShardingException.SerializationException({ error: TreeFormatter.formatError(e) }))
+    Effect.flatMap(ParseResult.decode(schema)),
+    Effect.mapError((issue) =>
+      new ShardingException.SerializationException({ error: ParseResult.TreeFormatter.formatIssue(issue) })
+    )
   )
 }
 

@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { ParseError } from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -12,8 +9,10 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { dual, pipe } from "effect/Function"
 import * as Mailbox from "effect/Mailbox"
+import type { ParseError } from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
 import * as Rpc from "./Rpc.js"
@@ -55,7 +54,7 @@ export declare namespace RpcRouter {
    * @category models
    */
   export type Context<A extends RpcRouter<any, any>> = A extends RpcRouter<infer Req, infer R>
-    ? R | Serializable.SerializableWithResult.Context<Req>
+    ? R | Schema.SerializableWithResult.Context<Req>
     : never
 
   /**
@@ -63,7 +62,7 @@ export declare namespace RpcRouter {
    * @category models
    */
   export type ContextRaw<A extends RpcRouter<any, any>> = A extends RpcRouter<infer Req, infer R>
-    ? R | Serializable.Serializable.Context<Req>
+    ? R | Schema.Serializable.Context<Req>
     : never
 
   /**
@@ -206,8 +205,8 @@ export const toHandler: {
     )
     const schemaArray = Schema.Array(Rpc.RequestSchema(schema))
     const decode = Schema.decodeUnknown(schemaArray)
-    const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
-    const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Serializable.exitSchema(req))))
+    const getEncode = withRequestTag((req) => Schema.encode(Schema.exitSchema(req)))
+    const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Schema.exitSchema(req))))
 
     return (u: unknown): Stream.Stream<RpcRouter.Response, ParseError, RpcRouter.Context<R>> =>
       pipe(
@@ -316,8 +315,8 @@ export const toHandlerNoStream: {
   )
   const schemaArray = Schema.Array(Rpc.RequestSchema(schema))
   const decode = Schema.decodeUnknown(schemaArray)
-  const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
-  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Serializable.exitSchema(req))))
+  const getEncode = withRequestTag((req) => Schema.encode(Schema.exitSchema(req)))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Schema.exitSchema(req))))
 
   return (u: unknown): Effect.Effect<Array<RpcRouter.ResponseEffect>, ParseError, RpcRouter.Context<R>> =>
     Effect.flatMap(
@@ -408,8 +407,8 @@ export const toHandlerRaw = <R extends RpcRouter<any, any>>(router: R) => {
  */
 export const toHandlerUndecoded = <R extends RpcRouter<any, any>>(router: R) => {
   const handler = toHandlerRaw(router)
-  const getEncode = withRequestTag((req) => Schema.encode(Serializable.successSchema(req)))
-  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.ChunkFromSelf(Serializable.successSchema(req))))
+  const getEncode = withRequestTag((req) => Schema.encode(Schema.successSchema(req)))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.ChunkFromSelf(Schema.successSchema(req))))
   return <Req extends RpcRouter.Request<R>>(request: Req): Rpc.Rpc.ResultUndecoded<Req, RpcRouter.Context<R>> => {
     const result = handler(request)
     if (Effect.isEffect(result)) {

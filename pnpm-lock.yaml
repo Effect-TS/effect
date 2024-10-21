@@ -168,9 +168,6 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../../platform/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../../schema/dist
       effect:
         specifier: workspace:^
         version: link:../../effect/dist
@@ -194,9 +191,6 @@ importers:
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../../platform-node/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../../schema/dist
       '@tim-smart/openapi-gen':
         specifier: ^0.2.0
         version: 0.2.0
@@ -229,9 +223,6 @@ importers:
       '@effect/printer-ansi':
         specifier: workspace:^
         version: link:../printer-ansi/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       '@types/ini':
         specifier: ^4.1.1
         version: 4.1.1
@@ -251,9 +242,6 @@ importers:
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../platform-node/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
@@ -270,9 +258,6 @@ importers:
       '@effect/rpc':
         specifier: workspace:^
         version: link:../rpc/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -296,9 +281,6 @@ importers:
       '@effect/rpc-http':
         specifier: workspace:^
         version: link:../rpc-http/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
@@ -318,9 +300,6 @@ importers:
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../platform-node/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
@@ -333,6 +312,10 @@ importers:
     publishDirectory: dist
 
   packages/effect:
+    dependencies:
+      fast-check:
+        specifier: ^3.21.0
+        version: 3.21.0
     devDependencies:
       '@types/jscodeshift':
         specifier: ^0.11.11
@@ -340,12 +323,21 @@ importers:
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
       ast-types:
         specifier: ^0.14.2
         version: 0.14.2
       jscodeshift:
         specifier: ^0.16.1
         version: 0.16.1(@babel/preset-env@7.25.4(@babel/core@7.25.2))
+      tinybench:
+        specifier: ^2.9.0
+        version: 2.9.0
+      zod:
+        specifier: ^3.23.5
+        version: 3.23.8
     publishDirectory: dist
 
   packages/experimental:
@@ -356,9 +348,6 @@ importers:
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../platform-node/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -436,9 +425,6 @@ importers:
         specifier: ^0.2.5
         version: 0.2.5
     devDependencies:
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -456,9 +442,6 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -479,9 +462,6 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       bun-types:
         specifier: 1.1.22
         version: 1.1.22
@@ -508,9 +488,6 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       '@types/mime':
         specifier: ^3.0.4
         version: 3.0.4
@@ -537,9 +514,6 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
@@ -583,9 +557,6 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -603,32 +574,9 @@ importers:
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../platform-node/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-    publishDirectory: dist
-
-  packages/schema:
-    dependencies:
-      fast-check:
-        specifier: ^3.21.0
-        version: 3.21.0
-    devDependencies:
-      ajv:
-        specifier: ^8.17.1
-        version: 8.17.1
-      effect:
-        specifier: workspace:^
-        version: link:../effect/dist
-      tinybench:
-        specifier: ^2.9.0
-        version: 2.9.0
-      zod:
-        specifier: ^3.23.5
-        version: 3.23.8
     publishDirectory: dist
 
   packages/sql:
@@ -643,9 +591,6 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      '@effect/schema':
-        specifier: workspace:^
-        version: link:../schema/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist

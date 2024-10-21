@@ -229,10 +229,10 @@ describe("Stream", () => {
       }
 
       const result = yield* $(
-        Stream.fromReadableStream(
-          () => new ReadableStream(new NumberSource()),
-          (error) => new FromReadableStreamError(error)
-        ),
+        Stream.fromReadableStream({
+          evaluate: () => new ReadableStream(new NumberSource()),
+          onError: (error) => new FromReadableStreamError(error)
+        }),
         Stream.take(10),
         Stream.runCollect
       )

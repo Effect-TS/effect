@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
+import type * as Schema from "effect/Schema"
 import * as internal from "./internal/serialization.js"
 import type * as SerializedMessage from "./SerializedMessage.js"
 import type * as ShardingException from "./ShardingException.js"

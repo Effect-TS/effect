@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import type * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as ActivityContext from "./ActivityContext.js"
 import * as DurableExecutionEvent from "./DurableExecutionEvent.js"

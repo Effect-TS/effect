@@ -1,3 +1,4 @@
+import { NodeInspectSymbol } from "effect/Inspectable"
 import * as Equal from "../Equal.js"
 import { pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
@@ -32,6 +33,9 @@ export const proto = {
     return "<redacted>"
   },
   toJSON() {
+    return "<redacted>"
+  },
+  [NodeInspectSymbol]() {
     return "<redacted>"
   },
   [Hash.symbol]<T>(this: Redacted.Redacted<T>): number {

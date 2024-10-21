@@ -1,10 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type * as Schema from "@effect/schema/Schema"
-import type * as Serializable from "@effect/schema/Serializable"
 import type * as Exit_ from "effect/Exit"
 import type * as PrimaryKey from "effect/PrimaryKey"
+import type * as Schema from "effect/Schema"
 import type * as Types from "effect/Types"
 import * as internal from "./internal/message.js"
 
@@ -16,7 +15,7 @@ import * as internal from "./internal/message.js"
  * @category models
  */
 export interface Message<A, AI, E, EI>
-  extends Serializable.SerializableWithResult<any, any, never, A, AI, E, EI, never>, PrimaryKey.PrimaryKey
+  extends Schema.SerializableWithResult<any, any, never, A, AI, E, EI, never>, PrimaryKey.PrimaryKey
 {}
 
 /**
@@ -70,8 +69,7 @@ export namespace Message {
    * @since 1.0.0
    * @category utils
    */
-  export type Exit<S> = S extends Serializable.WithResult<infer A, infer _AI, infer E, infer _EI, infer _R> ?
-    Exit_.Exit<A, E>
+  export type Exit<S> = S extends Schema.WithResult<infer A, infer _AI, infer E, infer _EI, infer _R> ? Exit_.Exit<A, E>
     : never
 }
 

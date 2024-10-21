@@ -1,15 +1,15 @@
 /**
  * @since 1.0.0
  */
-import type * as AST from "@effect/schema/AST"
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as Schema from "@effect/schema/Schema"
 import type { Brand } from "effect/Brand"
 import type * as Effect from "effect/Effect"
 import { constUndefined, dual } from "effect/Function"
 import * as Option from "effect/Option"
+import * as ParseResult from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
+import type * as AST from "effect/SchemaAST"
 import * as Struct_ from "effect/Struct"
 
 /**
@@ -506,7 +506,10 @@ export const make = <
       }
       for (const variant of options.variants) {
         Object.defineProperty(Base, variant, {
-          value: extract(variantStruct, variant)
+          value: extract(variantStruct, variant).annotations({
+            identifier: `${identifier}.${variant}`,
+            title: `${identifier}.${variant}`
+          })
         })
       }
       return Base

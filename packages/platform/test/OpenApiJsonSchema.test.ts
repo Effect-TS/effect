@@ -1,7 +1,7 @@
 import * as JsonSchema from "@effect/platform/OpenApiJsonSchema"
-import * as A from "@effect/schema/Arbitrary"
-import * as Schema from "@effect/schema/Schema"
 import AjvNonEsm from "ajv/dist/2019.js"
+import * as A from "effect/Arbitrary"
+import * as Schema from "effect/Schema"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -102,10 +102,10 @@ schema (SymbolKeyword): symbol`
 
     it("a unique symbol should raise an error", () => {
       expectError(
-        Schema.UniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")),
+        Schema.UniqueSymbolFromSelf(Symbol.for("effect/Schema/test/a")),
         `Missing annotation
 details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (UniqueSymbol): Symbol(@effect/schema/test/a)`
+schema (UniqueSymbol): Symbol(effect/Schema/test/a)`
       )
     })
 
@@ -736,11 +736,11 @@ schema (Declaration): DateFromSelf`
     })
 
     it("should raise an error if there is a property named with a symbol", () => {
-      const a = Symbol.for("@effect/schema/test/a")
+      const a = Symbol.for("effect/Schema/test/a")
       expectError(
         Schema.Struct({ [a]: Schema.String }),
         `Unsupported key
-details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
+details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
@@ -1426,36 +1426,46 @@ schema (Suspend): <suspended schema>`
     it("should support make(Class)", () => {
       class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
       expectJSONSchema(A, {
-        "type": "object",
-        "required": [
-          "a"
-        ],
-        "properties": {
-          "a": {
-            "type": "string"
+        $defs: {
+          "A": {
+            "type": "object",
+            "required": [
+              "a"
+            ],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "description": "an instance of A",
+            "title": "A"
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of A",
-        "title": "A"
+        $ref: "#/$defs/A"
       })
     })
 
     it("should support make(S.typeSchema(Class))", () => {
       class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
       expectJSONSchema(Schema.typeSchema(A), {
-        "type": "object",
-        "required": [
-          "a"
-        ],
-        "properties": {
-          "a": {
-            "type": "string"
+        $defs: {
+          "A": {
+            "type": "object",
+            "required": [
+              "a"
+            ],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "description": "an instance of A",
+            "title": "A"
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of A",
-        "title": "A"
+        $ref: "#/$defs/A"
       })
     })
 
@@ -1819,21 +1829,39 @@ schema (Suspend): <suspended schema>`
 
     it("refinement of a transformation without an override annotation", () => {
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString()), {
-        "type": "string",
-        "title": "Trimmed",
+        $defs: {
+          "Trim": {
+            "type": "string",
+            "title": "Trimmed",
+            "description": "a string that will be trimmed"
+          }
+        },
+        $ref: "#/$defs/Trim",
         "description": "a non empty string"
       }, false)
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
-        "description": "a non empty string",
-        "type": "string",
-        "title": "Trimmed"
+        $defs: {
+          "Trim": {
+            "type": "string",
+            "title": "Trimmed",
+            "description": "a string that will be trimmed"
+          }
+        },
+        $ref: "#/$defs/Trim",
+        "description": "a non empty string"
       }, false)
       expectJSONSchema(
         Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
         {
-          "description": "a non empty string",
-          "type": "string",
-          "title": "Trimmed"
+          $defs: {
+            "Trim": {
+              "type": "string",
+              "title": "Trimmed",
+              "description": "a string that will be trimmed"
+            }
+          },
+          $ref: "#/$defs/Trim",
+          "description": "a non empty string"
         },
         false
       )
@@ -1841,27 +1869,6 @@ schema (Suspend): <suspended schema>`
   })
 
   describe("transformations", () => {
-    it("should not handle identifiers", () => {
-      expectJSONSchema(
-        Schema.Struct({
-          a: Schema.NumberFromString
-        }),
-        {
-          "type": "object",
-          "required": [
-            "a"
-          ],
-          "properties": {
-            "a": {
-              description: "a string that will be parsed into a number",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      )
-    })
-
     it("compose", () => {
       expectJSONSchema(
         Schema.Struct({
@@ -2043,6 +2050,12 @@ schema (Suspend): <suspended schema>`
         a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
       })),
       {
+        $defs: {
+          "NumberFromString": {
+            "type": "string",
+            "description": "a string that will be parsed into a number"
+          }
+        },
         type: "string",
         contentMediaType: "application/json",
         contentSchema: {
@@ -2052,8 +2065,7 @@ schema (Suspend): <suspended schema>`
             a: {
               contentMediaType: "application/json",
               contentSchema: {
-                description: "a string that will be parsed into a number",
-                type: "string"
+                $ref: "#/$defs/NumberFromString"
               },
               type: "string"
             }
@@ -2095,14 +2107,19 @@ schema (Suspend): <suspended schema>`
         value: Schema.NumberFromString
       }),
       {
+        $defs: {
+          "NumberFromString": {
+            "type": "string",
+            "description": "a string that will be parsed into a number"
+          }
+        },
         "description": "a record that will be parsed into a ReadonlyMap",
         "type": "object",
         "required": [],
         "properties": {},
         "patternProperties": {
           "": {
-            "description": "a string that will be parsed into a number",
-            "type": "string"
+            $ref: "#/$defs/NumberFromString"
           }
         },
         "propertyNames": {
@@ -2121,14 +2138,19 @@ schema (Suspend): <suspended schema>`
         value: Schema.NumberFromString
       }),
       {
+        $defs: {
+          "NumberFromString": {
+            "type": "string",
+            "description": "a string that will be parsed into a number"
+          }
+        },
         "type": "object",
         "description": "a record that will be parsed into a Map",
         "required": [],
         "properties": {},
         "patternProperties": {
           "": {
-            "description": "a string that will be parsed into a number",
-            "type": "string"
+            $ref: "#/$defs/NumberFromString"
           }
         },
         "propertyNames": {
@@ -2155,8 +2177,13 @@ schema (Suspend): <suspended schema>`
     expectJSONSchema(
       Schema.DateFromString,
       {
-        "type": "string",
-        "description": "a string that will be parsed into a Date"
+        $defs: {
+          "DateFromString": {
+            "type": "string",
+            "description": "a string that will be parsed into a Date"
+          }
+        },
+        $ref: "#/$defs/DateFromString"
       }
     )
   })
@@ -2165,8 +2192,13 @@ schema (Suspend): <suspended schema>`
     expectJSONSchema(
       Schema.Date,
       {
-        "type": "string",
-        "description": "a string that will be parsed into a Date"
+        $defs: {
+          "DateFromString": {
+            "type": "string",
+            "description": "a string that will be parsed into a Date"
+          }
+        },
+        $ref: "#/$defs/DateFromString"
       }
     )
   })

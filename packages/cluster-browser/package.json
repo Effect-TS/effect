@@ -27,12 +27,10 @@
   },
   "peerDependencies": {
     "@effect/rpc": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/rpc": "workspace:^",
-    "@effect/schema": "workspace:^",
     "effect": "workspace:^"
   }
 }

@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import type { ParseError } from "@effect/schema/ParseResult"
-import type * as Schema from "@effect/schema/Schema"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
+import type { ParseError } from "effect/ParseResult"
+import type * as Schema from "effect/Schema"
 import { Packr, Unpackr } from "msgpackr"
 import * as ChannelSchema from "./ChannelSchema.js"
 

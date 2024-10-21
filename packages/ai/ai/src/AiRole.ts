@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/schema/Schema"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 
 /**
  * @since 1.0.0
