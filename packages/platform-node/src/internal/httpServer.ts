@@ -328,10 +328,15 @@ export const layer = (
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, make(evaluate, options)),
-    internalPlatform.layer,
-    Etag.layerWeak,
-    NodeContext.layer
+    layerContext
   )
+
+/** @internal */
+export const layerContext = Layer.mergeAll(
+  internalPlatform.layer,
+  Etag.layerWeak,
+  NodeContext.layer
+)
 
 /** @internal */
 export const layerTest = Server.layerTestClient.pipe(

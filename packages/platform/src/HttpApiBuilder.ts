@@ -137,6 +137,8 @@ export const httpApp: Effect.Effect<
  * const { dispose, handler } = HttpApiBuilder.toWebHandler(
  *   Layer.mergeAll(
  *     MyApiLive,
+ *     // you could also use NodeHttpServer.layerContext, depending on your
+ *     // server's platform
  *     HttpServer.layerContext
  *   )
  * )
