@@ -1,5 +1,15 @@
 # @effect/cluster
 
+## 0.12.0
+
+### Patch Changes
+
+- [#3760](https://github.com/Effect-TS/effect/pull/3760) [`dacbf7d`](https://github.com/Effect-TS/effect/commit/dacbf7db59899065aee4e5dd95a6459880e09ceb) Thanks @tim-smart! - add sql-clickhouse & clickhouse dialect
+
+- Updated dependencies [[`dacbf7d`](https://github.com/Effect-TS/effect/commit/dacbf7db59899065aee4e5dd95a6459880e09ceb)]:
+  - @effect/sql@0.17.0
+  - @effect/cluster@0.13.0
+
 ## 0.11.6
 
 ### Patch Changes
