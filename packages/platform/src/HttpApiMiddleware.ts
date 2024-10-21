@@ -123,20 +123,19 @@ export type TagClass<
   Self,
   Name extends string,
   Options
-> = Options extends { readonly security: Record<string, HttpApiSecurity.HttpApiSecurity> } ?
-    & TagClass.Base<
-      Self,
-      Name,
-      Options,
-      Simplify<
-        HttpApiMiddlewareSecurity<
-          Options["security"],
-          TagClass.Service<Options>,
-          TagClass.FailureService<Options>
-        >
+> = Options extends { readonly security: Record<string, HttpApiSecurity.HttpApiSecurity> } ? TagClass.BaseSecurity<
+    Self,
+    Name,
+    Options,
+    Simplify<
+      HttpApiMiddlewareSecurity<
+        Options["security"],
+        TagClass.Service<Options>,
+        TagClass.FailureService<Options>
       >
-    >
-    & TagClass.SecurityFields<Options["security"]>
+    >,
+    Options["security"]
+  >
   : TagClass.Base<
     Self,
     Name,
@@ -182,7 +181,9 @@ export declare namespace TagClass {
    * @since 1.0.0
    * @category models
    */
-  export type Failure<Options> = Schema.Schema.Type<FailureSchema<Options>>
+  export type Failure<Options> = Options extends
+    { readonly failure: Schema.Schema<infer _A, infer _I, infer _R>; readonly optional?: false } ? _A
+    : never
 
   /**
    * @since 1.0.0
@@ -206,17 +207,7 @@ export declare namespace TagClass {
    * @since 1.0.0
    * @category models
    */
-  export type Base<Self, Name extends string, Options, Service> =
-    & BaseConstructor<Self, Name, Options, Service>
-    & (Optional<Options> extends true ? {}
-      : Options extends { readonly provides: Context.Tag<any, any> } ? { readonly provides: Options["provides"] }
-      : {})
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface BaseConstructor<Self, Name extends string, Options, Service> extends Context.Tag<Self, Service> {
+  export interface Base<Self, Name extends string, Options, Service> extends Context.Tag<Self, Service> {
     new(_: never):
       & Context.TagClassShape<Name, Service>
       & {
@@ -229,13 +220,21 @@ export declare namespace TagClass {
     readonly [TypeId]: TypeId
     readonly optional: Optional<Options>
     readonly failure: FailureSchema<Options>
+    readonly provides: Options extends { readonly provides: Context.Tag<any, any> } ? Options["provides"]
+      : undefined
   }
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export interface SecurityFields<Security extends Record<string, HttpApiSecurity.HttpApiSecurity>> {
+  export interface BaseSecurity<
+    Self,
+    Name extends string,
+    Options,
+    Service,
+    Security extends Record<string, HttpApiSecurity.HttpApiSecurity>
+  > extends Base<Self, Name, Options, Service> {
     readonly [SecurityTypeId]: SecurityTypeId
     readonly security: Security
   }
