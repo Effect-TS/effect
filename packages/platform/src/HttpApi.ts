@@ -1,21 +1,21 @@
 /**
  * @since 1.0.0
  */
-import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
-import { dual } from "effect/Function"
+import * as HashMap from "effect/HashMap"
+import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
-import type { Pipeable } from "effect/Pipeable"
-import { pipeArguments } from "effect/Pipeable"
+import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import * as HttpApiEndpoint from "./HttpApiEndpoint.js"
+import type * as HttpApiEndpoint from "./HttpApiEndpoint.js"
 import { HttpApiDecodeError } from "./HttpApiError.js"
-import * as HttpApiGroup from "./HttpApiGroup.js"
+import type * as HttpApiGroup from "./HttpApiGroup.js"
+import type * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 import type { HttpMethod } from "./HttpMethod.js"
-import type * as HttpRouter from "./HttpRouter.js"
+import type { PathInput } from "./HttpRouter.js"
 
 /**
  * @since 1.0.0
@@ -33,34 +33,78 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category guards
  */
-export const isHttpApi = (u: unknown): u is HttpApi<any, any> => Predicate.hasProperty(u, TypeId)
+export const isHttpApi = (u: unknown): u is HttpApi.Any => Predicate.hasProperty(u, TypeId)
 
 /**
- * An `HttpApi` represents a collection of `HttpApiGroup`s. You can use an `HttpApi` to
- * represent your entire domain.
+ * An `HttpApi` is a collection of `HttpApiEndpoint`s. You can use an `HttpApi` to
+ * represent a portion of your domain.
+ *
+ * The endpoints can be implemented later using the `HttpApiBuilder.make` api.
  *
  * @since 1.0.0
  * @category models
  */
 export interface HttpApi<
   out Groups extends HttpApiGroup.HttpApiGroup.Any = never,
-  in out Error = never,
-  out ErrorR = never
+  in out E = never,
+  out R = never
 > extends Pipeable {
   new(_: never): {}
   readonly [TypeId]: TypeId
-  readonly groups: Chunk.Chunk<Groups>
-  readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
+  readonly groups: HashMap.HashMap<string, Groups>
   readonly annotations: Context.Context<never>
+  readonly errorSchema: Schema.Schema<E, unknown, R>
+  readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+
+  /**
+   * Add an endpoint to the `HttpApi`.
+   */
+  add<A extends HttpApiGroup.HttpApiGroup.Any>(group: A): HttpApi<Groups | A, E, R>
+  /**
+   * Add an global error to the `HttpApi`.
+   */
+  addError<A, I, RX>(
+    schema: Schema.Schema<A, I, RX>,
+    annotations?: {
+      readonly status?: number | undefined
+    }
+  ): HttpApi<Groups, E | A, R | RX>
+  /**
+   * Prefix all endpoints in the `HttpApi`.
+   */
+  prefix(prefix: PathInput): HttpApi<Groups, E, R>
+  /**
+   * Add a middleware to a `HttpApi`. It will be applied to all endpoints in the
+   * `HttpApi`.
+   */
+  middleware<I extends HttpApiMiddleware.HttpApiMiddleware.AnyId, S>(
+    middleware: Context.Tag<I, S>
+  ): HttpApi<
+    Groups,
+    E | HttpApiMiddleware.HttpApiMiddleware.Error<I>,
+    R | I | HttpApiMiddleware.HttpApiMiddleware.ErrorContext<I>
+  >
+  /**
+   * Annotate the `HttpApi`.
+   */
+  annotate<I, S>(tag: Context.Tag<I, S>, value: S): HttpApi<Groups, E, R>
+  /**
+   * Annotate the `HttpApi` with a Context.
+   */
+  annotateContext<I>(context: Context.Context<I>): HttpApi<Groups, E, R>
 }
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const HttpApi: Context.Tag<HttpApi.Service, HttpApi.Any> = Context.GenericTag<HttpApi.Service, HttpApi.Any>(
-  "@effect/platform/HttpApi"
-)
+export class Api extends Context.Tag("@effect/platform/HttpApi/Api")<
+  Api,
+  {
+    readonly api: HttpApi<HttpApiGroup.HttpApiGroup.AnyWithProps>
+    readonly context: Context.Context<never>
+  }
+>() {}
 
 /**
  * @since 1.0.0
@@ -71,182 +115,121 @@ export declare namespace HttpApi {
    * @since 1.0.0
    * @category models
    */
-  export interface Service {
-    readonly _: unique symbol
-  }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Any extends Pipeable {
-    new(_: never): {}
+  export interface Any {
     readonly [TypeId]: TypeId
-    readonly groups: Chunk.Chunk<HttpApiGroup.HttpApiGroup.Any>
-    readonly errorSchema: Schema.Schema.All
-    readonly annotations: Context.Context<never>
   }
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type Context<A> = A extends HttpApi<infer _Groups, infer _ApiError, infer _ApiErrorR>
-    ? _ApiErrorR | HttpApiGroup.HttpApiGroup.Context<_Groups>
-    : never
+  export type AnyWithProps = HttpApi<HttpApiGroup.HttpApiGroup.AnyWithProps, any, any>
 }
 
 const Proto = {
   [TypeId]: TypeId,
   pipe() {
     return pipeArguments(this, arguments)
-  }
-}
-
-const makeProto = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR>(options: {
-  readonly groups: Chunk.Chunk<Groups>
-  readonly errorSchema: Schema.Schema<Error, unknown, ErrorR>
-  readonly annotations: Context.Context<never>
-}): HttpApi<Groups, Error, ErrorR> => {
-  function HttpApi() {}
-  Object.setPrototypeOf(HttpApi, Proto)
-  return Object.assign(HttpApi, options) as any
-}
-
-/**
- * An empty `HttpApi`. You can use this to start building your `HttpApi`.
- *
- * You can add groups to this `HttpApi` using the `addGroup` function.
- *
- * @since 1.0.0
- * @category constructors
- */
-export const empty: HttpApi = makeProto({
-  groups: Chunk.empty(),
-  errorSchema: HttpApiDecodeError as any,
-  annotations: Context.empty()
-})
-
-/**
- * Add a `HttpApiGroup` to an `HttpApi`.
- *
- * @since 1.0.0
- * @category constructors
- */
-export const addGroup: {
-  <Group extends HttpApiGroup.HttpApiGroup.Any>(
-    group: Group
-  ): <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR>(
-    self: HttpApi<Groups, Error, ErrorR>
-  ) => HttpApi<Groups | Group, Error, ErrorR>
-  <Group extends HttpApiGroup.HttpApiGroup.Any>(
-    path: HttpRouter.PathInput,
-    group: Group
-  ): <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR>(
-    self: HttpApi<Groups, Error, ErrorR>
-  ) => HttpApi<Groups | Group, Error, ErrorR>
-  <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, Group extends HttpApiGroup.HttpApiGroup.Any>(
-    self: HttpApi<Groups, Error, ErrorR>,
-    group: Group
-  ): HttpApi<Groups | Group, Error, ErrorR>
-  <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, Group extends HttpApiGroup.HttpApiGroup.Any>(
-    self: HttpApi<Groups, Error, ErrorR>,
-    path: HttpRouter.PathInput,
-    group: Group
-  ): HttpApi<Groups | Group, Error, ErrorR>
-} = dual(
-  (args) => isHttpApi(args[0]),
-  (
-    self: HttpApi.Any,
-    ...args: [group: HttpApiGroup.HttpApiGroup.Any] | [path: HttpRouter.PathInput, group: HttpApiGroup.HttpApiGroup.Any]
-  ): HttpApi.Any => {
-    const group = args.length === 1 ? args[0] : HttpApiGroup.prefix(args[1] as any, args[0])
+  },
+  add(
+    this: HttpApi.AnyWithProps,
+    group: HttpApiGroup.HttpApiGroup.AnyWithProps
+  ) {
     return makeProto({
-      errorSchema: self.errorSchema as any,
-      annotations: self.annotations,
-      groups: Chunk.append(self.groups, group)
+      groups: HashMap.set(this.groups, group.identifier, group),
+      errorSchema: this.errorSchema,
+      annotations: this.annotations,
+      middlewares: this.middlewares
     })
-  }
-)
-/**
- * Add an error schema to an `HttpApi`, which is shared by all endpoints in the
- * `HttpApi`.
- *
- * Useful for adding error types from middleware or other shared error types.
- *
- * @since 1.0.0
- * @category errors
- */
-export const addError: {
-  <A, I, R>(
-    schema: Schema.Schema<A, I, R>,
-    annotations?: {
-      readonly status?: number | undefined
-    }
-  ): <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR>(
-    self: HttpApi<Groups, Error, ErrorR>
-  ) => HttpApi<Groups, Error | A, ErrorR | R>
-  <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, A, I, R>(
-    self: HttpApi<Groups, Error, ErrorR>,
-    schema: Schema.Schema<A, I, R>,
-    annotations?: {
-      readonly status?: number | undefined
-    }
-  ): HttpApi<Groups, Error | A, ErrorR | R>
-} = dual(
-  (args) => isHttpApi(args[0]),
-  <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, A, I, R>(
-    self: HttpApi<Groups, Error, ErrorR>,
-    schema: Schema.Schema<A, I, R>,
-    annotations?: {
-      readonly status?: number | undefined
-    }
-  ): HttpApi<Groups, Error | A, ErrorR | R> =>
-    makeProto({
-      groups: self.groups,
-      annotations: self.annotations,
+  },
+  addError(
+    this: HttpApi.AnyWithProps,
+    schema: Schema.Schema.Any,
+    annotations?: { readonly status?: number }
+  ) {
+    return makeProto({
+      groups: this.groups,
       errorSchema: HttpApiSchema.UnionUnify(
-        self.errorSchema,
+        this.errorSchema,
         schema.annotations(HttpApiSchema.annotations({
           status: annotations?.status ?? HttpApiSchema.getStatusError(schema)
         }))
-      )
+      ),
+      annotations: this.annotations,
+      middlewares: this.middlewares
     })
-)
+  },
+  prefix(this: HttpApi.AnyWithProps, prefix: PathInput) {
+    return makeProto({
+      groups: HashMap.map(this.groups, (group) => group.prefix(prefix)),
+      errorSchema: this.errorSchema,
+      annotations: this.annotations,
+      middlewares: this.middlewares
+    })
+  },
+  middleware(this: HttpApi.AnyWithProps, tag: HttpApiMiddleware.TagClassAny) {
+    return makeProto({
+      groups: this.groups,
+      errorSchema: HttpApiSchema.UnionUnify(
+        this.errorSchema,
+        tag.failure.annotations(HttpApiSchema.annotations({
+          status: HttpApiSchema.getStatusError(tag.failure)
+        }) as any)
+      ),
+      annotations: this.annotations,
+      middlewares: HashSet.add(this.middlewares, tag)
+    })
+  },
+  annotate(this: HttpApi.AnyWithProps, tag: Context.Tag<any, any>, value: any) {
+    return makeProto({
+      groups: this.groups,
+      errorSchema: this.errorSchema,
+      annotations: Context.add(this.annotations, tag, value),
+      middlewares: this.middlewares
+    })
+  },
+  annotateContext(this: HttpApi.AnyWithProps, context: Context.Context<any>) {
+    return makeProto({
+      groups: this.groups,
+      errorSchema: this.errorSchema,
+      annotations: Context.merge(this.annotations, context),
+      middlewares: this.middlewares
+    })
+  }
+}
+
+const makeProto = <Groups extends HttpApiGroup.HttpApiGroup.Any, E, I, R>(
+  options: {
+    readonly groups: HashMap.HashMap<string, Groups>
+    readonly errorSchema: Schema.Schema<E, I, R>
+    readonly annotations: Context.Context<never>
+    readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+  }
+): HttpApi<Groups, E, R> => {
+  function HttpApi() {}
+  Object.setPrototypeOf(HttpApi, Proto)
+  HttpApi.groups = options.groups
+  HttpApi.errorSchema = options.errorSchema
+  HttpApi.annotations = options.annotations
+  HttpApi.middlewares = options.middlewares
+  return HttpApi as any
+}
 
 /**
+ * An `HttpApi` is a collection of `HttpApiEndpoint`s. You can use an `HttpApi` to
+ * represent a portion of your domain.
+ *
+ * The endpoints can be implemented later using the `HttpApiBuilder.make` api.
+ *
  * @since 1.0.0
- * @category annotations
+ * @category constructors
  */
-export const annotateMerge: {
-  <I>(context: Context.Context<I>): <A extends HttpApi.Any>(self: A) => A
-  <A extends HttpApi.Any, I>(self: A, context: Context.Context<I>): A
-} = dual(
-  2,
-  <A extends HttpApi.Any, I>(self: A, context: Context.Context<I>): A =>
-    makeProto({
-      groups: self.groups,
-      errorSchema: self.errorSchema as any,
-      annotations: Context.merge(self.annotations, context)
-    }) as A
-)
-
-/**
- * @since 1.0.0
- * @category annotations
- */
-export const annotate: {
-  <I, S>(tag: Context.Tag<I, S>, value: S): <A extends HttpApi.Any>(self: A) => A
-  <A extends HttpApi.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A
-} = dual(
-  3,
-  <A extends HttpApi.Any, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A =>
-    makeProto({
-      groups: self.groups,
-      errorSchema: self.errorSchema as any,
-      annotations: Context.add(self.annotations, tag, value)
-    }) as A
-)
+export const empty: HttpApi<never, HttpApiDecodeError> = makeProto({
+  groups: HashMap.empty(),
+  errorSchema: HttpApiDecodeError,
+  annotations: Context.empty(),
+  middlewares: HashSet.empty()
+})
 
 /**
  * Extract metadata from an `HttpApi`, which can be used to generate documentation
@@ -257,46 +240,42 @@ export const annotate: {
  * @since 1.0.0
  * @category reflection
  */
-export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR>(
-  self: HttpApi<Groups, Error, ErrorR>,
+export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
+  self: HttpApi<Groups, Error, R>,
   options: {
     readonly onGroup: (options: {
-      readonly group: HttpApiGroup.HttpApiGroup<string, any>
+      readonly group: HttpApiGroup.HttpApiGroup.AnyWithProps
       readonly mergedAnnotations: Context.Context<never>
     }) => void
     readonly onEndpoint: (options: {
-      readonly group: HttpApiGroup.HttpApiGroup<string, any>
+      readonly group: HttpApiGroup.HttpApiGroup.AnyWithProps
       readonly endpoint: HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>
       readonly mergedAnnotations: Context.Context<never>
-      readonly successAST: Option.Option<AST.AST>
-      readonly successStatus: number
-      readonly successEncoding: HttpApiSchema.Encoding
+      readonly middleware: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+      readonly successes: ReadonlyMap<number, Option.Option<AST.AST>>
       readonly errors: ReadonlyMap<number, Option.Option<AST.AST>>
     }) => void
   }
 ) => {
-  const apiErrors = extractErrors(self.errorSchema.ast, new Map())
-
-  const groups = self.groups as Iterable<HttpApiGroup.HttpApiGroup<string, any>>
-  for (const group of groups) {
-    const groupErrors = extractErrors(group.errorSchema.ast, apiErrors)
+  const apiErrors = extractMembers(self.errorSchema.ast, new Map(), HttpApiSchema.getStatusErrorAST)
+  const groups = self.groups as Iterable<[string, HttpApiGroup.HttpApiGroup.AnyWithProps]>
+  for (const [, group] of groups) {
+    const groupErrors = extractMembers(group.errorSchema.ast, apiErrors, HttpApiSchema.getStatusErrorAST)
     const groupAnnotations = Context.merge(self.annotations, group.annotations)
     options.onGroup({
       group,
       mergedAnnotations: groupAnnotations
     })
-    const endpoints = group.endpoints as Iterable<HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>>
-    for (const endpoint of endpoints) {
+    const endpoints = group.endpoints as Iterable<[string, HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>]>
+    for (const [, endpoint] of endpoints) {
+      const errors = extractMembers(endpoint.errorSchema.ast, groupErrors, HttpApiSchema.getStatusErrorAST)
       options.onEndpoint({
         group,
         endpoint,
+        middleware: HashSet.union(group.middlewares, endpoint.middlewares),
         mergedAnnotations: Context.merge(groupAnnotations, endpoint.annotations),
-        successAST: HttpApiEndpoint.schemaSuccess(endpoint).pipe(
-          Option.map((schema) => schema.ast)
-        ),
-        successStatus: HttpApiSchema.getStatusSuccess(endpoint.successSchema),
-        successEncoding: HttpApiSchema.getEncoding(endpoint.successSchema.ast),
-        errors: extractErrors(endpoint.errorSchema.ast, groupErrors)
+        successes: extractMembers(endpoint.successSchema.ast, new Map(), HttpApiSchema.getStatusSuccessAST),
+        errors
       })
     }
   }
@@ -304,20 +283,24 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, Err
 
 // -------------------------------------------------------------------------------------
 
-const extractErrors = (
-  ast: AST.AST,
-  inherited: ReadonlyMap<number, Option.Option<AST.AST>>
+const extractMembers = (
+  topAst: AST.AST,
+  inherited: ReadonlyMap<number, Option.Option<AST.AST>>,
+  getStatus: (ast: AST.AST) => number
 ): ReadonlyMap<number, Option.Option<AST.AST>> => {
-  const topStatus = HttpApiSchema.getStatusErrorAST(ast)
-  const errors = new Map(inherited)
+  const members = new Map(inherited)
   function process(ast: AST.AST) {
     if (ast._tag === "NeverKeyword") {
       return
     }
-    const status = HttpApiSchema.getStatus(ast, topStatus)
+    ast = AST.annotations(ast, {
+      ...topAst.annotations,
+      ...ast.annotations
+    })
+    const status = getStatus(ast)
     const emptyDecodeable = HttpApiSchema.getEmptyDecodeable(ast)
-    const current = errors.get(status) ?? Option.none()
-    errors.set(
+    const current = members.get(status) ?? Option.none()
+    members.set(
       status,
       current.pipe(
         Option.map((current) =>
@@ -331,12 +314,12 @@ const extractErrors = (
       )
     )
   }
-  if (ast._tag === "Union") {
-    for (const type of ast.types) {
+  if (topAst._tag === "Union") {
+    for (const type of topAst.types) {
       process(type)
     }
   } else {
-    process(ast)
+    process(topAst)
   }
-  return errors
+  return members
 }
