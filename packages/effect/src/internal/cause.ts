@@ -8,7 +8,7 @@ import { constFalse, constTrue, dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
-import { NodeInspectSymbol, toJSON } from "../Inspectable.js"
+import { NodeInspectSymbol, stringifyCircular, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
@@ -1042,7 +1042,7 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
  * 1) If the input `u` is already a string, it's considered a message.
  * 2) If `u` is an Error instance with a message defined, it uses the message.
  * 3) If `u` has a user-defined `toString()` method, it uses that method.
- * 4) Otherwise, it uses `JSON.stringify` to produce a string representation and uses it as the error message,
+ * 4) Otherwise, it uses `Inspectable.stringifyCircular` to produce a string representation and uses it as the error message,
  *   with "Error" added as a prefix.
  *
  * @internal
@@ -1070,7 +1070,7 @@ export const prettyErrorMessage = (u: unknown): string => {
     // something's off, rollback to json
   }
   // 4)
-  return JSON.stringify(u)
+  return stringifyCircular(u)
 }
 
 const locationRegex = /\((.*)\)/
