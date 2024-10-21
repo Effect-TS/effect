@@ -1,5 +1,29 @@
 # @effect/platform
 
+## 0.69.0
+
+### Minor Changes
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`6d9de6b`](https://github.com/Effect-TS/effect/commit/6d9de6b871c5c08e6509a4e830c3d74758faa198) Thanks @tim-smart! - HttpApi second revision
+
+  - `HttpApi`, `HttpApiGroup` & `HttpApiEndpoint` now use a chainable api instead
+    of a pipeable api.
+  - `HttpApiMiddleware` module has been added, with a updated way of defining
+    security middleware.
+  - You can now add multiple success schemas
+  - A url search parameter schema has been added
+  - Error schemas now support `HttpApiSchema` encoding apis
+  - `toWebHandler` has been simplified
+
+  For more information, see the [README](https://github.com/Effect-TS/effect/blob/main/packages/platform/README.md#http-api).
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`5821ce3`](https://github.com/Effect-TS/effect/commit/5821ce3455b47d25e0a40cae6ce22af9db5fa556) Thanks @patroza! - feat: implement Redactable. Used by Headers to not log sensitive information
+
+### Patch Changes
+
+- Updated dependencies [[`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf), [`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf), [`c79c4c1`](https://github.com/Effect-TS/effect/commit/c79c4c178390fe61ff6dda88c9e058862349343a), [`38d30f0`](https://github.com/Effect-TS/effect/commit/38d30f08b8da62f9c3e308b9250738cb8d17bdb5), [`5821ce3`](https://github.com/Effect-TS/effect/commit/5821ce3455b47d25e0a40cae6ce22af9db5fa556)]:
+  - effect@3.10.0
+
 ## 0.68.6
 
 ### Patch Changes
