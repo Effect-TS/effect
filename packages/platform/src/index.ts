@@ -76,6 +76,11 @@ export * as HttpApiGroup from "./HttpApiGroup.js"
 /**
  * @since 1.0.0
  */
+export * as HttpApiMiddleware from "./HttpApiMiddleware.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as HttpApiSchema from "./HttpApiSchema.js"
 
 /**
