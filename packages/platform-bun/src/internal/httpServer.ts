@@ -173,9 +173,7 @@ export const layer = (
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, make(options)),
-    Platform.layer,
-    Etag.layerWeak,
-    BunContext.layer
+    layerContext
   )
 
 /** @internal */
@@ -192,10 +190,15 @@ export const layerConfig = (
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, Effect.flatMap(Config.unwrap(options), make)),
-    Platform.layer,
-    Etag.layerWeak,
-    BunContext.layer
+    layerContext
   )
+
+/** @internal */
+export const layerContext = Layer.mergeAll(
+  Platform.layer,
+  Etag.layerWeak,
+  BunContext.layer
+)
 
 interface WebSocketContext {
   readonly deferred: Deferred.Deferred<ServerWebSocket<WebSocketContext>>
