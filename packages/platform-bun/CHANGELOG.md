@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.49.1
+
+### Patch Changes
+
+- [#3802](https://github.com/Effect-TS/effect/pull/3802) [`7564f56`](https://github.com/Effect-TS/effect/commit/7564f56bb2844cf39d2b0d2d9e93cf9b2205e9a8) Thanks @tim-smart! - add HttpServer.layerContext to platform-node/bun
+
+- Updated dependencies [[`7564f56`](https://github.com/Effect-TS/effect/commit/7564f56bb2844cf39d2b0d2d9e93cf9b2205e9a8), [`7564f56`](https://github.com/Effect-TS/effect/commit/7564f56bb2844cf39d2b0d2d9e93cf9b2205e9a8)]:
+  - @effect/platform@0.69.1
+  - @effect/platform-node-shared@0.19.1
+
 ## 0.49.0
 
 ### Patch Changes

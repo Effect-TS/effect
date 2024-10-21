@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.69.1
+
+### Patch Changes
+
+- [#3802](https://github.com/Effect-TS/effect/pull/3802) [`7564f56`](https://github.com/Effect-TS/effect/commit/7564f56bb2844cf39d2b0d2d9e93cf9b2205e9a8) Thanks @tim-smart! - simplify HttpApiMiddleware.TagClass type
+
+- [#3802](https://github.com/Effect-TS/effect/pull/3802) [`7564f56`](https://github.com/Effect-TS/effect/commit/7564f56bb2844cf39d2b0d2d9e93cf9b2205e9a8) Thanks @tim-smart! - add HttpServer.layerContext to platform-node/bun
+
 ## 0.69.0
 
 ### Minor Changes
