@@ -3,10 +3,10 @@
  */
 import { FiberRefs } from "effect"
 import * as FiberRef from "effect/FiberRef"
-import { dual, identity, pipe } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import { type Redactable, RedactableId } from "effect/Inspectable"
-import * as Option from "effect/Option"
+import { type Redactable, symbolRedactable } from "effect/Inspectable"
+import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
 import * as Redacted from "effect/Redacted"
@@ -43,13 +43,11 @@ export interface Headers extends Redactable {
 
 const Proto = Object.assign(Object.create(null), {
   [HeadersTypeId]: HeadersTypeId,
-  [RedactableId](fiberRefs: FiberRefs.FiberRefs): Record<string, string | Redacted.Redacted<string>> {
-    const redactedNames = FiberRefs.get(fiberRefs, currentRedactedNames)
-    return pipe(
-      redactedNames,
-      Option.map((redactedNames) => redact(this as any, redactedNames)),
-      Option.getOrElse(() => this)
-    )
+  [symbolRedactable](
+    this: Headers,
+    fiberRefs: FiberRefs.FiberRefs
+  ): Record<string, string | Redacted.Redacted<string>> {
+    return redact(this, FiberRefs.getOrDefault(fiberRefs, currentRedactedNames))
   }
 })
 
@@ -258,7 +256,7 @@ export const redact: {
  * @since 1.0.0
  * @category fiber refs
  */
-export const currentRedactedNames = globalValue(
+export const currentRedactedNames: FiberRef.FiberRef<ReadonlyArray<string | RegExp>> = globalValue(
   "@effect/platform/Headers/currentRedactedNames",
   () =>
     FiberRef.unsafeMake<ReadonlyArray<string | RegExp>>([

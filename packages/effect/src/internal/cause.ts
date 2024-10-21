@@ -4,7 +4,6 @@ import * as Chunk from "../Chunk.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import type * as FiberId from "../FiberId.js"
-import type * as FiberRefs from "../FiberRefs.js"
 import { constFalse, constTrue, dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
@@ -973,12 +972,11 @@ export const reduceWithContext = dual<
 /** @internal */
 export const pretty = <E>(cause: Cause.Cause<E>, options?: {
   readonly renderErrorCause?: boolean | undefined
-  readonly context?: FiberRefs.FiberRefs
 }): string => {
   if (isInterruptedOnly(cause)) {
     return "All fibers interrupted without errors."
   }
-  return prettyErrors<E>(cause, options?.context).map(function(e) {
+  return prettyErrors<E>(cause).map(function(e) {
     if (options?.renderErrorCause !== true || e.cause === undefined) {
       return e.stack
     }
@@ -1000,14 +998,14 @@ const renderErrorCause = (cause: PrettyError, prefix: string) => {
 
 class PrettyError extends globalThis.Error implements Cause.PrettyError {
   span: undefined | Span = undefined
-  constructor(originalError: unknown, context?: FiberRefs.FiberRefs) {
+  constructor(originalError: unknown) {
     const originalErrorIsObject = typeof originalError === "object" && originalError !== null
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 1
     super(
-      prettyErrorMessage(originalError, context),
+      prettyErrorMessage(originalError),
       originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
-        ? { cause: new PrettyError(originalError.cause, context) }
+        ? { cause: new PrettyError(originalError.cause) }
         : undefined
     )
     if (this.message === "") {
@@ -1049,7 +1047,7 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
  *
  * @internal
  */
-export const prettyErrorMessage = (u: unknown, context?: FiberRefs.FiberRefs): string => {
+export const prettyErrorMessage = (u: unknown): string => {
   // 1)
   if (typeof u === "string") {
     return u
@@ -1072,7 +1070,7 @@ export const prettyErrorMessage = (u: unknown, context?: FiberRefs.FiberRefs): s
     // something's off, rollback to json
   }
   // 4)
-  return stringifyCircular(u, undefined, context)
+  return stringifyCircular(u)
 }
 
 const locationRegex = /\((.*)\)/
@@ -1127,14 +1125,14 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
 const spanSymbol = Symbol.for("effect/SpanAnnotation")
 
 /** @internal */
-export const prettyErrors = <E>(cause: Cause.Cause<E>, context?: FiberRefs.FiberRefs): Array<PrettyError> =>
+export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<PrettyError> =>
   reduceWithContext(cause, void 0, {
     emptyCase: (): Array<PrettyError> => [],
     dieCase: (_, unknownError) => {
-      return [new PrettyError(unknownError, context)]
+      return [new PrettyError(unknownError)]
     },
     failCase: (_, error) => {
-      return [new PrettyError(error, context)]
+      return [new PrettyError(error)]
     },
     interruptCase: () => [],
     parallelCase: (_, l, r) => [...l, ...r],

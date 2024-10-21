@@ -2,7 +2,8 @@
  * @since 2.0.0
  */
 
-import type { FiberRefs } from "./index.js"
+import type * as FiberRefs from "./FiberRefs.js"
+import { globalValue } from "./GlobalValue.js"
 import { hasProperty, isFunction } from "./Predicate.js"
 
 /**
@@ -39,7 +40,7 @@ export const toJSON = (x: unknown): unknown => {
   } else if (Array.isArray(x)) {
     return x.map(toJSON)
   }
-  return x
+  return redact(x)
 }
 
 /**
@@ -87,16 +88,12 @@ export abstract class Class {
 /**
  * @since 2.0.0
  */
-export const toStringUnknown = (
-  u: unknown,
-  whitespace: number | string | undefined = 2,
-  context?: FiberRefs.FiberRefs
-): string => {
+export const toStringUnknown = (u: unknown, whitespace: number | string | undefined = 2): string => {
   if (typeof u === "string") {
     return u
   }
   try {
-    return typeof u === "object" ? stringifyCircular(u, whitespace, context) : String(u)
+    return typeof u === "object" ? stringifyCircular(u, whitespace) : String(u)
   } catch (_) {
     return String(u)
   }
@@ -105,11 +102,7 @@ export const toStringUnknown = (
 /**
  * @since 2.0.0
  */
-export const stringifyCircular = (
-  obj: unknown,
-  whitespace?: number | string | undefined,
-  context?: FiberRefs.FiberRefs
-): string => {
+export const stringifyCircular = (obj: unknown, whitespace?: number | string | undefined): string => {
   let cache: Array<unknown> = []
   const retVal = JSON.stringify(
     obj,
@@ -117,8 +110,8 @@ export const stringifyCircular = (
       typeof value === "object" && value !== null
         ? cache.includes(value)
           ? undefined // circular reference
-          : cache.push(value) && (context && isRedactable(value)
-            ? value[RedactableId](context)
+          : cache.push(value) && (redactableState.fiberRefs !== undefined && isRedactable(value)
+            ? value[symbolRedactable](redactableState.fiberRefs)
             : value)
         : value,
     whitespace
@@ -129,18 +122,50 @@ export const stringifyCircular = (
 
 /**
  * @since 3.10.0
+ * @category redactable
  */
 export interface Redactable {
-  readonly [RedactableId]: (fiberRefs: FiberRefs.FiberRefs) => unknown
+  readonly [symbolRedactable]: (fiberRefs: FiberRefs.FiberRefs) => unknown
 }
 
 /**
  * @since 3.10.0
- * @category type ids
+ * @category redactable
  */
-export const RedactableId: unique symbol = Symbol.for("effect/Inspectable/Redactable")
+export const symbolRedactable: unique symbol = Symbol.for("effect/Inspectable/Redactable")
 
 /**
  * @since 3.10.0
+ * @category redactable
  */
-export const isRedactable = (u: unknown): u is Redactable => typeof u === "object" && u !== null && RedactableId in u
+export const isRedactable = (u: unknown): u is Redactable =>
+  typeof u === "object" && u !== null && symbolRedactable in u
+
+const redactableState = globalValue("effect/Inspectable/redactableState", () => ({
+  fiberRefs: undefined as FiberRefs.FiberRefs | undefined
+}))
+
+/**
+ * @since 3.10.0
+ * @category redactable
+ */
+export const withRedactableContext = <A>(context: FiberRefs.FiberRefs, f: () => A): A => {
+  const prev = redactableState.fiberRefs
+  redactableState.fiberRefs = context
+  try {
+    return f()
+  } finally {
+    redactableState.fiberRefs = prev
+  }
+}
+
+/**
+ * @since 3.10.0
+ * @category redactable
+ */
+export const redact = (u: unknown): unknown => {
+  if (isRedactable(u) && redactableState.fiberRefs !== undefined) {
+    return u[symbolRedactable](redactableState.fiberRefs)
+  }
+  return u
+}

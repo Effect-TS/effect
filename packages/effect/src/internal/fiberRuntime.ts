@@ -827,18 +827,20 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
     if (HashSet.size(loggers) > 0) {
       const clockService = Context.get(this.getFiberRef(defaultServices.currentServices), clock.clockTag)
       const date = new Date(clockService.unsafeCurrentTimeMillis())
-      for (const logger of loggers) {
-        logger.log({
-          fiberId: this.id(),
-          logLevel,
-          message,
-          cause,
-          context: contextMap,
-          spans,
-          annotations,
-          date
-        })
-      }
+      Inspectable.withRedactableContext(contextMap, () => {
+        for (const logger of loggers) {
+          logger.log({
+            fiberId: this.id(),
+            logLevel,
+            message,
+            cause,
+            context: contextMap,
+            spans,
+            annotations,
+            date
+          })
+        }
+      })
     }
   }
 
@@ -1491,7 +1493,7 @@ export const tracerLogger = globalValue(
       attributes["effect.logLevel"] = logLevel.label
 
       if (cause !== null && cause._tag !== "Empty") {
-        attributes["effect.cause"] = internalCause.pretty(cause, { renderErrorCause: true, context })
+        attributes["effect.cause"] = internalCause.pretty(cause, { renderErrorCause: true })
       }
 
       span.value.event(

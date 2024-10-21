@@ -1,7 +1,7 @@
 import * as Headers from "@effect/platform/Headers"
-import { FiberId, FiberRefs, Inspectable } from "effect"
+import { assert, describe, it } from "@effect/vitest"
+import { Effect, FiberId, FiberRef, FiberRefs, HashSet, Inspectable, Logger } from "effect"
 import * as Redacted from "effect/Redacted"
-import { assert, describe, it } from "vitest"
 
 describe("Headers", () => {
   describe("Redactable", () => {
@@ -20,7 +20,7 @@ describe("Headers", () => {
           ] as const
         ])
       )
-      const r = Inspectable.toStringUnknown(headers, undefined, fiberRefs)
+      const r = Inspectable.withRedactableContext(fiberRefs, () => Inspectable.toStringUnknown(headers))
       const redacted = JSON.parse(r)
 
       assert.deepEqual(redacted, {
@@ -45,7 +45,7 @@ describe("Headers", () => {
           ] as const
         ])
       )
-      const r = Inspectable.toStringUnknown({ headers }, undefined, fiberRefs)
+      const r = Inspectable.withRedactableContext(fiberRefs, () => Inspectable.toStringUnknown({ headers }))
       const redacted = JSON.parse(r) as { headers: unknown }
 
       assert.deepEqual(redacted.headers, {
@@ -54,7 +54,51 @@ describe("Headers", () => {
         "x-api-key": "some-key"
       })
     })
+
+    it.effect("logs redacted", () =>
+      Effect.gen(function*() {
+        const messages: Array<string> = []
+        const logger = Logger.stringLogger.pipe(
+          Logger.map((msg) => {
+            messages.push(msg)
+          })
+        )
+        yield* FiberRef.update(FiberRef.currentLoggers, HashSet.add(logger))
+        const headers = Headers.fromInput({
+          "Content-Type": "application/json",
+          "Authorization": "Bearer some-token",
+          "X-Api-Key": "some-key"
+        })
+        yield* Effect.log(headers).pipe(
+          Effect.annotateLogs({ headers })
+        )
+        assert.include(messages[0], "application/json")
+        assert.notInclude(messages[0], "some-token")
+        assert.notInclude(messages[0], "some-key")
+      }))
+
+    it.effect("logs redacted structured", () =>
+      Effect.gen(function*() {
+        const messages: Array<any> = []
+        const logger = Logger.structuredLogger.pipe(
+          Logger.map((msg) => {
+            messages.push(msg)
+          })
+        )
+        yield* FiberRef.update(FiberRef.currentLoggers, HashSet.add(logger))
+        const headers = Headers.fromInput({
+          "Content-Type": "application/json",
+          "Authorization": "Bearer some-token",
+          "X-Api-Key": "some-key"
+        })
+        yield* Effect.log(headers).pipe(
+          Effect.annotateLogs({ headers })
+        )
+        assert.strictEqual(Redacted.isRedacted(messages[0].message.authorization), true)
+        assert.strictEqual(Redacted.isRedacted(messages[0].annotations.headers.authorization), true)
+      }))
   })
+
   describe("redact", () => {
     it("one key", () => {
       const headers = Headers.fromInput({

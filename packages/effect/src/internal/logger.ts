@@ -164,7 +164,7 @@ export const zipRight = dual<
 
 /** @internal */
 export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
-  ({ annotations, cause, context, date, fiberId, logLevel, message, spans }) => {
+  ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
     const nowMillis = date.getTime()
 
     const outputArray = [
@@ -177,7 +177,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
 
     const messageArr = Arr.ensure(message)
     for (let i = 0; i < messageArr.length; i++) {
-      const stringMessage = Inspectable.toStringUnknown(messageArr[i], undefined, context)
+      const stringMessage = Inspectable.toStringUnknown(messageArr[i])
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuoted(stringMessage, output)
@@ -186,7 +186,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
 
     if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
-      output = appendQuoted(Cause.pretty(cause, { renderErrorCause: true, context }), output)
+      output = appendQuoted(Cause.pretty(cause, { renderErrorCause: true }), output)
     }
 
     if (List.isCons(spans)) {
@@ -215,7 +215,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
         }
         output = output + filterKeyName(key)
         output = output + "="
-        output = appendQuoted(Inspectable.toStringUnknown(value, undefined, context), output)
+        output = appendQuoted(Inspectable.toStringUnknown(value), output)
       }
     }
 
@@ -234,7 +234,7 @@ const appendQuoted = (label: string, output: string): string =>
 
 /** @internal */
 export const logfmtLogger = makeLogger<unknown, string>(
-  ({ annotations, cause, context, date, fiberId, logLevel, message, spans }) => {
+  ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
     const nowMillis = date.getTime()
 
     const outputArray = [
@@ -247,7 +247,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
 
     const messageArr = Arr.ensure(message)
     for (let i = 0; i < messageArr.length; i++) {
-      const stringMessage = Inspectable.toStringUnknown(messageArr[i], 0, context)
+      const stringMessage = Inspectable.toStringUnknown(messageArr[i], 0)
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuotedLogfmt(stringMessage, output)
@@ -256,7 +256,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
 
     if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
-      output = appendQuotedLogfmt(Cause.pretty(cause, { renderErrorCause: true, context }), output)
+      output = appendQuotedLogfmt(Cause.pretty(cause, { renderErrorCause: true }), output)
     }
 
     if (List.isCons(spans)) {
@@ -285,7 +285,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
         }
         output = output + filterKeyName(key)
         output = output + "="
-        output = appendQuotedLogfmt(Inspectable.toStringUnknown(value, 0, context), output)
+        output = appendQuotedLogfmt(Inspectable.toStringUnknown(value, 0), output)
       }
     }
 
@@ -303,14 +303,14 @@ export const structuredLogger = makeLogger<unknown, {
   readonly annotations: Record<string, unknown>
   readonly spans: Record<string, number>
 }>(
-  ({ annotations, cause, context, date, fiberId, logLevel, message, spans }) => {
+  ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
     const now = date.getTime()
     const annotationsObj: Record<string, unknown> = {}
     const spansObj: Record<string, number> = {}
 
     if (HashMap.size(annotations) > 0) {
       for (const [k, v] of annotations) {
-        annotationsObj[k] = structuredMessage(v, context)
+        annotationsObj[k] = structuredMessage(v)
       }
     }
 
@@ -322,12 +322,10 @@ export const structuredLogger = makeLogger<unknown, {
 
     const messageArr = Arr.ensure(message)
     return {
-      message: messageArr.length === 1
-        ? structuredMessage(messageArr[0], context)
-        : messageArr.map((_) => structuredMessage(_, context)),
+      message: messageArr.length === 1 ? structuredMessage(messageArr[0]) : messageArr.map(structuredMessage),
       logLevel: logLevel.label,
       timestamp: date.toISOString(),
-      cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause, { renderErrorCause: true, context }),
+      cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause, { renderErrorCause: true }),
       annotations: annotationsObj,
       spans: spansObj,
       fiberId: _fiberId.threadName(fiberId)
@@ -335,7 +333,7 @@ export const structuredLogger = makeLogger<unknown, {
   }
 )
 
-export const structuredMessage = (u: unknown, context: FiberRefs.FiberRefs): unknown => {
+export const structuredMessage = (u: unknown): unknown => {
   switch (typeof u) {
     case "bigint":
     case "function":
@@ -343,15 +341,13 @@ export const structuredMessage = (u: unknown, context: FiberRefs.FiberRefs): unk
       return String(u)
     }
     default: {
-      return Inspectable.isRedactable(u) ? u[Inspectable.RedactableId](context) : u
+      return Inspectable.toJSON(u)
     }
   }
 }
 
 /** @internal */
-export const jsonLogger = makeLogger((options) =>
-  Inspectable.stringifyCircular(structuredLogger.log(options), undefined, options.context)
-)
+export const jsonLogger = map(structuredLogger, Inspectable.stringifyCircular)
 
 /** @internal */
 const filterKeyName = (key: string) => key.replace(/[\s="]/g, "_")
@@ -476,7 +472,7 @@ const prettyLoggerTty = (options: {
       firstLine += ":"
       let messageIndex = 0
       if (message.length > 0) {
-        const firstMaybeString = structuredMessage(message[0], context)
+        const firstMaybeString = structuredMessage(message[0])
         if (typeof firstMaybeString === "string") {
           firstLine += " " + color(firstMaybeString, colors.bold, colors.cyan)
           messageIndex++
@@ -487,18 +483,18 @@ const prettyLoggerTty = (options: {
       if (!processIsBun) console.group()
 
       if (!Cause.isEmpty(cause)) {
-        log(Cause.pretty(cause, { renderErrorCause: true, context }))
+        log(Cause.pretty(cause, { renderErrorCause: true }))
       }
 
       if (messageIndex < message.length) {
         for (; messageIndex < message.length; messageIndex++) {
-          log(message[messageIndex])
+          log(Inspectable.redact(message[messageIndex]))
         }
       }
 
       if (HashMap.size(annotations) > 0) {
         for (const [key, value] of annotations) {
-          log(color(`${key}:`, colors.bold, colors.white), value)
+          log(color(`${key}:`, colors.bold, colors.white), Inspectable.redact(value))
         }
       }
 
@@ -539,7 +535,7 @@ const prettyLoggerBrowser = (options: {
 
       let messageIndex = 0
       if (message.length > 0) {
-        const firstMaybeString = structuredMessage(message[0], context)
+        const firstMaybeString = structuredMessage(message[0])
         if (typeof firstMaybeString === "string") {
           firstLine += ` ${color}${firstMaybeString}`
           if (options.colors) {
@@ -552,21 +548,22 @@ const prettyLoggerBrowser = (options: {
       console.groupCollapsed(firstLine, ...firstParams)
 
       if (!Cause.isEmpty(cause)) {
-        console.error(Cause.pretty(cause, { renderErrorCause: true, context }))
+        console.error(Cause.pretty(cause, { renderErrorCause: true }))
       }
 
       if (messageIndex < message.length) {
         for (; messageIndex < message.length; messageIndex++) {
-          console.log(message[messageIndex])
+          console.log(Inspectable.redact(message[messageIndex]))
         }
       }
 
       if (HashMap.size(annotations) > 0) {
         for (const [key, value] of annotations) {
+          const redacted = Inspectable.redact(value)
           if (options.colors) {
-            console.log(`%c${key}:`, "color:gray", value)
+            console.log(`%c${key}:`, "color:gray", redacted)
           } else {
-            console.log(`${key}:`, value)
+            console.log(`${key}:`, redacted)
           }
         }
       }
