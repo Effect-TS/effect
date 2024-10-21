@@ -5,7 +5,7 @@ import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import type * as MessageState from "../MessageState.js"
 import type * as SerializedEnvelope from "../SerializedEnvelope.js"
-import type * as SerializedMessage from "../SerializedMessage.js"
+import type * as SerializedValue from "../SerializedValue.js"
 import type * as ShardingException from "../ShardingException.js"
 
 /** @internal */
@@ -26,7 +26,7 @@ export interface EntityState {
   readonly sendAndGetState: (
     envelope: SerializedEnvelope.SerializedEnvelope
   ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState<SerializedValue.SerializedValue, SerializedValue.SerializedValue>,
     ShardingException.ExceptionWhileOfferingMessageException | ShardingException.SerializationException
   >
   readonly expirationFiber: Fiber.RuntimeFiber<void, never>

@@ -5,13 +5,13 @@ import * as SqlResolver from "@effect/sql/SqlResolver"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as PrimaryKey from "effect/PrimaryKey"
 import * as Stream from "effect/Stream"
 import type * as AtLeastOnceStorage from "../AtLeastOnceStorage.js"
-import * as RecipientAddress from "../RecipientAddress.js"
+import * as Envelope from "../Envelope.js"
+import { RecipientAddress } from "../RecipientAddress.js"
 import type * as Serialization from "../Serialization.js"
-import * as SerializedEnvelope from "../SerializedEnvelope.js"
 import * as SerializedMessage from "../SerializedMessage.js"
+import * as SerializedValue from "../SerializedValue.js"
 import * as InternalSerialization from "./serialization.js"
 
 /** @internal */
@@ -159,21 +159,21 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
 
     return {
       [TypeId]: TypeId,
-      upsert: (recipientType, shardId, entityId, message) =>
-        serialization.encode(recipientType.schema, message).pipe(
+      upsert: (entity, shardId, entityId, envelope) =>
+        serialization.encode(entity.schema, envelope.message).pipe(
           Effect.flatMap(
             (message_body) =>
               UpsertEntryResolver.execute({
-                recipient_name: recipientType.name,
+                recipient_name: entity.name,
                 shard_id: shardId.value,
                 entity_id: entityId,
-                message_id: PrimaryKey.value(message),
+                message_id: (envelope.messageId),
                 message_body: message_body.value
               })
           ),
           Effect.catchAllCause(Effect.logError)
         ),
-      markAsProcessed: (recipientType, _shardId, entityId, message) => {
+      markAsProcessed: (entity, _shardId, entityId, envelope) => {
         return sql`
           UPDATE ${sql(table)}
           SET ${
@@ -184,9 +184,9 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
         }
           WHERE ${
           sql.and([
-            sql`recipient_name = ${recipientType.name}`,
+            sql`recipient_name = ${entity.name}`,
             sql`entity_id = ${entityId}`,
-            sql`message_id = ${PrimaryKey.value(message)}`
+            sql`message_id = ${(envelope.messageId)}`
           ])
         }`.pipe(Effect.catchAllCause(Effect.logError))
       },
@@ -200,10 +200,14 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
           Effect.orDie,
           Stream.fromIterableEffect,
           Stream.map((entry) =>
-            SerializedEnvelope.make(
-              RecipientAddress.makeRecipientAddress(entry.recipient_name, entry.entity_id),
+            Envelope.make(
+              new RecipientAddress({
+                shardId: entry.shard_id,
+                entityType: entry.recipient_name,
+                entityId: entry.entity_id
+              }),
               entry.message_id,
-              SerializedMessage.make(entry.message_body)
+              SerializedMessage.make(SerializedValue.make(entry.message_body))
             )
           )
         )

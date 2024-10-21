@@ -1,7 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Message from "@effect/cluster/Message"
+import type * as Schema from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Array from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -9,7 +10,6 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as PrimaryKey from "effect/PrimaryKey"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -20,12 +20,12 @@ import * as WorkflowContext from "./WorkflowContext.js"
 import * as WorkflowRuntimeMessage from "./WorkflowRuntimeMessage.js"
 import * as WorkflowRuntimeState from "./WorkflowRuntimeState.js"
 
-function handleReplayPhase<A, E>(
+function handleReplayPhase<A, E, R>(
   wrs: WorkflowRuntimeState.WorkflowRuntimeState<A, E>,
   sa: DurableExecutionEvent.DurableExecutionEvent<A, E>,
-  executionEffect: (version: string) => Effect.Effect<A, E, never>,
+  executionEffect: (version: string) => Effect.Effect<A, E, R>,
   mailbox: Queue.Queue<WorkflowRuntimeMessage.WorkflowRuntimeMessage<A, E>>
-): Effect.Effect<WorkflowRuntimeState.WorkflowRuntimeState<A, E>, never, Scope.Scope> {
+): Effect.Effect<WorkflowRuntimeState.WorkflowRuntimeState<A, E>, never, R | Scope.Scope> {
   return WorkflowRuntimeState.match(wrs, {
     onNotStarted: () => {
       // we expect that the first event into the journal should be an "attempted"
@@ -189,19 +189,19 @@ function handleReplayPhase<A, E>(
   })
 }
 
-function handleExecutionPhase<A, E>(
+function handleExecutionPhase<A, E, R>(
   appendToJournal: (
     event: DurableExecutionEvent.DurableExecutionEvent<A, E>
   ) => Effect.Effect<void, never, DurableExecutionJournal.DurableExecutionJournal>,
   wrs: WorkflowRuntimeState.WorkflowRuntimeState<A, E>,
   ms: WorkflowRuntimeMessage.WorkflowRuntimeMessage<A, E>,
-  executionEffect: (version: string) => Effect.Effect<A, E, never>,
+  executionEffect: (version: string) => Effect.Effect<A, E, R>,
   executionVersion: string,
   mailbox: Queue.Queue<WorkflowRuntimeMessage.WorkflowRuntimeMessage<A, E>>
 ): Effect.Effect<
   WorkflowRuntimeState.WorkflowRuntimeState<A, E>,
   never,
-  Scope.Scope | DurableExecutionJournal.DurableExecutionJournal
+  R | Scope.Scope | DurableExecutionJournal.DurableExecutionJournal
 > {
   return WorkflowRuntimeState.match(wrs, {
     // workflow never started, we start the fiber than process again this message
@@ -341,24 +341,27 @@ function handleExecutionPhase<A, E>(
 /**
  * @since 1.0.0
  */
-export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Workflow<A, R>) {
+export function attempt<A extends Schema.TaggedRequest.Any, R>(workflow: Workflow.Workflow<A, R>) {
   return (
     request: A
   ): Effect.Effect<
-    Message.Message.Success<A>,
-    Message.Message.Error<A>,
+    Serializable.WithResult.Success<A>,
+    Serializable.WithResult.Error<A>,
     R | DurableExecutionJournal.DurableExecutionJournal
   > => {
     return Effect.gen(function*($) {
-      const persistenceId = PrimaryKey.value(request)
-      const successSchema = Message.successSchema(request)
-      const failureSchema = Message.failureSchema(request)
+      const persistenceId = workflow.executionId(request)
+      const successSchema = Serializable.successSchema(request)
+      const failureSchema = Serializable.failureSchema(request)
       const durableExecutionJournal = yield* $(DurableExecutionJournal.DurableExecutionJournal)
       const context = yield* $(Effect.context<R>())
       const executionVersion = workflow.version(request)
 
       const appendToJournal = (
-        event: DurableExecutionEvent.DurableExecutionEvent<Message.Message.Success<A>, Message.Message.Error<A>>
+        event: DurableExecutionEvent.DurableExecutionEvent<
+          Serializable.WithResult.Success<A>,
+          Serializable.WithResult.Error<A>
+        >
       ) =>
         Effect.flatMap(
           DurableExecutionJournal.DurableExecutionJournal,
@@ -367,13 +370,19 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
 
       const mailbox = yield* $(
         Queue.unbounded<
-          WorkflowRuntimeMessage.WorkflowRuntimeMessage<Message.Message.Success<A>, Message.Message.Error<A>>
+          WorkflowRuntimeMessage.WorkflowRuntimeMessage<
+            Serializable.WithResult.Success<A>,
+            Serializable.WithResult.Error<A>
+          >
         >()
       )
 
       const isYielding = pipe(
         Deferred.make<
-          WorkflowRuntimeState.WorkflowRuntimeState<Message.Message.Success<A>, Message.Message.Error<A>>,
+          WorkflowRuntimeState.WorkflowRuntimeState<
+            Serializable.WithResult.Success<A>,
+            Serializable.WithResult.Error<A>
+          >,
           never
         >(),
         Effect.tap((signal) => Queue.offer(mailbox, new WorkflowRuntimeMessage.CheckStatus({ signal }))),
@@ -448,7 +457,10 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
         ),
         Effect.zipLeft(pipe(
           Deferred.make<
-            WorkflowRuntimeState.WorkflowRuntimeState<Message.Message.Success<A>, Message.Message.Error<A>>,
+            WorkflowRuntimeState.WorkflowRuntimeState<
+              Serializable.WithResult.Success<A>,
+              Serializable.WithResult.Error<A>
+            >,
             never
           >(),
           Effect.flatMap((signal) => Queue.offer(mailbox, new WorkflowRuntimeMessage.CheckStatus({ signal })))

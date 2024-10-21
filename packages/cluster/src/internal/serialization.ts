@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Serialization from "../Serialization.js"
-import * as SerializedMessage from "../SerializedMessage.js"
+import * as SerializedValue from "../SerializedValue.js"
 import * as ShardingException from "../ShardingException.js"
 
 /** @internal */
@@ -20,7 +20,7 @@ export const SerializationTypeId: Serialization.SerializationTypeId = Symbol.for
 export const serializationTag = Context.GenericTag<Serialization.Serialization>(SerializationSymbolKey)
 
 /** @internal */
-function jsonStringify<A, I>(value: A, schema: Schema.Schema<A, I>) {
+function jsonStringify<A, I, R>(value: A, schema: Schema.Schema<A, I, R>) {
   return pipe(
     value,
     Schema.encode(schema),
@@ -30,7 +30,7 @@ function jsonStringify<A, I>(value: A, schema: Schema.Schema<A, I>) {
 }
 
 /** @internal */
-function jsonParse<A, I>(value: string, schema: Schema.Schema<A, I>) {
+function jsonParse<A, I, R>(value: string, schema: Schema.Schema<A, I, R>) {
   return pipe(
     Effect.sync(() => JSON.parse(value)),
     Effect.flatMap(Schema.decode(schema)),
@@ -52,8 +52,11 @@ export const json: Layer.Layer<Serialization.Serialization> = Layer.succeed(
     encode: (schema, message) =>
       pipe(
         jsonStringify(message, schema),
-        Effect.map(SerializedMessage.make)
+        Effect.map(SerializedValue.make)
       ),
-    decode: (schema, body) => jsonParse(body.value, schema)
+    decode: (schema, body) => {
+      console.log("parsing", body.value, body)
+      return jsonParse(body.value, schema)
+    }
   })
 )

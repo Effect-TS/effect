@@ -1,10 +1,10 @@
 import * as AtLeastOnce from "@effect/cluster/AtLeastOnce"
 import * as AtLeastOnceStorage from "@effect/cluster/AtLeastOnceStorage"
+import * as Entity from "@effect/cluster/Entity"
 import * as MessageState from "@effect/cluster/MessageState"
 import * as Pods from "@effect/cluster/Pods"
 import * as PodsHealth from "@effect/cluster/PodsHealth"
 import * as RecipientBehaviour from "@effect/cluster/RecipientBehaviour"
-import * as RecipientType from "@effect/cluster/RecipientType"
 import * as Serialization from "@effect/cluster/Serialization"
 import * as Sharding from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
@@ -20,7 +20,6 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as PrimaryKey from "effect/PrimaryKey"
 import { describe, expect, it } from "vitest"
 
 class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
@@ -34,12 +33,12 @@ class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
     }
   }
 ) {
-  [PrimaryKey.symbol]() {
-    return this.id
-  }
 }
 
-const SampleEntity = RecipientType.makeEntityType("SampleEntity", SampleMessage)
+const SampleEntity = new Entity.Standard({
+  name: "SampleEntity",
+  schema: SampleMessage
+})
 type SampleEntity = SampleMessage
 
 const makeSqlClient = Effect.gen(function*(_) {
@@ -97,13 +96,13 @@ describe("AtLeastOnce", () => {
       yield* Sharding.registerScoped
 
       yield* Sharding.registerEntity(SampleEntity)(pipe(
-        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Acknowledged)),
+        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.acknowledged)),
         AtLeastOnce.atLeastOnceRecipientBehaviour
       ))
 
       const messenger = yield* Sharding.messenger(SampleEntity)
       const message = new SampleMessage({ id: "a", value: 42 })
-      yield* messenger.sendDiscard("entity1")(message)
+      yield* messenger.fireAndForget("entity1", message)
 
       const rows = yield* sql<{ message_id: string }>`
         SELECT message_id
@@ -122,13 +121,13 @@ describe("AtLeastOnce", () => {
       yield* Sharding.registerScoped
 
       yield* Sharding.registerEntity(SampleEntity)(pipe(
-        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Processed(Exit.void))),
+        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.processed(Exit.void))),
         AtLeastOnce.atLeastOnceRecipientBehaviour
       ))
 
       const messenger = yield* Sharding.messenger(SampleEntity)
       const message = new SampleMessage({ id: "a", value: 42 })
-      yield* messenger.sendDiscard("entity1")(message)
+      yield* messenger.fireAndForget("entity1", message)
 
       const rows = yield* sql<{ message_id: string }>`
         SELECT message_id
@@ -150,13 +149,13 @@ describe("AtLeastOnce", () => {
       yield* Sharding.registerScoped
 
       yield* Sharding.registerEntity(SampleEntity)(pipe(
-        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Acknowledged)),
+        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.acknowledged)),
         AtLeastOnce.atLeastOnceRecipientBehaviour
       ))
 
       const messenger = yield* Sharding.messenger(SampleEntity)
       const message = new SampleMessage({ id: "a", value: 42 })
-      yield* messenger.sendDiscard("entity1")(message)
+      yield* messenger.fireAndForget("entity1", message)
 
       const rows = yield* sql<{ message_id: string }>`
         SELECT message_id

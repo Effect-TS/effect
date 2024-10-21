@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Schema from "@effect/schema/Schema"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
@@ -13,7 +14,7 @@ import type * as Sharding from "./Sharding.js"
  * @since 1.0.0
  * @category constructors
  */
-export const atLeastOnceRecipientBehaviour: <Msg, R>(
+export const atLeastOnceRecipientBehaviour: <Msg extends Schema.TaggedRequest.Any, R>(
   fa: RecipientBehaviour.RecipientBehaviour<Msg, R>
 ) => RecipientBehaviour.RecipientBehaviour<Msg, R | AtLeastOnceStorage.AtLeastOnceStorage> =
   internal.atLeastOnceRecipientBehaviour

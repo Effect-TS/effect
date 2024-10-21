@@ -16,12 +16,17 @@ export * as Broadcaster from "./Broadcaster.js"
 /**
  * @since 1.0.0
  */
-export * as ManagerConfig from "./ManagerConfig.js"
+export * as Entity from "./Entity.js"
 
 /**
  * @since 1.0.0
  */
-export * as Message from "./Message.js"
+export * as Envelope from "./Envelope.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as ManagerConfig from "./ManagerConfig.js"
 
 /**
  * @since 1.0.0
@@ -76,11 +81,6 @@ export * as RecipientBehaviourContext from "./RecipientBehaviourContext.js"
 /**
  * @since 1.0.0
  */
-export * as RecipientType from "./RecipientType.js"
-
-/**
- * @since 1.0.0
- */
 export * as Serialization from "./Serialization.js"
 
 /**
@@ -92,6 +92,11 @@ export * as SerializedEnvelope from "./SerializedEnvelope.js"
  * @since 1.0.0
  */
 export * as SerializedMessage from "./SerializedMessage.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as SerializedValue from "./SerializedValue.js"
 
 /**
  * @since 1.0.0

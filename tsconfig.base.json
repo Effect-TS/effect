@@ -54,17 +54,13 @@
       "@effect/cluster/test/*": ["./packages/cluster/test/*.js"],
       "@effect/cluster-browser": ["./packages/cluster-browser/src/index.js"],
       "@effect/cluster-browser/*": ["./packages/cluster-browser/src/*.js"],
-      "@effect/cluster-browser/test/*": [
-        "./packages/cluster-browser/test/*.js"
-      ],
+      "@effect/cluster-browser/test/*": ["./packages/cluster-browser/test/*.js"],
       "@effect/cluster-node": ["./packages/cluster-node/src/index.js"],
       "@effect/cluster-node/*": ["./packages/cluster-node/src/*.js"],
       "@effect/cluster-node/test/*": ["./packages/cluster-node/test/*.js"],
       "@effect/cluster-workflow": ["./packages/cluster-workflow/src/index.js"],
       "@effect/cluster-workflow/*": ["./packages/cluster-workflow/src/*.js"],
-      "@effect/cluster-workflow/test/*": [
-        "./packages/cluster-workflow/test/*.js"
-      ],
+      "@effect/cluster-workflow/test/*": ["./packages/cluster-workflow/test/*.js"],
       "@effect/experimental": ["./packages/experimental/src/index.js"],
       "@effect/experimental/*": ["./packages/experimental/src/*.js"],
       "@effect/experimental/test/*": ["./packages/experimental/test/*.js"],
@@ -76,24 +72,16 @@
       "@effect/platform/test/*": ["./packages/platform/test/*.js"],
       "@effect/platform-browser": ["./packages/platform-browser/src/index.js"],
       "@effect/platform-browser/*": ["./packages/platform-browser/src/*.js"],
-      "@effect/platform-browser/test/*": [
-        "./packages/platform-browser/test/*.js"
-      ],
+      "@effect/platform-browser/test/*": ["./packages/platform-browser/test/*.js"],
       "@effect/platform-bun": ["./packages/platform-bun/src/index.js"],
       "@effect/platform-bun/*": ["./packages/platform-bun/src/*.js"],
       "@effect/platform-bun/test/*": ["./packages/platform-bun/test/*.js"],
       "@effect/platform-node": ["./packages/platform-node/src/index.js"],
       "@effect/platform-node/*": ["./packages/platform-node/src/*.js"],
       "@effect/platform-node/test/*": ["./packages/platform-node/test/*.js"],
-      "@effect/platform-node-shared": [
-        "./packages/platform-node-shared/src/index.js"
-      ],
-      "@effect/platform-node-shared/*": [
-        "./packages/platform-node-shared/src/*.js"
-      ],
-      "@effect/platform-node-shared/test/*": [
-        "./packages/platform-node-shared/test/*.js"
-      ],
+      "@effect/platform-node-shared": ["./packages/platform-node-shared/src/index.js"],
+      "@effect/platform-node-shared/*": ["./packages/platform-node-shared/src/*.js"],
+      "@effect/platform-node-shared/test/*": ["./packages/platform-node-shared/test/*.js"],
       "@effect/printer": ["./packages/printer/src/index.js"],
       "@effect/printer/*": ["./packages/printer/src/*.js"],
       "@effect/printer/test/*": ["./packages/printer/test/*.js"],
@@ -141,23 +129,13 @@
       "@effect/sql-sqlite-bun/test/*": ["./packages/sql-sqlite-bun/test/*.js"],
       "@effect/sql-sqlite-node": ["./packages/sql-sqlite-node/src/index.js"],
       "@effect/sql-sqlite-node/*": ["./packages/sql-sqlite-node/src/*.js"],
-      "@effect/sql-sqlite-node/test/*": [
-        "./packages/sql-sqlite-node/test/*.js"
-      ],
-      "@effect/sql-sqlite-react-native": [
-        "./packages/sql-sqlite-react-native/src/index.js"
-      ],
-      "@effect/sql-sqlite-react-native/*": [
-        "./packages/sql-sqlite-react-native/src/*.js"
-      ],
-      "@effect/sql-sqlite-react-native/test/*": [
-        "./packages/sql-sqlite-react-native/test/*.js"
-      ],
+      "@effect/sql-sqlite-node/test/*": ["./packages/sql-sqlite-node/test/*.js"],
+      "@effect/sql-sqlite-react-native": ["./packages/sql-sqlite-react-native/src/index.js"],
+      "@effect/sql-sqlite-react-native/*": ["./packages/sql-sqlite-react-native/src/*.js"],
+      "@effect/sql-sqlite-react-native/test/*": ["./packages/sql-sqlite-react-native/test/*.js"],
       "@effect/sql-sqlite-wasm": ["./packages/sql-sqlite-wasm/src/index.js"],
       "@effect/sql-sqlite-wasm/*": ["./packages/sql-sqlite-wasm/src/*.js"],
-      "@effect/sql-sqlite-wasm/test/*": [
-        "./packages/sql-sqlite-wasm/test/*.js"
-      ],
+      "@effect/sql-sqlite-wasm/test/*": ["./packages/sql-sqlite-wasm/test/*.js"],
       "@effect/typeclass": ["./packages/typeclass/src/index.js"],
       "@effect/typeclass/*": ["./packages/typeclass/src/*.js"],
       "@effect/typeclass/test/*": ["./packages/typeclass/test/*.js"],
