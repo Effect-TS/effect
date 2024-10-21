@@ -1,5 +1,89 @@
 # effect
 
+## 3.10.0
+
+### Minor Changes
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf) Thanks @evelant! - add TSubscriptionRef
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf) Thanks @evelant! - add Stream.fromTQueue & Stream.fromTPubSub
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`c79c4c1`](https://github.com/Effect-TS/effect/commit/c79c4c178390fe61ff6dda88c9e058862349343a) Thanks @gcanti! - Merge Schema into Effect.
+
+  ### Modules
+
+  Before
+
+  ```ts
+  import {
+    Arbitrary,
+    AST,
+    FastCheck,
+    JSONSchema,
+    ParseResult,
+    Pretty,
+    Schema
+  } from "@effect/schema"
+  ```
+
+  After
+
+  ```ts
+  import {
+    Arbitrary,
+    SchemaAST, // changed
+    FastCheck,
+    JSONSchema,
+    ParseResult,
+    Pretty,
+    Schema
+  } from "effect"
+  ```
+
+  ### Formatters
+
+  `ArrayFormatter` / `TreeFormatter` merged into `ParseResult` module.
+
+  Before
+
+  ```ts
+  import { ArrayFormatter, TreeFormatter } from "@effect/schema"
+  ```
+
+  After
+
+  ```ts
+  import { ArrayFormatter, TreeFormatter } from "effect/ParseResult"
+  ```
+
+  ### Serializable
+
+  Merged into `Schema` module.
+
+  ### Equivalence
+
+  Merged into `Schema` module.
+
+  Before
+
+  ```ts
+  import { Equivalence } from "@effect/schema"
+
+  Equivalence.make(myschema)
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "@effect/schema"
+
+  Schema.equivalence(myschema)
+  ```
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`38d30f0`](https://github.com/Effect-TS/effect/commit/38d30f08b8da62f9c3e308b9250738cb8d17bdb5) Thanks @tim-smart! - add option to .releaseLock a ReadableStream on finalization
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`5821ce3`](https://github.com/Effect-TS/effect/commit/5821ce3455b47d25e0a40cae6ce22af9db5fa556) Thanks @patroza! - feat: implement Redactable. Used by Headers to not log sensitive information
+
 ## 3.9.2
 
 ### Patch Changes

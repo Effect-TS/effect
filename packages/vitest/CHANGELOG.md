@@ -1,5 +1,40 @@
 # @effect/vitest
 
+## 0.13.0
+
+### Patch Changes
+
+- [#3764](https://github.com/Effect-TS/effect/pull/3764) [`685a460`](https://github.com/Effect-TS/effect/commit/685a4609b091c212f7eb916c940e2b7414ecfcfd) Thanks @jessekelly881! - Adds property testing to @effect/vitest
+
+  ```ts
+  import { Schema } from "effect"
+  import { it } from "@effect/vitest"
+
+  const realNumber = Schema.Finite.pipe(Schema.nonNaN())
+
+  it.prop("symmetry", [realNumber, realNumber], ([a, b]) => a + b === b + a)
+
+  it.effect.prop("symmetry", [realNumber, realNumber], ([a, b]) =>
+    Effect.gen(function* () {
+      yield* Effect.void
+      return a + b === b + a
+    })
+  )
+
+  it.scoped.prop(
+    "should detect the substring",
+    { a: Schema.String, b: Schema.String, c: Schema.String },
+    ({ a, b, c }) =>
+      Effect.gen(function* () {
+        yield* Effect.scope
+        return (a + b + c).includes(b)
+      })
+  )
+  ```
+
+- Updated dependencies [[`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf), [`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf), [`c79c4c1`](https://github.com/Effect-TS/effect/commit/c79c4c178390fe61ff6dda88c9e058862349343a), [`38d30f0`](https://github.com/Effect-TS/effect/commit/38d30f08b8da62f9c3e308b9250738cb8d17bdb5), [`5821ce3`](https://github.com/Effect-TS/effect/commit/5821ce3455b47d25e0a40cae6ce22af9db5fa556)]:
+  - effect@3.10.0
+
 ## 0.12.1
 
 ### Patch Changes
