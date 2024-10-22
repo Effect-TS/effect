@@ -145,17 +145,14 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
     })
   }
   function registerSecurity(
-    tag: HttpApiMiddleware.TagClassSecurityAny,
     name: string,
     security: HttpApiSecurity
-  ): string {
-    const id = `${tag.key}_${name}`
-    if (spec.components!.securitySchemes![id]) {
-      return id
+  ) {
+    if (spec.components!.securitySchemes![name]) {
+      return
     }
     const scheme = makeSecurityScheme(security)
-    spec.components!.securitySchemes![id] = scheme
-    return id
+    spec.components!.securitySchemes![name] = scheme
   }
   Option.map(Context.getOption(api.annotations, Description), (description) => {
     spec.info.description = description
@@ -174,10 +171,8 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       return
     }
     for (const [name, security] of Object.entries(middleware.security)) {
-      const id = registerSecurity(middleware, name, security)
-      spec.security!.push({
-        [id]: []
-      })
+      registerSecurity(name, security)
+      spec.security!.push({ [name]: [] })
     }
   })
   HttpApi.reflect(api as any, {
@@ -221,10 +216,8 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
           return
         }
         for (const [name, security] of Object.entries(middleware.security)) {
-          const id = registerSecurity(middleware, name, security)
-          op.security!.push({
-            [id]: []
-          })
+          registerSecurity(name, security)
+          op.security!.push({ [name]: [] })
         }
       })
       endpoint.payloadSchema.pipe(
