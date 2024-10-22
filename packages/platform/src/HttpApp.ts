@@ -152,21 +152,24 @@ export const withPreResponseHandler = internal.withPreResponseHandler
  */
 export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   const run = Runtime.runFork(runtime)
-  return <E>(self: Default<E, R | Scope.Scope>, middleware?: HttpMiddleware | undefined) =>
-  (request: Request): Promise<Response> =>
-    new Promise((resolve) => {
-      const fiber = run(Effect.provideService(
-        toHandled(self, (request, response) => {
-          resolve(ServerResponse.toWeb(response, { withoutBody: request.method === "HEAD", runtime }))
-          return Effect.void
-        }, middleware),
-        ServerRequest.HttpServerRequest,
-        ServerRequest.fromWeb(request)
-      ))
-      request.signal.addEventListener("abort", () => {
-        fiber.unsafeInterruptAsFork(ServerError.clientAbortFiberId)
-      }, { once: true })
-    })
+  return <E>(self: Default<E, R | Scope.Scope>, middleware?: HttpMiddleware | undefined) => {
+    const resolveSymbol = Symbol.for("@effect/platform/HttpApp/resolve")
+    const httpApp = toHandled(self, (request, response) => {
+      ;(request as any)[resolveSymbol](
+        ServerResponse.toWeb(response, { withoutBody: request.method === "HEAD", runtime })
+      )
+      return Effect.void
+    }, middleware)
+    return (request: Request): Promise<Response> =>
+      new Promise((resolve) => {
+        const httpServerRequest = ServerRequest.fromWeb(request)
+        ;(httpServerRequest as any)[resolveSymbol] = resolve
+        const fiber = run(Effect.provideService(httpApp, ServerRequest.HttpServerRequest, httpServerRequest))
+        request.signal?.addEventListener("abort", () => {
+          fiber.unsafeInterruptAsFork(ServerError.clientAbortFiberId)
+        }, { once: true })
+      })
+  }
 }
 
 /**
