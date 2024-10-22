@@ -1,5 +1,11 @@
 # @effect/platform-bun
 
+## 0.49.2
+
+### Patch Changes
+
+- [#3806](https://github.com/Effect-TS/effect/pull/3806) [`a4aa34a`](https://github.com/Effect-TS/effect/commit/a4aa34a0c32b79f7c95f3eb36ee69a8e8e23684c) Thanks @tim-smart! - fix HttpServer.layerContext access before initialization
+
 ## 0.49.1
 
 ### Patch Changes
