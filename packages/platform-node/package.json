@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node",
   "type": "module",
-  "version": "0.64.2",
+  "version": "0.64.3",
   "license": "MIT",
   "description": "Platform specific implementations for the Node.js runtime",
   "homepage": "https://effect.website",
