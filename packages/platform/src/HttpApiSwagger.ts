@@ -41,6 +41,14 @@ export const layer = (options?: {
   </script>
 </body>
 </html>`)
-      yield* router.get(options?.path ?? "/docs", Effect.succeed(response))
+      const routePath = options?.path ?? "/docs"
+      yield* router.get(
+        routePath,
+        Effect.succeed(response)
+      )
+      yield* router.get(
+        `${routePath}/json`,
+        HttpServerResponse.json(spec)
+      )
     })
   )
