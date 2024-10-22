@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.69.2
+
+### Patch Changes
+
+- [#3808](https://github.com/Effect-TS/effect/pull/3808) [`e7afc47`](https://github.com/Effect-TS/effect/commit/e7afc47ce83e381c3f4aed2b2974e3b3d86a2340) Thanks @tim-smart! - ensure HttpMiddleware is only initialized once
+
 ## 0.69.1
 
 ### Patch Changes
