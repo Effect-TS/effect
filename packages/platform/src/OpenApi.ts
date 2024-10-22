@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
+import { globalValue } from "effect/GlobalValue"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
@@ -117,11 +118,16 @@ export interface Annotatable {
   readonly annotations: Context.Context<never>
 }
 
+const apiCache = globalValue("@effect/platform/OpenApi/apiCache", () => new WeakMap<HttpApi.HttpApi.Any, OpenAPISpec>())
+
 /**
  * @category constructors
  * @since 1.0.0
  */
 export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => {
+  if (apiCache.has(self)) {
+    return apiCache.get(self)!
+  }
   const api = self as unknown as HttpApi.HttpApi.AnyWithProps
   const jsonSchemaDefs: Record<string, JsonSchema.JsonSchema> = {}
   const spec: DeepMutable<OpenAPISpec> = {
@@ -333,6 +339,8 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       spec.paths[path][method] = op
     }
   })
+
+  apiCache.set(self, spec)
 
   return spec
 }
