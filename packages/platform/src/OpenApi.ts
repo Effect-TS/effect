@@ -59,8 +59,14 @@ export class ExternalDocs
  * @category annotations
  */
 export class Servers
-  extends Context.Tag("@effect/platform/OpenApi/Servers")<ExternalDocs, ReadonlyArray<OpenAPISpecServer>>()
+  extends Context.Tag("@effect/platform/OpenApi/Servers")<Servers, ReadonlyArray<OpenAPISpecServer>>()
 {}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Format extends Context.Tag("@effect/platform/OpenApi/Format")<Format, string>() {}
 
 /**
  * @since 1.0.0
@@ -68,55 +74,50 @@ export class Servers
  */
 export class Override extends Context.Tag("@effect/platform/OpenApi/Override")<Override, Record<string, unknown>>() {}
 
-/**
- * @since 1.0.0
- * @category annotations
- */
-export const annotations = (annotations: {
-  readonly identifier?: string | undefined
-  readonly title?: string | undefined
-  readonly description?: string | undefined
-  readonly version?: string | undefined
-  readonly license?: OpenAPISpecLicense | undefined
-  readonly externalDocs?: OpenAPISpecExternalDocs | undefined
-  readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined
-  readonly override?: Record<string, unknown> | undefined
-}): Context.Context<never> => {
-  let context = Context.empty()
-  if (annotations.identifier !== undefined) {
-    context = Context.add(context, Identifier, annotations.identifier)
+const contextPartial = <Tags extends Record<string, Context.Tag<any, any>>>(tags: Tags): (
+  options: {
+    readonly [K in keyof Tags]?: Context.Tag.Service<Tags[K]> | undefined
   }
-  if (annotations.title !== undefined) {
-    context = Context.add(context, Title, annotations.title)
+) => Context.Context<never> => {
+  const entries = Object.entries(tags)
+  return (options) => {
+    let context = Context.empty()
+    for (const [key, tag] of entries) {
+      if (options[key] !== undefined) {
+        context = Context.add(context, tag, options[key]!)
+      }
+    }
+    return context
   }
-  if (annotations.description !== undefined) {
-    context = Context.add(context, Description, annotations.description)
-  }
-  if (annotations.version !== undefined) {
-    context = Context.add(context, Version, annotations.version)
-  }
-  if (annotations.license !== undefined) {
-    context = Context.add(context, License, annotations.license)
-  }
-  if (annotations.externalDocs !== undefined) {
-    context = Context.add(context, ExternalDocs, annotations.externalDocs)
-  }
-  if (annotations.servers !== undefined) {
-    context = Context.add(context, Servers, annotations.servers)
-  }
-  if (annotations.override !== undefined) {
-    context = Context.add(context, Override, annotations.override)
-  }
-  return context
 }
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export interface Annotatable {
-  readonly annotations: Context.Context<never>
-}
+export const annotations: (
+  options: {
+    readonly identifier?: string | undefined
+    readonly title?: string | undefined
+    readonly version?: string | undefined
+    readonly description?: string | undefined
+    readonly license?: OpenAPISpecLicense | undefined
+    readonly externalDocs?: OpenAPISpecExternalDocs | undefined
+    readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined
+    readonly format?: string | undefined
+    readonly override?: Record<string, unknown> | undefined
+  }
+) => Context.Context<never> = contextPartial({
+  identifier: Identifier,
+  title: Title,
+  version: Version,
+  description: Description,
+  license: License,
+  externalDocs: ExternalDocs,
+  servers: Servers,
+  format: Format,
+  override: Override
+})
 
 const apiCache = globalValue("@effect/platform/OpenApi/apiCache", () => new WeakMap<HttpApi.HttpApi.Any, OpenAPISpec>())
 
@@ -359,10 +360,15 @@ const makeSecurityScheme = (security: HttpApiSecurity): OpenAPISecurityScheme =>
       }
     }
     case "Bearer": {
+      const format = Context.getOption(security.annotations, Format).pipe(
+        Option.map((format) => ({ bearerFormat: format })),
+        Option.getOrUndefined
+      )
       return {
         ...meta,
         type: "http",
-        scheme: "bearer"
+        scheme: "bearer",
+        ...format
       }
     }
     case "ApiKey": {
