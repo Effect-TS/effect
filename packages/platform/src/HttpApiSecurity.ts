@@ -100,10 +100,14 @@ const Proto = {
  * @since 1.0.0
  * @category constructors
  */
-export const bearer: Bearer = Object.assign(Object.create(Proto), {
-  _tag: "Bearer",
-  annotations: Context.empty()
-})
+export const bearer = (options?: {
+  format?: string
+}): Bearer =>
+  Object.assign(Object.create(Proto), {
+    _tag: "Bearer",
+    format: options?.format,
+    annotations: Context.empty()
+  })
 
 /**
  * Create an API key security scheme.
