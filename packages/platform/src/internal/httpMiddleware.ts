@@ -76,8 +76,7 @@ export const withTracerDisabledForUrls = dual<
 export const logger = make((httpApp) => {
   let counter = 0
   return Effect.withFiberRuntime((fiber) => {
-    const context = fiber.getFiberRef(FiberRef.currentContext)
-    const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
+    const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
     return Effect.withLogSpan(
       Effect.flatMap(Effect.exit(httpApp), (exit) => {
         if (fiber.getFiberRef(loggerDisabled)) {
@@ -110,8 +109,7 @@ export const logger = make((httpApp) => {
 /** @internal */
 export const tracer = make((httpApp) =>
   Effect.withFiberRuntime((fiber) => {
-    const context = fiber.getFiberRef(FiberRef.currentContext)
-    const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
+    const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
     const disabled = fiber.getFiberRef(currentTracerDisabledWhen)(request)
     if (disabled) {
       return httpApp
@@ -303,8 +301,7 @@ export const cors = (options?: {
 
   return <E, R>(httpApp: App.Default<E, R>): App.Default<E, R> =>
     Effect.withFiberRuntime((fiber) => {
-      const context = fiber.getFiberRef(FiberRef.currentContext)
-      const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
+      const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
       if (request.method === "OPTIONS") {
         return Effect.succeed(ServerResponse.empty({
           status: 204,
