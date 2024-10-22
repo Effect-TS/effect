@@ -149,7 +149,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
     name: string,
     security: HttpApiSecurity
   ): string {
-    const id = `${tag.key}/${name}`
+    const id = `${tag.key}_${name}`
     if (spec.components!.securitySchemes![id]) {
       return id
     }
