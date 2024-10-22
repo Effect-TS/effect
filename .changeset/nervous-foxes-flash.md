@@ -2,4 +2,4 @@
 "@effect/platform": patch
 ---
 
-Add missing bearer format field
+Add support for bearer format OpenApi annotation
