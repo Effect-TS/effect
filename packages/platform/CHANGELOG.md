@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.69.4
+
+### Patch Changes
+
+- [#3816](https://github.com/Effect-TS/effect/pull/3816) [`c86b1d7`](https://github.com/Effect-TS/effect/commit/c86b1d7cd47b66df190ef9775a475467c1abdbd6) Thanks @tim-smart! - allow Request.signal to be missing in .toWebHandler apis
+
 ## 0.69.3
 
 ### Patch Changes
