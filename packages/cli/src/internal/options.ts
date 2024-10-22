@@ -1833,23 +1833,24 @@ const parseCommandLine = (
       )
       let optionName: string | undefined = undefined
       let values = Arr.empty<string>()
-      let leftover = args as ReadonlyArray<string>
-      while (Arr.isNonEmptyReadonlyArray(leftover)) {
-        const name = Arr.headNonEmpty(leftover)
+      let unparsed = args as ReadonlyArray<string>
+      let leftover = Arr.empty<string>()
+      while (Arr.isNonEmptyReadonlyArray(unparsed)) {
+        const name = Arr.headNonEmpty(unparsed)
         const normalizedName = InternalCliConfig.normalizeCase(config, name)
-        if (leftover.length >= 2 && Arr.contains(normalizedNames, normalizedName)) {
+
+        if (Arr.contains(normalizedNames, normalizedName)) {
           if (optionName === undefined) {
             optionName = name
           }
-          const value = leftover[1]
+          const value = unparsed[1]
           if (value !== undefined && value.length > 0) {
             values = Arr.append(values, value.trim())
-            leftover = leftover.slice(2)
-            continue
           }
-          break
+          unparsed = unparsed.slice(2)
         } else {
-          break
+          leftover = Arr.append(leftover, Arr.headNonEmpty(unparsed))
+          unparsed = unparsed.slice(1)
         }
       }
       const parsed = Option.fromNullable(optionName).pipe(
