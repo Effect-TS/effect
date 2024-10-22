@@ -1,5 +1,15 @@
 # @effect/platform
 
+## 0.69.3
+
+### Patch Changes
+
+- [#3814](https://github.com/Effect-TS/effect/pull/3814) [`d5fba63`](https://github.com/Effect-TS/effect/commit/d5fba6391e1005e374aa0238f13edfbd65848313) Thanks @tim-smart! - cache OpenApi schema generation
+
+- [#3813](https://github.com/Effect-TS/effect/pull/3813) [`1eb2c30`](https://github.com/Effect-TS/effect/commit/1eb2c30ba064398db5790e376dedcfad55b7b005) Thanks @KhraksMamtsov! - Add support for bearer format OpenApi annotation
+
+- [#3811](https://github.com/Effect-TS/effect/pull/3811) [`02d413e`](https://github.com/Effect-TS/effect/commit/02d413e7b6bc1c64885969c37cc3e4e690c94d7d) Thanks @KhraksMamtsov! - A bug related to the format of the security schema keys has been fixed. According to the OpenAPI specification, it must match the regular expression` ^[a-zA-Z0-9.-_]+# @effect/platform
+
 ## 0.69.2
 
 ### Patch Changes

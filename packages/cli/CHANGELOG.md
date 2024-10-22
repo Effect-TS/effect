@@ -1,5 +1,14 @@
 # @effect/cli
 
+## 0.48.3
+
+### Patch Changes
+
+- [#3773](https://github.com/Effect-TS/effect/pull/3773) [`a619704`](https://github.com/Effect-TS/effect/commit/a619704fd4bdaf0dc948e32601577983e355c0fe) Thanks @joepjoosten! - Repeated options can now be parsed independend of the order of the arguments
+
+- Updated dependencies [[`d5fba63`](https://github.com/Effect-TS/effect/commit/d5fba6391e1005e374aa0238f13edfbd65848313), [`1eb2c30`](https://github.com/Effect-TS/effect/commit/1eb2c30ba064398db5790e376dedcfad55b7b005), [`02d413e`](https://github.com/Effect-TS/effect/commit/02d413e7b6bc1c64885969c37cc3e4e690c94d7d)]:
+  - @effect/platform@0.69.3
+
 ## 0.48.2
 
 ### Patch Changes
