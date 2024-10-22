@@ -322,6 +322,13 @@ export const layerServer = (
 ) => Layer.scoped(Server.HttpServer, make(evaluate, options))
 
 /** @internal */
+export const layerContext = Layer.mergeAll(
+  internalPlatform.layer,
+  Etag.layerWeak,
+  NodeContext.layer
+)
+
+/** @internal */
 export const layer = (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
@@ -330,13 +337,6 @@ export const layer = (
     Layer.scoped(Server.HttpServer, make(evaluate, options)),
     layerContext
   )
-
-/** @internal */
-export const layerContext = Layer.mergeAll(
-  internalPlatform.layer,
-  Etag.layerWeak,
-  NodeContext.layer
-)
 
 /** @internal */
 export const layerTest = Server.layerTestClient.pipe(
