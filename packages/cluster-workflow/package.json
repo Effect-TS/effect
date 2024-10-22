@@ -1,7 +1,7 @@
 {
   "name": "@effect/cluster-workflow",
   "type": "module",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "description": "A workflow runtime using effect-cluster",
   "publishConfig": {
     "access": "public",
