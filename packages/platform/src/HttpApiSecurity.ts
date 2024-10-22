@@ -54,6 +54,7 @@ export declare namespace HttpApiSecurity {
  */
 export interface Bearer extends HttpApiSecurity.Proto<Redacted> {
   readonly _tag: "Bearer"
+  readonly format?: string
 }
 
 /**

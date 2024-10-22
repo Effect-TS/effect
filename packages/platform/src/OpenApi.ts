@@ -354,7 +354,8 @@ const makeSecurityScheme = (security: HttpApiSecurity): OpenAPISecurityScheme =>
       return {
         ...meta,
         type: "http",
-        scheme: "bearer"
+        scheme: "bearer",
+        bearerFormat: security.format
       }
     }
     case "ApiKey": {
