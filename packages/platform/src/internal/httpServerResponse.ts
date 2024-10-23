@@ -75,7 +75,7 @@ class ServerResponseImpl extends Effectable.StructuralClass<ServerResponse.HttpS
       _id: "@effect/platform/HttpServerResponse",
       status: this.status,
       statusText: this.statusText,
-      headers: this.headers,
+      headers: Inspectable.redact(this.headers),
       cookies: this.cookies.toJSON(),
       body: this.body.toJSON()
     }

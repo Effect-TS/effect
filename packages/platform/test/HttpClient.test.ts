@@ -1,13 +1,14 @@
 import {
   Cookies,
   FetchHttpClient,
+  Headers,
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
   UrlParams
 } from "@effect/platform"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Either, Ref, Struct } from "effect"
+import { Either, FiberId, FiberRefs, Inspectable, Ref, Struct } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -191,4 +192,33 @@ describe("HttpClient", () => {
       )
       assert.deepStrictEqual(response, { id: 1, userId: 1, title: "delectus aut autem", completed: false })
     }).pipe(Effect.provide(JsonPlaceholderLive)))
+
+  it("ClientRequest redacts headers", () => {
+    const request = HttpClientRequest.get(new URL("https://example.com")).pipe(
+      HttpClientRequest.setHeaders({
+        "authorization": "foobar"
+      })
+    )
+
+    const fiberRefs = FiberRefs.unsafeMake(
+      new Map([
+        [
+          Headers.currentRedactedNames,
+          [[FiberId.none, ["Authorization"]] as const]
+        ] as const
+      ])
+    )
+    const r = Inspectable.withRedactableContext(fiberRefs, () => Inspectable.toStringUnknown(request))
+    const redacted = JSON.parse(r)
+
+    assert.deepStrictEqual(redacted, {
+      _id: "@effect/platform/HttpClientRequest",
+      method: "GET",
+      url: "https://example.com/",
+      urlParams: [],
+      hash: { _id: "Option", _tag: "None" },
+      headers: { authorization: "<redacted>" },
+      body: { _id: "@effect/platform/HttpBody", _tag: "Empty" }
+    })
+  })
 })
