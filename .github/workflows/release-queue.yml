@@ -29,4 +29,4 @@ jobs:
       - uses: tim-smart/next-release-action@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          packages: effect,@effect/schema,@effect/platform
+          packages: effect,@effect/platform
