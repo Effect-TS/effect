@@ -29,7 +29,7 @@ const Proto = {
       url: this.url,
       urlParams: this.urlParams,
       hash: this.hash,
-      headers: this.headers,
+      headers: Inspectable.redact(this.headers),
       body: this.body.toJSON()
     }
   },
