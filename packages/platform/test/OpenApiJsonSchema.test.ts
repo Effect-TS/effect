@@ -394,7 +394,7 @@ schema (Declaration): DateFromSelf`
             {
               "type": "string"
             },
-            { "enum": [1], examples: [1] }
+            { "enum": [1] }
           ]
         }
       )
@@ -413,7 +413,7 @@ schema (Declaration): DateFromSelf`
             {
               "type": "string"
             },
-            { "enum": [1, 2], examples: [1, 2] }
+            { "enum": [1, 2] }
           ]
         }
       )
@@ -448,23 +448,23 @@ schema (Declaration): DateFromSelf`
           Schema.Literal("foo").annotations({
             description: "I'm a foo",
             identifier: "foo",
-            examples: ["foo"]
           }),
           Schema.Literal("bar").annotations({
             description: "I'm a bar",
             identifier: "bar",
-            examples: ["bar"]
           })
         ),
         {
           "$defs": {
             "bar": {
               "enum": ["bar"],
+              "examples": ["bar"],
               "description": "I'm a bar"
             },
             "foo": {
               "enum": ["foo"],
-              "description": "I'm a foo"
+              "description": "I'm a foo",
+              "examples": ["foo"]
             }
           },
           "anyOf": [
