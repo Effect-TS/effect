@@ -742,7 +742,7 @@ export declare namespace Types {
               : Simplify<
                 & { [RK in Extract<keyof I, keyof P>]-?: ExtractAndNarrow<I[RK], P[RK]> }
                 & Omit<I, keyof P>
-              > extends infer R ? [keyof P] extends [keyof RemoveFails<R>] ? R
+              > extends infer R ? keyof P extends NonFailKeys<R> ? R
                 : never
               : never
             : MaybeReplace<I, P> extends infer R ? [I] extends [R] ? I
@@ -751,10 +751,6 @@ export declare namespace Types {
           Fail
         > :
       never
-
-  type RemoveFails<A> = NonFailKeys<A> extends infer K ? [K] extends [keyof A] ? { [RK in K]: A[RK] }
-    : {}
-    : {}
 
   type NonFailKeys<A> = keyof A & {} extends infer K ? K extends keyof A ? A[K] extends Fail ? never : K
     : never :
