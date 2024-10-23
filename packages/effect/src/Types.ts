@@ -156,11 +156,7 @@ export type Has<A, Key extends string> = (Key extends infer K ? K extends keyof 
  * @since 2.0.0
  * @category models
  */
-export type MergeLeft<K, H> = Simplify<
-  {
-    [k in keyof K | keyof H]: k extends keyof K ? K[k] : k extends keyof H ? H[k] : never
-  }
->
+export type MergeLeft<Source, Target> = MergeRight<Target, Source>
 
 /**
  * Merges two object where the keys of the right object take precedence in the case of a conflict.
@@ -172,9 +168,10 @@ export type MergeLeft<K, H> = Simplify<
  * @since 2.0.0
  * @category models
  */
-export type MergeRight<K, H> = Simplify<
-  {
-    [k in keyof K | keyof H]: k extends keyof H ? H[k] : k extends keyof K ? K[k] : never
+export type MergeRight<Target, Source> = Simplify<
+  & Source
+  & {
+    [Key in keyof Target as Key extends keyof Source ? never : Key]: Target[Key]
   }
 >
 
@@ -182,12 +179,7 @@ export type MergeRight<K, H> = Simplify<
  * @since 2.0.0
  * @category models
  */
-export type MergeRecord<K, H> = {
-  [k in keyof K | keyof H]: k extends keyof K ? K[k]
-    : k extends keyof H ? H[k]
-    : never
-} extends infer X ? X
-  : never
+export type MergeRecord<Source, Target> = MergeLeft<Source, Target>
 
 /**
  * Describes the concurrency to use when executing multiple Effect's.

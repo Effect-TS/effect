@@ -63,12 +63,18 @@ hole<Types.Equals<{ a: number }, { b: number }>>()
 // $ExpectType { a: number; b: number; }
 hole<Types.MergeLeft<{ a: number; b: number }, { a: string }>>()
 
+// $ExpectType { readonly a?: number; b: number; readonly c?: string; }
+hole<Types.MergeLeft<{ readonly a?: number; b: number }, { readonly c?: string }>>()
+
 // -------------------------------------------------------------------------------------
 // MergeRight
 // -------------------------------------------------------------------------------------
 
 // $ExpectType { a: string; b: number; }
 hole<Types.MergeRight<{ a: number; b: number }, { a: string }>>()
+
+// $ExpectType { readonly a?: string; b: number; }
+hole<Types.MergeRight<{ a: number; b: number }, { readonly a?: string }>>()
 
 // -------------------------------------------------------------------------------------
 // Mutable
