@@ -314,25 +314,11 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
   }
 
   toJSON(): unknown {
-    let body: unknown
-    try {
-      body = Effect.runSync(this.json)
-    } catch (_) {
-      //
-    }
-    try {
-      body = body ?? Effect.runSync(this.text)
-    } catch (_) {
-      //
-    }
-    return {
+    return IncomingMessage.inspect(this, {
       _id: "@effect/platform/HttpClientResponse",
       request: this.request.toJSON(),
-      status: this.status,
-      headers: this.headers,
-      remoteAddress: this.remoteAddress.toJSON(),
-      body
-    }
+      status: this.status
+    })
   }
 }
 
