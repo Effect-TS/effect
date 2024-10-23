@@ -1,5 +1,16 @@
 # @effect/experimental
 
+## 0.30.6
+
+### Patch Changes
+
+- [#3818](https://github.com/Effect-TS/effect/pull/3818) [`9604d6b`](https://github.com/Effect-TS/effect/commit/9604d6b616435103dafea8b53637a9d1450b4750) Thanks @tim-smart! - wait for connection in DevTools client with 1s timeout
+
+- Updated dependencies [[`9604d6b`](https://github.com/Effect-TS/effect/commit/9604d6b616435103dafea8b53637a9d1450b4750)]:
+  - effect@3.10.1
+  - @effect/platform@0.69.5
+  - @effect/platform-node@0.64.6
+
 ## 0.30.5
 
 ### Patch Changes
