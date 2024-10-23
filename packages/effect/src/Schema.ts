@@ -604,10 +604,11 @@ const makeLiteralClass = <Literals extends array_.NonEmptyReadonlyArray<AST.Lite
 ): Literal<Literals> =>
   class LiteralClass extends make<Literals[number]>(ast) {
     static override annotations(annotations: Annotations.Schema<Literals[number]>): Literal<Literals> {
-      return makeLiteralClass(this.literals, mergeSchemaAnnotations(this.ast, annotations))
+      return makeLiteralClass(this.literals, mergeSchemaAnnotations(this.ast, { ...annotations, examples: literals }))
     }
     static literals = [...literals] as Literals
   }
+  
 
 /**
  * @category constructors

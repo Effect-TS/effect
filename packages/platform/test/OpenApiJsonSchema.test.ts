@@ -390,11 +390,11 @@ schema (Declaration): DateFromSelf`
         ),
         {
           "anyOf": [
-            { "enum": [true], "description": "description" },
+            { "enum": [true], "description": "description", examples: [true] },
             {
               "type": "string"
             },
-            { "enum": [1] }
+            { "enum": [1], examples: [1] }
           ]
         }
       )
@@ -409,11 +409,11 @@ schema (Declaration): DateFromSelf`
         ),
         {
           "anyOf": [
-            { "enum": [true], "description": "description" },
+            { "enum": [true], "description": "description", examples: [true] },
             {
               "type": "string"
             },
-            { "enum": [1, 2] }
+            { "enum": [1, 2], examples: [1, 2] }
           ]
         }
       )
@@ -429,11 +429,13 @@ schema (Declaration): DateFromSelf`
           "anyOf": [
             {
               "enum": ["foo"],
-              "description": "I'm a foo"
+              "description": "I'm a foo",
+              "examples": ["foo"]
             },
             {
               "enum": ["bar"],
-              "description": "I'm a bar"
+              "description": "I'm a bar",
+              "examples": ["bar"]
             }
           ]
         }
@@ -445,11 +447,13 @@ schema (Declaration): DateFromSelf`
         Schema.Union(
           Schema.Literal("foo").annotations({
             description: "I'm a foo",
-            identifier: "foo"
+            identifier: "foo",
+            examples: ["foo"]
           }),
           Schema.Literal("bar").annotations({
             description: "I'm a bar",
-            identifier: "bar"
+            identifier: "bar",
+            examples: ["bar"]
           })
         ),
         {

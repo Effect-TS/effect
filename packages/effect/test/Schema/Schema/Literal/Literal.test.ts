@@ -8,7 +8,8 @@ describe("Literal", () => {
     const schema = S.Literal(1).annotations({ identifier: "X" }).annotations({ title: "Y" })
     expect(schema.ast.annotations).toStrictEqual({
       [AST.IdentifierAnnotationId]: "X",
-      [AST.TitleAnnotationId]: "Y"
+      [AST.TitleAnnotationId]: "Y",
+      [AST.ExamplesAnnotationId]: [1]
     })
   })
 
@@ -29,7 +30,10 @@ describe("Literal", () => {
 
   it("should return the literal interface when using the .annotations() method", () => {
     const schema = S.Literal("a", "b").annotations({ identifier: "literal test" })
-    expect(schema.ast.annotations).toStrictEqual({ [AST.IdentifierAnnotationId]: "literal test" })
+    expect(schema.ast.annotations).toStrictEqual({
+      [AST.IdentifierAnnotationId]: "literal test",
+      [AST.ExamplesAnnotationId]: ["a", "b"]
+    })
     expect(schema.literals).toStrictEqual(["a", "b"])
   })
 

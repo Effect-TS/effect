@@ -428,7 +428,7 @@ schema (Declaration): DateFromSelf`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "anyOf": [
-            { "enum": [true], "description": "description" },
+            { "enum": [true], "description": "description", examples: [true] },
             {
               "type": "string"
             },
@@ -448,7 +448,7 @@ schema (Declaration): DateFromSelf`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "anyOf": [
-            { "enum": [true], "description": "description" },
+            { "enum": [true], "description": "description", examples: [true] },
             {
               "type": "string"
             },
@@ -469,11 +469,13 @@ schema (Declaration): DateFromSelf`
           "anyOf": [
             {
               "enum": ["foo"],
-              "description": "I'm a foo"
+              "description": "I'm a foo",
+              "examples": ["foo"]
             },
             {
               "enum": ["bar"],
-              "description": "I'm a bar"
+              "description": "I'm a bar",
+              "examples": ["bar"]
             }
           ]
         }
@@ -497,11 +499,13 @@ schema (Declaration): DateFromSelf`
           "$defs": {
             "bar": {
               "enum": ["bar"],
-              "description": "I'm a bar"
+              "description": "I'm a bar",
+              "examples": ["bar"]
             },
             "foo": {
               "enum": ["foo"],
-              "description": "I'm a foo"
+              "description": "I'm a foo",
+              "examples": ["foo"]
             }
           },
           "anyOf": [
