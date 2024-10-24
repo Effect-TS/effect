@@ -180,6 +180,19 @@ export const boolean = (name?: string): Config.Config<boolean> => {
 }
 
 /** @internal */
+export const url = (name?: string): Config.Config<URL> => {
+  const config = primitive(
+    "an URL property",
+    (text) =>
+      Either.try({
+        try: () => new URL(text),
+        catch: (_) => configError.InvalidData([], `Expected an URL value but received ${text}`)
+      })
+  )
+  return name === undefined ? config : nested(config, name)
+}
+
+/** @internal */
 export const array = <A>(config: Config.Config<A>, name?: string): Config.Config<Array<A>> => {
   return pipe(chunk(config, name), map(Chunk.toArray))
 }

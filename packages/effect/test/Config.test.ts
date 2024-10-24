@@ -66,6 +66,27 @@ describe("Config", () => {
     })
   })
 
+  describe("url", () => {
+    it("name != undefined", () => {
+      const config = Config.url("WEBSITE_URL")
+      assertSuccess(
+        config,
+        [["WEBSITE_URL", "https://effect.website/docs/introduction#what-is-effect"]],
+        new URL("https://effect.website/docs/introduction#what-is-effect")
+      )
+      assertFailure(
+        config,
+        [["WEBSITE_URL", "abra-kadabra"]],
+        ConfigError.InvalidData(["WEBSITE_URL"], "Expected an URL value but received abra-kadabra")
+      )
+      assertFailure(
+        config,
+        [],
+        ConfigError.MissingData(["WEBSITE_URL"], "Expected WEBSITE_URL to exist in the provided map")
+      )
+    })
+  })
+
   describe("nonEmptyString", () => {
     it("name = undefined", () => {
       const config = Config.array(Config.nonEmptyString(), "ITEMS")
