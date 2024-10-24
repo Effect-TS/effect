@@ -13,6 +13,7 @@ import * as HashSet from "../HashSet.js"
 import * as number from "../Number.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
+import * as Predicate from "../Predicate.js"
 import * as regexp from "../RegExp.js"
 import type * as _config from "./config.js"
 import * as configError from "./configError.js"
@@ -784,13 +785,15 @@ const getIndexedEntries = (
     path: ReadonlyArray<KeyComponent>,
     value: JsonMap
   ): ReadonlyArray<[path: ReadonlyArray<KeyComponent>, value: string]> =>
-    Object.entries(value).flatMap(([key, value]) => {
-      const newPath = Arr.append(path, keyName(key))
-      const result = loopAny(newPath, value)
-      if (Arr.isEmptyReadonlyArray(result)) {
-        return Arr.make([newPath, ""] as [ReadonlyArray<KeyComponent>, string])
-      }
-      return result
-    })
+    Object.entries(value)
+      .filter(([, value]) => Predicate.isNotNullable(value))
+      .flatMap(([key, value]) => {
+        const newPath = Arr.append(path, keyName(key))
+        const result = loopAny(newPath, value)
+        if (Arr.isEmptyReadonlyArray(result)) {
+          return Arr.make([newPath, ""] as [ReadonlyArray<KeyComponent>, string])
+        }
+        return result
+      })
   return loopObject(Arr.empty(), config)
 }
