@@ -1,5 +1,14 @@
 # effect
 
+## 3.10.2
+
+### Patch Changes
+
+- [#3820](https://github.com/Effect-TS/effect/pull/3820) [`714e119`](https://github.com/Effect-TS/effect/commit/714e11945e45e5a2554ee058e6c43f82a8e309cf) Thanks @tim-smart! - simplify Match fail keys types
+
+- [#3825](https://github.com/Effect-TS/effect/pull/3825) [`c1afd55`](https://github.com/Effect-TS/effect/commit/c1afd55c54e61f9c432823d21b3d016f79160a37) Thanks @KhraksMamtsov! - - Make `MergeRight`, `MergeLeft` and `MergeRecord` in `Types` module homomorphic (preserve original `readonly` and optionality modifiers)
+  - `MergeRecord` now is alias for `MergeLeft`
+
 ## 3.10.1
 
 ### Patch Changes
