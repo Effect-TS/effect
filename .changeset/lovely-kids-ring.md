@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-`Config.url` constructor has been added, with the `new URL()` under the hood
+`Config.url` constructor has been added, which parses a string using `new URL()`
