@@ -390,8 +390,8 @@ const go = (
   }
   if (Option.isSome(surrogate)) {
     return {
-      ...(ast._tag === "Transformation" ? getJsonSchemaAnnotations(ast.to) : {}),
       ...go(surrogate.value, $defs, handleIdentifier, path, options),
+      ...(ast._tag === "Transformation" ? getJsonSchemaAnnotations(ast.to) : {}),
       ...getJsonSchemaAnnotations(ast)
     }
   }
