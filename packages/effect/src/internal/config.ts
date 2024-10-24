@@ -184,10 +184,10 @@ export const url = (name?: string): Config.Config<URL> => {
   const config = primitive(
     "an URL property",
     (text) =>
-      Either.mapLeft(
-        Either.try(() => new URL(text)),
-        () => configError.InvalidData([], `Expected an URL value but received ${text}`)
-      )
+      Either.try({
+        try: () => new URL(text),
+        catch: (_) => configError.InvalidData([], `Expected an URL value but received ${text}`)
+      })
   )
   return name === undefined ? config : nested(config, name)
 }
