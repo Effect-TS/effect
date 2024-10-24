@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.69.6
+
+### Patch Changes
+
+- [#3826](https://github.com/Effect-TS/effect/pull/3826) [`42cd72a`](https://github.com/Effect-TS/effect/commit/42cd72a44ca9593e4d81fbb50e8111625fd0fb81) Thanks @juliusmarminge! - ensure requests & responses have headers redacted when inspecting
+
+- Updated dependencies [[`714e119`](https://github.com/Effect-TS/effect/commit/714e11945e45e5a2554ee058e6c43f82a8e309cf), [`c1afd55`](https://github.com/Effect-TS/effect/commit/c1afd55c54e61f9c432823d21b3d016f79160a37)]:
+  - effect@3.10.2
+
 ## 0.69.5
 
 ### Patch Changes
