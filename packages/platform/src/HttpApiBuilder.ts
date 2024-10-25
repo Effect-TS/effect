@@ -222,7 +222,15 @@ export interface Handlers<
   ): Handlers<
     E,
     Provides,
-    R | Exclude<HttpApiEndpoint.HttpApiEndpoint.ExcludeProvided<Endpoints, Name, R1>, Provides>,
+    | R
+    | Exclude<
+      HttpApiEndpoint.HttpApiEndpoint.ExcludeProvided<
+        Endpoints,
+        Name,
+        R1 | HttpApiEndpoint.HttpApiEndpoint.ContextWithName<Endpoints, Name>
+      >,
+      Provides
+    >,
     HttpApiEndpoint.HttpApiEndpoint.ExcludeName<Endpoints, Name>
   >
 
@@ -236,7 +244,15 @@ export interface Handlers<
   ): Handlers<
     E,
     Provides,
-    R | Exclude<HttpApiEndpoint.HttpApiEndpoint.ExcludeProvided<Endpoints, Name, R1>, Provides>,
+    | R
+    | Exclude<
+      HttpApiEndpoint.HttpApiEndpoint.ExcludeProvided<
+        Endpoints,
+        Name,
+        R1 | HttpApiEndpoint.HttpApiEndpoint.ContextWithName<Endpoints, Name>
+      >,
+      Provides
+    >,
     HttpApiEndpoint.HttpApiEndpoint.ExcludeName<Endpoints, Name>
   >
 }
