@@ -1,5 +1,56 @@
 # effect
 
+## 3.10.4
+
+### Patch Changes
+
+- [#3842](https://github.com/Effect-TS/effect/pull/3842) [`2367708`](https://github.com/Effect-TS/effect/commit/2367708be449f9526a2047e321302d7bfb16f18e) Thanks @gcanti! - add support for `Schema.OptionFromUndefinedOr` in JSON Schema generation, closes #3839
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.OptionFromUndefinedOr(Schema.Number)
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  throws:
+  Error: Missing annotation
+  at path: ["a"]
+  details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
+  schema (UndefinedKeyword): undefined
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.OptionFromUndefinedOr(Schema.Number)
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [],
+    "properties": {
+      "a": {
+        "type": "number"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
 ## 3.10.3
 
 ### Patch Changes

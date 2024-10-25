@@ -1,5 +1,14 @@
 # @effect/typeclass
 
+## 0.29.4
+
+### Patch Changes
+
+- [#3840](https://github.com/Effect-TS/effect/pull/3840) [`29fc33f`](https://github.com/Effect-TS/effect/commit/29fc33f33c5c4c4d468a494c0c1ff8fdb74d12f7) Thanks @FredericEspiau! - Add getSemigroupUnion, getMonoidUnion and getSemigroupIntersection for Record
+
+- Updated dependencies [[`2367708`](https://github.com/Effect-TS/effect/commit/2367708be449f9526a2047e321302d7bfb16f18e)]:
+  - effect@3.10.4
+
 ## 0.29.3
 
 ### Patch Changes
