@@ -227,12 +227,8 @@ export declare namespace HttpApiGroup {
    */
   export type Context<Group> = Group extends
     HttpApiGroup<infer _Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ?
-      | HttpApiMiddleware.HttpApiMiddleware.Only<_R>
-      | Exclude<
-        HttpApiEndpoint.HttpApiEndpoint.Context<_Endpoints>,
-        HttpApiMiddleware.HttpApiMiddleware.ExtractProvides<HttpApiEndpoint.HttpApiEndpoint.Context<_Endpoints> | _R>
-      >
-    : never
+    HttpApiMiddleware.HttpApiMiddleware.Only<_R> :
+    never
 
   /**
    * @since 1.0.0
