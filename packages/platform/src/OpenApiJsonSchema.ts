@@ -296,12 +296,18 @@ const getASTJsonSchemaAnnotations = (ast: AST.AST): Annotations => {
   }
 }
 
-const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST | undefined => {
-  const type = ps.type
-  if (AST.isUnion(type) && Option.isNone(AST.getJSONSchemaAnnotation(type))) {
-    const types = type.types.filter((type) => !AST.isUndefinedKeyword(type))
-    if (types.length < type.types.length) {
-      return AST.Union.make(types, type.annotations)
+const pruneUndefinedFromPropertySignature = (ast: AST.AST): AST.AST | undefined => {
+  if (Option.isNone(AST.getJSONSchemaAnnotation(ast))) {
+    switch (ast._tag) {
+      case "Union": {
+        const types = ast.types.filter((type) => !AST.isUndefinedKeyword(type))
+        if (types.length < ast.types.length) {
+          return AST.Union.make(types, ast.annotations)
+        }
+        break
+      }
+      case "Transformation":
+        return pruneUndefinedFromPropertySignature(isParseJsonTransformation(ast.from) ? ast.to : ast.from)
     }
   }
 }
@@ -322,8 +328,7 @@ const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefi
 }
 
 const isParseJsonTransformation = (ast: AST.AST): boolean =>
-  ast._tag === "Transformation" &&
-  ast.from.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
+  ast.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
 
 const isOverrideAnnotation = (jsonSchema: JsonSchema): boolean => {
   return ("type" in jsonSchema) || ("oneOf" in jsonSchema) || ("anyOf" in jsonSchema) || ("const" in jsonSchema) ||
@@ -546,7 +551,7 @@ const go = (
         const ps = ast.propertySignatures[i]
         const name = ps.name
         if (Predicate.isString(name)) {
-          const pruned = pruneUndefinedKeyword(ps)
+          const pruned = pruneUndefinedFromPropertySignature(ps.type)
           output.properties[name] = {
             ...go(pruned ? pruned : ps.type, $defs, true, path.concat(ps.name), options),
             ...getJsonSchemaAnnotations(ps)
@@ -640,7 +645,7 @@ const go = (
       // the 'to' side of the AST. This approach prevents the generation of useless schemas
       // derived from the 'from' side (type: string), ensuring the output matches the intended
       // complex schema type.
-      if (isParseJsonTransformation(ast)) {
+      if (isParseJsonTransformation(ast.from)) {
         return {
           type: "string",
           contentMediaType: "application/json",
