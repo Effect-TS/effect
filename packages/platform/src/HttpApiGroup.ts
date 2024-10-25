@@ -156,6 +156,7 @@ export declare namespace HttpApiGroup {
    */
   export interface Any {
     readonly [TypeId]: TypeId
+    readonly identifier: string
   }
 
   /**
