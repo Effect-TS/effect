@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.69.7
+
+### Patch Changes
+
+- [#3836](https://github.com/Effect-TS/effect/pull/3836) [`690d6c5`](https://github.com/Effect-TS/effect/commit/690d6c54d2145adb0af545c447db7d4755bf3c6b) Thanks @tim-smart! - add HttpApiBuilder.handler, for defining a single handler
+
+- [#3831](https://github.com/Effect-TS/effect/pull/3831) [`279fe3a`](https://github.com/Effect-TS/effect/commit/279fe3a7168fe84e520c2cc88ba189a15f03a2bc) Thanks @tim-smart! - ensure parent annotations take precedence over surrogate annotations
+
+- Updated dependencies [[`b9423d8`](https://github.com/Effect-TS/effect/commit/b9423d8bf8181a2389fdbce1e3c14ac6fe8d54f5)]:
+  - effect@3.10.3
+
 ## 0.69.6
 
 ### Patch Changes
