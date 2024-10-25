@@ -241,6 +241,7 @@ export declare namespace HttpApiEndpoint {
    */
   export interface Any extends Pipeable {
     readonly [TypeId]: TypeId
+    readonly name: string
   }
 
   /**
