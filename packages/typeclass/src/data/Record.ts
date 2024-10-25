@@ -205,7 +205,13 @@ export const getTraversableFilterable = <K extends string>(): traversableFiltera
 export const TraversableFilterable = getTraversableFilterable()
 
 /**
- * A `Semigroup` that creates an union of two records.
+ * A `Semigroup` that creates a union of two records.
+ *
+ * This `Semigroup` takes two records and combines them into a single record.
+ * If a key exists in both records, the provided `Semigroup` instance is used to combine the values for that key.
+ * If a key exists in only one of the records, that key-value pair is included as is in the resulting record.
+ *
+ * For example, when using the `MonoidSum`, values for matching keys will be summed.
  *
  * @example
  * import * as NumberInstances from "@effect/typeclass/data/Number"
@@ -214,7 +220,7 @@ export const TraversableFilterable = getTraversableFilterable()
  * assert.deepStrictEqual(getSemigroupUnion(NumberInstances.MonoidSum).combine({ a: 1 }, { a: 1, b: 3 }), { a: 2, b: 3 })
  *
  * @category instances
- * @since 0.29.3
+ * @since 0.29.4
  */
 export const getSemigroupUnion: <A>(
   value: semigroup.Semigroup<A>
@@ -222,9 +228,12 @@ export const getSemigroupUnion: <A>(
   semigroup.make<Record<string, A>>((self, that) => Record.union(self, that, value.combine))
 
 /**
- * A `Monoid` that creates an union of two records.
+ * A `Monoid` that creates a union of two records.
  *
- * The `empty` value is `{}`.
+ * It allows combining two records where values for matching keys are combined using the provided `Monoid` instance.
+ * If a key exists in only one of the records, that key-value pair is included as is in the resulting record.
+ *
+ * The `empty` value for this `Monoid` is an empty record `{}`.
  *
  * @example
  * import * as NumberInstances from "@effect/typeclass/data/Number"
@@ -236,7 +245,7 @@ export const getSemigroupUnion: <A>(
  * assert.deepStrictEqual(monoid.combine({ a: 1 }, monoid.empty), { a: 1 })
  *
  * @category instances
- * @since 0.29.3
+ * @since 0.29.4
  */
 export const getMonoidUnion: <A>(
   value: monoid.Monoid<A>
@@ -246,6 +255,9 @@ export const getMonoidUnion: <A>(
 /**
  * A `Semigroup` that creates an intersection of two records.
  *
+ * This `Semigroup` takes two records and combines them into a new record containing only the keys that are present in both records.
+ * The values for matching keys are combined using the provided `Semigroup` instance.
+ *
  * @example
  * import * as NumberInstances from "@effect/typeclass/data/Number"
  * import { getSemigroupIntersection } from "@effect/typeclass/data/Record"
@@ -253,7 +265,7 @@ export const getMonoidUnion: <A>(
  * assert.deepStrictEqual(getSemigroupIntersection(NumberInstances.MonoidSum).combine({ a: 1 }, { a: 1, b: 3 }), { a: 2 })
  *
  * @category instances
- * @since 0.29.3
+ * @since 0.29.4
  */
 export const getSemigroupIntersection: <A>(
   value: semigroup.Semigroup<A>
