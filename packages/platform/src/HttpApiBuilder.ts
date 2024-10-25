@@ -459,6 +459,38 @@ export const group = <
     })
   ) as any
 
+/**
+ * Create a `Handler` for a single endpoint.
+ *
+ * @since 1.0.0
+ * @category handlers
+ */
+export const handler = <
+  Groups extends HttpApiGroup.HttpApiGroup.Any,
+  ApiError,
+  ApiR,
+  const GroupName extends Groups["identifier"],
+  const Name extends HttpApiGroup.HttpApiGroup.EndpointsWithName<Groups, GroupName>["name"],
+  R
+>(
+  _api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
+  _groupName: GroupName,
+  _name: Name,
+  f: HttpApiEndpoint.HttpApiEndpoint.HandlerWithName<
+    HttpApiGroup.HttpApiGroup.EndpointsWithName<Groups, GroupName>,
+    Name,
+    | ApiError
+    | HttpApiGroup.HttpApiGroup.ErrorWithName<Groups, GroupName>,
+    R
+  >
+): HttpApiEndpoint.HttpApiEndpoint.HandlerWithName<
+  HttpApiGroup.HttpApiGroup.EndpointsWithName<Groups, GroupName>,
+  Name,
+  | ApiError
+  | HttpApiGroup.HttpApiGroup.ErrorWithName<Groups, GroupName>,
+  R
+> => f
+
 // internal
 
 const requestPayload = (
