@@ -216,10 +216,10 @@ export const TraversableFilterable = getTraversableFilterable()
  * @category instances
  * @since 1.0.0
  */
-export const SemigroupUnion: <A>(
+export const getSemigroupUnion: <A>(
   value: semigroup.Semigroup<A>
-) => semigroup.Semigroup<Record.ReadonlyRecord<string | symbol, A>> = <A>(value: semigroup.Semigroup<A>) =>
-  semigroup.make<Record<string | symbol, A>>((self, that) => Record.union(self, that, value.combine))
+) => semigroup.Semigroup<Record.ReadonlyRecord<string, A>> = <A>(value: semigroup.Semigroup<A>) =>
+  semigroup.make<Record<string, A>>((self, that) => Record.union(self, that, value.combine))
 
 /**
  * A `Monoid` that creates an union of two records.
@@ -238,10 +238,10 @@ export const SemigroupUnion: <A>(
  * @category instances
  * @since 1.0.0
  */
-export const MonoidUnion: <A>(
+export const getMonoidUnion: <A>(
   value: monoid.Monoid<A>
-) => monoid.Monoid<Record.ReadonlyRecord<string | symbol, A>> = <A>(value: monoid.Monoid<A>) =>
-  monoid.fromSemigroup(SemigroupUnion<A>(value), Record.empty<string | symbol, A>())
+) => monoid.Monoid<Record.ReadonlyRecord<string, A>> = <A>(value: monoid.Monoid<A>) =>
+  monoid.fromSemigroup(getSemigroupUnion<A>(value), Record.empty<string, A>())
 
 /**
  * A `Semigroup` that creates an intersection of two records.
@@ -255,7 +255,7 @@ export const MonoidUnion: <A>(
  * @category instances
  * @since 1.0.0
  */
-export const SemigroupIntersection: <A>(
+export const getSemigroupIntersection: <A>(
   value: semigroup.Semigroup<A>
-) => semigroup.Semigroup<Record.ReadonlyRecord<string | symbol, A>> = <A>(value: semigroup.Semigroup<A>) =>
-  semigroup.make<Record<string | symbol, A>>((self, that) => Record.intersection(self, that, value.combine))
+) => semigroup.Semigroup<Record.ReadonlyRecord<string, A>> = <A>(value: semigroup.Semigroup<A>) =>
+  semigroup.make<Record<string, A>>((self, that) => Record.intersection(self, that, value.combine))

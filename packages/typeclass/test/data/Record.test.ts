@@ -45,7 +45,7 @@ describe.concurrent("Record", () => {
   })
 
   it("SemigroupUnion", () => {
-    const semigroupUnion = RecordInstances.SemigroupUnion(semigroup.struct({
+    const semigroupUnion = RecordInstances.getSemigroupUnion(semigroup.struct({
       inner: NumberInstances.SemigroupSum
     }))
 
@@ -57,7 +57,7 @@ describe.concurrent("Record", () => {
   })
 
   it("MonoidUnion", () => {
-    const monoidUnion = RecordInstances.MonoidUnion(monoid.struct({
+    const monoidUnion = RecordInstances.getMonoidUnion(monoid.struct({
       inner: NumberInstances.MonoidMax
     }))
 
@@ -71,7 +71,7 @@ describe.concurrent("Record", () => {
   })
 
   it("SemigroupIntersection", () => {
-    const semigroupIntersection = RecordInstances.SemigroupIntersection(semigroup.struct({
+    const semigroupIntersection = RecordInstances.getSemigroupIntersection(semigroup.struct({
       inner: NumberInstances.SemigroupSum
     }))
 
