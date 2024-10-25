@@ -837,23 +837,63 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         )
       })
 
-      it("should prune `UndefinedKeyword` from a required property signature type and make the property optional by default", () => {
-        expectJSONSchema(
-          Schema.Struct({
-            a: Schema.UndefinedOr(Schema.String)
-          }),
-          {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "type": "object",
-            "required": [],
-            "properties": {
-              "a": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        )
+      describe("should prune `UndefinedKeyword` from a required property signature type and make the property optional by default", () => {
+        it("Struct", () => {
+          expectJSONSchema(
+            Schema.Struct({
+              a: Schema.UndefinedOr(Schema.String)
+            }),
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "required": [],
+              "properties": {
+                "a": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          )
+        })
+
+        it("Transformation", () => {
+          expectJSONSchema(
+            Schema.Struct({
+              a: Schema.OptionFromUndefinedOr(Schema.String)
+            }),
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "required": [],
+              "properties": {
+                "a": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          )
+        })
+
+        it("parseJson Transformation", () => {
+          expectJSONSchema(
+            Schema.Struct({
+              a: Schema.parseJson(Schema.OptionFromUndefinedOr(Schema.String))
+            }),
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "required": [],
+              "properties": {
+                "a": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          )
+        })
       })
     })
   })
