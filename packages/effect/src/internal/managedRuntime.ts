@@ -1,3 +1,4 @@
+import type { Mutable } from "effect/Types"
 import type * as Effect from "../Effect.js"
 import * as Effectable from "../Effectable.js"
 import type { Exit } from "../Exit.js"
@@ -8,7 +9,6 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
 import * as Scope from "../Scope.js"
-import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as internalLayer from "./layer.js"
@@ -56,8 +56,9 @@ export const make = <R, ER>(
 ): M.ManagedRuntime<R, ER> => {
   memoMap = memoMap ?? internalLayer.unsafeMakeMemoMap()
   const scope = internalRuntime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
-  const runtimeEffect = internalRuntime.unsafeRunSyncEffect(
-    effect.memoize(
+  let buildFiber: Fiber.RuntimeFiber<Runtime.Runtime<R>, ER> | undefined
+  const runtimeEffect = core.suspend(() => {
+    buildFiber ??= internalRuntime.unsafeForkEffect(
       core.tap(
         Scope.extend(
           internalLayer.toRuntimeWithMemoMap(layer, memoMap),
@@ -66,9 +67,11 @@ export const make = <R, ER>(
         (rt) => {
           self.cachedRuntime = rt
         }
-      )
+      ),
+      { scope }
     )
-  )
+    return core.flatten(buildFiber.await)
+  })
   const self: ManagedRuntimeImpl<R, ER> = Object.assign(Object.create(ManagedRuntimeProto), {
     memoMap,
     scope,
@@ -83,7 +86,7 @@ export const make = <R, ER>(
       return internalRuntime.unsafeRunPromiseEffect(self.disposeEffect)
     },
     disposeEffect: core.suspend(() => {
-      ;(self as any).runtime = core.die("ManagedRuntime disposed")
+      ;(self as Mutable<ManagedRuntimeImpl<R, ER>>).runtimeEffect = core.die("ManagedRuntime disposed")
       self.cachedRuntime = undefined
       return Scope.close(self.scope, core.exitVoid)
     }),
