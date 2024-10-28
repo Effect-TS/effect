@@ -364,7 +364,7 @@ describe("Cause", () => {
       if (typeof window === "undefined") {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { inspect } = require("node:util")
-        expect(inspect(ex)).include("Cause.test.ts:348")
+        expect(inspect(ex)).include("Cause.test.ts:362")
       }
     })
   })
