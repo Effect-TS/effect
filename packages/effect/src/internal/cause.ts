@@ -981,7 +981,7 @@ export const pretty = <E>(cause: Cause.Cause<E>, options?: {
       return e.stack
     }
     const { cause, message: _, name: __, stack, ...rest } = e
-    const json = stringifyCircular(toJSON(rest))
+    const json = stringifyCircular(toJSON(rest), 2)
     return !cause && !!Object.keys(rest).length ?
       stack :
       `${stack} {${json.substring(1, json.length - 1).split("\n").join("\n").trimEnd()}${
