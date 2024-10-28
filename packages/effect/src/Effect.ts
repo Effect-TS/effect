@@ -6805,7 +6805,7 @@ export declare namespace Service {
       ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
       readonly make: (_: MakeService<Make>) => Self
     }
-    & Omit<Context.Tag<Self, Self>, "key">
+    & Context.Tag<Self, Self>
     & { key: Key }
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
     & (MakeDeps<Make> extends never ? {
