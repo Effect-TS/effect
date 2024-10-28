@@ -428,6 +428,57 @@ const isActive = S.Boolean.annotations({
 })
 ```
 
+### Zod enums
+
+You can retrieve the list of options as a tuple with the `.options` property:
+
+Zod
+
+```ts
+const FishEnum = z.enum(["Salmon", "Tuna", "Trout"])
+type FishEnum = z.infer<typeof FishEnum>
+// 'Salmon' | 'Tuna' | 'Trout'
+```
+
+Schema
+
+```ts
+const FishEnum = S.Literal("Salmon", "Tuna", "Trout")
+
+type FishEnum = typeof FishEnum.Type
+// 'Salmon' | 'Tuna' | 'Trout'
+```
+
+Alternatively, use `as const` to define your enum values as a tuple of strings:
+
+Zod
+
+```ts
+const VALUES = ["Salmon", "Tuna", "Trout"] as const
+const FishEnum = z.enum(VALUES)
+```
+
+Schema
+
+```ts
+const VALUES = ["Salmon", "Tuna", "Trout"] as const
+const FishEnum = S.Literal(...VALUES)
+```
+
+#### `.options`
+
+Zod
+
+```ts
+FishEnum.options // ["Salmon", "Tuna", "Trout"];
+```
+
+Schema
+
+```ts
+FishEnum.literals // readonly ["Salmon", "Tuna", "Trout"]
+```
+
 ### Native enums
 
 Zod
