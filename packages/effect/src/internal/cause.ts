@@ -977,10 +977,16 @@ export const pretty = <E>(cause: Cause.Cause<E>, options?: {
     return "All fibers interrupted without errors."
   }
   return prettyErrors<E>(cause).map(function(e) {
-    if (options?.renderErrorCause !== true || e.cause === undefined) {
+    if (options?.renderErrorCause !== true) {
       return e.stack
     }
-    return `${e.stack} {\n${renderErrorCause(e.cause as PrettyError, "  ")}\n}`
+    const { cause, message: _, name: __, stack, ...rest } = e
+    const json = JSON.stringify(rest, undefined, 2)
+    return !cause && !!Object.keys(rest).length ?
+      stack :
+      `${stack} {${json.substring(1, json.length - 1).split("\n").join("\n").trimEnd()}${
+        cause ? ",\n" + renderErrorCause(cause as PrettyError, "  ") : ""
+      }\n}`
   }).join("\n")
 }
 

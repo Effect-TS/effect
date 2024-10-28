@@ -8,6 +8,7 @@ import * as Predicate from "effect/Predicate"
 import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/utils/cause"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
+import { Data } from "../src/index.js"
 
 describe("Cause", () => {
   it("[internal] prettyErrorMessage", () => {
@@ -81,6 +82,19 @@ describe("Cause", () => {
         }
       }
       expect(Cause.pretty(Cause.fail(new Error5()))).toEqual(`Error: my string`)
+
+      class Error6 extends Data.TaggedError("Error6")<{ message: string; code: number; cause: Error }> {
+      }
+      expect(
+        Cause.pretty(Cause.fail(new Error6({ message: "test", code: 10, cause: new Error("cause") })), {
+          renderErrorCause: true
+        })
+      ).includes(
+        `{
+  "code": 10,
+  "_tag": "Error6",
+  [cause]: Error: cause`
+      )
     })
 
     it("Interrupt", () => {
