@@ -1,4 +1,4 @@
-import { Config, Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { GenericContainer, type StartedTestContainer } from "testcontainers"
 import { LibsqlClient } from "../src/index.js"
 
@@ -23,7 +23,7 @@ export class LibsqlContainer extends Context.Tag("test/LibsqlContainer")<
     Effect.gen(function*() {
       const container = yield* LibsqlContainer
       return LibsqlClient.layer({
-        url: Config.succeed(`http://localhost:${container.getMappedPort(8080)}`)
+        url: `http://localhost:${container.getMappedPort(8080)}`
       })
     })
   ).pipe(Layer.provide(this.Live))

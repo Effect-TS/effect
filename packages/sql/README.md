@@ -5,12 +5,12 @@ A SQL toolkit for Effect.
 ## Basic example
 
 ```ts
-import { Config, Effect, Struct, pipe } from "effect"
+import { Effect, Struct, pipe } from "effect"
 import { PgClient } from "@effect/sql-pg"
 import { SqlClient } from "@effect/sql"
 
 const SqlLive = PgClient.layer({
-  database: Config.succeed("effect_pg_dev")
+  database: "effect_pg_dev"
 })
 
 const program = Effect.gen(function* () {
@@ -25,6 +25,17 @@ const program = Effect.gen(function* () {
 })
 
 pipe(program, Effect.provide(SqlLive), Effect.runPromise)
+```
+
+Alternatively, you can also create the `SqlLive` layer using the `PgClient.layerConfig` constructor.
+
+```ts
+import { Config } from "effect"
+import { PgClient } from "@effect/sql-pg"
+
+const SqlLive = PgClient.layer({
+  database: Config.string("DATABASE")
+})
 ```
 
 ## Migrating from `sqlfx`
@@ -47,11 +58,10 @@ const SqlLive = PgClient.makeLayer({
 You now do:
 
 ```ts
-import { Config } from "effect"
 import { PgClient } from "@effect/sql-pg"
 
 const SqlLive = PgClient.layer({
-  database: Config.succeed("effect_pg_dev")
+  database: "effect_pg_dev"
 })
 ```
 
@@ -60,7 +70,6 @@ const SqlLive = PgClient.layer({
 To continue using your `sqlfx` migrations table, you can setup your migrator Layer as below:
 
 ```ts
-import { Config } from "effect"
 import { PgMigrator } from "@effect/sql-pg"
 
 const MigratorLive = Layer.provide(
@@ -299,7 +308,7 @@ To run your migrations:
 ```ts
 // src/main.ts
 
-import { Config, Effect, Layer, pipe } from "effect"
+import { Effect, Layer, pipe } from "effect"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
 import { PgClient, PgMigrator } from "@effect/sql-pg"
 import { fileURLToPath } from "node:url"
@@ -309,7 +318,7 @@ const program = Effect.gen(function* () {
 })
 
 const SqlLive = PgClient.layer({
-  database: Config.succeed("example_database")
+  database: "example_database"
 })
 
 const MigratorLive = PgMigrator.layer({

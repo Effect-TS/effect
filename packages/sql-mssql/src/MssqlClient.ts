@@ -396,7 +396,7 @@ export const make = (
  * @category layers
  * @since 1.0.0
  */
-export const layer = (
+export const layerConfig = (
   config: Config.Config.Wrap<MssqlClientConfig>
 ): Layer.Layer<Client.SqlClient | MssqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
@@ -408,6 +408,20 @@ export const layer = (
         )
       )
     )
+  )
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layer = (
+  config: MssqlClientConfig
+): Layer.Layer<Client.SqlClient | MssqlClient, ConfigError | SqlError> =>
+  Layer.scopedContext(
+    Effect.map(make(config), (client) =>
+      Context.make(MssqlClient, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
   )
 
 /**

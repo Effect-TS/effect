@@ -1,5 +1,5 @@
 import { PgClient } from "@effect/sql-pg"
-import { Config, Console, Effect, Stream } from "effect"
+import { Console, Effect, Stream } from "effect"
 
 const program = Effect.gen(function*() {
   const sql = yield* PgClient.PgClient
@@ -19,8 +19,8 @@ const program = Effect.gen(function*() {
 }).pipe(Effect.scoped)
 
 const PgLive = PgClient.layer({
-  database: Config.succeed("postgres"),
-  username: Config.succeed("postgres")
+  database: "postgres",
+  username: "postgres"
 })
 
 program.pipe(

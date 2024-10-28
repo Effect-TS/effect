@@ -1,7 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import { SqlClient, Statement } from "@effect/sql"
 import { MysqlClient } from "@effect/sql-mysql2"
-import { Config, Effect, FiberRef, FiberRefs, Layer, Option, pipe, Redacted, String } from "effect"
+import { Effect, FiberRef, FiberRefs, Layer, Option, pipe, Redacted, String } from "effect"
 
 const currentResourceName = FiberRef.unsafeMake("")
 
@@ -22,11 +22,11 @@ const SqlTracingLive = Statement.setTransformer((prev, sql, refs, span) => {
 })
 
 const EnvLive = MysqlClient.layer({
-  database: Config.succeed("effect_dev"),
-  username: Config.succeed("effect"),
-  password: Config.succeed(Redacted.make("password")),
-  transformQueryNames: Config.succeed(String.camelToSnake),
-  transformResultNames: Config.succeed(String.snakeToCamel)
+  database: "effect_dev",
+  username: "effect",
+  password: Redacted.make("password"),
+  transformQueryNames: String.camelToSnake,
+  transformResultNames: String.snakeToCamel
 }).pipe(
   Layer.provide(SqlTracingLive),
   Layer.provide(DevTools.layer())
