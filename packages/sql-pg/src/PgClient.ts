@@ -83,7 +83,7 @@ export interface PgClientConfig {
    *     instanceConnectionName: "project:region:instance",
    *     authType: AuthTypes.IAM,
    *   }));
-   *   return PgClient.layer({ socket: Config.succeed(clientOpts.stream), username: Config.succeed("iam-user") });
+   *   return PgClient.layer({ socket: clientOpts.stream, username: "iam-user" });
    * }).pipe(Layer.unwrapEffect)
    */
   readonly socket?: (() => NodeStream.Duplex) | undefined
@@ -295,10 +295,10 @@ export const make = (
   })
 
 /**
- * @category constructor
+ * @category layers
  * @since 1.0.0
  */
-export const layer = (
+export const layerConfig = (
   config: Config.Config.Wrap<PgClientConfig>
 ): Layer.Layer<PgClient | Client.SqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
@@ -310,6 +310,20 @@ export const layer = (
         )
       )
     )
+  )
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layer = (
+  config: PgClientConfig
+): Layer.Layer<PgClient | Client.SqlClient, ConfigError | SqlError> =>
+  Layer.scopedContext(
+    Effect.map(make(config), (client) =>
+      Context.make(PgClient, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
   )
 
 /**

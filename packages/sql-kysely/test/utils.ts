@@ -7,7 +7,7 @@ import type { StartedMySqlContainer } from "@testcontainers/mysql"
 import { MySqlContainer } from "@testcontainers/mysql"
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
-import { Config, Context, Effect, Layer, Redacted } from "effect"
+import { Context, Effect, Layer, Redacted } from "effect"
 
 export class PgContainer extends Context.Tag("test/PgContainer")<
   PgContainer,
@@ -25,7 +25,7 @@ export class PgContainer extends Context.Tag("test/PgContainer")<
     Effect.gen(function*(_) {
       const container = yield* _(PgContainer)
       return Pg.PgClient.layer({
-        url: Config.succeed(Redacted.make(container.getConnectionUri()))
+        url: Redacted.make(container.getConnectionUri())
       })
     })
   ).pipe(Layer.provide(this.Live))
@@ -47,11 +47,11 @@ export class MssqlContainer extends Context.Tag("test/MssqlContainer")<
     Effect.gen(function*(_) {
       const container = yield* _(MssqlContainer)
       return Mssql.MssqlClient.layer({
-        server: Config.succeed(container.getHost()),
-        port: Config.succeed(container.getPort()),
-        username: Config.succeed(container.getUsername()),
-        password: Config.succeed(Redacted.make(container.getPassword())),
-        database: Config.succeed(container.getDatabase())
+        server: container.getHost(),
+        port: container.getPort(),
+        username: container.getUsername(),
+        password: Redacted.make(container.getPassword()),
+        database: container.getDatabase()
       })
     })
   ).pipe(Layer.provide(this.Live))
@@ -73,7 +73,7 @@ export class MysqlContainer extends Context.Tag("test/MysqlContainer")<
     Effect.gen(function*(_) {
       const container = yield* _(MysqlContainer)
       return Mysql.MysqlClient.layer({
-        url: Config.succeed(Redacted.make(container.getConnectionUri()))
+        url: Redacted.make(container.getConnectionUri())
       })
     })
   ).pipe(Layer.provide(this.Live))

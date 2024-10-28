@@ -276,10 +276,10 @@ export const currentQueryId: FiberRef.FiberRef<string | undefined> = globalValue
 )
 
 /**
- * @category constructor
+ * @category layers
  * @since 1.0.0
  */
-export const layer = (
+export const layerConfig = (
   config: Config.Config.Wrap<ClickhouseClientConfig>
 ): Layer.Layer<ClickhouseClient | Client.SqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
@@ -291,6 +291,20 @@ export const layer = (
         )
       )
     )
+  )
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layer = (
+  config: ClickhouseClientConfig
+): Layer.Layer<ClickhouseClient | Client.SqlClient, ConfigError | SqlError> =>
+  Layer.scopedContext(
+    Effect.map(make(config), (client) =>
+      Context.make(ClickhouseClient, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
   )
 
 const typeFromUnknown = (value: unknown): string => {

@@ -2,12 +2,12 @@ import { SqlClient } from "@effect/sql"
 import * as SqliteDrizzle from "@effect/sql-drizzle/Sqlite"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import * as D from "drizzle-orm/sqlite-core"
-import { Config, Effect, Layer } from "effect"
+import { Effect, Layer } from "effect"
 
 // setup
 
 const SqlLive = SqliteClient.layer({
-  filename: Config.succeed("test.db")
+  filename: "test.db"
 })
 const DrizzleLive = SqliteDrizzle.layer.pipe(
   Layer.provide(SqlLive)

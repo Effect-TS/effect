@@ -2,7 +2,7 @@ import { SqlResolver } from "@effect/sql"
 import * as SqliteKysely from "@effect/sql-kysely/Sqlite"
 import * as Sqlite from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Config, Context, Effect, Exit, Layer, Option, Schema } from "effect"
+import { Context, Effect, Exit, Layer, Option, Schema } from "effect"
 import type { Generated } from "kysely"
 
 export interface User {
@@ -17,7 +17,7 @@ interface Database {
 class SqliteDB extends Context.Tag("SqliteDB")<SqliteDB, SqliteKysely.EffectKysely<Database>>() {}
 
 const SqliteLive = Sqlite.SqliteClient.layer({
-  filename: Config.succeed(":memory:")
+  filename: ":memory:"
 })
 
 const KyselyLive = Layer.effect(SqliteDB, SqliteKysely.make<Database>()).pipe(Layer.provide(SqliteLive))

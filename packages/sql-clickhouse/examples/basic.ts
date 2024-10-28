@@ -2,7 +2,7 @@ import { NodeRuntime } from "@effect/platform-node"
 import { ClickhouseClient } from "@effect/sql-clickhouse"
 import { Config, Effect, Stream } from "effect"
 
-const ClickhouseLive = ClickhouseClient.layer({
+const ClickhouseLive = ClickhouseClient.layerConfig({
   url: Config.succeed("https://r8raccaqh3.ap-southeast-2.aws.clickhouse.cloud:8443"),
   username: Config.succeed("default"),
   password: Config.string("CLICKHOUSE_PASSWORD")
