@@ -161,3 +161,34 @@ describe("Hex", () => {
     assert(Encoding.isDecodeException(result.left))
   })
 })
+
+describe("UriComponent", () => {
+  const valid: Array<[uri: string, raw: string]> = [
+    ["", ""],
+    ["hello", "hello"],
+    ["hello%20world", "hello world"],
+    ["hello%20world%2F", "hello world/"],
+    ["%20", " "],
+    ["%2F", "/"]
+  ]
+
+  const invalid: Array<string> = [
+    "hello%2world"
+  ]
+
+  it.each(valid)(`should decode %j => %j`, (uri: string, raw: string) => {
+    const decoded = Encoding.decodeUriComponent(uri)
+    assert(Either.isRight(decoded))
+    deepStrictEqual(decoded.right, raw)
+  })
+
+  it.each(valid)(`should encode %j => %j`, (uri: string, raw: string) => {
+    strictEqual(Encoding.encodeUriComponent(raw), uri)
+  })
+
+  it.each(invalid)(`should refuse to decode %j`, (uri: string) => {
+    const result = Encoding.decodeUriComponent(uri)
+    assert(Either.isLeft(result))
+    assert(Encoding.isDecodeException(result.left))
+  })
+})

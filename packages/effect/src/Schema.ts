@@ -5783,6 +5783,28 @@ export const StringFromHex: Schema<string> = makeEncodingTransformation(
 )
 
 /**
+ * Decodes a URI component encoded string into a UTF-8 string.
+ *
+ * @example
+ * import { Schema } from "effect"
+ *
+ * const encoded = Schema.encodeSync(Schema.StringFromUriComponent)("hello world")
+ *
+ * const searchParams = new URLSearchParams()
+ * searchParams.append("hello", encoded)
+ *
+ * router.push(searchParams.toString()) // router.push("?hello=hello%20world")
+ *
+ * @category string transformations
+ * @since 3.11.0
+ */
+export const StringFromUriComponent: Schema<string> = makeEncodingTransformation(
+  "UriComponent",
+  Encoding.decodeUriComponent,
+  Encoding.encodeUriComponent
+)
+
+/**
  * @category schema id
  * @since 3.10.0
  */

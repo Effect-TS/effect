@@ -89,6 +89,23 @@ export const decodeHex = (str: string): Either.Either<Uint8Array, DecodeExceptio
 export const decodeHexString = (str: string) => Either.map(decodeHex(str), (_) => Common.decoder.decode(_))
 
 /**
+ * Encodes a UTF-8 `string` into a URI component `string`.
+ *
+ * @category encoding
+ * @since 3.11.0
+ */
+export const encodeUriComponent = (str: string) => encodeURIComponent(str)
+
+/**
+ * Decodes a URI component `string` into a UTF-8 `string`.
+ *
+ * @category decoding
+ * @since 3.11.0
+ */
+export const decodeUriComponent = (str: string): Either.Either<string, DecodeException> =>
+  Either.try({ try: () => decodeURIComponent(str), catch: (e) => DecodeException(str, (e as URIError).message) })
+
+/**
  * @since 2.0.0
  * @category symbols
  */
