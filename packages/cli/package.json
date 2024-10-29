@@ -52,7 +52,7 @@
     "@effect/printer": "workspace:^",
     "@effect/printer-ansi": "workspace:^",
     "@types/ini": "^4.1.1",
-    "@types/node": "^20.14.10",
+    "@types/node": "^22.5.4",
     "effect": "workspace:^"
   },
   "effect": {

@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
-    "@types/node": "^20.14.10",
+    "@types/node": "^22.5.4",
     "@types/tar": "^6.1.12",
     "effect": "workspace:^",
     "tar": "^6"
