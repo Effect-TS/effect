@@ -1,5 +1,18 @@
 # @effect/sql-libsql
 
+## 0.7.0
+
+### Minor Changes
+
+- [#3852](https://github.com/Effect-TS/effect/pull/3852) [`70dd4d7`](https://github.com/Effect-TS/effect/commit/70dd4d7cd2376e39244fa1729938f1b3ec55aec7) Thanks @sukovanej! - Use `layer` / `layerConfig` naming convention for the /sql-\* packages. Make `layer` constructors accept a raw config object. Add `layerConfig` constructors that accept `Config.Config<...>`.
+
+### Patch Changes
+
+- Updated dependencies [[`3a6d757`](https://github.com/Effect-TS/effect/commit/3a6d757badeebe00d8ef4d67530d073c8264dcfa), [`59d813a`](https://github.com/Effect-TS/effect/commit/59d813aa4973d1115cfc70cc3667508335f49693)]:
+  - effect@3.10.5
+  - @effect/platform@0.69.10
+  - @effect/sql@0.18.11
+
 ## 0.6.10
 
 ### Patch Changes
