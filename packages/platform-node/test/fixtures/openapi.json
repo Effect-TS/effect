@@ -114,7 +114,7 @@
             }
           },
           "400": {
-            "description": "HttpApiDecodeError: The request did not match the expected schema",
+            "description": "The request did not match the expected schema",
             "content": {
               "application/json": {
                 "schema": {
@@ -180,7 +180,7 @@
             }
           },
           "400": {
-            "description": "HttpApiDecodeError: The request did not match the expected schema",
+            "description": "The request did not match the expected schema",
             "content": {
               "application/json": {
                 "schema": {
@@ -257,7 +257,7 @@
             }
           },
           "400": {
-            "description": "HttpApiDecodeError: The request did not match the expected schema",
+            "description": "The request did not match the expected schema",
             "content": {
               "application/json": {
                 "schema": {
@@ -297,7 +297,7 @@
             }
           },
           "400": {
-            "description": "HttpApiDecodeError: The request did not match the expected schema",
+            "description": "The request did not match the expected schema",
             "content": {
               "application/json": {
                 "schema": {
@@ -366,7 +366,7 @@
             }
           },
           "400": {
-            "description": "HttpApiDecodeError: The request did not match the expected schema",
+            "description": "The request did not match the expected schema",
             "content": {
               "application/json": {
                 "schema": {
@@ -431,7 +431,7 @@
         "description": "a string that will be parsed into a number"
       },
       "HttpApiDecodeError": {
-        "description": "HttpApiDecodeError: The request did not match the expected schema",
+        "description": "The request did not match the expected schema",
         "title": "HttpApiDecodeError",
         "type": "object",
         "required": ["issues", "message", "_tag"],
