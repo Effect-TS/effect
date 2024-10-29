@@ -1,5 +1,11 @@
 # effect
 
+## 3.10.6
+
+### Patch Changes
+
+- [#3858](https://github.com/Effect-TS/effect/pull/3858) [`ce1c21f`](https://github.com/Effect-TS/effect/commit/ce1c21ffc11902ac9ab453a51904207859d38552) Thanks @KhraksMamtsov! - fix `Tag.Proxy` type
+
 ## 3.10.5
 
 ### Patch Changes
