@@ -6505,11 +6505,7 @@ export declare namespace Tag {
       : Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => infer A ?
         (...args: Readonly<Args>) => Effect<A, never, Self>
       : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-      : Effect<
-        Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => any ? [Type[k], Args] : [Type[k], "no"],
-        never,
-        Self
-      >
+      : Effect<Type[k], never, Self>
   }
 }
 
