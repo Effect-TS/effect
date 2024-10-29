@@ -1,5 +1,17 @@
 # @effect/ai-openai
 
+## 0.2.11
+
+### Patch Changes
+
+- [#3854](https://github.com/Effect-TS/effect/pull/3854) [`b521577`](https://github.com/Effect-TS/effect/commit/b521577501370e34b0672cc7a69291c7e8670c6f) Thanks @tim-smart! - update OpenAI schemas
+
+- Updated dependencies [[`3a6d757`](https://github.com/Effect-TS/effect/commit/3a6d757badeebe00d8ef4d67530d073c8264dcfa), [`59d813a`](https://github.com/Effect-TS/effect/commit/59d813aa4973d1115cfc70cc3667508335f49693)]:
+  - effect@3.10.5
+  - @effect/ai@0.2.10
+  - @effect/experimental@0.30.11
+  - @effect/platform@0.69.10
+
 ## 0.2.10
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # effect
 
+## 3.10.5
+
+### Patch Changes
+
+- [#3841](https://github.com/Effect-TS/effect/pull/3841) [`3a6d757`](https://github.com/Effect-TS/effect/commit/3a6d757badeebe00d8ef4d67530d073c8264dcfa) Thanks @KhraksMamtsov! - Support union of parameters in functions in `Effect.Tag.Proxy` type
+
+- [#3845](https://github.com/Effect-TS/effect/pull/3845) [`59d813a`](https://github.com/Effect-TS/effect/commit/59d813aa4973d1115cfc70cc3667508335f49693) Thanks @tim-smart! - ensure fiber refs are not inherited by ManagedRuntime
+
 ## 3.10.4
 
 ### Patch Changes
