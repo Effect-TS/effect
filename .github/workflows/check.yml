@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1/3, 2/3, 3/3]
+        shard: [1/4, 2/4, 3/4, 4/4]
         # runtime: [Node, Bun] # TODO: Re-enable bun test suite after https://github.com/oven-sh/bun/issues/4145 is resolved
         runtime: [Node]
     steps:
