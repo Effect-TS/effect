@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.69.11
+
+### Patch Changes
+
+- [#3856](https://github.com/Effect-TS/effect/pull/3856) [`81ddd45`](https://github.com/Effect-TS/effect/commit/81ddd45fc074b98206fafab416d9a5a28b31e07a) Thanks @KhraksMamtsov! - Integration with [Scalar](https://scalar.com/) has been implemented
+
+- Updated dependencies [[`ce1c21f`](https://github.com/Effect-TS/effect/commit/ce1c21ffc11902ac9ab453a51904207859d38552)]:
+  - effect@3.10.6
+
 ## 0.69.10
 
 ### Patch Changes
