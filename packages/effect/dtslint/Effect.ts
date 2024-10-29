@@ -1333,7 +1333,7 @@ hole<
   >
 >()
 
-// $ExpectType { a: Effect<[1, "no"], never, "R">; }
+// $ExpectType { a: Effect<1, never, "R">; }
 hole<
   Simplify<
     Effect.Tag.Proxy<"R", {
