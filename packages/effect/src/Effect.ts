@@ -6497,14 +6497,19 @@ export declare namespace Tag {
    */
   export type Proxy<Self, Type> = {
     [
-      k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
+      k in keyof Type as Type[k] extends ((...args: infer Args extends ReadonlyArray<any>) => infer Ret) ?
         ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
         : k
-    ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+    ]: Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => Effect<infer A, infer E, infer R> ?
       (...args: Readonly<Args>) => Effect<A, E, Self | R>
-      : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+      : Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => infer A ?
+        (...args: Readonly<Args>) => Effect<A, never, Self>
       : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
-      : Effect<Type[k], never, Self>
+      : Effect<
+        Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => any ? [Type[k], Args] : [Type[k], "no"],
+        never,
+        Self
+      >
   }
 }
 
