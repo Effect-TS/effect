@@ -20,4 +20,4 @@ export const javascript = ${JSON.stringify(`${jsBundle}\n${jsPreset}`)}
 export const css = ${JSON.stringify(css)}
 `
 
-await Fs.writeFile("packages/platform/src/internal/apiSwagger.ts", source)
+await Fs.writeFile("packages/platform/src/internal/httpApiSwagger.ts", source)
