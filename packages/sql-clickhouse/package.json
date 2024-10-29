@@ -39,15 +39,15 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
-    "@effect/platform-node": "workspace:^",
     "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@types/node": "^20.14.10",
+    "@types/node": "^22.5.4",
     "effect": "workspace:^"
   },
   "peerDependencies": {
-    "@effect/platform-node": "workspace:^",
     "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"
   },

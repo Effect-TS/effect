@@ -49,10 +49,10 @@
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
-    "@tim-smart/openapi-gen": "^0.2.0",
+    "@tim-smart/openapi-gen": "^0.3.0",
     "effect": "workspace:^"
   },
   "dependencies": {
-    "gpt-tokenizer": "^2.2.3"
+    "gpt-tokenizer": "^2.5.1"
   }
 }
