@@ -10,7 +10,7 @@ describe.concurrent("Micro", () => {
       Micro.gen(function*() {
         const error = yield* new TestError().pipe(Micro.flip)
         assert.deepStrictEqual(error, new TestError())
-        assert.include(error.stack, "Micro.test.ts:12")
+        assert.include(error.stack, "Micro.test.ts:11")
       }))
 
     it.effect("withTrace", () =>
@@ -21,7 +21,7 @@ describe.concurrent("Micro", () => {
           Micro.flip
         )
         assert.include(error.stack, "at test trace")
-        assert.include(error.stack, "Micro.test.ts:20")
+        assert.include(error.stack, "Micro.test.ts:19")
       }))
   })
 
@@ -710,6 +710,21 @@ describe.concurrent("Micro", () => {
         yield* Micro.yieldFlush
         yield* Micro.fiberInterrupt(fiber)
         assert.isTrue(ref)
+      }))
+
+    it.live("async cannot resume on interrupt", () =>
+      Micro.gen(function*() {
+        const fiber = yield* Micro.async<string>((resume) => {
+          setTimeout(() => {
+            resume(Micro.succeed("foo"))
+          }, 10)
+        }).pipe(
+          Micro.onInterrupt(Micro.sleep(30)),
+          Micro.fork
+        )
+        yield* Micro.yieldFlush
+        yield* Micro.fiberInterrupt(fiber)
+        assert.deepStrictEqual(fiber.unsafePoll(), Micro.exitInterrupt)
       }))
 
     it.live("closing scope is uninterruptible", () =>
