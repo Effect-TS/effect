@@ -6834,7 +6834,9 @@ export declare namespace Service {
       }
       readonly use: <X>(
         body: (_: Self) => X
-      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+      ) => [X] extends [Effect<infer A, infer E, infer R>] ? Effect<A, E, R | Self>
+        : [X] extends [PromiseLike<infer A>] ? Effect<A, Cause.UnknownException, Self>
+        : Effect<X, never, Self>
       readonly make: (_: MakeService<Make>) => Self
     }
     & Context.Tag<Self, Self>
