@@ -7983,7 +7983,7 @@ export interface TaggedClass<Self, Tag extends string, Fields extends Struct.Fie
  * @example
  * import { Schema } from "effect"
  *
- * class MyClass extends Schema.TaggedClass<MyClass>()("MyClass", {
+ * class MyClass extends Schema.TaggedClass<MyClass>("MyClass")("MyClass", {
  *  a: S.String
  * }) {}
  *
