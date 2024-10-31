@@ -34,6 +34,16 @@ const assertSuccess = <A>(
   expect(result).toStrictEqual(Exit.succeed(a))
 }
 
+const assertEqualSuccess = <A>(
+  config: Config.Config<A>,
+  map: ReadonlyArray<readonly [string, string]>,
+  a: A
+) => {
+  const configProvider = ConfigProvider.fromMap(new Map(map))
+  const result = Effect.runSync(Effect.exit(configProvider.load(config)))
+  expect(Equal.equals(Exit.succeed(a), result)).toBe(true)
+}
+
 describe("Config", () => {
   describe("boolean", () => {
     it("name = undefined", () => {
@@ -502,7 +512,12 @@ describe("Config", () => {
 
     it("name != undefined", () => {
       const config = Config.redacted("SECRET")
-      assertSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
+      assertEqualSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
+    })
+
+    it("can wrap generic Config", () => {
+      const config = Config.redacted(Config.integer("NUM"))
+      assertEqualSuccess(config, [["NUM", "2"]], Redacted.make(2))
     })
   })
 
@@ -515,7 +530,7 @@ describe("Config", () => {
 
       it("name != undefined", () => {
         const config = Config.secret("SECRET")
-        assertSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
+        assertEqualSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
       })
     })
 

@@ -349,7 +349,10 @@ export const secret: (name?: string) => Config<Secret.Secret> = internal.secret
  * @since 2.0.0
  * @category constructors
  */
-export const redacted: (name?: string) => Config<Redacted.Redacted> = internal.redacted
+export const redacted: {
+  (name?: string): Config<Redacted.Redacted>
+  <A>(config: Config<A>): Config<Redacted.Redacted<A>>
+} = internal.redacted
 
 /**
  * Constructs a config for a sequence of values.
