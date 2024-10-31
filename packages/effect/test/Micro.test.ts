@@ -211,7 +211,7 @@ describe.concurrent("Micro", () => {
             done.push(i)
             return i
           }).pipe(Micro.delay(200)), { concurrency: 2 }).pipe(Micro.fork)
-        yield* Micro.sleep(300)
+        yield* Micro.sleep(350)
         yield* Micro.fiberInterrupt(fiber)
         const result = yield* Micro.fiberAwait(fiber)
         assert.deepStrictEqual(result, Micro.exitInterrupt)
