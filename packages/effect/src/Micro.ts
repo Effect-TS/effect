@@ -557,6 +557,9 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
         }
       }
     } catch (error) {
+      if (!hasProperty(current, evaluate)) {
+        return exitDie(`Micro/Fiber.runLoop: Not a valid effect: ${String(current)}`)
+      }
       return exitDie(error)
     }
   }
