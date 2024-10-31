@@ -7984,7 +7984,7 @@ export interface TaggedClass<Self, Tag extends string, Fields extends Struct.Fie
  * import { Schema } from "effect"
  *
  * class MyClass extends Schema.TaggedClass<MyClass>("MyClass")("MyClass", {
- *  a: S.String
+ *  a: Schema.String
  * }) {}
  *
  * @category classes
@@ -9717,6 +9717,8 @@ export interface TaggedRequestClass<
 
 /**
  * @example
+ * import { Schema } from "effect"
+ *
  * class MyRequest extends Schema.TaggedRequest<MyRequest>("MyRequest")("MyRequest", {
  *  failure: Schema.String,
  *  success: Schema.Number,

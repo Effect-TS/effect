@@ -6597,7 +6597,7 @@ export const Tag: <const Id extends string>(id: Id) => <
  *    return {
  *      info: (message: string) =>
  *        Effect.sync(() => {
- *          messages.push(`[${prefix}][${message}]`)
+ *          console.log(`[${prefix}][${message}]`)
  *        })
  *    }
  *  }),
