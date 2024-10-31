@@ -424,11 +424,12 @@ export const secret = (name?: string): Config.Config<Secret.Secret> => {
 }
 
 /** @internal */
-export const redacted = <A>(
-  nameOrConfig?: string | Config.Config<A>
-): Config.Config<Redacted.Redacted<A | string>> => {
-  const config: Config.Config<A | string> = isConfig(nameOrConfig) ? nameOrConfig : string(nameOrConfig)
-  return map(config, redacted_.make)
+export const redacted = (name?: string): Config.Config<Redacted.Redacted> => {
+  const config = primitive(
+    "a redacted property",
+    (text) => Either.right(redacted_.make(text))
+  )
+  return name === undefined ? config : nested(config, name)
 }
 
 /** @internal */
