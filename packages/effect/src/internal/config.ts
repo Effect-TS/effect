@@ -223,7 +223,7 @@ export const number = (name?: string): Config.Config<number> => {
   const config = primitive(
     "a number property",
     (text) => {
-      const result = Number.parseFloat(text)
+      const result = Number(text)
       if (Number.isNaN(result)) {
         return Either.left(
           configError.InvalidData(

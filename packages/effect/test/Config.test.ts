@@ -91,6 +91,11 @@ describe("Config", () => {
       assertSuccess(config, [["ITEMS", "1"]], [1])
       assertFailure(
         config,
+        [["ITEMS", "123qq"]],
+        ConfigError.InvalidData(["ITEMS"], "Expected a number value but received 123qq")
+      )
+      assertFailure(
+        config,
         [["ITEMS", "value"]],
         ConfigError.InvalidData(["ITEMS"], "Expected a number value but received value")
       )
