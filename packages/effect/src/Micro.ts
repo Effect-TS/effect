@@ -1467,7 +1467,7 @@ export const raceAllFirst = <Eff extends Micro<any, any, any>>(
       const fibers = new Set<Fiber<any, any>>()
       const onExit = (exit: MicroExit<any, any>) => {
         done = true
-        resume(fibers.size === 0 ? exit : flatMap(uninterruptible(fiberInterruptAll(fibers)), () => exit))
+        resume(fibers.size === 0 ? exit : flatMap(fiberInterruptAll(fibers), () => exit))
       }
 
       for (const effect of all) {
