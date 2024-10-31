@@ -1838,6 +1838,13 @@ export class MicroSchedulerDefault implements MicroScheduler {
   private tasks: Array<() => void> = []
   private running = false
 
+  constructor(
+    /**
+     * @since 3.11.0
+     */
+    readonly maxDepthBeforeTimer = 2048
+  ) {}
+
   /**
    * @since 3.5.9
    */
@@ -1862,7 +1869,7 @@ export class MicroSchedulerDefault implements MicroScheduler {
       }
     }
 
-    if (depth >= 2048) {
+    if (depth >= this.maxDepthBeforeTimer) {
       setImmediate(() => after(true))
     } else {
       queueMicrotask(after)
