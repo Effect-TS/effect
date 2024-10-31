@@ -1711,7 +1711,7 @@ export const mergeWith = dual<
                     Effect.succeed(
                       core.flatMap(core.write(elem), () =>
                         core.flatMap(
-                          core.fromEffect(Effect.forkDaemon(pull)),
+                          core.fromEffect(Effect.forkIn(Effect.interruptible(pull), scope)),
                           (leftFiber) => go(both(leftFiber, fiber))
                         ))
                     )
@@ -1807,8 +1807,8 @@ export const mergeWith = dual<
             return pipe(
               core.fromEffect(
                 Effect.zipWith(
-                  Effect.forkIn(pullL, scope),
-                  Effect.forkIn(pullR, scope),
+                  Effect.forkIn(Effect.interruptible(pullL), scope),
+                  Effect.forkIn(Effect.interruptible(pullR), scope),
                   (left, right): State =>
                     mergeState.BothRunning<
                       Env | Env1,
