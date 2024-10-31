@@ -6807,6 +6807,7 @@ export declare namespace Service {
       readonly make: (_: MakeService<Make>) => Self
     }
     & Context.Tag<Self, Self>
+    & { key: Key }
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
     & (MakeDeps<Make> extends never ? {
         readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>
