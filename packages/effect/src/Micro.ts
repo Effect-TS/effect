@@ -805,6 +805,13 @@ const makeExit = <Fn extends (...args: Array<any>) => any, Prop extends string>(
   } as Fn
 }
 
+/**
+ * Creates a `Micro` effect that will succeed with the specified constant value.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
+ */
 export const succeed: <A>(value: A) => Micro<A> = makeExit({
   op: "Success",
   prop: "value",
@@ -817,6 +824,13 @@ export const succeed: <A>(value: A) => Micro<A> = makeExit({
   }
 })
 
+/**
+ * Creates a `Micro` effect that will fail with the specified `MicroCause`.
+ *
+ * @since 3.4.6
+ * @experimental
+ * @category constructors
+ */
 export const failCause: <E>(cause: MicroCause<E>) => Micro<never, E> = makeExit({
   op: "Failure",
   prop: "cause",
@@ -837,6 +851,16 @@ export const failCause: <E>(cause: MicroCause<E>) => Micro<never, E> = makeExit(
   }
 })
 
+/**
+ * Creates a `Micro` effect that will fail with the specified error.
+ *
+ * This will result in a `CauseFail`, where the error is tracked at the
+ * type level.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
+ */
 export const fail = <E>(error: E): Micro<never, E> => failCause(causeFail(error))
 
 /**
@@ -1822,6 +1846,9 @@ export class MicroSchedulerDefault implements MicroScheduler {
     }
   }
 
+  /**
+   * @since 3.5.9
+   */
   private starve(depth: number) {
     const after = (reset?: boolean) => {
       this.runTasks()
