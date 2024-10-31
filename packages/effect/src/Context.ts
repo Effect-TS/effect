@@ -393,6 +393,16 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
   internal.omit
 
 /**
+ * @example
+ * import { Context, Layer } from "effect"
+ *
+ * class MyTag extends Context.Tag("MyTag")<
+ *  MyTag,
+ *  { readonly myNum: number }
+ * >() {
+ *  static Live = Layer.succeed(this, { myNum: 108 })
+ * }
+ *
  * @since 2.0.0
  * @category constructors
  */

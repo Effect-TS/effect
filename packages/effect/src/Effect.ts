@@ -6538,6 +6538,16 @@ const makeTagProxy = (TagClass: Context.Tag<any, any> & Record<PropertyKey, any>
 }
 
 /**
+ * @example
+ * import { Effect, Layer } from "effect"
+ *
+ * class MapTag extends Effect.Tag("MapTag")<MapTag, Map<string, string>>() {
+ *  static Live = Layer.effect(
+ *    this,
+ *    Effect.sync(() => new Map())
+ *  )
+ * }
+ *
  * @since 2.0.0
  * @category context
  */
@@ -6573,6 +6583,27 @@ export const Tag: <const Id extends string>(id: Id) => <
   }
 
 /**
+ * @example
+ * import { Effect } from 'effect';
+ *
+ * class Prefix extends Effect.Service<Prefix>()("Prefix", {
+ *  sync: () => ({ prefix: "PRE" })
+ * }) {}
+ *
+ * class Logger extends Effect.Service<Logger>()("Logger", {
+ *  accessors: true,
+ *  effect: Effect.gen(function* () {
+ *    const { prefix } = yield* Prefix
+ *    return {
+ *      info: (message: string) =>
+ *        Effect.sync(() => {
+ *          messages.push(`[${prefix}][${message}]`)
+ *        })
+ *    }
+ *  }),
+ *  dependencies: [Prefix.Default]
+ * }) {}
+ *
  * @since 3.9.0
  * @category context
  * @experimental might be up for breaking changes

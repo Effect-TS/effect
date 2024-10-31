@@ -7752,6 +7752,26 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
 
   readonly identifier: string
 
+  /**
+   * @example
+   * import { Schema } from "effect"
+   *
+   * class MyClass extends Schema.Class<MyClass>("MyClass")({
+   *  myField: Schema.String
+   * }) {
+   *  myMethod() {
+   *    return this.myField + "my"
+   *  }
+   * }
+   *
+   * class NextClass extends MyClass.extend<NextClass>("NextClass")({
+   *  nextField: Schema.Number
+   * }) {
+   *  nextMethod() {
+   *    return this.myMethod() + this.myField + this.nextField
+   *  }
+   * }
+   */
   extend<Extended = never>(identifier: string): <newFields extends Struct.Fields>(
     fields: newFields | HasFields<newFields>,
     annotations?: Annotations.Schema<Extended>
@@ -7766,6 +7786,33 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
       Proto
     >
 
+  /**
+   * @example
+   * import { Effect, Schema } from "effect"
+   *
+   * class MyClass extends Schema.Class<MyClass>("MyClass")({
+   *   myField: Schema.String
+   * }) {
+   *   myMethod() {
+   *     return this.myField + "my"
+   *   }
+   * }
+   *
+   * class NextClass extends MyClass.transformOrFail<NextClass>("NextClass")({
+   *   nextField: Schema.Number
+   * }, {
+   *   decode: (i) =>
+   *     Effect.succeed({
+   *       myField: i.myField,
+   *       nextField: i.myField.length
+   *     }),
+   *   encode: (a) => Effect.succeed({ myField: a.myField })
+   * }) {
+   *   nextMethod() {
+   *     return this.myMethod() + this.myField + this.nextField
+   *   }
+   * }
+   */
   transformOrFail<Transformed = never>(identifier: string): <
     newFields extends Struct.Fields,
     R2,
@@ -7796,6 +7843,33 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
       Proto
     >
 
+  /**
+   * @example
+   * import { Effect, Schema } from "effect"
+   *
+   * class MyClass extends Schema.Class<MyClass>("MyClass")({
+   *   myField: Schema.String
+   * }) {
+   *   myMethod() {
+   *     return this.myField + "my"
+   *   }
+   * }
+   *
+   * class NextClass extends MyClass.transformOrFailFrom<NextClass>("NextClass")({
+   *   nextField: Schema.Number
+   * }, {
+   *   decode: (i) =>
+   *     Effect.succeed({
+   *       myField: i.myField,
+   *       nextField: i.myField.length
+   *     }),
+   *   encode: (a) => Effect.succeed({ myField: a.myField })
+   * }) {
+   *   nextMethod() {
+   *     return this.myMethod() + this.myField + this.nextField
+   *   }
+   * }
+   */
   transformOrFailFrom<Transformed = never>(identifier: string): <
     newFields extends Struct.Fields,
     R2,
@@ -7846,6 +7920,17 @@ const getFieldsFromFieldsOr = <Fields extends Struct.Fields>(fieldsOr: Fields | 
   isFields(fieldsOr) ? fieldsOr : getFields(fieldsOr)
 
 /**
+ * @example
+ * import { Schema } from "effect"
+ *
+ * class MyClass extends Schema.Class<MyClass>("MyClass")({
+ *  someField: Schema.String
+ * }) {
+ *  someMethod() {
+ *    return this.someField + "bar"
+ *  }
+ * }
+ *
  * @category classes
  * @since 3.10.0
  */
@@ -7895,6 +7980,13 @@ export interface TaggedClass<Self, Tag extends string, Fields extends Struct.Fie
 }
 
 /**
+ * @example
+ * import { Schema } from "effect"
+ *
+ * class MyClass extends Schema.TaggedClass<MyClass>()("MyClass", {
+ *  a: S.String
+ * }) {}
+ *
  * @category classes
  * @since 3.10.0
  */
@@ -7941,6 +8033,21 @@ export interface TaggedErrorClass<Self, Tag extends string, Fields extends Struc
 }
 
 /**
+ * @example
+ * import { Schema } from "effect"
+ *
+ * class MyError extends Schema.TaggedError<MyError>("MyError")(
+ *   "MyError",
+ *   {
+ *     module: Schema.String,
+ *     method: Schema.String,
+ *     description: Schema.String
+ *   }
+ * ) {
+ *   get message(): string {
+ *     return `${this.module}.${this.method}: ${this.description}`
+ *   }
+ * }
  * @category classes
  * @since 3.10.0
  */
@@ -9609,6 +9716,13 @@ export interface TaggedRequestClass<
 }
 
 /**
+ * @example
+ * class MyRequest extends Schema.TaggedRequest<MyRequest>("MyRequest")("MyRequest", {
+ *  failure: Schema.String,
+ *  success: Schema.Number,
+ *  payload: { id: Schema.String }
+ * }) {}
+ *
  * @category classes
  * @since 3.10.0
  */
