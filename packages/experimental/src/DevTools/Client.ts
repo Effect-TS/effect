@@ -126,8 +126,8 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
         }
       }
     }),
+    Effect.tapErrorCause(Effect.logDebug),
     Effect.retry(Schedule.spaced("1 seconds")),
-    Effect.catchAllCause(Effect.logDebug),
     Effect.forkScoped,
     Effect.uninterruptible
   )
