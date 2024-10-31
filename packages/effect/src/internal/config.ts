@@ -243,8 +243,8 @@ export const integer = (name?: string): Config.Config<number> => {
   const config = primitive(
     "an integer property",
     (text) => {
-      const result = Number.parseInt(text, 10)
-      if (Number.isNaN(result)) {
+      const result = Number(text)
+      if (!Number.isInteger(result)) {
         return Either.left(
           configError.InvalidData(
             [],
@@ -424,12 +424,11 @@ export const secret = (name?: string): Config.Config<Secret.Secret> => {
 }
 
 /** @internal */
-export const redacted = (name?: string): Config.Config<Redacted.Redacted> => {
-  const config = primitive(
-    "a redacted property",
-    (text) => Either.right(redacted_.make(text))
-  )
-  return name === undefined ? config : nested(config, name)
+export const redacted = <A>(
+  nameOrConfig?: string | Config.Config<A>
+): Config.Config<Redacted.Redacted<A | string>> => {
+  const config: Config.Config<A | string> = isConfig(nameOrConfig) ? nameOrConfig : string(nameOrConfig)
+  return map(config, redacted_.make)
 }
 
 /** @internal */

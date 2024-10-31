@@ -295,6 +295,12 @@ describe("Config", () => {
       assertSuccess(config, [["key", "1"]], 1)
       assertFailure(
         config,
+        [["key", "1.2"]],
+        // available data but not an integer
+        ConfigError.InvalidData(["key"], "Expected an integer value but received 1.2")
+      )
+      assertFailure(
+        config,
         [["key", "value"]],
         // available data but not an integer
         ConfigError.InvalidData(["key"], "Expected an integer value but received value")
