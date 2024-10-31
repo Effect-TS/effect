@@ -1330,11 +1330,6 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         }
       }
       try {
-        if (!("_op" in cur) || !((cur as core.Primitive)._op in this)) {
-          // @ts-expect-error
-          absurd(cur)
-        }
-
         // @ts-expect-error
         cur = this.currentTracer.context(
           () => {
@@ -1369,7 +1364,9 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
             core.exitFailCause(internalCause.die(op))
         }
       } catch (e) {
-        if (core.isEffectError(e)) {
+        if (cur !== YieldedOp && !Predicate.hasProperty(cur, "_op") || !((cur as core.Primitive)._op in this)) {
+          cur = core.dieMessage(`Not a valid effect: ${Inspectable.toStringUnknown(cur)}`)
+        } else if (core.isEffectError(e)) {
           cur = core.exitFailCause(e.cause)
         } else if (core.isInterruptedException(e)) {
           cur = core.exitFailCause(
