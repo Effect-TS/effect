@@ -1,5 +1,13 @@
 # effect
 
+## 3.10.7
+
+### Patch Changes
+
+- [#3867](https://github.com/Effect-TS/effect/pull/3867) [`33f5b9f`](https://github.com/Effect-TS/effect/commit/33f5b9ffaebea4f1bd0e391b44c41fb6230e743a) Thanks @tim-smart! - ensure Channel.mergeWith fibers can be interrupted
+
+- [#3865](https://github.com/Effect-TS/effect/pull/3865) [`50f0281`](https://github.com/Effect-TS/effect/commit/50f0281b0d2116726b8927a6217622d5f394f3e4) Thanks @tim-smart! - fix memory leak in Stream.retry
+
 ## 3.10.6
 
 ### Patch Changes
