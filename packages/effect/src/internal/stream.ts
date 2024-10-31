@@ -5474,9 +5474,8 @@ export const retry = dual<
   <A, E, R, X, E0 extends E, R2>(
     self: Stream.Stream<A, E, R>,
     schedule: Schedule.Schedule<X, E0, R2>
-  ): Stream.Stream<A, E, R | R2> => {
-    const chan = toChannel(self)
-    return Schedule.driver(schedule).pipe(
+  ): Stream.Stream<A, E, R | R2> =>
+    Schedule.driver(schedule).pipe(
       Effect.map((driver) => {
         const loop: Channel.Channel<
           Chunk.Chunk<A>,
@@ -5486,12 +5485,12 @@ export const retry = dual<
           unknown,
           unknown,
           R | R2
-        > = chan.pipe(
+        > = toChannel(self).pipe(
           channel.mapOutEffect((out) => Effect.as(driver.reset, out)),
           channel.catchAll((error) =>
             driver.next(error as E0).pipe(
               Effect.match({
-                onFailure: () => channel.zipRight(Effect.orDie(driver.last), core.fail(error)),
+                onFailure: () => core.fail(error),
                 onSuccess: () => loop
               }),
               channel.unwrap
@@ -5503,7 +5502,6 @@ export const retry = dual<
       channel.unwrap,
       fromChannel
     )
-  }
 )
 
 /** @internal */
