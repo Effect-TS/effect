@@ -223,7 +223,7 @@ export const number = (name?: string): Config.Config<number> => {
   const config = primitive(
     "a number property",
     (text) => {
-      const result = Number.parseFloat(text)
+      const result = Number(text)
       if (Number.isNaN(result)) {
         return Either.left(
           configError.InvalidData(
@@ -243,8 +243,8 @@ export const integer = (name?: string): Config.Config<number> => {
   const config = primitive(
     "an integer property",
     (text) => {
-      const result = Number.parseInt(text, 10)
-      if (Number.isNaN(result)) {
+      const result = Number(text)
+      if (!Number.isInteger(result)) {
         return Either.left(
           configError.InvalidData(
             [],
