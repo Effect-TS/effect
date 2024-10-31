@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Config.integer`
+Fix `Config.integer` & `Config.number`
