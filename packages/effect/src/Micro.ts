@@ -1232,13 +1232,13 @@ export const gen = <Self, Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
 > =>
   suspend(() => {
     const iterator: Generator<Eff, AEff, any> = args.length === 1 ? args[0]() : args[1].call(args[0])
-    const state = iterator.next()
-    const run = (
-      state: IteratorYieldResult<any> | IteratorReturnResult<any>
-    ): Micro<any, any, any> => (state.done
-      ? succeed(state.value)
-      : flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val))))
-    return run(state)
+    function next(value: any): Micro<any, any, any> {
+      const state = iterator.next(value)
+      return state.done
+        ? succeed(state.value)
+        : flatMap(yieldWrapGet(state.value) as any, next)
+    }
+    return next(undefined)
   })
 
 // ----------------------------------------------------------------------------
