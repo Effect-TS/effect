@@ -435,7 +435,7 @@ export const acquireUseRelease: {
               onFailure: (cause) => {
                 switch (exit._tag) {
                   case OpCodes.OP_FAILURE:
-                    return failCause(internalCause.parallel(exit.effect_instruction_i0, cause))
+                    return failCause(internalCause.sequential(exit.effect_instruction_i0, cause))
                   case OpCodes.OP_SUCCESS:
                     return failCause(cause)
                 }
