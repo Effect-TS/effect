@@ -1,5 +1,17 @@
 # effect
 
+## 3.10.8
+
+### Patch Changes
+
+- [#3868](https://github.com/Effect-TS/effect/pull/3868) [`68b5c9e`](https://github.com/Effect-TS/effect/commit/68b5c9e44f34192cef26e1cadda5e661a027df41) Thanks @tim-smart! - move \_op check out of the fiber hot path
+
+- [#3849](https://github.com/Effect-TS/effect/pull/3849) [`9c9928d`](https://github.com/Effect-TS/effect/commit/9c9928dfeacd9ac33dc37eb0ca3d7d8c39175ada) Thanks @patroza! - improve: use literal `key` on Service
+
+- [#3872](https://github.com/Effect-TS/effect/pull/3872) [`6306e66`](https://github.com/Effect-TS/effect/commit/6306e6656092b350d4ede5746da6f245ec9f7e07) Thanks @KhraksMamtsov! - Fix `Config.integer` & `Config.number`
+
+- [#3869](https://github.com/Effect-TS/effect/pull/3869) [`361c7f3`](https://github.com/Effect-TS/effect/commit/361c7f39a2c10ede9324847c3d3ba192a6f9b20a) Thanks @KhraksMamtsov! - jsdoc-examples for class-based APIs have been added, e.g. `Schema.TaggedError`, `Effect.Service` and others
+
 ## 3.10.7
 
 ### Patch Changes
