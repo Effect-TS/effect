@@ -6502,6 +6502,8 @@ export declare namespace Tag {
         : k
     ]: Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => Effect<infer A, infer E, infer R> ?
       (...args: Readonly<Args>) => Effect<A, E, Self | R>
+      : Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => Promise<infer A> ?
+        (...args: Readonly<Args>) => Effect<A, Cause.UnknownException, Self>
       : Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => infer A ?
         (...args: Readonly<Args>) => Effect<A, never, Self>
       : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
@@ -6560,7 +6562,9 @@ export const Tag: <const Id extends string>(id: Id) => <
   & {
     use: <X>(
       body: (_: Type) => X
-    ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+    ) => [X] extends [Effect<infer A, infer E, infer R>] ? Effect<A, E, R | Self>
+      : [X] extends [PromiseLike<infer A>] ? Effect<A, Cause.UnknownException, Self>
+      : Effect<X, never, Self>
   } = (id) => () => {
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
@@ -6834,7 +6838,9 @@ export declare namespace Service {
       }
       readonly use: <X>(
         body: (_: Self) => X
-      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+      ) => [X] extends [Effect<infer A, infer E, infer R>] ? Effect<A, E, R | Self>
+        : [X] extends [PromiseLike<infer A>] ? Effect<A, Cause.UnknownException, Self>
+        : Effect<X, never, Self>
       readonly make: (_: MakeService<Make>) => Self
     }
     & Context.Tag<Self, Self>

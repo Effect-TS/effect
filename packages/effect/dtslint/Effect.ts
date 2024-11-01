@@ -1341,3 +1341,12 @@ hole<
     }>
   >
 >()
+
+// $ExpectType { a: () => Effect<1, UnknownException, "R">; }
+hole<
+  Simplify<
+    Effect.Tag.Proxy<"R", {
+      a: () => Promise<1>
+    }>
+  >
+>()
