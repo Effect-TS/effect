@@ -492,15 +492,19 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
     }
   }
 
-  _pendingInterrupt = false
+  isInterruptible(): boolean {
+    return (this.flags & 1) === 0
+  }
+
+  _interrupted = false
   unsafeInterrupt(): void {
     if (this._exit) {
       return
-    } else if ((this.flags & FiberFlags.Uninterruptible) !== 0) {
-      this._pendingInterrupt = true
-      return
     }
-    this.evaluate(exitInterrupt as any)
+    this._interrupted = true
+    if (this.isInterruptible()) {
+      this.evaluate(exitInterrupt as any)
+    }
   }
 
   unsafePoll(): MicroExit<A, E> | undefined {
@@ -635,9 +639,7 @@ export const fiberInterrupt = <A, E>(self: Fiber<A, E>): Micro<void> =>
  */
 export const fiberInterruptAll = <A extends Iterable<Fiber<any, any>>>(fibers: A): Micro<void> =>
   suspend(() => {
-    for (const fiber of fibers) {
-      fiber.unsafeInterrupt()
-    }
+    for (const fiber of fibers) fiber.unsafeInterrupt()
     const iter = fibers[Symbol.iterator]()
     const wait: Micro<void> = suspend(() => {
       let result = iter.next()
@@ -843,7 +845,7 @@ export const failCause: <E>(cause: MicroCause<E>) => Micro<never, E> = makeExit(
     if (cont === undefined) {
       return fiber.yieldWith(this)
     } else if (isInterrupt) {
-      while ((fiber.flags & FiberFlags.Uninterruptible) === 0) {
+      while (fiber.isInterruptible()) {
         cont = fiber.getCont(failureCont)
         if (cont === undefined) {
           return fiber.yieldWith(this)
@@ -1188,7 +1190,7 @@ export const async: <A, E = never, R = never>(
 const asyncFinalizer: (onInterrupt: () => Micro<void, any, any>) => Primitive = makePrimitive({
   op: "AsyncFinalizer",
   fiberCont(_, fiber) {
-    if ((fiber.flags & FiberFlags.Uninterruptible) === 0) {
+    if (fiber.isInterruptible()) {
       fiber.flags |= FiberFlags.Uninterruptible
       fiber._stack.push(revertFlags(FiberFlags.Uninterruptible))
     }
@@ -1608,11 +1610,11 @@ const UpdateFlagsProto = makePrimitiveProto({
   ): Primitive | Yield {
     const oldFlags = fiber.flags
     const newFlags = this.f(fiber.flags)
-    if (fiber._pendingInterrupt && (newFlags & FiberFlags.Uninterruptible) === 0) {
+    if (fiber._interrupted && (newFlags & 1 /* Uninterruptible */) === 0) {
       return exitInterrupt as any
     }
     if (newFlags === oldFlags) {
-      if (this.evaluate !== undefined) {
+      if (this.evaluate) {
         return this.evaluate(oldFlags)
       }
       return exitVoid as any
@@ -1620,7 +1622,7 @@ const UpdateFlagsProto = makePrimitiveProto({
     const diff = oldFlags ^ newFlags
     fiber.flags = newFlags
     fiber._stack.push(revertFlags(diff))
-    if (this.evaluate !== undefined) {
+    if (this.evaluate) {
       return this.evaluate(oldFlags)
     }
     return exitVoid as any
@@ -1631,7 +1633,7 @@ const revertFlags: (diff: number) => Primitive = makePrimitive({
   op: "RevertFlags",
   fiberCont(self, fiber) {
     fiber.flags = fiber.flags ^ self[args][0]
-    if (fiber._pendingInterrupt && (fiber.flags & FiberFlags.Uninterruptible) === 0) {
+    if (fiber._interrupted && fiber.isInterruptible()) {
       return () => exitInterrupt
     }
   },
@@ -1842,7 +1844,7 @@ export class MicroSchedulerDefault implements MicroScheduler {
     /**
      * @since 3.11.0
      */
-    readonly maxDepthBeforeTimer = 2048
+    readonly maxOpsBeforeYield = 2048
   ) {}
 
   /**
@@ -1852,28 +1854,16 @@ export class MicroSchedulerDefault implements MicroScheduler {
     this.tasks.push(task)
     if (!this.running) {
       this.running = true
-      this.starve(0)
+      setImmediate(this.afterScheduled)
     }
   }
 
   /**
    * @since 3.5.9
    */
-  private starve(depth: number) {
-    const after = (reset?: boolean) => {
-      this.runTasks()
-      if (this.tasks.length > 0) {
-        this.starve(reset ? 0 : depth + 1)
-      } else {
-        this.running = false
-      }
-    }
-
-    if (depth >= this.maxDepthBeforeTimer) {
-      setImmediate(() => after(true))
-    } else {
-      queueMicrotask(after)
-    }
+  afterScheduled = () => {
+    this.running = false
+    this.runTasks()
   }
 
   /**
@@ -1891,7 +1881,7 @@ export class MicroSchedulerDefault implements MicroScheduler {
    * @since 3.5.9
    */
   shouldYield(fiber: Fiber<unknown, unknown>) {
-    return fiber.currentOpCount >= envGet(fiber.env, currentMaxOpsBeforeYield)
+    return fiber.currentOpCount >= this.maxOpsBeforeYield
   }
 
   /**
@@ -2243,16 +2233,6 @@ export const envRefMake = <A>(key: string, initial: LazyArg<A>): EnvRef<A> =>
     self.initial = initial()
     return self
   })
-
-/**
- * @since 3.11.0
- * @experimental
- * @category environment refs
- */
-export const currentMaxOpsBeforeYield: EnvRef<number> = envRefMake(
-  "effect/Micro/currentMaxOpsBeforeYield",
-  () => 2048
-)
 
 /**
  * @since 3.4.0
@@ -3784,6 +3764,13 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
  */
 export const interrupt: Micro<never> = failCause(causeInterrupt())
 
+const uninterruptibleWith = <A, E, R>(evaluate: (oldFlags: number) => Micro<A, E, R>) => {
+  const update = Object.create(UpdateFlagsProto)
+  update.f = (flags: number) => flags | FiberFlags.Uninterruptible
+  update.evaluate = evaluate
+  return update
+}
+
 /**
  * Flag the effect as uninterruptible, which means that when the effect is
  * interrupted, it will be allowed to continue running until completion.
@@ -3794,12 +3781,7 @@ export const interrupt: Micro<never> = failCause(causeInterrupt())
  */
 export const uninterruptible = <A, E, R>(
   self: Micro<A, E, R>
-): Micro<A, E, R> => {
-  const update = Object.create(UpdateFlagsProto)
-  update.f = (flags: number) => flags | FiberFlags.Uninterruptible
-  update.evaluate = () => self
-  return update
-}
+): Micro<A, E, R> => uninterruptibleWith(() => self)
 
 /**
  * Flag the effect as interruptible, which means that when the effect is
@@ -3841,15 +3823,10 @@ export const uninterruptibleMask = <A, E, R>(
   f: (
     restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>
   ) => Micro<A, E, R>
-): Micro<A, E, R> => {
-  const self = Object.create(UpdateFlagsProto)
-  self.f = (flags: number) => flags | FiberFlags.Uninterruptible
-  self.evaluate = (oldFlags: number) => {
-    const isInterruptible = (oldFlags & FiberFlags.Uninterruptible) === 0
-    return isInterruptible ? f(interruptible) : f(identity)
-  }
-  return self
-}
+): Micro<A, E, R> =>
+  uninterruptibleWith((oldFlags) => {
+    return (oldFlags & 1) === 0 ? f(interruptible) : f(identity)
+  })
 
 // ========================================================================
 // collecting & elements
@@ -4000,38 +3977,25 @@ export const whileLoop: <A, E, R>(options: {
 
 const forEachSequential = <A, B, E, R>(
   self: Iterable<A>,
-  f: (a: A, i: number) => Micro<B, E, R>
-): Micro<Array<B>, E, R> =>
+  f: (a: A, i: number) => Micro<B, E, R>,
+  discard: boolean
+): Micro<Array<B> | void, E, R> =>
   suspend(() => {
     const arr = Arr.fromIterable(self)
-    const ret = Arr.allocate<B>(arr.length)
+    const ret = discard ? undefined : Arr.allocate<B>(arr.length)
     let i = 0
     return as(
       whileLoop({
         while: () => i < arr.length,
         body: () => f(arr[i], i),
-        step: (b) => {
-          ret[i++] = b
-        }
+        step: ret ?
+          (b) => {
+            ret[i++] = b
+          } :
+          (_) => i++
       }),
-      ret as Array<B>
+      ret as any
     )
-  })
-
-const forEachSequentialDiscard = <A, B, E, R>(
-  self: Iterable<A>,
-  f: (a: A, i: number) => Micro<B, E, R>
-): Micro<void, E, R> =>
-  suspend(() => {
-    const arr = Arr.fromIterable(self)
-    let i = 0
-    return whileLoop({
-      while: () => i < arr.length,
-      body: () => f(arr[i], i),
-      step: (_) => {
-        i++
-      }
-    })
   })
 
 /**
@@ -4074,7 +4038,7 @@ export const forEach: {
       : Math.max(1, concurrencyOption)
 
     if (concurrency === 1) {
-      return options?.discard === true ? forEachSequentialDiscard(iterable, f) : forEachSequential(iterable, f)
+      return forEachSequential(iterable, f, options?.discard === true)
     }
 
     const fibers = new Set<Fiber<unknown, unknown>>()
