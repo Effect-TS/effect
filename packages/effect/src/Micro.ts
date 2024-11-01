@@ -422,6 +422,7 @@ export interface Fiber<out A, out E = never> {
   readonly [FiberTypeId]: Fiber.Variance<A, E>
 
   readonly currentOpCount: number
+  readonly getEnvRef: <A>(ref: EnvRef<A>) => A
   readonly env: Env<unknown>
   readonly addObserver: (cb: (exit: MicroExit<A, E>) => void) => () => void
   readonly unsafeInterrupt: () => void
@@ -476,6 +477,10 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
     public flags = defaultFlags
   ) {
     this[FiberTypeId] = fiberVariance
+  }
+
+  getEnvRef<A>(ref: EnvRef<A>): A {
+    return this.env.refs[ref.key] as A ?? ref.initial
   }
 
   addObserver(cb: (exit: MicroExit<A, E>) => void): () => void {
@@ -545,7 +550,7 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
     try {
       while (true) {
         this.currentOpCount++
-        if (!yielding && (this.env.refs[currentScheduler.key] as MicroScheduler).shouldYield(this as any)) {
+        if (!yielding && this.getEnvRef(currentScheduler).shouldYield(this as any)) {
           yielding = true
           const prev: Primitive = current
           current = flatMap(yieldNow, () => prev as any) as any
@@ -916,7 +921,7 @@ export const yieldNowWith: (priority?: number) => Micro<void> = makePrimitive({
   op: "Yield",
   evaluate(fiber) {
     let resumed = false
-    envGet(fiber.env, currentScheduler).scheduleTask(() => {
+    fiber.getEnvRef(currentScheduler).scheduleTask(() => {
       if (resumed) return
       fiber.evaluate(exitVoid as any)
     }, this[args][0] ?? 0)
@@ -1133,7 +1138,7 @@ export const withFiber: <A, E = never, R = never>(
  * @category constructors
  */
 export const yieldFlush: Micro<void> = withFiber((fiber) => {
-  envGet(fiber.env, currentScheduler).flush()
+  fiber.getEnvRef(currentScheduler).flush()
   return exitVoid
 })
 
@@ -1844,7 +1849,7 @@ export class MicroSchedulerDefault implements MicroScheduler {
     /**
      * @since 3.11.0
      */
-    readonly maxOpsBeforeYield = 2048
+    readonly maxDepthBeforeTimer = 2048
   ) {}
 
   /**
@@ -1854,16 +1859,28 @@ export class MicroSchedulerDefault implements MicroScheduler {
     this.tasks.push(task)
     if (!this.running) {
       this.running = true
-      setImmediate(this.afterScheduled)
+      this.starve(0)
     }
   }
 
   /**
    * @since 3.5.9
    */
-  afterScheduled = () => {
-    this.running = false
-    this.runTasks()
+  private starve(depth: number) {
+    const after = (reset?: boolean) => {
+      this.runTasks()
+      if (this.tasks.length > 0) {
+        this.starve(reset ? 0 : depth + 1)
+      } else {
+        this.running = false
+      }
+    }
+
+    if (depth >= this.maxDepthBeforeTimer) {
+      setImmediate(() => after(true))
+    } else {
+      queueMicrotask(after)
+    }
   }
 
   /**
@@ -1881,7 +1898,7 @@ export class MicroSchedulerDefault implements MicroScheduler {
    * @since 3.5.9
    */
   shouldYield(fiber: Fiber<unknown, unknown>) {
-    return fiber.currentOpCount >= this.maxOpsBeforeYield
+    return fiber.currentOpCount >= fiber.getEnvRef(currentMaxOpsBeforeYield)
   }
 
   /**
@@ -2002,10 +2019,7 @@ export const envMutate: {
  * @category environment
  */
 export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
-  withFiber((fiber) => {
-    const context = envGet(fiber.env, currentContext)
-    return succeed(Context.unsafeGet(context, tag))
-  })
+  withFiber((fiber) => succeed(Context.unsafeGet(fiber.getEnvRef(currentContext), tag)))
 
 /**
  * Access the given `Context.Tag` from the environment, without tracking the
@@ -2020,11 +2034,7 @@ export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
  */
 export const serviceOption = <I, S>(
   tag: Context.Tag<I, S>
-): Micro<Option.Option<S>> =>
-  withFiber((fiber) => {
-    const context = envGet(fiber.env, currentContext)
-    return succeed(Context.getOption(context, tag))
-  })
+): Micro<Option.Option<S>> => withFiber((fiber) => succeed(Context.getOption(fiber.getEnvRef(currentContext), tag)))
 
 /**
  * Retrieve the current value of the given `EnvRef`.
@@ -2033,7 +2043,7 @@ export const serviceOption = <I, S>(
  * @experimental
  * @category environment
  */
-export const getEnvRef = <A>(envRef: EnvRef<A>): Micro<A> => withFiber((fiber) => succeed(envGet(fiber.env, envRef)))
+export const getEnvRef = <A>(envRef: EnvRef<A>): Micro<A> => withFiber((fiber) => succeed(fiber.getEnvRef(envRef)))
 
 /**
  * Set the value of the given `EnvRef` for the duration of the effect.
@@ -2058,15 +2068,7 @@ export const locally: {
     self: Micro<XA, E, R>,
     fiberRef: EnvRef<A>,
     value: A
-  ): Micro<XA, E, R> =>
-    withFiber((fiber) => {
-      const prev = envGet(fiber.env, fiberRef)
-      fiber.env = envSet(fiber.env, fiberRef, value)
-      return ensuring(
-        self,
-        sync(() => envSet(fiberRef, prev))
-      )
-    })
+  ): Micro<XA, E, R> => locallyWith(self, fiberRef, () => value)
 )
 
 /**
@@ -2094,11 +2096,11 @@ export const locallyWith: {
     f: (value: A) => A
   ): Micro<XA, E, R> =>
     withFiber((fiber) => {
-      const prev = envGet(fiber.env, fiberRef)
+      const prev = fiber.getEnvRef(fiberRef)
       fiber.env = envSet(fiber.env, fiberRef, f(prev))
       return ensuring(
         self,
-        sync(() => envSet(fiberRef, prev))
+        sync(() => fiber.env = envSet(fiber.env, fiberRef, prev))
       )
     })
 )
@@ -2233,6 +2235,16 @@ export const envRefMake = <A>(key: string, initial: LazyArg<A>): EnvRef<A> =>
     self.initial = initial()
     return self
   })
+
+/**
+ * @since 3.11.0
+ * @experimental
+ * @category environment refs
+ */
+export const currentMaxOpsBeforeYield: EnvRef<number> = envRefMake(
+  "effect/Micro/currentMaxOpsBeforeYield",
+  () => 2048
+)
 
 /**
  * @since 3.4.0
@@ -4031,7 +4043,7 @@ export const forEach: {
 }): Micro<any, E, R> =>
   withFiber((parent) => {
     const concurrencyOption = options?.concurrency === "inherit"
-      ? envGet(parent.env, currentConcurrency)
+      ? parent.getEnvRef(currentConcurrency)
       : options?.concurrency ?? 1
     const concurrency = concurrencyOption === "unbounded"
       ? Number.POSITIVE_INFINITY
@@ -4259,7 +4271,7 @@ const unsafeFork = <FA, FE, A, E, R>(
   if (immediate) {
     child.evaluate(effect as any)
   } else {
-    envGet(parent.env, currentScheduler).scheduleTask(() => child.evaluate(effect as any), 0)
+    parent.getEnvRef(currentScheduler).scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child
 }
