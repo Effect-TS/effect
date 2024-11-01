@@ -1,5 +1,14 @@
 # @effect/sql
 
+## 0.18.14
+
+### Patch Changes
+
+- Updated dependencies [[`6f86821`](https://github.com/Effect-TS/effect/commit/6f8682184ac7a7e8eec61c93b028af034c2c7254), [`68b5c9e`](https://github.com/Effect-TS/effect/commit/68b5c9e44f34192cef26e1cadda5e661a027df41), [`9c9928d`](https://github.com/Effect-TS/effect/commit/9c9928dfeacd9ac33dc37eb0ca3d7d8c39175ada), [`6306e66`](https://github.com/Effect-TS/effect/commit/6306e6656092b350d4ede5746da6f245ec9f7e07), [`361c7f3`](https://github.com/Effect-TS/effect/commit/361c7f39a2c10ede9324847c3d3ba192a6f9b20a)]:
+  - @effect/experimental@0.30.14
+  - effect@3.10.8
+  - @effect/platform@0.69.13
+
 ## 0.18.13
 
 ### Patch Changes
