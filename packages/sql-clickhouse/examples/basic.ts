@@ -33,7 +33,10 @@ Effect.gen(function*() {
 
   yield* sql`SELECT * FROM clickhouse_js_example_cloud_table ORDER BY id`.stream.pipe(
     Stream.runForEach(Effect.log),
-    sql.withQueryId("select")
+    sql.withQueryId("select"),
+    sql.withClickhouseSettings({
+      log_comment: "Some comment to be stored in the query log"
+    })
   )
 }).pipe(
   Effect.provide(ClickhouseLive),
