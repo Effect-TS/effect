@@ -451,9 +451,17 @@ export declare namespace Fiber {
  * @experimental
  * @category Fiber
  */
-export const FiberFlags = {
-  Uninterruptible: 1 << 0
+export const FiberFlag = {
+  None: 0,
+  Uninterruptible: 1
 } as const
+
+/**
+ * @since 3.11.0
+ * @experimental
+ * @category Fiber
+ */
+export type FiberFlag = typeof FiberFlag[keyof typeof FiberFlag]
 
 const defaultFlags = 0
 
@@ -498,7 +506,7 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
   }
 
   isInterruptible(): boolean {
-    return (this.flags & 1) === 0
+    return (this.flags & FiberFlag.Uninterruptible) === 0
   }
 
   _interrupted = false
@@ -600,10 +608,7 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
   }
 
   children(): Set<Fiber<any, any>> {
-    if (this._children === undefined) {
-      this._children = new Set()
-    }
-    return this._children
+    return this._children ??= new Set()
   }
 }
 
@@ -1196,8 +1201,8 @@ const asyncFinalizer: (onInterrupt: () => Micro<void, any, any>) => Primitive = 
   op: "AsyncFinalizer",
   fiberCont(_, fiber) {
     if (fiber.isInterruptible()) {
-      fiber.flags |= FiberFlags.Uninterruptible
-      fiber._stack.push(revertFlags(FiberFlags.Uninterruptible))
+      fiber.flags |= FiberFlag.Uninterruptible
+      fiber._stack.push(revertFlags(FiberFlag.Uninterruptible))
     }
   },
   failureCont(self, cause, _fiber) {
@@ -1326,11 +1331,7 @@ export const andThen: {
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: any): Micro<B, E | E2, R | R2> =>
     flatMap(self, (a) => {
       const value = isMicro(f) ? f : typeof f === "function" ? f(a) : f
-      if (isMicro(value)) {
-        return value
-      } else {
-        return succeed(value)
-      }
+      return isMicro(value) ? value : succeed(value)
     })
 )
 
@@ -1371,10 +1372,7 @@ export const tap: {
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: A) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
     flatMap(self, (a) => {
       const value = isMicro(f) ? f : typeof f === "function" ? f(a) : f
-      if (isMicro(value)) {
-        return as(value, a)
-      }
-      return succeed(a)
+      return isMicro(value) ? as(value, a) : succeed(a)
     })
 )
 
@@ -3778,7 +3776,7 @@ export const interrupt: Micro<never> = failCause(causeInterrupt())
 
 const uninterruptibleWith = <A, E, R>(evaluate: (oldFlags: number) => Micro<A, E, R>) => {
   const update = Object.create(UpdateFlagsProto)
-  update.f = (flags: number) => flags | FiberFlags.Uninterruptible
+  update.f = (flags: number) => flags | FiberFlag.Uninterruptible
   update.evaluate = evaluate
   return update
 }
@@ -3807,7 +3805,7 @@ export const interruptible = <A, E, R>(
   self: Micro<A, E, R>
 ): Micro<A, E, R> => {
   const update = Object.create(UpdateFlagsProto)
-  update.f = (flags: number) => flags & ~FiberFlags.Uninterruptible
+  update.f = (flags: number) => flags & ~FiberFlag.Uninterruptible
   update.evaluate = () => self
   return update
 }
@@ -3835,10 +3833,7 @@ export const uninterruptibleMask = <A, E, R>(
   f: (
     restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>
   ) => Micro<A, E, R>
-): Micro<A, E, R> =>
-  uninterruptibleWith((oldFlags) => {
-    return (oldFlags & 1) === 0 ? f(interruptible) : f(identity)
-  })
+): Micro<A, E, R> => uninterruptibleWith((oldFlags) => (oldFlags & 1) === 0 ? f(interruptible) : f(identity))
 
 // ========================================================================
 // collecting & elements
