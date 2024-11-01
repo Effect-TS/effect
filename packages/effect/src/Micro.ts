@@ -456,12 +456,7 @@ export const FiberFlag = {
   Uninterruptible: 1
 } as const
 
-/**
- * @since 3.11.0
- * @experimental
- * @category Fiber
- */
-export type FiberFlag = typeof FiberFlag[keyof typeof FiberFlag]
+const isInterruptible = (flags: number): boolean => (flags & 1) === 0
 
 const defaultFlags = 0
 
@@ -505,17 +500,13 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
     }
   }
 
-  isInterruptible(): boolean {
-    return (this.flags & FiberFlag.Uninterruptible) === 0
-  }
-
   _interrupted = false
   unsafeInterrupt(): void {
     if (this._exit) {
       return
     }
     this._interrupted = true
-    if (this.isInterruptible()) {
+    if (isInterruptible(this.flags)) {
       this.evaluate(exitInterrupt as any)
     }
   }
@@ -560,7 +551,7 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
         this.currentOpCount++
         if (!yielding && this.getEnvRef(currentScheduler).shouldYield(this as any)) {
           yielding = true
-          const prev: Primitive = current
+          const prev = current
           current = flatMap(yieldNow, () => prev as any) as any
         }
         current = (current as any)[evaluate](this)
@@ -855,7 +846,7 @@ export const failCause: <E>(cause: MicroCause<E>) => Micro<never, E> = makeExit(
     if (cont === undefined) {
       return fiber.yieldWith(this)
     } else if (isInterrupt) {
-      while (fiber.isInterruptible()) {
+      while (isInterruptible(fiber.flags)) {
         cont = fiber.getCont(failureCont)
         if (cont === undefined) {
           return fiber.yieldWith(this)
@@ -1082,12 +1073,12 @@ export {
  * @category constructors
  */
 export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): Micro<A> =>
-  async<A>(function(resume, signal) {
-    evaluate(signal).then(
+  asyncOptions<A>(function(resume, signal) {
+    evaluate(signal!).then(
       (a) => resume(succeed(a)),
       (e) => resume(die(e))
     )
-  })
+  }, evaluate.length !== 0)
 
 /**
  * Wrap a `Promise` into a `Micro` effect. Any errors will be caught and
@@ -1108,16 +1099,16 @@ export const tryPromise = <A, E>(options: {
   readonly try: (signal: AbortSignal) => PromiseLike<A>
   readonly catch: (error: unknown) => E
 }): Micro<A, E> =>
-  async<A, E>(function(resume, signal) {
+  asyncOptions<A, E>(function(resume, signal) {
     try {
-      options.try(signal).then(
+      options.try(signal!).then(
         (a) => resume(succeed(a)),
         (e) => resume(fail(options.catch(e)))
       )
     } catch (err) {
       resume(fail(options.catch(err)))
     }
-  })
+  }, options.try.length !== 0)
 
 /**
  * Create a `Micro` effect using the current `Fiber`.
@@ -1147,29 +1138,19 @@ export const yieldFlush: Micro<void> = withFiber((fiber) => {
   return exitVoid
 })
 
-/**
- * Create a `Micro` effect from an asynchronous computation.
- *
- * You can return a cleanup effect that will be run when the effect is aborted.
- * It is also passed an `AbortSignal` that is triggered when the effect is
- * aborted.
- *
- * @since 3.4.0
- * @experimental
- * @category constructors
- */
-export const async: <A, E = never, R = never>(
+const asyncOptions: <A, E = never, R = never>(
   register: (
     resume: (effect: Micro<A, E, R>) => void,
-    signal: AbortSignal
-  ) => void | Micro<void, never, R>
+    signal?: AbortSignal
+  ) => void | Micro<void, never, R>,
+  withSignal: boolean
 ) => Micro<A, E, R> = makePrimitive({
   op: "Async",
   evaluate(fiber) {
     const register = this[args][0]
     let resumed = false
     let yielded: boolean | Primitive = false
-    const controller = register.length === 2 ? new AbortController() : undefined
+    const controller = this[args][1] ? new AbortController() : undefined
     const onCancel = register((effect) => {
       if (resumed) return
       resumed = true
@@ -1178,10 +1159,8 @@ export const async: <A, E = never, R = never>(
       } else {
         yielded = effect as any
       }
-    }, controller?.signal as AbortSignal)
-    if (yielded !== false) {
-      return yielded
-    }
+    }, controller?.signal)
+    if (yielded !== false) return yielded
     yielded = true
     fiber._yielded = () => {
       resumed = true
@@ -1200,7 +1179,7 @@ export const async: <A, E = never, R = never>(
 const asyncFinalizer: (onInterrupt: () => Micro<void, any, any>) => Primitive = makePrimitive({
   op: "AsyncFinalizer",
   fiberCont(_, fiber) {
-    if (fiber.isInterruptible()) {
+    if (isInterruptible(fiber.flags)) {
       fiber.flags |= FiberFlag.Uninterruptible
       fiber._stack.push(revertFlags(FiberFlag.Uninterruptible))
     }
@@ -1214,6 +1193,24 @@ const asyncFinalizer: (onInterrupt: () => Micro<void, any, any>) => Primitive = 
     return this
   }
 })
+
+/**
+ * Create a `Micro` effect from an asynchronous computation.
+ *
+ * You can return a cleanup effect that will be run when the effect is aborted.
+ * It is also passed an `AbortSignal` that is triggered when the effect is
+ * aborted.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
+ */
+export const async = <A, E = never, R = never>(
+  register: (
+    resume: (effect: Micro<A, E, R>) => void,
+    signal: AbortSignal
+  ) => void | Micro<void, never, R>
+): Micro<A, E, R> => asyncOptions(register as any, register.length >= 2)
 
 /**
  * A `Micro` that will never succeed or fail. It wraps `setInterval` to prevent
@@ -1597,38 +1594,32 @@ export const map: {
  * @experimental
  * @category flags
  */
-export const updateFiberFlags = (f: (flags: number) => number): Micro<void> => {
-  const update = Object.create(UpdateFlagsProto)
-  update.f = f
-  return update
-}
-const UpdateFlagsProto = makePrimitiveProto({
+export const updateFiberFlags = (f: (flags: number) => number): Micro<void> => updateFlags(f)
+
+const updateFlags: (
+  f: (flags: number) => number,
+  evaluate?: (oldFlags: number) => Micro<any, any, any>
+) => any = makePrimitive({
   op: "UpdateFlags",
-  evaluate(
-    this: Primitive & {
-      readonly f: (flags: number) => number
-      readonly evaluate?: (oldFlags: number) => Primitive
-    },
-    fiber: FiberImpl
-  ): Primitive | Yield {
+  evaluate(fiber) {
+    const [f, evaluate] = this[args]
     const oldFlags = fiber.flags
-    const newFlags = this.f(fiber.flags)
-    if (fiber._interrupted && (newFlags & 1 /* Uninterruptible */) === 0) {
-      return exitInterrupt as any
-    }
-    if (newFlags === oldFlags) {
-      if (this.evaluate) {
-        return this.evaluate(oldFlags)
+    const newFlags = f(fiber.flags)
+    if (fiber._interrupted && isInterruptible(newFlags)) {
+      return exitInterrupt
+    } else if (newFlags === oldFlags) {
+      if (evaluate) {
+        return evaluate(oldFlags)
       }
-      return exitVoid as any
+      return exitVoid
     }
     const diff = oldFlags ^ newFlags
     fiber.flags = newFlags
     fiber._stack.push(revertFlags(diff))
-    if (this.evaluate) {
-      return this.evaluate(oldFlags)
+    if (evaluate) {
+      return evaluate(oldFlags)
     }
-    return exitVoid as any
+    return exitVoid
   }
 })
 
@@ -1636,7 +1627,7 @@ const revertFlags: (diff: number) => Primitive = makePrimitive({
   op: "RevertFlags",
   fiberCont(self, fiber) {
     fiber.flags = fiber.flags ^ self[args][0]
-    if (fiber._interrupted && fiber.isInterruptible()) {
+    if (fiber._interrupted && isInterruptible(fiber.flags)) {
       return () => exitInterrupt
     }
   },
@@ -3774,13 +3765,6 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
  */
 export const interrupt: Micro<never> = failCause(causeInterrupt())
 
-const uninterruptibleWith = <A, E, R>(evaluate: (oldFlags: number) => Micro<A, E, R>) => {
-  const update = Object.create(UpdateFlagsProto)
-  update.f = (flags: number) => flags | FiberFlag.Uninterruptible
-  update.evaluate = evaluate
-  return update
-}
-
 /**
  * Flag the effect as uninterruptible, which means that when the effect is
  * interrupted, it will be allowed to continue running until completion.
@@ -3791,7 +3775,8 @@ const uninterruptibleWith = <A, E, R>(evaluate: (oldFlags: number) => Micro<A, E
  */
 export const uninterruptible = <A, E, R>(
   self: Micro<A, E, R>
-): Micro<A, E, R> => uninterruptibleWith(() => self)
+): Micro<A, E, R> => updateFlags(addUninterruptible, () => self)
+const addUninterruptible = (flags: number) => flags | FiberFlag.Uninterruptible
 
 /**
  * Flag the effect as interruptible, which means that when the effect is
@@ -3803,12 +3788,8 @@ export const uninterruptible = <A, E, R>(
  */
 export const interruptible = <A, E, R>(
   self: Micro<A, E, R>
-): Micro<A, E, R> => {
-  const update = Object.create(UpdateFlagsProto)
-  update.f = (flags: number) => flags & ~FiberFlag.Uninterruptible
-  update.evaluate = () => self
-  return update
-}
+): Micro<A, E, R> => updateFlags(removeUninterruptible, () => self)
+const removeUninterruptible = (flags: number) => flags & ~FiberFlag.Uninterruptible
 
 /**
  * Wrap the given `Micro` effect in an uninterruptible region, preventing the
@@ -3833,7 +3814,8 @@ export const uninterruptibleMask = <A, E, R>(
   f: (
     restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>
   ) => Micro<A, E, R>
-): Micro<A, E, R> => uninterruptibleWith((oldFlags) => (oldFlags & 1) === 0 ? f(interruptible) : f(identity))
+): Micro<A, E, R> =>
+  updateFlags(addUninterruptible, (oldFlags) => (oldFlags & 1) === 0 ? f(interruptible) : f(identity))
 
 // ========================================================================
 // collecting & elements
@@ -3996,9 +3978,7 @@ const forEachSequential = <A, B, E, R>(
         while: () => i < arr.length,
         body: () => f(arr[i], i),
         step: ret ?
-          (b) => {
-            ret[i++] = b
-          } :
+          (b) => ret[i++] = b :
           (_) => i++
       }),
       ret as any
@@ -4054,15 +4034,14 @@ export const forEach: {
     if (length === 0) {
       return options?.discard ? exitVoid : succeed([])
     }
-    let result: MicroExit<any, any> | undefined = undefined
-    const out: Array<B> | undefined = options?.discard ? undefined : new Array(length)
-    let index = 0
-    let inProgress = 0
-    let doneCount = 0
-    let pumping = false
-    let interrupted = false
-
     return async((resume) => {
+      let result: MicroExit<any, any> | undefined = undefined
+      const out: Array<B> | undefined = options?.discard ? undefined : new Array(length)
+      let index = 0
+      let inProgress = 0
+      let doneCount = 0
+      let pumping = false
+      let interrupted = false
       function pump() {
         pumping = true
         while (inProgress < concurrency && index < length) {
