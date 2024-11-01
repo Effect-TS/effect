@@ -1,5 +1,5 @@
 ---
-"@effect/sql-clickhouse": minor
+"@effect/sql-clickhouse": patch
 ---
 
 Exposes clickhouse_settings parameter
