@@ -581,8 +581,8 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
     while (true) {
       const op = this._stack.pop()
       if (op === undefined) return undefined
-      if (op[fiberCont] !== undefined) {
-        const cont = op[fiberCont](this as any)
+      if (op[ensureCont] !== undefined) {
+        const cont = op[ensureCont](this as any)
         if (cont) return cont
       }
       if (op[symbol] !== undefined) {
@@ -676,8 +676,8 @@ type successCont = typeof successCont
 const failureCont = Symbol.for("effect/Micro/failureCont")
 type failureCont = typeof failureCont
 
-const fiberCont = Symbol.for("effect/Micro/fiberCont")
-type fiberCont = typeof fiberCont
+const ensureCont = Symbol.for("effect/Micro/ensureCont")
+type ensureCont = typeof ensureCont
 
 const Yield = Symbol.for("effect/Micro/Yield")
 type Yield = typeof Yield
@@ -688,7 +688,7 @@ interface Primitive {
   readonly [failureCont]:
     | ((cause: MicroCause<unknown>, fiber: FiberImpl) => Primitive | Yield)
     | undefined
-  readonly [fiberCont]:
+  readonly [ensureCont]:
     | ((fiber: FiberImpl) =>
       | ((value: unknown, fiber: FiberImpl) => Primitive | Yield)
       | undefined)
@@ -708,7 +708,7 @@ const MicroProto = {
   [TypeId]: microVariance,
   [successCont]: undefined,
   [failureCont]: undefined,
-  [fiberCont]: undefined,
+  [ensureCont]: undefined,
   pipe() {
     return pipeArguments(this, arguments)
   },
@@ -755,7 +755,7 @@ const makePrimitive = <Fn extends (...args: Array<any>) => any>(options: {
     cause: MicroCause<any>,
     fiber: FiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
-  readonly fiberCont?: (
+  readonly ensureCont?: (
     self: Primitive & { readonly [args]: Parameters<Fn> },
     fiber: FiberImpl
   ) => void | (() => void)
@@ -768,7 +768,7 @@ const makePrimitive = <Fn extends (...args: Array<any>) => any>(options: {
       (self[successCont] = (value: any, fiber: FiberImpl) => options.successCont!(self, value, fiber))
     options.failureCont &&
       (self[failureCont] = (value: any, fiber: FiberImpl) => options.failureCont!(self, value, fiber))
-    options.fiberCont && (self[fiberCont] = (fiber: FiberImpl) => options.fiberCont!(self, fiber))
+    options.ensureCont && (self[ensureCont] = (fiber: FiberImpl) => options.ensureCont!(self, fiber))
     return self
   } as Fn
 }
@@ -1178,7 +1178,7 @@ const asyncOptions: <A, E = never, R = never>(
 })
 const asyncFinalizer: (onInterrupt: () => Micro<void, any, any>) => Primitive = makePrimitive({
   op: "AsyncFinalizer",
-  fiberCont(_, fiber) {
+  ensureCont(_, fiber) {
     if (isInterruptible(fiber.flags)) {
       fiber.flags |= FiberFlag.Uninterruptible
       fiber._stack.push(revertFlags(FiberFlag.Uninterruptible))
@@ -1625,7 +1625,7 @@ const updateFlags: (
 
 const revertFlags: (diff: number) => Primitive = makePrimitive({
   op: "RevertFlags",
-  fiberCont(self, fiber) {
+  ensureCont(self, fiber) {
     fiber.flags = fiber.flags ^ self[args][0]
     if (fiber._interrupted && isInterruptible(fiber.flags)) {
       return () => exitInterrupt
@@ -3964,27 +3964,6 @@ export const whileLoop: <A, E, R>(options: {
   }
 })
 
-const forEachSequential = <A, B, E, R>(
-  self: Iterable<A>,
-  f: (a: A, i: number) => Micro<B, E, R>,
-  discard: boolean
-): Micro<Array<B> | void, E, R> =>
-  suspend(() => {
-    const arr = Arr.fromIterable(self)
-    const ret = discard ? undefined : Arr.allocate<B>(arr.length)
-    let i = 0
-    return as(
-      whileLoop({
-        while: () => i < arr.length,
-        body: () => f(arr[i], i),
-        step: ret ?
-          (b) => ret[i++] = b :
-          (_) => i++
-      }),
-      ret as any
-    )
-  })
-
 /**
  * For each element of the provided iterable, run the effect and collect the results.
  *
@@ -4024,20 +4003,30 @@ export const forEach: {
       ? Number.POSITIVE_INFINITY
       : Math.max(1, concurrencyOption)
 
-    if (concurrency === 1) {
-      return forEachSequential(iterable, f, options?.discard === true)
-    }
-
-    const fibers = new Set<Fiber<unknown, unknown>>()
-    const items = Array.from(iterable)
+    const items = Arr.fromIterable(iterable)
     let length = items.length
     if (length === 0) {
-      return options?.discard ? exitVoid : succeed([])
+      return options?.discard ? void_ : succeed([])
+    }
+
+    const out: Array<B> | undefined = options?.discard ? undefined : new Array(length)
+    let index = 0
+
+    if (concurrency === 1) {
+      return as(
+        whileLoop({
+          while: () => index < items.length,
+          body: () => f(items[index], index),
+          step: out ?
+            (b) => out[index++] = b :
+            (_) => index++
+        }),
+        out as any
+      )
     }
     return async((resume) => {
+      const fibers = new Set<Fiber<unknown, unknown>>()
       let result: MicroExit<any, any> | undefined = undefined
-      const out: Array<B> | undefined = options?.discard ? undefined : new Array(length)
-      let index = 0
       let inProgress = 0
       let doneCount = 0
       let pumping = false
