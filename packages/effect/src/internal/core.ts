@@ -1212,8 +1212,11 @@ export const succeed = <A>(value: A): Effect.Effect<A> => {
 }
 
 /* @internal */
-export const suspend = <A, E, R>(effect: LazyArg<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> =>
-  flatMap(sync(effect), identity)
+export const suspend = <A, E, R>(evaluate: LazyArg<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> => {
+  const effect = new EffectPrimitive(OpCodes.OP_COMMIT) as any
+  effect.commit = evaluate
+  return effect
+}
 
 /* @internal */
 export const sync = <A>(thunk: LazyArg<A>): Effect.Effect<A> => {
