@@ -32,13 +32,84 @@ class Logger extends Effect.Service<Logger>()("Logger", {
         })
     }
   }),
-  dependencies: [Prefix.Default, Postfix.Default]
+  dependencies: [Prefix.Default, Postfix.Default, Layer.empty]
 }) {
   static Test = Layer.succeed(this, new Logger({ info: () => Effect.void }))
 }
 
+class LoggerNoDeps extends Effect.Service<LoggerNoDeps>()("LoggerNoDeps", {
+  accessors: true,
+  effect: Effect.gen(function*() {
+    const prefix = yield* Effect.succeed("PRE")
+    const postfix = "POST"
+    return {
+      info: (message: string) =>
+        Effect.sync(() => {
+          messages.push(`[${prefix}][${message}][${postfix}]`)
+        })
+    }
+  })
+}) {
+}
+
+class LoggerIncomplete extends Effect.Service<LoggerIncomplete>()("LoggerIncomplete", {
+  accessors: true,
+  effect: Effect.gen(function*() {
+    const { prefix } = yield* Prefix
+    const { postfix } = yield* Postfix
+    return {
+      info: (message: string) =>
+        Effect.sync(() => {
+          messages.push(`[${prefix}][${message}][${postfix}]`)
+        })
+    }
+  }),
+  // @ts-expect-error
+  dependencies: [Postfix.Default, LoggerNoDeps.Default]
+}) {
+}
+
+class LoggerIncomplete2 extends Effect.Service<LoggerIncomplete2>()(
+  "LoggerIncomplete2",
+  // @ts-expect-error
+  {
+    accessors: true,
+    effect: Effect.gen(function*() {
+      const { prefix } = yield* Prefix
+      const { postfix } = yield* Postfix
+      return {
+        info: (message: string) =>
+          Effect.sync(() => {
+            messages.push(`[${prefix}][${message}][${postfix}]`)
+          })
+      }
+    })
+  }
+) {
+}
+
+export class LoggerIncompleteNotStrict
+  extends Effect.Service<LoggerIncompleteNotStrict>()("LoggerIncompleteNotStrict", {
+    accessors: true,
+    strict: false,
+    effect: Effect.gen(function*() {
+      const { prefix } = yield* Prefix
+      const { postfix } = yield* Postfix
+      return {
+        info: (message: string) =>
+          Effect.sync(() => {
+            messages.push(`[${prefix}][${message}][${postfix}]`)
+          })
+      }
+    }),
+    dependencies: [Prefix.Default, Layer.empty]
+  })
+{
+}
+
 class Scoped extends Effect.Service<Scoped>()("Scoped", {
   accessors: true,
+  // strict: false,
   scoped: Effect.gen(function*() {
     const { prefix } = yield* Prefix
     const { postfix } = yield* Postfix
