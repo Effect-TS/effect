@@ -1233,21 +1233,16 @@ export const never: Micro<never> = async<never>(function() {
  * @experimental
  * @category constructors
  */
-export const gen: <Self, Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
+export const gen = <Self, Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
   ...args:
     | [self: Self, body: (this: Self) => Generator<Eff, AEff, never>]
     | [body: () => Generator<Eff, AEff, never>]
-) => Micro<
+): Micro<
   AEff,
   [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer E, infer _R>>] ? E : never,
   [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer _E, infer R>>] ? R : never
-> = makePrimitive({
-  op: "Gen",
-  singleArg: false,
-  evaluate(_fiber) {
-    return fromIterator(this[args].length === 1 ? this[args][0]() : this[args][1].call(this[args][0]) as any)
-  }
-})
+> => suspend(() => fromIterator(args.length === 1 ? args[0]() : args[1].call(args[0]) as any))
+
 const fromIterator: (
   iterator: Iterator<any, YieldWrap<Micro<any, any, any>>>
 ) => Micro<any, any, any> = makePrimitive({
