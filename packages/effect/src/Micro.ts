@@ -2543,6 +2543,71 @@ export const repeat: {
   }))
 
 /**
+ * Replicates the given effect `n` times.
+ *
+ * @since 3.11.0
+ * @experimental
+ * @category repetition
+ */
+export const replicate: {
+  (n: number): <A, E, R>(self: Micro<A, E, R>) => Array<Micro<A, E, R>>
+  <A, E, R>(self: Micro<A, E, R>, n: number): Array<Micro<A, E, R>>
+} = dual(
+  2,
+  <A, E, R>(self: Micro<A, E, R>, n: number): Array<Micro<A, E, R>> => Array.from({ length: n }, () => self)
+)
+
+/**
+ * Performs this effect the specified number of times and collects the
+ * results.
+ *
+ * @since 3.11.0
+ * @category repetition
+ */
+export const replicateEffect: {
+  (
+    n: number,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly discard?: false | undefined
+    }
+  ): <A, E, R>(self: Micro<A, E, R>) => Micro<Array<A>, E, R>
+  (
+    n: number,
+    options: {
+      readonly concurrency?: Concurrency | undefined
+      readonly discard: true
+    }
+  ): <A, E, R>(self: Micro<A, E, R>) => Micro<void, E, R>
+  <A, E, R>(
+    self: Micro<A, E, R>,
+    n: number,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly discard?: false | undefined
+    }
+  ): Micro<Array<A>, E, R>
+  <A, E, R>(
+    self: Micro<A, E, R>,
+    n: number,
+    options: {
+      readonly concurrency?: Concurrency | undefined
+      readonly discard: true
+    }
+  ): Micro<void, E, R>
+} = dual(
+  (args) => isMicro(args[0]),
+  <A, E, R>(
+    self: Micro<A, E, R>,
+    n: number,
+    options: {
+      readonly concurrency?: Concurrency | undefined
+      readonly discard: true
+    }
+  ): Micro<void, E, R> => all(replicate(self, n), options)
+)
+
+/**
  * Repeat the given `Micro` effect forever, only stopping if the effect fails.
  *
  * @since 3.4.0
