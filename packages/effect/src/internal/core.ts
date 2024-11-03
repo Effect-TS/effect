@@ -122,6 +122,7 @@ export type Primitive =
   | Sync
   | UpdateRuntimeFlags
   | While
+  | FromIterator
   | WithRuntime
   | Yield
   | OpTag
@@ -137,6 +138,7 @@ export type Continuation =
   | OnSuccessAndFailure
   | OnFailure
   | While
+  | FromIterator
   | RevertFlags
 
 /** @internal */
@@ -384,6 +386,13 @@ export interface While extends
     effect_instruction_i0(): boolean
     effect_instruction_i1(): Primitive
     effect_instruction_i2(a: unknown): void
+  }>
+{}
+
+/** @internal */
+export interface FromIterator extends
+  Op<OpCodes.OP_ITERATOR, {
+    effect_instruction_i0: Iterator<YieldWrap<Primitive>, any>
   }>
 {}
 
@@ -1402,6 +1411,16 @@ export const whileLoop = <A, E, R>(
   effect.effect_instruction_i1 = options.body
   effect.effect_instruction_i2 = options.step
   return effect
+}
+
+/* @internal */
+export const gen: typeof Effect.gen = function() {
+  const f = arguments.length === 1 ? arguments[0] : arguments[1].bind(arguments[0])
+  return suspend(() => {
+    const effect = new EffectPrimitive(OpCodes.OP_ITERATOR) as any
+    effect.effect_instruction_i0 = f(pipe)
+    return effect
+  })
 }
 
 /* @internal */

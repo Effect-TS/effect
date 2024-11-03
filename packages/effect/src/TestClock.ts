@@ -436,7 +436,7 @@ export class TestClockImpl implements TestClock {
 export const live = (data: Data): Layer.Layer<TestClock, never, Annotations.TestAnnotations | Live.TestLive> =>
   layer.scoped(
     TestClock,
-    effect.gen(function*($) {
+    core.gen(function*($) {
       const live = yield* $(Live.TestLive)
       const annotations = yield* $(Annotations.TestAnnotations)
       const clockState = yield* $(core.sync(() => ref.unsafeMake(data)))
