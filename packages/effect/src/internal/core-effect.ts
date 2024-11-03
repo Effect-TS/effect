@@ -806,18 +806,14 @@ export const gen: typeof Effect.gen = function() {
   }
   return core.suspend(() => {
     const iterator = f(pipe)
-    const state = internalCall(() => iterator.next())
-    const run = (
-      state: IteratorYieldResult<any> | IteratorReturnResult<any>
-    ): Effect.Effect<any, any, any> => {
-      return (state.done
-        ? core.succeed(state.value)
-        : core.flatMap(
-          yieldWrapGet(state.value) as any,
-          (val: any) => run(internalCall(() => iterator.next(val)))
-        ))
+    const next = (value: any): Effect.Effect<any, any, any> => {
+      const result = internalCall(() => iterator.next(value))
+      if (result.done) {
+        return core.succeed(result.value)
+      }
+      return core.flatMap(yieldWrapGet(result.value) as any, next)
     }
-    return run(state)
+    return next(undefined)
   })
 }
 
