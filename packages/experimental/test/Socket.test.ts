@@ -52,7 +52,7 @@ describe("Socket", () => {
         })
     )
 
-    it.effect("messages", () =>
+    it.scoped("messages", () =>
       Effect.gen(function*() {
         const server = yield* makeServer
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
@@ -80,7 +80,6 @@ describe("Socket", () => {
         const exit = yield* fiber.await
         expect(exit._tag).toEqual("Success")
       }).pipe(
-        Effect.scoped,
         Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
       ))
   })

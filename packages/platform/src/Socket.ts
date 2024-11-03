@@ -189,46 +189,40 @@ export const toChannelMap = <IE, A>(
   void,
   unknown
 > =>
-  Effect.scope.pipe(
-    Effect.bindTo("scope"),
-    Effect.bind("mailbox", () => Mailbox.make<A, SocketError | IE>()),
-    Effect.bind("writeScope", ({ scope }) => Scope.fork(scope, ExecutionStrategy.sequential)),
-    Effect.bind("write", ({ writeScope }) => Scope.extend(self.writer, writeScope)),
-    Effect.let(
-      "input",
-      (
-        { mailbox, write, writeScope }
-      ): AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array | string | CloseEvent>, unknown> => ({
-        awaitRead: () => Effect.void,
-        emit(chunk) {
-          return Effect.catchAllCause(
-            Effect.forEach(chunk, write, { discard: true }),
-            (cause) => mailbox.failCause(cause)
-          )
-        },
-        error(error) {
-          return Effect.zipRight(
-            Scope.close(writeScope, Exit.void),
-            mailbox.failCause(error)
-          )
-        },
-        done() {
-          return Scope.close(writeScope, Exit.void)
-        }
-      })
-    ),
-    Effect.tap(({ mailbox, scope }) =>
-      self.runRaw((data) => {
-        mailbox.unsafeOffer(f(data))
-      }).pipe(
-        Mailbox.into(mailbox),
-        Effect.forkIn(scope),
-        Effect.interruptible
-      )
-    ),
-    Effect.map(({ input, mailbox }) => Channel.embedInput(Mailbox.toChannel(mailbox), input)),
-    Channel.unwrapScoped
-  )
+  Effect.gen(function*() {
+    const scope = yield* Effect.scope
+    const mailbox = yield* Mailbox.make<A, SocketError | IE>()
+    const writeScope = yield* Scope.fork(scope, ExecutionStrategy.sequential)
+    const write = yield* Scope.extend(self.writer, writeScope)
+    const input: AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array | string | CloseEvent>, unknown> = {
+      awaitRead: () => Effect.void,
+      emit(chunk) {
+        return Effect.catchAllCause(
+          Effect.forEach(chunk, write, { discard: true }),
+          (cause) => mailbox.failCause(cause)
+        )
+      },
+      error(error) {
+        return Effect.zipRight(
+          Scope.close(writeScope, Exit.void),
+          mailbox.failCause(error)
+        )
+      },
+      done() {
+        return Scope.close(writeScope, Exit.void)
+      }
+    }
+
+    yield* self.runRaw((data) => {
+      mailbox.unsafeOffer(f(data))
+    }).pipe(
+      Mailbox.into(mailbox),
+      Effect.forkIn(scope),
+      Effect.interruptible
+    )
+
+    return Channel.embedInput(Mailbox.toChannel(mailbox), input)
+  }).pipe(Channel.unwrapScoped)
 
 /**
  * @since 1.0.0
@@ -388,139 +382,132 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
  * @since 1.0.0
  * @category constructors
  */
-export const fromWebSocket = <R>(
-  acquire: Effect.Effect<globalThis.WebSocket, SocketError, R>,
+export const fromWebSocket = <RO>(
+  acquire: Effect.Effect<globalThis.WebSocket, SocketError, RO>,
   options?: {
     readonly closeCodeIsError?: (code: number) => boolean
     readonly openTimeout?: DurationInput
   }
-): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
-  Effect.withFiberRuntime<Socket, never, Exclude<R, Scope.Scope>>((fiber) =>
-    Effect.map(
-      Queue.dropping<Uint8Array | string | CloseEvent>(fiber.getFiberRef(currentSendQueueCapacity)),
-      (sendQueue) => {
-        const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<R>
-        const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void) =>
-          acquire.pipe(
-            Effect.bindTo("ws"),
-            Effect.bind("fiberSet", () => FiberSet.make<any, E | SocketError>()),
-            Effect.bind("run", ({ fiberSet, ws }) =>
-              Effect.provideService(FiberSet.runtime(fiberSet)<R>(), WebSocket, ws)),
-            Effect.tap(({ fiberSet, run, ws }) => {
-              let open = false
+): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
+  Effect.withFiberRuntime<Socket, never, Exclude<RO, Scope.Scope>>((fiber) =>
+    Effect.gen(function*() {
+      const sendQueue = yield* Queue.dropping<Uint8Array | string | CloseEvent>(
+        fiber.getFiberRef(currentSendQueueCapacity)
+      )
+      const acquireContext = fiber.currentContext as Context.Context<RO>
+      const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
 
-              function onMessage(event: MessageEvent) {
-                if (event.data instanceof Blob) {
-                  return Effect.promise(() =>
-                    event.data.arrayBuffer() as Promise<ArrayBuffer>
-                  ).pipe(
-                    Effect.andThen((buffer) => handler(new Uint8Array(buffer))),
-                    run
-                  )
-                }
-                const result = handler(event.data)
-                if (Effect.isEffect(result)) {
-                  run(result)
-                }
-              }
-              function onError(cause: Event) {
-                ws.removeEventListener("message", onMessage)
-                ws.removeEventListener("close", onClose)
-                Deferred.unsafeDone(
-                  fiberSet.deferred,
-                  Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", cause }))
-                )
-              }
-              function onClose(event: globalThis.CloseEvent) {
-                ws.removeEventListener("message", onMessage)
-                ws.removeEventListener("error", onError)
-                Deferred.unsafeDone(
-                  fiberSet.deferred,
-                  Effect.fail(
-                    new SocketCloseError({
-                      reason: "Close",
-                      code: event.code,
-                      closeReason: event.reason
-                    })
-                  )
-                )
-              }
+      const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void) =>
+        Effect.gen(function*() {
+          const fiberSet = yield* FiberSet.make<any, E | SocketError>()
+          const ws = yield* acquire
+          const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), WebSocket, ws)
+          let open = false
 
-              ws.addEventListener("close", onClose, { once: true })
-              ws.addEventListener("error", onError, { once: true })
-              ws.addEventListener("message", onMessage)
+          function onMessage(event: MessageEvent) {
+            if (event.data instanceof Blob) {
+              return Effect.promise(() => event.data.arrayBuffer() as Promise<ArrayBuffer>).pipe(
+                Effect.andThen((buffer) => handler(new Uint8Array(buffer))),
+                run
+              )
+            }
+            const result = handler(event.data)
+            if (Effect.isEffect(result)) {
+              run(result)
+            }
+          }
+          function onError(cause: Event) {
+            ws.removeEventListener("message", onMessage)
+            ws.removeEventListener("close", onClose)
+            Deferred.unsafeDone(
+              fiberSet.deferred,
+              Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", cause }))
+            )
+          }
+          function onClose(event: globalThis.CloseEvent) {
+            ws.removeEventListener("message", onMessage)
+            ws.removeEventListener("error", onError)
+            Deferred.unsafeDone(
+              fiberSet.deferred,
+              Effect.fail(
+                new SocketCloseError({
+                  reason: "Close",
+                  code: event.code,
+                  closeReason: event.reason
+                })
+              )
+            )
+          }
 
-              if (ws.readyState !== 1) {
-                const openDeferred = Deferred.unsafeMake<void>(fiber.id())
-                ws.addEventListener("open", () => {
-                  open = true
-                  Deferred.unsafeDone(openDeferred, Effect.void)
-                }, { once: true })
-                return Deferred.await(openDeferred).pipe(
-                  Effect.timeoutFail({
-                    duration: options?.openTimeout ?? 10000,
-                    onTimeout: () =>
-                      new SocketGenericError({ reason: "OpenTimeout", cause: "timeout waiting for \"open\"" })
-                  }),
-                  Effect.raceFirst(FiberSet.join(fiberSet))
-                )
-              }
+          ws.addEventListener("close", onClose, { once: true })
+          ws.addEventListener("error", onError, { once: true })
+          ws.addEventListener("message", onMessage)
+
+          if (ws.readyState !== 1) {
+            const openDeferred = Deferred.unsafeMake<void>(fiber.id())
+            ws.addEventListener("open", () => {
               open = true
-              return Effect.void
-            }),
-            Effect.tap(({ fiberSet, ws }) =>
-              Queue.take(sendQueue).pipe(
-                Effect.tap((chunk) =>
-                  isCloseEvent(chunk) ?
-                    Effect.failSync(() => {
-                      ws.close(chunk.code, chunk.reason)
-                      return new SocketCloseError({
-                        reason: "Close",
-                        code: chunk.code,
-                        closeReason: chunk.reason
-                      })
-                    }) :
-                    Effect.try({
-                      try: () => ws.send(chunk),
-                      catch: (cause) => new SocketGenericError({ reason: "Write", cause })
-                    })
-                ),
-                Effect.forever,
-                FiberSet.run(fiberSet)
-              )
+              Deferred.unsafeDone(openDeferred, Effect.void)
+            }, { once: true })
+            yield* Deferred.await(openDeferred).pipe(
+              Effect.timeoutFail({
+                duration: options?.openTimeout ?? 10000,
+                onTimeout: () =>
+                  new SocketGenericError({ reason: "OpenTimeout", cause: "timeout waiting for \"open\"" })
+              }),
+              Effect.raceFirst(FiberSet.join(fiberSet))
+            )
+          }
+          open = true
+          yield* Queue.take(sendQueue).pipe(
+            Effect.tap((chunk) =>
+              isCloseEvent(chunk) ?
+                Effect.failSync(() => {
+                  ws.close(chunk.code, chunk.reason)
+                  return new SocketCloseError({
+                    reason: "Close",
+                    code: chunk.code,
+                    closeReason: chunk.reason
+                  })
+                }) :
+                Effect.try({
+                  try: () => ws.send(chunk),
+                  catch: (cause) => new SocketGenericError({ reason: "Write", cause })
+                })
             ),
-            Effect.tap(({ fiberSet }) =>
-              Effect.catchIf(
-                FiberSet.join(fiberSet),
-                SocketCloseError.isClean((_) => !closeCodeIsError(_)),
-                (_) => Effect.void
-              )
-            ),
-            Effect.mapInputContext((input: Context.Context<R | Scope.Scope>) => Context.merge(acquireContext, input)),
-            Effect.scoped,
-            Effect.interruptible
+            Effect.forever,
+            FiberSet.run(fiberSet)
           )
-
-        const encoder = new TextEncoder()
-        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
-          runRaw((data) =>
-            typeof data === "string"
-              ? handler(encoder.encode(data))
-              : handler(data)
+          return yield* FiberSet.join(fiberSet).pipe(
+            Effect.catchIf(
+              SocketCloseError.isClean((_) => !closeCodeIsError(_)),
+              (_) => Effect.void
+            )
           )
+        }).pipe(
+          Effect.mapInputContext((input: Context.Context<R | Scope.Scope>) => Context.merge(acquireContext, input)),
+          Effect.scoped,
+          Effect.interruptible
+        )
 
-        const write = (chunk: Uint8Array | string | CloseEvent) => Queue.offer(sendQueue, chunk)
-        const writer = Effect.succeed(write)
+      const encoder = new TextEncoder()
+      const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
+        runRaw((data) =>
+          typeof data === "string"
+            ? handler(encoder.encode(data))
+            : handler(data)
+        )
 
-        return Socket.of({
-          [TypeId]: TypeId,
-          run,
-          runRaw,
-          writer
-        })
-      }
-    )
+      const write = (chunk: Uint8Array | string | CloseEvent) => Queue.offer(sendQueue, chunk)
+      const writer = Effect.succeed(write)
+
+      return Socket.of({
+        [TypeId]: TypeId,
+        run,
+        runRaw,
+        writer
+      })
+    })
   )
 
 /**
@@ -581,115 +568,110 @@ export interface InputTransformStream {
  */
 export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStream, SocketError, R>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
-}): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> => {
-  const EOF = Symbol()
-  return Effect.withFiberRuntime<Socket, never, Exclude<R, Scope.Scope>>((fiber) =>
-    Effect.map(
-      Queue.dropping<Uint8Array | string | CloseEvent | typeof EOF>(fiber.getFiberRef(currentSendQueueCapacity)),
-      (sendQueue) => {
-        const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<R>
-        const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-        const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void) =>
-          acquire.pipe(
-            Effect.bindTo("stream"),
-            Effect.bind("reader", ({ stream }) =>
-              Effect.acquireRelease(
-                Effect.sync(() => stream.readable.getReader()),
-                (reader) =>
-                  Effect.promise(() => reader.cancel()).pipe(
-                    Effect.tap(() => {
-                      reader.releaseLock()
+}): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
+  Effect.withFiberRuntime<Socket, never, Exclude<R, Scope.Scope>>((fiber) =>
+    Effect.gen(function*() {
+      const EOF = Symbol()
+      const sendQueue = yield* Queue.dropping<Uint8Array | string | CloseEvent | typeof EOF>(
+        fiber.getFiberRef(currentSendQueueCapacity)
+      )
+      const acquireContext = fiber.currentContext as Context.Context<R>
+      const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
+      const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void) =>
+        Effect.gen(function*() {
+          const stream = yield* acquire
+          const reader = yield* Effect.acquireRelease(
+            Effect.sync(() => stream.readable.getReader()),
+            (reader) =>
+              Effect.promise(() => reader.cancel()).pipe(
+                Effect.tap(() => {
+                  reader.releaseLock()
+                })
+              )
+          )
+          const writer = yield* Effect.acquireRelease(
+            Effect.sync(() => stream.writable.getWriter()),
+            (reader) => Effect.sync(() => reader.releaseLock())
+          )
+          const fiberSet = yield* FiberSet.make<any, E | SocketError>()
+          const encoder = new TextEncoder()
+          yield* Queue.take(sendQueue).pipe(
+            Effect.tap((chunk) => {
+              if (
+                chunk === EOF ||
+                isCloseEvent(chunk)
+              ) {
+                return Effect.zipRight(
+                  Effect.promise(() => writer.close()),
+                  chunk === EOF ? Effect.interrupt : Effect.fail(
+                    new SocketCloseError({
+                      reason: "Close",
+                      code: chunk.code,
+                      closeReason: chunk.reason
                     })
                   )
-              )),
-            Effect.bind("writer", ({ stream }) =>
-              Effect.acquireRelease(
-                Effect.sync(() => stream.writable.getWriter()),
-                (reader) => Effect.sync(() => reader.releaseLock())
-              )),
-            Effect.bind("fiberSet", () => FiberSet.make<any, E | SocketError>()),
-            Effect.tap(({ fiberSet, writer }) => {
-              const encoder = new TextEncoder()
-              return Queue.take(sendQueue).pipe(
-                Effect.tap((chunk) => {
-                  if (
-                    chunk === EOF ||
-                    isCloseEvent(chunk)
-                  ) {
-                    return Effect.zipRight(
-                      Effect.promise(() => writer.close()),
-                      chunk === EOF ? Effect.interrupt : Effect.fail(
-                        new SocketCloseError({
-                          reason: "Close",
-                          code: chunk.code,
-                          closeReason: chunk.reason
-                        })
-                      )
-                    )
+                )
+              }
+              return Effect.try({
+                try: () => {
+                  if (typeof chunk === "string") {
+                    writer.write(encoder.encode(chunk))
+                  } else {
+                    writer.write(chunk)
                   }
-                  return Effect.try({
-                    try: () => {
-                      if (typeof chunk === "string") {
-                        writer.write(encoder.encode(chunk))
-                      } else {
-                        writer.write(chunk)
-                      }
-                    },
-                    catch: (cause) => new SocketGenericError({ reason: "Write", cause })
-                  })
-                }),
-                Effect.forever,
-                FiberSet.run(fiberSet)
-              )
+                },
+                catch: (cause) => new SocketGenericError({ reason: "Write", cause })
+              })
             }),
-            Effect.tap(({ fiberSet, reader }) =>
-              Effect.tryPromise({
-                try: () => reader.read(),
-                catch: (cause) => new SocketGenericError({ reason: "Read", cause })
-              }).pipe(
-                Effect.tap((result) => {
-                  if (result.done) {
-                    return Effect.fail(new SocketCloseError({ reason: "Close", code: 1000 }))
-                  }
-                  return handler(result.value)
-                }),
-                Effect.forever,
-                FiberSet.run(fiberSet)
-              )
-            ),
-            Effect.tap(({ fiberSet }) =>
-              Effect.catchIf(
-                FiberSet.join(fiberSet),
-                SocketCloseError.isClean((_) => !closeCodeIsError(_)),
-                (_) => Effect.void
-              )
-            ),
-            Effect.mapInputContext((input: Context.Context<R | Scope.Scope>) => Context.merge(acquireContext, input)),
-            Effect.scoped,
-            Effect.interruptible
+            Effect.forever,
+            FiberSet.run(fiberSet)
           )
 
-        const encoder = new TextEncoder()
-        const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
-          runRaw((data) =>
-            typeof data === "string"
-              ? handler(encoder.encode(data))
-              : handler(data)
+          yield* Effect.tryPromise({
+            try: () => reader.read(),
+            catch: (cause) => new SocketGenericError({ reason: "Read", cause })
+          }).pipe(
+            Effect.tap((result) => {
+              if (result.done) {
+                return Effect.fail(new SocketCloseError({ reason: "Close", code: 1000 }))
+              }
+              return handler(result.value)
+            }),
+            Effect.forever,
+            FiberSet.run(fiberSet)
           )
 
-        const write = (chunk: Uint8Array | string | CloseEvent) => Queue.offer(sendQueue, chunk)
-        const writer = Effect.acquireRelease(
-          Effect.succeed(write),
-          () => Queue.offer(sendQueue, EOF)
+          return yield* FiberSet.join(fiberSet).pipe(
+            Effect.catchIf(
+              SocketCloseError.isClean((_) => !closeCodeIsError(_)),
+              (_) => Effect.void
+            )
+          )
+        }).pipe(
+          Effect.mapInputContext((input: Context.Context<R | Scope.Scope>) => Context.merge(acquireContext, input)),
+          Effect.scoped,
+          Effect.interruptible
         )
 
-        return Socket.of({
-          [TypeId]: TypeId,
-          run,
-          runRaw,
-          writer
-        })
-      }
-    )
+      const encoder = new TextEncoder()
+      const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
+        runRaw((data) =>
+          typeof data === "string"
+            ? handler(encoder.encode(data))
+            : handler(data)
+        )
+
+      const write = (chunk: Uint8Array | string | CloseEvent) => Queue.offer(sendQueue, chunk)
+      const writer = Effect.acquireRelease(
+        Effect.succeed(write),
+        () => Queue.offer(sendQueue, EOF)
+      )
+
+      return Socket.of({
+        [TypeId]: TypeId,
+        run,
+        runRaw,
+        writer
+      })
+    })
   )
-}
