@@ -86,11 +86,7 @@ export const fromDuplex = <RO>(
           const scope = yield* Effect.scope
           const fiberSet = yield* FiberSet.make<any, E | Socket.SocketError>()
           const conn = yield* open
-          const run = yield* (Effect.provideService(
-            FiberSet.runtime(fiberSet)<R>(),
-            NetSocket,
-            conn as Net.Socket
-          ) as Effect.Effect<any, never, R>)
+          const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), NetSocket, conn as Net.Socket)
 
           function onData(chunk: Uint8Array) {
             const result = handler(chunk)

@@ -382,24 +382,25 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
  * @since 1.0.0
  * @category constructors
  */
-export const fromWebSocket = <R>(
-  acquire: Effect.Effect<globalThis.WebSocket, SocketError, R>,
+export const fromWebSocket = <RO>(
+  acquire: Effect.Effect<globalThis.WebSocket, SocketError, RO>,
   options?: {
     readonly closeCodeIsError?: (code: number) => boolean
     readonly openTimeout?: DurationInput
   }
-): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
-  Effect.withFiberRuntime<Socket, never, Exclude<R, Scope.Scope>>((fiber) =>
+): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
+  Effect.withFiberRuntime<Socket, never, Exclude<RO, Scope.Scope>>((fiber) =>
     Effect.gen(function*() {
       const sendQueue = yield* Queue.dropping<Uint8Array | string | CloseEvent>(
         fiber.getFiberRef(currentSendQueueCapacity)
       )
-      const acquireContext = fiber.currentContext as Context.Context<R>
+      const acquireContext = fiber.currentContext as Context.Context<RO>
       const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
+
       const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void) =>
         Effect.gen(function*() {
-          const ws = yield* acquire
           const fiberSet = yield* FiberSet.make<any, E | SocketError>()
+          const ws = yield* acquire
           const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), WebSocket, ws)
           let open = false
 
