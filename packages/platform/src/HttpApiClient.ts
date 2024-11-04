@@ -64,10 +64,10 @@ export declare namespace Client {
       infer _R,
       infer _RE
     >
-  ] ? (
-      request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers>>
+  ] ? <WithResponse extends boolean = false>(
+      request: Simplify<HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers, WithResponse>>
     ) => Effect.Effect<
-      _Success,
+      WithResponse extends true ? [_Success, HttpClientResponse.HttpClientResponse] : _Success,
       _Error | GroupError | ApiError | HttpClientError.HttpClientError
     > :
     never
@@ -120,6 +120,7 @@ export const make = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
           number | "orElse",
           (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>
         > = { orElse: statusOrElse }
+        const decodeResponse = HttpClientResponse.matchStatus(decodeMap)
         errors.forEach((ast, status) => {
           if (ast._tag === "None") {
             decodeMap[status] = statusCodeError
@@ -150,6 +151,7 @@ export const make = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
           readonly urlParams: any
           readonly payload: any
           readonly headers: any
+          readonly withResponse?: boolean
         }) => {
           const url = request && request.path ? makeUrl(request.path) : endpoint.path
           const baseRequest = HttpClientRequest.make(endpoint.method)(url)
@@ -184,8 +186,12 @@ export const make = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
                 )
                 : identity,
               Effect.flatMap(httpClient.execute),
-              Effect.flatMap(HttpClientResponse.matchStatus(decodeMap)),
-              options?.transformResponse === undefined ? identity : options.transformResponse,
+              Effect.flatMap((response) => {
+                const value = options?.transformResponse === undefined
+                  ? decodeResponse(response)
+                  : options.transformResponse(decodeResponse(response))
+                return request?.withResponse === true ? Effect.map(value, (value) => [value, response]) : value
+              }),
               Effect.scoped,
               Effect.catchIf(ParseResult.isParseError, Effect.die),
               Effect.mapInputContext((input) => Context.merge(context, input))

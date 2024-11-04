@@ -402,14 +402,16 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type ClientRequest<Path, UrlParams, Payload, Headers> = (
+  export type ClientRequest<Path, UrlParams, Payload, Headers, WithResponse extends boolean> = (
     & ([Path] extends [void] ? {} : { readonly path: Path })
     & ([UrlParams] extends [never] ? {} : { readonly urlParams: UrlParams })
     & ([Headers] extends [never] ? {} : { readonly headers: Headers })
     & ([Payload] extends [never] ? {}
       : [Payload] extends [Brand<HttpApiSchema.MultipartTypeId>] ? { readonly payload: FormData }
       : { readonly payload: Payload })
-  ) extends infer Req ? keyof Req extends never ? void : Req : void
+  ) extends infer Req ? keyof Req extends never ? (void | { readonly withResponse?: WithResponse }) :
+    Req & { readonly withResponse?: WithResponse } :
+    void
 
   /**
    * @since 1.0.0
