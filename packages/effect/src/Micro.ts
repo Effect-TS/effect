@@ -573,16 +573,13 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
 
   getCont<S extends successCont | failureCont>(
     symbol: S
-  ):
-    | ((value: unknown, fiber: FiberImpl) => Primitive | Yield)
-    | undefined
-  {
+  ): Primitive & Record<S, (value: any, fiber: FiberImpl) => Primitive> | undefined {
     while (true) {
       const op = this._stack.pop()
       if (!op) return undefined
       const cont = op[ensureCont] && op[ensureCont](this)
-      if (cont) return cont
-      if (op[symbol]) return op[symbol] as any
+      if (cont) return { [symbol]: cont } as any
+      if (op[symbol]) return op as any
     }
   }
 
@@ -729,10 +726,20 @@ function defaultEvaluate(_fiber: FiberImpl): Primitive | Yield {
 const makePrimitiveProto = <Op extends string>(options: {
   readonly op: Op
   readonly eval?: (fiber: FiberImpl) => Primitive | Micro<any, any, any> | Yield
+  readonly contA?: (this: Primitive, value: any, fiber: FiberImpl) => Primitive | Micro<any, any, any> | Yield
+  readonly contE?: (
+    this: Primitive,
+    cause: MicroCause<any>,
+    fiber: FiberImpl
+  ) => Primitive | Micro<any, any, any> | Yield
+  readonly ensure?: (this: Primitive, fiber: FiberImpl) => void | ((value: any, fiber: FiberImpl) => void)
 }): Primitive => ({
   ...MicroProto,
   [identifier]: options.op,
-  [evaluate]: options.eval ?? defaultEvaluate
+  [evaluate]: options.eval ?? defaultEvaluate,
+  [successCont]: options.contA,
+  [failureCont]: options.contE,
+  [ensureCont]: options.ensure
 } as any)
 
 const makePrimitive = <Fn extends (...args: Array<any>) => any, Single extends boolean = true>(options: {
@@ -743,27 +750,24 @@ const makePrimitive = <Fn extends (...args: Array<any>) => any, Single extends b
     fiber: FiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
   readonly contA?: (
-    self: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
+    this: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
     value: any,
     fiber: FiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
   readonly contE?: (
-    self: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
+    this: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
     cause: MicroCause<any>,
     fiber: FiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
   readonly ensure?: (
-    self: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
+    this: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
     fiber: FiberImpl
-  ) => void | (() => void)
+  ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Fn => {
-  const Proto = makePrimitiveProto(options)
+  const Proto = makePrimitiveProto(options as any)
   return function() {
     const self = Object.create(Proto)
     self[args] = options.single === false ? arguments : arguments[0]
-    self[successCont] = options.contA ? (value: any, fiber: FiberImpl) => options.contA!(self, value, fiber) : undefined
-    self[failureCont] = options.contE ? (cause: any, fiber: FiberImpl) => options.contE!(self, cause, fiber) : undefined
-    self[ensureCont] = options.ensure ? (fiber: FiberImpl) => options.ensure!(self, fiber) : undefined
     return self
   } as Fn
 }
@@ -822,7 +826,7 @@ export const succeed: <A>(value: A) => Micro<A> = makeExit({
   prop: "value",
   eval(fiber) {
     const cont = fiber.getCont(successCont)
-    return cont ? cont(this[args], fiber) : fiber.yieldWith(this)
+    return cont ? cont[successCont](this[args], fiber) : fiber.yieldWith(this)
   }
 })
 
@@ -841,7 +845,7 @@ export const failCause: <E>(cause: MicroCause<E>) => Micro<never, E> = makeExit(
     while (causeIsInterrupt(this[args]) && cont && isInterruptible(fiber.flags)) {
       cont = fiber.getCont(failureCont)
     }
-    return cont ? cont(this[args], fiber) : fiber.yieldWith(this)
+    return cont ? cont[failureCont](this[args], fiber) : fiber.yieldWith(this)
   }
 })
 
@@ -872,7 +876,7 @@ export const sync: <A>(evaluate: LazyArg<A>) => Micro<A> = makePrimitive({
   eval(fiber): Primitive | Yield {
     const value = this[args]()
     const cont = fiber.getCont(successCont)
-    return cont ? cont(value, fiber) : fiber.yieldWith(exitSucceed(value))
+    return cont ? cont[successCont](value, fiber) : fiber.yieldWith(exitSucceed(value))
   }
 })
 
@@ -1155,15 +1159,15 @@ const asyncOptions: <A, E = never, R = never>(
 })
 const asyncFinalizer: (onInterrupt: () => Micro<void, any, any>) => Primitive = makePrimitive({
   op: "AsyncFinalizer",
-  ensure(_, fiber) {
+  ensure(fiber) {
     if (isInterruptible(fiber.flags)) {
       fiber.flags |= FiberFlag.Uninterruptible
       fiber._stack.push(revertFlags(FiberFlag.Uninterruptible))
     }
   },
-  contE(self, cause, _fiber) {
+  contE(cause, _fiber) {
     return causeIsInterrupt(cause)
-      ? flatMap(self[args](), () => failCause(cause))
+      ? flatMap(this[args](), () => failCause(cause))
       : failCause(cause)
   }
 })
@@ -1218,10 +1222,10 @@ const fromIterator: (
   iterator: Iterator<any, YieldWrap<Micro<any, any, any>>>
 ) => Micro<any, any, any> = makePrimitive({
   op: "Iterator",
-  contA(self, value, fiber) {
-    const state = self[args].next(value)
+  contA(value, fiber) {
+    const state = this[args].next(value)
     if (state.done) return succeed(state.value)
-    fiber._stack.push(self)
+    fiber._stack.push(this)
     return yieldWrapGet(state.value)
   },
   eval(this: any, fiber: FiberImpl) {
@@ -1599,8 +1603,8 @@ const updateFlags: (
 
 const revertFlags: (diff: number) => Primitive = makePrimitive({
   op: "RevertFlags",
-  ensure(self, fiber) {
-    fiber.flags = fiber.flags ^ self[args]
+  ensure(fiber) {
+    fiber.flags = fiber.flags ^ this[args]
     if (fiber._interrupted && isInterruptible(fiber.flags)) {
       return () => exitInterrupt
     }
@@ -3962,11 +3966,11 @@ export const whileLoop: <A, E, R>(options: {
   readonly step: (a: A) => void
 }) => Micro<void, E, R> = makePrimitive({
   op: "While",
-  contA(self, value, fiber) {
-    self[args].step(value)
-    if (self[args].while()) {
-      fiber._stack.push(self)
-      return self[args].body()
+  contA(value, fiber) {
+    this[args].step(value)
+    if (this[args].while()) {
+      fiber._stack.push(this)
+      return this[args].body()
     }
     return exitVoid
   },
