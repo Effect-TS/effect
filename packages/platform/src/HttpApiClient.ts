@@ -152,51 +152,41 @@ export const make = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
           readonly payload: any
           readonly headers: any
           readonly withResponse?: boolean
-        }) => {
-          const url = request && request.path ? makeUrl(request.path) : endpoint.path
-          const baseRequest = HttpClientRequest.make(endpoint.method)(url)
-          return (isMultipart ?
-            Effect.succeed(baseRequest.pipe(
-              HttpClientRequest.bodyFormData(request.payload)
-            ))
-            : encodePayload._tag === "Some"
-            ? encodePayload.value(request.payload).pipe(
-              Effect.flatMap((payload) =>
-                HttpMethod.hasBody(endpoint.method)
-                  ? HttpClientRequest.bodyJson(baseRequest, payload)
-                  : Effect.succeed(HttpClientRequest.setUrlParams(baseRequest, payload as any))
-              ),
-              Effect.orDie
+        }) =>
+          Effect.gen(function*() {
+            let httpRequest = HttpClientRequest.make(endpoint.method)(
+              request && request.path ? makeUrl(request.path) : endpoint.path
             )
-            : Effect.succeed(baseRequest)).pipe(
-              encodeHeaders._tag === "Some"
-                ? Effect.flatMap((httpRequest) =>
-                  encodeHeaders.value(request.headers).pipe(
-                    Effect.orDie,
-                    Effect.map((headers) => HttpClientRequest.setHeaders(httpRequest, headers as any))
-                  )
-                )
-                : identity,
-              encodeUrlParams._tag === "Some"
-                ? Effect.flatMap((httpRequest) =>
-                  encodeUrlParams.value(request.urlParams).pipe(
-                    Effect.orDie,
-                    Effect.map((params) => HttpClientRequest.appendUrlParams(httpRequest, params as any))
-                  )
-                )
-                : identity,
-              Effect.flatMap(httpClient.execute),
-              Effect.flatMap((response) => {
-                const value = options?.transformResponse === undefined
-                  ? decodeResponse(response)
-                  : options.transformResponse(decodeResponse(response))
-                return request?.withResponse === true ? Effect.map(value, (value) => [value, response]) : value
-              }),
-              Effect.scoped,
-              Effect.catchIf(ParseResult.isParseError, Effect.die),
-              Effect.mapInputContext((input) => Context.merge(context, input))
-            )
-        }
+            if (isMultipart) {
+              httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
+            } else if (encodePayload._tag === "Some") {
+              const payload = yield* encodePayload.value(request.payload)
+              httpRequest = HttpMethod.hasBody(endpoint.method)
+                ? yield* Effect.orDie(HttpClientRequest.bodyJson(httpRequest, payload))
+                : HttpClientRequest.setUrlParams(httpRequest, payload as any)
+            }
+            if (encodeHeaders._tag === "Some") {
+              httpRequest = HttpClientRequest.setHeaders(
+                httpRequest,
+                (yield* encodeHeaders.value(request.headers)) as any
+              )
+            }
+            if (encodeUrlParams._tag === "Some") {
+              httpRequest = HttpClientRequest.appendUrlParams(
+                httpRequest,
+                (yield* encodeUrlParams.value(request.urlParams)) as any
+              )
+            }
+            const response = yield* httpClient.execute(httpRequest)
+            const value = yield* (options?.transformResponse === undefined
+              ? decodeResponse(response)
+              : options.transformResponse(decodeResponse(response)))
+            return request?.withResponse === true ? [value, response] : value
+          }).pipe(
+            Effect.scoped,
+            Effect.catchIf(ParseResult.isParseError, Effect.die),
+            Effect.mapInputContext((input) => Context.merge(context, input))
+          )
       }
     })
     return client as any
