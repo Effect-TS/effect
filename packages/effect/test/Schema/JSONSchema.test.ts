@@ -1872,6 +1872,128 @@ schema (Suspend): <suspended schema>`
       )
     })
 
+    it("struct and class", () => {
+      expectJSONSchema(
+        Schema.Struct({ a: Schema.String, b: JsonNumber }).annotations({
+          identifier: "test",
+          title: "Test"
+        }),
+        {
+          "$defs": {
+            "test": {
+              "additionalProperties": false,
+              "properties": {
+                "a": {
+                  "type": "string"
+                },
+                "b": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "a",
+                "b"
+              ],
+              "type": "object",
+              "title": "Test"
+            }
+          },
+          "$ref": "#/$defs/test",
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        false
+      )
+      expectJSONSchema(
+        Schema.Struct({ a: Schema.String, b: Schema.optionalWith(JsonNumber, { default: () => 1 }) }).annotations({
+          identifier: "test",
+          title: "Test"
+        }),
+        {
+          "$defs": {
+            "test": {
+              "additionalProperties": false,
+              "properties": {
+                "a": {
+                  "type": "string"
+                },
+                "b": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "a"
+              ],
+              "title": "Test",
+              "type": "object"
+            }
+          },
+          "$ref": "#/$defs/test",
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      )
+      expectJSONSchema(
+        class A extends Schema.Class<A>("A")({ a: Schema.String, b: JsonNumber }, {
+          identifier: "test",
+          title: "Test"
+        }) {},
+        {
+          "$defs": {
+            "test": {
+              "additionalProperties": false,
+              "properties": {
+                "a": {
+                  "type": "string"
+                },
+                "b": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "a",
+                "b"
+              ],
+              "title": "Test",
+              "type": "object"
+            }
+          },
+          "$ref": "#/$defs/test",
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        false
+      )
+      expectJSONSchema(
+        class A
+          extends Schema.Class<A>("A")({ a: Schema.String, b: Schema.optionalWith(JsonNumber, { default: () => 1 }) })
+            .annotations({
+              identifier: "test",
+              title: "Test"
+            })
+        {},
+        {
+          "$defs": {
+            "test": {
+              "additionalProperties": false,
+              "properties": {
+                "a": {
+                  "type": "string"
+                },
+                "b": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "a"
+              ],
+              "title": "Test",
+              "type": "object"
+            }
+          },
+          "$ref": "#/$defs/test",
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      )
+    })
+
     it("Union", () => {
       expectJSONSchema(
         Schema.Union(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom JSON Schema" } }),
