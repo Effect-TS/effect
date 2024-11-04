@@ -421,37 +421,35 @@ export const toPersisted = (
   stream: Stream.Stream<Multipart.Part, Multipart.MultipartError>,
   writeFile = defaultWriteFile
 ): Effect.Effect<Multipart.Persisted, Multipart.MultipartError, FileSystem.FileSystem | Path.Path | Scope.Scope> =>
-  pipe(
-    Effect.Do,
-    Effect.bind("fs", () => FileSystem.FileSystem),
-    Effect.bind("path", () => Path.Path),
-    Effect.bind("dir", ({ fs }) => fs.makeTempDirectoryScoped()),
-    Effect.flatMap(({ dir, path: path_ }) =>
-      Stream.runFoldEffect(
-        stream,
-        Object.create(null) as Record<string, Array<Multipart.PersistedFile> | string>,
-        (persisted, part) => {
-          if (part._tag === "Field") {
-            persisted[part.key] = part.value
-            return Effect.succeed(persisted)
-          }
-          const file = part
-          const path = path_.join(dir, path_.basename(file.name).slice(-128))
-          if (!Array.isArray(persisted[part.key])) {
-            persisted[part.key] = []
-          }
-          ;(persisted[part.key] as Array<Multipart.PersistedFile>).push(
-            new PersistedFileImpl(
-              file.key,
-              file.name,
-              file.contentType,
-              path
-            )
-          )
-          return Effect.as(writeFile(path, file), persisted)
+  Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const path_ = yield* Path.Path
+    const dir = yield* fs.makeTempDirectoryScoped()
+    return yield* Stream.runFoldEffect(
+      stream,
+      Object.create(null) as Record<string, Array<Multipart.PersistedFile> | string>,
+      (persisted, part) => {
+        if (part._tag === "Field") {
+          persisted[part.key] = part.value
+          return Effect.succeed(persisted)
         }
-      )
-    ),
+        const file = part
+        const path = path_.join(dir, path_.basename(file.name).slice(-128))
+        if (!Array.isArray(persisted[part.key])) {
+          persisted[part.key] = []
+        }
+        ;(persisted[part.key] as Array<Multipart.PersistedFile>).push(
+          new PersistedFileImpl(
+            file.key,
+            file.name,
+            file.contentType,
+            path
+          )
+        )
+        return Effect.as(writeFile(path, file), persisted)
+      }
+    )
+  }).pipe(
     Effect.catchTags({
       SystemError: (cause) => Effect.fail(new MultipartError({ reason: "InternalError", cause })),
       BadArgument: (cause) => Effect.fail(new MultipartError({ reason: "InternalError", cause }))

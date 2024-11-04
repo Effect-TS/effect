@@ -5,7 +5,7 @@ import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
-import * as FiberRef from "effect/FiberRef"
+import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as HashMap from "effect/HashMap"
@@ -163,17 +163,13 @@ export const toWebHandler = <LA, LE>(
     options?.memoMap
   )
   let handlerCached: ((request: Request) => Promise<Response>) | undefined
-  const handlerPromise = httpApp.pipe(
-    Effect.bindTo("httpApp"),
-    Effect.bind("runtime", () => runtime.runtimeEffect),
-    Effect.map(({ httpApp, runtime }) =>
-      HttpApp.toWebHandlerRuntime(runtime)(options?.middleware ? options.middleware(httpApp as any) as any : httpApp)
-    ),
-    Effect.tap((handler) => {
-      handlerCached = handler
-    }),
-    runtime.runPromise
-  )
+  const handlerPromise = Effect.gen(function*() {
+    const app = yield* httpApp
+    const rt = yield* runtime.runtimeEffect
+    const handler = HttpApp.toWebHandlerRuntime(rt)(options?.middleware ? options.middleware(app as any) as any : app)
+    handlerCached = handler
+    return handler
+  }).pipe(runtime.runPromise)
   function handler(request: Request): Promise<Response> {
     if (handlerCached !== undefined) {
       return handlerCached(request)
@@ -570,52 +566,35 @@ const handlerToRoute = (
     endpoint.path,
     applyMiddleware(
       middleware,
-      Effect.withFiberRuntime((fiber) => {
-        const context = fiber.getFiberRef(FiberRef.currentContext)
-        const request = Context.unsafeGet(context, HttpServerRequest.HttpServerRequest)
+      Effect.gen(function*() {
+        const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+        const context = fiber.currentContext
+        const httpRequest = Context.unsafeGet(context, HttpServerRequest.HttpServerRequest)
         const routeContext = Context.unsafeGet(context, HttpRouter.RouteContext)
         const urlParams = Context.unsafeGet(context, HttpServerRequest.ParsedSearchParams)
-        return (
-          decodePath._tag === "Some"
-            ? decodePath.value(routeContext.params)
-            : Effect.succeed(routeContext.params)
-        ).pipe(
-          Effect.bindTo("pathParams"),
-          decodePayload._tag === "Some"
-            ? Effect.bind(
-              "payload",
-              (_) =>
-                Effect.flatMap(
-                  requestPayload(request, urlParams, isMultipart),
-                  decodePayload.value
-                )
-            ) as typeof identity
-            : identity,
-          decodeHeaders._tag === "Some"
-            ? Effect.bind("headers", (_) => decodeHeaders.value(request.headers)) as typeof identity
-            : identity,
-          decodeUrlParams._tag === "Some"
-            ? Effect.bind("urlParams", (_) => decodeUrlParams.value(urlParams)) as typeof identity
-            : identity,
-          Effect.flatMap((input) => {
-            const request: any = { path: input.pathParams }
-            if ("payload" in input) {
-              request.payload = input.payload
-            }
-            if ("headers" in input) {
-              request.headers = input.headers
-            }
-            if ("urlParams" in input) {
-              request.urlParams = input.urlParams
-            }
-            return handler(request)
-          }),
-          isFullResponse ?
-            identity as (_: any) => Effect.Effect<HttpServerResponse.HttpServerResponse> :
-            Effect.flatMap(encodeSuccess),
-          Effect.catchIf(ParseResult.isParseError, HttpApiDecodeError.refailParseError)
-        )
-      })
+        const request: any = {}
+        if (decodePath._tag === "Some") {
+          request.path = yield* decodePath.value(routeContext.params)
+        }
+        if (decodePayload._tag === "Some") {
+          request.payload = yield* Effect.flatMap(
+            requestPayload(httpRequest, urlParams, isMultipart),
+            decodePayload.value
+          )
+        }
+        if (decodeHeaders._tag === "Some") {
+          request.headers = yield* decodeHeaders.value(httpRequest.headers)
+        }
+        if (decodeUrlParams._tag === "Some") {
+          request.urlParams = yield* decodeUrlParams.value(urlParams)
+        }
+        const response = isFullResponse
+          ? yield* handler(request)
+          : yield* Effect.flatMap(handler(request), encodeSuccess)
+        return response as HttpServerResponse.HttpServerResponse
+      }).pipe(
+        Effect.catchIf(ParseResult.isParseError, HttpApiDecodeError.refailParseError)
+      )
     )
   )
 }
