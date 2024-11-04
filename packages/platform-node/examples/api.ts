@@ -172,7 +172,7 @@ const ApiLive = HttpApiBuilder.api(MyApi).pipe(
 // server
 // ------------------------------------------------
 
-HttpApiBuilder.serve().pipe(
+HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
   Layer.provide(HttpApiSwagger.layer()),
   Layer.provide(HttpApiBuilder.middlewareOpenApi()),
   Layer.provide(ApiLive),
