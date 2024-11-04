@@ -1,5 +1,19 @@
 # effect
 
+## 3.10.9
+
+### Patch Changes
+
+- [#3883](https://github.com/Effect-TS/effect/pull/3883) [`a123e80`](https://github.com/Effect-TS/effect/commit/a123e80f111a625428a5b5622b7f55ee1073566b) Thanks @tim-smart! - add FromIterator primitive to improve Effect.gen performance
+
+- [#3880](https://github.com/Effect-TS/effect/pull/3880) [`bd5fcd3`](https://github.com/Effect-TS/effect/commit/bd5fcd3e6b603b1e505af90d6a00627c8eca6d41) Thanks @tim-smart! - refactor Effect.gen to improve performance
+
+- [#3881](https://github.com/Effect-TS/effect/pull/3881) [`0289d3b`](https://github.com/Effect-TS/effect/commit/0289d3b6391031d00329365bab9791b355031fe3) Thanks @tim-smart! - implement Effect.suspend using OP_COMMIT
+
+- [#3862](https://github.com/Effect-TS/effect/pull/3862) [`7386b71`](https://github.com/Effect-TS/effect/commit/7386b710e5be570e17f468928a6ed19d549a3e12) Thanks @furrycatherder! - fix the type signature of `use` in Effect.Service
+
+- [#3879](https://github.com/Effect-TS/effect/pull/3879) [`4211a23`](https://github.com/Effect-TS/effect/commit/4211a2355bb3af3f0e756e2aae9d293379f25662) Thanks @IMax153! - Return a sequential cause when both the `use` and `release` fail in `Effect.acquireUseRelease`
+
 ## 3.10.8
 
 ### Patch Changes
