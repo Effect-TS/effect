@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.69.15
+
+### Patch Changes
+
+- [#3885](https://github.com/Effect-TS/effect/pull/3885) [`8a30e1d`](https://github.com/Effect-TS/effect/commit/8a30e1dfa3a7103bf5414fc6a7fca3088d8c8c00) Thanks @tim-smart! - simplify HttpApiBuilder handler logic
+
 ## 0.69.14
 
 ### Patch Changes

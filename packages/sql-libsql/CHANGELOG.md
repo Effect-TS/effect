@@ -1,5 +1,13 @@
 # @effect/sql-libsql
 
+## 0.7.5
+
+### Patch Changes
+
+- Updated dependencies [[`8a30e1d`](https://github.com/Effect-TS/effect/commit/8a30e1dfa3a7103bf5414fc6a7fca3088d8c8c00)]:
+  - @effect/platform@0.69.15
+  - @effect/sql@0.18.16
+
 ## 0.7.4
 
 ### Patch Changes
