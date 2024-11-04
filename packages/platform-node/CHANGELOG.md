@@ -1,5 +1,15 @@
 # @effect/platform-node
 
+## 0.64.16
+
+### Patch Changes
+
+- [#3885](https://github.com/Effect-TS/effect/pull/3885) [`8a30e1d`](https://github.com/Effect-TS/effect/commit/8a30e1dfa3a7103bf5414fc6a7fca3088d8c8c00) Thanks @tim-smart! - simplify HttpApiBuilder handler logic
+
+- Updated dependencies [[`8a30e1d`](https://github.com/Effect-TS/effect/commit/8a30e1dfa3a7103bf5414fc6a7fca3088d8c8c00)]:
+  - @effect/platform@0.69.15
+  - @effect/platform-node-shared@0.19.15
+
 ## 0.64.15
 
 ### Patch Changes
