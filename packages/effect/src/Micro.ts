@@ -452,7 +452,6 @@ export declare namespace Fiber {
  * @category Fiber
  */
 export const FiberFlag = {
-  None: 0,
   Uninterruptible: 1
 } as const
 
@@ -580,14 +579,10 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
   {
     while (true) {
       const op = this._stack.pop()
-      if (op === undefined) return undefined
-      if (op[ensureCont] !== undefined) {
-        const cont = op[ensureCont](this as any)
-        if (cont) return cont
-      }
-      if (op[symbol] !== undefined) {
-        return op[symbol] as any
-      }
+      if (!op) return undefined
+      const cont = op[ensureCont] && op[ensureCont](this)
+      if (cont) return cont
+      if (op[symbol]) return op[symbol] as any
     }
   }
 
@@ -645,7 +640,7 @@ export const fiberInterruptAll = <A extends Iterable<Fiber<any, any>>>(fibers: A
     const wait: Micro<void> = suspend(() => {
       let result = iter.next()
       while (!result.done) {
-        if (result.value.unsafePoll() !== undefined) {
+        if (result.value.unsafePoll()) {
           result = iter.next()
           continue
         }
@@ -706,14 +701,8 @@ const MicroProto = {
   ...Effectable.EffectPrototype,
   _op: "Micro",
   [TypeId]: microVariance,
-  [successCont]: undefined,
-  [failureCont]: undefined,
-  [ensureCont]: undefined,
   pipe() {
     return pipeArguments(this, arguments)
-  },
-  [evaluate](_fiber: FiberImpl): Primitive | Yield {
-    return exitDie(`Micro.evaluate: Not implemented`) as any
   },
   [Symbol.iterator]() {
     return new SingleShotGen(new YieldWrap(this)) as any
@@ -733,33 +722,37 @@ const MicroProto = {
   }
 }
 
+function defaultEvaluate(_fiber: FiberImpl): Primitive | Yield {
+  return exitDie(`Micro.evaluate: Not implemented`) as any
+}
+
 const makePrimitiveProto = <Op extends string>(options: {
   readonly op: Op
-  readonly evaluate?: (fiber: FiberImpl<unknown, unknown>) => Primitive | Micro<any, any, any> | Yield
+  readonly eval?: (fiber: FiberImpl) => Primitive | Micro<any, any, any> | Yield
 }): Primitive => ({
   ...MicroProto,
   [identifier]: options.op,
-  ...(options.evaluate && { [evaluate]: options.evaluate as any })
-})
+  [evaluate]: options.eval ?? defaultEvaluate
+} as any)
 
 const makePrimitive = <Fn extends (...args: Array<any>) => any, Single extends boolean = true>(options: {
   readonly op: string
-  readonly singleArg?: Single
-  readonly evaluate?: (
+  readonly single?: Single
+  readonly eval?: (
     this: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
     fiber: FiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
-  readonly successCont?: (
+  readonly contA?: (
     self: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
     value: any,
     fiber: FiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
-  readonly failureCont?: (
+  readonly contE?: (
     self: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
     cause: MicroCause<any>,
     fiber: FiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
-  readonly ensureCont?: (
+  readonly ensure?: (
     self: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
     fiber: FiberImpl
   ) => void | (() => void)
@@ -767,12 +760,10 @@ const makePrimitive = <Fn extends (...args: Array<any>) => any, Single extends b
   const Proto = makePrimitiveProto(options)
   return function() {
     const self = Object.create(Proto)
-    self[args] = options.singleArg === false ? arguments : arguments[0]
-    options.successCont &&
-      (self[successCont] = (value: any, fiber: FiberImpl) => options.successCont!(self, value, fiber))
-    options.failureCont &&
-      (self[failureCont] = (value: any, fiber: FiberImpl) => options.failureCont!(self, value, fiber))
-    options.ensureCont && (self[ensureCont] = (fiber: FiberImpl) => options.ensureCont!(self, fiber))
+    self[args] = options.single === false ? arguments : arguments[0]
+    self[successCont] = options.contA ? (value: any, fiber: FiberImpl) => options.contA!(self, value, fiber) : undefined
+    self[failureCont] = options.contE ? (cause: any, fiber: FiberImpl) => options.contE!(self, cause, fiber) : undefined
+    self[ensureCont] = options.ensure ? (fiber: FiberImpl) => options.ensure!(self, fiber) : undefined
     return self
   } as Fn
 }
@@ -780,7 +771,7 @@ const makePrimitive = <Fn extends (...args: Array<any>) => any, Single extends b
 const makeExit = <Fn extends (...args: Array<any>) => any, Prop extends string>(options: {
   readonly op: "Success" | "Failure"
   readonly prop: Prop
-  readonly evaluate: (
+  readonly eval: (
     this:
       & MicroExit<unknown, unknown>
       & { [args]: Parameters<Fn>[0] },
@@ -812,6 +803,9 @@ const makeExit = <Fn extends (...args: Array<any>) => any, Prop extends string>(
   return function(value: unknown) {
     const self = Object.create(Proto)
     self[args] = value
+    self[successCont] = undefined
+    self[failureCont] = undefined
+    self[ensureCont] = undefined
     return self
   } as Fn
 }
@@ -826,12 +820,9 @@ const makeExit = <Fn extends (...args: Array<any>) => any, Prop extends string>(
 export const succeed: <A>(value: A) => Micro<A> = makeExit({
   op: "Success",
   prop: "value",
-  evaluate(fiber) {
+  eval(fiber) {
     const cont = fiber.getCont(successCont)
-    if (cont === undefined) {
-      return fiber.yieldWith(this)
-    }
-    return cont(this[args], fiber)
+    return cont ? cont(this[args], fiber) : fiber.yieldWith(this)
   }
 })
 
@@ -845,20 +836,12 @@ export const succeed: <A>(value: A) => Micro<A> = makeExit({
 export const failCause: <E>(cause: MicroCause<E>) => Micro<never, E> = makeExit({
   op: "Failure",
   prop: "cause",
-  evaluate(fiber) {
-    const isInterrupt = causeIsInterrupt(this[args])
+  eval(fiber) {
     let cont = fiber.getCont(failureCont)
-    if (cont === undefined) {
-      return fiber.yieldWith(this)
-    } else if (isInterrupt) {
-      while (isInterruptible(fiber.flags)) {
-        cont = fiber.getCont(failureCont)
-        if (cont === undefined) {
-          return fiber.yieldWith(this)
-        }
-      }
+    while (causeIsInterrupt(this[args]) && cont && isInterruptible(fiber.flags)) {
+      cont = fiber.getCont(failureCont)
     }
-    return cont(this[args], fiber)
+    return cont ? cont(this[args], fiber) : fiber.yieldWith(this)
   }
 })
 
@@ -886,13 +869,10 @@ export const fail = <E>(error: E): Micro<never, E> => failCause(causeFail(error)
  */
 export const sync: <A>(evaluate: LazyArg<A>) => Micro<A> = makePrimitive({
   op: "Sync",
-  evaluate(fiber): Primitive | Yield {
+  eval(fiber): Primitive | Yield {
     const value = this[args]()
     const cont = fiber.getCont(successCont)
-    if (cont === undefined) {
-      return fiber.yieldWith(exitSucceed(value))
-    }
-    return cont(value, fiber)
+    return cont ? cont(value, fiber) : fiber.yieldWith(exitSucceed(value))
   }
 })
 
@@ -905,7 +885,7 @@ export const sync: <A>(evaluate: LazyArg<A>) => Micro<A> = makePrimitive({
  */
 export const suspend: <A, E, R>(evaluate: LazyArg<Micro<A, E, R>>) => Micro<A, E, R> = makePrimitive({
   op: "Suspend",
-  evaluate(_fiber) {
+  eval(_fiber) {
     return this[args]()
   }
 })
@@ -920,7 +900,7 @@ export const suspend: <A, E, R>(evaluate: LazyArg<Micro<A, E, R>>) => Micro<A, E
  */
 export const yieldNowWith: (priority?: number) => Micro<void> = makePrimitive({
   op: "Yield",
-  evaluate(fiber) {
+  eval(fiber) {
     let resumed = false
     fiber.getEnvRef(currentScheduler).scheduleTask(() => {
       if (resumed) return
@@ -967,17 +947,8 @@ export const succeedNone: Micro<Option.Option<never>> = succeed(Option.none())
  * @experimental
  * @category constructors
  */
-export const failCauseSync: <E>(evaluate: LazyArg<MicroCause<E>>) => Micro<never, E> = makePrimitive({
-  op: "FailureSync",
-  evaluate(fiber) {
-    const cause = this[args]()
-    const cont = fiber.getCont(failureCont)
-    if (cont === undefined) {
-      return fiber.yieldWith(exitFailCause(cause))
-    }
-    return cont(cause, fiber)
-  }
-})
+export const failCauseSync = <E>(evaluate: LazyArg<MicroCause<E>>): Micro<never, E> =>
+  suspend(() => failCause(evaluate()))
 
 /**
  * Creates a `Micro` effect that will die with the specified error.
@@ -1001,7 +972,7 @@ export const die = (defect: unknown): Micro<never> => exitDie(defect)
  * @experimental
  * @category constructors
  */
-export const failSync = <E>(error: LazyArg<E>): Micro<never, E> => failCauseSync(() => causeFail(error()))
+export const failSync = <E>(error: LazyArg<E>): Micro<never, E> => suspend(() => fail(error()))
 
 /**
  * Converts an `Option` into a `Micro` effect, that will fail with
@@ -1126,7 +1097,7 @@ export const withFiber: <A, E = never, R = never>(
   evaluate: (fiber: FiberImpl<A, E>) => Micro<A, E, R>
 ) => Micro<A, E, R> = makePrimitive({
   op: "WithFiber",
-  evaluate(fiber) {
+  eval(fiber) {
     return this[args](fiber)
   }
 })
@@ -1151,8 +1122,8 @@ const asyncOptions: <A, E = never, R = never>(
   withSignal: boolean
 ) => Micro<A, E, R> = makePrimitive({
   op: "Async",
-  singleArg: false,
-  evaluate(fiber) {
+  single: false,
+  eval(fiber) {
     const register = this[args][0]
     let resumed = false
     let yielded: boolean | Primitive = false
@@ -1184,13 +1155,13 @@ const asyncOptions: <A, E = never, R = never>(
 })
 const asyncFinalizer: (onInterrupt: () => Micro<void, any, any>) => Primitive = makePrimitive({
   op: "AsyncFinalizer",
-  ensureCont(_, fiber) {
+  ensure(_, fiber) {
     if (isInterruptible(fiber.flags)) {
       fiber.flags |= FiberFlag.Uninterruptible
       fiber._stack.push(revertFlags(FiberFlag.Uninterruptible))
     }
   },
-  failureCont(self, cause, _fiber) {
+  contE(self, cause, _fiber) {
     return causeIsInterrupt(cause)
       ? flatMap(self[args](), () => failCause(cause))
       : failCause(cause)
@@ -1247,13 +1218,13 @@ const fromIterator: (
   iterator: Iterator<any, YieldWrap<Micro<any, any, any>>>
 ) => Micro<any, any, any> = makePrimitive({
   op: "Iterator",
-  successCont(self, value, fiber) {
+  contA(self, value, fiber) {
     const state = self[args].next(value)
     if (state.done) return succeed(state.value)
     fiber._stack.push(self)
     return yieldWrapGet(state.value)
   },
-  evaluate(this: any, fiber: FiberImpl): Primitive {
+  eval(this: any, fiber: FiberImpl) {
     return this[successCont](undefined, fiber)
   }
 })
@@ -1558,7 +1529,7 @@ export const flatMap: {
 )
 const OnSuccessProto = makePrimitiveProto({
   op: "OnSuccess",
-  evaluate(this: any, fiber: FiberImpl): Primitive {
+  eval(this: any, fiber: FiberImpl): Primitive {
     fiber._stack.push(this)
     return this[args]
   }
@@ -1609,32 +1580,26 @@ const updateFlags: (
   evaluate?: (oldFlags: number) => Micro<any, any, any>
 ) => any = makePrimitive({
   op: "UpdateFlags",
-  singleArg: false,
-  evaluate(fiber) {
+  single: false,
+  eval(fiber) {
     const [f, evaluate] = this[args]
     const oldFlags = fiber.flags
     const newFlags = f(fiber.flags)
     if (fiber._interrupted && isInterruptible(newFlags)) {
       return exitInterrupt
     } else if (newFlags === oldFlags) {
-      if (evaluate) {
-        return evaluate(oldFlags)
-      }
-      return exitVoid
+      return evaluate ? evaluate(oldFlags) : exitVoid
     }
     const diff = oldFlags ^ newFlags
     fiber.flags = newFlags
     fiber._stack.push(revertFlags(diff))
-    if (evaluate) {
-      return evaluate(oldFlags)
-    }
-    return exitVoid
+    return evaluate ? evaluate(oldFlags) : exitVoid
   }
 })
 
 const revertFlags: (diff: number) => Primitive = makePrimitive({
   op: "RevertFlags",
-  ensureCont(self, fiber) {
+  ensure(self, fiber) {
     fiber.flags = fiber.flags ^ self[args]
     if (fiber._interrupted && isInterruptible(fiber.flags)) {
       return () => exitInterrupt
@@ -2340,13 +2305,11 @@ export const zipWith: {
   that: Micro<A2, E2, R2>,
   f: (a: A, b: A2) => B,
   options?: { readonly concurrent?: boolean | undefined }
-): Micro<B, E2 | E, R2 | R> => {
-  if (options?.concurrent) {
+): Micro<B, E2 | E, R2 | R> =>
+  options?.concurrent
     // Use `all` exclusively for concurrent cases, as it introduces additional overhead due to the management of concurrency
-    return map(all([self, that], { concurrency: 2 }), ([a, a2]) => f(a, a2))
-  }
-  return flatMap(self, (a) => map(that, (a2) => f(a, a2)))
-})
+    ? map(all([self, that], { concurrency: 2 }), ([a, a2]) => f(a, a2))
+    : flatMap(self, (a) => map(that, (a2) => f(a, a2))))
 
 // ----------------------------------------------------------------------------
 // filtering & conditionals
@@ -2441,7 +2404,7 @@ export const when: {
     self: Micro<A, E, R>,
     condition: LazyArg<boolean> | Micro<boolean, E2, R2>
   ): Micro<Option.Option<A>, E | E2, R | R2> =>
-    flatMap(isMicro(condition) ? condition : sync(condition), (pass) => pass ? asSome(self) : succeed(Option.none()))
+    flatMap(isMicro(condition) ? condition : sync(condition), (pass) => pass ? asSome(self) : succeedNone)
 )
 
 // ----------------------------------------------------------------------------
@@ -2777,7 +2740,7 @@ export const catchAllCause: {
 )
 const OnFailureProto = makePrimitiveProto({
   op: "OnFailure",
-  evaluate(this: any, fiber: FiberImpl): Primitive {
+  eval(this: any, fiber: FiberImpl): Primitive {
     fiber._stack.push(this as any)
     return this[args]
   }
@@ -3237,7 +3200,7 @@ export const matchCauseEffect: {
 )
 const OnSuccessAndFailureProto = makePrimitiveProto({
   op: "OnSuccessAndFailure",
-  evaluate(this: any, fiber: FiberImpl): Primitive {
+  eval(this: any, fiber: FiberImpl): Primitive {
     fiber._stack.push(this)
     return this[args]
   }
@@ -3616,7 +3579,7 @@ export const provideScope: {
  * @category resources & finalization
  */
 export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, MicroScope>> =>
-  suspend(function() {
+  suspend(() => {
     const scope = new MicroScopeImpl()
     return onExit(provideService(self, MicroScope, scope), (exit) => scope.close(exit))
   })
@@ -3828,6 +3791,7 @@ export const interrupt: Micro<never> = failCause(causeInterrupt())
 export const uninterruptible = <A, E, R>(
   self: Micro<A, E, R>
 ): Micro<A, E, R> => updateFlags(addUninterruptible, () => self)
+
 const addUninterruptible = (flags: number) => flags | FiberFlag.Uninterruptible
 
 /**
@@ -3841,6 +3805,7 @@ const addUninterruptible = (flags: number) => flags | FiberFlag.Uninterruptible
 export const interruptible = <A, E, R>(
   self: Micro<A, E, R>
 ): Micro<A, E, R> => updateFlags(removeUninterruptible, () => self)
+
 const removeUninterruptible = (flags: number) => flags & ~FiberFlag.Uninterruptible
 
 /**
@@ -3997,15 +3962,15 @@ export const whileLoop: <A, E, R>(options: {
   readonly step: (a: A) => void
 }) => Micro<void, E, R> = makePrimitive({
   op: "While",
-  successCont(self, value, fiber) {
-    self[args].step(value as any)
+  contA(self, value, fiber) {
+    self[args].step(value)
     if (self[args].while()) {
       fiber._stack.push(self)
       return self[args].body()
     }
     return exitVoid
   },
-  evaluate(fiber) {
+  eval(fiber) {
     if (this[args].while()) {
       fiber._stack.push(this)
       return this[args].body()
@@ -4446,11 +4411,7 @@ export const runSyncExit = <A, E>(effect: Micro<A, E>): MicroExit<A, E> => {
   const scheduler = new MicroSchedulerDefault()
   const fiber = runFork(effect, { scheduler })
   scheduler.flush()
-  const exit = fiber._exit
-  if (exit === undefined) {
-    return exitDie(fiber)
-  }
-  return exit
+  return fiber._exit ?? exitDie(fiber)
 }
 
 /**
@@ -4463,9 +4424,7 @@ export const runSyncExit = <A, E>(effect: Micro<A, E>): MicroExit<A, E> => {
  */
 export const runSync = <A, E>(effect: Micro<A, E>): A => {
   const exit = runSyncExit(effect)
-  if (exit._tag === "Failure") {
-    throw exit.cause
-  }
+  if (exit._tag === "Failure") throw exit.cause
   return exit.value
 }
 
@@ -4492,7 +4451,7 @@ const YieldableError: new(message?: string) => YieldableError = (function() {
   Object.assign(YieldableError.prototype, MicroProto, StructuralPrototype, {
     [identifier]: "Failure",
     [evaluate]() {
-      return exitFail(this)
+      return fail(this)
     },
     toString(this: Error) {
       return this.message ? `${this.name}: ${this.message}` : this.name
