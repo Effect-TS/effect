@@ -53,7 +53,7 @@ export const decode = (str: string): Either.Either<Uint8Array, Encoding.DecodeEx
 
   try {
     const missingOctets = stripped.endsWith("==") ? 2 : stripped.endsWith("=") ? 1 : 0
-    const result = new Uint8Array(3 * (length / 4))
+    const result = new Uint8Array(3 * (length / 4) - missingOctets)
     for (let i = 0, j = 0; i < length; i += 4, j += 3) {
       const buffer = getBase64Code(stripped.charCodeAt(i)) << 18 |
         getBase64Code(stripped.charCodeAt(i + 1)) << 12 |
@@ -65,7 +65,7 @@ export const decode = (str: string): Either.Either<Uint8Array, Encoding.DecodeEx
       result[j + 2] = buffer & 0xff
     }
 
-    return Either.right(result.subarray(0, result.length - missingOctets))
+    return Either.right(result)
   } catch (e) {
     return Either.left(
       DecodeException(stripped, e instanceof Error ? e.message : "Invalid input")
