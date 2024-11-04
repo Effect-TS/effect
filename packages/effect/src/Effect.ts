@@ -1355,7 +1355,7 @@ export const gen: {
     [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
     [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
   >
-} = effect.gen
+} = core.gen
 
 /**
  * @since 2.0.0

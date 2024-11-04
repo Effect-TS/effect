@@ -65,6 +65,12 @@ export type OP_WHILE = typeof OP_WHILE
 export const OP_WHILE = "While" as const
 
 /** @internal */
+export type OP_ITERATOR = typeof OP_ITERATOR
+
+/** @internal */
+export const OP_ITERATOR = "Iterator" as const
+
+/** @internal */
 export type OP_WITH_RUNTIME = typeof OP_WITH_RUNTIME
 
 /** @internal */
