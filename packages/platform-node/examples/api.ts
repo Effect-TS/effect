@@ -203,7 +203,7 @@ Effect.gen(function*() {
   user = yield* client.users.me()
   console.log("json me", user)
 
-  const csv = yield* client.csv()
+  const csv = yield* client.csv({ withResponse: true })
   console.log("csv", csv)
 
   const urlParams = yield* client.urlParams()

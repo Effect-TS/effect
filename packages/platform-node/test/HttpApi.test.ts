@@ -179,6 +179,14 @@ describe("HttpApi", () => {
       }).pipe(Effect.provide(HttpLive)))
   })
 
+  it.effect("client withResponse", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      const [users, response] = yield* client.users.list({ headers: { page: 1 }, withResponse: true })
+      assert.strictEqual(users[0].name, "page 1")
+      assert.strictEqual(response.status, 200)
+    }).pipe(Effect.provide(HttpLive)))
+
   it("OpenAPI spec", () => {
     const spec = OpenApi.fromApi(Api)
     assert.deepStrictEqual(spec, OpenApiFixture as any)
