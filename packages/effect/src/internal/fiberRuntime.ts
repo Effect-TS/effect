@@ -1092,23 +1092,21 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
 
   ["Micro"](op: Micro.Micro<any, any, never> & { _op: "Micro" }) {
     return core.unsafeAsync<any, any>((microResume) => {
-      const env = Micro.envUnsafeMakeEmpty().pipe(
-        Micro.envSet(Micro.currentContext, this.getFiberRef(core.currentContext))
-      )
       let resume = microResume
-      op[Micro.runSymbol](env, (result) => {
-        if (result._tag === "Right") {
-          return resume(core.exitSucceed(result.right))
+      const fiber = Micro.runFork(Micro.provideContext(op, this.currentContext))
+      fiber.addObserver((exit) => {
+        if (exit._tag === "Success") {
+          return resume(core.exitSucceed(exit.value))
         }
-        switch (result.left._tag) {
+        switch (exit.cause._tag) {
           case "Interrupt": {
             return resume(core.exitFailCause(internalCause.interrupt(FiberId.none)))
           }
           case "Fail": {
-            return resume(core.fail(result.left.error))
+            return resume(core.fail(exit.cause.error))
           }
           case "Die": {
-            return resume(core.die(result.left.defect))
+            return resume(core.die(exit.cause.defect))
           }
         }
       })
@@ -1116,7 +1114,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         resume = (_: any) => {
           abortResume(core.void)
         }
-        Micro.envGet(env, Micro.currentAbortController).abort()
+        fiber.unsafeInterrupt()
       })
     })
   }
