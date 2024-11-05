@@ -4,7 +4,6 @@
 import * as NodeSocket from "@effect/platform-node/NodeSocket"
 import * as Socket from "@effect/platform/Socket"
 import * as Context from "effect/Context"
-import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -44,76 +43,68 @@ export const make = (
   options: Net.ServerOpts & Net.ListenOptions
 ): Effect.Effect<SocketServer.SocketServer, SocketServer.SocketServerError, Scope.Scope> =>
   Effect.gen(function*() {
-    const fiberId = yield* Effect.fiberId
-    const semaphore = yield* Effect.makeSemaphore(1)
-    let serverDeferred = yield* Deferred.make<Net.Server>()
+    const server = Net.createServer(options)
+
+    yield* Effect.async<void, SocketServer.SocketServerError>((resume) => {
+      server.once("error", (cause) => {
+        resume(Effect.fail(
+          new SocketServer.SocketServerError({
+            reason: "Open",
+            cause
+          })
+        ))
+      })
+      server.listen(options, () => {
+        resume(Effect.void)
+      })
+      return Effect.async<void>((resume) => {
+        server.close(() => resume(Effect.void))
+      })
+    })
 
     const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*() {
-        const runtime = yield* Effect.runtime<R>()
-        const run = Runtime.runFork(runtime)
-        return yield* Effect.async<never, SocketServer.SocketServerError, never>((resume) => {
-          const server = Net.createServer(options)
-          let connected = false
-          server.on("error", (error) => {
-            resume(Effect.fail(
-              new SocketServer.SocketServerError({
-                reason: connected ? "Unknown" : "Open",
-                error
-              })
-            ))
-          })
-          server.on("listening", () => {
-            connected = true
-            Deferred.unsafeDone(serverDeferred, Effect.succeed(server))
-          })
-          server.on("connection", (conn) => {
-            pipe(
-              NodeSocket.fromDuplex(
-                Effect.acquireRelease(
-                  Effect.succeed(conn),
-                  (conn) =>
-                    Effect.sync(() => {
-                      if (conn.closed === false) {
-                        conn.destroySoon()
-                      }
-                    })
-                )
-              ),
-              Effect.flatMap(handler),
-              Effect.catchAllCause((cause) => Effect.log(cause, "Unhandled error in SocketServer handler")),
-              Effect.provideService(NodeSocket.NetSocket, conn),
-              run
-            )
-          })
-          server.listen(options)
+        const run = Runtime.runFork(yield* Effect.runtime<R>())
+        function onConnection(conn: Net.Socket) {
+          pipe(
+            NodeSocket.fromDuplex(
+              Effect.acquireRelease(
+                Effect.succeed(conn),
+                (conn) =>
+                  Effect.sync(() => {
+                    if (conn.closed === false) {
+                      conn.destroySoon()
+                    }
+                  })
+              )
+            ),
+            Effect.flatMap(handler),
+            Effect.catchAllCause((cause) => Effect.log(cause, "Unhandled error in SocketServer handler")),
+            Effect.provideService(NodeSocket.NetSocket, conn),
+            run
+          )
+        }
+        return yield* Effect.async<never>((_resume) => {
+          server.on("connection", onConnection)
           return Effect.sync(() => {
-            serverDeferred = Deferred.unsafeMake(fiberId)
-            server.close()
+            server.off("connection", onConnection)
           })
         })
-      }).pipe(semaphore.withPermits(1))
+      })
 
-    const address = Effect.map(
-      Effect.suspend(() => Deferred.await(serverDeferred)),
-      (server): SocketServer.Address => {
-        const address = server.address()!
-        return typeof address === "string" ?
-          {
-            _tag: "UnixAddress",
-            path: address
-          } :
-          {
-            _tag: "TcpAddress",
-            hostname: address.address,
-            port: address.port
-          }
-      }
-    )
-
+    const address = server.address()!
     return SocketServer.SocketServer.of({
       [SocketServer.SocketServerTypeId]: SocketServer.SocketServerTypeId,
-      address,
+      address: typeof address === "string" ?
+        {
+          _tag: "UnixAddress",
+          path: address
+        } :
+        {
+          _tag: "TcpAddress",
+          hostname: address.address,
+          port: address.port
+        },
       run
     })
   })
@@ -138,79 +129,67 @@ export const makeWebSocket = (
   options: WS.ServerOptions
 ): Effect.Effect<SocketServer.SocketServer, SocketServer.SocketServerError, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const fiberId = yield* _(Effect.fiberId)
-    const semaphore = yield* _(Effect.makeSemaphore(1))
+    const server = new WS.WebSocketServer(options)
 
-    let serverDeferred = yield* _(Deferred.make<WS.WebSocketServer>())
-    const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
-      Effect.gen(function*(_) {
-        const runtime = yield* _(Effect.runtime<R>())
-        const run = Runtime.runFork(runtime)
-        return yield* _(
-          Effect.async<never, SocketServer.SocketServerError, never>((resume) => {
-            const server = new WS.WebSocketServer(options)
-            let connected = false
-            server.on("error", (error) => {
-              resume(Effect.fail(
-                new SocketServer.SocketServerError({
-                  reason: connected ? "Unknown" : "Open",
-                  error
-                })
-              ))
-            })
-            server.on("listening", () => {
-              connected = true
-              Deferred.unsafeDone(serverDeferred, Effect.succeed(server))
-            })
-            server.on("connection", (conn, req) => {
-              pipe(
-                Socket.fromWebSocket(
-                  Effect.acquireRelease(
-                    Effect.succeed(conn as unknown as globalThis.WebSocket),
-                    (conn) =>
-                      Effect.sync(() => {
-                        conn.close()
-                      })
-                  )
-                ),
-                Effect.flatMap(handler),
-                Effect.catchAllCause((cause) => Effect.log(cause, "Unhandled error in SocketServer handler")),
-                Effect.provideService(Socket.WebSocket, conn as any),
-                Effect.provideService(IncomingMessage, req),
-                run
-              )
-            })
-            return Effect.sync(() => {
-              serverDeferred = Deferred.unsafeMake(fiberId)
-              server.removeAllListeners()
-              server.close()
-            })
+    yield* Effect.async<void, SocketServer.SocketServerError>((resume) => {
+      server.once("error", (error) => {
+        resume(Effect.fail(
+          new SocketServer.SocketServerError({
+            reason: "Open",
+            cause: error
           })
-        )
-      }).pipe(
-        semaphore.withPermits(1)
-      )
+        ))
+      })
+      server.once("listening", () => {
+        resume(Effect.void)
+      })
+      return Effect.async<void>((resume) => {
+        server.close(() => resume(Effect.void))
+      })
+    })
 
-    const address = Effect.map(
-      Effect.suspend(() => Deferred.await(serverDeferred)),
-      (server): SocketServer.Address => {
-        const address = server.address()!
-        return typeof address === "string" ?
-          {
-            _tag: "UnixAddress",
-            path: address
-          } :
-          {
-            _tag: "TcpAddress",
-            hostname: address.address,
-            port: address.port
-          }
-      }
-    )
+    const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
+      Effect.gen(function*() {
+        const run = Runtime.runFork(yield* Effect.runtime<R>())
+        function onConnection(conn: Net.Socket, req: Http.IncomingMessage) {
+          pipe(
+            Socket.fromWebSocket(
+              Effect.acquireRelease(
+                Effect.succeed(conn as unknown as globalThis.WebSocket),
+                (conn) =>
+                  Effect.sync(() => {
+                    conn.close()
+                  })
+              )
+            ),
+            Effect.flatMap(handler),
+            Effect.catchAllCause((cause) => Effect.log(cause, "Unhandled error in SocketServer handler")),
+            Effect.provideService(Socket.WebSocket, conn as any),
+            Effect.provideService(IncomingMessage, req),
+            run
+          )
+        }
+        return yield* Effect.async<never>((_resume) => {
+          server.on("connection", onConnection)
+          return Effect.sync(() => {
+            server.off("connection", onConnection)
+          })
+        })
+      })
 
+    const address = server.address()!
     return SocketServer.SocketServer.of({
       [SocketServer.SocketServerTypeId]: SocketServer.SocketServerTypeId,
-      address,
+      address: typeof address === "string" ?
+        {
+          _tag: "UnixAddress",
+          path: address
+        } :
+        {
+          _tag: "TcpAddress",
+          hostname: address.address,
+          port: address.port
+        },
       run
     })
   })

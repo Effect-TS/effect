@@ -25,8 +25,7 @@ describe("Socket", () => {
   it.scoped("open", () =>
     Effect.gen(function*() {
       const server = yield* makeServer
-      const address = yield* server.address
-      const channel = NodeSocket.makeNetChannel({ port: (address as SocketServer.TcpAddress).port })
+      const channel = NodeSocket.makeNetChannel({ port: (server.address as SocketServer.TcpAddress).port })
 
       const outputEffect = Stream.make("Hello", "World").pipe(
         Stream.encodeText,
