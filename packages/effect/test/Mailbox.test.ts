@@ -26,6 +26,26 @@ describe("Mailbox", () => {
       assert.deepStrictEqual(fiber.unsafePoll(), Exit.succeed(Chunk.empty()))
     }))
 
+  it.effect("offer dropping", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number>({ capacity: 2, strategy: "dropping" })
+      const remaining = yield* mailbox.offerAll([1, 2, 3, 4])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(remaining), [3, 4])
+      const result = yield* mailbox.offer(5)
+      assert.isFalse(result)
+      assert.deepStrictEqual(Chunk.toReadonlyArray((yield* mailbox.takeAll)[0]), [1, 2])
+    }))
+
+  it.effect("offer sliding", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number>({ capacity: 2, strategy: "sliding" })
+      const remaining = yield* mailbox.offerAll([1, 2, 3, 4])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(remaining), [])
+      const result = yield* mailbox.offer(5)
+      assert.isTrue(result)
+      assert.deepStrictEqual(Chunk.toReadonlyArray((yield* mailbox.takeAll)[0]), [4, 5])
+    }))
+
   it.effect("offerAll can be interrupted", () =>
     Effect.gen(function*() {
       const mailbox = yield* Mailbox.make<number>(2)
