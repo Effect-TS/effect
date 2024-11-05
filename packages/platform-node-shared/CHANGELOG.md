@@ -1,5 +1,11 @@
 # @effect/platform-node-shared
 
+## 0.19.17
+
+### Patch Changes
+
+- [#3894](https://github.com/Effect-TS/effect/pull/3894) [`3ff8e5b`](https://github.com/Effect-TS/effect/commit/3ff8e5b4138c89b56111c075b290e4084d7d169c) Thanks @tim-smart! - remove debug logging from NodeSocket
+
 ## 0.19.16
 
 ### Patch Changes
