@@ -2,23 +2,12 @@
  * @since 1.0.0
  */
 import * as Socket from "@effect/platform/Socket"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Mailbox from "effect/Mailbox"
 import * as Stream from "effect/Stream"
 import * as Ndjson from "../Ndjson.js"
 import * as SocketServer from "../SocketServer/Node.js"
 import * as Domain from "./Domain.js"
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface ServerImpl {
-  readonly run: <R, E, _>(
-    handle: (client: Client) => Effect.Effect<_, E, R>
-  ) => Effect.Effect<never, SocketServer.SocketServerError | E, R>
-}
 
 /**
  * @since 1.0.0
@@ -31,27 +20,12 @@ export interface Client {
 
 /**
  * @since 1.0.0
- * @category tags
- */
-export interface Server {
-  readonly _: unique symbol
-}
-
-/**
- * @since 1.0.0
- * @category tags
- */
-export const Server = Context.GenericTag<Server, ServerImpl>("@effect/experimental/DevTools/Server")
-
-/**
- * @since 1.0.0
  * @category constructors
  */
-export const make = Effect.gen(function*() {
-  const server = yield* SocketServer.SocketServer
-
-  const run = <R, E, _>(handle: (client: Client) => Effect.Effect<_, E, R>) =>
-    server.run((socket) =>
+export const run = <R, E, _>(handle: (client: Client) => Effect.Effect<_, E, R>) =>
+  Effect.gen(function*() {
+    const server = yield* SocketServer.SocketServer
+    return yield* server.run((socket) =>
       Effect.gen(function*() {
         const responses = yield* Mailbox.make<Domain.Response>()
         const requests = yield* Mailbox.make<Domain.Request.WithoutPing>()
@@ -80,6 +54,4 @@ export const make = Effect.gen(function*() {
         yield* handle(client)
       })
     )
-
-  return Server.of({ run })
-})
+  })
