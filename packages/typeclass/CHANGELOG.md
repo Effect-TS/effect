@@ -1,5 +1,12 @@
 # @effect/typeclass
 
+## 0.29.10
+
+### Patch Changes
+
+- Updated dependencies [[`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28), [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28), [`b631f40`](https://github.com/Effect-TS/effect/commit/b631f40abbe649b2a089764585b5c39f6a695ac6)]:
+  - effect@3.10.10
+
 ## 0.29.9
 
 ### Patch Changes
