@@ -930,6 +930,7 @@ export const middlewareOpenApi = (
   )
 
 const bearerLen = `Bearer `.length
+const basicLen = `Basic `.length
 
 /**
  * @since 1.0.0
@@ -971,7 +972,7 @@ export const securityDecode = <Security extends HttpApiSecurity.HttpApiSecurity>
         password: Redacted.make("")
       } as any
       return HttpServerRequest.HttpServerRequest.pipe(
-        Effect.flatMap((request) => Encoding.decodeBase64String(request.headers.authorization ?? "")),
+        Effect.flatMap((request) => Encoding.decodeBase64String((request.headers.authorization ?? "").slice(basicLen))),
         Effect.match({
           onFailure: () => empty,
           onSuccess: (header) => {
