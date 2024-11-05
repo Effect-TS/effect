@@ -971,7 +971,7 @@ export const securityDecode = <Security extends HttpApiSecurity.HttpApiSecurity>
         password: Redacted.make("")
       } as any
       return HttpServerRequest.HttpServerRequest.pipe(
-        Effect.flatMap((request) => Encoding.decodeBase64String(request.headers.authorization ?? "")),
+        Effect.flatMap((request) => Encoding.decodeBase64String(request.headers.authorization?.split(" ")[1] ?? "")),
         Effect.match({
           onFailure: () => empty,
           onSuccess: (header) => {
