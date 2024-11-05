@@ -9,7 +9,7 @@ import type * as WorkerThreads from "node:worker_threads"
 
 const platformWorkerImpl = Worker.makePlatform<WorkerThreads.Worker>()({
   setup({ scope, worker }) {
-    return Effect.flatMap(Deferred.make<void>(), (exitDeferred) => {
+    return Effect.flatMap(Deferred.make<void, WorkerError>(), (exitDeferred) => {
       worker.on("exit", () => {
         Deferred.unsafeDone(exitDeferred, Exit.void)
       })
