@@ -1,5 +1,11 @@
 # effect
 
+## 3.10.11
+
+### Patch Changes
+
+- [#3903](https://github.com/Effect-TS/effect/pull/3903) [`5eef499`](https://github.com/Effect-TS/effect/commit/5eef4998b6ccb7a5404d9e4fef85e57fa35fbb8a) Thanks @tim-smart! - cache Schema.Class AST once generated
+
 ## 3.10.10
 
 ### Patch Changes
