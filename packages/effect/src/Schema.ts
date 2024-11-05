@@ -9249,13 +9249,13 @@ export class BooleanFromUnknown extends transform(
  * Converts an `string` value into its corresponding `boolean`
  * ("true" as `true` and "false" as `false`).
  *
- * @category boolean constructors
- * @since 3.10.0
+ * @category boolean transformations
+ * @since 3.11.0
  */
 export class BooleanFromString extends transform(
-  String$,
+  Literal("true", "false"),
   Boolean$,
-  { strict: true, decode: (value) => value === "true", encode: (value) => value.toString() }
+  { strict: true, decode: (value) => value === "true", encode: (value) => value ? "true" : "false" }
 ).annotations({ identifier: "BooleanFromString" }) {}
 
 /**
