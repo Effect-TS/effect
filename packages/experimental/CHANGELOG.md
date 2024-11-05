@@ -1,5 +1,16 @@
 # @effect/experimental
 
+## 0.32.0
+
+### Minor Changes
+
+- [#3896](https://github.com/Effect-TS/effect/pull/3896) [`12b3275`](https://github.com/Effect-TS/effect/commit/12b32753afbf252d156ff613f9e88662b160a7e5) Thanks @tim-smart! - simplify DevTool/Server module
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform-node@0.64.18
+
 ## 0.31.0
 
 ### Minor Changes
