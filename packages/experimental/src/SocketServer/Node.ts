@@ -43,62 +43,56 @@ export const IncomingMessage = Context.GenericTag<IncomingMessage, Http.Incoming
 export const make = (
   options: Net.ServerOpts & Net.ListenOptions
 ): Effect.Effect<SocketServer.SocketServer, SocketServer.SocketServerError, Scope.Scope> =>
-  Effect.gen(function*(_) {
-    const fiberId = yield* _(Effect.fiberId)
-    const semaphore = yield* _(Effect.makeSemaphore(1))
-    let serverDeferred = yield* _(Deferred.make<Net.Server>())
+  Effect.gen(function*() {
+    const fiberId = yield* Effect.fiberId
+    const semaphore = yield* Effect.makeSemaphore(1)
+    let serverDeferred = yield* Deferred.make<Net.Server>()
 
     const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
-      Effect.gen(function*(_) {
-        const runtime = yield* _(Effect.runtime<R>())
+      Effect.gen(function*() {
+        const runtime = yield* Effect.runtime<R>()
         const run = Runtime.runFork(runtime)
-        return yield* _(
-          Effect.async<never, SocketServer.SocketServerError, never>((resume) => {
-            const server = Net.createServer(options)
-            let connected = false
-            server.on("error", (error) => {
-              resume(Effect.fail(
-                new SocketServer.SocketServerError({
-                  reason: connected ? "Unknown" : "Open",
-                  error
-                })
-              ))
-            })
-            server.on("listening", () => {
-              connected = true
-              Deferred.unsafeDone(serverDeferred, Effect.succeed(server))
-            })
-            server.on("connection", (conn) => {
-              pipe(
-                NodeSocket.fromDuplex(
-                  Effect.acquireRelease(
-                    Effect.succeed(conn),
-                    (conn) =>
-                      Effect.sync(() => {
-                        if (conn.closed === false) {
-                          conn.destroySoon()
-                        }
-                      })
-                  )
-                ),
-                Effect.flatMap(handler),
-                Effect.catchAllCause((cause) => Effect.log(cause, "Unhandled error in SocketServer handler")),
-                Effect.scoped,
-                Effect.provideService(NodeSocket.NetSocket, conn),
-                run
-              )
-            })
-            server.listen(options)
-            return Effect.sync(() => {
-              serverDeferred = Deferred.unsafeMake(fiberId)
-              server.removeAllListeners()
-              server.close()
-            })
+        return yield* Effect.async<never, SocketServer.SocketServerError, never>((resume) => {
+          const server = Net.createServer(options)
+          let connected = false
+          server.on("error", (error) => {
+            resume(Effect.fail(
+              new SocketServer.SocketServerError({
+                reason: connected ? "Unknown" : "Open",
+                error
+              })
+            ))
           })
-        )
-      }).pipe(
-        semaphore.withPermits(1)
-      )
+          server.on("listening", () => {
+            connected = true
+            Deferred.unsafeDone(serverDeferred, Effect.succeed(server))
+          })
+          server.on("connection", (conn) => {
+            pipe(
+              NodeSocket.fromDuplex(
+                Effect.acquireRelease(
+                  Effect.succeed(conn),
+                  (conn) =>
+                    Effect.sync(() => {
+                      if (conn.closed === false) {
+                        conn.destroySoon()
+                      }
+                    })
+                )
+              ),
+              Effect.flatMap(handler),
+              Effect.catchAllCause((cause) => Effect.log(cause, "Unhandled error in SocketServer handler")),
+              Effect.provideService(NodeSocket.NetSocket, conn),
+              run
+            )
+          })
+          server.listen(options)
+          return Effect.sync(() => {
+            serverDeferred = Deferred.unsafeMake(fiberId)
+            server.close()
+          })
+        })
+      }).pipe(semaphore.withPermits(1))
 
     const address = Effect.map(
       Effect.suspend(() => Deferred.await(serverDeferred)),

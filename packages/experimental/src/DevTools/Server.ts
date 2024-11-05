@@ -5,7 +5,6 @@ import * as Socket from "@effect/platform/Socket"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Mailbox from "effect/Mailbox"
-import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Ndjson from "../Ndjson.js"
 import * as SocketServer from "../SocketServer/Node.js"
@@ -17,7 +16,7 @@ import * as Domain from "./Domain.js"
  */
 export interface ServerImpl {
   readonly run: <R, E, _>(
-    handle: (client: Client) => Effect.Effect<_, E, R | Scope>
+    handle: (client: Client) => Effect.Effect<_, E, R>
   ) => Effect.Effect<never, SocketServer.SocketServerError | E, R>
 }
 
@@ -51,17 +50,11 @@ export const Server = Context.GenericTag<Server, ServerImpl>("@effect/experiment
 export const make = Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
 
-  const run = <R, E, _>(handle: (client: Client) => Effect.Effect<_, E, R | Scope>) =>
+  const run = <R, E, _>(handle: (client: Client) => Effect.Effect<_, E, R>) =>
     server.run((socket) =>
       Effect.gen(function*() {
-        const responses = yield* Effect.acquireRelease(
-          Mailbox.make<Domain.Response>(),
-          (_) => _.shutdown
-        )
-        const requests = yield* Effect.acquireRelease(
-          Mailbox.make<Domain.Request.WithoutPing>(),
-          (_) => _.shutdown
-        )
+        const responses = yield* Mailbox.make<Domain.Response>()
+        const requests = yield* Mailbox.make<Domain.Request.WithoutPing>()
 
         const client: Client = {
           queue: requests,
@@ -80,12 +73,12 @@ export const make = Effect.gen(function*() {
               ? responses.offer({ _tag: "Pong" })
               : requests.offer(req)
           ),
-          Effect.forkScoped
+          Effect.ensuring(Effect.zipRight(responses.shutdown, requests.shutdown)),
+          Effect.fork
         )
 
         yield* handle(client)
-        return yield* Effect.never
-      }).pipe(Effect.scoped)
+      })
     )
 
   return Server.of({ run })
