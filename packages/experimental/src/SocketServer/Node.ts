@@ -5,9 +5,9 @@ import * as NodeSocket from "@effect/platform-node/NodeSocket"
 import * as Socket from "@effect/platform/Socket"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FiberSet from "effect/FiberSet"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import * as Net from "node:net"
@@ -67,7 +67,7 @@ export const make = (
 
     const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*() {
-        const run = Runtime.runFork(yield* Effect.runtime<R>())
+        const run = yield* FiberSet.makeRuntime<R>()
         function onConnection(conn: Net.Socket) {
           pipe(
             NodeSocket.fromDuplex(
@@ -93,7 +93,7 @@ export const make = (
             server.off("connection", onConnection)
           })
         })
-      })
+      }).pipe(Effect.scoped)
 
     const address = server.address()!
     return SocketServer.SocketServer.of({
@@ -156,7 +156,7 @@ export const makeWebSocket = (
 
     const run = <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*() {
-        const run = Runtime.runFork(yield* Effect.runtime<R>())
+        const run = yield* FiberSet.makeRuntime<R>()
         function onConnection(conn: Net.Socket, req: Http.IncomingMessage) {
           pipe(
             Socket.fromWebSocket(
@@ -181,7 +181,7 @@ export const makeWebSocket = (
             server.off("connection", onConnection)
           })
         })
-      })
+      }).pipe(Effect.scoped)
 
     const address = server.address()!
     return SocketServer.SocketServer.of({
