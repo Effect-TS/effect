@@ -4889,7 +4889,7 @@ export const parseNumber = <A extends string, I, R>(
  *
  * The following special string values are supported: "NaN", "Infinity", "-Infinity".
  *
- * @category number constructors
+ * @category number transformations
  * @since 3.10.0
  */
 export class NumberFromString extends parseNumber(String$.annotations({
