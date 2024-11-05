@@ -403,8 +403,6 @@
   "components": {
     "schemas": {
       "User": {
-        "description": "an instance of User",
-        "title": "User",
         "type": "object",
         "required": ["id", "name", "createdAt"],
         "properties": {
@@ -420,7 +418,9 @@
             "$ref": "#/components/schemas/DateTimeUtc"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "an instance of User",
+        "title": "User"
       },
       "DateTimeUtc": {
         "description": "a string that will be parsed into a DateTime.Utc",
@@ -431,8 +431,6 @@
         "description": "a string that will be parsed into a number"
       },
       "HttpApiDecodeError": {
-        "description": "The request did not match the expected schema",
-        "title": "HttpApiDecodeError",
         "type": "object",
         "required": ["issues", "message", "_tag"],
         "properties": {
@@ -481,11 +479,11 @@
             "enum": ["HttpApiDecodeError"]
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "The request did not match the expected schema",
+        "title": "HttpApiDecodeError"
       },
       "UserError": {
-        "description": "an instance of UserError",
-        "title": "UserError",
         "type": "object",
         "required": ["_tag"],
         "properties": {
@@ -493,11 +491,11 @@
             "enum": ["UserError"]
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "an instance of UserError",
+        "title": "UserError"
       },
       "GlobalError": {
-        "description": "an instance of GlobalError",
-        "title": "GlobalError",
         "type": "object",
         "required": ["_tag"],
         "properties": {
@@ -505,11 +503,11 @@
             "enum": ["GlobalError"]
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "an instance of GlobalError",
+        "title": "GlobalError"
       },
       "NoStatusError": {
-        "description": "an instance of NoStatusError",
-        "title": "NoStatusError",
         "type": "object",
         "required": ["_tag"],
         "properties": {
@@ -517,11 +515,11 @@
             "enum": ["NoStatusError"]
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "an instance of NoStatusError",
+        "title": "NoStatusError"
       },
       "Group": {
-        "description": "an instance of Group",
-        "title": "Group",
         "type": "object",
         "required": ["id", "name"],
         "properties": {
@@ -534,7 +532,9 @@
             "type": "string"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "an instance of Group",
+        "title": "Group"
       }
     },
     "securitySchemes": {

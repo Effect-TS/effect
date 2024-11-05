@@ -140,7 +140,7 @@ export interface HttpApiGroup<
  * @since 1.0.0
  * @category models
  */
-export interface Group<Name extends string> {
+export interface ApiGroup<Name extends string> {
   readonly _: unique symbol
   readonly name: Name
 }
@@ -170,7 +170,7 @@ export declare namespace HttpApiGroup {
    * @category models
    */
   export type ToService<A> = A extends
-    HttpApiGroup<infer Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ? Group<Name>
+    HttpApiGroup<infer Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ? ApiGroup<Name>
     : never
 
   /**
@@ -207,6 +207,15 @@ export declare namespace HttpApiGroup {
    */
   export type Error<Group> = Group extends
     HttpApiGroup<infer _Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ? _Error
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type AddContext<Group, R> = [R] extends [never] ? Group :
+    Group extends HttpApiGroup<infer _Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ?
+      HttpApiGroup<_Name, _Endpoints, _Error, _R | R, _TopLevel>
     : never
 
   /**

@@ -9,6 +9,7 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
+import type { Mutable } from "effect/Types"
 import type * as HttpApiEndpoint from "./HttpApiEndpoint.js"
 import { HttpApiDecodeError } from "./HttpApiError.js"
 import type * as HttpApiGroup from "./HttpApiGroup.js"
@@ -57,9 +58,17 @@ export interface HttpApi<
   readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
 
   /**
-   * Add an endpoint to the `HttpApi`.
+   * Add a `HttpApiGroup` to the `HttpApi`.
    */
   add<A extends HttpApiGroup.HttpApiGroup.Any>(group: A): HttpApi<Groups | A, E, R>
+  /**
+   * Add another `HttpApi` to the `HttpApi`.
+   */
+  addHttpApi<Groups2 extends HttpApiGroup.HttpApiGroup.Any, E2, R2>(api: HttpApi<Groups2, E2, R2>): HttpApi<
+    Groups | HttpApiGroup.HttpApiGroup.AddContext<Groups2, R2>,
+    E | E2,
+    R
+  >
   /**
    * Add an global error to the `HttpApi`.
    */
@@ -138,6 +147,25 @@ const Proto = {
     return makeProto({
       groups: HashMap.set(this.groups, group.identifier, group),
       errorSchema: this.errorSchema,
+      annotations: this.annotations,
+      middlewares: this.middlewares
+    })
+  },
+  addHttpApi(
+    this: HttpApi.AnyWithProps,
+    api: HttpApi.AnyWithProps
+  ) {
+    return makeProto({
+      groups: HashMap.union(
+        this.groups,
+        HashMap.map(api.groups, (group) => {
+          const newGroup: Mutable<HttpApiGroup.HttpApiGroup.AnyWithProps> = group.annotateContext(Context.empty())
+          newGroup.annotations = Context.merge(api.annotations, newGroup.annotations)
+          newGroup.middlewares = HashSet.union(newGroup.middlewares, api.middlewares)
+          return newGroup
+        })
+      ),
+      errorSchema: HttpApiSchema.UnionUnify(this.errorSchema, api.errorSchema),
       annotations: this.annotations,
       middlewares: this.middlewares
     })

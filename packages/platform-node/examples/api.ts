@@ -103,9 +103,20 @@ class TopLevelApi extends HttpApiGroup.make("topLevel", { topLevel: true })
   }))
 {}
 
+class PeopleApi extends HttpApiGroup.make("people")
+  .add(
+    HttpApiEndpoint.get("list", "/")
+      .addSuccess(Schema.Array(User))
+  )
+  .prefix("/people")
+{}
+
+class AnotherApi extends HttpApi.empty.add(PeopleApi).prefix("/v2") {}
+
 class MyApi extends HttpApi.empty
   .add(UsersApi)
   .add(TopLevelApi)
+  .addHttpApi(AnotherApi)
 {}
 
 // ------------------------------------------------
@@ -150,6 +161,12 @@ const UsersLive = HttpApiBuilder.group(
   Layer.provide(AuthenticationLive)
 )
 
+const PeopleLive = HttpApiBuilder.group(
+  MyApi,
+  "people",
+  (handlers) => handlers.handle("list", (_) => Effect.succeed([new User({ id: 1, name: "John" })]))
+)
+
 const TopLevelLive = HttpApiBuilder.group(
   MyApi,
   "topLevel",
@@ -165,7 +182,7 @@ const TopLevelLive = HttpApiBuilder.group(
 )
 
 const ApiLive = HttpApiBuilder.api(MyApi).pipe(
-  Layer.provide([UsersLive, TopLevelLive])
+  Layer.provide([UsersLive, TopLevelLive, PeopleLive])
 )
 
 // ------------------------------------------------
@@ -211,6 +228,8 @@ Effect.gen(function*() {
 
   const binary = yield* client.binary()
   console.log("binary", binary)
+
+  console.log("merged api", yield* client.people.list())
 }).pipe(
   Effect.provide(FetchHttpClient.layer),
   NodeRuntime.runMain
