@@ -8115,6 +8115,8 @@ type MakeOptions = boolean | {
 const getDisableValidationMakeOption = (options: MakeOptions | undefined): boolean =>
   Predicate.isBoolean(options) ? options : options?.disableValidation ?? false
 
+const astCache = globalValue("effect/Schema/astCache", () => new WeakMap<any, AST.AST>())
+
 const makeClass = ({ Base, annotations, disableToString, fields, identifier, kind, schema }: {
   kind: "Class" | "TaggedClass" | "TaggedError" | "TaggedRequest"
   identifier: string
@@ -8151,7 +8153,10 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
 
     static [TypeId] = variance
 
-    static get ast() {
+    static get ast(): AST.AST {
+      if (astCache.has(this)) {
+        return astCache.get(this)!
+      }
       const declaration: Schema.Any = declare(
         [typeSide],
         {
@@ -8184,6 +8189,7 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
         declaration,
         { strict: true, decode: (input) => new this(input, true), encode: identity }
       ).annotations({ [AST.SurrogateAnnotationId]: schema.ast })
+      astCache.set(this, transformation.ast)
       return transformation.ast
     }
 

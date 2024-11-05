@@ -147,12 +147,12 @@ export const UnionUnify = <A extends Schema.Schema.All, B extends Schema.Schema.
   A["Encoded"] | B["Encoded"],
   A["Context"] | B["Context"]
 > => {
-  const selfTypes = self.ast._tag === "Union" ? self.ast.types : [self.ast]
-  const thatTypes = that.ast._tag === "Union" ? that.ast.types : [that.ast]
-  return Schema.make(AST.Union.make([
-    ...selfTypes,
-    ...thatTypes
-  ]))
+  return Schema.make(AST.Union.make(Array.from(
+    new Set<AST.AST>([
+      ...(self.ast._tag === "Union" ? self.ast.types : [self.ast]),
+      ...(that.ast._tag === "Union" ? that.ast.types : [that.ast])
+    ])
+  )))
 }
 
 /**

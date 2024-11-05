@@ -296,8 +296,10 @@ class UsersApi extends HttpApiGroup.make("users")
   .annotateContext(OpenApi.annotations({ title: "Users API" }))
 {}
 
+class AnotherApi extends HttpApi.empty.add(GroupsApi) {}
+
 class Api extends HttpApi.empty
-  .add(GroupsApi)
+  .addHttpApi(AnotherApi)
   .add(UsersApi.prefix("/users"))
   .addError(GlobalError, { status: 413 })
   .annotateContext(OpenApi.annotations({ title: "API" }))
