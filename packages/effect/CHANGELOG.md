@@ -1,5 +1,21 @@
 # effect
 
+## 3.10.10
+
+### Patch Changes
+
+- [#3893](https://github.com/Effect-TS/effect/pull/3893) [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28) Thanks @tim-smart! - support "dropping" & "sliding" strategies in Mailbox
+
+- [#3893](https://github.com/Effect-TS/effect/pull/3893) [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28) Thanks @tim-smart! - add Mailbox.fromStream api
+
+- [#3886](https://github.com/Effect-TS/effect/pull/3886) [`b631f40`](https://github.com/Effect-TS/effect/commit/b631f40abbe649b2a089764585b5c39f6a695ac6) Thanks @fubhy! - Optimized `Base64.decode` by not capturing the padding characters in the underlying array buffer.
+
+  Previously, the implementation first captured the padding characters in the underlying array buffer and
+  then returned a new subarray view of the buffer with the padding characters removed.
+
+  By not capturing the padding characters, we avoid the creation of another typed array instance for the
+  subarray view.
+
 ## 3.10.9
 
 ### Patch Changes
