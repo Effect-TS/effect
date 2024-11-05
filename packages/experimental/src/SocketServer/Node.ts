@@ -43,7 +43,13 @@ export const make = (
   options: Net.ServerOpts & Net.ListenOptions
 ): Effect.Effect<SocketServer.SocketServer, SocketServer.SocketServerError, Scope.Scope> =>
   Effect.gen(function*() {
-    const server = Net.createServer(options)
+    const server = yield* Effect.acquireRelease(
+      Effect.sync(() => Net.createServer(options)),
+      (server) =>
+        Effect.async<void>((resume) => {
+          server.close(() => resume(Effect.void))
+        })
+    )
 
     yield* Effect.async<void, SocketServer.SocketServerError>((resume) => {
       server.once("error", (cause) => {
@@ -56,9 +62,6 @@ export const make = (
       })
       server.listen(options, () => {
         resume(Effect.void)
-      })
-      return Effect.async<void>((resume) => {
-        server.close(() => resume(Effect.void))
       })
     })
 
@@ -129,7 +132,13 @@ export const makeWebSocket = (
   options: WS.ServerOptions
 ): Effect.Effect<SocketServer.SocketServer, SocketServer.SocketServerError, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const server = new WS.WebSocketServer(options)
+    const server = yield* Effect.acquireRelease(
+      Effect.sync(() => new WS.WebSocketServer(options)),
+      (server) =>
+        Effect.async<void>((resume) => {
+          server.close(() => resume(Effect.void))
+        })
+    )
 
     yield* Effect.async<void, SocketServer.SocketServerError>((resume) => {
       server.once("error", (error) => {
@@ -142,9 +151,6 @@ export const makeWebSocket = (
       })
       server.once("listening", () => {
         resume(Effect.void)
-      })
-      return Effect.async<void>((resume) => {
-        server.close(() => resume(Effect.void))
       })
     })
 
