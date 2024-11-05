@@ -140,7 +140,6 @@ export const fromDuplex = <RO>(
               })
             ),
             Effect.forever,
-            Effect.onExit(Effect.log),
             Effect.catchAll((error) => {
               if (Cause.isNoSuchElementException(error)) {
                 return Effect.async((resume) => {
