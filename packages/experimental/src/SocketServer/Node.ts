@@ -78,7 +78,6 @@ export const make = (
                         if (conn.closed === false) {
                           conn.destroySoon()
                         }
-                        conn.removeAllListeners()
                       })
                   )
                 ),

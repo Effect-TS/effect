@@ -202,7 +202,12 @@ export interface ReadonlyMailbox<out A, out E = never>
  *   yield* mailbox.fail("boom")
  * })
  */
-export const make: <A, E = never>(capacity?: number | undefined) => Effect<Mailbox<A, E>> = internal.make
+export const make: <A, E = never>(
+  capacity?: number | {
+    readonly capacity?: number
+    readonly strategy?: "suspend" | "dropping" | "sliding"
+  } | undefined
+) => Effect<Mailbox<A, E>> = internal.make
 
 /**
  * Run an `Effect` into a `Mailbox`, where success ends the mailbox and failure
