@@ -1,3 +1,4 @@
+import type { Scope } from "effect/Scope"
 import * as Arr from "../Array.js"
 import type { Cause } from "../Cause.js"
 import { NoSuchElementException } from "../Cause.js"
@@ -16,8 +17,11 @@ import { hasProperty } from "../Predicate.js"
 import type { Scheduler } from "../Scheduler.js"
 import type { Stream } from "../Stream.js"
 import * as channel from "./channel.js"
+import * as channelExecutor from "./channel/channelExecutor.js"
 import * as coreChannel from "./core-stream.js"
 import * as core from "./core.js"
+import * as circular from "./effect/circular.js"
+import * as fiberRuntime from "./fiberRuntime.js"
 import * as stream from "./stream.js"
 
 /** @internal */
@@ -442,8 +446,8 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
 /** @internal */
 export const make = <A, E = never>(
   capacity?: number | {
-    readonly capacity?: number
-    readonly strategy?: "suspend" | "dropping" | "sliding"
+    readonly capacity?: number | undefined
+    readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
   } | undefined
 ): Effect<Api.Mailbox<A, E>> =>
   core.withFiberRuntime((fiber) =>
@@ -490,3 +494,42 @@ export const toChannel = <A, E>(self: Api.ReadonlyMailbox<A, E>): Channel<Chunk.
 
 /** @internal */
 export const toStream = <A, E>(self: Api.ReadonlyMailbox<A, E>): Stream<A, E> => stream.fromChannel(toChannel(self))
+
+/** @internal */
+export const fromStream: {
+  (options?: {
+    readonly capacity?: number | undefined
+    readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+  }): <A, E, R>(self: Stream<A, E, R>) => Effect<Api.ReadonlyMailbox<A, E>, never, R | Scope>
+  <A, E, R>(
+    self: Stream<A, E, R>,
+    options?: {
+      readonly capacity?: number | undefined
+      readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+    }
+  ): Effect<Api.ReadonlyMailbox<A, E>, never, R | Scope>
+} = dual((args) => stream.isStream(args[0]), <A, E, R>(
+  self: Stream<A, E, R>,
+  options?: {
+    readonly capacity?: number | undefined
+    readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+  }
+): Effect<Api.ReadonlyMailbox<A, E>, never, R | Scope> =>
+  core.tap(
+    fiberRuntime.acquireRelease(
+      make<A, E>(options),
+      (mailbox) => mailbox.shutdown
+    ),
+    (mailbox) => {
+      const writer: Channel<never, Chunk.Chunk<A>, never, E> = coreChannel.readWithCause({
+        onInput: (input: Chunk.Chunk<A>) => coreChannel.flatMap(mailbox.offerAll(input), () => writer),
+        onFailure: (cause: Cause<E>) => mailbox.failCause(cause),
+        onDone: () => mailbox.end
+      })
+      return stream.toChannel(self).pipe(
+        coreChannel.pipeTo(writer),
+        channelExecutor.runScoped,
+        circular.forkScoped
+      )
+    }
+  ))
