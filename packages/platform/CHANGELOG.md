@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.69.17
+
+### Patch Changes
+
+- [#3898](https://github.com/Effect-TS/effect/pull/3898) [`8240b1c`](https://github.com/Effect-TS/effect/commit/8240b1c10d45312fc863cb679b1a1e8441af0c1a) Thanks @mattphillips! - Fixed handling of basic auth header values
+
+- [#3903](https://github.com/Effect-TS/effect/pull/3903) [`5eef499`](https://github.com/Effect-TS/effect/commit/5eef4998b6ccb7a5404d9e4fef85e57fa35fbb8a) Thanks @tim-smart! - add HttpApi.addHttpApi method, for merging two HttpApi instances
+
+- Updated dependencies [[`5eef499`](https://github.com/Effect-TS/effect/commit/5eef4998b6ccb7a5404d9e4fef85e57fa35fbb8a)]:
+  - effect@3.10.11
+
 ## 0.69.16
 
 ### Patch Changes
