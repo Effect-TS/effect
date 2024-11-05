@@ -94,6 +94,7 @@ export const getAll: {
  *
  * const urlParams = UrlParams.fromInput({ a: 1, b: true, c: "string", e: [1, 2, 3] })
  * const result = UrlParams.extractAll(urlParams)
+ *
  * assert.deepStrictEqual(
  *   result,
  *   { "a": "1", "b": "true", "c": "string", "e": ["1", "2", "3"] }
@@ -264,6 +265,22 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
 }
 
 /**
+ * Extract schema from all key-value pairs in the given `UrlParams`.
+ *
+ * @example
+ * import { UrlParams } from "@effect/platform"
+ *
+ * const urlParams = UrlParams.fromInput({ "a": [10, "string"], "b": false })
+ * const result = yield* UrlParams.extractSchema(Schema.Struct({
+ *   a: Schema.Tuple(Schema.NumberFromString, Schema.String),
+ *   b: Schema.BooleanFromString
+ * }))(urlParams)
+ *
+ * assert.deepStrictEqual(result, {
+ *   a: [10, "string"],
+ *   b: false
+ * })
+ *
  * @since 1.0.0
  * @category schema
  */
