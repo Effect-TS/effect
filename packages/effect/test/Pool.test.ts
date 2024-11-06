@@ -80,7 +80,6 @@ describe("Pool", () => {
         () => Ref.update(count, (n) => n - 1)
       )
       const pool = yield* $(Pool.make({ acquire: get, size: 10 }))
-      yield* $(Effect.repeat(Ref.get(count), { until: (n) => n === 10 }))
       const values = yield* $(Effect.all(Effect.replicate(9)(Effect.flip(Pool.get(pool)))))
       expect(Array.from(values)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
     }))
@@ -119,17 +118,18 @@ describe("Pool", () => {
     }))
 
   it.scoped("invalidate item", () =>
-    Effect.gen(function*($) {
-      const count = yield* $(Ref.make(0))
+    Effect.gen(function*() {
+      const count = yield* Ref.make(0)
       const get = Effect.acquireRelease(
         Ref.updateAndGet(count, (n) => n + 1),
         () => Ref.update(count, (n) => n - 1)
       )
-      const pool = yield* $(Pool.make({ acquire: get, size: 10 }))
-      yield* $(Effect.repeat(Ref.get(count), { until: (n) => n === 10 }))
-      yield* $(Pool.invalidate(pool, 1))
-      const result = yield* $(Effect.scoped(Pool.get(pool)))
-      const value = yield* $(Ref.get(count))
+      const pool = yield* Pool.make({ acquire: get, size: 10 })
+      yield* Effect.repeat(Ref.get(count), { until: (n) => n === 10 })
+      yield* Pool.invalidate(pool, 1)
+      yield* Effect.yieldNow() // allow lazy resize to run
+      const result = yield* Effect.scoped(Pool.get(pool))
+      const value = yield* Ref.get(count)
       expect(result).toBe(2)
       expect(value).toBe(10)
     }))
@@ -181,7 +181,6 @@ describe("Pool", () => {
         () => Ref.update(count, (n) => n - 1)
       )
       const pool = yield* $(Pool.make({ acquire: get, size: 10 }))
-      yield* $(Effect.repeat(Ref.get(count), { until: (n) => n === 10 }))
       const result = yield* $(Effect.eventually(Effect.scoped(Pool.get(pool))))
       expect(result).toBe(11)
     }))
@@ -419,9 +418,8 @@ describe("Pool", () => {
       yield* Effect.scoped(pool.get).pipe(
         Effect.ignore
       )
-      yield* Scope.close(scope, Exit.void)
-      expect(yield* Ref.get(allocations)).toBe(11)
-      expect(yield* Ref.get(released)).toBe(11)
+      expect(yield* Ref.get(allocations)).toBe(2)
+      expect(yield* Ref.get(released)).toBe(2)
     }))
 
   it.scoped("is subtype of Effect", () =>

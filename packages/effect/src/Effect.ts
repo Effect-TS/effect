@@ -5570,6 +5570,8 @@ export interface Latch extends Effect<void> {
   readonly await: Effect<void>
   /** close the latch */
   readonly close: Effect<void>
+  /** close the latch */
+  readonly unsafeClose: () => void
   /** only run the given effect when the latch is open */
   readonly whenOpen: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
 

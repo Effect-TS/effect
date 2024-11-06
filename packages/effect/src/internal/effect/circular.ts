@@ -165,6 +165,9 @@ class Latch extends Effectable.Class<void> implements Effect.Latch {
       }
     })
   })
+  unsafeClose() {
+    this.isOpen = false
+  }
   close = core.sync(() => {
     this.isOpen = false
   })
