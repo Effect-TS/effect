@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Socket from "@effect/platform/Socket"
-import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -77,7 +76,7 @@ export const fromDuplex = <RO>(
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiberRuntime<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) =>
     Effect.gen(function*() {
-      const sendQueue = yield* Mailbox.make<Uint8Array | string, Socket.SocketCloseError>({
+      const sendQueue = yield* Mailbox.make<Uint8Array | string | Socket.CloseEvent>({
         capacity: fiber.getFiberRef(Socket.currentSendQueueCapacity),
         strategy: "dropping"
       })
@@ -132,27 +131,25 @@ export const fromDuplex = <RO>(
           yield* sendQueue.take.pipe(
             Effect.flatMap((chunk) =>
               Effect.async<void, Socket.SocketError, never>((resume) => {
-                conn.write(chunk, (cause) => {
-                  resume(
-                    cause ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", cause })) : Effect.void
-                  )
-                })
+                if (Socket.isCloseEvent(chunk)) {
+                  conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
+                  resume(Effect.fail(
+                    new Socket.SocketCloseError({ reason: "Close", code: 1000, closeReason: chunk.reason })
+                  ))
+                } else {
+                  conn.write(chunk, (cause) => {
+                    resume(
+                      cause ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", cause })) : Effect.void
+                    )
+                  })
+                }
               })
             ),
             Effect.forever,
-            Effect.catchAll((error) => {
-              if (Cause.isNoSuchElementException(error)) {
-                return Effect.async((resume) => {
-                  conn.end(() => resume(Effect.void))
-                })
-              }
-              conn.destroy(
-                Socket.SocketCloseError.is(error) && error.code > 1000
-                  ? new Error(`closed with code ${error.code}`)
-                  : undefined
-              )
-              return Effect.fail(error)
-            }),
+            Effect.catchTag("NoSuchElementException", () =>
+              Effect.async((resume) => {
+                conn.end(() => resume(Effect.void))
+              })),
             FiberSet.run(fiberSet),
             Effect.withUnhandledErrorLogLevel(Option.none())
           )
@@ -164,16 +161,7 @@ export const fromDuplex = <RO>(
           Effect.interruptible
         )
 
-      const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
-        Socket.isCloseEvent(chunk) ?
-          sendQueue.fail(
-            new Socket.SocketCloseError({
-              code: chunk.code,
-              reason: "Close",
-              closeReason: chunk.reason
-            })
-          ) :
-          sendQueue.offer(chunk)
+      const write = (chunk: Uint8Array | string | Socket.CloseEvent) => sendQueue.offer(chunk)
       const writer = Effect.acquireRelease(
         Effect.succeed(write),
         () => sendQueue.end
