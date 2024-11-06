@@ -7174,7 +7174,8 @@ const bigDecimalPretty = (): pretty_.Pretty<bigDecimal_.BigDecimal> => (val) =>
   `BigDecimal(${bigDecimal_.format(bigDecimal_.normalize(val))})`
 
 const bigDecimalArbitrary = (): LazyArbitrary<bigDecimal_.BigDecimal> => (fc) =>
-  fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => bigDecimal_.make(value, scale))
+  fc.tuple(fc.bigInt(), fc.integer({ min: 0, max: 18 }))
+    .map(([value, scale]) => bigDecimal_.make(value, scale))
 
 /**
  * @category BigDecimal constructors
