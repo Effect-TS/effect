@@ -1,5 +1,16 @@
 # @effect/platform-bun
 
+## 0.49.20
+
+### Patch Changes
+
+- [#3904](https://github.com/Effect-TS/effect/pull/3904) [`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6) Thanks @tim-smart! - improve platform/Worker shutdown and logging
+
+- Updated dependencies [[`a0584ec`](https://github.com/Effect-TS/effect/commit/a0584ece92ed784bfb139e9c5a699f02d1e71c2d), [`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6), [`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6)]:
+  - @effect/platform-node-shared@0.19.19
+  - @effect/platform@0.69.18
+  - effect@3.10.12
+
 ## 0.49.19
 
 ### Patch Changes

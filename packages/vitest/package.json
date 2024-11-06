@@ -1,6 +1,6 @@
 {
   "name": "@effect/vitest",
-  "version": "0.13.11",
+  "version": "0.13.12",
   "type": "module",
   "license": "MIT",
   "description": "A set of helpers for testing Effects with vitest",
