@@ -127,7 +127,7 @@ export const make = <I, E, R, O>(
 ): Effect.Effect<void, WorkerError, WorkerRunner.PlatformRunner | R | Scope.Scope> =>
   Effect.withFiberRuntime<void, never, WorkerRunner.PlatformRunner | R | Scope.Scope>((fiber) =>
     run(process, options).pipe(
-      Effect.tapErrorCause(Effect.logDebug),
+      Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.void : Effect.logWarning(cause)),
       Effect.retry(Schedule.spaced(1000)),
       Effect.annotateLogs({
         package: "@effect/platform-node",

@@ -66,7 +66,7 @@ export const makePlatform: <W>() => <
   P extends { readonly postMessage: (message: any, transfers?: any | undefined) => void }
 >(
   options: {
-    readonly setup: (options: { readonly worker: W; readonly scope: Scope.Scope }) => Effect.Effect<P>
+    readonly setup: (options: { readonly worker: W; readonly scope: Scope.Scope }) => Effect.Effect<P, WorkerError>
     readonly listen: (
       options: {
         readonly port: P
