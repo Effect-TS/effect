@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.69.18
+
+### Patch Changes
+
+- [#3906](https://github.com/Effect-TS/effect/pull/3906) [`a0584ec`](https://github.com/Effect-TS/effect/commit/a0584ece92ed784bfb139e9c5a699f02d1e71c2d) Thanks @tim-smart! - ensure Socket send queue is not ended
+
+- [#3904](https://github.com/Effect-TS/effect/pull/3904) [`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6) Thanks @tim-smart! - improve platform/Worker shutdown and logging
+
+- Updated dependencies [[`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6)]:
+  - effect@3.10.12
+
 ## 0.69.17
 
 ### Patch Changes

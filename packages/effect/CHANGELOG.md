@@ -1,5 +1,11 @@
 # effect
 
+## 3.10.12
+
+### Patch Changes
+
+- [#3904](https://github.com/Effect-TS/effect/pull/3904) [`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6) Thanks @tim-smart! - allow pool items te be used while being acquired
+
 ## 3.10.11
 
 ### Patch Changes
