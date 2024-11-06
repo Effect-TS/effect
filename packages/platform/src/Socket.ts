@@ -392,7 +392,7 @@ export const fromWebSocket = <RO>(
 ): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.gen(function*() {
     const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
-    const sendQueue = yield* Mailbox.make<Uint8Array | string, SocketError>({
+    const sendQueue = yield* Mailbox.make<Uint8Array | string | CloseEvent>({
       capacity: fiber.getFiberRef(currentSendQueueCapacity),
       strategy: "dropping"
     })
@@ -460,22 +460,25 @@ export const fromWebSocket = <RO>(
           )
         }
         open = true
-        yield* sendQueue.takeAll.pipe(
-          Effect.tap(([chunk]) =>
-            Effect.try({
-              try: () => {
-                for (const item of chunk) {
-                  ws.send(item)
-                }
-              },
+        yield* sendQueue.take.pipe(
+          Effect.tap((chunk) => {
+            if (isCloseEvent(chunk)) {
+              ws.close(chunk.code, chunk.reason)
+              return Effect.fail(
+                new SocketCloseError({
+                  reason: "Close",
+                  code: chunk.code,
+                  closeReason: chunk.reason
+                })
+              )
+            }
+            return Effect.try({
+              try: () => ws.send(chunk),
               catch: (cause) => new SocketGenericError({ reason: "Write", cause })
             })
-          ),
-          Effect.forever,
-          Effect.catchIf(SocketCloseError.is, (error) => {
-            ws.close(error.code, error.closeReason)
-            return Effect.fail(error)
           }),
+          Effect.forever,
+          Effect.catchTag("NoSuchElementException", () => Effect.void),
           FiberSet.run(fiberSet)
         )
         return yield* FiberSet.join(fiberSet).pipe(
@@ -498,16 +501,7 @@ export const fromWebSocket = <RO>(
           : handler(data)
       )
 
-    const write = (chunk: Uint8Array | string | CloseEvent) =>
-      isCloseEvent(chunk)
-        ? sendQueue.fail(
-          new SocketCloseError({
-            reason: "Close",
-            code: chunk.code,
-            closeReason: chunk.reason
-          })
-        )
-        : sendQueue.offer(chunk)
+    const write = (chunk: Uint8Array | string | CloseEvent) => sendQueue.offer(chunk)
     const writer = Effect.succeed(write)
 
     return Socket.of({
@@ -579,7 +573,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
 }): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
   Effect.gen(function*() {
     const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
-    const sendQueue = yield* Mailbox.make<Uint8Array | string, SocketError>({
+    const sendQueue = yield* Mailbox.make<Uint8Array | string | CloseEvent>({
       capacity: fiber.getFiberRef(currentSendQueueCapacity),
       strategy: "dropping"
     })
@@ -603,23 +597,24 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
         )
         const fiberSet = yield* FiberSet.make<any, E | SocketError>()
         const encoder = new TextEncoder()
-        yield* sendQueue.takeAll.pipe(
-          Effect.flatMap(([chunk, done]) => {
-            const write = Effect.try({
-              try: () => {
-                for (const item of chunk) {
-                  if (typeof item === "string") {
-                    writer.write(encoder.encode(item))
-                  } else {
-                    writer.write(item)
-                  }
-                }
-              },
+        yield* sendQueue.take.pipe(
+          Effect.tap((chunk) => {
+            if (isCloseEvent(chunk)) {
+              return Effect.fail(
+                new SocketCloseError({
+                  reason: "Close",
+                  code: chunk.code,
+                  closeReason: chunk.reason
+                })
+              )
+            }
+            return Effect.tryPromise({
+              try: () => writer.write(typeof chunk === "string" ? encoder.encode(chunk) : chunk),
               catch: (cause) => new SocketGenericError({ reason: "Write", cause })
             })
-            return done ? Effect.zipRight(write, Effect.interrupt) : write
           }),
           Effect.forever,
+          Effect.catchTag("NoSuchElementException", () => Effect.void),
           Effect.ensuring(Effect.promise(() => writer.close())),
           FiberSet.run(fiberSet)
         )
@@ -658,16 +653,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
           : handler(data)
       )
 
-    const write = (chunk: Uint8Array | string | CloseEvent) =>
-      isCloseEvent(chunk) ?
-        sendQueue.fail(
-          new SocketCloseError({
-            reason: "Close",
-            code: chunk.code,
-            closeReason: chunk.reason
-          })
-        ) :
-        sendQueue.offer(chunk)
+    const write = (chunk: Uint8Array | string | CloseEvent) => sendQueue.offer(chunk)
     const writer = Effect.acquireRelease(
       Effect.succeed(write),
       () => sendQueue.end
