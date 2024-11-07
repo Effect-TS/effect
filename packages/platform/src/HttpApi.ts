@@ -2,11 +2,10 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as Record from "effect/Record"
 import type * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import type { Mutable } from "effect/Types"
@@ -52,10 +51,10 @@ export interface HttpApi<
 > extends Pipeable {
   new(_: never): {}
   readonly [TypeId]: TypeId
-  readonly groups: HashMap.HashMap<string, Groups>
+  readonly groups: Record.ReadonlyRecord<string, Groups>
   readonly annotations: Context.Context<never>
   readonly errorSchema: Schema.Schema<E, unknown, R>
-  readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+  readonly middlewares: ReadonlySet<HttpApiMiddleware.TagClassAny>
 
   /**
    * Add a `HttpApiGroup` to the `HttpApi`.
@@ -145,7 +144,7 @@ const Proto = {
     group: HttpApiGroup.HttpApiGroup.AnyWithProps
   ) {
     return makeProto({
-      groups: HashMap.set(this.groups, group.identifier, group),
+      groups: Record.set(this.groups, group.identifier, group),
       errorSchema: this.errorSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -155,16 +154,15 @@ const Proto = {
     this: HttpApi.AnyWithProps,
     api: HttpApi.AnyWithProps
   ) {
+    const newGroups = { ...this.groups }
+    for (const key in api.groups) {
+      const newGroup: Mutable<HttpApiGroup.HttpApiGroup.AnyWithProps> = api.groups[key].annotateContext(Context.empty())
+      newGroup.annotations = Context.merge(api.annotations, newGroup.annotations)
+      newGroup.middlewares = new Set([...this.middlewares, ...newGroup.middlewares])
+      newGroups[key] = newGroup as any
+    }
     return makeProto({
-      groups: HashMap.union(
-        this.groups,
-        HashMap.map(api.groups, (group) => {
-          const newGroup: Mutable<HttpApiGroup.HttpApiGroup.AnyWithProps> = group.annotateContext(Context.empty())
-          newGroup.annotations = Context.merge(api.annotations, newGroup.annotations)
-          newGroup.middlewares = HashSet.union(newGroup.middlewares, api.middlewares)
-          return newGroup
-        })
-      ),
+      groups: newGroups,
       errorSchema: HttpApiSchema.UnionUnify(this.errorSchema, api.errorSchema),
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -189,7 +187,7 @@ const Proto = {
   },
   prefix(this: HttpApi.AnyWithProps, prefix: PathInput) {
     return makeProto({
-      groups: HashMap.map(this.groups, (group) => group.prefix(prefix)),
+      groups: Record.map(this.groups, (group) => group.prefix(prefix)),
       errorSchema: this.errorSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -205,7 +203,7 @@ const Proto = {
         }) as any)
       ),
       annotations: this.annotations,
-      middlewares: HashSet.add(this.middlewares, tag)
+      middlewares: new Set([...this.middlewares, tag])
     })
   },
   annotate(this: HttpApi.AnyWithProps, tag: Context.Tag<any, any>, value: any) {
@@ -228,10 +226,10 @@ const Proto = {
 
 const makeProto = <Groups extends HttpApiGroup.HttpApiGroup.Any, E, I, R>(
   options: {
-    readonly groups: HashMap.HashMap<string, Groups>
+    readonly groups: Record.ReadonlyRecord<string, Groups>
     readonly errorSchema: Schema.Schema<E, I, R>
     readonly annotations: Context.Context<never>
-    readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+    readonly middlewares: ReadonlySet<HttpApiMiddleware.TagClassAny>
   }
 ): HttpApi<Groups, E, R> => {
   function HttpApi() {}
@@ -253,10 +251,10 @@ const makeProto = <Groups extends HttpApiGroup.HttpApiGroup.Any, E, I, R>(
  * @category constructors
  */
 export const empty: HttpApi<never, HttpApiDecodeError> = makeProto({
-  groups: HashMap.empty(),
+  groups: new Map() as any,
   errorSchema: HttpApiDecodeError,
   annotations: Context.empty(),
-  middlewares: HashSet.empty()
+  middlewares: new Set()
 })
 
 /**
@@ -279,28 +277,28 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
       readonly group: HttpApiGroup.HttpApiGroup.AnyWithProps
       readonly endpoint: HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>
       readonly mergedAnnotations: Context.Context<never>
-      readonly middleware: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+      readonly middleware: ReadonlySet<HttpApiMiddleware.TagClassAny>
       readonly successes: ReadonlyMap<number, Option.Option<AST.AST>>
       readonly errors: ReadonlyMap<number, Option.Option<AST.AST>>
     }) => void
   }
 ) => {
   const apiErrors = extractMembers(self.errorSchema.ast, new Map(), HttpApiSchema.getStatusErrorAST)
-  const groups = self.groups as Iterable<[string, HttpApiGroup.HttpApiGroup.AnyWithProps]>
-  for (const [, group] of groups) {
+  const groups = Object.values(self.groups) as any as Array<HttpApiGroup.HttpApiGroup.AnyWithProps>
+  for (const group of groups) {
     const groupErrors = extractMembers(group.errorSchema.ast, apiErrors, HttpApiSchema.getStatusErrorAST)
     const groupAnnotations = Context.merge(self.annotations, group.annotations)
     options.onGroup({
       group,
       mergedAnnotations: groupAnnotations
     })
-    const endpoints = group.endpoints as Iterable<[string, HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>]>
-    for (const [, endpoint] of endpoints) {
+    const endpoints = Object.values(group.endpoints) as Iterable<HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>>
+    for (const endpoint of endpoints) {
       const errors = extractMembers(endpoint.errorSchema.ast, groupErrors, HttpApiSchema.getStatusErrorAST)
       options.onEndpoint({
         group,
         endpoint,
-        middleware: HashSet.union(group.middlewares, endpoint.middlewares),
+        middleware: new Set([...group.middlewares, ...endpoint.middlewares]),
         mergedAnnotations: Context.merge(groupAnnotations, endpoint.annotations),
         successes: extractMembers(endpoint.successSchema.ast, new Map(), HttpApiSchema.getStatusSuccessAST),
         errors
