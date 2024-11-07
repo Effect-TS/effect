@@ -928,7 +928,7 @@ export const unsafeFromString = (s: string): BigDecimal =>
 export const format = (n: BigDecimal): string => {
   const normalized = normalize(n)
   if (Math.abs(normalized.scale) >= 16) {
-    return scientificNotation(normalized)
+    return toExponential(normalized)
   }
 
   const negative = normalized.value < bigint0
@@ -962,16 +962,16 @@ export const format = (n: BigDecimal): string => {
  * @param n - The `BigDecimal` to format.
  *
  * @example
- * import { scientificNotation, make } from "effect/BigDecimal"
+ * import { toExponential, make } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(scientificNotation(make(123456n, -5)), "1.23456e10")
+ * assert.deepStrictEqual(toExponential(make(123456n, -5)), "1.23456e+10")
  *
  * @since 3.10.13
  * @category conversions
  */
-export const scientificNotation = (n: BigDecimal): string => {
+export const toExponential = (n: BigDecimal): string => {
   if (isZero(n)) {
-    return "0e0"
+    return "0e+0"
   }
 
   const normalized = normalize(n)
@@ -984,7 +984,8 @@ export const scientificNotation = (n: BigDecimal): string => {
     output += `.${tail}`
   }
 
-  return `${output}e${tail.length - normalized.scale}`
+  const exp = tail.length - normalized.scale
+  return `${output}e${exp >= 0 ? "+" : ""}${exp}`
 }
 
 /**
