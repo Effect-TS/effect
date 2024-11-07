@@ -11,7 +11,7 @@ describe("URLFromSelf", () => {
   })
 
   it("arbitrary", () => {
-    Util.expectArbitrary(S.RedactedFromSelf(S.Number))
+    Util.expectArbitrary(S.URLFromSelf)
   })
 
   it("decoding", async () => {

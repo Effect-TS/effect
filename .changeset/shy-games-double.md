@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-add `URL` and `URLFromSelf`
+`URL` and `URLFromSelf` schemas have been added
