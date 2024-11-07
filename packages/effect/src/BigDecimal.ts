@@ -920,7 +920,7 @@ export const unsafeFromString = (s: string): BigDecimal =>
  * assert.deepStrictEqual(format(unsafeFromString("-5")), "-5")
  * assert.deepStrictEqual(format(unsafeFromString("123.456")), "123.456")
  * assert.deepStrictEqual(format(unsafeFromString("-0.00000123")), "-0.00000123")
- * assert.deepStrictEqual(format(make(123456n, -20)), "1.23456e25")
+ * assert.deepStrictEqual(format(make(123456n, -20)), "1.23456e+25")
  *
  * @since 2.0.0
  * @category conversions
