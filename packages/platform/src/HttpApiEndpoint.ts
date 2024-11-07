@@ -4,7 +4,6 @@
 import type { Brand } from "effect/Brand"
 import * as Context from "effect/Context"
 import type { Effect } from "effect/Effect"
-import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -64,7 +63,7 @@ export interface HttpApiEndpoint<
   readonly successSchema: Schema.Schema<Success, unknown, R>
   readonly errorSchema: Schema.Schema<Error, unknown, RE>
   readonly annotations: Context.Context<never>
-  readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+  readonly middlewares: ReadonlySet<HttpApiMiddleware.TagClassAny>
 
   /**
    * Add a schema for the success response of the endpoint. The status code
@@ -700,7 +699,7 @@ const Proto = {
           }))
         )
       ),
-      middlewares: HashSet.add(this.middlewares, middleware)
+      middlewares: new Set([...this.middlewares, middleware])
     })
   },
   annotate(this: HttpApiEndpoint.AnyWithProps, tag: Context.Tag<any, any>, value: any) {
@@ -739,7 +738,7 @@ const makeProto = <
   readonly successSchema: Schema.Schema<Success, unknown, R>
   readonly errorSchema: Schema.Schema<Error, unknown, RE>
   readonly annotations: Context.Context<never>
-  readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+  readonly middlewares: ReadonlySet<HttpApiMiddleware.TagClassAny>
 }): HttpApiEndpoint<Name, Method, Path, Payload, Headers, Success, Error, R, RE> =>
   Object.assign(Object.create(Proto), options)
 
@@ -763,7 +762,7 @@ export const make = <Method extends HttpMethod>(method: Method) =>
     successSchema: HttpApiSchema.NoContent as any,
     errorSchema: Schema.Never as any,
     annotations: Context.empty(),
-    middlewares: HashSet.empty()
+    middlewares: new Set()
   })
 
 /**

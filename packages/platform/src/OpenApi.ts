@@ -3,7 +3,6 @@
  */
 import * as Context from "effect/Context"
 import { globalValue } from "effect/GlobalValue"
-import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
 import * as Schema from "effect/Schema"
@@ -173,7 +172,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
   Option.map(Context.getOption(api.annotations, Override), (override) => {
     Object.assign(spec, override)
   })
-  HashSet.forEach(api.middlewares, (middleware) => {
+  api.middlewares.forEach((middleware) => {
     if (!HttpApiMiddleware.isSecurity(middleware)) {
       return
     }
@@ -218,7 +217,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       Option.map(Context.getOption(endpoint.annotations, ExternalDocs), (externalDocs) => {
         op.externalDocs = externalDocs
       })
-      HashSet.forEach(middleware, (middleware) => {
+      middleware.forEach((middleware) => {
         if (!HttpApiMiddleware.isSecurity(middleware)) {
           return
         }

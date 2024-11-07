@@ -8,8 +8,6 @@ import * as Encoding from "effect/Encoding"
 import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Option from "effect/Option"
@@ -375,7 +373,7 @@ const HandlersProto = {
     name: string,
     handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, any, any>
   ) {
-    const endpoint = HashMap.unsafeGet(this.group.endpoints, name)
+    const endpoint = this.group.endpoints[name]
     return makeHandlers({
       group: this.group,
       handlers: Chunk.append(this.handlers, {
@@ -390,7 +388,7 @@ const HandlersProto = {
     name: string,
     handler: HttpApiEndpoint.HttpApiEndpoint.Handler<any, any, any>
   ) {
-    const endpoint = HashMap.unsafeGet(this.group.endpoints, name)
+    const endpoint = this.group.endpoints[name]
     return makeHandlers({
       group: this.group,
       handlers: Chunk.append(this.handlers, {
@@ -446,7 +444,7 @@ export const group = <
   Router.use((router) =>
     Effect.gen(function*() {
       const context = yield* Effect.context<any>()
-      const group = HashMap.unsafeGet(api.groups, groupName)
+      const group = api.groups[groupName]!
       const result = build(makeHandlers({ group, handlers: Chunk.empty() }))
       const handlers: Handlers<any, any, any> = Effect.isEffect(result)
         ? (yield* result as Effect.Effect<any, any, any>)
@@ -528,7 +526,7 @@ type MiddlewareMap = Map<string, {
 }>
 
 const makeMiddlewareMap = (
-  middleware: HashSet.HashSet<HttpApiMiddleware.TagClassAny>,
+  middleware: ReadonlySet<HttpApiMiddleware.TagClassAny>,
   context: Context.Context<never>,
   initial?: MiddlewareMap
 ): MiddlewareMap => {
@@ -536,7 +534,7 @@ const makeMiddlewareMap = (
     readonly tag: HttpApiMiddleware.TagClassAny
     readonly effect: Effect.Effect<any, any, any>
   }>(initial)
-  HashSet.forEach(middleware, (tag) => {
+  middleware.forEach((tag) => {
     map.set(tag.key, {
       tag,
       effect: Context.unsafeGet(context, tag as any)
@@ -666,12 +664,12 @@ const makeErrorSchema = (
 ): Schema.Schema<unknown, HttpServerResponse.HttpServerResponse> => {
   const schemas = new Set<Schema.Schema.Any>()
   HttpApiSchema.deunionize(schemas, api.errorSchema)
-  HashMap.forEach(api.groups, (group) => {
-    HashMap.forEach(group.endpoints, (endpoint) => {
+  for (const group of Object.values(api.groups)) {
+    for (const endpoint of Object.values(group.endpoints)) {
       HttpApiSchema.deunionize(schemas, endpoint.errorSchema)
-    })
+    }
     HttpApiSchema.deunionize(schemas, group.errorSchema)
-  })
+  }
   return Schema.Union(...Array.from(schemas, toResponseError)) as any
 }
 

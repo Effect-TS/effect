@@ -2,10 +2,9 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as Record from "effect/Record"
 import * as Schema from "effect/Schema"
 import type * as HttpApiEndpoint from "./HttpApiEndpoint.js"
 import type { HttpApiDecodeError } from "./HttpApiError.js"
@@ -51,10 +50,10 @@ export interface HttpApiGroup<
   readonly [TypeId]: TypeId
   readonly identifier: Id
   readonly topLevel: TopLevel
-  readonly endpoints: HashMap.HashMap<string, Endpoints>
+  readonly endpoints: Record.ReadonlyRecord<string, Endpoints>
   readonly errorSchema: Schema.Schema<Error, unknown, R>
   readonly annotations: Context.Context<never>
-  readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+  readonly middlewares: ReadonlySet<HttpApiMiddleware.TagClassAny>
 
   /**
    * Add an `HttpApiEndpoint` to an `HttpApiGroup`.
@@ -272,7 +271,10 @@ const Proto = {
     return makeProto({
       identifier: this.identifier,
       topLevel: this.topLevel,
-      endpoints: HashMap.set(this.endpoints, endpoint.name, endpoint),
+      endpoints: {
+        ...this.endpoints,
+        [endpoint.name]: endpoint
+      },
       errorSchema: this.errorSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -301,7 +303,7 @@ const Proto = {
     return makeProto({
       identifier: this.identifier,
       topLevel: this.topLevel,
-      endpoints: HashMap.map(this.endpoints, (endpoint) => endpoint.prefix(prefix)),
+      endpoints: Record.map(this.endpoints, (endpoint) => endpoint.prefix(prefix)),
       errorSchema: this.errorSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -319,14 +321,14 @@ const Proto = {
         }) as any)
       ),
       annotations: this.annotations,
-      middlewares: HashSet.add(this.middlewares, middleware)
+      middlewares: new Set([...this.middlewares, middleware])
     })
   },
   middlewareEndpoints(this: HttpApiGroup.AnyWithProps, middleware: HttpApiMiddleware.TagClassAny) {
     return makeProto({
       identifier: this.identifier,
       topLevel: this.topLevel,
-      endpoints: HashMap.map(this.endpoints, (endpoint) => endpoint.middleware(middleware)),
+      endpoints: Record.map(this.endpoints, (endpoint) => endpoint.middleware(middleware)),
       errorSchema: this.errorSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -356,7 +358,7 @@ const Proto = {
     return makeProto({
       identifier: this.identifier,
       topLevel: this.topLevel,
-      endpoints: HashMap.map(this.endpoints, (endpoint) => endpoint.annotateContext(context)),
+      endpoints: Record.map(this.endpoints, (endpoint) => endpoint.annotateContext(context)),
       errorSchema: this.errorSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -366,7 +368,7 @@ const Proto = {
     return makeProto({
       identifier: this.identifier,
       topLevel: this.topLevel,
-      endpoints: HashMap.map(this.endpoints, (endpoint) => endpoint.annotate(tag, value)),
+      endpoints: Record.map(this.endpoints, (endpoint) => endpoint.annotate(tag, value)),
       errorSchema: this.errorSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -386,10 +388,10 @@ const makeProto = <
 >(options: {
   readonly identifier: Id
   readonly topLevel: TopLevel
-  readonly endpoints: HashMap.HashMap<string, Endpoints>
+  readonly endpoints: Record.ReadonlyRecord<string, Endpoints>
   readonly errorSchema: Schema.Schema<Error, unknown, R>
   readonly annotations: Context.Context<never>
-  readonly middlewares: HashSet.HashSet<HttpApiMiddleware.TagClassAny>
+  readonly middlewares: ReadonlySet<HttpApiMiddleware.TagClassAny>
 }): HttpApiGroup<Id, Endpoints, Error, R, TopLevel> => {
   function HttpApiGroup() {}
   Object.setPrototypeOf(HttpApiGroup, Proto)
@@ -411,8 +413,8 @@ export const make = <const Id extends string, const TopLevel extends (true | fal
   makeProto({
     identifier,
     topLevel: options?.topLevel ?? false as any,
-    endpoints: HashMap.empty(),
+    endpoints: Record.empty(),
     errorSchema: Schema.Never as any,
     annotations: Context.empty(),
-    middlewares: HashSet.empty()
+    middlewares: new Set()
   })
