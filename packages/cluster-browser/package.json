@@ -1,7 +1,7 @@
 {
   "name": "@effect/cluster-browser",
   "type": "module",
-  "version": "0.12.18",
+  "version": "0.12.19",
   "description": "Unified interfaces for common cluster-browser-specific services",
   "publishConfig": {
     "access": "public",
