@@ -33,7 +33,7 @@ describe("URL", () => {
     Util.expectEncodeSuccess(
       schema,
       new URL("https://effecty.website"),
-      "https://effecty.website"
+      "https://effecty.website/"
     )
   })
 
