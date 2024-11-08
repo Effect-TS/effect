@@ -4589,6 +4589,49 @@ export class ULID extends String$.pipe(
 ) {}
 
 /**
+ * Defines a schema that represents a `URL` object.
+ *
+ * @category URL constructors
+ * @since 3.11.0
+ */
+export class URLFromSelf extends instanceOf(URL, {
+  identifier: "URLFromSelf",
+  title: "URLFromSelf",
+  arbitrary: (): LazyArbitrary<URL> => (fc) => fc.webUrl().map((s) => new URL(s)),
+  pretty: () => (url) => url.toString()
+}) {}
+
+/** @ignore */
+class URL$ extends transformOrFail(
+  String$.annotations({ description: "a string that will be parsed into a URL" }),
+  URLFromSelf,
+  {
+    strict: true,
+    decode: (str, _, ast) =>
+      ParseResult.try({
+        try: () => new URL(str),
+        catch: () => new ParseResult.Type(ast, str)
+      }),
+    encode: (url) => ParseResult.succeed(url.toString())
+  }
+).annotations({
+  identifier: "URL",
+  title: "URL",
+  pretty: () => (url) => url.toString()
+}) {}
+
+export {
+  /**
+   * Defines a schema that attempts to convert a `string` to a `URL` object using
+   * the `new URL` constructor.
+   *
+   * @category URL transformations
+   * @since 3.11.0
+   */
+  URL$ as URL
+}
+
+/**
  * @category schema id
  * @since 3.10.0
  */
