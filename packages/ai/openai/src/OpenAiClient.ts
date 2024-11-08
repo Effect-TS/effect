@@ -58,6 +58,7 @@ export const make = (options: {
   readonly apiKey: Redacted.Redacted
   readonly organizationId?: Redacted.Redacted | undefined
   readonly projectId?: Redacted.Redacted | undefined
+  readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
 }): Effect.Effect<OpenAiClient.Service, never, HttpClient.HttpClient> =>
   Effect.gen(function*() {
     const httpClient = (yield* HttpClient.HttpClient).pipe(
@@ -73,7 +74,8 @@ export const make = (options: {
             : identity,
           HttpClientRequest.acceptJson
         )
-      )
+      ),
+      options.transformClient ? options.transformClient : identity
     )
     const httpClientOk = HttpClient.filterStatusOk(httpClient)
     const client = Generated.make(httpClient)
