@@ -1,5 +1,11 @@
 # effect
 
+## 3.10.13
+
+### Patch Changes
+
+- [#3907](https://github.com/Effect-TS/effect/pull/3907) [`995bbdf`](https://github.com/Effect-TS/effect/commit/995bbdffea2e332f203cd5b474cd6a1c77dfa6ae) Thanks @arijoon! - Schema.BigDecimal Arbitrary's scale limited to the range 0-18
+
 ## 3.10.12
 
 ### Patch Changes

@@ -1,5 +1,17 @@
 # @effect/ai-openai
 
+## 0.4.4
+
+### Patch Changes
+
+- [#3916](https://github.com/Effect-TS/effect/pull/3916) [`72b0272`](https://github.com/Effect-TS/effect/commit/72b02726d62000756577464273c0dd0876cbe0b5) Thanks @tim-smart! - use effect/JSONSchema for effect/ai & allow http client transforms
+
+- Updated dependencies [[`72b0272`](https://github.com/Effect-TS/effect/commit/72b02726d62000756577464273c0dd0876cbe0b5), [`995bbdf`](https://github.com/Effect-TS/effect/commit/995bbdffea2e332f203cd5b474cd6a1c77dfa6ae)]:
+  - @effect/ai@0.2.20
+  - effect@3.10.13
+  - @effect/experimental@0.32.4
+  - @effect/platform@0.69.20
+
 ## 0.4.3
 
 ### Patch Changes
