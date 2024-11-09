@@ -270,6 +270,8 @@ describe("BigDecimal", () => {
     assert.deepStrictEqual(BigDecimal.fromString("15e-3"), Option.some(BigDecimal.make(15n, 3)))
     assert.deepStrictEqual(BigDecimal.fromString("0.00002e5"), Option.some(BigDecimal.make(2n, 0)))
     assert.deepStrictEqual(BigDecimal.fromString("0.00002e-5"), Option.some(BigDecimal.make(2n, 10)))
+    assert.isTrue(Option.isNone(BigDecimal.fromString("0.0000e2e1")))
+    assert.isTrue(Option.isNone(BigDecimal.fromString("0.1.2")))
   })
 
   it("format", () => {

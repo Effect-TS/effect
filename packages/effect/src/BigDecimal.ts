@@ -26,6 +26,7 @@ import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
 
 const DEFAULT_PRECISION = 100
+const FINITE_INT_REGEX = /^[+-]?\d+$/
 
 /**
  * @since 2.0.0
@@ -906,7 +907,7 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
     const trail = s.slice(seperator + 1)
     base = s.slice(0, seperator)
     exp = Number(trail)
-    if (base === "" || trail === "" || !Number.isSafeInteger(exp)) {
+    if (base === "" || !Number.isSafeInteger(exp) || !FINITE_INT_REGEX.test(trail)) {
       return Option.none()
     }
   } else {
@@ -927,7 +928,7 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
     offset = 0
   }
 
-  if (!/^(?:\+|-)?\d+$/.test(digits)) {
+  if (!FINITE_INT_REGEX.test(digits)) {
     return Option.none()
   }
 
