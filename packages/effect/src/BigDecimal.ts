@@ -839,7 +839,7 @@ export const unsafeFromNumber = (n: number): BigDecimal =>
  *
  * @since 2.0.0
  * @category constructors
- * @deprecated Use `unsafeFromNumber` instead.
+ * @deprecated Use {@link unsafeFromNumber} instead.
  */
 export const fromNumber: (n: number) => BigDecimal = unsafeFromNumber
 
