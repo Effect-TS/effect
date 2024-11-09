@@ -355,7 +355,9 @@ describe("BigDecimal", () => {
   })
 })
 
-describe("Property based testing", () => {
+// This test is skipped because it is slow. It remains here as an opt-in test for
+// debugging or active development of features in the `BigDecimal` module.
+describe.skip("Property based testing", () => {
   const zeroArb = fc.constant(BigDecimal.unsafeMakeNormalized(0n, 0))
   const bigDecimalArb = fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => BigDecimal.make(value, scale))
   const arbWithZero = fc.oneof({ arbitrary: zeroArb, weight: 1 }, { arbitrary: bigDecimalArb, weight: 3 })

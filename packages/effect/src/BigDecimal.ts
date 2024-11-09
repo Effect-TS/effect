@@ -816,10 +816,10 @@ export const fromBigInt = (n: bigint): BigDecimal => make(n, 0)
  * @param value - The `number` value to create a `BigDecimal` from.
  *
  * @example
- * import { unsafeFromNumber, make } from "effect/BigDecimal"
+ * import { BigDecimal } from "effect"
  *
- * assert.deepStrictEqual(unsafeFromNumber(123), make(123n, 0))
- * assert.deepStrictEqual(unsafeFromNumber(123.456), make(123456n, 3))
+ * assert.deepStrictEqual(BigDecimal.unsafeFromNumber(123), BigDecimal.make(123n, 0))
+ * assert.deepStrictEqual(BigDecimal.unsafeFromNumber(123.456), BigDecimal.make(123456n, 3))
  *
  * @since 3.11.0
  * @category constructors
@@ -854,11 +854,11 @@ export const fromNumber: (n: number) => BigDecimal = unsafeFromNumber
  * @param n - The `number` value to create a `BigDecimal` from.
  *
  * @example
- * import { safeFromNumber, make } from "effect/BigDecimal"
+ * import { BigDecimal, Option } from "effect"
  *
- * assert.deepStrictEqual(safeFromNumber(123), Option.some(123n, 0))
- * assert.deepStrictEqual(safeFromNumber(123.456), Option.some(123456n, 3))
- * assert.deepStrictEqual(safeFromNumber(Infinity), Option.none())
+ * assert.deepStrictEqual(BigDecimal.safeFromNumber(123), Option.some(BigDecimal.make(123n, 0)))
+ * assert.deepStrictEqual(BigDecimal.safeFromNumber(123.456), Option.some(BigDecimal.make(123456n, 3)))
+ * assert.deepStrictEqual(BigDecimal.safeFromNumber(Infinity), Option.none())
  *
  * @since 3.11.0
  * @category constructors
