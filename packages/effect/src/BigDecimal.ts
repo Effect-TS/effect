@@ -833,7 +833,7 @@ export const unsafeFromNumber = (n: number): BigDecimal =>
  * It is not recommended to convert a floating point number to a decimal directly,
  * as the floating point representation may be unexpected.
  *
- * Throws a `RangeError` if the number is not finite.
+ * Throws a `RangeError` if the number is not finite (`NaN`, `+Infinity` or `-Infinity`).
  *
  * @param value - The `number` value to create a `BigDecimal` from.
  *
