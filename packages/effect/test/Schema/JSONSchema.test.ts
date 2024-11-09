@@ -1566,7 +1566,6 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(Schema.typeSchema(A), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
-        "title": "A (Type side)",
         "required": [
           "a"
         ],
@@ -1602,8 +1601,7 @@ schema (Suspend): <suspended schema>`
             "type": "string"
           }
         },
-        "additionalProperties": false,
-        "title": "A (Encoded side)"
+        "additionalProperties": false
       })
     })
   })
@@ -2057,8 +2055,7 @@ schema (Suspend): <suspended schema>`
               "minLength": 1
             }
           },
-          "additionalProperties": false,
-          "title": "Struct (Encoded side)"
+          "additionalProperties": false
         })
         expectJSONSchema(Schema.typeSchema(schema), {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2074,8 +2071,7 @@ schema (Suspend): <suspended schema>`
               "minLength": 1
             }
           },
-          "additionalProperties": false,
-          "title": "Struct (Type side)"
+          "additionalProperties": false
         })
         expectJSONSchema(Schema.encodedSchema(schema), {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2107,8 +2103,7 @@ schema (Suspend): <suspended schema>`
                 "minLength": 1
               }
             },
-            "additionalProperties": false,
-            "title": "Struct (Encoded side)"
+            "additionalProperties": false
           }
         )
       })
@@ -2130,8 +2125,7 @@ schema (Suspend): <suspended schema>`
                 "minLength": 1
               }
             },
-            "additionalProperties": false,
-            "title": "Struct (Encoded side)"
+            "additionalProperties": false
           }
         )
       })
@@ -2155,8 +2149,7 @@ schema (Suspend): <suspended schema>`
                 "minLength": 1
               }
             },
-            "additionalProperties": false,
-            "title": "Struct (Encoded side)"
+            "additionalProperties": false
           }
         )
       })
