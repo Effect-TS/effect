@@ -1,39 +1,39 @@
 import * as BigDecimal from "effect/BigDecimal"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
-import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
+import fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
 const _ = BigDecimal.unsafeFromString
-const assertEquals = (a: BigDecimal.BigDecimal, b: BigDecimal.BigDecimal) => assertTrue(BigDecimal.equals(a, b))
+const assertEquals = (a: BigDecimal.BigDecimal, b: BigDecimal.BigDecimal) => assert.isTrue(BigDecimal.equals(a, b))
 
 describe("BigDecimal", () => {
   it("isBigDecimal", () => {
-    assertTrue(BigDecimal.isBigDecimal(_("0")))
-    assertTrue(BigDecimal.isBigDecimal(_("987")))
-    assertTrue(BigDecimal.isBigDecimal(_("123.0")))
-    assertTrue(BigDecimal.isBigDecimal(_("0.123")))
-    assertTrue(BigDecimal.isBigDecimal(_("123.456")))
-    assertFalse(BigDecimal.isBigDecimal("1"))
-    assertFalse(BigDecimal.isBigDecimal(true))
+    assert.isTrue(BigDecimal.isBigDecimal(_("0")))
+    assert.isTrue(BigDecimal.isBigDecimal(_("987")))
+    assert.isTrue(BigDecimal.isBigDecimal(_("123.0")))
+    assert.isTrue(BigDecimal.isBigDecimal(_("0.123")))
+    assert.isTrue(BigDecimal.isBigDecimal(_("123.456")))
+    assert.isFalse(BigDecimal.isBigDecimal("1"))
+    assert.isFalse(BigDecimal.isBigDecimal(true))
   })
 
   it("sign", () => {
-    deepStrictEqual(BigDecimal.sign(_("-5")), -1)
-    deepStrictEqual(BigDecimal.sign(_("0")), 0)
-    deepStrictEqual(BigDecimal.sign(_("5")), 1)
-    deepStrictEqual(BigDecimal.sign(_("-123.456")), -1)
-    deepStrictEqual(BigDecimal.sign(_("456.789")), 1)
+    assert.deepStrictEqual(BigDecimal.sign(_("-5")), -1)
+    assert.deepStrictEqual(BigDecimal.sign(_("0")), 0)
+    assert.deepStrictEqual(BigDecimal.sign(_("5")), 1)
+    assert.deepStrictEqual(BigDecimal.sign(_("-123.456")), -1)
+    assert.deepStrictEqual(BigDecimal.sign(_("456.789")), 1)
   })
 
   it("equals", () => {
-    assertTrue(BigDecimal.equals(_("1"), _("1")))
-    assertTrue(BigDecimal.equals(_("0.00012300"), _("0.000123")))
-    assertTrue(BigDecimal.equals(_("5"), _("5.0")))
-    assertTrue(BigDecimal.equals(_("123.0000"), _("123.00")))
-    assertFalse(BigDecimal.equals(_("1"), _("2")))
-    assertFalse(BigDecimal.equals(_("1"), _("1.1")))
-    assertFalse(BigDecimal.equals(_("1"), _("0.1")))
+    assert.isTrue(BigDecimal.equals(_("1"), _("1")))
+    assert.isTrue(BigDecimal.equals(_("0.00012300"), _("0.000123")))
+    assert.isTrue(BigDecimal.equals(_("5"), _("5.0")))
+    assert.isTrue(BigDecimal.equals(_("123.0000"), _("123.00")))
+    assert.isFalse(BigDecimal.equals(_("1"), _("2")))
+    assert.isFalse(BigDecimal.equals(_("1"), _("1.1")))
+    assert.isFalse(BigDecimal.equals(_("1"), _("0.1")))
   })
 
   it("sum", () => {
@@ -130,62 +130,62 @@ describe("BigDecimal", () => {
       assertEquals(BigDecimal.unsafeDivide(_(x), _(y)), _(z))
     }
 
-    deepStrictEqual(BigDecimal.divide(_("5"), _("0")), Option.none())
+    assert.isTrue(Option.isNone(BigDecimal.divide(_("5"), _("0"))))
     assert.throws(() => BigDecimal.unsafeDivide(_("5"), _("0")), "Division by zero")
   })
 
   it("Equivalence", () => {
-    assertTrue(BigDecimal.Equivalence(_("1"), _("1")))
-    assertTrue(BigDecimal.Equivalence(_("0.00012300"), _("0.000123")))
-    assertTrue(BigDecimal.Equivalence(_("5"), _("5.00")))
-    assertFalse(BigDecimal.Equivalence(_("1"), _("2")))
-    assertFalse(BigDecimal.Equivalence(_("1"), _("1.1")))
+    assert.isTrue(BigDecimal.Equivalence(_("1"), _("1")))
+    assert.isTrue(BigDecimal.Equivalence(_("0.00012300"), _("0.000123")))
+    assert.isTrue(BigDecimal.Equivalence(_("5"), _("5.00")))
+    assert.isFalse(BigDecimal.Equivalence(_("1"), _("2")))
+    assert.isFalse(BigDecimal.Equivalence(_("1"), _("1.1")))
   })
 
   it("Order", () => {
-    deepStrictEqual(BigDecimal.Order(_("1"), _("2")), -1)
-    deepStrictEqual(BigDecimal.Order(_("2"), _("1")), 1)
-    deepStrictEqual(BigDecimal.Order(_("2"), _("2")), 0)
-    deepStrictEqual(BigDecimal.Order(_("1"), _("1.1")), -1)
-    deepStrictEqual(BigDecimal.Order(_("1.1"), _("1")), 1)
-    deepStrictEqual(BigDecimal.Order(_("0.00012300"), _("0.000123")), 0)
-    deepStrictEqual(BigDecimal.Order(_("5"), _("5.000")), 0)
-    deepStrictEqual(BigDecimal.Order(_("5"), _("0.500")), 1)
-    deepStrictEqual(BigDecimal.Order(_("5"), _("50.00")), -1)
+    assert.deepStrictEqual(BigDecimal.Order(_("1"), _("2")), -1)
+    assert.deepStrictEqual(BigDecimal.Order(_("2"), _("1")), 1)
+    assert.deepStrictEqual(BigDecimal.Order(_("2"), _("2")), 0)
+    assert.deepStrictEqual(BigDecimal.Order(_("1"), _("1.1")), -1)
+    assert.deepStrictEqual(BigDecimal.Order(_("1.1"), _("1")), 1)
+    assert.deepStrictEqual(BigDecimal.Order(_("0.00012300"), _("0.000123")), 0)
+    assert.deepStrictEqual(BigDecimal.Order(_("5"), _("5.000")), 0)
+    assert.deepStrictEqual(BigDecimal.Order(_("5"), _("0.500")), 1)
+    assert.deepStrictEqual(BigDecimal.Order(_("5"), _("50.00")), -1)
   })
 
   it("lessThan", () => {
-    assertTrue(BigDecimal.lessThan(_("2"), _("3")))
-    assertFalse(BigDecimal.lessThan(_("3"), _("3")))
-    assertFalse(BigDecimal.lessThan(_("4"), _("3")))
+    assert.isTrue(BigDecimal.lessThan(_("2"), _("3")))
+    assert.isFalse(BigDecimal.lessThan(_("3"), _("3")))
+    assert.isFalse(BigDecimal.lessThan(_("4"), _("3")))
   })
 
   it("lessThanOrEqualTo", () => {
-    assertTrue(BigDecimal.lessThanOrEqualTo(_("2"), _("3")))
-    assertTrue(BigDecimal.lessThanOrEqualTo(_("3"), _("3")))
-    assertFalse(BigDecimal.lessThanOrEqualTo(_("4"), _("3")))
+    assert.isTrue(BigDecimal.lessThanOrEqualTo(_("2"), _("3")))
+    assert.isTrue(BigDecimal.lessThanOrEqualTo(_("3"), _("3")))
+    assert.isFalse(BigDecimal.lessThanOrEqualTo(_("4"), _("3")))
   })
 
   it("greaterThan", () => {
-    assertFalse(BigDecimal.greaterThan(_("2"), _("3")))
-    assertFalse(BigDecimal.greaterThan(_("3"), _("3")))
-    assertTrue(BigDecimal.greaterThan(_("4"), _("3")))
+    assert.isFalse(BigDecimal.greaterThan(_("2"), _("3")))
+    assert.isFalse(BigDecimal.greaterThan(_("3"), _("3")))
+    assert.isTrue(BigDecimal.greaterThan(_("4"), _("3")))
   })
 
   it("greaterThanOrEqualTo", () => {
-    deepStrictEqual(BigDecimal.greaterThanOrEqualTo(_("2"), _("3")), false)
-    deepStrictEqual(BigDecimal.greaterThanOrEqualTo(_("3"), _("3")), true)
-    deepStrictEqual(BigDecimal.greaterThanOrEqualTo(_("4"), _("3")), true)
+    assert.deepStrictEqual(BigDecimal.greaterThanOrEqualTo(_("2"), _("3")), false)
+    assert.deepStrictEqual(BigDecimal.greaterThanOrEqualTo(_("3"), _("3")), true)
+    assert.deepStrictEqual(BigDecimal.greaterThanOrEqualTo(_("4"), _("3")), true)
   })
 
   it("between", () => {
-    deepStrictEqual(BigDecimal.between({ minimum: _("0"), maximum: _("5") })(_("3")), true)
-    deepStrictEqual(BigDecimal.between({ minimum: _("0"), maximum: _("5") })(_("-1")), false)
-    deepStrictEqual(BigDecimal.between({ minimum: _("0"), maximum: _("5") })(_("6")), false)
-    deepStrictEqual(BigDecimal.between({ minimum: _("0.02"), maximum: _("5") })(_("0.0123")), false)
-    deepStrictEqual(BigDecimal.between({ minimum: _("0.02"), maximum: _("5") })(_("0.05")), true)
+    assert.deepStrictEqual(BigDecimal.between({ minimum: _("0"), maximum: _("5") })(_("3")), true)
+    assert.deepStrictEqual(BigDecimal.between({ minimum: _("0"), maximum: _("5") })(_("-1")), false)
+    assert.deepStrictEqual(BigDecimal.between({ minimum: _("0"), maximum: _("5") })(_("6")), false)
+    assert.deepStrictEqual(BigDecimal.between({ minimum: _("0.02"), maximum: _("5") })(_("0.0123")), false)
+    assert.deepStrictEqual(BigDecimal.between({ minimum: _("0.02"), maximum: _("5") })(_("0.05")), true)
 
-    deepStrictEqual(BigDecimal.between(_("3"), { minimum: _("0"), maximum: _("5") }), true)
+    assert.deepStrictEqual(BigDecimal.between(_("3"), { minimum: _("0"), maximum: _("5") }), true)
   })
 
   it("clamp", () => {
@@ -229,7 +229,7 @@ describe("BigDecimal", () => {
     assertEquals(BigDecimal.remainder(_("5"), _("2")).pipe(Option.getOrThrow), _("1"))
     assertEquals(BigDecimal.remainder(_("4"), _("2")).pipe(Option.getOrThrow), _("0"))
     assertEquals(BigDecimal.remainder(_("123.456"), _("0.2")).pipe(Option.getOrThrow), _("0.056"))
-    deepStrictEqual(BigDecimal.remainder(_("5"), _("0")), Option.none())
+    assert.isTrue(Option.isNone(BigDecimal.remainder(_("5"), _("0"))))
   })
 
   it("unsafeRemainder", () => {
@@ -240,43 +240,60 @@ describe("BigDecimal", () => {
   })
 
   it("normalize", () => {
-    deepStrictEqual(BigDecimal.normalize(_("0")), BigDecimal.unsafeMakeNormalized(0n, 0))
-    deepStrictEqual(BigDecimal.normalize(_("0.123000")), BigDecimal.unsafeMakeNormalized(123n, 3))
-    deepStrictEqual(BigDecimal.normalize(_("123.000")), BigDecimal.unsafeMakeNormalized(123n, 0))
-    deepStrictEqual(BigDecimal.normalize(_("-0.000123000")), BigDecimal.unsafeMakeNormalized(-123n, 6))
-    deepStrictEqual(BigDecimal.normalize(_("-123.000")), BigDecimal.unsafeMakeNormalized(-123n, 0))
-    deepStrictEqual(BigDecimal.normalize(_("12300000")), BigDecimal.unsafeMakeNormalized(123n, -5))
+    assert.deepStrictEqual(BigDecimal.normalize(_("0")), BigDecimal.unsafeMakeNormalized(0n, 0))
+    assert.deepStrictEqual(BigDecimal.normalize(_("0.123000")), BigDecimal.unsafeMakeNormalized(123n, 3))
+    assert.deepStrictEqual(BigDecimal.normalize(_("123.000")), BigDecimal.unsafeMakeNormalized(123n, 0))
+    assert.deepStrictEqual(BigDecimal.normalize(_("-0.000123000")), BigDecimal.unsafeMakeNormalized(-123n, 6))
+    assert.deepStrictEqual(BigDecimal.normalize(_("-123.000")), BigDecimal.unsafeMakeNormalized(-123n, 0))
+    assert.deepStrictEqual(BigDecimal.normalize(_("12300000")), BigDecimal.unsafeMakeNormalized(123n, -5))
   })
 
   it("fromString", () => {
-    deepStrictEqual(BigDecimal.fromString("2"), Option.some(BigDecimal.make(2n, 0)))
-    deepStrictEqual(BigDecimal.fromString("-2"), Option.some(BigDecimal.make(-2n, 0)))
-    deepStrictEqual(BigDecimal.fromString("0.123"), Option.some(BigDecimal.make(123n, 3)))
-    deepStrictEqual(BigDecimal.fromString("200"), Option.some(BigDecimal.make(200n, 0)))
-    deepStrictEqual(BigDecimal.fromString("20000000"), Option.some(BigDecimal.make(20000000n, 0)))
-    deepStrictEqual(BigDecimal.fromString("-20000000"), Option.some(BigDecimal.make(-20000000n, 0)))
-    deepStrictEqual(BigDecimal.fromString("2.00"), Option.some(BigDecimal.make(200n, 2)))
-    deepStrictEqual(BigDecimal.fromString("0.0000200"), Option.some(BigDecimal.make(200n, 7)))
-    deepStrictEqual(BigDecimal.fromString(""), Option.some(BigDecimal.normalize(BigDecimal.make(0n, 0))))
-    deepStrictEqual(BigDecimal.fromString("1E5"), Option.none())
+    assert.deepStrictEqual(BigDecimal.fromString("2"), Option.some(BigDecimal.make(2n, 0)))
+    assert.deepStrictEqual(BigDecimal.fromString("-2"), Option.some(BigDecimal.make(-2n, 0)))
+    assert.deepStrictEqual(BigDecimal.fromString("0.123"), Option.some(BigDecimal.make(123n, 3)))
+    assert.deepStrictEqual(BigDecimal.fromString("200"), Option.some(BigDecimal.make(200n, 0)))
+    assert.deepStrictEqual(BigDecimal.fromString("20000000"), Option.some(BigDecimal.make(20000000n, 0)))
+    assert.deepStrictEqual(BigDecimal.fromString("-20000000"), Option.some(BigDecimal.make(-20000000n, 0)))
+    assert.deepStrictEqual(BigDecimal.fromString("2.00"), Option.some(BigDecimal.make(200n, 2)))
+    assert.deepStrictEqual(BigDecimal.fromString("0.0000200"), Option.some(BigDecimal.make(200n, 7)))
+    assert.deepStrictEqual(BigDecimal.fromString(""), Option.some(BigDecimal.normalize(BigDecimal.make(0n, 0))))
+    assert.deepStrictEqual(BigDecimal.fromString("1e5"), Option.some(BigDecimal.make(1n, -5)))
+    assert.deepStrictEqual(BigDecimal.fromString("1E15"), Option.some(BigDecimal.make(1n, -15)))
+    assert.deepStrictEqual(BigDecimal.fromString("1e+5"), Option.some(BigDecimal.make(1n, -5)))
+    assert.deepStrictEqual(BigDecimal.fromString("1E+15"), Option.some(BigDecimal.make(1n, -15)))
+    assert.deepStrictEqual(BigDecimal.fromString("-1.5E3"), Option.some(BigDecimal.make(-15n, -2)))
+    assert.deepStrictEqual(BigDecimal.fromString("-1.5e3"), Option.some(BigDecimal.make(-15n, -2)))
+    assert.deepStrictEqual(BigDecimal.fromString("-.5e3"), Option.some(BigDecimal.make(-5n, -2)))
+    assert.deepStrictEqual(BigDecimal.fromString("-5e3"), Option.some(BigDecimal.make(-5n, -3)))
+    assert.deepStrictEqual(BigDecimal.fromString("-5e-3"), Option.some(BigDecimal.make(-5n, 3)))
+    assert.deepStrictEqual(BigDecimal.fromString("15e-3"), Option.some(BigDecimal.make(15n, 3)))
+    assert.deepStrictEqual(BigDecimal.fromString("0.00002e5"), Option.some(BigDecimal.make(2n, 0)))
+    assert.deepStrictEqual(BigDecimal.fromString("0.00002e-5"), Option.some(BigDecimal.make(2n, 10)))
+    assert.isTrue(Option.isNone(BigDecimal.fromString("0.0000e2e1")))
+    assert.isTrue(Option.isNone(BigDecimal.fromString("0.1.2")))
   })
 
   it("format", () => {
-    deepStrictEqual(BigDecimal.format(_("2")), "2")
-    deepStrictEqual(BigDecimal.format(_("-2")), "-2")
-    deepStrictEqual(BigDecimal.format(_("0.123")), "0.123")
-    deepStrictEqual(BigDecimal.format(_("200")), "200")
-    deepStrictEqual(BigDecimal.format(_("20000000")), "20000000")
-    deepStrictEqual(BigDecimal.format(_("-20000000")), "-20000000")
-    deepStrictEqual(BigDecimal.format(_("2.00")), "2.00")
-    deepStrictEqual(BigDecimal.format(_("0.200")), "0.200")
-    deepStrictEqual(BigDecimal.format(_("0.123000")), "0.123000")
-    deepStrictEqual(BigDecimal.format(_("-456.123")), "-456.123")
-    deepStrictEqual(BigDecimal.format(BigDecimal.make(10n, -1)), "100")
+    assert.strictEqual(BigDecimal.format(_("2")), "2")
+    assert.strictEqual(BigDecimal.format(_("-2")), "-2")
+    assert.strictEqual(BigDecimal.format(_("0.123")), "0.123")
+    assert.strictEqual(BigDecimal.format(_("200")), "200")
+    assert.strictEqual(BigDecimal.format(_("20000000")), "20000000")
+    assert.strictEqual(BigDecimal.format(_("-20000000")), "-20000000")
+    assert.strictEqual(BigDecimal.format(_("2.00")), "2")
+    assert.strictEqual(BigDecimal.format(_("0.200")), "0.2")
+    assert.strictEqual(BigDecimal.format(_("0.123000")), "0.123")
+    assert.strictEqual(BigDecimal.format(_("-456.123")), "-456.123")
+    assert.strictEqual(BigDecimal.format(BigDecimal.make(10n, -1)), "100")
+    assert.strictEqual(BigDecimal.format(BigDecimal.make(1n, -25)), "1e+25")
+    assert.strictEqual(BigDecimal.format(BigDecimal.make(12345n, -25)), "1.2345e+29")
+    assert.strictEqual(BigDecimal.format(BigDecimal.make(12345n, 25)), "1.2345e-21")
+    assert.strictEqual(BigDecimal.format(BigDecimal.make(-12345n, 20)), "-1.2345e-16")
   })
 
   it("toJSON()", () => {
-    deepStrictEqual(JSON.stringify(_("2")), JSON.stringify({ _id: "BigDecimal", value: "2", scale: 0 }))
+    assert.deepStrictEqual(JSON.stringify(_("2")), JSON.stringify({ _id: "BigDecimal", value: "2", scale: 0 }))
   })
 
   it("inspect", () => {
@@ -288,7 +305,7 @@ describe("BigDecimal", () => {
   })
 
   it("toString()", () => {
-    deepStrictEqual(String(_("2")), "BigDecimal(2)")
+    assert.strictEqual(String(_("2")), "BigDecimal(2)")
   })
 
   it("Equal.symbol", () => {
@@ -313,29 +330,50 @@ describe("BigDecimal", () => {
   })
 
   it("unsafeToNumber", () => {
-    assert.deepStrictEqual(BigDecimal.unsafeToNumber(_("123.456")), 123.456)
+    assert.strictEqual(BigDecimal.unsafeToNumber(_("123.456")), 123.456)
   })
 
   it("isInteger", () => {
-    assert.deepStrictEqual(BigDecimal.isInteger(_("0")), true)
-    assert.deepStrictEqual(BigDecimal.isInteger(_("1")), true)
-    assert.deepStrictEqual(BigDecimal.isInteger(_("1.1")), false)
+    assert.isTrue(BigDecimal.isInteger(_("0")))
+    assert.isTrue(BigDecimal.isInteger(_("1")))
+    assert.isFalse(BigDecimal.isInteger(_("1.1")))
   })
 
   it("isZero", () => {
-    assert.deepStrictEqual(BigDecimal.isZero(_("0")), true)
-    assert.deepStrictEqual(BigDecimal.isZero(_("1")), false)
+    assert.isTrue(BigDecimal.isZero(_("0")))
+    assert.isFalse(BigDecimal.isZero(_("1")))
   })
 
   it("isNegative", () => {
-    assert.deepStrictEqual(BigDecimal.isNegative(_("-1")), true)
-    assert.deepStrictEqual(BigDecimal.isNegative(_("0")), false)
-    assert.deepStrictEqual(BigDecimal.isNegative(_("1")), false)
+    assert.isTrue(BigDecimal.isNegative(_("-1")))
+    assert.isFalse(BigDecimal.isNegative(_("0")))
+    assert.isFalse(BigDecimal.isNegative(_("1")))
   })
 
   it("isPositive", () => {
-    assert.deepStrictEqual(BigDecimal.isPositive(_("-1")), false)
-    assert.deepStrictEqual(BigDecimal.isPositive(_("0")), false)
-    assert.deepStrictEqual(BigDecimal.isPositive(_("1")), true)
+    assert.isFalse(BigDecimal.isPositive(_("-1")))
+    assert.isFalse(BigDecimal.isPositive(_("0")))
+    assert.isTrue(BigDecimal.isPositive(_("1")))
+  })
+})
+
+// This test is skipped because it is slow. It remains here as an opt-in test for
+// debugging or active development of features in the `BigDecimal` module.
+describe.skip("Property based testing", () => {
+  const zeroArb = fc.constant(BigDecimal.unsafeMakeNormalized(0n, 0))
+  const bigDecimalArb = fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => BigDecimal.make(value, scale))
+  const arbWithZero = fc.oneof({ arbitrary: zeroArb, weight: 1 }, { arbitrary: bigDecimalArb, weight: 3 })
+
+  it("unsafeFromString and format should be inverses", () => {
+    fc.assert(fc.property(arbWithZero, (bd) => {
+      return BigDecimal.equals(BigDecimal.unsafeFromString(BigDecimal.format(bd)), bd)
+    }))
+  })
+
+  it("toExponential should harmonize with Number.prototype.toExponential", () => {
+    const actualNumbers = fc.float().filter((n) => Number.isFinite(n))
+    fc.assert(fc.property(actualNumbers, (n) => {
+      return n.toExponential() === BigDecimal.toExponential(BigDecimal.unsafeFromNumber(n))
+    }))
   })
 })
