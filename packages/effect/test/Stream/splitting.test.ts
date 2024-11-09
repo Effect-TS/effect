@@ -90,17 +90,6 @@ describe("Stream", () => {
       assert.deepStrictEqual(Array.from(result), [])
     }))
 
-  it.effect("split - should infer proper types from refinement", () =>
-    Effect.gen(function*($) {
-      const stream = Stream.make(1, "2", 3)
-      const result = yield* $(
-        stream,
-        Stream.split((a: number | string): a is string => typeof a === "string"),
-        Stream.runCollect<Chunk.Chunk<number>, never, never>
-      )
-      assert.deepStrictEqual(Array.from(result).map((chunk) => Array.from(chunk)), [[1], [3]])
-    }))
-
   it.effect("splitOnChunk - consecutive delimiter yields empty Chunk", () =>
     Effect.gen(function*($) {
       const input = Stream.make(

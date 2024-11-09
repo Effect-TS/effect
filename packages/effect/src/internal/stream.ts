@@ -6193,25 +6193,25 @@ export const split: {
   <A, B extends A>(
     refinement: Refinement<NoInfer<A>, B>
   ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<Exclude<A, B>>, E, R>
+  <A>(
+    predicate: Predicate<NoInfer<A>>
+  ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<A>, E, R>
   <A, E, R, B extends A>(
     self: Stream.Stream<A, E, R>,
     refinement: Refinement<A, B>
   ): Stream.Stream<Chunk.Chunk<Exclude<A, B>>, E, R>
-  <A>(
-    predicate: Predicate<NoInfer<A>>
-  ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<A>, E, R>
   <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<Chunk.Chunk<A>, E, R>
 } = dual(
   2,
-  <A, B extends A, E, R>(
+  <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    refinement: Refinement<A, B>
-  ): Stream.Stream<Chunk.Chunk<Exclude<A, B>>, E, R> => {
+    predicate: Predicate<A>
+  ): Stream.Stream<Chunk.Chunk<A>, E, R> => {
     const split = (
       leftovers: Chunk.Chunk<A>,
       input: Chunk.Chunk<A>
     ): Channel.Channel<Chunk.Chunk<Chunk.Chunk<A>>, Chunk.Chunk<A>, E, E, unknown, unknown, R> => {
-      const [chunk, remaining] = pipe(leftovers, Chunk.appendAll(input), Chunk.splitWhere(refinement))
+      const [chunk, remaining] = pipe(leftovers, Chunk.appendAll(input), Chunk.splitWhere(predicate))
       if (Chunk.isEmpty(chunk) || Chunk.isEmpty(remaining)) {
         return loop(pipe(chunk, Chunk.appendAll(pipe(remaining, Chunk.drop(1)))))
       }
@@ -6230,7 +6230,7 @@ export const split: {
           if (Chunk.isEmpty(leftovers)) {
             return core.void
           }
-          if (Option.isNone(pipe(leftovers, Chunk.findFirst(refinement)))) {
+          if (Option.isNone(pipe(leftovers, Chunk.findFirst(predicate)))) {
             return channel.zipRight(core.write(Chunk.of(leftovers)), core.void)
           }
           return channel.zipRight(
