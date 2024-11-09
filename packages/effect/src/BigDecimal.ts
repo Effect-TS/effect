@@ -825,7 +825,7 @@ export const fromBigInt = (n: bigint): BigDecimal => make(n, 0)
  * @category constructors
  */
 export const unsafeFromNumber = (n: number): BigDecimal =>
-  Option.getOrThrowWith(safeFromNumber(n), () => new RangeError("Number must be finite"))
+  Option.getOrThrowWith(safeFromNumber(n), () => new RangeError(`Number must be finite, got ${n}`))
 
 /**
  * Creates a `BigDecimal` from a `number` value.
