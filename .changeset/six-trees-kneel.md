@@ -1,9 +1,9 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Added scientific notation for BigDecimal formatting and string parsing.
+Added `BigDecimal.toExponential` for scientific notation formatting of `BigDecimal` values.
 
-Values with a lot of decimal places or trailing zeroes are now formatted in
-scientific notation. Previously, extremely large or small values could cause
-`OutOfMemory` errors when formatting.
+The implementation of `BigDecimal.format` now uses scientific notation for values with
+at least 16 decimal places or trailing zeroes. Previously, extremely large or small values
+could cause `OutOfMemory` errors when formatting.
