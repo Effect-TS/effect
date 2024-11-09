@@ -1,6 +1,7 @@
 import * as BigDecimal from "effect/BigDecimal"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
+import fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
 const _ = BigDecimal.unsafeFromString
@@ -351,5 +352,24 @@ describe("BigDecimal", () => {
     assert.isFalse(BigDecimal.isPositive(_("-1")))
     assert.isFalse(BigDecimal.isPositive(_("0")))
     assert.isTrue(BigDecimal.isPositive(_("1")))
+  })
+})
+
+describe("Property based testing", () => {
+  const zeroArb = fc.constant(BigDecimal.unsafeMakeNormalized(0n, 0))
+  const bigDecimalArb = fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => BigDecimal.make(value, scale))
+  const arbWithZero = fc.oneof({ arbitrary: zeroArb, weight: 1 }, { arbitrary: bigDecimalArb, weight: 3 })
+
+  it("unsafeFromString and format should be inverses", () => {
+    fc.assert(fc.property(arbWithZero, (bd) => {
+      return BigDecimal.equals(BigDecimal.unsafeFromString(BigDecimal.format(bd)), bd)
+    }))
+  })
+
+  it("toExponential should harmonize with Number.prototype.toExponential", () => {
+    const actualNumbers = fc.float().filter((n) => Number.isFinite(n))
+    fc.assert(fc.property(actualNumbers, (n) => {
+      return n.toExponential() === BigDecimal.toExponential(BigDecimal.unsafeFromNumber(n))
+    }))
   })
 })

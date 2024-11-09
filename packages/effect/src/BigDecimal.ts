@@ -811,20 +811,71 @@ export const fromBigInt = (n: bigint): BigDecimal => make(n, 0)
  * It is not recommended to convert a floating point number to a decimal directly,
  * as the floating point representation may be unexpected.
  *
+ * Throws a `RangeError` if the number is not finite.
+ *
  * @param value - The `number` value to create a `BigDecimal` from.
  *
  * @example
- * import { fromNumber, make } from "effect/BigDecimal"
+ * import { unsafeFromNumber, make } from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(fromNumber(123), make(123n, 0))
- * assert.deepStrictEqual(fromNumber(123.456), make(123456n, 3))
+ * assert.deepStrictEqual(unsafeFromNumber(123), make(123n, 0))
+ * assert.deepStrictEqual(unsafeFromNumber(123.456), make(123456n, 3))
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const unsafeFromNumber = (n: number): BigDecimal =>
+  Option.getOrThrowWith(safeFromNumber(n), () => new RangeError("Number must be finite"))
+
+/**
+ * Creates a `BigDecimal` from a `number` value.
+ *
+ * It is not recommended to convert a floating point number to a decimal directly,
+ * as the floating point representation may be unexpected.
+ *
+ * Throws a `RangeError` if the number is not finite.
+ *
+ * @param value - The `number` value to create a `BigDecimal` from.
  *
  * @since 2.0.0
  * @category constructors
+ * @deprecated Use `unsafeFromNumber` instead.
  */
-export const fromNumber = (n: number): BigDecimal => {
-  const [lead, trail = ""] = `${n}`.split(".")
-  return make(BigInt(`${lead}${trail}`), trail.length)
+export const fromNumber: (n: number) => BigDecimal = unsafeFromNumber
+
+/**
+ * Creates a `BigDecimal` from a `number` value.
+ *
+ * It is not recommended to convert a floating point number to a decimal directly,
+ * as the floating point representation may be unexpected.
+ *
+ * Returns `None` if the number is not finite.
+ *
+ * @param n - The `number` value to create a `BigDecimal` from.
+ *
+ * @example
+ * import { safeFromNumber, make } from "effect/BigDecimal"
+ *
+ * assert.deepStrictEqual(safeFromNumber(123), Option.some(123n, 0))
+ * assert.deepStrictEqual(safeFromNumber(123.456), Option.some(123456n, 3))
+ * assert.deepStrictEqual(safeFromNumber(Infinity), Option.none())
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const safeFromNumber = (n: number): Option.Option<BigDecimal> => {
+  // TODO: Rename this to `fromNumber` after removing the current, unsafe implementation of `fromNumber`.
+  if (!Number.isFinite(n)) {
+    return Option.none()
+  }
+
+  const string = `${n}`
+  if (string.includes("e")) {
+    return fromString(string)
+  }
+
+  const [lead, trail = ""] = string.split(".")
+  return Option.some(make(BigInt(`${lead}${trail}`), trail.length))
 }
 
 /**
@@ -966,7 +1017,7 @@ export const format = (n: BigDecimal): string => {
  *
  * assert.deepStrictEqual(toExponential(make(123456n, -5)), "1.23456e+10")
  *
- * @since 3.10.13
+ * @since 3.11.0
  * @category conversions
  */
 export const toExponential = (n: BigDecimal): string => {
