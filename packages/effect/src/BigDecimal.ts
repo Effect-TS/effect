@@ -26,6 +26,7 @@ import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
 
 const DEFAULT_PRECISION = 100
+const FINITE_INT_REGEX = /^[+-]?\d+$/
 
 /**
  * @since 2.0.0
@@ -811,20 +812,71 @@ export const fromBigInt = (n: bigint): BigDecimal => make(n, 0)
  * It is not recommended to convert a floating point number to a decimal directly,
  * as the floating point representation may be unexpected.
  *
+ * Throws a `RangeError` if the number is not finite (`NaN`, `+Infinity` or `-Infinity`).
+ *
  * @param value - The `number` value to create a `BigDecimal` from.
  *
  * @example
- * import { fromNumber, make } from "effect/BigDecimal"
+ * import { BigDecimal } from "effect"
  *
- * assert.deepStrictEqual(fromNumber(123), make(123n, 0))
- * assert.deepStrictEqual(fromNumber(123.456), make(123456n, 3))
+ * assert.deepStrictEqual(BigDecimal.unsafeFromNumber(123), BigDecimal.make(123n, 0))
+ * assert.deepStrictEqual(BigDecimal.unsafeFromNumber(123.456), BigDecimal.make(123456n, 3))
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const unsafeFromNumber = (n: number): BigDecimal =>
+  Option.getOrThrowWith(safeFromNumber(n), () => new RangeError(`Number must be finite, got ${n}`))
+
+/**
+ * Creates a `BigDecimal` from a `number` value.
+ *
+ * It is not recommended to convert a floating point number to a decimal directly,
+ * as the floating point representation may be unexpected.
+ *
+ * Throws a `RangeError` if the number is not finite (`NaN`, `+Infinity` or `-Infinity`).
+ *
+ * @param value - The `number` value to create a `BigDecimal` from.
  *
  * @since 2.0.0
  * @category constructors
+ * @deprecated Use {@link unsafeFromNumber} instead.
  */
-export const fromNumber = (n: number): BigDecimal => {
-  const [lead, trail = ""] = `${n}`.split(".")
-  return make(BigInt(`${lead}${trail}`), trail.length)
+export const fromNumber: (n: number) => BigDecimal = unsafeFromNumber
+
+/**
+ * Creates a `BigDecimal` from a `number` value.
+ *
+ * It is not recommended to convert a floating point number to a decimal directly,
+ * as the floating point representation may be unexpected.
+ *
+ * Returns `None` if the number is not finite (`NaN`, `+Infinity` or `-Infinity`).
+ *
+ * @param n - The `number` value to create a `BigDecimal` from.
+ *
+ * @example
+ * import { BigDecimal, Option } from "effect"
+ *
+ * assert.deepStrictEqual(BigDecimal.safeFromNumber(123), Option.some(BigDecimal.make(123n, 0)))
+ * assert.deepStrictEqual(BigDecimal.safeFromNumber(123.456), Option.some(BigDecimal.make(123456n, 3)))
+ * assert.deepStrictEqual(BigDecimal.safeFromNumber(Infinity), Option.none())
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const safeFromNumber = (n: number): Option.Option<BigDecimal> => {
+  // TODO: Rename this to `fromNumber` after removing the current, unsafe implementation of `fromNumber`.
+  if (!Number.isFinite(n)) {
+    return Option.none()
+  }
+
+  const string = `${n}`
+  if (string.includes("e")) {
+    return fromString(string)
+  }
+
+  const [lead, trail = ""] = string.split(".")
+  return Option.some(make(BigInt(`${lead}${trail}`), trail.length))
 }
 
 /**
@@ -838,31 +890,50 @@ export const fromNumber = (n: number): BigDecimal => {
  * assert.deepStrictEqual(BigDecimal.fromString("123"), Option.some(BigDecimal.make(123n, 0)))
  * assert.deepStrictEqual(BigDecimal.fromString("123.456"), Option.some(BigDecimal.make(123456n, 3)))
  * assert.deepStrictEqual(BigDecimal.fromString("123.abc"), Option.none())
+ * assert.deepStrictEqual(BigDecimal.fromString("1.23456e5"), Option.some(BigDecimal.make(123456n, 0)))
  *
  * @since 2.0.0
  * @category constructors
  */
 export const fromString = (s: string): Option.Option<BigDecimal> => {
-  let digits: string
-  let scale: number
-
-  const dot = s.search(/\./)
-  if (dot !== -1) {
-    const lead = s.slice(0, dot)
-    const trail = s.slice(dot + 1)
-    digits = `${lead}${trail}`
-    scale = trail.length
-  } else {
-    digits = s
-    scale = 0
-  }
-
-  if (digits === "") {
-    // TODO: This mimics the BigInt constructor behavior. Should this be `Option.none()`?
+  if (s === "") {
     return Option.some(zero)
   }
 
-  if (!/^(?:\+|-)?\d+$/.test(digits)) {
+  let base: string
+  let exp: number
+  const seperator = s.search(/[eE]/)
+  if (seperator !== -1) {
+    const trail = s.slice(seperator + 1)
+    base = s.slice(0, seperator)
+    exp = Number(trail)
+    if (base === "" || !Number.isSafeInteger(exp) || !FINITE_INT_REGEX.test(trail)) {
+      return Option.none()
+    }
+  } else {
+    base = s
+    exp = 0
+  }
+
+  let digits: string
+  let offset: number
+  const dot = base.search(/\./)
+  if (dot !== -1) {
+    const lead = base.slice(0, dot)
+    const trail = base.slice(dot + 1)
+    digits = `${lead}${trail}`
+    offset = trail.length
+  } else {
+    digits = base
+    offset = 0
+  }
+
+  if (!FINITE_INT_REGEX.test(digits)) {
+    return Option.none()
+  }
+
+  const scale = offset - exp
+  if (!Number.isSafeInteger(scale)) {
     return Option.none()
   }
 
@@ -890,30 +961,39 @@ export const unsafeFromString = (s: string): BigDecimal =>
 /**
  * Formats a given `BigDecimal` as a `string`.
  *
- * @param normalized - The `BigDecimal` to format.
+ * If the scale of the `BigDecimal` is greater than or equal to 16, the `BigDecimal` will
+ * be formatted in scientific notation.
+ *
+ * @param n - The `BigDecimal` to format.
  *
  * @example
- * import { format, unsafeFromString } from "effect/BigDecimal"
+ * import { format, make, unsafeFromString } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(format(unsafeFromString("-5")), "-5")
  * assert.deepStrictEqual(format(unsafeFromString("123.456")), "123.456")
  * assert.deepStrictEqual(format(unsafeFromString("-0.00000123")), "-0.00000123")
+ * assert.deepStrictEqual(format(make(123456n, -20)), "1.23456e+25")
  *
  * @since 2.0.0
  * @category conversions
  */
 export const format = (n: BigDecimal): string => {
-  const negative = n.value < bigint0
-  const absolute = negative ? `${n.value}`.substring(1) : `${n.value}`
+  const normalized = normalize(n)
+  if (Math.abs(normalized.scale) >= 16) {
+    return toExponential(normalized)
+  }
+
+  const negative = normalized.value < bigint0
+  const absolute = negative ? `${normalized.value}`.substring(1) : `${normalized.value}`
 
   let before: string
   let after: string
 
-  if (n.scale >= absolute.length) {
+  if (normalized.scale >= absolute.length) {
     before = "0"
-    after = "0".repeat(n.scale - absolute.length) + absolute
+    after = "0".repeat(normalized.scale - absolute.length) + absolute
   } else {
-    const location = absolute.length - n.scale
+    const location = absolute.length - normalized.scale
     if (location > absolute.length) {
       const zeros = location - absolute.length
       before = `${absolute}${"0".repeat(zeros)}`
@@ -926,6 +1006,38 @@ export const format = (n: BigDecimal): string => {
 
   const complete = after === "" ? before : `${before}.${after}`
   return negative ? `-${complete}` : complete
+}
+
+/**
+ * Formats a given `BigDecimal` as a `string` in scientific notation.
+ *
+ * @param n - The `BigDecimal` to format.
+ *
+ * @example
+ * import { toExponential, make } from "effect/BigDecimal"
+ *
+ * assert.deepStrictEqual(toExponential(make(123456n, -5)), "1.23456e+10")
+ *
+ * @since 3.11.0
+ * @category conversions
+ */
+export const toExponential = (n: BigDecimal): string => {
+  if (isZero(n)) {
+    return "0e+0"
+  }
+
+  const normalized = normalize(n)
+  const digits = `${abs(normalized).value}`
+  const head = digits.slice(0, 1)
+  const tail = digits.slice(1)
+
+  let output = `${isNegative(normalized) ? "-" : ""}${head}`
+  if (tail !== "") {
+    output += `.${tail}`
+  }
+
+  const exp = tail.length - normalized.scale
+  return `${output}e${exp >= 0 ? "+" : ""}${exp}`
 }
 
 /**
