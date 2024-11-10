@@ -10,12 +10,12 @@ class UserRouter extends HttpRouter.Tag("UserRouter")<UserRouter>() {}
 const GetUsers = UserRouter.use((router) =>
   Effect.gen(function*() {
     const ps = yield* PubSub.unbounded<Uint8Array>()
+    // the following would work, but why doesn't the http server interrupt the stream reading?
+    // yield* Effect.addFinalizer(() => ps.shutdown)
     yield* router.get("/", HttpServerResponse.text("got users"))
     yield* router.get(
       "/stream",
-      HttpServerResponse.stream(
-        Stream.unwrapScoped(Stream.fromPubSub(ps, { scoped: true }))
-      )
+      Stream.fromPubSub(ps, { scoped: true }).pipe(Effect.map(HttpServerResponse.stream))
     )
   })
 )
