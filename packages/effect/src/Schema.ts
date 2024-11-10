@@ -4971,7 +4971,7 @@ export const JsonNumberSchemaId: unique symbol = Symbol.for("effect/SchemaId/Jso
  * @since 3.10.0
  */
 export class JsonNumber extends Number$.pipe(
-  filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
+  filter(Number.isFinite, {
     schemaId: JsonNumberSchemaId,
     identifier: "JsonNumber",
     title: "JSON-compatible number",
