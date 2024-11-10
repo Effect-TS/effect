@@ -1,6 +1,6 @@
 import { HttpMiddleware, HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, PubSub, Stream } from "effect"
 import { createServer } from "http"
 
 // You can define router instances using `HttpRouter.Tag`
@@ -9,7 +9,14 @@ class UserRouter extends HttpRouter.Tag("UserRouter")<UserRouter>() {}
 // Create `Layer`'s for your routes with `UserRouter.use`
 const GetUsers = UserRouter.use((router) =>
   Effect.gen(function*() {
+    const ps = yield* PubSub.unbounded<Uint8Array>()
     yield* router.get("/", HttpServerResponse.text("got users"))
+    yield* router.get(
+      "/stream",
+      HttpServerResponse.stream(
+        Stream.unwrapScoped(Stream.fromPubSub(ps, { scoped: true }))
+      )
+    )
   })
 )
 
@@ -41,4 +48,5 @@ const HttpLive = HttpRouter.Default.unwrap(HttpServer.serve(HttpMiddleware.logge
   Layer.provide(ServerLive)
 )
 
+console.log("pid", process.pid)
 NodeRuntime.runMain(Layer.launch(HttpLive))
