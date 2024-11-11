@@ -177,7 +177,7 @@ Stream.dropUntil(numbersOrStrings, Predicate.isNumber)
 pipe(numbersOrStrings, Stream.dropUntil(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
-// splitWhere
+// split
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Stream<Chunk<number>, never, never>
@@ -186,10 +186,10 @@ Stream.split(numbers, predicateNumbersOrStrings)
 // $ExpectType Stream<Chunk<number>, never, never>
 pipe(numbers, Stream.split(predicateNumbersOrStrings))
 
-// $ExpectType Stream<Chunk<string | number>, never, never>
+// $ExpectType Stream<Chunk<string>, never, never>
 Stream.split(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Stream<Chunk<string | number>, never, never>
+// $ExpectType Stream<Chunk<string>, never, never>
 pipe(numbersOrStrings, Stream.split(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
