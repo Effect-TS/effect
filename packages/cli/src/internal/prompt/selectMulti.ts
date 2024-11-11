@@ -6,7 +6,7 @@ import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
 import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
-import type { SelectOptions } from "./selectUtils.js"
+import type { SelectMultiOptions, SelectOptions } from "./selectUtils.js"
 import { handleClear, renderBeep, renderOutput } from "./selectUtils.js"
 import { entriesToDisplay } from "./utils.js"
 
@@ -19,16 +19,23 @@ const metaOptionsCount = 2
 
 function renderMultiChoices<A>(
   state: MultiState,
-  options: SelectOptions<A>,
+  options: SelectOptions<A> & SelectMultiOptions,
   figures: Effect.Effect.Success<typeof InternalAnsiUtils.figures>
 ) {
   const choices = options.choices
   const totalChoices = choices.length
   const selectedCount = state.selectedIndices.size
   const allSelected = selectedCount === totalChoices
+
+  const selectAllText = allSelected
+    ? options.multiTexts?.selectNone ?? "Select None"
+    : options.multiTexts?.selectAll ?? "Select All"
+
+  const inverseSelectionText = options.multiTexts?.inverseSelection ?? "Inverse Selection"
+
   const metaOptions = [
-    { title: allSelected ? "Select None" : "Select All" },
-    { title: "Inverse Selection" }
+    { title: selectAllText },
+    { title: inverseSelectionText }
   ]
   const allChoices = [...metaOptions, ...choices]
   const toDisplay = entriesToDisplay(state.index, allChoices.length, options.maxPerPage)
@@ -200,8 +207,10 @@ function handleMultiRender<A>(options: SelectOptions<A>) {
 }
 
 /** @internal */
-export const selectMulti = <A>(options: Prompt.Prompt.SelectOptions<A>): Prompt.Prompt<Array<A>> => {
-  const opts: SelectOptions<A> = {
+export const selectMulti = <A>(
+  options: Prompt.Prompt.SelectOptions<A> & Prompt.Prompt.SelectMultiOptions
+): Prompt.Prompt<Array<A>> => {
+  const opts: SelectOptions<A> & SelectMultiOptions = {
     maxPerPage: 10,
     ...options
   }

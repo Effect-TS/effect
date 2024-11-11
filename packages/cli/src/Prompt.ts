@@ -371,6 +371,30 @@ export declare namespace Prompt {
    * @since 1.0.0
    * @category models
    */
+  export interface SelectMultiOptions {
+    /**
+     * Optional texts for the multi-select prompt.
+     */
+    readonly multiTexts?: {
+      /**
+       * Text for the "Select All" option (defaults to "Select All").
+       */
+      readonly selectAll?: string
+      /**
+       * Text for the "Select None" option (defaults to "Select None").
+       */
+      readonly selectNone?: string
+      /**
+       * Text for the "Inverse Selection" option (defaults to "Inverse Selection").
+       */
+      readonly inverseSelection?: string
+    }
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export interface SelectChoice<A> {
     /**
      * The name of the select option that is displayed to the user.

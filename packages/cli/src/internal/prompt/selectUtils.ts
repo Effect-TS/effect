@@ -9,6 +9,8 @@ import * as InternalAnsiUtils from "./ansi-utils.js"
 
 export interface SelectOptions<A> extends Required<Prompt.Prompt.SelectOptions<A>> {}
 
+export interface SelectMultiOptions extends Prompt.Prompt.SelectMultiOptions {}
+
 export const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
 export function handleClear<A>(options: SelectOptions<A>) {
