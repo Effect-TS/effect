@@ -70,4 +70,13 @@ describe.concurrent("ManagedRuntime", () => {
       const result = FiberRefs.getOrDefault(runtime.fiberRefs, FiberRef.currentLogSpan)
       assert.deepStrictEqual(result, List.empty())
     }))
+
+  it("can be build synchronously", () => {
+    const tag = Context.GenericTag<string>("string")
+    const layer = Layer.succeed(tag, "test")
+    const managedRuntime = ManagedRuntime.make(layer)
+    const runtime = Effect.runSync(managedRuntime.runtimeEffect)
+    const result = Context.get(runtime.context, tag)
+    assert.strictEqual(result, "test")
+  })
 })
