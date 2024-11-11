@@ -15,6 +15,7 @@ import * as InternalFilePrompt from "./internal/prompt/file.js"
 import * as InternalListPrompt from "./internal/prompt/list.js"
 import * as InternalNumberPrompt from "./internal/prompt/number.js"
 import * as InternalSelectPrompt from "./internal/prompt/select.js"
+import * as InternalSelectMultiPrompt from "./internal/prompt/selectMulti.js"
 import * as InternalTextPrompt from "./internal/prompt/text.js"
 import * as InternalTogglePrompt from "./internal/prompt/toggle.js"
 import type { Primitive } from "./Primitive.js"
@@ -635,7 +636,8 @@ export const select: <A>(options: Prompt.SelectOptions<A>) => Prompt<A> = Intern
  * @since 1.0.0
  * @category constructors
  */
-export const selectMulti: <A>(options: Prompt.SelectOptions<A>) => Prompt<Array<A>> = InternalSelectPrompt.selectMulti
+export const selectMulti: <A>(options: Prompt.SelectOptions<A>) => Prompt<Array<A>> =
+  InternalSelectMultiPrompt.selectMulti
 
 /**
  * Creates a `Prompt` which immediately succeeds with the specified value.
