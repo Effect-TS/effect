@@ -632,6 +632,12 @@ export const run: <Output>(self: Prompt<Output>) => Effect<Output, QuitException
 export const select: <A>(options: Prompt.SelectOptions<A>) => Prompt<A> = InternalSelectPrompt.select
 
 /**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const selectMulti: <A>(options: Prompt.SelectOptions<A>) => Prompt<Array<A>> = InternalSelectPrompt.selectMulti
+
+/**
  * Creates a `Prompt` which immediately succeeds with the specified value.
  *
  * **NOTE**: This method will not attempt to obtain user input or render
