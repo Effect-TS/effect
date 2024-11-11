@@ -1,5 +1,13 @@
 # effect
 
+## 3.10.14
+
+### Patch Changes
+
+- [#3920](https://github.com/Effect-TS/effect/pull/3920) [`f983946`](https://github.com/Effect-TS/effect/commit/f9839467b4cad6e788297764ef9f9f0b9fd203f9) Thanks @gcanti! - remove redundant check in `JSONNumber` declaration
+
+- [#3924](https://github.com/Effect-TS/effect/pull/3924) [`2d8a750`](https://github.com/Effect-TS/effect/commit/2d8a75081eb83a0a81f817fdf6f428369c5064ab) Thanks @tim-smart! - ensure a ManagedRuntime can be built synchronously
+
 ## 3.10.13
 
 ### Patch Changes
