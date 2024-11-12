@@ -215,11 +215,17 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
   readonly timeZone?: number | string | DateTime.TimeZone | undefined
   readonly adjustForTimeZone?: boolean | undefined
 }): DateTime.Zoned => {
+  if (options?.timeZone === undefined && isDateTime(input) && isZoned(input)) {
+    return input
+  }
   const self = unsafeMake(input)
   let zone: DateTime.TimeZone
-  if (isTimeZone(options.timeZone)) {
+  if (options?.timeZone === undefined) {
+    const offset = new Date(self.epochMillis).getTimezoneOffset() * -60 * 1000
+    zone = zoneMakeOffset(offset)
+  } else if (isTimeZone(options?.timeZone)) {
     zone = options.timeZone
-  } else if (typeof options.timeZone === "number") {
+  } else if (typeof options?.timeZone === "number") {
     zone = zoneMakeOffset(options.timeZone)
   } else {
     const parsedZone = zoneFromString(options.timeZone)
@@ -228,7 +234,7 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
     }
     zone = parsedZone.value
   }
-  if (options.adjustForTimeZone !== true) {
+  if (options?.adjustForTimeZone !== true) {
     return makeZonedProto(self.epochMillis, zone, self.partsUtc)
   }
   return makeZonedFromAdjusted(self.epochMillis, zone)
