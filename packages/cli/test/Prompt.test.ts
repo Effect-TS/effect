@@ -365,5 +365,68 @@ describe("Prompt", () => {
 
         expect(result).toEqual(["A", "B"])
       }).pipe(runEffect))
+
+    it("should select all options when 'Select All' is triggered", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.selectMulti({
+          message: "Select multiple options",
+          choices: [
+            { title: "Option A", value: "A" },
+            { title: "Option B", value: "B" },
+            { title: "Option C", value: "C" }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        yield* MockTerminal.inputKey("space") // Select All
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual(["A", "B", "C"])
+      }).pipe(runEffect))
+
+    it("should deselect all options when 'Select None' is triggered", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.selectMulti({
+          message: "Select multiple options",
+          choices: [
+            { title: "Option A", value: "A" },
+            { title: "Option B", value: "B" },
+            { title: "Option C", value: "C" }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        yield* MockTerminal.inputKey("space") // Select All
+        yield* MockTerminal.inputKey("space") // Select None
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual([])
+      }).pipe(runEffect))
+
+    it("should inverse the selection when 'Inverse Selection' is triggered", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.selectMulti({
+          message: "Select multiple options",
+          choices: [
+            { title: "Option A", value: "A" },
+            { title: "Option B", value: "B" },
+            { title: "Option C", value: "C" }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        yield* MockTerminal.inputKey("space")
+        yield* MockTerminal.inputKey("tab")
+        yield* MockTerminal.inputKey("tab")
+        yield* MockTerminal.inputKey("space")
+        yield* MockTerminal.inputKey("up")
+        yield* MockTerminal.inputKey("space")
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual(["A"])
+      }).pipe(runEffect))
   })
 })

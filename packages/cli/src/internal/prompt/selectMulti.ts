@@ -130,6 +130,11 @@ function processMultiCursorDown(state: MultiState, totalChoices: number) {
   return Effect.succeed(Action.NextFrame({ state: { ...state, index: newIndex } }))
 }
 
+function processMultiNext(state: MultiState, totalChoices: number) {
+  const newIndex = (state.index + 1) % totalChoices
+  return Effect.succeed(Action.NextFrame({ state: { ...state, index: newIndex } }))
+}
+
 function processMultiSpace<A>(
   state: MultiState,
   options: SelectOptions<A>
@@ -180,6 +185,9 @@ function handleMultiProcess<A>(options: SelectOptions<A>) {
       case "j":
       case "down": {
         return processMultiCursorDown(state, totalChoices)
+      }
+      case "tab": {
+        return processMultiNext(state, totalChoices)
       }
       case "space": {
         return processMultiSpace(state, options)
