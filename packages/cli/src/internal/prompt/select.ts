@@ -1,4 +1,5 @@
 import * as Terminal from "@effect/platform/Terminal"
+import { Optimize } from "@effect/printer"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Effect from "effect/Effect"
@@ -7,7 +8,7 @@ import * as InternalPrompt from "../prompt.js"
 import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
 import type { SelectOptions } from "./selectUtils.js"
-import { handleClear, renderBeep, renderOutput } from "./selectUtils.js"
+import { renderBeep, renderOutput } from "./selectUtils.js"
 import { entriesToDisplay } from "./utils.js"
 
 type State = number
@@ -146,6 +147,21 @@ function handleRender<A>(options: SelectOptions<A>) {
       Submit: () => renderSubmission(state, options)
     })
   }
+}
+
+export function handleClear<A>(options: SelectOptions<A>) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
+    const text = "\n".repeat(Math.min(options.choices.length, options.maxPerPage)) + options.message
+    const clearOutput = InternalAnsiUtils.eraseText(text, columns)
+    return clearOutput.pipe(
+      Doc.cat(clearPrompt),
+      Optimize.optimize(Optimize.Deep),
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
+    )
+  })
 }
 
 function handleProcess<A>(options: SelectOptions<A>) {

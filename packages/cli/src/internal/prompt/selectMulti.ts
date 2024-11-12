@@ -1,4 +1,5 @@
 import * as Terminal from "@effect/platform/Terminal"
+import { Optimize } from "@effect/printer"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Effect from "effect/Effect"
@@ -7,7 +8,7 @@ import * as InternalPrompt from "../prompt.js"
 import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
 import type { SelectMultiOptions, SelectOptions } from "./selectUtils.js"
-import { handleClear, renderBeep, renderOutput } from "./selectUtils.js"
+import { renderBeep, renderOutput } from "./selectUtils.js"
 import { entriesToDisplay } from "./utils.js"
 
 type MultiState = {
@@ -17,7 +18,7 @@ type MultiState = {
 
 const metaOptionsCount = 2
 
-function renderMultiChoices<A>(
+function renderChoices<A>(
   state: MultiState,
   options: SelectOptions<A> & SelectMultiOptions,
   figures: Effect.Effect.Success<typeof InternalAnsiUtils.figures>
@@ -82,12 +83,12 @@ function renderMultiChoices<A>(
   return Doc.vsep(documents)
 }
 
-function renderMultiNextFrame<A>(state: MultiState, options: SelectOptions<A>) {
+function renderNextFrame<A>(state: MultiState, options: SelectOptions<A>) {
   return Effect.gen(function*() {
     const terminal = yield* Terminal.Terminal
     const columns = yield* terminal.columns
     const figures = yield* InternalAnsiUtils.figures
-    const choices = renderMultiChoices(state, options, figures)
+    const choices = renderChoices(state, options, figures)
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)
@@ -100,7 +101,7 @@ function renderMultiNextFrame<A>(state: MultiState, options: SelectOptions<A>) {
   })
 }
 
-function renderMultiSubmission<A>(state: MultiState, options: SelectOptions<A>) {
+function renderSubmission<A>(state: MultiState, options: SelectOptions<A>) {
   return Effect.gen(function*() {
     const terminal = yield* Terminal.Terminal
     const columns = yield* terminal.columns
@@ -120,77 +121,78 @@ function renderMultiSubmission<A>(state: MultiState, options: SelectOptions<A>) 
   })
 }
 
-function processMultiCursorUp(state: MultiState, totalChoices: number) {
+function processCursorUp(state: MultiState, totalChoices: number) {
   const newIndex = state.index === 0 ? totalChoices - 1 : state.index - 1
   return Effect.succeed(Action.NextFrame({ state: { ...state, index: newIndex } }))
 }
 
-function processMultiCursorDown(state: MultiState, totalChoices: number) {
+function processCursorDown(state: MultiState, totalChoices: number) {
   const newIndex = (state.index + 1) % totalChoices
   return Effect.succeed(Action.NextFrame({ state: { ...state, index: newIndex } }))
 }
 
-function processMultiNext(state: MultiState, totalChoices: number) {
-  const newIndex = (state.index + 1) % totalChoices
-  return Effect.succeed(Action.NextFrame({ state: { ...state, index: newIndex } }))
-}
-
-function processMultiSpace<A>(
+function processSpace<A>(
   state: MultiState,
   options: SelectOptions<A>
 ) {
+  const selectedIndices = new Set(state.selectedIndices)
   if (state.index === 0) {
-    // "Select All" or "Select None" meta option
-    const selectedIndices = new Set<number>()
     if (state.selectedIndices.size === options.choices.length) {
-      // All selected, so deselect all
-      // selectedIndices remains empty
+      selectedIndices.clear()
     } else {
-      // Not all selected, so select all
       for (let i = 0; i < options.choices.length; i++) {
         selectedIndices.add(i)
       }
     }
-    return Effect.succeed(Action.NextFrame({ state: { ...state, selectedIndices } }))
   } else if (state.index === 1) {
-    // "Inverse Selection" meta option
-    const selectedIndices = new Set<number>()
     for (let i = 0; i < options.choices.length; i++) {
-      if (!state.selectedIndices.has(i)) {
+      if (state.selectedIndices.has(i)) {
+        selectedIndices.delete(i)
+      } else {
         selectedIndices.add(i)
       }
     }
-    return Effect.succeed(Action.NextFrame({ state: { ...state, selectedIndices } }))
   } else {
-    // Handle regular choices
-    const selectedIndices = new Set(state.selectedIndices)
     const choiceIndex = state.index - metaOptionsCount
     if (selectedIndices.has(choiceIndex)) {
       selectedIndices.delete(choiceIndex)
     } else {
       selectedIndices.add(choiceIndex)
     }
-    return Effect.succeed(Action.NextFrame({ state: { ...state, selectedIndices } }))
   }
+  return Effect.succeed(Action.NextFrame({ state: { ...state, selectedIndices } }))
 }
 
-function handleMultiProcess<A>(options: SelectOptions<A>) {
+export function handleClear<A>(options: SelectOptions<A>) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
+    const text = "\n".repeat(Math.min(options.choices.length + 2, options.maxPerPage)) + options.message
+    const clearOutput = InternalAnsiUtils.eraseText(text, columns)
+    return clearOutput.pipe(
+      Doc.cat(clearPrompt),
+      Optimize.optimize(Optimize.Deep),
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
+    )
+  })
+}
+
+function handleProcess<A>(options: SelectOptions<A>) {
   return (input: Terminal.UserInput, state: MultiState) => {
     const totalChoices = options.choices.length + metaOptionsCount
     switch (input.key.name) {
       case "k":
       case "up": {
-        return processMultiCursorUp(state, totalChoices)
+        return processCursorUp(state, totalChoices)
       }
       case "j":
-      case "down": {
-        return processMultiCursorDown(state, totalChoices)
-      }
+      case "down":
       case "tab": {
-        return processMultiNext(state, totalChoices)
+        return processCursorDown(state, totalChoices)
       }
       case "space": {
-        return processMultiSpace(state, options)
+        return processSpace(state, options)
       }
       case "enter":
       case "return": {
@@ -204,12 +206,12 @@ function handleMultiProcess<A>(options: SelectOptions<A>) {
   }
 }
 
-function handleMultiRender<A>(options: SelectOptions<A>) {
+function handleRender<A>(options: SelectOptions<A>) {
   return (state: MultiState, action: Prompt.Prompt.Action<MultiState, Array<A>>) => {
     return Action.$match(action, {
       Beep: () => Effect.succeed(renderBeep),
-      NextFrame: ({ state }) => renderMultiNextFrame(state, options),
-      Submit: () => renderMultiSubmission(state, options)
+      NextFrame: ({ state }) => renderNextFrame(state, options),
+      Submit: () => renderSubmission(state, options)
     })
   }
 }
@@ -223,8 +225,8 @@ export const selectMulti = <A>(
     ...options
   }
   return InternalPrompt.custom({ index: 0, selectedIndices: new Set<number>() }, {
-    render: handleMultiRender(opts),
-    process: handleMultiProcess(opts),
+    render: handleRender(opts),
+    process: handleProcess(opts),
     clear: () => handleClear(opts)
   })
 }
