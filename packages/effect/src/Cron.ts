@@ -302,6 +302,7 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
 
   // Only search 8 years into the future.
   const limit = new Date(current).setFullYear(current.getFullYear() + 8)
+  // TODO: This algorithm can be optimized to avoid some unnecessary iterations.
   while (current.getTime() <= limit) {
     if (restrictMonths && !months.has(current.getMonth() + 1)) {
       current.setMonth(current.getMonth() + 1)
