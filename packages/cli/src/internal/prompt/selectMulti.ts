@@ -2,25 +2,76 @@ import * as Terminal from "@effect/platform/Terminal"
 import { Optimize } from "@effect/printer"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Number from "effect/Number"
+import * as Option from "effect/Option"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
 import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
-import type { SelectMultiOptions, SelectOptions } from "./selectUtils.js"
-import { renderBeep, renderOutput } from "./selectUtils.js"
 import { entriesToDisplay } from "./utils.js"
 
-type MultiState = {
+interface SelectOptions<A> extends Required<Prompt.Prompt.SelectOptions<A>> {}
+interface SelectMultiOptions extends Prompt.Prompt.SelectMultiOptions {}
+
+type State = {
   index: number
   selectedIndices: Set<number>
+  error: Option.Option<string>
+}
+
+const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
+
+const NEWLINE_REGEX = /\r?\n/
+
+function renderOutput<A>(
+  leadingSymbol: Doc.AnsiDoc,
+  trailingSymbol: Doc.AnsiDoc,
+  options: SelectOptions<A>
+) {
+  const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
+  const prefix = Doc.cat(leadingSymbol, Doc.space)
+  return Arr.match(options.message.split(NEWLINE_REGEX), {
+    onEmpty: () => Doc.hsep([prefix, trailingSymbol]),
+    onNonEmpty: (promptLines) => {
+      const lines = Arr.map(promptLines, (line) => annotateLine(line))
+      return prefix.pipe(
+        Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
+        Doc.cat(Doc.space),
+        Doc.cat(trailingSymbol),
+        Doc.cat(Doc.space)
+      )
+    }
+  })
+}
+
+function renderError(state: State, pointer: Doc.AnsiDoc) {
+  return Option.match(state.error, {
+    onNone: () => Doc.empty,
+    onSome: (error) =>
+      Arr.match(error.split(NEWLINE_REGEX), {
+        onEmpty: () => Doc.empty,
+        onNonEmpty: (errorLines) => {
+          const annotateLine = (line: string): Doc.AnsiDoc =>
+            Doc.annotate(Doc.text(line), Ansi.combine(Ansi.italicized, Ansi.red))
+          const prefix = Doc.cat(Doc.annotate(pointer, Ansi.red), Doc.space)
+          const lines = Arr.map(errorLines, (str) => annotateLine(str))
+          return Doc.cursorSavePosition.pipe(
+            Doc.cat(Doc.hardLine),
+            Doc.cat(prefix),
+            Doc.cat(Doc.align(Doc.vsep(lines))),
+            Doc.cat(Doc.cursorRestorePosition)
+          )
+        }
+      })
+  })
 }
 
 const metaOptionsCount = 2
 
 function renderChoices<A>(
-  state: MultiState,
+  state: State,
   options: SelectOptions<A> & SelectMultiOptions,
   figures: Effect.Effect.Success<typeof InternalAnsiUtils.figures>
 ) {
@@ -84,7 +135,7 @@ function renderChoices<A>(
   return Doc.vsep(documents)
 }
 
-function renderNextFrame<A>(state: MultiState, options: SelectOptions<A>) {
+function renderNextFrame<A>(state: State, options: SelectOptions<A>) {
   return Effect.gen(function*() {
     const terminal = yield* Terminal.Terminal
     const columns = yield* terminal.columns
@@ -93,16 +144,18 @@ function renderNextFrame<A>(state: MultiState, options: SelectOptions<A>) {
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)
+    const error = renderError(state, figures.pointer)
     return Doc.cursorHide.pipe(
       Doc.cat(promptMsg),
       Doc.cat(Doc.hardLine),
       Doc.cat(choices),
+      Doc.cat(error),
       Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
 }
 
-function renderSubmission<A>(state: MultiState, options: SelectOptions<A>) {
+function renderSubmission<A>(state: State, options: SelectOptions<A>) {
   return Effect.gen(function*() {
     const terminal = yield* Terminal.Terminal
     const columns = yield* terminal.columns
@@ -124,18 +177,18 @@ function renderSubmission<A>(state: MultiState, options: SelectOptions<A>) {
   })
 }
 
-function processCursorUp(state: MultiState, totalChoices: number) {
+function processCursorUp(state: State, totalChoices: number) {
   const newIndex = state.index === 0 ? totalChoices - 1 : state.index - 1
   return Effect.succeed(Action.NextFrame({ state: { ...state, index: newIndex } }))
 }
 
-function processCursorDown(state: MultiState, totalChoices: number) {
+function processCursorDown(state: State, totalChoices: number) {
   const newIndex = (state.index + 1) % totalChoices
   return Effect.succeed(Action.NextFrame({ state: { ...state, index: newIndex } }))
 }
 
 function processSpace<A>(
-  state: MultiState,
+  state: State,
   options: SelectOptions<A>
 ) {
   const selectedIndices = new Set(state.selectedIndices)
@@ -171,7 +224,7 @@ export function handleClear<A>(options: SelectOptions<A>) {
     const terminal = yield* Terminal.Terminal
     const columns = yield* terminal.columns
     const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
-    const text = "\n".repeat(Math.min(options.choices.length + 2, options.maxPerPage)) + options.message
+    const text = "\n".repeat(Math.min(options.choices.length + 2, options.maxPerPage)) + options.message + 1
     const clearOutput = InternalAnsiUtils.eraseText(text, columns)
     return clearOutput.pipe(
       Doc.cat(clearPrompt),
@@ -181,24 +234,35 @@ export function handleClear<A>(options: SelectOptions<A>) {
   })
 }
 
-function handleProcess<A>(options: SelectOptions<A>) {
-  return (input: Terminal.UserInput, state: MultiState) => {
+function handleProcess<A>(options: SelectOptions<A> & SelectMultiOptions) {
+  return (input: Terminal.UserInput, state: State) => {
     const totalChoices = options.choices.length + metaOptionsCount
     switch (input.key.name) {
       case "k":
       case "up": {
-        return processCursorUp(state, totalChoices)
+        return processCursorUp({ ...state, error: Option.none() }, totalChoices)
       }
       case "j":
       case "down":
       case "tab": {
-        return processCursorDown(state, totalChoices)
+        return processCursorDown({ ...state, error: Option.none() }, totalChoices)
       }
       case "space": {
         return processSpace(state, options)
       }
       case "enter":
       case "return": {
+        const selectedCount = state.selectedIndices.size
+        if (options.min !== undefined && selectedCount < options.min) {
+          return Effect.succeed(
+            Action.NextFrame({ state: { ...state, error: Option.some(`At least ${options.min} are required`) } })
+          )
+        }
+        if (options.max !== undefined && selectedCount > options.max) {
+          return Effect.succeed(
+            Action.NextFrame({ state: { ...state, error: Option.some(`At most ${options.max} choices are allowed`) } })
+          )
+        }
         const selectedValues = Array.from(state.selectedIndices).sort(Number.Order).map((index) =>
           options.choices[index].value
         )
@@ -212,7 +276,7 @@ function handleProcess<A>(options: SelectOptions<A>) {
 }
 
 function handleRender<A>(options: SelectOptions<A>) {
-  return (state: MultiState, action: Prompt.Prompt.Action<MultiState, Array<A>>) => {
+  return (state: State, action: Prompt.Prompt.Action<State, Array<A>>) => {
     return Action.$match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
@@ -229,7 +293,7 @@ export const selectMulti = <A>(
     maxPerPage: 10,
     ...options
   }
-  return InternalPrompt.custom({ index: 0, selectedIndices: new Set<number>() }, {
+  return InternalPrompt.custom({ index: 0, selectedIndices: new Set<number>(), error: Option.none() }, {
     render: handleRender(opts),
     process: handleProcess(opts),
     clear: () => handleClear(opts)

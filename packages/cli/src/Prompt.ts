@@ -384,6 +384,14 @@ export declare namespace Prompt {
      * Text for the "Inverse Selection" option (defaults to "Inverse Selection").
      */
     readonly inverseSelection?: string
+    /**
+     * The minimum number of choices that must be selected.
+     */
+    readonly min?: number
+    /**
+     * The maximum number of choices that can be selected.
+     */
+    readonly max?: number
   }
 
   /**

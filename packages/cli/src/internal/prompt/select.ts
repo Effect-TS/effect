@@ -2,16 +2,42 @@ import * as Terminal from "@effect/platform/Terminal"
 import { Optimize } from "@effect/printer"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
 import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
-import type { SelectOptions } from "./selectUtils.js"
-import { renderBeep, renderOutput } from "./selectUtils.js"
 import { entriesToDisplay } from "./utils.js"
 
 type State = number
+
+interface SelectOptions<A> extends Required<Prompt.Prompt.SelectOptions<A>> {}
+
+const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
+
+const NEWLINE_REGEX = /\r?\n/
+
+function renderOutput<A>(
+  leadingSymbol: Doc.AnsiDoc,
+  trailingSymbol: Doc.AnsiDoc,
+  options: SelectOptions<A>
+) {
+  const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
+  const prefix = Doc.cat(leadingSymbol, Doc.space)
+  return Arr.match(options.message.split(NEWLINE_REGEX), {
+    onEmpty: () => Doc.hsep([prefix, trailingSymbol]),
+    onNonEmpty: (promptLines) => {
+      const lines = Arr.map(promptLines, (line) => annotateLine(line))
+      return prefix.pipe(
+        Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
+        Doc.cat(Doc.space),
+        Doc.cat(trailingSymbol),
+        Doc.cat(Doc.space)
+      )
+    }
+  })
+}
 
 function renderChoicePrefix<A>(
   state: State,
