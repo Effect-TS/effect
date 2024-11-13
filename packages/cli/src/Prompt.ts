@@ -655,7 +655,7 @@ export const select: <A>(options: Prompt.SelectOptions<A>) => Prompt<A> = Intern
  * @since 1.0.0
  * @category constructors
  */
-export const selectMulti: <A>(options: Prompt.SelectOptions<A>) => Prompt<Array<A>> =
+export const selectMulti: <A>(options: Prompt.SelectOptions<A> & Prompt.SelectMultiOptions) => Prompt<Array<A>> =
   InternalSelectMultiPrompt.selectMulti
 
 /**
