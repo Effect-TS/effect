@@ -478,7 +478,7 @@ export const unsafeMakeZoned = (input: DateTime.Input, options?: {
   readonly timeZone?: number | string | TimeZone | undefined
   readonly adjustForTimeZone?: boolean | undefined
 }): Zoned => {
-  if (!options?.timeZone && isDateTime(input) && isZoned(input)) {
+  if (options?.timeZone === undefined && isDateTime(input) && isZoned(input)) {
     return input
   }
   const self = unsafeMake(input)
