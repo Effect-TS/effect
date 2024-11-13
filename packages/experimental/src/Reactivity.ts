@@ -1,23 +1,21 @@
 /**
  * @since 1.0.0
  */
-import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberHandle from "effect/FiberHandle"
 import * as Hash from "effect/Hash"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
-import * as PubSub from "effect/PubSub"
 import type { ReadonlyRecord } from "effect/Record"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export class Reactivity extends Context.Tag("@effect-rx/rx/Reactivity")<
+export class Reactivity extends Context.Tag("@effect/experimental/Reactivity")<
   Reactivity,
   Reactivity.Service
 >() {}
@@ -26,24 +24,29 @@ export class Reactivity extends Context.Tag("@effect-rx/rx/Reactivity")<
  * @since 1.0.0
  * @category constructors
  */
-export const make = Effect.gen(function*() {
-  const pubsub = yield* Effect.acquireRelease(
-    PubSub.unbounded<number>(),
-    PubSub.shutdown
-  )
+export const make = Effect.sync(() => {
+  const handlers = new Map<number, Set<() => void>>()
 
   const unsafeInvalidate = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>): void => {
     if (Array.isArray(keys)) {
       for (let i = 0; i < keys.length; i++) {
-        pubsub.unsafeOffer(Hash.hash(keys[i]))
+        const set = handlers.get(Hash.hash(keys[i]))
+        if (set === undefined) continue
+        for (const run of set) run()
       }
     } else {
       const record = keys as ReadonlyRecord<string, Array<unknown>>
       for (const key in record) {
         const keyHash = Hash.string(key)
-        pubsub.unsafeOffer(keyHash)
-        for (const idHash of idHashes(keyHash, record[key])) {
-          pubsub.unsafeOffer(idHash)
+        const set = handlers.get(keyHash)
+        if (set === undefined) continue
+        for (const run of set) run()
+
+        const hashes = idHashes(keyHash, record[key])
+        for (let i = 0; i < hashes.length; i++) {
+          const set = handlers.get(hashes[i])
+          if (set === undefined) continue
+          for (const run of set) run()
         }
       }
     }
@@ -62,27 +65,43 @@ export const make = Effect.gen(function*() {
     effect: Effect.Effect<A, E, R>
   ): Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope> =>
     Effect.gen(function*() {
-      const keySet = new Set(Array.isArray(keys) ? keys.map(Hash.hash) : recordHashes(keys as any))
+      const resolvedKeys = Array.isArray(keys) ? keys : recordHashes(keys as any)
+      const scope = yield* Effect.scope
       const results = yield* Mailbox.make<A, E>()
-      const handle = yield* FiberHandle.make()
+      const runFork = yield* FiberHandle.makeRuntime<R>()
 
-      const run = FiberHandle.run(
-        handle,
-        Effect.matchCauseEffect(effect, {
-          onFailure: (cause) => results.failCause(cause),
-          onSuccess: (value) => results.offer(value)
+      const run = () => {
+        runFork(effect).addObserver((exit) => {
+          if (exit._tag === "Failure") {
+            results.unsafeDone(exit)
+          } else {
+            results.unsafeOffer(exit.value)
+          }
+        })
+      }
+
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.sync(() => {
+          for (let i = 0; i < resolvedKeys.length; i++) {
+            const set = handlers.get(resolvedKeys[i])!
+            set.delete(run)
+            if (set.size === 0) {
+              handlers.delete(resolvedKeys[i])
+            }
+          }
         })
       )
+      for (let i = 0; i < resolvedKeys.length; i++) {
+        let set = handlers.get(resolvedKeys[i])
+        if (set === undefined) {
+          set = new Set()
+          handlers.set(resolvedKeys[i], set)
+        }
+        set.add(run)
+      }
 
-      const queue = yield* PubSub.subscribe(pubsub)
-      yield* queue.takeBetween(1, Number.MAX_SAFE_INTEGER).pipe(
-        Effect.tap((keys) => (Chunk.some(keys, (key) => keySet.has(key)) ? run : Effect.void)),
-        Effect.forever,
-        Effect.forkScoped,
-        Effect.interruptible
-      )
-
-      yield* run
+      run()
 
       return results as Mailbox.ReadonlyMailbox<A, E>
     })
