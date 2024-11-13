@@ -3,6 +3,7 @@ import { Optimize } from "@effect/printer"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Effect from "effect/Effect"
+import * as Number from "effect/Number"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
 import { Action } from "./action.js"
@@ -106,7 +107,9 @@ function renderSubmission<A>(state: MultiState, options: SelectOptions<A>) {
     const terminal = yield* Terminal.Terminal
     const columns = yield* terminal.columns
     const figures = yield* InternalAnsiUtils.figures
-    const selectedChoices = Array.from(state.selectedIndices).map((index) => options.choices[index].title)
+    const selectedChoices = Array.from(state.selectedIndices).sort(Number.Order).map((index) =>
+      options.choices[index].title
+    )
     const selectedText = selectedChoices.join(", ")
     const selected = Doc.text(selectedText)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
@@ -196,7 +199,9 @@ function handleProcess<A>(options: SelectOptions<A>) {
       }
       case "enter":
       case "return": {
-        const selectedValues = Array.from(state.selectedIndices).map((index) => options.choices[index].value)
+        const selectedValues = Array.from(state.selectedIndices).sort(Number.Order).map((index) =>
+          options.choices[index].value
+        )
         return Effect.succeed(Action.Submit({ value: selectedValues }))
       }
       default: {
