@@ -13,7 +13,7 @@ import { AccessHandlePoolVFS } from "wa-sqlite/src/examples/AccessHandlePoolVFS.
  * @since 1.0.0
  */
 export interface OpfsWorkerConfig {
-  readonly port: MessagePort
+  readonly port: EventTarget & Pick<MessagePort, "postMessage">
   readonly dbName: string
 }
 
@@ -38,7 +38,7 @@ export const run = (
     )
 
     return yield* Effect.async<never>((_resume) => {
-      const onMessage = async (event: MessageEvent) => {
+      const onMessage = async (event: any) => {
         const [id, sql, params] = event.data as [number, string, Array<any>]
         try {
           const results: Array<any> = []
