@@ -305,6 +305,17 @@ class Api extends HttpApi.empty
   .add(UsersApi.prefix("/users"))
   .addError(GlobalError, { status: 413 })
   .annotateContext(OpenApi.annotations({ title: "API", summary: "test api summary" }))
+  .annotate(
+    HttpApi.ApiAdditionalSchemas,
+    new Set([
+      Schema.Struct({
+        contentType: Schema.String,
+        length: Schema.Int
+      }).annotations({
+        identifier: "ComponentsSchema"
+      })
+    ])
+  )
 {}
 
 // impl
