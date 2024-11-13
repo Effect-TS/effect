@@ -849,9 +849,6 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.25.1
         version: 1.25.1
-      '@sqlite.org/sqlite-wasm':
-        specifier: 3.46.0-build2
-        version: 3.46.0-build2
     devDependencies:
       '@effect/sql':
         specifier: workspace:^
@@ -859,6 +856,9 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect/dist
+      wa-sqlite:
+        specifier: https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz
+        version: https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz
     publishDirectory: dist
 
   packages/typeclass:
@@ -3156,10 +3156,6 @@ packages:
 
   '@sinonjs/fake-timers@10.3.0':
     resolution: {integrity: sha512-V4BG07kuYSUkTCSBHG8G8TNhM+F19jXFWnQtzj+we8DrkpSBCee9Z3Ms8yiGer/dlmhe35/Xdgyo3/0rQKg7YA==}
-
-  '@sqlite.org/sqlite-wasm@3.46.0-build2':
-    resolution: {integrity: sha512-10s/u/Main1RGO+jjzK+mgC/zh1ls1CEnq3Dujr03TwvzLg+j4FAohOmlYkQj8KQOj1vGR9cuB9F8tVBTwVGVA==}
-    hasBin: true
 
   '@testcontainers/mssqlserver@10.11.0':
     resolution: {integrity: sha512-/Rh/MEwCrsVbIQ/IJm1ScCY4dZ6wS3nOpG/xqdBTxAnQMN0pVpCIoQ1KzksKmoofP3XHDtveHrKp2cahfxsgeQ==}
@@ -5485,6 +5481,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.6:
@@ -7333,6 +7330,10 @@ packages:
 
   vlq@1.0.1:
     resolution: {integrity: sha512-gQpnTgkubC6hQgdIcRdYGDSDc+SaujOdyesZQMv6JlfQee/9Mp0Qhnys6WxDWvQnL5WZdT7o2Ul187aSt0Rq+w==}
+
+  wa-sqlite@https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz:
+    resolution: {tarball: https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz}
+    version: 1.0.4
 
   walkdir@0.4.1:
     resolution: {integrity: sha512-3eBwRyEln6E1MSzcxcVpQIhRG8Q1jLvEqRmCZqS3dsfXEDR/AhOF4d+jHg1qvDCpYaVRZjENPQyrVxAkQqxPgQ==}
@@ -10769,8 +10770,6 @@ snapshots:
   '@sinonjs/fake-timers@10.3.0':
     dependencies:
       '@sinonjs/commons': 3.0.1
-
-  '@sqlite.org/sqlite-wasm@3.46.0-build2': {}
 
   '@testcontainers/mssqlserver@10.11.0':
     dependencies:
@@ -15761,6 +15760,8 @@ snapshots:
       - terser
 
   vlq@1.0.1: {}
+
+  wa-sqlite@https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz: {}
 
   walkdir@0.4.1: {}
 

@@ -6,15 +6,23 @@ import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
 import * as Otel from "@opentelemetry/semantic-conventions"
-import type { DB, OpenMode, RowMode } from "@sqlite.org/sqlite-wasm"
-import sqliteInit from "@sqlite.org/sqlite-wasm"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
+import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
+import * as ScopedRef from "effect/ScopedRef"
+import * as WaSqlite from "wa-sqlite"
+import SQLiteESMFactory from "wa-sqlite/dist/wa-sqlite.mjs"
+import { IDBBatchAtomicVFS } from "wa-sqlite/src/examples/IDBBatchAtomicVFS.js"
 
 /**
  * @category type ids
@@ -51,31 +59,36 @@ export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite
  * @category models
  * @since 1.0.0
  */
-export type SqliteClientConfig =
-  | {
-    readonly mode?: "vfs"
-    readonly dbName?: string
-    readonly openMode?: OpenMode
-    readonly spanAttributes?: Record<string, unknown>
-    readonly transformResultNames?: (str: string) => string
-    readonly transformQueryNames?: (str: string) => string
-  }
-  | {
-    readonly mode: "opfs"
-    readonly dbName: string
-    readonly openMode?: OpenMode
-    readonly spanAttributes?: Record<string, unknown>
-    readonly transformResultNames?: (str: string) => string
-    readonly transformQueryNames?: (str: string) => string
-  }
-
-interface SqliteConnection extends Connection {
-  readonly export: Effect.Effect<Uint8Array, SqlError>
+export interface SqliteClientConfig {
+  readonly dbName: string
+  readonly openFlags?: number
+  readonly spanAttributes?: Record<string, unknown>
+  readonly transformResultNames?: (str: string) => string
+  readonly transformQueryNames?: (str: string) => string
 }
 
-const initEffect = Effect.runSync(
-  Effect.cached(Effect.promise(() => sqliteInit()))
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export interface SqliteClientOpfsConfig {
+  readonly worker: Effect.Effect<Worker | SharedWorker | MessagePort, never, Scope.Scope>
+  readonly spanAttributes?: Record<string, unknown>
+  readonly transformResultNames?: (str: string) => string
+  readonly transformQueryNames?: (str: string) => string
+}
+
+interface SqliteConnection extends Connection {}
+
+const initModule = Effect.runSync(
+  Effect.cached(Effect.promise(() => SQLiteESMFactory()))
 )
+
+const initEffect = Effect.runSync(
+  Effect.cached(initModule.pipe(Effect.map((module) => WaSqlite.Factory(module))))
+)
+
+const registered = globalValue("@effect/sql-sqlite-wasm/registered", () => new Set<string>())
 
 /**
  * @category constructor
@@ -83,42 +96,56 @@ const initEffect = Effect.runSync(
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope> =>
+): Effect.Effect<SqliteClient, SqlError, Scope.Scope> =>
   Effect.gen(function*(_) {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
 
-    const makeConnection = Effect.gen(function*(_) {
-      const sqlite3 = yield* _(initEffect)
+    const makeConnection = Effect.gen(function*() {
+      const sqlite3 = yield* initEffect
 
-      let db: DB
-      if (options.mode === "opfs") {
-        if (!sqlite3.oo1.OpfsDb) {
-          yield* _(Effect.dieMessage("opfs mode not available"))
-        }
-        db = new sqlite3.oo1.OpfsDb!(options.dbName, options.openMode ?? "c")
-      } else {
-        db = new sqlite3.oo1.DB(options.dbName, options.openMode)
+      if (registered.has("idb-vfs") === false) {
+        registered.add("idb-vfs")
+        const module = yield* initModule
+        // @ts-expect-error
+        const vfs = new IDBBatchAtomicVFS("idb-vfs", module)
+        sqlite3.vfs_register(vfs as any, false)
       }
-
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
+      const db = yield* Effect.acquireRelease(
+        Effect.tryPromise({
+          try: () => sqlite3.open_v2(options.dbName, options.openFlags, "idb-vfs"),
+          catch: (cause) => new SqlError({ cause, message: "Failed to open database" })
+        }),
+        (db) => Effect.sync(() => sqlite3.close(db))
+      )
 
       const run = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = [],
-        rowMode: RowMode = "object"
+        rowMode: "object" | "array" = "object"
       ) =>
-        Effect.try({
-          try: () => {
+        Effect.tryPromise({
+          try: async () => {
             const results: Array<any> = []
-            db.exec({
-              sql,
-              bind: params.length ? params : undefined,
-              rowMode,
-              resultRows: results
-            })
+            for await (const stmt of sqlite3.statements(db, sql)) {
+              let columns: Array<string> | undefined
+              sqlite3.bind_collection(stmt, params as any)
+              while (await sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
+                columns = columns ?? sqlite3.column_names(stmt)
+                const row = sqlite3.row(stmt)
+                if (rowMode === "object") {
+                  const obj: Record<string, any> = {}
+                  for (let i = 0; i < columns.length; i++) {
+                    obj[columns[i]] = row[i]
+                  }
+                  results.push(obj)
+                } else {
+                  results.push(row)
+                }
+              }
+            }
             return results
           },
           catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
@@ -146,16 +173,12 @@ export const make = (
         },
         executeStream() {
           return Effect.dieMessage("executeStream not implemented")
-        },
-        export: Effect.try({
-          try: () => sqlite3.capi.sqlite3_js_db_export(db.pointer),
-          catch: (cause) => new SqlError({ cause, message: "Failed to export database" })
-        })
+        }
       })
     })
 
-    const semaphore = yield* _(Effect.makeSemaphore(1))
-    const connection = yield* _(makeConnection)
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const connection = yield* makeConnection
 
     const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
     const transactionAcquirer = Effect.uninterruptibleMask((restore) =>
@@ -183,11 +206,176 @@ export const make = (
       }) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
-        config: options,
-        export: Effect.flatMap(acquirer, (_) => _.export)
+        config: options
       }
     )
   })
+
+/**
+ * @category constructor
+ * @since 1.0.0
+ */
+export const makeOpfs = (
+  options: SqliteClientOpfsConfig
+): Effect.Effect<SqliteClient, SqlError, Scope.Scope> =>
+  Effect.gen(function*(_) {
+    const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
+    const transformRows = Statement.defaultTransforms(
+      options.transformResultNames!
+    ).array
+    const pending = new Map<number, Deferred.Deferred<[columns: Array<string>, rows: Array<any>], SqlError>>()
+
+    const acquireWorker = Effect.gen(function*() {
+      const scope = yield* Effect.scope
+      const readyDeferred = yield* Deferred.make<void>()
+      const worker = yield* options.worker
+      const port = "port" in worker ? worker.port : worker
+      const onMessage = (event: any) => {
+        const [id, error, results] = event.data
+        if (id === -1) {
+          Deferred.unsafeDone(readyDeferred, Exit.void)
+          return
+        }
+        const deferred = pending.get(id)
+        if (!deferred) return
+        pending.delete(id)
+        if (error) {
+          Deferred.unsafeDone(
+            deferred,
+            Exit.fail(new SqlError({ cause: error as string, message: "Failed to execute statement" }))
+          )
+        } else {
+          Deferred.unsafeDone(deferred, Exit.succeed(results))
+        }
+      }
+      port.addEventListener("message", onMessage)
+      function onError() {
+        Effect.runFork(ScopedRef.set(workerRef, acquireWorker))
+      }
+      if ("onerror" in worker) {
+        worker.addEventListener("error", onError)
+      }
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.sync(() => {
+          worker.removeEventListener("message", onMessage)
+          worker.removeEventListener("error", onError)
+        })
+      )
+      yield* Deferred.await(readyDeferred)
+      return port
+    })
+
+    const workerRef = yield* ScopedRef.fromAcquire(acquireWorker)
+
+    let currentId = 0
+
+    const makeConnection = Effect.sync(() => {
+      const run = (
+        sql: string,
+        params: ReadonlyArray<Statement.Primitive> = [],
+        rowMode: "object" | "array" = "object"
+      ): Effect.Effect<Array<any>, SqlError, never> =>
+        Effect.gen(function*() {
+          const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+          const deferred = yield* Deferred.make<[columns: Array<string>, rows: Array<Array<any>>], SqlError>()
+          const worker = yield* ScopedRef.get(workerRef)
+
+          const id = currentId++
+          pending.set(id, deferred)
+          const tranferables = fiber.getFiberRef(currentTransferables)
+          worker.postMessage([id, sql, params], tranferables as any)
+
+          const [columns, rows] = yield* Deferred.await(deferred)
+          return rowMode === "object" ?
+            rows.map((row) => rowToObject(columns, row))
+            : rows
+        })
+
+      const runTransform = options.transformResultNames
+        ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
+        : run
+
+      return identity<SqliteConnection>({
+        execute(sql, params) {
+          return runTransform(sql, params)
+        },
+        executeRaw(sql, params) {
+          return run(sql, params)
+        },
+        executeValues(sql, params) {
+          return run(sql, params, "array")
+        },
+        executeWithoutTransform(sql, params) {
+          return run(sql, params)
+        },
+        executeUnprepared(sql, params) {
+          return runTransform(sql, params)
+        },
+        executeStream() {
+          return Effect.dieMessage("executeStream not implemented")
+        }
+      })
+    })
+
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const connection = yield* makeConnection
+
+    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
+    const transactionAcquirer = Effect.uninterruptibleMask((restore) =>
+      Effect.as(
+        Effect.zipRight(
+          restore(semaphore.take(1)),
+          Effect.tap(
+            Effect.scope,
+            (scope) => Scope.addFinalizer(scope, semaphore.release(1))
+          )
+        ),
+        connection
+      )
+    )
+
+    return Object.assign(
+      Client.make({
+        acquirer,
+        compiler,
+        transactionAcquirer,
+        spanAttributes: [
+          ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
+          [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
+        ]
+      }) as SqliteClient,
+      {
+        [TypeId]: TypeId as TypeId,
+        config: options
+      }
+    )
+  })
+
+function rowToObject(columns: Array<string>, row: Array<any>) {
+  const obj: Record<string, any> = {}
+  for (let i = 0; i < columns.length; i++) {
+    obj[columns[i]] = row[i]
+  }
+  return obj
+}
+
+/**
+ * @category tranferables
+ * @since 1.0.0
+ */
+export const currentTransferables: FiberRef.FiberRef<ReadonlyArray<Transferable>> = globalValue(
+  "@effect/sql-sqlite-wasm/currentTransferables",
+  () => FiberRef.unsafeMake<ReadonlyArray<Transferable>>([])
+)
+
+/**
+ * @category tranferables
+ * @since 1.0.0
+ */
+export const withTransferables =
+  (transferables: ReadonlyArray<Transferable>) => <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.locally(effect, currentTransferables, transferables)
 
 /**
  * @category layers
@@ -195,7 +383,7 @@ export const make = (
  */
 export const layerConfig = (
   config: Config.Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -213,10 +401,42 @@ export const layerConfig = (
  */
 export const layer = (
   config: SqliteClientConfig
-): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
     Effect.map(make(config), (client) =>
       Context.make(SqliteClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
+  )
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layerOpfs = (
+  config: SqliteClientOpfsConfig
+): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError | SqlError> =>
+  Layer.scopedContext(
+    Effect.map(makeOpfs(config), (client) =>
+      Context.make(SqliteClient, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
+  )
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layerOpfsConfig = (
+  config: Config.Config.Wrap<SqliteClientOpfsConfig>
+): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError | SqlError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(makeOpfs),
+      Effect.map((client) =>
+        Context.make(SqliteClient, client).pipe(
+          Context.add(Client.SqlClient, client)
+        )
+      )
+    )
   )

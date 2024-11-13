@@ -39,14 +39,15 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "wa-sqlite": "https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz"
   },
   "peerDependencies": {
     "@effect/sql": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "wa-sqlite": "https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.25.1",
-    "@sqlite.org/sqlite-wasm": "3.46.0-build2"
+    "@opentelemetry/semantic-conventions": "^1.25.1"
   }
 }
