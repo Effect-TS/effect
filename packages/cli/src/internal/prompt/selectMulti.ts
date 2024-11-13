@@ -66,10 +66,10 @@ function renderChoices<A>(
       // Regular choices
       const choiceIndex = index - metaOptions.length
       const isSelected = state.selectedIndices.has(choiceIndex)
-      const checkbox = isSelected ? "[x]" : "[ ]"
+      const checkbox = isSelected ? figures.checkboxOn : figures.checkboxOff
       const annotatedCheckbox = isHighlighted
-        ? Doc.annotate(Doc.text(checkbox), Ansi.cyanBright)
-        : Doc.text(checkbox)
+        ? Doc.annotate(checkbox, Ansi.cyanBright)
+        : checkbox
       const title = Doc.text(choice.title)
       documents.push(
         prefix.pipe(
