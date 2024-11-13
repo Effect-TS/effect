@@ -30,10 +30,10 @@ function renderChoices<A>(
   const allSelected = selectedCount === totalChoices
 
   const selectAllText = allSelected
-    ? options.multiTexts?.selectNone ?? "Select None"
-    : options.multiTexts?.selectAll ?? "Select All"
+    ? options?.selectNone ?? "Select None"
+    : options?.selectAll ?? "Select All"
 
-  const inverseSelectionText = options.multiTexts?.inverseSelection ?? "Inverse Selection"
+  const inverseSelectionText = options?.inverseSelection ?? "Inverse Selection"
 
   const metaOptions = [
     { title: selectAllText },
