@@ -59,7 +59,7 @@ import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type { Concurrency, Contravariant, Covariant, NoExcessProperties, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
-import type { YieldWrap } from "./Utils.js"
+import { internalCall, type YieldWrap } from "./Utils.js"
 
 // -------------------------------------------------------------------------------------
 // models
@@ -6911,4 +6911,102 @@ export declare namespace Service {
    */
   export type MakeAccessors<Make> = Make extends { readonly accessors: true } ? true
     : false
+}
+
+/**
+ * @since 3.11.0
+ * @category models
+ */
+export namespace fn {
+  /**
+   * @since 3.11.0
+   * @category models
+   */
+  export type FnEffect<AEff, Eff extends YieldWrap<Effect<any, any, any>>> = Effect<
+    AEff,
+    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+  >
+}
+
+/**
+ * Creates a function that returns an Effect which is automatically traced with a span.
+ *
+ * @since 3.11.0
+ * @category function
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const logExample = Effect.fn("example")(
+ *   function*<N extends number>(n: N) {
+ *     yield* Effect.annotateCurrentSpan("n", n)
+ *     yield* Effect.logInfo(`got: ${n}`)
+ *     yield* Effect.fail(new Error())
+ *   },
+ *   Effect.delay("1 second")
+ * )
+ *
+ * Effect.runFork(
+ *   // this location is printed on the stack trace of the following `Effect.logError`
+ *   logExample(100).pipe(
+ *     Effect.catchAllCause(Effect.logError)
+ *   )
+ * )
+ */
+export const fn: (
+  name: string,
+  options?: Omit<FunctionWithSpanOptions, "name">
+) => {
+  <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
+    body: (...args: Args) => Generator<Eff, AEff, never>
+  ): (...args: Args) => fn.FnEffect<AEff, Eff>
+  <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A extends Effect<any, any, any>>(
+    body: (...args: Args) => Generator<Eff, AEff, never>,
+    a: (_: fn.FnEffect<AEff, Eff>) => A
+  ): (...args: Args) => A
+  <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B extends Effect<any, any, any>>(
+    body: (...args: Args) => Generator<Eff, AEff, never>,
+    a: (_: fn.FnEffect<AEff, Eff>) => A,
+    b: (_: A) => B
+  ): (...args: Args) => A
+} = (name, options) => (body: Function, ...pipeables: Array<any>) => {
+  return function(...args: Array<any>) {
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    const error = new Error()
+    Error.stackTraceLimit = limit
+    let cache: false | string = false
+    const captureStackTrace = () => {
+      if (cache !== false) {
+        return cache
+      }
+      if (error.stack) {
+        const stack = error.stack.trim().split("\n")
+        cache = stack.slice(2).join("\n").trim()
+        return cache
+      }
+    }
+    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this
+    const res = (...args: Array<any>) => {
+      let res = gen(() => internalCall(() => body.apply(self, args)))
+      for (const x of pipeables) {
+        res = x(res)
+      }
+      return res
+    }
+    let opts: any
+    if (options) {
+      opts = { captureStackTrace, ...options }
+    } else {
+      opts = { captureStackTrace }
+    }
+    return withSpan(
+      core.suspend(() => res(...args)),
+      name,
+      opts
+    )
+  }
 }

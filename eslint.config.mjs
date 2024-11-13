@@ -70,6 +70,7 @@ export default [
       ],
 
       "no-unused-vars": "off",
+      "require-yield": "off",
       "prefer-rest-params": "off",
       "prefer-spread": "off",
       "import/first": "error",
