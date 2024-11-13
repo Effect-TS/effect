@@ -65,7 +65,7 @@ export const make = Effect.sync(() => {
     effect: Effect.Effect<A, E, R>
   ): Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope> =>
     Effect.gen(function*() {
-      const resolvedKeys = Array.isArray(keys) ? keys : recordHashes(keys as any)
+      const resolvedKeys = Array.isArray(keys) ? keys.map(Hash.hash) : recordHashes(keys as any)
       const scope = yield* Effect.scope
       const results = yield* Mailbox.make<A, E>()
       const runFork = yield* FiberHandle.makeRuntime<R>()
