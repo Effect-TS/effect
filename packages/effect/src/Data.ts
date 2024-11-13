@@ -526,10 +526,19 @@ function taggedMatch<
  * @since 2.0.0
  * @category constructors
  */
-export const Error: new<A extends Record<string, any> = {}>(
-  args: Types.Equals<A, {}> extends true ? void
-    : { readonly [P in keyof A]: A[P] }
-) => Cause.YieldableError & Readonly<A> = (function() {
+export const Error: {
+  new<A extends Record<string, any> = {}>(
+    args: Types.Equals<A, {}> extends true ? void
+      : { readonly [P in keyof A]: A[P] }
+  ): Cause.YieldableError & Readonly<A>
+  readonly fromCause: <
+    T extends { new(...args: ReadonlyArray<any>): any }
+  >(
+    this: T,
+    ...args: Types.Equals<Omit<ConstructorParameters<T>[0], "cause">, {}> extends true ? [void]
+      : [Types.Simplify<Omit<ConstructorParameters<T>[0], "cause">>]
+  ) => (cause: ConstructorParameters<T>[0] extends { cause: infer C } ? C : unknown) => InstanceType<T>
+} = (function() {
   const plainArgsSymbol = Symbol.for("effect/Data/Error/plainArgs")
   return class Base extends core.YieldableError {
     constructor(args: any) {
@@ -542,6 +551,13 @@ export const Error: new<A extends Record<string, any> = {}>(
     toJSON() {
       return { ...(this as any)[plainArgsSymbol], ...this }
     }
+    static fromCause(args: {}) {
+      return (cause: unknown) =>
+        new this({
+          ...args,
+          cause
+        })
+    }
   } as any
 })()
 
@@ -549,10 +565,17 @@ export const Error: new<A extends Record<string, any> = {}>(
  * @since 2.0.0
  * @category constructors
  */
-export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any> = {}>(
-  args: Types.Equals<A, {}> extends true ? void
-    : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
-) => Cause.YieldableError & { readonly _tag: Tag } & Readonly<A> => {
+export const TaggedError = <Tag extends string>(tag: Tag): {
+  new<A extends Record<string, any> = {}>(
+    args: Types.Equals<A, {}> extends true ? void
+      : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
+  ): Cause.YieldableError & { readonly _tag: Tag } & Readonly<A>
+  readonly fromCause: <T extends { new(...args: ReadonlyArray<any>): any }>(
+    this: T,
+    ...args: Types.Equals<Omit<ConstructorParameters<T>[0], "cause">, {}> extends true ? [void]
+      : [Types.Simplify<Omit<ConstructorParameters<T>[0], "cause">>]
+  ) => (cause: ConstructorParameters<T>[0] extends { cause: infer C } ? C : unknown) => InstanceType<T>
+} => {
   class Base extends Error<{}> {
     readonly _tag = tag
   }

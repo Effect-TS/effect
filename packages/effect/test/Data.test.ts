@@ -285,12 +285,45 @@ describe("Data", () => {
       const e = new MyError({ message: "Oh no!", a: 1, cause: "Boom" })
       assert.deepStrictEqual(e.toJSON(), { message: "Oh no!", a: 1, cause: "Boom" })
     })
+
+    it("fromCause", () => {
+      class MyError extends Data.Error<{ message: string; a: number; cause: string }> {}
+      const e = MyError.fromCause({ message: "Oh no!", a: 1 })("Boom")
+      assert.instanceOf(e, MyError)
+      assert.deepStrictEqual(e.toJSON(), { message: "Oh no!", a: 1, cause: "Boom" })
+    })
   })
 
   describe("TaggedError", () => {
     it("toJSON includes all args", () => {
       class MyError extends Data.TaggedError("MyError")<{ message: string; a: number; cause: string }> {}
       const e = new MyError({ message: "Oh no!", a: 1, cause: "Boom" })
+      assert.deepStrictEqual(e.toJSON(), {
+        _tag: "MyError",
+        message: "Oh no!",
+        a: 1,
+        cause: "Boom"
+      })
+    })
+    it("fromCause", () => {
+      class MyError extends Data.TaggedError("MyError")<{ message: string; a: number; cause: string }> {}
+      const e = MyError.fromCause({ message: "Oh no!", a: 1 })("Boom")
+      assert.instanceOf(e, MyError)
+      assert.deepStrictEqual(e.toJSON(), {
+        _tag: "MyError",
+        message: "Oh no!",
+        a: 1,
+        cause: "Boom"
+      })
+    })
+    it("fromCause inherits", () => {
+      class MyError extends Data.TaggedError("MyError")<{ message: string; a: number; cause: string }> {}
+
+      class MyError2 extends MyError {}
+
+      const e = MyError2.fromCause({ message: "Oh no!", a: 1 })("Boom")
+      assert.instanceOf(e, MyError)
+      assert.instanceOf(e, MyError2)
       assert.deepStrictEqual(e.toJSON(), {
         _tag: "MyError",
         message: "Oh no!",

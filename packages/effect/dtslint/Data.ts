@@ -212,6 +212,12 @@ class MyTaggedError extends Data.TaggedError("Foo")<{
 }> {}
 class VoidTaggedError extends Data.TaggedError("Foo") {}
 
+// $ExpectType (cause: unknown) => MyTaggedError
+const myFromCause = MyTaggedError.fromCause({ a: 2 })
+
+// $ExpectType MyTaggedError
+myFromCause(2)
+
 const myTaggedError1 = new MyTaggedError({ message: "Oh no!", a: 1 })
 
 // test optional props
@@ -224,3 +230,21 @@ myTaggedError1.message = "a"
 
 // $ExpectType [args?: void]
 export type VoidTaggedErrorParams = ConstructorParameters<typeof VoidTaggedError>
+
+class MyTaggedWithKnownCauseError extends Data.TaggedError("MyTaggedWithKnownCauseError")<{
+  cause: number
+}> {}
+
+// $ExpectType (cause: number) => MyTaggedWithKnownCauseError
+const myTaggedWithKnownCauseErrorFromCause = MyTaggedWithKnownCauseError.fromCause()
+
+// $ExpectType MyTaggedWithKnownCauseError
+myTaggedWithKnownCauseErrorFromCause(2)
+
+class MyTaggedWithKnownCauseInheritedError extends MyTaggedWithKnownCauseError {}
+
+// $ExpectType (cause: number) => MyTaggedWithKnownCauseInheritedError
+const myTaggedWithKnownCauseInheritedErrorFromCause = MyTaggedWithKnownCauseInheritedError.fromCause()
+
+// $ExpectType MyTaggedWithKnownCauseInheritedError
+myTaggedWithKnownCauseInheritedErrorFromCause(2)
