@@ -13,9 +13,9 @@ import * as InternalConfirmPrompt from "./internal/prompt/confirm.js"
 import * as InternalDatePrompt from "./internal/prompt/date.js"
 import * as InternalFilePrompt from "./internal/prompt/file.js"
 import * as InternalListPrompt from "./internal/prompt/list.js"
+import * as InternalMultiSelectPrompt from "./internal/prompt/multi-select.js"
 import * as InternalNumberPrompt from "./internal/prompt/number.js"
 import * as InternalSelectPrompt from "./internal/prompt/select.js"
-import * as InternalSelectMultiPrompt from "./internal/prompt/selectMulti.js"
 import * as InternalTextPrompt from "./internal/prompt/text.js"
 import * as InternalTogglePrompt from "./internal/prompt/toggle.js"
 import type { Primitive } from "./Primitive.js"
@@ -371,7 +371,7 @@ export declare namespace Prompt {
    * @since 1.0.0
    * @category models
    */
-  export interface SelectMultiOptions {
+  export interface MultiSelectOptions {
     /**
      * Text for the "Select All" option (defaults to "Select All").
      */
@@ -663,8 +663,8 @@ export const select: <A>(options: Prompt.SelectOptions<A>) => Prompt<A> = Intern
  * @since 1.0.0
  * @category constructors
  */
-export const selectMulti: <A>(options: Prompt.SelectOptions<A> & Prompt.SelectMultiOptions) => Prompt<Array<A>> =
-  InternalSelectMultiPrompt.selectMulti
+export const multiSelect: <A>(options: Prompt.SelectOptions<A> & Prompt.MultiSelectOptions) => Prompt<Array<A>> =
+  InternalMultiSelectPrompt.multiSelect
 
 /**
  * Creates a `Prompt` which immediately succeeds with the specified value.

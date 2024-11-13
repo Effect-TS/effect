@@ -345,7 +345,7 @@ describe("Prompt", () => {
   describe("Prompt.selectMulti", () => {
     it("should return the selected values when multiple options are chosen", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.selectMulti({
+        const prompt = Prompt.multiSelect({
           message: "Select multiple options",
           choices: [
             { title: "Option A", value: "A" },
@@ -368,7 +368,7 @@ describe("Prompt", () => {
 
     it("should select all options when 'Select All' is triggered", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.selectMulti({
+        const prompt = Prompt.multiSelect({
           message: "Select multiple options",
           choices: [
             { title: "Option A", value: "A" },
@@ -387,7 +387,7 @@ describe("Prompt", () => {
 
     it("should deselect all options when 'Select None' is triggered", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.selectMulti({
+        const prompt = Prompt.multiSelect({
           message: "Select multiple options",
           choices: [
             { title: "Option A", value: "A" },
@@ -407,7 +407,7 @@ describe("Prompt", () => {
 
     it("should inverse the selection when 'Inverse Selection' is triggered", () =>
       Effect.gen(function*() {
-        const prompt = Prompt.selectMulti({
+        const prompt = Prompt.multiSelect({
           message: "Select multiple options",
           choices: [
             { title: "Option A", value: "A" },

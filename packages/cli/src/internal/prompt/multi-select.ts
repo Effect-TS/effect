@@ -13,7 +13,7 @@ import * as InternalAnsiUtils from "./ansi-utils.js"
 import { entriesToDisplay } from "./utils.js"
 
 interface SelectOptions<A> extends Required<Prompt.Prompt.SelectOptions<A>> {}
-interface SelectMultiOptions extends Prompt.Prompt.SelectMultiOptions {}
+interface MultiSelectOptions extends Prompt.Prompt.MultiSelectOptions {}
 
 type State = {
   index: number
@@ -72,7 +72,7 @@ const metaOptionsCount = 2
 
 function renderChoices<A>(
   state: State,
-  options: SelectOptions<A> & SelectMultiOptions,
+  options: SelectOptions<A> & MultiSelectOptions,
   figures: Effect.Effect.Success<typeof InternalAnsiUtils.figures>
 ) {
   const choices = options.choices
@@ -234,7 +234,7 @@ export function handleClear<A>(options: SelectOptions<A>) {
   })
 }
 
-function handleProcess<A>(options: SelectOptions<A> & SelectMultiOptions) {
+function handleProcess<A>(options: SelectOptions<A> & MultiSelectOptions) {
   return (input: Terminal.UserInput, state: State) => {
     const totalChoices = options.choices.length + metaOptionsCount
     switch (input.key.name) {
@@ -286,10 +286,10 @@ function handleRender<A>(options: SelectOptions<A>) {
 }
 
 /** @internal */
-export const selectMulti = <A>(
-  options: Prompt.Prompt.SelectOptions<A> & Prompt.Prompt.SelectMultiOptions
+export const multiSelect = <A>(
+  options: Prompt.Prompt.SelectOptions<A> & Prompt.Prompt.MultiSelectOptions
 ): Prompt.Prompt<Array<A>> => {
-  const opts: SelectOptions<A> & SelectMultiOptions = {
+  const opts: SelectOptions<A> & MultiSelectOptions = {
     maxPerPage: 10,
     ...options
   }
