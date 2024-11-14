@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -19,8 +20,12 @@ import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
+import type * as Mailbox from "effect/Mailbox"
+import type { ReadonlyRecord } from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as ScopedRef from "effect/ScopedRef"
+import * as Stream from "effect/Stream"
+import type { OpfsWorkerMessage } from "./internal/opfsWorker.js"
 
 /**
  * @category type ids
@@ -41,6 +46,14 @@ export type TypeId = typeof TypeId
 export interface SqliteClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientMemoryConfig
+  readonly reactive: <A, E, R>(
+    keys: ReadonlyArray<string> | ReadonlyRecord<string, ReadonlyArray<number>>,
+    effect: Effect.Effect<A, E, R>
+  ) => Stream.Stream<A, E, R>
+  readonly reactiveMailbox: <A, E, R>(
+    keys: ReadonlyArray<string> | ReadonlyRecord<string, ReadonlyArray<number>>,
+    effect: Effect.Effect<A, E, R>
+  ) => Effect.Effect<Mailbox.ReadonlyMailbox<A>, E, R | Scope.Scope>
   readonly export: Effect.Effect<Uint8Array, SqlError>
   readonly import: (data: Uint8Array) => Effect.Effect<void, SqlError>
 
@@ -59,6 +72,7 @@ export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite
  * @since 1.0.0
  */
 export interface SqliteClientMemoryConfig {
+  readonly installReactivityHooks?: boolean
   readonly spanAttributes?: Record<string, unknown>
   readonly transformResultNames?: (str: string) => string
   readonly transformQueryNames?: (str: string) => string
@@ -70,6 +84,7 @@ export interface SqliteClientMemoryConfig {
  */
 export interface SqliteClientConfig {
   readonly worker: Effect.Effect<Worker | SharedWorker | MessagePort, never, Scope.Scope>
+  readonly installReactivityHooks?: boolean
   readonly spanAttributes?: Record<string, unknown>
   readonly transformResultNames?: (str: string) => string
   readonly transformQueryNames?: (str: string) => string
@@ -94,8 +109,11 @@ const registered = globalValue("@effect/sql-sqlite-wasm/registered", () => new S
  * @category constructor
  * @since 1.0.0
  */
-export const makeMemory = (options: SqliteClientMemoryConfig): Effect.Effect<SqliteClient, SqlError, Scope.Scope> =>
+export const makeMemory = (
+  options: SqliteClientMemoryConfig
+): Effect.Effect<SqliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
+    const reactivity = yield* Reactivity.Reactivity
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
@@ -118,6 +136,14 @@ export const makeMemory = (options: SqliteClientMemoryConfig): Effect.Effect<Sql
         }),
         (db) => Effect.sync(() => sqlite3.close(db))
       )
+
+      if (options.installReactivityHooks) {
+        sqlite3.update_hook(db, (_op, _db, table, rowid) => {
+          if (!table) return
+          const id = Number(rowid)
+          reactivity.unsafeInvalidate({ [table]: [id] })
+        })
+      }
 
       const run = (
         sql: string,
@@ -169,8 +195,25 @@ export const makeMemory = (options: SqliteClientMemoryConfig): Effect.Effect<Sql
         executeUnprepared(sql, params) {
           return runTransform(sql, params)
         },
-        executeStream() {
-          return Effect.dieMessage("executeStream not implemented")
+        executeStream(sql, params) {
+          return Stream.fromIterableEffect(Effect.try({
+            *try() {
+              for (const stmt of sqlite3.statements(db, sql)) {
+                let columns: Array<string> | undefined
+                sqlite3.bind_collection(stmt, params as any)
+                while (sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
+                  columns = columns ?? sqlite3.column_names(stmt)
+                  const row = sqlite3.row(stmt)
+                  const obj: Record<string, any> = {}
+                  for (let i = 0; i < columns.length; i++) {
+                    obj[columns[i]] = row[i]
+                  }
+                  yield obj
+                }
+              }
+            },
+            catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
+          }))
         },
         export: Effect.try({
           try: () => sqlite3.serialize(db, "main"),
@@ -214,7 +257,13 @@ export const makeMemory = (options: SqliteClientMemoryConfig): Effect.Effect<Sql
       }) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
-        config: options
+        config: options,
+        reactive: reactivity.stream,
+        reactiveMailbox: reactivity.query,
+        export: semaphore.withPermits(1)(connection.export),
+        import(data: Uint8Array) {
+          return semaphore.withPermits(1)(connection.import(data))
+        }
       }
     )
   })
@@ -225,41 +274,50 @@ export const makeMemory = (options: SqliteClientMemoryConfig): Effect.Effect<Sql
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, SqlError, Scope.Scope> =>
-  Effect.gen(function*(_) {
+): Effect.Effect<SqliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+  Effect.gen(function*() {
+    const reactivity = yield* Reactivity.Reactivity
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
     const pending = new Map<number, (effect: Exit.Exit<any, SqlError>) => void>()
 
-    const acquireWorker = Effect.gen(function*() {
+    const makeConnection = Effect.gen(function*() {
+      let currentId = 0
       const scope = yield* Effect.scope
       const readyDeferred = yield* Deferred.make<void>()
 
       const worker = yield* options.worker
       const port = "port" in worker ? worker.port : worker
-      yield* Scope.addFinalizer(scope, Effect.sync(() => port.postMessage(["close"])))
+      const postMessage = (message: OpfsWorkerMessage, transferables?: ReadonlyArray<any>) =>
+        port.postMessage(message, transferables as any)
+
+      yield* Scope.addFinalizer(scope, Effect.sync(() => postMessage(["close"])))
 
       const onMessage = (event: any) => {
         const [id, error, results] = event.data
         if (id === "ready") {
           Deferred.unsafeDone(readyDeferred, Exit.void)
           return
-        }
-        const resume = pending.get(id)
-        if (!resume) return
-        pending.delete(id)
-        if (error) {
-          resume(Exit.fail(new SqlError({ cause: error as string, message: "Failed to execute statement" })))
+        } else if (id === "update_hook") {
+          reactivity.unsafeInvalidate({ [error]: [results] })
+          return
         } else {
-          resume(Exit.succeed(results))
+          const resume = pending.get(id)
+          if (!resume) return
+          pending.delete(id)
+          if (error) {
+            resume(Exit.fail(new SqlError({ cause: error as string, message: "Failed to execute statement" })))
+          } else {
+            resume(Exit.succeed(results))
+          }
         }
       }
       port.addEventListener("message", onMessage)
 
       function onError() {
-        Effect.runFork(ScopedRef.set(workerRef, acquireWorker))
+        Effect.runFork(ScopedRef.set(connectionRef, makeConnection))
       }
       if ("onerror" in worker) {
         worker.addEventListener("error", onError)
@@ -274,30 +332,26 @@ export const make = (
       )
 
       yield* Deferred.await(readyDeferred)
-      return port
-    })
 
-    const workerRef = yield* ScopedRef.fromAcquire(acquireWorker)
+      if (options.installReactivityHooks) {
+        postMessage(["update_hook"])
+      }
 
-    let currentId = 0
-
-    const send = <A>(message: any, params: any, tranferables?: Array<any>) =>
-      Effect.flatMap(ScopedRef.get(workerRef), (worker) =>
-        Effect.async<A, SqlError>((resume) => {
-          const id = currentId++
+      const send = (id: number, message: OpfsWorkerMessage, transferables?: ReadonlyArray<any>) =>
+        Effect.async<any, SqlError>((resume) => {
           pending.set(id, resume)
-          worker.postMessage([id, message, params], tranferables!)
-        }))
+          postMessage(message, transferables)
+        })
 
-    const makeConnection = Effect.sync(() => {
       const run = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = [],
         rowMode: "object" | "array" = "object"
       ): Effect.Effect<Array<any>, SqlError, never> => {
-        const rows = Effect.withFiberRuntime<[Array<string>, Array<any>], SqlError>((fiber) =>
-          send(sql, params, fiber.getFiberRef(currentTransferables) as any)
-        )
+        const rows = Effect.withFiberRuntime<[Array<string>, Array<any>], SqlError>((fiber) => {
+          const id = currentId++
+          return send(id, [id, sql, params], fiber.getFiberRef(currentTransferables))
+        })
         return rowMode === "object"
           ? Effect.map(rows, extractObject)
           : Effect.map(rows, extractRows)
@@ -326,19 +380,25 @@ export const make = (
         executeStream() {
           return Effect.dieMessage("executeStream not implemented")
         },
-        export: send("export", undefined),
+        export: Effect.suspend(() => {
+          const id = currentId++
+          return send(id, ["export", id])
+        }),
         import(data) {
-          return send("import", data, [data.buffer])
+          return Effect.suspend(() => {
+            const id = currentId++
+            return send(id, ["import", id, data], [data.buffer])
+          })
         }
       })
     })
 
-    const semaphore = yield* Effect.makeSemaphore(1)
-    const connection = yield* makeConnection
+    const connectionRef = yield* ScopedRef.fromAcquire(makeConnection)
 
-    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const acquirer = semaphore.withPermits(1)(ScopedRef.get(connectionRef))
     const transactionAcquirer = Effect.uninterruptibleMask((restore) =>
-      Effect.as(
+      Effect.zipRight(
         Effect.zipRight(
           restore(semaphore.take(1)),
           Effect.tap(
@@ -346,7 +406,7 @@ export const make = (
             (scope) => Scope.addFinalizer(scope, semaphore.release(1))
           )
         ),
-        connection
+        ScopedRef.get(connectionRef)
       )
     )
 
@@ -362,7 +422,13 @@ export const make = (
       }) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
-        config: options
+        config: options,
+        reactive: reactivity.stream,
+        reactiveMailbox: reactivity.query,
+        export: Effect.flatMap(acquirer, (connection) => connection.export),
+        import(data: Uint8Array) {
+          return Effect.flatMap(acquirer, (connection) => connection.import(data))
+        }
       }
     )
   })
@@ -410,7 +476,7 @@ export const layerMemoryConfig = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -424,7 +490,7 @@ export const layerMemory = (
       Context.make(SqliteClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -438,7 +504,7 @@ export const layer = (
       Context.make(SqliteClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -456,4 +522,4 @@ export const layerConfig = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))

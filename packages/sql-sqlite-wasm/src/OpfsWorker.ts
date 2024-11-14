@@ -7,6 +7,7 @@ import * as WaSqlite from "@effect/wa-sqlite"
 import SQLiteESMFactory from "@effect/wa-sqlite/dist/wa-sqlite.mjs"
 import { AccessHandlePoolVFS } from "@effect/wa-sqlite/src/examples/AccessHandlePoolVFS.js"
 import * as Effect from "effect/Effect"
+import type { OpfsWorkerMessage } from "./internal/opfsWorker.js"
 
 /**
  * @category models
@@ -39,35 +40,56 @@ export const run = (
 
     return yield* Effect.async<void>((resume) => {
       const onMessage = (event: any) => {
-        const [id, sql, params] = event
-          .data as ([number, string, Array<any>] | ["close"] | ["import", Uint8Array] | ["export"])
-        if (id === "close") {
-          options.port.close()
-          return resume(Effect.void)
-        }
+        let messageId: number
+        const message = event.data as OpfsWorkerMessage
         try {
-          if (id === "import") {
-            sqlite3.deserialize(db, "main", sql, sql.length, sql.length, 1 | 2)
-            options.port.postMessage([id, undefined, void 0])
-          } else if (id === "export") {
-            const data = sqlite3.serialize(db, "main")
-            options.port.postMessage([id, undefined, data], [data.buffer])
-          } else {
-            const results: Array<any> = []
-            let columns: Array<string> | undefined
-            for (const stmt of sqlite3.statements(db, sql)) {
-              sqlite3.bind_collection(stmt, params as any)
-              while (sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
-                columns = columns ?? sqlite3.column_names(stmt)
-                const row = sqlite3.row(stmt)
-                results.push(row)
-              }
+          switch (message[0]) {
+            case "close": {
+              options.port.close()
+              return resume(Effect.void)
             }
-            options.port.postMessage([id, undefined, [columns, results]])
+            case "import": {
+              const [, id, data] = message
+              messageId = id
+              sqlite3.deserialize(db, "main", data, data.length, data.length, 1 | 2)
+              options.port.postMessage([id, void 0, void 0])
+              return
+            }
+            case "export": {
+              const [, id] = message
+              messageId = id
+              const data = sqlite3.serialize(db, "main")
+              options.port.postMessage([id, undefined, data], [data.buffer])
+              return
+            }
+            case "update_hook": {
+              messageId = -1
+              sqlite3.update_hook(db, (_op, _db, table, rowid) => {
+                if (!table) return
+                options.port.postMessage(["update_hook", table, Number(rowid)])
+              })
+              return
+            }
+            default: {
+              const [id, sql, params] = message
+              messageId = id
+              const results: Array<any> = []
+              let columns: Array<string> | undefined
+              for (const stmt of sqlite3.statements(db, sql)) {
+                sqlite3.bind_collection(stmt, params as any)
+                while (sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
+                  columns = columns ?? sqlite3.column_names(stmt)
+                  const row = sqlite3.row(stmt)
+                  results.push(row)
+                }
+              }
+              options.port.postMessage([id, undefined, [columns, results]])
+              return
+            }
           }
         } catch (e: any) {
           const message = "message" in e ? e.message : String(e)
-          options.port.postMessage([id, message, undefined])
+          options.port.postMessage([messageId!, message, undefined])
         }
       }
       options.port.addEventListener("message", onMessage)
