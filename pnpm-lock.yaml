@@ -853,12 +853,12 @@ importers:
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
+      '@effect/wa-sqlite':
+        specifier: ^0.1.2
+        version: 0.1.2
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-      wa-sqlite:
-        specifier: https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz
-        version: https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz
     publishDirectory: dist
 
   packages/typeclass:
@@ -2054,6 +2054,9 @@ packages:
     resolution: {integrity: sha512-IRfvvwqQLabVTIw9hhIj4scOGIYPfa13QuEFv+dBWE6p47R+RR0J8jQvfDINFf0Vn80XXVjNRtZxkZpkKXLx2A==}
     engines: {node: '>=0.10.0'}
     hasBin: true
+
+  '@effect/wa-sqlite@0.1.2':
+    resolution: {integrity: sha512-2JvJ9BDkBOwfeY/gXsC0XwEKC0AwisP2W5ABJ6mx14QyXTK12MGDIybDlHieuZt1TEFSMiKfpg7yyqyRWRooJQ==}
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -5481,7 +5484,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.6:
@@ -7330,10 +7332,6 @@ packages:
 
   vlq@1.0.1:
     resolution: {integrity: sha512-gQpnTgkubC6hQgdIcRdYGDSDc+SaujOdyesZQMv6JlfQee/9Mp0Qhnys6WxDWvQnL5WZdT7o2Ul187aSt0Rq+w==}
-
-  wa-sqlite@https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz:
-    resolution: {tarball: https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz}
-    version: 1.0.4
 
   walkdir@0.4.1:
     resolution: {integrity: sha512-3eBwRyEln6E1MSzcxcVpQIhRG8Q1jLvEqRmCZqS3dsfXEDR/AhOF4d+jHg1qvDCpYaVRZjENPQyrVxAkQqxPgQ==}
@@ -9732,6 +9730,8 @@ snapshots:
       remarkable: 1.7.4
       repeat-string: 1.6.1
       strip-color: 0.1.0
+
+  '@effect/wa-sqlite@0.1.2': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true
@@ -15760,8 +15760,6 @@ snapshots:
       - terser
 
   vlq@1.0.1: {}
-
-  wa-sqlite@https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v1.0.4.tar.gz: {}
 
   walkdir@0.4.1: {}
 

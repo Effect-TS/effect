@@ -3,10 +3,10 @@
  */
 /// <reference lib="webworker" />
 import { SqlError } from "@effect/sql/SqlError"
+import * as WaSqlite from "@effect/wa-sqlite"
+import SQLiteESMFactory from "@effect/wa-sqlite/dist/wa-sqlite.mjs"
+import { AccessHandlePoolVFS } from "@effect/wa-sqlite/src/examples/AccessHandlePoolVFS.js"
 import * as Effect from "effect/Effect"
-import * as WaSqlite from "wa-sqlite"
-import SQLiteESMFactory from "wa-sqlite/dist/wa-sqlite.mjs"
-import { AccessHandlePoolVFS } from "wa-sqlite/src/examples/AccessHandlePoolVFS.js"
 
 /**
  * @category models
@@ -30,7 +30,7 @@ export const run = (
     const vfs = yield* Effect.promise(() => AccessHandlePoolVFS.create("opfs", factory))
     sqlite3.vfs_register(vfs, false)
     const db = yield* Effect.acquireRelease(
-      Effect.tryPromise({
+      Effect.try({
         try: () => sqlite3.open_v2(options.dbName, undefined, "opfs"),
         catch: (cause) => new SqlError({ cause, message: "Failed to open database" })
       }),
@@ -38,31 +38,40 @@ export const run = (
     )
 
     return yield* Effect.async<void>((resume) => {
-      const onMessage = async (event: any) => {
-        const [id, sql, params] = event.data as [number, string, Array<any>]
-        if (id === -1) {
+      const onMessage = (event: any) => {
+        const [id, sql, params] = event
+          .data as ([number, string, Array<any>] | ["close"] | ["import", Uint8Array] | ["export"])
+        if (id === "close") {
           options.port.close()
           return resume(Effect.void)
         }
         try {
-          const results: Array<any> = []
-          let columns: Array<string> | undefined
-          for await (const stmt of sqlite3.statements(db, sql)) {
-            sqlite3.bind_collection(stmt, params as any)
-            while (await sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
-              columns = columns ?? sqlite3.column_names(stmt)
-              const row = sqlite3.row(stmt)
-              results.push(row)
+          if (id === "import") {
+            sqlite3.deserialize(db, "main", sql, sql.length, sql.length, 1 | 2)
+            options.port.postMessage([id, undefined, void 0])
+          } else if (id === "export") {
+            const data = sqlite3.serialize(db, "main")
+            options.port.postMessage([id, undefined, data], [data.buffer])
+          } else {
+            const results: Array<any> = []
+            let columns: Array<string> | undefined
+            for (const stmt of sqlite3.statements(db, sql)) {
+              sqlite3.bind_collection(stmt, params as any)
+              while (sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
+                columns = columns ?? sqlite3.column_names(stmt)
+                const row = sqlite3.row(stmt)
+                results.push(row)
+              }
             }
+            options.port.postMessage([id, undefined, [columns, results]])
           }
-          options.port.postMessage([id, undefined, [columns, results]])
         } catch (e: any) {
           const message = "message" in e ? e.message : String(e)
           options.port.postMessage([id, message, undefined])
         }
       }
       options.port.addEventListener("message", onMessage)
-      options.port.postMessage([-1, undefined, undefined])
+      options.port.postMessage(["ready", undefined, undefined])
       return Effect.sync(() => {
         options.port.removeEventListener("message", onMessage)
       })
