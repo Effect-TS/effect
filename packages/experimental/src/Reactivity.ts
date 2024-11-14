@@ -38,14 +38,15 @@ export const make = Effect.sync(() => {
       const record = keys as ReadonlyRecord<string, Array<unknown>>
       for (const key in record) {
         const keyHash = Hash.string(key)
-        const set = handlers.get(keyHash)
-        if (set === undefined) continue
-        for (const run of set) run()
-
         const hashes = idHashes(keyHash, record[key])
         for (let i = 0; i < hashes.length; i++) {
           const set = handlers.get(hashes[i])
           if (set === undefined) continue
+          for (const run of set) run()
+        }
+
+        const set = handlers.get(keyHash)
+        if (set !== undefined) {
           for (const run of set) run()
         }
       }
