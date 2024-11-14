@@ -1,5 +1,16 @@
 # @effect/experimental
 
+## 0.32.6
+
+### Patch Changes
+
+- [#3937](https://github.com/Effect-TS/effect/pull/3937) [`4e9e256`](https://github.com/Effect-TS/effect/commit/4e9e256e9f0b4a9e9b202d3bb703b5a4622e75cb) Thanks @tim-smart! - add Reactivity module to experimental
+
+- Updated dependencies [[`8398b32`](https://github.com/Effect-TS/effect/commit/8398b3208242a88239d4449910b7baf923cfe3b6), [`72e55b7`](https://github.com/Effect-TS/effect/commit/72e55b7c610784fcebdbadc592c876e23e76a986)]:
+  - effect@3.10.15
+  - @effect/platform@0.69.22
+  - @effect/platform-node@0.64.24
+
 ## 0.32.5
 
 ### Patch Changes
