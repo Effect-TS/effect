@@ -849,13 +849,13 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.25.1
         version: 1.25.1
-      '@sqlite.org/sqlite-wasm':
-        specifier: 3.46.0-build2
-        version: 3.46.0-build2
     devDependencies:
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
+      '@effect/wa-sqlite':
+        specifier: ^0.1.2
+        version: 0.1.2
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -2055,6 +2055,9 @@ packages:
     engines: {node: '>=0.10.0'}
     hasBin: true
 
+  '@effect/wa-sqlite@0.1.2':
+    resolution: {integrity: sha512-2JvJ9BDkBOwfeY/gXsC0XwEKC0AwisP2W5ABJ6mx14QyXTK12MGDIybDlHieuZt1TEFSMiKfpg7yyqyRWRooJQ==}
+
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
     engines: {node: '>=12'}
@@ -3156,10 +3159,6 @@ packages:
 
   '@sinonjs/fake-timers@10.3.0':
     resolution: {integrity: sha512-V4BG07kuYSUkTCSBHG8G8TNhM+F19jXFWnQtzj+we8DrkpSBCee9Z3Ms8yiGer/dlmhe35/Xdgyo3/0rQKg7YA==}
-
-  '@sqlite.org/sqlite-wasm@3.46.0-build2':
-    resolution: {integrity: sha512-10s/u/Main1RGO+jjzK+mgC/zh1ls1CEnq3Dujr03TwvzLg+j4FAohOmlYkQj8KQOj1vGR9cuB9F8tVBTwVGVA==}
-    hasBin: true
 
   '@testcontainers/mssqlserver@10.11.0':
     resolution: {integrity: sha512-/Rh/MEwCrsVbIQ/IJm1ScCY4dZ6wS3nOpG/xqdBTxAnQMN0pVpCIoQ1KzksKmoofP3XHDtveHrKp2cahfxsgeQ==}
@@ -9732,6 +9731,8 @@ snapshots:
       repeat-string: 1.6.1
       strip-color: 0.1.0
 
+  '@effect/wa-sqlite@0.1.2': {}
+
   '@esbuild/aix-ppc64@0.21.5':
     optional: true
 
@@ -10769,8 +10770,6 @@ snapshots:
   '@sinonjs/fake-timers@10.3.0':
     dependencies:
       '@sinonjs/commons': 3.0.1
-
-  '@sqlite.org/sqlite-wasm@3.46.0-build2': {}
 
   '@testcontainers/mssqlserver@10.11.0':
     dependencies:
