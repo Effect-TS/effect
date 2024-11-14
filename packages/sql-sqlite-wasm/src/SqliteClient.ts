@@ -94,9 +94,7 @@ const registered = globalValue("@effect/sql-sqlite-wasm/registered", () => new S
  * @category constructor
  * @since 1.0.0
  */
-export const make = (
-  options: SqliteClientConfig
-): Effect.Effect<SqliteClient, SqlError, Scope.Scope> =>
+export const make = (options: SqliteClientConfig): Effect.Effect<SqliteClient, SqlError, Scope.Scope> =>
   Effect.gen(function*(_) {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = Statement.defaultTransforms(
@@ -228,8 +226,11 @@ export const makeOpfs = (
     const acquireWorker = Effect.gen(function*() {
       const scope = yield* Effect.scope
       const readyDeferred = yield* Deferred.make<void>()
+
       const worker = yield* options.worker
       const port = "port" in worker ? worker.port : worker
+      yield* Scope.addFinalizer(scope, Effect.sync(() => port.postMessage([-1])))
+
       const onMessage = (event: any) => {
         const [id, error, results] = event.data
         if (id === -1) {
@@ -246,12 +247,14 @@ export const makeOpfs = (
         }
       }
       port.addEventListener("message", onMessage)
+
       function onError() {
         Effect.runFork(ScopedRef.set(workerRef, acquireWorker))
       }
       if ("onerror" in worker) {
         worker.addEventListener("error", onError)
       }
+
       yield* Scope.addFinalizer(
         scope,
         Effect.sync(() => {
@@ -259,6 +262,7 @@ export const makeOpfs = (
           worker.removeEventListener("error", onError)
         })
       )
+
       yield* Deferred.await(readyDeferred)
       return port
     })

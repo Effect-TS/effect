@@ -13,7 +13,7 @@ import { AccessHandlePoolVFS } from "wa-sqlite/src/examples/AccessHandlePoolVFS.
  * @since 1.0.0
  */
 export interface OpfsWorkerConfig {
-  readonly port: EventTarget & Pick<MessagePort, "postMessage">
+  readonly port: EventTarget & Pick<MessagePort, "postMessage" | "close">
   readonly dbName: string
 }
 
@@ -23,7 +23,7 @@ export interface OpfsWorkerConfig {
  */
 export const run = (
   options: OpfsWorkerConfig
-): Effect.Effect<never, SqlError> =>
+): Effect.Effect<void, SqlError> =>
   Effect.gen(function*() {
     const factory = yield* Effect.promise(() => SQLiteESMFactory())
     const sqlite3 = WaSqlite.Factory(factory)
@@ -37,9 +37,13 @@ export const run = (
       (db) => Effect.sync(() => sqlite3.close(db))
     )
 
-    return yield* Effect.async<never>((_resume) => {
+    return yield* Effect.async<void>((resume) => {
       const onMessage = async (event: any) => {
         const [id, sql, params] = event.data as [number, string, Array<any>]
+        if (id === -1) {
+          options.port.close()
+          return resume(Effect.void)
+        }
         try {
           const results: Array<any> = []
           let columns: Array<string> | undefined
