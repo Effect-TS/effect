@@ -1718,10 +1718,11 @@ schema (Suspend): <suspended schema>`
     it("String", () => {
       expectJSONSchema(
         Schema.String.annotations({
-          jsonSchema: { "type": "custom JSON Schema", "description": "description" }
+          jsonSchema: { "type": "custom JSON Schema", "format": "uuid", "description": "description" }
         }),
         {
           "type": "custom JSON Schema",
+          "format": "uuid",
           "description": "description"
         },
         false
