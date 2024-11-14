@@ -1,5 +1,14 @@
 # @effect/platform-browser
 
+## 0.48.23
+
+### Patch Changes
+
+- [#3902](https://github.com/Effect-TS/effect/pull/3902) [`18bdbac`](https://github.com/Effect-TS/effect/commit/18bdbacfcd0817dc90f11ec5bc72dfe3c2c456c7) Thanks @SandroMaglione! - Added `Permissions` module to `@effect/platform-browser`
+
+- Updated dependencies [[`3aff4d3`](https://github.com/Effect-TS/effect/commit/3aff4d38837c213bb2987973dc4b98febb9f92d2)]:
+  - @effect/platform@0.69.23
+
 ## 0.48.22
 
 ### Patch Changes

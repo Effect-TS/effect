@@ -1,5 +1,16 @@
 # @effect/sql-sqlite-wasm
 
+## 0.21.0
+
+### Minor Changes
+
+- [#3934](https://github.com/Effect-TS/effect/pull/3934) [`7807f50`](https://github.com/Effect-TS/effect/commit/7807f502a693d97be5b767fe7f1a7dcd7bd9420c) Thanks @tim-smart! - use wa-sqlite for sqlite-wasm package
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/sql@0.20.7
+
 ## 0.20.6
 
 ### Patch Changes
