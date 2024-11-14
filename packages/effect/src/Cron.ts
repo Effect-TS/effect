@@ -288,64 +288,75 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
   const restrictWeekdays = weekdays.size !== 0
 
   // TODO: This is unsafe.
-  const current = dateTime.unsafeMakeZoned(now ?? new Date()).pipe(dateTime.toDateUtc)
-  const toParts = Option.match(cron.tz, {
-    onNone: () => (date: Date) => dateTime.unsafeMakeZoned(date).pipe(dateTime.toParts),
-    onSome: (tz) => (date: Date) => dateTime.unsafeMakeZoned(date).pipe(dateTime.setZone(tz), dateTime.toParts)
-  })
+  const zoned = dateTime.unsafeMakeZoned(now ?? new Date())
+  const adjusted = Option.isSome(cron.tz) ? dateTime.setZone(zoned, cron.tz.value) : zoned
 
-  // Increment by one minute to ensure we don't match the current date.
-  current.setMinutes(current.getMinutes() + 1)
-  current.setSeconds(0)
-  current.setMilliseconds(0)
+  let current = dateTime.setParts(adjusted, {
+    // Increment by one minute to ensure we don't match the current date.
+    minutes: dateTime.getPart(adjusted, "minutes") + 1,
+    seconds: 0,
+    millis: 0
+  })
 
   // TODO: This algorithm can be optimized to avoid some unnecessary iterations.
   for (let i = 0; i < 10_000; i++) {
-    const parts = toParts(current)
+    const parts = dateTime.toParts(current)
 
     if (restrictMonths && !months.has(parts.month)) {
-      current.setMonth(parts.month)
-      current.setDate(1)
-      current.setHours(0)
-      current.setMinutes(0)
+      current = dateTime.setParts(current, {
+        month: dateTime.getPart(current, "month") + 1,
+        day: 1,
+        hours: 0,
+        minutes: 0
+      })
       continue
     }
 
     if (restrictDays && restrictWeekdays) {
       if (!days.has(parts.day) && !weekdays.has(parts.weekDay)) {
-        current.setDate(parts.day + 1)
-        current.setHours(0)
-        current.setMinutes(0)
+        current = dateTime.setParts(current, {
+          day: dateTime.getPart(current, "day") + 1,
+          hours: 0,
+          minutes: 0
+        })
         continue
       }
     } else if (restrictDays) {
       if (!days.has(parts.day)) {
-        current.setDate(parts.day + 1)
-        current.setHours(0)
-        current.setMinutes(0)
+        current = dateTime.setParts(current, {
+          day: dateTime.getPart(current, "day") + 1,
+          hours: 0,
+          minutes: 0
+        })
         continue
       }
     } else if (restrictWeekdays) {
       if (!weekdays.has(parts.weekDay)) {
-        current.setDate(parts.day + 1)
-        current.setHours(0)
-        current.setMinutes(0)
+        current = dateTime.setParts(current, {
+          day: dateTime.getPart(current, "day") + 1,
+          hours: 0,
+          minutes: 0
+        })
         continue
       }
     }
 
     if (restrictHours && !hours.has(parts.hours)) {
-      current.setHours(parts.hours + 1)
-      current.setMinutes(0)
+      current = dateTime.setParts(current, {
+        hours: dateTime.getPart(current, "hours") + 1,
+        minutes: 0
+      })
       continue
     }
 
     if (restrictMinutes && !minutes.has(parts.minutes)) {
-      current.setMinutes(parts.minutes + 1)
+      current = dateTime.setParts(current, {
+        minutes: dateTime.getPart(current, "minutes") + 1
+      })
       continue
     }
 
-    return current
+    return dateTime.toDateUtc(current)
   }
 
   throw new Error("Unable to find next cron date")

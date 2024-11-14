@@ -74,12 +74,20 @@ describe("Cron", () => {
     assertFalse(match("5 4 * * SUN", "2024-01-08 04:05:00"))
     assertFalse(match("5 4 * * SUN", "2025-01-07 04:05:00"))
 
-    const zone = DateTime.zoneUnsafeMakeNamed("Europe/Vienna")
-    // With time zone adjusted cron (comparing to UTC).
-    assertTrue(match(parse("15 14 1 * *", zone), "2024-06-01 12:15:00Z"))
-    // With time zone adjusted cron and time zone adjusted date.
-    const adjusted = DateTime.unsafeMakeZoned("2024-06-01 14:15:00", { timeZone: zone })
-    assertTrue(match(parse("15 14 1 * *", zone), adjusted))
+    const london = DateTime.zoneUnsafeMakeNamed("Europe/London")
+    const londonTime = DateTime.unsafeMakeZoned("2024-06-01 14:15:00Z", {
+      timeZone: london,
+      adjustForTimeZone: true
+    })
+
+    const amsterdam = DateTime.zoneUnsafeMakeNamed("Europe/Amsterdam")
+    const amsterdamTime = DateTime.unsafeMakeZoned("2024-06-01 15:15:00Z", {
+      timeZone: amsterdam,
+      adjustForTimeZone: true
+    })
+
+    assertTrue(match(parse("15 14 1 * *", london), londonTime))
+    assertTrue(match(parse("15 14 1 * *", london), amsterdamTime))
   })
 
   it("next", () => {
@@ -90,12 +98,20 @@ describe("Cron", () => {
     deepStrictEqual(next("5 4 * * SUN", after), new Date("2024-01-07 04:05:00"))
     deepStrictEqual(next("5 4 * DEC SUN", after), new Date("2024-12-01 04:05:00"))
 
-    const zone = DateTime.zoneUnsafeMakeNamed("Europe/Vienna")
-    // With time zone adjusted cron (comparing to UTC).
-    deepStrictEqual(next(parse("5 0 8 2 *", zone), after), new Date("2024-02-07 23:05:00Z"))
-    // With time zone adjusted cron and time zone adjusted date.
-    const adjusted = DateTime.unsafeMakeZoned("2024-02-08 00:05:00", { timeZone: zone })
-    deepStrictEqual(next(parse("5 0 8 2 *", zone), after), adjusted.pipe(DateTime.toDateUtc))
+    const london = DateTime.zoneUnsafeMakeNamed("Europe/London")
+    const londonTime = DateTime.unsafeMakeZoned("2024-02-08 00:05:00Z", {
+      timeZone: london,
+      adjustForTimeZone: true
+    })
+
+    const amsterdam = DateTime.zoneUnsafeMakeNamed("Europe/Amsterdam")
+    const amsterdamTime = DateTime.unsafeMakeZoned("2024-02-08 01:05:00Z", {
+      timeZone: amsterdam,
+      adjustForTimeZone: true
+    })
+
+    deepStrictEqual(next(parse("5 0 8 2 *", london), after), DateTime.toDateUtc(londonTime))
+    deepStrictEqual(next(parse("5 0 8 2 *", london), after), DateTime.toDateUtc(amsterdamTime))
   })
 
   it("sequence", () => {
