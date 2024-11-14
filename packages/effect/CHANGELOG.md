@@ -1,5 +1,13 @@
 # effect
 
+## 3.10.15
+
+### Patch Changes
+
+- [#3936](https://github.com/Effect-TS/effect/pull/3936) [`8398b32`](https://github.com/Effect-TS/effect/commit/8398b3208242a88239d4449910b7baf923cfe3b6) Thanks @tim-smart! - allow DateTime.makeZoned to default to the local time zone
+
+- [#3917](https://github.com/Effect-TS/effect/pull/3917) [`72e55b7`](https://github.com/Effect-TS/effect/commit/72e55b7c610784fcebdbadc592c876e23e76a986) Thanks @SuttonKyle! - Allow Stream.split to use refinement for better type inference
+
 ## 3.10.14
 
 ### Patch Changes
