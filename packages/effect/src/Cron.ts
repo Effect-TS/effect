@@ -291,75 +291,63 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
   const zoned = dateTime.unsafeMakeZoned(now ?? new Date())
   const adjusted = Option.isSome(cron.tz) ? dateTime.setZone(zoned, cron.tz.value) : zoned
 
-  let current = dateTime.setParts(adjusted, {
+  // TODO: This algorithm can be optimized to avoid some unnecessary iterations.
+  const result = dateTime.mutate(adjusted, (current) => {
     // Increment by one minute to ensure we don't match the current date.
-    minutes: dateTime.getPart(adjusted, "minutes") + 1,
-    seconds: 0,
-    millis: 0
+    current.setUTCMinutes(current.getUTCMinutes() + 1)
+    current.setUTCSeconds(0)
+    current.setUTCMilliseconds(0)
+
+    for (let i = 0; i < 10_000; i++) {
+      if (restrictMonths && !months.has(current.getUTCMonth() + 1)) {
+        current.setUTCMonth(current.getUTCMonth() + 1)
+        current.setUTCDate(1)
+        current.setUTCHours(0)
+        current.setUTCMinutes(0)
+        continue
+      }
+
+      if (restrictDays && restrictWeekdays) {
+        if (!days.has(current.getUTCDate()) && !weekdays.has(current.getUTCDay())) {
+          current.setUTCDate(current.getUTCDate() + 1)
+          current.setUTCHours(0)
+          current.setUTCMinutes(0)
+          continue
+        }
+      } else if (restrictDays) {
+        if (!days.has(current.getUTCDate())) {
+          current.setUTCDate(current.getUTCDate() + 1)
+          current.setUTCHours(0)
+          current.setUTCMinutes(0)
+          continue
+        }
+      } else if (restrictWeekdays) {
+        if (!weekdays.has(current.getUTCDay())) {
+          current.setUTCDate(current.getUTCDate() + 1)
+          current.setUTCHours(0)
+          current.setUTCMinutes(0)
+          continue
+        }
+      }
+
+      if (restrictHours && !hours.has(current.getUTCHours())) {
+        current.setUTCHours(current.getUTCHours() + 1)
+        current.setUTCMinutes(0)
+        continue
+      }
+
+      if (restrictMinutes && !minutes.has(current.getUTCMinutes())) {
+        current.setUTCMinutes(current.getUTCMinutes() + 1)
+        continue
+      }
+
+      return
+    }
+
+    throw new Error("Unable to find next cron date")
   })
 
-  // TODO: This algorithm can be optimized to avoid some unnecessary iterations.
-  for (let i = 0; i < 10_000; i++) {
-    const parts = dateTime.toParts(current)
-
-    if (restrictMonths && !months.has(parts.month)) {
-      current = dateTime.setParts(current, {
-        month: dateTime.getPart(current, "month") + 1,
-        day: 1,
-        hours: 0,
-        minutes: 0
-      })
-      continue
-    }
-
-    if (restrictDays && restrictWeekdays) {
-      if (!days.has(parts.day) && !weekdays.has(parts.weekDay)) {
-        current = dateTime.setParts(current, {
-          day: dateTime.getPart(current, "day") + 1,
-          hours: 0,
-          minutes: 0
-        })
-        continue
-      }
-    } else if (restrictDays) {
-      if (!days.has(parts.day)) {
-        current = dateTime.setParts(current, {
-          day: dateTime.getPart(current, "day") + 1,
-          hours: 0,
-          minutes: 0
-        })
-        continue
-      }
-    } else if (restrictWeekdays) {
-      if (!weekdays.has(parts.weekDay)) {
-        current = dateTime.setParts(current, {
-          day: dateTime.getPart(current, "day") + 1,
-          hours: 0,
-          minutes: 0
-        })
-        continue
-      }
-    }
-
-    if (restrictHours && !hours.has(parts.hours)) {
-      current = dateTime.setParts(current, {
-        hours: dateTime.getPart(current, "hours") + 1,
-        minutes: 0
-      })
-      continue
-    }
-
-    if (restrictMinutes && !minutes.has(parts.minutes)) {
-      current = dateTime.setParts(current, {
-        minutes: dateTime.getPart(current, "minutes") + 1
-      })
-      continue
-    }
-
-    return dateTime.toDateUtc(current)
-  }
-
-  throw new Error("Unable to find next cron date")
+  return dateTime.toDateUtc(result)
 }
 
 /**
