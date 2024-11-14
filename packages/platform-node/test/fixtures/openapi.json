@@ -2,7 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "API",
-    "version": "0.0.1"
+    "version": "0.0.1",
+    "summary": "test api summary"
   },
   "paths": {
     "/groups/{id}": {
@@ -247,7 +248,11 @@
         }
       },
       "get": {
-        "tags": ["Users API"],
+        "tags": [
+          "Users API"
+        ],
+        "deprecated": true,
+        "summary": "test summary",
         "operationId": "listUsers",
         "parameters": [
           {

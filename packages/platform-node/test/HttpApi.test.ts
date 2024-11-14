@@ -280,6 +280,8 @@ class UsersApi extends HttpApiGroup.make("users")
       }))
       .addSuccess(Schema.Array(User))
       .addError(NoStatusError)
+      .annotate(OpenApi.Deprecated, true)
+      .annotate(OpenApi.Summary, "test summary")
       .annotateContext(OpenApi.annotations({ identifier: "listUsers" }))
   )
   .add(
@@ -302,7 +304,7 @@ class Api extends HttpApi.empty
   .addHttpApi(AnotherApi)
   .add(UsersApi.prefix("/users"))
   .addError(GlobalError, { status: 413 })
-  .annotateContext(OpenApi.annotations({ title: "API" }))
+  .annotateContext(OpenApi.annotations({ title: "API", summary: "test api summary" }))
 {}
 
 // impl
