@@ -791,3 +791,11 @@ const tracingFunction = (name: string) => {
  * @category tracing
  */
 export const internalCall = tracingFunction("effect_internal_function")
+
+const genConstructor = (function*() {}).constructor
+
+/**
+ * @since 3.11.0
+ */
+export const isGeneratorFunction = (u: unknown): u is (...args: Array<any>) => Generator<any, any, any> =>
+  isObject(u) && u.constructor === genConstructor
