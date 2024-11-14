@@ -484,7 +484,7 @@ export const unsafeMakeZoned = (input: DateTime.Input, options?: {
   const self = unsafeMake(input)
   let zone: TimeZone
   if (options?.timeZone === undefined) {
-    const offset = new Date(0).getTimezoneOffset() * -60 * 1000
+    const offset = new Date(self.epochMillis).getTimezoneOffset() * -60 * 1000
     zone = zoneMakeOffset(offset)
   } else if (isTimeZone(options?.timeZone)) {
     zone = options.timeZone
