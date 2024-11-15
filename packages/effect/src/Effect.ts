@@ -7192,10 +7192,7 @@ export namespace fn {
  */
 export const fn: (
   name: string,
-  options?: {
-    readonly options?: Omit<FunctionWithSpanOptions, "name">
-    readonly captureStackTrace?: boolean | undefined
-  }
+  options?: Tracer.SpanOptions
 ) => fn.Gen & fn.NonGen = (name, options) =>
 // @ts-ignore
 (body: Function, ...pipeables: Array<any>) => {
@@ -7227,10 +7224,7 @@ export const fn: (
       }
       return res
     }
-    let opts: any = options?.captureStackTrace === false ? {} : { captureStackTrace }
-    if (options?.options) {
-      opts = { ...opts, ...options.options }
-    }
+    const opts: any = (options && "captureStackTrace" in options) ? options : { captureStackTrace, ...options }
     return withSpan(
       core.suspend(() => res(...args)),
       name,
