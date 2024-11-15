@@ -7164,7 +7164,9 @@ export namespace fn {
 }
 
 /**
- * Creates a function that returns an Effect which is automatically traced with a span.
+ * Creates a function that returns an Effect which is automatically traced with a span pointing to the call site.
+ *
+ * The function can be created both using a generator function that can yield effects or using a normal function.
  *
  * @since 3.11.0
  * @category function
@@ -7172,7 +7174,7 @@ export namespace fn {
  * @example
  * import { Effect } from "effect"
  *
- * const logExample = Effect.fn("example")(
+ * const logExample = Effect.fn("logExample")(
  *   function*<N extends number>(n: N) {
  *     yield* Effect.annotateCurrentSpan("n", n)
  *     yield* Effect.logInfo(`got: ${n}`)
