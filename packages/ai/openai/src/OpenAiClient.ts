@@ -156,6 +156,7 @@ export const layer = (options: {
   readonly apiKey: Redacted.Redacted
   readonly organizationId?: Redacted.Redacted | undefined
   readonly projectId?: Redacted.Redacted | undefined
+  readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
 }): Layer.Layer<OpenAiClient, never, HttpClient.HttpClient> => Layer.effect(OpenAiClient, make(options))
 
 /**
@@ -167,6 +168,7 @@ export const layerConfig = (
     readonly apiKey: Redacted.Redacted
     readonly organizationId?: Redacted.Redacted | undefined
     readonly projectId?: Redacted.Redacted | undefined
+    readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
   }>
 ): Layer.Layer<OpenAiClient, ConfigError, HttpClient.HttpClient> =>
   Config.unwrap(options).pipe(
