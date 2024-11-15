@@ -349,3 +349,12 @@ const extractMembers = (
   }
   return members
 }
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export class AdditionalSchemas extends Context.Tag("@effect/platform/HttpApi/AdditionalSchemas")<
+  AdditionalSchemas,
+  ReadonlyArray<Schema.Schema.All>
+>() {}

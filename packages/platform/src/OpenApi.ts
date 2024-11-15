@@ -174,6 +174,9 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
     const scheme = makeSecurityScheme(security)
     spec.components!.securitySchemes![name] = scheme
   }
+  Option.map(Context.getOption(api.annotations, HttpApi.AdditionalSchemas), (componentSchemas) => {
+    componentSchemas.forEach((componentSchema) => makeJsonSchemaOrRef(componentSchema))
+  })
   Option.map(Context.getOption(api.annotations, Description), (description) => {
     spec.info.description = description
   })
