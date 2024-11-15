@@ -1,5 +1,38 @@
 # @effect/platform
 
+## 0.69.24
+
+### Patch Changes
+
+- [#3939](https://github.com/Effect-TS/effect/pull/3939) [`3cc6514`](https://github.com/Effect-TS/effect/commit/3cc6514d2dd64e010cb760cc29bfce98c349bb10) Thanks @KhraksMamtsov! - Added the ability to annotate the `HttpApi` with additional schemas
+  Which will be taken into account when generating `components.schemas` section of `OpenApi` schema
+
+  ```ts
+  import { Schema } from "effect"
+  import { HttpApi } from "@effect/platform"
+
+  HttpApi.empty.annotate(HttpApi.AdditionalSchemas, [
+    Schema.Struct({
+      contentType: Schema.String,
+      length: Schema.Int
+    }).annotations({
+      identifier: "ComponentsSchema"
+    })
+  ])
+  /**
+   {
+    "openapi": "3.0.3",
+    ...
+    "components": {
+      "schemas": {
+        "ComponentsSchema": {...},
+        ...
+    },
+    ...
+    }
+   */
+  ```
+
 ## 0.69.23
 
 ### Patch Changes
