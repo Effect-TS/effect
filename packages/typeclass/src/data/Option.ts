@@ -224,6 +224,10 @@ export const SemiAlternative: semiAlternative.SemiAlternative<Option.OptionTypeL
 export const Alternative: alternative.Alternative<Option.OptionTypeLambda> = {
   map,
   imap,
+  of,
+  product,
+  productMany,
+  productAll,
   coproduct,
   coproductMany,
   coproductAll,
