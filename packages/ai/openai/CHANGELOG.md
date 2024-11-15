@@ -1,5 +1,16 @@
 # @effect/ai-openai
 
+## 0.4.8
+
+### Patch Changes
+
+- [#3949](https://github.com/Effect-TS/effect/pull/3949) [`52c4b89`](https://github.com/Effect-TS/effect/commit/52c4b89da69fa88a0fb2debe038c009c19b34573) Thanks @tim-smart! - add transformClient option to OpenAiClient layer
+
+- Updated dependencies [[`3cc6514`](https://github.com/Effect-TS/effect/commit/3cc6514d2dd64e010cb760cc29bfce98c349bb10)]:
+  - @effect/platform@0.69.24
+  - @effect/ai@0.2.24
+  - @effect/experimental@0.32.8
+
 ## 0.4.7
 
 ### Patch Changes
