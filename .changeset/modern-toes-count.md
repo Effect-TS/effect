@@ -9,17 +9,14 @@ Which will be taken into account when generating `components.schemas` section of
 import { Schema } from "effect"
 import { HttpApi } from "@effect/platform"
 
-HttpApi.empty.annotate(
-  HttpApi.ApiAdditionalSchemas,
-  new Set([
-    Schema.Struct({
-      contentType: Schema.String,
-      length: Schema.Int
-    }).annotations({
-      identifier: "ComponentsSchema"
-    })
-  ])
-)
+HttpApi.empty.annotate(HttpApi.AdditionalSchemas, [
+  Schema.Struct({
+    contentType: Schema.String,
+    length: Schema.Int
+  }).annotations({
+    identifier: "ComponentsSchema"
+  })
+])
 /**
  {
   "openapi": "3.0.3",
