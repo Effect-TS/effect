@@ -2,13 +2,16 @@
  * @since 2.0.0
  */
 import * as Arr from "./Array.js"
+import type * as DateTime from "./DateTime.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as equivalence from "./Equivalence.js"
 import { dual, pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
 import { format, type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
+import * as dateTime from "./internal/dateTime.js"
 import * as N from "./Number.js"
+import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
 import * as String from "./String.js"
@@ -32,6 +35,7 @@ export type TypeId = typeof TypeId
  */
 export interface Cron extends Pipeable, Equal.Equal, Inspectable {
   readonly [TypeId]: TypeId
+  readonly tz: Option.Option<DateTime.TimeZone>
   readonly minutes: ReadonlySet<number>
   readonly hours: ReadonlySet<number>
   readonly days: ReadonlySet<number>
@@ -39,14 +43,15 @@ export interface Cron extends Pipeable, Equal.Equal, Inspectable {
   readonly weekdays: ReadonlySet<number>
 }
 
-const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"> = {
+const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays" | "tz"> = {
   [TypeId]: TypeId,
   [Equal.symbol](this: Cron, that: unknown) {
     return isCron(that) && equals(this, that)
   },
   [Hash.symbol](this: Cron): number {
     return pipe(
-      Hash.array(Arr.fromIterable(this.minutes)),
+      Hash.hash(this.tz),
+      Hash.combine(Hash.array(Arr.fromIterable(this.minutes))),
       Hash.combine(Hash.array(Arr.fromIterable(this.hours))),
       Hash.combine(Hash.array(Arr.fromIterable(this.days))),
       Hash.combine(Hash.array(Arr.fromIterable(this.months))),
@@ -60,6 +65,7 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
   toJSON(this: Cron) {
     return {
       _id: "Cron",
+      tz: this.tz,
       minutes: Arr.fromIterable(this.minutes),
       hours: Arr.fromIterable(this.hours),
       days: Arr.fromIterable(this.days),
@@ -86,7 +92,7 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
 export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
 
 /**
- * Creates a `Cron` instance from.
+ * Creates a `Cron` instance.
  *
  * @param constraints - The cron constraints.
  *
@@ -98,6 +104,7 @@ export const make = ({
   hours,
   minutes,
   months,
+  tz,
   weekdays
 }: {
   readonly minutes: Iterable<number>
@@ -105,6 +112,7 @@ export const make = ({
   readonly days: Iterable<number>
   readonly months: Iterable<number>
   readonly weekdays: Iterable<number>
+  readonly tz?: DateTime.TimeZone | undefined
 }): Cron => {
   const o: Mutable<Cron> = Object.create(CronProto)
   o.minutes = new Set(Arr.sort(minutes, N.Order))
@@ -112,6 +120,7 @@ export const make = ({
   o.days = new Set(Arr.sort(days, N.Order))
   o.months = new Set(Arr.sort(months, N.Order))
   o.weekdays = new Set(Arr.sort(weekdays, N.Order))
+  o.tz = Option.fromNullable(tz)
   return o
 }
 
@@ -186,7 +195,7 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  * @since 2.0.0
  * @category constructors
  */
-export const parse = (cron: string): Either.Either<Cron, ParseError> => {
+export const parse = (cron: string, tz?: DateTime.TimeZone): Either.Either<Cron, ParseError> => {
   const segments = cron.split(" ").filter(String.isNonEmpty)
   if (segments.length !== 5) {
     return Either.left(ParseError(`Invalid number of segments in cron expression`, cron))
@@ -199,11 +208,13 @@ export const parse = (cron: string): Either.Either<Cron, ParseError> => {
     days: parseSegment(days, dayOptions),
     months: parseSegment(months, monthOptions),
     weekdays: parseSegment(weekdays, weekdayOptions)
-  }).pipe(Either.map((segments) => make(segments)))
+  }).pipe(Either.map((segments) => make({ ...segments, tz })))
 }
 
 /**
  * Checks if a given `Date` falls within an active `Cron` time window.
+ *
+ * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
  *
  * @param cron - The `Cron` instance.
  * @param date - The `Date` to check against.
@@ -219,45 +230,45 @@ export const parse = (cron: string): Either.Either<Cron, ParseError> => {
  *
  * @since 2.0.0
  */
-export const match = (cron: Cron, date: Date): boolean => {
-  const { days, hours, minutes, months, weekdays } = cron
+export const match = (cron: Cron, date: DateTime.DateTime.Input): boolean => {
+  const zoned = dateTime.unsafeMakeZoned(date)
+  const adjusted = Option.isSome(cron.tz) ? dateTime.setZone(zoned, cron.tz.value) : zoned
+  const parts = dateTime.toParts(adjusted)
 
-  const minute = date.getMinutes()
-  if (minutes.size !== 0 && !minutes.has(minute)) {
+  if (cron.minutes.size !== 0 && !cron.minutes.has(parts.minutes)) {
     return false
   }
 
-  const hour = date.getHours()
-  if (hours.size !== 0 && !hours.has(hour)) {
+  if (cron.hours.size !== 0 && !cron.hours.has(parts.hours)) {
     return false
   }
 
-  const month = date.getMonth() + 1
-  if (months.size !== 0 && !months.has(month)) {
+  if (cron.months.size !== 0 && !cron.months.has(parts.month)) {
     return false
   }
 
-  if (days.size === 0 && weekdays.size === 0) {
+  if (cron.days.size === 0 && cron.weekdays.size === 0) {
     return true
   }
 
-  const day = date.getDate()
-  if (weekdays.size === 0) {
-    return days.has(day)
+  if (cron.weekdays.size === 0) {
+    return cron.days.has(parts.day)
   }
 
-  const weekday = date.getDay()
-  if (days.size === 0) {
-    return weekdays.has(weekday)
+  if (cron.days.size === 0) {
+    return cron.weekdays.has(parts.weekDay)
   }
 
-  return days.has(day) || weekdays.has(weekday)
+  return cron.days.has(parts.day) || cron.weekdays.has(parts.weekDay)
 }
 
 /**
  * Returns the next run `Date` for the given `Cron` instance.
  *
  * Uses the current time as a starting point if no value is provided for `now`.
+ *
+ * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
+ * @throws `Error` if the next run date cannot be found within 10,000 iterations.
  *
  * @example
  * ```ts
@@ -273,7 +284,7 @@ export const match = (cron: Cron, date: Date): boolean => {
  *
  * @since 2.0.0
  */
-export const next = (cron: Cron, now?: Date): Date => {
+export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
   const { days, hours, minutes, months, weekdays } = cron
 
   const restrictMinutes = minutes.size !== 0
@@ -282,61 +293,67 @@ export const next = (cron: Cron, now?: Date): Date => {
   const restrictMonths = months.size !== 0
   const restrictWeekdays = weekdays.size !== 0
 
-  const current = now ? new Date(now.getTime()) : new Date()
-  // Increment by one minute to ensure we don't match the current date.
-  current.setMinutes(current.getMinutes() + 1)
-  current.setSeconds(0)
-  current.setMilliseconds(0)
+  // TODO: This is unsafe.
+  const zoned = dateTime.unsafeMakeZoned(now ?? new Date())
+  const adjusted = Option.isSome(cron.tz) ? dateTime.setZone(zoned, cron.tz.value) : zoned
 
-  // Only search 8 years into the future.
-  const limit = new Date(current).setFullYear(current.getFullYear() + 8)
-  while (current.getTime() <= limit) {
-    if (restrictMonths && !months.has(current.getMonth() + 1)) {
-      current.setMonth(current.getMonth() + 1)
-      current.setDate(1)
-      current.setHours(0)
-      current.setMinutes(0)
-      continue
-    }
+  // TODO: This algorithm can be optimized to avoid some unnecessary iterations.
+  const result = dateTime.mutate(adjusted, (current) => {
+    // Increment by one minute to ensure we don't match the current date.
+    current.setUTCMinutes(current.getUTCMinutes() + 1)
+    current.setUTCSeconds(0)
+    current.setUTCMilliseconds(0)
 
-    if (restrictDays && restrictWeekdays) {
-      if (!days.has(current.getDate()) && !weekdays.has(current.getDay())) {
-        current.setDate(current.getDate() + 1)
-        current.setHours(0)
-        current.setMinutes(0)
+    for (let i = 0; i < 10_000; i++) {
+      if (restrictMonths && !months.has(current.getUTCMonth() + 1)) {
+        current.setUTCMonth(current.getUTCMonth() + 1)
+        current.setUTCDate(1)
+        current.setUTCHours(0)
+        current.setUTCMinutes(0)
         continue
       }
-    } else if (restrictDays) {
-      if (!days.has(current.getDate())) {
-        current.setDate(current.getDate() + 1)
-        current.setHours(0)
-        current.setMinutes(0)
+
+      if (restrictDays && restrictWeekdays) {
+        if (!days.has(current.getUTCDate()) && !weekdays.has(current.getUTCDay())) {
+          current.setUTCDate(current.getUTCDate() + 1)
+          current.setUTCHours(0)
+          current.setUTCMinutes(0)
+          continue
+        }
+      } else if (restrictDays) {
+        if (!days.has(current.getUTCDate())) {
+          current.setUTCDate(current.getUTCDate() + 1)
+          current.setUTCHours(0)
+          current.setUTCMinutes(0)
+          continue
+        }
+      } else if (restrictWeekdays) {
+        if (!weekdays.has(current.getUTCDay())) {
+          current.setUTCDate(current.getUTCDate() + 1)
+          current.setUTCHours(0)
+          current.setUTCMinutes(0)
+          continue
+        }
+      }
+
+      if (restrictHours && !hours.has(current.getUTCHours())) {
+        current.setUTCHours(current.getUTCHours() + 1)
+        current.setUTCMinutes(0)
         continue
       }
-    } else if (restrictWeekdays) {
-      if (!weekdays.has(current.getDay())) {
-        current.setDate(current.getDate() + 1)
-        current.setHours(0)
-        current.setMinutes(0)
+
+      if (restrictMinutes && !minutes.has(current.getUTCMinutes())) {
+        current.setUTCMinutes(current.getUTCMinutes() + 1)
         continue
       }
+
+      return
     }
 
-    if (restrictHours && !hours.has(current.getHours())) {
-      current.setHours(current.getHours() + 1)
-      current.setMinutes(0)
-      continue
-    }
+    throw new Error("Unable to find next cron date")
+  })
 
-    if (restrictMinutes && !minutes.has(current.getMinutes())) {
-      current.setMinutes(current.getMinutes() + 1)
-      continue
-    }
-
-    return current
-  }
-
-  throw new Error("Unable to find next cron date")
+  return dateTime.toDateUtc(result)
 }
 
 /**
@@ -347,7 +364,7 @@ export const next = (cron: Cron, now?: Date): Date => {
  *
  * @since 2.0.0
  */
-export const sequence = function*(cron: Cron, now?: Date): IterableIterator<Date> {
+export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): IterableIterator<Date> {
   while (true) {
     yield now = next(cron, now)
   }
