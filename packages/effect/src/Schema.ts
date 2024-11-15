@@ -9296,6 +9296,19 @@ export class BooleanFromUnknown extends transform(
 ).annotations({ identifier: "BooleanFromUnknown" }) {}
 
 /**
+ * Converts an `string` value into its corresponding `boolean`
+ * ("true" as `true` and "false" as `false`).
+ *
+ * @category boolean transformations
+ * @since 3.11.0
+ */
+export class BooleanFromString extends transform(
+  Literal("true", "false"),
+  Boolean$,
+  { strict: true, decode: (value) => value === "true", encode: (value) => value ? "true" : "false" }
+).annotations({ identifier: "BooleanFromString" }) {}
+
+/**
  * @category Config validations
  * @since 3.10.0
  */
