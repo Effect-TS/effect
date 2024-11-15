@@ -1,5 +1,5 @@
 ---
-"@effect/platform": minor
+"@effect/platform": patch
 "effect": minor
 ---
 
