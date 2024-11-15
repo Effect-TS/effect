@@ -85,6 +85,40 @@ export const getAll: {
 )
 
 /**
+ * Builds a `Record` containing all the key-value pairs in the given `UrlParams`
+ * as `string` (if only one value for a key) or a `NonEmptyArray<string>`
+ * (when more than one value for a key)
+ *
+ * @example
+ * import { UrlParams } from "@effect/platform"
+ *
+ * const urlParams = UrlParams.fromInput({ a: 1, b: true, c: "string", e: [1, 2, 3] })
+ * const result = UrlParams.extractAll(urlParams)
+ *
+ * assert.deepStrictEqual(
+ *   result,
+ *   { "a": "1", "b": "true", "c": "string", "e": ["1", "2", "3"] }
+ * )
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const extractAll = (self: UrlParams): Record<string, string | Arr.NonEmptyArray<string>> => {
+  const out: Record<string, string | Arr.NonEmptyArray<string>> = {}
+  for (const [k, value] of self) {
+    const curr = out[k]
+    if (curr === undefined) {
+      out[k] = value
+    } else if (typeof curr === "string") {
+      out[k] = [curr, value]
+    } else {
+      curr.push(value)
+    }
+  }
+  return out
+}
+
+/**
  * @since 1.0.0
  * @category combinators
  */
@@ -229,3 +263,33 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
     (self: UrlParams, field: string) => Effect.Effect<A, ParseResult.ParseError, R>
   >(2, (self, field) => parse(Option.getOrElse(getLast(self, field), () => "")))
 }
+
+/**
+ * Extract schema from all key-value pairs in the given `UrlParams`.
+ *
+ * @example
+ * import { Effect, Schema } from "effect"
+ * import { UrlParams } from "@effect/platform"
+ *
+ * Effect.gen(function* () {
+ *   const urlParams = UrlParams.fromInput({ "a": [10, "string"], "b": false })
+ *   const result = yield* UrlParams.extractSchema(Schema.Struct({
+ *     a: Schema.Tuple(Schema.NumberFromString, Schema.String),
+ *     b: Schema.BooleanFromString
+ *   }))(urlParams)
+ *
+ *   assert.deepStrictEqual(result, {
+ *     a: [10, "string"],
+ *     b: false
+ *   })
+ * })
+ *
+ * @since 1.0.0
+ * @category schema
+ */
+export const extractSchema =
+  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) =>
+  (self: UrlParams): Effect.Effect<A, ParseResult.ParseError, R> => {
+    const parse = Schema.decodeUnknown(schema, options)
+    return parse(extractAll(self))
+  }
