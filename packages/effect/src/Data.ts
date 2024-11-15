@@ -183,10 +183,14 @@ export const tagged = <A extends { readonly _tag: string }>(
  * @since 2.0.0
  * @category constructors
  */
-export const Class: new<A extends Record<string, any> = {}>(
-  args: Types.Equals<A, {}> extends true ? void
-    : { readonly [P in keyof A]: A[P] }
-) => Readonly<A> = internal.Structural as any
+export const Class: {
+  new<A extends Record<string, any> = {}>(
+    args: Types.Equals<A, {}> extends true ? void : { readonly [P in keyof A]: A[P] }
+  ): Readonly<A>
+  new<A extends Record<string, any> = {}, Brand = {}>(
+    args: Types.Equals<A, {}> extends true ? void : { readonly [P in keyof A]: A[P] }
+  ): Readonly<A> & Brand
+} = internal.Structural as any
 
 /**
  * Provides a Tagged constructor for a Case Class.
