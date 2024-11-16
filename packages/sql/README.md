@@ -33,7 +33,7 @@ Alternatively, you can also create the `SqlLive` layer using the `PgClient.layer
 import { Config } from "effect"
 import { PgClient } from "@effect/sql-pg"
 
-const SqlLive = PgClient.layer({
+const SqlLive = PgClient.layerConfig({
   database: Config.string("DATABASE")
 })
 ```
