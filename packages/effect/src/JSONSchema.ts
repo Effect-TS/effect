@@ -97,7 +97,6 @@ export interface JsonSchema7Numeric extends JsonSchemaAnnotations {
   exclusiveMinimum?: number
   maximum?: number
   exclusiveMaximum?: number
-  format?: string
 }
 
 /**
