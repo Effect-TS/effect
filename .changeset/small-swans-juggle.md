@@ -3,6 +3,9 @@
 "@effect/platform": patch
 ---
 
-- `JsonSchema` interfaces have been updated
-- added tests that confirm that the field `"format"` is reflected in the final `JSONSchema` and `OpenApi` spec.
-- updated `UUID` schema
+- JSONSchema module
+  - add `format?: string` optional field to `JsonSchema7String` interface
+- Schema module
+  - add custom json schema annotation to `UUID` schema including `format: "uuid"`
+- OpenApiJsonSchema module
+  - add `format?: string` optional field to `String` and ` Numeric` interfaces
