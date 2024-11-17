@@ -6360,6 +6360,21 @@ export class DateTimeUtcFromNumber extends transformOrFail(
 ).annotations({ identifier: "DateTimeUtcFromNumber" }) {}
 
 /**
+ * Defines a schema that attempts to convert a `Date` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
+ *
+ * @category DateTime.Utc transformations
+ */
+export class DateTimeUtcFromDate extends transformOrFail(
+  Date$.annotations({ description: "a date that will be parsed into a DateTime.Utc" }),
+  DateTimeUtcFromSelf,
+  {
+    strict: true,
+    decode: decodeDateTime,
+    encode: (dt) => ParseResult.succeed(dateTime.toDate(dt))
+  }
+).annotations({ identifier: "DateTimeUtcFromDate" }) {}
+
+/**
  * Defines a schema that attempts to convert a `string` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
  *
  * @category DateTime.Utc transformations
@@ -6502,6 +6517,25 @@ export class DateTimeZonedFromSelf extends declare(
     equivalence: () => dateTime.Equivalence
   }
 ) {}
+
+/**
+ * Defines a schema that attempts to convert a `Date` to a `DateTime.Zoned` instance.
+ *
+ * @category DateTime.Zoned transformations
+ */
+export class DateTimeZonedFromDate extends transformOrFail(
+  Date$.annotations({ description: "a Date that will be parsed into a DateTime.Zoned" }),
+  DateTimeZonedFromSelf,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      option_.match(dateTime.makeZoned(s), {
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+        onSome: ParseResult.succeed
+      }),
+    encode: (dt) => ParseResult.succeed(dateTime.toDate(dt))
+  }
+).annotations({ identifier: "DateTimeZonedFromDate" }) {}
 
 /**
  * Defines a schema that attempts to convert a `string` to a `DateTime.Zoned` instance.
