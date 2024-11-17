@@ -1832,6 +1832,7 @@ schema (Suspend): <suspended schema>`
         }),
         {
           "description": "an integer",
+          "format": "int32",
           "title": "Int",
           "type": "custom JSON Schema"
         },
