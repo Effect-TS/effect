@@ -118,4 +118,76 @@ describe("extend", () => {
     expect(b.a()).toEqual("1a")
     expect(b.b()).toEqual("1b")
   })
+
+  it("users can override an instance member property", () => {
+    class OverrideBase1 extends S.Class<OverrideBase1>("OverrideBase1")(S.Struct({
+      a: S.String
+    })) {
+      readonly b: number = 1
+    }
+
+    class OverrideExtended1 extends OverrideBase1.extend<OverrideExtended1>(
+      "OverrideExtended1"
+    )({
+      c: S.String
+    }) {
+      override readonly b = 2
+    }
+
+    expect(new OverrideExtended1({ a: "a", c: "c" }).b).toEqual(2)
+  })
+
+  it("users can override an instance member function", () => {
+    class OverrideBase2 extends S.Class<OverrideBase2>("OverrideBase2")(S.Struct({
+      a: S.String
+    })) {
+      b(): number {
+        return 1
+      }
+    }
+
+    class OverrideExtended2 extends OverrideBase2.extend<OverrideExtended2>(
+      "OverrideExtended2"
+    )({
+      c: S.String
+    }) {
+      override b(): 2 {
+        return 2
+      }
+    }
+
+    expect(new OverrideExtended2({ a: "a", c: "c" }).b()).toEqual(2)
+  })
+
+  it("users can override a field with an instance member property", () => {
+    class OverrideBase3 extends S.Class<OverrideBase3>("OverrideBase3")(S.Struct({
+      a: S.String
+    })) {}
+
+    class OverrideExtended3 extends OverrideBase3.extend<OverrideExtended3>(
+      "OverrideExtended3"
+    )({
+      c: S.String
+    }) {
+      override readonly a = "default"
+    }
+
+    expect(new OverrideExtended3({ a: "a", c: "c" }).a).toEqual("default")
+  })
+
+  it("users can't override an instance member property with a field", () => {
+    class OverrideBase4 extends S.Class<OverrideBase4>("OverrideBase4")(S.Struct({
+      a: S.String
+    })) {
+      readonly b = 1
+    }
+
+    class OverrideExtended4 extends OverrideBase4.extend<OverrideExtended4>(
+      "OverrideExtended4"
+    )({
+      b: S.Number
+    }) {}
+
+    expect(new OverrideExtended4({ a: "a", b: 2 }).b).toEqual(1)
+  })
 })
