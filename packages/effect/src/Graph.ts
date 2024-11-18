@@ -50,6 +50,13 @@ export declare namespace Graph {
 
   /**
    * @since 3.12.0
+   */
+  export type Morph<A extends Any, N, E> = A extends Directed<any, any> ? Directed<N, E> :
+    A extends Undirected<any, any> ? Undirected<N, E> :
+    never
+
+  /**
+   * @since 3.12.0
    * @category models
    */
   export interface Variance<in out N, in out E> {
@@ -737,6 +744,75 @@ export const findEdge = (
   return node === undefined ? Option.none() : findEdgeDirectedFromNode(graph, node, b)
 }
 
+/**
+ * Create a new `Graph` by mapping node and edge weights to new values.
+ *
+ * The resulting graph has the same structure and the same graph indices as `self`.
+ *
+ * @since 3.12.0
+ * @category combinators
+ */
+export const map = <A extends Graph.Any, NOut, EOut>(self: A, {
+  mapEdges,
+  mapNodes
+}: {
+  mapNodes: (data: Node.Data<A>) => NOut
+  mapEdges: (data: Edge.Data<A>) => EOut
+}): Graph.Morph<A, NOut, EOut> => {
+  const nodes = self.nodes.map((node) => makeNode(mapNodes(node.data), node.next))
+  const edges = self.edges.map((edge) => makeEdge(mapEdges(edge.data), edge.node, edge.next))
+  return isDirected(self)
+    ? makeDirected(nodes, edges) as any
+    : makeUndirected(nodes, edges) as any
+}
+
+/**
+ * Create a new `Graph` by mapping nodes and edges.
+ *
+ * A node or edge may be mapped to `None` to exclude it from the resulting graph.
+ *
+ * Nodes are mapped first with the `mapNodes` closure, then `mapEdges` is called
+ * for the edges that have not had any endpoint removed.
+ *
+ * The resulting graph has the structure of a subgraph of the original graph.
+ *
+ * If no nodes are removed, the resulting graph has compatible node indices; if
+ * neither nodes nor edges are removed, the result has the same graph indices as
+ * `self`.
+ *
+ * @since 3.12.0
+ * @category combinators
+ */
+export const filterMap = <A extends Graph.Any, NOut, EOut>(self: A, {
+  mapEdges,
+  mapNodes
+}: {
+  mapNodes: (data: Node.Data<A>) => Option.Option<NOut>
+  mapEdges: (data: Edge.Data<A>) => Option.Option<EOut>
+}): Graph.Morph<A, NOut, EOut> =>
+  mutate(self, (mutable) => {
+    mutable.graph.nodes = []
+    mutable.graph.edges = []
+
+    const nodes: Array<number> = Array(self.nodes.length).fill(-1)
+    for (const [i, node] of self.nodes.entries()) {
+      const mapped = mapNodes(node.data)
+      if (Option.isSome(mapped)) {
+        nodes[i] = mutable.addNode(mapped.value as any)
+      }
+    }
+
+    for (const edge of self.edges.values()) {
+      const [from, to] = edge.node
+      if (nodes[from] !== -1 && nodes[to] !== -1) {
+        const mapped = mapEdges(edge.data)
+        if (Option.isSome(mapped)) {
+          mutable.addEdge(nodes[from], nodes[to], mapped.value as any)
+        }
+      }
+    }
+  })
+
 const findEdgeDirectedFromNode = <N, E>(
   graph: Graph.Directed<N, E>,
   node: Node<N>,
@@ -786,56 +862,19 @@ const findEdgeUndirected = <N, E>(
   return findEdgeUndirectedFromNode(graph, an, b)
 }
 
+/**
+ * @since 3.12.0
+ * @category combinators
+ */
 export const nodes = <A extends Graph.Any>(graph: A): IterableIterator<Node.Data<A>> =>
   new NodeIterator(graph, (_, data) => data)
 
-class NodeIterator<in out A extends Graph.Any, out T> implements IterableIterator<T> {
-  private index = -1
-
-  constructor(
-    private readonly graph: A,
-    private readonly map: (index: number, data: Node.Data<A>) => T,
-    private readonly filter?: (index: number, data: Node.Data<A>) => boolean
-  ) {}
-
-  next(): IteratorResult<T> {
-    const node = this.graph.nodes[this.index++]
-    if (node !== undefined && (this.filter === undefined || this.filter(this.index - 1, node.data))) {
-      const value = this.map(this.index - 1, node.data)
-      return { done: false, value }
-    }
-
-    return { done: true, value: undefined }
-  }
-
-  [Symbol.iterator](): IterableIterator<T> {
-    return new NodeIterator(this.graph, this.map, this.filter)
-  }
-}
-
-class EdgeWalker<in out A extends Graph.Any> implements Iterator<[number, Edge<Edge.Data<A>>]> {
-  counter = 0
-  constructor(
-    private readonly graph: A,
-    private readonly direction: Edge.Direction,
-    private nxt: number
-  ) {}
-
-  next(): IteratorResult<[number, Edge<Edge.Data<A>>]> {
-    const current = this.nxt
-    const edge = this.graph.edges[current]
-    if (edge !== undefined) {
-      this.nxt = edge.next[this.direction]
-      return { done: false, value: [current, edge] }
-    }
-
-    return { done: true, value: undefined }
-  }
-
-  [Symbol.iterator](): IterableIterator<[number, Edge<Edge.Data<A>>]> {
-    return new EdgeWalker(this.graph, this.direction, this.nxt)
-  }
-}
+/**
+ * @since 3.12.0
+ * @category combinators
+ */
+export const edges = <A extends Graph.Any>(graph: A): IterableIterator<Edge.Data<A>> =>
+  new EdgeIterator(graph, (_, data) => data)
 
 /**
  * Swap the element at `index` with the last element in the array.
@@ -895,4 +934,76 @@ const removeEdgeAdjustIndices = <A extends Graph.Any>(graph: A, edge: number): E
     changeEdgeLinks(graph, swap.node, swapped, [edge, edge])
   }
   return removed
+}
+
+class NodeIterator<in out A extends Graph.Any, out T> implements IterableIterator<T> {
+  private index = -1
+
+  constructor(
+    private readonly graph: A,
+    private readonly map: (index: number, data: Node.Data<A>) => T,
+    private readonly filter?: (index: number, data: Node.Data<A>) => boolean
+  ) {}
+
+  next(): IteratorResult<T> {
+    const node = this.graph.nodes[this.index++]
+    if (node !== undefined && (this.filter === undefined || this.filter(this.index - 1, node.data))) {
+      const value = this.map(this.index - 1, node.data)
+      return { done: false, value }
+    }
+
+    return { done: true, value: undefined }
+  }
+
+  [Symbol.iterator](): IterableIterator<T> {
+    return new NodeIterator(this.graph, this.map, this.filter)
+  }
+}
+
+class EdgeIterator<in out A extends Graph.Any, out T> implements IterableIterator<T> {
+  private index = -1
+
+  constructor(
+    private readonly graph: A,
+    private readonly map: (index: number, data: Edge.Data<A>) => T,
+    private readonly filter?: (index: number, data: Edge.Data<A>) => boolean
+  ) {}
+
+  next(): IteratorResult<T> {
+    const node = this.graph.edges[this.index++]
+    if (node !== undefined && (this.filter === undefined || this.filter(this.index - 1, node.data))) {
+      const value = this.map(this.index - 1, node.data)
+      return { done: false, value }
+    }
+
+    return { done: true, value: undefined }
+  }
+
+  [Symbol.iterator](): IterableIterator<T> {
+    return new EdgeIterator(this.graph, this.map, this.filter)
+  }
+}
+
+class EdgeWalker<in out A extends Graph.Any> implements Iterator<[number, Edge<Edge.Data<A>>]> {
+  counter = 0
+  constructor(
+    private readonly graph: A,
+    private readonly direction: Edge.Direction,
+    private nxt: number
+  ) {}
+
+  next(): IteratorResult<[number, Edge<Edge.Data<A>>]> {
+    const current = this.nxt
+    const edge = this.graph.edges[current]
+    if (edge !== undefined) {
+      this.nxt = edge.next[this.direction]
+      return { done: false, value: [current, edge] }
+    }
+
+    return { done: true, value: undefined }
+  }
+
+  [Symbol.iterator](): IterableIterator<[number, Edge<Edge.Data<A>>]> {
+    return new EdgeWalker(this.graph, this.direction, this.nxt)
+  }
 }
