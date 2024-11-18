@@ -7740,7 +7740,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
   new(
     props: RequiredKeys<C> extends never ? void | Simplify<C> : Simplify<C>,
     options?: MakeOptions
-  ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
+  ): Struct.Type<Fields> & Inherited & Proto
 
   /** @since 3.10.0 */
   readonly ast: AST.Transformation
