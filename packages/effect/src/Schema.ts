@@ -6315,6 +6315,7 @@ export class DateTimeUtcFromNumber extends transformOrFail(
  * Defines a schema that attempts to convert a `Date` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
  *
  * @category DateTime.Utc transformations
+ * @since 3.11.0
  */
 export class DateTimeUtcFromDate extends transformOrFail(
   Date$.annotations({ description: "a date that will be parsed into a DateTime.Utc" }),
@@ -6474,6 +6475,7 @@ export class DateTimeZonedFromSelf extends declare(
  * Defines a schema that attempts to convert a `Date` to a `DateTime.Zoned` instance.
  *
  * @category DateTime.Zoned transformations
+ * @since 3.11.0
  */
 export class DateTimeZonedFromDate extends transformOrFail(
   Date$.annotations({ description: "a Date that will be parsed into a DateTime.Zoned" }),
