@@ -6370,7 +6370,7 @@ export class DateTimeUtcFromDate extends transformOrFail(
   {
     strict: true,
     decode: decodeDateTime,
-    encode: (dt) => ParseResult.succeed(dateTime.toDate(dt))
+    encode: (dt) => ParseResult.succeed(dateTime.toDateUtc(dt))
   }
 ).annotations({ identifier: "DateTimeUtcFromDate" }) {}
 
@@ -6533,7 +6533,7 @@ export class DateTimeZonedFromDate extends transformOrFail(
         onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
         onSome: ParseResult.succeed
       }),
-    encode: (dt) => ParseResult.succeed(dateTime.toDate(dt))
+    encode: (dt) => ParseResult.succeed(dateTime.toDateUtc(dt))
   }
 ).annotations({ identifier: "DateTimeZonedFromDate" }) {}
 
