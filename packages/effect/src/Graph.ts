@@ -44,14 +44,11 @@ export declare namespace Graph {
   /**
    * @since 3.12.0
    */
-  export type Preserve<A extends Any> = A extends Directed<infer N, infer E> ? Directed<N, E> :
-    A extends Undirected<infer N, infer E> ? Undirected<N, E> :
-    never
-
-  /**
-   * @since 3.12.0
-   */
-  export type Morph<A extends Any, N, E> = A extends Directed<any, any> ? Directed<N, E> :
+  export type Preserve<
+    A extends Any,
+    N = Node.Data<A>,
+    E = Edge.Data<A>
+  > = A extends Directed<any, any> ? Directed<N, E> :
     A extends Undirected<any, any> ? Undirected<N, E> :
     never
 
@@ -612,6 +609,15 @@ export const unsafeNodeData = <N>(
 ): N => Option.getOrThrow(nodeData(graph, index))
 
 /**
+ * Add an edge from `a` to `b` to the graph, with its associated data `weight`.
+ *
+ * Return the index of the new edge.
+ *
+ * Computes in `O(1)` time.
+ *
+ * This allows adding parallel ("duplicate") edges. If you want to avoid this, use
+ * {@link updateEdge} instead.
+ *
  * @since 3.12.0
  * @category combinators
  */
@@ -718,6 +724,11 @@ export const unsafeUpdateEdge: {
 ): Graph.Preserve<A> => Option.getOrThrow(updateEdge(graph, from, to, data)))
 
 /**
+ * Lookup if there is an edge from `a` to `b`.
+ *
+ * Computes in `O(e)` time, where `e` is the number of edges connected
+ * to `a` (and `b`, if the graph edges are undirected).
+ *
  * @since 3.12.0
  * @category combinators
  */
@@ -728,6 +739,11 @@ export const containsEdge = <N, E>(
 ): boolean => Option.isSome(findEdge(graph, a, b))
 
 /**
+ * Lookup an edge from `a` to `b`.
+ *
+ * Computes in `O(e)` time, where `e` is the number of edges connected to
+ * `a` (and `b`, if the graph edges are undirected).
+ *
  * @since 3.12.0
  * @category combinators
  */
@@ -747,24 +763,23 @@ export const findEdge = (
 /**
  * Create a new `Graph` by mapping node and edge weights to new values.
  *
- * The resulting graph has the same structure and the same graph indices as `self`.
+ * The resulting graph has the same structure and the same graph indices
+ * as `self`.
  *
  * @since 3.12.0
  * @category combinators
  */
-export const map = <A extends Graph.Any, NOut, EOut>(self: A, {
+export const map = <A extends Graph.Any, N, E>(self: A, {
   mapEdges,
   mapNodes
 }: {
-  mapNodes: (data: Node.Data<A>) => NOut
-  mapEdges: (data: Edge.Data<A>) => EOut
-}): Graph.Morph<A, NOut, EOut> => {
-  const nodes = self.nodes.map((node) => makeNode(mapNodes(node.data), node.next))
-  const edges = self.edges.map((edge) => makeEdge(mapEdges(edge.data), edge.node, edge.next))
-  return isDirected(self)
-    ? makeDirected(nodes, edges) as any
-    : makeUndirected(nodes, edges) as any
-}
+  mapNodes: (data: Node.Data<A>) => N
+  mapEdges: (data: Edge.Data<A>) => E
+}): Graph.Preserve<A, N, E> =>
+  mutate(self, (mutable) => {
+    mutable.graph.nodes = self.nodes.map((node) => makeNode(mapNodes(node.data), node.next))
+    mutable.graph.edges = self.edges.map((edge) => makeEdge(mapEdges(edge.data), edge.node, edge.next))
+  }) as any
 
 /**
  * Create a new `Graph` by mapping nodes and edges.
@@ -783,13 +798,13 @@ export const map = <A extends Graph.Any, NOut, EOut>(self: A, {
  * @since 3.12.0
  * @category combinators
  */
-export const filterMap = <A extends Graph.Any, NOut, EOut>(self: A, {
+export const filterMap = <A extends Graph.Any, N, E>(self: A, {
   mapEdges,
   mapNodes
 }: {
-  mapNodes: (data: Node.Data<A>) => Option.Option<NOut>
-  mapEdges: (data: Edge.Data<A>) => Option.Option<EOut>
-}): Graph.Morph<A, NOut, EOut> =>
+  mapNodes: (data: Node.Data<A>) => Option.Option<N>
+  mapEdges: (data: Edge.Data<A>) => Option.Option<E>
+}): Graph.Preserve<A, N, E> =>
   mutate(self, (mutable) => {
     mutable.graph.nodes = []
     mutable.graph.edges = []
@@ -811,7 +826,7 @@ export const filterMap = <A extends Graph.Any, NOut, EOut>(self: A, {
         }
       }
     }
-  })
+  }) as any
 
 const findEdgeDirectedFromNode = <N, E>(
   graph: Graph.Directed<N, E>,
@@ -866,22 +881,37 @@ const findEdgeUndirected = <N, E>(
  * @since 3.12.0
  * @category combinators
  */
-export const nodes = <A extends Graph.Any>(graph: A): IterableIterator<Node.Data<A>> =>
-  new NodeIterator(graph, (_, data) => data)
+export const nodes = <A extends Graph.Any>(
+  graph: A
+): IterableIterator<[number, Node.Data<A>]> => new NodeIterator(graph, (index, data) => [index, data] as const)
 
 /**
  * @since 3.12.0
  * @category combinators
  */
-export const edges = <A extends Graph.Any>(graph: A): IterableIterator<Edge.Data<A>> =>
-  new EdgeIterator(graph, (_, data) => data)
+export const edges = <A extends Graph.Any>(
+  graph: A
+): IterableIterator<[number, Edge.Data<A>]> => new EdgeIterator(graph, (index, data) => [index, data] as const)
+
+/**
+ * @since 3.12.0
+ * @category combinators
+ */
+export const externals = <A extends Graph.Any>(
+  graph: A,
+  direction: Edge.Direction
+): IterableIterator<[number, Node.Data<A>]> =>
+  new ExternalsIterator(graph, direction, (index, data) => [index, data] as const)
 
 /**
  * Swap the element at `index` with the last element in the array.
  *
  * This ensures that the array remains contiguous.
  */
-const swapRemove = <A>(array: Array<A>, index: number): A => {
+const swapRemove = <A>(
+  array: Array<A>,
+  index: number
+): A => {
   const out = array[index]
   const last = array.pop()!
   if (out !== last) {
@@ -937,7 +967,7 @@ const removeEdgeAdjustIndices = <A extends Graph.Any>(graph: A, edge: number): E
 }
 
 class NodeIterator<in out A extends Graph.Any, out T> implements IterableIterator<T> {
-  private index = -1
+  private index = 0
 
   constructor(
     private readonly graph: A,
@@ -961,7 +991,7 @@ class NodeIterator<in out A extends Graph.Any, out T> implements IterableIterato
 }
 
 class EdgeIterator<in out A extends Graph.Any, out T> implements IterableIterator<T> {
-  private index = -1
+  private index = 0
 
   constructor(
     private readonly graph: A,
@@ -981,6 +1011,36 @@ class EdgeIterator<in out A extends Graph.Any, out T> implements IterableIterato
 
   [Symbol.iterator](): IterableIterator<T> {
     return new EdgeIterator(this.graph, this.map, this.filter)
+  }
+}
+
+class ExternalsIterator<in out A extends Graph.Any, out T> implements IterableIterator<T> {
+  private index = 0
+
+  constructor(
+    private readonly graph: A,
+    private readonly direction: Edge.Direction,
+    private readonly map: (index: number, data: Node.Data<A>) => T,
+    private readonly filter?: (index: number, data: Node.Data<A>) => boolean
+  ) {}
+
+  next(): IteratorResult<T> {
+    let node: Node<Node.Data<A>>
+    while ((node = this.graph.nodes[this.index++]) !== undefined) {
+      const edge = node.next[this.direction]
+      if (edge === -1 && (isDirected(this.graph) || node.next[1 - this.direction] === -1)) {
+        if (this.filter === undefined || this.filter(this.index - 1, node.data)) {
+          const value = this.map(this.index - 1, node.data)
+          return { done: false, value }
+        }
+      }
+    }
+
+    return { done: true, value: undefined }
+  }
+
+  [Symbol.iterator](): IterableIterator<T> {
+    return new ExternalsIterator(this.graph, this.direction, this.map, this.filter)
   }
 }
 
