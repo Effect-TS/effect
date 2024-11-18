@@ -44,16 +44,6 @@ export declare namespace Graph {
   /**
    * @since 3.12.0
    */
-  export type NodeData<A extends Any> = A extends Graph<infer N, any> ? N : never
-
-  /**
-   * @since 3.12.0
-   */
-  export type EdgeData<A extends Any> = A extends Graph<any, infer E> ? E : never
-
-  /**
-   * @since 3.12.0
-   */
   export type Preserve<A extends Any> = A extends Directed<infer N, infer E> ? Directed<N, E> :
     A extends Undirected<infer N, infer E> ? Undirected<N, E> :
     never
@@ -118,10 +108,12 @@ export type NodeTypeId = typeof NodeTypeId
  */
 export interface Node<in out N> extends Pipeable, Inspectable.Inspectable, Node.Variance<N> {
   readonly _tag: "GraphNode"
+
   /**
    * Associated node data.
    */
   readonly data: N
+
   /**
    * Next edge in outgoing and incoming edge lists.
    *
@@ -135,6 +127,21 @@ export interface Node<in out N> extends Pipeable, Inspectable.Inspectable, Node.
  * @category models
  */
 export declare namespace Node {
+  /**
+   * @since 3.12.0
+   */
+  export type Any = Node<any>
+
+  /**
+   * @since 3.12.0
+   */
+  export type Unknown = Node<unknown>
+
+  /**
+   * @since 3.12.0
+   */
+  export type Data<A extends Graph.Any | Any> = A extends Node<infer N> ? N : A extends Graph<infer N, any> ? N : never
+
   /**
    * @since 3.12.0
    * @category models
@@ -164,16 +171,19 @@ export type EdgeTypeId = typeof EdgeTypeId
  */
 export interface Edge<in out E> extends Pipeable, Inspectable.Inspectable, Edge.Variance<E> {
   readonly _tag: "GraphEdge"
+
   /**
    * Associated node data.
    */
   readonly data: E
+
   /**
    * Next edge in outgoing and incoming edge lists.
    *
    * @internal
    */
   readonly next: [number, number]
+
   /**
    * Start and end node index.
    *
@@ -191,6 +201,21 @@ const DIRECTIONS: [Edge.Outgoing, Edge.Incoming] = [OUTGOING, INCOMING]
  * @category models
  */
 export declare namespace Edge {
+  /**
+   * @since 3.12.0
+   */
+  export type Any = Edge<any>
+
+  /**
+   * @since 3.12.0
+   */
+  export type Unknown = Edge<unknown>
+
+  /**
+   * @since 3.12.0
+   */
+  export type Data<A extends Graph.Any | Any> = A extends Edge<infer E> ? E : A extends Graph<any, infer E> ? E : never
+
   /**
    * @since 3.12.0
    */
@@ -222,11 +247,11 @@ const Proto = {
   pipe() {
     return pipeArguments(this, arguments)
   },
-  [Inspectable.NodeInspectSymbol](this: Graph<unknown, unknown>) {
+  [Inspectable.NodeInspectSymbol](this: Graph.Unknown) {
     const type = isDirected(this) ? "Directed" : isUndirected(this) ? "Undirected" : ""
     return `${type}Graph(${this.nodes.length} nodes, ${this.edges.length} edges)`
   },
-  toJSON(this: Graph<unknown, unknown>) {
+  toJSON(this: Graph.Unknown) {
     return {
       nodes: this.nodes.map((node) => node.toJSON()),
       edges: this.edges.map((edge) => edge.toJSON())
@@ -302,31 +327,43 @@ export interface Mutable<in out A extends Graph.Any> {
    * @since 3.12.0
    * @category combinators
    */
-  addNode(data: Graph.NodeData<A>): number
+  addNode(data: Node.Data<A>): number
 
   /**
    * @since 3.12.0
    * @category combinators
    */
-  addEdge(from: number, to: number, data: Graph.EdgeData<A>): Option.Option<number>
+  addEdge(from: number, to: number, data: Edge.Data<A>): Option.Option<number>
 
   /**
    * @since 3.12.0
    * @category combinators
    */
-  updateEdge(from: number, to: number, data: Graph.EdgeData<A>): Option.Option<number>
+  updateEdge(from: number, to: number, data: Edge.Data<A>): Option.Option<number>
 
   /**
    * @since 3.12.0
    * @category combinators
    */
-  unsafeAddEdge(from: number, to: number, data: Graph.EdgeData<A>): number
+  unsafeAddEdge(from: number, to: number, data: Edge.Data<A>): number
 
   /**
    * @since 3.12.0
    * @category combinators
    */
-  unsafeUpdateEdge(from: number, to: number, data: Graph.EdgeData<A>): number
+  unsafeUpdateEdge(from: number, to: number, data: Edge.Data<A>): number
+
+  /**
+   * @since 3.12.0
+   * @category combinators
+   */
+  removeEdge(edge: number): Option.Option<Edge.Data<A>>
+
+  /**
+   * @since 3.12.0
+   * @category combinators
+   */
+  removeNode(node: number): Option.Option<Node.Data<A>>
 }
 
 class MutableImpl<in out A extends Graph.Any> implements Mutable<A> {
@@ -336,12 +373,12 @@ class MutableImpl<in out A extends Graph.Any> implements Mutable<A> {
 
   constructor(readonly graph: A) {}
 
-  addNode(data: Graph.NodeData<A>): number {
+  addNode(data: Node.Data<A>): number {
     const node = makeNode(data, [-1, -1])
     return this.graph.nodes.push(node) - 1
   }
 
-  addEdge(from: number, to: number, data: Graph.EdgeData<A>): Option.Option<number> {
+  addEdge(from: number, to: number, data: Edge.Data<A>): Option.Option<number> {
     const index = this.graph.edges.length
 
     if (from === to) {
@@ -367,11 +404,11 @@ class MutableImpl<in out A extends Graph.Any> implements Mutable<A> {
     return Option.some(index)
   }
 
-  unsafeAddEdge(from: number, to: number, data: Graph.EdgeData<A>): number {
+  unsafeAddEdge(from: number, to: number, data: Edge.Data<A>): number {
     return Option.getOrThrow(this.addEdge(from, to, data))
   }
 
-  updateEdge(from: number, to: number, data: Graph.EdgeData<A>): Option.Option<number> {
+  updateEdge(from: number, to: number, data: Edge.Data<A>): Option.Option<number> {
     return Option.match(findEdge(this.graph, from, to), {
       onSome: (ix) => {
         const edge = this.graph.edges[ix]
@@ -384,8 +421,59 @@ class MutableImpl<in out A extends Graph.Any> implements Mutable<A> {
     })
   }
 
-  unsafeUpdateEdge(from: number, to: number, data: Graph.EdgeData<A>): number {
+  unsafeUpdateEdge(from: number, to: number, data: Edge.Data<A>): number {
     return Option.getOrThrow(this.updateEdge(from, to, data))
+  }
+
+  removeEdge(index: number): Option.Option<Edge.Data<A>> {
+    const remove = this.graph.edges[index]
+    if (remove === undefined) {
+      return Option.none()
+    }
+
+    // Remove the edge from its in and out lists by replacing it with
+    // a link to the next in the list.
+    changeEdgeLinks(this.graph, remove.node, index, remove.next)
+    removeEdgeAdjustIndices(this.graph, index)
+    return Option.some(remove.data)
+  }
+
+  removeNode(index: number): Option.Option<Node.Data<A>> {
+    const n = this.graph.nodes[index]
+    if (n === undefined) {
+      return Option.none()
+    }
+
+    for (const direction of DIRECTIONS) {
+      while (true) {
+        const next = n.next[direction]
+        if (next === -1) {
+          break
+        }
+
+        const removed = this.removeEdge(next)
+        if (Option.isNone(removed)) {
+          throw new Error("Edge not found")
+        }
+      }
+    }
+
+    const node = swapRemove(this.graph.nodes, index)
+
+    // Find the edge lists of the node that had to relocate.
+    const edges = this.graph.nodes[index]
+    // It may be that no node had to relocate, then we are done already.
+    if (edges !== undefined) {
+      for (const direction of DIRECTIONS) {
+        const k = direction
+        const walker = new EdgeWalker(this.graph, direction, edges.next[k])
+        for (const [_, edge] of walker) {
+          edge.node[k] = index
+        }
+      }
+    }
+
+    return Option.some(node.data)
   }
 }
 
@@ -491,8 +579,8 @@ const makeEdge = <E>(
  * @category combinators
  */
 export const addNode: {
-  <N>(data: N): <E, A extends Graph<N, E>>(self: A) => Graph.Preserve<A>
-  <N, E, A extends Graph<N, E>>(self: A, data: N): Graph.Preserve<A>
+  <N>(data: N): <A extends Graph<N, any>>(self: A) => Graph.Preserve<A>
+  <N, A extends Graph<N, any>>(self: A, data: N): Graph.Preserve<A>
 } = dual(2, <N, E, A extends Graph<N, E>>(
   self: A,
   data: N
@@ -525,26 +613,25 @@ export const addEdge: {
     from: number,
     to: number,
     data: E
-  ): <A extends Graph<any, E>>(graph: A) => Option.Option<[Graph.Preserve<A>, number]>
+  ): <A extends Graph<any, E>>(graph: A) => Option.Option<Graph.Preserve<A>>
   <E, A extends Graph<any, E>>(
     graph: A,
     from: number,
     to: number,
     data: E
-  ): Option.Option<[Graph.Preserve<A>, number]>
+  ): Option.Option<Graph.Preserve<A>>
 } = dual(4, <E, A extends Graph<any, E>>(
   graph: A,
   from: number,
   to: number,
   data: E
-): Option.Option<[Graph.Preserve<A>, number]> => {
-  let result: Option.Option<number>
+): Option.Option<Graph.Preserve<A>> => {
+  let index: Option.Option<number>
   const out = mutate(graph, (mutable) => {
-    result = mutable.addEdge(from, to, data as any)
+    index = mutable.addEdge(from, to, data as any)
   })
 
-  /** @ts-ignore */
-  return result.pipe(Option.map((index) => [out, index]))
+  return index!.pipe(Option.as(out))
 })
 
 /**
@@ -556,19 +643,19 @@ export const unsafeAddEdge: {
     from: number,
     to: number,
     data: E
-  ): <A extends Graph<any, E>>(graph: A) => [Graph.Preserve<A>, number]
+  ): <A extends Graph<any, E>>(graph: A) => Graph.Preserve<A>
   <E, A extends Graph<any, E>>(
     graph: A,
     from: number,
     to: number,
     data: E
-  ): [Graph.Preserve<A>, number]
+  ): Graph.Preserve<A>
 } = dual(4, <E, A extends Graph<any, E>>(
   graph: A,
   from: number,
   to: number,
   data: E
-): [Graph.Preserve<A>, number] => Option.getOrThrow(addEdge(graph, from, to, data)))
+): Graph.Preserve<A> => Option.getOrThrow(addEdge(graph, from, to, data)))
 
 /**
  * @since 3.12.0
@@ -579,26 +666,25 @@ export const updateEdge: {
     from: number,
     to: number,
     data: E
-  ): <A extends Graph<any, E>>(graph: A) => Option.Option<[Graph.Preserve<A>, number]>
+  ): <A extends Graph<any, E>>(graph: A) => Option.Option<Graph.Preserve<A>>
   <E, A extends Graph<any, E>>(
     graph: A,
     from: number,
     to: number,
     data: E
-  ): Option.Option<[Graph.Preserve<A>, number]>
+  ): Option.Option<Graph.Preserve<A>>
 } = dual(4, <E, A extends Graph<any, E>>(
   graph: A,
   from: number,
   to: number,
   data: E
-): Option.Option<[Graph.Preserve<A>, number]> => {
-  let result: Option.Option<number>
+): Option.Option<Graph.Preserve<A>> => {
+  let index: Option.Option<number>
   const out = mutate(graph, (mutable) => {
-    result = mutable.updateEdge(from, to, data as any)
+    index = mutable.updateEdge(from, to, data as any)
   })
 
-  /** @ts-ignore */
-  return result.pipe(Option.map((index) => [out, index]))
+  return index!.pipe(Option.as(out))
 })
 
 /**
@@ -610,19 +696,19 @@ export const unsafeUpdateEdge: {
     from: number,
     to: number,
     data: E
-  ): <A extends Graph<any, E>>(graph: A) => [Graph.Preserve<A>, number]
+  ): <A extends Graph<any, E>>(graph: A) => Graph.Preserve<A>
   <E, A extends Graph<any, E>>(
     graph: A,
     from: number,
     to: number,
     data: E
-  ): [Graph.Preserve<A>, number]
+  ): Graph.Preserve<A>
 } = dual(4, <E, A extends Graph<any, E>>(
   graph: A,
   from: number,
   to: number,
   data: E
-): [Graph.Preserve<A>, number] => Option.getOrThrow(updateEdge(graph, from, to, data)))
+): Graph.Preserve<A> => Option.getOrThrow(updateEdge(graph, from, to, data)))
 
 /**
  * @since 3.12.0
@@ -638,8 +724,8 @@ export const containsEdge = <N, E>(
  * @since 3.12.0
  * @category combinators
  */
-export const findEdge = <N, E>(
-  graph: Graph<N, E>,
+export const findEdge = (
+  graph: Graph.Any,
   a: number,
   b: number
 ): Option.Option<number> => {
@@ -648,7 +734,7 @@ export const findEdge = <N, E>(
   }
 
   const node = graph.nodes[a]
-  return node === undefined ? Option.none() : findEdgeDirectedFromNode(graph as Graph.Directed<N, E>, node, b)
+  return node === undefined ? Option.none() : findEdgeDirectedFromNode(graph, node, b)
 }
 
 const findEdgeDirectedFromNode = <N, E>(
@@ -698,4 +784,115 @@ const findEdgeUndirected = <N, E>(
   }
 
   return findEdgeUndirectedFromNode(graph, an, b)
+}
+
+export const nodes = <A extends Graph.Any>(graph: A): IterableIterator<Node.Data<A>> =>
+  new NodeIterator(graph, (_, data) => data)
+
+class NodeIterator<in out A extends Graph.Any, out T> implements IterableIterator<T> {
+  private index = -1
+
+  constructor(
+    private readonly graph: A,
+    private readonly map: (index: number, data: Node.Data<A>) => T,
+    private readonly filter?: (index: number, data: Node.Data<A>) => boolean
+  ) {}
+
+  next(): IteratorResult<T> {
+    const node = this.graph.nodes[this.index++]
+    if (node !== undefined && (this.filter === undefined || this.filter(this.index - 1, node.data))) {
+      const value = this.map(this.index - 1, node.data)
+      return { done: false, value }
+    }
+
+    return { done: true, value: undefined }
+  }
+
+  [Symbol.iterator](): IterableIterator<T> {
+    return new NodeIterator(this.graph, this.map, this.filter)
+  }
+}
+
+class EdgeWalker<in out A extends Graph.Any> implements Iterator<[number, Edge<Edge.Data<A>>]> {
+  counter = 0
+  constructor(
+    private readonly graph: A,
+    private readonly direction: Edge.Direction,
+    private nxt: number
+  ) {}
+
+  next(): IteratorResult<[number, Edge<Edge.Data<A>>]> {
+    const current = this.nxt
+    const edge = this.graph.edges[current]
+    if (edge !== undefined) {
+      this.nxt = edge.next[this.direction]
+      return { done: false, value: [current, edge] }
+    }
+
+    return { done: true, value: undefined }
+  }
+
+  [Symbol.iterator](): IterableIterator<[number, Edge<Edge.Data<A>>]> {
+    return new EdgeWalker(this.graph, this.direction, this.nxt)
+  }
+}
+
+/**
+ * Swap the element at `index` with the last element in the array.
+ *
+ * This ensures that the array remains contiguous.
+ */
+const swapRemove = <A>(array: Array<A>, index: number): A => {
+  const out = array[index]
+  const last = array.pop()!
+  if (out !== last) {
+    array[index] = last
+  }
+
+  return out
+}
+
+/**
+ * For edge `edge` with endpoints `node`, replace links to it, with links to `next`.
+ */
+const changeEdgeLinks = <A extends Graph.Any>(
+  graph: A,
+  node: [number, number],
+  edge: number,
+  next: [number, number]
+): void => {
+  for (const direction of DIRECTIONS) {
+    const k = direction
+    const n = node[k]
+    const an = graph.nodes[n]
+    if (an === undefined) {
+      throw new Error(`Edge's endpoint not found (dir: ${direction}, index: ${n})`)
+    }
+
+    const fst = an.next[k]
+    if (fst === edge) {
+      an.next[k] = next[k]
+    } else {
+      const walker = new EdgeWalker(graph, direction, n)
+      for (const [, e] of walker) {
+        if (e.next[k] === edge) {
+          e.next[k] = next[k]
+          break
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Remove edge `edge` from the graph and adjust the indices.
+ */
+const removeEdgeAdjustIndices = <A extends Graph.Any>(graph: A, edge: number): Edge<Edge.Data<A>> => {
+  const removed = swapRemove(graph.edges, edge)
+  const swap = graph.edges[edge]
+  if (swap !== undefined) {
+    const swapped = graph.edges.length
+    changeEdgeLinks(graph, swap.node, swapped, [edge, edge])
+  }
+  return removed
 }
