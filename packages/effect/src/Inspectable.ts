@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-
 import type * as FiberRefs from "./FiberRefs.js"
 import { globalValue } from "./GlobalValue.js"
 import { hasProperty, isFunction } from "./Predicate.js"
