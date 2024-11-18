@@ -11,6 +11,36 @@ export * as DevTools from "./DevTools.js"
 /**
  * @since 1.0.0
  */
+export * as Event from "./Event.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as EventGroup from "./EventGroup.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as EventJournal from "./EventJournal.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as EventLog from "./EventLog.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as EventLogRemote from "./EventLogRemote.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as EventLogServer from "./EventLogServer.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Machine from "./Machine.js"
 
 /**

@@ -39,7 +39,8 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "msgpackr": "^1.10.2"
+    "msgpackr": "^1.10.2",
+    "uuid": "^11.0.3"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
