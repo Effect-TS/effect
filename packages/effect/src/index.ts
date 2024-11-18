@@ -339,6 +339,11 @@ export * as Function from "./Function.js"
 export * as GlobalValue from "./GlobalValue.js"
 
 /**
+ * @since 3.12.0
+ */
+export * as Graph from "./Graph.js"
+
+/**
  * @since 2.0.0
  */
 export * as GroupBy from "./GroupBy.js"
