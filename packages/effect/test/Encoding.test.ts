@@ -172,9 +172,14 @@ describe("UriComponent", () => {
     ["%2F", "/"]
   ]
 
-  const invalid: Array<string> = [
+  const invalidDecode: Array<string> = [
     "hello%2world"
   ]
+
+  const invalidEncode: Array<string> =[
+    "\uD800",
+    "\uDFFF"
+  ];
 
   it.each(valid)(`should decode %j => %j`, (uri: string, raw: string) => {
     const decoded = Encoding.decodeUriComponent(uri)
@@ -183,12 +188,20 @@ describe("UriComponent", () => {
   })
 
   it.each(valid)(`should encode %j => %j`, (uri: string, raw: string) => {
-    strictEqual(Encoding.encodeUriComponent(raw), uri)
+    const encoded = Encoding.encodeUriComponent(raw)
+    assert(Either.isRight(encoded))
+    deepStrictEqual(encoded.right, uri)
   })
 
-  it.each(invalid)(`should refuse to decode %j`, (uri: string) => {
+  it.each(invalidDecode)(`should refuse to decode %j`, (uri: string) => {
     const result = Encoding.decodeUriComponent(uri)
     assert(Either.isLeft(result))
     assert(Encoding.isDecodeException(result.left))
+  })
+
+  it.each(invalidEncode)(`should refuse to encode %j`, (raw: string) => {
+    const result = Encoding.encodeUriComponent(raw)
+    assert(Either.isLeft(result))
+    assert(Encoding.isEncodeException(result.left))
   })
 })

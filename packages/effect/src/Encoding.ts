@@ -94,7 +94,7 @@ export const decodeHexString = (str: string) => Either.map(decodeHex(str), (_) =
  * @category encoding
  * @since 3.11.0
  */
-export const encodeUriComponent = (str: string) => encodeURIComponent(str)
+export const encodeUriComponent = (str: string): Either.Either<string,EncodeException> => Either.try({ try: () => encodeURIComponent(str), catch: (e) => EncodeException(str, (e as URIError).message) })
 
 /**
  * Decodes a URI component `string` into a UTF-8 `string`.
@@ -145,3 +145,44 @@ export const DecodeException: (input: string, message?: string) => DecodeExcepti
  * @category refinements
  */
 export const isDecodeException: (u: unknown) => u is DecodeException = Common.isDecodeException
+
+/**
+ * @since 3.11.0
+ * @category symbols
+ */
+export const EncodeExceptionTypeId: unique symbol = Common.EncodeExceptionTypeId
+
+/**
+ * @since 3.11.0
+ * @category symbols
+ */
+export type EncodeExceptionTypeId = typeof EncodeExceptionTypeId
+
+/**
+ * Represents a checked exception which occurs when encoding fails.
+ *
+ * @since 3.11.0
+ * @category models
+ */
+export interface EncodeException {
+  readonly _tag: "EncodeException"
+  readonly [EncodeExceptionTypeId]: EncodeExceptionTypeId
+  readonly input: string
+  readonly message?: string
+}
+
+/**
+ * Creates a checked exception which occurs when encoding fails.
+ *
+ * @since 3.11.0
+ * @category errors
+ */
+export const EncodeException: (input: string, message?: string) => EncodeException = Common.EncodeException
+
+/**
+ * Returns `true` if the specified value is an `Exception`, `false` otherwise.
+ *
+ * @since 3.11.0
+ * @category refinements
+ */
+export const isEncodeException: (u: unknown) => u is EncodeException = Common.isEncodeException
