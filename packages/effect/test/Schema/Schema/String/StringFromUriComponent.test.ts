@@ -7,6 +7,13 @@ describe("StringFromUriComponent", () => {
 
   it("encoding", async () => {
     await Util.expectEncodeSuccess(schema, "шеллы", "%D1%88%D0%B5%D0%BB%D0%BB%D1%8B")
+    await Util.expectEncodeFailure(
+      schema,
+      "Hello\uD800",
+      `StringFromUriComponent
+└─ Transformation process failure
+   └─ URI malformed`
+    )
   })
 
   it("decoding", async () => {
