@@ -1803,11 +1803,16 @@ schema (Suspend): <suspended schema>`
     it("String", () => {
       expectJSONSchema(
         Schema.String.annotations({
-          jsonSchema: { "type": "custom JSON Schema", "description": "description" }
+          jsonSchema: {
+            "type": "custom JSON Schema",
+            "description": "description",
+            "format": "uuid"
+          }
         }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "custom JSON Schema",
+          "format": "uuid",
           "description": "description"
         },
         false
@@ -1876,6 +1881,20 @@ schema (Suspend): <suspended schema>`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "custom JSON Schema"
+        },
+        false
+      )
+    })
+    it("UUID", () => {
+      expectJSONSchema(
+        Schema.UUID,
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "a Universally Unique Identifier",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "title": "UUID",
+          "type": "string",
+          "format": "uuid"
         },
         false
       )

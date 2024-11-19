@@ -4556,6 +4556,10 @@ export class UUID extends String$.pipe(
     schemaId: UUIDSchemaId,
     identifier: "UUID",
     title: "UUID",
+    jsonSchema: {
+      format: "uuid",
+      pattern: uuidRegexp.source
+    },
     description: "a Universally Unique Identifier",
     arbitrary: (): LazyArbitrary<string> => (fc) => fc.uuid()
   })
