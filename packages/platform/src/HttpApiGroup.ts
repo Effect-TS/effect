@@ -66,12 +66,12 @@ export interface HttpApiGroup<
    * Add an error schema to an `HttpApiGroup`, which is shared by all endpoints in the
    * group.
    */
-  addError<A, I, R>(
-    schema: Schema.Schema<A, I, R>,
+  addError<A, I, RX>(
+    schema: Schema.Schema<A, I, RX>,
     annotations?: {
       readonly status?: number | undefined
     }
-  ): HttpApiGroup<Id, Endpoints, Error | A, R | R, TopLevel>
+  ): HttpApiGroup<Id, Endpoints, Error | A, R | RX, TopLevel>
 
   /**
    * Add a path prefix to all endpoints in an `HttpApiGroup`. Note that this will only
