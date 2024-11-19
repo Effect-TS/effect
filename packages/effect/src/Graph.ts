@@ -1067,3 +1067,75 @@ class EdgeWalker<in out A extends Graph.Any> implements Iterator<[number, Edge<E
     return new EdgeWalker(this.graph, this.direction, this.nxt)
   }
 }
+
+const defaultDotConfig = {
+  edgeIndexLabel: false,
+  edgeNoLabel: false,
+  graphContentOnly: false,
+  nodeIndexLabel: false,
+  nodeNoLabel: false
+}
+
+/**
+ * Formats the graph in GraphViz DOT language format.
+ *
+ * @see https://graphviz.org/doc/info/lang.html
+ *
+ * @since 3.12.0
+ * @category combinators
+ */
+export const toDot = (
+  self: Graph.Any,
+  config?: {
+    readonly nodeIndexLabel?: boolean | undefined
+    readonly edgeIndexLabel?: boolean | undefined
+    readonly edgeNoLabel?: boolean | undefined
+    readonly nodeNoLabel?: boolean | undefined
+    readonly graphContentOnly?: boolean | undefined
+  } | undefined
+): string => {
+  const {
+    edgeIndexLabel,
+    edgeNoLabel,
+    graphContentOnly,
+    nodeIndexLabel,
+    nodeNoLabel
+  } = Object.assign({}, defaultDotConfig, config)
+
+  const indent = "    "
+  const lines: Array<string> = []
+  const type = isDirected(self) ? "digraph" : "graph"
+  const op = isDirected(self) ? "->" : "--"
+
+  if (!graphContentOnly) {
+    lines.push(`${type} {`)
+  }
+
+  for (const [index, data] of nodes(self)) {
+    let line = `${indent}${index} [ `
+    if (!nodeNoLabel) {
+      const label = nodeIndexLabel ? `${index}` : escapeLabel(String(data))
+      line += `label = "${label}" `
+    }
+    lines.push(`${line}]`)
+  }
+
+  for (const [index, data] of edges(self)) {
+    const edge = self.edges[index]
+    const [from, to] = edge.node
+    let line = `${indent}${from} ${op} ${to} [ `
+    if (!edgeNoLabel) {
+      const label = edgeIndexLabel ? `${index}` : escapeLabel(String(data))
+      line += `label = "${label}" `
+    }
+    lines.push(`${line}]`)
+  }
+
+  if (!graphContentOnly) {
+    lines.push("}")
+  }
+
+  return lines.join("\n") + "\n"
+}
+
+const escapeLabel = (str: string): string => str.replace(/["\\]/g, "\\$&").replace(/\n/g, "\\l")
