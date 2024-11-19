@@ -249,6 +249,7 @@ class NoStatusError extends Schema.TaggedClass<NoStatusError>()("NoStatusError",
 
 class User extends Schema.Class<User>("User")({
   id: Schema.Int,
+  uuid: Schema.optional(Schema.UUID),
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
 }) {}

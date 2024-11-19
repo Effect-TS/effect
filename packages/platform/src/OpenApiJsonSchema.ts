@@ -85,6 +85,7 @@ export interface String extends Annotations {
   minLength?: number
   maxLength?: number
   pattern?: string
+  format?: string
   contentEncoding?: string
   contentMediaType?: string
   contentSchema?: JsonSchema
@@ -99,6 +100,7 @@ export interface Numeric extends Annotations {
   exclusiveMinimum?: number
   maximum?: number
   exclusiveMaximum?: number
+  format?: string
 }
 
 /**
