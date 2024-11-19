@@ -1,5 +1,103 @@
 # effect
 
+## 3.10.15
+
+### Patch Changes
+
+- [#3936](https://github.com/Effect-TS/effect/pull/3936) [`8398b32`](https://github.com/Effect-TS/effect/commit/8398b3208242a88239d4449910b7baf923cfe3b6) Thanks @tim-smart! - allow DateTime.makeZoned to default to the local time zone
+
+- [#3917](https://github.com/Effect-TS/effect/pull/3917) [`72e55b7`](https://github.com/Effect-TS/effect/commit/72e55b7c610784fcebdbadc592c876e23e76a986) Thanks @SuttonKyle! - Allow Stream.split to use refinement for better type inference
+
+## 3.10.14
+
+### Patch Changes
+
+- [#3920](https://github.com/Effect-TS/effect/pull/3920) [`f983946`](https://github.com/Effect-TS/effect/commit/f9839467b4cad6e788297764ef9f9f0b9fd203f9) Thanks @gcanti! - remove redundant check in `JSONNumber` declaration
+
+- [#3924](https://github.com/Effect-TS/effect/pull/3924) [`2d8a750`](https://github.com/Effect-TS/effect/commit/2d8a75081eb83a0a81f817fdf6f428369c5064ab) Thanks @tim-smart! - ensure a ManagedRuntime can be built synchronously
+
+## 3.10.13
+
+### Patch Changes
+
+- [#3907](https://github.com/Effect-TS/effect/pull/3907) [`995bbdf`](https://github.com/Effect-TS/effect/commit/995bbdffea2e332f203cd5b474cd6a1c77dfa6ae) Thanks @arijoon! - Schema.BigDecimal Arbitrary's scale limited to the range 0-18
+
+## 3.10.12
+
+### Patch Changes
+
+- [#3904](https://github.com/Effect-TS/effect/pull/3904) [`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6) Thanks @tim-smart! - allow pool items te be used while being acquired
+
+## 3.10.11
+
+### Patch Changes
+
+- [#3903](https://github.com/Effect-TS/effect/pull/3903) [`5eef499`](https://github.com/Effect-TS/effect/commit/5eef4998b6ccb7a5404d9e4fef85e57fa35fbb8a) Thanks @tim-smart! - cache Schema.Class AST once generated
+
+## 3.10.10
+
+### Patch Changes
+
+- [#3893](https://github.com/Effect-TS/effect/pull/3893) [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28) Thanks @tim-smart! - support "dropping" & "sliding" strategies in Mailbox
+
+- [#3893](https://github.com/Effect-TS/effect/pull/3893) [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28) Thanks @tim-smart! - add Mailbox.fromStream api
+
+- [#3886](https://github.com/Effect-TS/effect/pull/3886) [`b631f40`](https://github.com/Effect-TS/effect/commit/b631f40abbe649b2a089764585b5c39f6a695ac6) Thanks @fubhy! - Optimized `Base64.decode` by not capturing the padding characters in the underlying array buffer.
+
+  Previously, the implementation first captured the padding characters in the underlying array buffer and
+  then returned a new subarray view of the buffer with the padding characters removed.
+
+  By not capturing the padding characters, we avoid the creation of another typed array instance for the
+  subarray view.
+
+## 3.10.9
+
+### Patch Changes
+
+- [#3883](https://github.com/Effect-TS/effect/pull/3883) [`a123e80`](https://github.com/Effect-TS/effect/commit/a123e80f111a625428a5b5622b7f55ee1073566b) Thanks @tim-smart! - add FromIterator primitive to improve Effect.gen performance
+
+- [#3880](https://github.com/Effect-TS/effect/pull/3880) [`bd5fcd3`](https://github.com/Effect-TS/effect/commit/bd5fcd3e6b603b1e505af90d6a00627c8eca6d41) Thanks @tim-smart! - refactor Effect.gen to improve performance
+
+- [#3881](https://github.com/Effect-TS/effect/pull/3881) [`0289d3b`](https://github.com/Effect-TS/effect/commit/0289d3b6391031d00329365bab9791b355031fe3) Thanks @tim-smart! - implement Effect.suspend using OP_COMMIT
+
+- [#3862](https://github.com/Effect-TS/effect/pull/3862) [`7386b71`](https://github.com/Effect-TS/effect/commit/7386b710e5be570e17f468928a6ed19d549a3e12) Thanks @furrycatherder! - fix the type signature of `use` in Effect.Service
+
+- [#3879](https://github.com/Effect-TS/effect/pull/3879) [`4211a23`](https://github.com/Effect-TS/effect/commit/4211a2355bb3af3f0e756e2aae9d293379f25662) Thanks @IMax153! - Return a sequential cause when both the `use` and `release` fail in `Effect.acquireUseRelease`
+
+## 3.10.8
+
+### Patch Changes
+
+- [#3868](https://github.com/Effect-TS/effect/pull/3868) [`68b5c9e`](https://github.com/Effect-TS/effect/commit/68b5c9e44f34192cef26e1cadda5e661a027df41) Thanks @tim-smart! - move \_op check out of the fiber hot path
+
+- [#3849](https://github.com/Effect-TS/effect/pull/3849) [`9c9928d`](https://github.com/Effect-TS/effect/commit/9c9928dfeacd9ac33dc37eb0ca3d7d8c39175ada) Thanks @patroza! - improve: use literal `key` on Service
+
+- [#3872](https://github.com/Effect-TS/effect/pull/3872) [`6306e66`](https://github.com/Effect-TS/effect/commit/6306e6656092b350d4ede5746da6f245ec9f7e07) Thanks @KhraksMamtsov! - Fix `Config.integer` & `Config.number`
+
+- [#3869](https://github.com/Effect-TS/effect/pull/3869) [`361c7f3`](https://github.com/Effect-TS/effect/commit/361c7f39a2c10ede9324847c3d3ba192a6f9b20a) Thanks @KhraksMamtsov! - jsdoc-examples for class-based APIs have been added, e.g. `Schema.TaggedError`, `Effect.Service` and others
+
+## 3.10.7
+
+### Patch Changes
+
+- [#3867](https://github.com/Effect-TS/effect/pull/3867) [`33f5b9f`](https://github.com/Effect-TS/effect/commit/33f5b9ffaebea4f1bd0e391b44c41fb6230e743a) Thanks @tim-smart! - ensure Channel.mergeWith fibers can be interrupted
+
+- [#3865](https://github.com/Effect-TS/effect/pull/3865) [`50f0281`](https://github.com/Effect-TS/effect/commit/50f0281b0d2116726b8927a6217622d5f394f3e4) Thanks @tim-smart! - fix memory leak in Stream.retry
+
+## 3.10.6
+
+### Patch Changes
+
+- [#3858](https://github.com/Effect-TS/effect/pull/3858) [`ce1c21f`](https://github.com/Effect-TS/effect/commit/ce1c21ffc11902ac9ab453a51904207859d38552) Thanks @KhraksMamtsov! - fix `Tag.Proxy` type
+
+## 3.10.5
+
+### Patch Changes
+
+- [#3841](https://github.com/Effect-TS/effect/pull/3841) [`3a6d757`](https://github.com/Effect-TS/effect/commit/3a6d757badeebe00d8ef4d67530d073c8264dcfa) Thanks @KhraksMamtsov! - Support union of parameters in functions in `Effect.Tag.Proxy` type
+
+- [#3845](https://github.com/Effect-TS/effect/pull/3845) [`59d813a`](https://github.com/Effect-TS/effect/commit/59d813aa4973d1115cfc70cc3667508335f49693) Thanks @tim-smart! - ensure fiber refs are not inherited by ManagedRuntime
+
 ## 3.10.4
 
 ### Patch Changes

@@ -90,7 +90,7 @@ export class HttpApiDecodeError extends Schema.TaggedError<HttpApiDecodeError>()
   },
   HttpApiSchema.annotations({
     status: 400,
-    description: "HttpApiDecodeError: The request did not match the expected schema"
+    description: "The request did not match the expected schema"
   })
 ) {
   /**

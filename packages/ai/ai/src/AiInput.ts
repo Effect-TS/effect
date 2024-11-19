@@ -188,6 +188,23 @@ export class ImagePart extends Schema_.TaggedClass<ImagePart>("@effect/ai/AiInpu
     )
   }
 
+  /**
+   * @since 1.0.0
+   */
+  static fromBlob(blob: Blob, quality: ImageQuality = "auto"): Effect.Effect<ImagePart> {
+    return Effect.promise(() => blob.arrayBuffer()).pipe(
+      Effect.map((buffer) =>
+        new ImagePart({
+          image: {
+            contentType: blob.type,
+            data: new Uint8Array(buffer)
+          },
+          quality
+        })
+      )
+    )
+  }
+
   get asDataUri(): string {
     const base64 = Encoding.encodeBase64(this.image.data)
     return `data:${this.image.contentType};base64,${base64}`

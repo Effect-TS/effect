@@ -57,16 +57,15 @@
     "@types/node": "^22.5.4",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
-    "@vitest/browser": "^2.0.5",
-    "@vitest/coverage-v8": "^2.0.5",
-    "@vitest/expect": "^2.0.5",
-    "@vitest/web-worker": "^2.0.5",
+    "@vitest/browser": "^2.1.4",
+    "@vitest/coverage-v8": "^2.1.4",
+    "@vitest/expect": "^2.1.4",
+    "@vitest/web-worker": "^2.1.4",
     "ast-types": "^0.14.2",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "eslint": "^9.9.1",
     "eslint-import-resolver-typescript": "^3.6.3",
     "eslint-plugin-codegen": "^0.28.0",
-    "eslint-plugin-deprecation": "^3.0.0",
     "eslint-plugin-import": "^2.30.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
@@ -80,12 +79,9 @@
     "tsx": "^4.17.0",
     "typescript": "^5.6.2",
     "vite": "^5.4.0",
-    "vitest": "^2.0.5"
+    "vitest": "^2.1.4"
   },
   "pnpm": {
-    "overrides": {
-      "vitest": "^2.0.5"
-    },
     "patchedDependencies": {
       "@changesets/get-github-info@0.6.0": "patches/@changesets__get-github-info@0.6.0.patch",
       "@changesets/assemble-release-plan@6.0.3": "patches/@changesets__assemble-release-plan@6.0.3.patch",

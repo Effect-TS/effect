@@ -179,7 +179,7 @@ function divide(a: number, b: number) {
 }
 
 // Temporarily skip the test for dividing numbers
-it.effect("test failure as Exit", () =>
+it.effect.skip("test failure as Exit", () =>
   Effect.gen(function* () {
     const result = yield* Effect.exit(divide(4, 0))
     expect(result).toStrictEqual(Exit.fail("Cannot divide by zero"))

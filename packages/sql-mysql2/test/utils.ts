@@ -1,7 +1,7 @@
 import { MysqlClient } from "@effect/sql-mysql2"
 import type { StartedMySqlContainer } from "@testcontainers/mysql"
 import { MySqlContainer } from "@testcontainers/mysql"
-import { Config, Context, Data, Effect, Layer, Redacted } from "effect"
+import { Context, Data, Effect, Layer, Redacted } from "effect"
 
 export class ContainerError extends Data.TaggedError("ContainerError")<{
   cause: unknown
@@ -26,7 +26,7 @@ export class MysqlContainer extends Context.Tag("test/MysqlContainer")<
     Effect.gen(function*() {
       const container = yield* MysqlContainer
       return MysqlClient.layer({
-        url: Config.succeed(Redacted.make(container.getConnectionUri()))
+        url: Redacted.make(container.getConnectionUri())
       })
     })
   ).pipe(Layer.provide(this.Live))

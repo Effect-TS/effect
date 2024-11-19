@@ -1,3 +1,4 @@
+import { Cause } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -167,5 +168,25 @@ describe("Effect.Service", () => {
   it.effect("scoped", () =>
     Effect.gen(function*() {
       yield* Scoped.info("Ok").pipe(Effect.provide(Scoped.Default))
+    }))
+
+  it.effect("promises", () =>
+    Effect.gen(function*() {
+      class Service extends Effect.Service<Service>()("Service", {
+        succeed: {
+          foo: () => Promise.reject(new Error("foo")),
+          bar: () => Promise.resolve("bar")
+        },
+        accessors: true
+      }) {}
+
+      const withUse = yield* Service.foo().pipe(Effect.flip, Effect.provide(Service.Default))
+      expect(withUse).toEqual(new Cause.UnknownException(new Error("foo")))
+
+      const accessor = yield* Service.foo().pipe(Effect.flip, Effect.provide(Service.Default))
+      expect(accessor).toEqual(new Cause.UnknownException(new Error("foo")))
+
+      const accessorSuccess = yield* Service.bar().pipe(Effect.provide(Service.Default))
+      expect(accessorSuccess).toEqual("bar")
     }))
 })

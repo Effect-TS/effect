@@ -1,6 +1,6 @@
 {
   "name": "@effect/experimental",
-  "version": "0.30.10",
+  "version": "0.32.8",
   "type": "module",
   "license": "MIT",
   "description": "Experimental modules for the Effect ecosystem",
@@ -67,7 +67,7 @@
     "@types/ws": "^8.5.12",
     "ioredis": "^5.4.1",
     "lmdb": "^3.0.13",
-    "vitest-websocket-mock": "^0.3.0",
+    "vitest-websocket-mock": "^0.4.0",
     "ws": "^8.18.0"
   },
   "effect": {

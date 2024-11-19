@@ -1,4 +1,4 @@
-import { internalCall } from "effect/Utils"
+import { internalCall, yieldWrapGet } from "effect/Utils"
 import * as RA from "../Array.js"
 import * as Boolean from "../Boolean.js"
 import type * as Cause from "../Cause.js"
@@ -189,6 +189,16 @@ const contOpSuccess = {
     } else {
       return core.void
     }
+  },
+  [OpCodes.OP_ITERATOR]: (
+    self: FiberRuntime<any, any>,
+    cont: core.FromIterator,
+    value: unknown
+  ) => {
+    const state = internalCall(() => cont.effect_instruction_i0.next(value))
+    if (state.done) return core.exitSucceed(state.value)
+    self.pushStack(cont)
+    return yieldWrapGet(state.value)
   }
 }
 
@@ -1053,7 +1063,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   getNextFailCont() {
     let frame = this.popStack()
     while (frame) {
-      if (frame._op !== OpCodes.OP_ON_SUCCESS && frame._op !== OpCodes.OP_WHILE) {
+      if (frame._op !== OpCodes.OP_ON_SUCCESS && frame._op !== OpCodes.OP_WHILE && frame._op !== OpCodes.OP_ITERATOR) {
         return frame
       }
       frame = this.popStack()
@@ -1299,6 +1309,10 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
     }
   }
 
+  [OpCodes.OP_ITERATOR](op: core.Primitive & { _op: OpCodes.OP_ITERATOR }) {
+    return contOpSuccess[OpCodes.OP_ITERATOR](this, op, undefined)
+  }
+
   [OpCodes.OP_COMMIT](op: core.Primitive & { _op: OpCodes.OP_COMMIT }) {
     return internalCall(() => op.commit())
   }
@@ -1330,11 +1344,6 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         }
       }
       try {
-        if (!("_op" in cur) || !((cur as core.Primitive)._op in this)) {
-          // @ts-expect-error
-          absurd(cur)
-        }
-
         // @ts-expect-error
         cur = this.currentTracer.context(
           () => {
@@ -1369,7 +1378,9 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
             core.exitFailCause(internalCause.die(op))
         }
       } catch (e) {
-        if (core.isEffectError(e)) {
+        if (cur !== YieldedOp && !Predicate.hasProperty(cur, "_op") || !((cur as core.Primitive)._op in this)) {
+          cur = core.dieMessage(`Not a valid effect: ${Inspectable.toStringUnknown(cur)}`)
+        } else if (core.isEffectError(e)) {
           cur = core.exitFailCause(e.cause)
         } else if (core.isInterruptedException(e)) {
           cur = core.exitFailCause(

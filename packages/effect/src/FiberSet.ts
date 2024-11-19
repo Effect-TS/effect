@@ -8,13 +8,10 @@ import * as Cause from "./Cause.js"
 import * as Deferred from "./Deferred.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
-import * as FiberRef from "./FiberRef.js"
 import { constFalse, dual } from "./Function.js"
 import * as HashSet from "./HashSet.js"
 import * as Inspectable from "./Inspectable.js"
-import type { FiberRuntime } from "./internal/fiberRuntime.js"
 import * as Iterable from "./Iterable.js"
-import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import * as Runtime from "./Runtime.js"
@@ -194,7 +191,6 @@ export const unsafeAdd: {
   } else if (self.state.backing.has(fiber)) {
     return
   }
-  ;(fiber as FiberRuntime<unknown, unknown>).setFiberRef(FiberRef.unhandledErrorLogLevel, Option.none())
   self.state.backing.add(fiber)
   fiber.addObserver((exit) => {
     if (self.state._tag === "Closed") {

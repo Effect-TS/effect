@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node",
   "type": "module",
-  "version": "0.64.10",
+  "version": "0.64.26",
   "license": "MIT",
   "description": "Platform specific implementations for the Node.js runtime",
   "homepage": "https://effect.website",
@@ -56,7 +56,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@types/mime": "^3.0.4",
-    "@types/node": "^20.14.10",
+    "@types/node": "^22.5.4",
     "@types/ws": "^8.5.12",
     "effect": "workspace:^"
   }

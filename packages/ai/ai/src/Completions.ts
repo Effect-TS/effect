@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import * as JsonSchema from "@effect/platform/OpenApiJsonSchema"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as HashMap from "effect/HashMap"
+import * as JsonSchema from "effect/JSONSchema"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
@@ -93,7 +93,7 @@ export interface CompletionOptions {
   readonly tools: Array<{
     readonly name: string
     readonly description: string
-    readonly parameters: JsonSchema.JsonSchema
+    readonly parameters: JsonSchema.JsonSchema7
   }>
   readonly required: boolean | string
 }
@@ -109,7 +109,7 @@ export const make = (options: {
     readonly tools: Array<{
       readonly name: string
       readonly description: string
-      readonly parameters: JsonSchema.JsonSchema
+      readonly parameters: JsonSchema.JsonSchema7
     }>
     readonly required: boolean | string
   }) => Effect.Effect<AiResponse, AiError>
@@ -119,7 +119,7 @@ export const make = (options: {
     readonly tools: Array<{
       readonly name: string
       readonly description: string
-      readonly parameters: JsonSchema.JsonSchema
+      readonly parameters: JsonSchema.JsonSchema7
     }>
     readonly required: boolean | string
   }) => Stream.Stream<AiResponse, AiError>
@@ -211,7 +211,7 @@ export const make = (options: {
       },
       toolkit({ concurrency, input: inputInput, required = false, tools }) {
         const input = AiInput.make(inputInput)
-        const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema }> = []
+        const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema7 }> = []
         for (const [, tool] of tools.toolkit.tools) {
           toolArr.push(convertTool(tool as any))
         }
@@ -235,7 +235,7 @@ export const make = (options: {
         ) as any
       },
       toolkitStream({ concurrency, input, required = false, tools }) {
-        const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema }> = []
+        const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema7 }> = []
         for (const [, tool] of tools.toolkit.tools) {
           toolArr.push(convertTool(tool as any))
         }

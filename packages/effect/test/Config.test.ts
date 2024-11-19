@@ -91,6 +91,11 @@ describe("Config", () => {
       assertSuccess(config, [["ITEMS", "1"]], [1])
       assertFailure(
         config,
+        [["ITEMS", "123qq"]],
+        ConfigError.InvalidData(["ITEMS"], "Expected a number value but received 123qq")
+      )
+      assertFailure(
+        config,
         [["ITEMS", "value"]],
         ConfigError.InvalidData(["ITEMS"], "Expected a number value but received value")
       )
@@ -293,6 +298,12 @@ describe("Config", () => {
         Config.withDefault(0)
       )
       assertSuccess(config, [["key", "1"]], 1)
+      assertFailure(
+        config,
+        [["key", "1.2"]],
+        // available data but not an integer
+        ConfigError.InvalidData(["key"], "Expected an integer value but received 1.2")
+      )
       assertFailure(
         config,
         [["key", "value"]],

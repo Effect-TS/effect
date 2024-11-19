@@ -6,7 +6,7 @@ import type { Layer } from "effect/Layer"
 import { Api } from "./HttpApi.js"
 import { Router } from "./HttpApiBuilder.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
-import * as internal from "./internal/apiSwagger.js"
+import * as internal from "./internal/httpApiSwagger.js"
 import * as OpenApi from "./OpenApi.js"
 
 /**

@@ -9,6 +9,390 @@ import * as Effect from "effect/Effect"
 import type { ParseError } from "effect/ParseResult"
 import * as S from "effect/Schema"
 
+export class ListAssistantsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(S.Literal("asc", "desc"), { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class AssistantToolsCode extends S.Struct({
+  "type": S.Literal("code_interpreter")
+}) {}
+
+export class FileSearchRankingOptions extends S.Struct({
+  "ranker": S.optionalWith(S.Literal("auto", "default_2024_08_21"), { nullable: true }),
+  "score_threshold": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1))
+}) {}
+
+export class AssistantToolsFileSearch extends S.Struct({
+  "type": S.Literal("file_search"),
+  "file_search": S.optionalWith(
+    S.Struct({
+      "max_num_results": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50)), {
+        nullable: true
+      }),
+      "ranking_options": S.optionalWith(FileSearchRankingOptions, { nullable: true })
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class FunctionParameters extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+export class FunctionObject extends S.Struct({
+  "description": S.optionalWith(S.String, { nullable: true }),
+  "name": S.String,
+  "parameters": S.optionalWith(FunctionParameters, { nullable: true }),
+  "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
+}) {}
+
+export class AssistantToolsFunction extends S.Struct({
+  "type": S.Literal("function"),
+  "function": FunctionObject
+}) {}
+
+export class ResponseFormatText extends S.Struct({
+  "type": S.Literal("text")
+}) {}
+
+export class ResponseFormatJsonObject extends S.Struct({
+  "type": S.Literal("json_object")
+}) {}
+
+export class ResponseFormatJsonSchemaSchema extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+export class ResponseFormatJsonSchema extends S.Struct({
+  "type": S.Literal("json_schema"),
+  "json_schema": S.Struct({
+    "description": S.optionalWith(S.String, { nullable: true }),
+    "name": S.String,
+    "schema": S.optionalWith(ResponseFormatJsonSchemaSchema, { nullable: true }),
+    "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
+  })
+}) {}
+
+export class AssistantsApiResponseFormatOption
+  extends S.Union(S.Literal("auto"), ResponseFormatText, ResponseFormatJsonObject, ResponseFormatJsonSchema)
+{}
+
+export class AssistantObject extends S.Struct({
+  "id": S.String,
+  "object": S.Literal("assistant"),
+  "created_at": S.Int,
+  "name": S.NullOr(S.String.pipe(S.maxLength(256))),
+  "description": S.NullOr(S.String.pipe(S.maxLength(512))),
+  "model": S.String,
+  "instructions": S.NullOr(S.String.pipe(S.maxLength(256000))),
+  "tools": S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128))
+    .pipe(S.propertySignature, S.withConstructorDefault(() => [] as const)),
+  "tool_resources": S.optionalWith(
+    S.Struct({
+      "code_interpreter": S.optionalWith(
+        S.Struct({
+          "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
+            nullable: true,
+            default: () => [] as const
+          })
+        }),
+        { nullable: true }
+      ),
+      "file_search": S.optionalWith(
+        S.Struct({
+          "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
+}) {}
+
+export class ListAssistantsResponse extends S.Class<ListAssistantsResponse>("ListAssistantsResponse")({
+  "object": S.String,
+  "data": S.Array(AssistantObject),
+  "first_id": S.String,
+  "last_id": S.String,
+  "has_more": S.Boolean
+}) {}
+
+export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("CreateAssistantRequest")({
+  "model": S.Union(
+    S.String,
+    S.Literal(
+      "gpt-4o",
+      "gpt-4o-2024-08-06",
+      "gpt-4o-2024-05-13",
+      "gpt-4o-2024-08-06",
+      "gpt-4o-mini",
+      "gpt-4o-mini-2024-07-18",
+      "gpt-4-turbo",
+      "gpt-4-turbo-2024-04-09",
+      "gpt-4-0125-preview",
+      "gpt-4-turbo-preview",
+      "gpt-4-1106-preview",
+      "gpt-4-vision-preview",
+      "gpt-4",
+      "gpt-4-0314",
+      "gpt-4-0613",
+      "gpt-4-32k",
+      "gpt-4-32k-0314",
+      "gpt-4-32k-0613",
+      "gpt-3.5-turbo",
+      "gpt-3.5-turbo-16k",
+      "gpt-3.5-turbo-0613",
+      "gpt-3.5-turbo-1106",
+      "gpt-3.5-turbo-0125",
+      "gpt-3.5-turbo-16k-0613"
+    )
+  ),
+  "name": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true }),
+  "description": S.optionalWith(S.String.pipe(S.maxLength(512)), { nullable: true }),
+  "instructions": S.optionalWith(S.String.pipe(S.maxLength(256000)), { nullable: true }),
+  "tools": S.optionalWith(
+    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128)),
+    {
+      nullable: true,
+      default: () => [] as const
+    }
+  ),
+  "tool_resources": S.optionalWith(
+    S.Struct({
+      "code_interpreter": S.optionalWith(
+        S.Struct({
+          "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
+            nullable: true,
+            default: () => [] as const
+          })
+        }),
+        { nullable: true }
+      ),
+      "file_search": S.optionalWith(
+        S.Struct({
+          "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true }),
+          "vector_stores": S.optionalWith(
+            S.Array(S.Struct({
+              "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(10000)), { nullable: true }),
+              "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+              "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+            })).pipe(S.maxItems(1)),
+            { nullable: true }
+          )
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
+}) {}
+
+export class ModifyAssistantRequest extends S.Class<ModifyAssistantRequest>("ModifyAssistantRequest")({
+  "model": S.optionalWith(S.String, { nullable: true }),
+  "name": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true }),
+  "description": S.optionalWith(S.String.pipe(S.maxLength(512)), { nullable: true }),
+  "instructions": S.optionalWith(S.String.pipe(S.maxLength(256000)), { nullable: true }),
+  "tools": S.optionalWith(
+    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128)),
+    {
+      nullable: true,
+      default: () => [] as const
+    }
+  ),
+  "tool_resources": S.optionalWith(
+    S.Struct({
+      "code_interpreter": S.optionalWith(
+        S.Struct({
+          "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
+            nullable: true,
+            default: () => [] as const
+          })
+        }),
+        { nullable: true }
+      ),
+      "file_search": S.optionalWith(
+        S.Struct({
+          "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
+}) {}
+
+export class DeleteAssistantResponse extends S.Class<DeleteAssistantResponse>("DeleteAssistantResponse")({
+  "id": S.String,
+  "deleted": S.Boolean,
+  "object": S.Literal("assistant.deleted")
+}) {}
+
+export class CreateSpeechRequest extends S.Class<CreateSpeechRequest>("CreateSpeechRequest")({
+  "model": S.Union(S.String, S.Literal("tts-1", "tts-1-hd")),
+  "input": S.String.pipe(S.maxLength(4096)),
+  "voice": S.Literal("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
+  "response_format": S.optionalWith(S.Literal("mp3", "opus", "aac", "flac", "wav", "pcm"), {
+    nullable: true,
+    default: () => "mp3" as const
+  }),
+  "speed": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0.25), S.lessThanOrEqualTo(4)), {
+    nullable: true,
+    default: () => 1 as const
+  })
+}) {}
+
+export class CreateTranscriptionResponseJson extends S.Struct({
+  "text": S.String
+}) {}
+
+export class TranscriptionWord extends S.Struct({
+  "word": S.String,
+  "start": S.Number,
+  "end": S.Number
+}) {}
+
+export class TranscriptionSegment extends S.Struct({
+  "id": S.Int,
+  "seek": S.Int,
+  "start": S.Number,
+  "end": S.Number,
+  "text": S.String,
+  "tokens": S.Array(S.Int),
+  "temperature": S.Number,
+  "avg_logprob": S.Number,
+  "compression_ratio": S.Number,
+  "no_speech_prob": S.Number
+}) {}
+
+export class CreateTranscriptionResponseVerboseJson extends S.Struct({
+  "language": S.String,
+  "duration": S.String,
+  "text": S.String,
+  "words": S.optionalWith(S.Array(TranscriptionWord), { nullable: true }),
+  "segments": S.optionalWith(S.Array(TranscriptionSegment), { nullable: true })
+}) {}
+
+export class CreateTranscription200
+  extends S.Union(CreateTranscriptionResponseJson, CreateTranscriptionResponseVerboseJson)
+{}
+
+export class CreateTranslationResponseJson extends S.Struct({
+  "text": S.String
+}) {}
+
+export class CreateTranslationResponseVerboseJson extends S.Struct({
+  "language": S.String,
+  "duration": S.String,
+  "text": S.String,
+  "segments": S.optionalWith(S.Array(TranscriptionSegment), { nullable: true })
+}) {}
+
+export class CreateTranslation200
+  extends S.Union(CreateTranslationResponseJson, CreateTranslationResponseVerboseJson)
+{}
+
+export class ListBatchesParams extends S.Struct({
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const })
+}) {}
+
+export class Batch extends S.Struct({
+  "id": S.String,
+  "object": S.Literal("batch"),
+  "endpoint": S.String,
+  "errors": S.optionalWith(
+    S.Struct({
+      "object": S.optionalWith(S.String, { nullable: true }),
+      "data": S.optionalWith(
+        S.Array(S.Struct({
+          "code": S.optionalWith(S.String, { nullable: true }),
+          "message": S.optionalWith(S.String, { nullable: true }),
+          "param": S.optionalWith(S.String, { nullable: true }),
+          "line": S.optionalWith(S.Int, { nullable: true })
+        })),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "input_file_id": S.String,
+  "completion_window": S.String,
+  "status": S.Literal(
+    "validating",
+    "failed",
+    "in_progress",
+    "finalizing",
+    "completed",
+    "expired",
+    "cancelling",
+    "cancelled"
+  ),
+  "output_file_id": S.optionalWith(S.String, { nullable: true }),
+  "error_file_id": S.optionalWith(S.String, { nullable: true }),
+  "created_at": S.Int,
+  "in_progress_at": S.optionalWith(S.Int, { nullable: true }),
+  "expires_at": S.optionalWith(S.Int, { nullable: true }),
+  "finalizing_at": S.optionalWith(S.Int, { nullable: true }),
+  "completed_at": S.optionalWith(S.Int, { nullable: true }),
+  "failed_at": S.optionalWith(S.Int, { nullable: true }),
+  "expired_at": S.optionalWith(S.Int, { nullable: true }),
+  "cancelling_at": S.optionalWith(S.Int, { nullable: true }),
+  "cancelled_at": S.optionalWith(S.Int, { nullable: true }),
+  "request_counts": S.optionalWith(
+    S.Struct({
+      "total": S.Int,
+      "completed": S.Int,
+      "failed": S.Int
+    }),
+    { nullable: true }
+  ),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+export class ListBatchesResponse extends S.Class<ListBatchesResponse>("ListBatchesResponse")({
+  "data": S.Array(Batch),
+  "first_id": S.optionalWith(S.String, { nullable: true }),
+  "last_id": S.optionalWith(S.String, { nullable: true }),
+  "has_more": S.Boolean,
+  "object": S.Literal("list")
+}) {}
+
+export class CreateBatchRequest extends S.Class<CreateBatchRequest>("CreateBatchRequest")({
+  "input_file_id": S.String,
+  "endpoint": S.Literal("/v1/chat/completions", "/v1/embeddings", "/v1/completions"),
+  "completion_window": S.Literal("24h"),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
 export class ChatCompletionRequestMessageContentPartText extends S.Struct({
   "type": S.Literal("text"),
   "text": S.String
@@ -19,25 +403,35 @@ export class ChatCompletionRequestSystemMessageContentPart extends ChatCompletio
 export class ChatCompletionRequestSystemMessage extends S.Struct({
   "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestSystemMessageContentPart)),
   "role": S.Literal("system"),
-  "name": S.optional(S.String)
+  "name": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class ChatCompletionRequestMessageContentPartImage extends S.Struct({
   "type": S.Literal("image_url"),
   "image_url": S.Struct({
     "url": S.String,
-    "detail": S.optionalWith(S.Literal("auto", "low", "high"), { default: () => "auto" as const })
+    "detail": S.optionalWith(S.Literal("auto", "low", "high"), { nullable: true, default: () => "auto" as const })
   })
 }) {}
 
-export class ChatCompletionRequestUserMessageContentPart
-  extends S.Union(ChatCompletionRequestMessageContentPartText, ChatCompletionRequestMessageContentPartImage)
-{}
+export class ChatCompletionRequestMessageContentPartAudio extends S.Struct({
+  "type": S.Literal("input_audio"),
+  "input_audio": S.Struct({
+    "data": S.String,
+    "format": S.Literal("wav", "mp3")
+  })
+}) {}
+
+export class ChatCompletionRequestUserMessageContentPart extends S.Union(
+  ChatCompletionRequestMessageContentPartText,
+  ChatCompletionRequestMessageContentPartImage,
+  ChatCompletionRequestMessageContentPartAudio
+) {}
 
 export class ChatCompletionRequestUserMessage extends S.Struct({
   "content": S.Union(S.String, S.NonEmptyArray(ChatCompletionRequestUserMessageContentPart)),
   "role": S.Literal("user"),
-  "name": S.optional(S.String)
+  "name": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class ChatCompletionRequestMessageContentPartRefusal extends S.Struct({
@@ -66,8 +460,14 @@ export class ChatCompletionRequestAssistantMessage extends S.Struct({
   }),
   "refusal": S.optionalWith(S.String, { nullable: true }),
   "role": S.Literal("assistant"),
-  "name": S.optional(S.String),
-  "tool_calls": S.optional(ChatCompletionMessageToolCalls),
+  "name": S.optionalWith(S.String, { nullable: true }),
+  "audio": S.optionalWith(
+    S.Struct({
+      "id": S.String
+    }),
+    { nullable: true }
+  ),
+  "tool_calls": S.optionalWith(ChatCompletionMessageToolCalls, { nullable: true }),
   "function_call": S.optionalWith(
     S.Struct({
       "arguments": S.String,
@@ -99,37 +499,10 @@ export class ChatCompletionRequestMessage extends S.Union(
   ChatCompletionRequestFunctionMessage
 ) {}
 
-export class ResponseFormatText extends S.Struct({
-  "type": S.Literal("text")
-}) {}
-
-export class ResponseFormatJsonObject extends S.Struct({
-  "type": S.Literal("json_object")
-}) {}
-
-export class ResponseFormatJsonSchemaSchema extends S.Record({ key: S.String, value: S.Unknown }) {}
-
-export class ResponseFormatJsonSchema extends S.Struct({
-  "type": S.Literal("json_schema"),
-  "json_schema": S.Struct({
-    "description": S.optional(S.String),
-    "name": S.String,
-    "schema": S.optional(ResponseFormatJsonSchemaSchema),
-    "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
-  })
-}) {}
+export class ChatCompletionModalities extends S.Array(S.Literal("text", "audio")) {}
 
 export class ChatCompletionStreamOptions extends S.Struct({
-  "include_usage": S.optional(S.Boolean)
-}) {}
-
-export class FunctionParameters extends S.Record({ key: S.String, value: S.Unknown }) {}
-
-export class FunctionObject extends S.Struct({
-  "description": S.optional(S.String),
-  "name": S.String,
-  "parameters": S.optional(FunctionParameters),
-  "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
+  "include_usage": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
 export class ChatCompletionTool extends S.Struct({
@@ -155,9 +528,9 @@ export class ChatCompletionFunctionCallOption extends S.Struct({
 }) {}
 
 export class ChatCompletionFunctions extends S.Struct({
-  "description": S.optional(S.String),
+  "description": S.optionalWith(S.String, { nullable: true }),
   "name": S.String,
-  "parameters": S.optional(FunctionParameters)
+  "parameters": S.optionalWith(FunctionParameters, { nullable: true })
 }) {}
 
 export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionRequest>("CreateChatCompletionRequest")({
@@ -173,6 +546,10 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
       "gpt-4o-2024-08-06",
       "gpt-4o-2024-05-13",
       "gpt-4o-2024-08-06",
+      "gpt-4o-realtime-preview",
+      "gpt-4o-realtime-preview-2024-10-01",
+      "gpt-4o-audio-preview",
+      "gpt-4o-audio-preview-2024-10-01",
       "chatgpt-4o-latest",
       "gpt-4o-mini",
       "gpt-4o-mini-2024-07-18",
@@ -197,6 +574,8 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
       "gpt-3.5-turbo-16k-0613"
     )
   ),
+  "store": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   "frequency_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 0 as const
@@ -210,17 +589,27 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     nullable: true,
     default: () => 1 as const
   }),
+  "modalities": S.optionalWith(ChatCompletionModalities, { nullable: true }),
+  "audio": S.optionalWith(
+    S.Struct({
+      "voice": S.Literal("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
+      "format": S.Literal("wav", "mp3", "flac", "opus", "pcm16")
+    }),
+    { nullable: true }
+  ),
   "presence_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
     nullable: true,
     default: () => 0 as const
   }),
-  "response_format": S.optional(S.Union(ResponseFormatText, ResponseFormatJsonObject, ResponseFormatJsonSchema)),
+  "response_format": S.optionalWith(S.Union(ResponseFormatText, ResponseFormatJsonObject, ResponseFormatJsonSchema), {
+    nullable: true
+  }),
   "seed": S.optionalWith(
     S.Int.pipe(S.greaterThanOrEqualTo(-9223372036854776000), S.lessThanOrEqualTo(9223372036854776000)),
     { nullable: true }
   ),
-  "service_tier": S.optionalWith(S.Literal("auto", "default"), { nullable: true }),
-  "stop": S.optional(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4)))),
+  "service_tier": S.optionalWith(S.Literal("auto", "default"), { nullable: true, default: () => "auto" as const }),
+  "stop": S.optionalWith(S.Union(S.String, S.Array(S.String).pipe(S.minItems(1), S.maxItems(4))), { nullable: true }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
   "stream_options": S.optionalWith(ChatCompletionStreamOptions, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
@@ -231,23 +620,37 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     nullable: true,
     default: () => 1 as const
   }),
-  "tools": S.optional(S.Array(ChatCompletionTool)),
-  "tool_choice": S.optional(ChatCompletionToolChoiceOption),
-  "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { default: () => true as const }),
-  "user": S.optional(S.String),
-  "function_call": S.optional(S.Union(S.Literal("none", "auto"), ChatCompletionFunctionCallOption)),
-  "functions": S.optional(S.Array(ChatCompletionFunctions).pipe(S.minItems(1), S.maxItems(128)))
+  "tools": S.optionalWith(S.Array(ChatCompletionTool), { nullable: true }),
+  "tool_choice": S.optionalWith(ChatCompletionToolChoiceOption, { nullable: true }),
+  "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
+  "user": S.optionalWith(S.String, { nullable: true }),
+  "function_call": S.optionalWith(S.Union(S.Literal("none", "auto"), ChatCompletionFunctionCallOption), {
+    nullable: true
+  }),
+  "functions": S.optionalWith(S.Array(ChatCompletionFunctions).pipe(S.minItems(1), S.maxItems(128)), { nullable: true })
 }) {}
 
 export class ChatCompletionResponseMessage extends S.Struct({
   "content": S.NullOr(S.String),
   "refusal": S.NullOr(S.String),
-  "tool_calls": S.optional(ChatCompletionMessageToolCalls),
+  "tool_calls": S.optionalWith(ChatCompletionMessageToolCalls, { nullable: true }),
   "role": S.Literal("assistant"),
-  "function_call": S.optional(S.Struct({
-    "arguments": S.String,
-    "name": S.String
-  }))
+  "function_call": S.optionalWith(
+    S.Struct({
+      "arguments": S.String,
+      "name": S.String
+    }),
+    { nullable: true }
+  ),
+  "audio": S.optionalWith(
+    S.Struct({
+      "id": S.String,
+      "expires_at": S.Int,
+      "data": S.String,
+      "transcript": S.String
+    }),
+    { nullable: true }
+  )
 }) {}
 
 export class ChatCompletionTokenLogprob extends S.Struct({
@@ -265,9 +668,20 @@ export class CompletionUsage extends S.Struct({
   "completion_tokens": S.Int,
   "prompt_tokens": S.Int,
   "total_tokens": S.Int,
-  "completion_tokens_details": S.optional(S.Struct({
-    "reasoning_tokens": S.optional(S.Int)
-  }))
+  "completion_tokens_details": S.optionalWith(
+    S.Struct({
+      "audio_tokens": S.optionalWith(S.Int, { nullable: true }),
+      "reasoning_tokens": S.optionalWith(S.Int, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "prompt_tokens_details": S.optionalWith(
+    S.Struct({
+      "audio_tokens": S.optionalWith(S.Int, { nullable: true }),
+      "cached_tokens": S.optionalWith(S.Int, { nullable: true })
+    }),
+    { nullable: true }
+  )
 }) {}
 
 export class CreateChatCompletionResponse
@@ -285,9 +699,9 @@ export class CreateChatCompletionResponse
     "created": S.Int,
     "model": S.String,
     "service_tier": S.optionalWith(S.Literal("scale", "default"), { nullable: true }),
-    "system_fingerprint": S.optional(S.String),
+    "system_fingerprint": S.optionalWith(S.String, { nullable: true }),
     "object": S.Literal("chat.completion"),
-    "usage": S.optional(CompletionUsage)
+    "usage": S.optionalWith(CompletionUsage, { nullable: true })
   })
 {}
 
@@ -332,7 +746,7 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
     nullable: true,
     default: () => 1 as const
   }),
-  "user": S.optional(S.String)
+  "user": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class CreateCompletionResponse extends S.Class<CreateCompletionResponse>("CreateCompletionResponse")({
@@ -341,49 +755,18 @@ export class CreateCompletionResponse extends S.Class<CreateCompletionResponse>(
     "finish_reason": S.Literal("stop", "length", "content_filter"),
     "index": S.Int,
     "logprobs": S.NullOr(S.Struct({
-      "text_offset": S.optional(S.Array(S.Int)),
-      "token_logprobs": S.optional(S.Array(S.Number)),
-      "tokens": S.optional(S.Array(S.String)),
-      "top_logprobs": S.optional(S.Array(S.Record({ key: S.String, value: S.Unknown })))
+      "text_offset": S.optionalWith(S.Array(S.Int), { nullable: true }),
+      "token_logprobs": S.optionalWith(S.Array(S.Number), { nullable: true }),
+      "tokens": S.optionalWith(S.Array(S.String), { nullable: true }),
+      "top_logprobs": S.optionalWith(S.Array(S.Record({ key: S.String, value: S.Unknown })), { nullable: true })
     })),
     "text": S.String
   })),
   "created": S.Int,
   "model": S.String,
-  "system_fingerprint": S.optional(S.String),
+  "system_fingerprint": S.optionalWith(S.String, { nullable: true }),
   "object": S.Literal("text_completion"),
-  "usage": S.optional(CompletionUsage)
-}) {}
-
-export class CreateImageRequest extends S.Class<CreateImageRequest>("CreateImageRequest")({
-  "prompt": S.String,
-  "model": S.optionalWith(S.Union(S.String, S.Literal("dall-e-2", "dall-e-3")), {
-    nullable: true,
-    default: () => "dall-e-2" as const
-  }),
-  "n": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(10)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "quality": S.optionalWith(S.Literal("standard", "hd"), { default: () => "standard" as const }),
-  "response_format": S.optionalWith(S.Literal("url", "b64_json"), { nullable: true, default: () => "url" as const }),
-  "size": S.optionalWith(S.Literal("256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"), {
-    nullable: true,
-    default: () => "1024x1024" as const
-  }),
-  "style": S.optionalWith(S.Literal("vivid", "natural"), { nullable: true, default: () => "vivid" as const }),
-  "user": S.optional(S.String)
-}) {}
-
-export class Image extends S.Struct({
-  "b64_json": S.optional(S.String),
-  "url": S.optional(S.String),
-  "revised_prompt": S.optional(S.String)
-}) {}
-
-export class ImagesResponse extends S.Class<ImagesResponse>("ImagesResponse")({
-  "created": S.Int,
-  "data": S.Array(Image)
+  "usage": S.optionalWith(CompletionUsage, { nullable: true })
 }) {}
 
 export class CreateEmbeddingRequest extends S.Class<CreateEmbeddingRequest>("CreateEmbeddingRequest")({
@@ -394,9 +777,9 @@ export class CreateEmbeddingRequest extends S.Class<CreateEmbeddingRequest>("Cre
     S.Array(S.NonEmptyArray(S.Int)).pipe(S.minItems(1), S.maxItems(2048))
   ),
   "model": S.Union(S.String, S.Literal("text-embedding-ada-002", "text-embedding-3-small", "text-embedding-3-large")),
-  "encoding_format": S.optionalWith(S.Literal("float", "base64"), { default: () => "float" as const }),
-  "dimensions": S.optional(S.Int.pipe(S.greaterThanOrEqualTo(1))),
-  "user": S.optional(S.String)
+  "encoding_format": S.optionalWith(S.Literal("float", "base64"), { nullable: true, default: () => "float" as const }),
+  "dimensions": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true }),
+  "user": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class Embedding extends S.Struct({
@@ -415,70 +798,8 @@ export class CreateEmbeddingResponse extends S.Class<CreateEmbeddingResponse>("C
   })
 }) {}
 
-export class CreateSpeechRequest extends S.Class<CreateSpeechRequest>("CreateSpeechRequest")({
-  "model": S.Union(S.String, S.Literal("tts-1", "tts-1-hd")),
-  "input": S.String.pipe(S.maxLength(4096)),
-  "voice": S.Literal("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
-  "response_format": S.optionalWith(S.Literal("mp3", "opus", "aac", "flac", "wav", "pcm"), {
-    default: () => "mp3" as const
-  }),
-  "speed": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0.25), S.lessThanOrEqualTo(4)), {
-    default: () => 1 as const
-  })
-}) {}
-
-export class CreateTranscriptionResponseJson extends S.Struct({
-  "text": S.String
-}) {}
-
-export class TranscriptionWord extends S.Struct({
-  "word": S.String,
-  "start": S.Number,
-  "end": S.Number
-}) {}
-
-export class TranscriptionSegment extends S.Struct({
-  "id": S.Int,
-  "seek": S.Int,
-  "start": S.Number,
-  "end": S.Number,
-  "text": S.String,
-  "tokens": S.Array(S.Int),
-  "temperature": S.Number,
-  "avg_logprob": S.Number,
-  "compression_ratio": S.Number,
-  "no_speech_prob": S.Number
-}) {}
-
-export class CreateTranscriptionResponseVerboseJson extends S.Struct({
-  "language": S.String,
-  "duration": S.String,
-  "text": S.String,
-  "words": S.optional(S.Array(TranscriptionWord)),
-  "segments": S.optional(S.Array(TranscriptionSegment))
-}) {}
-
-export class CreateTranscription200
-  extends S.Union(CreateTranscriptionResponseJson, CreateTranscriptionResponseVerboseJson)
-{}
-
-export class CreateTranslationResponseJson extends S.Struct({
-  "text": S.String
-}) {}
-
-export class CreateTranslationResponseVerboseJson extends S.Struct({
-  "language": S.String,
-  "duration": S.String,
-  "text": S.String,
-  "segments": S.optional(S.Array(TranscriptionSegment))
-}) {}
-
-export class CreateTranslation200
-  extends S.Union(CreateTranslationResponseJson, CreateTranslationResponseVerboseJson)
-{}
-
 export class ListFilesParams extends S.Struct({
-  "purpose": S.optional(S.String)
+  "purpose": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class OpenAIFile extends S.Struct({
@@ -497,7 +818,7 @@ export class OpenAIFile extends S.Struct({
     "vision"
   ),
   "status": S.Literal("uploaded", "processed", "error"),
-  "status_details": S.optional(S.String)
+  "status_details": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class ListFilesResponse extends S.Class<ListFilesResponse>("ListFilesResponse")({
@@ -513,40 +834,9 @@ export class DeleteFileResponse extends S.Class<DeleteFileResponse>("DeleteFileR
 
 export class DownloadFile200 extends S.String {}
 
-export class CreateUploadRequest extends S.Class<CreateUploadRequest>("CreateUploadRequest")({
-  "filename": S.String,
-  "purpose": S.Literal("assistants", "batch", "fine-tune", "vision"),
-  "bytes": S.Int,
-  "mime_type": S.String
-}) {}
-
-export class Upload extends S.Class<Upload>("Upload")({
-  "id": S.String,
-  "created_at": S.Int,
-  "filename": S.String,
-  "bytes": S.Int,
-  "purpose": S.String,
-  "status": S.Literal("pending", "completed", "cancelled", "expired"),
-  "expires_at": S.Int,
-  "object": S.optional(S.Literal("upload")),
-  "file": S.optional(OpenAIFile)
-}) {}
-
-export class UploadPart extends S.Class<UploadPart>("UploadPart")({
-  "id": S.String,
-  "created_at": S.Int,
-  "upload_id": S.String,
-  "object": S.Literal("upload.part")
-}) {}
-
-export class CompleteUploadRequest extends S.Class<CompleteUploadRequest>("CompleteUploadRequest")({
-  "part_ids": S.Array(S.String),
-  "md5": S.optional(S.String)
-}) {}
-
 export class ListPaginatedFineTuningJobsParams extends S.Struct({
-  "after": S.optional(S.String),
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const })
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const })
 }) {}
 
 export class FineTuningIntegration extends S.Struct({
@@ -555,7 +845,7 @@ export class FineTuningIntegration extends S.Struct({
     "project": S.String,
     "name": S.optionalWith(S.String, { nullable: true }),
     "entity": S.optionalWith(S.String, { nullable: true }),
-    "tags": S.optional(S.Array(S.String))
+    "tags": S.optionalWith(S.Array(S.String), { nullable: true })
   })
 }) {}
 
@@ -599,19 +889,29 @@ export class ListPaginatedFineTuningJobsResponse
 export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobRequest>("CreateFineTuningJobRequest")({
   "model": S.Union(S.String, S.Literal("babbage-002", "davinci-002", "gpt-3.5-turbo", "gpt-4o-mini")),
   "training_file": S.String,
-  "hyperparameters": S.optional(S.Struct({
-    "batch_size": S.optionalWith(
-      S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))),
-      { default: () => "auto" as const }
-    ),
-    "learning_rate_multiplier": S.optionalWith(S.Union(S.Literal("auto"), S.Number.pipe(S.greaterThan(0))), {
-      default: () => "auto" as const
+  "hyperparameters": S.optionalWith(
+    S.Struct({
+      "batch_size": S.optionalWith(
+        S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))),
+        {
+          nullable: true,
+          default: () => "auto" as const
+        }
+      ),
+      "learning_rate_multiplier": S.optionalWith(S.Union(S.Literal("auto"), S.Number.pipe(S.greaterThan(0))), {
+        nullable: true,
+        default: () => "auto" as const
+      }),
+      "n_epochs": S.optionalWith(
+        S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))),
+        {
+          nullable: true,
+          default: () => "auto" as const
+        }
+      )
     }),
-    "n_epochs": S.optionalWith(
-      S.Union(S.Literal("auto"), S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))),
-      { default: () => "auto" as const }
-    )
-  })),
+    { nullable: true }
+  ),
   "suffix": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(64)), { nullable: true }),
   "validation_file": S.optionalWith(S.String, { nullable: true }),
   "integrations": S.optionalWith(
@@ -621,7 +921,7 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
         "project": S.String,
         "name": S.optionalWith(S.String, { nullable: true }),
         "entity": S.optionalWith(S.String, { nullable: true }),
-        "tags": S.optional(S.Array(S.String))
+        "tags": S.optionalWith(S.Array(S.String), { nullable: true })
       })
     })),
     { nullable: true }
@@ -629,9 +929,42 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
   "seed": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2147483647)), { nullable: true })
 }) {}
 
+export class ListFineTuningJobCheckpointsParams extends S.Struct({
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 10 as const })
+}) {}
+
+export class FineTuningJobCheckpoint extends S.Struct({
+  "id": S.String,
+  "created_at": S.Int,
+  "fine_tuned_model_checkpoint": S.String,
+  "step_number": S.Int,
+  "metrics": S.Struct({
+    "step": S.optionalWith(S.Number, { nullable: true }),
+    "train_loss": S.optionalWith(S.Number, { nullable: true }),
+    "train_mean_token_accuracy": S.optionalWith(S.Number, { nullable: true }),
+    "valid_loss": S.optionalWith(S.Number, { nullable: true }),
+    "valid_mean_token_accuracy": S.optionalWith(S.Number, { nullable: true }),
+    "full_valid_loss": S.optionalWith(S.Number, { nullable: true }),
+    "full_valid_mean_token_accuracy": S.optionalWith(S.Number, { nullable: true })
+  }),
+  "fine_tuning_job_id": S.String,
+  "object": S.Literal("fine_tuning.job.checkpoint")
+}) {}
+
+export class ListFineTuningJobCheckpointsResponse
+  extends S.Class<ListFineTuningJobCheckpointsResponse>("ListFineTuningJobCheckpointsResponse")({
+    "data": S.Array(FineTuningJobCheckpoint),
+    "object": S.Literal("list"),
+    "first_id": S.optionalWith(S.String, { nullable: true }),
+    "last_id": S.optionalWith(S.String, { nullable: true }),
+    "has_more": S.Boolean
+  })
+{}
+
 export class ListFineTuningEventsParams extends S.Struct({
-  "after": S.optional(S.String),
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const })
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const })
 }) {}
 
 export class FineTuningJobEvent extends S.Struct({
@@ -649,38 +982,36 @@ export class ListFineTuningJobEventsResponse
   })
 {}
 
-export class ListFineTuningJobCheckpointsParams extends S.Struct({
-  "after": S.optional(S.String),
-  "limit": S.optionalWith(S.Int, { default: () => 10 as const })
+export class Image extends S.Struct({
+  "b64_json": S.optionalWith(S.String, { nullable: true }),
+  "url": S.optionalWith(S.String, { nullable: true }),
+  "revised_prompt": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class FineTuningJobCheckpoint extends S.Struct({
-  "id": S.String,
-  "created_at": S.Int,
-  "fine_tuned_model_checkpoint": S.String,
-  "step_number": S.Int,
-  "metrics": S.Struct({
-    "step": S.optional(S.Number),
-    "train_loss": S.optional(S.Number),
-    "train_mean_token_accuracy": S.optional(S.Number),
-    "valid_loss": S.optional(S.Number),
-    "valid_mean_token_accuracy": S.optional(S.Number),
-    "full_valid_loss": S.optional(S.Number),
-    "full_valid_mean_token_accuracy": S.optional(S.Number)
+export class ImagesResponse extends S.Class<ImagesResponse>("ImagesResponse")({
+  "created": S.Int,
+  "data": S.Array(Image)
+}) {}
+
+export class CreateImageRequest extends S.Class<CreateImageRequest>("CreateImageRequest")({
+  "prompt": S.String,
+  "model": S.optionalWith(S.Union(S.String, S.Literal("dall-e-2", "dall-e-3")), {
+    nullable: true,
+    default: () => "dall-e-2" as const
   }),
-  "fine_tuning_job_id": S.String,
-  "object": S.Literal("fine_tuning.job.checkpoint")
+  "n": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(10)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "quality": S.optionalWith(S.Literal("standard", "hd"), { nullable: true, default: () => "standard" as const }),
+  "response_format": S.optionalWith(S.Literal("url", "b64_json"), { nullable: true, default: () => "url" as const }),
+  "size": S.optionalWith(S.Literal("256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"), {
+    nullable: true,
+    default: () => "1024x1024" as const
+  }),
+  "style": S.optionalWith(S.Literal("vivid", "natural"), { nullable: true, default: () => "vivid" as const }),
+  "user": S.optionalWith(S.String, { nullable: true })
 }) {}
-
-export class ListFineTuningJobCheckpointsResponse
-  extends S.Class<ListFineTuningJobCheckpointsResponse>("ListFineTuningJobCheckpointsResponse")({
-    "data": S.Array(FineTuningJobCheckpoint),
-    "object": S.Literal("list"),
-    "first_id": S.optionalWith(S.String, { nullable: true }),
-    "last_id": S.optionalWith(S.String, { nullable: true }),
-    "has_more": S.Boolean
-  })
-{}
 
 export class Model extends S.Struct({
   "id": S.String,
@@ -727,7 +1058,7 @@ export class CreateModerationRequest extends S.Class<CreateModerationRequest>("C
         "text-moderation-stable"
       )
     ),
-    { default: () => "omni-moderation-latest" as const }
+    { nullable: true, default: () => "omni-moderation-latest" as const }
   )
 }) {}
 
@@ -784,190 +1115,513 @@ export class CreateModerationResponse extends S.Class<CreateModerationResponse>(
   }))
 }) {}
 
-export class ListAssistantsParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "order": S.optionalWith(S.Literal("asc", "desc"), { default: () => "desc" as const }),
-  "after": S.optional(S.String),
-  "before": S.optional(S.String)
+export class AuditLogEventType extends S.Literal(
+  "api_key.created",
+  "api_key.updated",
+  "api_key.deleted",
+  "invite.sent",
+  "invite.accepted",
+  "invite.deleted",
+  "login.succeeded",
+  "login.failed",
+  "logout.succeeded",
+  "logout.failed",
+  "organization.updated",
+  "project.created",
+  "project.updated",
+  "project.archived",
+  "service_account.created",
+  "service_account.updated",
+  "service_account.deleted",
+  "user.added",
+  "user.updated",
+  "user.deleted"
+) {}
+
+export class ListAuditLogsParams extends S.Struct({
+  "effective_at[gt]": S.optionalWith(S.Int, { nullable: true }),
+  "effective_at[gte]": S.optionalWith(S.Int, { nullable: true }),
+  "effective_at[lt]": S.optionalWith(S.Int, { nullable: true }),
+  "effective_at[lte]": S.optionalWith(S.Int, { nullable: true }),
+  "project_ids[]": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "event_types[]": S.optionalWith(S.Array(AuditLogEventType), { nullable: true }),
+  "actor_ids[]": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "actor_emails[]": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "resource_ids[]": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class AssistantToolsCode extends S.Struct({
-  "type": S.Literal("code_interpreter")
+export class AuditLogActorUser extends S.Struct({
+  "id": S.optionalWith(S.String, { nullable: true }),
+  "email": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class FileSearchRankingOptions extends S.Struct({
-  "ranker": S.optional(S.Literal("auto", "default_2024_08_21")),
-  "score_threshold": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1))
+export class AuditLogActorSession extends S.Struct({
+  "user": S.optionalWith(AuditLogActorUser, { nullable: true }),
+  "ip_address": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class AssistantToolsFileSearch extends S.Struct({
-  "type": S.Literal("file_search"),
-  "file_search": S.optional(S.Struct({
-    "max_num_results": S.optional(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))),
-    "ranking_options": S.optional(FileSearchRankingOptions)
-  }))
+export class AuditLogActorServiceAccount extends S.Struct({
+  "id": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class AssistantToolsFunction extends S.Struct({
-  "type": S.Literal("function"),
-  "function": FunctionObject
+export class AuditLogActorApiKey extends S.Struct({
+  "id": S.optionalWith(S.String, { nullable: true }),
+  "type": S.optionalWith(S.Literal("user", "service_account"), { nullable: true }),
+  "user": S.optionalWith(AuditLogActorUser, { nullable: true }),
+  "service_account": S.optionalWith(AuditLogActorServiceAccount, { nullable: true })
 }) {}
 
-export class AssistantsApiResponseFormatOption
-  extends S.Union(S.Literal("auto"), ResponseFormatText, ResponseFormatJsonObject, ResponseFormatJsonSchema)
-{}
+export class AuditLogActor extends S.Struct({
+  "type": S.optionalWith(S.Literal("session", "api_key"), { nullable: true }),
+  "session": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "api_key": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
 
-export class AssistantObject extends S.Struct({
+export class AuditLog extends S.Struct({
   "id": S.String,
-  "object": S.Literal("assistant"),
-  "created_at": S.Int,
-  "name": S.NullOr(S.String.pipe(S.maxLength(256))),
-  "description": S.NullOr(S.String.pipe(S.maxLength(512))),
-  "model": S.String,
-  "instructions": S.NullOr(S.String.pipe(S.maxLength(256000))),
-  "tools": S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128))
-    .pipe(S.propertySignature, S.withConstructorDefault(() => [] as const)),
-  "tool_resources": S.optionalWith(
+  "type": AuditLogEventType,
+  "effective_at": S.Int,
+  "project": S.optionalWith(
     S.Struct({
-      "code_interpreter": S.optional(S.Struct({
-        "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), { default: () => [] as const })
-      })),
-      "file_search": S.optional(S.Struct({
-        "vector_store_ids": S.optional(S.Array(S.String).pipe(S.maxItems(1)))
-      }))
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "name": S.optionalWith(S.String, { nullable: true })
     }),
     { nullable: true }
   ),
-  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "response_format": S.optional(AssistantsApiResponseFormatOption)
+  "actor": AuditLogActor,
+  "api_key.created": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "data": S.optionalWith(
+        S.Struct({
+          "scopes": S.optionalWith(S.Array(S.String), { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "api_key.updated": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "changes_requested": S.optionalWith(
+        S.Struct({
+          "scopes": S.optionalWith(S.Array(S.String), { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "api_key.deleted": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "invite.sent": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "data": S.optionalWith(
+        S.Struct({
+          "email": S.optionalWith(S.String, { nullable: true }),
+          "role": S.optionalWith(S.String, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "invite.accepted": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "invite.deleted": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "login.failed": S.optionalWith(
+    S.Struct({
+      "error_code": S.optionalWith(S.String, { nullable: true }),
+      "error_message": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "logout.failed": S.optionalWith(
+    S.Struct({
+      "error_code": S.optionalWith(S.String, { nullable: true }),
+      "error_message": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "organization.updated": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "changes_requested": S.optionalWith(
+        S.Struct({
+          "title": S.optionalWith(S.String, { nullable: true }),
+          "description": S.optionalWith(S.String, { nullable: true }),
+          "name": S.optionalWith(S.String, { nullable: true }),
+          "settings": S.optionalWith(
+            S.Struct({
+              "threads_ui_visibility": S.optionalWith(S.String, { nullable: true }),
+              "usage_dashboard_visibility": S.optionalWith(S.String, { nullable: true })
+            }),
+            { nullable: true }
+          )
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "project.created": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "data": S.optionalWith(
+        S.Struct({
+          "name": S.optionalWith(S.String, { nullable: true }),
+          "title": S.optionalWith(S.String, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "project.updated": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "changes_requested": S.optionalWith(
+        S.Struct({
+          "title": S.optionalWith(S.String, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "project.archived": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "service_account.created": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "data": S.optionalWith(
+        S.Struct({
+          "role": S.optionalWith(S.String, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "service_account.updated": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "changes_requested": S.optionalWith(
+        S.Struct({
+          "role": S.optionalWith(S.String, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "service_account.deleted": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "user.added": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "data": S.optionalWith(
+        S.Struct({
+          "role": S.optionalWith(S.String, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "user.updated": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true }),
+      "changes_requested": S.optionalWith(
+        S.Struct({
+          "role": S.optionalWith(S.String, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "user.deleted": S.optionalWith(
+    S.Struct({
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  )
 }) {}
 
-export class ListAssistantsResponse extends S.Class<ListAssistantsResponse>("ListAssistantsResponse")({
-  "object": S.String,
-  "data": S.Array(AssistantObject),
+export class ListAuditLogsResponse extends S.Class<ListAuditLogsResponse>("ListAuditLogsResponse")({
+  "object": S.Literal("list"),
+  "data": S.Array(AuditLog),
   "first_id": S.String,
   "last_id": S.String,
   "has_more": S.Boolean
 }) {}
 
-export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("CreateAssistantRequest")({
-  "model": S.Union(
-    S.String,
-    S.Literal(
-      "gpt-4o",
-      "gpt-4o-2024-08-06",
-      "gpt-4o-2024-05-13",
-      "gpt-4o-2024-08-06",
-      "gpt-4o-mini",
-      "gpt-4o-mini-2024-07-18",
-      "gpt-4-turbo",
-      "gpt-4-turbo-2024-04-09",
-      "gpt-4-0125-preview",
-      "gpt-4-turbo-preview",
-      "gpt-4-1106-preview",
-      "gpt-4-vision-preview",
-      "gpt-4",
-      "gpt-4-0314",
-      "gpt-4-0613",
-      "gpt-4-32k",
-      "gpt-4-32k-0314",
-      "gpt-4-32k-0613",
-      "gpt-3.5-turbo",
-      "gpt-3.5-turbo-16k",
-      "gpt-3.5-turbo-0613",
-      "gpt-3.5-turbo-1106",
-      "gpt-3.5-turbo-0125",
-      "gpt-3.5-turbo-16k-0613"
-    )
-  ),
-  "name": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true }),
-  "description": S.optionalWith(S.String.pipe(S.maxLength(512)), { nullable: true }),
-  "instructions": S.optionalWith(S.String.pipe(S.maxLength(256000)), { nullable: true }),
-  "tools": S.optionalWith(
-    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128)),
-    { default: () => [] as const }
-  ),
-  "tool_resources": S.optionalWith(
-    S.Struct({
-      "code_interpreter": S.optional(S.Struct({
-        "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), { default: () => [] as const })
-      })),
-      "file_search": S.optional(S.Struct({
-        "vector_store_ids": S.optional(S.Array(S.String).pipe(S.maxItems(1))),
-        "vector_stores": S.optional(
-          S.Array(S.Struct({
-            "file_ids": S.optional(S.Array(S.String).pipe(S.maxItems(10000))),
-            "chunking_strategy": S.optional(S.Record({ key: S.String, value: S.Unknown })),
-            "metadata": S.optional(S.Record({ key: S.String, value: S.Unknown }))
-          })).pipe(S.maxItems(1))
-        )
-      }))
-    }),
-    { nullable: true }
-  ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "response_format": S.optional(AssistantsApiResponseFormatOption)
+export class ListInvitesParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "after": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class ModifyAssistantRequest extends S.Class<ModifyAssistantRequest>("ModifyAssistantRequest")({
-  "model": S.optional(S.String),
-  "name": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true }),
-  "description": S.optionalWith(S.String.pipe(S.maxLength(512)), { nullable: true }),
-  "instructions": S.optionalWith(S.String.pipe(S.maxLength(256000)), { nullable: true }),
-  "tools": S.optionalWith(
-    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128)),
-    { default: () => [] as const }
-  ),
-  "tool_resources": S.optionalWith(
-    S.Struct({
-      "code_interpreter": S.optional(S.Struct({
-        "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), { default: () => [] as const })
-      })),
-      "file_search": S.optional(S.Struct({
-        "vector_store_ids": S.optional(S.Array(S.String).pipe(S.maxItems(1)))
-      }))
-    }),
-    { nullable: true }
-  ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "response_format": S.optional(AssistantsApiResponseFormatOption)
-}) {}
-
-export class DeleteAssistantResponse extends S.Class<DeleteAssistantResponse>("DeleteAssistantResponse")({
+export class Invite extends S.Struct({
+  "object": S.Literal("organization.invite"),
   "id": S.String,
-  "deleted": S.Boolean,
-  "object": S.Literal("assistant.deleted")
+  "email": S.String,
+  "role": S.Literal("owner", "reader"),
+  "status": S.Literal("accepted", "expired", "pending"),
+  "invited_at": S.Int,
+  "expires_at": S.Int,
+  "accepted_at": S.optionalWith(S.Int, { nullable: true })
+}) {}
+
+export class InviteListResponse extends S.Class<InviteListResponse>("InviteListResponse")({
+  "object": S.Literal("list"),
+  "data": S.Array(Invite),
+  "first_id": S.optionalWith(S.String, { nullable: true }),
+  "last_id": S.optionalWith(S.String, { nullable: true }),
+  "has_more": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class InviteRequest extends S.Class<InviteRequest>("InviteRequest")({
+  "email": S.String,
+  "role": S.Literal("reader", "owner")
+}) {}
+
+export class InviteDeleteResponse extends S.Class<InviteDeleteResponse>("InviteDeleteResponse")({
+  "object": S.Literal("organization.invite.deleted"),
+  "id": S.String,
+  "deleted": S.Boolean
+}) {}
+
+export class ListProjectsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "include_archived": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
+}) {}
+
+export class Project extends S.Struct({
+  "id": S.String,
+  "object": S.Literal("organization.project"),
+  "name": S.String,
+  "created_at": S.Int,
+  "archived_at": S.optionalWith(S.Int, { nullable: true }),
+  "status": S.Literal("active", "archived")
+}) {}
+
+export class ProjectListResponse extends S.Class<ProjectListResponse>("ProjectListResponse")({
+  "object": S.Literal("list"),
+  "data": S.Array(Project),
+  "first_id": S.String,
+  "last_id": S.String,
+  "has_more": S.Boolean
+}) {}
+
+export class ProjectCreateRequest extends S.Class<ProjectCreateRequest>("ProjectCreateRequest")({
+  "name": S.String
+}) {}
+
+export class ProjectUpdateRequest extends S.Class<ProjectUpdateRequest>("ProjectUpdateRequest")({
+  "name": S.String
+}) {}
+
+export class Error extends S.Struct({
+  "code": S.NullOr(S.String),
+  "message": S.String,
+  "param": S.NullOr(S.String),
+  "type": S.String
+}) {}
+
+export class ErrorResponse extends S.Class<ErrorResponse>("ErrorResponse")({
+  "error": Error
+}) {}
+
+export class ListProjectApiKeysParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "after": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ProjectUser extends S.Struct({
+  "object": S.Literal("organization.project.user"),
+  "id": S.String,
+  "name": S.String,
+  "email": S.String,
+  "role": S.Literal("owner", "member"),
+  "added_at": S.Int
+}) {}
+
+export class ProjectServiceAccount extends S.Struct({
+  "object": S.Literal("organization.project.service_account"),
+  "id": S.String,
+  "name": S.String,
+  "role": S.Literal("owner", "member"),
+  "created_at": S.Int
+}) {}
+
+export class ProjectApiKey extends S.Struct({
+  "object": S.Literal("organization.project.api_key"),
+  "redacted_value": S.String,
+  "name": S.String,
+  "created_at": S.Int,
+  "id": S.String,
+  "owner": S.Struct({
+    "type": S.optionalWith(S.Literal("user", "service_account"), { nullable: true }),
+    "user": S.optionalWith(ProjectUser, { nullable: true }),
+    "service_account": S.optionalWith(ProjectServiceAccount, { nullable: true })
+  })
+}) {}
+
+export class ProjectApiKeyListResponse extends S.Class<ProjectApiKeyListResponse>("ProjectApiKeyListResponse")({
+  "object": S.Literal("list"),
+  "data": S.Array(ProjectApiKey),
+  "first_id": S.String,
+  "last_id": S.String,
+  "has_more": S.Boolean
+}) {}
+
+export class ProjectApiKeyDeleteResponse extends S.Class<ProjectApiKeyDeleteResponse>("ProjectApiKeyDeleteResponse")({
+  "object": S.Literal("organization.project.api_key.deleted"),
+  "id": S.String,
+  "deleted": S.Boolean
+}) {}
+
+export class ListProjectServiceAccountsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "after": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ProjectServiceAccountListResponse
+  extends S.Class<ProjectServiceAccountListResponse>("ProjectServiceAccountListResponse")({
+    "object": S.Literal("list"),
+    "data": S.Array(ProjectServiceAccount),
+    "first_id": S.String,
+    "last_id": S.String,
+    "has_more": S.Boolean
+  })
+{}
+
+export class ProjectServiceAccountCreateRequest
+  extends S.Class<ProjectServiceAccountCreateRequest>("ProjectServiceAccountCreateRequest")({
+    "name": S.String
+  })
+{}
+
+export class ProjectServiceAccountApiKey extends S.Struct({
+  "object": S.Literal("organization.project.service_account.api_key"),
+  "value": S.String,
+  "name": S.String,
+  "created_at": S.Int,
+  "id": S.String
+}) {}
+
+export class ProjectServiceAccountCreateResponse
+  extends S.Class<ProjectServiceAccountCreateResponse>("ProjectServiceAccountCreateResponse")({
+    "object": S.Literal("organization.project.service_account"),
+    "id": S.String,
+    "name": S.String,
+    "role": S.Literal("member"),
+    "created_at": S.Int,
+    "api_key": ProjectServiceAccountApiKey
+  })
+{}
+
+export class ProjectServiceAccountDeleteResponse
+  extends S.Class<ProjectServiceAccountDeleteResponse>("ProjectServiceAccountDeleteResponse")({
+    "object": S.Literal("organization.project.service_account.deleted"),
+    "id": S.String,
+    "deleted": S.Boolean
+  })
+{}
+
+export class ListProjectUsersParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "after": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ProjectUserListResponse extends S.Class<ProjectUserListResponse>("ProjectUserListResponse")({
+  "object": S.String,
+  "data": S.Array(ProjectUser),
+  "first_id": S.String,
+  "last_id": S.String,
+  "has_more": S.Boolean
+}) {}
+
+export class ProjectUserCreateRequest extends S.Class<ProjectUserCreateRequest>("ProjectUserCreateRequest")({
+  "user_id": S.String,
+  "role": S.Literal("owner", "member")
+}) {}
+
+export class ProjectUserUpdateRequest extends S.Class<ProjectUserUpdateRequest>("ProjectUserUpdateRequest")({
+  "role": S.Literal("owner", "member")
+}) {}
+
+export class ProjectUserDeleteResponse extends S.Class<ProjectUserDeleteResponse>("ProjectUserDeleteResponse")({
+  "object": S.Literal("organization.project.user.deleted"),
+  "id": S.String,
+  "deleted": S.Boolean
+}) {}
+
+export class ListUsersParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "after": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class User extends S.Struct({
+  "object": S.Literal("organization.user"),
+  "id": S.String,
+  "name": S.String,
+  "email": S.String,
+  "role": S.Literal("owner", "reader"),
+  "added_at": S.Int
+}) {}
+
+export class UserListResponse extends S.Class<UserListResponse>("UserListResponse")({
+  "object": S.Literal("list"),
+  "data": S.Array(User),
+  "first_id": S.String,
+  "last_id": S.String,
+  "has_more": S.Boolean
+}) {}
+
+export class UserRoleUpdateRequest extends S.Class<UserRoleUpdateRequest>("UserRoleUpdateRequest")({
+  "role": S.Literal("owner", "reader")
+}) {}
+
+export class UserDeleteResponse extends S.Class<UserDeleteResponse>("UserDeleteResponse")({
+  "object": S.Literal("organization.user.deleted"),
+  "id": S.String,
+  "deleted": S.Boolean
 }) {}
 
 export class MessageContentImageFileObject extends S.Struct({
   "type": S.Literal("image_file"),
   "image_file": S.Struct({
     "file_id": S.String,
-    "detail": S.optionalWith(S.Literal("auto", "low", "high"), { default: () => "auto" as const })
+    "detail": S.optionalWith(S.Literal("auto", "low", "high"), { nullable: true, default: () => "auto" as const })
   })
 }) {}
 
@@ -975,7 +1629,7 @@ export class MessageContentImageUrlObject extends S.Struct({
   "type": S.Literal("image_url"),
   "image_url": S.Struct({
     "url": S.String,
-    "detail": S.optionalWith(S.Literal("auto", "low", "high"), { default: () => "auto" as const })
+    "detail": S.optionalWith(S.Literal("auto", "low", "high"), { nullable: true, default: () => "auto" as const })
   })
 }) {}
 
@@ -998,8 +1652,10 @@ export class CreateMessageRequest extends S.Struct({
   ),
   "attachments": S.optionalWith(
     S.Array(S.Struct({
-      "file_id": S.optional(S.String),
-      "tools": S.optional(S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearchTypeOnly)))
+      "file_id": S.optionalWith(S.String, { nullable: true }),
+      "tools": S.optionalWith(S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearchTypeOnly)), {
+        nullable: true
+      })
     })),
     { nullable: true }
   ),
@@ -1007,22 +1663,32 @@ export class CreateMessageRequest extends S.Struct({
 }) {}
 
 export class CreateThreadRequest extends S.Class<CreateThreadRequest>("CreateThreadRequest")({
-  "messages": S.optional(S.Array(CreateMessageRequest)),
+  "messages": S.optionalWith(S.Array(CreateMessageRequest), { nullable: true }),
   "tool_resources": S.optionalWith(
     S.Struct({
-      "code_interpreter": S.optional(S.Struct({
-        "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), { default: () => [] as const })
-      })),
-      "file_search": S.optional(S.Struct({
-        "vector_store_ids": S.optional(S.Array(S.String).pipe(S.maxItems(1))),
-        "vector_stores": S.optional(
-          S.Array(S.Struct({
-            "file_ids": S.optional(S.Array(S.String).pipe(S.maxItems(10000))),
-            "chunking_strategy": S.optional(S.Record({ key: S.String, value: S.Unknown })),
-            "metadata": S.optional(S.Record({ key: S.String, value: S.Unknown }))
-          })).pipe(S.maxItems(1))
-        )
-      }))
+      "code_interpreter": S.optionalWith(
+        S.Struct({
+          "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
+            nullable: true,
+            default: () => [] as const
+          })
+        }),
+        { nullable: true }
+      ),
+      "file_search": S.optionalWith(
+        S.Struct({
+          "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true }),
+          "vector_stores": S.optionalWith(
+            S.Array(S.Struct({
+              "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(10000)), { nullable: true }),
+              "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+              "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+            })).pipe(S.maxItems(1)),
+            { nullable: true }
+          )
+        }),
+        { nullable: true }
+      )
     }),
     { nullable: true }
   ),
@@ -1034,25 +1700,206 @@ export class ThreadObject extends S.Class<ThreadObject>("ThreadObject")({
   "object": S.Literal("thread"),
   "created_at": S.Int,
   "tool_resources": S.NullOr(S.Struct({
-    "code_interpreter": S.optional(S.Struct({
-      "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), { default: () => [] as const })
-    })),
-    "file_search": S.optional(S.Struct({
-      "vector_store_ids": S.optional(S.Array(S.String).pipe(S.maxItems(1)))
-    }))
+    "code_interpreter": S.optionalWith(
+      S.Struct({
+        "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
+          nullable: true,
+          default: () => [] as const
+        })
+      }),
+      { nullable: true }
+    ),
+    "file_search": S.optionalWith(
+      S.Struct({
+        "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
+      }),
+      { nullable: true }
+    )
   })),
   "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
+}) {}
+
+export class TruncationObject extends S.Struct({
+  "type": S.Literal("auto", "last_messages"),
+  "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
+}) {}
+
+export class AssistantsNamedToolChoice extends S.Struct({
+  "type": S.Literal("function", "code_interpreter", "file_search"),
+  "function": S.optionalWith(
+    S.Struct({
+      "name": S.String
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class AssistantsApiToolChoiceOption
+  extends S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice)
+{}
+
+export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest>("CreateThreadAndRunRequest")({
+  "assistant_id": S.String,
+  "thread": S.optionalWith(CreateThreadRequest, { nullable: true }),
+  "model": S.optionalWith(
+    S.Union(
+      S.String,
+      S.Literal(
+        "gpt-4o",
+        "gpt-4o-2024-08-06",
+        "gpt-4o-2024-05-13",
+        "gpt-4o-2024-08-06",
+        "gpt-4o-mini",
+        "gpt-4o-mini-2024-07-18",
+        "gpt-4-turbo",
+        "gpt-4-turbo-2024-04-09",
+        "gpt-4-0125-preview",
+        "gpt-4-turbo-preview",
+        "gpt-4-1106-preview",
+        "gpt-4-vision-preview",
+        "gpt-4",
+        "gpt-4-0314",
+        "gpt-4-0613",
+        "gpt-4-32k",
+        "gpt-4-32k-0314",
+        "gpt-4-32k-0613",
+        "gpt-3.5-turbo",
+        "gpt-3.5-turbo-16k",
+        "gpt-3.5-turbo-0613",
+        "gpt-3.5-turbo-1106",
+        "gpt-3.5-turbo-0125",
+        "gpt-3.5-turbo-16k-0613"
+      )
+    ),
+    { nullable: true }
+  ),
+  "instructions": S.optionalWith(S.String, { nullable: true }),
+  "tools": S.optionalWith(
+    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20)),
+    { nullable: true }
+  ),
+  "tool_resources": S.optionalWith(
+    S.Struct({
+      "code_interpreter": S.optionalWith(
+        S.Struct({
+          "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
+            nullable: true,
+            default: () => [] as const
+          })
+        }),
+        { nullable: true }
+      ),
+      "file_search": S.optionalWith(
+        S.Struct({
+          "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
+    nullable: true,
+    default: () => 1 as const
+  }),
+  "stream": S.optionalWith(S.Boolean, { nullable: true }),
+  "max_prompt_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
+  "max_completion_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
+  "truncation_strategy": S.optionalWith(TruncationObject, { nullable: true }),
+  "tool_choice": S.optionalWith(AssistantsApiToolChoiceOption, { nullable: true }),
+  "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
+  "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
+}) {}
+
+export class RunToolCallObject extends S.Struct({
+  "id": S.String,
+  "type": S.Literal("function"),
+  "function": S.Struct({
+    "name": S.String,
+    "arguments": S.String
+  })
+}) {}
+
+export class RunCompletionUsage extends S.Struct({
+  "completion_tokens": S.Int,
+  "prompt_tokens": S.Int,
+  "total_tokens": S.Int
+}) {}
+
+export class RunObject extends S.Class<RunObject>("RunObject")({
+  "id": S.String,
+  "object": S.Literal("thread.run"),
+  "created_at": S.Int,
+  "thread_id": S.String,
+  "assistant_id": S.String,
+  "status": S.Literal(
+    "queued",
+    "in_progress",
+    "requires_action",
+    "cancelling",
+    "cancelled",
+    "failed",
+    "completed",
+    "incomplete",
+    "expired"
+  ),
+  "required_action": S.NullOr(S.Struct({
+    "type": S.Literal("submit_tool_outputs"),
+    "submit_tool_outputs": S.Struct({
+      "tool_calls": S.Array(RunToolCallObject)
+    })
+  })),
+  "last_error": S.NullOr(S.Struct({
+    "code": S.Literal("server_error", "rate_limit_exceeded", "invalid_prompt"),
+    "message": S.String
+  })),
+  "expires_at": S.NullOr(S.Int),
+  "started_at": S.NullOr(S.Int),
+  "cancelled_at": S.NullOr(S.Int),
+  "failed_at": S.NullOr(S.Int),
+  "completed_at": S.NullOr(S.Int),
+  "incomplete_details": S.NullOr(S.Struct({
+    "reason": S.optionalWith(S.Literal("max_completion_tokens", "max_prompt_tokens"), { nullable: true })
+  })),
+  "model": S.String,
+  "instructions": S.String,
+  "tools": S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20))
+    .pipe(S.propertySignature, S.withConstructorDefault(() => [] as const)),
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "usage": S.NullOr(RunCompletionUsage),
+  "temperature": S.optionalWith(S.Number, { nullable: true }),
+  "top_p": S.optionalWith(S.Number, { nullable: true }),
+  "max_prompt_tokens": S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(256))),
+  "max_completion_tokens": S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(256))),
+  "truncation_strategy": TruncationObject,
+  "tool_choice": AssistantsApiToolChoiceOption,
+  "parallel_tool_calls": ParallelToolCalls.pipe(S.propertySignature, S.withConstructorDefault(() => true as const)),
+  "response_format": AssistantsApiResponseFormatOption
 }) {}
 
 export class ModifyThreadRequest extends S.Class<ModifyThreadRequest>("ModifyThreadRequest")({
   "tool_resources": S.optionalWith(
     S.Struct({
-      "code_interpreter": S.optional(S.Struct({
-        "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), { default: () => [] as const })
-      })),
-      "file_search": S.optional(S.Struct({
-        "vector_store_ids": S.optional(S.Array(S.String).pipe(S.maxItems(1)))
-      }))
+      "code_interpreter": S.optionalWith(
+        S.Struct({
+          "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
+            nullable: true,
+            default: () => [] as const
+          })
+        }),
+        { nullable: true }
+      ),
+      "file_search": S.optionalWith(
+        S.Struct({
+          "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
+        }),
+        { nullable: true }
+      )
     }),
     { nullable: true }
   ),
@@ -1066,11 +1913,11 @@ export class DeleteThreadResponse extends S.Class<DeleteThreadResponse>("DeleteT
 }) {}
 
 export class ListMessagesParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "order": S.optionalWith(S.Literal("asc", "desc"), { default: () => "desc" as const }),
-  "after": S.optional(S.String),
-  "before": S.optional(S.String),
-  "run_id": S.optional(S.String)
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(S.Literal("asc", "desc"), { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true }),
+  "run_id": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class MessageContentTextAnnotationsFileCitationObject extends S.Struct({
@@ -1131,8 +1978,8 @@ export class MessageObject extends S.Struct({
   "assistant_id": S.NullOr(S.String),
   "run_id": S.NullOr(S.String),
   "attachments": S.NullOr(S.Array(S.Struct({
-    "file_id": S.optional(S.String),
-    "tools": S.optional(S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearchTypeOnly)))
+    "file_id": S.optionalWith(S.String, { nullable: true }),
+    "tools": S.optionalWith(S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearchTypeOnly)), { nullable: true })
   }))),
   "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
 }) {}
@@ -1155,162 +2002,11 @@ export class DeleteMessageResponse extends S.Class<DeleteMessageResponse>("Delet
   "object": S.Literal("thread.message.deleted")
 }) {}
 
-export class TruncationObject extends S.Struct({
-  "type": S.Literal("auto", "last_messages"),
-  "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
-}) {}
-
-export class AssistantsNamedToolChoice extends S.Struct({
-  "type": S.Literal("function", "code_interpreter", "file_search"),
-  "function": S.optional(S.Struct({
-    "name": S.String
-  }))
-}) {}
-
-export class AssistantsApiToolChoiceOption
-  extends S.Union(S.Literal("none", "auto", "required"), AssistantsNamedToolChoice)
-{}
-
-export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest>("CreateThreadAndRunRequest")({
-  "assistant_id": S.String,
-  "thread": S.optional(CreateThreadRequest),
-  "model": S.optionalWith(
-    S.Union(
-      S.String,
-      S.Literal(
-        "gpt-4o",
-        "gpt-4o-2024-08-06",
-        "gpt-4o-2024-05-13",
-        "gpt-4o-2024-08-06",
-        "gpt-4o-mini",
-        "gpt-4o-mini-2024-07-18",
-        "gpt-4-turbo",
-        "gpt-4-turbo-2024-04-09",
-        "gpt-4-0125-preview",
-        "gpt-4-turbo-preview",
-        "gpt-4-1106-preview",
-        "gpt-4-vision-preview",
-        "gpt-4",
-        "gpt-4-0314",
-        "gpt-4-0613",
-        "gpt-4-32k",
-        "gpt-4-32k-0314",
-        "gpt-4-32k-0613",
-        "gpt-3.5-turbo",
-        "gpt-3.5-turbo-16k",
-        "gpt-3.5-turbo-0613",
-        "gpt-3.5-turbo-1106",
-        "gpt-3.5-turbo-0125",
-        "gpt-3.5-turbo-16k-0613"
-      )
-    ),
-    { nullable: true }
-  ),
-  "instructions": S.optionalWith(S.String, { nullable: true }),
-  "tools": S.optionalWith(
-    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20)),
-    { nullable: true }
-  ),
-  "tool_resources": S.optionalWith(
-    S.Struct({
-      "code_interpreter": S.optional(S.Struct({
-        "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), { default: () => [] as const })
-      })),
-      "file_search": S.optional(S.Struct({
-        "vector_store_ids": S.optional(S.Array(S.String).pipe(S.maxItems(1)))
-      }))
-    }),
-    { nullable: true }
-  ),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  "stream": S.optionalWith(S.Boolean, { nullable: true }),
-  "max_prompt_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
-  "max_completion_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
-  "truncation_strategy": S.optional(TruncationObject),
-  "tool_choice": S.optional(AssistantsApiToolChoiceOption),
-  "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { default: () => true as const }),
-  "response_format": S.optional(AssistantsApiResponseFormatOption)
-}) {}
-
-export class RunToolCallObject extends S.Struct({
-  "id": S.String,
-  "type": S.Literal("function"),
-  "function": S.Struct({
-    "name": S.String,
-    "arguments": S.String
-  })
-}) {}
-
-export class RunCompletionUsage extends S.Struct({
-  "completion_tokens": S.Int,
-  "prompt_tokens": S.Int,
-  "total_tokens": S.Int
-}) {}
-
-export class RunObject extends S.Class<RunObject>("RunObject")({
-  "id": S.String,
-  "object": S.Literal("thread.run"),
-  "created_at": S.Int,
-  "thread_id": S.String,
-  "assistant_id": S.String,
-  "status": S.Literal(
-    "queued",
-    "in_progress",
-    "requires_action",
-    "cancelling",
-    "cancelled",
-    "failed",
-    "completed",
-    "incomplete",
-    "expired"
-  ),
-  "required_action": S.NullOr(S.Struct({
-    "type": S.Literal("submit_tool_outputs"),
-    "submit_tool_outputs": S.Struct({
-      "tool_calls": S.Array(RunToolCallObject)
-    })
-  })),
-  "last_error": S.NullOr(S.Struct({
-    "code": S.Literal("server_error", "rate_limit_exceeded", "invalid_prompt"),
-    "message": S.String
-  })),
-  "expires_at": S.NullOr(S.Int),
-  "started_at": S.NullOr(S.Int),
-  "cancelled_at": S.NullOr(S.Int),
-  "failed_at": S.NullOr(S.Int),
-  "completed_at": S.NullOr(S.Int),
-  "incomplete_details": S.NullOr(S.Struct({
-    "reason": S.optional(S.Literal("max_completion_tokens", "max_prompt_tokens"))
-  })),
-  "model": S.String,
-  "instructions": S.String,
-  "tools": S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20))
-    .pipe(S.propertySignature, S.withConstructorDefault(() => [] as const)),
-  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
-  "usage": S.NullOr(RunCompletionUsage),
-  "temperature": S.optionalWith(S.Number, { nullable: true }),
-  "top_p": S.optionalWith(S.Number, { nullable: true }),
-  "max_prompt_tokens": S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(256))),
-  "max_completion_tokens": S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(256))),
-  "truncation_strategy": TruncationObject,
-  "tool_choice": AssistantsApiToolChoiceOption,
-  "parallel_tool_calls": ParallelToolCalls.pipe(S.propertySignature, S.withConstructorDefault(() => true as const)),
-  "response_format": AssistantsApiResponseFormatOption
-}) {}
-
 export class ListRunsParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "order": S.optionalWith(S.Literal("asc", "desc"), { default: () => "desc" as const }),
-  "after": S.optional(S.String),
-  "before": S.optional(S.String)
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(S.Literal("asc", "desc"), { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class ListRunsResponse extends S.Class<ListRunsResponse>("ListRunsResponse")({
@@ -1322,7 +2018,9 @@ export class ListRunsResponse extends S.Class<ListRunsResponse>("ListRunsRespons
 }) {}
 
 export class CreateRunParams extends S.Struct({
-  "include[]": S.optional(S.Array(S.Literal("step_details.tool_calls[*].file_search.results[*].content")))
+  "include[]": S.optionalWith(S.Array(S.Literal("step_details.tool_calls[*].file_search.results[*].content")), {
+    nullable: true
+  })
 }) {}
 
 export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunRequest")({
@@ -1378,30 +2076,24 @@ export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunReques
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
   "max_prompt_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
   "max_completion_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(256)), { nullable: true }),
-  "truncation_strategy": S.optional(TruncationObject),
-  "tool_choice": S.optional(AssistantsApiToolChoiceOption),
-  "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { default: () => true as const }),
-  "response_format": S.optional(AssistantsApiResponseFormatOption)
+  "truncation_strategy": S.optionalWith(TruncationObject, { nullable: true }),
+  "tool_choice": S.optionalWith(AssistantsApiToolChoiceOption, { nullable: true }),
+  "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
+  "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
 }) {}
 
 export class ModifyRunRequest extends S.Class<ModifyRunRequest>("ModifyRunRequest")({
   "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
-export class SubmitToolOutputsRunRequest extends S.Class<SubmitToolOutputsRunRequest>("SubmitToolOutputsRunRequest")({
-  "tool_outputs": S.Array(S.Struct({
-    "tool_call_id": S.optional(S.String),
-    "output": S.optional(S.String)
-  })),
-  "stream": S.optionalWith(S.Boolean, { nullable: true })
-}) {}
-
 export class ListRunStepsParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "order": S.optionalWith(S.Literal("asc", "desc"), { default: () => "desc" as const }),
-  "after": S.optional(S.String),
-  "before": S.optional(S.String),
-  "include[]": S.optional(S.Array(S.Literal("step_details.tool_calls[*].file_search.results[*].content")))
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(S.Literal("asc", "desc"), { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true }),
+  "include[]": S.optionalWith(S.Array(S.Literal("step_details.tool_calls[*].file_search.results[*].content")), {
+    nullable: true
+  })
 }) {}
 
 export class RunStepDetailsMessageCreationObject extends S.Struct({
@@ -1441,18 +2133,21 @@ export class RunStepDetailsToolCallsFileSearchResultObject extends S.Struct({
   "file_id": S.String,
   "file_name": S.String,
   "score": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)),
-  "content": S.optional(S.Array(S.Struct({
-    "type": S.optional(S.Literal("text")),
-    "text": S.optional(S.String)
-  })))
+  "content": S.optionalWith(
+    S.Array(S.Struct({
+      "type": S.optionalWith(S.Literal("text"), { nullable: true }),
+      "text": S.optionalWith(S.String, { nullable: true })
+    })),
+    { nullable: true }
+  )
 }) {}
 
 export class RunStepDetailsToolCallsFileSearchObject extends S.Struct({
   "id": S.String,
   "type": S.Literal("file_search"),
   "file_search": S.Struct({
-    "ranking_options": S.optional(RunStepDetailsToolCallsFileSearchRankingOptionsObject),
-    "results": S.optional(S.Array(RunStepDetailsToolCallsFileSearchResultObject))
+    "ranking_options": S.optionalWith(RunStepDetailsToolCallsFileSearchRankingOptionsObject, { nullable: true }),
+    "results": S.optionalWith(S.Array(RunStepDetailsToolCallsFileSearchResultObject), { nullable: true })
   })
 }) {}
 
@@ -1514,14 +2209,55 @@ export class ListRunStepsResponse extends S.Class<ListRunStepsResponse>("ListRun
 }) {}
 
 export class GetRunStepParams extends S.Struct({
-  "include[]": S.optional(S.Array(S.Literal("step_details.tool_calls[*].file_search.results[*].content")))
+  "include[]": S.optionalWith(S.Array(S.Literal("step_details.tool_calls[*].file_search.results[*].content")), {
+    nullable: true
+  })
+}) {}
+
+export class SubmitToolOutputsRunRequest extends S.Class<SubmitToolOutputsRunRequest>("SubmitToolOutputsRunRequest")({
+  "tool_outputs": S.Array(S.Struct({
+    "tool_call_id": S.optionalWith(S.String, { nullable: true }),
+    "output": S.optionalWith(S.String, { nullable: true })
+  })),
+  "stream": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class CreateUploadRequest extends S.Class<CreateUploadRequest>("CreateUploadRequest")({
+  "filename": S.String,
+  "purpose": S.Literal("assistants", "batch", "fine-tune", "vision"),
+  "bytes": S.Int,
+  "mime_type": S.String
+}) {}
+
+export class Upload extends S.Class<Upload>("Upload")({
+  "id": S.String,
+  "created_at": S.Int,
+  "filename": S.String,
+  "bytes": S.Int,
+  "purpose": S.String,
+  "status": S.Literal("pending", "completed", "cancelled", "expired"),
+  "expires_at": S.Int,
+  "object": S.optionalWith(S.Literal("upload"), { nullable: true }),
+  "file": S.optionalWith(OpenAIFile, { nullable: true })
+}) {}
+
+export class CompleteUploadRequest extends S.Class<CompleteUploadRequest>("CompleteUploadRequest")({
+  "part_ids": S.Array(S.String),
+  "md5": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UploadPart extends S.Class<UploadPart>("UploadPart")({
+  "id": S.String,
+  "created_at": S.Int,
+  "upload_id": S.String,
+  "object": S.Literal("upload.part")
 }) {}
 
 export class ListVectorStoresParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "order": S.optionalWith(S.Literal("asc", "desc"), { default: () => "desc" as const }),
-  "after": S.optional(S.String),
-  "before": S.optional(S.String)
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(S.Literal("asc", "desc"), { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class VectorStoreExpirationAfter extends S.Struct({
@@ -1543,7 +2279,7 @@ export class VectorStoreObject extends S.Struct({
     "total": S.Int
   }),
   "status": S.Literal("expired", "in_progress", "completed"),
-  "expires_after": S.optional(VectorStoreExpirationAfter),
+  "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
   "expires_at": S.optionalWith(S.Int, { nullable: true }),
   "last_active_at": S.NullOr(S.Int),
   "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
@@ -1572,16 +2308,16 @@ export class StaticChunkingStrategyRequestParam extends S.Struct({
 }) {}
 
 export class CreateVectorStoreRequest extends S.Class<CreateVectorStoreRequest>("CreateVectorStoreRequest")({
-  "file_ids": S.optional(S.Array(S.String).pipe(S.maxItems(500))),
-  "name": S.optional(S.String),
-  "expires_after": S.optional(VectorStoreExpirationAfter),
-  "chunking_strategy": S.optional(S.Record({ key: S.String, value: S.Unknown })),
+  "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(500)), { nullable: true }),
+  "name": S.optionalWith(S.String, { nullable: true }),
+  "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
+  "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class UpdateVectorStoreRequest extends S.Class<UpdateVectorStoreRequest>("UpdateVectorStoreRequest")({
   "name": S.optionalWith(S.String, { nullable: true }),
-  "expires_after": S.optional(VectorStoreExpirationAfter),
+  "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
   "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
@@ -1591,12 +2327,36 @@ export class DeleteVectorStoreResponse extends S.Class<DeleteVectorStoreResponse
   "object": S.Literal("vector_store.deleted")
 }) {}
 
-export class ListVectorStoreFilesParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "order": S.optionalWith(S.Literal("asc", "desc"), { default: () => "desc" as const }),
-  "after": S.optional(S.String),
-  "before": S.optional(S.String),
-  "filter": S.optional(S.Literal("in_progress", "completed", "failed", "cancelled"))
+export class ChunkingStrategyRequestParam extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+export class CreateVectorStoreFileBatchRequest
+  extends S.Class<CreateVectorStoreFileBatchRequest>("CreateVectorStoreFileBatchRequest")({
+    "file_ids": S.Array(S.String).pipe(S.minItems(1), S.maxItems(500)),
+    "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true })
+  })
+{}
+
+export class VectorStoreFileBatchObject extends S.Class<VectorStoreFileBatchObject>("VectorStoreFileBatchObject")({
+  "id": S.String,
+  "object": S.Literal("vector_store.files_batch"),
+  "created_at": S.Int,
+  "vector_store_id": S.String,
+  "status": S.Literal("in_progress", "completed", "cancelled", "failed"),
+  "file_counts": S.Struct({
+    "in_progress": S.Int,
+    "completed": S.Int,
+    "failed": S.Int,
+    "cancelled": S.Int,
+    "total": S.Int
+  })
+}) {}
+
+export class ListFilesInVectorStoreBatchParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(S.Literal("asc", "desc"), { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true }),
+  "filter": S.optionalWith(S.Literal("in_progress", "completed", "failed", "cancelled"), { nullable: true })
 }) {}
 
 export class StaticChunkingStrategyResponseParam extends S.Struct({
@@ -1619,7 +2379,7 @@ export class VectorStoreFileObject extends S.Struct({
     "code": S.Literal("server_error", "unsupported_file", "invalid_file"),
     "message": S.String
   })),
-  "chunking_strategy": S.optional(S.Record({ key: S.String, value: S.Unknown }))
+  "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class ListVectorStoreFilesResponse
@@ -1632,12 +2392,18 @@ export class ListVectorStoreFilesResponse
   })
 {}
 
-export class ChunkingStrategyRequestParam extends S.Record({ key: S.String, value: S.Unknown }) {}
+export class ListVectorStoreFilesParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(S.Literal("asc", "desc"), { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "before": S.optionalWith(S.String, { nullable: true }),
+  "filter": S.optionalWith(S.Literal("in_progress", "completed", "failed", "cancelled"), { nullable: true })
+}) {}
 
 export class CreateVectorStoreFileRequest
   extends S.Class<CreateVectorStoreFileRequest>("CreateVectorStoreFileRequest")({
     "file_id": S.String,
-    "chunking_strategy": S.optional(ChunkingStrategyRequestParam)
+    "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true })
   })
 {}
 
@@ -1648,512 +2414,6 @@ export class DeleteVectorStoreFileResponse
     "object": S.Literal("vector_store.file.deleted")
   })
 {}
-
-export class CreateVectorStoreFileBatchRequest
-  extends S.Class<CreateVectorStoreFileBatchRequest>("CreateVectorStoreFileBatchRequest")({
-    "file_ids": S.Array(S.String).pipe(S.minItems(1), S.maxItems(500)),
-    "chunking_strategy": S.optional(ChunkingStrategyRequestParam)
-  })
-{}
-
-export class VectorStoreFileBatchObject extends S.Class<VectorStoreFileBatchObject>("VectorStoreFileBatchObject")({
-  "id": S.String,
-  "object": S.Literal("vector_store.files_batch"),
-  "created_at": S.Int,
-  "vector_store_id": S.String,
-  "status": S.Literal("in_progress", "completed", "cancelled", "failed"),
-  "file_counts": S.Struct({
-    "in_progress": S.Int,
-    "completed": S.Int,
-    "failed": S.Int,
-    "cancelled": S.Int,
-    "total": S.Int
-  })
-}) {}
-
-export class ListFilesInVectorStoreBatchParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "order": S.optionalWith(S.Literal("asc", "desc"), { default: () => "desc" as const }),
-  "after": S.optional(S.String),
-  "before": S.optional(S.String),
-  "filter": S.optional(S.Literal("in_progress", "completed", "failed", "cancelled"))
-}) {}
-
-export class ListBatchesParams extends S.Struct({
-  "after": S.optional(S.String),
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const })
-}) {}
-
-export class Batch extends S.Struct({
-  "id": S.String,
-  "object": S.Literal("batch"),
-  "endpoint": S.String,
-  "errors": S.optional(S.Struct({
-    "object": S.optional(S.String),
-    "data": S.optional(S.Array(S.Struct({
-      "code": S.optional(S.String),
-      "message": S.optional(S.String),
-      "param": S.optionalWith(S.String, { nullable: true }),
-      "line": S.optionalWith(S.Int, { nullable: true })
-    })))
-  })),
-  "input_file_id": S.String,
-  "completion_window": S.String,
-  "status": S.Literal(
-    "validating",
-    "failed",
-    "in_progress",
-    "finalizing",
-    "completed",
-    "expired",
-    "cancelling",
-    "cancelled"
-  ),
-  "output_file_id": S.optional(S.String),
-  "error_file_id": S.optional(S.String),
-  "created_at": S.Int,
-  "in_progress_at": S.optional(S.Int),
-  "expires_at": S.optional(S.Int),
-  "finalizing_at": S.optional(S.Int),
-  "completed_at": S.optional(S.Int),
-  "failed_at": S.optional(S.Int),
-  "expired_at": S.optional(S.Int),
-  "cancelling_at": S.optional(S.Int),
-  "cancelled_at": S.optional(S.Int),
-  "request_counts": S.optional(S.Struct({
-    "total": S.Int,
-    "completed": S.Int,
-    "failed": S.Int
-  })),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
-}) {}
-
-export class ListBatchesResponse extends S.Class<ListBatchesResponse>("ListBatchesResponse")({
-  "data": S.Array(Batch),
-  "first_id": S.optional(S.String),
-  "last_id": S.optional(S.String),
-  "has_more": S.Boolean,
-  "object": S.Literal("list")
-}) {}
-
-export class CreateBatchRequest extends S.Class<CreateBatchRequest>("CreateBatchRequest")({
-  "input_file_id": S.String,
-  "endpoint": S.Literal("/v1/chat/completions", "/v1/embeddings", "/v1/completions"),
-  "completion_window": S.Literal("24h"),
-  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
-}) {}
-
-export class AuditLogEventType extends S.Literal(
-  "api_key.created",
-  "api_key.updated",
-  "api_key.deleted",
-  "invite.sent",
-  "invite.accepted",
-  "invite.deleted",
-  "login.succeeded",
-  "login.failed",
-  "logout.succeeded",
-  "logout.failed",
-  "organization.updated",
-  "project.created",
-  "project.updated",
-  "project.archived",
-  "service_account.created",
-  "service_account.updated",
-  "service_account.deleted",
-  "user.added",
-  "user.updated",
-  "user.deleted"
-) {}
-
-export class ListAuditLogsParams extends S.Struct({
-  "effective_at[gt]": S.optional(S.Int),
-  "effective_at[gte]": S.optional(S.Int),
-  "effective_at[lt]": S.optional(S.Int),
-  "effective_at[lte]": S.optional(S.Int),
-  "project_ids[]": S.optional(S.Array(S.String)),
-  "event_types[]": S.optional(S.Array(AuditLogEventType)),
-  "actor_ids[]": S.optional(S.Array(S.String)),
-  "actor_emails[]": S.optional(S.Array(S.String)),
-  "resource_ids[]": S.optional(S.Array(S.String)),
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "after": S.optional(S.String),
-  "before": S.optional(S.String)
-}) {}
-
-export class AuditLogActorUser extends S.Struct({
-  "id": S.optional(S.String),
-  "email": S.optional(S.String)
-}) {}
-
-export class AuditLogActorSession extends S.Struct({
-  "user": S.optional(AuditLogActorUser),
-  "ip_address": S.optional(S.String)
-}) {}
-
-export class AuditLogActorServiceAccount extends S.Struct({
-  "id": S.optional(S.String)
-}) {}
-
-export class AuditLogActorApiKey extends S.Struct({
-  "id": S.optional(S.String),
-  "type": S.optional(S.Literal("user", "service_account")),
-  "user": S.optional(AuditLogActorUser),
-  "service_account": S.optional(AuditLogActorServiceAccount)
-}) {}
-
-export class AuditLogActor extends S.Struct({
-  "type": S.optional(S.Literal("session", "api_key")),
-  "session": S.optional(S.Record({ key: S.String, value: S.Unknown })),
-  "api_key": S.optional(S.Record({ key: S.String, value: S.Unknown }))
-}) {}
-
-export class AuditLog extends S.Struct({
-  "id": S.String,
-  "type": AuditLogEventType,
-  "effective_at": S.Int,
-  "project": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "name": S.optional(S.String)
-  })),
-  "actor": AuditLogActor,
-  "api_key.created": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "data": S.optional(S.Struct({
-      "scopes": S.optional(S.Array(S.String))
-    }))
-  })),
-  "api_key.updated": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "changes_requested": S.optional(S.Struct({
-      "scopes": S.optional(S.Array(S.String))
-    }))
-  })),
-  "api_key.deleted": S.optional(S.Struct({
-    "id": S.optional(S.String)
-  })),
-  "invite.sent": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "data": S.optional(S.Struct({
-      "email": S.optional(S.String),
-      "role": S.optional(S.String)
-    }))
-  })),
-  "invite.accepted": S.optional(S.Struct({
-    "id": S.optional(S.String)
-  })),
-  "invite.deleted": S.optional(S.Struct({
-    "id": S.optional(S.String)
-  })),
-  "login.failed": S.optional(S.Struct({
-    "error_code": S.optional(S.String),
-    "error_message": S.optional(S.String)
-  })),
-  "logout.failed": S.optional(S.Struct({
-    "error_code": S.optional(S.String),
-    "error_message": S.optional(S.String)
-  })),
-  "organization.updated": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "changes_requested": S.optional(S.Struct({
-      "title": S.optional(S.String),
-      "description": S.optional(S.String),
-      "name": S.optional(S.String),
-      "settings": S.optional(S.Struct({
-        "threads_ui_visibility": S.optional(S.String),
-        "usage_dashboard_visibility": S.optional(S.String)
-      }))
-    }))
-  })),
-  "project.created": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "data": S.optional(S.Struct({
-      "name": S.optional(S.String),
-      "title": S.optional(S.String)
-    }))
-  })),
-  "project.updated": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "changes_requested": S.optional(S.Struct({
-      "title": S.optional(S.String)
-    }))
-  })),
-  "project.archived": S.optional(S.Struct({
-    "id": S.optional(S.String)
-  })),
-  "service_account.created": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "data": S.optional(S.Struct({
-      "role": S.optional(S.String)
-    }))
-  })),
-  "service_account.updated": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "changes_requested": S.optional(S.Struct({
-      "role": S.optional(S.String)
-    }))
-  })),
-  "service_account.deleted": S.optional(S.Struct({
-    "id": S.optional(S.String)
-  })),
-  "user.added": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "data": S.optional(S.Struct({
-      "role": S.optional(S.String)
-    }))
-  })),
-  "user.updated": S.optional(S.Struct({
-    "id": S.optional(S.String),
-    "changes_requested": S.optional(S.Struct({
-      "role": S.optional(S.String)
-    }))
-  })),
-  "user.deleted": S.optional(S.Struct({
-    "id": S.optional(S.String)
-  }))
-}) {}
-
-export class ListAuditLogsResponse extends S.Class<ListAuditLogsResponse>("ListAuditLogsResponse")({
-  "object": S.Literal("list"),
-  "data": S.Array(AuditLog),
-  "first_id": S.String,
-  "last_id": S.String,
-  "has_more": S.Boolean
-}) {}
-
-export class ListInvitesParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "after": S.optional(S.String)
-}) {}
-
-export class Invite extends S.Struct({
-  "object": S.Literal("organization.invite"),
-  "id": S.String,
-  "email": S.String,
-  "role": S.Literal("owner", "reader"),
-  "status": S.Literal("accepted", "expired", "pending"),
-  "invited_at": S.Int,
-  "expires_at": S.Int,
-  "accepted_at": S.optional(S.Int)
-}) {}
-
-export class InviteListResponse extends S.Class<InviteListResponse>("InviteListResponse")({
-  "object": S.Literal("list"),
-  "data": S.Array(Invite),
-  "first_id": S.optional(S.String),
-  "last_id": S.optional(S.String),
-  "has_more": S.optional(S.Boolean)
-}) {}
-
-export class InviteRequest extends S.Class<InviteRequest>("InviteRequest")({
-  "email": S.String,
-  "role": S.Literal("reader", "owner")
-}) {}
-
-export class InviteDeleteResponse extends S.Class<InviteDeleteResponse>("InviteDeleteResponse")({
-  "object": S.Literal("organization.invite.deleted"),
-  "id": S.String,
-  "deleted": S.Boolean
-}) {}
-
-export class ListUsersParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "after": S.optional(S.String)
-}) {}
-
-export class User extends S.Struct({
-  "object": S.Literal("organization.user"),
-  "id": S.String,
-  "name": S.String,
-  "email": S.String,
-  "role": S.Literal("owner", "reader"),
-  "added_at": S.Int
-}) {}
-
-export class UserListResponse extends S.Class<UserListResponse>("UserListResponse")({
-  "object": S.Literal("list"),
-  "data": S.Array(User),
-  "first_id": S.String,
-  "last_id": S.String,
-  "has_more": S.Boolean
-}) {}
-
-export class UserRoleUpdateRequest extends S.Class<UserRoleUpdateRequest>("UserRoleUpdateRequest")({
-  "role": S.Literal("owner", "reader")
-}) {}
-
-export class UserDeleteResponse extends S.Class<UserDeleteResponse>("UserDeleteResponse")({
-  "object": S.Literal("organization.user.deleted"),
-  "id": S.String,
-  "deleted": S.Boolean
-}) {}
-
-export class ListProjectsParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "after": S.optional(S.String),
-  "include_archived": S.optionalWith(S.Boolean, { default: () => false as const })
-}) {}
-
-export class Project extends S.Struct({
-  "id": S.String,
-  "object": S.Literal("organization.project"),
-  "name": S.String,
-  "created_at": S.Int,
-  "archived_at": S.optionalWith(S.Int, { nullable: true }),
-  "status": S.Literal("active", "archived")
-}) {}
-
-export class ProjectListResponse extends S.Class<ProjectListResponse>("ProjectListResponse")({
-  "object": S.Literal("list"),
-  "data": S.Array(Project),
-  "first_id": S.String,
-  "last_id": S.String,
-  "has_more": S.Boolean
-}) {}
-
-export class ProjectCreateRequest extends S.Class<ProjectCreateRequest>("ProjectCreateRequest")({
-  "name": S.String
-}) {}
-
-export class ProjectUpdateRequest extends S.Class<ProjectUpdateRequest>("ProjectUpdateRequest")({
-  "name": S.String
-}) {}
-
-export class Error extends S.Struct({
-  "code": S.NullOr(S.String),
-  "message": S.String,
-  "param": S.NullOr(S.String),
-  "type": S.String
-}) {}
-
-export class ErrorResponse extends S.Class<ErrorResponse>("ErrorResponse")({
-  "error": Error
-}) {}
-
-export class ListProjectUsersParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "after": S.optional(S.String)
-}) {}
-
-export class ProjectUser extends S.Struct({
-  "object": S.Literal("organization.project.user"),
-  "id": S.String,
-  "name": S.String,
-  "email": S.String,
-  "role": S.Literal("owner", "member"),
-  "added_at": S.Int
-}) {}
-
-export class ProjectUserListResponse extends S.Class<ProjectUserListResponse>("ProjectUserListResponse")({
-  "object": S.String,
-  "data": S.Array(ProjectUser),
-  "first_id": S.String,
-  "last_id": S.String,
-  "has_more": S.Boolean
-}) {}
-
-export class ProjectUserCreateRequest extends S.Class<ProjectUserCreateRequest>("ProjectUserCreateRequest")({
-  "user_id": S.String,
-  "role": S.Literal("owner", "member")
-}) {}
-
-export class ProjectUserUpdateRequest extends S.Class<ProjectUserUpdateRequest>("ProjectUserUpdateRequest")({
-  "role": S.Literal("owner", "member")
-}) {}
-
-export class ProjectUserDeleteResponse extends S.Class<ProjectUserDeleteResponse>("ProjectUserDeleteResponse")({
-  "object": S.Literal("organization.project.user.deleted"),
-  "id": S.String,
-  "deleted": S.Boolean
-}) {}
-
-export class ListProjectServiceAccountsParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "after": S.optional(S.String)
-}) {}
-
-export class ProjectServiceAccount extends S.Struct({
-  "object": S.Literal("organization.project.service_account"),
-  "id": S.String,
-  "name": S.String,
-  "role": S.Literal("owner", "member"),
-  "created_at": S.Int
-}) {}
-
-export class ProjectServiceAccountListResponse
-  extends S.Class<ProjectServiceAccountListResponse>("ProjectServiceAccountListResponse")({
-    "object": S.Literal("list"),
-    "data": S.Array(ProjectServiceAccount),
-    "first_id": S.String,
-    "last_id": S.String,
-    "has_more": S.Boolean
-  })
-{}
-
-export class ProjectServiceAccountCreateRequest
-  extends S.Class<ProjectServiceAccountCreateRequest>("ProjectServiceAccountCreateRequest")({
-    "name": S.String
-  })
-{}
-
-export class ProjectServiceAccountApiKey extends S.Struct({
-  "object": S.Literal("organization.project.service_account.api_key"),
-  "value": S.String,
-  "name": S.String,
-  "created_at": S.Int,
-  "id": S.String
-}) {}
-
-export class ProjectServiceAccountCreateResponse
-  extends S.Class<ProjectServiceAccountCreateResponse>("ProjectServiceAccountCreateResponse")({
-    "object": S.Literal("organization.project.service_account"),
-    "id": S.String,
-    "name": S.String,
-    "role": S.Literal("member"),
-    "created_at": S.Int,
-    "api_key": ProjectServiceAccountApiKey
-  })
-{}
-
-export class ProjectServiceAccountDeleteResponse
-  extends S.Class<ProjectServiceAccountDeleteResponse>("ProjectServiceAccountDeleteResponse")({
-    "object": S.Literal("organization.project.service_account.deleted"),
-    "id": S.String,
-    "deleted": S.Boolean
-  })
-{}
-
-export class ListProjectApiKeysParams extends S.Struct({
-  "limit": S.optionalWith(S.Int, { default: () => 20 as const }),
-  "after": S.optional(S.String)
-}) {}
-
-export class ProjectApiKey extends S.Struct({
-  "object": S.Literal("organization.project.api_key"),
-  "redacted_value": S.String,
-  "name": S.String,
-  "created_at": S.Int,
-  "id": S.String,
-  "owner": S.Struct({
-    "type": S.optional(S.Literal("user", "service_account")),
-    "user": S.optional(ProjectUser),
-    "service_account": S.optional(ProjectServiceAccount)
-  })
-}) {}
-
-export class ProjectApiKeyListResponse extends S.Class<ProjectApiKeyListResponse>("ProjectApiKeyListResponse")({
-  "object": S.Literal("list"),
-  "data": S.Array(ProjectApiKey),
-  "first_id": S.String,
-  "last_id": S.String,
-  "has_more": S.Boolean
-}) {}
-
-export class ProjectApiKeyDeleteResponse extends S.Class<ProjectApiKeyDeleteResponse>("ProjectApiKeyDeleteResponse")({
-  "object": S.Literal("organization.project.api_key.deleted"),
-  "id": S.String,
-  "deleted": S.Boolean
-}) {}
 
 export const make = (httpClient: HttpClient.HttpClient): Client => {
   const unexpectedStatus = (
@@ -2175,86 +2435,76 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
   const decodeError = <A, I, R>(response: HttpClientResponse.HttpClientResponse, schema: S.Schema<A, I, R>) =>
     Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)(response), Effect.fail)
   return {
-    "createChatCompletion": (options) =>
-      HttpClientRequest.make("POST")(`/chat/completions`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(CreateChatCompletionResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "createCompletion": (options) =>
-      HttpClientRequest.make("POST")(`/completions`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(CreateCompletionResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "createImage": (options) =>
-      HttpClientRequest.make("POST")(`/images/generations`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "createImageEdit": (options) =>
-      HttpClientRequest.make("POST")(`/images/edits`).pipe(
-        HttpClientRequest.bodyFormData(options),
+    "listAssistants": (options) =>
+      HttpClientRequest.make("GET")(`/assistants`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options["limit"],
+          "order": options["order"],
+          "after": options["after"],
+          "before": options["before"]
+        }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
+              "200": (r) => HttpClientResponse.schemaBodyJson(ListAssistantsResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
         ),
         Effect.scoped
       ),
-    "createImageVariation": (options) =>
-      HttpClientRequest.make("POST")(`/images/variations`).pipe(
-        HttpClientRequest.bodyFormData(options),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "createEmbedding": (options) =>
-      HttpClientRequest.make("POST")(`/embeddings`).pipe(
+    "createAssistant": (options) =>
+      HttpClientRequest.make("POST")(`/assistants`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(CreateEmbeddingResponse)(r),
+              "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "getAssistant": (assistantId) =>
+      HttpClientRequest.make("GET")(`/assistants/${assistantId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "modifyAssistant": (assistantId, options) =>
+      HttpClientRequest.make("POST")(`/assistants/${assistantId}`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "deleteAssistant": (assistantId) =>
+      HttpClientRequest.make("DELETE")(`/assistants/${assistantId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteAssistantResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
@@ -2298,6 +2548,105 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
               "200": (r) => HttpClientResponse.schemaBodyJson(CreateTranslation200)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "listBatches": (options) =>
+      HttpClientRequest.make("GET")(`/batches`).pipe(
+        HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ListBatchesResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createBatch": (options) =>
+      HttpClientRequest.make("POST")(`/batches`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "retrieveBatch": (batchId) =>
+      HttpClientRequest.make("GET")(`/batches/${batchId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "cancelBatch": (batchId) =>
+      HttpClientRequest.make("POST")(`/batches/${batchId}/cancel`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createChatCompletion": (options) =>
+      HttpClientRequest.make("POST")(`/chat/completions`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(CreateChatCompletionResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createCompletion": (options) =>
+      HttpClientRequest.make("POST")(`/completions`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(CreateCompletionResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createEmbedding": (options) =>
+      HttpClientRequest.make("POST")(`/embeddings`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(CreateEmbeddingResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
@@ -2376,63 +2725,6 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
-    "createUpload": (options) =>
-      HttpClientRequest.make("POST")(`/uploads`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "addUploadPart": (uploadId, options) =>
-      HttpClientRequest.make("POST")(`/uploads/${uploadId}/parts`).pipe(
-        HttpClientRequest.bodyFormData(options),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UploadPart)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "completeUpload": (uploadId, options) =>
-      HttpClientRequest.make("POST")(`/uploads/${uploadId}/complete`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "cancelUpload": (uploadId) =>
-      HttpClientRequest.make("POST")(`/uploads/${uploadId}/cancel`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
     "listPaginatedFineTuningJobs": (options) =>
       HttpClientRequest.make("GET")(`/fine_tuning/jobs`).pipe(
         HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
@@ -2476,21 +2768,6 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
-    "listFineTuningEvents": (fineTuningJobId, options) =>
-      HttpClientRequest.make("GET")(`/fine_tuning/jobs/${fineTuningJobId}/events`).pipe(
-        HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListFineTuningJobEventsResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
     "cancelFineTuningJob": (fineTuningJobId) =>
       HttpClientRequest.make("POST")(`/fine_tuning/jobs/${fineTuningJobId}/cancel`).pipe(
         Effect.succeed,
@@ -2514,6 +2791,65 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
               "200": (r) => HttpClientResponse.schemaBodyJson(ListFineTuningJobCheckpointsResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "listFineTuningEvents": (fineTuningJobId, options) =>
+      HttpClientRequest.make("GET")(`/fine_tuning/jobs/${fineTuningJobId}/events`).pipe(
+        HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ListFineTuningJobEventsResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createImageEdit": (options) =>
+      HttpClientRequest.make("POST")(`/images/edits`).pipe(
+        HttpClientRequest.bodyFormData(options),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createImage": (options) =>
+      HttpClientRequest.make("POST")(`/images/generations`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createImageVariation": (options) =>
+      HttpClientRequest.make("POST")(`/images/variations`).pipe(
+        HttpClientRequest.bodyFormData(options),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ImagesResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
@@ -2576,11 +2912,19 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
-    "listAssistants": (options) =>
-      HttpClientRequest.make("GET")(`/assistants`).pipe(
+    "listAuditLogs": (options) =>
+      HttpClientRequest.make("GET")(`/organization/audit_logs`).pipe(
         HttpClientRequest.setUrlParams({
+          "effective_at[gt]": options["effective_at[gt]"],
+          "effective_at[gte]": options["effective_at[gte]"],
+          "effective_at[lt]": options["effective_at[lt]"],
+          "effective_at[lte]": options["effective_at[lte]"],
+          "project_ids[]": options["project_ids[]"],
+          "event_types[]": options["event_types[]"],
+          "actor_ids[]": options["actor_ids[]"],
+          "actor_emails[]": options["actor_emails[]"],
+          "resource_ids[]": options["resource_ids[]"],
           "limit": options["limit"],
-          "order": options["order"],
           "after": options["after"],
           "before": options["before"]
         }),
@@ -2589,63 +2933,375 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListAssistantsResponse)(r),
+              "200": (r) => HttpClientResponse.schemaBodyJson(ListAuditLogsResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
         ),
         Effect.scoped
       ),
-    "createAssistant": (options) =>
-      HttpClientRequest.make("POST")(`/assistants`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "getAssistant": (assistantId) =>
-      HttpClientRequest.make("GET")(`/assistants/${assistantId}`).pipe(
+    "listInvites": (options) =>
+      HttpClientRequest.make("GET")(`/organization/invites`).pipe(
+        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
+              "200": (r) => HttpClientResponse.schemaBodyJson(InviteListResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
         ),
         Effect.scoped
       ),
-    "modifyAssistant": (assistantId, options) =>
-      HttpClientRequest.make("POST")(`/assistants/${assistantId}`).pipe(
+    "inviteUser": (options) =>
+      HttpClientRequest.make("POST")(`/organization/invites`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(AssistantObject)(r),
+              "200": (r) => HttpClientResponse.schemaBodyJson(Invite)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
         ),
         Effect.scoped
       ),
-    "deleteAssistant": (assistantId) =>
-      HttpClientRequest.make("DELETE")(`/assistants/${assistantId}`).pipe(
+    "retrieveInvite": (inviteId) =>
+      HttpClientRequest.make("GET")(`/organization/invites/${inviteId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteAssistantResponse)(r),
+              "200": (r) => HttpClientResponse.schemaBodyJson(Invite)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "deleteInvite": (inviteId) =>
+      HttpClientRequest.make("DELETE")(`/organization/invites/${inviteId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(InviteDeleteResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "listProjects": (options) =>
+      HttpClientRequest.make("GET")(`/organization/projects`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options["limit"],
+          "after": options["after"],
+          "include_archived": options["include_archived"]
+        }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectListResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createProject": (options) =>
+      HttpClientRequest.make("POST")(`/organization/projects`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "retrieveProject": (projectId) =>
+      HttpClientRequest.make("GET")(`/organization/projects/${projectId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "modifyProject": (projectId, options) =>
+      HttpClientRequest.make("POST")(`/organization/projects/${projectId}`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
+              "400": (r) => decodeError(r, ErrorResponse),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "listProjectApiKeys": (projectId, options) =>
+      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/api_keys`).pipe(
+        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKeyListResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "retrieveProjectApiKey": (projectId, keyId) =>
+      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/api_keys/${keyId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKey)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "deleteProjectApiKey": (projectId, keyId) =>
+      HttpClientRequest.make("DELETE")(`/organization/projects/${projectId}/api_keys/${keyId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKeyDeleteResponse)(r),
+              "400": (r) => decodeError(r, ErrorResponse),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "archiveProject": (projectId) =>
+      HttpClientRequest.make("POST")(`/organization/projects/${projectId}/archive`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "listProjectServiceAccounts": (projectId, options) =>
+      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/service_accounts`).pipe(
+        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountListResponse)(r),
+              "400": (r) => decodeError(r, ErrorResponse),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createProjectServiceAccount": (projectId, options) =>
+      HttpClientRequest.make("POST")(`/organization/projects/${projectId}/service_accounts`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountCreateResponse)(r),
+              "400": (r) => decodeError(r, ErrorResponse),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "retrieveProjectServiceAccount": (projectId, serviceAccountId) =>
+      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/service_accounts/${serviceAccountId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccount)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "deleteProjectServiceAccount": (projectId, serviceAccountId) =>
+      HttpClientRequest.make("DELETE")(`/organization/projects/${projectId}/service_accounts/${serviceAccountId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountDeleteResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "listProjectUsers": (projectId, options) =>
+      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/users`).pipe(
+        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUserListResponse)(r),
+              "400": (r) => decodeError(r, ErrorResponse),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createProjectUser": (projectId, options) =>
+      HttpClientRequest.make("POST")(`/organization/projects/${projectId}/users`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
+              "400": (r) => decodeError(r, ErrorResponse),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "retrieveProjectUser": (projectId, userId) =>
+      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/users/${userId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "modifyProjectUser": (projectId, userId, options) =>
+      HttpClientRequest.make("POST")(`/organization/projects/${projectId}/users/${userId}`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
+              "400": (r) => decodeError(r, ErrorResponse),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "deleteProjectUser": (projectId, userId) =>
+      HttpClientRequest.make("DELETE")(`/organization/projects/${projectId}/users/${userId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUserDeleteResponse)(r),
+              "400": (r) => decodeError(r, ErrorResponse),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "listUsers": (options) =>
+      HttpClientRequest.make("GET")(`/organization/users`).pipe(
+        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UserListResponse)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "retrieveUser": (userId) =>
+      HttpClientRequest.make("GET")(`/organization/users/${userId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(User)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "modifyUser": (userId, options) =>
+      HttpClientRequest.make("POST")(`/organization/users/${userId}`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(User)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "deleteUser": (userId) =>
+      HttpClientRequest.make("DELETE")(`/organization/users/${userId}`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UserDeleteResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
@@ -2660,6 +3316,20 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
               "200": (r) => HttpClientResponse.schemaBodyJson(ThreadObject)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createThreadAndRun": (options) =>
+      HttpClientRequest.make("POST")(`/threads/runs`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
@@ -2785,20 +3455,6 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
-    "createThreadAndRun": (options) =>
-      HttpClientRequest.make("POST")(`/threads/runs`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
     "listRuns": (threadId, options) =>
       HttpClientRequest.make("GET")(`/threads/${threadId}/runs`).pipe(
         HttpClientRequest.setUrlParams({
@@ -2862,20 +3518,6 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
-    "submitToolOuputsToRun": (threadId, runId, options) =>
-      HttpClientRequest.make("POST")(`/threads/${threadId}/runs/${runId}/submit_tool_outputs`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
     "cancelRun": (threadId, runId) =>
       HttpClientRequest.make("POST")(`/threads/${threadId}/runs/${runId}/cancel`).pipe(
         Effect.succeed,
@@ -2920,6 +3562,77 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
               "200": (r) => HttpClientResponse.schemaBodyJson(RunStepObject)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "submitToolOuputsToRun": (threadId, runId, options) =>
+      HttpClientRequest.make("POST")(`/threads/${threadId}/runs/${runId}/submit_tool_outputs`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(RunObject)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "createUpload": (options) =>
+      HttpClientRequest.make("POST")(`/uploads`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "cancelUpload": (uploadId) =>
+      HttpClientRequest.make("POST")(`/uploads/${uploadId}/cancel`).pipe(
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "completeUpload": (uploadId, options) =>
+      HttpClientRequest.make("POST")(`/uploads/${uploadId}/complete`).pipe(
+        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(Upload)(r),
+              orElse: (response) => unexpectedStatus(request, response)
+            })
+          )
+        ),
+        Effect.scoped
+      ),
+    "addUploadPart": (uploadId, options) =>
+      HttpClientRequest.make("POST")(`/uploads/${uploadId}/parts`).pipe(
+        HttpClientRequest.bodyFormData(options),
+        Effect.succeed,
+        Effect.flatMap((request) =>
+          Effect.flatMap(
+            httpClient.execute(request),
+            HttpClientResponse.matchStatus({
+              "200": (r) => HttpClientResponse.schemaBodyJson(UploadPart)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
@@ -3002,69 +3715,6 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
-    "listVectorStoreFiles": (vectorStoreId, options) =>
-      HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/files`).pipe(
-        HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "order": options["order"],
-          "after": options["after"],
-          "before": options["before"],
-          "filter": options["filter"]
-        }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListVectorStoreFilesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "createVectorStoreFile": (vectorStoreId, options) =>
-      HttpClientRequest.make("POST")(`/vector_stores/${vectorStoreId}/files`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "getVectorStoreFile": (vectorStoreId, fileId) =>
-      HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/files/${fileId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileObject)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "deleteVectorStoreFile": (vectorStoreId, fileId) =>
-      HttpClientRequest.make("DELETE")(`/vector_stores/${vectorStoreId}/files/${fileId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteVectorStoreFileResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
     "createVectorStoreFileBatch": (vectorStoreId, options) =>
       HttpClientRequest.make("POST")(`/vector_stores/${vectorStoreId}/file_batches`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
@@ -3128,453 +3778,63 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
         ),
         Effect.scoped
       ),
-    "listBatches": (options) =>
-      HttpClientRequest.make("GET")(`/batches`).pipe(
-        HttpClientRequest.setUrlParams({ "after": options["after"], "limit": options["limit"] }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListBatchesResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "createBatch": (options) =>
-      HttpClientRequest.make("POST")(`/batches`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "retrieveBatch": (batchId) =>
-      HttpClientRequest.make("GET")(`/batches/${batchId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "cancelBatch": (batchId) =>
-      HttpClientRequest.make("POST")(`/batches/${batchId}/cancel`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Batch)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "listAuditLogs": (options) =>
-      HttpClientRequest.make("GET")(`/organization/audit_logs`).pipe(
+    "listVectorStoreFiles": (vectorStoreId, options) =>
+      HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/files`).pipe(
         HttpClientRequest.setUrlParams({
-          "effective_at[gt]": options["effective_at[gt]"],
-          "effective_at[gte]": options["effective_at[gte]"],
-          "effective_at[lt]": options["effective_at[lt]"],
-          "effective_at[lte]": options["effective_at[lte]"],
-          "project_ids[]": options["project_ids[]"],
-          "event_types[]": options["event_types[]"],
-          "actor_ids[]": options["actor_ids[]"],
-          "actor_emails[]": options["actor_emails[]"],
-          "resource_ids[]": options["resource_ids[]"],
           "limit": options["limit"],
+          "order": options["order"],
           "after": options["after"],
-          "before": options["before"]
+          "before": options["before"],
+          "filter": options["filter"]
         }),
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ListAuditLogsResponse)(r),
+              "200": (r) => HttpClientResponse.schemaBodyJson(ListVectorStoreFilesResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
         ),
         Effect.scoped
       ),
-    "listInvites": (options) =>
-      HttpClientRequest.make("GET")(`/organization/invites`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(InviteListResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "inviteUser": (options) =>
-      HttpClientRequest.make("POST")(`/organization/invites`).pipe(
+    "createVectorStoreFile": (vectorStoreId, options) =>
+      HttpClientRequest.make("POST")(`/vector_stores/${vectorStoreId}/files`).pipe(
         (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
         Effect.flatMap((request) =>
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Invite)(r),
+              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileObject)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
         ),
         Effect.scoped
       ),
-    "retrieveInvite": (inviteId) =>
-      HttpClientRequest.make("GET")(`/organization/invites/${inviteId}`).pipe(
+    "getVectorStoreFile": (vectorStoreId, fileId) =>
+      HttpClientRequest.make("GET")(`/vector_stores/${vectorStoreId}/files/${fileId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Invite)(r),
+              "200": (r) => HttpClientResponse.schemaBodyJson(VectorStoreFileObject)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
         ),
         Effect.scoped
       ),
-    "deleteInvite": (inviteId) =>
-      HttpClientRequest.make("DELETE")(`/organization/invites/${inviteId}`).pipe(
+    "deleteVectorStoreFile": (vectorStoreId, fileId) =>
+      HttpClientRequest.make("DELETE")(`/vector_stores/${vectorStoreId}/files/${fileId}`).pipe(
         Effect.succeed,
         Effect.flatMap((request) =>
           Effect.flatMap(
             httpClient.execute(request),
             HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(InviteDeleteResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "listUsers": (options) =>
-      HttpClientRequest.make("GET")(`/organization/users`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UserListResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "retrieveUser": (userId) =>
-      HttpClientRequest.make("GET")(`/organization/users/${userId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(User)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "modifyUser": (userId, options) =>
-      HttpClientRequest.make("POST")(`/organization/users/${userId}`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(User)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "deleteUser": (userId) =>
-      HttpClientRequest.make("DELETE")(`/organization/users/${userId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(UserDeleteResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "listProjects": (options) =>
-      HttpClientRequest.make("GET")(`/organization/projects`).pipe(
-        HttpClientRequest.setUrlParams({
-          "limit": options["limit"],
-          "after": options["after"],
-          "include_archived": options["include_archived"]
-        }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectListResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "createProject": (options) =>
-      HttpClientRequest.make("POST")(`/organization/projects`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "retrieveProject": (projectId) =>
-      HttpClientRequest.make("GET")(`/organization/projects/${projectId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "modifyProject": (projectId, options) =>
-      HttpClientRequest.make("POST")(`/organization/projects/${projectId}`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "archiveProject": (projectId) =>
-      HttpClientRequest.make("POST")(`/organization/projects/${projectId}/archive`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(Project)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "listProjectUsers": (projectId, options) =>
-      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/users`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUserListResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "createProjectUser": (projectId, options) =>
-      HttpClientRequest.make("POST")(`/organization/projects/${projectId}/users`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "retrieveProjectUser": (projectId, userId) =>
-      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/users/${userId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "modifyProjectUser": (projectId, userId, options) =>
-      HttpClientRequest.make("POST")(`/organization/projects/${projectId}/users/${userId}`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUser)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "deleteProjectUser": (projectId, userId) =>
-      HttpClientRequest.make("DELETE")(`/organization/projects/${projectId}/users/${userId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectUserDeleteResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "listProjectServiceAccounts": (projectId, options) =>
-      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/service_accounts`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountListResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "createProjectServiceAccount": (projectId, options) =>
-      HttpClientRequest.make("POST")(`/organization/projects/${projectId}/service_accounts`).pipe(
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountCreateResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "retrieveProjectServiceAccount": (projectId, serviceAccountId) =>
-      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/service_accounts/${serviceAccountId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccount)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "deleteProjectServiceAccount": (projectId, serviceAccountId) =>
-      HttpClientRequest.make("DELETE")(`/organization/projects/${projectId}/service_accounts/${serviceAccountId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectServiceAccountDeleteResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "listProjectApiKeys": (projectId, options) =>
-      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/api_keys`).pipe(
-        HttpClientRequest.setUrlParams({ "limit": options["limit"], "after": options["after"] }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKeyListResponse)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "retrieveProjectApiKey": (projectId, keyId) =>
-      HttpClientRequest.make("GET")(`/organization/projects/${projectId}/api_keys/${keyId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKey)(r),
-              orElse: (response) => unexpectedStatus(request, response)
-            })
-          )
-        ),
-        Effect.scoped
-      ),
-    "deleteProjectApiKey": (projectId, keyId) =>
-      HttpClientRequest.make("DELETE")(`/organization/projects/${projectId}/api_keys/${keyId}`).pipe(
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            httpClient.execute(request),
-            HttpClientResponse.matchStatus({
-              "200": (r) => HttpClientResponse.schemaBodyJson(ProjectApiKeyDeleteResponse)(r),
-              "400": (r) => decodeError(r, ErrorResponse),
+              "200": (r) => HttpClientResponse.schemaBodyJson(DeleteVectorStoreFileResponse)(r),
               orElse: (response) => unexpectedStatus(request, response)
             })
           )
@@ -3585,95 +3845,6 @@ export const make = (httpClient: HttpClient.HttpClient): Client => {
 }
 
 export interface Client {
-  readonly "createChatCompletion": (
-    options: typeof CreateChatCompletionRequest.Encoded
-  ) => Effect.Effect<typeof CreateChatCompletionResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createCompletion": (
-    options: typeof CreateCompletionRequest.Encoded
-  ) => Effect.Effect<typeof CreateCompletionResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createImage": (
-    options: typeof CreateImageRequest.Encoded
-  ) => Effect.Effect<typeof ImagesResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createImageEdit": (
-    options: globalThis.FormData
-  ) => Effect.Effect<typeof ImagesResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createImageVariation": (
-    options: globalThis.FormData
-  ) => Effect.Effect<typeof ImagesResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createEmbedding": (
-    options: typeof CreateEmbeddingRequest.Encoded
-  ) => Effect.Effect<typeof CreateEmbeddingResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createSpeech": (
-    options: typeof CreateSpeechRequest.Encoded
-  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
-  readonly "createTranscription": (
-    options: globalThis.FormData
-  ) => Effect.Effect<typeof CreateTranscription200.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createTranslation": (
-    options: globalThis.FormData
-  ) => Effect.Effect<typeof CreateTranslation200.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listFiles": (
-    options: typeof ListFilesParams.Encoded
-  ) => Effect.Effect<typeof ListFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createFile": (
-    options: globalThis.FormData
-  ) => Effect.Effect<typeof OpenAIFile.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "retrieveFile": (
-    fileId: string
-  ) => Effect.Effect<typeof OpenAIFile.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "deleteFile": (
-    fileId: string
-  ) => Effect.Effect<typeof DeleteFileResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "downloadFile": (
-    fileId: string
-  ) => Effect.Effect<typeof DownloadFile200.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createUpload": (
-    options: typeof CreateUploadRequest.Encoded
-  ) => Effect.Effect<typeof Upload.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "addUploadPart": (
-    uploadId: string,
-    options: globalThis.FormData
-  ) => Effect.Effect<typeof UploadPart.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "completeUpload": (
-    uploadId: string,
-    options: typeof CompleteUploadRequest.Encoded
-  ) => Effect.Effect<typeof Upload.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "cancelUpload": (
-    uploadId: string
-  ) => Effect.Effect<typeof Upload.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listPaginatedFineTuningJobs": (
-    options: typeof ListPaginatedFineTuningJobsParams.Encoded
-  ) => Effect.Effect<typeof ListPaginatedFineTuningJobsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createFineTuningJob": (
-    options: typeof CreateFineTuningJobRequest.Encoded
-  ) => Effect.Effect<typeof FineTuningJob.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "retrieveFineTuningJob": (
-    fineTuningJobId: string
-  ) => Effect.Effect<typeof FineTuningJob.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listFineTuningEvents": (
-    fineTuningJobId: string,
-    options: typeof ListFineTuningEventsParams.Encoded
-  ) => Effect.Effect<typeof ListFineTuningJobEventsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "cancelFineTuningJob": (
-    fineTuningJobId: string
-  ) => Effect.Effect<typeof FineTuningJob.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listFineTuningJobCheckpoints": (
-    fineTuningJobId: string,
-    options: typeof ListFineTuningJobCheckpointsParams.Encoded
-  ) => Effect.Effect<typeof ListFineTuningJobCheckpointsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listModels": () => Effect.Effect<
-    typeof ListModelsResponse.Type,
-    HttpClientError.HttpClientError | ParseError
-  >
-  readonly "retrieveModel": (
-    model: string
-  ) => Effect.Effect<typeof Model.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "deleteModel": (
-    model: string
-  ) => Effect.Effect<typeof DeleteModelResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createModeration": (
-    options: typeof CreateModerationRequest.Encoded
-  ) => Effect.Effect<typeof CreateModerationResponse.Type, HttpClientError.HttpClientError | ParseError>
   readonly "listAssistants": (
     options: typeof ListAssistantsParams.Encoded
   ) => Effect.Effect<typeof ListAssistantsResponse.Type, HttpClientError.HttpClientError | ParseError>
@@ -3690,9 +3861,207 @@ export interface Client {
   readonly "deleteAssistant": (
     assistantId: string
   ) => Effect.Effect<typeof DeleteAssistantResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createSpeech": (
+    options: typeof CreateSpeechRequest.Encoded
+  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  readonly "createTranscription": (
+    options: globalThis.FormData
+  ) => Effect.Effect<typeof CreateTranscription200.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createTranslation": (
+    options: globalThis.FormData
+  ) => Effect.Effect<typeof CreateTranslation200.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listBatches": (
+    options: typeof ListBatchesParams.Encoded
+  ) => Effect.Effect<typeof ListBatchesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createBatch": (
+    options: typeof CreateBatchRequest.Encoded
+  ) => Effect.Effect<typeof Batch.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "retrieveBatch": (
+    batchId: string
+  ) => Effect.Effect<typeof Batch.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "cancelBatch": (
+    batchId: string
+  ) => Effect.Effect<typeof Batch.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createChatCompletion": (
+    options: typeof CreateChatCompletionRequest.Encoded
+  ) => Effect.Effect<typeof CreateChatCompletionResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createCompletion": (
+    options: typeof CreateCompletionRequest.Encoded
+  ) => Effect.Effect<typeof CreateCompletionResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createEmbedding": (
+    options: typeof CreateEmbeddingRequest.Encoded
+  ) => Effect.Effect<typeof CreateEmbeddingResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listFiles": (
+    options: typeof ListFilesParams.Encoded
+  ) => Effect.Effect<typeof ListFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createFile": (
+    options: globalThis.FormData
+  ) => Effect.Effect<typeof OpenAIFile.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "retrieveFile": (
+    fileId: string
+  ) => Effect.Effect<typeof OpenAIFile.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "deleteFile": (
+    fileId: string
+  ) => Effect.Effect<typeof DeleteFileResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "downloadFile": (
+    fileId: string
+  ) => Effect.Effect<typeof DownloadFile200.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listPaginatedFineTuningJobs": (
+    options: typeof ListPaginatedFineTuningJobsParams.Encoded
+  ) => Effect.Effect<typeof ListPaginatedFineTuningJobsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createFineTuningJob": (
+    options: typeof CreateFineTuningJobRequest.Encoded
+  ) => Effect.Effect<typeof FineTuningJob.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "retrieveFineTuningJob": (
+    fineTuningJobId: string
+  ) => Effect.Effect<typeof FineTuningJob.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "cancelFineTuningJob": (
+    fineTuningJobId: string
+  ) => Effect.Effect<typeof FineTuningJob.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listFineTuningJobCheckpoints": (
+    fineTuningJobId: string,
+    options: typeof ListFineTuningJobCheckpointsParams.Encoded
+  ) => Effect.Effect<typeof ListFineTuningJobCheckpointsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listFineTuningEvents": (
+    fineTuningJobId: string,
+    options: typeof ListFineTuningEventsParams.Encoded
+  ) => Effect.Effect<typeof ListFineTuningJobEventsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createImageEdit": (
+    options: globalThis.FormData
+  ) => Effect.Effect<typeof ImagesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createImage": (
+    options: typeof CreateImageRequest.Encoded
+  ) => Effect.Effect<typeof ImagesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createImageVariation": (
+    options: globalThis.FormData
+  ) => Effect.Effect<typeof ImagesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listModels": () => Effect.Effect<
+    typeof ListModelsResponse.Type,
+    HttpClientError.HttpClientError | ParseError
+  >
+  readonly "retrieveModel": (
+    model: string
+  ) => Effect.Effect<typeof Model.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "deleteModel": (
+    model: string
+  ) => Effect.Effect<typeof DeleteModelResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createModeration": (
+    options: typeof CreateModerationRequest.Encoded
+  ) => Effect.Effect<typeof CreateModerationResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listAuditLogs": (
+    options: typeof ListAuditLogsParams.Encoded
+  ) => Effect.Effect<typeof ListAuditLogsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listInvites": (
+    options: typeof ListInvitesParams.Encoded
+  ) => Effect.Effect<typeof InviteListResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "inviteUser": (
+    options: typeof InviteRequest.Encoded
+  ) => Effect.Effect<typeof Invite.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "retrieveInvite": (
+    inviteId: string
+  ) => Effect.Effect<typeof Invite.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "deleteInvite": (
+    inviteId: string
+  ) => Effect.Effect<typeof InviteDeleteResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listProjects": (
+    options: typeof ListProjectsParams.Encoded
+  ) => Effect.Effect<typeof ProjectListResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createProject": (
+    options: typeof ProjectCreateRequest.Encoded
+  ) => Effect.Effect<typeof Project.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "retrieveProject": (
+    projectId: string
+  ) => Effect.Effect<typeof Project.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "modifyProject": (
+    projectId: string,
+    options: typeof ProjectUpdateRequest.Encoded
+  ) => Effect.Effect<typeof Project.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
+  readonly "listProjectApiKeys": (
+    projectId: string,
+    options: typeof ListProjectApiKeysParams.Encoded
+  ) => Effect.Effect<typeof ProjectApiKeyListResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "retrieveProjectApiKey": (
+    projectId: string,
+    keyId: string
+  ) => Effect.Effect<typeof ProjectApiKey.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "deleteProjectApiKey": (
+    projectId: string,
+    keyId: string
+  ) => Effect.Effect<
+    typeof ProjectApiKeyDeleteResponse.Type,
+    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+  >
+  readonly "archiveProject": (
+    projectId: string
+  ) => Effect.Effect<typeof Project.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listProjectServiceAccounts": (
+    projectId: string,
+    options: typeof ListProjectServiceAccountsParams.Encoded
+  ) => Effect.Effect<
+    typeof ProjectServiceAccountListResponse.Type,
+    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+  >
+  readonly "createProjectServiceAccount": (
+    projectId: string,
+    options: typeof ProjectServiceAccountCreateRequest.Encoded
+  ) => Effect.Effect<
+    typeof ProjectServiceAccountCreateResponse.Type,
+    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+  >
+  readonly "retrieveProjectServiceAccount": (
+    projectId: string,
+    serviceAccountId: string
+  ) => Effect.Effect<typeof ProjectServiceAccount.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "deleteProjectServiceAccount": (
+    projectId: string,
+    serviceAccountId: string
+  ) => Effect.Effect<typeof ProjectServiceAccountDeleteResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "listProjectUsers": (
+    projectId: string,
+    options: typeof ListProjectUsersParams.Encoded
+  ) => Effect.Effect<
+    typeof ProjectUserListResponse.Type,
+    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+  >
+  readonly "createProjectUser": (
+    projectId: string,
+    options: typeof ProjectUserCreateRequest.Encoded
+  ) => Effect.Effect<typeof ProjectUser.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
+  readonly "retrieveProjectUser": (
+    projectId: string,
+    userId: string
+  ) => Effect.Effect<typeof ProjectUser.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "modifyProjectUser": (
+    projectId: string,
+    userId: string,
+    options: typeof ProjectUserUpdateRequest.Encoded
+  ) => Effect.Effect<typeof ProjectUser.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
+  readonly "deleteProjectUser": (
+    projectId: string,
+    userId: string
+  ) => Effect.Effect<
+    typeof ProjectUserDeleteResponse.Type,
+    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+  >
+  readonly "listUsers": (
+    options: typeof ListUsersParams.Encoded
+  ) => Effect.Effect<typeof UserListResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "retrieveUser": (
+    userId: string
+  ) => Effect.Effect<typeof User.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "modifyUser": (
+    userId: string,
+    options: typeof UserRoleUpdateRequest.Encoded
+  ) => Effect.Effect<typeof User.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "deleteUser": (
+    userId: string
+  ) => Effect.Effect<typeof UserDeleteResponse.Type, HttpClientError.HttpClientError | ParseError>
   readonly "createThread": (
     options: typeof CreateThreadRequest.Encoded
   ) => Effect.Effect<typeof ThreadObject.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createThreadAndRun": (
+    options: typeof CreateThreadAndRunRequest.Encoded
+  ) => Effect.Effect<typeof RunObject.Type, HttpClientError.HttpClientError | ParseError>
   readonly "getThread": (
     threadId: string
   ) => Effect.Effect<typeof ThreadObject.Type, HttpClientError.HttpClientError | ParseError>
@@ -3724,9 +4093,6 @@ export interface Client {
     threadId: string,
     messageId: string
   ) => Effect.Effect<typeof DeleteMessageResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createThreadAndRun": (
-    options: typeof CreateThreadAndRunRequest.Encoded
-  ) => Effect.Effect<typeof RunObject.Type, HttpClientError.HttpClientError | ParseError>
   readonly "listRuns": (
     threadId: string,
     options: typeof ListRunsParams.Encoded
@@ -3744,11 +4110,6 @@ export interface Client {
     runId: string,
     options: typeof ModifyRunRequest.Encoded
   ) => Effect.Effect<typeof RunObject.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "submitToolOuputsToRun": (
-    threadId: string,
-    runId: string,
-    options: typeof SubmitToolOutputsRunRequest.Encoded
-  ) => Effect.Effect<typeof RunObject.Type, HttpClientError.HttpClientError | ParseError>
   readonly "cancelRun": (
     threadId: string,
     runId: string
@@ -3764,6 +4125,25 @@ export interface Client {
     stepId: string,
     options: typeof GetRunStepParams.Encoded
   ) => Effect.Effect<typeof RunStepObject.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "submitToolOuputsToRun": (
+    threadId: string,
+    runId: string,
+    options: typeof SubmitToolOutputsRunRequest.Encoded
+  ) => Effect.Effect<typeof RunObject.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createUpload": (
+    options: typeof CreateUploadRequest.Encoded
+  ) => Effect.Effect<typeof Upload.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "cancelUpload": (
+    uploadId: string
+  ) => Effect.Effect<typeof Upload.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "completeUpload": (
+    uploadId: string,
+    options: typeof CompleteUploadRequest.Encoded
+  ) => Effect.Effect<typeof Upload.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "addUploadPart": (
+    uploadId: string,
+    options: globalThis.FormData
+  ) => Effect.Effect<typeof UploadPart.Type, HttpClientError.HttpClientError | ParseError>
   readonly "listVectorStores": (
     options: typeof ListVectorStoresParams.Encoded
   ) => Effect.Effect<typeof ListVectorStoresResponse.Type, HttpClientError.HttpClientError | ParseError>
@@ -3780,22 +4160,6 @@ export interface Client {
   readonly "deleteVectorStore": (
     vectorStoreId: string
   ) => Effect.Effect<typeof DeleteVectorStoreResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listVectorStoreFiles": (
-    vectorStoreId: string,
-    options: typeof ListVectorStoreFilesParams.Encoded
-  ) => Effect.Effect<typeof ListVectorStoreFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createVectorStoreFile": (
-    vectorStoreId: string,
-    options: typeof CreateVectorStoreFileRequest.Encoded
-  ) => Effect.Effect<typeof VectorStoreFileObject.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "getVectorStoreFile": (
-    vectorStoreId: string,
-    fileId: string
-  ) => Effect.Effect<typeof VectorStoreFileObject.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "deleteVectorStoreFile": (
-    vectorStoreId: string,
-    fileId: string
-  ) => Effect.Effect<typeof DeleteVectorStoreFileResponse.Type, HttpClientError.HttpClientError | ParseError>
   readonly "createVectorStoreFileBatch": (
     vectorStoreId: string,
     options: typeof CreateVectorStoreFileBatchRequest.Encoded
@@ -3813,124 +4177,20 @@ export interface Client {
     batchId: string,
     options: typeof ListFilesInVectorStoreBatchParams.Encoded
   ) => Effect.Effect<typeof ListVectorStoreFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listBatches": (
-    options: typeof ListBatchesParams.Encoded
-  ) => Effect.Effect<typeof ListBatchesResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createBatch": (
-    options: typeof CreateBatchRequest.Encoded
-  ) => Effect.Effect<typeof Batch.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "retrieveBatch": (
-    batchId: string
-  ) => Effect.Effect<typeof Batch.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "cancelBatch": (
-    batchId: string
-  ) => Effect.Effect<typeof Batch.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listAuditLogs": (
-    options: typeof ListAuditLogsParams.Encoded
-  ) => Effect.Effect<typeof ListAuditLogsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listInvites": (
-    options: typeof ListInvitesParams.Encoded
-  ) => Effect.Effect<typeof InviteListResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "inviteUser": (
-    options: typeof InviteRequest.Encoded
-  ) => Effect.Effect<typeof Invite.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "retrieveInvite": (
-    inviteId: string
-  ) => Effect.Effect<typeof Invite.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "deleteInvite": (
-    inviteId: string
-  ) => Effect.Effect<typeof InviteDeleteResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listUsers": (
-    options: typeof ListUsersParams.Encoded
-  ) => Effect.Effect<typeof UserListResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "retrieveUser": (
-    userId: string
-  ) => Effect.Effect<typeof User.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "modifyUser": (
-    userId: string,
-    options: typeof UserRoleUpdateRequest.Encoded
-  ) => Effect.Effect<typeof User.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "deleteUser": (
-    userId: string
-  ) => Effect.Effect<typeof UserDeleteResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listProjects": (
-    options: typeof ListProjectsParams.Encoded
-  ) => Effect.Effect<typeof ProjectListResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "createProject": (
-    options: typeof ProjectCreateRequest.Encoded
-  ) => Effect.Effect<typeof Project.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "retrieveProject": (
-    projectId: string
-  ) => Effect.Effect<typeof Project.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "modifyProject": (
-    projectId: string,
-    options: typeof ProjectUpdateRequest.Encoded
-  ) => Effect.Effect<typeof Project.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
-  readonly "archiveProject": (
-    projectId: string
-  ) => Effect.Effect<typeof Project.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listProjectUsers": (
-    projectId: string,
-    options: typeof ListProjectUsersParams.Encoded
-  ) => Effect.Effect<
-    typeof ProjectUserListResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
-  >
-  readonly "createProjectUser": (
-    projectId: string,
-    options: typeof ProjectUserCreateRequest.Encoded
-  ) => Effect.Effect<typeof ProjectUser.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
-  readonly "retrieveProjectUser": (
-    projectId: string,
-    userId: string
-  ) => Effect.Effect<typeof ProjectUser.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "modifyProjectUser": (
-    projectId: string,
-    userId: string,
-    options: typeof ProjectUserUpdateRequest.Encoded
-  ) => Effect.Effect<typeof ProjectUser.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
-  readonly "deleteProjectUser": (
-    projectId: string,
-    userId: string
-  ) => Effect.Effect<
-    typeof ProjectUserDeleteResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
-  >
-  readonly "listProjectServiceAccounts": (
-    projectId: string,
-    options: typeof ListProjectServiceAccountsParams.Encoded
-  ) => Effect.Effect<
-    typeof ProjectServiceAccountListResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
-  >
-  readonly "createProjectServiceAccount": (
-    projectId: string,
-    options: typeof ProjectServiceAccountCreateRequest.Encoded
-  ) => Effect.Effect<
-    typeof ProjectServiceAccountCreateResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
-  >
-  readonly "retrieveProjectServiceAccount": (
-    projectId: string,
-    serviceAccountId: string
-  ) => Effect.Effect<typeof ProjectServiceAccount.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "deleteProjectServiceAccount": (
-    projectId: string,
-    serviceAccountId: string
-  ) => Effect.Effect<typeof ProjectServiceAccountDeleteResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "listProjectApiKeys": (
-    projectId: string,
-    options: typeof ListProjectApiKeysParams.Encoded
-  ) => Effect.Effect<typeof ProjectApiKeyListResponse.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "retrieveProjectApiKey": (
-    projectId: string,
-    keyId: string
-  ) => Effect.Effect<typeof ProjectApiKey.Type, HttpClientError.HttpClientError | ParseError>
-  readonly "deleteProjectApiKey": (
-    projectId: string,
-    keyId: string
-  ) => Effect.Effect<
-    typeof ProjectApiKeyDeleteResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
-  >
+  readonly "listVectorStoreFiles": (
+    vectorStoreId: string,
+    options: typeof ListVectorStoreFilesParams.Encoded
+  ) => Effect.Effect<typeof ListVectorStoreFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "createVectorStoreFile": (
+    vectorStoreId: string,
+    options: typeof CreateVectorStoreFileRequest.Encoded
+  ) => Effect.Effect<typeof VectorStoreFileObject.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "getVectorStoreFile": (
+    vectorStoreId: string,
+    fileId: string
+  ) => Effect.Effect<typeof VectorStoreFileObject.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "deleteVectorStoreFile": (
+    vectorStoreId: string,
+    fileId: string
+  ) => Effect.Effect<typeof DeleteVectorStoreFileResponse.Type, HttpClientError.HttpClientError | ParseError>
 }

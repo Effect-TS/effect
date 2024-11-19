@@ -1,3 +1,4 @@
+import { Runtime } from "effect"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
@@ -86,6 +87,7 @@ export const makeManager = Effect.gen(function*() {
                 ? Deferred.failCause(mailbox, cause)
                 : mailbox.failCause(cause))
           ),
+          Effect.tapErrorCause(Effect.logWarning),
           Effect.retry(Schedule.spaced(1000)),
           Effect.annotateLogs({
             package: "@effect/platform",
@@ -401,7 +403,7 @@ export const makePlatform = <W>() =>
   readonly setup: (options: {
     readonly worker: W
     readonly scope: Scope.Scope
-  }) => Effect.Effect<P>
+  }) => Effect.Effect<P, WorkerError>
   readonly listen: (options: {
     readonly port: P
     readonly emit: (data: any) => void
@@ -417,49 +419,41 @@ export const makePlatform = <W>() =>
         let currentPort: P | undefined
         const buffer: Array<[I, ReadonlyArray<unknown> | undefined]> = []
 
-        const run = <A, E, R>(handler: (_: Worker.BackingWorker.Message<O>) => Effect.Effect<A, E, R>) =>
+        const run = <A, E, R>(
+          handler: (_: Worker.BackingWorker.Message<O>) => Effect.Effect<A, E, R>
+        ): Effect.Effect<never, WorkerError | E, R> =>
           Effect.uninterruptibleMask((restore) =>
-            Scope.make().pipe(
-              Effect.bindTo("scope"),
-              Effect.bind("port", ({ scope }) => options.setup({ worker: spawn(id), scope })),
-              Effect.tap(({ port, scope }) => {
-                currentPort = port
-                return Scope.addFinalizer(
-                  scope,
-                  Effect.sync(() => {
-                    currentPort = undefined
-                  })
-                )
-              }),
-              Effect.bind("fiberSet", ({ scope }) =>
-                FiberSet.make<any, WorkerError | E>().pipe(
-                  Scope.extend(scope)
-                )),
-              Effect.bind("runFork", ({ fiberSet }) => FiberSet.runtime(fiberSet)<R>()),
-              Effect.tap(({ fiberSet, port, runFork, scope }) =>
-                options.listen({
-                  port,
-                  scope,
-                  emit(data) {
-                    runFork(handler(data))
-                  },
-                  deferred: fiberSet.deferred as any
+            Effect.gen(function*() {
+              const scope = yield* Effect.scope
+              const port = yield* options.setup({ worker: spawn(id), scope })
+              currentPort = port
+              yield* Scope.addFinalizer(
+                scope,
+                Effect.sync(() => {
+                  currentPort = undefined
                 })
-              ),
-              Effect.tap(({ port }) => {
-                if (buffer.length > 0) {
-                  for (const [message, transfers] of buffer) {
-                    port.postMessage([0, message], transfers as any)
-                  }
-                  buffer.length = 0
-                }
-              }),
-              Effect.flatMap(({ fiberSet, scope }) =>
-                (restore(FiberSet.join(fiberSet)) as Effect.Effect<never, WorkerError | E>).pipe(
-                  Effect.ensuring(Scope.close(scope, Exit.void))
-                )
               )
-            )
+              const runtime = (yield* Effect.runtime<R | Scope.Scope>()).pipe(
+                Runtime.updateContext(Context.omit(Scope.Scope))
+              ) as Runtime.Runtime<R>
+              const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
+              const runFork = Runtime.runFork(runtime)
+              yield* options.listen({
+                port,
+                scope,
+                emit(data) {
+                  FiberSet.unsafeAdd(runFork(handler(data)))
+                },
+                deferred: fiberSet.deferred as any
+              })
+              if (buffer.length > 0) {
+                for (const [message, transfers] of buffer) {
+                  port.postMessage([0, message], transfers as any)
+                }
+                buffer.length = 0
+              }
+              return (yield* restore(FiberSet.join(fiberSet))) as never
+            }).pipe(Effect.scoped)
           )
 
         const send = (message: I, transfers?: ReadonlyArray<unknown>) =>

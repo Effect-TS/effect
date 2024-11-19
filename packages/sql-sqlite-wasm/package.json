@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-wasm",
-  "version": "0.17.10",
+  "version": "0.21.1",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
@@ -39,14 +39,15 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
+    "@effect/wa-sqlite": "^0.1.2",
     "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/sql": "workspace:^",
+    "@effect/wa-sqlite": "^0.1.2",
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.25.1",
-    "@sqlite.org/sqlite-wasm": "3.46.0-build2"
+    "@opentelemetry/semantic-conventions": "^1.25.1"
   }
 }

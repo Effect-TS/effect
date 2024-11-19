@@ -188,7 +188,7 @@ export const make = (
  * @category layers
  * @since 1.0.0
  */
-export const layer = (
+export const layerConfig = (
   config: Config.Config.Wrap<D1ClientConfig>
 ): Layer.Layer<D1Client | Client.SqlClient, ConfigError> =>
   Layer.scopedContext(
@@ -200,4 +200,18 @@ export const layer = (
         )
       )
     )
+  )
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layer = (
+  config: D1ClientConfig
+): Layer.Layer<D1Client | Client.SqlClient, ConfigError> =>
+  Layer.scopedContext(
+    Effect.map(make(config), (client) =>
+      Context.make(D1Client, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
   )

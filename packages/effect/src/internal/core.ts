@@ -122,6 +122,7 @@ export type Primitive =
   | Sync
   | UpdateRuntimeFlags
   | While
+  | FromIterator
   | WithRuntime
   | Yield
   | OpTag
@@ -137,6 +138,7 @@ export type Continuation =
   | OnSuccessAndFailure
   | OnFailure
   | While
+  | FromIterator
   | RevertFlags
 
 /** @internal */
@@ -388,6 +390,13 @@ export interface While extends
 {}
 
 /** @internal */
+export interface FromIterator extends
+  Op<OpCodes.OP_ITERATOR, {
+    effect_instruction_i0: Iterator<YieldWrap<Primitive>, any>
+  }>
+{}
+
+/** @internal */
 export interface WithRuntime extends
   Op<OpCodes.OP_WITH_RUNTIME, {
     effect_instruction_i0(fiber: FiberRuntime.FiberRuntime<unknown, unknown>, status: FiberStatus.Running): Primitive
@@ -435,7 +444,7 @@ export const acquireUseRelease: {
               onFailure: (cause) => {
                 switch (exit._tag) {
                   case OpCodes.OP_FAILURE:
-                    return failCause(internalCause.parallel(exit.effect_instruction_i0, cause))
+                    return failCause(internalCause.sequential(exit.effect_instruction_i0, cause))
                   case OpCodes.OP_SUCCESS:
                     return failCause(cause)
                 }
@@ -1212,8 +1221,11 @@ export const succeed = <A>(value: A): Effect.Effect<A> => {
 }
 
 /* @internal */
-export const suspend = <A, E, R>(effect: LazyArg<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> =>
-  flatMap(sync(effect), identity)
+export const suspend = <A, E, R>(evaluate: LazyArg<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> => {
+  const effect = new EffectPrimitive(OpCodes.OP_COMMIT) as any
+  effect.commit = evaluate
+  return effect
+}
 
 /* @internal */
 export const sync = <A>(thunk: LazyArg<A>): Effect.Effect<A> => {
@@ -1402,6 +1414,16 @@ export const whileLoop = <A, E, R>(
   effect.effect_instruction_i1 = options.body
   effect.effect_instruction_i2 = options.step
   return effect
+}
+
+/* @internal */
+export const gen: typeof Effect.gen = function() {
+  const f = arguments.length === 1 ? arguments[0] : arguments[1].bind(arguments[0])
+  return suspend(() => {
+    const effect = new EffectPrimitive(OpCodes.OP_ITERATOR) as any
+    effect.effect_instruction_i0 = f(pipe)
+    return effect
+  })
 }
 
 /* @internal */

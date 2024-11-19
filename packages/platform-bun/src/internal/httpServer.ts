@@ -22,7 +22,6 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
-import { pipe } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -38,7 +37,7 @@ import * as Platform from "../BunHttpPlatform.js"
 export const make = (
   options: Omit<ServeOptions, "fetch" | "error">
 ): Effect.Effect<Server.HttpServer, never, Scope.Scope> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const handlerStack: Array<(request: Request, server: BunServer) => Response | Promise<Response>> = [
       function(_request, _server) {
         return new Response("not found", { status: 404 })
@@ -65,51 +64,48 @@ export const make = (
       }
     })
 
-    yield* _(Effect.addFinalizer(() =>
+    yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         server.stop()
       })
-    ))
+    )
 
     return Server.make({
       address: { _tag: "TcpAddress", port: server.port, hostname: server.hostname },
       serve(httpApp, middleware) {
-        return pipe(
-          FiberSet.makeRuntime<never>(),
-          Effect.bindTo("runFork"),
-          Effect.bind("runtime", () => Effect.runtime<never>()),
-          Effect.let("app", ({ runtime }) =>
-            App.toHandled(httpApp, (request, response) =>
-              Effect.sync(() => {
-                const impl = request as ServerRequestImpl
-                impl.resolve(makeResponse(request, response, runtime))
-              }), middleware)),
-          Effect.flatMap(({ app, runFork }) =>
-            Effect.async<never>((_) => {
-              function handler(request: Request, server: BunServer) {
-                return new Promise<Response>((resolve, _reject) => {
-                  const fiber = runFork(Effect.provideService(
-                    app,
-                    ServerRequest.HttpServerRequest,
-                    new ServerRequestImpl(request, resolve, removeHost(request.url), server)
-                  ))
-                  request.signal.addEventListener("abort", () => {
-                    runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
-                  }, { once: true })
-                })
-              }
+        return Effect.gen(function*() {
+          const runFork = yield* FiberSet.makeRuntime<never>()
+          const runtime = yield* Effect.runtime<never>()
+          const app = App.toHandled(httpApp, (request, response) =>
+            Effect.sync(() => {
+              ;(request as ServerRequestImpl).resolve(makeResponse(request, response, runtime))
+            }), middleware)
+
+          function handler(request: Request, server: BunServer) {
+            return new Promise<Response>((resolve, _reject) => {
+              const fiber = runFork(Effect.provideService(
+                app,
+                ServerRequest.HttpServerRequest,
+                new ServerRequestImpl(request, resolve, removeHost(request.url), server)
+              ))
+              request.signal.addEventListener("abort", () => {
+                runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
+              }, { once: true })
+            })
+          }
+
+          yield* Effect.acquireRelease(
+            Effect.sync(() => {
               handlerStack.push(handler)
               server.reload({ fetch: handler } as ServeOptions)
-              return Effect.sync(() => {
+            }),
+            () =>
+              Effect.sync(() => {
                 handlerStack.pop()
                 server.reload({ fetch: handlerStack[handlerStack.length - 1] } as ServeOptions)
               })
-            })
-          ),
-          Effect.interruptible,
-          Effect.forkScoped,
-          Effect.asVoid
-        )
+          )
+        })
       }
     })
   })

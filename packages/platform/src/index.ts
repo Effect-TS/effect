@@ -81,6 +81,11 @@ export * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 /**
  * @since 1.0.0
  */
+export * as HttpApiScalar from "./HttpApiScalar.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as HttpApiSchema from "./HttpApiSchema.js"
 
 /**

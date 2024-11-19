@@ -187,7 +187,7 @@ export const make = (
  * @category layers
  * @since 1.0.0
  */
-export const layer = (
+export const layerConfig = (
   config: Config.Config.Wrap<SqliteClientConfig>
 ): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError> =>
   Layer.scopedContext(
@@ -199,4 +199,18 @@ export const layer = (
         )
       )
     )
+  )
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layer = (
+  config: SqliteClientConfig
+): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError> =>
+  Layer.scopedContext(
+    Effect.map(make(config), (client) =>
+      Context.make(SqliteClient, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
   )

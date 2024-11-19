@@ -53,6 +53,15 @@ export interface ClickhouseClient extends Client.SqlClient {
     (queryId: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
     <A, E, R>(effect: Effect.Effect<A, E, R>, queryId: string): Effect.Effect<A, E, R>
   }
+  readonly withClickhouseSettings: {
+    (
+      settings: NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
+    ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+    <A, E, R>(
+      effect: Effect.Effect<A, E, R>,
+      settings: NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
+    ): Effect.Effect<A, E, R>
+  }
 }
 
 /**
@@ -106,13 +115,15 @@ export const make = (
           const method = fiber.getFiberRef(currentClientMethod)
           return Effect.async<Clickhouse.ResultSet<"JSON"> | Clickhouse.CommandResult, SqlError>((resume) => {
             const queryId = fiber.getFiberRef(currentQueryId) ?? Crypto.randomUUID()
+            const settings = fiber.getFiberRef(currentClickhouseSettings) ?? {}
             const controller = new AbortController()
             if (method === "command") {
               this.conn.command({
                 query: sql,
                 query_params: paramsObj,
                 abort_signal: controller.signal,
-                query_id: queryId
+                query_id: queryId,
+                clickhouse_settings: settings
               }).then(
                 (result) => resume(Effect.succeed(result)),
                 (cause) => resume(Effect.fail(new SqlError({ cause, message: "Failed to execute statement" })))
@@ -123,6 +134,7 @@ export const make = (
                 query_params: paramsObj,
                 abort_signal: controller.signal,
                 query_id: queryId,
+                clickhouse_settings: settings,
                 format
               }).then(
                 (result) => resume(Effect.succeed(result)),
@@ -231,28 +243,38 @@ export const make = (
           readonly values: Clickhouse.InsertValues<Readable, T>
           readonly format?: Clickhouse.DataFormat
         }) {
-          return FiberRef.getWith(currentQueryId, (queryId_) =>
-            Effect.async<Clickhouse.InsertResult, SqlError>((resume) => {
-              const queryId = queryId_ ?? Crypto.randomUUID()
+          return Effect.withFiberRuntime<Clickhouse.InsertResult, SqlError>((fiber) =>
+            Effect.async((resume) => {
+              const queryId = fiber.getFiberRef(currentQueryId) ?? Crypto.randomUUID()
+              const settings = fiber.getFiberRef(currentClickhouseSettings)
               const controller = new AbortController()
               client.insert({
                 format: "JSONEachRow",
                 ...options,
                 abort_signal: controller.signal,
-                query_id: queryId
+                query_id: queryId,
+                clickhouse_settings: settings
               }).then(
-                (result) =>
-                  resume(Effect.succeed(result)),
+                (result) => resume(Effect.succeed(result)),
                 (cause) => resume(Effect.fail(new SqlError({ cause, message: "Failed to insert data" })))
               )
               return Effect.suspend(() => {
                 controller.abort()
                 return Effect.promise(() => client.command({ query: `KILL QUERY WHERE query_id = '${queryId}'` }))
               })
-            }))
+            })
+          )
         },
         withQueryId: dual(2, <A, E, R>(effect: Effect.Effect<A, E, R>, queryId: string) =>
-          Effect.locally(effect, currentQueryId, queryId))
+          Effect.locally(effect, currentQueryId, queryId)),
+        withClickhouseSettings: dual(
+          2,
+          <A, E, R>(
+            effect: Effect.Effect<A, E, R>,
+            settings: NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
+          ) =>
+            Effect.locally(effect, currentClickhouseSettings, settings)
+        )
       }
     )
   })
@@ -276,10 +298,21 @@ export const currentQueryId: FiberRef.FiberRef<string | undefined> = globalValue
 )
 
 /**
- * @category constructor
+ * @category fiber refs
  * @since 1.0.0
  */
-export const layer = (
+export const currentClickhouseSettings: FiberRef.FiberRef<
+  NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
+> = globalValue(
+  "@effect/sql-clickhouse/ClickhouseClient/currentClickhouseSettings",
+  () => FiberRef.unsafeMake({})
+)
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layerConfig = (
   config: Config.Config.Wrap<ClickhouseClientConfig>
 ): Layer.Layer<ClickhouseClient | Client.SqlClient, ConfigError | SqlError> =>
   Layer.scopedContext(
@@ -291,6 +324,20 @@ export const layer = (
         )
       )
     )
+  )
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layer = (
+  config: ClickhouseClientConfig
+): Layer.Layer<ClickhouseClient | Client.SqlClient, ConfigError | SqlError> =>
+  Layer.scopedContext(
+    Effect.map(make(config), (client) =>
+      Context.make(ClickhouseClient, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
   )
 
 const typeFromUnknown = (value: unknown): string => {

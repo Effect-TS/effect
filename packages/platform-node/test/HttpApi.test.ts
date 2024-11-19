@@ -179,6 +179,14 @@ describe("HttpApi", () => {
       }).pipe(Effect.provide(HttpLive)))
   })
 
+  it.effect("client withResponse", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      const [users, response] = yield* client.users.list({ headers: { page: 1 }, withResponse: true })
+      assert.strictEqual(users[0].name, "page 1")
+      assert.strictEqual(response.status, 200)
+    }).pipe(Effect.provide(HttpLive)))
+
   it("OpenAPI spec", () => {
     const spec = OpenApi.fromApi(Api)
     assert.deepStrictEqual(spec, OpenApiFixture as any)
@@ -272,6 +280,8 @@ class UsersApi extends HttpApiGroup.make("users")
       }))
       .addSuccess(Schema.Array(User))
       .addError(NoStatusError)
+      .annotate(OpenApi.Deprecated, true)
+      .annotate(OpenApi.Summary, "test summary")
       .annotateContext(OpenApi.annotations({ identifier: "listUsers" }))
   )
   .add(
@@ -288,11 +298,24 @@ class UsersApi extends HttpApiGroup.make("users")
   .annotateContext(OpenApi.annotations({ title: "Users API" }))
 {}
 
+class AnotherApi extends HttpApi.empty.add(GroupsApi) {}
+
 class Api extends HttpApi.empty
-  .add(GroupsApi)
+  .addHttpApi(AnotherApi)
   .add(UsersApi.prefix("/users"))
   .addError(GlobalError, { status: 413 })
-  .annotateContext(OpenApi.annotations({ title: "API" }))
+  .annotateContext(OpenApi.annotations({ title: "API", summary: "test api summary" }))
+  .annotate(
+    HttpApi.AdditionalSchemas,
+    [
+      Schema.Struct({
+        contentType: Schema.String,
+        length: Schema.Int
+      }).annotations({
+        identifier: "ComponentsSchema"
+      })
+    ]
+  )
 {}
 
 // impl

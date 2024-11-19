@@ -11,6 +11,7 @@ import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/mailbox.js"
 import type { Option } from "./Option.js"
 import { hasProperty } from "./Predicate.js"
+import type { Scope } from "./Scope.js"
 import type { Stream } from "./Stream.js"
 
 /**
@@ -202,7 +203,12 @@ export interface ReadonlyMailbox<out A, out E = never>
  *   yield* mailbox.fail("boom")
  * })
  */
-export const make: <A, E = never>(capacity?: number | undefined) => Effect<Mailbox<A, E>> = internal.make
+export const make: <A, E = never>(
+  capacity?: number | {
+    readonly capacity?: number
+    readonly strategy?: "suspend" | "dropping" | "sliding"
+  } | undefined
+) => Effect<Mailbox<A, E>> = internal.make
 
 /**
  * Run an `Effect` into a `Mailbox`, where success ends the mailbox and failure
@@ -234,3 +240,26 @@ export const toChannel: <A, E>(self: ReadonlyMailbox<A, E>) => Channel<Chunk<A>,
  * @category conversions
  */
 export const toStream: <A, E>(self: ReadonlyMailbox<A, E>) => Stream<A, E> = internal.toStream
+
+/**
+ * Create a `ReadonlyMailbox` from a `Stream`.
+ *
+ * @since 3.11.0
+ * @experimental
+ * @category conversions
+ */
+export const fromStream: {
+  (
+    options?: {
+      readonly capacity?: number | undefined
+      readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+    }
+  ): <A, E, R>(self: Stream<A, E, R>) => Effect<ReadonlyMailbox<A, E>, never, R | Scope>
+  <A, E, R>(
+    self: Stream<A, E, R>,
+    options?: {
+      readonly capacity?: number | undefined
+      readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+    }
+  ): Effect<ReadonlyMailbox<A, E>, never, R | Scope>
+} = internal.fromStream

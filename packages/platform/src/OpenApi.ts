@@ -3,7 +3,6 @@
  */
 import * as Context from "effect/Context"
 import { globalValue } from "effect/GlobalValue"
-import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
 import * as Schema from "effect/Schema"
@@ -72,6 +71,18 @@ export class Format extends Context.Tag("@effect/platform/OpenApi/Format")<Forma
  * @since 1.0.0
  * @category annotations
  */
+export class Summary extends Context.Tag("@effect/platform/OpenApi/Summary")<Summary, string>() {}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Deprecated extends Context.Tag("@effect/platform/OpenApi/Deprecated")<Deprecated, boolean>() {}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
 export class Override extends Context.Tag("@effect/platform/OpenApi/Override")<Override, Record<string, unknown>>() {}
 
 const contextPartial = <Tags extends Record<string, Context.Tag<any, any>>>(tags: Tags): (
@@ -99,6 +110,7 @@ export const annotations: (
   options: {
     readonly identifier?: string | undefined
     readonly title?: string | undefined
+    readonly summary?: string | undefined
     readonly version?: string | undefined
     readonly description?: string | undefined
     readonly license?: OpenAPISpecLicense | undefined
@@ -113,6 +125,7 @@ export const annotations: (
   version: Version,
   description: Description,
   license: License,
+  summary: Summary,
   externalDocs: ExternalDocs,
   servers: Servers,
   format: Format,
@@ -161,11 +174,17 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
     const scheme = makeSecurityScheme(security)
     spec.components!.securitySchemes![name] = scheme
   }
+  Option.map(Context.getOption(api.annotations, HttpApi.AdditionalSchemas), (componentSchemas) => {
+    componentSchemas.forEach((componentSchema) => makeJsonSchemaOrRef(componentSchema))
+  })
   Option.map(Context.getOption(api.annotations, Description), (description) => {
     spec.info.description = description
   })
   Option.map(Context.getOption(api.annotations, License), (license) => {
     spec.info.license = license
+  })
+  Option.map(Context.getOption(api.annotations, Summary), (summary) => {
+    spec.info.summary = summary as any
   })
   Option.map(Context.getOption(api.annotations, Servers), (servers) => {
     spec.servers = servers as any
@@ -173,7 +192,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
   Option.map(Context.getOption(api.annotations, Override), (override) => {
     Object.assign(spec, override)
   })
-  HashSet.forEach(api.middlewares, (middleware) => {
+  api.middlewares.forEach((middleware) => {
     if (!HttpApiMiddleware.isSecurity(middleware)) {
       return
     }
@@ -215,10 +234,16 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       Option.map(Context.getOption(endpoint.annotations, Description), (description) => {
         op.description = description
       })
+      Option.map(Context.getOption(endpoint.annotations, Summary), (summary) => {
+        op.summary = summary
+      })
+      Option.map(Context.getOption(endpoint.annotations, Deprecated), (deprecated) => {
+        op.deprecated = deprecated
+      })
       Option.map(Context.getOption(endpoint.annotations, ExternalDocs), (externalDocs) => {
         op.externalDocs = externalDocs
       })
-      HashSet.forEach(middleware, (middleware) => {
+      middleware.forEach((middleware) => {
         if (!HttpApiMiddleware.isSecurity(middleware)) {
           return
         }
@@ -414,6 +439,7 @@ export interface OpenAPISpecInfo {
   readonly version: string
   readonly description?: string
   readonly license?: OpenAPISpecLicense
+  readonly summary?: string
 }
 
 /**

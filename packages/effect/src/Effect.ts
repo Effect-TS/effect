@@ -1355,7 +1355,7 @@ export const gen: {
     [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
     [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
   >
-} = effect.gen
+} = core.gen
 
 /**
  * @since 2.0.0
@@ -5570,6 +5570,8 @@ export interface Latch extends Effect<void> {
   readonly await: Effect<void>
   /** close the latch */
   readonly close: Effect<void>
+  /** close the latch */
+  readonly unsafeClose: () => void
   /** only run the given effect when the latch is open */
   readonly whenOpen: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
 
@@ -6497,12 +6499,15 @@ export declare namespace Tag {
    */
   export type Proxy<Self, Type> = {
     [
-      k in keyof Type as Type[k] extends ((...args: [...infer Args]) => infer Ret) ?
+      k in keyof Type as Type[k] extends ((...args: infer Args extends ReadonlyArray<any>) => infer Ret) ?
         ((...args: Readonly<Args>) => Ret) extends Type[k] ? k : never
         : k
-    ]: Type[k] extends (...args: [...infer Args]) => Effect<infer A, infer E, infer R> ?
+    ]: Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => Effect<infer A, infer E, infer R> ?
       (...args: Readonly<Args>) => Effect<A, E, Self | R>
-      : Type[k] extends (...args: [...infer Args]) => infer A ? (...args: Readonly<Args>) => Effect<A, never, Self>
+      : Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => Promise<infer A> ?
+        (...args: Readonly<Args>) => Effect<A, Cause.UnknownException, Self>
+      : Type[k] extends (...args: infer Args extends ReadonlyArray<any>) => infer A ?
+        (...args: Readonly<Args>) => Effect<A, never, Self>
       : Type[k] extends Effect<infer A, infer E, infer R> ? Effect<A, E, Self | R>
       : Effect<Type[k], never, Self>
   }
@@ -6537,6 +6542,16 @@ const makeTagProxy = (TagClass: Context.Tag<any, any> & Record<PropertyKey, any>
 }
 
 /**
+ * @example
+ * import { Effect, Layer } from "effect"
+ *
+ * class MapTag extends Effect.Tag("MapTag")<MapTag, Map<string, string>>() {
+ *  static Live = Layer.effect(
+ *    this,
+ *    Effect.sync(() => new Map())
+ *  )
+ * }
+ *
  * @since 2.0.0
  * @category context
  */
@@ -6549,7 +6564,9 @@ export const Tag: <const Id extends string>(id: Id) => <
   & {
     use: <X>(
       body: (_: Type) => X
-    ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+    ) => [X] extends [Effect<infer A, infer E, infer R>] ? Effect<A, E, R | Self>
+      : [X] extends [PromiseLike<infer A>] ? Effect<A, Cause.UnknownException, Self>
+      : Effect<X, never, Self>
   } = (id) => () => {
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
@@ -6572,6 +6589,27 @@ export const Tag: <const Id extends string>(id: Id) => <
   }
 
 /**
+ * @example
+ * import { Effect } from 'effect';
+ *
+ * class Prefix extends Effect.Service<Prefix>()("Prefix", {
+ *  sync: () => ({ prefix: "PRE" })
+ * }) {}
+ *
+ * class Logger extends Effect.Service<Logger>()("Logger", {
+ *  accessors: true,
+ *  effect: Effect.gen(function* () {
+ *    const { prefix } = yield* Prefix
+ *    return {
+ *      info: (message: string) =>
+ *        Effect.sync(() => {
+ *          console.log(`[${prefix}][${message}]`)
+ *        })
+ *    }
+ *  }),
+ *  dependencies: [Prefix.Default]
+ * }) {}
+ *
  * @since 3.9.0
  * @category context
  * @experimental might be up for breaking changes
@@ -6802,10 +6840,13 @@ export declare namespace Service {
       }
       readonly use: <X>(
         body: (_: Self) => X
-      ) => X extends Effect<infer A, infer E, infer R> ? Effect<A, E, R | Self> : Effect<X, never, Self>
+      ) => [X] extends [Effect<infer A, infer E, infer R>] ? Effect<A, E, R | Self>
+        : [X] extends [PromiseLike<infer A>] ? Effect<A, Cause.UnknownException, Self>
+        : Effect<X, never, Self>
       readonly make: (_: MakeService<Make>) => Self
     }
     & Context.Tag<Self, Self>
+    & { key: Key }
     & (MakeAccessors<Make> extends true ? Tag.Proxy<Self, MakeService<Make>> : {})
     & (MakeDeps<Make> extends never ? {
         readonly Default: Layer.Layer<Self, MakeError<Make>, MakeContext<Make>>

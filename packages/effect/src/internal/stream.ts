@@ -5475,17 +5475,32 @@ export const retry = dual<
     self: Stream.Stream<A, E, R>,
     schedule: Schedule.Schedule<X, E0, R2>
   ): Stream.Stream<A, E, R | R2> =>
-    unwrap(
-      Effect.map(Schedule.driver(schedule), (driver) => {
-        const loop: Stream.Stream<A, E, R | R2> = catchAll(self, (error) =>
-          unwrap(
-            Effect.matchEffect(driver.next(error as E0), {
-              onFailure: () => Effect.fail(error),
-              onSuccess: () => Effect.succeed(pipe(loop, tap(() => driver.reset)))
-            })
-          ))
+    Schedule.driver(schedule).pipe(
+      Effect.map((driver) => {
+        const loop: Channel.Channel<
+          Chunk.Chunk<A>,
+          unknown,
+          E,
+          unknown,
+          unknown,
+          unknown,
+          R | R2
+        > = toChannel(self).pipe(
+          channel.mapOutEffect((out) => Effect.as(driver.reset, out)),
+          channel.catchAll((error) =>
+            driver.next(error as E0).pipe(
+              Effect.match({
+                onFailure: () => core.fail(error),
+                onSuccess: () => loop
+              }),
+              channel.unwrap
+            )
+          )
+        )
         return loop
-      })
+      }),
+      channel.unwrap,
+      fromChannel
     )
 )
 
@@ -6174,44 +6189,59 @@ export const slidingSize = dual<
 )
 
 /** @internal */
-export const split = dual<
-  <A>(predicate: Predicate<NoInfer<A>>) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<A>, E, R>,
-  <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>) => Stream.Stream<Chunk.Chunk<A>, E, R>
->(2, <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<Chunk.Chunk<A>, E, R> => {
-  const split = (
-    leftovers: Chunk.Chunk<A>,
-    input: Chunk.Chunk<A>
-  ): Channel.Channel<Chunk.Chunk<Chunk.Chunk<A>>, Chunk.Chunk<A>, E, E, unknown, unknown, R> => {
-    const [chunk, remaining] = pipe(leftovers, Chunk.appendAll(input), Chunk.splitWhere(predicate))
-    if (Chunk.isEmpty(chunk) || Chunk.isEmpty(remaining)) {
-      return loop(pipe(chunk, Chunk.appendAll(pipe(remaining, Chunk.drop(1)))))
-    }
-    return pipe(
-      core.write(Chunk.of(chunk)),
-      core.flatMap(() => split(Chunk.empty(), pipe(remaining, Chunk.drop(1))))
-    )
-  }
-  const loop = (
-    leftovers: Chunk.Chunk<A>
-  ): Channel.Channel<Chunk.Chunk<Chunk.Chunk<A>>, Chunk.Chunk<A>, E, E, unknown, unknown, R> =>
-    core.readWith({
-      onInput: (input: Chunk.Chunk<A>) => split(leftovers, input),
-      onFailure: core.fail,
-      onDone: () => {
-        if (Chunk.isEmpty(leftovers)) {
-          return core.void
-        }
-        if (Option.isNone(pipe(leftovers, Chunk.findFirst(predicate)))) {
-          return channel.zipRight(core.write(Chunk.of(leftovers)), core.void)
-        }
-        return channel.zipRight(
-          split(Chunk.empty(), leftovers),
-          core.void
-        )
+export const split: {
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>
+  ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<Exclude<A, B>>, E, R>
+  <A>(
+    predicate: Predicate<NoInfer<A>>
+  ): <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<Chunk.Chunk<A>, E, R>
+  <A, E, R, B extends A>(
+    self: Stream.Stream<A, E, R>,
+    refinement: Refinement<A, B>
+  ): Stream.Stream<Chunk.Chunk<Exclude<A, B>>, E, R>
+  <A, E, R>(self: Stream.Stream<A, E, R>, predicate: Predicate<A>): Stream.Stream<Chunk.Chunk<A>, E, R>
+} = dual(
+  2,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    predicate: Predicate<A>
+  ): Stream.Stream<Chunk.Chunk<A>, E, R> => {
+    const split = (
+      leftovers: Chunk.Chunk<A>,
+      input: Chunk.Chunk<A>
+    ): Channel.Channel<Chunk.Chunk<Chunk.Chunk<A>>, Chunk.Chunk<A>, E, E, unknown, unknown, R> => {
+      const [chunk, remaining] = pipe(leftovers, Chunk.appendAll(input), Chunk.splitWhere(predicate))
+      if (Chunk.isEmpty(chunk) || Chunk.isEmpty(remaining)) {
+        return loop(pipe(chunk, Chunk.appendAll(pipe(remaining, Chunk.drop(1)))))
       }
-    })
-  return new StreamImpl(pipe(toChannel(self), core.pipeTo(loop(Chunk.empty()))))
-})
+      return pipe(
+        core.write(Chunk.of(chunk)),
+        core.flatMap(() => split(Chunk.empty(), pipe(remaining, Chunk.drop(1))))
+      )
+    }
+    const loop = (
+      leftovers: Chunk.Chunk<A>
+    ): Channel.Channel<Chunk.Chunk<Chunk.Chunk<A>>, Chunk.Chunk<A>, E, E, unknown, unknown, R> =>
+      core.readWith({
+        onInput: (input: Chunk.Chunk<A>) => split(leftovers, input),
+        onFailure: core.fail,
+        onDone: () => {
+          if (Chunk.isEmpty(leftovers)) {
+            return core.void
+          }
+          if (Option.isNone(pipe(leftovers, Chunk.findFirst(predicate)))) {
+            return channel.zipRight(core.write(Chunk.of(leftovers)), core.void)
+          }
+          return channel.zipRight(
+            split(Chunk.empty(), leftovers),
+            core.void
+          )
+        }
+      })
+    return new StreamImpl(pipe(toChannel(self), core.pipeTo(loop(Chunk.empty()))))
+  }
+)
 
 /** @internal */
 export const splitOnChunk = dual<

@@ -42,3 +42,8 @@ export * as Clipboard from "./Clipboard.js"
  * @since 1.0.0
  */
 export * as Geolocation from "./Geolocation.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Permissions from "./Permissions.js"

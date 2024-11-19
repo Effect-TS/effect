@@ -276,7 +276,7 @@ class MyApi extends HttpApi.empty.add(UsersApi) {}
 // --------------------------------------------
 
 // the `HttpApiBuilder.group` api returns a `Layer`
-const UsersApiLive: Layer.Layer<HttpApiGroup.Group<"users">> =
+const UsersApiLive: Layer.Layer<HttpApiGroup.ApiGroup<"users">> =
   HttpApiBuilder.group(MyApi, "users", (handlers) =>
     handlers
       // the parameters & payload are passed to the handler function.
@@ -307,7 +307,7 @@ class UsersRepository extends Context.Tag("UsersRepository")<
 
 // the dependencies will show up in the resulting `Layer`
 const UsersApiLive: Layer.Layer<
-  HttpApiGroup.Group<"users">,
+  HttpApiGroup.ApiGroup<"users">,
   never,
   UsersRepository
 > = HttpApiBuilder.group(MyApi, "users", (handlers) =>

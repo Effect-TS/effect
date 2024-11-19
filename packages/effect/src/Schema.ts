@@ -4889,7 +4889,7 @@ export const parseNumber = <A extends string, I, R>(
  *
  * The following special string values are supported: "NaN", "Infinity", "-Infinity".
  *
- * @category number constructors
+ * @category number transformations
  * @since 3.10.0
  */
 export class NumberFromString extends parseNumber(String$.annotations({
@@ -4971,7 +4971,7 @@ export const JsonNumberSchemaId: unique symbol = Symbol.for("effect/SchemaId/Jso
  * @since 3.10.0
  */
 export class JsonNumber extends Number$.pipe(
-  filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
+  filter(Number.isFinite, {
     schemaId: JsonNumberSchemaId,
     identifier: "JsonNumber",
     title: "JSON-compatible number",
@@ -7196,7 +7196,8 @@ const bigDecimalPretty = (): pretty_.Pretty<bigDecimal_.BigDecimal> => (val) =>
   `BigDecimal(${bigDecimal_.format(bigDecimal_.normalize(val))})`
 
 const bigDecimalArbitrary = (): LazyArbitrary<bigDecimal_.BigDecimal> => (fc) =>
-  fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => bigDecimal_.make(value, scale))
+  fc.tuple(fc.bigInt(), fc.integer({ min: 0, max: 18 }))
+    .map(([value, scale]) => bigDecimal_.make(value, scale))
 
 /**
  * @category BigDecimal constructors
@@ -7761,7 +7762,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
   new(
     props: RequiredKeys<C> extends never ? void | Simplify<C> : Simplify<C>,
     options?: MakeOptions
-  ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
+  ): Struct.Type<Fields> & Inherited & Proto
 
   /** @since 3.10.0 */
   readonly ast: AST.Transformation
@@ -7774,6 +7775,26 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
 
   readonly identifier: string
 
+  /**
+   * @example
+   * import { Schema } from "effect"
+   *
+   * class MyClass extends Schema.Class<MyClass>("MyClass")({
+   *  myField: Schema.String
+   * }) {
+   *  myMethod() {
+   *    return this.myField + "my"
+   *  }
+   * }
+   *
+   * class NextClass extends MyClass.extend<NextClass>("NextClass")({
+   *  nextField: Schema.Number
+   * }) {
+   *  nextMethod() {
+   *    return this.myMethod() + this.myField + this.nextField
+   *  }
+   * }
+   */
   extend<Extended = never>(identifier: string): <newFields extends Struct.Fields>(
     fields: newFields | HasFields<newFields>,
     annotations?: Annotations.Schema<Extended>
@@ -7788,6 +7809,33 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
       Proto
     >
 
+  /**
+   * @example
+   * import { Effect, Schema } from "effect"
+   *
+   * class MyClass extends Schema.Class<MyClass>("MyClass")({
+   *   myField: Schema.String
+   * }) {
+   *   myMethod() {
+   *     return this.myField + "my"
+   *   }
+   * }
+   *
+   * class NextClass extends MyClass.transformOrFail<NextClass>("NextClass")({
+   *   nextField: Schema.Number
+   * }, {
+   *   decode: (i) =>
+   *     Effect.succeed({
+   *       myField: i.myField,
+   *       nextField: i.myField.length
+   *     }),
+   *   encode: (a) => Effect.succeed({ myField: a.myField })
+   * }) {
+   *   nextMethod() {
+   *     return this.myMethod() + this.myField + this.nextField
+   *   }
+   * }
+   */
   transformOrFail<Transformed = never>(identifier: string): <
     newFields extends Struct.Fields,
     R2,
@@ -7818,6 +7866,33 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
       Proto
     >
 
+  /**
+   * @example
+   * import { Effect, Schema } from "effect"
+   *
+   * class MyClass extends Schema.Class<MyClass>("MyClass")({
+   *   myField: Schema.String
+   * }) {
+   *   myMethod() {
+   *     return this.myField + "my"
+   *   }
+   * }
+   *
+   * class NextClass extends MyClass.transformOrFailFrom<NextClass>("NextClass")({
+   *   nextField: Schema.Number
+   * }, {
+   *   decode: (i) =>
+   *     Effect.succeed({
+   *       myField: i.myField,
+   *       nextField: i.myField.length
+   *     }),
+   *   encode: (a) => Effect.succeed({ myField: a.myField })
+   * }) {
+   *   nextMethod() {
+   *     return this.myMethod() + this.myField + this.nextField
+   *   }
+   * }
+   */
   transformOrFailFrom<Transformed = never>(identifier: string): <
     newFields extends Struct.Fields,
     R2,
@@ -7868,6 +7943,17 @@ const getFieldsFromFieldsOr = <Fields extends Struct.Fields>(fieldsOr: Fields | 
   isFields(fieldsOr) ? fieldsOr : getFields(fieldsOr)
 
 /**
+ * @example
+ * import { Schema } from "effect"
+ *
+ * class MyClass extends Schema.Class<MyClass>("MyClass")({
+ *  someField: Schema.String
+ * }) {
+ *  someMethod() {
+ *    return this.someField + "bar"
+ *  }
+ * }
+ *
  * @category classes
  * @since 3.10.0
  */
@@ -7917,6 +8003,13 @@ export interface TaggedClass<Self, Tag extends string, Fields extends Struct.Fie
 }
 
 /**
+ * @example
+ * import { Schema } from "effect"
+ *
+ * class MyClass extends Schema.TaggedClass<MyClass>("MyClass")("MyClass", {
+ *  a: Schema.String
+ * }) {}
+ *
  * @category classes
  * @since 3.10.0
  */
@@ -7963,6 +8056,21 @@ export interface TaggedErrorClass<Self, Tag extends string, Fields extends Struc
 }
 
 /**
+ * @example
+ * import { Schema } from "effect"
+ *
+ * class MyError extends Schema.TaggedError<MyError>("MyError")(
+ *   "MyError",
+ *   {
+ *     module: Schema.String,
+ *     method: Schema.String,
+ *     description: Schema.String
+ *   }
+ * ) {
+ *   get message(): string {
+ *     return `${this.module}.${this.method}: ${this.description}`
+ *   }
+ * }
  * @category classes
  * @since 3.10.0
  */
@@ -8030,6 +8138,8 @@ type MakeOptions = boolean | {
 const getDisableValidationMakeOption = (options: MakeOptions | undefined): boolean =>
   Predicate.isBoolean(options) ? options : options?.disableValidation ?? false
 
+const astCache = globalValue("effect/Schema/astCache", () => new WeakMap<any, AST.AST>())
+
 const makeClass = ({ Base, annotations, disableToString, fields, identifier, kind, schema }: {
   kind: "Class" | "TaggedClass" | "TaggedError" | "TaggedRequest"
   identifier: string
@@ -8066,7 +8176,10 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
 
     static [TypeId] = variance
 
-    static get ast() {
+    static get ast(): AST.AST {
+      if (astCache.has(this)) {
+        return astCache.get(this)!
+      }
       const declaration: Schema.Any = declare(
         [typeSide],
         {
@@ -8099,6 +8212,7 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
         declaration,
         { strict: true, decode: (input) => new this(input, true), encode: identity }
       ).annotations({ [AST.SurrogateAnnotationId]: schema.ast })
+      astCache.set(this, transformation.ast)
       return transformation.ast
     }
 
@@ -9631,6 +9745,15 @@ export interface TaggedRequestClass<
 }
 
 /**
+ * @example
+ * import { Schema } from "effect"
+ *
+ * class MyRequest extends Schema.TaggedRequest<MyRequest>("MyRequest")("MyRequest", {
+ *  failure: Schema.String,
+ *  success: Schema.Number,
+ *  payload: { id: Schema.String }
+ * }) {}
+ *
  * @category classes
  * @since 3.10.0
  */

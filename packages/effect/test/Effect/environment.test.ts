@@ -27,6 +27,9 @@ class DemoTag extends Effect.Tag("DemoTag")<DemoTag, {
   readonly getNumbers: () => Array<number>
   readonly strings: Array<string>
   readonly fn: (...args: ReadonlyArray<string>) => Array<string>
+  readonly fnParamsUnion: (
+    ...args: ReadonlyArray<string> | [number] | [false, true]
+  ) => ReadonlyArray<string> | [number] | [false, true]
   readonly fnGen: <S>(s: S) => Array<S>
 }>() {
 }
@@ -69,28 +72,32 @@ describe("Effect", () => {
         getNumbers: () => [0, 1],
         strings: ["a", "b"],
         fn: (...args) => Array.from(args),
-        fnGen: (s) => [s]
+        fnGen: (s) => [s],
+        fnParamsUnion: (..._args) => _args
       })))
   })
   it.effect("effect tag", () =>
     Effect.gen(function*($) {
-      const [n, s, z] = yield* $(Effect.all([
+      const [n, s, z, zUnion] = yield* $(Effect.all([
         DemoTag.getNumbers(),
         DemoTag.strings,
-        DemoTag.fn("a", "b", "c")
+        DemoTag.fn("a", "b", "c"),
+        DemoTag.fnParamsUnion(1)
       ]))
       const s2 = yield* $(DemoTag.pipe(Effect.map((_) => _.strings)))
       const s3 = yield* $(DemoTag.use((_) => _.fnGen("hello")))
       expect(n).toEqual([0, 1])
       expect(s).toEqual(["a", "b"])
       expect(z).toEqual(["a", "b", "c"])
+      expect(zUnion).toEqual([1])
       expect(s2).toEqual(["a", "b"])
       expect(s3).toEqual(["hello"])
     }).pipe(Effect.provideService(DemoTag, {
       getNumbers: () => [0, 1],
       strings: ["a", "b"],
       fn: (...args) => Array.from(args),
-      fnGen: (s) => [s]
+      fnGen: (s) => [s],
+      fnParamsUnion: (..._args) => _args
     })))
   it.effect("effect tag with primitives", () =>
     Effect.gen(function*($) {

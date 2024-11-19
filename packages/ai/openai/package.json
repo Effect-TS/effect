@@ -1,7 +1,7 @@
 {
   "name": "@effect/ai-openai",
   "type": "module",
-  "version": "0.2.10",
+  "version": "0.4.8",
   "license": "MIT",
   "description": "Effect modules for working with AI apis",
   "homepage": "https://effect.website",
@@ -49,10 +49,10 @@
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
-    "@tim-smart/openapi-gen": "^0.2.0",
+    "@tim-smart/openapi-gen": "^0.3.0",
     "effect": "workspace:^"
   },
   "dependencies": {
-    "gpt-tokenizer": "^2.2.3"
+    "gpt-tokenizer": "^2.5.1"
   }
 }

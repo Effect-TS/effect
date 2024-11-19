@@ -10,9 +10,9 @@ const makeServer = Effect.gen(function*(_) {
 
   yield* _(
     server.run((socket) =>
-      Effect.gen(function*(_) {
-        const write = yield* _(socket.writer)
-        yield* _(socket.run(write))
+      Effect.gen(function*() {
+        const write = yield* socket.writer
+        yield* socket.run(write)
       }).pipe(Effect.scoped)
     ),
     Effect.forkScoped
@@ -23,10 +23,9 @@ const makeServer = Effect.gen(function*(_) {
 
 describe("Socket", () => {
   it.scoped("open", () =>
-    Effect.gen(function*(_) {
-      const server = yield* _(makeServer)
-      const address = yield* _(server.address)
-      const channel = NodeSocket.makeNetChannel({ port: (address as SocketServer.TcpAddress).port })
+    Effect.gen(function*() {
+      const server = yield* makeServer
+      const channel = NodeSocket.makeNetChannel({ port: (server.address as SocketServer.TcpAddress).port })
 
       const outputEffect = Stream.make("Hello", "World").pipe(
         Stream.encodeText,
@@ -36,7 +35,7 @@ describe("Socket", () => {
         Stream.runCollect
       )
 
-      const output = yield* _(outputEffect)
+      const output = yield* outputEffect
       assert.strictEqual(Chunk.join(output, ""), "HelloWorld")
     }))
 
@@ -52,7 +51,7 @@ describe("Socket", () => {
         })
     )
 
-    it.effect("messages", () =>
+    it.scoped("messages", () =>
       Effect.gen(function*() {
         const server = yield* makeServer
         const socket = yield* Socket.makeWebSocket(Effect.succeed(url))
@@ -80,7 +79,6 @@ describe("Socket", () => {
         const exit = yield* fiber.await
         expect(exit._tag).toEqual("Success")
       }).pipe(
-        Effect.scoped,
         Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
       ))
   })

@@ -29,7 +29,6 @@ import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
 import type { NoInfer } from "../Types.js"
 import type { Unify } from "../Unify.js"
-import { yieldWrapGet } from "../Utils.js"
 import * as internalCause from "./cause.js"
 import { clockTag } from "./clock.js"
 import * as core from "./core.js"
@@ -792,33 +791,6 @@ const forAllLoop = <A, E, R>(
 export const forever = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<never, E, R> => {
   const loop: Effect.Effect<never, E, R> = core.flatMap(core.flatMap(self, () => core.yieldNow()), () => loop)
   return loop
-}
-
-/**
- * Inspired by https://github.com/tusharmath/qio/pull/22 (revised)
-  @internal */
-export const gen: typeof Effect.gen = function() {
-  let f: any
-  if (arguments.length === 1) {
-    f = arguments[0]
-  } else {
-    f = arguments[1].bind(arguments[0])
-  }
-  return core.suspend(() => {
-    const iterator = f(pipe)
-    const state = internalCall(() => iterator.next())
-    const run = (
-      state: IteratorYieldResult<any> | IteratorReturnResult<any>
-    ): Effect.Effect<any, any, any> => {
-      return (state.done
-        ? core.succeed(state.value)
-        : core.flatMap(
-          yieldWrapGet(state.value) as any,
-          (val: any) => run(internalCall(() => iterator.next(val)))
-        ))
-    }
-    return run(state)
-  })
 }
 
 /* @internal */
