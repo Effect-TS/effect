@@ -85,6 +85,7 @@ export interface JsonSchema7String extends JsonSchemaAnnotations {
   minLength?: number
   maxLength?: number
   pattern?: string
+  format?: string
 }
 
 /**
