@@ -1076,6 +1076,11 @@ export * as Types from "./Types.js"
 export * as Unify from "./Unify.js"
 
 /**
+ * @since 3.12.0
+ */
+export * as UnionFind from "./UnionFind.js"
+
+/**
  * @since 2.0.0
  */
 export * as UpstreamPullRequest from "./UpstreamPullRequest.js"
