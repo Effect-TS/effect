@@ -45,6 +45,38 @@ export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable {
   [Unify.ignoreSymbol]?: TagUnifyIgnore
 }
 
+const ReferenceTypeId: unique symbol = internal.ReferenceTypeId
+
+/**
+ * @since 3.11.0
+ * @category symbol
+ */
+export type ReferenceTypeId = typeof ReferenceTypeId
+
+/**
+ * @since 3.11.0
+ * @category models
+ */
+export interface Reference<in out Id, in out Value> extends Pipeable, Inspectable {
+  readonly [ReferenceTypeId]: ReferenceTypeId
+  readonly defaultValue: () => Value
+
+  readonly _op: "Tag"
+  readonly Service: Value
+  readonly Identifier: Id
+  readonly [TagTypeId]: {
+    readonly _Service: Types.Invariant<Value>
+    readonly _Identifier: Types.Invariant<Id>
+  }
+  of(self: Value): Value
+  context(self: Value): Context<Id>
+  readonly stack?: string | undefined
+  readonly key: string
+  [Unify.typeSymbol]?: unknown
+  [Unify.unifySymbol]?: TagUnify<this>
+  [Unify.ignoreSymbol]?: TagUnifyIgnore
+}
+
 /**
  * @since 2.0.0
  * @category models
@@ -60,6 +92,14 @@ export interface TagClassShape<Id, Shape> {
  * @category models
  */
 export interface TagClass<Self, Id, Type> extends Tag<Self, Type> {
+  new(_: never): TagClassShape<Id, Type>
+}
+
+/**
+ * @since 3.11.0
+ * @category models
+ */
+export interface ReferenceClass<Self, Id, Type> extends Reference<Self, Type> {
   new(_: never): TagClassShape<Id, Type>
 }
 
@@ -173,6 +213,15 @@ export const isContext: (input: unknown) => input is Context<never> = internal.i
 export const isTag: (input: unknown) => input is Tag<any, any> = internal.isTag
 
 /**
+ * Checks if the provided argument is a `Reference`.
+ *
+ * @param input - The value to be checked if it is a `Reference`.
+ * @since 3.11.0
+ * @category guards
+ */
+export const isReference: (u: unknown) => u is Reference<any, any> = internal.isReference
+
+/**
  * Returns an empty `Context`.
  *
  * @example
@@ -259,7 +308,9 @@ export const add: {
  * @category getters
  */
 export const get: {
+  <I, S>(tag: Reference<I, S>): <Services>(self: Context<Services>) => S
   <Services, T extends ValidTagsById<Services>>(tag: T): (self: Context<Services>) => Tag.Service<T>
+  <Services, I, S>(self: Context<Services>, tag: Reference<I, S>): S
   <Services, T extends ValidTagsById<Services>>(self: Context<Services>, tag: T): Tag.Service<T>
 } = internal.get
 
@@ -407,3 +458,21 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
  * @category constructors
  */
 export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() => TagClass<Self, Id, Shape> = internal.Tag
+
+/**
+ * @example
+ * import { Context, Layer } from "effect"
+ *
+ * class MyTag extends Context.Reference<MyTag>()("MyTag", {
+ *   defaultValue: () => ({ myNum: 108 })
+ * }) {
+ *  static Live = Layer.succeed(this, { myNum: 108 })
+ * }
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const Reference: <Self>() => <const Id extends string, Service>(
+  id: Id,
+  options: { readonly defaultValue: () => Service }
+) => ReferenceClass<Self, Id, Service> = internal.Reference
