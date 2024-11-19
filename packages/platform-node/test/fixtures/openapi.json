@@ -250,6 +250,13 @@
                 "properties": {
                   "name": {
                     "type": "string"
+                  },
+                  "uuid": {
+                    "description": "a Universally Unique Identifier",
+                    "format": "uuid",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    "title": "UUID",
+                    "type": "string"
                   }
                 },
                 "additionalProperties": false
@@ -561,6 +568,13 @@
             "title": "Int"
           },
           "name": {
+            "type": "string"
+          },
+          "uuid": {
+            "description": "a Universally Unique Identifier",
+            "format": "uuid",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "UUID",
             "type": "string"
           },
           "createdAt": {

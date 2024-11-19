@@ -1718,10 +1718,11 @@ schema (Suspend): <suspended schema>`
     it("String", () => {
       expectJSONSchema(
         Schema.String.annotations({
-          jsonSchema: { "type": "custom JSON Schema", "description": "description" }
+          jsonSchema: { "type": "custom JSON Schema", "format": "uuid", "description": "description" }
         }),
         {
           "type": "custom JSON Schema",
+          "format": "uuid",
           "description": "description"
         },
         false
@@ -1822,11 +1823,21 @@ schema (Suspend): <suspended schema>`
     })
 
     it("refinement", () => {
-      expectJSONSchema(Schema.Int.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "description": "an integer",
-        "title": "Int",
-        "type": "custom JSON Schema"
-      }, false)
+      expectJSONSchema(
+        Schema.Int.annotations({
+          jsonSchema: {
+            "format": "int32",
+            "type": "custom JSON Schema"
+          }
+        }),
+        {
+          "description": "an integer",
+          "format": "int32",
+          "title": "Int",
+          "type": "custom JSON Schema"
+        },
+        false
+      )
     })
 
     it("transformation", () => {
