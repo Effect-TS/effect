@@ -106,6 +106,8 @@ export interface STMTypeLambda extends TypeLambda {
  */
 declare module "./Context.js" {
   interface Tag<Id, Value> extends STM<Value, never, Id> {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface Reference<Id, Value> extends STM<Value> {}
 }
 
 /**
