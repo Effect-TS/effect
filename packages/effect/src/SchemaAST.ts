@@ -126,10 +126,7 @@ export type TitleAnnotation = string
  */
 export const TitleAnnotationId: unique symbol = Symbol.for("effect/annotation/Title")
 
-/**
- * @category annotations
- * @since 3.10.16
- */
+/** @internal */
 export const AutoTitleAnnotationId: unique symbol = Symbol.for("effect/annotation/AutoTitle")
 
 /**
@@ -352,10 +349,7 @@ export const getMissingMessageAnnotation = getAnnotation<MissingMessageAnnotatio
  */
 export const getTitleAnnotation = getAnnotation<TitleAnnotation>(TitleAnnotationId)
 
-/**
- * @category annotations
- * @since 3.10.16
- */
+/** @internal */
 export const getAutoTitleAnnotation = getAnnotation<TitleAnnotation>(AutoTitleAnnotationId)
 
 /**
