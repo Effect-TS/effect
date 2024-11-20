@@ -128,7 +128,7 @@ export const TitleAnnotationId: unique symbol = Symbol.for("effect/annotation/Ti
 
 /**
  * @category annotations
- * @since 3.10.14
+ * @since 3.10.16
  */
 export const AutoTitleAnnotationId: unique symbol = Symbol.for("effect/annotation/AutoTitle")
 
@@ -354,7 +354,7 @@ export const getTitleAnnotation = getAnnotation<TitleAnnotation>(TitleAnnotation
 
 /**
  * @category annotations
- * @since 3.10.0
+ * @since 3.10.16
  */
 export const getAutoTitleAnnotation = getAnnotation<TitleAnnotation>(AutoTitleAnnotationId)
 
