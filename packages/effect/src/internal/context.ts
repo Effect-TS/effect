@@ -2,6 +2,7 @@ import type * as C from "../Context.js"
 import * as Equal from "../Equal.js"
 import type { LazyArg } from "../Function.js"
 import { dual } from "../Function.js"
+import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as O from "../Option.js"
@@ -13,6 +14,9 @@ import * as option from "./option.js"
 
 /** @internal */
 export const TagTypeId: C.TagTypeId = Symbol.for("effect/Context/Tag") as C.TagTypeId
+
+/** @internal */
+export const ReferenceTypeId: C.ReferenceTypeId = Symbol.for("effect/Context/Reference") as C.ReferenceTypeId
 
 /** @internal */
 const STMSymbolKey = "effect/STM"
@@ -55,6 +59,11 @@ export const TagProto: any = {
   }
 }
 
+export const ReferenceProto: any = {
+  ...TagProto,
+  [ReferenceTypeId]: ReferenceTypeId
+}
+
 /** @internal */
 export const makeGenericTag = <Identifier, Service = Identifier>(key: string): C.Tag<Identifier, Service> => {
   const limit = Error.stackTraceLimit
@@ -87,6 +96,28 @@ export const Tag = <const Id extends string>(id: Id) => <Self, Shape>(): C.TagCl
     }
   })
   return TagClass as any
+}
+
+/** @internal */
+export const Reference = <Self>() =>
+<const Id extends string, Service>(id: Id, options: {
+  readonly defaultValue: () => Service
+}): C.ReferenceClass<Self, Id, Service> => {
+  const limit = Error.stackTraceLimit
+  Error.stackTraceLimit = 2
+  const creationError = new Error()
+  Error.stackTraceLimit = limit
+
+  function ReferenceClass() {}
+  Object.setPrototypeOf(ReferenceClass, ReferenceProto)
+  ReferenceClass.key = id
+  ReferenceClass.defaultValue = options.defaultValue
+  Object.defineProperty(ReferenceClass, "stack", {
+    get() {
+      return creationError.stack
+    }
+  })
+  return ReferenceClass as any
 }
 
 /** @internal */
@@ -162,6 +193,9 @@ export const isContext = (u: unknown): u is C.Context<never> => hasProperty(u, T
 /** @internal */
 export const isTag = (u: unknown): u is C.Tag<any, any> => hasProperty(u, TagTypeId)
 
+/** @internal */
+export const isReference = (u: unknown): u is C.Reference<any, any> => hasProperty(u, ReferenceTypeId)
+
 const _empty = makeContext(new Map())
 
 /** @internal */
@@ -192,22 +226,40 @@ export const add = dual<
   return makeContext(map)
 })
 
+const defaultValueCache = globalValue("effect/Context/defaultValueCache", () => new Map<string, any>())
+const getDefaultValue = (tag: C.Reference<any, any>) => {
+  if (defaultValueCache.has(tag.key)) {
+    return defaultValueCache.get(tag.key)
+  }
+  const value = tag.defaultValue()
+  defaultValueCache.set(tag.key, value)
+  return value
+}
+
+/** @internal */
+export const unsafeGetReference = <Services, I, S>(self: C.Context<Services>, tag: C.Reference<I, S>): S => {
+  return self.unsafeMap.has(tag.key) ? self.unsafeMap.get(tag.key) : getDefaultValue(tag)
+}
+
 /** @internal */
 export const unsafeGet = dual<
   <S, I>(tag: C.Tag<I, S>) => <Services>(self: C.Context<Services>) => S,
   <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>) => S
 >(2, (self, tag) => {
   if (!self.unsafeMap.has(tag.key)) {
-    throw serviceNotFoundError(tag as any)
+    if (ReferenceTypeId in tag) return getDefaultValue(tag as any)
+    throw serviceNotFoundError(tag)
   }
   return self.unsafeMap.get(tag.key)! as any
 })
 
 /** @internal */
 export const get: {
+  <I, S>(tag: C.Reference<I, S>): <Services>(self: C.Context<Services>) => S
   <Services, T extends C.ValidTagsById<Services>>(tag: T): (self: C.Context<Services>) => C.Tag.Service<T>
+  <Services, I, S>(self: C.Context<Services>, tag: C.Reference<I, S>): S
   <Services, T extends C.ValidTagsById<Services>>(self: C.Context<Services>, tag: T): C.Tag.Service<T>
-} = unsafeGet
+} = unsafeGet as any
 
 /** @internal */
 export const getOrElse = dual<
@@ -215,7 +267,7 @@ export const getOrElse = dual<
   <Services, S, I, B>(self: C.Context<Services>, tag: C.Tag<I, S>, orElse: LazyArg<B>) => S | B
 >(3, (self, tag, orElse) => {
   if (!self.unsafeMap.has(tag.key)) {
-    return orElse()
+    return isReference(tag) ? getDefaultValue(tag) : orElse()
   }
   return self.unsafeMap.get(tag.key)! as any
 })
@@ -226,7 +278,7 @@ export const getOption = dual<
   <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>) => O.Option<S>
 >(2, (self, tag) => {
   if (!self.unsafeMap.has(tag.key)) {
-    return option.none
+    return isReference(tag) ? option.some(getDefaultValue(tag)) : option.none
   }
   return option.some(self.unsafeMap.get(tag.key)! as any)
 })
