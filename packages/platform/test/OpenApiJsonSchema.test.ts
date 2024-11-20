@@ -1528,8 +1528,7 @@ schema (Suspend): <suspended schema>`
             "type": "string"
           }
         },
-        "additionalProperties": false,
-        "title": "A (Encoded side)"
+        "additionalProperties": false
       })
     })
   })
@@ -1949,8 +1948,7 @@ schema (Suspend): <suspended schema>`
               "minLength": 1
             }
           },
-          "additionalProperties": false,
-          "title": "Struct (Encoded side)"
+          "additionalProperties": false
         })
         expectJSONSchema(Schema.typeSchema(schema), {
           "type": "object",
@@ -1965,8 +1963,7 @@ schema (Suspend): <suspended schema>`
               "minLength": 1
             }
           },
-          "additionalProperties": false,
-          "title": "Struct (Type side)"
+          "additionalProperties": false
         })
         expectJSONSchema(Schema.encodedSchema(schema), {
           "type": "object",
@@ -1996,8 +1993,7 @@ schema (Suspend): <suspended schema>`
                 "minLength": 1
               }
             },
-            "additionalProperties": false,
-            "title": "Struct (Encoded side)"
+            "additionalProperties": false
           }
         )
       })
@@ -2018,8 +2014,7 @@ schema (Suspend): <suspended schema>`
                 "minLength": 1
               }
             },
-            "additionalProperties": false,
-            "title": "Struct (Encoded side)"
+            "additionalProperties": false
           }
         )
       })
@@ -2042,8 +2037,7 @@ schema (Suspend): <suspended schema>`
                 "minLength": 1
               }
             },
-            "additionalProperties": false,
-            "title": "Struct (Encoded side)"
+            "additionalProperties": false
           }
         )
       })

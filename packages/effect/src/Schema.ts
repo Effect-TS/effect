@@ -2605,8 +2605,8 @@ const getDefaultTypeLiteralAST = <
         })
       }
       return new AST.Transformation(
-        new AST.TypeLiteral(from, issFrom, { [AST.TitleAnnotationId]: "Struct (Encoded side)" }),
-        new AST.TypeLiteral(to, issTo, { [AST.TitleAnnotationId]: "Struct (Type side)" }),
+        new AST.TypeLiteral(from, issFrom, { [AST.AutoTitleAnnotationId]: "Struct (Encoded side)" }),
+        new AST.TypeLiteral(to, issTo, { [AST.AutoTitleAnnotationId]: "Struct (Type side)" }),
         new AST.TypeLiteralTransformation(transformations)
       )
     }
@@ -8100,15 +8100,6 @@ const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   return out
 }
 
-// does not overwrite existing title annotation
-const orElseTitleAnnotation = <A, I, R>(schema: Schema<A, I, R>, title: string): Schema<A, I, R> => {
-  const annotation = AST.getTitleAnnotation(schema.ast)
-  if (option_.isNone(annotation)) {
-    return schema.annotations({ title })
-  }
-  return schema
-}
-
 type MakeOptions = boolean | {
   readonly disableValidation?: boolean
 }
@@ -8128,9 +8119,9 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
   disableToString?: boolean | undefined
 }): any => {
   const classSymbol = Symbol.for(`effect/Schema/${kind}/${identifier}`)
-  const validateSchema = orElseTitleAnnotation(schema, `${identifier} (Constructor)`)
-  const encodedSide: Schema.Any = orElseTitleAnnotation(schema, `${identifier} (Encoded side)`)
-  const typeSide = orElseTitleAnnotation(typeSchema(schema), `${identifier} (Type side)`)
+  const validateSchema = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Constructor)` })
+  const encodedSide: Schema.Any = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Encoded side)` })
+  const typeSide = typeSchema(schema).annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Type side)` })
   const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && ParseResult.is(typeSide)(u)
   const klass = class extends Base {
     constructor(

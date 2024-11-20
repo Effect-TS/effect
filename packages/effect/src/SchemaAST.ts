@@ -126,6 +126,9 @@ export type TitleAnnotation = string
  */
 export const TitleAnnotationId: unique symbol = Symbol.for("effect/annotation/Title")
 
+/** @internal */
+export const AutoTitleAnnotationId: unique symbol = Symbol.for("effect/annotation/AutoTitle")
+
 /**
  * @category annotations
  * @since 3.10.0
@@ -345,6 +348,9 @@ export const getMissingMessageAnnotation = getAnnotation<MissingMessageAnnotatio
  * @since 3.10.0
  */
 export const getTitleAnnotation = getAnnotation<TitleAnnotation>(TitleAnnotationId)
+
+/** @internal */
+export const getAutoTitleAnnotation = getAnnotation<TitleAnnotation>(AutoTitleAnnotationId)
 
 /**
  * @category annotations
@@ -2814,6 +2820,7 @@ const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), (
 const getExpected = (ast: Annotated): Option.Option<string> => {
   return getIdentifierAnnotation(ast).pipe(
     Option.orElse(() => getTitleAnnotation(ast)),
-    Option.orElse(() => getDescriptionAnnotation(ast))
+    Option.orElse(() => getDescriptionAnnotation(ast)),
+    Option.orElse(() => getAutoTitleAnnotation(ast))
   )
 }
