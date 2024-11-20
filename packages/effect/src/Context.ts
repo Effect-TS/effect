@@ -218,6 +218,7 @@ export const isTag: (input: unknown) => input is Tag<any, any> = internal.isTag
  * @param input - The value to be checked if it is a `Reference`.
  * @since 3.11.0
  * @category guards
+ * @experimental
  */
 export const isReference: (u: unknown) => u is Reference<any, any> = internal.isReference
 
@@ -471,6 +472,7 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() => TagCla
  *
  * @since 3.11.0
  * @category constructors
+ * @experimental
  */
 export const Reference: <Self>() => <const Id extends string, Service>(
   id: Id,

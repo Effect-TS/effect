@@ -58,6 +58,7 @@ export const TagProto: any = {
     return make(this, self)
   }
 }
+
 export const ReferenceProto: any = {
   ...TagProto,
   [ReferenceTypeId]: ReferenceTypeId
