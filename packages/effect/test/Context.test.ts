@@ -21,6 +21,10 @@ const C = Context.GenericTag<C>("C")
 
 class D extends Context.Tag("D")<D, { readonly d: number }>() {}
 
+class E extends Context.Reference<E>()("E", {
+  defaultValue: () => ({ e: 0 })
+}) {}
+
 describe("Context", () => {
   it("Tag.toJson()", () => {
     const json: any = A.toJSON()
@@ -80,6 +84,11 @@ describe("Context", () => {
       Services,
       Context.getOption(C)
     )).toEqual(O.none())
+
+    expect(pipe(
+      Services,
+      Context.get(E)
+    )).toEqual({ e: 0 })
 
     assert.throw(() => {
       pipe(
@@ -255,5 +264,10 @@ describe("Context", () => {
   it("isTag", () => {
     expect(Context.isTag(Context.GenericTag("Demo"))).toEqual(true)
     expect(Context.isContext(null)).toEqual(false)
+  })
+
+  it("isReference", () => {
+    expect(Context.isTag(E)).toEqual(true)
+    expect(Context.isReference(E)).toEqual(true)
   })
 })
