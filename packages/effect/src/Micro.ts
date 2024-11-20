@@ -18,6 +18,7 @@ import * as Hash from "./Hash.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
 import { format, NodeInspectSymbol, toStringUnknown } from "./Inspectable.js"
+import * as InternalContext from "./internal/context.js"
 import * as doNotation from "./internal/doNotation.js"
 import { StructuralPrototype } from "./internal/effectable.js"
 import * as Option from "./Option.js"
@@ -422,8 +423,8 @@ export interface Fiber<out A, out E = never> {
   readonly [FiberTypeId]: Fiber.Variance<A, E>
 
   readonly currentOpCount: number
-  readonly getEnvRef: <A>(ref: EnvRef<A>) => A
-  readonly env: Env<unknown>
+  readonly getRef: <I, A>(ref: Context.Reference<I, A>) => A
+  readonly context: Context.Context<never>
   readonly addObserver: (cb: (exit: MicroExit<A, E>) => void) => () => void
   readonly unsafeInterrupt: () => void
   readonly unsafePoll: () => MicroExit<A, E> | undefined
@@ -446,19 +447,6 @@ export declare namespace Fiber {
   }
 }
 
-/**
- * @since 3.11.0
- * @experimental
- * @category Fiber
- */
-export const FiberFlag = {
-  Uninterruptible: 1
-} as const
-
-const isInterruptible = (flags: number): boolean => (flags & 1) === 0
-
-const defaultFlags = 0
-
 const fiberVariance = {
   _A: identity,
   _E: identity
@@ -475,14 +463,14 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
   public currentOpCount = 0
 
   constructor(
-    public env: Env<unknown>,
-    public flags = defaultFlags
+    public context: Context.Context<never>,
+    public interruptible = true
   ) {
     this[FiberTypeId] = fiberVariance
   }
 
-  getEnvRef<A>(ref: EnvRef<A>): A {
-    return this.env.refs[ref.key] as A ?? ref.initial
+  getRef<I, A>(ref: Context.Reference<I, A>): A {
+    return InternalContext.unsafeGetReference(this.context, ref)
   }
 
   addObserver(cb: (exit: MicroExit<A, E>) => void): () => void {
@@ -505,7 +493,7 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
       return
     }
     this._interrupted = true
-    if (isInterruptible(this.flags)) {
+    if (this.interruptible) {
       this.evaluate(exitInterrupt as any)
     }
   }
@@ -548,7 +536,7 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
     try {
       while (true) {
         this.currentOpCount++
-        if (!yielding && this.getEnvRef(currentScheduler).shouldYield(this as any)) {
+        if (!yielding && this.getRef(CurrentScheduler).shouldYield(this as any)) {
           yielding = true
           const prev = current
           current = flatMap(yieldNow, () => prev as any) as any
@@ -842,7 +830,7 @@ export const failCause: <E>(cause: MicroCause<E>) => Micro<never, E> = makeExit(
   prop: "cause",
   eval(fiber) {
     let cont = fiber.getCont(failureCont)
-    while (causeIsInterrupt(this[args]) && cont && isInterruptible(fiber.flags)) {
+    while (causeIsInterrupt(this[args]) && cont && fiber.interruptible) {
       cont = fiber.getCont(failureCont)
     }
     return cont ? cont[failureCont](this[args], fiber) : fiber.yieldWith(this)
@@ -906,7 +894,7 @@ export const yieldNowWith: (priority?: number) => Micro<void> = makePrimitive({
   op: "Yield",
   eval(fiber) {
     let resumed = false
-    fiber.getEnvRef(currentScheduler).scheduleTask(() => {
+    fiber.getRef(CurrentScheduler).scheduleTask(() => {
       if (resumed) return
       fiber.evaluate(exitVoid as any)
     }, this[args] ?? 0)
@@ -1118,7 +1106,7 @@ export const withFiber: <A, E = never, R = never>(
  * @category constructors
  */
 export const yieldFlush: Micro<void> = withFiber((fiber) => {
-  fiber.getEnvRef(currentScheduler).flush()
+  fiber.getRef(CurrentScheduler).flush()
   return exitVoid
 })
 
@@ -1164,9 +1152,9 @@ const asyncOptions: <A, E = never, R = never>(
 const asyncFinalizer: (onInterrupt: () => Micro<void, any, any>) => Primitive = makePrimitive({
   op: "AsyncFinalizer",
   ensure(fiber) {
-    if (isInterruptible(fiber.flags)) {
-      fiber.flags |= FiberFlag.Uninterruptible
-      fiber._stack.push(revertFlags(FiberFlag.Uninterruptible))
+    if (fiber.interruptible) {
+      fiber.interruptible = false
+      fiber._stack.push(setInterruptible(true))
     }
   },
   contE(cause, _fiber) {
@@ -1574,47 +1562,6 @@ export const map: {
   <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R> => flatMap(self, (a) => succeed(f(a)))
 )
 
-/**
- * Update the fiber flags for the duration of the effect.
- *
- * @since 3.4.0
- * @experimental
- * @category flags
- */
-export const updateFiberFlags = (f: (flags: number) => number): Micro<void> => updateFlags(f)
-
-const updateFlags: (
-  f: (flags: number) => number,
-  evaluate?: (oldFlags: number) => Micro<any, any, any>
-) => any = makePrimitive({
-  op: "UpdateFlags",
-  single: false,
-  eval(fiber) {
-    const [f, evaluate] = this[args]
-    const oldFlags = fiber.flags
-    const newFlags = f(fiber.flags)
-    if (fiber._interrupted && isInterruptible(newFlags)) {
-      return exitInterrupt
-    } else if (newFlags === oldFlags) {
-      return evaluate ? evaluate(oldFlags) : exitVoid
-    }
-    const diff = oldFlags ^ newFlags
-    fiber.flags = newFlags
-    fiber._stack.push(revertFlags(diff))
-    return evaluate ? evaluate(oldFlags) : exitVoid
-  }
-})
-
-const revertFlags: (diff: number) => Primitive = makePrimitive({
-  op: "RevertFlags",
-  ensure(fiber) {
-    fiber.flags = fiber.flags ^ this[args]
-    if (fiber._interrupted && isInterruptible(fiber.flags)) {
-      return () => exitInterrupt
-    }
-  }
-})
-
 // ----------------------------------------------------------------------------
 // MicroExit
 // ----------------------------------------------------------------------------
@@ -1847,7 +1794,7 @@ export class MicroSchedulerDefault implements MicroScheduler {
    * @since 3.5.9
    */
   shouldYield(fiber: Fiber<unknown, unknown>) {
-    return fiber.currentOpCount >= fiber.getEnvRef(currentMaxOpsBeforeYield)
+    return fiber.currentOpCount >= fiber.getRef(MaxOpsBeforeYield)
   }
 
   /**
@@ -1860,106 +1807,6 @@ export class MicroSchedulerDefault implements MicroScheduler {
   }
 }
 
-// ----------------------------------------------------------------------------
-// env
-// ----------------------------------------------------------------------------
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const EnvTypeId = Symbol.for("effect/Micro/Env")
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export type EnvTypeId = typeof EnvTypeId
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export interface Env<R> extends Pipeable {
-  readonly [EnvTypeId]: {
-    _R: Covariant<R>
-  }
-  readonly refs: Record<string, unknown>
-}
-
-const EnvProto = {
-  [EnvTypeId]: {
-    _R: identity
-  },
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const envMake = <R = never>(refs: Record<string, unknown>): Env<R> => {
-  const self = Object.create(EnvProto)
-  self.refs = refs
-  return self
-}
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const envUnsafeMakeEmpty = (): Env<never> => envMake(Object.create(null))
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const envGet: {
-  <A>(ref: EnvRef<A>): <R>(self: Env<R>) => A
-  <A, R>(self: Env<R>, ref: EnvRef<A>): A
-} = dual(
-  2,
-  <R, A>(self: Env<R>, ref: EnvRef<A>): A => ref.key in self.refs ? (self.refs[ref.key] as A) : ref.initial
-)
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const envSet: {
-  <A>(ref: EnvRef<A>, value: A): <R>(self: Env<R>) => Env<R>
-  <A, R>(self: Env<R>, ref: EnvRef<A>, value: A): Env<R>
-} = dual(3, <R, A>(self: Env<R>, ref: EnvRef<A>, value: A): Env<R> => {
-  const refs = Object.assign(Object.create(null), self.refs)
-  refs[ref.key] = value
-  return envMake(refs)
-})
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const envMutate: {
-  (f: (map: Record<string, unknown>) => void): <R>(self: Env<R>) => Env<R>
-  <R>(self: Env<R>, f: (map: Record<string, unknown>) => void): Env<R>
-} = dual(
-  2,
-  <R>(
-    self: Env<R>,
-    f: (map: Record<string, unknown>) => Record<string, unknown>
-  ): Env<R> => envMake(f(Object.assign(Object.create(null), self.refs)))
-)
-
 /**
  * Access the given `Context.Tag` from the environment.
  *
@@ -1967,8 +1814,12 @@ export const envMutate: {
  * @experimental
  * @category environment
  */
-export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
-  withFiber((fiber) => succeed(Context.unsafeGet(fiber.getEnvRef(currentContext), tag)))
+export const service: {
+  <I, S>(tag: Context.Reference<I, S>): Micro<S>
+  <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I>
+} =
+  (<I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
+    withFiber((fiber) => succeed(Context.unsafeGet(fiber.context, tag)))) as any
 
 /**
  * Access the given `Context.Tag` from the environment, without tracking the
@@ -1983,73 +1834,81 @@ export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
  */
 export const serviceOption = <I, S>(
   tag: Context.Tag<I, S>
-): Micro<Option.Option<S>> => withFiber((fiber) => succeed(Context.getOption(fiber.getEnvRef(currentContext), tag)))
+): Micro<Option.Option<S>> => withFiber((fiber) => succeed(Context.getOption(fiber.context, tag)))
 
 /**
- * Retrieve the current value of the given `EnvRef`.
+ * Update the Context with the given mapping function.
  *
- * @since 3.4.0
+ * @since 3.11.0
  * @experimental
  * @category environment
  */
-export const getEnvRef = <A>(envRef: EnvRef<A>): Micro<A> => withFiber((fiber) => succeed(fiber.getEnvRef(envRef)))
-
-/**
- * Set the value of the given `EnvRef` for the duration of the effect.
- *
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const locally: {
-  <A>(
-    fiberRef: EnvRef<A>,
-    value: A
-  ): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
-  <XA, E, R, A>(
-    self: Micro<XA, E, R>,
-    fiberRef: EnvRef<A>,
-    value: A
-  ): Micro<XA, E, R>
+export const updateContext: {
+  <R2, R>(
+    f: (context: Context.Context<R2>) => Context.Context<NoInfer<R>>
+  ): <A, E>(self: Micro<A, E, R>) => Micro<A, E, R2>
+  <A, E, R, R2>(self: Micro<A, E, R>, f: (context: Context.Context<R2>) => Context.Context<NoInfer<R>>): Micro<A, E, R2>
 } = dual(
-  3,
-  <XA, E, R, A>(
-    self: Micro<XA, E, R>,
-    fiberRef: EnvRef<A>,
-    value: A
-  ): Micro<XA, E, R> => locallyWith(self, fiberRef, () => value)
+  2,
+  <A, E, R, R2>(
+    self: Micro<A, E, R>,
+    f: (context: Context.Context<R2>) => Context.Context<NoInfer<R>>
+  ): Micro<A, E, R2> =>
+    withFiber<A, E, R2>((fiber) => {
+      const prev = fiber.context as Context.Context<R2>
+      fiber.context = f(prev)
+      return onExit(
+        self as any,
+        () => {
+          fiber.context = prev
+          return void_
+        }
+      )
+    })
 )
 
 /**
- * Update the value of the given `EnvRef` for the duration of the effect.
+ * Update the service for the given `Context.Tag` in the environment.
  *
- * @since 3.4.0
+ * @since 3.11.0
  * @experimental
  * @category environment
  */
-export const locallyWith: {
-  <A>(
-    fiberRef: EnvRef<A>,
+export const updateService: {
+  <I, A>(
+    tag: Context.Reference<I, A>,
     f: (value: A) => A
   ): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
-  <XA, E, R, A>(
+  <I, A>(
+    tag: Context.Tag<I, A>,
+    f: (value: A) => A
+  ): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R | I>
+  <XA, E, R, I, A>(
     self: Micro<XA, E, R>,
-    fiberRef: EnvRef<A>,
+    tag: Context.Reference<I, A>,
     f: (value: A) => A
   ): Micro<XA, E, R>
+  <XA, E, R, I, A>(
+    self: Micro<XA, E, R>,
+    tag: Context.Tag<I, A>,
+    f: (value: A) => A
+  ): Micro<XA, E, R | I>
 } = dual(
   3,
-  <XA, E, R, A>(
+  <XA, E, R, I, A>(
     self: Micro<XA, E, R>,
-    fiberRef: EnvRef<A>,
+    tag: Context.Reference<I, A>,
     f: (value: A) => A
   ): Micro<XA, E, R> =>
     withFiber((fiber) => {
-      const prev = fiber.getEnvRef(fiberRef)
-      fiber.env = envSet(fiber.env, fiberRef, f(prev))
-      return ensuring(
+      const prev = Context.unsafeGet(fiber.context, tag)
+      fiber.context = Context.add(fiber.context, tag, f(prev))
+      return onExit(
         self,
-        sync(() => fiber.env = envSet(fiber.env, fiberRef, prev))
+        () => {
+          fiber.context = Context.add(fiber.context, tag, prev)
+          return void_
+        }
       )
     })
 )
@@ -2061,7 +1920,8 @@ export const locallyWith: {
  * @experimental
  * @category environment
  */
-export const context = <R>(): Micro<Context.Context<R>> => getEnvRef(currentContext) as any
+export const context = <R>(): Micro<Context.Context<R>> => getContext as any
+const getContext = withFiber((fiber) => succeed(fiber.context))
 
 /**
  * Merge the given `Context` with the current context.
@@ -2083,7 +1943,7 @@ export const provideContext: {
   <A, E, R, XR>(
     self: Micro<A, E, R>,
     provided: Context.Context<XR>
-  ): Micro<A, E, Exclude<R, XR>> => locallyWith(self, currentContext, Context.merge(provided)) as any
+  ): Micro<A, E, Exclude<R, XR>> => updateContext(self, Context.merge(provided)) as any
 )
 
 /**
@@ -2109,7 +1969,7 @@ export const provideService: {
     self: Micro<A, E, R>,
     tag: Context.Tag<I, S>,
     service: S
-  ): Micro<A, E, Exclude<R, I>> => locallyWith(self, currentContext, Context.add(tag, service)) as any
+  ): Micro<A, E, Exclude<R, I>> => updateContext(self, Context.add(tag, service)) as any
 )
 
 /**
@@ -2140,90 +2000,47 @@ export const provideServiceEffect: {
 )
 
 // ========================================================================
-// Env refs
+// References
 // ========================================================================
 
 /**
- * @since 3.4.0
+ * @since 3.11.0
  * @experimental
- * @category environment
+ * @category references
  */
-export const EnvRefTypeId: unique symbol = Symbol.for("effect/Micro/EnvRef")
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export type EnvRefTypeId = typeof EnvRefTypeId
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export interface EnvRef<A> {
-  readonly [EnvRefTypeId]: EnvRefTypeId
-  readonly key: string
-  readonly initial: A
-}
-
-const EnvRefProto: ThisType<EnvRef<any>> = {
-  [EnvRefTypeId]: EnvRefTypeId
-}
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment refs
- */
-export const envRefMake = <A>(key: string, initial: LazyArg<A>): EnvRef<A> =>
-  globalValue(key, () => {
-    const self = Object.create(EnvRefProto)
-    self.key = key
-    self.initial = initial()
-    return self
-  })
+export class MaxOpsBeforeYield extends Context.Reference<MaxOpsBeforeYield>()<
+  "effect/Micro/currentMaxOpsBeforeYield",
+  number
+>(
+  "effect/Micro/currentMaxOpsBeforeYield",
+  { defaultValue: () => 2048 }
+) {}
 
 /**
  * @since 3.11.0
  * @experimental
  * @category environment refs
  */
-export const currentMaxOpsBeforeYield: EnvRef<number> = envRefMake(
-  "effect/Micro/currentMaxOpsBeforeYield",
-  () => 2048
-)
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment refs
- */
-export const currentContext: EnvRef<Context.Context<never>> = envRefMake(
-  "effect/Micro/currentContext",
-  () => Context.empty()
-)
-
-/**
- * @since 3.4.0
- * @experimental
- * @category environment refs
- */
-export const currentConcurrency: EnvRef<"unbounded" | number> = envRefMake(
+export class CurrentConcurrency extends Context.Reference<CurrentConcurrency>()<
   "effect/Micro/currentConcurrency",
-  () => "unbounded"
-)
+  "unbounded" | number
+>(
+  "effect/Micro/currentConcurrency",
+  { defaultValue: () => "unbounded" }
+) {}
 
 /**
- * @since 3.4.0
+ * @since 3.11.0
  * @experimental
  * @category environment refs
  */
-export const currentScheduler: EnvRef<MicroScheduler> = envRefMake(
+export class CurrentScheduler extends Context.Reference<CurrentScheduler>()<
   "effect/Micro/currentScheduler",
-  () => new MicroSchedulerDefault()
-)
+  MicroScheduler
+>(
+  "effect/Micro/currentScheduler",
+  { defaultValue: () => new MicroSchedulerDefault() }
+) {}
 
 /**
  * If you have a `Micro` that uses `concurrency: "inherit"`, you can use this
@@ -2254,7 +2071,7 @@ export const withConcurrency: {
   <A, E, R>(
     self: Micro<A, E, R>,
     concurrency: "unbounded" | number
-  ): Micro<A, E, R> => locally(self, currentConcurrency, concurrency)
+  ): Micro<A, E, R> => provideService(self, CurrentConcurrency, concurrency)
 )
 
 // ----------------------------------------------------------------------------
@@ -3798,9 +3615,23 @@ export const interrupt: Micro<never> = failCause(causeInterrupt())
  */
 export const uninterruptible = <A, E, R>(
   self: Micro<A, E, R>
-): Micro<A, E, R> => updateFlags(addUninterruptible, () => self)
+): Micro<A, E, R> =>
+  withFiber((fiber) => {
+    if (!fiber.interruptible) return self
+    fiber.interruptible = false
+    fiber._stack.push(setInterruptible(true))
+    return self
+  })
 
-const addUninterruptible = (flags: number) => flags | FiberFlag.Uninterruptible
+const setInterruptible: (interruptible: boolean) => Primitive = makePrimitive({
+  op: "SetInterruptible",
+  ensure(fiber) {
+    fiber.interruptible = this[args]
+    if (fiber._interrupted && fiber.interruptible) {
+      return () => exitInterrupt
+    }
+  }
+})
 
 /**
  * Flag the effect as interruptible, which means that when the effect is
@@ -3812,9 +3643,14 @@ const addUninterruptible = (flags: number) => flags | FiberFlag.Uninterruptible
  */
 export const interruptible = <A, E, R>(
   self: Micro<A, E, R>
-): Micro<A, E, R> => updateFlags(removeUninterruptible, () => self)
-
-const removeUninterruptible = (flags: number) => flags & ~FiberFlag.Uninterruptible
+): Micro<A, E, R> =>
+  withFiber((fiber) => {
+    if (fiber.interruptible) return self
+    fiber.interruptible = true
+    fiber._stack.push(setInterruptible(false))
+    if (fiber._interrupted) return exitInterrupt
+    return self
+  })
 
 /**
  * Wrap the given `Micro` effect in an uninterruptible region, preventing the
@@ -3842,7 +3678,12 @@ export const uninterruptibleMask = <A, E, R>(
     restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>
   ) => Micro<A, E, R>
 ): Micro<A, E, R> =>
-  updateFlags(addUninterruptible, (oldFlags) => (oldFlags & 1) === 0 ? f(interruptible) : f(identity))
+  withFiber((fiber) => {
+    if (!fiber.interruptible) return f(identity)
+    fiber.interruptible = false
+    fiber._stack.push(setInterruptible(true))
+    return f(interruptible)
+  })
 
 // ========================================================================
 // collecting & elements
@@ -4022,7 +3863,7 @@ export const forEach: {
 }): Micro<any, E, R> =>
   withFiber((parent) => {
     const concurrencyOption = options?.concurrency === "inherit"
-      ? parent.getEnvRef(currentConcurrency)
+      ? parent.getRef(CurrentConcurrency)
       : options?.concurrency ?? 1
     const concurrency = concurrencyOption === "unbounded"
       ? Number.POSITIVE_INFINITY
@@ -4251,7 +4092,7 @@ const unsafeFork = <FA, FE, A, E, R>(
   immediate = false,
   daemon = false
 ): Fiber<A, E> => {
-  const child = new FiberImpl<A, E>(parent.env, parent.flags)
+  const child = new FiberImpl<A, E>(parent.context, parent.interruptible)
   if (!daemon) {
     parent.children().add(child)
     child.addObserver(() => parent.children().delete(child))
@@ -4259,7 +4100,7 @@ const unsafeFork = <FA, FE, A, E, R>(
   if (immediate) {
     child.evaluate(effect as any)
   } else {
-    parent.getEnvRef(currentScheduler).scheduleTask(() => child.evaluate(effect as any), 0)
+    parent.getRef(CurrentScheduler).scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child
 }
@@ -4351,9 +4192,9 @@ export const runFork = <A, E>(
     readonly scheduler?: MicroScheduler | undefined
   } | undefined
 ): FiberImpl<A, E> => {
-  const env = envUnsafeMakeEmpty()
-  env.refs[currentScheduler.key] = options?.scheduler ?? new MicroSchedulerDefault()
-  const fiber = new FiberImpl<A, E>(env)
+  const fiber = new FiberImpl<A, E>(CurrentScheduler.context(
+    options?.scheduler ?? new MicroSchedulerDefault()
+  ))
   fiber.evaluate(effect as any)
   if (options?.signal) {
     if (options.signal.aborted) {
