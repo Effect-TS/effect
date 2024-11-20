@@ -422,6 +422,9 @@
     },
     {
       "name": "Users API"
+    },
+    {
+      "name": "Tag from OpenApi.Transform annotation"
     }
   ],
   "components": {
