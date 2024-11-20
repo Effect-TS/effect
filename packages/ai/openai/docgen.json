@@ -6,9 +6,13 @@
     "strict": true,
     "skipLibCheck": true,
     "moduleResolution": "Bundler",
-    "module": "ES2022",
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "Preserve",
+    "target": "ES2023",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "paths": {
       "effect": ["../../../../effect/src/index.js"],
       "effect/*": ["../../../../effect/src/*.js"],
