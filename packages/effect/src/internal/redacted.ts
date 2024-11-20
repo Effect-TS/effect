@@ -48,17 +48,16 @@ export const isRedacted = (u: unknown): u is Redacted.Redacted<unknown> => hasPr
 export const make = <T>(value: T, str = "<redacted>"): Redacted.Redacted<T> => {
   const redacted = Object.create({
     ...proto,
-      toString() {
-        return str
-      },
-      toJSON() {
-        return str
-      },
-      [NodeInspectSymbol]() {
-        return str
-      },
+    toString() {
+      return str
+    },
+    toJSON() {
+      return str
+    },
+    [NodeInspectSymbol]() {
+      return str
     }
-  )
+  })
   redactedRegistry.set(redacted, value)
   return redacted
 }
