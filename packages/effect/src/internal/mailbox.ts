@@ -85,7 +85,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   private messagesChunk = Chunk.empty<A>()
   constructor(
     readonly scheduler: Scheduler,
-    readonly capacity: number,
+    private capacity: number,
     readonly strategy: "suspend" | "dropping" | "sliding"
   ) {
     super()
@@ -100,6 +100,11 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
           case "dropping":
             return exitFalse
           case "suspend":
+            if (this.capacity <= 0 && this.state.takers.size > 0) {
+              this.messages.push(message)
+              this.releaseTaker()
+              return exitTrue
+            }
             return this.offerRemainingSingle(message)
           case "sliding":
             this.unsafeTake()
@@ -119,6 +124,10 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       if (this.strategy === "sliding") {
         this.unsafeTake()
         this.messages.push(message)
+        return true
+      } else if (this.capacity <= 0 && this.state.takers.size > 0) {
+        this.messages.push(message)
+        this.releaseTaker()
         return true
       }
       return false
@@ -164,7 +173,9 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       this.scheduleReleaseTaker()
       return []
     }
-    const free = this.capacity - this.messages.length - this.messagesChunk.length
+    const free = this.capacity <= 0
+      ? this.state.takers.size
+      : this.capacity - this.messages.length - this.messagesChunk.length
     if (free === 0) {
       return Arr.fromIterable(messages)
     }
@@ -274,6 +285,11 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       message = this.messages[0]
       this.messagesChunk = Chunk.drop(Chunk.unsafeFromArray(this.messages), 1)
       this.messages = []
+    } else if (this.capacity <= 0 && this.state.offers.size > 0) {
+      this.capacity = 1
+      this.releaseCapacity()
+      this.capacity = 0
+      return this.messages.length > 0 ? core.exitSucceed(this.messages.pop()!) : undefined
     } else {
       return undefined
     }
@@ -422,6 +438,11 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       const messages = Chunk.unsafeFromArray(this.messages)
       this.messages = []
       return messages
+    } else if (this.state._tag !== "Done" && this.state.offers.size > 0) {
+      this.capacity = 1
+      this.releaseCapacity()
+      this.capacity = 0
+      return Chunk.of(this.messages.pop()!)
     }
     return empty
   }
