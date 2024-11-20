@@ -151,6 +151,9 @@ declare module "./Context.js" {
   interface Tag<Id, Value> extends Effect<Value, never, Id> {
     [Symbol.iterator](): EffectGenerator<Tag<Id, Value>>
   }
+  interface Reference<Id, Value> extends Effect<Value> {
+    [Symbol.iterator](): EffectGenerator<Reference<Id, Value>>
+  }
   interface TagUnifyIgnore {
     Effect?: true
     Either?: true
