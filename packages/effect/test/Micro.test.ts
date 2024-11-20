@@ -389,8 +389,7 @@ describe.concurrent("Micro", () => {
 
     it.effect("context", () =>
       Effect.gen(function*() {
-        const result = yield* ATag.pipe(
-          Micro.service,
+        const result = yield* Micro.service(ATag).pipe(
           Micro.map((_) => _)
         )
         assert.deepStrictEqual(result, "A")
