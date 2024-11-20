@@ -2,6 +2,8 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.preferences.importModuleSpecifier": "relative",
   "typescript.enablePromptUseWorkspaceTsdk": true,
+  "deno.enable": false,
+  "biome.enabled": false,
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
   "[json]": {
