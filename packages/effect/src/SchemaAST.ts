@@ -2826,7 +2826,7 @@ const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), (
 const getExpected = (ast: Annotated): Option.Option<string> => {
   return getIdentifierAnnotation(ast).pipe(
     Option.orElse(() => getTitleAnnotation(ast)),
-    Option.orElse(() => getAutoTitleAnnotation(ast)),
-    Option.orElse(() => getDescriptionAnnotation(ast))
+    Option.orElse(() => getDescriptionAnnotation(ast)),
+    Option.orElse(() => getAutoTitleAnnotation(ast))
   )
 }
