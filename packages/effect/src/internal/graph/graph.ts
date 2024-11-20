@@ -1,6 +1,3 @@
-/**
- * @since 3.12.0
- */
 import { dual } from "../../Function.js"
 import type * as Graph from "../../Graph.js"
 import * as Inspectable from "../../Inspectable.js"
@@ -17,9 +14,14 @@ export const NodeTypeId: Graph.NodeTypeId = Symbol.for("effect/GraphNode") as an
 /** @internal */
 export const EdgeTypeId: Graph.EdgeTypeId = Symbol.for("effect/GraphEdge") as any
 
-const OUTGOING: Graph.Edge.Outgoing = 0
-const INCOMING: Graph.Edge.Incoming = 1
-const DIRECTIONS: [Graph.Edge.Outgoing, Graph.Edge.Incoming] = [OUTGOING, INCOMING]
+/** @internal */
+export const OUTGOING: Graph.Edge.Outgoing = 0
+
+/** @internal */
+export const INCOMING: Graph.Edge.Incoming = 1
+
+/** @internal */
+export const DIRECTIONS: [Graph.Edge.Outgoing, Graph.Edge.Incoming] = [OUTGOING, INCOMING]
 
 const Proto = {
   [TypeId]: TypeId,
@@ -745,7 +747,10 @@ class ExternalsIterator<in out A extends Graph.Graph.Any, out T> implements Iter
   }
 }
 
-class EdgeWalker<in out A extends Graph.Graph.Any> implements Iterator<[number, Graph.Edge<Graph.Edge.Data<A>>]> {
+/** @internal */
+export class EdgeWalker<in out A extends Graph.Graph.Any>
+  implements Iterator<[number, Graph.Edge<Graph.Edge.Data<A>>]>
+{
   counter = 0
   constructor(
     private readonly graph: A,
