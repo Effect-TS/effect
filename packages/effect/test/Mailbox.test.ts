@@ -168,4 +168,17 @@ describe("Mailbox", () => {
       yield* Effect.yieldNow()
       assert.isNotNull(fiber.unsafePoll())
     }))
+
+  it.effect("bounded 0 capacity", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number>(0)
+      yield* mailbox.offer(1).pipe(Effect.fork)
+      let result = yield* mailbox.take
+      assert.strictEqual(result, 1)
+
+      const fiber = yield* mailbox.take.pipe(Effect.fork)
+      yield* mailbox.offer(2)
+      result = yield* Fiber.join(fiber)
+      assert.strictEqual(result, 2)
+    }))
 })

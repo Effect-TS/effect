@@ -13,6 +13,7 @@ import * as InternalConfirmPrompt from "./internal/prompt/confirm.js"
 import * as InternalDatePrompt from "./internal/prompt/date.js"
 import * as InternalFilePrompt from "./internal/prompt/file.js"
 import * as InternalListPrompt from "./internal/prompt/list.js"
+import * as InternalMultiSelectPrompt from "./internal/prompt/multi-select.js"
 import * as InternalNumberPrompt from "./internal/prompt/number.js"
 import * as InternalSelectPrompt from "./internal/prompt/select.js"
 import * as InternalTextPrompt from "./internal/prompt/text.js"
@@ -370,6 +371,33 @@ export declare namespace Prompt {
    * @since 1.0.0
    * @category models
    */
+  export interface MultiSelectOptions {
+    /**
+     * Text for the "Select All" option (defaults to "Select All").
+     */
+    readonly selectAll?: string
+    /**
+     * Text for the "Select None" option (defaults to "Select None").
+     */
+    readonly selectNone?: string
+    /**
+     * Text for the "Inverse Selection" option (defaults to "Inverse Selection").
+     */
+    readonly inverseSelection?: string
+    /**
+     * The minimum number of choices that must be selected.
+     */
+    readonly min?: number
+    /**
+     * The maximum number of choices that can be selected.
+     */
+    readonly max?: number
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export interface SelectChoice<A> {
     /**
      * The name of the select option that is displayed to the user.
@@ -630,6 +658,13 @@ export const run: <Output>(self: Prompt<Output>) => Effect<Output, QuitException
  * @category constructors
  */
 export const select: <A>(options: Prompt.SelectOptions<A>) => Prompt<A> = InternalSelectPrompt.select
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const multiSelect: <A>(options: Prompt.SelectOptions<A> & Prompt.MultiSelectOptions) => Prompt<Array<A>> =
+  InternalMultiSelectPrompt.multiSelect
 
 /**
  * Creates a `Prompt` which immediately succeeds with the specified value.

@@ -508,29 +508,30 @@ const parseInternal = (
   ValidationError.ValidationError,
   FileSystem.FileSystem | Path.Path | Terminal.Terminal
 > => {
-  switch (self._tag) {
-    case "Standard": {
-      const parseCommandLine = (
-        args: ReadonlyArray<string>
-      ): Effect.Effect<Array<string>, ValidationError.ValidationError> =>
-        Arr.matchLeft(args, {
-          onEmpty: () => {
+  const parseCommandLine = (
+    self: Standard | GetUserInput,
+    args: ReadonlyArray<string>
+  ): Effect.Effect<Array<string>, ValidationError.ValidationError> =>
+    Arr.matchLeft(args, {
+      onEmpty: () => {
+        const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
+        return Effect.fail(InternalValidationError.commandMismatch(error))
+      },
+      onNonEmpty: (head, tail) => {
+        const normalizedArgv0 = InternalCliConfig.normalizeCase(config, head)
+        const normalizedCommandName = InternalCliConfig.normalizeCase(config, self.name)
+        return Effect.succeed(tail).pipe(
+          Effect.when(() => normalizedArgv0 === normalizedCommandName),
+          Effect.flatten,
+          Effect.catchTag("NoSuchElementException", () => {
             const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
             return Effect.fail(InternalValidationError.commandMismatch(error))
-          },
-          onNonEmpty: (head, tail) => {
-            const normalizedArgv0 = InternalCliConfig.normalizeCase(config, head)
-            const normalizedCommandName = InternalCliConfig.normalizeCase(config, self.name)
-            return Effect.succeed(tail).pipe(
-              Effect.when(() => normalizedArgv0 === normalizedCommandName),
-              Effect.flatten,
-              Effect.catchTag("NoSuchElementException", () => {
-                const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
-                return Effect.fail(InternalValidationError.commandMismatch(error))
-              })
-            )
-          }
-        })
+          })
+        )
+      }
+    })
+  switch (self._tag) {
+    case "Standard": {
       const parseBuiltInArgs = (
         args: ReadonlyArray<string>
       ): Effect.Effect<
@@ -572,7 +573,7 @@ const parseInternal = (
         ValidationError.ValidationError,
         FileSystem.FileSystem | Path.Path | Terminal.Terminal
       > =>
-        parseCommandLine(args).pipe(Effect.flatMap((commandOptionsAndArgs) => {
+        parseCommandLine(self, args).pipe(Effect.flatMap((commandOptionsAndArgs) => {
           const [optionsAndArgs, forcedCommandArgs] = splitForcedArgs(commandOptionsAndArgs)
           return InternalOptions.processCommandLine(self.options, optionsAndArgs, config).pipe(
             Effect.flatMap(([error, commandArgs, optionsType]) =>
@@ -639,7 +640,8 @@ const parseInternal = (
       )
     }
     case "GetUserInput": {
-      return InternalPrompt.run(self.prompt).pipe(
+      return parseCommandLine(self, args).pipe(
+        Effect.zipRight(InternalPrompt.run(self.prompt)),
         Effect.catchTag("QuitException", (e) => Effect.die(e)),
         Effect.map((value) =>
           InternalCommandDirective.userDefined(Arr.drop(args, 1), {

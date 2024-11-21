@@ -85,6 +85,15 @@ export class Deprecated extends Context.Tag("@effect/platform/OpenApi/Deprecated
  */
 export class Override extends Context.Tag("@effect/platform/OpenApi/Override")<Override, Record<string, unknown>>() {}
 
+/**
+ * Transforms the generated OpenAPI specification
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Transform
+  extends Context.Tag("@effect/platform/OpenApi/Transform")<Transform, (openApiSpec: OpenAPISpec) => OpenAPISpec>()
+{}
+
 const contextPartial = <Tags extends Record<string, Context.Tag<any, any>>>(tags: Tags): (
   options: {
     readonly [K in keyof Tags]?: Context.Tag.Service<Tags[K]> | undefined
@@ -118,6 +127,10 @@ export const annotations: (
     readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined
     readonly format?: string | undefined
     readonly override?: Record<string, unknown> | undefined
+    /**
+     * Transforms the generated OpenAPI specification
+     */
+    readonly transform?: ((openApiSpec: OpenAPISpec) => OpenAPISpec) | undefined
   }
 ) => Context.Context<never> = contextPartial({
   identifier: Identifier,
@@ -129,7 +142,8 @@ export const annotations: (
   externalDocs: ExternalDocs,
   servers: Servers,
   format: Format,
-  override: Override
+  override: Override,
+  transform: Transform
 })
 
 const apiCache = globalValue("@effect/platform/OpenApi/apiCache", () => new WeakMap<HttpApi.HttpApi.Any, OpenAPISpec>())
@@ -144,7 +158,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
   }
   const api = self as unknown as HttpApi.HttpApi.AnyWithProps
   const jsonSchemaDefs: Record<string, JsonSchema.JsonSchema> = {}
-  const spec: DeepMutable<OpenAPISpec> = {
+  let spec: DeepMutable<OpenAPISpec> = {
     openapi: "3.0.3",
     info: {
       title: Context.getOrElse(api.annotations, Title, () => "Api"),
@@ -357,6 +371,10 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       })
       spec.paths[path][method] = op
     }
+  })
+
+  Option.map(Context.getOption(api.annotations, Transform), (transformFn) => {
+    spec = transformFn(spec)
   })
 
   apiCache.set(self, spec)

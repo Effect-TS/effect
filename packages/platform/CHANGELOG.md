@@ -1,5 +1,32 @@
 # @effect/platform
 
+## 0.69.25
+
+### Patch Changes
+
+- [#3968](https://github.com/Effect-TS/effect/pull/3968) [`320557a`](https://github.com/Effect-TS/effect/commit/320557ab18d13c5e22fc7dc0d2a157eae461012f) Thanks @KhraksMamtsov! - `OpenApi.Transform` annotation has been added
+
+  This customization point allows you to transform the generated specification in an arbitrary way
+
+  ```ts
+  class Api extends HttpApi.empty
+    .annotateContext(OpenApi.annotations({
+      title: "API",
+      summary: "test api summary",
+      transform: (openApiSpec) => ({
+        ...openApiSpec,
+        tags: [...openApiSpec.tags ?? [], {
+          name: "Tag from OpenApi.Transform annotation"
+        }]
+      })
+    }))
+  ```
+
+- [#3962](https://github.com/Effect-TS/effect/pull/3962) [`7b93dd6`](https://github.com/Effect-TS/effect/commit/7b93dd622e2ab79c7072d79d0d9611e446202201) Thanks @KhraksMamtsov! - fix HttpApiGroup.addError signature
+
+- Updated dependencies [[`4dca30c`](https://github.com/Effect-TS/effect/commit/4dca30cfcdafe4542e236489f71d6f171a5b4e38), [`1d99867`](https://github.com/Effect-TS/effect/commit/1d998671be3cd11043f232822e91dd8c98fccfa9), [`6dae414`](https://github.com/Effect-TS/effect/commit/6dae4147991a97ec14a99289bd25fadae7541e8d), [`6b0d737`](https://github.com/Effect-TS/effect/commit/6b0d737078bf63b97891e6bc47affc04b28f9cf7), [`d8356aa`](https://github.com/Effect-TS/effect/commit/d8356aad428a0c2290db52380220f81d9ec94232)]:
+  - effect@3.10.16
+
 ## 0.69.24
 
 ### Patch Changes

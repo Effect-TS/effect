@@ -304,7 +304,16 @@ class Api extends HttpApi.empty
   .addHttpApi(AnotherApi)
   .add(UsersApi.prefix("/users"))
   .addError(GlobalError, { status: 413 })
-  .annotateContext(OpenApi.annotations({ title: "API", summary: "test api summary" }))
+  .annotateContext(OpenApi.annotations({
+    title: "API",
+    summary: "test api summary",
+    transform: (openApiSpec) => ({
+      ...openApiSpec,
+      tags: [...openApiSpec.tags ?? [], {
+        name: "Tag from OpenApi.Transform annotation"
+      }]
+    })
+  }))
   .annotate(
     HttpApi.AdditionalSchemas,
     [

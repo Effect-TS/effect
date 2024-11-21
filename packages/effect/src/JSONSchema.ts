@@ -600,7 +600,26 @@ const go = (
       // the 'to' side of the AST. This approach prevents the generation of useless schemas
       // derived from the 'from' side (type: string), ensuring the output matches the intended
       // complex schema type.
-      const next = isParseJsonTransformation(ast.from) ? ast.to : ast.from
+      if (isParseJsonTransformation(ast.from)) {
+        return go(ast.to, $defs, true, path)
+      }
+      let next = ast.from
+      if (AST.isTypeLiteralTransformation(ast.transformation)) {
+        // Annotations from the transformation are applied unless there are user-defined annotations on the form side,
+        // ensuring that the user's intended annotations are included in the generated schema.
+        const identifier = AST.getIdentifierAnnotation(ast)
+        if (Option.isSome(identifier) && Option.isNone(AST.getIdentifierAnnotation(next))) {
+          next = AST.annotations(next, { [AST.IdentifierAnnotationId]: identifier.value })
+        }
+        const title = AST.getTitleAnnotation(ast)
+        if (Option.isSome(title) && Option.isNone(AST.getTitleAnnotation(next))) {
+          next = AST.annotations(next, { [AST.TitleAnnotationId]: title.value })
+        }
+        const description = AST.getDescriptionAnnotation(ast)
+        if (Option.isSome(description) && Option.isNone(AST.getDescriptionAnnotation(next))) {
+          next = AST.annotations(next, { [AST.DescriptionAnnotationId]: description.value })
+        }
+      }
       return go(next, $defs, true, path)
     }
   }

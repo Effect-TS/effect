@@ -320,4 +320,113 @@ describe("Prompt", () => {
         )
       }).pipe(runEffect))
   })
+
+  describe("Prompt.select", () => {
+    it("should return the selected value when an option is chosen", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.select({
+          message: "Select an option",
+          choices: [
+            { title: "Option 1", value: 1 },
+            { title: "Option 2", value: 2 },
+            { title: "Option 3", value: 3 }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        yield* MockTerminal.inputKey("down")
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual(2)
+      }).pipe(runEffect))
+  })
+
+  describe("Prompt.selectMulti", () => {
+    it("should return the selected values when multiple options are chosen", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.multiSelect({
+          message: "Select multiple options",
+          choices: [
+            { title: "Option A", value: "A" },
+            { title: "Option B", value: "B" },
+            { title: "Option C", value: "C" }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        yield* MockTerminal.inputKey("down")
+        yield* MockTerminal.inputKey("down")
+        yield* MockTerminal.inputKey("space")
+        yield* MockTerminal.inputKey("down")
+        yield* MockTerminal.inputKey("space")
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual(["A", "B"])
+      }).pipe(runEffect))
+
+    it("should select all options when 'Select All' is triggered", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.multiSelect({
+          message: "Select multiple options",
+          choices: [
+            { title: "Option A", value: "A" },
+            { title: "Option B", value: "B" },
+            { title: "Option C", value: "C" }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        yield* MockTerminal.inputKey("space") // Select All
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual(["A", "B", "C"])
+      }).pipe(runEffect))
+
+    it("should deselect all options when 'Select None' is triggered", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.multiSelect({
+          message: "Select multiple options",
+          choices: [
+            { title: "Option A", value: "A" },
+            { title: "Option B", value: "B" },
+            { title: "Option C", value: "C" }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        yield* MockTerminal.inputKey("space") // Select All
+        yield* MockTerminal.inputKey("space") // Select None
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual([])
+      }).pipe(runEffect))
+
+    it("should inverse the selection when 'Inverse Selection' is triggered", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.multiSelect({
+          message: "Select multiple options",
+          choices: [
+            { title: "Option A", value: "A" },
+            { title: "Option B", value: "B" },
+            { title: "Option C", value: "C" }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        yield* MockTerminal.inputKey("space")
+        yield* MockTerminal.inputKey("tab")
+        yield* MockTerminal.inputKey("tab")
+        yield* MockTerminal.inputKey("space")
+        yield* MockTerminal.inputKey("up")
+        yield* MockTerminal.inputKey("space")
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual(["A"])
+      }).pipe(runEffect))
+  })
 })

@@ -1,5 +1,159 @@
 # effect
 
+## 3.10.16
+
+### Patch Changes
+
+- [#3918](https://github.com/Effect-TS/effect/pull/3918) [`4dca30c`](https://github.com/Effect-TS/effect/commit/4dca30cfcdafe4542e236489f71d6f171a5b4e38) Thanks @gcanti! - Use a specific annotation (`AutoTitleAnnotationId`) to add automatic titles (added by `Struct` and `Class` APIs), instead of `TitleAnnotationId`, to avoid interfering with user-defined titles.
+
+- [#3981](https://github.com/Effect-TS/effect/pull/3981) [`1d99867`](https://github.com/Effect-TS/effect/commit/1d998671be3cd11043f232822e91dd8c98fccfa9) Thanks @gcanti! - Stable filters such as `minItems`, `maxItems`, and `itemsCount` should be applied only if the from part fails with a `Composite` issue, closes #3980
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.Array(Schema.String).pipe(Schema.minItems(1))
+  })
+
+  Schema.decodeUnknownSync(schema)({}, { errors: "all" })
+  // throws: TypeError: Cannot read properties of undefined (reading 'length')
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.Array(Schema.String).pipe(Schema.minItems(1))
+  })
+
+  Schema.decodeUnknownSync(schema)({}, { errors: "all" })
+  /*
+  throws:
+  ParseError: { readonly a: an array of at least 1 items }
+  └─ ["a"]
+     └─ is missing
+  */
+  ```
+
+- [#3972](https://github.com/Effect-TS/effect/pull/3972) [`6dae414`](https://github.com/Effect-TS/effect/commit/6dae4147991a97ec14a99289bd25fadae7541e8d) Thanks @tim-smart! - add support for 0 capacity to Mailbox
+
+- [#3959](https://github.com/Effect-TS/effect/pull/3959) [`6b0d737`](https://github.com/Effect-TS/effect/commit/6b0d737078bf63b97891e6bc47affc04b28f9cf7) Thanks @gcanti! - Remove `Omit` from the `Class` interface definition to align type signatures with runtime behavior. This fix addresses the issue of being unable to override base class methods in extended classes without encountering type errors, closes #3958
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  class Base extends Schema.Class<Base>("Base")({
+    a: Schema.String
+  }) {
+    f() {
+      console.log("base")
+    }
+  }
+
+  class Extended extends Base.extend<Extended>("Extended")({}) {
+    // Class '{ readonly a: string; } & Omit<Base, "a">' defines instance member property 'f',
+    // but extended class 'Extended' defines it as instance member function.ts(2425)
+    // @ts-expect-error
+    override f() {
+      console.log("extended")
+    }
+  }
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  class Base extends Schema.Class<Base>("Base")({
+    a: Schema.String
+  }) {
+    f() {
+      console.log("base")
+    }
+  }
+
+  class Extended extends Base.extend<Extended>("Extended")({}) {
+    // ok
+    override f() {
+      console.log("extended")
+    }
+  }
+  ```
+
+- [#3971](https://github.com/Effect-TS/effect/pull/3971) [`d8356aa`](https://github.com/Effect-TS/effect/commit/d8356aad428a0c2290db52380220f81d9ec94232) Thanks @gcanti! - Refactor JSON Schema Generation to Include Transformation Annotations, closes #3016
+
+  When generating a JSON Schema, treat `TypeLiteralTransformations` (such as when `Schema.optionalWith` is used) as a special case. Annotations from the transformation itself will now be applied, unless there are user-defined annotations on the form side. This change ensures that the user's intended annotations are properly included in the schema.
+
+  **Before**
+
+  Annotations set on the transformation are ignored. However while using `Schema.optionalWith` internally generates a transformation schema, this is considered a technical detail. The user's intention is to add annotations to the "struct" schema, not to the transformation.
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.optionalWith(Schema.String, { default: () => "" })
+  }).annotations({
+    identifier: "MyID",
+    description: "My description",
+    title: "My title"
+  })
+
+  console.log(JSONSchema.make(schema))
+  /*
+  Output:
+  {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    required: [],
+    properties: { a: { type: 'string' } },
+    additionalProperties: false
+  }
+  */
+  ```
+
+  **After**
+
+  Annotations set on the transformation are now considered during JSON Schema generation:
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.optionalWith(Schema.String, { default: () => "" })
+  }).annotations({
+    identifier: "MyID",
+    description: "My description",
+    title: "My title"
+  })
+
+  console.log(JSONSchema.make(schema))
+  /*
+  Output:
+  {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    '$ref': '#/$defs/MyID',
+    '$defs': {
+      MyID: {
+        type: 'object',
+        required: [],
+        properties: [Object],
+        additionalProperties: false,
+        description: 'My description',
+        title: 'My title'
+      }
+    }
+  }
+  */
+  ```
+
 ## 3.10.15
 
 ### Patch Changes

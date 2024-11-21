@@ -806,7 +806,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const result = flatMap(
             orElse(from(i, options), (ef) => {
               const issue = new Refinement(ast, i, "From", ef)
-              if (allErrors && AST.hasStableFilter(ast)) {
+              if (allErrors && AST.hasStableFilter(ast) && isComposite(ef)) {
                 return Option.match(
                   ast.filter(i, options, ast),
                   {
