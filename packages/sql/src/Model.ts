@@ -11,6 +11,7 @@ import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
+import * as Uuid from "uuid"
 import { SqlClient } from "./SqlClient.js"
 import * as SqlResolver from "./SqlResolver.js"
 import * as SqlSchema from "./SqlSchema.js"
@@ -609,6 +610,49 @@ export const JsonFromString = <S extends Schema.Schema.All | Schema.PropertySign
     jsonCreate: schema,
     jsonUpdate: schema
   }) as any
+}
+
+/**
+ * @since 1.0.0
+ * @category uuid
+ */
+export interface UuidV4Insert<B extends string | symbol> extends
+  VariantSchema.Field<{
+    readonly select: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+    readonly insert: VariantSchema.Overrideable<Uint8Array & Brand<B>, Uint8Array>
+    readonly update: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+    readonly json: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+  }>
+{}
+
+/**
+ * @since 1.0.0
+ * @category uuid
+ */
+export const UuidV4WithGenerate = <B extends string | symbol>(
+  schema: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+): VariantSchema.Overrideable<Uint8Array & Brand<B>, Uint8Array> =>
+  VariantSchema.Overrideable(Schema.Uint8ArrayFromSelf, schema, {
+    generate: Option.match({
+      onNone: () => Effect.sync(() => Uuid.v4({}, new Uint8Array(16))),
+      onSome: (id) => Effect.succeed(id as any)
+    })
+  })
+
+/**
+ * A field that represents a binary UUID v4 that is generated on inserts.
+ *
+ * @since 1.0.0
+ * @category uuid
+ */
+export const UuidV4Insert = <const Brand extends string | symbol>(brand: Brand): UuidV4Insert<Brand> => {
+  const schema = Schema.Uint8ArrayFromSelf.pipe(Schema.brand(brand))
+  return Field({
+    select: schema,
+    insert: UuidV4WithGenerate(schema),
+    update: schema,
+    json: schema
+  })
 }
 
 /**
