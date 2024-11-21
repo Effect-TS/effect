@@ -645,15 +645,15 @@ export const UuidV4WithGenerate = <B extends string | symbol>(
  * @since 1.0.0
  * @category uuid
  */
-export const UuidV4Insert = <const Brand extends string | symbol>(brand: Brand): UuidV4Insert<Brand> => {
-  const schema = Schema.Uint8ArrayFromSelf.pipe(Schema.brand(brand))
-  return Field({
+export const UuidV4Insert = <const B extends string | symbol>(
+  schema: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+): UuidV4Insert<B> =>
+  Field({
     select: schema,
     insert: UuidV4WithGenerate(schema),
     update: schema,
     json: schema
   })
-}
 
 /**
  * Create a simple CRUD repository from a model.
