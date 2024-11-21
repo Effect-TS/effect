@@ -657,6 +657,21 @@ export const UuidV4Insert = <const B extends string | symbol>(
   })
 
 /**
+ * A boolean parsed from 0 or 1
+ *
+ * @since 1.0.0
+ * @category uuid
+ */
+export class BooleanFromNumber extends Schema.transform(
+  Schema.Literal(0, 1),
+  Schema.Boolean,
+  {
+    decode: (n) => n === 1,
+    encode: (b) => b ? 1 : 0
+  }
+) {}
+
+/**
  * Create a simple CRUD repository from a model.
  *
  * @since 1.0.0
