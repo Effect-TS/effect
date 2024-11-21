@@ -86,10 +86,12 @@ export const makeHttpHandler: Effect.Effect<
           return FiberMap.remove(subscriptions, request.subscriptionId)
         }
       }
-    }).pipe(Effect.orDie)
+    }).pipe(Effect.catchAllCause(Effect.logDebug))
 
     return HttpServerResponse.empty()
-  })
+  }).pipe(Effect.annotateLogs({
+    module: "EventLogServer"
+  }))
 })
 
 /**
