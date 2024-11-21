@@ -319,6 +319,7 @@ const make = Effect.gen(function*() {
   const msgPackSchemas = Object.fromEntries(
     Object.entries(handlers).map(([tag, handler]) => [tag, MsgPack.schema(handler.event.payload)] as const)
   )
+  const journalSemaphore = yield* Effect.makeSemaphore(1)
 
   const runRemote = (remote: EventLogRemote) =>
     Effect.gen(function*() {
@@ -373,11 +374,11 @@ const make = Effect.gen(function*() {
             payload: yield* decodePayload(conflicts[i].payload)
           }
         }
-        return yield* handler.handler({
+        return yield* journalSemaphore.withPermits(1)(handler.handler({
           payload: yield* decodePayload(entry.payload),
           entry,
           conflicts: decodedConflicts
-        })
+        }))
       })
     }),
     Effect.catchAllCause(Effect.logDebug),
@@ -403,7 +404,7 @@ const make = Effect.gen(function*() {
         const payload = yield* Effect.orDie(
           Schema.encode(msgPackSchemas[options.event] as unknown as Schema.Schema<Uint8Array>)(options.payload)
         )
-        return yield* journal.write({
+        return yield* journalSemaphore.withPermits(1)(journal.write({
           event: options.event,
           primaryKey: handler.event.primaryKey(options.payload),
           payload,
@@ -413,7 +414,7 @@ const make = Effect.gen(function*() {
               entry,
               conflicts: []
             })
-        })
+        }))
       }).pipe(
         Effect.mapInputContext((context) => Context.merge(handler.context, context))
       )
