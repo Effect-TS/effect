@@ -617,12 +617,17 @@ export const Overrideable = <From, IFrom, RFrom, To, ITo, R>(
   to: Schema.Schema<To, ITo>,
   options: {
     readonly generate: (_: Option.Option<ITo>) => Effect.Effect<From, ParseResult.ParseIssue, R>
+    readonly constructorDefault?: () => To
   }
 ): Overrideable<To, IFrom, RFrom | R> =>
-  Schema.transformOrFail(from, Schema.Union(Schema.Undefined, to.pipe(Schema.brand("Override"))), {
-    decode: (_) => ParseResult.succeed(undefined),
-    encode: (dt) => options.generate(dt === undefined ? Option.none() : Option.some(dt))
-  }).pipe(Schema.propertySignature, Schema.withConstructorDefault(constUndefined))
+  Schema.transformOrFail(
+    from,
+    Schema.Union(Schema.Undefined, to as Schema.brand<Schema.Schema<To, ITo>, "Override">),
+    {
+      decode: (_) => ParseResult.succeed(undefined),
+      encode: (dt) => options.generate(dt === undefined ? Option.none() : Option.some(dt))
+    }
+  ).pipe(Schema.propertySignature, Schema.withConstructorDefault(options.constructorDefault ?? constUndefined as any))
 
 const StructProto = {
   pipe() {
