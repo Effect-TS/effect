@@ -122,6 +122,7 @@ export const makeStorage = (options?: {
       getId: Effect.succeed(remoteId),
       write: (publicKey, entries) =>
         Effect.gen(function*() {
+          if (entries.length === 0) return
           const { pubsub, table } = yield* RcMap.get(resources, publicKey)
           const ids: Array<EntryId> = []
           const forInsert: Array<
