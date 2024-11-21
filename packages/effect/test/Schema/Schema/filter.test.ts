@@ -228,14 +228,15 @@ describe("filter", () => {
     })
   })
 
-  it("stable filters (such as `minItems`, `maxItems`, and `itemsCount`) should generate multiple errors when the 'errors' option is set to 'all'", async () => {
-    const schema = S.Struct({
-      tags: S.Array(S.String.pipe(S.minLength(2))).pipe(S.minItems(3))
-    })
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      { tags: ["AB", "B"] },
-      `{ readonly tags: an array of at least 3 items }
+  describe("Stable Filters (such as `minItems`, `maxItems`, and `itemsCount`)", () => {
+    it("when the 'errors' option is set to 'all', stable filters should generate multiple errors", async () => {
+      const schema = S.Struct({
+        tags: S.Array(S.String.pipe(S.minLength(2))).pipe(S.minItems(3))
+      })
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { tags: ["AB", "B"] },
+        `{ readonly tags: an array of at least 3 items }
 └─ ["tags"]
    └─ an array of at least 3 items
       ├─ an array of at least 3 items
@@ -248,12 +249,12 @@ describe("filter", () => {
       └─ an array of at least 3 items
          └─ Predicate refinement failure
             └─ Expected an array of at least 3 items, actual ["AB","B"]`,
-      Util.allErrors
-    )
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      { tags: ["AB", "B"] },
-      `{ readonly tags: an array of at least 3 items }
+        Util.allErrors
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { tags: ["AB", "B"] },
+        `{ readonly tags: an array of at least 3 items }
 └─ ["tags"]
    └─ an array of at least 3 items
       └─ From side refinement failure
@@ -262,6 +263,30 @@ describe("filter", () => {
                └─ a string at least 2 character(s) long
                   └─ Predicate refinement failure
                      └─ Expected a string at least 2 character(s) long, actual "B"`
-    )
+      )
+    })
+
+    it("when the 'errors' option is set to 'all', stable filters should not be applied when the from side fails with a Type issue", async () => {
+      await Util.expectDecodeUnknownFailure(
+        S.Struct({
+          tags: S.Array(S.String).pipe(S.minItems(1))
+        }),
+        {},
+        `{ readonly tags: an array of at least 1 items }
+└─ ["tags"]
+   └─ is missing`,
+        Util.allErrors
+      )
+      await Util.expectDecodeUnknownFailure(
+        S.Struct({
+          tags: S.Array(S.String).pipe(S.minItems(1), S.maxItems(3))
+        }),
+        {},
+        `{ readonly tags: an array of at most 3 items }
+└─ ["tags"]
+   └─ is missing`,
+        Util.allErrors
+      )
+    })
   })
 })
