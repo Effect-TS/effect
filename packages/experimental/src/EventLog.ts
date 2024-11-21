@@ -307,6 +307,7 @@ export class EventLog extends Context.Tag("@effect/experimental/EventLog/EventLo
   >
   readonly registerRemote: (remote: EventLogRemote) => Effect.Effect<void, never, Scope>
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
+  readonly destroy: Effect.Effect<void, EventJournalError>
 }>() {}
 
 const make = Effect.gen(function*() {
@@ -424,7 +425,8 @@ const make = Effect.gen(function*() {
           FiberMap.run(remotes, remote.id, runRemote(remote)),
           () => FiberMap.remove(remotes, remote.id)
         )
-      })
+      }),
+    destroy: journal.destroy
   })
 })
 
