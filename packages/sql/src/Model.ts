@@ -378,7 +378,8 @@ export const DateTimeWithNow = VariantSchema.Overrideable(Schema.String, Schema.
   generate: Option.match({
     onNone: () => Effect.map(DateTime.now, DateTime.formatIso),
     onSome: (dt) => Effect.succeed(DateTime.formatIso(dt))
-  })
+  }),
+  decode: Schema.DateTimeUtc
 })
 
 /**
@@ -389,7 +390,8 @@ export const DateTimeFromDateWithNow = VariantSchema.Overrideable(Schema.DateFro
   generate: Option.match({
     onNone: () => Effect.map(DateTime.now, DateTime.toDateUtc),
     onSome: (dt) => Effect.succeed(DateTime.toDateUtc(dt))
-  })
+  }),
+  decode: DateTimeFromDate
 })
 
 /**
@@ -400,7 +402,8 @@ export const DateTimeFromNumberWithNow = VariantSchema.Overrideable(Schema.Numbe
   generate: Option.match({
     onNone: () => Effect.map(DateTime.now, DateTime.toEpochMillis),
     onSome: (dt) => Effect.succeed(DateTime.toEpochMillis(dt))
-  })
+  }),
+  decode: Schema.DateTimeUtcFromNumber
 })
 
 /**
@@ -637,6 +640,7 @@ export const UuidV4WithGenerate = <B extends string | symbol>(
       onNone: () => Effect.sync(() => Uuid.v4({}, new Uint8Array(16))),
       onSome: (id) => Effect.succeed(id as any)
     }),
+    decode: Schema.Uint8ArrayFromSelf,
     constructorDefault: () => Uuid.v4({}, new Uint8Array(16)) as any
   })
 
