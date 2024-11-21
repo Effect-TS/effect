@@ -364,21 +364,21 @@ const make = Effect.gen(function*() {
     Effect.tap(({ conflicts, entry }) => {
       const handler = handlers[entry.event]
       if (!handler) return Effect.logDebug(`Event handler not found for: "${entry.event}"`)
-      return Effect.forEach(
-        conflicts,
-        (entry) =>
-          Schema.decode(msgPackSchemas[entry.event] as unknown as Schema.Schema<Uint8Array>)(entry.payload).pipe(
-            Effect.map((payload) => ({ entry, payload }))
-          )
-      ).pipe(
-        Effect.flatMap((conflicts) =>
-          handler.handler({
-            payload: entry.payload,
-            entry,
-            conflicts
-          })
-        )
-      )
+      const decodePayload = Schema.decode(msgPackSchemas[entry.event] as unknown as Schema.Schema<any>)
+      return Effect.gen(function*() {
+        const decodedConflicts: Array<{ entry: Entry; payload: any }> = new Array(conflicts.length)
+        for (let i = 0; i < conflicts.length; i++) {
+          decodedConflicts[i] = {
+            entry: conflicts[i],
+            payload: yield* decodePayload(conflicts[i].payload)
+          }
+        }
+        return yield* handler.handler({
+          payload: yield* decodePayload(entry.payload),
+          entry,
+          conflicts: decodedConflicts
+        })
+      })
     }),
     Effect.catchAllCause(Effect.logDebug),
     Effect.forever,
@@ -409,7 +409,7 @@ const make = Effect.gen(function*() {
           payload,
           effect: (entry) =>
             handler.handler({
-              payload,
+              payload: options.payload,
               entry,
               conflicts: []
             })
