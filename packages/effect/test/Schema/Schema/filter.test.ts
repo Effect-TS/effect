@@ -266,7 +266,7 @@ describe("filter", () => {
       )
     })
 
-    it("when the 'errors' option is set to 'all', stable filters should not be applied when the from side fails with a Type issue", async () => {
+    it("when the 'errors' option is set to 'all', stable filters should be applied only if the from part fails with a `Composite` issue", async () => {
       await Util.expectDecodeUnknownFailure(
         S.Struct({
           tags: S.Array(S.String).pipe(S.minItems(1))
