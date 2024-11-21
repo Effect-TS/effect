@@ -72,6 +72,11 @@ export class EventJournal extends Context.Tag("@effect/experimental/EventJournal
      * The entries added to the local journal.
      */
     readonly changes: Effect.Effect<Queue.Dequeue<Entry>, never, Scope>
+
+    /**
+     * Remove all data
+     */
+    readonly destroy: Effect.Effect<void, EventJournalError>
   }
 >() {}
 
@@ -315,7 +320,12 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
       ),
     nextRemoteSequence: (remoteId) => Effect.sync(() => ensureRemote(remoteId).sequence),
     changesRemote: mailbox,
-    changes: PubSub.subscribe(pubsub)
+    changes: PubSub.subscribe(pubsub),
+    destroy: Effect.sync(() => {
+      journal.length = 0
+      byId.clear()
+      remotes.clear()
+    })
   })
 })
 
@@ -500,7 +510,8 @@ export const makeIndexedDb = (options?: {
           return Effect.sync(() => tx.abort())
         }),
       changesRemote: mailbox,
-      changes: PubSub.subscribe(pubsub)
+      changes: PubSub.subscribe(pubsub),
+      destroy: idbReq("destory", () => indexedDB.deleteDatabase(database)).pipe(Effect.asVoid)
     })
   })
 
