@@ -5906,6 +5906,19 @@ export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): SchemaClass
     { strict: true, decode: array_.head, encode: option_.match({ onNone: () => [], onSome: array_.of }) }
   )
 
+
+  /**
+   * Get the first element of a `NonEmptyReadonlyArray`.
+   *
+   * @category NonEmptyReadonlyArray transformations
+   * @since 3.11.0
+   */
+  export const headNonEmpty = <A, I, R>(self: Schema<array_.NonEmptyReadonlyArray<A>, I, R>): SchemaClass<A, I, R> => transform(
+    self,
+    getNumberIndexedAccess(typeSchema(self)),
+    { strict: true, decode: array_.headNonEmpty, encode: array_.of }
+  )
+
 /**
  * Retrieves the first element of a `ReadonlyArray`.
  *
