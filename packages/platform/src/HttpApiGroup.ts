@@ -235,6 +235,15 @@ export declare namespace HttpApiGroup {
    */
   export type Context<Group> = Group extends
     HttpApiGroup<infer _Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ?
+    HttpApiMiddleware.HttpApiMiddleware.Without<_R> :
+    never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type MiddlewareContext<Group> = Group extends
+    HttpApiGroup<infer _Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ?
     HttpApiMiddleware.HttpApiMiddleware.Only<_R> :
     never
 
@@ -263,6 +272,14 @@ export declare namespace HttpApiGroup {
    * @category models
    */
   export type ContextWithName<Group extends Any, Name extends string> = Context<WithName<Group, Name>>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type MiddlewareContextWithName<Group extends Any, Name extends string> = MiddlewareContext<
+    WithName<Group, Name>
+  >
 }
 
 const Proto = {

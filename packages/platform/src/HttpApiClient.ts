@@ -27,15 +27,11 @@ import type { HttpApiMiddleware } from "./index.js"
  */
 export type Client<Groups extends HttpApiGroup.Any, ApiError> = Simplify<
   & {
-    readonly [Group in Extract<Groups, { readonly topLevel: false }> as HttpApiGroup.Name<Group>]: [Group] extends
-      [HttpApiGroup<infer _GroupName, infer _Endpoints, infer _GroupError, infer _GroupErrorR>] ? {
-        readonly [Endpoint in _Endpoints as HttpApiEndpoint.Name<Endpoint>]: Client.Method<
-          Endpoint,
-          ApiError,
-          _GroupError
-        >
-      } :
-      never
+    readonly [Group in Extract<Groups, { readonly topLevel: false }> as HttpApiGroup.Name<Group>]: Client.Group<
+      Group,
+      Group["identifier"],
+      ApiError
+    >
   }
   & {
     readonly [Method in Client.TopLevelMethods<Groups, ApiError> as Method[0]]: Method[1]
@@ -47,6 +43,21 @@ export type Client<Groups extends HttpApiGroup.Any, ApiError> = Simplify<
  * @category models
  */
 export declare namespace Client {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Group<Groups extends HttpApiGroup.Any, GroupName extends Groups["identifier"], ApiError> =
+    [HttpApiGroup.WithName<Groups, GroupName>] extends
+      [HttpApiGroup<infer _GroupName, infer _Endpoints, infer _GroupError, infer _GroupErrorR>] ? {
+        readonly [Endpoint in _Endpoints as HttpApiEndpoint.Name<Endpoint>]: Method<
+          Endpoint,
+          ApiError,
+          _GroupError
+        >
+      } :
+      never
+
   /**
    * @since 1.0.0
    * @category models
@@ -79,7 +90,7 @@ export declare namespace Client {
   export type TopLevelMethods<Groups extends HttpApiGroup.Any, ApiError> =
     Extract<Groups, { readonly topLevel: true }> extends
       HttpApiGroup<infer _Id, infer _Endpoints, infer _Error, infer _ErrorR, infer _TopLevel> ?
-      _Endpoints extends infer Endpoint ? [HttpApiEndpoint.Name<Endpoint>, Client.Method<Endpoint, ApiError, _Error>]
+      _Endpoints extends infer Endpoint ? [HttpApiEndpoint.Name<Endpoint>, Method<Endpoint, ApiError, _Error>]
       : never :
       never
 }
@@ -190,6 +201,256 @@ export const make = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
       }
     })
     return client as any
+  })
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const group = <
+  Groups extends HttpApiGroup.Any,
+  ApiError,
+  ApiR,
+  const GroupName extends Groups["identifier"]
+>(
+  api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
+  groupId: GroupName,
+  options?: {
+    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+    readonly transformResponse?:
+      | ((effect: Effect.Effect<unknown, unknown, Scope>) => Effect.Effect<unknown, unknown, Scope>)
+      | undefined
+    readonly baseUrl?: string | undefined
+  }
+): Effect.Effect<
+  Client.Group<Groups, GroupName, ApiError>,
+  never,
+  HttpApiMiddleware.HttpApiMiddleware.Without<
+    | ApiR
+    | HttpApiGroup.ClientContext<
+      HttpApiGroup.WithName<Groups, GroupName>
+    >
+  > | HttpClient.HttpClient
+> =>
+  Effect.gen(function*() {
+    const context = yield* Effect.context<any>()
+    const httpClient = (yield* HttpClient.HttpClient).pipe(
+      options?.baseUrl === undefined ? identity : HttpClient.mapRequest(HttpClientRequest.prependUrl(options.baseUrl)),
+      options?.transformClient === undefined ? identity : options.transformClient
+    )
+    const groupClient: Record<string, any> = {}
+    HttpApi.reflect(api as any, {
+      onGroup({ group }) {
+        if (group.identifier !== groupId) return
+      },
+      onEndpoint({ endpoint, errors, group, successes }) {
+        if (group.identifier !== groupId) return
+        const makeUrl = compilePath(endpoint.path)
+        const decodeMap: Record<
+          number | "orElse",
+          (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>
+        > = { orElse: statusOrElse }
+        const decodeResponse = HttpClientResponse.matchStatus(decodeMap)
+        errors.forEach((ast, status) => {
+          if (ast._tag === "None") {
+            decodeMap[status] = statusCodeError
+            return
+          }
+          const decode = schemaToResponse(ast.value)
+          decodeMap[status] = (response) => Effect.flatMap(decode(response), Effect.fail)
+        })
+        successes.forEach((ast, status) => {
+          decodeMap[status] = ast._tag === "None" ? responseAsVoid : schemaToResponse(ast.value)
+        })
+        const isMultipart = endpoint.payloadSchema.pipe(
+          Option.map((schema) => HttpApiSchema.getMultipart(schema.ast)),
+          Option.getOrElse(() => false)
+        )
+        const encodePayload = endpoint.payloadSchema.pipe(
+          Option.filter(() => !isMultipart),
+          Option.map(Schema.encodeUnknown)
+        )
+        const encodeHeaders = endpoint.headersSchema.pipe(
+          Option.map(Schema.encodeUnknown)
+        )
+        const encodeUrlParams = endpoint.urlParamsSchema.pipe(
+          Option.map(Schema.encodeUnknown)
+        )
+        groupClient[endpoint.name] = (request: {
+          readonly path: any
+          readonly urlParams: any
+          readonly payload: any
+          readonly headers: any
+          readonly withResponse?: boolean
+        }) =>
+          Effect.gen(function*() {
+            let httpRequest = HttpClientRequest.make(endpoint.method)(
+              request && request.path ? makeUrl(request.path) : endpoint.path
+            )
+            if (isMultipart) {
+              httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
+            } else if (encodePayload._tag === "Some") {
+              const payload = yield* encodePayload.value(request.payload)
+              httpRequest = HttpMethod.hasBody(endpoint.method)
+                ? yield* Effect.orDie(HttpClientRequest.bodyJson(httpRequest, payload))
+                : HttpClientRequest.setUrlParams(httpRequest, payload as any)
+            }
+            if (encodeHeaders._tag === "Some") {
+              httpRequest = HttpClientRequest.setHeaders(
+                httpRequest,
+                (yield* encodeHeaders.value(request.headers)) as any
+              )
+            }
+            if (encodeUrlParams._tag === "Some") {
+              httpRequest = HttpClientRequest.appendUrlParams(
+                httpRequest,
+                (yield* encodeUrlParams.value(request.urlParams)) as any
+              )
+            }
+            const response = yield* httpClient.execute(httpRequest)
+            const value = yield* (options?.transformResponse === undefined
+              ? decodeResponse(response)
+              : options.transformResponse(decodeResponse(response)))
+            return request?.withResponse === true ? [value, response] : value
+          }).pipe(
+            Effect.scoped,
+            Effect.catchIf(ParseResult.isParseError, Effect.die),
+            Effect.mapInputContext((input) => Context.merge(context, input))
+          )
+      }
+    })
+    return groupClient as any
+  })
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const endpoint = <
+  Groups extends HttpApiGroup.Any,
+  ApiError,
+  ApiR,
+  const GroupName extends HttpApiGroup.Name<Groups>,
+  const EndpointName extends HttpApiEndpoint.Name<HttpApiGroup.EndpointsWithName<Groups, GroupName>>
+>(
+  api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
+  groupName: GroupName,
+  endpointName: EndpointName,
+  options?: {
+    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+    readonly transformResponse?:
+      | ((effect: Effect.Effect<unknown, unknown, Scope>) => Effect.Effect<unknown, unknown, Scope>)
+      | undefined
+    readonly baseUrl?: string | undefined
+  }
+): Effect.Effect<
+  Client.Method<
+    HttpApiEndpoint.WithName<HttpApiGroup.Endpoints<HttpApiGroup.WithName<Groups, GroupName>>, EndpointName>,
+    HttpApiGroup.Error<HttpApiGroup.WithName<Groups, GroupName>>,
+    ApiError
+  >,
+  never,
+  | HttpApiMiddleware.HttpApiMiddleware.Without<
+    | ApiR
+    | HttpApiGroup.Context<HttpApiGroup.WithName<Groups, GroupName>>
+    | HttpApiEndpoint.ContextWithName<HttpApiGroup.EndpointsWithName<Groups, GroupName>, EndpointName>
+    | HttpApiEndpoint.ErrorContext<
+      HttpApiEndpoint.WithName<HttpApiGroup.EndpointsWithName<Groups, GroupName>, EndpointName>
+    >
+  >
+  | HttpClient.HttpClient
+> =>
+  Effect.gen(function*() {
+    const context = yield* Effect.context<any>()
+    const httpClient = (yield* HttpClient.HttpClient).pipe(
+      options?.baseUrl === undefined ? identity : HttpClient.mapRequest(HttpClientRequest.prependUrl(options.baseUrl)),
+      options?.transformClient === undefined ? identity : options.transformClient
+    )
+    let endpointClient: any = undefined
+    HttpApi.reflect(api as any, {
+      onGroup({ group }) {
+        if (group.identifier !== groupName) return
+      },
+      onEndpoint({ endpoint, errors, group, successes }) {
+        if (
+          group.identifier !== groupName
+          || endpoint.name !== endpointName
+        ) return
+        const makeUrl = compilePath(endpoint.path)
+        const decodeMap: Record<
+          number | "orElse",
+          (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>
+        > = { orElse: statusOrElse }
+        const decodeResponse = HttpClientResponse.matchStatus(decodeMap)
+        errors.forEach((ast, status) => {
+          if (ast._tag === "None") {
+            decodeMap[status] = statusCodeError
+            return
+          }
+          const decode = schemaToResponse(ast.value)
+          decodeMap[status] = (response) => Effect.flatMap(decode(response), Effect.fail)
+        })
+        successes.forEach((ast, status) => {
+          decodeMap[status] = ast._tag === "None" ? responseAsVoid : schemaToResponse(ast.value)
+        })
+        const isMultipart = endpoint.payloadSchema.pipe(
+          Option.map((schema) => HttpApiSchema.getMultipart(schema.ast)),
+          Option.getOrElse(() => false)
+        )
+        const encodePayload = endpoint.payloadSchema.pipe(
+          Option.filter(() => !isMultipart),
+          Option.map(Schema.encodeUnknown)
+        )
+        const encodeHeaders = endpoint.headersSchema.pipe(
+          Option.map(Schema.encodeUnknown)
+        )
+        const encodeUrlParams = endpoint.urlParamsSchema.pipe(
+          Option.map(Schema.encodeUnknown)
+        )
+        endpointClient = (request: {
+          readonly path: any
+          readonly urlParams: any
+          readonly payload: any
+          readonly headers: any
+          readonly withResponse?: boolean
+        }) =>
+          Effect.gen(function*() {
+            let httpRequest = HttpClientRequest.make(endpoint.method)(
+              request && request.path ? makeUrl(request.path) : endpoint.path
+            )
+            if (isMultipart) {
+              httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
+            } else if (encodePayload._tag === "Some") {
+              const payload = yield* encodePayload.value(request.payload)
+              httpRequest = HttpMethod.hasBody(endpoint.method)
+                ? yield* Effect.orDie(HttpClientRequest.bodyJson(httpRequest, payload))
+                : HttpClientRequest.setUrlParams(httpRequest, payload as any)
+            }
+            if (encodeHeaders._tag === "Some") {
+              httpRequest = HttpClientRequest.setHeaders(
+                httpRequest,
+                (yield* encodeHeaders.value(request.headers)) as any
+              )
+            }
+            if (encodeUrlParams._tag === "Some") {
+              httpRequest = HttpClientRequest.appendUrlParams(
+                httpRequest,
+                (yield* encodeUrlParams.value(request.urlParams)) as any
+              )
+            }
+            const response = yield* httpClient.execute(httpRequest)
+            const value = yield* (options?.transformResponse === undefined
+              ? decodeResponse(response)
+              : options.transformResponse(decodeResponse(response)))
+            return request?.withResponse === true ? [value, response] : value
+          }).pipe(
+            Effect.scoped,
+            Effect.catchIf(ParseResult.isParseError, Effect.die),
+            Effect.mapInputContext((input) => Context.merge(context, input))
+          )
+      }
+    })
+    return endpointClient
   })
 
 // ----------------------------------------------------------------------------
