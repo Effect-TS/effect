@@ -78,17 +78,18 @@ export const EffectTypeId: unique symbol = core.EffectTypeId
 export type EffectTypeId = typeof EffectTypeId
 
 /**
- * The `Effect` interface defines a value that lazily describes a workflow or job.
- * The workflow requires some context `R`, and may fail with an error of type `E`,
- * or succeed with a value of type `A`.
+ * The `Effect` interface defines a value that lazily describes a workflow or
+ * job. The workflow requires some context `R`, and may fail with an error of
+ * type `E`, or succeed with a value of type `A`.
  *
- * `Effect` values model resourceful interaction with the outside world, including
- * synchronous, asynchronous, concurrent, and parallel interaction. They use a
- * fiber-based concurrency model, with built-in support for scheduling, fine-grained
- * interruption, structured concurrency, and high scalability.
+ * `Effect` values model resourceful interaction with the outside world,
+ * including synchronous, asynchronous, concurrent, and parallel interaction.
+ * They use a fiber-based concurrency model, with built-in support for
+ * scheduling, fine-grained interruption, structured concurrency, and high
+ * scalability.
  *
- * To run an `Effect` value, you need a `Runtime`, which is a type that is capable
- * of executing `Effect` values.
+ * To run an `Effect` value, you need a `Runtime`, which is a type that is
+ * capable of executing `Effect` values.
  *
  * @since 2.0.0
  * @category models
@@ -248,9 +249,9 @@ export declare namespace Effect {
  * `false` otherwise.
  *
  * This function can be useful for checking the type of a value before
- * attempting to operate on it as an `Effect` value. For example, you could
- * use `isEffect` to check the type of a value before using it as an
- * argument to a function that expects an `Effect` value.
+ * attempting to operate on it as an `Effect` value. For example, you could use
+ * `isEffect` to check the type of a value before using it as an argument to a
+ * function that expects an `Effect` value.
  *
  * @param u - The value to check for being an `Effect` value.
  *
@@ -268,8 +269,8 @@ export const isEffect: (u: unknown) => u is Effect<unknown, unknown, unknown> = 
 
 /**
  * Returns an effect that caches its result for a specified duration, known as
- * the `timeToLive`. When the cache expires after the duration, the effect will be
- * recomputed upon next evaluation.
+ * the `timeToLive`. When the cache expires after the duration, the effect will
+ * be recomputed upon next evaluation.
  *
  * @example
  * import { Effect, Console } from "effect"
@@ -309,8 +310,8 @@ export const cachedWithTTL: {
 } = circular.cached
 
 /**
- * Similar to {@link cachedWithTTL}, this function caches an effect's result for a
- * specified duration. It also includes an additional effect for manually
+ * Similar to {@link cachedWithTTL}, this function caches an effect's result for
+ * a specified duration. It also includes an additional effect for manually
  * invalidating the cached value before it naturally expires.
  *
  * @example
@@ -471,9 +472,47 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
 // -------------------------------------------------------------------------------------
 
 /**
- * Runs all the provided effects in sequence respecting the structure provided in input.
+ * Combines multiple effects into a single effect that produces a tuple of
+ * results.
  *
- * Supports multiple arguments, a single argument tuple / array or record / struct.
+ * `Effect.all` lets you run multiple effects in sequence and return their
+ * results as a tuple. This is useful when you need to run several independent
+ * operations and collect all their results in a single effect.
+ *
+ * By default, the effects are executed sequentially, but you can explore
+ * concurrency options for different execution strategies.
+ *
+ * **Syntax**
+ * ```ts
+ * const combinedEffect = Effect.all([effect1, effect2, ...])
+ * ```
+ *
+ * **Note:** `Effect.all` can also work with iterables, structs, and records.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Simulated function to read configuration from a file
+ * const webConfig = Effect.promise(() =>
+ *   Promise.resolve({ dbConnection: "localhost", port: 8080 })
+ * )
+ *
+ * // Simulated function to test database connectivity
+ * const checkDatabaseConnectivity = Effect.promise(() =>
+ *   Promise.resolve("Connected to Database")
+ * )
+ *
+ * // Combine both effects to perform startup checks
+ * const startupChecks = Effect.all([webConfig, checkDatabaseConnectivity])
+ *
+ * Effect.runPromise(startupChecks).then(([config, dbStatus]) => {
+ *   console.log(
+ *     `Configuration: ${JSON.stringify(config)}\nDB Status: ${dbStatus}`
+ *   )
+ * })
+ * // Output:
+ * // Configuration: {"dbConnection":"localhost","port":8080}
+ * // DB Status: Connected to Database
  *
  * @since 2.0.0
  * @category collecting & elements
@@ -492,9 +531,11 @@ export const all: <
 /**
  * Data-last variant of `Effect.all`.
  *
- * Runs all the provided effects in sequence respecting the structure provided in input.
+ * Runs all the provided effects in sequence respecting the structure provided
+ * in input.
  *
- * Supports multiple arguments, a single argument tuple / array or record / struct.
+ * Supports multiple arguments, a single argument tuple / array or record /
+ * struct.
  *
  * @since 2.0.0
  * @category collecting & elements
@@ -790,20 +831,20 @@ export const findFirst: {
 } = effect.findFirst
 
 /**
- * This function takes an iterable of `Effect` values and returns a new
- * `Effect` value that represents the first `Effect` value in the iterable
- * that succeeds. If all of the `Effect` values in the iterable fail, then
- * the resulting `Effect` value will fail as well.
+ * This function takes an iterable of `Effect` values and returns a new `Effect`
+ * value that represents the first `Effect` value in the iterable that succeeds.
+ * If all of the `Effect` values in the iterable fail, then the resulting
+ * `Effect` value will fail as well.
  *
- * This function is sequential, meaning that the `Effect` values in the
- * iterable will be executed in sequence, and the first one that succeeds
- * will determine the outcome of the resulting `Effect` value.
+ * This function is sequential, meaning that the `Effect` values in the iterable
+ * will be executed in sequence, and the first one that succeeds will determine
+ * the outcome of the resulting `Effect` value.
  *
  * @param effects - The iterable of `Effect` values to evaluate.
  *
- * @returns A new `Effect` value that represents the first successful
- * `Effect` value in the iterable, or a failed `Effect` value if all of the
- * `Effect` values in the iterable fail.
+ * @returns A new `Effect` value that represents the first successful `Effect`
+ * value in the iterable, or a failed `Effect` value if all of the `Effect`
+ * values in the iterable fail.
  *
  * @since 2.0.0
  * @category collecting & elements
@@ -1098,11 +1139,11 @@ export const takeWhile: {
 } = effect.takeWhile
 
 /**
- * Feeds elements of type `A` to `f` and accumulates all errors in error
- * channel or successes in success channel.
+ * Feeds elements of type `A` to `f` and accumulates all errors in error channel
+ * or successes in success channel.
  *
- * This combinator is lossy meaning that if there are errors all successes
- * will be lost. To retain all information please use `partition`.
+ * This combinator is lossy meaning that if there are errors all successes will
+ * be lost. To retain all information please use `partition`.
  *
  * @since 2.0.0
  * @category collecting & elements
@@ -1149,8 +1190,8 @@ export const validateAll: {
 } = fiberRuntime.validateAll
 
 /**
- * Feeds elements of type `A` to `f` until it succeeds. Returns first success
- * or the accumulation of all errors.
+ * Feeds elements of type `A` to `f` until it succeeds. Returns first success or
+ * the accumulation of all errors.
  *
  * If `elements` is empty then `Effect.fail([])` is returned.
  *
@@ -1199,7 +1240,8 @@ export const validateFirst: {
 /**
  * Creates an `Effect` from a callback-based asynchronous API.
  *
- * Useful for integrating Node.js-style callback functions into the Effect system.
+ * This is useful for integrating Node.js-style callback functions into the
+ * Effect system.
  *
  * The `resume` function **MUST** be called at most once.
  *
@@ -1217,20 +1259,24 @@ export const validateFirst: {
  *
  * @example
  * import { Effect } from "effect"
- * import * as fs from "fs"
+ * import * as NodeFS from "node:fs"
  *
- * // Wrapping a callback-based API using Effect.async
- * const readFile = (filename: string) => Effect.async<Buffer, Error>((resume) => {
- *   fs.readFile(filename, (error, data) => {
- *     if (error) {
- *       resume(Effect.fail(error))
- *     } else {
- *       resume(Effect.succeed(data))
- *     }
- *   });
- * });
+ * const readFile = (filename: string) =>
+ *   Effect.async<Buffer, Error>((resume) => {
+ *     NodeFS.readFile(filename, (error, data) => {
+ *       if (error) {
+ *         // Resume with a failed Effect if an error occurs
+ *         resume(Effect.fail(error))
+ *       } else {
+ *         // Resume with a succeeded Effect if successful
+ *         resume(Effect.succeed(data))
+ *       }
+ *     })
+ *   })
  *
- * const program = readFile("todos.txt")
+ * //      ┌─── Effect<Buffer, Error, never>
+ * //      ▼
+ * const program = readFile("example.txt")
  *
  * @since 2.0.0
  * @category constructors
@@ -1241,8 +1287,8 @@ export const async: <A, E = never, R = never>(
 ) => Effect<A, E, R> = core.async
 
 /**
- * Converts an asynchronous, callback-style API into an `Effect`, which will
- * be executed asynchronously.
+ * Converts an asynchronous, callback-style API into an `Effect`, which will be
+ * executed asynchronously.
  *
  * With this variant, the registration function may return a an `Effect`.
  *
@@ -1256,7 +1302,8 @@ export const asyncEffect: <A, E, R, R3, E2, R2>(
 /**
  * Low level constructor that enables for custom stack tracing cutpoints.
  *
- * It is meant to be called with a bag of instructions that become available in the "this" of the effect.
+ * It is meant to be called with a bag of instructions that become available in
+ * the "this" of the effect.
  *
  * @example
  * import { Effect } from "effect"
@@ -1298,26 +1345,24 @@ export const withFiberRuntime: <A, E = never, R = never>(
 /**
  * Creates an `Effect` that represents a recoverable error.
  *
- * This `Effect` does not succeed but instead fails with the provided error. The
- * failure can be of any type, and will propagate through the effect pipeline
+ * This `Effect` does not succeed but instead fails with the given error. The
+ * failure can be of any type and will propagate through the effect pipeline
  * unless handled.
  *
  * Use this function when you want to explicitly signal an error in an `Effect`
- * computation. The failed effect can later be handled with functions like
+ * computation. You can later handle the failure with functions like
  * {@link catchAll} or {@link catchTag}.
  *
  * @example
  * import { Effect } from "effect"
  *
- * // Example of creating a failed effect
- * const failedEffect = Effect.fail("Something went wrong")
- *
- * // Handle the failure
- * failedEffect.pipe(
- *   Effect.catchAll((error) => Effect.succeed(`Recovered from: ${error}`)),
- *   Effect.runPromise
- * ).then(console.log)
- * // Output: "Recovered from: Something went wrong"
+ * // Creating an effect that represents a failure scenario
+ * //
+ * //      ┌─── Effect<never, Error, never>
+ * //      ▼
+ * const failure = Effect.fail(
+ *   new Error("Operation failed due to network error")
+ * )
  *
  * @since 2.0.0
  * @category constructors
@@ -1365,6 +1410,46 @@ export const dieMessage: (message: string) => Effect<never> = core.dieMessage
 export const dieSync: (evaluate: LazyArg<unknown>) => Effect<never> = core.dieSync
 
 /**
+ * Provides a way to write effectful code using generator functions, simplifying
+ * control flow and error handling.
+ *
+ * `Effect.gen` allows you to write code that looks and behaves like synchronous
+ * code, but it can handle asynchronous tasks, errors, and complex control flow
+ * (like loops and conditions). It helps make asynchronous code more readable
+ * and easier to manage.
+ *
+ * The generator functions work similarly to `async/await` but with more
+ * explicit control over the execution of effects. You can yield values from
+ * effects and return the final result at the end.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const addServiceCharge = (amount: number) => amount + 1
+ *
+ * const applyDiscount = (
+ *   total: number,
+ *   discountRate: number
+ * ): Effect.Effect<number, Error> =>
+ *   discountRate === 0
+ *     ? Effect.fail(new Error("Discount rate cannot be zero"))
+ *     : Effect.succeed(total - (total * discountRate) / 100)
+ *
+ * const fetchTransactionAmount = Effect.promise(() => Promise.resolve(100))
+ *
+ * const fetchDiscountRate = Effect.promise(() => Promise.resolve(5))
+ *
+ * export const program = Effect.gen(function* () {
+ *   const transactionAmount = yield* fetchTransactionAmount
+ *   const discountRate = yield* fetchDiscountRate
+ *   const discountedAmount = yield* applyDiscount(
+ *     transactionAmount,
+ *     discountRate
+ *   )
+ *   const finalAmount = addServiceCharge(discountedAmount)
+ *   return `Final amount to charge: ${finalAmount}`
+ * })
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -1672,7 +1757,8 @@ export const none: <A, E, R>(
 ) => Effect<void, E | Cause.NoSuchElementException, R> = effect.none
 
 /**
- * Creates an `Effect` that represents an asynchronous computation guaranteed to succeed.
+ * Creates an `Effect` that represents an asynchronous computation guaranteed to
+ * succeed.
  *
  * The provided function (`thunk`) returns a `Promise` that should never reject.
  * If the `Promise` does reject, the rejection is treated as a defect.
@@ -1680,14 +1766,24 @@ export const none: <A, E, R>(
  * An optional `AbortSignal` can be provided to allow for interruption of the
  * wrapped `Promise` API.
  *
+ * If you need to model an asynchronous operation that can fail, consider using
+ * the {@link tryPromise} API instead.
+ *
  * @example
  * import { Effect } from "effect"
  *
- * // Creating an effect that resolves after a delay
- * const delay = (message: string) => Effect.promise(() => new Promise((resolve) => {
- *   setTimeout(() => resolve(message), 2000)
- * }))
+ * const delay = (message: string) =>
+ *   Effect.promise<string>(
+ *     () =>
+ *       new Promise((resolve) => {
+ *         setTimeout(() => {
+ *           resolve(message)
+ *         }, 2000)
+ *       })
+ *   )
  *
+ * //      ┌─── Effect<string, never, never>
+ * //      ▼
  * const program = delay("Async operation completed successfully!")
  *
  * @since 2.0.0
@@ -1700,13 +1796,17 @@ export const promise: <A>(
 /**
  * Creates an `Effect` that succeeds with the provided value.
  *
- * Use this function to represent a successful computation that yields a value of type `A`.
- * The effect does not fail and does not require any environmental context.
+ * Use this function to represent a successful computation that yields a value
+ * of type `A`. The effect does not fail and does not require any environmental
+ * context.
  *
  * @example
  * import { Effect } from "effect"
  *
- * // Creating an effect that succeeds with the number 42
+ * // Creating an effect that represents a successful scenario
+ * //
+ * //      ┌─── Effect<number, never, never>
+ * //      ▼
  * const success = Effect.succeed(42)
  *
  * @since 2.0.0
@@ -1731,24 +1831,35 @@ export const succeedNone: Effect<Option.Option<never>> = effect.succeedNone
 export const succeedSome: <A>(value: A) => Effect<Option.Option<A>> = effect.succeedSome
 
 /**
- * Creates an `Effect` that defers the creation of another effect until it is needed.
+ * Delays the creation of an effect until it is actually needed.
  *
- * Useful for lazy evaluation, handling circular dependencies, or avoiding eager execution in recursive functions.
+ * `Effect.suspend` wraps a given effect in a thunk, allowing the effect to be
+ * evaluated only when required. It is useful for optimizing performance,
+ * handling circular dependencies, and improving type inference in certain
+ * scenarios.
  *
  * @example
  * import { Effect } from "effect"
  *
- * // Handling recursion without stack overflow
- * const fibonacci = (n: number): Effect.Effect<number> =>
+ * const blowsUp = (n: number): Effect.Effect<number> =>
+ *   n < 2
+ *     ? Effect.succeed(1)
+ *     : Effect.zipWith(blowsUp(n - 1), blowsUp(n - 2), (a, b) => a + b)
+ *
+ * // console.log(Effect.runSync(blowsUp(32)))
+ * // crash: JavaScript heap out of memory
+ *
+ * const allGood = (n: number): Effect.Effect<number> =>
  *   n < 2
  *     ? Effect.succeed(1)
  *     : Effect.zipWith(
- *         Effect.suspend(() => fibonacci(n - 1)),
- *         Effect.suspend(() => fibonacci(n - 2)),
+ *         Effect.suspend(() => allGood(n - 1)),
+ *         Effect.suspend(() => allGood(n - 2)),
  *         (a, b) => a + b
  *       )
  *
- * console.log(Effect.runSync(fibonacci(10))) // Output: 89
+ * console.log(Effect.runSync(allGood(32)))
+ * // Output: 3524578
  *
  * @since 2.0.0
  * @category constructors
@@ -1758,17 +1869,23 @@ export const suspend: <A, E, R>(effect: LazyArg<Effect<A, E, R>>) => Effect<A, E
 /**
  * Creates an `Effect` that represents a synchronous side-effectful computation.
  *
- * The provided function (`thunk`) should not throw errors; if it does, the error is treated as a defect.
- * Use `Effect.sync` when you are certain the operation will not fail.
+ * The provided function (`thunk`) should not throw errors; if it does, the
+ * error is treated as a defect. Use `Effect.sync` when you are certain the
+ * operation will not fail.
+ *
+ * If you need to model a synchronous operation that can fail, consider using
+ * the `try` API instead.
  *
  * @example
  * import { Effect } from "effect"
  *
- * // Creating an effect that logs a message
- * const log = (message: string) => Effect.sync(() => {
- *   console.log(message) // side effect
- * })
+ * const log = (message: string) =>
+ *   Effect.sync(() => {
+ *     console.log(message) // side effect
+ *   })
  *
+ * //      ┌─── Effect<void, never, never>
+ * //      ▼
  * const program = log("Hello, World!")
  *
  * @since 2.0.0
@@ -1822,8 +1939,8 @@ export {
 /**
  * Recovers from all recoverable errors.
  *
- * **Note**: that `Effect.catchAll` will not recover from unrecoverable defects. To
- * recover from both recoverable and unrecoverable errors use
+ * **Note**: that `Effect.catchAll` will not recover from unrecoverable defects.
+ * To recover from both recoverable and unrecoverable errors use
  * `Effect.catchAllCause`.
  *
  * @since 2.0.0
@@ -1837,8 +1954,8 @@ export const catchAll: {
 /**
  * Recovers from both recoverable and unrecoverable errors.
  *
- * See `sandbox`, `mapErrorCause` for other functions that can
- * recover from defects.
+ * See `sandbox`, `mapErrorCause` for other functions that can recover from
+ * defects.
  *
  * @since 2.0.0
  * @category error handling
@@ -1856,10 +1973,9 @@ export const catchAllCause: {
 /**
  * Recovers from all defects with provided function.
  *
- * **WARNING**: There is no sensible way to recover from defects. This
- * method should be used only at the boundary between Effect and an external
- * system, to transmit information on a defect for diagnostic or explanatory
- * purposes.
+ * **WARNING**: There is no sensible way to recover from defects. This method
+ * should be used only at the boundary between Effect and an external system, to
+ * transmit information on a defect for diagnostic or explanatory purposes.
  *
  * @since 2.0.0
  * @category error handling
@@ -2176,6 +2292,21 @@ export {
    *
    * If the `try` function throws an error, the `catch` function maps it to an error of type `E`.
    *
+   * @example
+   * import { Effect } from "effect"
+   *
+   * const parse = (input: string) =>
+   *   Effect.try({
+   *     // JSON.parse may throw for bad input
+   *     try: () => JSON.parse(input),
+   *     // remap the error
+   *     catch: (unknown) => new Error(`something went wrong ${unknown}`)
+   *   })
+   *
+   * //      ┌─── Effect<any, Error, never>
+   * //      ▼
+   * const program = parse("")
+   *
    * @since 2.0.0
    * @category error handling
    */
@@ -2238,10 +2369,16 @@ export const tryMapPromise: {
  * @example
  * import { Effect } from "effect"
  *
- * // Fetching data from an API that may fail
- * const getTodo = (id: number) => Effect.tryPromise(() =>
- *   fetch(`https://jsonplaceholder.typicode.com/todos/${id}`)
- * )
+ * const getTodo = (id: number) =>
+ *   Effect.tryPromise({
+ *     try: () => fetch(`https://jsonplaceholder.typicode.com/todos/${id}`),
+ *     // remap the error
+ *     catch: (unknown) => new Error(`something went wrong ${unknown}`)
+ *   })
+ *
+ * //      ┌─── Effect<Response, Error, never>
+ * //      ▼
+ * const program = getTodo(1)
  *
  * @since 2.0.0
  * @category error handling
@@ -2406,16 +2543,19 @@ export const liftPredicate: {
 // -------------------------------------------------------------------------------------
 
 /**
- * This function maps the success value of an `Effect` value to a specified
- * constant value.
+ * Replaces the value inside an effect with a constant value.
  *
- * @param value - The constant value that the success value of the `Effect`
- * value will be mapped to.
- * @param self - The `Effect` value whose success value will be mapped to the
- * specified constant value.
+ * `Effect.as` allows you to ignore the original value inside an effect and
+ * replace it with a new constant value.
  *
- * @returns A new `Effect` value that represents the mapping of the success
- * value of the original `Effect` value to the specified constant value.
+ * @example
+ * import { pipe, Effect } from "effect"
+ *
+ * // Replaces the value 5 with the constant "new value"
+ * const program = pipe(Effect.succeed(5), Effect.as("new value"))
+ *
+ * Effect.runPromise(program).then(console.log)
+ * // Output: "new value"
  *
  * @since 2.0.0
  * @category mapping
@@ -2504,6 +2644,35 @@ export const flipWith: {
 } = effect.flipWith
 
 /**
+ * Transforms the value inside an effect by applying a function to it.
+ *
+ * `Effect.map` takes a function and applies it to the value contained within an
+ * effect, creating a new effect with the transformed value. It's important to
+ * note that effects are immutable, meaning that the original effect is not
+ * modified. Instead, a new effect is returned with the updated value.
+ *
+ * **Syntax**
+ * ```ts
+ * const mappedEffect = pipe(myEffect, Effect.map(transformation))
+ * // or
+ * const mappedEffect = Effect.map(myEffect, transformation)
+ * // or
+ * const mappedEffect = myEffect.pipe(Effect.map(transformation))
+ * ```
+ *
+ * @example
+ * import { pipe, Effect } from "effect"
+ *
+ * const addServiceCharge = (amount: number) => amount + 1
+ *
+ * const fetchTransactionAmount = Effect.promise(() => Promise.resolve(100))
+ *
+ * const finalAmount = pipe(
+ *   fetchTransactionAmount,
+ *   Effect.map(addServiceCharge)
+ * )
+ *
+ * Effect.runPromise(finalAmount).then(console.log) // Output: 101
  * @since 2.0.0
  * @category mapping
  */
@@ -2532,8 +2701,8 @@ export const mapAccum: {
 } = effect.mapAccum
 
 /**
- * Returns an effect whose failure and success channels have been mapped by
- * the specified `onFailure` and `onSuccess` functions.
+ * Returns an effect whose failure and success channels have been mapped by the
+ * specified `onFailure` and `onSuccess` functions.
  *
  * @since 2.0.0
  * @category mapping
@@ -2561,11 +2730,10 @@ export const mapError: {
 
 /**
  * Returns an effect with its full cause of failure mapped using the specified
- * function. This can be used to transform errors while preserving the
- * original structure of `Cause`.
+ * function. This can be used to transform errors while preserving the original
+ * structure of `Cause`.
  *
- * See `sandbox`, `catchAllCause` for other functions for dealing
- * with defects.
+ * See `sandbox`, `catchAllCause` for other functions for dealing with defects.
  *
  * @since 2.0.0
  * @category mapping
@@ -3935,7 +4103,23 @@ const if_: {
 
 export {
   /**
-   * Runs `onTrue` if the result of `self` is `true` and `onFalse` otherwise.
+   * Executes one of two effects based on a condition evaluated by an effectful
+   * predicate.
+   *
+   * `Effect.if` allows you to conditionally run one of two effects. If the
+   * predicate (the condition) evaluates to `true`, the `onTrue` effect is
+   * executed. If the predicate evaluates to `false`, the `onFalse` effect is
+   * run instead.
+   *
+   * @example
+   * import { Effect, Random, Console } from "effect"
+   *
+   * const flipTheCoin = Effect.if(Random.nextBoolean, {
+   *   onTrue: () => Console.log("Head"), // Runs if the predicate is true
+   *   onFalse: () => Console.log("Tail") // Runs if the predicate is false
+   * })
+   *
+   * Effect.runFork(flipTheCoin)
    *
    * @since 2.0.0
    * @category filtering & conditionals
@@ -4072,7 +4256,10 @@ export const filterOrFail: {
 } = effect.filterOrFail
 
 /**
- * The moral equivalent of `if (!p) exp`.
+ * Executes an effect only if the condition is `false`.
+ *
+ * If you want to conditionally execute an effect based on the result of another
+ * effect, use {@link unlessEffect}.
  *
  * @since 2.0.0
  * @category filtering & conditionals
@@ -4083,7 +4270,10 @@ export const unless: {
 } = effect.unless
 
 /**
- * The moral equivalent of `if (!p) exp` when `p` has side-effects.
+ * Conditionally execute an effect based on the result of another effect.
+ *
+ * If you want to conditionally execute an effect based on a boolean condition,
+ * use {@link unless}.
  *
  * @since 2.0.0
  * @category filtering & conditionals
@@ -4096,7 +4286,41 @@ export const unlessEffect: {
 } = effect.unlessEffect
 
 /**
- * The moral equivalent of `if (p) exp`.
+ * Conditionally executes an effect based on a boolean condition.
+ *
+ * `Effect.when` allows you to conditionally execute an effect, similar to using
+ * an `if (condition)` expression, but with the added benefit of handling
+ * effects. If the condition is `true`, the effect is executed; otherwise, it
+ * does nothing.
+ *
+ * If you want to conditionally execute an effect based on the result of another
+ * effect, use {@link whenEffect}.
+ *
+ * @example
+ * import { Effect, Option } from "effect"
+ *
+ * const validateWeightOption = (
+ *   weight: number
+ * ): Effect.Effect<Option.Option<number>> =>
+ *   // Conditionally execute the effect if the weight is non-negative
+ *   Effect.succeed(weight).pipe(Effect.when(() => weight >= 0))
+ *
+ * // Run with a valid weight
+ * Effect.runPromise(validateWeightOption(100)).then(console.log)
+ * // Output:
+ * // {
+ * //   _id: "Option",
+ * //   _tag: "Some",
+ * //   value: 100
+ * // }
+ *
+ * // Run with an invalid weight
+ * Effect.runPromise(validateWeightOption(-5)).then(console.log)
+ * // Output:
+ * // {
+ * //   _id: "Option",
+ * //   _tag: "None"
+ * // }
  *
  * @since 2.0.0
  * @category filtering & conditionals
@@ -4107,6 +4331,26 @@ export const when: {
 } = effect.when
 
 /**
+ * Conditionally executes an effect based on the result of another effect.
+ *
+ * `Effect.whenEffect` is used when the condition itself involves an effect. It
+ * allows you to conditionally execute an effect based on the result of another
+ * effect, which returns a boolean value.
+ *
+ * If you want to conditionally execute an effect based on a boolean condition,
+ * use {@link when}.
+ *
+ * @example
+ * import { Effect, Random } from "effect"
+ *
+ * const randomIntOption = Random.nextInt.pipe(
+ *   Effect.whenEffect(Random.nextBoolean)
+ * )
+ *
+ * console.log(Effect.runSync(randomIntOption))
+ * // Example Output:
+ * // { _id: 'Option', _tag: 'Some', value: 8609104974198840 }
+ *
  * @since 2.0.0
  * @category filtering & conditionals
  */
@@ -4152,14 +4396,52 @@ export const whenRef: {
 // -------------------------------------------------------------------------------------
 
 /**
- * This function is a pipeable operator that maps over an `Effect` value,
- * flattening the result of the mapping function into a new `Effect` value.
+ * Chains transformations that produce `Effect` instances, useful for handling
+ * asynchronous operations or computations that depend on the results of
+ * previous effects.
  *
- * @param f - The mapping function to apply to the `Effect` value.
- * This function must return another `Effect` value.
+ * `Effect.flatMap` allows you to sequence multiple effects, ensuring that each
+ * step results in a new `Effect` while flattening any nested structures that
+ * may arise.
  *
- * @returns A new `Effect` value that is the result of flattening the
- * mapped `Effect` value.
+ * **Syntax**
+ * ```ts
+ * const flatMappedEffect = pipe(myEffect, Effect.flatMap(transformation))
+ * // or
+ * const flatMappedEffect = Effect.flatMap(myEffect, transformation)
+ * // or
+ * const flatMappedEffect = myEffect.pipe(Effect.flatMap(transformation))
+ * ```
+ *
+ * Effects are immutable, so `Effect.flatMap` returns a new effect instead of
+ * modifying the original one.
+ *
+ * `Effect.flatMap` is similar to `flatMap` used with arrays but works with
+ * effects, allowing you to flatten nested `Effect` structures.
+ *
+ * @example
+ * import { pipe, Effect } from "effect"
+ *
+ * // Function to apply a discount safely to a transaction amount
+ * const applyDiscount = (
+ *   total: number,
+ *   discountRate: number
+ * ): Effect.Effect<number, Error> =>
+ *   discountRate === 0
+ *     ? Effect.fail(new Error("Discount rate cannot be zero"))
+ *     : Effect.succeed(total - (total * discountRate) / 100)
+ *
+ * // Simulated asynchronous task to fetch a transaction amount from database
+ * const fetchTransactionAmount = Effect.promise(() => Promise.resolve(100))
+ *
+ * // Chaining the fetch and discount application using `flatMap`
+ * const finalAmount = pipe(
+ *   fetchTransactionAmount,
+ *   Effect.flatMap((amount) => applyDiscount(amount, 5))
+ * )
+ *
+ * Effect.runPromise(finalAmount).then(console.log)
+ * // Output: 95
  *
  * @since 2.0.0
  * @category sequencing
@@ -4170,28 +4452,64 @@ export const flatMap: {
 } = core.flatMap
 
 /**
- * Executes a sequence of two actions, typically two `Effect`s, where the second action can depend on the result of the first action.
+ * Sequences two actions (effects), where the second action may depend on the
+ * result of the first.
  *
- * The `that` action can take various forms:
+ * `Effect.andThen` allows you to chain multiple actions together. The second
+ * action can be any of the following:
+ * - A constant value (similar to `Effect.as`)
+ * - A function returning a value (similar to `Effect.map`)
+ * - A `Promise`
+ * - A function returning a `Promise`
+ * - An `Effect`
+ * - A function returning an `Effect` (similar to `Effect.flatMap`)
  *
- * - a value
- * - a function returning a value
- * - a promise
- * - a function returning a promise
- * - an effect
- * - a function returning an effect
+ * **Syntax**
+ * ```ts
+ * const transformedEffect = pipe(myEffect, Effect.andThen(anotherEffect))
+ * // or
+ * const transformedEffect = Effect.andThen(myEffect, anotherEffect)
+ * // or
+ * const transformedEffect = myEffect.pipe(Effect.andThen(anotherEffect))
+ * ```
+ *
+ * **Note:** `Effect.andThen` integrates well with both `Option` and `Either`
+ * types, treating them as effects.
  *
  * @example
- * import { Effect } from "effect"
+ * import { pipe, Effect } from "effect"
  *
- * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen(1))), 1)
- * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen((s) => s.length))), 2)
+ * // Function to apply a discount safely to a transaction amount
+ * const applyDiscount = (
+ *   total: number,
+ *   discountRate: number
+ * ): Effect.Effect<number, Error> =>
+ *   discountRate === 0
+ *     ? Effect.fail(new Error("Discount rate cannot be zero"))
+ *     : Effect.succeed(total - (total * discountRate) / 100)
  *
- * assert.deepStrictEqual(await Effect.runPromise(Effect.succeed("aa").pipe(Effect.andThen(Promise.resolve(1)))), 1)
- * assert.deepStrictEqual(await Effect.runPromise(Effect.succeed("aa").pipe(Effect.andThen((s) => Promise.resolve(s.length)))), 2)
+ * // Simulated asynchronous task to fetch a transaction amount from database
+ * const fetchTransactionAmount = Effect.promise(() => Promise.resolve(100))
  *
- * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen(Effect.succeed(1)))), 1)
- * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen((s) => Effect.succeed(s.length)))), 2)
+ * // Using Effect.map and Effect.flatMap
+ * const result1 = pipe(
+ *   fetchTransactionAmount,
+ *   Effect.map((amount) => amount * 2),
+ *   Effect.flatMap((amount) => applyDiscount(amount, 5))
+ * )
+ *
+ * Effect.runPromise(result1).then(console.log)
+ * // Output: 190
+ *
+ * // Using Effect.andThen
+ * const result2 = pipe(
+ *   fetchTransactionAmount,
+ *   Effect.andThen((amount) => amount * 2),
+ *   Effect.andThen((amount) => applyDiscount(amount, 5))
+ * )
+ *
+ * Effect.runPromise(result2).then(console.log)
+ * // Output: 190
  *
  * @since 2.0.0
  * @category sequencing
@@ -4324,6 +4642,44 @@ export const summarized: {
 } = effect.summarized
 
 /**
+ * Executes a side effect with the result of an effect without modifying the
+ * value.
+ *
+ * `Effect.tap` is similar to `Effect.flatMap`, but it ignores the result of the
+ * function passed to it. The value from the previous effect remains available
+ * for the next step in the chain. This is useful when you want to perform
+ * actions like logging or tracking without changing the computation's result.
+ *
+ * @example
+ * import { pipe, Effect } from "effect"
+ *
+ * // Function to apply a discount safely to a transaction amount
+ * const applyDiscount = (
+ *   total: number,
+ *   discountRate: number
+ * ): Effect.Effect<number, Error> =>
+ *   discountRate === 0
+ *     ? Effect.fail(new Error("Discount rate cannot be zero"))
+ *     : Effect.succeed(total - (total * discountRate) / 100)
+ *
+ * // Simulated asynchronous task to fetch a transaction amount from database
+ * const fetchTransactionAmount = Effect.promise(() => Promise.resolve(100))
+ *
+ * const finalAmount = pipe(
+ *   fetchTransactionAmount,
+ *   // Log the fetched transaction amount
+ *   Effect.tap((amount) =>
+ *     Effect.sync(() => console.log(`Apply a discount to: ${amount}`))
+ *   ),
+ *   // `amount` is still available!
+ *   Effect.flatMap((amount) => applyDiscount(amount, 5))
+ * )
+ *
+ * Effect.runPromise(finalAmount).then(console.log)
+ * // Output:
+ * // Apply a discount to: 100
+ * // 95
+ *
  * @since 2.0.0
  * @category sequencing
  */
@@ -5659,24 +6015,27 @@ export const makeLatch: (open?: boolean | undefined) => Effect<Latch, never, nev
 // -------------------------------------------------------------------------------------
 
 /**
- * Executes an effect and returns a `RuntimeFiber` that represents the running computation.
+ * The foundational function for running effects, starting a fiber that can be observed or interrupted.
  *
- * Use `runFork` when you want to start an effect without blocking the current execution flow.
- * It returns a fiber that you can observe, interrupt, or join as needed.
+ * `Effect.runFork` is used to run an effect in the background by creating a fiber. It is the base function
+ * for all other run functions. You can use this to execute effects that can be interrupted or controlled.
+ *
+ * **Tip:** Unless you specifically need a `Promise` or synchronous operation, `Effect.runFork` is a good default choice.
  *
  * @example
  * import { Effect, Console, Schedule, Fiber } from "effect"
  *
- * // Define an effect that repeats a message every 200 milliseconds
+ * //      ┌─── Effect<number, never, never>
+ * //      ▼
  * const program = Effect.repeat(
  *   Console.log("running..."),
  *   Schedule.spaced("200 millis")
  * )
  *
- * // Start the effect without blocking
+ * //      ┌─── RuntimeFiber<number, never>
+ * //      ▼
  * const fiber = Effect.runFork(program)
  *
- * // Interrupt the fiber after 500 milliseconds
  * setTimeout(() => {
  *   Effect.runFork(Fiber.interrupt(fiber))
  * }, 500)
@@ -5699,21 +6058,27 @@ export const runCallback: <A, E>(
 ) => Runtime.Cancel<A, E> = _runtime.unsafeRunEffect
 
 /**
- * Executes an effect and returns a `Promise` that resolves with the result.
+ * Executes an effect and returns the result as a `Promise`.
  *
- * Use `runPromise` when working with asynchronous effects and you need to integrate with code that uses Promises.
- * If the effect fails, the returned Promise will be rejected with the error.
+ * `Effect.runPromise` allows you to run an effect and handle the result using `Promise` syntax. If the effect succeeds,
+ * it resolves the promise with the result. If the effect fails, it rejects the promise with an error.
  *
  * @example
  * import { Effect } from "effect"
  *
- * // Execute an effect and handle the result with a Promise
- * Effect.runPromise(Effect.succeed(1)).then(console.log) // Output: 1
+ * Effect.runPromise(Effect.succeed(1)).then(console.log)
+ * // Output: 1
  *
- * // Execute a failing effect and handle the rejection
- * Effect.runPromise(Effect.fail("my error")).catch((error) => {
- *   console.error("Effect failed with error:", error)
- * })
+ * Effect.runPromise(Effect.fail("my error"))
+ * // throws:
+ * // [Error: my error] {
+ * //   name: '(FiberFailure) Error',
+ * //   [Symbol(effect/Runtime/FiberFailure/Cause)]: {
+ * //     _tag: 'Fail',
+ * //     error: 'my error'
+ * //   }
+ * //   ...
+ * // }
  *
  * @since 2.0.0
  * @category execution
@@ -5724,10 +6089,10 @@ export const runPromise: <A, E>(
 ) => Promise<A> = _runtime.unsafeRunPromiseEffect
 
 /**
- * Executes an effect and returns a `Promise` that resolves with an `Exit` describing the result.
+ * Runs an effect and returns a `Promise` that resolves to an `Exit`, which represents the outcome (success or failure) of the effect.
  *
- * Use `runPromiseExit` when you need detailed information about the outcome of the effect, including success or failure,
- * and you want to work with Promises.
+ * The `Exit` type indicates whether the effect succeeded or failed. If the effect succeeds, the result is contained in the `value`;
+ * if it fails, the cause of the failure is provided in the `cause`.
  *
  * @example
  * import { Effect } from "effect"
@@ -5763,21 +6128,19 @@ export const runPromiseExit: <A, E>(
 ) => Promise<Exit.Exit<A, E>> = _runtime.unsafeRunPromiseExitEffect
 
 /**
- * Executes an effect synchronously and returns its result.
+ * Executes an effect synchronously, running it immediately and returning the result.
  *
- * Use `runSync` when you are certain that the effect is purely synchronous and will not perform any asynchronous operations.
- * If the effect fails or contains asynchronous tasks, it will throw an error.
+ * `Effect.runSync` is used to run an effect that does not involve any asynchronous operations. If the effect fails or
+ * involves async tasks, it will throw an error.
  *
  * @example
  * import { Effect } from "effect"
  *
- * // Define a synchronous effect
  * const program = Effect.sync(() => {
  *   console.log("Hello, World!")
  *   return 1
  * })
  *
- * // Execute the effect synchronously
  * const result = Effect.runSync(program)
  * // Output: Hello, World!
  *
@@ -5790,17 +6153,18 @@ export const runPromiseExit: <A, E>(
 export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSyncEffect
 
 /**
- * Executes an effect synchronously and returns an `Exit` describing the result.
+ * Runs an effect synchronously and returns the result as an `Exit` type, which represents either a success or failure outcome.
  *
- * Use `runSyncExit` when you need detailed information about the outcome of the effect,
- * including whether it succeeded or failed, without throwing exceptions.
+ * The `Exit` type is used to indicate whether the effect succeeded or failed. If the effect succeeds, it returns the value;
+ * if it fails, it provides information about the failure cause.
+ *
+ * If the effect contains asynchronous operations, `Effect.runSyncExit` will return an `Exit` with a `Die` cause,
+ * indicating the effect cannot be resolved synchronously.
  *
  * @example
  * import { Effect } from "effect"
  *
- * // Execute a successful effect and get the Exit result
- * const result1 = Effect.runSyncExit(Effect.succeed(1))
- * console.log(result1)
+ * console.log(Effect.runSyncExit(Effect.succeed(1)))
  * // Output:
  * // {
  * //   _id: "Exit",
@@ -5808,9 +6172,7 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSync
  * //   value: 1
  * // }
  *
- * // Execute a failing effect and get the Exit result
- * const result2 = Effect.runSyncExit(Effect.fail("my error"))
- * console.log(result2)
+ * console.log(Effect.runSyncExit(Effect.fail("my error")))
  * // Output:
  * // {
  * //   _id: "Exit",
