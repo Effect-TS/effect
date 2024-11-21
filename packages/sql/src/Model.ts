@@ -636,7 +636,8 @@ export const UuidV4WithGenerate = <B extends string | symbol>(
     generate: Option.match({
       onNone: () => Effect.sync(() => Uuid.v4({}, new Uint8Array(16))),
       onSome: (id) => Effect.succeed(id as any)
-    })
+    }),
+    constructorDefault: () => Uuid.v4({}, new Uint8Array(16)) as any
   })
 
 /**
