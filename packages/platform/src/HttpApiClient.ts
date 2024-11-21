@@ -354,9 +354,7 @@ export const endpoint = <
     | ApiR
     | HttpApiGroup.Context<HttpApiGroup.WithName<Groups, GroupName>>
     | HttpApiEndpoint.ContextWithName<HttpApiGroup.EndpointsWithName<Groups, GroupName>, EndpointName>
-    | HttpApiEndpoint.ErrorContext<
-      HttpApiEndpoint.WithName<HttpApiGroup.EndpointsWithName<Groups, GroupName>, EndpointName>
-    >
+    | HttpApiEndpoint.ErrorContextWithName<HttpApiGroup.EndpointsWithName<Groups, GroupName>, EndpointName>
   >
   | HttpClient.HttpClient
 > =>
