@@ -253,7 +253,13 @@ export const make = (options?: {
           )
         ),
       changesRemote: mailbox,
-      changes: PubSub.subscribe(pubsub)
+      changes: PubSub.subscribe(pubsub),
+      destroy: Effect.gen(function*() {
+        yield* sql`DROP TABLE ${sql(entryTable)}`.withoutTransform
+        yield* sql`DROP TABLE ${sql(remotesTable)}`.withoutTransform
+      }).pipe(
+        Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "destory" }))
+      )
     })
   })
 
