@@ -280,7 +280,7 @@ export const effect: {
 } = internal.fromEffect
 
 /**
- * Constructs a layer from the specified effect discarding it's output.
+ * Constructs a layer from the specified effect, discarding its output.
  *
  * @since 2.0.0
  * @category constructors
