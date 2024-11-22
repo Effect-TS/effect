@@ -325,7 +325,7 @@ const make = Effect.gen(function*() {
     Effect.gen(function*() {
       const startSequence = yield* journal.nextRemoteSequence(remote.id)
 
-      const process: Effect.Effect<void> = (yield* remote.changes(identity, startSequence)).pipe(
+      const process: Effect.Effect<void> = (yield* remote.changes(identity, startSequence)).takeAll.pipe(
         Effect.tap(([entries]) =>
           journal.writeFromRemote(remote.id, Chunk.toReadonlyArray(entries)).pipe(
             Effect.retry({
