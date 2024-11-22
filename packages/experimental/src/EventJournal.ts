@@ -409,28 +409,37 @@ export const makeIndexedDb = (options?: {
           const tx = db.transaction(["entries", "remotes"], "readwrite")
           const entries = tx.objectStore("entries")
           const remotes = tx.objectStore("remotes")
-          for (const remoteEntry of remoteEntries) {
-            const encodedEntry = encodeEntryIdb(remoteEntry.entry)
+          const entriesWithConflicts: Array<{
+            entry: Entry
+            conflicts: Array<Entry>
+          }> = []
+          const iterator = remoteEntries[Symbol.iterator]()
+          const handleNext = (state: IteratorResult<RemoteEntry, void>) => {
+            if (state.done) return
+            const remoteEntry = state.value
+            const encodedEntry = encodeEntryIdb(state.value.entry)
             entries.get(encodedEntry.id).onsuccess = (event) => {
+              handleNext(iterator.next())
               if ((event.target as any).result) return
+              const item = {
+                conflicts: [] as Array<Entry>,
+                entry: remoteEntry.entry
+              }
+              entriesWithConflicts.push(item)
               entries.add(encodedEntry).onsuccess = () => {
-                const conflicts: Array<Entry> = []
                 const cursorRequest = entries.index("id").openCursor(
                   IDBKeyRange.lowerBound(encodedEntry.id, true),
                   "next"
                 )
                 cursorRequest.onsuccess = () => {
                   const cursor = cursorRequest.result!
-                  if (!cursor) {
-                    mailbox.unsafeOffer({ entry: remoteEntry.entry, conflicts })
-                    return
-                  }
+                  if (!cursor) return
                   const decodedEntry = decodeEntryIdb(cursor.value)
                   if (
                     decodedEntry.event === remoteEntry.entry.event &&
                     decodedEntry.primaryKey === remoteEntry.entry.primaryKey
                   ) {
-                    conflicts.push(decodedEntry)
+                    item.conflicts.push(decodedEntry)
                   }
                   cursor.continue()
                 }
@@ -442,7 +451,11 @@ export const makeIndexedDb = (options?: {
               sequence: remoteEntry.remoteSequence
             })
           }
-          tx.oncomplete = () => resume(Effect.void)
+          handleNext(iterator.next())
+          tx.oncomplete = () => {
+            mailbox.unsafeOfferAll(entriesWithConflicts)
+            return resume(Effect.void)
+          }
           tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
           return Effect.sync(() => tx.abort())
         }),
