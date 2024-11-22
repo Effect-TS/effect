@@ -6,6 +6,7 @@ import { makeRemoteId, RemoteId } from "@effect/experimental/EventJournal"
 import { EncryptedRemoteEntry, Encryption, layerEncryptionSubtle } from "@effect/experimental/EventLogRemote"
 import * as EventLogServer from "@effect/experimental/EventLogServer"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as PubSub from "effect/PubSub"
@@ -140,12 +141,11 @@ export const makeStorage = (options?: {
               encrypted_entry: entry.encryptedEntry
             })
           }
-          const encryptedEntries = yield* sql`INSERT INTO ${sql(table)} ${sql.insert(forInsert)} ON CONFLICT DO NOTHING`
-            .withoutTransform.pipe(
-              Effect.zipRight(sql`SELECT * FROM ${sql(table)} WHERE ${sql.in("entry_id", ids)} ORDER BY sequence ASC`),
-              Effect.flatMap(decodeEntries),
-              sql.withTransaction
-            )
+          const encryptedEntries = yield* pipe(
+            sql`INSERT INTO ${sql(table)} ${sql.insert(forInsert)} ON CONFLICT DO NOTHING`.withoutTransform,
+            Effect.zipRight(sql`SELECT * FROM ${sql(table)} WHERE ${sql.in("entry_id", ids)} ORDER BY sequence ASC`),
+            Effect.flatMap(decodeEntries)
+          )
           yield* pubsub.offerAll(encryptedEntries)
         }).pipe(
           Effect.retry({ times: 3 }),
