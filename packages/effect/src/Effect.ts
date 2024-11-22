@@ -2672,7 +2672,8 @@ export const flipWith: {
  *   Effect.map(addServiceCharge)
  * )
  *
- * Effect.runPromise(finalAmount).then(console.log) // Output: 101
+ * Effect.runPromise(finalAmount).then(console.log)
+ * // Output: 101
  * @since 2.0.0
  * @category mapping
  */
@@ -6069,16 +6070,8 @@ export const runCallback: <A, E>(
  * Effect.runPromise(Effect.succeed(1)).then(console.log)
  * // Output: 1
  *
- * Effect.runPromise(Effect.fail("my error"))
- * // throws:
- * // [Error: my error] {
- * //   name: '(FiberFailure) Error',
- * //   [Symbol(effect/Runtime/FiberFailure/Cause)]: {
- * //     _tag: 'Fail',
- * //     error: 'my error'
- * //   }
- * //   ...
- * // }
+ * Effect.runPromise(Effect.fail("my error")).catch(console.error)
+ * // Output: (FiberFailure) Error: my error
  *
  * @since 2.0.0
  * @category execution
