@@ -524,7 +524,9 @@ export const makeIndexedDb = (options?: {
         }),
       changesRemote: mailbox,
       changes: PubSub.subscribe(pubsub),
-      destroy: idbReq("destory", () => indexedDB.deleteDatabase(database)).pipe(Effect.asVoid)
+      destroy: Effect.sync(() => {
+        indexedDB.deleteDatabase(database)
+      })
     })
   })
 
