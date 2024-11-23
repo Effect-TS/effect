@@ -68,6 +68,20 @@ function renderError(state: State, pointer: Doc.AnsiDoc) {
   })
 }
 
+function renderChoiceDescription<A>(
+  choice: Prompt.Prompt.SelectChoice<A>,
+  isHighlighted: boolean
+) {
+  if (!choice.disabled && choice.description && isHighlighted) {
+    return Doc.char("-").pipe(
+      Doc.cat(Doc.space),
+      Doc.cat(Doc.text(choice.description)),
+      Doc.annotate(Ansi.blackBright)
+    )
+  }
+  return Doc.empty
+}
+
 const metaOptionsCount = 2
 
 function renderChoices<A>(
@@ -122,12 +136,15 @@ function renderChoices<A>(
         ? Doc.annotate(checkbox, Ansi.cyanBright)
         : checkbox
       const title = Doc.text(choice.title)
+      const description = renderChoiceDescription(choice as Prompt.Prompt.SelectChoice<A>, isHighlighted)
       documents.push(
         prefix.pipe(
           Doc.cat(Doc.space),
           Doc.cat(annotatedCheckbox),
           Doc.cat(Doc.space),
-          Doc.cat(title)
+          Doc.cat(title),
+          Doc.cat(Doc.space),
+          Doc.cat(description)
         )
       )
     }
