@@ -222,9 +222,6 @@ importers:
       '@types/ini':
         specifier: ^4.1.1
         version: 4.1.1
-      '@types/node':
-        specifier: ^22.5.4
-        version: 22.5.4
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -277,9 +274,6 @@ importers:
       '@effect/rpc-http':
         specifier: workspace:^
         version: link:../rpc-http/dist
-      '@types/node':
-        specifier: ^22.5.4
-        version: 22.5.4
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -316,9 +310,6 @@ importers:
       '@types/jscodeshift':
         specifier: ^0.11.11
         version: 0.11.11
-      '@types/node':
-        specifier: ^22.5.4
-        version: 22.5.4
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -327,7 +318,7 @@ importers:
         version: 0.14.2
       jscodeshift:
         specifier: ^0.16.1
-        version: 0.16.1(@babel/preset-env@7.26.0(@babel/core@7.26.0))
+        version: 0.16.1(@babel/preset-env@7.26.0(@babel/core@7.25.2))
       tinybench:
         specifier: ^2.9.0
         version: 2.9.0
@@ -487,9 +478,6 @@ importers:
       '@types/mime':
         specifier: ^3.0.4
         version: 3.0.4
-      '@types/node':
-        specifier: ^22.5.4
-        version: 22.5.4
       '@types/ws':
         specifier: ^8.5.12
         version: 8.5.12
@@ -510,9 +498,6 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      '@types/node':
-        specifier: ^22.5.4
-        version: 22.5.4
       '@types/tar':
         specifier: ^6.1.12
         version: 6.1.13
@@ -610,9 +595,6 @@ importers:
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
-      '@types/node':
-        specifier: ^22.5.4
-        version: 22.5.4
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -776,9 +758,6 @@ importers:
       '@testcontainers/postgresql':
         specifier: ^10.11.0
         version: 10.11.0
-      '@types/node':
-        specifier: ^22.5.4
-        version: 22.5.4
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -3285,9 +3264,6 @@ packages:
 
   '@types/node-forge@1.3.11':
     resolution: {integrity: sha512-FQx220y22OKNTqaByeBGqHWYz4cl94tpcxeFdvBo3wjG6XPBuZ0BNgNZRV5J5TFmmcsJ4IzsLkmGRiQbnYsBEQ==}
-
-  '@types/node@22.5.4':
-    resolution: {integrity: sha512-FDuKUJQm/ju9fT/SeX/6+gBzoPzlVCzfzmGkwKvRHQVxi4BntVbyIwf6a4Xn62mrvndLiml6z/UBXIdEVjQLXg==}
 
   '@types/node@22.9.3':
     resolution: {integrity: sha512-F3u1fs/fce3FFk+DAxbxc78DF8x0cY09RRL8GnXLmkJ1jvx3TtPdWoTT5/NiYfI5ASqXBmfqJi9dZ3gxMx4lzw==}
@@ -10889,10 +10865,6 @@ snapshots:
     dependencies:
       '@types/node': 22.9.3
 
-  '@types/node@22.5.4':
-    dependencies:
-      undici-types: 6.19.8
-
   '@types/node@22.9.3':
     dependencies:
       undici-types: 6.19.8
@@ -13336,32 +13308,6 @@ snapshots:
       write-file-atomic: 5.0.1
     optionalDependencies:
       '@babel/preset-env': 7.26.0(@babel/core@7.25.2)
-    transitivePeerDependencies:
-      - supports-color
-
-  jscodeshift@0.16.1(@babel/preset-env@7.26.0(@babel/core@7.26.0)):
-    dependencies:
-      '@babel/core': 7.25.2
-      '@babel/parser': 7.24.8
-      '@babel/plugin-transform-class-properties': 7.24.7(@babel/core@7.25.2)
-      '@babel/plugin-transform-modules-commonjs': 7.24.8(@babel/core@7.25.2)
-      '@babel/plugin-transform-nullish-coalescing-operator': 7.24.7(@babel/core@7.25.2)
-      '@babel/plugin-transform-optional-chaining': 7.24.8(@babel/core@7.25.2)
-      '@babel/plugin-transform-private-methods': 7.24.7(@babel/core@7.25.2)
-      '@babel/preset-flow': 7.24.7(@babel/core@7.25.2)
-      '@babel/preset-typescript': 7.24.7(@babel/core@7.25.2)
-      '@babel/register': 7.24.6(@babel/core@7.25.2)
-      chalk: 4.1.2
-      flow-parser: 0.239.1
-      graceful-fs: 4.2.11
-      micromatch: 4.0.7
-      neo-async: 2.6.2
-      node-dir: 0.1.17
-      recast: 0.23.9
-      temp: 0.9.4
-      write-file-atomic: 5.0.1
-    optionalDependencies:
-      '@babel/preset-env': 7.26.0(@babel/core@7.26.0)
     transitivePeerDependencies:
       - supports-color
 

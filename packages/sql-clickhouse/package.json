@@ -42,7 +42,6 @@
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@types/node": "^22.5.4",
     "effect": "workspace:^"
   },
   "peerDependencies": {
