@@ -4,12 +4,14 @@
 import type * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import type { Queue } from "effect"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberMap from "effect/FiberMap"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
+import * as Predicate from "effect/Predicate"
 import * as PubSub from "effect/PubSub"
 import * as RcMap from "effect/RcMap"
 import * as Schema from "effect/Schema"
@@ -18,7 +20,16 @@ import * as Uuid from "uuid"
 import type { RemoteId } from "./EventJournal.js"
 import { EntryId, makeRemoteId } from "./EventJournal.js"
 import type { ProtocolResponse } from "./EventLogRemote.js"
-import { Ack, Changes, decodeRequest, encodeResponse, EncryptedRemoteEntry, Hello, Pong } from "./EventLogRemote.js"
+import {
+  Ack,
+  Changes,
+  decodeRequest,
+  encodeResponse,
+  EncryptedRemoteEntry,
+  Hello,
+  Pong,
+  Removals
+} from "./EventLogRemote.js"
 import * as MsgPack from "./MsgPack.js"
 
 /**
@@ -65,11 +76,17 @@ export const makeHttpHandler: Effect.Effect<
             return yield* write(new Ack({ id: request.id }))
           })
         }
+        case "RemoveEntries": {
+          return Effect.gen(function*() {
+            yield* storage.remove(request.publicKey, request.entryIds)
+            return yield* write(new Ack({ id: request.id }))
+          })
+        }
         case "RequestChanges": {
           return Effect.gen(function*() {
-            const mailbox = yield* storage.changes(request.publicKey, request.startSequence)
-            yield* mailbox.takeAll.pipe(
-              Effect.tap(([entries]) =>
+            const { changes, removals } = yield* storage.changes(request.publicKey, request.startSequence)
+            const takeChanges = changes.takeAll.pipe(
+              Effect.flatMap(([entries]) =>
                 write(
                   new Changes({
                     subscriptionId: request.subscriptionId,
@@ -77,8 +94,23 @@ export const makeHttpHandler: Effect.Effect<
                   })
                 )
               ),
-              Effect.forever,
-              FiberMap.run(subscriptions, request.subscriptionId)
+              Effect.forever
+            )
+            const takeRemovals = removals.take.pipe(
+              Effect.flatMap((entryIds) =>
+                write(
+                  new Removals({
+                    subscriptionId: request.subscriptionId,
+                    entryIds
+                  })
+                )
+              ),
+              Effect.forever
+            )
+            yield* FiberMap.run(
+              subscriptions,
+              request.subscriptionId,
+              Effect.all([takeChanges, takeRemovals], { concurrency: 2 })
             )
           })
         }
@@ -130,10 +162,18 @@ export class Storage extends Context.Tag("@effect/experimental/EventLogServer/St
   {
     readonly getId: Effect.Effect<RemoteId>
     readonly write: (publicKey: string, entries: ReadonlyArray<PersistedEntry>) => Effect.Effect<void>
+    readonly remove: (publicKey: string, ids: ReadonlyArray<EntryId>) => Effect.Effect<void>
     readonly changes: (
       publicKey: string,
       startSequence: number
-    ) => Effect.Effect<Mailbox.ReadonlyMailbox<EncryptedRemoteEntry>, never, Scope>
+    ) => Effect.Effect<
+      {
+        readonly changes: Mailbox.ReadonlyMailbox<EncryptedRemoteEntry>
+        readonly removals: Queue.Dequeue<ReadonlyArray<EntryId>>
+      },
+      never,
+      Scope
+    >
   }
 >() {}
 
@@ -142,8 +182,8 @@ export class Storage extends Context.Tag("@effect/experimental/EventLogServer/St
  * @category storage
  */
 export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Scope> = Effect.gen(function*() {
-  const knownIds = new Set<string>()
-  const journals = new Map<string, Array<EncryptedRemoteEntry>>()
+  const knownIds = new Map<string, number>()
+  const journals = new Map<string, Array<EncryptedRemoteEntry | undefined>>()
   const remoteId = makeRemoteId()
   const ensureJournal = (publicKey: string) => {
     let journal = journals.get(publicKey)
@@ -154,10 +194,17 @@ export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Sco
   }
   const pubsubs = yield* RcMap.make({
     lookup: (_publicKey: string) =>
-      Effect.acquireRelease(
-        PubSub.unbounded<EncryptedRemoteEntry>(),
-        PubSub.shutdown
-      ),
+      Effect.gen(function*() {
+        const changes = yield* Effect.acquireRelease(
+          PubSub.unbounded<EncryptedRemoteEntry>(),
+          PubSub.shutdown
+        )
+        const removals = yield* Effect.acquireRelease(
+          PubSub.unbounded<ReadonlyArray<EntryId>>(),
+          PubSub.shutdown
+        )
+        return { changes, removals } as const
+      }),
     idleTimeToLive: 60000
   })
 
@@ -170,30 +217,46 @@ export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Sco
         for (const entry of entries) {
           const idString = entry.entryIdString
           if (knownIds.has(idString)) continue
-          knownIds.add(idString)
           const encrypted = EncryptedRemoteEntry.make({
             sequence: journal.length,
             entryId: entry.entryId,
             iv: entry.iv,
             encryptedEntry: entry.encryptedEntry
           })
+          knownIds.set(idString, encrypted.sequence)
           journal.push(encrypted)
-          pubsub.unsafeOffer(encrypted)
+          pubsub.changes.unsafeOffer(encrypted)
         }
+      }).pipe(Effect.scoped),
+    remove: (publicKey, ids) =>
+      Effect.gen(function*() {
+        const { removals } = yield* RcMap.get(pubsubs, publicKey)
+        for (const id of ids) {
+          const idString = Uuid.stringify(id)
+          const index = knownIds.get(idString)
+          if (index === undefined) continue
+          knownIds.delete(idString)
+          ensureJournal(publicKey)[index] = undefined
+        }
+        yield* removals.offer(ids)
       }).pipe(Effect.scoped),
     changes: (publicKey, startSequence) =>
       Effect.gen(function*() {
         const mailbox = yield* Mailbox.make<EncryptedRemoteEntry>()
         const pubsub = yield* RcMap.get(pubsubs, publicKey)
-        const queue = yield* pubsub.subscribe
-        yield* mailbox.offerAll(ensureJournal(publicKey).slice(startSequence))
+        const queue = yield* pubsub.changes.subscribe
+        const removals = yield* pubsub.removals.subscribe
+        yield* mailbox.offerAll(ensureJournal(publicKey).slice(startSequence).filter(Predicate.isNotUndefined))
         yield* queue.takeBetween(1, Number.MAX_SAFE_INTEGER).pipe(
           Effect.tap((chunk) => mailbox.offerAll(chunk)),
           Effect.forever,
           Effect.forkScoped,
           Effect.interruptible
         )
-        return mailbox as Mailbox.ReadonlyMailbox<EncryptedRemoteEntry>
+        return {
+          changes: mailbox,
+          removals
+        }
       })
   })
 })

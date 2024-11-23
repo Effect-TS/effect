@@ -4,6 +4,7 @@
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import * as MsgPack from "./MsgPack.js"
 
 /**
  * @since 1.0.0
@@ -39,6 +40,7 @@ export interface Event<
   readonly tag: Tag
   readonly primaryKey: (payload: Schema.Schema.Type<Payload>) => string
   readonly payload: Payload
+  readonly payloadMsgPack: MsgPack.schema<Payload>
   readonly success: Success
   readonly error: Error
 }
@@ -238,6 +240,7 @@ export const make = <
     tag: options.tag,
     primaryKey: options.primaryKey,
     payload: options.payload ?? Schema.Void,
+    payloadMsgPack: MsgPack.schema(options.payload ?? Schema.Void),
     success: options.success ?? Schema.Void,
     error: options.error ?? Schema.Never
   })

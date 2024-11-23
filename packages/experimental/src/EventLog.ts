@@ -3,13 +3,17 @@
  */
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
+import * as DateTime from "effect/DateTime"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FiberMap from "effect/FiberMap"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import type { ParseError } from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
+import * as Random from "effect/Random"
 import type * as Record from "effect/Record"
 import type * as Redacted from "effect/Redacted"
 import * as Schedule from "effect/Schedule"
@@ -18,10 +22,9 @@ import type { Scope } from "effect/Scope"
 import type { Covariant } from "effect/Types"
 import type { Event } from "./Event.js"
 import type { EventGroup } from "./EventGroup.js"
-import type { Entry, EventJournalError, RemoteId } from "./EventJournal.js"
-import { EventJournal } from "./EventJournal.js"
+import type { EntryId, EventJournalError, RemoteId } from "./EventJournal.js"
+import { Entry, EventJournal, makeEntryId } from "./EventJournal.js"
 import type { EventLogRemote } from "./EventLogRemote.js"
-import * as MsgPack from "./MsgPack.js"
 
 /**
  * @since 1.0.0
@@ -186,7 +189,7 @@ export declare namespace Handlers {
   export type Context<A> = A extends Handlers<
     infer _R,
     infer _Events
-  > ? _R :
+  > ? _R | Event.Context<_Events> :
     A extends Effect.Effect<
       Handlers<
         infer _R,
@@ -194,7 +197,7 @@ export declare namespace Handlers {
       >,
       infer _EX,
       infer _RX
-    > ? _R | _RX :
+    > ? _R | _RX | Event.Context<_Events> :
     never
 }
 
@@ -253,6 +256,135 @@ export const group = <Events extends Event.Any, Return>(
     Layer.effectDiscard,
     Layer.provide(Registry.layer)
   ) as any
+
+/**
+ * @since 1.0.0
+ * @category compaction
+ */
+export const groupCompaction = <Events extends Event.Any, R>(
+  group: EventGroup<Events>,
+  options: {
+    readonly effect: (options: {
+      readonly primaryKey: string
+      readonly entries: {
+        readonly [Tag in Event.Tag<Events>]: Array<Entry>
+      }
+      readonly events: {
+        readonly [Tag in Event.Tag<Events>]: Array<Event.PayloadWithTag<Events, Tag>>
+      }
+      readonly write: <Tag extends Event.Tag<Events>>(
+        options: {
+          readonly tag: Tag
+          readonly payload: Event.PayloadWithTag<Events, Tag>
+          readonly timestamp?: DateTime.Utc | undefined
+        }
+      ) => Effect.Effect<void>
+    }) => Effect.Effect<void, never, R>
+    readonly before?: Duration.DurationInput | undefined
+  }
+): Layer.Layer<never, never, EventJournal | R | Event.Context<Events>> =>
+  Effect.gen(function*() {
+    const journal = yield* EventJournal
+    const before = options.before ? Duration.decode(options.before) : Duration.zero
+    const eventNames = Object.keys(group.events)
+    const msgPackArraySchemas = Object.fromEntries(
+      Object.entries(group.events).map(([tag, event]) =>
+        [tag, Schema.Array((event as unknown as Event.AnyWithProps).payloadMsgPack)] as const
+      )
+    )
+
+    const run = Effect.gen(function*() {
+      const deadline = (yield* DateTime.now).pipe(
+        DateTime.subtractDuration(before)
+      )
+      const entries = yield* journal.forEvents({
+        events: eventNames,
+        before: deadline
+      })
+      const entryIds: Array<EntryId> = []
+      const byPrimaryKey = new Map<string, Record<string, Array<Entry>>>()
+      for (const entry of entries) {
+        entryIds.push(entry.id)
+
+        if (byPrimaryKey.has(entry.primaryKey)) {
+          const record = byPrimaryKey.get(entry.primaryKey)!
+          if (record[entry.event]) {
+            record[entry.event].push(entry)
+          } else {
+            record[entry.event] = [entry]
+          }
+        } else {
+          byPrimaryKey.set(entry.primaryKey, {
+            [entry.event]: [entry]
+          })
+        }
+      }
+      const toCreate: Record<
+        string,
+        Array<{
+          readonly tag: string
+          readonly payload: any
+          readonly timestamp?: DateTime.Utc | undefined
+        }>
+      > = {}
+      const write = (options: {
+        readonly tag: string
+        readonly payload: any
+        readonly timestamp?: DateTime.Utc | undefined
+      }) =>
+        Effect.sync(() => {
+          if (toCreate[options.tag]) {
+            toCreate[options.tag].push(options)
+          } else {
+            toCreate[options.tag] = [options]
+          }
+        })
+      for (const [primaryKey, record] of byPrimaryKey) {
+        const payloadsRecord: Record<string, ReadonlyArray<any>> = {}
+        for (const [event, entries] of Object.entries(record)) {
+          const payloads = yield* Schema.decode(msgPackArraySchemas[event])(entries.map((entry) => entry.payload))
+          payloadsRecord[event] = payloads
+        }
+        for (const event of Object.keys(group.events)) {
+          payloadsRecord[event] ??= []
+        }
+        yield* options.effect({
+          entries: record as any,
+          events: payloadsRecord as any,
+          primaryKey,
+          write
+        })
+      }
+      const entriesToCreate: Array<Entry> = []
+      for (const [event, options] of Object.entries(toCreate)) {
+        const encodedPayloads = yield* Schema.encode(msgPackArraySchemas[event])(options.map((_) => _.payload))
+        for (let i = 0; i < encodedPayloads.length; i++) {
+          const { payload, timestamp } = options[i]
+          entriesToCreate.push(
+            new Entry({
+              id: makeEntryId({ timestamp: timestamp ? timestamp.epochMillis : deadline.epochMillis }),
+              event,
+              payload: encodedPayloads[i],
+              primaryKey: (group.events[event] as any as Event.AnyWithProps).primaryKey(payload)
+            })
+          )
+        }
+      }
+      yield* journal.remove(entryIds)
+      yield* journal.writeEntries(entriesToCreate)
+    }) as Effect.Effect<void, EventJournalError | ParseError, R | Event.Context<Events>>
+
+    yield* run.pipe(
+      Effect.delay(yield* Random.nextIntBetween(3000, 10000)),
+      Effect.catchAllCause(Effect.logWarning),
+      Effect.forkScoped,
+      Effect.interruptible,
+      Effect.annotateLogs({
+        service: "EventLog",
+        fiber: "groupCompaction"
+      })
+    )
+  }).pipe(Layer.scopedDiscard)
 
 /**
  * @since 1.0.0
@@ -316,18 +448,17 @@ const make = Effect.gen(function*() {
   const journal = yield* EventJournal
   const handlers = yield* registry.handlers
   const remotes = yield* FiberMap.make<RemoteId>()
-  const msgPackSchemas = Object.fromEntries(
-    Object.entries(handlers).map(([tag, handler]) => [tag, MsgPack.schema(handler.event.payload)] as const)
-  )
   const journalSemaphore = yield* Effect.makeSemaphore(1)
 
   const runRemote = (remote: EventLogRemote) =>
     Effect.gen(function*() {
       const startSequence = yield* journal.nextRemoteSequence(remote.id)
+      const { changes, removals } = yield* remote.changes(identity, startSequence)
 
-      const process: Effect.Effect<void> = (yield* remote.changes(identity, startSequence)).takeAll.pipe(
+      const process: Effect.Effect<void> = changes.takeAll.pipe(
         Effect.tap(([entries]) =>
           journal.writeFromRemote(remote.id, Chunk.toReadonlyArray(entries)).pipe(
+            journalSemaphore.withPermits(1),
             Effect.retry({
               schedule: Schedule.exponential(500).pipe(
                 Schedule.union(Schedule.spaced(5000))
@@ -342,8 +473,25 @@ const make = Effect.gen(function*() {
         Effect.fork,
         Effect.annotateLogs({
           service: "EventLog",
-          fiber: ".runRemote consume"
+          fiber: "runRemote changes"
         })
+      )
+
+      yield* removals.take.pipe(
+        Effect.tap((entryIds) => journalSemaphore.withPermits(1)(journal.remove(entryIds))),
+        Effect.forever,
+        Effect.fork,
+        Effect.annotateLogs({
+          service: "EventLog",
+          fiber: "runRemote removals"
+        })
+      )
+
+      yield* (yield* journal.removals).takeBetween(1, Number.MAX_SAFE_INTEGER).pipe(
+        Effect.flatMap((ids) => remote.remove(identity, ids)),
+        Effect.catchAllCause(Effect.logDebug),
+        Effect.forever,
+        Effect.fork
       )
 
       const write = journal.withRemoteUncommited(remote.id, (entries) => remote.write(identity, entries))
@@ -365,7 +513,7 @@ const make = Effect.gen(function*() {
     Effect.tap(({ conflicts, entry }) => {
       const handler = handlers[entry.event]
       if (!handler) return Effect.logDebug(`Event handler not found for: "${entry.event}"`)
-      const decodePayload = Schema.decode(msgPackSchemas[entry.event] as unknown as Schema.Schema<any>)
+      const decodePayload = Schema.decode(handlers[entry.event].event.payloadMsgPack as unknown as Schema.Schema<any>)
       return Effect.gen(function*() {
         const decodedConflicts: Array<{ entry: Entry; payload: any }> = new Array(conflicts.length)
         for (let i = 0; i < conflicts.length; i++) {
@@ -386,7 +534,7 @@ const make = Effect.gen(function*() {
     Effect.forkScoped,
     Effect.annotateLogs({
       service: "EventLog",
-      fiber: ".changesRemote handler"
+      fiber: "changesRemote handler"
     })
   )
 
@@ -402,7 +550,9 @@ const make = Effect.gen(function*() {
       }
       return Effect.gen(function*() {
         const payload = yield* Effect.orDie(
-          Schema.encode(msgPackSchemas[options.event] as unknown as Schema.Schema<Uint8Array>)(options.payload)
+          Schema.encode(handlers[options.event].event.payloadMsgPack as unknown as Schema.Schema<Uint8Array>)(
+            options.payload
+          )
         )
         return yield* journalSemaphore.withPermits(1)(journal.write({
           event: options.event,
