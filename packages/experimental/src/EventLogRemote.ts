@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Socket from "@effect/platform/Socket"
+import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -27,8 +28,16 @@ export interface EventLogRemote {
   readonly changes: (
     identity: typeof Identity.Service,
     startSequence: number
-  ) => Effect.Effect<Mailbox.ReadonlyMailbox<RemoteEntry>, never, Scope>
+  ) => Effect.Effect<
+    {
+      readonly changes: Mailbox.ReadonlyMailbox<RemoteEntry>
+      readonly removals: Mailbox.ReadonlyMailbox<ReadonlyArray<EntryId>>
+    },
+    never,
+    Scope
+  >
   readonly write: (identity: typeof Identity.Service, entries: ReadonlyArray<Entry>) => Effect.Effect<void>
+  readonly remove: (identity: typeof Identity.Service, ids: Iterable<EntryId>) => Effect.Effect<void>
 }
 
 /**
@@ -58,6 +67,18 @@ export class WriteEntries
     id: Schema.Number,
     iv: Schema.Uint8ArrayFromSelf,
     encryptedEntries: Schema.Array(EncryptedEntry)
+  })
+{}
+
+/**
+ * @since 1.0.0
+ * @category protocol
+ */
+export class RemoveEntries
+  extends Schema.TaggedClass<RemoveEntries>("@effect/experimental/EventLogRemote/RemoveEntries")("RemoveEntries", {
+    publicKey: Schema.String,
+    id: Schema.Number,
+    entryIds: Schema.Array(EntryId)
   })
 {}
 
@@ -121,6 +142,15 @@ export class Changes extends Schema.TaggedClass<Changes>("@effect/experimental/E
  * @since 1.0.0
  * @category protocol
  */
+export class Removals extends Schema.TaggedClass<Removals>("@effect/experimental/EventLogRemote/Removals")("Removals", {
+  subscriptionId: Schema.Number,
+  entryIds: Schema.Array(EntryId)
+}) {}
+
+/**
+ * @since 1.0.0
+ * @category protocol
+ */
 export class Ping extends Schema.TaggedClass<Ping>("@effect/experimental/EventLogRemote/Ping")("Ping", {
   id: Schema.Number
 }) {}
@@ -139,6 +169,7 @@ export class Pong extends Schema.TaggedClass<Pong>("@effect/experimental/EventLo
  */
 export const ProtocolRequest = Schema.Union(
   WriteEntries,
+  RemoveEntries,
   RequestChanges,
   StopChanges,
   Ping
@@ -170,6 +201,7 @@ export const ProtocolResponse = Schema.Union(
   Hello,
   Ack,
   Changes,
+  Removals,
   Pong
 )
 
@@ -200,7 +232,8 @@ export class Encryption extends Context.Tag("@effect/experimental/EventLogRemote
   {
     readonly encrypt: (
       identity: typeof Identity.Service,
-      entries: ReadonlyArray<Entry>
+      entries: ReadonlyArray<Entry>,
+      id: number
     ) => Effect.Effect<WriteEntries>
     readonly decrypt: (
       identity: typeof Identity.Service,
@@ -317,17 +350,25 @@ export const fromSocket: Effect.Effect<
   const write = (request: typeof ProtocolRequest.Type) => Effect.suspend(() => writeRaw(encodeRequest(request)))
 
   yield* Effect.gen(function*() {
+    let pendingCounter = 0
     const pending = new Map<number, Deferred.Deferred<void>>()
 
     let subscriptionIdCounter = 0
     const subscriptions = yield* RcMap.make({
       lookup: (_subscriptionId: number) =>
-        Effect.acquireRelease(
-          Mailbox.make<RemoteEntry>(),
-          (mailbox) => mailbox.shutdown
-        )
+        Effect.gen(function*() {
+          const changes = yield* Effect.acquireRelease(
+            Mailbox.make<RemoteEntry>(),
+            (mailbox) => mailbox.shutdown
+          )
+          const removals = yield* Effect.acquireRelease(
+            Mailbox.make<ReadonlyArray<EntryId>>(),
+            (mailbox) => mailbox.shutdown
+          )
+          return { changes, removals } as const
+        })
     })
-    const identities = new WeakMap<Mailbox.Mailbox<RemoteEntry>, typeof Identity.Service>()
+    const identities = new WeakMap<any, typeof Identity.Service>()
     const badPing = yield* Deferred.make<never, Error>()
 
     let latestPing = 0
@@ -353,10 +394,24 @@ export const fromSocket: Effect.Effect<
             id: res.remoteId,
             write: (identity, entries) =>
               Effect.gen(function*() {
-                const encrypted = yield* encryption.encrypt(identity, entries)
+                const encrypted = yield* encryption.encrypt(identity, entries, pendingCounter++)
                 const deferred = yield* Deferred.make<void>()
                 pending.set(encrypted.id, deferred)
                 yield* write(new WriteEntries(encrypted))
+                yield* Deferred.await(deferred)
+              }),
+            remove: (identity, ids) =>
+              Effect.gen(function*() {
+                const deferred = yield* Deferred.make<void>()
+                const id = pendingCounter++
+                pending.set(id, deferred)
+                yield* write(
+                  new RemoveEntries({
+                    publicKey: identity.publicKey,
+                    id,
+                    entryIds: Arr.fromIterable(ids)
+                  })
+                )
                 yield* Deferred.await(deferred)
               }),
             changes: (identity, startSequence) =>
@@ -374,7 +429,7 @@ export const fromSocket: Effect.Effect<
                   ),
                   () => write(new StopChanges({ subscriptionId: id }))
                 )
-                return mailbox as Mailbox.ReadonlyMailbox<RemoteEntry>
+                return mailbox
               })
           })
         }
@@ -398,7 +453,13 @@ export const fromSocket: Effect.Effect<
             const mailbox = yield* RcMap.get(subscriptions, res.subscriptionId)
             const identity = identities.get(mailbox)!
             const entries = yield* encryption.decrypt(identity, res)
-            yield* mailbox.offerAll(entries)
+            yield* mailbox.changes.offerAll(entries)
+          }).pipe(Effect.scoped)
+        }
+        case "Removals": {
+          return Effect.gen(function*() {
+            const mailbox = yield* RcMap.get(subscriptions, res.subscriptionId)
+            yield* mailbox.removals.offer(res.entryIds)
           }).pipe(Effect.scoped)
         }
       }
