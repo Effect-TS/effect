@@ -2794,6 +2794,17 @@ export const scopeWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) =>
   fiberRuntime.scopeWith
 
 /**
+ * Creates a `Scope`, passes it to the specified effectful function, and then
+ * closes the scope as soon as the effect is complete (whether through success,
+ * failure, or interruption).
+ *
+ * @since 3.10.17
+ * @category scoping, resources & finalization
+ */
+export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) => Effect<A, E, R> =
+  fiberRuntime.scopedWith
+
+/**
  * Scopes all resources used in this workflow to the lifetime of the workflow,
  * ensuring that their finalizers are run as soon as this workflow completes
  * execution, whether by success, failure, or interruption.
