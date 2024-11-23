@@ -26,15 +26,34 @@ export class EventJournal extends Context.Tag("@effect/experimental/EventJournal
     readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
 
     /**
+     * Read entries matching the given event names.
+     */
+    readonly forEvents: (options: {
+      readonly events: ReadonlyArray<string>
+      readonly before: DateTime.Utc
+    }) => Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
+
+    /**
      * Write an event to the journal, performing an effect before committing the
      * event.
      */
     readonly write: <A, E, R>(options: {
+      readonly id?: EntryId
       readonly event: string
       readonly primaryKey: string
       readonly payload: Uint8Array
       readonly effect: (entry: Entry) => Effect.Effect<A, E, R>
     }) => Effect.Effect<A, EventJournalError | E, R>
+
+    /**
+     * Write an array of entries to the journal.
+     */
+    readonly writeEntries: (entries: ReadonlyArray<Entry>) => Effect.Effect<void, EventJournalError>
+
+    /**
+     * Remove some entries from the journal
+     */
+    readonly remove: (ids: ReadonlyArray<EntryId>) => Effect.Effect<void, EventJournalError>
 
     /**
      * Write events from a remote source to the journal.
@@ -72,6 +91,11 @@ export class EventJournal extends Context.Tag("@effect/experimental/EventJournal
      * The entries added to the local journal.
      */
     readonly changes: Effect.Effect<Queue.Dequeue<Entry>, never, Scope>
+
+    /**
+     * The entries added to the local journal.
+     */
+    readonly removals: Effect.Effect<Queue.Dequeue<EntryId>, never, Scope>
 
     /**
      * Remove all data
@@ -154,8 +178,10 @@ export type EntryId = typeof EntryId.Type
  * @since 1.0.0
  * @category entry
  */
-export const makeEntryId = (): EntryId => {
-  return Uuid.v7({}, new Uint8Array(16)) as EntryId
+export const makeEntryId = (options?: {
+  readonly timestamp?: number
+}): EntryId => {
+  return Uuid.v7(options?.timestamp ? { msecs: options.timestamp } : {}, new Uint8Array(16)) as EntryId
 }
 
 /**
@@ -237,6 +263,7 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
     readonly conflicts: Array<Entry>
   }>()
   const pubsub = yield* PubSub.unbounded<Entry>()
+  const pubsubRemoval = yield* PubSub.unbounded<EntryId>()
 
   const ensureRemote = (remoteId: RemoteId) => {
     const remoteIdString = Uuid.stringify(remoteId)
@@ -249,11 +276,17 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
 
   return EventJournal.of({
     entries: Effect.sync(() => journal.slice()),
-    write({ effect, event, payload, primaryKey }) {
+    forEvents(options) {
+      return Effect.sync(() => {
+        const beforeMillis = options.before.epochMillis
+        return journal.filter((entry) => entry.createdAtMillis < beforeMillis && options.events.includes(entry.event))
+      })
+    },
+    write({ effect, event, id, payload, primaryKey }) {
       return Effect.acquireUseRelease(
         Effect.sync(() =>
           new Entry({
-            id: makeEntryId(),
+            id: id ?? makeEntryId(),
             event,
             primaryKey,
             payload
@@ -271,6 +304,34 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
             return pubsub.publish(entry)
           })
       )
+    },
+    writeEntries(entries) {
+      return Effect.sync(() => {
+        for (const entry of entries) {
+          if (byId.has(entry.idString)) continue
+          journal.push(entry)
+          byId.set(entry.idString, entry)
+          remotes.forEach((remote) => {
+            remote.missing.push(entry)
+          })
+          pubsub.unsafeOffer(entry)
+        }
+      })
+    },
+    remove(ids) {
+      return Effect.sync(() => {
+        for (const id of ids) {
+          const idString = Uuid.stringify(id)
+          const entry = byId.get(idString)
+          if (!entry) continue
+          byId.delete(idString)
+          const index = journal.indexOf(entry)
+          if (index >= 0) {
+            journal.splice(index, 1)
+          }
+          pubsubRemoval.unsafeOffer(entry.id)
+        }
+      })
     },
     writeFromRemote: (remoteId, remoteEntries) =>
       Effect.sync(() => {
@@ -321,6 +382,7 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
     nextRemoteSequence: (remoteId) => Effect.sync(() => ensureRemote(remoteId).sequence),
     changesRemote: mailbox,
     changes: PubSub.subscribe(pubsub),
+    removals: PubSub.subscribe(pubsubRemoval),
     destroy: Effect.sync(() => {
       journal.length = 0
       byId.clear()
@@ -350,6 +412,7 @@ export const makeIndexedDb = (options?: {
 
       const entries = db.createObjectStore("entries", { keyPath: "id" })
       entries.createIndex("id", "id", { unique: true })
+      entries.createIndex("event", "event")
 
       const remotes = db.createObjectStore("remotes", { keyPath: ["remoteId", "entryId"] })
       remotes.createIndex("id", ["remoteId", "entryId"], { unique: true })
@@ -368,6 +431,7 @@ export const makeIndexedDb = (options?: {
       readonly conflicts: Array<Entry>
     }>()
     const pubsub = yield* PubSub.unbounded<Entry>()
+    const pubsubRemovals = yield* PubSub.unbounded<EntryId>()
 
     return EventJournal.of({
       entries: idbReq(
@@ -384,10 +448,30 @@ export const makeIndexedDb = (options?: {
           )
         )
       ),
-      write: ({ effect, event, payload, primaryKey }) =>
+      forEvents: ({ before, events }) =>
+        Effect.async<ReadonlyArray<Entry>, EventJournalError>((resume) => {
+          const tx = db.transaction("entries", "readonly")
+
+          const entries: Array<Entry> = []
+          tx.objectStore("entries").index("id").openCursor(null, "next").onsuccess = (event) => {
+            const cursor = (event.target as any).result
+            if (!cursor) return
+            const timestamp = entryIdMillis(cursor.value.id)
+            if (events.includes(cursor.value.event) && timestamp < before.epochMillis) {
+              const entry = decodeEntryIdb(cursor.value)
+              entries.push(entry)
+            }
+            cursor.continue()
+          }
+
+          tx.oncomplete = () => resume(Effect.succeed(entries))
+          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "forEvents", cause: tx.error })))
+          return Effect.sync(() => tx.abort())
+        }),
+      write: ({ effect, event, id, payload, primaryKey }) =>
         Effect.uninterruptibleMask((restore) => {
           const entry = new Entry({
-            id: makeEntryId(),
+            id: id ?? makeEntryId(),
             event,
             primaryKey,
             payload
@@ -403,6 +487,38 @@ export const makeIndexedDb = (options?: {
             )),
             Effect.zipLeft(pubsub.publish(entry))
           )
+        }),
+      writeEntries: (entries) =>
+        Effect.async<void, EventJournalError>((resume) => {
+          const tx = db.transaction("entries", "readwrite")
+          const entriesStore = tx.objectStore("entries")
+          for (const entry of entries) {
+            entriesStore.put(encodeEntryIdb(entry)).onsuccess = () => {
+              pubsub.unsafeOffer(entry)
+            }
+          }
+          tx.oncomplete = () => {
+            return resume(Effect.void)
+          }
+          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeEntries", cause: tx.error })))
+          return Effect.sync(() => tx.abort())
+        }),
+      remove: (ids) =>
+        Effect.async<void, EventJournalError>((resume) => {
+          const tx = db.transaction(["entries"], "readwrite")
+          const entries = tx.objectStore("entries")
+          for (const id of ids) {
+            entries.get(id).onsuccess = (event) => {
+              const entryEncoded = (event.target as any).result
+              if (!entryEncoded) return
+              const entry = decodeEntryIdb(entryEncoded)
+              entries.delete(id)
+              pubsubRemovals.unsafeOffer(entry.id)
+            }
+          }
+          tx.oncomplete = () => resume(Effect.void)
+          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "remove", cause: tx.error })))
+          return Effect.sync(() => tx.abort())
         }),
       writeFromRemote: (remoteId, remoteEntries) =>
         Effect.async<void, EventJournalError>((resume) => {
@@ -524,6 +640,7 @@ export const makeIndexedDb = (options?: {
         }),
       changesRemote: mailbox,
       changes: PubSub.subscribe(pubsub),
+      removals: PubSub.subscribe(pubsubRemovals),
       destroy: Effect.sync(() => {
         indexedDB.deleteDatabase(database)
       })

@@ -114,7 +114,11 @@ export const makeStorage = (options?: {
             PubSub.unbounded<EncryptedRemoteEntry>(),
             PubSub.shutdown
           )
-          return { pubsub, table } as const
+          const pubsubRemovals = yield* Effect.acquireRelease(
+            PubSub.unbounded<ReadonlyArray<EntryId>>(),
+            PubSub.shutdown
+          )
+          return { pubsub, pubsubRemovals, table } as const
         }),
       idleTimeToLive: "5 minutes"
     })
@@ -152,9 +156,15 @@ export const makeStorage = (options?: {
           Effect.orDie,
           Effect.scoped
         ),
+      remove: (publicKey, entryIds) =>
+        Effect.gen(function*() {
+          const { pubsubRemovals, table } = yield* RcMap.get(resources, publicKey)
+          yield* sql`DELETE FROM ${sql(table)} WHERE ${sql.in("entry_id", entryIds)}`.withoutTransform
+          yield* pubsubRemovals.offer(entryIds)
+        }).pipe(Effect.orDie, Effect.scoped),
       changes: (publicKey, startSequence) =>
         Effect.gen(function*() {
-          const { pubsub, table } = yield* RcMap.get(resources, publicKey)
+          const { pubsub, pubsubRemovals, table } = yield* RcMap.get(resources, publicKey)
           const mailbox = yield* Mailbox.make<EncryptedRemoteEntry>()
           const queue = yield* pubsub.subscribe
           const initial = yield* sql`SELECT * FROM ${
@@ -169,7 +179,8 @@ export const makeStorage = (options?: {
             Effect.forkScoped,
             Effect.interruptible
           )
-          return mailbox
+          const removals = yield* PubSub.subscribe(pubsubRemovals)
+          return { changes: mailbox, removals }
         }).pipe(Effect.orDie)
     })
   })

@@ -157,12 +157,24 @@ export const make = (options?: {
       readonly conflicts: ReadonlyArray<EventJournal.Entry>
     }>()
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
+    const pubsubRemoval = yield* PubSub.unbounded<EventJournal.EntryId>()
 
     return EventJournal.EventJournal.of({
-      entries: sql`SELECT * FROM ${sql(entryTable)} ORDER BY timestamp ASC`.pipe(
+      entries: sql`SELECT * FROM ${sql(entryTable)} ORDER BY timestamp ASC`.withoutTransform.pipe(
         Effect.flatMap(decodeEntrySqlArray),
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "entries" }))
       ),
+      forEvents: ({ before, events }) =>
+        sql`
+          SELECT *
+          FROM ${sql(entryTable)}
+          WHERE ${sql.in("event", events)} AND
+                timestamp < ${before.epochMillis}
+          ORDER BY timestamp ASC
+        `.pipe(
+          Effect.flatMap(decodeEntrySqlArray),
+          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "forEvents" }))
+        ),
       write({ effect, event, payload, primaryKey }) {
         return Effect.gen(function*() {
           const entry = new EventJournal.Entry({
@@ -185,6 +197,16 @@ export const make = (options?: {
           )
         )
       },
+      writeEntries: (entries) =>
+        insertEntries(entries).pipe(
+          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "writeEntries" }))
+        ),
+      remove: (ids) =>
+        sql`DELETE FROM ${sql(entryTable)} WHERE ${sql.in("id", ids)}`.withoutTransform.pipe(
+          Effect.zipRight(pubsubRemoval.offerAll(ids)),
+          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "remove" })),
+          Effect.asVoid
+        ),
       writeFromRemote: (remoteId, remoteEntries) =>
         Effect.gen(function*() {
           const entries: Array<EventJournal.Entry> = []
@@ -254,6 +276,7 @@ export const make = (options?: {
         ),
       changesRemote: mailbox,
       changes: PubSub.subscribe(pubsub),
+      removals: PubSub.subscribe(pubsubRemoval),
       destroy: Effect.gen(function*() {
         yield* sql`DROP TABLE ${sql(entryTable)}`.withoutTransform
         yield* sql`DROP TABLE ${sql(remotesTable)}`.withoutTransform
