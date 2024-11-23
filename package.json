@@ -54,7 +54,7 @@
     "@eslint/eslintrc": "3.1.0",
     "@eslint/js": "9.9.1",
     "@types/jscodeshift": "^0.11.11",
-    "@types/node": "^22.5.4",
+    "@types/node": "^22.9.3",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
     "@vitest/browser": "^2.1.4",
