@@ -5,6 +5,7 @@ import type { EntryId } from "@effect/experimental/EventJournal"
 import { makeRemoteId, RemoteId } from "@effect/experimental/EventJournal"
 import { EncryptedRemoteEntry, Encryption, layerEncryptionSubtle } from "@effect/experimental/EventLogRemote"
 import * as EventLogServer from "@effect/experimental/EventLogServer"
+import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -114,11 +115,7 @@ export const makeStorage = (options?: {
             PubSub.unbounded<EncryptedRemoteEntry>(),
             PubSub.shutdown
           )
-          const pubsubRemovals = yield* Effect.acquireRelease(
-            PubSub.unbounded<ReadonlyArray<EntryId>>(),
-            PubSub.shutdown
-          )
-          return { pubsub, pubsubRemovals, table } as const
+          return { pubsub, table } as const
         }),
       idleTimeToLive: "5 minutes"
     })
@@ -146,7 +143,8 @@ export const makeStorage = (options?: {
             })
           }
           const encryptedEntries = yield* pipe(
-            sql`INSERT INTO ${sql(table)} ${sql.insert(forInsert)} ON CONFLICT DO NOTHING`.withoutTransform,
+            sql`INSERT INTO ${sql(table)} ${sql.insert(forInsert)}
+                ON CONFLICT UPDATE SET iv = EXCLUDED.iv, encrypted_entry = EXCLUDED.encrypted_entry`.withoutTransform,
             Effect.zipRight(sql`SELECT * FROM ${sql(table)} WHERE ${sql.in("entry_id", ids)} ORDER BY sequence ASC`),
             Effect.flatMap(decodeEntries)
           )
@@ -158,13 +156,12 @@ export const makeStorage = (options?: {
         ),
       remove: (publicKey, entryIds) =>
         Effect.gen(function*() {
-          const { pubsubRemovals, table } = yield* RcMap.get(resources, publicKey)
+          const { table } = yield* RcMap.get(resources, publicKey)
           yield* sql`DELETE FROM ${sql(table)} WHERE ${sql.in("entry_id", entryIds)}`.withoutTransform
-          yield* pubsubRemovals.offer(entryIds)
         }).pipe(Effect.orDie, Effect.scoped),
       changes: (publicKey, startSequence) =>
         Effect.gen(function*() {
-          const { pubsub, pubsubRemovals, table } = yield* RcMap.get(resources, publicKey)
+          const { pubsub, table } = yield* RcMap.get(resources, publicKey)
           const mailbox = yield* Mailbox.make<EncryptedRemoteEntry>()
           const queue = yield* pubsub.subscribe
           const initial = yield* sql`SELECT * FROM ${
@@ -174,13 +171,12 @@ export const makeStorage = (options?: {
           )
           yield* mailbox.offerAll(initial)
           yield* queue.takeBetween(1, Number.MAX_SAFE_INTEGER).pipe(
-            Effect.tap((chunk) => mailbox.offerAll(chunk)),
+            Effect.tap((chunk) => mailbox.offerAll(Chunk.filter(chunk, (_) => _.sequence >= startSequence))),
             Effect.forever,
             Effect.forkScoped,
             Effect.interruptible
           )
-          const removals = yield* PubSub.subscribe(pubsubRemovals)
-          return { changes: mailbox, removals }
+          return mailbox
         }).pipe(Effect.orDie)
     })
   })

@@ -5,7 +5,6 @@ import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Mailbox from "effect/Mailbox"
 import * as PubSub from "effect/PubSub"
 import type * as Queue from "effect/Queue"
 import * as Schema from "effect/Schema"
@@ -57,13 +56,16 @@ export class EventJournal extends Context.Tag("@effect/experimental/EventJournal
 
     /**
      * Write events from a remote source to the journal.
-     *
-     * The entries will be added to the `changes` mailbox, and any conflicts
-     * will be included.
      */
     readonly writeFromRemote: (
-      remoteId: RemoteId,
-      entries: ReadonlyArray<RemoteEntry>
+      options: {
+        readonly remoteId: RemoteId
+        readonly entries: ReadonlyArray<RemoteEntry>
+        readonly effect: (options: {
+          readonly entry: Entry
+          readonly conflicts: ReadonlyArray<Entry>
+        }) => Effect.Effect<void, EventJournalError>
+      }
     ) => Effect.Effect<void, EventJournalError>
 
     /**
@@ -78,14 +80,6 @@ export class EventJournal extends Context.Tag("@effect/experimental/EventJournal
      * Retrieve the last known sequence number for a remote source.
      */
     readonly nextRemoteSequence: (remoteId: RemoteId) => Effect.Effect<number, EventJournalError>
-
-    /**
-     * The entries from external sources that have not been committed.
-     */
-    readonly changesRemote: Mailbox.ReadonlyMailbox<{
-      readonly entry: Entry
-      readonly conflicts: ReadonlyArray<Entry>
-    }>
 
     /**
      * The entries added to the local journal.
@@ -262,10 +256,6 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
   const journal: Array<Entry> = []
   const byId = new Map<string, Entry>()
   const remotes = new Map<string, { sequence: number; missing: Array<Entry> }>()
-  const mailbox = yield* Mailbox.make<{
-    readonly entry: Entry
-    readonly conflicts: Array<Entry>
-  }>()
   const pubsub = yield* PubSub.unbounded<Entry>()
   const pubsubRemoval = yield* PubSub.unbounded<EntryId>()
 
@@ -300,8 +290,14 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
         (entry, exit) =>
           Effect.suspend(() => {
             if (exit._tag === "Failure") return Effect.void
-            journal.push(entry)
-            byId.set(entry.idString, entry)
+            const existing = byId.get(entry.idString)
+            if (existing) {
+              const index = journal.indexOf(existing)
+              journal[index] = entry
+            } else {
+              journal.push(entry)
+              byId.set(entry.idString, entry)
+            }
             remotes.forEach((remote) => {
               remote.missing.push(entry)
             })
@@ -337,11 +333,9 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
         }
       })
     },
-    writeFromRemote: (remoteId, remoteEntries) =>
-      Effect.sync(() => {
-        const remote = ensureRemote(remoteId)
-
-        for (const remoteEntry of remoteEntries) {
+    writeFromRemote: (options) =>
+      Effect.gen(function*() {
+        for (const remoteEntry of options.entries) {
           if (byId.has(remoteEntry.entry.idString)) continue
 
           const remoteEntryMillis = entryIdMillis(remoteEntry.entry.id)
@@ -350,8 +344,6 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
             if (entry !== undefined && entry.createdAtMillis > remoteEntryMillis) {
               continue
             }
-            journal.splice(i + 1, 0, remoteEntry.entry)
-
             const conflicts: Array<Entry> = []
             for (let j = i + 2; j < journal.length; j++) {
               const entry = journal[j]!
@@ -359,8 +351,8 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
                 conflicts.push(entry)
               }
             }
-            mailbox.unsafeOffer({ entry: remoteEntry.entry, conflicts })
-            remote.sequence = remoteEntry.remoteSequence + 1
+            yield* options.effect({ entry: remoteEntry.entry, conflicts })
+            journal.splice(i + 1, 0, remoteEntry.entry)
             break
           }
         }
@@ -384,7 +376,6 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
           })
       ),
     nextRemoteSequence: (remoteId) => Effect.sync(() => ensureRemote(remoteId).sequence),
-    changesRemote: mailbox,
     changes: PubSub.subscribe(pubsub),
     removals: PubSub.subscribe(pubsubRemoval),
     destroy: Effect.sync(() => {
@@ -430,10 +421,6 @@ export const makeIndexedDb = (options?: {
       (db) => Effect.sync(() => db.close())
     )
 
-    const mailbox = yield* Mailbox.make<{
-      readonly entry: Entry
-      readonly conflicts: Array<Entry>
-    }>()
     const pubsub = yield* PubSub.unbounded<Entry>()
     const pubsubRemovals = yield* PubSub.unbounded<EntryId>()
 
@@ -524,60 +511,76 @@ export const makeIndexedDb = (options?: {
           tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "remove", cause: tx.error })))
           return Effect.sync(() => tx.abort())
         }),
-      writeFromRemote: (remoteId, remoteEntries) =>
-        Effect.async<void, EventJournalError>((resume) => {
-          const tx = db.transaction(["entries", "remotes"], "readwrite")
-          const entries = tx.objectStore("entries")
-          const remotes = tx.objectStore("remotes")
+      writeFromRemote: (options) =>
+        Effect.gen(function*() {
           const entriesWithConflicts: Array<{
             entry: Entry
+            remoteSequence: number
             conflicts: Array<Entry>
           }> = []
-          const iterator = remoteEntries[Symbol.iterator]()
-          const handleNext = (state: IteratorResult<RemoteEntry, void>) => {
-            if (state.done) return
-            const remoteEntry = state.value
-            const encodedEntry = encodeEntryIdb(state.value.entry)
-            entries.get(encodedEntry.id).onsuccess = (event) => {
-              handleNext(iterator.next())
-              if ((event.target as any).result) return
-              const item = {
-                conflicts: [] as Array<Entry>,
-                entry: remoteEntry.entry
-              }
-              entriesWithConflicts.push(item)
-              entries.add(encodedEntry).onsuccess = () => {
-                const cursorRequest = entries.index("id").openCursor(
-                  IDBKeyRange.lowerBound(encodedEntry.id, true),
-                  "next"
-                )
-                cursorRequest.onsuccess = () => {
-                  const cursor = cursorRequest.result!
-                  if (!cursor) return
-                  const decodedEntry = decodeEntryIdb(cursor.value)
-                  if (
-                    decodedEntry.event === remoteEntry.entry.event &&
-                    decodedEntry.primaryKey === remoteEntry.entry.primaryKey
-                  ) {
-                    item.conflicts.push(decodedEntry)
+
+          yield* Effect.async<void, EventJournalError>((resume) => {
+            const tx = db.transaction(["entries"], "readonly")
+            const entries = tx.objectStore("entries")
+            const iterator = options.entries[Symbol.iterator]()
+            const handleNext = (state: IteratorResult<RemoteEntry, void>) => {
+              if (state.done) return
+              const remoteEntry = state.value
+              const encodedEntry = encodeEntryIdb(state.value.entry)
+              entries.get(encodedEntry.id).onsuccess = (event) => {
+                handleNext(iterator.next())
+                if ((event.target as any).result) return
+                const item = {
+                  conflicts: [] as Array<Entry>,
+                  remoteSequence: remoteEntry.remoteSequence,
+                  entry: remoteEntry.entry
+                }
+                entriesWithConflicts.push(item)
+                entries.add(encodedEntry).onsuccess = () => {
+                  const cursorRequest = entries.index("id").openCursor(
+                    IDBKeyRange.lowerBound(encodedEntry.id, true),
+                    "next"
+                  )
+                  cursorRequest.onsuccess = () => {
+                    const cursor = cursorRequest.result!
+                    if (!cursor) return
+                    const decodedEntry = decodeEntryIdb(cursor.value)
+                    if (
+                      decodedEntry.event === remoteEntry.entry.event &&
+                      decodedEntry.primaryKey === remoteEntry.entry.primaryKey
+                    ) {
+                      item.conflicts.push(decodedEntry)
+                    }
+                    cursor.continue()
                   }
-                  cursor.continue()
                 }
               }
             }
+            handleNext(iterator.next())
+            tx.oncomplete = () => resume(Effect.void)
+            tx.onerror = () =>
+              resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+            return Effect.sync(() => tx.abort())
+          })
+
+          for (const { conflicts, entry, remoteSequence } of entriesWithConflicts) {
+            const tx = db.transaction(["entries"], "readwrite")
+            const entries = tx.objectStore("entries")
+            const remotes = tx.objectStore("remotes")
+            yield* options.effect({ entry, conflicts })
+            entries.add(encodeEntryIdb(entry))
             remotes.put({
-              remoteId,
-              entryId: remoteEntry.entry.id,
-              sequence: remoteEntry.remoteSequence
+              remoteId: options.remoteId,
+              entryId: entry.id,
+              sequence: remoteSequence
+            })
+            yield* Effect.async<void, EventJournalError>((resume) => {
+              tx.oncomplete = () => resume(Effect.void)
+              tx.onerror = () =>
+                resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+              return Effect.sync(() => tx.abort())
             })
           }
-          handleNext(iterator.next())
-          tx.oncomplete = () => {
-            mailbox.unsafeOfferAll(entriesWithConflicts)
-            return resume(Effect.void)
-          }
-          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
-          return Effect.sync(() => tx.abort())
         }),
       withRemoteUncommited: (remoteId, f) =>
         Effect.async<Array<Entry>, EventJournalError>((resume) => {
@@ -642,7 +645,6 @@ export const makeIndexedDb = (options?: {
             resume(Effect.fail(new EventJournalError({ method: "nextRemoteSequence", cause: tx.error })))
           return Effect.sync(() => tx.abort())
         }),
-      changesRemote: mailbox,
       changes: PubSub.subscribe(pubsub),
       removals: PubSub.subscribe(pubsubRemovals),
       destroy: Effect.sync(() => {
