@@ -4,7 +4,6 @@
 import type * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import type { Queue } from "effect"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -20,16 +19,7 @@ import * as Uuid from "uuid"
 import type { RemoteId } from "./EventJournal.js"
 import { EntryId, makeRemoteId } from "./EventJournal.js"
 import type { ProtocolResponse } from "./EventLogRemote.js"
-import {
-  Ack,
-  Changes,
-  decodeRequest,
-  encodeResponse,
-  EncryptedRemoteEntry,
-  Hello,
-  Pong,
-  Removals
-} from "./EventLogRemote.js"
+import { Ack, Changes, decodeRequest, encodeResponse, EncryptedRemoteEntry, Hello, Pong } from "./EventLogRemote.js"
 import * as MsgPack from "./MsgPack.js"
 
 /**
@@ -84,33 +74,18 @@ export const makeHttpHandler: Effect.Effect<
         }
         case "RequestChanges": {
           return Effect.gen(function*() {
-            const { changes, removals } = yield* storage.changes(request.publicKey, request.startSequence)
-            const takeChanges = changes.takeAll.pipe(
+            const changes = yield* storage.changes(request.publicKey, request.startSequence)
+            yield* changes.takeAll.pipe(
               Effect.flatMap(([entries]) =>
                 write(
                   new Changes({
                     subscriptionId: request.subscriptionId,
-                    encryptedRemoteEntries: Chunk.toReadonlyArray(entries)
+                    entries: Chunk.toReadonlyArray(entries)
                   })
                 )
               ),
-              Effect.forever
-            )
-            const takeRemovals = removals.take.pipe(
-              Effect.flatMap((entryIds) =>
-                write(
-                  new Removals({
-                    subscriptionId: request.subscriptionId,
-                    entryIds
-                  })
-                )
-              ),
-              Effect.forever
-            )
-            yield* FiberMap.run(
-              subscriptions,
-              request.subscriptionId,
-              Effect.all([takeChanges, takeRemovals], { concurrency: 2 })
+              Effect.forever,
+              FiberMap.run(subscriptions, request.subscriptionId)
             )
           })
         }
@@ -166,14 +141,7 @@ export class Storage extends Context.Tag("@effect/experimental/EventLogServer/St
     readonly changes: (
       publicKey: string,
       startSequence: number
-    ) => Effect.Effect<
-      {
-        readonly changes: Mailbox.ReadonlyMailbox<EncryptedRemoteEntry>
-        readonly removals: Queue.Dequeue<ReadonlyArray<EntryId>>
-      },
-      never,
-      Scope
-    >
+    ) => Effect.Effect<Mailbox.ReadonlyMailbox<EncryptedRemoteEntry>, never, Scope>
   }
 >() {}
 
@@ -194,17 +162,10 @@ export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Sco
   }
   const pubsubs = yield* RcMap.make({
     lookup: (_publicKey: string) =>
-      Effect.gen(function*() {
-        const changes = yield* Effect.acquireRelease(
-          PubSub.unbounded<EncryptedRemoteEntry>(),
-          PubSub.shutdown
-        )
-        const removals = yield* Effect.acquireRelease(
-          PubSub.unbounded<ReadonlyArray<EntryId>>(),
-          PubSub.shutdown
-        )
-        return { changes, removals } as const
-      }),
+      Effect.acquireRelease(
+        PubSub.unbounded<EncryptedRemoteEntry>(),
+        PubSub.shutdown
+      ),
     idleTimeToLive: 60000
   })
 
@@ -216,21 +177,24 @@ export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Sco
         const journal = ensureJournal(publicKey)
         for (const entry of entries) {
           const idString = entry.entryIdString
-          if (knownIds.has(idString)) continue
           const encrypted = EncryptedRemoteEntry.make({
             sequence: journal.length,
             entryId: entry.entryId,
             iv: entry.iv,
             encryptedEntry: entry.encryptedEntry
           })
-          knownIds.set(idString, encrypted.sequence)
-          journal.push(encrypted)
-          pubsub.changes.unsafeOffer(encrypted)
+          if (knownIds.has(idString)) {
+            const index = knownIds.get(idString)!
+            journal[index] = encrypted
+          } else {
+            knownIds.set(idString, encrypted.sequence)
+            journal.push(encrypted)
+          }
+          pubsub.unsafeOffer(encrypted)
         }
       }).pipe(Effect.scoped),
     remove: (publicKey, ids) =>
-      Effect.gen(function*() {
-        const { removals } = yield* RcMap.get(pubsubs, publicKey)
+      Effect.sync(() => {
         for (const id of ids) {
           const idString = Uuid.stringify(id)
           const index = knownIds.get(idString)
@@ -238,25 +202,20 @@ export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Sco
           knownIds.delete(idString)
           ensureJournal(publicKey)[index] = undefined
         }
-        yield* removals.offer(ids)
-      }).pipe(Effect.scoped),
+      }),
     changes: (publicKey, startSequence) =>
       Effect.gen(function*() {
         const mailbox = yield* Mailbox.make<EncryptedRemoteEntry>()
         const pubsub = yield* RcMap.get(pubsubs, publicKey)
-        const queue = yield* pubsub.changes.subscribe
-        const removals = yield* pubsub.removals.subscribe
+        const queue = yield* pubsub.subscribe
         yield* mailbox.offerAll(ensureJournal(publicKey).slice(startSequence).filter(Predicate.isNotUndefined))
         yield* queue.takeBetween(1, Number.MAX_SAFE_INTEGER).pipe(
-          Effect.tap((chunk) => mailbox.offerAll(chunk)),
+          Effect.tap((chunk) => mailbox.offerAll(Chunk.filter(chunk, (_) => _.sequence >= startSequence))),
           Effect.forever,
           Effect.forkScoped,
           Effect.interruptible
         )
-        return {
-          changes: mailbox,
-          removals
-        }
+        return mailbox
       })
   })
 })
