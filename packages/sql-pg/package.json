@@ -42,7 +42,6 @@
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
     "@testcontainers/postgresql": "^10.11.0",
-    "@types/node": "^22.5.4",
     "effect": "workspace:^"
   },
   "peerDependencies": {
