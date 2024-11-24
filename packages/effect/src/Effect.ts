@@ -825,78 +825,6 @@ export const findFirst: {
 } = effect.findFirst
 
 /**
- * Runs a series of effects and returns the result of the first successful one.
- * If none of the effects succeed, it fails with the error from the last effect.
- *
- * `Effect.firstSuccessOf` allows you to try multiple effects in sequence, and
- * as soon as one of them succeeds, it returns that result. If all effects fail,
- * it returns the error of the last effect in the list. This is useful when you
- * have several potential alternatives and want to use the first one that works.
- *
- * This function is sequential, meaning that the `Effect` values in the iterable
- * will be executed in sequence, and the first one that succeeds will determine
- * the outcome of the resulting `Effect` value.
- *
- * **Important**: If the collection of effects provided to
- * `Effect.firstSuccessOf` is empty, it will throw an `IllegalArgumentException`
- * error.
- *
- * @example
- * import { Effect, Console } from "effect"
- *
- * interface Config {
- *   host: string
- *   port: number
- *   apiKey: string
- * }
- *
- * // Create a configuration object with sample values
- * const makeConfig = (name: string): Config => ({
- *   host: `${name}.example.com`,
- *   port: 8080,
- *   apiKey: "12345-abcde"
- * })
- *
- * // Simulate retrieving configuration from a remote node
- * const remoteConfig = (name: string): Effect.Effect<Config, Error> =>
- *   Effect.gen(function* () {
- *     // Simulate node3 being the only one with available config
- *     if (name === "node3") {
- *       yield* Console.log(`Config for ${name} found`)
- *       return makeConfig(name)
- *     } else {
- *       yield* Console.log(`Unavailable config for ${name}`)
- *       return yield* Effect.fail(new Error(`Config not found for ${name}`))
- *     }
- *   })
- *
- * // Define the master configuration and potential fallback nodes
- * const masterConfig = remoteConfig("master")
- * const nodeConfigs = ["node1", "node2", "node3", "node4"].map(remoteConfig)
- *
- * // Attempt to find a working configuration,
- * // starting with the master and then falling back to other nodes
- * const config = Effect.firstSuccessOf([masterConfig, ...nodeConfigs])
- *
- * // Run the effect to retrieve the configuration
- * const result = Effect.runSync(config)
- *
- * console.log(result)
- * // Output:
- * // Unavailable config for master
- * // Unavailable config for node1
- * // Unavailable config for node2
- * // Config for node3 found
- * // { host: 'node3.example.com', port: 8080, apiKey: '12345-abcde' }
- *
- * @since 2.0.0
- * @category collecting & elements
- */
-export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
-  effects: Iterable<Eff>
-) => Effect<Effect.Success<Eff>, Effect.Error<Eff>, Effect.Context<Eff>> = effect.firstSuccessOf
-
-/**
  * Iterates over an `Iterable` and performs an effectful operation for each
  * element.
  *
@@ -1391,24 +1319,28 @@ export const validateFirst: {
 // -------------------------------------------------------------------------------------
 
 /**
- * Creates an `Effect` from a callback-based asynchronous API.
+ * Creates an `Effect` from a callback-based asynchronous function.
  *
- * This is useful for integrating Node.js-style callback functions into the
- * Effect system.
+ * **When to Use**
  *
- * The `resume` function **MUST** be called at most once.
+ * Use `Effect.async` when dealing with APIs that use callback-style instead of
+ * `async/await` or `Promise`.
  *
- * The `resume` function can optionally return an `Effect`, which will be
- * executed if the `Fiber` executing this `Effect` is interrupted.
+ * **Details**
  *
- * The `resume` function can also receive an `AbortSignal` if required for
- * interruption.
+ * The `resume` function:
+ * - Must be called exactly once. Any additional calls will be ignored.
+ * - Can return an optional `Effect` that will be run if the `Fiber` executing
+ *   this `Effect` is interrupted. This can be useful in scenarios where you
+ *   need to handle resource cleanup if the operation is interrupted.
+ * - Can receive an `AbortSignal` to handle interruption if needed.
  *
  * The `FiberId` of the fiber that may complete the async callback may also be
- * specified. This is called the "blocking fiber" because it suspends the fiber
- * executing the `async` effect (i.e. semantically blocks the fiber from making
- * progress). Specifying this fiber id in cases where it is known will improve
- * diagnostics, but not affect the behavior of the returned effect.
+ * specified using the `blockingOn` argument. This is called the "blocking
+ * fiber" because it suspends the fiber executing the `async` effect (i.e.
+ * semantically blocks the fiber from making progress). Specifying this fiber id
+ * in cases where it is known will improve diagnostics, but not affect the
+ * behavior of the returned effect.
  *
  * @example
  * import { Effect } from "effect"
@@ -1431,6 +1363,75 @@ export const validateFirst: {
  * //      ▼
  * const program = readFile("example.txt")
  *
+ * @example
+ * import { Effect, Fiber } from "effect"
+ * import * as NodeFS from "node:fs"
+ *
+ * // Simulates a long-running operation to write to a file
+ * const writeFileWithCleanup = (filename: string, data: string) =>
+ *   Effect.async<void, Error>((resume) => {
+ *     const writeStream = NodeFS.createWriteStream(filename)
+ *
+ *     // Start writing data to the file
+ *     writeStream.write(data)
+ *
+ *     // When the stream is finished, resume with success
+ *     writeStream.on("finish", () => resume(Effect.void))
+ *
+ *     // In case of an error during writing, resume with failure
+ *     writeStream.on("error", (err) => resume(Effect.fail(err)))
+ *
+ *     // Handle interruption by returning a cleanup effect
+ *     return Effect.sync(() => {
+ *       console.log(`Cleaning up ${filename}`)
+ *       NodeFS.unlinkSync(filename)
+ *     })
+ *   })
+ *
+ * const program = Effect.gen(function* () {
+ *   const fiber = yield* Effect.fork(
+ *     writeFileWithCleanup("example.txt", "Some long data...")
+ *   )
+ *   // Simulate interrupting the fiber after 1 second
+ *   yield* Effect.sleep("1 second")
+ *   yield* Fiber.interrupt(fiber) // This will trigger the cleanup
+ * })
+ *
+ * // Run the program
+ * Effect.runPromise(program)
+ * // Output:
+ * // Cleaning up example.txt
+ *
+ * @example
+ * import { Effect, Fiber } from "effect"
+ *
+ * // A task that supports interruption using AbortSignal
+ * const interruptibleTask = Effect.async<void, Error>((resume, signal) => {
+ *   // Handle interruption
+ *   signal.addEventListener("abort", () => {
+ *     console.log("Abort signal received")
+ *     clearTimeout(timeoutId)
+ *   })
+ *
+ *   // Simulate a long-running task
+ *   const timeoutId = setTimeout(() => {
+ *     console.log("Operation completed")
+ *     resume(Effect.void)
+ *   }, 2000)
+ * })
+ *
+ * const program = Effect.gen(function* () {
+ *   const fiber = yield* Effect.fork(interruptibleTask)
+ *   // Simulate interrupting the fiber after 1 second
+ *   yield* Effect.sleep("1 second")
+ *   yield* Fiber.interrupt(fiber)
+ * })
+ *
+ * // Run the program
+ * Effect.runPromise(program)
+ * // Output:
+ * // Abort signal received
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -1440,10 +1441,7 @@ export const async: <A, E = never, R = never>(
 ) => Effect<A, E, R> = core.async
 
 /**
- * Converts an asynchronous, callback-style API into an `Effect`, which will be
- * executed asynchronously.
- *
- * With this variant, the registration function may return a an `Effect`.
+ * A variant of {@link async} where the registration function may return an `Effect`.
  *
  * @since 2.0.0
  * @category constructors
@@ -1498,13 +1496,13 @@ export const withFiberRuntime: <A, E = never, R = never>(
 /**
  * Creates an `Effect` that represents a recoverable error.
  *
- * This `Effect` does not succeed but instead fails with the given error. The
- * failure can be of any type and will propagate through the effect pipeline
- * unless handled.
+ * **When to Use**
  *
- * Use this function when you want to explicitly signal an error in an `Effect`
- * computation. You can later handle the failure with functions like
- * {@link catchAll} or {@link catchTag}.
+ * Use this function to explicitly signal an error in an `Effect`. The error
+ * will keep propagating unless it is handled. You can handle the error with
+ * functions like {@link catchAll} or {@link catchTag}.
+ *
+ * @see {@link succeed} to create an effect that represents a successful value.
  *
  * @example
  * import { Effect } from "effect"
@@ -1541,24 +1539,33 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Effect<never, E> = core.fa
 export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Effect<never, E> = core.failCauseSync
 
 /**
- * Throws a specified error to terminate the effect when a defect is detected.
+ * The `Effect.die` function returns an effect that throws a specified error. It
+ * is used to terminate a fiber when a defect, a critical and unexpected error,
+ * is detected in the code.
  *
- * `Effect.die` is used to terminate a fiber by throwing an error. It is
- * commonly used when a critical, unexpected issue occurs that cannot be handled
- * in the normal flow of the program.
+ * Note that the error channel type of the effect is `never`, indicating that
+ * the effect does not handle failures and will terminate the fiber when an
+ * error occurs.
+ *
+ * @see {@link dieSync} for a variant that throws a specified error, evaluated lazily.
+ * @see {@link dieMessage} for a variant that throws a `RuntimeException` with a message.
  *
  * @example
  * import { Effect } from "effect"
  *
- * const divide = (a: number, b: number): Effect.Effect<number> =>
+ * const divide = (a: number, b: number) =>
  *   b === 0
  *     ? Effect.die(new Error("Cannot divide by zero"))
  *     : Effect.succeed(a / b)
  *
- * Effect.runPromise(divide(1, 0)).catch(console.error)
+ * //      ┌─── Effect<number, never, never>
+ * //      ▼
+ * const program = divide(1, 0)
+ *
+ * Effect.runPromise(program).catch(console.error)
  * // Output:
  * // (FiberFailure) Error: Cannot divide by zero
- * //   ... stack trace ...
+ * //   ...stack trace...
  *
  * @since 2.0.0
  * @category constructors
@@ -1566,24 +1573,34 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Effect<nev
 export const die: (defect: unknown) => Effect<never> = core.die
 
 /**
- * Throws a `RuntimeException` with a specified message to terminate the effect.
+ * The `Effect.dieMessage` function returns an effect that throws a
+ * `RuntimeException` with a specified text message. It is used to terminate a
+ * fiber when a defect, a critical and unexpected error, is detected in the
+ * code.
  *
- * `Effect.dieMessage` is similar to `Effect.die`, but it specifically throws a
- * `RuntimeException` with a custom message. This is useful when you want to
- * terminate the effect with a clear, readable message describing the issue.
+ * Note that the error channel type of the effect is `never`, indicating that
+ * the effect does not handle failures and will terminate the fiber when an
+ * error occurs.
+ *
+ * @see {@link die} for a variant that throws a specified error.
+ * @see {@link dieSync} for a variant that throws a specified error, evaluated lazily.
  *
  * @example
  * import { Effect } from "effect"
  *
- * const divide = (a: number, b: number): Effect.Effect<number> =>
+ * const divide = (a: number, b: number) =>
  *   b === 0
  *     ? Effect.dieMessage("Cannot divide by zero")
  *     : Effect.succeed(a / b)
  *
- * Effect.runPromise(divide(1, 0)).catch(console.error)
+ * //      ┌─── Effect<number, never, never>
+ * //      ▼
+ * const program = divide(1, 0)
+ *
+ * Effect.runPromise(program).catch(console.error)
  * // Output:
  * // (FiberFailure) RuntimeException: Cannot divide by zero
- * //   ... stack trace ...
+ * //   ...stack trace...
  *
  * @since 2.0.0
  * @category constructors
@@ -1591,6 +1608,13 @@ export const die: (defect: unknown) => Effect<never> = core.die
 export const dieMessage: (message: string) => Effect<never> = core.dieMessage
 
 /**
+ * Creates an effect that dies with the specified error, evaluated lazily.
+ *
+ * This function allows you to create an effect that will terminate with a fatal error.
+ * The error is provided as a lazy argument, meaning it will only be evaluated when the effect runs.
+ *
+ * @see {@link die} if you don't need to evaluate the error lazily.
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -1947,8 +1971,21 @@ export const none: <A, E, R>(
  * Creates an `Effect` that represents an asynchronous computation guaranteed to
  * succeed.
  *
- * The provided function (`thunk`) returns a `Promise` that should never reject.
- * If the `Promise` does reject, the rejection is treated as a defect.
+ * **When to Use**
+ *
+ * Use `Effect.promise` when you are sure the operation will not reject.
+ *
+ * **Details**
+ *
+ * The provided function (`thunk`) returns a `Promise` that should never reject; if it does, the error
+ * will be treated as a "defect".
+ *
+ * This defect is not a standard error but indicates a flaw in the logic that
+ * was expected to be error-free. You can think of it similar to an unexpected
+ * crash in the program, which can be further managed or logged using tools like
+ * {@link catchAllDefect}.
+ *
+ * **Interruptions**
  *
  * An optional `AbortSignal` can be provided to allow for interruption of the
  * wrapped `Promise` API.
@@ -1980,11 +2017,14 @@ export const promise: <A>(
 ) => Effect<A> = effect.promise
 
 /**
- * Creates an `Effect` that succeeds with the provided value.
+ * Creates an `Effect` that always succeeds with a given value.
  *
- * Use this function to represent a successful computation that yields a value
- * of type `A`. The effect does not fail and does not require any environmental
- * context.
+ * **When to Use**
+ *
+ * Use this function when you need an effect that completes successfully with a
+ * specific value without any errors or external dependencies.
+ *
+ * @see {@link fail} to create an effect that represents a failure.
  *
  * @example
  * import { Effect } from "effect"
@@ -2017,12 +2057,33 @@ export const succeedNone: Effect<Option.Option<never>> = effect.succeedNone
 export const succeedSome: <A>(value: A) => Effect<Option.Option<A>> = effect.succeedSome
 
 /**
- * Delays the creation of an effect until it is actually needed.
+ * Delays the creation of an `Effect` until it is actually needed.
  *
- * `Effect.suspend` wraps a given effect in a thunk, allowing the effect to be
- * evaluated only when required. It is useful for optimizing performance,
- * handling circular dependencies, and improving type inference in certain
- * scenarios.
+ * **When to Use**
+ *
+ * Use `Effect.suspend` when you need to defer the evaluation of an effect until it is required. This is particularly useful for optimizing expensive computations, managing circular dependencies, or resolving type inference issues.
+ *
+ * **Details**
+ *
+ * `Effect.suspend` takes a thunk that represents the effect and wraps it in a suspended effect. This means the effect will not be created until it is explicitly needed, which is helpful in various scenarios:
+ * - **Lazy Evaluation**: Helps optimize performance by deferring computations, especially when the effect might not be needed, or when its computation is expensive. This also ensures that any side effects or scoped captures are re-executed on each invocation.
+ * - **Handling Circular Dependencies**: Useful in managing circular dependencies, such as recursive functions that need to avoid eager evaluation to prevent stack overflow.
+ * - **Unifying Return Types**: Can help TypeScript unify return types in situations where multiple branches of logic return different effects, simplifying type inference.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * let i = 0
+ *
+ * const bad = Effect.succeed(i++)
+ *
+ * const good = Effect.suspend(() => Effect.succeed(i++))
+ *
+ * console.log(Effect.runSync(bad)) // Output: 0
+ * console.log(Effect.runSync(bad)) // Output: 0
+ *
+ * console.log(Effect.runSync(good)) // Output: 1
+ * console.log(Effect.runSync(good)) // Output: 2
  *
  * @example
  * import { Effect } from "effect"
@@ -2047,6 +2108,28 @@ export const succeedSome: <A>(value: A) => Effect<Option.Option<A>> = effect.suc
  * console.log(Effect.runSync(allGood(32)))
  * // Output: 3524578
  *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * //   Without suspend, TypeScript may struggle with type inference.
+ * //   Inferred type:
+ * //     (a: number, b: number) =>
+ * //       Effect<never, Error, never> | Effect<number, never, never>
+ * const withoutSuspend = (a: number, b: number) =>
+ *   b === 0
+ *     ? Effect.fail(new Error("Cannot divide by zero"))
+ *     : Effect.succeed(a / b)
+ *
+ * //   Using suspend to unify return types.
+ * //   Inferred type:
+ * //     (a: number, b: number) => Effect<number, Error, never>
+ * const withSuspend = (a: number, b: number) =>
+ *   Effect.suspend(() =>
+ *     b === 0
+ *       ? Effect.fail(new Error("Cannot divide by zero"))
+ *       : Effect.succeed(a / b)
+ *   )
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -2055,12 +2138,21 @@ export const suspend: <A, E, R>(effect: LazyArg<Effect<A, E, R>>) => Effect<A, E
 /**
  * Creates an `Effect` that represents a synchronous side-effectful computation.
  *
- * The provided function (`thunk`) should not throw errors; if it does, the
- * error is treated as a defect. Use `Effect.sync` when you are certain the
- * operation will not fail.
+ * **When to Use**
  *
- * If you need to model a synchronous operation that can fail, consider using
- * the `try` API instead.
+ * Use `Effect.sync` when you are sure the operation will not fail.
+ *
+ * **Details**
+ *
+ * The provided function (`thunk`) must not throw errors; if it does, the error
+ * will be treated as a "defect".
+ *
+ * This defect is not a standard error but indicates a flaw in the logic that
+ * was expected to be error-free. You can think of it similar to an unexpected
+ * crash in the program, which can be further managed or logged using tools like
+ * {@link catchAllDefect}.
+ *
+ * @see {@link try_ | try} for a version that can handle failures.
  *
  * @example
  * import { Effect } from "effect"
@@ -2949,15 +3041,38 @@ const try_: {
 
 export {
   /**
-   * Creates an `Effect` that represents a synchronous computation that might fail.
+   * Creates an `Effect` that represents a synchronous computation that might
+   * fail.
    *
-   * If the function (`thunk`) throws an error, it is caught and the effect fails with an `UnknownException`.
+   * **When to Use**
    *
-   * **Overload with custom error handling:**
+   * In situations where you need to perform synchronous operations that might
+   * fail, such as parsing JSON, you can use the `Effect.try` constructor. This
+   * constructor is designed to handle operations that could throw exceptions by
+   * capturing those exceptions and transforming them into manageable errors.
    *
-   * Creates an `Effect` that represents a synchronous computation that might fail, with custom error mapping.
+   * **Error Handling**
    *
-   * If the `try` function throws an error, the `catch` function maps it to an error of type `E`.
+   * There are two ways to handle errors with `Effect.try`:
+   *
+   * 1. If you don't provide a `catch` function, the error is caught and the
+   *    effect fails with an `UnknownException`.
+   * 2. If you provide a `catch` function, the error is caught and the `catch`
+   *    function maps it to an error of type `E`.
+   *
+   * @see {@link sync} if the effectful computation is synchronous and does not
+   * throw errors.
+   *
+   * @example
+   * import { Effect } from "effect"
+   *
+   * const parse = (input: string) =>
+   *   // This might throw an error if input is not valid JSON
+   *   Effect.try(() => JSON.parse(input))
+   *
+   * //      ┌─── Effect<any, UnknownException, never>
+   * //      ▼
+   * const program = parse("")
    *
    * @example
    * import { Effect } from "effect"
@@ -2975,7 +3090,7 @@ export {
    * const program = parse("")
    *
    * @since 2.0.0
-   * @category error handling
+   * @category constructors
    */
   try_ as try
 }
@@ -3020,18 +3135,45 @@ export const tryMapPromise: {
 } = effect.tryMapPromise
 
 /**
- * Creates an `Effect` that represents an asynchronous computation that might fail.
+ * Creates an `Effect` that represents an asynchronous computation that might
+ * fail.
  *
- * If the `Promise` returned by `evaluate` rejects, the error is caught and the effect fails with an `UnknownException`.
+ * **When to Use**
+ *
+ * In situations where you need to perform asynchronous operations that might
+ * fail, such as fetching data from an API, you can use the `Effect.tryPromise`
+ * constructor. This constructor is designed to handle operations that could
+ * throw exceptions by capturing those exceptions and transforming them into
+ * manageable errors.
+ *
+ * **Error Handling**
+ *
+ * There are two ways to handle errors with `Effect.tryPromise`:
+ *
+ * 1. If you don't provide a `catch` function, the error is caught and the
+ *    effect fails with an `UnknownException`.
+ * 2. If you provide a `catch` function, the error is caught and the `catch`
+ *    function maps it to an error of type `E`.
+ *
+ * **Interruptions**
  *
  * An optional `AbortSignal` can be provided to allow for interruption of the
  * wrapped `Promise` API.
  *
- * **Overload with custom error handling:**
+ * @see {@link promise} if the effectful computation is asynchronous and does not throw errors.
  *
- * Creates an `Effect` that represents an asynchronous computation that might fail, with custom error mapping.
+ * @example
+ * import { Effect } from "effect"
  *
- * If the `Promise` rejects, the `catch` function maps the error to an error of type `E`.
+ * const getTodo = (id: number) =>
+ *   // Will catch any errors and propagate them as UnknownException
+ *   Effect.tryPromise(() =>
+ *     fetch(`https://jsonplaceholder.typicode.com/todos/${id}`)
+ *   )
+ *
+ * //      ┌─── Effect<Response, UnknownException, never>
+ * //      ▼
+ * const program = getTodo(1)
  *
  * @example
  * import { Effect } from "effect"
@@ -3048,7 +3190,7 @@ export const tryMapPromise: {
  * const program = getTodo(1)
  *
  * @since 2.0.0
- * @category error handling
+ * @category constructors
  */
 export const tryPromise: {
   <A, E>(
@@ -3488,6 +3630,7 @@ export const mapBoth: {
  *
  * @see {@link map} for a version that operates on the success channel.
  * @see {@link mapBoth} for a version that operates on both channels.
+ * @see {@link orElseFail} if you want to replace the error with a new one.
  *
  * @example
  * import { Effect } from "effect"
@@ -4624,8 +4767,46 @@ export const mapInputContext: {
 } = core.mapInputContext
 
 /**
- * Splits the context into two parts, providing one part using the
- * specified layer/context/runtime and leaving the remainder `R0`
+ * Provides the necessary `Layer`s to an effect, removing its dependency on the
+ * environment.
+ *
+ * You can pass multiple layers, a `Context`, `Runtime`, or `ManagedRuntime` to
+ * the effect.
+ *
+ * @see {@link provideService} for providing a service to an effect.
+ *
+ * @example
+ * import { Context, Effect, Layer } from "effect"
+ *
+ * class Database extends Context.Tag("Database")<
+ *   Database,
+ *   { readonly query: (sql: string) => Effect.Effect<Array<unknown>> }
+ * >() {}
+ *
+ * const DatabaseLive = Layer.succeed(
+ *   Database,
+ *   {
+ *     // Simulate a database query
+ *     query: (sql: string) => Effect.log(`Executing query: ${sql}`).pipe(Effect.as([]))
+ *   }
+ * )
+ *
+ * //      ┌─── Effect<unknown[], never, Database>
+ * //      ▼
+ * const program = Effect.gen(function*() {
+ *   const database = yield* Database
+ *   const result = yield* database.query("SELECT * FROM users")
+ *   return result
+ * })
+ *
+ * //      ┌─── Effect<unknown[], never, never>
+ * //      ▼
+ * const runnable = Effect.provide(program, DatabaseLive)
+ *
+ * Effect.runPromise(runnable).then(console.log)
+ * // Output:
+ * // timestamp=... level=INFO fiber=#0 message="Executing query: SELECT * FROM users"
+ * // []
  *
  * @since 2.0.0
  * @category context
@@ -4679,6 +4860,8 @@ export const provide: {
  * number generator), and then you use `Effect.provideService` to link that
  * service to its implementation. Once the implementation is provided, the
  * effect can be run successfully without further requirements.
+ *
+ * @see {@link provide} for providing multiple layers to an effect.
  *
  * @example
  * import { Effect, Context } from "effect"
@@ -6949,7 +7132,7 @@ export const withUnhandledErrorLogLevel: {
 } = core.withUnhandledErrorLogLevel
 
 // -------------------------------------------------------------------------------------
-// alternatives
+// fallback
 // -------------------------------------------------------------------------------------
 
 /**
@@ -6963,7 +7146,7 @@ export const withUnhandledErrorLogLevel: {
  * @example
  * import { Effect } from "effect"
  *
- * const divide = (a: number, b: number): Effect.Effect<number, Error> =>
+ * const divide = (a: number, b: number) =>
  *   b === 0
  *     ? Effect.fail(new Error("Cannot divide by zero"))
  *     : Effect.succeed(a / b)
@@ -6975,10 +7158,10 @@ export const withUnhandledErrorLogLevel: {
  * Effect.runPromise(program).catch(console.error)
  * // Output:
  * // (FiberFailure) Error: Cannot divide by zero
- * //   ... stack trace ...
+ * //   ...stack trace...
  *
  * @since 2.0.0
- * @category alternatives
+ * @category fallback
  */
 export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = core.orDie
 
@@ -6994,7 +7177,7 @@ export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = co
  * @example
  * import { Effect } from "effect"
  *
- * const divide = (a: number, b: number): Effect.Effect<number, Error> =>
+ * const divide = (a: number, b: number) =>
  *   b === 0
  *     ? Effect.fail(new Error("Cannot divide by zero"))
  *     : Effect.succeed(a / b)
@@ -7009,10 +7192,10 @@ export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = co
  * Effect.runPromise(program).catch(console.error)
  * // Output:
  * // (FiberFailure) Error: defect: Cannot divide by zero
- * //   ... stack trace ...
+ * //   ...stack trace...
  *
  * @since 2.0.0
- * @category alternatives
+ * @category fallback
  */
 export const orDieWith: {
   <E>(f: (error: E) => unknown): <A, R>(self: Effect<A, E, R>) => Effect<A, never, R>
@@ -7026,6 +7209,8 @@ export const orDieWith: {
  * can provide a fallback effect to run instead. This is useful for handling
  * failures gracefully by defining an alternative effect to execute if the first
  * one encounters an error.
+ *
+ * @see {@link catchAll} if you need to access the error in the fallback effect.
  *
  * @example
  * import { Effect } from "effect"
@@ -7045,7 +7230,7 @@ export const orDieWith: {
  * // Output: "fallback"
  *
  * @since 2.0.0
- * @category alternatives
+ * @category fallback
  */
 export const orElse: {
   <A2, E2, R2>(that: LazyArg<Effect<A2, E2, R2>>): <A, E, R>(self: Effect<A, E, R>) => Effect<A2 | A, E2, R2 | R>
@@ -7057,15 +7242,12 @@ export const orElse: {
  *
  * `Effect.orElseFail` allows you to replace the failure from one effect with a
  * custom failure value. If the effect fails, you can provide a new failure to
- * be returned instead of the original one. This is useful for transforming or
- * standardizing error messages across different parts of the program.
- *
- * The function ensures that you can catch a failure and replace it with a
- * different, possibly more descriptive error, which helps in cases where you
- * want to provide clearer error handling.
+ * be returned instead of the original one.
  *
  * **Important**: This function only applies to failed effects. If the effect
  * succeeds, it will remain unaffected.
+ *
+ * @see {@link mapError} if you need to access the error to transform it.
  *
  * @example
  * import { Effect } from "effect"
@@ -7091,7 +7273,7 @@ export const orElse: {
  * // }
  *
  * @since 2.0.0
- * @category alternatives
+ * @category fallback
  */
 export const orElseFail: {
   <E2>(evaluate: LazyArg<E2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E2, R>
@@ -7135,12 +7317,84 @@ export const orElseFail: {
  * // { _id: 'Exit', _tag: 'Success', value: 18 }
  *
  * @since 2.0.0
- * @category alternatives
+ * @category fallback
  */
 export const orElseSucceed: {
   <A2>(evaluate: LazyArg<A2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A2 | A, never, R>
   <A, E, R, A2>(self: Effect<A, E, R>, evaluate: LazyArg<A2>): Effect<A | A2, never, R>
 } = effect.orElseSucceed
+
+/**
+ * Runs a series of effects and returns the result of the first successful one.
+ * If none of the effects succeed, it fails with the error from the last effect.
+ *
+ * `Effect.firstSuccessOf` allows you to try multiple effects in sequence, and
+ * as soon as one of them succeeds, it returns that result. If all effects fail,
+ * it returns the error of the last effect in the list. This is useful when you
+ * have several potential alternatives and want to use the first one that works.
+ *
+ * This function is sequential, meaning that the `Effect` values in the iterable
+ * will be executed in sequence, and the first one that succeeds will determine
+ * the outcome of the resulting `Effect` value.
+ *
+ * **Important**: If the collection of effects provided to
+ * `Effect.firstSuccessOf` is empty, it will throw an `IllegalArgumentException`
+ * error.
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * interface Config {
+ *   host: string
+ *   port: number
+ *   apiKey: string
+ * }
+ *
+ * // Create a configuration object with sample values
+ * const makeConfig = (name: string): Config => ({
+ *   host: `${name}.example.com`,
+ *   port: 8080,
+ *   apiKey: "12345-abcde"
+ * })
+ *
+ * // Simulate retrieving configuration from a remote node
+ * const remoteConfig = (name: string): Effect.Effect<Config, Error> =>
+ *   Effect.gen(function* () {
+ *     // Simulate node3 being the only one with available config
+ *     if (name === "node3") {
+ *       yield* Console.log(`Config for ${name} found`)
+ *       return makeConfig(name)
+ *     } else {
+ *       yield* Console.log(`Unavailable config for ${name}`)
+ *       return yield* Effect.fail(new Error(`Config not found for ${name}`))
+ *     }
+ *   })
+ *
+ * // Define the master configuration and potential fallback nodes
+ * const masterConfig = remoteConfig("master")
+ * const nodeConfigs = ["node1", "node2", "node3", "node4"].map(remoteConfig)
+ *
+ * // Attempt to find a working configuration,
+ * // starting with the master and then falling back to other nodes
+ * const config = Effect.firstSuccessOf([masterConfig, ...nodeConfigs])
+ *
+ * // Run the effect to retrieve the configuration
+ * const result = Effect.runSync(config)
+ *
+ * console.log(result)
+ * // Output:
+ * // Unavailable config for master
+ * // Unavailable config for node1
+ * // Unavailable config for node2
+ * // Config for node3 found
+ * // { host: 'node3.example.com', port: 8080, apiKey: '12345-abcde' }
+ *
+ * @since 2.0.0
+ * @category fallback
+ */
+export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
+  effects: Iterable<Eff>
+) => Effect<Effect.Success<Eff>, Effect.Error<Eff>, Effect.Context<Eff>> = effect.firstSuccessOf
 
 // -------------------------------------------------------------------------------------
 // random
