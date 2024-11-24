@@ -19,7 +19,7 @@ import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import * as PubSub from "../PubSub.js"
 import * as Queue from "../Queue.js"
 import * as Ref from "../Ref.js"
-import type * as Scope from "../Scope.js"
+import * as Scope from "../Scope.js"
 import type * as Sink from "../Sink.js"
 import * as channel from "./channel.js"
 import * as mergeDecision from "./channel/mergeDecision.js"
@@ -1656,38 +1656,43 @@ export const raceWith = dual<
       readonly capacity?: number | undefined
     }
   ): Sink.Sink<A3 | A4, In & In2, L2 | L, E2 | E, R2 | R> => {
-    const scoped = Effect.gen(function*($) {
-      const pubsub = yield* $(
-        PubSub.bounded<Either.Either<Chunk.Chunk<In & In2>, Exit.Exit<unknown>>>(options?.capacity ?? 16)
-      )
-      const channel1 = yield* $(channel.fromPubSubScoped(pubsub))
-      const channel2 = yield* $(channel.fromPubSubScoped(pubsub))
-      const reader = channel.toPubSub(pubsub)
-      const writer = pipe(
-        channel1,
-        core.pipeTo(toChannel(self)),
-        channel.mergeWith({
-          other: pipe(channel2, core.pipeTo(toChannel(options.other))),
-          onSelfDone: options.onSelfDone,
-          onOtherDone: options.onOtherDone
-        })
-      )
-      const racedChannel: Channel.Channel<
-        Chunk.Chunk<L | L2>,
-        Chunk.Chunk<In & In2>,
-        E | E2,
-        never,
-        A3 | A4,
-        unknown,
-        R | R2
-      > = channel.mergeWith(reader, {
-        other: writer,
-        onSelfDone: (_) => mergeDecision.Await((exit) => Effect.suspend(() => exit)),
-        onOtherDone: (done) => mergeDecision.Done(Effect.suspend(() => done))
+    function race(scope: Scope.Scope) {
+      return Effect.gen(function*($) {
+        const pubsub = yield* PubSub.bounded<
+          Either.Either<Chunk.Chunk<In & In2>, Exit.Exit<unknown>>
+        >(options?.capacity ?? 16)
+        const subscription1 = yield* Scope.extend(PubSub.subscribe(pubsub), scope)
+        const subscription2 = yield* Scope.extend(PubSub.subscribe(pubsub), scope)
+        const reader = channel.toPubSub(pubsub)
+        const writer = channel.fromQueue(subscription1).pipe(
+          core.pipeTo(toChannel(self)),
+          channel.zipLeft(core.fromEffect(Queue.shutdown(subscription1))),
+          channel.mergeWith({
+            other: channel.fromQueue(subscription2).pipe(
+              core.pipeTo(toChannel(options.other)),
+              channel.zipLeft(core.fromEffect(Queue.shutdown(subscription2)))
+            ),
+            onSelfDone: options.onSelfDone,
+            onOtherDone: options.onOtherDone
+          })
+        )
+        const racedChannel = channel.mergeWith(reader, {
+          other: writer,
+          onSelfDone: () => mergeDecision.Await(identity),
+          onOtherDone: (exit) => mergeDecision.Done(exit)
+        }) as Channel.Channel<
+          Chunk.Chunk<L | L2>,
+          Chunk.Chunk<In & In2>,
+          E | E2,
+          never,
+          A3 | A4,
+          unknown,
+          R | R2
+        >
+        return new SinkImpl(racedChannel)
       })
-      return new SinkImpl(racedChannel)
-    })
-    return unwrapScoped(scoped)
+    }
+    return unwrapScopedWith(race)
   }
 )
 
@@ -1923,9 +1928,24 @@ export const unwrap = <A, In, L, E2, R2, E, R>(
 /** @internal */
 export const unwrapScoped = <A, In, L, E, R>(
   effect: Effect.Effect<Sink.Sink<A, In, L, E, R>, E, R>
-): Sink.Sink<A, In, L, E, Exclude<R, Scope.Scope>> => {
-  return new SinkImpl(channel.unwrapScoped(pipe(effect, Effect.map((sink) => toChannel(sink)))))
-}
+): Sink.Sink<A, In, L, E, Exclude<R, Scope.Scope>> =>
+  new SinkImpl(
+    channel.unwrapScoped(effect.pipe(
+      Effect.map((sink) => toChannel(sink))
+    ))
+  )
+
+/** @internal */
+export const unwrapScopedWith = <A, In, L, E, R>(
+  f: (scope: Scope.Scope) => Effect.Effect<Sink.Sink<A, In, L, E, R>, E, R>
+): Sink.Sink<A, In, L, E, R> =>
+  new SinkImpl(
+    channel.unwrapScopedWith((scope) =>
+      f(scope).pipe(
+        Effect.map((sink) => toChannel(sink))
+      )
+    )
+  )
 
 /** @internal */
 export const withDuration = <A, In, L, E, R>(
