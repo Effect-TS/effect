@@ -1962,7 +1962,7 @@ export const runDrain: <OutElem, OutErr, InErr, OutDone, InDone, Env>(
  * Closing the channel, which includes execution of all the finalizers
  * attached to the channel will be added to the current scope as a finalizer.
  *
- * @since 3.17.0
+ * @since 3.10.17
  * @category destructors
  */
 export const runScoped: <OutErr, InErr, OutDone, InDone, Env>(
@@ -2066,7 +2066,7 @@ export const toPull: <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
  * with the channel's failure in case the channel fails, or returns either the
  * channel's done value or an emitted element.
  *
- * @since 3.17.0
+ * @since 3.10.17
  * @category destructors
  */
 export const toPullIn: {
