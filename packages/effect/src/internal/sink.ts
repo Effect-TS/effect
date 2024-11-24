@@ -1657,7 +1657,7 @@ export const raceWith = dual<
     }
   ): Sink.Sink<A3 | A4, In & In2, L2 | L, E2 | E, R2 | R> => {
     function race(scope: Scope.Scope) {
-      return Effect.gen(function*($) {
+      return Effect.gen(function*() {
         const pubsub = yield* PubSub.bounded<
           Either.Either<Chunk.Chunk<In & In2>, Exit.Exit<unknown>>
         >(options?.capacity ?? 16)
