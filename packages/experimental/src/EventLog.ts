@@ -24,7 +24,7 @@ import type { Event } from "./Event.js"
 import type { EventGroup } from "./EventGroup.js"
 import type { EntryId, EventJournalError, RemoteId } from "./EventJournal.js"
 import { Entry, EventJournal, makeEntryId } from "./EventJournal.js"
-import type { EventLogRemote } from "./EventLogRemote.js"
+import { Encryption, type EventLogRemote } from "./EventLogRemote.js"
 
 /**
  * @since 1.0.0
@@ -282,7 +282,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
     }) => Effect.Effect<void, never, R>
     readonly before?: Duration.DurationInput | undefined
   }
-): Layer.Layer<never, never, EventJournal | R | Event.Context<Events>> =>
+): Layer.Layer<never, never, EventJournal | Encryption | R | Event.Context<Events>> =>
   Effect.gen(function*() {
     const journal = yield* EventJournal
     const before = options.before ? Duration.decode(options.before) : Duration.zero
@@ -292,6 +292,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
         [tag, Schema.Array((event as unknown as Event.AnyWithProps).payloadMsgPack)] as const
       )
     )
+    const encryption = yield* Encryption
 
     const run = Effect.gen(function*() {
       const deadline = (yield* DateTime.now).pipe(
@@ -360,9 +361,15 @@ export const groupCompaction = <Events extends Event.Any, R>(
         const encodedPayloads = yield* Schema.encode(msgPackArraySchemas[event])(options.map((_) => _.payload))
         for (let i = 0; i < encodedPayloads.length; i++) {
           const { payload, timestamp } = options[i]
+          const primaryKey = (group.events[event] as any as Event.AnyWithProps).primaryKey(payload)
+          // to create a deterministic entry id
+          const hash = yield* encryption.sha256(new TextEncoder().encode(`${event}:${primaryKey}`))
           entriesToCreate.push(
             new Entry({
-              id: makeEntryId({ timestamp: timestamp ? timestamp.epochMillis : deadline.epochMillis }),
+              id: makeEntryId({
+                timestamp: timestamp ? timestamp.epochMillis : deadline.epochMillis,
+                payload: hash
+              }),
               event,
               payload: encodedPayloads[i],
               primaryKey: (group.events[event] as any as Event.AnyWithProps).primaryKey(payload)

@@ -180,8 +180,12 @@ export type EntryId = typeof EntryId.Type
  */
 export const makeEntryId = (options?: {
   readonly timestamp?: number
+  readonly payload?: Uint8Array
 }): EntryId => {
-  return Uuid.v7(options?.timestamp ? { msecs: options.timestamp } : {}, new Uint8Array(16)) as EntryId
+  return Uuid.v7({
+    msecs: options?.timestamp as any,
+    random: options?.payload?.subarray(0, 16) as any
+  }, new Uint8Array(16)) as EntryId
 }
 
 /**
