@@ -28,14 +28,7 @@ export interface EventLogRemote {
   readonly changes: (
     identity: typeof Identity.Service,
     startSequence: number
-  ) => Effect.Effect<
-    {
-      readonly changes: Mailbox.ReadonlyMailbox<RemoteEntry>
-      readonly removals: Mailbox.ReadonlyMailbox<ReadonlyArray<EntryId>>
-    },
-    never,
-    Scope
-  >
+  ) => Effect.Effect<Mailbox.ReadonlyMailbox<RemoteEntry>, never, Scope>
   readonly write: (identity: typeof Identity.Service, entries: ReadonlyArray<Entry>) => Effect.Effect<void>
   readonly remove: (identity: typeof Identity.Service, ids: Iterable<EntryId>) => Effect.Effect<void>
 }
@@ -106,11 +99,7 @@ export class RequestChanges
  * @since 1.0.0
  * @category protocol
  */
-export class StopChanges
-  extends Schema.TaggedClass<StopChanges>("@effect/experimental/EventLogRemote/StopChanges")("StopChanges", {
-    subscriptionId: Schema.Number
-  })
-{}
+export interface EncryptedRemoteEntry extends Schema.Schema.Type<typeof EncryptedRemoteEntry> {}
 
 /**
  * @since 1.0.0
@@ -127,7 +116,11 @@ export const EncryptedRemoteEntry = Schema.Struct({
  * @since 1.0.0
  * @category protocol
  */
-export interface EncryptedRemoteEntry extends Schema.Schema.Type<typeof EncryptedRemoteEntry> {}
+export class Additions
+  extends Schema.TaggedClass<Additions>("@effect/experimental/EventLogRemote/Additions")("Additions", {
+    entries: Schema.Array(EncryptedRemoteEntry)
+  })
+{}
 
 /**
  * @since 1.0.0
@@ -135,17 +128,18 @@ export interface EncryptedRemoteEntry extends Schema.Schema.Type<typeof Encrypte
  */
 export class Changes extends Schema.TaggedClass<Changes>("@effect/experimental/EventLogRemote/Changes")("Changes", {
   subscriptionId: Schema.Number,
-  encryptedRemoteEntries: Schema.Array(EncryptedRemoteEntry)
+  entries: Schema.Array(EncryptedRemoteEntry)
 }) {}
 
 /**
  * @since 1.0.0
  * @category protocol
  */
-export class Removals extends Schema.TaggedClass<Removals>("@effect/experimental/EventLogRemote/Removals")("Removals", {
-  subscriptionId: Schema.Number,
-  entryIds: Schema.Array(EntryId)
-}) {}
+export class StopChanges
+  extends Schema.TaggedClass<StopChanges>("@effect/experimental/EventLogRemote/StopChanges")("StopChanges", {
+    subscriptionId: Schema.Number
+  })
+{}
 
 /**
  * @since 1.0.0
@@ -201,7 +195,6 @@ export const ProtocolResponse = Schema.Union(
   Hello,
   Ack,
   Changes,
-  Removals,
   Pong
 )
 
@@ -222,6 +215,17 @@ export const decodeResponse = Schema.decodeSync(ProtocolResponseMsgPack)
  * @category protocol
  */
 export const encodeResponse = Schema.encodeSync(ProtocolResponseMsgPack)
+
+/**
+ * @since 1.0.0
+ * @category change
+ */
+export class RemoteAdditions
+  extends Schema.TaggedClass<RemoteAdditions>("@effect/experimental/EventLogRemote/RemoveAdditions")(
+    "RemoveAdditions",
+    { entries: Schema.Array(RemoteEntry) }
+  )
+{}
 
 /**
  * @since 1.0.0
@@ -295,11 +299,11 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<typeof Encry
             )
           }, { disableValidation: true })
         }),
-      decrypt: (identity, { encryptedRemoteEntries }) =>
+      decrypt: (identity, { entries }) =>
         Effect.gen(function*() {
           const key = yield* getKey(identity)
           const decryptedData = (yield* Effect.promise(() =>
-            Promise.all(encryptedRemoteEntries.map((data) =>
+            Promise.all(entries.map((data) =>
               crypto.subtle.decrypt(
                 { name: "AES-GCM", iv: data.iv, tagLength: 128 },
                 key,
@@ -307,10 +311,8 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<typeof Encry
               )
             ))
           )).map((buffer) => new Uint8Array(buffer))
-          const entries = yield* Effect.orDie(Entry.decodeArray(decryptedData))
-          return entries.map((entry, i) =>
-            new RemoteEntry({ remoteSequence: encryptedRemoteEntries[i].sequence, entry })
-          )
+          const decoded = yield* Effect.orDie(Entry.decodeArray(decryptedData))
+          return decoded.map((entry, i) => new RemoteEntry({ remoteSequence: entries[i].sequence, entry }))
         }),
       sha256: (data) =>
         Effect.promise(() => crypto.subtle.digest("SHA-256", data)).pipe(
@@ -361,17 +363,10 @@ export const fromSocket: Effect.Effect<
     let subscriptionIdCounter = 0
     const subscriptions = yield* RcMap.make({
       lookup: (_subscriptionId: number) =>
-        Effect.gen(function*() {
-          const changes = yield* Effect.acquireRelease(
-            Mailbox.make<RemoteEntry>(),
-            (mailbox) => mailbox.shutdown
-          )
-          const removals = yield* Effect.acquireRelease(
-            Mailbox.make<ReadonlyArray<EntryId>>(),
-            (mailbox) => mailbox.shutdown
-          )
-          return { changes, removals } as const
-        })
+        Effect.acquireRelease(
+          Mailbox.make<RemoteEntry>(),
+          (mailbox) => mailbox.shutdown
+        )
     })
     const identities = new WeakMap<any, typeof Identity.Service>()
     const badPing = yield* Deferred.make<never, Error>()
@@ -458,13 +453,7 @@ export const fromSocket: Effect.Effect<
             const mailbox = yield* RcMap.get(subscriptions, res.subscriptionId)
             const identity = identities.get(mailbox)!
             const entries = yield* encryption.decrypt(identity, res)
-            yield* mailbox.changes.offerAll(entries)
-          }).pipe(Effect.scoped)
-        }
-        case "Removals": {
-          return Effect.gen(function*() {
-            const mailbox = yield* RcMap.get(subscriptions, res.subscriptionId)
-            yield* mailbox.removals.offer(res.entryIds)
+            yield* mailbox.offerAll(entries)
           }).pipe(Effect.scoped)
         }
       }

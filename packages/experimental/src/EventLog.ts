@@ -9,14 +9,11 @@ import * as Effect from "effect/Effect"
 import * as FiberMap from "effect/FiberMap"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
-import type { ParseError } from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
-import * as Random from "effect/Random"
 import type * as Record from "effect/Record"
 import type * as Redacted from "effect/Redacted"
-import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import type { Covariant } from "effect/Types"
@@ -294,104 +291,104 @@ export const groupCompaction = <Events extends Event.Any, R>(
     )
     const encryption = yield* Encryption
 
-    const run = Effect.gen(function*() {
-      const deadline = (yield* DateTime.now).pipe(
-        DateTime.subtractDuration(before)
-      )
-      const entries = yield* journal.forEvents({
-        events: eventNames,
-        before: deadline
-      })
-      const entryIds: Array<EntryId> = []
-      const byPrimaryKey = new Map<string, Record<string, Array<Entry>>>()
-      for (const entry of entries) {
-        entryIds.push(entry.id)
+    const deadline = (yield* DateTime.now).pipe(
+      DateTime.subtractDuration(before)
+    )
+    const entries = yield* journal.forEvents({
+      events: eventNames,
+      before: deadline
+    })
+    if (entries.length <= 1) return
 
-        if (byPrimaryKey.has(entry.primaryKey)) {
-          const record = byPrimaryKey.get(entry.primaryKey)!
-          if (record[entry.event]) {
-            record[entry.event].push(entry)
-          } else {
-            record[entry.event] = [entry]
-          }
+    const entryIds: Array<EntryId> = []
+    const byPrimaryKey = new Map<string, Record<string, Array<Entry>>>()
+    for (const entry of entries) {
+      entryIds.push(entry.id)
+
+      if (byPrimaryKey.has(entry.primaryKey)) {
+        const record = byPrimaryKey.get(entry.primaryKey)!
+        if (record[entry.event]) {
+          record[entry.event].push(entry)
         } else {
-          byPrimaryKey.set(entry.primaryKey, {
-            [entry.event]: [entry]
-          })
+          record[entry.event] = [entry]
         }
+      } else {
+        byPrimaryKey.set(entry.primaryKey, {
+          [entry.event]: [entry]
+        })
       }
-      const toCreate: Record<
-        string,
-        Array<{
-          readonly tag: string
-          readonly payload: any
-          readonly timestamp?: DateTime.Utc | undefined
-        }>
-      > = {}
-      const write = (options: {
+    }
+    const toCreate: Record<
+      string,
+      Array<{
         readonly tag: string
         readonly payload: any
         readonly timestamp?: DateTime.Utc | undefined
-      }) =>
-        Effect.sync(() => {
-          if (toCreate[options.tag]) {
-            toCreate[options.tag].push(options)
-          } else {
-            toCreate[options.tag] = [options]
-          }
-        })
-      for (const [primaryKey, record] of byPrimaryKey) {
-        const payloadsRecord: Record<string, ReadonlyArray<any>> = {}
-        for (const [event, entries] of Object.entries(record)) {
-          const payloads = yield* Schema.decode(msgPackArraySchemas[event])(entries.map((entry) => entry.payload))
-          payloadsRecord[event] = payloads
+      }>
+    > = {}
+    const write = (options: {
+      readonly tag: string
+      readonly payload: any
+      readonly timestamp?: DateTime.Utc | undefined
+    }) =>
+      Effect.sync(() => {
+        if (toCreate[options.tag]) {
+          toCreate[options.tag].push(options)
+        } else {
+          toCreate[options.tag] = [options]
         }
-        for (const event of Object.keys(group.events)) {
-          payloadsRecord[event] ??= []
-        }
-        yield* options.effect({
-          entries: record as any,
-          events: payloadsRecord as any,
-          primaryKey,
-          write
-        })
-      }
-      const entriesToCreate: Array<Entry> = []
-      for (const [event, options] of Object.entries(toCreate)) {
-        const encodedPayloads = yield* Schema.encode(msgPackArraySchemas[event])(options.map((_) => _.payload))
-        for (let i = 0; i < encodedPayloads.length; i++) {
-          const { payload, timestamp } = options[i]
-          const primaryKey = (group.events[event] as any as Event.AnyWithProps).primaryKey(payload)
-          // to create a deterministic entry id
-          const hash = yield* encryption.sha256(new TextEncoder().encode(`${event}:${primaryKey}`))
-          entriesToCreate.push(
-            new Entry({
-              id: makeEntryId({
-                timestamp: timestamp ? timestamp.epochMillis : deadline.epochMillis,
-                payload: hash
-              }),
-              event,
-              payload: encodedPayloads[i],
-              primaryKey: (group.events[event] as any as Event.AnyWithProps).primaryKey(payload)
-            })
-          )
-        }
-      }
-      yield* journal.remove(entryIds)
-      yield* journal.writeEntries(entriesToCreate)
-    }) as Effect.Effect<void, EventJournalError | ParseError, R | Event.Context<Events>>
-
-    yield* run.pipe(
-      Effect.delay(yield* Random.nextIntBetween(3000, 10000)),
-      Effect.catchAllCause(Effect.logWarning),
-      Effect.forkScoped,
-      Effect.interruptible,
-      Effect.annotateLogs({
-        service: "EventLog",
-        fiber: "groupCompaction"
       })
-    )
-  }).pipe(Layer.scopedDiscard)
+    for (const [primaryKey, record] of byPrimaryKey) {
+      const payloadsRecord: Record<string, ReadonlyArray<any>> = {}
+      for (const [event, entries] of Object.entries(record)) {
+        const payloads = yield* (Schema.decode(msgPackArraySchemas[event])(entries.map((entry) =>
+          entry.payload
+        )) as Effect.Effect<Array<any>>)
+        payloadsRecord[event] = payloads
+      }
+      for (const event of Object.keys(group.events)) {
+        payloadsRecord[event] ??= []
+      }
+      yield* options.effect({
+        entries: record as any,
+        events: payloadsRecord as any,
+        primaryKey,
+        write
+      })
+    }
+    const entriesToCreate: Array<Entry> = []
+    for (const [event, options] of Object.entries(toCreate)) {
+      const encodedPayloads = yield* (Schema.encode(msgPackArraySchemas[event])(options.map((_) =>
+        _.payload
+      )) as Effect.Effect<ReadonlyArray<Uint8Array>>)
+      for (let i = 0; i < encodedPayloads.length; i++) {
+        const { payload, timestamp } = options[i]
+        const primaryKey = (group.events[event] as any as Event.AnyWithProps).primaryKey(payload)
+        // to create a deterministic entry id
+        const hash = yield* encryption.sha256(new TextEncoder().encode(`${event}:${primaryKey}`))
+        entriesToCreate.push(
+          new Entry({
+            id: makeEntryId({
+              timestamp: timestamp ? timestamp.epochMillis : deadline.epochMillis,
+              payload: hash
+            }),
+            event,
+            payload: encodedPayloads[i],
+            primaryKey: (group.events[event] as any as Event.AnyWithProps).primaryKey(payload)
+          })
+        )
+      }
+    }
+    yield* journal.remove(entryIds)
+    yield* journal.writeEntries(entriesToCreate)
+  }).pipe(
+    Effect.orDie,
+    Effect.annotateLogs({
+      service: "EventLog",
+      fiber: "groupCompaction"
+    }),
+    Layer.scopedDiscard
+  )
 
 /**
  * @since 1.0.0
@@ -460,37 +457,51 @@ const make = Effect.gen(function*() {
   const runRemote = (remote: EventLogRemote) =>
     Effect.gen(function*() {
       const startSequence = yield* journal.nextRemoteSequence(remote.id)
-      const { changes, removals } = yield* remote.changes(identity, startSequence)
+      const changes = yield* remote.changes(identity, startSequence)
 
-      const process: Effect.Effect<void> = changes.takeAll.pipe(
+      yield* changes.takeAll.pipe(
         Effect.tap(([entries]) =>
-          journal.writeFromRemote(remote.id, Chunk.toReadonlyArray(entries)).pipe(
-            journalSemaphore.withPermits(1),
-            Effect.retry({
-              schedule: Schedule.exponential(500).pipe(
-                Schedule.union(Schedule.spaced(5000))
+          journal.writeFromRemote({
+            remoteId: remote.id,
+            entries: Chunk.toReadonlyArray(entries),
+            effect: ({ conflicts, entry }) => {
+              const handler = handlers[entry.event]
+              if (!handler) return Effect.logDebug(`Event handler not found for: "${entry.event}"`)
+              const decodePayload = Schema.decode(
+                handlers[entry.event].event.payloadMsgPack as unknown as Schema.Schema<any>
               )
-            }),
-            Effect.orDie
+              return Effect.gen(function*() {
+                const decodedConflicts: Array<{ entry: Entry; payload: any }> = new Array(conflicts.length)
+                for (let i = 0; i < conflicts.length; i++) {
+                  decodedConflicts[i] = {
+                    entry: conflicts[i],
+                    payload: yield* decodePayload(conflicts[i].payload)
+                  }
+                }
+                yield* handler.handler({
+                  payload: yield* decodePayload(entry.payload),
+                  entry,
+                  conflicts: decodedConflicts
+                })
+              }).pipe(
+                Effect.catchAllCause(Effect.log),
+                Effect.annotateLogs({
+                  service: "EventLog",
+                  effect: "writeFromRemote",
+                  entryId: entry.idString
+                })
+              )
+            }
+          }).pipe(
+            journalSemaphore.withPermits(1),
+            Effect.catchAllCause(Effect.logDebug)
           )
         ),
-        Effect.flatMap(([, done]) => (done ? Effect.void : process))
-      )
-      yield* process.pipe(
-        Effect.fork,
-        Effect.annotateLogs({
-          service: "EventLog",
-          fiber: "runRemote changes"
-        })
-      )
-
-      yield* removals.take.pipe(
-        Effect.tap((entryIds) => journalSemaphore.withPermits(1)(journal.remove(entryIds))),
         Effect.forever,
         Effect.fork,
         Effect.annotateLogs({
           service: "EventLog",
-          fiber: "runRemote removals"
+          fiber: "runRemote changes"
         })
       )
 
@@ -515,35 +526,6 @@ const make = Effect.gen(function*() {
       Effect.provideService(Identity, identity),
       Effect.interruptible
     )
-
-  yield* journal.changesRemote.take.pipe(
-    Effect.tap(({ conflicts, entry }) => {
-      const handler = handlers[entry.event]
-      if (!handler) return Effect.logDebug(`Event handler not found for: "${entry.event}"`)
-      const decodePayload = Schema.decode(handlers[entry.event].event.payloadMsgPack as unknown as Schema.Schema<any>)
-      return Effect.gen(function*() {
-        const decodedConflicts: Array<{ entry: Entry; payload: any }> = new Array(conflicts.length)
-        for (let i = 0; i < conflicts.length; i++) {
-          decodedConflicts[i] = {
-            entry: conflicts[i],
-            payload: yield* decodePayload(conflicts[i].payload)
-          }
-        }
-        return yield* journalSemaphore.withPermits(1)(handler.handler({
-          payload: yield* decodePayload(entry.payload),
-          entry,
-          conflicts: decodedConflicts
-        }))
-      })
-    }),
-    Effect.catchAllCause(Effect.logDebug),
-    Effect.forever,
-    Effect.forkScoped,
-    Effect.annotateLogs({
-      service: "EventLog",
-      fiber: "changesRemote handler"
-    })
-  )
 
   return EventLog.of({
     write: (options: {

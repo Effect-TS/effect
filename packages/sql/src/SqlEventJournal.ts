@@ -4,7 +4,6 @@
 import * as EventJournal from "@effect/experimental/EventJournal"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Mailbox from "effect/Mailbox"
 import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
 import * as SqlClient from "./SqlClient.js"
@@ -142,20 +141,16 @@ export const make = (options?: {
         sql`INSERT INTO ${sql(entryTable)} ${sql.insert(entry)} ON CONFLICT DO NOTHING`.withoutTransform
     })
     const insertEntries = SqlSchema.void({
-      Request: EntrySqlArray,
+      Request: Schema.Array(EntrySql),
       execute: (entry) =>
         sql`INSERT INTO ${sql(entryTable)} ${sql.insert(entry)} ON CONFLICT DO NOTHING`.withoutTransform
     })
-    const insertRemotes = SqlSchema.void({
-      Request: Schema.Array(RemoteSql),
+    const insertRemote = SqlSchema.void({
+      Request: RemoteSql,
       execute: (entry) =>
         sql`INSERT INTO ${sql(remotesTable)} ${sql.insert(entry)} ON CONFLICT DO NOTHING`.withoutTransform
     })
 
-    const mailbox = yield* Mailbox.make<{
-      readonly entry: EventJournal.Entry
-      readonly conflicts: ReadonlyArray<EventJournal.Entry>
-    }>()
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
     const pubsubRemoval = yield* PubSub.unbounded<EventJournal.EntryId>()
 
@@ -207,36 +202,38 @@ export const make = (options?: {
           Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "remove" })),
           Effect.asVoid
         ),
-      writeFromRemote: (remoteId, remoteEntries) =>
+      writeFromRemote: (options) =>
         Effect.gen(function*() {
           const entries: Array<EventJournal.Entry> = []
           const remotes: Array<typeof RemoteSql.Type> = []
-          for (const remoteEntry of remoteEntries) {
+          for (const remoteEntry of options.entries) {
             entries.push(remoteEntry.entry)
             remotes.push({
-              remote_id: remoteId,
+              remote_id: options.remoteId,
               entry_id: remoteEntry.entry.id,
               sequence: remoteEntry.remoteSequence
             })
           }
-          yield* insertEntries(entries)
-          yield* insertRemotes(remotes)
-          for (const entry of entries) {
-            const conflicts = yield* sql`
-              SELECT *
-              FROM ${sql(entryTable)}
-              WHERE id != ${entry.id} AND
-                    event = ${entry.event} AND
-                    primary_key = ${entry.primaryKey} AND
-                    timestamp >= ${entry.createdAtMillis}
-              ORDER BY timestamp ASC
-            `.pipe(
-              Effect.flatMap(decodeEntrySqlArray)
-            )
-            yield* mailbox.offer({ entry, conflicts })
+          for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i]
+            yield* Effect.gen(function*() {
+              const conflicts = yield* sql`
+                SELECT *
+                FROM ${sql(entryTable)}
+                WHERE id != ${entry.id} AND
+                      event = ${entry.event} AND
+                      primary_key = ${entry.primaryKey} AND
+                      timestamp >= ${entry.createdAtMillis}
+                ORDER BY timestamp ASC
+              `.pipe(
+                Effect.flatMap(decodeEntrySqlArray)
+              )
+              yield* options.effect({ entry, conflicts })
+              yield* insertEntry(entry)
+              yield* insertRemote(remotes[i])
+            }).pipe(sql.withTransaction)
           }
         }).pipe(
-          sql.withTransaction,
           Effect.mapError((cause) =>
             new EventJournal.EventJournalError({
               cause,
@@ -274,7 +271,6 @@ export const make = (options?: {
             })
           )
         ),
-      changesRemote: mailbox,
       changes: PubSub.subscribe(pubsub),
       removals: PubSub.subscribe(pubsubRemoval),
       destroy: Effect.gen(function*() {
