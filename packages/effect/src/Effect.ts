@@ -1343,6 +1343,7 @@ export const validateFirst: {
  * behavior of the returned effect.
  *
  * @example
+ * // Example: Wrapping a Callback API
  * import { Effect } from "effect"
  * import * as NodeFS from "node:fs"
  *
@@ -1364,6 +1365,7 @@ export const validateFirst: {
  * const program = readFile("example.txt")
  *
  * @example
+ * // Example: Handling Interruption with Cleanup
  * import { Effect, Fiber } from "effect"
  * import * as NodeFS from "node:fs"
  *
@@ -1403,6 +1405,7 @@ export const validateFirst: {
  * // Cleaning up example.txt
  *
  * @example
+ * // Example: Handling Interruption with AbortSignal
  * import { Effect, Fiber } from "effect"
  *
  * // A task that supports interruption using AbortSignal
@@ -1505,10 +1508,9 @@ export const withFiberRuntime: <A, E = never, R = never>(
  * @see {@link succeed} to create an effect that represents a successful value.
  *
  * @example
+ * // Example: Creating a Failed Effect
  * import { Effect } from "effect"
  *
- * // Creating an effect that represents a failure scenario
- * //
  * //      ┌─── Effect<never, Error, never>
  * //      ▼
  * const failure = Effect.fail(
@@ -1993,6 +1995,7 @@ export const none: <A, E, R>(
  * @see {@link tryPromise} for a version that can handle failures.
  *
  * @example
+ * // Example: Delayed Message
  * import { Effect } from "effect"
  *
  * const delay = (message: string) =>
@@ -2027,6 +2030,7 @@ export const promise: <A>(
  * @see {@link fail} to create an effect that represents a failure.
  *
  * @example
+ * // Example: Creating a Successful Effect
  * import { Effect } from "effect"
  *
  * // Creating an effect that represents a successful scenario
@@ -2071,6 +2075,7 @@ export const succeedSome: <A>(value: A) => Effect<Option.Option<A>> = effect.suc
  * - **Unifying Return Types**: Can help TypeScript unify return types in situations where multiple branches of logic return different effects, simplifying type inference.
  *
  * @example
+ * // Example: Lazy Evaluation with Side Effects
  * import { Effect } from "effect"
  *
  * let i = 0
@@ -2086,6 +2091,7 @@ export const succeedSome: <A>(value: A) => Effect<Option.Option<A>> = effect.suc
  * console.log(Effect.runSync(good)) // Output: 2
  *
  * @example
+ * // Example: Recursive Fibonacci
  * import { Effect } from "effect"
  *
  * const blowsUp = (n: number): Effect.Effect<number> =>
@@ -2109,6 +2115,7 @@ export const succeedSome: <A>(value: A) => Effect<Option.Option<A>> = effect.suc
  * // Output: 3524578
  *
  * @example
+ * // Example: Using Effect.suspend to Help TypeScript Infer Types
  * import { Effect } from "effect"
  *
  * //   Without suspend, TypeScript may struggle with type inference.
@@ -2155,6 +2162,7 @@ export const suspend: <A, E, R>(effect: LazyArg<Effect<A, E, R>>) => Effect<A, E
  * @see {@link try_ | try} for a version that can handle failures.
  *
  * @example
+ * // Example: Logging a Message
  * import { Effect } from "effect"
  *
  * const log = (message: string) =>
@@ -3064,6 +3072,7 @@ export {
    * throw errors.
    *
    * @example
+   * // Example: Safe JSON Parsing
    * import { Effect } from "effect"
    *
    * const parse = (input: string) =>
@@ -3075,6 +3084,7 @@ export {
    * const program = parse("")
    *
    * @example
+   * // Example: Custom Error Handling
    * import { Effect } from "effect"
    *
    * const parse = (input: string) =>
@@ -3163,6 +3173,7 @@ export const tryMapPromise: {
  * @see {@link promise} if the effectful computation is asynchronous and does not throw errors.
  *
  * @example
+ * // Example: Fetching a TODO Item
  * import { Effect } from "effect"
  *
  * const getTodo = (id: number) =>
@@ -3176,6 +3187,7 @@ export const tryMapPromise: {
  * const program = getTodo(1)
  *
  * @example
+ * // Example: Custom Error Handling
  * import { Effect } from "effect"
  *
  * const getTodo = (id: number) =>
@@ -7672,14 +7684,20 @@ export const makeLatch: (open?: boolean | undefined) => Effect<Latch, never, nev
 // -------------------------------------------------------------------------------------
 
 /**
- * The foundational function for running effects, starting a fiber that can be observed or interrupted.
+ * The foundational function for running effects, returning a "fiber" that can
+ * be observed or interrupted.
  *
- * `Effect.runFork` is used to run an effect in the background by creating a fiber. It is the base function
- * for all other run functions. You can use this to execute effects that can be interrupted or controlled.
+ * **When to Use**
  *
- * **Tip:** Unless you specifically need a `Promise` or synchronous operation, `Effect.runFork` is a good default choice.
+ * `Effect.runFork` is used to run an effect in the background by creating a
+ * fiber. It is the base function for all other run functions. It starts a fiber
+ * that can be observed or interrupted.
+ *
+ * Unless you specifically need a `Promise` or synchronous operation,
+ * `Effect.runFork` is a good default choice.
  *
  * @example
+ * // Example: Running an Effect in the Background
  * import { Effect, Console, Schedule, Fiber } from "effect"
  *
  * //      ┌─── Effect<number, never, never>
@@ -7717,17 +7735,31 @@ export const runCallback: <A, E>(
 /**
  * Executes an effect and returns the result as a `Promise`.
  *
- * `Effect.runPromise` allows you to run an effect and handle the result using `Promise` syntax. If the effect succeeds,
- * it resolves the promise with the result. If the effect fails, it rejects the promise with an error.
+ * **When to Use**
+ *
+ * Use `Effect.runPromise` when you need to execute an effect and work with the
+ * result using `Promise` syntax, typically for compatibility with other
+ * promise-based code.
+ *
+ * If the effect succeeds, the promise will resolve with the result. If the
+ * effect fails, the promise will reject with an error.
+ *
+ * @see {@link runPromiseExit} for a version that returns an `Exit` type instead of rejecting.
  *
  * @example
+ * // Example: Running a Successful Effect as a Promise
  * import { Effect } from "effect"
  *
  * Effect.runPromise(Effect.succeed(1)).then(console.log)
  * // Output: 1
  *
+ * @example
+ * //Example: Handling a Failing Effect as a Rejected Promise
+ * import { Effect } from "effect"
+ *
  * Effect.runPromise(Effect.fail("my error")).catch(console.error)
- * // Output: (FiberFailure) Error: my error
+ * // Output:
+ * // (FiberFailure) Error: my error
  *
  * @since 2.0.0
  * @category execution
@@ -7738,12 +7770,23 @@ export const runPromise: <A, E>(
 ) => Promise<A> = _runtime.unsafeRunPromiseEffect
 
 /**
- * Runs an effect and returns a `Promise` that resolves to an `Exit`, which represents the outcome (success or failure) of the effect.
+ * Runs an effect and returns a `Promise` that resolves to an `Exit`, which
+ * represents the outcome (success or failure) of the effect.
  *
- * The `Exit` type indicates whether the effect succeeded or failed. If the effect succeeds, the result is contained in the `value`;
- * if it fails, the cause of the failure is provided in the `cause`.
+ * **When to Use**
+ *
+ * Use `Effect.runPromiseExit` when you need to determine if an effect succeeded
+ * or failed, including any defects, and you want to work with a `Promise`.
+ *
+ * **Details**
+ *
+ * The `Exit` type represents the result of the effect:
+ * - If the effect succeeds, the result is wrapped in a `Success`.
+ * - If it fails, the failure information is provided as a `Failure` containing
+ *   a `Cause` type.
  *
  * @example
+ * // Example: Handling Results as Exit
  * import { Effect } from "effect"
  *
  * // Execute a successful effect and get the Exit result as a Promise
@@ -7777,12 +7820,22 @@ export const runPromiseExit: <A, E>(
 ) => Promise<Exit.Exit<A, E>> = _runtime.unsafeRunPromiseExitEffect
 
 /**
- * Executes an effect synchronously, running it immediately and returning the result.
+ * Executes an effect synchronously, running it immediately and returning the
+ * result.
  *
- * `Effect.runSync` is used to run an effect that does not involve any asynchronous operations. If the effect fails or
- * involves async tasks, it will throw an error.
+ * **When to Use**
+ *
+ * Use `Effect.runSync` to run an effect that does not fail and does not include
+ * any asynchronous operations.
+ *
+ * If the effect fails or involves asynchronous work, it will throw an error,
+ * and execution will stop where the failure or async operation occurs.
+ *
+ * @see {@link runSyncExit} for a version that returns an `Exit` type instead of
+ * throwing an error.
  *
  * @example
+ * // Example: Synchronous Logging
  * import { Effect } from "effect"
  *
  * const program = Effect.sync(() => {
@@ -7796,21 +7849,55 @@ export const runPromiseExit: <A, E>(
  * console.log(result)
  * // Output: 1
  *
+ * @example
+ * // Example: Incorrect Usage with Failing or Async Effects
+ * import { Effect } from "effect"
+ *
+ * try {
+ *   // Attempt to run an effect that fails
+ *   Effect.runSync(Effect.fail("my error"))
+ * } catch (e) {
+ *   console.error(e)
+ * }
+ * // Output:
+ * // (FiberFailure) Error: my error
+ *
+ * try {
+ *   // Attempt to run an effect that involves async work
+ *   Effect.runSync(Effect.promise(() => Promise.resolve(1)))
+ * } catch (e) {
+ *   console.error(e)
+ * }
+ * // Output:
+ * // (FiberFailure) AsyncFiberException: Fiber #0 cannot be resolved synchronously. This is caused by using runSync on an effect that performs async work
+ *
  * @since 2.0.0
  * @category execution
  */
 export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSyncEffect
 
 /**
- * Runs an effect synchronously and returns the result as an `Exit` type, which represents either a success or failure outcome.
+ * Runs an effect synchronously and returns the result as an `Exit` type, which
+ * represents the outcome (success or failure) of the effect.
  *
- * The `Exit` type is used to indicate whether the effect succeeded or failed. If the effect succeeds, it returns the value;
- * if it fails, it provides information about the failure cause.
+ * **When to Use**
  *
- * If the effect contains asynchronous operations, `Effect.runSyncExit` will return an `Exit` with a `Die` cause,
- * indicating the effect cannot be resolved synchronously.
+ * Use `Effect.runSyncExit` to find out whether an effect succeeded or failed,
+ * including any defects, without dealing with asynchronous operations.
+ *
+ * **Details**
+ *
+ * The `Exit` type represents the result of the effect:
+ * - If the effect succeeds, the result is wrapped in a `Success`.
+ * - If it fails, the failure information is provided as a `Failure` containing
+ *   a `Cause` type.
+ *
+ * If the effect contains asynchronous operations, `Effect.runSyncExit` will
+ * return an `Failure` with a `Die` cause, indicating that the effect cannot be
+ * resolved synchronously.
  *
  * @example
+ * // Example: Handling Results as Exit
  * import { Effect } from "effect"
  *
  * console.log(Effect.runSyncExit(Effect.succeed(1)))
@@ -7830,6 +7917,26 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSync
  * //     _id: "Cause",
  * //     _tag: "Fail",
  * //     failure: "my error"
+ * //   }
+ * // }
+ *
+ * @example
+ * // Example: Asynchronous Operation Resulting in Die
+ * import { Effect } from "effect"
+ *
+ * console.log(Effect.runSyncExit(Effect.promise(() => Promise.resolve(1))))
+ * // Output:
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: {
+ * //     _id: 'Cause',
+ * //     _tag: 'Die',
+ * //     defect: [Fiber #0 cannot be resolved synchronously. This is caused by using runSync on an effect that performs async work] {
+ * //       fiber: [FiberRuntime],
+ * //       _tag: 'AsyncFiberException',
+ * //       name: 'AsyncFiberException'
+ * //     }
  * //   }
  * // }
  *
