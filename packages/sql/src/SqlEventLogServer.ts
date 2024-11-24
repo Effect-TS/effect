@@ -72,7 +72,7 @@ export const makeStorage = (options?: {
     const resources = yield* RcMap.make({
       lookup: (publicKey: string) =>
         Effect.gen(function*() {
-          const publicKeyHash = (yield* encryptions.sha256(new TextEncoder().encode(publicKey))).slice(0, 16)
+          const publicKeyHash = (yield* encryptions.sha256String(new TextEncoder().encode(publicKey))).slice(0, 16)
           const table = `${tablePrefix}_${publicKeyHash}`
 
           yield* sql.onDialectOrElse({

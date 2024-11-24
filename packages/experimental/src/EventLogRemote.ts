@@ -239,7 +239,8 @@ export class Encryption extends Context.Tag("@effect/experimental/EventLogRemote
       identity: typeof Identity.Service,
       data: Changes
     ) => Effect.Effect<Array<RemoteEntry>>
-    readonly sha256: (data: Uint8Array) => Effect.Effect<string>
+    readonly sha256String: (data: Uint8Array) => Effect.Effect<string>
+    readonly sha256: (data: Uint8Array) => Effect.Effect<Uint8Array>
   }
 >() {}
 
@@ -312,6 +313,10 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<typeof Encry
           )
         }),
       sha256: (data) =>
+        Effect.promise(() => crypto.subtle.digest("SHA-256", data)).pipe(
+          Effect.map((hash) => new Uint8Array(hash))
+        ),
+      sha256String: (data) =>
         Effect.map(
           Effect.promise(() => crypto.subtle.digest("SHA-256", data)),
           (hash) => {
