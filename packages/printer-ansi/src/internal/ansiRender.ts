@@ -1,9 +1,7 @@
 import type * as DocStream from "@effect/printer/DocStream"
 import * as Layout from "@effect/printer/Layout"
 import * as PageWidth from "@effect/printer/PageWidth"
-import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import * as List from "effect/List"
 import type * as Ansi from "../Ansi.js"
 import type * as AnsiDoc from "../AnsiDoc.js"
 import * as InternalAnsi from "./ansi.js"
@@ -32,83 +30,77 @@ export const render = dual<
   }
 })
 
-/** @internal */
-export const renderStream = (self: DocStream.DocStream<Ansi.Ansi>): string =>
-  Effect.runSync(renderSafe(self, List.of(InternalAnsi.none)))
-
-const unsafePeek = (stack: List.List<Ansi.Ansi>): Ansi.Ansi => {
-  if (List.isNil(stack)) {
+function unsafePeek(annotations: Array<Ansi.Ansi>): Ansi.Ansi {
+  const annotation = annotations[0]
+  if (annotation === undefined) {
     throw new Error(
-      "BUG: AnsiRender.unsafePeek - peeked at an empty stack" +
-        " - please report an issue at https://github.com/Effect-TS/printer/issues"
+      "BUG: Ansi.renderStream - peeked at an empty annotation stack" +
+        " - please report an issue at https://github.com/Effect-TS/cli/issues"
     )
   }
-  return stack.head
+  return annotation
 }
 
-const unsafePop = (
-  stack: List.List<Ansi.Ansi>
-): readonly [Ansi.Ansi, List.List<Ansi.Ansi>] => {
-  if (List.isNil(stack)) {
+function unsafePop(annotations: Array<Ansi.Ansi>): Ansi.Ansi {
+  const annotation = annotations.pop()
+  if (annotation === undefined) {
     throw new Error(
-      "BUG: AnsiRender.unsafePop - popped from an empty stack" +
-        " - please report an issue at https://github.com/Effect-TS/printer/issues"
+      "BUG: Ansi.renderStream - popped from an empty annotation stack" +
+        " - please report an issue at https://github.com/Effect-TS/cli/issues"
     )
   }
-  return [stack.head, stack.tail]
+  return annotation
 }
 
-const renderSafe = (
-  self: DocStream.DocStream<Ansi.Ansi>,
-  stack: List.List<Ansi.Ansi>
-): Effect.Effect<string> => {
-  switch (self._tag) {
-    case "FailedStream": {
-      return Effect.dieMessage(
-        "BUG: AnsiRender.renderSafe - attempted to render a failed doc stream" +
-          " - please report an issue at https://github.com/Effect-TS/printer/issues"
-      )
-    }
-    case "EmptyStream": {
-      return Effect.succeed("")
-    }
-    case "CharStream": {
-      return Effect.map(
-        Effect.suspend(() => renderSafe(self.stream, stack)),
-        (rest) => self.char + rest
-      )
-    }
-    case "TextStream": {
-      return Effect.map(
-        Effect.suspend(() => renderSafe(self.stream, stack)),
-        (rest) => self.text + rest
-      )
-    }
-    case "LineStream": {
-      let indent = "\n"
-      for (let i = 0; i < self.indentation; i++) {
-        indent = indent += " "
+const renderStream = (self: DocStream.DocStream<Ansi.Ansi>): string => {
+  const annotations: Array<Ansi.Ansi> = [InternalAnsi.none]
+  let current: DocStream.DocStream<Ansi.Ansi> = self
+  let result = ""
+  while (true) {
+    switch (current._tag) {
+      case "FailedStream": {
+        throw new Error(
+          "BUG: Help.renderStream - attempted to render a document which could not be laid out" +
+            " - please report an issue at https://github.com/Effect-TS/cli/issues"
+        )
       }
-      return Effect.map(
-        Effect.suspend(() => renderSafe(self.stream, stack)),
-        (rest) => indent + rest
-      )
-    }
-    case "PushAnnotationStream": {
-      const currentStyle = unsafePeek(stack)
-      const nextStyle = InternalAnsi.combine(self.annotation, currentStyle)
-      return Effect.map(
-        Effect.suspend(() => renderSafe(self.stream, List.cons(self.annotation, stack))),
-        (rest) => InternalAnsi.stringify(nextStyle) + rest
-      )
-    }
-    case "PopAnnotationStream": {
-      const [, styles] = unsafePop(stack)
-      const nextStyle = unsafePeek(styles)
-      return Effect.map(
-        Effect.suspend(() => renderSafe(self.stream, styles)),
-        (rest) => InternalAnsi.stringify(nextStyle) + rest
-      )
+      case "EmptyStream": {
+        return result
+      }
+      case "CharStream": {
+        result = result + current.char
+        current = current.stream
+        break
+      }
+      case "TextStream": {
+        result = result + current.text
+        current = current.stream
+        break
+      }
+      case "LineStream": {
+        let indent = "\n"
+        for (let i = 0; i < current.indentation; i++) {
+          indent = indent += " "
+        }
+        result = result + indent
+        current = current.stream
+        break
+      }
+      case "PushAnnotationStream": {
+        const currentStyle = unsafePeek(annotations)
+        const nextStyle = InternalAnsi.combine(current.annotation, currentStyle)
+        result = result + InternalAnsi.stringify(nextStyle)
+        annotations.push(current.annotation)
+        current = current.stream
+        break
+      }
+      case "PopAnnotationStream": {
+        unsafePop(annotations)
+        const nextStyle = unsafePeek(annotations)
+        result = result + InternalAnsi.stringify(nextStyle)
+        current = current.stream
+        break
+      }
     }
   }
 }

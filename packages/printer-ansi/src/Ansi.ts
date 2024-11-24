@@ -24,7 +24,7 @@ export type AnsiTypeId = typeof AnsiTypeId
  * @since 1.0.0
  * @category model
  */
-export interface Ansi extends Ansi.Proto {}
+export interface Ansi extends Ansi.Proto { }
 
 /**
  * @since 1.0.0
@@ -42,6 +42,12 @@ export declare namespace Ansi {
 // -----------------------------------------------------------------------------
 // Style Constructors
 // -----------------------------------------------------------------------------
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const none: Ansi = InternalAnsi.none
 
 /**
  * @since 1.0.0
