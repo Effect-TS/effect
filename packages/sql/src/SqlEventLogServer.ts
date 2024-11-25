@@ -144,7 +144,8 @@ export const makeStorage = (options?: {
           }
           const encryptedEntries = yield* pipe(
             sql`INSERT INTO ${sql(table)} ${sql.insert(forInsert)}
-                ON CONFLICT UPDATE SET iv = EXCLUDED.iv, encrypted_entry = EXCLUDED.encrypted_entry`.withoutTransform,
+                ON CONFLICT DO UPDATE SET iv = EXCLUDED.iv, encrypted_entry = EXCLUDED.encrypted_entry`
+              .withoutTransform,
             Effect.zipRight(sql`SELECT * FROM ${sql(table)} WHERE ${sql.in("entry_id", ids)} ORDER BY sequence ASC`),
             Effect.flatMap(decodeEntries)
           )
