@@ -31,6 +31,11 @@ export * as EventLog from "./EventLog.js"
 /**
  * @since 1.0.0
  */
+export * as EventLogEncryption from "./EventLogEncryption.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as EventLogRemote from "./EventLogRemote.js"
 
 /**
