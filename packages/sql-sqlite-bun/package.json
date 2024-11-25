@@ -44,7 +44,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
-    "bun-types": "1.1.22",
+    "@types/bun": "^1.1.13",
     "effect": "workspace:^"
   },
   "peerDependencies": {

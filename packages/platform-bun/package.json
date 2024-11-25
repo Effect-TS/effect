@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
-    "bun-types": "1.1.36",
+    "@types/bun": "^1.1.13",
     "effect": "workspace:^"
   }
 }

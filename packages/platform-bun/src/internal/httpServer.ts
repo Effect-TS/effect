@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import * as MultipartNode from "@effect/platform-node-shared/NodeMultipart"
 import * as Cookies from "@effect/platform/Cookies"
 import * as Etag from "@effect/platform/Etag"

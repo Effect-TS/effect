@@ -5,8 +5,5 @@
     { "path": "tsconfig.src.json" },
     { "path": "tsconfig.test.json" },
     { "path": "tsconfig.examples.json" }
-  ],
-  "compilerOptions": {
-    "types": ["bun-types"]
-  }
+  ]
 }
