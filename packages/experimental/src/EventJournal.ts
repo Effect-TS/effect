@@ -527,9 +527,9 @@ export const makeIndexedDb = (options?: {
           }> = []
 
           yield* Effect.async<void, EventJournalError>((resume) => {
-            const tx = db.transaction(["entries"], "readonly")
+            const tx = db.transaction(["entries", "remotes"], "readwrite")
             const entries = tx.objectStore("entries")
-            const remotes = db.transaction(["remotes"], "readwrite").objectStore("remotes")
+            const remotes = tx.objectStore("remotes")
             const iterator = options.entries[Symbol.iterator]()
             const handleNext = (state: IteratorResult<RemoteEntry, void>) => {
               if (state.done) return
@@ -540,7 +540,7 @@ export const makeIndexedDb = (options?: {
                 if ((event.target as any).result) {
                   remotes.put({
                     remoteId: options.remoteId,
-                    entryId: encodedEntry.id,
+                    entryId: remoteEntry.entry.id,
                     sequence: remoteEntry.remoteSequence
                   })
                   return
