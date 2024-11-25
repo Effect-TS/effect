@@ -3,20 +3,20 @@
  */
 import * as Socket from "@effect/platform/Socket"
 import * as Arr from "effect/Array"
-import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as RcMap from "effect/RcMap"
-import * as Redacted from "effect/Redacted"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
-import { Entry, EntryId, RemoteEntry, RemoteId } from "./EventJournal.js"
+import type { Entry } from "./EventJournal.js"
+import { EntryId, RemoteEntry, RemoteId } from "./EventJournal.js"
 import type { Identity } from "./EventLog.js"
 import { EventLog } from "./EventLog.js"
+import { EncryptedEntry, EncryptedRemoteEntry, EventLogEncryption, layerSubtle } from "./EventLogEncryption.js"
 import * as MsgPack from "./MsgPack.js"
 
 /**
@@ -40,15 +40,6 @@ export interface EventLogRemote {
 export class Hello extends Schema.TaggedClass<Hello>("@effect/experimental/EventLogRemote/Hello")("Hello", {
   remoteId: RemoteId
 }) {}
-
-/**
- * @since 1.0.0
- * @category protocol
- */
-export const EncryptedEntry = Schema.Struct({
-  entryId: EntryId,
-  encryptedEntry: Schema.Uint8ArrayFromSelf
-})
 
 /**
  * @since 1.0.0
@@ -94,23 +85,6 @@ export class RequestChanges
     startSequence: Schema.Number
   })
 {}
-
-/**
- * @since 1.0.0
- * @category protocol
- */
-export interface EncryptedRemoteEntry extends Schema.Schema.Type<typeof EncryptedRemoteEntry> {}
-
-/**
- * @since 1.0.0
- * @category protocol
- */
-export const EncryptedRemoteEntry = Schema.Struct({
-  sequence: Schema.Number,
-  iv: Schema.Uint8ArrayFromSelf,
-  entryId: EntryId,
-  encryptedEntry: Schema.Uint8ArrayFromSelf
-})
 
 /**
  * @since 1.0.0
@@ -229,129 +203,16 @@ export class RemoteAdditions
 
 /**
  * @since 1.0.0
- * @category encrytion
- */
-export class Encryption extends Context.Tag("@effect/experimental/EventLogRemote/Encryption")<
-  Encryption,
-  {
-    readonly encrypt: (
-      identity: typeof Identity.Service,
-      entries: ReadonlyArray<Entry>,
-      id: number
-    ) => Effect.Effect<WriteEntries>
-    readonly decrypt: (
-      identity: typeof Identity.Service,
-      data: Changes
-    ) => Effect.Effect<Array<RemoteEntry>>
-    readonly sha256String: (data: Uint8Array) => Effect.Effect<string>
-    readonly sha256: (data: Uint8Array) => Effect.Effect<Uint8Array>
-  }
->() {}
-
-/**
- * @since 1.0.0
- * @category encrytion
- */
-export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<typeof Encryption.Service> =>
-  Effect.sync(() => {
-    let idCounter = 0
-    const keyCache = new WeakMap<typeof Identity.Service, CryptoKey>()
-    const getKey = (identity: typeof Identity.Service) =>
-      Effect.suspend(() => {
-        if (keyCache.has(identity)) {
-          return Effect.succeed(keyCache.get(identity)!)
-        }
-        return Effect.promise(() =>
-          crypto.subtle.importKey(
-            "raw",
-            Redacted.value(identity.privateKey),
-            "AES-GCM",
-            true,
-            ["encrypt", "decrypt"]
-          )
-        ).pipe(
-          Effect.tap((key) => {
-            keyCache.set(identity, key)
-          })
-        )
-      })
-
-    return Encryption.of({
-      encrypt: (identity, entries) =>
-        Effect.gen(function*() {
-          const data = yield* Effect.orDie(Entry.encodeArray(entries))
-          const key = yield* getKey(identity)
-          const iv = crypto.getRandomValues(new Uint8Array(12))
-          const encryptedEntries = yield* Effect.promise(() =>
-            Promise.all(
-              data.map((entry) => crypto.subtle.encrypt({ name: "AES-GCM", iv, tagLength: 128 }, key, entry))
-            )
-          )
-          return new WriteEntries({
-            publicKey: identity.publicKey,
-            id: idCounter++,
-            iv,
-            encryptedEntries: encryptedEntries.map((entry, i) =>
-              EncryptedEntry.make({
-                entryId: entries[i].id,
-                encryptedEntry: new Uint8Array(entry)
-              })
-            )
-          }, { disableValidation: true })
-        }),
-      decrypt: (identity, { entries }) =>
-        Effect.gen(function*() {
-          const key = yield* getKey(identity)
-          const decryptedData = (yield* Effect.promise(() =>
-            Promise.all(entries.map((data) =>
-              crypto.subtle.decrypt(
-                { name: "AES-GCM", iv: data.iv, tagLength: 128 },
-                key,
-                data.encryptedEntry
-              )
-            ))
-          )).map((buffer) => new Uint8Array(buffer))
-          const decoded = yield* Effect.orDie(Entry.decodeArray(decryptedData))
-          return decoded.map((entry, i) => new RemoteEntry({ remoteSequence: entries[i].sequence, entry }))
-        }),
-      sha256: (data) =>
-        Effect.promise(() => crypto.subtle.digest("SHA-256", data)).pipe(
-          Effect.map((hash) => new Uint8Array(hash))
-        ),
-      sha256String: (data) =>
-        Effect.map(
-          Effect.promise(() => crypto.subtle.digest("SHA-256", data)),
-          (hash) => {
-            const hashArray = Array.from(new Uint8Array(hash))
-            const hashHex = hashArray
-              .map((bytes) => bytes.toString(16).padStart(2, "0"))
-              .join("")
-            return hashHex
-          }
-        )
-    })
-  })
-
-/**
- * @since 1.0.0
- * @category encrytion
- */
-export const layerEncryptionSubtle: Layer.Layer<Encryption> = Layer.suspend(() =>
-  Layer.effect(Encryption, makeEncryptionSubtle(globalThis.crypto))
-)
-
-/**
- * @since 1.0.0
  * @category construtors
  */
 export const fromSocket: Effect.Effect<
   void,
   never,
-  Scope | EventLog | Encryption | Socket.Socket
+  Scope | EventLog | EventLogEncryption | Socket.Socket
 > = Effect.gen(function*() {
   const log = yield* EventLog
   const socket = yield* Socket.Socket
-  const encryption = yield* Encryption
+  const encryption = yield* EventLogEncryption
   const writeRaw = yield* socket.writer
 
   const write = (request: typeof ProtocolRequest.Type) => Effect.suspend(() => writeRaw(encodeRequest(request)))
@@ -394,10 +255,21 @@ export const fromSocket: Effect.Effect<
             id: res.remoteId,
             write: (identity, entries) =>
               Effect.gen(function*() {
-                const encrypted = yield* encryption.encrypt(identity, entries, pendingCounter++)
+                const encrypted = yield* encryption.encrypt(identity, entries)
                 const deferred = yield* Deferred.make<void>()
-                pending.set(encrypted.id, deferred)
-                yield* write(new WriteEntries(encrypted))
+                const id = pendingCounter++
+                pending.set(id, deferred)
+                yield* write(
+                  new WriteEntries({
+                    publicKey: identity.publicKey,
+                    id,
+                    iv: encrypted.iv,
+                    encryptedEntries: encrypted.encryptedEntries.map((encryptedEntry, i) => ({
+                      entryId: entries[i].id,
+                      encryptedEntry
+                    }))
+                  })
+                )
                 yield* Deferred.await(deferred)
               }),
             remove: (identity, ids) =>
@@ -452,7 +324,7 @@ export const fromSocket: Effect.Effect<
           return Effect.gen(function*() {
             const mailbox = yield* RcMap.get(subscriptions, res.subscriptionId)
             const identity = identities.get(mailbox)!
-            const entries = yield* encryption.decrypt(identity, res)
+            const entries = yield* encryption.decrypt(identity, res.entries)
             yield* mailbox.offerAll(entries)
           }).pipe(Effect.scoped)
         }
@@ -481,7 +353,7 @@ export const fromSocket: Effect.Effect<
  */
 export const fromWebSocket = (
   url: string
-): Effect.Effect<void, never, Scope | Encryption | EventLog | Socket.WebSocketConstructor> =>
+): Effect.Effect<void, never, Scope | EventLogEncryption | EventLog | Socket.WebSocketConstructor> =>
   Effect.gen(function*() {
     const socket = yield* Socket.makeWebSocket(url)
     return yield* fromSocket.pipe(
@@ -500,7 +372,7 @@ export const layerWebSocket = (
   never,
   | Socket.WebSocketConstructor
   | EventLog
-  | Encryption
+  | EventLogEncryption
 > => Layer.scopedDiscard(fromWebSocket(url))
 
 /**
@@ -511,5 +383,5 @@ export const layerWebSocketBrowser = (
   url: string
 ): Layer.Layer<never, never, EventLog> =>
   layerWebSocket(url).pipe(
-    Layer.provide([layerEncryptionSubtle, Socket.layerWebSocketConstructorGlobal])
+    Layer.provide([layerSubtle, Socket.layerWebSocketConstructorGlobal])
   )

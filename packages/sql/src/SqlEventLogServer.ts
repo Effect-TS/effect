@@ -3,7 +3,7 @@
  */
 import type { EntryId } from "@effect/experimental/EventJournal"
 import { makeRemoteId, RemoteId } from "@effect/experimental/EventJournal"
-import { EncryptedRemoteEntry, Encryption, layerEncryptionSubtle } from "@effect/experimental/EventLogRemote"
+import { EncryptedRemoteEntry, EventLogEncryption, layerSubtle } from "@effect/experimental/EventLogEncryption"
 import * as EventLogServer from "@effect/experimental/EventLogServer"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -27,10 +27,10 @@ export const makeStorage = (options?: {
 }): Effect.Effect<
   typeof EventLogServer.Storage.Service,
   SqlError,
-  SqlClient.SqlClient | Encryption | Scope
+  SqlClient.SqlClient | EventLogEncryption | Scope
 > =>
   Effect.gen(function*() {
-    const encryptions = yield* Encryption
+    const encryptions = yield* EventLogEncryption
     const sql = yield* SqlClient.SqlClient
 
     const tablePrefix = options?.entryTablePrefix ?? "effect_events"
@@ -219,7 +219,7 @@ const decodeEntries = Schema.decodeUnknown(Schema.Array(EncryptedRemoteEntryFrom
 export const layerStorage = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
-}): Layer.Layer<EventLogServer.Storage, SqlError, SqlClient.SqlClient | Encryption> =>
+}): Layer.Layer<EventLogServer.Storage, SqlError, SqlClient.SqlClient | EventLogEncryption> =>
   Layer.scoped(EventLogServer.Storage, makeStorage(options))
 
 /**
@@ -231,5 +231,5 @@ export const layerStorageSubtle = (options?: {
   readonly remoteIdTable?: string
 }): Layer.Layer<EventLogServer.Storage, SqlError, SqlClient.SqlClient> =>
   layerStorage(options).pipe(
-    Layer.provide(layerEncryptionSubtle)
+    Layer.provide(layerSubtle)
   )
