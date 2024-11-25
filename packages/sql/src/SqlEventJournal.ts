@@ -138,7 +138,8 @@ export const make = (options?: {
     const insertEntry = SqlSchema.void({
       Request: EntrySql,
       execute: (entry) =>
-        sql`INSERT INTO ${sql(entryTable)} ${sql.insert(entry)} ON CONFLICT DO NOTHING`.withoutTransform
+        sql`INSERT INTO ${sql(entryTable)} ${sql.insert(entry)}
+            ON CONFLICT DO UPDATE SET timestamp = EXCLUDED.timestamp, payload = EXCLUDED.payload`.withoutTransform
     })
     const insertEntries = SqlSchema.void({
       Request: Schema.Array(EntrySql),

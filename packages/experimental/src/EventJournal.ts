@@ -336,7 +336,14 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
     writeFromRemote: (options) =>
       Effect.gen(function*() {
         for (const remoteEntry of options.entries) {
-          if (byId.has(remoteEntry.entry.idString)) continue
+          if (byId.has(remoteEntry.entry.idString)) {
+            const entry = byId.get(remoteEntry.entry.idString)!
+            const index = journal.indexOf(entry)
+            if (index >= 0) {
+              journal[index] = remoteEntry.entry
+            }
+            continue
+          }
 
           const remoteEntryMillis = entryIdMillis(remoteEntry.entry.id)
           for (let i = journal.length - 1; i >= -1; i--) {
@@ -520,8 +527,9 @@ export const makeIndexedDb = (options?: {
           }> = []
 
           yield* Effect.async<void, EventJournalError>((resume) => {
-            const tx = db.transaction(["entries"], "readonly")
+            const tx = db.transaction(["entries", "remotes"], "readwrite")
             const entries = tx.objectStore("entries")
+            const remotes = tx.objectStore("remotes")
             const iterator = options.entries[Symbol.iterator]()
             const handleNext = (state: IteratorResult<RemoteEntry, void>) => {
               if (state.done) return
@@ -529,7 +537,14 @@ export const makeIndexedDb = (options?: {
               const encodedEntry = encodeEntryIdb(state.value.entry)
               entries.get(encodedEntry.id).onsuccess = (event) => {
                 handleNext(iterator.next())
-                if ((event.target as any).result) return
+                if ((event.target as any).result) {
+                  remotes.put({
+                    remoteId: options.remoteId,
+                    entryId: encodedEntry.id,
+                    sequence: remoteEntry.remoteSequence
+                  })
+                  return
+                }
                 const item = {
                   conflicts: [] as Array<Entry>,
                   remoteSequence: remoteEntry.remoteSequence,
@@ -564,17 +579,17 @@ export const makeIndexedDb = (options?: {
           })
 
           for (const { conflicts, entry, remoteSequence } of entriesWithConflicts) {
-            const tx = db.transaction(["entries"], "readwrite")
-            const entries = tx.objectStore("entries")
-            const remotes = tx.objectStore("remotes")
             yield* options.effect({ entry, conflicts })
-            entries.add(encodeEntryIdb(entry))
-            remotes.put({
-              remoteId: options.remoteId,
-              entryId: entry.id,
-              sequence: remoteSequence
-            })
             yield* Effect.async<void, EventJournalError>((resume) => {
+              const tx = db.transaction(["entries"], "readwrite")
+              const entries = tx.objectStore("entries")
+              const remotes = tx.objectStore("remotes")
+              entries.add(encodeEntryIdb(entry))
+              remotes.put({
+                remoteId: options.remoteId,
+                entryId: entry.id,
+                sequence: remoteSequence
+              })
               tx.oncomplete = () => resume(Effect.void)
               tx.onerror = () =>
                 resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
