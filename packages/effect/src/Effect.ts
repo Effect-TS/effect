@@ -467,18 +467,44 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
 // -------------------------------------------------------------------------------------
 
 /**
- * Combines multiple effects into a single effect, producing a result based on
- * the structure of the input effects.
+ * Combines multiple effects into one, returning results based on the input
+ * structure.
  *
- * `all` can work with tuples, iterables, structs, and records. By
- * default, it runs the effects sequentially, but you can control concurrency
- * with options. The function returns an effect that produces a tuple or object
- * of the results of each effect. If any effect fails, `all` will stop
- * execution (short-circuiting) and propagate the error. You can change this
- * behavior using the `mode` option to allow all effects to run and collect the
- * results as `Either` or `Option`.
+ * **When to Use**
+ *
+ * Use `all` when you need to run multiple effects and combine their results
+ * into a single output. It supports tuples, iterables, structs, and records,
+ * making it flexible for different input types.
+ *
+ * For instance, if the input is a tuple:
+ *
+ * ```ts
+ * //         ┌─── a tuple of effects
+ * //         ▼
+ * Effect.all([effect1, effect2, ...])
+ * ```
+ *
+ * the effects are executed in order, and the result is a new effect containing
+ * the results as a tuple. The results in the tuple match the order of the
+ * effects passed to `all`.
+ *
+ * **Details**
+ *
+ * By default, `all` runs effects sequentially and produces a tuple or object
+ * with the results. If any effect fails, it stops execution (short-circuiting)
+ * and propagates the error. To change this behavior, you can use the `mode`
+ * option, which allows all effects to run and collect results as `Either` or
+ * `Option`.
+ *
+ * **Concurrency**
+ *
+ * You can control the execution order (e.g., sequential vs. concurrent) using
+ * the `concurrency` option.
+ *
+ * @see {@link forEach} for iterating over elements and applying an effect.
  *
  * @example
+ * // Example: Combining Configuration and Database Checks
  * import { Effect } from "effect"
  *
  * // Simulated function to read configuration from a file
@@ -831,6 +857,8 @@ export const findFirst: {
  *
  * If the `discard` option is set to `true`, the intermediate results are
  * discarded, and the final result will be `void`.
+ *
+ * @see {@link all} for combining multiple effects into one.
  *
  * @example
  * import { Effect, Console } from "effect"
@@ -5685,13 +5713,8 @@ export const whenRef: {
 // -------------------------------------------------------------------------------------
 
 /**
- * Chains transformations that produce `Effect` instances, useful for handling
- * asynchronous operations or computations that depend on the results of
- * previous effects.
- *
- * `flatMap` allows you to sequence multiple effects, ensuring that each
- * step results in a new `Effect` while flattening any nested structures that
- * may arise.
+ * Chains effects to produce new `Effect` instances, useful for combining
+ * operations that depend on previous results.
  *
  * **Syntax**
  * ```ts
@@ -5702,11 +5725,21 @@ export const whenRef: {
  * const flatMappedEffect = myEffect.pipe(Effect.flatMap(transformation))
  * ```
  *
- * Effects are immutable, so `flatMap` returns a new effect instead of
- * modifying the original one.
+ * **When to Use**
  *
- * `flatMap` is similar to `flatMap` used with arrays but works with
- * effects, allowing you to flatten nested `Effect` structures.
+ * Use `flatMap` when you need to chain multiple effects, ensuring that each
+ * step produces a new `Effect` while flattening any nested effects that may
+ * occur.
+ *
+ * **Details**
+ *
+ * `flatMap` lets you sequence effects so that the result of one effect can be
+ * used in the next step. It is similar to `flatMap` used with arrays but works
+ * specifically with `Effect` instances, allowing you to avoid deeply nested
+ * effect structures.
+ *
+ * Since effects are immutable, `flatMap` always returns a new effect instead of
+ * changing the original one.
  *
  * @example
  * import { pipe, Effect } from "effect"
@@ -5741,17 +5774,8 @@ export const flatMap: {
 } = core.flatMap
 
 /**
- * Sequences two actions (effects), where the second action may depend on the
- * result of the first.
- *
- * `andThen` allows you to chain multiple actions together. The second
- * action can be any of the following:
- * - A constant value (similar to `as`)
- * - A function returning a value (similar to `map`)
- * - A `Promise`
- * - A function returning a `Promise`
- * - An `Effect`
- * - A function returning an `Effect` (similar to `flatMap`)
+ * Chains two actions, where the second action can depend on the result of the
+ * first.
  *
  * **Syntax**
  * ```ts
@@ -5762,10 +5786,28 @@ export const flatMap: {
  * const transformedEffect = myEffect.pipe(Effect.andThen(anotherEffect))
  * ```
  *
- * **Note:** `andThen` integrates well with both `Option` and `Either`
- * types, treating them as effects.
+ * **When to Use**
+ *
+ * Use `andThen` when you need to run multiple actions in sequence, with the
+ * second action depending on the result of the first. This is useful for
+ * combining effects or handling computations that must happen in order.
+ *
+ * **Details**
+ *
+ * The second action can be:
+ *
+ * - A constant value (similar to {@link as})
+ * - A function returning a value (similar to {@link map})
+ * - A `Promise`
+ * - A function returning a `Promise`
+ * - An `Effect`
+ * - A function returning an `Effect` (similar to {@link flatMap})
+ *
+ * **Note:** `andThen` works well with both `Option` and `Either` types,
+ * treating them as effects.
  *
  * @example
+ * // Example: Applying a Discount Based on Fetched Amount
  * import { pipe, Effect } from "effect"
  *
  * // Function to apply a discount safely to a transaction amount
@@ -5931,16 +5973,25 @@ export const summarized: {
 } = effect.summarized
 
 /**
- * Executes a side effect with the result of an effect without modifying the
+ * Runs a side effect with the result of an effect without changing the original
  * value.
  *
- * `tap` is similar to `flatMap`, but it ignores the result of the
- * function passed to it. The value from the previous effect remains available
- * for the next step in the chain. This is useful when you want to perform
- * actions like logging or tracking without changing the computation's result.
+ * **When to Use**
+ *
+ * Use `tap` when you want to perform a side effect, like logging or tracking,
+ * without modifying the main value. This is useful when you need to observe or
+ * record an action but want the original value to be passed to the next step.
+ *
+ * **Details**
+ *
+ * `tap` works similarly to `flatMap`, but it ignores the result of the function
+ * passed to it. The value from the previous effect remains available for the
+ * next part of the chain. Note that if the side effect fails, the entire chain
+ * will fail too.
  *
  * @example
- * import { pipe, Effect } from "effect"
+ * // Example: Logging a step in a pipeline
+ * import { Console, Effect, pipe } from "effect"
  *
  * // Function to apply a discount safely to a transaction amount
  * const applyDiscount = (
@@ -5957,9 +6008,7 @@ export const summarized: {
  * const finalAmount = pipe(
  *   fetchTransactionAmount,
  *   // Log the fetched transaction amount
- *   Effect.tap((amount) =>
- *     Effect.sync(() => console.log(`Apply a discount to: ${amount}`))
- *   ),
+ *   Effect.tap((amount) => Console.log(`Apply a discount to: ${amount}`)),
  *   // `amount` is still available!
  *   Effect.flatMap((amount) => applyDiscount(amount, 5))
  * )
