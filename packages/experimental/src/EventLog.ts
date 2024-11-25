@@ -495,7 +495,7 @@ const make = Effect.gen(function*() {
             }
           }).pipe(
             journalSemaphore.withPermits(1),
-            Effect.catchAllCause(Effect.logDebug)
+            Effect.catchAllCause(Effect.log)
           )
         ),
         Effect.forever,
@@ -508,7 +508,7 @@ const make = Effect.gen(function*() {
 
       yield* (yield* journal.removals).takeBetween(1, Number.MAX_SAFE_INTEGER).pipe(
         Effect.flatMap((ids) => remote.remove(identity, ids)),
-        Effect.catchAllCause(Effect.logDebug),
+        Effect.catchAllCause(Effect.log),
         Effect.forever,
         Effect.fork
       )
@@ -519,7 +519,7 @@ const make = Effect.gen(function*() {
       yield* Queue.takeBetween(yield* journal.changes, 1, Number.MAX_SAFE_INTEGER).pipe(
         Effect.zipRight(Effect.sleep(500)),
         Effect.zipRight(write),
-        Effect.catchAllCause(Effect.logDebug),
+        Effect.catchAllCause(Effect.log),
         Effect.forever
       )
     }).pipe(
