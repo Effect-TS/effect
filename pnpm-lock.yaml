@@ -318,7 +318,7 @@ importers:
         version: 0.14.2
       jscodeshift:
         specifier: ^0.16.1
-        version: 0.16.1(@babel/preset-env@7.26.0(@babel/core@7.25.2))
+        version: 0.16.1(@babel/preset-env@7.26.0(@babel/core@7.26.0))
       tinybench:
         specifier: ^2.9.0
         version: 2.9.0
@@ -449,9 +449,9 @@ importers:
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
-      bun-types:
-        specifier: 1.1.36
-        version: 1.1.36
+      '@types/bun':
+        specifier: ^1.1.13
+        version: 1.1.13
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -775,9 +775,9 @@ importers:
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
-      bun-types:
-        specifier: 1.1.22
-        version: 1.1.22
+      '@types/bun':
+        specifier: ^1.1.13
+        version: 1.1.13
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -3199,6 +3199,9 @@ packages:
   '@types/better-sqlite3@7.6.11':
     resolution: {integrity: sha512-i8KcD3PgGtGBLl3+mMYA8PdKkButvPyARxA7IQAd6qeslht13qxb1zzO8dRCtE7U3IoJS782zDBAeoKiM695kg==}
 
+  '@types/bun@1.1.13':
+    resolution: {integrity: sha512-KmQxSBgVWCl6RSuerlLGZlIWfdxkKqat0nxN61+qu4y1KDn0Ll3j7v1Pl8GnaL3a/U6GGWVTJh75ap62kR1E8Q==}
+
   '@types/cookie@0.6.0':
     resolution: {integrity: sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA==}
 
@@ -3782,8 +3785,8 @@ packages:
     resolution: {integrity: sha512-wxXCdllwGhI2kCC0MnvTGYTMvnVZTvqgypkiTI8Pa5tcz2i6VqsqwYGgqwXji+4RgCzms6EajE4IxiUH6HH8nQ==}
     engines: {node: '>=0.10.0'}
 
-  bun-types@1.1.22:
-    resolution: {integrity: sha512-PBgj4pQd+1WZJ8kWCho7D6i1RMS9/6WkiRikIfqYFzFomfyWZET32Wy83xK2zmF9HiKXd2+bjtVahJ6546oraA==}
+  bun-types@1.1.34:
+    resolution: {integrity: sha512-br5QygTEL/TwB4uQOb96Ky22j4Gq2WxWH/8Oqv20fk5HagwKXo/akB+LiYgSfzexCt6kkcUaVm+bKiPl71xPvw==}
 
   bun-types@1.1.36:
     resolution: {integrity: sha512-4hALpWAzRKw7xXDH7MW3MPFn5aIsHcwD5QXUWQfEjATuTp6zONRhav7ThnStqeeRP1QkB/oQa8hRk9OAB0hi8w==}
@@ -10795,6 +10798,10 @@ snapshots:
     dependencies:
       '@types/node': 22.9.3
 
+  '@types/bun@1.1.13':
+    dependencies:
+      bun-types: 1.1.34
+
   '@types/cookie@0.6.0': {}
 
   '@types/dedent@0.7.0': {}
@@ -11588,7 +11595,7 @@ snapshots:
 
   builtin-modules@1.1.1: {}
 
-  bun-types@1.1.22:
+  bun-types@1.1.34:
     dependencies:
       '@types/node': 22.9.3
       '@types/ws': 8.5.12
@@ -11597,6 +11604,7 @@ snapshots:
     dependencies:
       '@types/node': 22.9.3
       '@types/ws': 8.5.12
+    optional: true
 
   byline@5.0.0: {}
 
@@ -13308,6 +13316,32 @@ snapshots:
       write-file-atomic: 5.0.1
     optionalDependencies:
       '@babel/preset-env': 7.26.0(@babel/core@7.25.2)
+    transitivePeerDependencies:
+      - supports-color
+
+  jscodeshift@0.16.1(@babel/preset-env@7.26.0(@babel/core@7.26.0)):
+    dependencies:
+      '@babel/core': 7.25.2
+      '@babel/parser': 7.24.8
+      '@babel/plugin-transform-class-properties': 7.24.7(@babel/core@7.25.2)
+      '@babel/plugin-transform-modules-commonjs': 7.24.8(@babel/core@7.25.2)
+      '@babel/plugin-transform-nullish-coalescing-operator': 7.24.7(@babel/core@7.25.2)
+      '@babel/plugin-transform-optional-chaining': 7.24.8(@babel/core@7.25.2)
+      '@babel/plugin-transform-private-methods': 7.24.7(@babel/core@7.25.2)
+      '@babel/preset-flow': 7.24.7(@babel/core@7.25.2)
+      '@babel/preset-typescript': 7.24.7(@babel/core@7.25.2)
+      '@babel/register': 7.24.6(@babel/core@7.25.2)
+      chalk: 4.1.2
+      flow-parser: 0.239.1
+      graceful-fs: 4.2.11
+      micromatch: 4.0.7
+      neo-async: 2.6.2
+      node-dir: 0.1.17
+      recast: 0.23.9
+      temp: 0.9.4
+      write-file-atomic: 5.0.1
+    optionalDependencies:
+      '@babel/preset-env': 7.26.0(@babel/core@7.26.0)
     transitivePeerDependencies:
       - supports-color
 

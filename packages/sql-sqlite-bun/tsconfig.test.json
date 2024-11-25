@@ -12,6 +12,6 @@
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",
     "rootDir": "test",
     "noEmit": true,
-    "types": ["bun-types"]
+    "types": ["bun"]
   }
 }
