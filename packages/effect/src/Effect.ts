@@ -253,11 +253,6 @@ export declare namespace Effect {
  * `isEffect` to check the type of a value before using it as an argument to a
  * function that expects an `Effect` value.
  *
- * @param u - The value to check for being an `Effect` value.
- *
- * @returns `true` if the specified value is an `Effect` value, `false`
- * otherwise.
- *
  * @since 2.0.0
  * @category refinements
  */
@@ -3246,9 +3241,6 @@ export const unsandbox: <A, E, R>(self: Effect<A, Cause.Cause<E>, R>) => Effect<
  *
  * Note that this allows for interruption to occur in uninterruptible regions.
  *
- * @returns A new `Effect` value that represents the check for interruption
- * and the potential self-interruption of the current fiber.
- *
  * @since 2.0.0
  * @category interruption
  */
@@ -3386,8 +3378,6 @@ export const uninterruptibleMask: <A, E, R>(
  * Transforms a `Predicate` function into an `Effect` returning the input value if the predicate returns `true`
  * or failing with specified error if the predicate fails
  *
- * @param predicate - A `Predicate` function that takes in a value of type `A` and returns a boolean.
- *
  * @example
  * import { Effect } from "effect"
  *
@@ -3423,6 +3413,7 @@ export const liftPredicate: {
  * replace it with a new constant value.
  *
  * @example
+ * // Example: Replacing a Value
  * import { pipe, Effect } from "effect"
  *
  * // Replaces the value 5 with the constant "new value"
@@ -3444,14 +3435,6 @@ export const as: {
  * in an `Option` value. If the original `Effect` value fails, the returned
  * `Effect` value will also fail.
  *
- * @param self - The `Effect` value whose success value will be mapped to a
- * `Some` value in an `Option` value.
- *
- * @returns A new `Effect` value that represents the mapping of the success
- * value of the original `Effect` value to a `Some` value in an `Option`
- * value. The returned `Effect` value may fail if the original `Effect` value
- * fails.
- *
  * @category mapping
  * @since 2.0.0
  */
@@ -3461,14 +3444,6 @@ export const asSome: <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>
  * This function maps the error value of an `Effect` value to a `Some` value
  * in an `Option` value. If the original `Effect` value succeeds, the returned
  * `Effect` value will also succeed.
- *
- * @param self - The `Effect` value whose error value will be mapped to a
- * `Some` value in an `Option` value.
- *
- * @returns A new `Effect` value that represents the mapping of the error
- * value of the original `Effect` value to a `Some` value in an `Option`
- * value. The returned `Effect` value may succeed if the original `Effect`
- * value succeeds.
  *
  * @category mapping
  * @since 2.0.0
@@ -3480,11 +3455,6 @@ export const asSomeError: <A, E, R>(self: Effect<A, E, R>) => Effect<A, Option.O
  * original `Effect` value succeeds, the returned `Effect` value will also
  * succeed. If the original `Effect` value fails, the returned `Effect` value
  * will fail with the same error.
- *
- * @param self - The `Effect` value whose success value will be mapped to `void`.
- *
- * @returns A new `Effect` value that represents the mapping of the success
- * value of the original `Effect` value to `void`.
  *
  * @since 2.0.0
  * @category mapping
@@ -3560,6 +3530,7 @@ export const flipWith: {
  * @see {@link flatMap} or {@link andThen} for a version that can return a new effect.
  *
  * @example
+ * // Example: Adding a Service Charge
  * import { pipe, Effect } from "effect"
  *
  * const addServiceCharge = (amount: number) => amount + 1
@@ -3597,8 +3568,28 @@ export const map: {
  * element. The final effect produces both the accumulated state and the
  * transformed collection.
  *
- * If the collection is a non empty array, the return value will reflect the
- * same type of the input collection.
+ * If the input collection is a non-empty array, the return type will match the
+ * input collection type.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Define an initial state and a transformation function
+ * const initialState = 0
+ *
+ * const transformation = (state: number, element: string) =>
+ *   Effect.succeed<[number, string]>([state + element.length, element.toUpperCase()])
+ *
+ * // Apply mapAccum to transform an array of strings
+ * const program = Effect.mapAccum(["a", "bb", "ccc"], initialState, transformation)
+ *
+ * Effect.runPromise(program).then(([finalState, transformedCollection]) => {
+ *   console.log(finalState)
+ *   console.log(transformedCollection)
+ * })
+ * // Output:
+ * // 6
+ * // [ 'A', 'BB', 'CCC' ]
  *
  * @since 2.0.0
  * @category mapping
@@ -3755,11 +3746,6 @@ export const negate: <E, R>(self: Effect<boolean, E, R>) => Effect<boolean, E, R
  * Additionally, the `release` `Effect` value may depend on the `Exit` value
  * specified when the scope is closed.
  *
- * @param acquire - The `Effect` value that acquires the resource.
- * @param release - The `Effect` value that releases the resource.
- *
- * @returns A new `Effect` value that represents the scoped resource.
- *
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
@@ -3787,11 +3773,6 @@ export const acquireRelease: {
  *
  * Additionally, the `release` `Effect` value may depend on the `Exit` value
  * specified when the scope is closed.
- *
- * @param acquire - The `Effect` value that acquires the resource.
- * @param release - The `Effect` value that releases the resource.
- *
- * @returns A new `Effect` value that represents the scoped resource.
  *
  * @since 2.0.0
  * @category scoping, resources & finalization
@@ -3829,14 +3810,6 @@ export const acquireReleaseInterruptible: {
  * is not desired, errors produced by the `release` `Effect` value can be caught
  * and ignored.
  *
- * @param acquire - The `Effect` value that acquires the resource.
- * @param use - The `Effect` value that is executed between the acquisition
- * and release of the resource.
- * @param release - The `Effect` value that releases the resource.
- *
- * @returns A new `Effect` value that represents the acquisition, use, and
- * release of the resource.
- *
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
@@ -3856,13 +3829,6 @@ export const acquireUseRelease: {
  * This function adds a finalizer to the scope of the calling `Effect` value.
  * The finalizer is guaranteed to be run when the scope is closed, and it may
  * depend on the `Exit` value that the scope is closed with.
- *
- * @param finalizer - The finalizer to add to the scope of the calling
- * `Effect` value. This function must take an `Exit` value as its parameter,
- * and return a new `Effect` value.
- *
- * @returns A new `Effect` value that represents the addition of the finalizer
- * to the scope of the calling `Effect` value.
  *
  * @since 2.0.0
  * @category scoping, resources & finalization
