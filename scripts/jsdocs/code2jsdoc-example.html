@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>code 2 jsdoc @example</title>
+    <style>
+      body {
+        font-family: Arial;
+      }
+      textarea {
+        font-family: Courier, monospace;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin: 0.5rem;
+        padding: 0.5rem;
+        font-size: medium;
+      }
+    </style>
+  </head>
+  <body>
+    <center>
+      <h1>code 2 jsdoc @example</h1>
+      <p>
+        Given an example pasted in the left textarea, will generate a result
+        ready to be pasted into a JSDoc comment.
+      </p>
+      <div id="app">
+        <textarea
+          id="code"
+          cols="80"
+          rows="40"
+          onkeyup="document.getElementById('comment').value = t(this.value)"
+        >
+import { Effect } from "effect"
+
+//      ┌─── Effect<number, never, never>
+//      ▼
+const success = Effect.succeed(42)
+      </textarea
+        >
+        <textarea
+          id="comment"
+          cols="80"
+          rows="40"
+          style="color: green"
+          onkeyup="document.getElementById('code').value = inverseT(this.value)"
+        >
+*
+* @example
+* import { Effect } from "effect"
+*
+* //      ┌─── Effect<number, never, never>
+* //      ▼
+* const success = Effect.succeed(42)
+*
+      </textarea
+        >
+      </div>
+    </center>
+    <script>
+      const code = document.getElementById("code")
+      const comment = document.getElementById("comment")
+
+      function t(src) {
+        // Replace multiline comments with lines prefixed by '// ' and preserve indentation
+        const withoutMultilineComments = src.replace(
+          /\/\*([\s\S]*?)\*\//g,
+          (_, content) => {
+            const commentLines = content
+              .split("\n")
+              .filter((line) => line.trim() !== "")
+            return commentLines
+              .map((line) => {
+                const trimmedLine = line.replace(/^\s*\*/, "").trim()
+                const indent = line.match(/^\s*/)[0]
+                return `// ${indent}${trimmedLine}`
+              })
+              .join("\n")
+          }
+        )
+
+        const lines = withoutMultilineComments
+          .split("\n")
+          .map((line) => "* " + line.replace("../src/", "fp-ts/"))
+        return "*\n* @example\n" + lines.join("\n") + "\n"
+      }
+
+      function inverseT(src) {
+        const lines = src.split("\n")
+
+        // Remove the first two lines if they match the introductory pattern
+        while (
+          lines.length > 0 &&
+          (lines[0].trim() === "*" || lines[0].trim() === "* @example")
+        ) {
+          lines.shift()
+        }
+
+        // Remove the last line if it is only "*"
+        while (lines.length > 0 && lines[lines.length - 1].trim() === "*") {
+          lines.pop()
+        }
+
+        // Remove leading '* ' from remaining lines
+        return lines.map((line) => line.replace(/^\*\s*/, "")).join("\n")
+      }
+    </script>
+  </body>
+</html>
