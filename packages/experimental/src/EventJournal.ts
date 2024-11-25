@@ -527,9 +527,9 @@ export const makeIndexedDb = (options?: {
           }> = []
 
           yield* Effect.async<void, EventJournalError>((resume) => {
-            const tx = db.transaction(["entries", "remotes"], "readwrite")
+            const tx = db.transaction(["entries"], "readonly")
             const entries = tx.objectStore("entries")
-            const remotes = tx.objectStore("remotes")
+            const remotes = db.transaction(["remotes"], "readwrite").objectStore("remotes")
             const iterator = options.entries[Symbol.iterator]()
             const handleNext = (state: IteratorResult<RemoteEntry, void>) => {
               if (state.done) return
@@ -551,23 +551,21 @@ export const makeIndexedDb = (options?: {
                   entry: remoteEntry.entry
                 }
                 entriesWithConflicts.push(item)
-                entries.add(encodedEntry).onsuccess = () => {
-                  const cursorRequest = entries.index("id").openCursor(
-                    IDBKeyRange.lowerBound(encodedEntry.id, true),
-                    "next"
-                  )
-                  cursorRequest.onsuccess = () => {
-                    const cursor = cursorRequest.result!
-                    if (!cursor) return
-                    const decodedEntry = decodeEntryIdb(cursor.value)
-                    if (
-                      decodedEntry.event === remoteEntry.entry.event &&
-                      decodedEntry.primaryKey === remoteEntry.entry.primaryKey
-                    ) {
-                      item.conflicts.push(decodedEntry)
-                    }
-                    cursor.continue()
+                const cursorRequest = entries.index("id").openCursor(
+                  IDBKeyRange.lowerBound(encodedEntry.id, true),
+                  "next"
+                )
+                cursorRequest.onsuccess = () => {
+                  const cursor = cursorRequest.result!
+                  if (!cursor) return
+                  const decodedEntry = decodeEntryIdb(cursor.value)
+                  if (
+                    decodedEntry.event === remoteEntry.entry.event &&
+                    decodedEntry.primaryKey === remoteEntry.entry.primaryKey
+                  ) {
+                    item.conflicts.push(decodedEntry)
                   }
+                  cursor.continue()
                 }
               }
             }
@@ -581,7 +579,7 @@ export const makeIndexedDb = (options?: {
           for (const { conflicts, entry, remoteSequence } of entriesWithConflicts) {
             yield* options.effect({ entry, conflicts })
             yield* Effect.async<void, EventJournalError>((resume) => {
-              const tx = db.transaction(["entries"], "readwrite")
+              const tx = db.transaction(["entries", "remotes"], "readwrite")
               const entries = tx.objectStore("entries")
               const remotes = tx.objectStore("remotes")
               entries.add(encodeEntryIdb(entry))
