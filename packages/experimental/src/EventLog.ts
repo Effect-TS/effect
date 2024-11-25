@@ -21,7 +21,8 @@ import type { Event } from "./Event.js"
 import type { EventGroup } from "./EventGroup.js"
 import type { EntryId, EventJournalError, RemoteId } from "./EventJournal.js"
 import { Entry, EventJournal, makeEntryId } from "./EventJournal.js"
-import { Encryption, type EventLogRemote } from "./EventLogRemote.js"
+import { EventLogEncryption } from "./EventLogEncryption.js"
+import { type EventLogRemote } from "./EventLogRemote.js"
 
 /**
  * @since 1.0.0
@@ -279,7 +280,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
     }) => Effect.Effect<void, never, R>
     readonly before?: Duration.DurationInput | undefined
   }
-): Layer.Layer<never, never, EventJournal | Encryption | R | Event.Context<Events>> =>
+): Layer.Layer<never, never, EventJournal | EventLogEncryption | R | Event.Context<Events>> =>
   Effect.gen(function*() {
     const journal = yield* EventJournal
     const before = options.before ? Duration.decode(options.before) : Duration.zero
@@ -289,7 +290,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
         [tag, Schema.Array((event as unknown as Event.AnyWithProps).payloadMsgPack)] as const
       )
     )
-    const encryption = yield* Encryption
+    const encryption = yield* EventLogEncryption
 
     const deadline = (yield* DateTime.now).pipe(
       DateTime.subtractDuration(before)

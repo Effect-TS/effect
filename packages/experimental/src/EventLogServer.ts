@@ -18,8 +18,9 @@ import type { Scope } from "effect/Scope"
 import * as Uuid from "uuid"
 import type { RemoteId } from "./EventJournal.js"
 import { EntryId, makeRemoteId } from "./EventJournal.js"
+import { EncryptedRemoteEntry } from "./EventLogEncryption.js"
 import type { ProtocolResponse } from "./EventLogRemote.js"
-import { Ack, Changes, decodeRequest, encodeResponse, EncryptedRemoteEntry, Hello, Pong } from "./EventLogRemote.js"
+import { Ack, Changes, decodeRequest, encodeResponse, Hello, Pong } from "./EventLogRemote.js"
 import * as MsgPack from "./MsgPack.js"
 
 /**
