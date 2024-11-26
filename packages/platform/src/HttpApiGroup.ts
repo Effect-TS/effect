@@ -221,7 +221,7 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type Provides<Group extends Any> = HttpApiMiddleware.HttpApiMiddleware.ExtractProvides<Context<Group>>
+  export type Provides<Group extends Any> = HttpApiMiddleware.HttpApiMiddleware.ExtractProvides<Middleware<Group>>
 
   /**
    * @since 1.0.0
@@ -242,7 +242,7 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type MiddlewareContext<Group> = Group extends
+  export type Middleware<Group> = Group extends
     HttpApiGroup<infer _Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ?
     HttpApiMiddleware.HttpApiMiddleware.Only<_R> :
     never
@@ -277,7 +277,7 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type MiddlewareContextWithName<Group extends Any, Name extends string> = MiddlewareContext<
+  export type MiddlewareWithName<Group extends Any, Name extends string> = Middleware<
     WithName<Group, Name>
   >
 }
