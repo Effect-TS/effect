@@ -1274,14 +1274,11 @@ const provideSomeLayer = dual<
     layer: Layer.Layer<A2, E2, R2>
   ) => Effect.Effect<A, E | E2, R2 | Exclude<R, A2>>
 >(2, (self, layer) =>
-  core.acquireUseRelease(
-    fiberRuntime.scopeMake(),
-    (scope) =>
-      core.flatMap(
-        buildWithScope(layer, scope),
-        (context) => core.provideSomeContext(self, context)
-      ),
-    (scope, exit) => core.scopeClose(scope, exit)
+  fiberRuntime.scopedWith((scope) =>
+    core.flatMap(
+      buildWithScope(layer, scope),
+      (context) => core.provideSomeContext(self, context)
+    )
   ))
 
 const provideSomeRuntime = dual<
