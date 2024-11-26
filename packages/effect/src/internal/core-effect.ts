@@ -1028,23 +1028,23 @@ const loopDiscard = <S, X, E, R>(
 /* @internal */
 export const mapAccum: {
   <S, A, B, E, R, I extends Iterable<A> = Iterable<A>>(
-    zero: S,
-    f: (s: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
+    initial: S,
+    f: (state: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
   ): (elements: I) => Effect.Effect<[S, Arr.ReadonlyArray.With<I, B>], E, R>
   <A, S, B, E, R, I extends Iterable<A> = Iterable<A>>(
     elements: I,
-    zero: S,
-    f: (s: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
+    initial: S,
+    f: (state: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
   ): Effect.Effect<[S, Arr.ReadonlyArray.With<I, B>], E, R>
 } = dual(3, <A, S, B, E, R, I extends Iterable<A> = Iterable<A>>(
   elements: I,
-  zero: S,
-  f: (s: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
+  initial: S,
+  f: (state: S, a: A, i: number) => Effect.Effect<readonly [S, B], E, R>
 ): Effect.Effect<[S, Array<B>], E, R> =>
   core.suspend(() => {
     const iterator = elements[Symbol.iterator]()
     const builder: Array<B> = []
-    let result: Effect.Effect<S, E, R> = core.succeed(zero)
+    let result: Effect.Effect<S, E, R> = core.succeed(initial)
     let next: IteratorResult<A, any>
     let i = 0
     while (!(next = iterator.next()).done) {
