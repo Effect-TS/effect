@@ -476,9 +476,7 @@ const make = Effect.gen(function*() {
                     break
                   }
                   if (i === unprocessed.length) {
-                    if (uncompacted.length > 0) {
-                      brackets.push([uncompacted, uncompactedRemote])
-                    }
+                    brackets.push([unprocessed.map((_) => _.entry), unprocessed])
                     break
                   }
                 }
