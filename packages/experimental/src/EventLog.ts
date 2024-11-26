@@ -456,7 +456,7 @@ const make = Effect.gen(function*() {
                     const currentEntries = unprocessed
                     unprocessed = []
                     for (let j = i + 1; j < currentEntries.length; j++) {
-                      const nextRemoteEntry = unprocessed[j]
+                      const nextRemoteEntry = currentEntries[j]
                       if (!compactor.events.has(nextRemoteEntry.entry.event)) {
                         unprocessed.push(nextRemoteEntry)
                         continue
@@ -521,7 +521,8 @@ const make = Effect.gen(function*() {
         Effect.annotateLogs({
           service: "EventLog",
           effect: "runRemote consume"
-        })
+        }),
+        Effect.fork
       )
 
       const write = journal.withRemoteUncommited(remote.id, (entries) => remote.write(identity, entries))
