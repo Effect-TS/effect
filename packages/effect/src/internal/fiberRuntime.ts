@@ -621,6 +621,27 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   }
 
   /**
+   * Transfers all children of this fiber that are currently running to the
+   * specified fiber scope.
+   *
+   * **NOTE**: This method must be invoked by the fiber itself after it has
+   * evaluated the effects but prior to exiting.
+   */
+  transferChildren(scope: fiberScope.FiberScope) {
+    const children = this._children
+    // Clear the children of the current fiber
+    this._children = null
+    if (children !== null && children.size > 0) {
+      for (const child of children) {
+        // If the child is still running, add it to the scope
+        if (child._exitValue === null) {
+          scope.add(this.currentRuntimeFlags, child)
+        }
+      }
+    }
+  }
+
+  /**
    * On the current thread, executes all messages in the fiber's inbox. This
    * method may return before all work is done, in the event the fiber executes
    * an asynchronous operation.

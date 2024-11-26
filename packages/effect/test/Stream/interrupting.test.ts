@@ -188,4 +188,27 @@ describe("Stream", () => {
 
       assert.strictEqual(interrupted, true)
     }))
+
+  it.effect("forked children are not interrupted early by interruptWhen", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<string>()
+      const ref = yield* Ref.make(0)
+      yield* Stream.fromQueue(queue).pipe(
+        Stream.runForEach(() => Ref.update(ref, (n) => n + 1)),
+        Effect.fork,
+        Effect.as(Stream.concat(Stream.succeed(""), Stream.never)),
+        Stream.unwrapScoped,
+        Stream.interruptWhen(Effect.never),
+        Stream.runDrain,
+        Effect.fork
+      )
+      yield* Queue.offer(queue, "message").pipe(
+        Effect.forever,
+        Effect.fork
+      )
+      const result = yield* Ref.get(ref).pipe(
+        Effect.repeat({ until: (n) => n >= 10 })
+      )
+      assert.strictEqual(result, 10)
+    }))
 })
