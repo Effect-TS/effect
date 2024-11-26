@@ -1736,18 +1736,27 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Effect<never, E> = core.fa
 export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Effect<never, E> = core.failCauseSync
 
 /**
- * The `die` function returns an effect that throws a specified error. It
- * is used to terminate a fiber when a defect, a critical and unexpected error,
- * is detected in the code.
+ * Creates an effect that terminates a fiber with a specified error.
  *
- * Note that the error channel type of the effect is `never`, indicating that
- * the effect does not handle failures and will terminate the fiber when an
- * error occurs.
+ * **When to Use**
+ *
+ * Use `die` when encountering unexpected conditions in your code that should
+ * not be handled as regular errors but instead represent unrecoverable defects.
+ *
+ * **Details**
+ *
+ * The `die` function is used to signal a defect, which represents a critical
+ * and unexpected error in the code. When invoked, it produces an effect that
+ * does not handle the error and instead terminates the fiber.
+ *
+ * The error channel of the resulting effect is of type `never`, indicating that
+ * it cannot recover from this failure.
  *
  * @see {@link dieSync} for a variant that throws a specified error, evaluated lazily.
  * @see {@link dieMessage} for a variant that throws a `RuntimeException` with a message.
  *
  * @example
+ * // Title: Terminating on Division by Zero with a Specified Error
  * import { Effect } from "effect"
  *
  * const divide = (a: number, b: number) =>
@@ -1770,19 +1779,29 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Effect<nev
 export const die: (defect: unknown) => Effect<never> = core.die
 
 /**
- * The `dieMessage` function returns an effect that throws a
- * `RuntimeException` with a specified text message. It is used to terminate a
- * fiber when a defect, a critical and unexpected error, is detected in the
- * code.
+ * Creates an effect that terminates a fiber with a `RuntimeException`
+ * containing the specified message.
  *
- * Note that the error channel type of the effect is `never`, indicating that
- * the effect does not handle failures and will terminate the fiber when an
- * error occurs.
+ * **When to Use**
+ *
+ * Use `dieMessage` when you want to terminate a fiber due to an unrecoverable
+ * defect and include a clear explanation in the message.
+ *
+ * **Details**
+ *
+ * The `dieMessage` function is used to signal a defect, representing a critical
+ * and unexpected error in the code. When invoked, it produces an effect that
+ * terminates the fiber with a `RuntimeException` carrying the given message.
+ *
+ * The resulting effect has an error channel of type `never`, indicating it does
+ * not handle or recover from the error.
  *
  * @see {@link die} for a variant that throws a specified error.
- * @see {@link dieSync} for a variant that throws a specified error, evaluated lazily.
+ * @see {@link dieSync} for a variant that throws a specified error, evaluated
+ * lazily.
  *
  * @example
+ * // Title: Terminating on Division by Zero with a Specified Message
  * import { Effect } from "effect"
  *
  * const divide = (a: number, b: number) =>
@@ -2545,6 +2564,7 @@ export const catchAllCause: {
  * dynamically loaded plugins, controlled recovery might be needed.
  *
  * @example
+ * // Title: Handling All Defects
  * import { Effect, Cause, Console } from "effect"
  *
  * // Simulating a runtime error
@@ -2738,6 +2758,8 @@ export const catchSomeCause: {
 /**
  * Recovers from specific defects using a provided partial function.
  *
+ * **Details**
+ *
  * `catchSomeDefect` allows you to handle specific defects, which are
  * unexpected errors that can cause the program to stop. It uses a partial
  * function to catch only certain defects and ignores others. The function does
@@ -2747,14 +2769,20 @@ export const catchSomeCause: {
  * This function provides a way to handle certain types of defects while
  * allowing others to propagate and cause failure in the program.
  *
- * **Important**: `catchSomeDefect` is designed for handling defects and not
- * expected errors or interruptions.
- *
  * **Note**: There is no sensible way to recover from defects. This method
  * should be used only at the boundary between Effect and an external system, to
  * transmit information on a defect for diagnostic or explanatory purposes.
  *
+ * **How the Partial Function Works**
+ *
+ * The function provided to `catchSomeDefect` acts as a filter and a handler for defects:
+ * - It receives the defect as an input.
+ * - If the defect matches a specific condition (e.g., a certain error type), the function returns
+ *   an `Option.some` containing the recovery logic.
+ * - If the defect does not match, the function returns `Option.none`, allowing the defect to propagate.
+ *
  * @example
+ * // Title: Handling Specific Defects
  * import { Effect, Cause, Option, Console } from "effect"
  *
  * // Simulating a runtime error
@@ -5447,6 +5475,62 @@ export {
 }
 
 /**
+ * Transforms an effect to encapsulate both failure and success using the
+ * `Option` data type.
+ *
+ * **Details**
+ *
+ * The `option` function wraps the success or failure of an effect within the
+ * `Option` type, making both cases explicit. If the original effect succeeds,
+ * its value is wrapped in `Option.some`. If it fails, the failure is mapped to
+ * `Option.none`.
+ *
+ * The resulting effect cannot fail directly, as the error type is set to
+ * `never`. However, fatal errors like defects are not encapsulated.
+ *
+ * @see {@link either} for a version that uses `Either` instead.
+ * @see {@link exit} for a version that uses `Exit` instead.
+ *
+ * @example
+ * // Title: Using Effect.option to Handle Errors
+ * import { Effect } from "effect"
+ *
+ * const maybe1 = Effect.option(Effect.succeed(1))
+ *
+ * Effect.runPromiseExit(maybe1).then(console.log)
+ * // Output:
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Success',
+ * //   value: { _id: 'Option', _tag: 'Some', value: 1 }
+ * // }
+ *
+ * const maybe2 = Effect.option(Effect.fail("Uh oh!"))
+ *
+ * Effect.runPromiseExit(maybe2).then(console.log)
+ * // Output:
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Success',
+ * //   value: { _id: 'Option', _tag: 'None' }
+ * // }
+ *
+ * const maybe3 = Effect.option(Effect.die("Boom!"))
+ *
+ * Effect.runPromiseExit(maybe3).then(console.log)
+ * // Output:
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: { _id: 'Cause', _tag: 'Die', defect: 'Boom!' }
+ * // }
+ *
+ * @since 2.0.0
+ * @category Outcome Encapsulation
+ */
+export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, never, R> = effect.option
+
+/**
  * Transforms an `Effect` into one that encapsulates both success and failure
  * using the `Either` data type.
  *
@@ -5460,6 +5544,9 @@ export {
  *
  * The resulting effect cannot fail because failure is now represented inside
  * the `Either` type.
+ *
+ * @see {@link option} for a version that uses `Option` instead.
+ * @see {@link exit} for a version that uses `Exit` instead.
  *
  * @example
  * import { Effect, Either, Random } from "effect"
@@ -5516,6 +5603,9 @@ export const either: <A, E, R>(self: Effect<A, E, R>) => Effect<Either.Either<A,
  * the `Exit.Failure` type. The error type is set to `never`, indicating that
  * the effect is structured to never fail directly.
  *
+ * @see {@link option} for a version that uses `Option` instead.
+ * @see {@link either} for a version that uses `Either` instead.
+ *
  * @example
  * import { Effect, Cause, Console, Exit } from "effect"
  *
@@ -5553,59 +5643,6 @@ export const either: <A, E, R>(self: Effect<A, E, R>) => Effect<Either.Either<A,
  * @category Outcome Encapsulation
  */
 export const exit: <A, E, R>(self: Effect<A, E, R>) => Effect<Exit.Exit<A, E>, never, R> = core.exit
-
-/**
- * Transforms an effect to encapsulate both failure and success using the
- * `Option` data type.
- *
- * **Details**
- *
- * The `option` function wraps the success or failure of an effect within the
- * `Option` type, making both cases explicit. If the original effect succeeds,
- * its value is wrapped in `Option.some`. If it fails, the failure is mapped to
- * `Option.none`.
- *
- * The resulting effect cannot fail directly, as the error type is set to
- * `never`. However, fatal errors like defects are not encapsulated.
- *
- * @example
- * // Title: Using Effect.option to Handle Errors
- * import { Effect } from "effect"
- *
- * const maybe1 = Effect.option(Effect.succeed(1))
- *
- * Effect.runPromiseExit(maybe1).then(console.log)
- * // Output:
- * // {
- * //   _id: 'Exit',
- * //   _tag: 'Success',
- * //   value: { _id: 'Option', _tag: 'Some', value: 1 }
- * // }
- *
- * const maybe2 = Effect.option(Effect.fail("Uh oh!"))
- *
- * Effect.runPromiseExit(maybe2).then(console.log)
- * // Output:
- * // {
- * //   _id: 'Exit',
- * //   _tag: 'Success',
- * //   value: { _id: 'Option', _tag: 'None' }
- * // }
- *
- * const maybe3 = Effect.option(Effect.die("Boom!"))
- *
- * Effect.runPromiseExit(maybe3).then(console.log)
- * // Output:
- * // {
- * //   _id: 'Exit',
- * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Die', defect: 'Boom!' }
- * // }
- *
- * @since 2.0.0
- * @category Outcome Encapsulation
- */
-export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, never, R> = effect.option
 
 /**
  * Converts an `Effect` into an operation that completes a `Deferred` with its result.
@@ -7452,14 +7489,22 @@ export const withUnhandledErrorLogLevel: {
 } = core.withUnhandledErrorLogLevel
 
 /**
- * Converts an effect's failure into a fiber termination, removing the error
- * from the effect's type.
+ * Converts an effect's failure into a fiber termination, removing the error from the effect's type.
  *
- * `orDie` is used when you encounter failures that you do not want to
- * handle or recover from. It removes the error type from the effect and ensures
- * that the effect terminates the fiber if an error occurs.
+ * **When to Use*
+ *
+ * Use `orDie` when failures should be treated as unrecoverable defects and no error handling is required.
+ *
+ * **Details**
+ *
+ * The `orDie` function is used when you encounter errors that you do not want to handle or recover from.
+ * It removes the error type from the effect and ensures that any failure will terminate the fiber.
+ * This is useful for propagating failures as defects, signaling that they should not be handled within the effect.
+ *
+ * @see {@link orDieWith} if you need to customize the error.
  *
  * @example
+ * // Title: Propagating an Error as a Defect
  * import { Effect } from "effect"
  *
  * const divide = (a: number, b: number) =>
@@ -7477,20 +7522,29 @@ export const withUnhandledErrorLogLevel: {
  * //   ...stack trace...
  *
  * @since 2.0.0
- * @category Fallback
+ * @category Converting Failures to Defects
  */
 export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = core.orDie
 
 /**
- * Transforms an effect's failure into a fiber termination with a custom error
- * message.
+ * Converts an effect's failure into a fiber termination with a custom error.
  *
- * `orDieWith` works similarly to {@link orDie}, but it allows you to
- * specify a mapping function to customize the error message before terminating
- * the fiber. This is useful when you want to provide more detailed or
- * user-friendly error messages for failures that you do not intend to handle.
+ * **When to Use**
+ *
+ * Use `orDieWith` when failures should terminate the fiber as defects, and you want to customize
+ * the error for clarity or debugging purposes.
+ *
+ * **Details**
+ *
+ * The `orDieWith` function behaves like {@link orDie}, but it allows you to provide a mapping
+ * function to transform the error before terminating the fiber. This is useful for cases where
+ * you want to include a more detailed or user-friendly error when the failure is propagated
+ * as a defect.
+ *
+ * @see {@link orDie} if you don't need to customize the error.
  *
  * @example
+ * // Title: Customizing Defect
  * import { Effect } from "effect"
  *
  * const divide = (a: number, b: number) =>
@@ -7511,7 +7565,7 @@ export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = co
  * //   ...stack trace...
  *
  * @since 2.0.0
- * @category Fallback
+ * @category Converting Failures to Defects
  */
 export const orDieWith: {
   <E>(f: (error: E) => unknown): <A, R>(self: Effect<A, E, R>) => Effect<A, never, R>
