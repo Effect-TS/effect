@@ -1213,17 +1213,6 @@ export const mergeAllWith = (
                           Effect.flatMap(identity)
                         )
                       )
-                      // const raceEffects: Effect.Effect<void, OutErr | OutErr1, Env | Env1> = queueReader.pipe(
-                      //   core.pipeTo(channel),
-                      //   toPull,
-                      //   Effect.flatMap((pull) =>
-                      //     Effect.race(
-                      //       evaluatePull(pull),
-                      //       Effect.interruptible(Deferred.await(errorSignal))
-                      //     )
-                      //   ),
-                      //   Effect.scoped
-                      // )
                       yield* Deferred.succeed(latch, void 0).pipe(
                         Effect.zipRight(raceEffects),
                         withPermits(1),
