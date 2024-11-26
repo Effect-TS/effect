@@ -304,17 +304,17 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
                 }
               }
               yield* options.effect({ entry: originEntry, conflicts })
-              for (let j = 0; j < remoteEntries.length; j++) {
-                const remoteEntry = remoteEntries[j]
-                journal.push(remoteEntry.entry)
-                if (remoteEntry.remoteSequence > remote.sequence) {
-                  remote.sequence = remoteEntry.remoteSequence
-                }
-              }
-              journal.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
               break
             }
           }
+          for (let j = 0; j < remoteEntries.length; j++) {
+            const remoteEntry = remoteEntries[j]
+            journal.push(remoteEntry.entry)
+            if (remoteEntry.remoteSequence > remote.sequence) {
+              remote.sequence = remoteEntry.remoteSequence
+            }
+          }
+          journal.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
         }
       }),
     withRemoteUncommited: (remoteId, f) =>
@@ -486,25 +486,25 @@ export const makeIndexedDb = (options?: {
               })
 
               yield* options.effect({ entry: originEntry, conflicts })
-
-              yield* Effect.async<void, EventJournalError>((resume) => {
-                const tx = db.transaction(["entries", "remotes"], "readwrite")
-                const entries = tx.objectStore("entries")
-                const remotes = tx.objectStore("remotes")
-                for (const remoteEntry of remoteEntries) {
-                  entries.add(encodeEntryIdb(remoteEntry.entry))
-                  remotes.put({
-                    remoteId: options.remoteId,
-                    entryId: remoteEntry.entry.id,
-                    sequence: remoteEntry.remoteSequence
-                  })
-                }
-                tx.oncomplete = () => resume(Effect.void)
-                tx.onerror = () =>
-                  resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
-                return Effect.sync(() => tx.abort())
-              })
             }
+
+            yield* Effect.async<void, EventJournalError>((resume) => {
+              const tx = db.transaction(["entries", "remotes"], "readwrite")
+              const entries = tx.objectStore("entries")
+              const remotes = tx.objectStore("remotes")
+              for (const remoteEntry of remoteEntries) {
+                entries.add(encodeEntryIdb(remoteEntry.entry))
+                remotes.put({
+                  remoteId: options.remoteId,
+                  entryId: remoteEntry.entry.id,
+                  sequence: remoteEntry.remoteSequence
+                })
+              }
+              tx.oncomplete = () => resume(Effect.void)
+              tx.onerror = () =>
+                resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+              return Effect.sync(() => tx.abort())
+            })
           }
         }),
       withRemoteUncommited: (remoteId, f) =>
