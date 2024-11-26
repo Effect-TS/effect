@@ -3972,8 +3972,7 @@ export const run: {
  * @since 2.0.0
  * @category destructors
  */
-export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk.Chunk<A>, E, Exclude<R, Scope.Scope>> =
-  internal.runCollect
+export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk.Chunk<A>, E, R> = internal.runCollect
 
 /**
  * Runs the stream and emits the number of elements processed
@@ -3981,8 +3980,7 @@ export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk
  * @since 2.0.0
  * @category destructors
  */
-export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number, E, Exclude<R, Scope.Scope>> =
-  internal.runCount
+export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number, E, R> = internal.runCount
 
 /**
  * Runs the stream only for its effects. The emitted elements are discarded.
@@ -3990,8 +3988,7 @@ export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number,
  * @since 2.0.0
  * @category destructors
  */
-export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E, Exclude<R, Scope.Scope>> =
-  internal.runDrain
+export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E, R> = internal.runDrain
 
 /**
  * Executes a pure fold over the stream of values - reduces all elements in
@@ -4001,8 +3998,8 @@ export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E
  * @category destructors
  */
 export const runFold: {
-  <S, A>(s: S, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
-  <A, E, R, S>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, Exclude<R, Scope.Scope>>
+  <S, A>(s: S, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, R>
+  <A, E, R, S>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, R>
 } = internal.runFold
 
 /**
@@ -4062,17 +4059,8 @@ export const runFoldScopedEffect: {
  * @category destructors
  */
 export const runFoldWhile: {
-  <S, A>(
-    s: S,
-    cont: Predicate<S>,
-    f: (s: S, a: A) => S
-  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
-  <A, E, R, S>(
-    self: Stream<A, E, R>,
-    s: S,
-    cont: Predicate<S>,
-    f: (s: S, a: A) => S
-  ): Effect.Effect<S, E, Exclude<R, Scope.Scope>>
+  <S, A>(s: S, cont: Predicate<S>, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, R>
+  <A, E, R, S>(self: Stream<A, E, R>, s: S, cont: Predicate<S>, f: (s: S, a: A) => S): Effect.Effect<S, E, R>
 } = internal.runFoldWhile
 
 /**
@@ -4482,6 +4470,17 @@ export const scheduleWith: {
  */
 export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, Exclude<R, Scope.Scope>> =
   internal.scoped
+
+/**
+ * Use a function that receives a scope and returns an effect to emit an output
+ * element. The output element will be the result of the returned effect, if
+ * successful.
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect.Effect<A, E, R>) => Stream<A, E, R> =
+  internal.scopedWith
 
 /**
  * Emits a sliding window of `n` elements.
@@ -5303,6 +5302,18 @@ export const unwrap: <A, E2, R2, E, R>(effect: Effect.Effect<Stream<A, E2, R2>, 
 export const unwrapScoped: <A, E2, R2, E, R>(
   effect: Effect.Effect<Stream<A, E2, R2>, E, R>
 ) => Stream<A, E | E2, R2 | Exclude<R, Scope.Scope>> = internal.unwrapScoped
+
+/**
+ * Creates a stream produced from a function which receives a `Scope` and
+ * returns an `Effect`. The resulting stream will emit a single element, which
+ * will be the result of the returned effect, if successful.
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const unwrapScopedWith: <A, E2, R2, E, R>(
+  f: (scope: Scope.Scope) => Effect.Effect<Stream<A, E2, R2>, E, R>
+) => Stream<A, E | E2, R | R2> = internal.unwrapScopedWith
 
 /**
  * Updates the specified service within the context of the `Stream`.
