@@ -1361,7 +1361,7 @@ export const unwrapScoped: <A, In, L, E, R>(
  * Constructs a `Sink` from a function which receives a `Scope` and returns
  * an effect that will result in a `Sink` if successful.
  *
- * @since 3.10.17
+ * @since 3.11.0
  * @category constructors
  */
 export const unwrapScopedWith: <A, In, L, E, R>(

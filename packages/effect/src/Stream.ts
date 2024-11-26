@@ -4476,7 +4476,7 @@ export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, E
  * element. The output element will be the result of the returned effect, if
  * successful.
  *
- * @since 3.10.17
+ * @since 3.11.0
  * @category constructors
  */
 export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect.Effect<A, E, R>) => Stream<A, E, R> =
@@ -5308,7 +5308,7 @@ export const unwrapScoped: <A, E2, R2, E, R>(
  * returns an `Effect`. The resulting stream will emit a single element, which
  * will be the result of the returned effect, if successful.
  *
- * @since 3.10.17
+ * @since 3.11.0
  * @category constructors
  */
 export const unwrapScopedWith: <A, E2, R2, E, R>(
