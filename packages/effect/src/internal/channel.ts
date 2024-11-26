@@ -1768,21 +1768,48 @@ export const mergeWith = dual<
       }
 
       return core.fromEffect(
-        Effect.zipWith(
-          Effect.forkIn(Effect.interruptible(pullL), scope),
-          Effect.forkIn(Effect.interruptible(pullR), scope),
-          (left, right): State =>
-            mergeState.BothRunning<
-              Env | Env1,
-              OutErr,
-              OutErr1,
-              OutErr2 | OutErr3,
-              OutElem | OutElem1,
-              OutDone,
-              OutDone1,
-              OutDone2 | OutDone3
-            >(left, right)
-        )
+        Effect.withFiberRuntime<
+          MergeState.MergeState<
+            Env | Env1,
+            OutErr,
+            OutErr1,
+            OutErr2 | OutErr3,
+            OutElem | OutElem1,
+            OutDone,
+            OutDone1,
+            OutDone2 | OutDone3
+          >,
+          never,
+          Env | Env1
+        >((parent) => {
+          const inherit = Effect.withFiberRuntime<void, never, never>((state) => {
+            ;(state as any).transferChildren((parent as any).scope())
+            return Effect.void
+          })
+          const leftFiber = Effect.interruptible(pullL).pipe(
+            Effect.ensuring(inherit),
+            Effect.forkIn(scope)
+          )
+          const rightFiber = Effect.interruptible(pullR).pipe(
+            Effect.ensuring(inherit),
+            Effect.forkIn(scope)
+          )
+          return Effect.zipWith(
+            leftFiber,
+            rightFiber,
+            (left, right): State =>
+              mergeState.BothRunning<
+                Env | Env1,
+                OutErr,
+                OutErr1,
+                OutErr2 | OutErr3,
+                OutElem | OutElem1,
+                OutDone,
+                OutDone1,
+                OutDone2 | OutDone3
+              >(left, right)
+          )
+        })
       ).pipe(
         core.flatMap(go),
         core.embedInput(input)
