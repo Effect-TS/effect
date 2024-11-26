@@ -422,98 +422,97 @@ const make = Effect.gen(function*() {
       const startSequence = yield* journal.nextRemoteSequence(remote.id)
       const changes = yield* remote.changes(identity, startSequence)
 
-      yield* Effect.gen(function*() {
-        const [entriesChunk] = yield* changes.takeAll
-        yield* journal.writeFromRemote({
-          remoteId: remote.id,
-          entries: Chunk.toReadonlyArray(entriesChunk),
-          compact: compactors.size > 0 ?
-            (remoteEntries) =>
-              Effect.gen(function*() {
-                let unprocessed = remoteEntries as Array<RemoteEntry>
-                const brackets: Array<[Array<Entry>, Array<RemoteEntry>]> = []
-                let uncompacted: Array<Entry> = []
-                let uncompactedRemote: Array<RemoteEntry> = []
-                while (true) {
-                  let i = 0
-                  for (; i < unprocessed.length; i++) {
-                    const remoteEntry = unprocessed[i]
-                    if (!compactors.has(remoteEntry.entry.event)) {
-                      uncompacted.push(remoteEntry.entry)
-                      uncompactedRemote.push(remoteEntry)
-                      continue
-                    }
-                    if (uncompacted.length > 0) {
-                      brackets.push([uncompacted, uncompactedRemote])
-                      uncompacted = []
-                      uncompactedRemote = []
-                    }
-                    const compactor = compactors.get(remoteEntry.entry.event)!
-                    const entry = remoteEntry.entry
-                    const entries = [entry]
-                    const remoteEntries = [remoteEntry]
-                    const compacted: Array<Entry> = []
-                    const currentEntries = unprocessed
-                    unprocessed = []
-                    for (let j = i + 1; j < currentEntries.length; j++) {
-                      const nextRemoteEntry = currentEntries[j]
-                      if (!compactor.events.has(nextRemoteEntry.entry.event)) {
-                        unprocessed.push(nextRemoteEntry)
+      yield* changes.takeAll.pipe(
+        Effect.flatMap(([entries]) =>
+          journal.writeFromRemote({
+            remoteId: remote.id,
+            entries: Chunk.toReadonlyArray(entries),
+            compact: compactors.size > 0 ?
+              (remoteEntries) =>
+                Effect.gen(function*() {
+                  let unprocessed = remoteEntries as Array<RemoteEntry>
+                  const brackets: Array<[Array<Entry>, Array<RemoteEntry>]> = []
+                  let uncompacted: Array<Entry> = []
+                  let uncompactedRemote: Array<RemoteEntry> = []
+                  while (true) {
+                    let i = 0
+                    for (; i < unprocessed.length; i++) {
+                      const remoteEntry = unprocessed[i]
+                      if (!compactors.has(remoteEntry.entry.event)) {
+                        uncompacted.push(remoteEntry.entry)
+                        uncompactedRemote.push(remoteEntry)
                         continue
                       }
-                      entries.push(nextRemoteEntry.entry)
-                      remoteEntries.push(nextRemoteEntry)
-                    }
-                    yield* compactor.effect({
-                      entries,
-                      write(entry) {
-                        return Effect.sync(() => {
-                          compacted.push(entry)
-                        })
+                      if (uncompacted.length > 0) {
+                        brackets.push([uncompacted, uncompactedRemote])
+                        uncompacted = []
+                        uncompactedRemote = []
                       }
-                    })
-                    brackets.push([compacted, remoteEntries])
-                    break
+                      const compactor = compactors.get(remoteEntry.entry.event)!
+                      const entry = remoteEntry.entry
+                      const entries = [entry]
+                      const remoteEntries = [remoteEntry]
+                      const compacted: Array<Entry> = []
+                      const currentEntries = unprocessed
+                      unprocessed = []
+                      for (let j = i + 1; j < currentEntries.length; j++) {
+                        const nextRemoteEntry = currentEntries[j]
+                        if (!compactor.events.has(nextRemoteEntry.entry.event)) {
+                          unprocessed.push(nextRemoteEntry)
+                          continue
+                        }
+                        entries.push(nextRemoteEntry.entry)
+                        remoteEntries.push(nextRemoteEntry)
+                      }
+                      yield* compactor.effect({
+                        entries,
+                        write(entry) {
+                          return Effect.sync(() => {
+                            compacted.push(entry)
+                          })
+                        }
+                      })
+                      brackets.push([compacted, remoteEntries])
+                      break
+                    }
+                    if (i === unprocessed.length) {
+                      brackets.push([unprocessed.map((_) => _.entry), unprocessed])
+                      break
+                    }
                   }
-                  if (i === unprocessed.length) {
-                    brackets.push([unprocessed.map((_) => _.entry), unprocessed])
-                    break
+                  return brackets
+                }) :
+              undefined,
+            effect: ({ conflicts, entry }) => {
+              const handler = handlers[entry.event]
+              if (!handler) return Effect.logDebug(`Event handler not found for: "${entry.event}"`)
+              const decodePayload = Schema.decode(
+                handlers[entry.event].event.payloadMsgPack as unknown as Schema.Schema<any>
+              )
+              return Effect.gen(function*() {
+                const decodedConflicts: Array<{ entry: Entry; payload: any }> = new Array(conflicts.length)
+                for (let i = 0; i < conflicts.length; i++) {
+                  decodedConflicts[i] = {
+                    entry: conflicts[i],
+                    payload: yield* decodePayload(conflicts[i].payload)
                   }
                 }
-                return brackets
-              }) :
-            undefined,
-          effect: ({ conflicts, entry }) => {
-            const handler = handlers[entry.event]
-            if (!handler) return Effect.logDebug(`Event handler not found for: "${entry.event}"`)
-            const decodePayload = Schema.decode(
-              handlers[entry.event].event.payloadMsgPack as unknown as Schema.Schema<any>
-            )
-            return Effect.gen(function*() {
-              const decodedConflicts: Array<{ entry: Entry; payload: any }> = new Array(conflicts.length)
-              for (let i = 0; i < conflicts.length; i++) {
-                decodedConflicts[i] = {
-                  entry: conflicts[i],
-                  payload: yield* decodePayload(conflicts[i].payload)
-                }
-              }
-              yield* handler.handler({
-                payload: yield* decodePayload(entry.payload),
-                entry,
-                conflicts: decodedConflicts
-              })
-            }).pipe(
-              Effect.catchAllCause(Effect.log),
-              Effect.annotateLogs({
-                service: "EventLog",
-                effect: "writeFromRemote",
-                entryId: entry.idString
-              })
-            )
-          }
-        })
-      }).pipe(
-        journalSemaphore.withPermits(1),
+                yield* handler.handler({
+                  payload: yield* decodePayload(entry.payload),
+                  entry,
+                  conflicts: decodedConflicts
+                })
+              }).pipe(
+                Effect.catchAllCause(Effect.log),
+                Effect.annotateLogs({
+                  service: "EventLog",
+                  effect: "writeFromRemote",
+                  entryId: entry.idString
+                })
+              )
+            }
+          }).pipe(journalSemaphore.withPermits(1))
+        ),
         Effect.catchAllCause(Effect.log),
         Effect.forever,
         Effect.annotateLogs({
