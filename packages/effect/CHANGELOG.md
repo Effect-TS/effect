@@ -1,5 +1,11 @@
 # effect
 
+## 3.10.17
+
+### Patch Changes
+
+- [#3998](https://github.com/Effect-TS/effect/pull/3998) [`42c4ce6`](https://github.com/Effect-TS/effect/commit/42c4ce6f8d8c7d847e97757650a8ad9419a829d7) Thanks @tim-smart! - ensure fiber observers are cleared after exit to prevent memory leaks
+
 ## 3.10.16
 
 ### Patch Changes
