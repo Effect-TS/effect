@@ -4208,7 +4208,7 @@ export const scopeWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) =>
  * closes the scope as soon as the effect is complete (whether through success,
  * failure, or interruption).
  *
- * @since 3.10.17
+ * @since 3.11.0
  * @category scoping, resources & finalization
  */
 export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) => Effect<A, E, R> =
