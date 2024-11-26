@@ -2833,6 +2833,11 @@ export const scopeWith = <A, E, R>(
   f: (scope: Scope.Scope) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R | Scope.Scope> => core.flatMap(scopeTag, f)
 
+/** @internal */
+export const scopedWith = <A, E, R>(
+  f: (scope: Scope.Scope) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> => core.flatMap(scopeMake(), (scope) => core.onExit(f(scope), (exit) => scope.close(exit)))
+
 /* @internal */
 export const scopedEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, Scope.Scope>> =>
   core.flatMap(scopeMake(), (scope) => scopeUse(effect, scope))
@@ -2876,12 +2881,7 @@ export const using = dual<
     self: Effect.Effect<A, E, R>,
     use: (a: A) => Effect.Effect<A2, E2, R2>
   ) => Effect.Effect<A2, E | E2, Exclude<R, Scope.Scope> | R2>
->(2, (self, use) =>
-  core.acquireUseRelease(
-    scopeMake(),
-    (scope) => core.flatMap(scopeExtend(self, scope), use),
-    (scope, exit) => core.scopeClose(scope, exit)
-  ))
+>(2, (self, use) => scopedWith((scope) => core.flatMap(scopeExtend(self, scope), use)))
 
 /** @internal */
 export const validate = dual<
