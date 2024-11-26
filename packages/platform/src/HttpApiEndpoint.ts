@@ -518,6 +518,12 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
+  export type ErrorContextWithName<Endpoints extends Any, Name extends string> = ErrorContext<WithName<Endpoints, Name>>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type ExcludeProvided<Endpoints extends Any, Name extends string, R> = Exclude<
     R,
     | HttpRouter.HttpRouter.DefaultServices

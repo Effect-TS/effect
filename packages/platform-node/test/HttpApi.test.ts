@@ -24,18 +24,42 @@ describe("HttpApi", () => {
   describe("payload", () => {
     it.effect("is decoded / encoded", () =>
       Effect.gen(function*() {
+        const expected = new User({
+          id: 123,
+          name: "Joe",
+          createdAt: DateTime.unsafeMake(0)
+        })
         const client = yield* HttpApiClient.make(Api)
-        const user = yield* client.users.create({
+        const clientUsersGroup = yield* HttpApiClient.group(Api, "users")
+        const clientUsersEndpointCreate = yield* HttpApiClient.endpoint(
+          Api,
+          "users",
+          "create"
+        )
+
+        const apiClientUser = yield* client.users.create({
           urlParams: { id: 123 },
           payload: { name: "Joe" }
         })
         assert.deepStrictEqual(
-          user,
-          new User({
-            id: 123,
-            name: "Joe",
-            createdAt: DateTime.unsafeMake(0)
-          })
+          apiClientUser,
+          expected
+        )
+        const groupClientUser = yield* clientUsersGroup.create({
+          urlParams: { id: 123 },
+          payload: { name: "Joe" }
+        })
+        assert.deepStrictEqual(
+          groupClientUser,
+          expected
+        )
+        const endpointClientUser = yield* clientUsersEndpointCreate({
+          urlParams: { id: 123 },
+          payload: { name: "Joe" }
+        })
+        assert.deepStrictEqual(
+          endpointClientUser,
+          expected
         )
       }).pipe(Effect.provide(HttpLive)))
 

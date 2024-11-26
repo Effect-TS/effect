@@ -439,7 +439,7 @@ export const group = <
   HttpApiGroup.ApiGroup<Name>,
   Handlers.Error<Return>,
   | Handlers.Context<Return>
-  | HttpApiGroup.HttpApiGroup.ContextWithName<Groups, Name>
+  | HttpApiGroup.HttpApiGroup.MiddlewareWithName<Groups, Name>
 > =>
   Router.use((router) =>
     Effect.gen(function*() {
