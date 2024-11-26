@@ -812,6 +812,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
     for (let i = this._observers.length - 1; i >= 0; i--) {
       this._observers[i](exit)
     }
+    this._observers = []
   }
 
   getLoggers() {
