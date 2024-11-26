@@ -269,6 +269,10 @@ export const empty: HttpApi<never, HttpApiDecodeError> = makeProto({
 export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
   self: HttpApi<Groups, Error, R>,
   options: {
+    readonly predicate?: Predicate.Predicate<{
+      readonly endpoint: HttpApiEndpoint.HttpApiEndpoint.AnyWithProps
+      readonly group: HttpApiGroup.HttpApiGroup.AnyWithProps
+    }>
     readonly onGroup: (options: {
       readonly group: HttpApiGroup.HttpApiGroup.AnyWithProps
       readonly mergedAnnotations: Context.Context<never>
@@ -294,6 +298,13 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
     })
     const endpoints = Object.values(group.endpoints) as Iterable<HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>>
     for (const endpoint of endpoints) {
+      if (
+        options.predicate && !options.predicate({
+          endpoint,
+          group
+        } as any)
+      ) continue
+
       const errors = extractMembers(endpoint.errorSchema.ast, groupErrors, HttpApiSchema.getStatusErrorAST)
       options.onEndpoint({
         group,

@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
+import type * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
 import type { Scope } from "effect/Scope"
@@ -100,7 +101,11 @@ export declare namespace Client {
  */
 const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
   api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
-  options?: {
+  options: {
+    readonly predicate?: Predicate.Predicate<{
+      readonly endpoint: HttpApiEndpoint.AnyWithProps
+      readonly group: HttpApiGroup.AnyWithProps
+    }>
     readonly onGroup?: (options: {
       readonly group: HttpApiGroup.AnyWithProps
       readonly mergedAnnotations: Context.Context<never>
@@ -132,8 +137,9 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
       options?.transformClient === undefined ? identity : options.transformClient
     )
     HttpApi.reflect(api as any, {
+      predicate: options?.predicate,
       onGroup(onGroupOptions) {
-        options?.onGroup?.(onGroupOptions)
+        options.onGroup?.(onGroupOptions)
       },
       onEndpoint(onEndpointOptions) {
         const { endpoint, errors, successes } = onEndpointOptions
@@ -200,7 +206,7 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
               )
             }
             const response = yield* httpClient.execute(httpRequest)
-            const value = yield* (options?.transformResponse === undefined
+            const value = yield* (options.transformResponse === undefined
               ? decodeResponse(response)
               : options.transformResponse(decodeResponse(response)))
             return request?.withResponse === true ? [value, response] : value
@@ -210,7 +216,7 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
             Effect.mapInputContext((input) => Context.merge(context, input))
           )
 
-        options?.onEndpoint({
+        options.onEndpoint({
           ...onEndpointOptions,
           endpointFn
         })
@@ -281,8 +287,8 @@ export const group = <
   const client: Record<string, any> = {}
   return makeClient(api, {
     ...options,
-    onEndpoint({ endpoint, endpointFn, group }) {
-      if (group.identifier !== groupId) return
+    predicate: ({ group }) => group.identifier === groupId,
+    onEndpoint({ endpoint, endpointFn }) {
       client[endpoint.name] = endpointFn
     }
   }).pipe(Effect.map(() => client)) as any
@@ -327,11 +333,8 @@ export const endpoint = <
   let client: any = undefined
   return makeClient(api, {
     ...options,
-    onEndpoint({ endpoint, endpointFn, group }) {
-      if (
-        group.identifier !== groupName
-        || endpoint.name !== endpointName
-      ) return
+    predicate: ({ endpoint, group }) => group.identifier === groupName && endpoint.name === endpointName,
+    onEndpoint({ endpointFn }) {
       client = endpointFn
     }
   }).pipe(Effect.map(() => client)) as any
