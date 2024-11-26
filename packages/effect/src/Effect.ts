@@ -472,9 +472,9 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  *
  * **When to Use**
  *
- * Use `all` when you need to run multiple effects and combine their results
- * into a single output. It supports tuples, iterables, structs, and records,
- * making it flexible for different input types.
+ * Use `Effect.all` when you need to run multiple effects and combine their
+ * results into a single output. It supports tuples, iterables, structs, and
+ * records, making it flexible for different input types.
  *
  * For instance, if the input is a tuple:
  *
@@ -484,50 +484,188 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  * Effect.all([effect1, effect2, ...])
  * ```
  *
- * the effects are executed in order, and the result is a new effect containing
- * the results as a tuple. The results in the tuple match the order of the
- * effects passed to `all`.
+ * the effects are executed sequentially, and the result is a new effect
+ * containing the results as a tuple. The results in the tuple match the order
+ * of the effects passed to `Effect.all`.
  *
- * **Details**
+ * **Short-Circuiting Behavior**
  *
- * By default, `all` runs effects sequentially and produces a tuple or object
- * with the results. If any effect fails, it stops execution (short-circuiting)
- * and propagates the error. To change this behavior, you can use the `mode`
- * option, which allows all effects to run and collect results as `Either` or
- * `Option`.
+ * The `Effect.all` function stops execution on the first error it encounters,
+ * this is called "short-circuiting". If any effect in the collection fails, the
+ * remaining effects will not run, and the error will be propagated. To change
+ * this behavior, you can use the `mode` option, which allows all effects to run
+ * and collect results as `Either` or `Option`.
  *
  * **Concurrency**
  *
  * You can control the execution order (e.g., sequential vs. concurrent) using
  * the `concurrency` option.
  *
+ * **The `mode` option**
+ *
+ * The `{ mode: "either" }` option changes the behavior of `Effect.all` to
+ * ensure all effects run, even if some fail. Instead of stopping on the first
+ * failure, this mode collects both successes and failures, returning an array
+ * of `Either` instances where each result is either a `Right` (success) or a
+ * `Left` (failure).
+ *
+ * Similarly, the `{ mode: "validate" }` option uses `Option` to indicate
+ * success or failure. Each effect returns `None` for success and `Some` with
+ * the error for failure.
+ *
  * @see {@link forEach} for iterating over elements and applying an effect.
  *
  * @example
- * // Example: Combining Configuration and Database Checks
- * import { Effect } from "effect"
+ * // Example: Combining Effects in Tuples
+ * import { Effect, Console } from "effect"
  *
- * // Simulated function to read configuration from a file
- * const webConfig = Effect.promise(() =>
- *   Promise.resolve({ dbConnection: "localhost", port: 8080 })
- * )
+ * const tupleOfEffects = [
+ *   Effect.succeed(42).pipe(Effect.tap(Console.log)),
+ *   Effect.succeed("Hello").pipe(Effect.tap(Console.log))
+ * ] as const
  *
- * // Simulated function to test database connectivity
- * const checkDatabaseConnectivity = Effect.promise(() =>
- *   Promise.resolve("Connected to Database")
- * )
+ * //      ┌─── Effect<[number, string], never, never>
+ * //      ▼
+ * const resultsAsTuple = Effect.all(tupleOfEffects)
  *
- * // Combine both effects to perform startup checks
- * const startupChecks = Effect.all([webConfig, checkDatabaseConnectivity])
- *
- * Effect.runPromise(startupChecks).then(([config, dbStatus]) => {
- *   console.log(
- *     `Configuration: ${JSON.stringify(config)}\nDB Status: ${dbStatus}`
- *   )
- * })
+ * Effect.runPromise(resultsAsTuple).then(console.log)
  * // Output:
- * // Configuration: {"dbConnection":"localhost","port":8080}
- * // DB Status: Connected to Database
+ * // 42
+ * // Hello
+ * // [ 42, 'Hello' ]
+ *
+ * @example
+ * // Example: Combining Effects in Iterables
+ * import { Effect, Console } from "effect"
+ *
+ * const iterableOfEffects: Iterable<Effect.Effect<number>> = [1, 2, 3].map(
+ *   (n) => Effect.succeed(n).pipe(Effect.tap(Console.log))
+ * )
+ *
+ * //      ┌─── Effect<number[], never, never>
+ * //      ▼
+ * const resultsAsArray = Effect.all(iterableOfEffects)
+ *
+ * Effect.runPromise(resultsAsArray).then(console.log)
+ * // Output:
+ * // 1
+ * // 2
+ * // 3
+ * // [ 1, 2, 3 ]
+ *
+ * @example
+ * // Example: Combining Effects in Structs
+ * import { Effect, Console } from "effect"
+ *
+ * const structOfEffects = {
+ *   a: Effect.succeed(42).pipe(Effect.tap(Console.log)),
+ *   b: Effect.succeed("Hello").pipe(Effect.tap(Console.log))
+ * }
+ *
+ * //      ┌─── Effect<{ a: number; b: string; }, never, never>
+ * //      ▼
+ * const resultsAsStruct = Effect.all(structOfEffects)
+ *
+ * Effect.runPromise(resultsAsStruct).then(console.log)
+ * // Output:
+ * // 42
+ * // Hello
+ * // { a: 42, b: 'Hello' }
+ *
+ * @example
+ * // Example: Combining Effects in Records
+ * import { Effect, Console } from "effect"
+ *
+ * const recordOfEffects: Record<string, Effect.Effect<number>> = {
+ *   key1: Effect.succeed(1).pipe(Effect.tap(Console.log)),
+ *   key2: Effect.succeed(2).pipe(Effect.tap(Console.log))
+ * }
+ *
+ * //      ┌─── Effect<{ [x: string]: number; }, never, never>
+ * //      ▼
+ * const resultsAsRecord = Effect.all(recordOfEffects)
+ *
+ * Effect.runPromise(resultsAsRecord).then(console.log)
+ * // Output:
+ * // 1
+ * // 2
+ * // { key1: 1, key2: 2 }
+ *
+ * @example
+ * // Example: Short-Circuiting Behavior
+ * import { Effect, Console } from "effect"
+ *
+ * const program = Effect.all([
+ *   Effect.succeed("Task1").pipe(Effect.tap(Console.log)),
+ *   Effect.fail("Task2: Oh no!").pipe(Effect.tap(Console.log)),
+ *   // Won't execute due to earlier failure
+ *   Effect.succeed("Task3").pipe(Effect.tap(Console.log))
+ * ])
+ *
+ * Effect.runPromiseExit(program).then(console.log)
+ * // Output:
+ * // Task1
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'Task2: Oh no!' }
+ * // }
+ *
+ * @example
+ * // Example: Collecting Results with `mode: "either"`
+ * import { Effect, Console } from "effect"
+ *
+ * const effects = [
+ *   Effect.succeed("Task1").pipe(Effect.tap(Console.log)),
+ *   Effect.fail("Task2: Oh no!").pipe(Effect.tap(Console.log)),
+ *   Effect.succeed("Task3").pipe(Effect.tap(Console.log))
+ * ]
+ *
+ * const program = Effect.all(effects, { mode: "either" })
+ *
+ * Effect.runPromiseExit(program).then(console.log)
+ * // Output:
+ * // Task1
+ * // Task3
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Success',
+ * //   value: [
+ * //     { _id: 'Either', _tag: 'Right', right: 'Task1' },
+ * //     { _id: 'Either', _tag: 'Left', left: 'Task2: Oh no!' },
+ * //     { _id: 'Either', _tag: 'Right', right: 'Task3' }
+ * //   ]
+ * // }
+ *
+ * @example
+ * //Example: Collecting Results with `mode: "validate"`
+ * import { Effect, Console } from "effect"
+ *
+ * const effects = [
+ *   Effect.succeed("Task1").pipe(Effect.tap(Console.log)),
+ *   Effect.fail("Task2: Oh no!").pipe(Effect.tap(Console.log)),
+ *   Effect.succeed("Task3").pipe(Effect.tap(Console.log))
+ * ]
+ *
+ * const program = Effect.all(effects, { mode: "validate" })
+ *
+ * Effect.runPromiseExit(program).then((result) => console.log("%o", result))
+ * // Output:
+ * // Task1
+ * // Task3
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: {
+ * //     _id: 'Cause',
+ * //     _tag: 'Fail',
+ * //     failure: [
+ * //       { _id: 'Option', _tag: 'None' },
+ * //       { _id: 'Option', _tag: 'Some', value: 'Task2: Oh no!' },
+ * //       { _id: 'Option', _tag: 'None' }
+ * //     ]
+ * //   }
+ * // }
  *
  * @since 2.0.0
  * @category collecting & elements
@@ -846,21 +984,30 @@ export const findFirst: {
 } = effect.findFirst
 
 /**
- * Iterates over an `Iterable` and performs an effectful operation for each
- * element.
+ * Executes an effectful operation for each element in an `Iterable`.
  *
- * `forEach` applies the given operation to each element in the iterable
- * and returns a new effect that produces an array of the results. By default,
- * the operations are executed sequentially, but you can control concurrency if
- * needed. If any effect fails, `forEach` will stop execution
- * (short-circuiting) and propagate the error.
+ * **Details**
  *
- * If the `discard` option is set to `true`, the intermediate results are
- * discarded, and the final result will be `void`.
+ * The `forEach` function applies a provided operation to each element in the
+ * iterable, producing a new effect that returns an array of results.
+ *
+ * If any effect fails, the iteration stops immediately (short-circuiting), and
+ * the error is propagated.
+ *
+ * **Concurrency**
+ *
+ * The `concurrency` option controls how many operations are performed
+ * concurrently. By default, the operations are performed sequentially.
+ *
+ * **Discarding Results**
+ *
+ * If the `discard` option is set to `true`, the intermediate results are not
+ * collected, and the final result of the operation is `void`.
  *
  * @see {@link all} for combining multiple effects into one.
  *
  * @example
+ * // Example: Applying Effects to Iterable Elements
  * import { Effect, Console } from "effect"
  *
  * const result = Effect.forEach([1, 2, 3, 4, 5], (n, index) =>
@@ -875,6 +1022,27 @@ export const findFirst: {
  * // Currently at index 3
  * // Currently at index 4
  * // [ 2, 4, 6, 8, 10 ]
+ *
+ * @example
+ * // Example: Using discard to Ignore Results
+ * import { Effect, Console } from "effect"
+ *
+ * // Apply effects but discard the results
+ * const result = Effect.forEach(
+ *   [1, 2, 3, 4, 5],
+ *   (n, index) =>
+ *     Console.log(`Currently at index ${index}`).pipe(Effect.as(n * 2)),
+ *   { discard: true }
+ * )
+ *
+ * Effect.runPromise(result).then(console.log)
+ * // Output:
+ * // Currently at index 0
+ * // Currently at index 1
+ * // Currently at index 2
+ * // Currently at index 3
+ * // Currently at index 4
+ * // undefined
  *
  * @since 2.0.0
  * @category collecting & elements
@@ -5414,15 +5582,14 @@ const if_: {
 
 export {
   /**
-   * Executes one of two effects based on a condition evaluated by an effectful
-   * predicate.
+   * Executes one of two effects based on a condition evaluated by an effectful predicate.
    *
-   * `if` allows you to conditionally run one of two effects. If the
-   * predicate (the condition) evaluates to `true`, the `onTrue` effect is
-   * executed. If the predicate evaluates to `false`, the `onFalse` effect is
-   * run instead.
+   * Use `if` to run one of two effects depending on whether the predicate effect
+   * evaluates to `true` or `false`. If the predicate is `true`, the `onTrue` effect
+   * is executed. If it is `false`, the `onFalse` effect is executed instead.
    *
    * @example
+   * // Example: Simulating a Coin Flip
    * import { Effect, Random, Console } from "effect"
    *
    * const flipTheCoin = Effect.if(Random.nextBoolean, {
@@ -5603,16 +5770,20 @@ export const unlessEffect: {
 /**
  * Conditionally executes an effect based on a boolean condition.
  *
- * `when` allows you to conditionally execute an effect, similar to using
- * an `if (condition)` expression, but with the added benefit of handling
- * effects. If the condition is `true`, the effect is executed; otherwise, it
- * does nothing.
+ * `when` allows you to conditionally execute an effect, similar to using an `if
+ * (condition)` expression, but with the added benefit of handling effects. If
+ * the condition is `true`, the effect is executed; otherwise, it does nothing.
+ *
+ * The result of the effect is wrapped in an `Option<A>` to indicate whether the
+ * effect was executed. If the condition is `true`, the result of the effect is
+ * wrapped in a `Some`. If the condition is `false`, the result is `None`,
+ * representing that the effect was skipped.
  *
  * @see {@link whenEffect} for a version that allows the condition to be an effect.
- *
  * @see {@link unless} for a version that executes the effect when the condition is `false`.
  *
  * @example
+ * // Example: Conditional Effect Execution
  * import { Effect, Option } from "effect"
  *
  * const validateWeightOption = (
@@ -5647,17 +5818,24 @@ export const when: {
 } = effect.when
 
 /**
- * Conditionally executes an effect based on the result of another effect.
+ * Executes an effect conditionally, based on the result of another effect.
  *
- * `whenEffect` is used when the condition itself involves an effect. It
- * allows you to conditionally execute an effect based on the result of another
- * effect, which returns a boolean value.
+ * Use `whenEffect` when the condition to determine whether to execute the effect
+ * depends on the outcome of another effect that produces a boolean value.
+ *
+ * If the condition effect evaluates to `true`, the specified effect is executed.
+ * If it evaluates to `false`, no effect is executed.
+ *
+ * The result of the effect is wrapped in an `Option<A>` to indicate whether the
+ * effect was executed. If the condition is `true`, the result of the effect is
+ * wrapped in a `Some`. If the condition is `false`, the result is `None`,
+ * representing that the effect was skipped.
  *
  * @see {@link when} for a version that allows the condition to be a boolean.
- *
  * @see {@link unlessEffect} for a version that executes the effect when the condition is `false`.
  *
  * @example
+ * // Example: Using an Effect as a Condition
  * import { Effect, Random } from "effect"
  *
  * const randomIntOption = Random.nextInt.pipe(
@@ -6340,6 +6518,7 @@ export const forever: <A, E, R>(self: Effect<A, E, R>) => Effect<never, E, R> = 
  * ```
  *
  * @example
+ * // Example: Effectful Iteration
  * import { Effect } from "effect"
  *
  * const result = Effect.iterate(
@@ -6382,9 +6561,6 @@ export const iterate: {
  * in an array and returns them as the final result. The loop executes effectful
  * operations at each iteration.
  *
- * If the `discard` option is set to `true`, the intermediate results are
- * discarded, and the final result will be `void`.
- *
  * This function is similar to a `while` loop in JavaScript, with the addition
  * of effectful computations:
  *
@@ -6400,7 +6576,13 @@ export const iterate: {
  * return result
  * ```
  *
+ * **Discarding Intermediate Results**
+ *
+ * If the `discard` option is set to `true`, the intermediate results are
+ * discarded, and the final result will be `void`.
+ *
  * @example
+ * // Example: Looping with Collected Results
  * import { Effect } from "effect"
  *
  * // A loop that runs 5 times, collecting each iteration's result
@@ -6419,6 +6601,34 @@ export const iterate: {
  *
  * Effect.runPromise(result).then(console.log)
  * // Output: [1, 2, 3, 4, 5]
+ *
+ * @example
+ * // Example: Loop with Discarded Results
+ * import { Effect, Console } from "effect"
+ *
+ * const result = Effect.loop(
+ *   // Initial state
+ *   1,
+ *   {
+ *     // Condition to continue looping
+ *     while: (state) => state <= 5,
+ *     // State update function
+ *     step: (state) => state + 1,
+ *     // Effect to be performed on each iteration
+ *     body: (state) => Console.log(`Currently at state ${state}`),
+ *     // Discard intermediate results
+ *     discard: true
+ *   }
+ * )
+ *
+ * Effect.runPromise(result).then(console.log)
+ * // Output:
+ * // Currently at state 1
+ * // Currently at state 2
+ * // Currently at state 3
+ * // Currently at state 4
+ * // Currently at state 5
+ * // undefined
  *
  * @since 2.0.0
  * @category repetition / recursion
@@ -8089,20 +8299,21 @@ export const validateWith: {
 } = fiberRuntime.validateWith
 
 /**
- * The `zip` function allows you to combine two effects into a single
- * effect. This combined effect yields a tuple containing the results of both
- * input effects once they succeed.
+ * Combines two effects into a single effect, producing a tuple with the results of both effects.
  *
- * Note that `zip` processes effects sequentially: it first completes the
- * effect on the left and then the effect on the right.
+ * The `zip` function executes the first effect (left) and then the second effect (right).
+ * Once both effects succeed, their results are combined into a tuple.
  *
- * If you want to run the effects concurrently, you can use the `{ concurrent: true }`
- * option.
+ * **Concurrency**
+ *
+ * By default, `zip` processes the effects sequentially. To execute the effects concurrently,
+ * use the `{ concurrent: true }` option.
  *
  * @see {@link zipWith} for a version that combines the results with a custom function.
  * @see {@link validate} for a version that accumulates errors.
  *
  * @example
+ * // Example: Combining Two Effects Sequentially
  * import { Effect } from "effect"
  *
  * const task1 = Effect.succeed(1).pipe(
@@ -8115,6 +8326,9 @@ export const validateWith: {
  * )
  *
  * // Combine the two effects together
+ * //
+ * //      ┌─── Effect<[number, string], never, never>
+ * //      ▼
  * const program = Effect.zip(task1, task2)
  *
  * Effect.runPromise(program).then(console.log)
@@ -8124,6 +8338,7 @@ export const validateWith: {
  * // [ 1, 'hello' ]
  *
  * @example
+ * // Example: Combining Two Effects Concurrently
  * import { Effect } from "effect"
  *
  * const task1 = Effect.succeed(1).pipe(
@@ -8172,11 +8387,21 @@ export const zip: {
 } = fiberRuntime.zipOptions
 
 /**
- * Sequentially run this effect with the specified effect, discarding the
- * result of the second effect (`that`) in the chain.
+ * Runs two effects sequentially, returning the result of the first effect and
+ * discarding the result of the second.
  *
- * If you want to run the effects concurrently, you can use the `{ concurrent:
- * true }` option.
+ * **When to Use**
+ *
+ * Use `zipLeft` when you need to execute two effects in order but are only
+ * interested in the result of the first one. The second effect will still
+ * execute, but its result is ignored.
+ *
+ * **Concurrency**
+ *
+ * By default, the effects are run sequentially. To run them concurrently, use
+ * the `{ concurrent: true }` option.
+ *
+ * @see {@link zipRight} for a version that returns the result of the second effect.
  *
  * @example
  * import { Effect } from "effect"
@@ -8226,11 +8451,21 @@ export const zipLeft: {
 } = fiberRuntime.zipLeftOptions
 
 /**
- * Sequentially run this effect with the specified effect, _returning_ the
- * result of the second effect (`that`) in the chain.
+ * Runs two effects sequentially, returning the result of the second effect
+ * while discarding the result of the first.
  *
- * If you want to run the effects concurrently, you can use the `{ concurrent:
- * true }` option.
+ * **When to Use**
+ *
+ * Use `zipRight` when you need to execute two effects in sequence and only care
+ * about the result of the second effect. The first effect will still execute
+ * but its result will be ignored.
+ *
+ * **Concurrency**
+ *
+ * By default, the effects are run sequentially. To execute them concurrently,
+ * use the `{ concurrent: true }` option.
+ *
+ * @see {@link zipLeft} for a version that returns the result of the first effect.
  *
  * @example
  * import { Effect } from "effect"
@@ -8276,15 +8511,22 @@ export const zipRight: {
 } = fiberRuntime.zipRightOptions
 
 /**
- * The `zipWith` function operates similarly to {@link zip} by combining
- * two effects sequentially. However, instead of returning a tuple, it allows
- * you to apply a function to the results of the combined effects, transforming
- * them into a single value
+ * Combines two effects sequentially and applies a function to their results to
+ * produce a single value.
  *
- * If you want to run the effects concurrently, you can use the `{ concurrent:
- * true }` option.
+ * **When to Use**
+ *
+ * The `zipWith` function is similar to {@link zip}, but instead of returning a
+ * tuple of results, it applies a provided function to the results of the two
+ * effects, combining them into a single value.
+ *
+ * **Concurrency**
+ *
+ * By default, the effects are run sequentially. To execute them concurrently,
+ * use the `{ concurrent: true }` option.
  *
  * @example
+ * // Example: Combining Effects with a Custom Function
  * import { Effect } from "effect"
  *
  * const task1 = Effect.succeed(1).pipe(
