@@ -547,10 +547,12 @@ export const fromStream: {
         onFailure: (cause: Cause<E>) => mailbox.failCause(cause),
         onDone: () => mailbox.end
       })
-      return stream.toChannel(self).pipe(
-        coreChannel.pipeTo(writer),
-        channelExecutor.runScoped,
-        circular.forkScoped
+      return channel.unwrapScopedWith((scope) =>
+        stream.toChannel(self).pipe(
+          coreChannel.pipeTo(writer),
+          channelExecutor.runIn(scope),
+          circular.forkIn(scope)
+        )
       )
     }
   ))

@@ -1930,7 +1930,7 @@ export const repeated: <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
  */
 export const run: <OutErr, InErr, OutDone, InDone, Env>(
   self: Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
-) => Effect.Effect<OutDone, OutErr, Exclude<Env, Scope.Scope>> = channel.run
+) => Effect.Effect<OutDone, OutErr, Env> = channel.run
 
 /**
  * Run the channel until it finishes with a done value or fails with an error
@@ -1943,7 +1943,7 @@ export const run: <OutErr, InErr, OutDone, InDone, Env>(
  */
 export const runCollect: <OutElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, Env>
-) => Effect.Effect<[Chunk.Chunk<OutElem>, OutDone], OutErr, Exclude<Env, Scope.Scope>> = channel.runCollect
+) => Effect.Effect<[Chunk.Chunk<OutElem>, OutDone], OutErr, Env> = channel.runCollect
 
 /**
  * Runs a channel until the end is received.
@@ -1953,7 +1953,21 @@ export const runCollect: <OutElem, OutErr, InErr, OutDone, InDone, Env>(
  */
 export const runDrain: <OutElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, Env>
-) => Effect.Effect<OutDone, OutErr, Exclude<Env, Scope.Scope>> = channel.runDrain
+) => Effect.Effect<OutDone, OutErr, Env> = channel.runDrain
+
+/**
+ * Run the channel until it finishes with a done value or fails with an error.
+ * The channel must not read any input or write any output.
+ *
+ * Closing the channel, which includes execution of all the finalizers
+ * attached to the channel will be added to the current scope as a finalizer.
+ *
+ * @since 3.11.0
+ * @category destructors
+ */
+export const runScoped: <OutErr, InErr, OutDone, InDone, Env>(
+  self: Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
+) => Effect.Effect<OutDone, OutErr, Env | Scope.Scope> = channel.runScoped
 
 /**
  * Use a scoped effect to emit an output element.
@@ -1964,6 +1978,18 @@ export const runDrain: <OutElem, OutErr, InErr, OutDone, InDone, Env>(
 export const scoped: <A, E, R>(
   effect: Effect.Effect<A, E, R>
 ) => Channel<A, unknown, E, unknown, unknown, unknown, Exclude<R, Scope.Scope>> = channel.scoped
+
+/**
+ * Use a function that receives a scope and returns an effect to emit an output
+ * element. The output element will be the result of the returned effect, if
+ * successful.
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const scopedWith: <A, E, R>(
+  f: (scope: Scope.Scope) => Effect.Effect<A, E, R>
+) => Channel<A, unknown, E, unknown, unknown, unknown, R> = channel.scopedWith
 
 /**
  * Splits strings on newlines. Handles both Windows newlines (`\r\n`) and UNIX
@@ -2035,6 +2061,27 @@ export const toPull: <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
   channel.toPull
 
 /**
+ * Returns an `Effect` that can be used to repeatedly pull elements from the
+ * constructed `Channel` within the provided `Scope`. The pull effect fails
+ * with the channel's failure in case the channel fails, or returns either the
+ * channel's done value or an emitted element.
+ *
+ * @since 3.11.0
+ * @category destructors
+ */
+export const toPullIn: {
+  (
+    scope: Scope.Scope
+  ): <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
+    self: Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
+  ) => Effect.Effect<Effect.Effect<Either.Either<OutElem, OutDone>, OutErr, Env>, never, Env>
+  <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
+    self: Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
+    scope: Scope.Scope
+  ): Effect.Effect<Effect.Effect<Either.Either<OutElem, OutDone>, OutErr, Env>, never, Env>
+} = channel.toPullIn
+
+/**
  * Converts a `Channel` to a `Queue`.
  *
  * @since 2.0.0
@@ -2073,7 +2120,8 @@ export {
 }
 
 /**
- * Makes a channel from an effect that returns a channel in case of success.
+ * Constructs a `Channel` from an effect that will result in a `Channel` if
+ * successful.
  *
  * @since 2.0.0
  * @category constructors
@@ -2083,7 +2131,8 @@ export const unwrap: <OutElem, InElem, OutErr, InErr, OutDone, InDone, R2, E, R>
 ) => Channel<OutElem, InElem, E | OutErr, InErr, OutDone, InDone, R | R2> = channel.unwrap
 
 /**
- * Makes a channel from a managed that returns a channel in case of success.
+ * Constructs a `Channel` from a scoped effect that will result in a
+ * `Channel` if successful.
  *
  * @since 2.0.0
  * @category constructors
@@ -2091,6 +2140,17 @@ export const unwrap: <OutElem, InElem, OutErr, InErr, OutDone, InDone, R2, E, R>
 export const unwrapScoped: <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env, E, R>(
   self: Effect.Effect<Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>, E, R>
 ) => Channel<OutElem, InElem, E | OutErr, InErr, OutDone, InDone, Env | Exclude<R, Scope.Scope>> = channel.unwrapScoped
+
+/**
+ * Constructs a `Channel` from a function which receives a `Scope` and returns
+ * an effect that will result in a `Channel` if successful.
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const unwrapScopedWith: <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env, E, R>(
+  f: (scope: Scope.Scope) => Effect.Effect<Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>, E, R>
+) => Channel<OutElem, InElem, E | OutErr, InErr, OutDone, InDone, R | Env> = channel.unwrapScopedWith
 
 /**
  * Updates a service in the context of this channel.
