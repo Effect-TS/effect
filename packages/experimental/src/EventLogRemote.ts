@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Socket from "@effect/platform/Socket"
-import * as Arr from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -13,7 +12,7 @@ import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import type { Entry } from "./EventJournal.js"
-import { EntryId, RemoteEntry, RemoteId } from "./EventJournal.js"
+import { RemoteEntry, RemoteId } from "./EventJournal.js"
 import type { Identity } from "./EventLog.js"
 import { EventLog } from "./EventLog.js"
 import { EncryptedEntry, EncryptedRemoteEntry, EventLogEncryption, layerSubtle } from "./EventLogEncryption.js"
@@ -30,7 +29,6 @@ export interface EventLogRemote {
     startSequence: number
   ) => Effect.Effect<Mailbox.ReadonlyMailbox<RemoteEntry>, never, Scope>
   readonly write: (identity: typeof Identity.Service, entries: ReadonlyArray<Entry>) => Effect.Effect<void>
-  readonly remove: (identity: typeof Identity.Service, ids: Iterable<EntryId>) => Effect.Effect<void>
 }
 
 /**
@@ -58,18 +56,6 @@ export class WriteEntries
  * @since 1.0.0
  * @category protocol
  */
-export class RemoveEntries
-  extends Schema.TaggedClass<RemoveEntries>("@effect/experimental/EventLogRemote/RemoveEntries")("RemoveEntries", {
-    publicKey: Schema.String,
-    id: Schema.Number,
-    entryIds: Schema.Array(EntryId)
-  })
-{}
-
-/**
- * @since 1.0.0
- * @category protocol
- */
 export class Ack extends Schema.TaggedClass<Ack>("@effect/experimental/EventLogRemote/Ack")("Ack", {
   id: Schema.Number
 }) {}
@@ -83,16 +69,6 @@ export class RequestChanges
     publicKey: Schema.String,
     subscriptionId: Schema.Number,
     startSequence: Schema.Number
-  })
-{}
-
-/**
- * @since 1.0.0
- * @category protocol
- */
-export class Additions
-  extends Schema.TaggedClass<Additions>("@effect/experimental/EventLogRemote/Additions")("Additions", {
-    entries: Schema.Array(EncryptedRemoteEntry)
   })
 {}
 
@@ -137,7 +113,6 @@ export class Pong extends Schema.TaggedClass<Pong>("@effect/experimental/EventLo
  */
 export const ProtocolRequest = Schema.Union(
   WriteEntries,
-  RemoveEntries,
   RequestChanges,
   StopChanges,
   Ping
@@ -268,20 +243,6 @@ export const fromSocket: Effect.Effect<
                       entryId: entries[i].id,
                       encryptedEntry
                     }))
-                  })
-                )
-                yield* Deferred.await(deferred)
-              }),
-            remove: (identity, ids) =>
-              Effect.gen(function*() {
-                const deferred = yield* Deferred.make<void>()
-                const id = pendingCounter++
-                pending.set(id, deferred)
-                yield* write(
-                  new RemoveEntries({
-                    publicKey: identity.publicKey,
-                    id,
-                    entryIds: Arr.fromIterable(ids)
                   })
                 )
                 yield* Deferred.await(deferred)

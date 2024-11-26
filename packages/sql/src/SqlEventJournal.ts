@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
+import * as Uuid from "uuid"
 import * as SqlClient from "./SqlClient.js"
 import type { SqlError } from "./SqlError.js"
 import * as SqlSchema from "./SqlSchema.js"
@@ -138,39 +139,26 @@ export const make = (options?: {
     const insertEntry = SqlSchema.void({
       Request: EntrySql,
       execute: (entry) =>
-        sql`INSERT INTO ${sql(entryTable)} ${sql.insert(entry)}
-            ON CONFLICT DO UPDATE SET timestamp = EXCLUDED.timestamp, payload = EXCLUDED.payload`.withoutTransform
+        sql`INSERT INTO ${sql(entryTable)} ${sql.insert(entry)} ON CONFLICT DO NOTHING`.withoutTransform
     })
     const insertEntries = SqlSchema.void({
       Request: Schema.Array(EntrySql),
       execute: (entry) =>
         sql`INSERT INTO ${sql(entryTable)} ${sql.insert(entry)} ON CONFLICT DO NOTHING`.withoutTransform
     })
-    const insertRemote = SqlSchema.void({
-      Request: RemoteSql,
+    const insertRemotes = SqlSchema.void({
+      Request: Schema.Array(RemoteSql),
       execute: (entry) =>
         sql`INSERT INTO ${sql(remotesTable)} ${sql.insert(entry)} ON CONFLICT DO NOTHING`.withoutTransform
     })
 
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
-    const pubsubRemoval = yield* PubSub.unbounded<EventJournal.EntryId>()
 
     return EventJournal.EventJournal.of({
       entries: sql`SELECT * FROM ${sql(entryTable)} ORDER BY timestamp ASC`.withoutTransform.pipe(
         Effect.flatMap(decodeEntrySqlArray),
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "entries" }))
       ),
-      forEvents: ({ before, events }) =>
-        sql`
-          SELECT *
-          FROM ${sql(entryTable)}
-          WHERE ${sql.in("event", events)} AND
-                timestamp < ${before.epochMillis}
-          ORDER BY timestamp ASC
-        `.pipe(
-          Effect.flatMap(decodeEntrySqlArray),
-          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "forEvents" }))
-        ),
       write({ effect, event, payload, primaryKey }) {
         return Effect.gen(function*() {
           const entry = new EventJournal.Entry({
@@ -193,16 +181,6 @@ export const make = (options?: {
           )
         )
       },
-      writeEntries: (entries) =>
-        insertEntries(entries).pipe(
-          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "writeEntries" }))
-        ),
-      remove: (ids) =>
-        sql`DELETE FROM ${sql(entryTable)} WHERE ${sql.in("id", ids)}`.withoutTransform.pipe(
-          Effect.zipRight(pubsubRemoval.offerAll(ids)),
-          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "remove" })),
-          Effect.asVoid
-        ),
       writeFromRemote: (options) =>
         Effect.gen(function*() {
           const entries: Array<EventJournal.Entry> = []
@@ -215,14 +193,28 @@ export const make = (options?: {
               sequence: remoteEntry.remoteSequence
             })
           }
-          for (let i = 0; i < entries.length; i++) {
-            const entry = entries[i]
-            yield* Effect.gen(function*() {
+          const existingIds = new Set<string>()
+          yield* sql<{ id: Uint8Array }>`SELECT id FROM ${sql(entryTable)} WHERE ${
+            sql.in("id", entries.map((e) => e.id))
+          }`.pipe(Effect.tap((rows) => {
+            for (const row of rows) {
+              existingIds.add(Uuid.stringify(row.id))
+            }
+          }))
+          yield* insertEntries(entries)
+          yield* insertRemotes(remotes)
+
+          const uncommited = options.entries.filter((e) => !existingIds.has(e.entry.idString))
+          const brackets = options.compact
+            ? yield* options.compact(uncommited)
+            : [[uncommited.map((_) => _.entry), uncommited] as const]
+          for (const [compacted] of brackets) {
+            for (let i = 0; i < compacted.length; i++) {
+              const entry = compacted[i]
               const conflicts = yield* sql`
                 SELECT *
                 FROM ${sql(entryTable)}
-                WHERE id != ${entry.id} AND
-                      event = ${entry.event} AND
+                WHERE event = ${entry.event} AND
                       primary_key = ${entry.primaryKey} AND
                       timestamp >= ${entry.createdAtMillis}
                 ORDER BY timestamp ASC
@@ -230,11 +222,10 @@ export const make = (options?: {
                 Effect.flatMap(decodeEntrySqlArray)
               )
               yield* options.effect({ entry, conflicts })
-              yield* insertEntry(entry)
-              yield* insertRemote(remotes[i])
-            }).pipe(sql.withTransaction)
+            }
           }
         }).pipe(
+          sql.withTransaction,
           Effect.mapError((cause) =>
             new EventJournal.EventJournalError({
               cause,
@@ -273,7 +264,6 @@ export const make = (options?: {
           )
         ),
       changes: PubSub.subscribe(pubsub),
-      removals: PubSub.subscribe(pubsubRemoval),
       destroy: Effect.gen(function*() {
         yield* sql`DROP TABLE ${sql(entryTable)}`.withoutTransform
         yield* sql`DROP TABLE ${sql(remotesTable)}`.withoutTransform

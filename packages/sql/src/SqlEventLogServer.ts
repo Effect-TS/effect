@@ -143,9 +143,7 @@ export const makeStorage = (options?: {
             })
           }
           const encryptedEntries = yield* pipe(
-            sql`INSERT INTO ${sql(table)} ${sql.insert(forInsert)}
-                ON CONFLICT DO UPDATE SET iv = EXCLUDED.iv, encrypted_entry = EXCLUDED.encrypted_entry`
-              .withoutTransform,
+            sql`INSERT INTO ${sql(table)} ${sql.insert(forInsert)} ON CONFLICT DO NOTHING`.withoutTransform,
             Effect.zipRight(sql`SELECT * FROM ${sql(table)} WHERE ${sql.in("entry_id", ids)} ORDER BY sequence ASC`),
             Effect.flatMap(decodeEntries)
           )
@@ -155,11 +153,6 @@ export const makeStorage = (options?: {
           Effect.orDie,
           Effect.scoped
         ),
-      remove: (publicKey, entryIds) =>
-        Effect.gen(function*() {
-          const { table } = yield* RcMap.get(resources, publicKey)
-          yield* sql`DELETE FROM ${sql(table)} WHERE ${sql.in("entry_id", entryIds)}`.withoutTransform
-        }).pipe(Effect.orDie, Effect.scoped),
       changes: (publicKey, startSequence) =>
         Effect.gen(function*() {
           const { pubsub, table } = yield* RcMap.get(resources, publicKey)

@@ -150,6 +150,21 @@ export declare namespace Event {
    * @since 1.0.0
    * @category models
    */
+  export type TaggedPayload<A extends Any> = A extends Event<
+    infer _Tag,
+    infer _Payload,
+    infer _Success,
+    infer _Error
+  > ? {
+      readonly _tag: _Tag
+      readonly payload: Schema.Schema.Type<_Payload>
+    }
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type SuccessSchema<A extends Any> = A extends Event<
     infer _Tag,
     infer _Payload,
