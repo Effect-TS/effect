@@ -1,5 +1,17 @@
 # @effect/cli
 
+## 0.48.26
+
+### Patch Changes
+
+- [#3992](https://github.com/Effect-TS/effect/pull/3992) [`a1cf616`](https://github.com/Effect-TS/effect/commit/a1cf6167687dab5070bc944c2fef48269275014e) Thanks @IMax153! - fix multi-select prompt not displaying choice description
+
+- Updated dependencies [[`c963886`](https://github.com/Effect-TS/effect/commit/c963886d5817986fcbd6bfa4ddf50aca8b6c8184), [`42c4ce6`](https://github.com/Effect-TS/effect/commit/42c4ce6f8d8c7d847e97757650a8ad9419a829d7)]:
+  - @effect/platform@0.69.26
+  - effect@3.10.17
+  - @effect/printer@0.38.17
+  - @effect/printer-ansi@0.38.17
+
 ## 0.48.25
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@effect/printer",
-  "version": "0.38.16",
+  "version": "0.38.17",
   "type": "module",
   "license": "MIT",
   "description": "An easy to use, extensible pretty-printer for rendering documents",

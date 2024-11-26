@@ -1,5 +1,15 @@
 # @effect/platform
 
+## 0.69.26
+
+### Patch Changes
+
+- [#3977](https://github.com/Effect-TS/effect/pull/3977) [`c963886`](https://github.com/Effect-TS/effect/commit/c963886d5817986fcbd6bfa4ddf50aca8b6c8184) Thanks @KhraksMamtsov! - `HttpApiClient.group` & `HttpApiClient.endpoint` have been added
+  This makes it possible to create `HttpApiClient` for some part of the `HttpApi`
+  This eliminates the need to provide all the dependencies for the entire `HttpApi` - but only those necessary for its specific part to work
+- Updated dependencies [[`42c4ce6`](https://github.com/Effect-TS/effect/commit/42c4ce6f8d8c7d847e97757650a8ad9419a829d7)]:
+  - effect@3.10.17
+
 ## 0.69.25
 
 ### Patch Changes
