@@ -4467,11 +4467,11 @@ export const split = (separator: string): transform<typeof String$, Array$<typeo
   )
 
 function getFieldsTypes(ast: AST.AST, result: {
-  arrays: Array<string>
-  strings: Array<string>
+  arrays: Set<string>
+  strings: Set<string>
 }, propName?: string): {
-  arrays: Array<string>
-  strings: Array<string>
+  arrays: Set<string>
+  strings: Set<string>
 } {
   switch (ast._tag) {
     case "Suspend": {
@@ -4497,13 +4497,13 @@ function getFieldsTypes(ast: AST.AST, result: {
     }
     case "TupleType": {
       if (propName !== undefined) {
-        result.arrays.push(propName)
+        result.arrays.add(propName)
       }
       return result
     }
     default: {
       if (propName !== undefined) {
-        result.strings.push(propName)
+        result.strings.add(propName)
       }
       return result
     }
@@ -4511,19 +4511,18 @@ function getFieldsTypes(ast: AST.AST, result: {
 }
 
 function compileFormDataToObject(ast: AST.AST) {
-  const fieldsTypes = getFieldsTypes(ast, { arrays: [], strings: [] })
+  const fieldsTypes = getFieldsTypes(ast, { arrays: new Set(), strings: new Set() })
 
   return (fd: FormData): Record<string, string | ReadonlyArray<string>> => {
-    const obj: Record<string, any> = Object.fromEntries(
-      fieldsTypes.arrays.map((arrayFieldKey) => [arrayFieldKey, []])
-    )
+    const obj: Record<string, any> = {}
+    fieldsTypes.arrays.forEach((arrayFieldKey) => (obj[arrayFieldKey] = []))
 
     fd.forEach((value, key) => {
       if (typeof value !== "string") return
 
-      if (fieldsTypes.strings.includes(key)) {
+      if (fieldsTypes.strings.has(key)) {
         obj[key] = value
-      } else if (fieldsTypes.arrays.includes(key)) {
+      } else if (fieldsTypes.arrays.has(key)) {
         obj[key].push(value)
       } else {
         return
