@@ -7226,18 +7226,14 @@ export const fn: (
         effect = x(effect)
       }
     } catch (error) {
-      effect = fnError ?
-        failCause(internalCause.sequential(
+      effect = fnError
+        ? failCause(internalCause.sequential(
           internalCause.die(fnError),
           internalCause.die(error)
-        )) :
-        die(error)
+        ))
+        : die(error)
     }
     const opts: any = (options && "captureStackTrace" in options) ? options : { captureStackTrace, ...options }
-    return withSpan(
-      effect,
-      name,
-      opts
-    )
+    return withSpan(effect, name, opts)
   }
 }
