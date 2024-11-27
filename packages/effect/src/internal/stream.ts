@@ -4729,7 +4729,7 @@ export const partition: {
   > =>
     partitionEither(
       self,
-      (a) => Effect.succeed(predicate(a) ? Either.left(a) : Either.right(a)),
+      (a) => Effect.succeed(predicate(a) ? Either.right(a) : Either.left(a)),
       options
     )
 )

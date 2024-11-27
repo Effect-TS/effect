@@ -31,7 +31,7 @@ describe("Stream", () => {
       const { result1, result2 } = yield* $(
         Stream.range(0, 5),
         Stream.partition((n) => n % 2 === 0),
-        Effect.flatMap(([evens, odds]) =>
+        Effect.flatMap(([odds, evens]) =>
           Effect.all({
             result1: Stream.runCollect(evens),
             result2: Stream.runCollect(odds)
@@ -66,7 +66,7 @@ describe("Stream", () => {
       const { result1, result2, result3 } = yield* $(
         Stream.range(0, 5),
         Stream.partition((n) => (n % 2 === 0), { bufferSize: 1 }),
-        Effect.flatMap(([evens, odds]) =>
+        Effect.flatMap(([odds, evens]) =>
           Effect.gen(function*($) {
             const ref = yield* $(Ref.make(Chunk.empty<number>()))
             const latch = yield* $(Deferred.make<void>())
