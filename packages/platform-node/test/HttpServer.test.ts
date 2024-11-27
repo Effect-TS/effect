@@ -64,6 +64,7 @@ describe("HttpServer", () => {
             const part = formData.file
             assert(typeof part !== "string")
             const file = part[0]
+            assert(typeof file !== "string")
             expect(file.path.endsWith("/test.txt")).toEqual(true)
             expect(file.contentType).toEqual("text/plain")
             return yield* HttpServerResponse.json({ ok: "file" in formData })
