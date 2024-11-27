@@ -1,5 +1,13 @@
 # effect
 
+## 3.10.19
+
+### Patch Changes
+
+- [#4007](https://github.com/Effect-TS/effect/pull/4007) [`944025b`](https://github.com/Effect-TS/effect/commit/944025bc5ce139f4a85846aa689bf30ec06a8ec1) Thanks @gcanti! - Wrap JSDoc @example tags with a TypeScript fence, closes #4002
+
+- [#4013](https://github.com/Effect-TS/effect/pull/4013) [`54addee`](https://github.com/Effect-TS/effect/commit/54addee438a644bf010646c52042c7b89c5fc0a7) Thanks @thewilkybarkid! - Remove reference to non-existent function
+
 ## 3.10.18
 
 ### Patch Changes

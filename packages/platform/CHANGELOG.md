@@ -1,5 +1,20 @@
 # @effect/platform
 
+## 0.69.28
+
+### Patch Changes
+
+- [#4017](https://github.com/Effect-TS/effect/pull/4017) [`edd72be`](https://github.com/Effect-TS/effect/commit/edd72be57b904d60c9cbffc2537901821a9da537) Thanks @tim-smart! - try encode defects that match an Error schema in HttpApi
+
+- [#4014](https://github.com/Effect-TS/effect/pull/4014) [`a3e2771`](https://github.com/Effect-TS/effect/commit/a3e277170a1f7cf61fd629acb60304c7e81d9498) Thanks @tim-smart! - consider TimeoutException a transient error in HttpClient.retryTransient
+
+- [#4007](https://github.com/Effect-TS/effect/pull/4007) [`944025b`](https://github.com/Effect-TS/effect/commit/944025bc5ce139f4a85846aa689bf30ec06a8ec1) Thanks @gcanti! - Wrap JSDoc @example tags with a TypeScript fence, closes #4002
+
+- [#4016](https://github.com/Effect-TS/effect/pull/4016) [`a9e00e4`](https://github.com/Effect-TS/effect/commit/a9e00e43f0b5dd22c1f9d5b78be6383daea09c20) Thanks @tim-smart! - allow using HttpApiSchema.Multipart in a union
+
+- Updated dependencies [[`944025b`](https://github.com/Effect-TS/effect/commit/944025bc5ce139f4a85846aa689bf30ec06a8ec1), [`54addee`](https://github.com/Effect-TS/effect/commit/54addee438a644bf010646c52042c7b89c5fc0a7)]:
+  - effect@3.10.19
+
 ## 0.69.27
 
 ### Patch Changes
