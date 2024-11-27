@@ -8,9 +8,7 @@
   "paths": {
     "/groups/{id}": {
       "get": {
-        "tags": [
-          "groups"
-        ],
+        "tags": ["groups"],
         "operationId": "groups.findById",
         "parameters": [
           {
@@ -62,9 +60,7 @@
     },
     "/groups": {
       "post": {
-        "tags": [
-          "groups"
-        ],
+        "tags": ["groups"],
         "operationId": "groups.create",
         "parameters": [],
         "security": [],
@@ -108,9 +104,19 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "name"
-                ],
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
                 "properties": {
                   "name": {
                     "type": "string"
@@ -126,9 +132,7 @@
     },
     "/users/{id}": {
       "get": {
-        "tags": [
-          "Users API"
-        ],
+        "tags": ["Users API"],
         "operationId": "users.findById",
         "parameters": [
           {
@@ -181,9 +185,7 @@
     },
     "/users": {
       "post": {
-        "tags": [
-          "Users API"
-        ],
+        "tags": ["Users API"],
         "operationId": "users.create",
         "parameters": [
           {
@@ -244,9 +246,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "name"
-                ],
+                "required": ["name"],
                 "properties": {
                   "name": {
                     "type": "string"
@@ -260,9 +260,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Users API"
-        ],
+        "tags": ["Users API"],
         "deprecated": true,
         "summary": "test summary",
         "operationId": "listUsers",
@@ -330,9 +328,7 @@
     },
     "/users/upload": {
       "post": {
-        "tags": [
-          "Users API"
-        ],
+        "tags": ["Users API"],
         "operationId": "users.upload",
         "parameters": [],
         "security": [
@@ -347,10 +343,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "contentType",
-                    "length"
-                  ],
+                  "required": ["contentType", "length"],
                   "properties": {
                     "contentType": {
                       "type": "string"
@@ -392,9 +385,7 @@
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "file"
-                ],
+                "required": ["file"],
                 "properties": {
                   "file": {
                     "type": "array",
@@ -441,18 +432,12 @@
             "type": "integer"
           }
         },
-        "required": [
-          "contentType",
-          "length"
-        ],
+        "required": ["contentType", "length"],
         "type": "object"
       },
       "Group": {
         "type": "object",
-        "required": [
-          "id",
-          "name"
-        ],
+        "required": ["id", "name"],
         "properties": {
           "id": {
             "type": "integer",
@@ -473,21 +458,13 @@
       },
       "HttpApiDecodeError": {
         "type": "object",
-        "required": [
-          "issues",
-          "message",
-          "_tag"
-        ],
+        "required": ["issues", "message", "_tag"],
         "properties": {
           "issues": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": [
-                "_tag",
-                "path",
-                "message"
-              ],
+              "required": ["_tag", "path", "message"],
               "properties": {
                 "_tag": {
                   "enum": [
@@ -525,9 +502,7 @@
             "type": "string"
           },
           "_tag": {
-            "enum": [
-              "HttpApiDecodeError"
-            ]
+            "enum": ["HttpApiDecodeError"]
           }
         },
         "additionalProperties": false,
@@ -536,14 +511,10 @@
       },
       "GlobalError": {
         "type": "object",
-        "required": [
-          "_tag"
-        ],
+        "required": ["_tag"],
         "properties": {
           "_tag": {
-            "enum": [
-              "GlobalError"
-            ]
+            "enum": ["GlobalError"]
           }
         },
         "additionalProperties": false,
@@ -552,11 +523,7 @@
       },
       "User": {
         "type": "object",
-        "required": [
-          "id",
-          "name",
-          "createdAt"
-        ],
+        "required": ["id", "name", "createdAt"],
         "properties": {
           "id": {
             "type": "integer",
@@ -580,14 +547,10 @@
       },
       "UserError": {
         "type": "object",
-        "required": [
-          "_tag"
-        ],
+        "required": ["_tag"],
         "properties": {
           "_tag": {
-            "enum": [
-              "UserError"
-            ]
+            "enum": ["UserError"]
           }
         },
         "additionalProperties": false,
@@ -596,14 +559,10 @@
       },
       "NoStatusError": {
         "type": "object",
-        "required": [
-          "_tag"
-        ],
+        "required": ["_tag"],
         "properties": {
           "_tag": {
-            "enum": [
-              "NoStatusError"
-            ]
+            "enum": ["NoStatusError"]
           }
         },
         "additionalProperties": false,

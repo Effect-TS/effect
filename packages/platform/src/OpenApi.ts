@@ -269,14 +269,30 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       endpoint.payloadSchema.pipe(
         Option.filter(() => HttpMethod.hasBody(endpoint.method)),
         Option.map((schema) => {
-          op.requestBody = {
-            content: {
-              [HttpApiSchema.getMultipart(schema.ast) ? "multipart/form-data" : "application/json"]: {
-                schema: makeJsonSchemaOrRef(schema)
-              }
-            },
-            required: true
+          const content: Mutable<OpenApiSpecContent> = {}
+          const members = schema.ast._tag === "Union" ? schema.ast.types : [schema.ast]
+          const jsonTypes: Array<AST.AST> = []
+          const multipartTypes: Array<AST.AST> = []
+
+          for (const member of members) {
+            if (HttpApiSchema.getMultipart(member)) {
+              multipartTypes.push(member)
+            } else {
+              jsonTypes.push(member)
+            }
           }
+
+          if (jsonTypes.length > 0) {
+            content["application/json"] = {
+              schema: makeJsonSchemaOrRef(Schema.make(AST.Union.make(jsonTypes)))
+            }
+          }
+          if (multipartTypes.length > 0) {
+            content["multipart/form-data"] = {
+              schema: makeJsonSchemaOrRef(Schema.make(AST.Union.make(multipartTypes)))
+            }
+          }
+          op.requestBody = { content, required: true }
         })
       )
       for (const [status, ast] of successes) {

@@ -160,12 +160,7 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
         successes.forEach((ast, status) => {
           decodeMap[status] = ast._tag === "None" ? responseAsVoid : schemaToResponse(ast.value)
         })
-        const isMultipart = endpoint.payloadSchema.pipe(
-          Option.map((schema) => HttpApiSchema.getMultipart(schema.ast)),
-          Option.getOrElse(() => false)
-        )
         const encodePayload = endpoint.payloadSchema.pipe(
-          Option.filter(() => !isMultipart),
           Option.map(Schema.encodeUnknown)
         )
         const encodeHeaders = endpoint.headersSchema.pipe(
@@ -185,7 +180,7 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
             let httpRequest = HttpClientRequest.make(endpoint.method)(
               request && request.path ? makeUrl(request.path) : endpoint.path
             )
-            if (isMultipart) {
+            if (request.payload instanceof FormData) {
               httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
             } else if (encodePayload._tag === "Some") {
               const payload = yield* encodePayload.value(request.payload)

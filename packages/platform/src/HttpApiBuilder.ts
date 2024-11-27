@@ -508,8 +508,7 @@ export const handler = <
 
 const requestPayload = (
   request: HttpServerRequest.HttpServerRequest,
-  urlParams: ReadonlyRecord<string, string | Array<string>>,
-  isMultipart: boolean
+  urlParams: ReadonlyRecord<string, string | Array<string>>
 ): Effect.Effect<
   unknown,
   never,
@@ -518,7 +517,7 @@ const requestPayload = (
   | Scope
 > =>
   HttpMethod.hasBody(request.method)
-    ? isMultipart
+    ? request.headers["content-type"].includes("multipart/form-data")
       ? Effect.orDie(request.multipart)
       : Effect.orDie(request.json)
     : Effect.succeed(urlParams)
@@ -554,10 +553,6 @@ const handlerToRoute = (
 ): HttpRouter.Route<any, any> => {
   const endpoint = endpoint_ as HttpApiEndpoint.HttpApiEndpoint.AnyWithProps
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
-  const isMultipart = endpoint.payloadSchema.pipe(
-    Option.map((schema) => HttpApiSchema.getMultipart(schema.ast)),
-    Option.getOrElse(() => false)
-  )
   const decodePayload = Option.map(endpoint.payloadSchema, Schema.decodeUnknown)
   const decodeHeaders = Option.map(endpoint.headersSchema, Schema.decodeUnknown)
   const decodeUrlParams = Option.map(endpoint.urlParamsSchema, Schema.decodeUnknown)
@@ -579,7 +574,7 @@ const handlerToRoute = (
         }
         if (decodePayload._tag === "Some") {
           request.payload = yield* Effect.flatMap(
-            requestPayload(httpRequest, urlParams, isMultipart),
+            requestPayload(httpRequest, urlParams),
             decodePayload.value
           )
         }
