@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -111,13 +112,13 @@ export const httpApp: Effect.Effect<
   const encodeError = Schema.encodeUnknown(errorSchema)
   return router.pipe(
     apiMiddleware,
-    Effect.catchAll((error) =>
-      Effect.matchEffect(Effect.provide(encodeError(error), context), {
-        onFailure: () => Effect.die(error),
+    Effect.catchAllCause((cause) =>
+      Effect.matchEffect(Effect.provide(encodeError(Cause.squash(cause)), context), {
+        onFailure: () => Effect.failCause(cause),
         onSuccess: Effect.succeed
       })
     )
-  )
+  ) as any
 })
 
 /**
