@@ -10,6 +10,7 @@
     "clean": "node scripts/clean.mjs",
     "codegen": "pnpm --recursive --parallel run codegen",
     "codemod": "node scripts/codemod.mjs",
+    "codemod-ts-fence": "node scripts/codemod-ts-fence.mjs",
     "build": "tsc -b tsconfig.build.json && pnpm --recursive --parallel run build",
     "circular": "node scripts/circular.mjs",
     "test": "vitest",
