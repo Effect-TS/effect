@@ -7212,25 +7212,26 @@ export const fn: (
       }
     }
     let effect: Effect<any, any, any>
+    let fnError: any = undefined
     try {
       effect = isGeneratorFunction(body)
         ? gen(() => internalCall(() => body.apply(this, args)))
         : body.apply(this, args)
+    } catch (error) {
+      fnError = error
+      effect = die(error)
+    }
+    try {
       for (const x of pipeables) {
         effect = x(effect)
       }
-    } catch (errorA) {
-      try {
-        effect = die(errorA)
-        for (const x of pipeables) {
-          effect = x(effect)
-        }
-      } catch (errorB) {
-        effect = failCause(internalCause.sequential(
-          internalCause.die(errorA),
-          internalCause.die(errorB)
-        ))
-      }
+    } catch (error) {
+      effect = fnError ?
+        failCause(internalCause.sequential(
+          internalCause.die(fnError),
+          internalCause.die(error)
+        )) :
+        die(error)
     }
     const opts: any = (options && "captureStackTrace" in options) ? options : { captureStackTrace, ...options }
     return withSpan(
