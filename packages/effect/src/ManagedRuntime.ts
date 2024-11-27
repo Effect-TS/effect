@@ -156,6 +156,7 @@ export interface ManagedRuntimeUnifyIgnore extends Effect.EffectUnifyIgnore {
  * @since 2.0.0
  * @category runtime class
  * @example
+ * ```ts
  * import { Console, Effect, Layer, ManagedRuntime } from "effect"
  *
  * class Notifications extends Effect.Tag("Notifications")<
@@ -172,6 +173,7 @@ export interface ManagedRuntimeUnifyIgnore extends Effect.EffectUnifyIgnore {
  * }
  *
  * main()
+ * ```
  */
 export const make: <R, E>(
   layer: Layer.Layer<R, E, never>,

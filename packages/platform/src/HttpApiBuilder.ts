@@ -125,6 +125,7 @@ export const httpApp: Effect.Effect<
  * @since 1.0.0
  * @category constructors
  * @example
+ * ```ts
  * import { HttpApi, HttpApiBuilder, HttpServer } from "@effect/platform"
  * import { Layer } from "effect"
  *
@@ -140,6 +141,7 @@ export const httpApp: Effect.Effect<
  *     HttpServer.layerContext
  *   )
  * )
+ * ```
  */
 export const toWebHandler = <LA, LE>(
   layer: Layer.Layer<LA | HttpApi.Api | HttpRouter.HttpRouter.DefaultServices, LE>,

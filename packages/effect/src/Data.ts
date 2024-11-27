@@ -27,6 +27,7 @@ export declare namespace Case {
 
 /**
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * const alice = Data.struct({ name: "Alice", age: 30 })
@@ -38,6 +39,7 @@ export declare namespace Case {
  *
  * assert.deepStrictEqual(Equal.equals(alice, { name: "Alice", age: 30 }), false)
  * assert.deepStrictEqual(Equal.equals(alice, bob), false)
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -53,6 +55,7 @@ export const unsafeStruct = <A extends Record<string, any>>(as: A): { readonly [
 
 /**
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * const alice = Data.tuple("Alice", 30)
@@ -64,6 +67,7 @@ export const unsafeStruct = <A extends Record<string, any>>(as: A): { readonly [
  *
  * assert.deepStrictEqual(Equal.equals(alice, ["Alice", 30]), false)
  * assert.deepStrictEqual(Equal.equals(alice, bob), false)
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -72,6 +76,7 @@ export const tuple = <As extends ReadonlyArray<any>>(...as: As): Readonly<As> =>
 
 /**
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * const alice = Data.struct({ name: "Alice", age: 30 })
@@ -89,6 +94,7 @@ export const tuple = <As extends ReadonlyArray<any>>(...as: As): Readonly<As> =>
  *   ),
  *   true
  * )
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -110,6 +116,7 @@ export {
    * Provides a constructor for the specified `Case`.
    *
    * @example
+   * ```ts
    * import { Data, Equal } from "effect"
    *
    * interface Person {
@@ -128,6 +135,7 @@ export {
    * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
    * assert.deepStrictEqual(Equal.equals(mike1, john), false)
    *
+   * ```
    * @since 2.0.0
    * @category constructors
    */
@@ -138,6 +146,7 @@ export {
  * Provides a tagged constructor for the specified `Case`.
  *
  * @example
+ * ```ts
  * import { Data } from "effect"
  *
  * interface Person {
@@ -150,6 +159,7 @@ export {
  * const mike = Person({ name: "Mike" })
  *
  * assert.deepEqual(mike, { _tag: "Person", name: "Mike" })
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -167,6 +177,7 @@ export const tagged = <A extends { readonly _tag: string }>(
  * Provides a constructor for a Case Class.
  *
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * class Person extends Data.Class<{ readonly name: string }> {}
@@ -179,6 +190,7 @@ export const tagged = <A extends { readonly _tag: string }>(
  * // Checking equality
  * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
  * assert.deepStrictEqual(Equal.equals(mike1, john), false)
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -192,6 +204,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  * Provides a Tagged constructor for a Case Class.
  *
  * @example
+ * ```ts
  * import { Data, Equal } from "effect"
  *
  * class Person extends Data.TaggedClass("Person")<{ readonly name: string }> {}
@@ -206,6 +219,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  * assert.deepStrictEqual(Equal.equals(mike1, john), false)
  *
  * assert.deepStrictEqual(mike1._tag, "Person")
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -403,6 +417,7 @@ export declare namespace TaggedEnum {
  * the constructor.
  *
  * @example
+ * ```ts
  * import { Data } from "effect"
  *
  * const { BadRequest, NotFound } = Data.taggedEnum<
@@ -411,6 +426,7 @@ export declare namespace TaggedEnum {
  * >()
  *
  * const notFound = NotFound({ status: 404, message: "Not Found" })
+ * ```
  *
  * @example
  * import { Data } from "effect"

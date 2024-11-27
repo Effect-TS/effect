@@ -178,6 +178,7 @@ export interface ReadonlyMailbox<out A, out E = never>
  * @experimental
  * @category constructors
  * @example
+ * ```ts
  * import { Effect, Mailbox } from "effect"
  *
  * Effect.gen(function*() {
@@ -202,6 +203,7 @@ export interface ReadonlyMailbox<out A, out E = never>
  *   // signal that the mailbox has failed
  *   yield* mailbox.fail("boom")
  * })
+ * ```
  */
 export const make: <A, E = never>(
   capacity?: number | {

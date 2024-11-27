@@ -168,6 +168,7 @@ export const around: {
  * @since 2.0.0
  * @category combinators
  * @example
+ * ```ts
  * import { Effect, Request, RequestResolver } from "effect"
  *
  * interface GetUserById extends Request.Request<unknown> {
@@ -183,6 +184,7 @@ export const around: {
  *   (requests) => Effect.log(`got ${requests.length} requests`),
  *   (requests, _) => Effect.log(`finised running ${requests.length} requests`)
  * )
+ * ```
  */
 export const aroundRequests: {
   <A, A2, R2, X, R3>(

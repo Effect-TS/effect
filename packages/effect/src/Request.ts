@@ -125,6 +125,7 @@ export const tagged: <R extends Request<any, any> & { _tag: string }>(
  * Provides a constructor for a Request Class.
  *
  * @example
+ * ```ts
  * import { Request } from "effect"
  *
  * type Success = string
@@ -133,6 +134,7 @@ export const tagged: <R extends Request<any, any> & { _tag: string }>(
  * class MyRequest extends Request.Class<Success, Error, {
  *   readonly id: string
  * }> {}
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -146,6 +148,7 @@ export const Class: new<Success, Error, A extends Record<string, any>>(
  * Provides a Tagged constructor for a Request Class.
  *
  * @example
+ * ```ts
  * import { Request } from "effect"
  *
  * type Success = string
@@ -154,6 +157,7 @@ export const Class: new<Success, Error, A extends Record<string, any>>(
  * class MyRequest extends Request.TaggedClass("MyRequest")<Success, Error, {
  *   readonly name: string
  * }> {}
+ * ```
  *
  * @since 2.0.0
  * @category constructors

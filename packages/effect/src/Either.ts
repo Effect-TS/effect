@@ -130,10 +130,12 @@ export const left: <L>(left: L) => Either<never, L> = either.left
  * the provided default as a `Left`.
  *
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.fromNullable(1, () => 'fallback'), Either.right(1))
  * assert.deepStrictEqual(Either.fromNullable(null, () => 'fallback'), Either.left('fallback'))
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -149,10 +151,12 @@ export const fromNullable: {
 
 /**
  * @example
+ * ```ts
  * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.fromOption(Option.some(1), () => 'error'), Either.right(1))
  * assert.deepStrictEqual(Either.fromOption(Option.none(), () => 'error'), Either.left('error'))
+ * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -208,11 +212,13 @@ export {
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.isEither(Either.right(1)), true)
  * assert.deepStrictEqual(Either.isEither(Either.left("a")), true)
  * assert.deepStrictEqual(Either.isEither({ right: 1 }), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -225,10 +231,12 @@ export const isEither: (input: unknown) => input is Either<unknown, unknown> = e
  * @param self - The `Either` to check.
  *
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.isLeft(Either.right(1)), false)
  * assert.deepStrictEqual(Either.isLeft(Either.left("a")), true)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -241,10 +249,12 @@ export const isLeft: <R, L>(self: Either<R, L>) => self is Left<L, R> = either.i
  * @param self - The `Either` to check.
  *
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.isRight(Either.right(1)), true)
  * assert.deepStrictEqual(Either.isRight(Either.left("a")), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -257,10 +267,12 @@ export const isRight: <R, L>(self: Either<R, L>) => self is Right<L, R> = either
  * Alias of {@link toOption}.
  *
  * @example
+ * ```ts
  * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.getRight(Either.right('ok')), Option.some('ok'))
  * assert.deepStrictEqual(Either.getRight(Either.left('err')), Option.none())
+ * ```
  *
  * @category getters
  * @since 2.0.0
@@ -271,10 +283,12 @@ export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
  * Converts a `Either` to an `Option` discarding the value.
  *
  * @example
+ * ```ts
  * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.getLeft(Either.right('ok')), Option.none())
  * assert.deepStrictEqual(Either.getLeft(Either.left('err')), Option.some('err'))
+ * ```
  *
  * @category getters
  * @since 2.0.0
@@ -357,6 +371,7 @@ export const map: {
  * if the value is a `Right` the inner value is applied to the `onRight` function.
  *
  * @example
+ * ```ts
  * import { pipe, Either } from "effect"
  *
  * const onLeft  = (strings: ReadonlyArray<string>): string => `strings: ${strings.join(', ')}`
@@ -368,6 +383,7 @@ export const map: {
  *   pipe(Either.left(['string 1', 'string 2']), Either.match({ onLeft, onRight })),
  *   'strings: string 1, string 2'
  * )
+ * ```
  *
  * @category pattern matching
  * @since 2.0.0
@@ -396,6 +412,7 @@ export const match: {
  * @param predicate - A `Predicate` function that takes in a value of type `A` and returns a boolean.
  *
  * @example
+ * ```ts
  * import { pipe, Either } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
@@ -414,6 +431,7 @@ export const match: {
  *   ),
  *   Either.left("0 is not positive")
  * )
+ * ```
  *
  * @category lifting
  * @since 3.4.0
@@ -445,6 +463,7 @@ export const liftPredicate: {
  * If the predicate fails, set the left value with the result of the provided function.
  *
  * @example
+ * ```ts
  * import { pipe, Either } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
@@ -463,6 +482,7 @@ export const liftPredicate: {
  *   ),
  *   Either.left("0 is not positive")
  * )
+ * ```
  *
  * @since 2.0.0
  * @category filtering & conditionals
@@ -501,10 +521,12 @@ export const merge: <R, L>(self: Either<R, L>) => L | R = match({
  * Returns the wrapped value if it's a `Right` or a default value if is a `Left`.
  *
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrElse(Either.right(1), (error) => error + "!"), 1)
  * assert.deepStrictEqual(Either.getOrElse(Either.left("not a number"), (error) => error + "!"), "not a number!")
+ * ```
  *
  * @category getters
  * @since 2.0.0
@@ -519,10 +541,12 @@ export const getOrElse: {
 
 /**
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrNull(Either.right(1)), 1)
  * assert.deepStrictEqual(Either.getOrNull(Either.left("a")), null)
+ * ```
  *
  * @category getters
  * @since 2.0.0
@@ -531,10 +555,12 @@ export const getOrNull: <R, L>(self: Either<R, L>) => R | null = getOrElse(const
 
 /**
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrUndefined(Either.right(1)), 1)
  * assert.deepStrictEqual(Either.getOrUndefined(Either.left("a")), undefined)
+ * ```
  *
  * @category getters
  * @since 2.0.0
@@ -550,6 +576,7 @@ export const getOrUndefined: <R, L>(self: Either<R, L>) => R | undefined = getOr
  * @param onLeft - A function that will be called if the `Either` is `Left`. It returns the error to be thrown.
  *
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(
@@ -557,6 +584,7 @@ export const getOrUndefined: <R, L>(self: Either<R, L>) => R | undefined = getOr
  *   1
  * )
  * assert.throws(() => Either.getOrThrowWith(Either.left("error"), () => new Error('Unexpected Left')))
+ * ```
  *
  * @category getters
  * @since 2.0.0
@@ -580,10 +608,12 @@ export const getOrThrowWith: {
  * @throws `Error("getOrThrow called on a Left")`
  *
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrThrow(Either.right(1)), 1)
  * assert.throws(() => Either.getOrThrow(Either.left("error")))
+ * ```
  *
  * @category getters
  * @since 2.0.0
@@ -690,11 +720,13 @@ export const ap: {
  * @param fields - the struct of `Either`s to be sequenced.
  *
  * @example
+ * ```ts
  * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.all([Either.right(1), Either.right(2)]), Either.right([1, 2]))
  * assert.deepStrictEqual(Either.all({ right: Either.right(1), b: Either.right("hello") }), Either.right({ right: 1, b: "hello" }))
  * assert.deepStrictEqual(Either.all({ right: Either.right(1), b: Either.left("error") }), Either.left("error"))
+ * ```
  *
  * @category combining
  * @since 2.0.0
@@ -805,6 +837,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (..
  * @see {@link let_ let}
  *
  * @example
+ * ```ts
  * import { Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -814,6 +847,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (..
  *   Either.let("sum", ({ x, y }) => x + y)
  * )
  * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+ * ```
  *
  * @category do notation
  * @since 2.0.0
@@ -835,6 +869,7 @@ export const Do: Either<{}> = right({})
  * @see {@link let_ let}
  *
  * @example
+ * ```ts
  * import { Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -844,6 +879,7 @@ export const Do: Either<{}> = right({})
  *   Either.let("sum", ({ x, y }) => x + y)
  * )
  * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+ * ```
  *
  * @category do notation
  * @since 2.0.0
@@ -875,6 +911,7 @@ export const bind: {
  * @see {@link let_ let}
  *
  * @example
+ * ```ts
  * import { Either, pipe } from "effect"
  *
  * const result = pipe(
@@ -884,6 +921,7 @@ export const bind: {
  *   Either.let("sum", ({ x, y }) => x + y)
  * )
  * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+ * ```
  *
  * @category do notation
  * @since 2.0.0
@@ -921,6 +959,7 @@ export {
    * @see {@link bind}
    *
    * @example
+   * ```ts
    * import { Either, pipe } from "effect"
    *
    * const result = pipe(
@@ -931,6 +970,7 @@ export {
    * )
    * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
    *
+   * ```
    * @category do notation
    * @since 2.0.0
    */

@@ -172,9 +172,11 @@ export const integer: (name?: string) => Config<number> = internal.integer
  * Constructs a config for a literal value.
  *
  * @example
+ * ```ts
  * import { Config } from "effect"
  *
  * const config = Config.literal("http", "https")("PROTOCOL")
+ * ```
  *
  * @since 2.0.0
  * @category constructors

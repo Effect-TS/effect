@@ -57,8 +57,8 @@ importers:
         specifier: ^0.7.7
         version: 0.7.7
       '@effect/docgen':
-        specifier: ^0.4.4
-        version: 0.4.4(tsx@4.17.0)(typescript@5.7.2)
+        specifier: ^0.5.1
+        version: 0.5.1(tsx@4.17.0)(typescript@5.7.2)
       '@effect/dtslint':
         specifier: ^0.1.2
         version: 0.1.2(typescript@5.7.2)
@@ -2008,8 +2008,8 @@ packages:
     engines: {node: '>=16.17.1'}
     hasBin: true
 
-  '@effect/docgen@0.4.4':
-    resolution: {integrity: sha512-Qk/LzpXH/5zXpTA+JL5ggnuZwNzgUWxdU5m0MV8IrWUGeBkE7s5W8kA4UsQXRrZsu7tVf//J7OGHNZz4wZkBgw==}
+  '@effect/docgen@0.5.1':
+    resolution: {integrity: sha512-5TW9X7xomC553EkYI7/m5krxqmh064zjcTNDTKXOWQqodcyb546DvtqSsoGmpNHzXkPjn70tqiM9/hWuoeDNHQ==}
     engines: {node: '>=18.0.0'}
     hasBin: true
     peerDependencies:
@@ -9664,7 +9664,7 @@ snapshots:
 
   '@effect/build-utils@0.7.7': {}
 
-  '@effect/docgen@0.4.4(tsx@4.17.0)(typescript@5.7.2)':
+  '@effect/docgen@0.5.1(tsx@4.17.0)(typescript@5.7.2)':
     dependencies:
       '@effect/markdown-toc': 0.1.0
       doctrine: 3.0.0

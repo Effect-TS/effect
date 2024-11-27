@@ -986,6 +986,7 @@ export const currentScheduler: EnvRef<MicroScheduler> = envRefMake(
  * @experimental
  * @category environment refs
  * @example
+ * ```ts
  * import * as Micro from "effect/Micro"
  *
  * Micro.forEach([1, 2, 3], (n) => Micro.succeed(n), {
@@ -993,6 +994,7 @@ export const currentScheduler: EnvRef<MicroScheduler> = envRefMake(
  * }).pipe(
  *   Micro.withConcurrency(2) // use a concurrency of 2
  * )
+ * ```
  */
 export const withConcurrency: {
   (concurrency: "unbounded" | number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
@@ -1301,12 +1303,14 @@ export {
    * @experimental
    * @category constructors
    * @example
+   * ```ts
    * import { Micro } from "effect"
    *
    * Micro.try({
    *   try: () => throw new Error("boom"),
    *   catch: (cause) => new Error("caught", { cause })
    * })
+   * ```
    */
   try_ as try
 }
@@ -1335,12 +1339,14 @@ export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): M
  * @experimental
  * @category constructors
  * @example
+ * ```ts
  * import { Micro } from "effect"
  *
  * Micro.tryPromise({
  *   try: () => Promise.resolve("success"),
  *   catch: (cause) => new Error("caught", { cause })
  * })
+ * ```
  */
 export const tryPromise = <A, E>(options: {
   readonly try: (signal: AbortSignal) => PromiseLike<A>
@@ -3321,6 +3327,7 @@ export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =
  * @experimental
  * @category interruption
  * @example
+ * ```ts
  * import * as Micro from "effect/Micro"
  *
  * Micro.uninterruptibleMask((restore) =>
@@ -3328,6 +3335,7 @@ export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =
  *     Micro.andThen(restore(Micro.sleep(1000))) // interruptible
  *   )
  * )
+ * ```
  */
 export const uninterruptibleMask = <A, E, R>(
   f: (restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>) => Micro<A, E, R>
@@ -3947,6 +3955,7 @@ export const forkScoped = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
  * @experimental
  * @category execution
  * @example
+ * ```ts
  * import * as Micro from "effect/Micro"
  *
  * const handle = Micro.succeed(42).pipe(
@@ -3957,6 +3966,7 @@ export const forkScoped = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
  * handle.addObserver((exit) => {
  *   console.log(exit)
  * })
+ * ```
  */
 export const runFork = <A, E>(
   effect: Micro<A, E>,

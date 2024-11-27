@@ -436,6 +436,7 @@ export const unsafeFromDate = (date: Date): Utc => {
  * @since 3.6.0
  * @category constructors
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // from Date
@@ -446,6 +447,7 @@ export const unsafeFromDate = (date: Date): Utc => {
  *
  * // from string
  * DateTime.unsafeMake("2024-01-01")
+ * ```
  */
 export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.PreserveZone<A> => {
   if (isDateTime(input)) {
@@ -470,9 +472,11 @@ export const unsafeMake = <A extends DateTime.Input>(input: A): DateTime.Preserv
  * @since 3.6.0
  * @category constructors
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * DateTime.unsafeMakeZoned(new Date(), { timeZone: "Europe/London" })
+ * ```
  */
 export const unsafeMakeZoned = (input: DateTime.Input, options?: {
   readonly timeZone?: number | string | TimeZone | undefined
@@ -513,9 +517,11 @@ export const unsafeMakeZoned = (input: DateTime.Input, options?: {
  * @since 3.6.0
  * @category constructors
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * DateTime.makeZoned(new Date(), { timeZone: "Europe/London" })
+ * ```
  */
 export const makeZoned: (
   input: DateTime.Input,
@@ -539,6 +545,7 @@ export const makeZoned: (
  * @since 3.6.0
  * @category constructors
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // from Date
@@ -549,6 +556,7 @@ export const makeZoned: (
  *
  * // from string
  * DateTime.make("2024-01-01")
+ * ```
  */
 export const make: <A extends DateTime.Input>(input: A) => Option.Option<DateTime.PreserveZone<A>> = Option
   .liftThrowable(unsafeMake)
@@ -579,11 +587,13 @@ export const makeZonedFromString = (input: string): Option.Option<Zoned> => {
  * @since 3.6.0
  * @category constructors
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
  *   const now = yield* DateTime.now
  * })
+ * ```
  */
 export const now: Effect.Effect<Utc> = Effect.map(Clock.currentTimeMillis, makeUtc)
 
@@ -605,6 +615,7 @@ export const unsafeNow: LazyArg<Utc> = () => makeUtc(Date.now())
  * @since 3.6.0
  * @category time zones
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -614,6 +625,7 @@ export const unsafeNow: LazyArg<Utc> = () => makeUtc(Date.now())
  *   // set the time zone
  *   const zoned: DateTime.Zoned = DateTime.setZone(now, zone)
  * })
+ * ```
  */
 export const setZone: {
   (zone: TimeZone, options?: {
@@ -637,6 +649,7 @@ export const setZone: {
  * @since 3.6.0
  * @category time zones
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -645,6 +658,7 @@ export const setZone: {
  *   // set the offset time zone in milliseconds
  *   const zoned: DateTime.Zoned = DateTime.setZoneOffset(now, 3 * 60 * 60 * 1000)
  * })
+ * ```
  */
 export const setZoneOffset: {
   (offset: number, options?: {
@@ -773,6 +787,7 @@ export const zoneFromString = (zone: string): Option.Option<TimeZone> => {
  * @since 3.6.0
  * @category time zones
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * // Outputs "+03:00"
@@ -780,6 +795,7 @@ export const zoneFromString = (zone: string): Option.Option<TimeZone> => {
  *
  * // Outputs "Europe/London"
  * DateTime.zoneToString(DateTime.zoneUnsafeMakeNamed("Europe/London"))
+ * ```
  */
 export const zoneToString = (self: TimeZone): string => {
   if (self._tag === "Offset") {
@@ -795,6 +811,7 @@ export const zoneToString = (self: TimeZone): string => {
  * @since 3.6.0
  * @category time zones
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -802,6 +819,7 @@ export const zoneToString = (self: TimeZone): string => {
  *   // set the time zone, returns an Option
  *   DateTime.setZoneNamed(now, "Europe/London")
  * })
+ * ```
  */
 export const setZoneNamed: {
   (zoneId: string, options?: {
@@ -824,6 +842,7 @@ export const setZoneNamed: {
  * @since 3.6.0
  * @category time zones
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -831,6 +850,7 @@ export const setZoneNamed: {
  *   // set the time zone
  *   DateTime.unsafeSetZoneNamed(now, "Europe/London")
  * })
+ * ```
  */
 export const unsafeSetZoneNamed: {
   (zoneId: string, options?: {
@@ -856,6 +876,7 @@ export const unsafeSetZoneNamed: {
  * @since 3.6.0
  * @category comparisons
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -865,6 +886,7 @@ export const unsafeSetZoneNamed: {
  *   // returns 60000
  *   DateTime.distance(now, other)
  * })
+ * ```
  */
 export const distance: {
   (other: DateTime): (self: DateTime) => number
@@ -883,6 +905,7 @@ export const distance: {
  * @since 3.6.0
  * @category comparisons
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -895,6 +918,7 @@ export const distance: {
  *   // returns Either.left(Duration.minutes(1))
  *   DateTime.distanceDurationEither(other, now)
  * })
+ * ```
  */
 export const distanceDurationEither: {
   (other: DateTime): (self: DateTime) => Either.Either<Duration.Duration, Duration.Duration>
@@ -912,6 +936,7 @@ export const distanceDurationEither: {
  * @since 3.6.0
  * @category comparisons
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -921,6 +946,7 @@ export const distanceDurationEither: {
  *   // returns Duration.minutes(1)
  *   DateTime.distanceDuration(now, other)
  * })
+ * ```
  */
 export const distanceDuration: {
   (other: DateTime): (self: DateTime) => Duration.Duration
@@ -1103,6 +1129,7 @@ export const toEpochMillis = (self: DateTime): number => self.epochMillis
  * @since 3.6.0
  * @category conversions
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // returns "2024-01-01T00:00:00Z"
@@ -1113,6 +1140,7 @@ export const toEpochMillis = (self: DateTime): number => self.epochMillis
  *   DateTime.removeTime,
  *   DateTime.formatIso
  * )
+ * ```
  */
 export const removeTime = (self: DateTime): Utc =>
   withDate(self, (date) => {
@@ -1177,11 +1205,13 @@ export const toPartsUtc = (self: DateTime): DateTime.PartsWithWeekday => {
  * @since 3.6.0
  * @category parts
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * const now = DateTime.unsafeMake({ year: 2024 })
  * const year = DateTime.getPartUtc(now, "year")
  * assert.strictEqual(year, 2024)
+ * ```
  */
 export const getPartUtc: {
   (part: keyof DateTime.PartsWithWeekday): (self: DateTime) => number
@@ -1196,11 +1226,13 @@ export const getPartUtc: {
  * @since 3.6.0
  * @category parts
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * const now = DateTime.unsafeMakeZoned({ year: 2024 }, { timeZone: "Europe/London" })
  * const year = DateTime.getPart(now, "year")
  * assert.strictEqual(year, 2024)
+ * ```
  */
 export const getPart: {
   (part: keyof DateTime.PartsWithWeekday): (self: DateTime) => number
@@ -1287,6 +1319,7 @@ export class CurrentTimeZone extends Context.Tag("effect/DateTime/CurrentTimeZon
  * @since 3.6.0
  * @category current time zone
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
@@ -1295,6 +1328,7 @@ export class CurrentTimeZone extends Context.Tag("effect/DateTime/CurrentTimeZon
  *   // set the time zone to "Europe/London"
  *   const zoned = yield* DateTime.setZoneCurrent(now)
  * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))
+ * ```
  */
 export const setZoneCurrent = (self: DateTime): Effect.Effect<Zoned, never, CurrentTimeZone> =>
   Effect.map(CurrentTimeZone, (zone) => setZone(self, zone))
@@ -1305,6 +1339,7 @@ export const setZoneCurrent = (self: DateTime): Effect.Effect<Zoned, never, Curr
  * @since 3.6.0
  * @category current time zone
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * const zone = DateTime.zoneUnsafeMakeNamed("Europe/London")
@@ -1312,6 +1347,7 @@ export const setZoneCurrent = (self: DateTime): Effect.Effect<Zoned, never, Curr
  * Effect.gen(function* () {
  *   const now = yield* DateTime.nowInCurrentZone
  * }).pipe(DateTime.withCurrentZone(zone))
+ * ```
  */
 export const withCurrentZone: {
   (zone: TimeZone): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, CurrentTimeZone>>
@@ -1329,12 +1365,14 @@ export const withCurrentZone: {
  * @since 3.6.0
  * @category current time zone
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
  *   // will use the system's local time zone
  *   const now = yield* DateTime.nowInCurrentZone
  * }).pipe(DateTime.withCurrentZoneLocal)
+ * ```
  */
 export const withCurrentZoneLocal = <A, E, R>(
   effect: Effect.Effect<A, E, R>
@@ -1347,12 +1385,14 @@ export const withCurrentZoneLocal = <A, E, R>(
  * @since 3.6.0
  * @category current time zone
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
  *   // will use the system's local time zone
  *   const now = yield* DateTime.nowInCurrentZone
  * }).pipe(DateTime.withCurrentZoneOffset(3 * 60 * 60 * 1000))
+ * ```
  */
 export const withCurrentZoneOffset: {
   (offset: number): <A, E, R>(
@@ -1374,12 +1414,14 @@ export const withCurrentZoneOffset: {
  * @since 3.6.0
  * @category current time zone
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
  *   // will use the "Europe/London" time zone
  *   const now = yield* DateTime.nowInCurrentZone
  * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))
+ * ```
  */
 export const withCurrentZoneNamed: {
   (zone: string): <A, E, R>(
@@ -1404,12 +1446,14 @@ export const withCurrentZoneNamed: {
  * @since 3.6.0
  * @category current time zone
  * @example
+ * ```ts
  * import { DateTime, Effect } from "effect"
  *
  * Effect.gen(function* () {
  *   // will use the "Europe/London" time zone
  *   const now = yield* DateTime.nowInCurrentZone
  * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))
+ * ```
  */
 export const nowInCurrentZone: Effect.Effect<Zoned, never, CurrentTimeZone> = Effect.flatMap(
   now,
@@ -1532,12 +1576,14 @@ export const mutateUtc: {
  * @since 3.6.0
  * @category mapping
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // add 10 milliseconds
  * DateTime.unsafeMake(0).pipe(
  *   DateTime.mapEpochMillis((millis) => millis + 10)
  * )
+ * ```
  */
 export const mapEpochMillis: {
   (f: (millis: number) => number): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1554,12 +1600,14 @@ export const mapEpochMillis: {
  * @since 3.6.0
  * @category mapping
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // get the time zone adjusted date in milliseconds
  * DateTime.unsafeMakeZoned(0, { timeZone: "Europe/London" }).pipe(
  *   DateTime.withDate((date) => date.getTime())
  * )
+ * ```
  */
 export const withDate: {
   <A>(f: (date: Date) => A): (self: DateTime) => A
@@ -1573,12 +1621,14 @@ export const withDate: {
  * @since 3.6.0
  * @category mapping
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // get the date in milliseconds
  * DateTime.unsafeMake(0).pipe(
  *   DateTime.withDateUtc((date) => date.getTime())
  * )
+ * ```
  */
 export const withDateUtc: {
   <A>(f: (date: Date) => A): (self: DateTime) => A
@@ -1613,12 +1663,14 @@ export const match: {
  * @since 3.6.0
  * @category math
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // add 5 minutes
  * DateTime.unsafeMake(0).pipe(
  *   DateTime.addDuration("5 minutes")
  * )
+ * ```
  */
 export const addDuration: {
   (duration: Duration.DurationInput): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1635,12 +1687,14 @@ export const addDuration: {
  * @since 3.6.0
  * @category math
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // subtract 5 minutes
  * DateTime.unsafeMake(0).pipe(
  *   DateTime.subtractDuration("5 minutes")
  * )
+ * ```
  */
 export const subtractDuration: {
   (duration: Duration.DurationInput): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1664,12 +1718,14 @@ const addMillis = (date: Date, amount: number): void => {
  * @since 3.6.0
  * @category math
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // add 5 minutes
  * DateTime.unsafeMake(0).pipe(
  *   DateTime.add({ minutes: 5 })
  * )
+ * ```
  */
 export const add: {
   (parts: Partial<DateTime.PartsForMath>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1721,12 +1777,14 @@ export const add: {
  * @since 3.6.0
  * @category math
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // subtract 5 minutes
  * DateTime.unsafeMake(0).pipe(
  *   DateTime.subtract({ minutes: 5 })
  * )
+ * ```
  */
 export const subtract: {
   (parts: Partial<DateTime.PartsForMath>): <A extends DateTime>(self: A) => DateTime.PreserveZone<A>
@@ -1789,6 +1847,7 @@ function startOfDate(date: Date, part: DateTime.UnitSingular, options?: {
  * @since 3.6.0
  * @category math
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // returns "2024-01-01T00:00:00Z"
@@ -1796,6 +1855,7 @@ function startOfDate(date: Date, part: DateTime.UnitSingular, options?: {
  *   DateTime.startOf("day"),
  *   DateTime.formatIso
  * )
+ * ```
  */
 export const startOf: {
   (part: DateTime.UnitSingular, options?: {
@@ -1858,6 +1918,7 @@ function endOfDate(date: Date, part: DateTime.UnitSingular, options?: {
  * @since 3.6.0
  * @category math
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // returns "2024-01-01T23:59:59.999Z"
@@ -1865,6 +1926,7 @@ function endOfDate(date: Date, part: DateTime.UnitSingular, options?: {
  *   DateTime.endOf("day"),
  *   DateTime.formatIso
  * )
+ * ```
  */
 export const endOf: {
   (part: DateTime.UnitSingular, options?: {
@@ -1886,6 +1948,7 @@ export const endOf: {
  * @since 3.6.0
  * @category math
  * @example
+ * ```ts
  * import { DateTime } from "effect"
  *
  * // returns "2024-01-02T00:00:00Z"
@@ -1893,6 +1956,7 @@ export const endOf: {
  *   DateTime.nearest("day"),
  *   DateTime.formatIso
  * )
+ * ```
  */
 export const nearest: {
   (part: DateTime.UnitSingular, options?: {

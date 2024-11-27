@@ -73,6 +73,7 @@ export interface PgClientConfig {
    * [readme](https://github.com/porsager/postgres?tab=readme-ov-file#connection-details) instead.
    *
    * @example
+   * ```ts
    * import { AuthTypes, Connector } from "@google-cloud/cloud-sql-connector";
    * import { PgClient } from "@effect/sql-pg";
    * import { Config, Effect, Layer } from "effect"
@@ -85,6 +86,7 @@ export interface PgClientConfig {
    *   }));
    *   return PgClient.layer({ socket: clientOpts.stream, username: "iam-user" });
    * }).pipe(Layer.unwrapEffect)
+   * ```
    */
   readonly socket?: (() => NodeStream.Duplex) | undefined
 
@@ -108,10 +110,12 @@ export interface PgClientConfig {
    * By default, postgres.js logs these with console.log.
    * To silence notices, see the following example:
    * @example
+   * ```ts
    * import { PgClient } from "@effect/sql-pg";
    * import { Config, Layer } from "effect"
    *
    * const layer = PgClient.layer({ onnotice: Config.succeed(() => {}) })
+   * ```
    */
   readonly onnotice?: (notice: postgres.Notice) => void
   readonly types?: Record<string, postgres.PostgresType> | undefined

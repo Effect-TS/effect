@@ -214,10 +214,12 @@ export const TraversableFilterable = getTraversableFilterable()
  * For example, when using the `MonoidSum`, values for matching keys will be summed.
  *
  * @example
+ * ```ts
  * import * as NumberInstances from "@effect/typeclass/data/Number"
  * import { getSemigroupUnion } from "@effect/typeclass/data/Record"
  *
  * assert.deepStrictEqual(getSemigroupUnion(NumberInstances.MonoidSum).combine({ a: 1 }, { a: 1, b: 3 }), { a: 2, b: 3 })
+ * ```
  *
  * @category instances
  * @since 0.29.4
@@ -236,6 +238,7 @@ export const getSemigroupUnion: <A>(
  * The `empty` value for this `Monoid` is an empty record `{}`.
  *
  * @example
+ * ```ts
  * import * as NumberInstances from "@effect/typeclass/data/Number"
  * import { getMonoidUnion } from "@effect/typeclass/data/Record"
  *
@@ -243,6 +246,7 @@ export const getSemigroupUnion: <A>(
  *
  * assert.deepStrictEqual(monoid.combine({ a: 1 }, { a: 1, b: 3 }), { a: 2, b: 3 })
  * assert.deepStrictEqual(monoid.combine({ a: 1 }, monoid.empty), { a: 1 })
+ * ```
  *
  * @category instances
  * @since 0.29.4
@@ -259,10 +263,12 @@ export const getMonoidUnion: <A>(
  * The values for matching keys are combined using the provided `Semigroup` instance.
  *
  * @example
+ * ```ts
  * import * as NumberInstances from "@effect/typeclass/data/Number"
  * import { getSemigroupIntersection } from "@effect/typeclass/data/Record"
  *
  * assert.deepStrictEqual(getSemigroupIntersection(NumberInstances.MonoidSum).combine({ a: 1 }, { a: 1, b: 3 }), { a: 2 })
+ * ```
  *
  * @category instances
  * @since 0.29.4

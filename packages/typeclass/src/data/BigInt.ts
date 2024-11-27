@@ -10,9 +10,11 @@ import * as semigroup from "../Semigroup.js"
  * `bigint` semigroup under addition.
  *
  * @example
+ * ```ts
  * import { SemigroupSum } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(SemigroupSum.combine(2n, 3n), 5n)
+ * ```
  *
  * @category instances
  * @since 0.24.0
@@ -48,9 +50,11 @@ export const SemigroupMultiply: semigroup.Semigroup<bigint> = semigroup.make(
  * A `Semigroup` that uses the minimum between two values.
  *
  * @example
+ * ```ts
  * import { SemigroupMin } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(SemigroupMin.combine(2n, 3n), 2n)
+ * ```
  *
  * @category instances
  * @since 0.24.0
@@ -61,9 +65,11 @@ export const SemigroupMin: semigroup.Semigroup<bigint> = semigroup.min(Order)
  * A `Semigroup` that uses the maximum between two values.
  *
  * @example
+ * ```ts
  * import { SemigroupMax } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(SemigroupMax.combine(2n, 3n), 3n)
+ * ```
  *
  * @category instances
  * @since 0.24.0
@@ -76,10 +82,12 @@ export const SemigroupMax: semigroup.Semigroup<bigint> = semigroup.max(Order)
  * The `empty` value is `0n`.
  *
  * @example
+ * ```ts
  * import { MonoidSum } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(MonoidSum.combine(2n, 3n), 5n)
  * assert.deepStrictEqual(MonoidSum.combine(2n, MonoidSum.empty), 2n)
+ * ```
  *
  * @category instances
  * @since 0.24.0
@@ -95,10 +103,12 @@ export const MonoidSum: monoid.Monoid<bigint> = monoid.fromSemigroup(
  * The `empty` value is `1n`.
  *
  * @example
+ * ```ts
  * import { MonoidMultiply } from "@effect/typeclass/data/BigInt"
  *
  * assert.deepStrictEqual(MonoidMultiply.combine(2n, 3n), 6n)
  * assert.deepStrictEqual(MonoidMultiply.combine(2n, MonoidMultiply.empty), 2n)
+ * ```
  *
  * @category instances
  * @since 0.24.0

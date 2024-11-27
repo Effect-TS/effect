@@ -98,6 +98,7 @@ const unsafeMake = <K, A = unknown, E = unknown>(
  * be automatically removed from the FiberMap when they complete.
  *
  * @example
+ * ```ts
  * import { Effect, FiberMap } from "effect"
  *
  * Effect.gen(function*(_) {
@@ -111,6 +112,7 @@ const unsafeMake = <K, A = unknown, E = unknown>(
  * }).pipe(
  *   Effect.scoped // The fibers will be interrupted when the scope is closed
  * )
+ * ```
  *
  * @since 2.0.0
  * @categories constructors
@@ -484,6 +486,7 @@ export const run: {
  * Capture a Runtime and use it to fork Effect's, adding the forked fibers to the FiberMap.
  *
  * @example
+ * ```ts
  * import { Context, Effect, FiberMap } from "effect"
  *
  * interface Users {
@@ -503,6 +506,7 @@ export const run: {
  * }).pipe(
  *   Effect.scoped // The fibers will be interrupted when the scope is closed
  * )
+ * ```
  *
  * @since 2.0.0
  * @categories combinators
@@ -563,6 +567,7 @@ export const size = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<number> =>
  * @since 2.0.0
  * @categories combinators
  * @example
+ * ```ts
  * import { Effect, FiberMap } from "effect";
  *
  * Effect.gen(function* (_) {
@@ -572,6 +577,7 @@ export const size = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<number> =>
  *   // parent fiber will fail with "error"
  *   yield* _(FiberMap.join(map));
  * });
+ * ```
  */
 export const join = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<void, E> =>
   Deferred.await(self.deferred as Deferred.Deferred<void, E>)

@@ -408,19 +408,19 @@ export const makeSerializable: {
   initialize:
     | Machine.InitializeSerializable<Input, State, Public, Private, R, InitErr, R>
     | Effect.Effect<SerializableProcedureList<State, Public, Private, R>, InitErr, R>
-): SerializableMachine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS | RI> =>
-  ({
-    [TypeId]: TypeId,
-    [SerializableTypeId]: SerializableTypeId,
-    initialize: Effect.isEffect(initialize) ? (() => initialize) : initialize as any,
-    identifier: "SerializableMachine",
-    retryPolicy: undefined,
-    schemaInput: options.input as any,
-    schemaState: options.state as any,
-    pipe() {
-      return pipeArguments(this, arguments)
-    }
-  }) as any
+): SerializableMachine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS | RI> => (({
+  [TypeId]: TypeId,
+  [SerializableTypeId]: SerializableTypeId,
+  initialize: Effect.isEffect(initialize) ? (() => initialize) : initialize as any,
+  identifier: "SerializableMachine",
+  retryPolicy: undefined,
+  schemaInput: options.input as any,
+  schemaState: options.state as any,
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}) as any)
 
 /**
  * @since 1.0.0
@@ -437,11 +437,10 @@ export const retry: {
 } = dual(2, <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(
   self: M,
   retryPolicy: Schedule.Schedule<Out, In, R>
-): Machine.AddContext<M, R> =>
-  ({
-    ...self,
-    retryPolicy
-  }) as any)
+): Machine.AddContext<M, R> => (({
+  ...self,
+  retryPolicy
+}) as any))
 
 /**
  * @since 1.0.0

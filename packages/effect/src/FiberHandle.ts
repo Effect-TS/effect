@@ -87,6 +87,7 @@ const unsafeMake = <A = unknown, E = unknown>(
  * be automatically removed from the FiberHandle when it completes.
  *
  * @example
+ * ```ts
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*(_) {
@@ -101,6 +102,7 @@ const unsafeMake = <A = unknown, E = unknown>(
  * }).pipe(
  *   Effect.scoped // The fiber will be interrupted when the scope is closed
  * )
+ * ```
  *
  * @since 2.0.0
  * @categories constructors
@@ -380,6 +382,7 @@ export const run: {
  * Capture a Runtime and use it to fork Effect's, adding the forked fibers to the FiberHandle.
  *
  * @example
+ * ```ts
  * import { Context, Effect, FiberHandle } from "effect"
  *
  * interface Users {
@@ -401,6 +404,7 @@ export const run: {
  * }).pipe(
  *   Effect.scoped // The fiber will be interrupted when the scope is closed
  * )
+ * ```
  *
  * @since 2.0.0
  * @categories combinators
@@ -452,6 +456,7 @@ export const runtime: <A, E>(
  * @since 2.0.0
  * @categories combinators
  * @example
+ * ```ts
  * import { Effect, FiberHandle } from "effect";
  *
  * Effect.gen(function* (_) {
@@ -461,6 +466,7 @@ export const runtime: <A, E>(
  *   // parent fiber will fail with "error"
  *   yield* _(FiberHandle.join(handle));
  * });
+ * ```
  */
 export const join = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void, E> =>
   Deferred.await(self.deferred as Deferred.Deferred<void, E>)

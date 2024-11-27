@@ -18,6 +18,6 @@ const transformer = Path.resolve("scripts/codemods/ts-fence.ts")
 
 jscodeshift.run(transformer, paths, {
   babel: true,
-  parser: "ts",
-  dry: true
+  parser: "ts"
+  // dry: true
 })

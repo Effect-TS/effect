@@ -98,6 +98,7 @@ const let_ = <F extends TypeLambda>(
 export {
   /**
    * @example
+   * ```ts
    * import * as covariant from "@effect/typeclass/Covariant"
    * import type { HKT } from "effect"
    * import { dual, pipe } from "effect/Function"
@@ -124,6 +125,7 @@ export {
    *
    * assert.deepStrictEqual(pipe(notation.Do, notation.let("foo", () => "bar")), { value: { foo: "bar" } })
    *
+   * ```
    * @category do notation
    * @since 0.24.0
    */

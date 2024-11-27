@@ -296,6 +296,7 @@ export const foldMap: {
  * to surround annotated regions with »>>>« and »<<<«.
  *
  * @example
+ * ```ts
  * import * as Doc from "@effect/printer/Doc"
  * import * as DocTree from "@effect/printer/DocTree"
  * import * as Layout from "@effect/printer/Layout"
@@ -322,6 +323,7 @@ export const foldMap: {
  *   rendered,
  *   "hello >>>world<<<!"
  * )
+ * ```
  *
  * @since 1.0.0
  * @category rendering
