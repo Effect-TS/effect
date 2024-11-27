@@ -1,3 +1,4 @@
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
@@ -11,6 +12,7 @@ import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
+import type { NoInfer } from "effect/Types"
 import * as Cookies from "../Cookies.js"
 import * as Headers from "../Headers.js"
 import type * as Client from "../HttpClient.js"
@@ -565,6 +567,7 @@ export const retry: {
 export const retryTransient: {
   <B, E, R1 = never>(
     options: {
+      readonly while?: Predicate.Predicate<NoInfer<E>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
       readonly times?: number
     } | Schedule.Schedule<B, NoInfer<E>, R1>
@@ -572,6 +575,7 @@ export const retryTransient: {
   <E, R, B, R1 = never>(
     self: Client.HttpClient<E, R>,
     options: {
+      readonly while?: Predicate.Predicate<NoInfer<E>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
       readonly times?: number
     } | Schedule.Schedule<B, NoInfer<E>, R1>
@@ -581,6 +585,7 @@ export const retryTransient: {
   <E extends E0, E0, R, B, R1 = never>(
     self: Client.HttpClient<E, R>,
     options: {
+      readonly while?: Predicate.Predicate<NoInfer<E>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
       readonly times?: number
     } | Schedule.Schedule<B, NoInfer<E>, R1>
@@ -588,15 +593,22 @@ export const retryTransient: {
     transformResponse(
       self,
       Effect.retry({
-        while: (error) =>
-          Error.isHttpClientError(error) &&
-          ((error._tag === "RequestError" && error.reason === "Transport") ||
-            (error._tag === "ResponseError" && error.response.status >= 429)),
+        while: Schedule.ScheduleTypeId in options || options.while === undefined
+          ? isTransientError
+          : Predicate.or(isTransientError, options.while),
         schedule: Schedule.ScheduleTypeId in options ? options : options.schedule,
         times: Schedule.ScheduleTypeId in options ? undefined : options.times
       })
     )
 )
+
+const isTransientError = (error: unknown) =>
+  Predicate.hasProperty(error, Cause.TimeoutExceptionTypeId) || isTransientHttpError(error)
+
+const isTransientHttpError = (error: unknown) =>
+  Error.isHttpClientError(error) &&
+  ((error._tag === "RequestError" && error.reason === "Transport") ||
+    (error._tag === "ResponseError" && error.response.status >= 429))
 
 /** @internal */
 export const tap = dual<
