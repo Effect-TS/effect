@@ -132,4 +132,34 @@ describe("Cron", () => {
     assertFalse(Equal.equals(cron, parse("23 0-20/2 * * 0-6")))
     assertFalse(Equal.equals(cron, parse("23 0-20/2 1 * 0")))
   })
+
+  it("handles leap years", () => {
+    assertTrue(match("0 0 29 2 *", "2024-02-29 00:00:00"))
+    assertFalse(match("0 0 29 2 *", "2025-02-29 00:00:00"))
+    assertFalse(match("0 0 29 2 *", "2026-02-29 00:00:00"))
+    assertFalse(match("0 0 29 2 *", "2027-02-29 00:00:00"))
+    assertTrue(match("0 0 29 2 *", "2028-02-29 00:00:00"))
+
+    deepStrictEqual(next("0 0 29 2 *", new Date("2024-01-01 00:00:00")), new Date("2024-02-29 00:00:00"))
+    deepStrictEqual(next("0 0 29 2 *", new Date("2025-01-01 00:00:00")), new Date("2028-02-29 00:00:00"))
+  })
+
+  it.skip("handles transitions accross daylight savings time changes", () => {
+    const berlin = DateTime.zoneUnsafeMakeNamed("Europe/Berlin")
+    const make = (date: DateTime.DateTime.Input) =>
+      DateTime.unsafeMakeZoned(date, {
+        timeZone: berlin,
+        adjustForTimeZone: true
+      }).pipe(DateTime.toDateUtc)
+
+    const start = make("2024-03-31 00:00:00")
+    const sequence = Cron.sequence(parse("30 * * * *", berlin), start)
+    const next = () => sequence.next().value
+
+    deepStrictEqual(next(), make("2024-03-31 00:30:00"))
+    deepStrictEqual(next(), make("2024-03-31 01:30:00"))
+    deepStrictEqual(next(), make("2024-03-31 02:30:00"))
+    deepStrictEqual(next(), make("2024-03-31 03:30:00")) // Get's stuck here (time of transition)
+    deepStrictEqual(next(), make("2024-03-31 04:30:00")) // This is never reached
+  })
 })
