@@ -264,8 +264,6 @@ export const isRight: <R, L>(self: Either<R, L>) => self is Right<L, R> = either
 /**
  * Converts a `Either` to an `Option` discarding the `Left`.
  *
- * Alias of {@link toOption}.
- *
  * @example
  * ```ts
  * import { Either, Option } from "effect"
