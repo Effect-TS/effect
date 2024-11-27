@@ -1,5 +1,13 @@
 # @effect/printer
 
+## 0.38.18
+
+### Patch Changes
+
+- Updated dependencies [[`af409cf`](https://github.com/Effect-TS/effect/commit/af409cf1d2ff973be11cc079ea373eaeedca25de)]:
+  - effect@3.10.18
+  - @effect/typeclass@0.29.18
+
 ## 0.38.17
 
 ### Patch Changes

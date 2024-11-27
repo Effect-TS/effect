@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.69.27
+
+### Patch Changes
+
+- [#4005](https://github.com/Effect-TS/effect/pull/4005) [`beaccae`](https://github.com/Effect-TS/effect/commit/beaccae2d15931e9fe475fb50a0b3638243fe3f7) Thanks @tim-smart! - fix HttpApiBuilder.middleware when used multiple times
+
+- Updated dependencies [[`af409cf`](https://github.com/Effect-TS/effect/commit/af409cf1d2ff973be11cc079ea373eaeedca25de)]:
+  - effect@3.10.18
+
 ## 0.69.26
 
 ### Patch Changes
