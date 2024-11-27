@@ -25,6 +25,7 @@ import { dual } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import type { TypeLambda } from "./HKT.js"
+import * as internalCause from "./internal/cause.js"
 import * as _console from "./internal/console.js"
 import { TagProto } from "./internal/context.js"
 import * as effect from "./internal/core-effect.js"
@@ -7193,10 +7194,8 @@ export namespace fn {
 export const fn: (
   name: string,
   options?: Tracer.SpanOptions
-) => fn.Gen & fn.NonGen = (name, options) =>
-// @ts-ignore
-(body: Function, ...pipeables: Array<any>) => {
-  return function(...args: Array<any>) {
+) => fn.Gen & fn.NonGen = (name, options) => (body: Function, ...pipeables: Array<any>) => {
+  return function(this: any, ...args: Array<any>) {
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
     const error = new Error()
@@ -7212,21 +7211,30 @@ export const fn: (
         return cache
       }
     }
-    // @ts-ignore
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const self = this
-    const res = (...args: Array<any>) => {
-      let res = isGeneratorFunction(body)
-        ? gen(() => internalCall(() => body.apply(self, args)))
-        : body.apply(self, args)
+    let effect: Effect<any, any, any>
+    try {
+      effect = isGeneratorFunction(body)
+        ? gen(() => internalCall(() => body.apply(this, args)))
+        : body.apply(this, args)
       for (const x of pipeables) {
-        res = x(res)
+        effect = x(effect)
       }
-      return res
+    } catch (errorA) {
+      try {
+        effect = die(errorA)
+        for (const x of pipeables) {
+          effect = x(effect)
+        }
+      } catch (errorB) {
+        effect = failCause(internalCause.sequential(
+          internalCause.die(errorA),
+          internalCause.die(errorB)
+        ))
+      }
     }
     const opts: any = (options && "captureStackTrace" in options) ? options : { captureStackTrace, ...options }
     return withSpan(
-      core.suspend(() => res(...args)),
+      effect,
       name,
       opts
     )
