@@ -85,24 +85,24 @@ describe("UrlParams", () => {
     })
   })
 
-  describe("extractAll", () => {
+  describe("toRecord", () => {
     it("works when empty", () => {
       assert.deepStrictEqual(
-        UrlParams.extractAll(UrlParams.empty),
+        UrlParams.toRecord(UrlParams.empty),
         {}
       )
     })
 
     it("builds non empty array from same keys", () => {
       assert.deepStrictEqual(
-        UrlParams.extractAll(UrlParams.fromInput({ "a": [10, "string", false] })),
+        UrlParams.toRecord(UrlParams.fromInput({ "a": [10, "string", false] })),
         { a: ["10", "string", "false"] }
       )
     })
 
     it("works with non-strings", () => {
       const urlParams = UrlParams.fromInput({ a: 1, b: true, c: "string", e: [1, 2, 3] })
-      const result = UrlParams.extractAll(urlParams)
+      const result = UrlParams.toRecord(urlParams)
       assert.deepStrictEqual(
         result,
         { "a": "1", "b": "true", "c": "string", "e": ["1", "2", "3"] }
@@ -110,17 +110,17 @@ describe("UrlParams", () => {
     })
   })
 
-  describe("extractSchema", () => {
+  describe("schemaStruct", () => {
     it.effect("works when empty", () =>
       Effect.gen(function*() {
-        const result = yield* UrlParams.extractSchema(Schema.Struct({}))(UrlParams.empty)
+        const result = yield* UrlParams.schemaStruct(Schema.Struct({}))(UrlParams.empty)
         assert.deepStrictEqual(result, {})
       }))
 
     it.effect("parse original values", () =>
       Effect.gen(function*() {
         const urlParams = UrlParams.fromInput({ "a": [10, "string", false] })
-        const result = yield* UrlParams.extractSchema(Schema.Struct({
+        const result = yield* UrlParams.schemaStruct(Schema.Struct({
           a: Schema.Tuple(Schema.NumberFromString, Schema.String, Schema.BooleanFromString)
         }))(urlParams)
         assert.deepStrictEqual(result, {
@@ -131,7 +131,7 @@ describe("UrlParams", () => {
     it.effect("parse multiple keys", () =>
       Effect.gen(function*() {
         const urlParams = UrlParams.fromInput({ "a": [10, "string"], "b": false })
-        const result = yield* UrlParams.extractSchema(Schema.Struct({
+        const result = yield* UrlParams.schemaStruct(Schema.Struct({
           a: Schema.Tuple(Schema.NumberFromString, Schema.String),
           b: Schema.BooleanFromString
         }))(urlParams)
