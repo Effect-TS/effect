@@ -32,6 +32,7 @@ const globalStore = (globalThis as any)[globalStoreId] as Map<unknown, any>
  * thereafter.
  *
  * @example
+ * ```ts
  * import { globalValue } from "effect/GlobalValue"
  *
  * // This cache will persist as long as the module is running,
@@ -40,6 +41,7 @@ const globalStore = (globalThis as any)[globalStoreId] as Map<unknown, any>
  *   Symbol.for("myCache"),
  *   () => new WeakMap<object, number>()
  * )
+ * ```
  *
  * @since 2.0.0
  */

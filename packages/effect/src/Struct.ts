@@ -14,10 +14,12 @@ import type { MatchRecord, Simplify } from "./Types.js"
  * Create a new object by picking properties of an existing object.
  *
  * @example
+ * ```ts
  * import { pipe, Struct } from "effect"
  *
  * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.pick("a", "b")), { a: "a", b: 1 })
  * assert.deepStrictEqual(Struct.pick({ a: "a", b: 1, c: true }, "a", "b"), { a: "a", b: 1 })
+ * ```
  *
  * @since 2.0.0
  */
@@ -48,10 +50,12 @@ export const pick: {
  * Create a new object by omitting properties of an existing object.
  *
  * @example
+ * ```ts
  * import { pipe, Struct } from "effect"
  *
  * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.omit("c")), { a: "a", b: 1 })
  * assert.deepStrictEqual(Struct.omit({ a: "a", b: 1, c: true }, "c"), { a: "a", b: 1 })
+ * ```
  *
  * @since 2.0.0
  */
@@ -81,6 +85,7 @@ export const omit: {
  * Alias of {@link Equivalence.struct}.
  *
  * @example
+ * ```ts
  * import { Struct, String, Number } from "effect"
  *
  * const PersonEquivalence = Struct.getEquivalence({
@@ -96,6 +101,7 @@ export const omit: {
  *   PersonEquivalence({ name: "John", age: 25 }, { name: "John", age: 40 }),
  *   false
  * )
+ * ```
  *
  * @category combinators
  * @since 2.0.0
@@ -132,6 +138,7 @@ type PartialTransform<O, T> = {
  * If no transformation function is provided for a key, it will return the origional value for that key.
  *
  * @example
+ * ```ts
  * import { pipe, Struct } from "effect"
  *
  * assert.deepStrictEqual(
@@ -144,6 +151,7 @@ type PartialTransform<O, T> = {
  *   ),
  *   { a: 1, b: 2, c: 3 }
  * )
+ * ```
  *
  * @since 2.0.0
  */
@@ -168,11 +176,13 @@ export const evolve: {
  * Retrieves the value associated with the specified key from a struct.
  *
  * @example
+ * ```ts
  * import { pipe, Struct } from "effect"
  *
  * const value = pipe({ a: 1, b: 2 }, Struct.get("a"))
  *
  * assert.deepStrictEqual(value, 1)
+ * ```
  *
  * @since 2.0.0
  */
@@ -184,6 +194,7 @@ export const get =
  * Retrieves the object keys that are strings in a typed manner
  *
  * @example
+ * ```ts
  * import { Struct } from "effect"
  *
  * const symbol: unique symbol = Symbol()
@@ -197,6 +208,7 @@ export const get =
  * const keys: Array<"a" | "b"> = Struct.keys(value)
  *
  * assert.deepStrictEqual(keys, ["a", "b"])
+ * ```
  *
  * @since 3.6.0
  */

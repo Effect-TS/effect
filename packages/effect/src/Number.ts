@@ -19,10 +19,12 @@ import * as predicate from "./Predicate.js"
  * @param input - The value to test.
  *
  * @example
+ * ```ts
  * import { isNumber } from "effect/Number"
  *
  * assert.deepStrictEqual(isNumber(2), true)
  * assert.deepStrictEqual(isNumber("2"), false)
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -36,9 +38,11 @@ export const isNumber: (input: unknown) => input is number = predicate.isNumber
  * @param that - The second operand.
  *
  * @example
+ * ```ts
  * import { sum } from "effect/Number"
  *
  * assert.deepStrictEqual(sum(2, 3), 5)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -55,9 +59,11 @@ export const sum: {
  * @param that - The second operand.
  *
  * @example
+ * ```ts
  * import { multiply } from "effect/Number"
  *
  * assert.deepStrictEqual(multiply(2, 3), 6)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -74,9 +80,11 @@ export const multiply: {
  * @param that - The second operand.
  *
  * @example
+ * ```ts
  * import { subtract } from "effect/Number"
  *
  * assert.deepStrictEqual(subtract(2, 3), -1)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -93,10 +101,12 @@ export const subtract: {
  * @param that - The divisor operand.
  *
  * @example
+ * ```ts
  * import { Number, Option } from "effect"
  *
  * assert.deepStrictEqual(Number.divide(6, 3), Option.some(2))
  * assert.deepStrictEqual(Number.divide(6, 0), Option.none())
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -118,9 +128,11 @@ export const divide: {
  * @param that - The divisor operand.
  *
  * @example
+ * ```ts
  * import { unsafeDivide } from "effect/Number"
  *
  * assert.deepStrictEqual(unsafeDivide(6, 3), 2)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -136,9 +148,11 @@ export const unsafeDivide: {
  * @param n - A `number` to be incremented.
  *
  * @example
+ * ```ts
  * import { increment } from "effect/Number"
  *
  * assert.deepStrictEqual(increment(2), 3)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -151,9 +165,11 @@ export const increment = (n: number): number => n + 1
  * @param n - A `number` to be decremented.
  *
  * @example
+ * ```ts
  * import { decrement } from "effect/Number"
  *
  * assert.deepStrictEqual(decrement(3), 2)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -179,11 +195,13 @@ export const Order: order.Order<number> = order.number
  * @param that - The second argument.
  *
  * @example
+ * ```ts
  * import { lessThan } from "effect/Number"
  *
  * assert.deepStrictEqual(lessThan(2, 3), true)
  * assert.deepStrictEqual(lessThan(3, 3), false)
  * assert.deepStrictEqual(lessThan(4, 3), false)
+ * ```
  *
  * @category predicates
  * @since 2.0.0
@@ -200,11 +218,13 @@ export const lessThan: {
  * @param that - The second `number` to compare with.
  *
  * @example
+ * ```ts
  * import { lessThanOrEqualTo } from "effect/Number"
  *
  * assert.deepStrictEqual(lessThanOrEqualTo(2, 3), true)
  * assert.deepStrictEqual(lessThanOrEqualTo(3, 3), true)
  * assert.deepStrictEqual(lessThanOrEqualTo(4, 3), false)
+ * ```
  *
  * @category predicates
  * @since 2.0.0
@@ -221,11 +241,13 @@ export const lessThanOrEqualTo: {
  * @param that - The second argument.
  *
  * @example
+ * ```ts
  * import { greaterThan } from "effect/Number"
  *
  * assert.deepStrictEqual(greaterThan(2, 3), false)
  * assert.deepStrictEqual(greaterThan(3, 3), false)
  * assert.deepStrictEqual(greaterThan(4, 3), true)
+ * ```
  *
  * @category predicates
  * @since 2.0.0
@@ -242,11 +264,13 @@ export const greaterThan: {
  * @param that - The second `number` to compare with.
  *
  * @example
+ * ```ts
  * import { greaterThanOrEqualTo } from "effect/Number"
  *
  * assert.deepStrictEqual(greaterThanOrEqualTo(2, 3), false)
  * assert.deepStrictEqual(greaterThanOrEqualTo(3, 3), true)
  * assert.deepStrictEqual(greaterThanOrEqualTo(4, 3), true)
+ * ```
  *
  * @category predicates
  * @since 2.0.0
@@ -264,6 +288,7 @@ export const greaterThanOrEqualTo: {
  * @param maximum - The `maximum` value to check.
  *
  * @example
+ * ```ts
  * import { Number } from "effect"
  *
  * const between = Number.between({ minimum: 0, maximum: 5 })
@@ -271,6 +296,7 @@ export const greaterThanOrEqualTo: {
  * assert.deepStrictEqual(between(3), true)
  * assert.deepStrictEqual(between(-1), false)
  * assert.deepStrictEqual(between(6), false)
+ * ```
  *
  * @category predicates
  * @since 2.0.0
@@ -298,6 +324,7 @@ export const between: {
  * @param maximum - The upper end of the range.
  *
  * @example
+ * ```ts
  * import { Number } from "effect"
  *
  * const clamp = Number.clamp({ minimum: 1, maximum: 5 })
@@ -305,6 +332,7 @@ export const between: {
  * assert.equal(clamp(3), 3)
  * assert.equal(clamp(0), 1)
  * assert.equal(clamp(6), 5)
+ * ```
  *
  * @since 2.0.0
  */
@@ -326,9 +354,11 @@ export const clamp: {
  * @param that - The second `number`.
  *
  * @example
+ * ```ts
  * import { min } from "effect/Number"
  *
  * assert.deepStrictEqual(min(2, 3), 2)
+ * ```
  *
  * @since 2.0.0
  */
@@ -344,9 +374,11 @@ export const min: {
  * @param that - The second `number`.
  *
  * @example
+ * ```ts
  * import { max } from "effect/Number"
  *
  * assert.deepStrictEqual(max(2, 3), 3)
+ * ```
  *
  * @since 2.0.0
  */
@@ -361,11 +393,13 @@ export const max: {
  * @param n - The `number` to determine the sign of.
  *
  * @example
+ * ```ts
  * import { sign } from "effect/Number"
  *
  * assert.deepStrictEqual(sign(-5), -1)
  * assert.deepStrictEqual(sign(0), 0)
  * assert.deepStrictEqual(sign(5), 1)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -378,9 +412,11 @@ export const sign = (n: number): Ordering => Order(n, 0)
  * @param collection - The collection of `number`s to sum.
  *
  * @example
+ * ```ts
  * import { sumAll } from "effect/Number"
  *
  * assert.deepStrictEqual(sumAll([2, 3, 4]), 9)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -399,9 +435,11 @@ export const sumAll = (collection: Iterable<number>): number => {
  * @param collection - The collection of `number`s to multiply.
  *
  * @example
+ * ```ts
  * import { multiplyAll } from "effect/Number"
  *
  * assert.deepStrictEqual(multiplyAll([2, 3, 4]), 24)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -426,11 +464,13 @@ export const multiplyAll = (collection: Iterable<number>): number => {
  * @param divisor - The divisor.
  *
  * @example
+ * ```ts
  * import { remainder } from "effect/Number"
  *
  * assert.deepStrictEqual(remainder(2, 2), 0)
  * assert.deepStrictEqual(remainder(3, 2), 1)
  * assert.deepStrictEqual(remainder(-4, 2), -0)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -454,10 +494,12 @@ export const remainder: {
  * @param self - The number to find the next power of 2 from.
  *
  * @example
+ * ```ts
  * import { nextPow2 } from "effect/Number"
  *
  * assert.deepStrictEqual(nextPow2(5), 8)
  * assert.deepStrictEqual(nextPow2(17), 32)
+ * ```
  *
  * @category math
  * @since 2.0.0
@@ -500,10 +542,12 @@ export const parse = (s: string): Option<number> => {
  * @param precision - The precision
  *
  * @example
+ * ```ts
  * import { round } from "effect/Number"
  *
  * assert.deepStrictEqual(round(1.1234, 2), 1.12)
  * assert.deepStrictEqual(round(1.567, 2), 1.57)
+ * ```
  *
  * @category math
  * @since 3.8.0

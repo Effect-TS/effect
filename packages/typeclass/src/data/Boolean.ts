@@ -8,12 +8,14 @@ import * as semigroup from "../Semigroup.js"
  * `boolean` semigroup under conjunction.
  *
  * @example
+ * ```ts
  * import { SemigroupEvery } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupEvery.combine(true, true), true)
  * assert.deepStrictEqual(SemigroupEvery.combine(true, false), false)
  * assert.deepStrictEqual(SemigroupEvery.combine(false, true), false)
  * assert.deepStrictEqual(SemigroupEvery.combine(false, false), false)
+ * ```
  *
  * @category instances
  * @since 0.24.0
@@ -37,12 +39,14 @@ export const SemigroupEvery: semigroup.Semigroup<boolean> = semigroup.make(
  * `boolean` semigroup under disjunction.
  *
  * @example
+ * ```ts
  * import { SemigroupSome } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupSome.combine(true, true), true)
  * assert.deepStrictEqual(SemigroupSome.combine(true, false), true)
  * assert.deepStrictEqual(SemigroupSome.combine(false, true), true)
  * assert.deepStrictEqual(SemigroupSome.combine(false, false), false)
+ * ```
  *
  * @category instances
  * @since 0.24.0
@@ -66,12 +70,14 @@ export const SemigroupSome: semigroup.Semigroup<boolean> = semigroup.make(
  * `boolean` semigroup under exclusive disjunction.
  *
  * @example
+ * ```ts
  * import { SemigroupXor } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupXor.combine(true, true), false)
  * assert.deepStrictEqual(SemigroupXor.combine(true, false), true)
  * assert.deepStrictEqual(SemigroupXor.combine(false, true), true)
  * assert.deepStrictEqual(SemigroupXor.combine(false, false), false)
+ * ```
  *
  * @category instances
  * @since 0.24.0
@@ -82,12 +88,14 @@ export const SemigroupXor: semigroup.Semigroup<boolean> = semigroup.make((self, 
  * `boolean` semigroup under equivalence.
  *
  * @example
+ * ```ts
  * import { SemigroupEqv } from "@effect/typeclass/data/Boolean"
  *
  * assert.deepStrictEqual(SemigroupEqv.combine(true, true), true)
  * assert.deepStrictEqual(SemigroupEqv.combine(true, false), false)
  * assert.deepStrictEqual(SemigroupEqv.combine(false, true), false)
  * assert.deepStrictEqual(SemigroupEqv.combine(false, false), true)
+ * ```
  *
  * @category instances
  * @since 0.24.0

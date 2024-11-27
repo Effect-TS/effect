@@ -70,6 +70,7 @@ export declare namespace RateLimiter {
  * - The "cost" per effect can be changed. See {@link withCost}
  *
  * @example
+ * ```ts
  * import { Effect, RateLimiter } from "effect";
  * import { compose } from "effect/Function"
  *
@@ -89,6 +90,7 @@ export declare namespace RateLimiter {
  *     }
  *   })
  * );
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -103,6 +105,7 @@ export const make: (options: RateLimiter.Options) => Effect<RateLimiter, never, 
  * Eg: 1000 credits / hour, where a query costs 1 credit and a mutation costs 5 credits.
  *
  * @example
+ * ```ts
  * import { Effect, RateLimiter } from "effect";
  * import { compose } from "effect/Function";
  *
@@ -127,6 +130,7 @@ export const make: (options: RateLimiter.Options) => Effect<RateLimiter, never, 
  *     );
  *   })
  * );
+ * ```
  *
  * @since 2.0.0
  * @category combinators

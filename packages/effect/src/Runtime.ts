@@ -271,6 +271,7 @@ export const updateContext: {
  * @since 2.0.0
  * @category context
  * @example
+ * ```ts
  * import { Context, Runtime } from "effect"
  *
  * class Name extends Context.Tag("Name")<Name, string>() {}
@@ -278,6 +279,7 @@ export const updateContext: {
  * const runtime: Runtime.Runtime<Name> = Runtime.defaultRuntime.pipe(
  *   Runtime.provideService(Name, "John")
  * )
+ * ```
  */
 export const provideService: {
   <I, S>(tag: Context.Tag<I, S>, service: S): <R>(self: Runtime<R>) => Runtime<I | R>
@@ -297,6 +299,7 @@ export const updateFiberRefs: {
  * @since 2.0.0
  * @category fiber refs
  * @example
+ * ```ts
  * import { Effect, FiberRef, Runtime } from "effect"
  *
  * const ref = FiberRef.unsafeMake(0)
@@ -307,6 +310,7 @@ export const updateFiberRefs: {
  *
  * // returns 1
  * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
+ * ```
  */
 export const setFiberRef: {
   <A>(fiberRef: FiberRef.FiberRef<A>, value: A): <R>(self: Runtime<R>) => Runtime<R>
@@ -317,6 +321,7 @@ export const setFiberRef: {
  * @since 2.0.0
  * @category fiber refs
  * @example
+ * ```ts
  * import { Effect, FiberRef, Runtime } from "effect"
  *
  * const ref = FiberRef.unsafeMake(0)
@@ -328,6 +333,7 @@ export const setFiberRef: {
  *
  * // returns 0
  * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
+ * ```
  */
 export const deleteFiberRef: {
   <A>(fiberRef: FiberRef.FiberRef<A>): <R>(self: Runtime<R>) => Runtime<R>

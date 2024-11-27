@@ -63,9 +63,11 @@ export const isRedacted: (u: unknown) => u is Redacted<unknown> = redacted_.isRe
  * securely hiding its content.
  *
  * @example
+ * ```ts
  * import { Redacted } from "effect"
  *
  * const API_KEY = Redacted.make("1234567890")
+ * ```
  *
  * @since 3.3.0
  * @category constructors
@@ -77,11 +79,13 @@ export const make: <A>(value: A) => Redacted<A> = redacted_.make
  * with caution, as it exposes the sensitive data.
  *
  * @example
+ * ```ts
  * import { Redacted } from "effect"
  *
  * const API_KEY = Redacted.make("1234567890")
  *
  * assert.equal(Redacted.value(API_KEY), "1234567890")
+ * ```
  *
  * @since 3.3.0
  * @category getters
@@ -94,6 +98,7 @@ export const value: <A>(self: Redacted<A>) => A = redacted_.value
  * memory longer than necessary.
  *
  * @example
+ * ```ts
  * import { Redacted } from "effect"
  *
  * const API_KEY = Redacted.make("1234567890")
@@ -103,6 +108,7 @@ export const value: <A>(self: Redacted<A>) => A = redacted_.value
  * Redacted.unsafeWipe(API_KEY)
  *
  * assert.throws(() => Redacted.value(API_KEY), new Error("Unable to get redacted value"))
+ * ```
  *
  * @since 3.3.0
  * @category unsafe
@@ -115,6 +121,7 @@ export const unsafeWipe: <A>(self: Redacted<A>) => boolean = redacted_.unsafeWip
  * for comparing `Redacted` instances without exposing their contents.
  *
  * @example
+ * ```ts
  * import { Redacted, Equivalence } from "effect"
  *
  * const API_KEY1 = Redacted.make("1234567890")
@@ -125,6 +132,7 @@ export const unsafeWipe: <A>(self: Redacted<A>) => boolean = redacted_.unsafeWip
  *
  * assert.equal(equivalence(API_KEY1, API_KEY2), false)
  * assert.equal(equivalence(API_KEY1, API_KEY3), true)
+ * ```
  *
  * @category equivalence
  * @since 3.3.0

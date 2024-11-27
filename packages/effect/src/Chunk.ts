@@ -350,11 +350,13 @@ const reverseChunk = <A>(self: Chunk<A>): Chunk<A> => {
  * Importantly, if the input chunk is a `NonEmptyChunk`, the reversed chunk will also be a `NonEmptyChunk`.
  *
  * @example
+ * ```ts
  * import { Chunk } from "effect"
  *
  * const numbers = Chunk.make(1, 2, 3)
  * const reversedNumbers = Chunk.reverse(numbers)
  * assert.deepStrictEqual(reversedNumbers, Chunk.make(3, 2, 1))
+ * ```
  *
  * @since 2.0.0
  * @category elements
@@ -576,12 +578,14 @@ export const dropWhile: {
  * If either chunk is non-empty, the result is also a non-empty chunk.
  *
  * @example
+ * ```ts
  * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
  *   Chunk.make(1, 2).pipe(Chunk.prependAll(Chunk.make("a", "b")), Chunk.toArray),
  *   ["a", "b", 1, 2]
  * )
+ * ```
  *
  * @category concatenating
  * @since 2.0.0
@@ -600,12 +604,14 @@ export const prependAll: {
  * If either chunk is non-empty, the result is also a non-empty chunk.
  *
  * @example
+ * ```ts
  * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
  *   Chunk.make(1, 2).pipe(Chunk.appendAll(Chunk.make("a", "b")), Chunk.toArray),
  *   [1, 2, "a", "b"]
  * )
+ * ```
  *
  * @category concatenating
  * @since 2.0.0
@@ -903,12 +909,14 @@ export declare namespace Chunk {
  * If the input chunk is non-empty, the resulting chunk will also be non-empty.
  *
  * @example
+ * ```ts
  * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
  *   Chunk.map(Chunk.make(1, 2), (n) => n + 1),
  *   Chunk.make(2, 3)
  * )
+ * ```
  *
  * @since 2.0.0
  * @category mapping

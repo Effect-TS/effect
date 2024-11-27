@@ -91,6 +91,7 @@ export const layerConfig: (
  * with prepended url of the running http server.
  *
  * @example
+ * ```ts
  * import { HttpClient, HttpRouter, HttpServer } from "@effect/platform"
  * import { NodeHttpServer } from "@effect/platform-node"
  * import { Effect } from "effect"
@@ -100,6 +101,7 @@ export const layerConfig: (
  *   const response = yield* HttpClient.get("/")
  *   assert.strictEqual(response.status, 404)
  * }).pipe(Effect.provide(NodeHttpServer.layerTest))
+ * ```
  *
  * @since 1.0.0
  * @category layers

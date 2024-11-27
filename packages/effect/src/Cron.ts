@@ -170,6 +170,7 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  * @param cron - The cron expression to parse.
  *
  * @example
+ * ```ts
  * import { Cron, Either } from "effect"
  *
  * // At 04:00 on every day-of-month from 8 through 14.
@@ -180,6 +181,7 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  *   months: [],
  *   weekdays: []
  * })))
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -207,11 +209,13 @@ export const parse = (cron: string): Either.Either<Cron, ParseError> => {
  * @param date - The `Date` to check against.
  *
  * @example
+ * ```ts
  * import { Cron, Either } from "effect"
  *
  * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
  * assert.deepStrictEqual(Cron.match(cron, new Date("2021-01-08 04:00:00")), true)
  * assert.deepStrictEqual(Cron.match(cron, new Date("2021-01-08 05:00:00")), false)
+ * ```
  *
  * @since 2.0.0
  */
@@ -256,11 +260,13 @@ export const match = (cron: Cron, date: Date): boolean => {
  * Uses the current time as a starting point if no value is provided for `now`.
  *
  * @example
+ * ```ts
  * import { Cron, Either } from "effect"
  *
  * const after = new Date("2021-01-01 00:00:00")
  * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
  * assert.deepStrictEqual(Cron.next(cron, after), new Date("2021-01-08 04:00:00"))
+ * ```
  *
  * @param cron - The `Cron` instance.
  * @param now - The `Date` to start searching from.

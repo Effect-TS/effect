@@ -167,6 +167,7 @@ export const mapInput: {
  * - incremental - Set to 'true' for a counter that only increases. With this configuration, Effect ensures that non-incremental updates have no impact on the counter, making it exclusively suitable for counting upwards.
  *
  * @example
+ * ```ts
  * import { Metric } from "effect"
  *
  * const numberCounter = Metric.counter("count", {
@@ -177,6 +178,7 @@ export const mapInput: {
  *   description: "A bigint counter",
  *   bigint: true
  * });
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -208,11 +210,13 @@ export const counter: {
  * @param description - An optional description of the Frequency metric.
  *
  * @example
+ * ```ts
  * import { Metric } from "effect"
  *
  * const errorFrequency = Metric.frequency("error_frequency", {
  *    description: "Counts the occurrences of errors."
  * });
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -256,6 +260,7 @@ export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>
  * - bigint - Indicates if the counter uses 'bigint' data type.
  *
  * @example
+ * ```ts
  * import { Metric } from "effect"
  *
  * const numberGauge = Metric.gauge("memory_usage", {
@@ -266,6 +271,7 @@ export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>
  *   description: "A gauge for CPU load",
  *   bigint: true
  * });
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -290,12 +296,14 @@ export const gauge: {
  * @param description - A description of the histogram metric.
  *
  * @example
+ * ```ts
  * import { Metric, MetricBoundaries } from "effect"
  *
  * const latencyHistogram = Metric.histogram("latency_histogram",
  *   MetricBoundaries.linear({ start: 0, width: 10, count: 11 }),
  *   "Measures the distribution of request latency."
  * );
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -408,6 +416,7 @@ export const sync: <Out>(evaluate: LazyArg<Out>) => Metric<void, unknown, Out> =
  * - description - An optional description of the Summary metric.
  *
  * @example
+ * ```ts
  * import { Metric, Chunk } from "effect"
  *
  * const responseTimesSummary = Metric.summary({
@@ -418,6 +427,7 @@ export const sync: <Out>(evaluate: LazyArg<Out>) => Metric<void, unknown, Out> =
  *   quantiles: [0.5, 0.9, 0.99], // Calculate 50th, 90th, and 99th percentiles.
  *   description: "Measures the distribution of response times."
  * });
+ * ```
  *
  * @since 2.0.0
  * @category constructors

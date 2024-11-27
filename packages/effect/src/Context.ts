@@ -101,9 +101,11 @@ export declare namespace Tag {
  * @param key - A key that will be used to compare tags.
  *
  * @example
+ * ```ts
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.GenericTag("PORT").key === Context.GenericTag("PORT").key, true)
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -148,9 +150,11 @@ export const unsafeMake: <Services>(unsafeMap: Map<string, any>) => Context<Serv
  * @param input - The value to be checked if it is a `Context`.
  *
  * @example
+ * ```ts
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
+ * ```
  *
  * @since 2.0.0
  * @category guards
@@ -163,9 +167,11 @@ export const isContext: (input: unknown) => input is Context<never> = internal.i
  * @param input - The value to be checked if it is a `Tag`.
  *
  * @example
+ * ```ts
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.isTag(Context.GenericTag("Tag")), true)
+ * ```
  *
  * @since 2.0.0
  * @category guards
@@ -176,9 +182,11 @@ export const isTag: (input: unknown) => input is Tag<any, any> = internal.isTag
  * Returns an empty `Context`.
  *
  * @example
+ * ```ts
  * import { Context } from "effect"
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -189,6 +197,7 @@ export const empty: () => Context<never> = internal.empty
  * Creates a new `Context` with a single service associated to the tag.
  *
  * @example
+ * ```ts
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -196,6 +205,7 @@ export const empty: () => Context<never> = internal.empty
  * const Services = Context.make(Port, { PORT: 8080 })
  *
  * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
+ * ```
  *
  * @since 2.0.0
  * @category constructors
@@ -207,6 +217,7 @@ export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) =>
  * Adds a service to a given `Context`.
  *
  * @example
+ * ```ts
  * import { Context, pipe } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -221,6 +232,7 @@ export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) =>
  *
  * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
  * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+ * ```
  *
  * @since 2.0.0
  */
@@ -243,6 +255,7 @@ export const add: {
  * @param tag - The `Tag` of the service to retrieve.
  *
  * @example
+ * ```ts
  * import { pipe, Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -254,6 +267,7 @@ export const add: {
  * )
  *
  * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+ * ```
  *
  * @since 2.0.0
  * @category getters
@@ -285,6 +299,7 @@ export const getOrElse: {
  * @param tag - The `Tag` of the service to retrieve.
  *
  * @example
+ * ```ts
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -294,6 +309,7 @@ export const getOrElse: {
  *
  * assert.deepStrictEqual(Context.unsafeGet(Services, Port), { PORT: 8080 })
  * assert.throws(() => Context.unsafeGet(Services, Timeout))
+ * ```
  *
  * @since 2.0.0
  * @category unsafe
@@ -311,6 +327,7 @@ export const unsafeGet: {
  * @param tag - The `Tag` of the service to retrieve.
  *
  * @example
+ * ```ts
  * import { Context, Option } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -320,6 +337,7 @@ export const unsafeGet: {
  *
  * assert.deepStrictEqual(Context.getOption(Services, Port), Option.some({ PORT: 8080 }))
  * assert.deepStrictEqual(Context.getOption(Services, Timeout), Option.none())
+ * ```
  *
  * @since 2.0.0
  * @category getters
@@ -336,6 +354,7 @@ export const getOption: {
  * @param that - The second `Context` to merge.
  *
  * @example
+ * ```ts
  * import { Context } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -348,6 +367,7 @@ export const getOption: {
  *
  * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
  * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+ * ```
  *
  * @since 2.0.0
  */
@@ -363,6 +383,7 @@ export const merge: {
  * @param tags - The list of `Tag`s to be included in the new `Context`.
  *
  * @example
+ * ```ts
  * import { pipe, Context, Option } from "effect"
  *
  * const Port = Context.GenericTag<{ PORT: number }>("Port")
@@ -377,6 +398,7 @@ export const merge: {
  *
  * assert.deepStrictEqual(Context.getOption(Services, Port), Option.some({ PORT: 8080 }))
  * assert.deepStrictEqual(Context.getOption(Services, Timeout), Option.none())
+ * ```
  *
  * @since 2.0.0
  */
@@ -394,6 +416,7 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
 
 /**
  * @example
+ * ```ts
  * import { Context, Layer } from "effect"
  *
  * class MyTag extends Context.Tag("MyTag")<
@@ -402,6 +425,7 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
  * >() {
  *  static Live = Layer.succeed(this, { myNum: 108 })
  * }
+ * ```
  *
  * @since 2.0.0
  * @category constructors

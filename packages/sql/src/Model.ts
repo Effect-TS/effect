@@ -77,6 +77,7 @@ export {
    * @since 1.0.0
    * @category constructors
    * @example
+   * ```ts
    * import { Schema } from "effect"
    * import { Model } from "@effect/sql"
    *
@@ -109,6 +110,7 @@ export {
    *     return this.name.toUpperCase()
    *   }
    * }
+   * ```
    */
   Class,
   /**

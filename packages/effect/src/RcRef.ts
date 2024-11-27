@@ -77,6 +77,7 @@ export declare namespace RcRef {
  * @since 3.5.0
  * @category constructors
  * @example
+ * ```ts
  * import { Effect, RcRef } from "effect"
  *
  * Effect.gen(function*() {
@@ -94,6 +95,7 @@ export declare namespace RcRef {
  *     Effect.scoped
  *   )
  * })
+ * ```
  */
 export const make: <A, E, R>(
   options: {

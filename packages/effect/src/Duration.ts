@@ -796,10 +796,12 @@ export const parts = (self: DurationInput): {
  * @since 2.0.0
  * @category conversions
  * @example
+ * ```ts
  * import { Duration } from "effect"
  *
  * Duration.format(Duration.millis(1000)) // "1s"
  * Duration.format(Duration.millis(1001)) // "1s 1ms"
+ * ```
  */
 export const format = (self: DurationInput): string => {
   const duration = decode(self)

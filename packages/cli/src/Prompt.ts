@@ -517,6 +517,7 @@ export declare namespace All {
  * as an argument.
  *
  * @example
+ * ```ts
  * import * as Prompt from "@effect/cli/Prompt"
  * import * as NodeContext from "@effect/platform-node/NodeContext"
  * import * as Runtime from "@effect/platform-node/NodeRuntime"
@@ -537,6 +538,7 @@ export declare namespace All {
  * const allWithTuple = Prompt.all([username, password])
  *
  * const allWithRecord = Prompt.all({ username, password })
+ * ```
  *
  * @since 1.0.0
  * @category collecting & elements

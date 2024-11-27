@@ -57,6 +57,7 @@ export declare namespace RcMap {
  * @param capacity The maximum number of resources that can be held in the map.
  * @param idleTimeToLive When the reference count reaches zero, the resource will be released after this duration.
  * @example
+ * ```ts
  * import { Effect, RcMap } from "effect"
  *
  * Effect.gen(function*() {
@@ -75,6 +76,7 @@ export declare namespace RcMap {
  *     Effect.scoped
  *   )
  * })
+ * ```
  */
 export const make: {
   <K, A, E, R>(

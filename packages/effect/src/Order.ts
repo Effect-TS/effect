@@ -318,6 +318,7 @@ export const max = <A>(O: Order<A>): {
  * Clamp a value between a minimum and a maximum.
  *
  * @example
+ * ```ts
  * import { Order, Number } from "effect"
  *
  * const clamp = Order.clamp(Number.Order)({ minimum: 1, maximum: 5 })
@@ -325,6 +326,7 @@ export const max = <A>(O: Order<A>): {
  * assert.equal(clamp(3), 3)
  * assert.equal(clamp(0), 1)
  * assert.equal(clamp(6), 5)
+ * ```
  *
  * @since 2.0.0
  */

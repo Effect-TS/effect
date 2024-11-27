@@ -40,6 +40,7 @@ export declare namespace HashMap {
    * This type-level utility extracts the key type `K` from a `HashMap<K, V>` type.
    *
    * @example
+   * ```ts
    * import { HashMap } from "effect"
    *
    * declare const hm: HashMap.HashMap<string, number>
@@ -47,6 +48,7 @@ export declare namespace HashMap {
    * // $ExpectType string
    * type K = HashMap.HashMap.Key<typeof hm>
    *
+   * ```
    * @since 2.0.0
    * @category type-level
    */
@@ -55,6 +57,7 @@ export declare namespace HashMap {
    * This type-level utility extracts the value type `V` from a `HashMap<K, V>` type.
    *
    * @example
+   * ```ts
    * import { HashMap } from "effect"
    *
    * declare const hm: HashMap.HashMap<string, number>
@@ -62,6 +65,7 @@ export declare namespace HashMap {
    * // $ExpectType number
    * type V = HashMap.HashMap.Value<typeof hm>
    *
+   * ```
    * @since 2.0.0
    * @category type-level
    */
@@ -71,6 +75,7 @@ export declare namespace HashMap {
    * This type-level utility extracts the entry type `[K, V]` from a `HashMap<K, V>` type.
    *
    * @example
+   * ```ts
    * import { HashMap } from "effect"
    *
    * declare const hm: HashMap.HashMap<string, number>
@@ -78,6 +83,7 @@ export declare namespace HashMap {
    * // $ExpectType [string, number]
    * type V = HashMap.HashMap.Entry<typeof hm>
    *
+   * ```
    * @since 3.9.0
    * @category type-level
    */

@@ -16,11 +16,13 @@ export type Ordering = -1 | 0 | 1
  * @param o - The input `Ordering`.
  *
  * @example
+ * ```ts
  * import { reverse } from "effect/Ordering"
  *
  * assert.deepStrictEqual(reverse(1), -1)
  * assert.deepStrictEqual(reverse(-1), 1)
  * assert.deepStrictEqual(reverse(0), 0)
+ * ```
  *
  * @since 2.0.0
  */
@@ -35,6 +37,7 @@ export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 :
  * @param onGreaterThan - A function that will be called if the `Ordering` parameter is `1`.
  *
  * @example
+ * ```ts
  * import { Ordering } from "effect"
  * import { constant } from "effect/Function"
  *
@@ -47,6 +50,7 @@ export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 :
  * assert.deepStrictEqual(toMessage(-1), "less than")
  * assert.deepStrictEqual(toMessage(0), "equal")
  * assert.deepStrictEqual(toMessage(1), "greater than")
+ * ```
  *
  * @category pattern matching
  * @since 2.0.0

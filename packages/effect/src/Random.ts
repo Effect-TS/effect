@@ -110,12 +110,14 @@ export const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Chunk.Chunk<A>
  * Get a random element from an iterable.
  *
  * @example
+ * ```ts
  * import { Effect, Random } from "effect"
  *
  * Effect.gen(function* () {
  *   const randomItem = yield* Random.choice([1, 2, 3])
  *   console.log(randomItem)
  * })
+ * ```
  *
  * @since 3.6.0
  * @category constructors
@@ -155,12 +157,14 @@ export const Random: Context.Tag<Random, Random> = internal.randomTag
  * @param seed - The seed value used to initialize the generator.
  *
  * @example
+ * ```ts
  * import { Effect, Random } from "effect"
  *
  * const random1 = Random.make("myseed")
  * const random2 = Random.make("myseed")
  *
  * assert.equal(Effect.runSync(random1.next), Effect.runSync(random2.next))
+ * ```
  *
  * @since 3.5.0
  * @category constructors
