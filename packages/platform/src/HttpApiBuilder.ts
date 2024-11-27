@@ -88,7 +88,7 @@ export const serve = <R = never>(
   httpApp.pipe(
     Effect.map((app) => HttpServer.serve(app as any, middleware!)),
     Layer.unwrapEffect,
-    Layer.provide(Router.Live)
+    Layer.provide([Router.Live, Middleware.layer])
   )
 
 /**
@@ -100,16 +100,17 @@ export const serve = <R = never>(
 export const httpApp: Effect.Effect<
   HttpApp.Default<never, HttpRouter.HttpRouter.DefaultServices>,
   never,
-  Router | HttpApi.Api
+  Router | HttpApi.Api | Middleware
 > = Effect.gen(function*() {
   const { api, context } = yield* HttpApi.Api
   const middleware = makeMiddlewareMap(api.middlewares, context)
   const router = applyMiddleware(middleware, yield* Router.router)
-  const apiMiddleware = yield* Effect.serviceOption(Middleware)
+  const apiMiddlewareService = yield* Middleware
+  const apiMiddleware = yield* apiMiddlewareService.retrieve
   const errorSchema = makeErrorSchema(api as any)
   const encodeError = Schema.encodeUnknown(errorSchema)
   return router.pipe(
-    apiMiddleware._tag === "Some" ? apiMiddleware.value : identity,
+    apiMiddleware,
     Effect.catchAll((error) =>
       Effect.matchEffect(Effect.provide(encodeError(error), context), {
         onFailure: () => Effect.die(error),
@@ -157,7 +158,7 @@ export const toWebHandler = <LA, LE>(
   readonly dispose: () => Promise<void>
 } => {
   const runtime = ManagedRuntime.make(
-    Layer.merge(layer, Router.Live),
+    Layer.mergeAll(layer, Router.Live, Middleware.layer),
     options?.memoMap
   )
   let handlerCached: ((request: Request) => Promise<Response>) | undefined
@@ -745,8 +746,26 @@ const toResponseError = toResponseSchema(HttpApiSchema.getStatusErrorAST)
  */
 export class Middleware extends Context.Tag("@effect/platform/HttpApiBuilder/Middleware")<
   Middleware,
-  HttpMiddleware.HttpMiddleware
->() {}
+  {
+    readonly add: (middleware: HttpMiddleware.HttpMiddleware) => Effect.Effect<void>
+    readonly retrieve: Effect.Effect<HttpMiddleware.HttpMiddleware>
+  }
+>() {
+  /**
+   * @since 1.0.0
+   */
+  static readonly layer = Layer.sync(Middleware, () => {
+    let middleware: HttpMiddleware.HttpMiddleware = identity
+    return Middleware.of({
+      add: (f) =>
+        Effect.sync(() => {
+          const prev = middleware
+          middleware = (app) => f(prev(app))
+        }),
+      retrieve: Effect.sync(() => middleware)
+    })
+  })
+}
 
 /**
  * @since 1.0.0
@@ -756,26 +775,24 @@ export type MiddlewareFn<Error, R = HttpRouter.HttpRouter.Provided> = (
   httpApp: HttpApp.Default
 ) => HttpApp.Default<Error, R>
 
-const middlewareAdd = (middleware: HttpMiddleware.HttpMiddleware): Effect.Effect<HttpMiddleware.HttpMiddleware> =>
-  Effect.map(
-    Effect.context<never>(),
-    (context) => {
-      const current = Context.getOption(context, Middleware)
-      const withContext: HttpMiddleware.HttpMiddleware = (httpApp) =>
-        Effect.mapInputContext(middleware(httpApp), (input) => Context.merge(context, input))
-      return current._tag === "None" ? withContext : (httpApp) => withContext(current.value(httpApp))
-    }
-  )
+const middlewareAdd = (
+  middleware: HttpMiddleware.HttpMiddleware
+): Effect.Effect<void, never, Middleware> =>
+  Effect.gen(function*() {
+    const context = yield* Effect.context<never>()
+    const service = yield* Middleware
+    yield* service.add((httpApp) =>
+      Effect.mapInputContext(middleware(httpApp), (input) => Context.merge(context, input))
+    )
+  })
 
 const middlewareAddNoContext = (
   middleware: HttpMiddleware.HttpMiddleware
-): Effect.Effect<HttpMiddleware.HttpMiddleware> =>
-  Effect.map(
-    Effect.serviceOption(Middleware),
-    (current): HttpMiddleware.HttpMiddleware => {
-      return current._tag === "None" ? middleware : (httpApp) => middleware(current.value(httpApp))
-    }
-  )
+): Effect.Effect<void, never, Middleware> =>
+  Effect.gen(function*() {
+    const service = yield* Middleware
+    yield* service.add(middleware)
+  })
 
 /**
  * Create an `HttpApi` level middleware `Layer`.
@@ -828,9 +845,9 @@ export const middleware: {
   const withContext = apiFirst ? args[2]?.withContext === true : (args as any)[1]?.withContext === true
   const add = withContext ? middlewareAdd : middlewareAddNoContext
   const middleware = apiFirst ? args[1] : args[0]
-  return Effect.isEffect(middleware)
-    ? Layer.effect(Middleware, Effect.flatMap(middleware as any, add))
-    : Layer.effect(Middleware, add(middleware as any))
+  return (Effect.isEffect(middleware)
+    ? Layer.effectDiscard(Effect.flatMap(middleware as any, add))
+    : Layer.effectDiscard(add(middleware as any))).pipe(Layer.provide(Middleware.layer))
 }
 
 /**
@@ -885,7 +902,9 @@ export const middlewareScoped: {
   const withContext = apiFirst ? args[2]?.withContext === true : (args as any)[1]?.withContext === true
   const add = withContext ? middlewareAdd : middlewareAddNoContext
   const middleware = apiFirst ? args[1] : args[0]
-  return Layer.scoped(Middleware, Effect.flatMap(middleware as any, add))
+  return Layer.scopedDiscard(Effect.flatMap(middleware as any, add)).pipe(
+    Layer.provide(Middleware.layer)
+  )
 }
 
 /**
