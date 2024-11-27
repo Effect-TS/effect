@@ -1,5 +1,11 @@
 # effect
 
+## 3.10.18
+
+### Patch Changes
+
+- [#4004](https://github.com/Effect-TS/effect/pull/4004) [`af409cf`](https://github.com/Effect-TS/effect/commit/af409cf1d2ff973be11cc079ea373eaeedca25de) Thanks @tim-smart! - fix behavour of Stream.partition to match the types
+
 ## 3.10.17
 
 ### Patch Changes
