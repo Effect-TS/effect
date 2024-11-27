@@ -4466,6 +4466,199 @@ export const split = (separator: string): transform<typeof String$, Array$<typeo
     { strict: true, decode: string_.split(separator), encode: array_.join(separator) }
   )
 
+function getFieldsTypes(ast: AST.AST, result: {
+  arrays: Array<string>
+  strings: Array<string>
+}, propName?: string): {
+  arrays: Array<string>
+  strings: Array<string>
+} {
+  switch (ast._tag) {
+    case "Suspend": {
+      return getFieldsTypes(ast.f(), result, propName)
+    }
+    case "Refinement": {
+      return getFieldsTypes(ast.from, result, propName)
+    }
+    case "Union": {
+      return ast.types.reduce((acc, cur) => getFieldsTypes(cur, acc, propName), result)
+    }
+    case "Transformation": {
+      return getFieldsTypes(ast.from, result, propName)
+    }
+    case "TypeLiteral": {
+      ast.propertySignatures.forEach((ps) => {
+        const psName = ps.name
+        if (typeof psName === "string") {
+          getFieldsTypes(ps.type, result, psName)
+        }
+      })
+      return result
+    }
+    case "TupleType": {
+      if (propName !== undefined) {
+        result.arrays.push(propName)
+      }
+      return result
+    }
+    default: {
+      if (propName !== undefined) {
+        result.strings.push(propName)
+      }
+      return result
+    }
+  }
+}
+
+function compileFormDataToObject(ast: AST.AST) {
+  const fieldsTypes = getFieldsTypes(ast, { arrays: [], strings: [] })
+
+  return (fd: FormData): Record<string, string | ReadonlyArray<string>> => {
+    const obj: Record<string, any> = Object.fromEntries(
+      fieldsTypes.arrays.map((arrayFieldKey) => [arrayFieldKey, []])
+    )
+
+    fd.forEach((value, key) => {
+      if (typeof value !== "string") return
+
+      if (fieldsTypes.strings.includes(key)) {
+        obj[key] = value
+      } else if (fieldsTypes.arrays.includes(key)) {
+        obj[key].push(value)
+      } else {
+        return
+      }
+    })
+
+    return obj
+  }
+}
+
+function objectToFormData(obj: Record<string, string | ReadonlyArray<string>>): FormData {
+  const fd = new FormData()
+  Object.entries(obj).forEach((member) => {
+    const [key, value] = member
+    if (Array.isArray(value)) {
+      value.forEach((v: string) => fd.append(key, v))
+    } else {
+      fd.append(key, value as string)
+    }
+  })
+  return fd
+}
+
+const formDataParse = (options: {
+  formDataToObject: (fd: FormData) => Record<string, string | ReadonlyArray<string>>
+  objectToFormData: (obj: Record<string, string | ReadonlyArray<string>>) => FormData
+}) =>
+<A extends Record<string, string | ReadonlyArray<string>>, R>(
+  decodeUnknown: ParseResult.DecodeUnknown<A, R>
+): ParseResult.DeclarationDecodeUnknown<FormData, R> =>
+(u, _options, ast) =>
+  (u instanceof FormData) ?
+    toComposite(decodeUnknown(options.formDataToObject(u), _options), options.objectToFormData, ast, u)
+    : ParseResult.fail(new ParseResult.Type(ast, u))
+
+const formDataArbitrary =
+  (objectToFormData: (obj: Record<string, string | ReadonlyArray<string>>) => FormData) =>
+  <A extends Record<string, string | ReadonlyArray<string>>>(
+    value: LazyArbitrary<A>
+  ): LazyArbitrary<FormData> =>
+  (fc) => value(fc).map(objectToFormData)
+
+const formDataEquivalence =
+  (formDataToObject: (fd: FormData) => Record<string, string | ReadonlyArray<string>>) =>
+  <A extends Record<string, string | ReadonlyArray<string>>>(
+    isEquivalent: Equivalence.Equivalence<A>
+  ) => Equivalence.make<FormData>((a, b) => isEquivalent(formDataToObject(a) as A, formDataToObject(b) as A))
+
+/**
+ * @category api interface
+ * @since 3.11.0
+ */
+export interface FormDataFromSelf<Value extends Schema.Any> extends
+  AnnotableClass<
+    FormDataFromSelf<Value>,
+    FormData,
+    FormData,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category FormData constructors
+ * @since 3.11.0
+ */
+export const FormDataFromSelf = <
+  A extends Record<string, string | ReadonlyArray<string>>,
+  I extends Record<string, string | ReadonlyArray<string>>,
+  R
+>(
+  value: Schema<A, I, R>
+): FormDataFromSelf<Schema<A, I, R>> => {
+  const formDataToObject = compileFormDataToObject(value.ast)
+
+  const formDataParse_ = formDataParse({
+    formDataToObject,
+    objectToFormData
+  })
+
+  return declare(
+    [value],
+    {
+      decode: (value) => formDataParse_(ParseResult.decodeUnknown(value)),
+      encode: (value) => formDataParse_(ParseResult.encodeUnknown(value))
+    },
+    {
+      description: `FormData<${format(value)}>`,
+      pretty: (pretty) => (fd) => `FormData(${pretty(formDataToObject(fd) as A)})`,
+      arbitrary: formDataArbitrary(objectToFormData),
+      equivalence: formDataEquivalence(formDataToObject)
+    }
+  )
+}
+
+/**
+ * @category api interface
+ * @since 3.11.0
+ */
+export interface FormData$<Value extends Schema.Any> extends
+  AnnotableClass<
+    FormData$<Value>,
+    Schema.Type<Value>,
+    FormData,
+    Schema.Context<Value>
+  >
+{}
+
+/** @ignore */
+const FormData$ = <
+  A,
+  I extends Record<string, string | ReadonlyArray<string>>,
+  R
+>(
+  value: Schema<A, I, R>
+) => {
+  const formDataToObject = compileFormDataToObject(value.ast)
+  return transform(
+    FormDataFromSelf(encodedSchema(value)),
+    value,
+    {
+      strict: true,
+      decode: (fd) => formDataToObject(fd) as I,
+      encode: objectToFormData
+    }
+  )
+}
+
+export {
+  /**
+   * @category FormData constructors
+   * @since 3.11.0
+   */
+  FormData$ as FormData
+}
+
 /**
  * @since 3.10.0
  */
