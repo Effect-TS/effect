@@ -110,9 +110,10 @@ Output:
 
 Output:
 
-```
+````
 *
 * @example
+* ```ts
 * import { Effect } from "effect"
 *
 * console.log(Effect.runSyncExit(Effect.succeed(1)))
@@ -122,8 +123,9 @@ Output:
 * //   _tag: "Success",
 * //   value: 1
 * // }
+* ```
 *
-```
+````
 
 By using this utility, you can save time and maintain consistency in your JSDoc comments, especially for complex examples.
 

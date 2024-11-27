@@ -30,31 +30,9 @@
           cols="80"
           rows="40"
           onkeyup="document.getElementById('comment').value = t(this.value)"
-        >
-import { Effect } from "effect"
-
-//      ┌─── Effect<number, never, never>
-//      ▼
-const success = Effect.succeed(42)
-      </textarea
-        >
-        <textarea
-          id="comment"
-          cols="80"
-          rows="40"
-          style="color: green"
-          onkeyup="document.getElementById('code').value = inverseT(this.value)"
-        >
-*
-* @example
-* import { Effect } from "effect"
-*
-* //      ┌─── Effect<number, never, never>
-* //      ▼
-* const success = Effect.succeed(42)
-*
-      </textarea
-        >
+        ></textarea>
+        <textarea id="comment" cols="80" rows="40" style="color: green">
+        </textarea>
       </div>
     </center>
     <script>
@@ -81,28 +59,8 @@ const success = Effect.succeed(42)
 
         const lines = withoutMultilineComments
           .split("\n")
-          .map((line) => "* " + line.replace("../src/", "fp-ts/"))
-        return "*\n* @example\n" + lines.join("\n") + "\n"
-      }
-
-      function inverseT(src) {
-        const lines = src.split("\n")
-
-        // Remove the first two lines if they match the introductory pattern
-        while (
-          lines.length > 0 &&
-          (lines[0].trim() === "*" || lines[0].trim() === "* @example")
-        ) {
-          lines.shift()
-        }
-
-        // Remove the last line if it is only "*"
-        while (lines.length > 0 && lines[lines.length - 1].trim() === "*") {
-          lines.pop()
-        }
-
-        // Remove leading '* ' from remaining lines
-        return lines.map((line) => line.replace(/^\*\s*/, "")).join("\n")
+          .map((line) => "* " + line)
+        return "*\n* @example\n* ```ts\n" + lines.join("\n") + "\n* ```\n*\n"
       }
     </script>
   </body>
