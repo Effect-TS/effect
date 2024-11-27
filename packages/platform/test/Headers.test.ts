@@ -111,7 +111,7 @@ describe("Headers", () => {
 
       assert.deepEqual(redacted, {
         "content-type": "application/json",
-        "authorization": Redacted.make("some secret"),
+        "authorization": redacted.authorization,
         "x-api-key": "some-key"
       })
       assert.strictEqual(Redacted.value(redacted.authorization as Redacted.Redacted), "Bearer some-token")
@@ -128,8 +128,8 @@ describe("Headers", () => {
 
       assert.deepEqual(redacted, {
         "content-type": "application/json",
-        "authorization": Redacted.make("some secret"),
-        "x-api-key": Redacted.make("some secret")
+        "authorization": redacted.authorization,
+        "x-api-key": redacted["x-api-key"]
       })
       assert.strictEqual(Redacted.value(redacted.authorization as Redacted.Redacted), "Bearer some-token")
       assert.strictEqual(Redacted.value(redacted["x-api-key"] as Redacted.Redacted), "some-key")
@@ -146,8 +146,8 @@ describe("Headers", () => {
 
       assert.deepEqual(redacted, {
         "authorization": "Bearer some-token",
-        "sec-ret": Redacted.make("some"),
-        "sec-ret-2": Redacted.make("some")
+        "sec-ret": redacted["sec-ret"],
+        "sec-ret-2": redacted["sec-ret-2"]
       })
     })
   })

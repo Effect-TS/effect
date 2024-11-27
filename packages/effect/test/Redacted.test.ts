@@ -29,9 +29,19 @@ describe("Redacted", () => {
     assert.strictEqual(`${redacted}`, "<redacted>")
   })
 
+  it("toString - custom string", () => {
+    const redacted = Redacted.make("redacted", "API_KEY")
+    assert.strictEqual(`${redacted}`, "API_KEY")
+  })
+
   it("toJSON", () => {
     const redacted = Redacted.make("redacted")
     assert.strictEqual(JSON.stringify(redacted), "\"<redacted>\"")
+  })
+
+  it("toJSON - custom string", () => {
+    const redacted = Redacted.make("redacted", "API_KEY")
+    assert.strictEqual(JSON.stringify(redacted), "\"API_KEY\"")
   })
 
   it("unsafeWipe", () => {

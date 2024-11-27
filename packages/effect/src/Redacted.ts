@@ -65,12 +65,12 @@ export const isRedacted: (u: unknown) => u is Redacted<unknown> = redacted_.isRe
  * @example
  * import { Redacted } from "effect"
  *
- * const API_KEY = Redacted.make("1234567890")
+ * const API_KEY = Redacted.make("1234567890", "API_KEY")
  *
  * @since 3.3.0
  * @category constructors
  */
-export const make: <A>(value: A) => Redacted<A> = redacted_.make
+export const make: <A>(value: A, str?: string) => Redacted<A> = redacted_.make
 
 /**
  * Retrieves the original value from a `Redacted` instance. Use this function
