@@ -211,6 +211,26 @@ describe("HttpApi", () => {
       assert.strictEqual(response.status, 200)
     }).pipe(Effect.provide(HttpLive)))
 
+  it.effect("multipart or json", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      let [group, response] = yield* client.groups.create({
+        payload: { name: "Some group" },
+        withResponse: true
+      })
+      assert.deepStrictEqual(group, new Group({ id: 1, name: "Some group" }))
+      assert.strictEqual(response.status, 200)
+
+      const data = new FormData()
+      data.set("name", "Some group")
+      ;[group, response] = yield* client.groups.create({
+        payload: data,
+        withResponse: true
+      })
+      assert.deepStrictEqual(group, new Group({ id: 1, name: "Some group" }))
+      assert.strictEqual(response.status, 200)
+    }).pipe(Effect.provide(HttpLive)))
+
   it("OpenAPI spec", () => {
     const spec = OpenApi.fromApi(Api)
     assert.deepStrictEqual(spec, OpenApiFixture as any)
@@ -265,7 +285,12 @@ class GroupsApi extends HttpApiGroup.make("groups")
   )
   .add(
     HttpApiEndpoint.post("create", "/")
-      .setPayload(Schema.Struct(Struct.pick(Group.fields, "name")))
+      .setPayload(Schema.Union(
+        Schema.Struct(Struct.pick(Group.fields, "name")),
+        HttpApiSchema.Multipart(
+          Schema.Struct(Struct.pick(Group.fields, "name"))
+        )
+      ))
       .addSuccess(Group)
   )
   .addError(GroupError.pipe(

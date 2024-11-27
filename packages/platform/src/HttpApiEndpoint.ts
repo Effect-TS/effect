@@ -406,7 +406,8 @@ export declare namespace HttpApiEndpoint {
     & ([UrlParams] extends [never] ? {} : { readonly urlParams: UrlParams })
     & ([Headers] extends [never] ? {} : { readonly headers: Headers })
     & ([Payload] extends [never] ? {}
-      : [Payload] extends [Brand<HttpApiSchema.MultipartTypeId>] ? { readonly payload: FormData }
+      : Payload extends infer P ?
+        P extends Brand<HttpApiSchema.MultipartTypeId> ? { readonly payload: FormData } : { readonly payload: P }
       : { readonly payload: Payload })
   ) extends infer Req ? keyof Req extends never ? (void | { readonly withResponse?: WithResponse }) :
     Req & { readonly withResponse?: WithResponse } :
