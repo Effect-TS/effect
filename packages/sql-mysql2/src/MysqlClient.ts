@@ -82,9 +82,11 @@ export const make = (
 ): Effect.Effect<MysqlClient, SqlError, Scope> =>
   Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(
+        options.transformResultNames
+      ).array :
+      undefined
 
     class ConnectionImpl implements Connection {
       constructor(private readonly conn: Mysql.PoolConnection | Mysql.Pool) {}
@@ -113,38 +115,45 @@ export const make = (
       private run(
         sql: string,
         values?: ReadonlyArray<any>,
-        transform = true,
         rowsAsArray = false,
         method: "execute" | "query" = "execute"
       ) {
         return this.runRaw(sql, values, rowsAsArray, method).pipe(
-          Effect.map((results) => {
-            if (transform && !rowsAsArray && options.transformResultNames) {
-              return transformRows(results as ReadonlyArray<any>)
-            }
-            return Array.isArray(results) ? results : []
-          })
+          Effect.map((results) => Array.isArray(results) ? results : [])
         )
       }
 
-      execute(sql: string, params: ReadonlyArray<Statement.Primitive>) {
-        return this.run(sql, params)
+      execute(
+        sql: string,
+        params: ReadonlyArray<Statement.Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return transformRows
+          ? Effect.map(this.run(sql, params), transformRows)
+          : this.run(sql, params)
       }
       executeRaw(sql: string, params: ReadonlyArray<Statement.Primitive>) {
-        return this.runRaw(sql, params, true)
-      }
-      executeWithoutTransform(sql: string, params: ReadonlyArray<Statement.Primitive>) {
-        return this.run(sql, params, false)
+        return this.runRaw(sql, params)
       }
       executeValues(sql: string, params: ReadonlyArray<Statement.Primitive>) {
-        return this.run(sql, params, true, true)
+        return this.run(sql, params, true)
       }
-      executeUnprepared(sql: string, params?: ReadonlyArray<Statement.Primitive>) {
-        return this.run(sql, params, true, false, "query")
+      executeUnprepared(
+        sql: string,
+        params: ReadonlyArray<Statement.Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return transformRows
+          ? Effect.map(this.run(sql, params, false, "query"), transformRows)
+          : this.run(sql, params, false, "query")
       }
-      executeStream(sql: string, params: ReadonlyArray<Statement.Primitive>) {
+      executeStream(
+        sql: string,
+        params: ReadonlyArray<Statement.Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
         const stream = queryStream(this.conn as any, sql, params)
-        return options.transformResultNames
+        return transformRows
           ? Stream.mapChunks(stream, (_) =>
             Chunk.unsafeFromArray(
               transformRows(Chunk.toReadonlyArray(_) as Array<object>)
@@ -235,7 +244,8 @@ export const make = (
         acquirer: Effect.succeed(poolConnection),
         transactionAcquirer,
         compiler,
-        spanAttributes
+        spanAttributes,
+        transformRows
       }),
       { [TypeId]: TypeId as TypeId, config: options }
     )

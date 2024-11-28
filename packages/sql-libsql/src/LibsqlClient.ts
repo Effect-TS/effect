@@ -135,9 +135,11 @@ export const make = (
 ): Effect.Effect<LibsqlClient, never, Scope.Scope> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(
+        options.transformResultNames
+      ).array :
+      undefined
 
     const spanAttributes: Array<[string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
@@ -170,17 +172,14 @@ export const make = (
         })
       }
 
-      runTransform(
+      execute(
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<Statement.Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
-        return options.transformResultNames
+        return transformRows
           ? Effect.map(this.run(sql, params), transformRows)
           : this.run(sql, params)
-      }
-
-      execute(sql: string, params: ReadonlyArray<Statement.Primitive>) {
-        return this.runTransform(sql, params)
       }
       executeRaw(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         return this.runRaw(sql, params)
@@ -188,11 +187,12 @@ export const make = (
       executeValues(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         return Effect.map(this.run(sql, params), (rows) => rows.map((row) => Array.from(row) as Array<any>))
       }
-      executeWithoutTransform(sql: string, params: ReadonlyArray<Statement.Primitive>) {
-        return this.run(sql, params)
-      }
-      executeUnprepared(sql: string, params?: ReadonlyArray<Statement.Primitive>) {
-        return this.run(sql, params)
+      executeUnprepared(
+        sql: string,
+        params: ReadonlyArray<Statement.Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return this.execute(sql, params, transformRows)
       }
       executeStream() {
         return Effect.dieMessage("executeStream not implemented")
@@ -264,7 +264,8 @@ export const make = (
       Client.make({
         acquirer,
         compiler,
-        spanAttributes
+        spanAttributes,
+        transformRows
       }),
       {
         [TypeId]: TypeId as TypeId,

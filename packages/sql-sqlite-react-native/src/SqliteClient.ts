@@ -113,9 +113,9 @@ export const make = (
     }
 
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(options.transformResultNames).array :
+      undefined
 
     const makeConnection = Effect.gen(function*(_) {
       const db = Sqlite.open(clientOptions)
@@ -141,13 +141,11 @@ export const make = (
           })
         })
 
-      const runTransform = options.transformResultNames
-        ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
-        : run
-
       return identity<SqliteConnection>({
-        execute(sql, params) {
-          return runTransform(sql, params)
+        execute(sql, params, transformRows) {
+          return transformRows
+            ? Effect.map(run(sql, params), transformRows)
+            : run(sql, params)
         },
         executeRaw(sql, params) {
           return run(sql, params)
@@ -161,11 +159,8 @@ export const make = (
             return results.map((row) => columns.map((column) => row[column]))
           })
         },
-        executeWithoutTransform(sql, params) {
-          return run(sql, params)
-        },
-        executeUnprepared(sql, params) {
-          return runTransform(sql, params)
+        executeUnprepared(sql, params, transformRows) {
+          return this.execute(sql, params, transformRows)
         },
         executeStream() {
           return Effect.dieMessage("executeStream not implemented")
@@ -180,7 +175,7 @@ export const make = (
           const [query, params] = statement.compile()
           return Queue.sliding<ReadonlyArray<A>>(1).pipe(
             Effect.tap((queue) =>
-              this.execute(query, params).pipe(
+              this.execute(query, params, undefined).pipe(
                 Effect.flatMap((rows) => queue.offer(rows))
               )
             ),
@@ -233,7 +228,8 @@ export const make = (
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
-        ]
+        ],
+        transformRows
       }) as SqliteClient,
       {
         [TypeId]: TypeId,

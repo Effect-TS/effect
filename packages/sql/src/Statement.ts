@@ -381,7 +381,8 @@ export interface Constructor {
 export const make: (
   acquirer: Connection.Acquirer,
   compiler: Compiler,
-  spanAttributes?: ReadonlyArray<readonly [string, unknown]>
+  spanAttributes: ReadonlyArray<readonly [string, unknown]>,
+  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
 ) => Constructor = internal.make
 
 /**
@@ -434,6 +435,7 @@ export interface Compiler {
     statement: Fragment,
     withoutTransform: boolean
   ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+  readonly withoutTransform: this
 }
 
 /**

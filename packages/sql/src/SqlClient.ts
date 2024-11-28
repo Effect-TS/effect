@@ -34,6 +34,11 @@ export interface SqlClient extends Constructor {
    */
   readonly safe: this
 
+  /**
+   * Copy of the client without transformations.
+   */
+  readonly withoutTransforms: () => this
+
   readonly reserve: Effect<Connection, SqlError, Scope>
 
   /**
@@ -69,6 +74,7 @@ export namespace SqlClient {
     readonly commit?: string | undefined
     readonly savepoint?: ((name: string) => string) | undefined
     readonly rollbackSavepoint?: ((name: string) => string) | undefined
+    readonly transformRows?: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   }
 }
 
@@ -76,15 +82,7 @@ export namespace SqlClient {
  * @category constructors
  * @since 1.0.0
  */
-export const make: ({
-  acquirer,
-  beginTransaction,
-  commit,
-  rollback,
-  rollbackSavepoint,
-  savepoint,
-  transactionAcquirer
-}: SqlClient.MakeOptions) => SqlClient = internal.make
+export const make: (options: SqlClient.MakeOptions) => SqlClient = internal.make
 
 /**
  * @since 1.0.0

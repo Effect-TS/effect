@@ -70,9 +70,9 @@ export const make = (
 ): Effect.Effect<D1Client, never, Scope.Scope> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(options.transformResultNames).array :
+      undefined
 
     const makeConnection = Effect.gen(function*() {
       const db = options.db
@@ -90,7 +90,7 @@ export const make = (
       const runStatement = (
         statement: D1PreparedStatement,
         params: ReadonlyArray<Statement.Primitive> = []
-      ) =>
+      ): Effect.Effect<ReadonlyArray<any>, SqlError, never> =>
         Effect.tryPromise({
           try: async () => {
             const response = await statement.bind(...params).all()
@@ -115,12 +115,7 @@ export const make = (
       const runUncached = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
-      ) => Effect.map(runRaw(sql, params), transformRows)
-
-      const runTransform = options.transformResultNames
-        ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) =>
-          Effect.map(runCached(sql, params), transformRows)
-        : runCached
+      ) => runRaw(sql, params)
 
       const runValues = (
         sql: string,
@@ -142,8 +137,10 @@ export const make = (
         )
 
       return identity<Connection>({
-        execute(sql, params) {
-          return runTransform(sql, params)
+        execute(sql, params, transformRows) {
+          return transformRows
+            ? Effect.map(runCached(sql, params), transformRows)
+            : runCached(sql, params)
         },
         executeRaw(sql, params) {
           return runRaw(sql, params)
@@ -151,11 +148,10 @@ export const make = (
         executeValues(sql, params) {
           return runValues(sql, params)
         },
-        executeWithoutTransform(sql, params) {
-          return runCached(sql, params)
-        },
-        executeUnprepared(sql, params) {
-          return runUncached(sql, params)
+        executeUnprepared(sql, params, transformRows) {
+          return transformRows
+            ? Effect.map(runUncached(sql, params), transformRows)
+            : runUncached(sql, params)
         },
         executeStream(_sql, _params) {
           return Effect.dieMessage("executeStream not implemented")
@@ -175,7 +171,8 @@ export const make = (
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
-        ]
+        ],
+        transformRows
       }) as D1Client,
       {
         [TypeId]: TypeId as TypeId,

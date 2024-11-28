@@ -34,7 +34,8 @@ export function make({
   rollbackSavepoint = (id) => `ROLLBACK TO SAVEPOINT ${id}`,
   savepoint = (id) => `SAVEPOINT ${id}`,
   spanAttributes,
-  transactionAcquirer
+  transactionAcquirer,
+  transformRows
 }: Client.SqlClient.MakeOptions): Client.SqlClient {
   const getConnection = Effect.flatMap(
     Effect.serviceOption(TransactionConnection),
@@ -52,20 +53,33 @@ export function make({
       Scope.make(),
       (scope) => Effect.map(Scope.extend(transactionAcquirer, scope), (conn) => [scope, conn] as const)
     ),
-    begin: (conn) => conn.executeUnprepared(beginTransaction),
-    savepoint: (conn, id) => conn.executeUnprepared(savepoint(`effect_sql_${id}`)),
-    commit: (conn) => conn.executeUnprepared(commit),
-    rollback: (conn) => conn.executeUnprepared(rollback),
-    rollbackSavepoint: (conn, id) => conn.executeUnprepared(rollbackSavepoint(`effect_sql_${id}`))
+    begin: (conn) => conn.executeUnprepared(beginTransaction, [], undefined),
+    savepoint: (conn, id) => conn.executeUnprepared(savepoint(`effect_sql_${id}`), [], undefined),
+    commit: (conn) => conn.executeUnprepared(commit, [], undefined),
+    rollback: (conn) => conn.executeUnprepared(rollback, [], undefined),
+    rollbackSavepoint: (conn, id) => conn.executeUnprepared(rollbackSavepoint(`effect_sql_${id}`), [], undefined)
   })
 
   const client: Client.SqlClient = Object.assign(
-    Statement.make(getConnection, compiler, spanAttributes),
+    Statement.make(getConnection, compiler, spanAttributes, transformRows),
     {
       [TypeId as Client.TypeId]: TypeId as Client.TypeId,
       safe: undefined as any,
       withTransaction,
-      reserve: transactionAcquirer
+      reserve: transactionAcquirer,
+      withoutTransforms(): any {
+        if (transformRows === undefined) {
+          return this
+        }
+        const statement = Statement.make(getConnection, compiler.withoutTransform, spanAttributes, undefined)
+        const client = Object.assign(statement, {
+          ...this,
+          ...statement
+        })
+        ;(client as any).safe = client
+        ;(client as any).withoutTransforms = () => client
+        return client
+      }
     }
   )
   ;(client as any).safe = client
