@@ -216,12 +216,6 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
     $schema,
     ...jsonSchema
   }
-  // clean up self-referencing entries
-  for (const id in $defs) {
-    if ($defs[id]["$ref"] === get$ref(id)) {
-      delete $defs[id]
-    }
-  }
   if (!Record.isEmptyRecord($defs)) {
     out.$defs = $defs
   }
@@ -303,19 +297,15 @@ const pruneUndefinedFromPropertySignature = (ast: AST.AST): AST.AST | undefined 
   }
 }
 
-/** @internal */
-export const DEFINITION_PREFIX = "#/$defs/"
-
-const get$ref = (id: string): string => `${DEFINITION_PREFIX}${id}`
-
-const getTransformation = (ast: AST.AST): AST.AST | undefined => {
+// Returns the from part of a transformation if it exists
+const getTransformationFrom = (ast: AST.AST): AST.AST | undefined => {
   switch (ast._tag) {
     case "Transformation":
       return ast.from
     case "Refinement":
-      return getTransformation(ast.from)
+      return getTransformationFrom(ast.from)
     case "Suspend":
-      return getTransformation(ast.f())
+      return getTransformationFrom(ast.f())
   }
 }
 
@@ -338,11 +328,11 @@ const go = (
   handleIdentifier: boolean,
   path: ReadonlyArray<PropertyKey>
 ): JsonSchema7 => {
-  if (handleIdentifier && getTransformation(ast) === undefined) {
+  if (handleIdentifier && getTransformationFrom(ast) === undefined) {
     const identifier = AST.getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
-      const out = { $ref: get$ref(id) }
+      const out = { $ref: `#/$defs/${id}` }
       if (!Record.has($defs, id)) {
         $defs[id] = out
         $defs[id] = go(ast, $defs, false, path)
@@ -354,7 +344,7 @@ const go = (
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema7
     if (AST.isRefinement(ast)) {
-      const t = getTransformation(ast)
+      const t = getTransformationFrom(ast)
       if (t === undefined) {
         return {
           ...go(ast.from, $defs, false, path),
