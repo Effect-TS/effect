@@ -2305,8 +2305,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
   })
 
-  describe("identifier annotations support", () => {
-    it("on root level schema", () => {
+  describe("identifier annotation support", () => {
+    it("String", () => {
       expectJSONSchema(Schema.String.annotations({ identifier: "Name" }), {
         "$ref": "#/$defs/Name",
         "$defs": {
@@ -2317,48 +2317,123 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
     })
 
-    it("on nested schemas", () => {
-      const Name = Schema.String.annotations({
-        identifier: "Name",
-        description: "a name",
-        title: "Name"
-      })
-      const schema = Schema.Struct({ a: Name, b: Schema.Struct({ c: Name }) })
-      expectJSONSchema(schema, {
-        "type": "object",
-        "required": [
-          "a",
-          "b"
-        ],
-        "properties": {
-          "a": {
-            "$ref": "#/$defs/Name"
-          },
-          "b": {
-            "type": "object",
-            "required": [
-              "c"
-            ],
-            "properties": {
-              "c": {
-                "$ref": "#/$defs/Name"
+    describe("Struct", () => {
+      it("self annotation", () => {
+        expectJSONSchema(
+          Schema.Struct({
+            a: Schema.String
+          }).annotations({ identifier: "Self" }),
+          {
+            "$defs": {
+              "Self": {
+                "type": "object",
+                "required": ["a"],
+                "properties": {
+                  "a": { "type": "string" }
+                },
+                "additionalProperties": false
               }
             },
-            "additionalProperties": false
+            "$ref": "#/$defs/Self"
           }
-        },
-        "additionalProperties": false,
-        "$defs": {
-          "Name": {
-            "type": "string",
-            "description": "a name",
-            "title": "Name"
+        )
+      })
+
+      it("field annotations", () => {
+        const Name = Schema.String.annotations({
+          identifier: "Name",
+          description: "a name",
+          title: "Name"
+        })
+        const schema = Schema.Struct({
+          a: Name
+        })
+        expectJSONSchema(schema, {
+          "$defs": {
+            "Name": {
+              "type": "string",
+              "description": "a name",
+              "title": "Name"
+            }
+          },
+          "type": "object",
+          "required": ["a"],
+          "properties": {
+            "a": {
+              "$ref": "#/$defs/Name"
+            }
+          },
+          "additionalProperties": false
+        })
+      })
+
+      it("self annotation + field annotations", () => {
+        const Name = Schema.String.annotations({
+          identifier: "Name",
+          description: "a name",
+          title: "Name"
+        })
+        expectJSONSchema(
+          Schema.Struct({
+            a: Name
+          }).annotations({ identifier: "Self" }),
+          {
+            "$defs": {
+              "Self": {
+                "type": "object",
+                "required": ["a"],
+                "properties": {
+                  "a": { "$ref": "#/$defs/Name" }
+                },
+                "additionalProperties": false
+              },
+              "Name": {
+                "type": "string",
+                "description": "a name",
+                "title": "Name"
+              }
+            },
+            "$ref": "#/$defs/Self"
           }
-        }
+        )
+      })
+
+      it("deeply nested field annotations", () => {
+        const Name = Schema.String.annotations({
+          identifier: "Name",
+          description: "a name",
+          title: "Name"
+        })
+        const schema = Schema.Struct({ a: Name, b: Schema.Struct({ c: Name }) })
+        expectJSONSchema(schema, {
+          "$defs": {
+            "Name": {
+              "type": "string",
+              "description": "a name",
+              "title": "Name"
+            }
+          },
+          "type": "object",
+          "required": ["a", "b"],
+          "properties": {
+            "a": {
+              "$ref": "#/$defs/Name"
+            },
+            "b": {
+              "type": "object",
+              "required": ["c"],
+              "properties": {
+                "c": { "$ref": "#/$defs/Name" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        })
       })
     })
 
-    it("should handle identifier annotations when generating a schema through `encodedSchema()`", () => {
+    it("should borrow the identifier annotation when generating a schema through `encodedSchema()`", () => {
       interface Category {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
@@ -2412,7 +2487,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
   })
 
-  describe("should handle jsonSchema annotations", () => {
+  describe("jsonSchema annotation support", () => {
     it("Void", () => {
       expectJSONSchemaOnly(Schema.Void.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "type": "custom JSON Schema"
