@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Clickhouse from "@clickhouse/client"
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as NodeStream from "@effect/platform-node/NodeStream"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
@@ -86,7 +87,7 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
  */
 export const make = (
   options: ClickhouseClientConfig
-): Effect.Effect<ClickhouseClient, SqlError, Scope.Scope> =>
+): Effect.Effect<ClickhouseClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*(_) {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames
@@ -221,7 +222,7 @@ export const make = (
     const connection = new ConnectionImpl(client)
 
     return Object.assign(
-      Client.make({
+      yield* Client.make({
         acquirer: Effect.succeed(connection),
         compiler,
         spanAttributes: [
@@ -327,7 +328,7 @@ export const layerConfig = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -341,7 +342,7 @@ export const layer = (
       Context.make(ClickhouseClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 const typeFromUnknown = (value: unknown): string => {
   if (Statement.isFragment(value)) {

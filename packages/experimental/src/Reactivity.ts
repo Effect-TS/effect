@@ -1,8 +1,10 @@
 /**
  * @since 1.0.0
  */
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as FiberHandle from "effect/FiberHandle"
 import * as Hash from "effect/Hash"
 import * as Layer from "effect/Layer"
@@ -25,27 +27,26 @@ export class Reactivity extends Context.Tag("@effect/experimental/Reactivity")<
  * @category constructors
  */
 export const make = Effect.sync(() => {
-  const handlers = new Map<number, Set<() => void>>()
+  const handlers = new Map<number | string, Set<() => void>>()
 
-  const unsafeInvalidate = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>): void => {
+  const unsafeInvalidate = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>): void => {
     if (Array.isArray(keys)) {
       for (let i = 0; i < keys.length; i++) {
-        const set = handlers.get(Hash.hash(keys[i]))
+        const set = handlers.get(stringOrHash(keys[i]))
         if (set === undefined) continue
         for (const run of set) run()
       }
     } else {
       const record = keys as ReadonlyRecord<string, Array<unknown>>
       for (const key in record) {
-        const keyHash = Hash.string(key)
-        const hashes = idHashes(keyHash, record[key])
+        const hashes = idHashes(key, record[key])
         for (let i = 0; i < hashes.length; i++) {
           const set = handlers.get(hashes[i])
           if (set === undefined) continue
           for (const run of set) run()
         }
 
-        const set = handlers.get(keyHash)
+        const set = handlers.get(key)
         if (set !== undefined) {
           for (const run of set) run()
         }
@@ -53,32 +54,37 @@ export const make = Effect.sync(() => {
     }
   }
 
-  const invalidate = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>): Effect.Effect<void> =>
-    Effect.sync(() => unsafeInvalidate(keys))
+  const invalidate = (
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  ): Effect.Effect<void> => Effect.sync(() => unsafeInvalidate(keys))
 
   const mutation = <A, E, R>(
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>,
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
     effect: Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> => Effect.ensuring(effect, invalidate(keys))
 
   const query = <A, E, R>(
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>,
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
     effect: Effect.Effect<A, E, R>
   ): Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope> =>
     Effect.gen(function*() {
-      const resolvedKeys = Array.isArray(keys) ? keys.map(Hash.hash) : recordHashes(keys as any)
+      const resolvedKeys = Array.isArray(keys) ? keys.map(stringOrHash) : recordHashes(keys as any)
       const scope = yield* Effect.scope
       const results = yield* Mailbox.make<A, E>()
       const runFork = yield* FiberHandle.makeRuntime<R>()
 
-      const run = () => {
-        runFork(effect).addObserver((exit) => {
-          if (exit._tag === "Failure") {
-            results.unsafeDone(exit)
-          } else {
-            results.unsafeOffer(exit.value)
-          }
-        })
+      const handledEffect = Effect.matchCause(effect, {
+        onFailure(cause) {
+          if (Cause.isInterruptedOnly(cause)) return
+          results.unsafeDone(Exit.failCause(cause))
+        },
+        onSuccess(a) {
+          results.unsafeOffer(a)
+        }
+      })
+
+      function run() {
+        runFork(handledEffect)
       }
 
       yield* Scope.addFinalizer(
@@ -108,7 +114,7 @@ export const make = Effect.sync(() => {
     })
 
   const stream = <A, E, R>(
-    tables: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>,
+    tables: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
     effect: Effect.Effect<A, E, R>
   ): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
     query(tables, effect).pipe(
@@ -135,39 +141,42 @@ export declare namespace Reactivity {
    * @category model
    */
   export interface Service {
-    readonly unsafeInvalidate: (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>) => void
+    readonly unsafeInvalidate: (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>) => void
     readonly invalidate: (
-      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>
+      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
     ) => Effect.Effect<void>
     readonly mutation: <A, E, R>(
-      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>,
+      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
       effect: Effect.Effect<A, E, R>
     ) => Effect.Effect<A, E, R>
     readonly query: <A, E, R>(
-      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>,
+      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
       effect: Effect.Effect<A, E, R>
     ) => Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope>
     readonly stream: <A, E, R>(
-      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, Array<unknown>>,
+      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
       effect: Effect.Effect<A, E, R>
     ) => Stream.Stream<A, E, Exclude<R, Scope.Scope>>
   }
 }
 
-const idHashes = (keyHash: number, ids: ReadonlyArray<unknown>): ReadonlyArray<number> => {
-  const hashes: Array<number> = new Array(ids.length)
+function stringOrHash(u: unknown): string | number {
+  return typeof u === "string" ? u : Hash.hash(u)
+}
+
+const idHashes = (keyHash: number | string, ids: ReadonlyArray<unknown>): ReadonlyArray<string> => {
+  const hashes: Array<string> = new Array(ids.length)
   for (let i = 0; i < ids.length; i++) {
-    hashes[i] = Hash.combine(keyHash)(Hash.hash(ids[i]))
+    hashes[i] = `${keyHash}:${stringOrHash(ids[i])}`
   }
   return hashes
 }
 
-const recordHashes = (record: ReadonlyRecord<string, Array<unknown>>): ReadonlyArray<number> => {
-  const hashes: Array<number> = []
+const recordHashes = (record: ReadonlyRecord<string, ReadonlyArray<unknown>>): ReadonlyArray<string> => {
+  const hashes: Array<string> = []
   for (const key in record) {
-    const keyHash = Hash.string(key)
-    hashes.push(keyHash)
-    for (const idHash of idHashes(keyHash, record[key])) {
+    hashes.push(key)
+    for (const idHash of idHashes(key, record[key])) {
       hashes.push(idHash)
     }
   }

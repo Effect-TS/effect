@@ -10,6 +10,7 @@ import * as Sharding from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
 import * as ShardManagerClient from "@effect/cluster/ShardManagerClient"
 import * as Storage from "@effect/cluster/Storage"
+import { Reactivity } from "@effect/experimental"
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Sqlite from "@effect/sql-sqlite-node/SqliteClient"
@@ -69,6 +70,7 @@ const runTest =
       yield* program.pipe(Effect.provide(TestLive))
     }).pipe(
       Effect.scoped,
+      Effect.provide(Reactivity.layer),
       Effect.tapErrorCause(Effect.logError),
       // @ts-expect-error
       Effect.runPromise
