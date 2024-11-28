@@ -347,12 +347,12 @@ const go = (
       const t = getTransformationFrom(ast)
       if (t === undefined) {
         return {
-          ...go(ast.from, $defs, false, path),
+          ...go(ast.from, $defs, handleIdentifier, path),
           ...getJsonSchemaAnnotations(ast),
           ...handler
         }
       } else if (!isOverrideAnnotation(handler)) {
-        return go(t, $defs, true, path)
+        return go(t, $defs, handleIdentifier, path)
       }
     }
     return handler
@@ -360,7 +360,7 @@ const go = (
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
     return {
-      ...go(surrogate.value, $defs, false, path),
+      ...go(surrogate.value, $defs, handleIdentifier, path),
       ...getJsonSchemaAnnotations(ast)
     }
   }
@@ -564,7 +564,7 @@ const go = (
       if (AST.encodedBoundAST(ast) === ast) {
         throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
       }
-      return go(ast.from, $defs, true, path)
+      return go(ast.from, $defs, handleIdentifier, path)
     }
     case "TemplateLiteral": {
       const regex = AST.getTemplateLiteralRegExp(ast)
@@ -580,7 +580,7 @@ const go = (
       if (Option.isNone(identifier)) {
         throw new Error(errors_.getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
       }
-      return go(ast.f(), $defs, true, path)
+      return go(ast.f(), $defs, handleIdentifier, path)
     }
     case "Transformation": {
       // Properly handle S.parseJson transformations by focusing on
@@ -588,7 +588,7 @@ const go = (
       // derived from the 'from' side (type: string), ensuring the output matches the intended
       // complex schema type.
       if (isParseJsonTransformation(ast.from)) {
-        return go(ast.to, $defs, true, path)
+        return go(ast.to, $defs, handleIdentifier, path)
       }
       let next = ast.from
       if (AST.isTypeLiteralTransformation(ast.transformation)) {
@@ -607,7 +607,7 @@ const go = (
           next = AST.annotations(next, { [AST.DescriptionAnnotationId]: description.value })
         }
       }
-      return go(next, $defs, true, path)
+      return go(next, $defs, handleIdentifier, path)
     }
   }
 }
