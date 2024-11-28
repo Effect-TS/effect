@@ -2546,7 +2546,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("jsonSchema annotation support", () => {
     it("should have higher priority than surrogate annotation", () => {
-      expectJSONSchema(
+      expectJSONSchemaOnly(
         Schema.String.annotations({
           [AST.SurrogateAnnotationId]: Schema.Number.ast,
           jsonSchema: { "type": "custom" }
@@ -2560,12 +2560,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     describe("Class", () => {
       it("should support typeSchema(Class) with custom annotation", () => {
         class A extends Schema.Class<A>("A")({ a: Schema.String }, {
-          jsonSchema: { "type": "custom JSON Schema" }
+          jsonSchema: { "type": "custom" }
         }) {}
         expectJSONSchemaOnly(Schema.typeSchema(A), {
           "$defs": {
             "A": {
-              "type": "custom JSON Schema"
+              "type": "custom"
             }
           },
           "$ref": "#/$defs/A"
@@ -2574,102 +2574,98 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("Void", () => {
-      expectJSONSchemaOnly(Schema.Void.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Void.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Never", () => {
-      expectJSONSchemaOnly(Schema.Never.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Never.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Literal", () => {
-      expectJSONSchemaOnly(Schema.Literal("a").annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Literal("a").annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("SymbolFromSelf", () => {
-      expectJSONSchemaOnly(Schema.SymbolFromSelf.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.SymbolFromSelf.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("UniqueSymbolFromSelf", () => {
       expectJSONSchemaOnly(
         Schema.UniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")).annotations({
-          jsonSchema: { "type": "custom JSON Schema" }
+          jsonSchema: { "type": "custom" }
         }),
-        {
-          "type": "custom JSON Schema"
-        }
+        { "type": "custom" }
       )
     })
 
     it("TemplateLiteral", () => {
       expectJSONSchemaOnly(
         Schema.TemplateLiteral(Schema.Literal("a"), Schema.String, Schema.Literal("b")).annotations({
-          jsonSchema: { "type": "custom JSON Schema" }
+          jsonSchema: { "type": "custom" }
         }),
-        {
-          "type": "custom JSON Schema"
-        }
+        { "type": "custom" }
       )
     })
 
     it("Undefined", () => {
-      expectJSONSchemaOnly(Schema.Undefined.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Undefined.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Unknown", () => {
-      expectJSONSchemaOnly(Schema.Unknown.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Unknown.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Any", () => {
-      expectJSONSchemaOnly(Schema.Any.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Any.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Object", () => {
-      expectJSONSchemaOnly(Schema.Object.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Object.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("String", () => {
       expectJSONSchemaOnly(
         Schema.String.annotations({
-          jsonSchema: { "type": "custom JSON Schema", "description": "description" }
+          jsonSchema: { "type": "custom", "description": "description" }
         }),
         {
-          "type": "custom JSON Schema",
+          "type": "custom",
           "description": "description"
         }
       )
     })
 
     it("Number", () => {
-      expectJSONSchemaOnly(Schema.Number.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Number.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("BigintFromSelf", () => {
-      expectJSONSchemaOnly(Schema.BigIntFromSelf.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.BigIntFromSelf.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Boolean", () => {
-      expectJSONSchemaOnly(Schema.Boolean.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Boolean.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
@@ -2678,37 +2674,31 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         Apple,
         Banana
       }
-      expectJSONSchemaOnly(Schema.Enums(Fruits).annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.Enums(Fruits).annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Tuple", () => {
       expectJSONSchemaOnly(
-        Schema.Tuple(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom JSON Schema" } }),
-        {
-          "type": "custom JSON Schema"
-        }
+        Schema.Tuple(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom" } }),
+        { "type": "custom" }
       )
     })
 
     it("Struct", () => {
       expectJSONSchemaOnly(
         Schema.Struct({ a: Schema.String, b: JsonNumber }).annotations({
-          jsonSchema: { "type": "custom JSON Schema" }
+          jsonSchema: { "type": "custom" }
         }),
-        {
-          "type": "custom JSON Schema"
-        }
+        { "type": "custom" }
       )
     })
 
     it("Union", () => {
       expectJSONSchemaOnly(
-        Schema.Union(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom JSON Schema" } }),
-        {
-          "type": "custom JSON Schema"
-        }
+        Schema.Union(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom" } }),
+        { "type": "custom" }
       )
     })
 
@@ -2720,7 +2710,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       const schema = Schema.Struct({
         a: Schema.String,
         as: Schema.Array(
-          Schema.suspend((): Schema.Schema<A> => schema).annotations({ jsonSchema: { "type": "custom JSON Schema" } })
+          Schema.suspend((): Schema.Schema<A> => schema).annotations({ jsonSchema: { "type": "custom" } })
         )
       })
 
@@ -2737,7 +2727,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "as": {
             "type": "array",
             "items": {
-              "type": "custom JSON Schema"
+              "type": "custom"
             }
           }
         },
@@ -2746,16 +2736,16 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("refinement", () => {
-      expectJSONSchemaOnly(Schema.Int.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
+      expectJSONSchemaOnly(Schema.Int.annotations({ jsonSchema: { "type": "custom" } }), {
         "description": "an integer",
         "title": "Int",
-        "type": "custom JSON Schema"
+        "type": "custom"
       })
     })
 
     it("transformation", () => {
-      expectJSONSchemaOnly(Schema.NumberFromString.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchemaOnly(Schema.NumberFromString.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
