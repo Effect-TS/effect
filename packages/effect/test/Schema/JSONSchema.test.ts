@@ -306,10 +306,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   it("JsonNumber", () => {
-    expectJSONSchemaJsonSchemaAnnotations(Schema.JsonNumber, {
-      "type": "number",
-      "description": "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
-      "title": "JSON-compatible number"
+    expectJSONSchema(Schema.JsonNumber, {
+      "$defs": {
+        "JsonNumber": {
+          "type": "number",
+          "description": "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
+          "title": "JSON-compatible number"
+        }
+      },
+      "$ref": "#/$defs/JsonNumber"
     })
   })
 
@@ -555,11 +560,16 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
     it("Trimmed", () => {
       const schema = Schema.Trimmed
-      expectJSONSchemaJsonSchemaAnnotations(schema, {
-        "description": "a string with no leading or trailing whitespace",
-        "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
-        "title": "Trimmed",
-        "type": "string"
+      expectJSONSchema(schema, {
+        "$defs": {
+          "Trimmed": {
+            "description": "a string with no leading or trailing whitespace",
+            "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
+            "title": "Trimmed",
+            "type": "string"
+          }
+        },
+        "$ref": "#/$defs/Trimmed"
       })
     })
   })
@@ -1531,6 +1541,14 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           a: Schema.OptionFromNullOr(Schema.NonEmptyString)
         }),
         {
+          "$defs": {
+            "NonEmptyString": {
+              "type": "string",
+              "description": "a non empty string",
+              "title": "NonEmptyString",
+              "minLength": 1
+            }
+          },
           "type": "object",
           "required": [
             "a"
@@ -1539,10 +1557,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "a": {
               "anyOf": [
                 {
-                  "type": "string",
-                  "description": "a non empty string",
-                  "title": "NonEmptyString",
-                  "minLength": 1
+                  "$ref": "#/$defs/NonEmptyString"
                 },
                 {
                   "enum": [null]
@@ -1691,14 +1706,19 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
               }),
               {
-                "type": "object",
-                "required": [],
-                "properties": {
-                  "a": {
+                "$defs": {
+                  "NonEmptyString": {
                     "type": "string",
                     "description": "a non empty string",
                     "title": "NonEmptyString",
                     "minLength": 1
+                  }
+                },
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "a": {
+                    "$ref": "#/$defs/NonEmptyString"
                   }
                 },
                 "additionalProperties": false
@@ -1708,34 +1728,45 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
           it("with property signature annotations", () => {
             const schema = Schema.Struct({
-              a: Schema.optionalWith(Schema.NonEmptyString.annotations({ description: "an optional field" }), {
+              a: Schema.optionalWith(Schema.NonEmptyString.annotations({ description: "inner" }), {
                 default: () => ""
-              }).annotations({ description: "a required field" })
+              }).annotations({ description: "outer" })
             })
             expectJSONSchema(schema, {
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "description": "inner",
+                  "title": "NonEmptyString",
+                  "minLength": 1
+                }
+              },
               "type": "object",
               "required": [],
               "properties": {
                 "a": {
-                  "type": "string",
-                  "description": "an optional field",
-                  "title": "NonEmptyString",
-                  "minLength": 1
+                  "$ref": "#/$defs/NonEmptyString"
                 }
               },
               "additionalProperties": false
             })
             expectJSONSchema(Schema.typeSchema(schema), {
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "description": "inner",
+                  "title": "NonEmptyString",
+                  "minLength": 1
+                }
+              },
               "type": "object",
               "required": [
                 "a"
               ],
               "properties": {
                 "a": {
-                  "type": "string",
-                  "description": "a required field",
-                  "title": "NonEmptyString",
-                  "minLength": 1
+                  "$ref": "#/$defs/NonEmptyString",
+                  "description": "outer"
                 }
               },
               "additionalProperties": false
@@ -1758,16 +1789,21 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
               }).annotations({ description: "mydescription", title: "mytitle" }),
               {
+                "$defs": {
+                  "NonEmptyString": {
+                    "type": "string",
+                    "description": "a non empty string",
+                    "title": "NonEmptyString",
+                    "minLength": 1
+                  }
+                },
                 "type": "object",
                 "description": "mydescription",
                 "title": "mytitle",
                 "required": [],
                 "properties": {
                   "a": {
-                    "type": "string",
-                    "description": "a non empty string",
-                    "title": "NonEmptyString",
-                    "minLength": 1
+                    "$ref": "#/$defs/NonEmptyString"
                   }
                 },
                 "additionalProperties": false
@@ -1783,6 +1819,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               {
                 "$ref": "#/$defs/myid",
                 "$defs": {
+                  "NonEmptyString": {
+                    "type": "string",
+                    "description": "a non empty string",
+                    "title": "NonEmptyString",
+                    "minLength": 1
+                  },
                   "myid": {
                     "type": "object",
                     "description": "mydescription",
@@ -1790,10 +1832,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                     "required": [],
                     "properties": {
                       "a": {
-                        "type": "string",
-                        "description": "a non empty string",
-                        "title": "NonEmptyString",
-                        "minLength": 1
+                        "$ref": "#/$defs/NonEmptyString"
                       }
                     },
                     "additionalProperties": false
@@ -1811,14 +1850,19 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 a: Schema.optionalWith(Schema.NonEmptyString, { as: "Option" })
               }),
               {
-                "type": "object",
-                "required": [],
-                "properties": {
-                  "a": {
+                "$defs": {
+                  "NonEmptyString": {
                     "type": "string",
                     "description": "a non empty string",
                     "title": "NonEmptyString",
                     "minLength": 1
+                  }
+                },
+                "type": "object",
+                "required": [],
+                "properties": {
+                  "a": {
+                    "$ref": "#/$defs/NonEmptyString"
                   }
                 },
                 "additionalProperties": false
@@ -1834,15 +1878,18 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               {
                 "$ref": "#/$defs/myid",
                 "$defs": {
+                  "NonEmptyString": {
+                    "type": "string",
+                    "description": "a non empty string",
+                    "title": "NonEmptyString",
+                    "minLength": 1
+                  },
                   "myid": {
                     "type": "object",
                     "required": [],
                     "properties": {
                       "a": {
-                        "type": "string",
-                        "description": "a non empty string",
-                        "title": "NonEmptyString",
-                        "minLength": 1
+                        "$ref": "#/$defs/NonEmptyString"
                       }
                     },
                     "additionalProperties": false,
@@ -1863,16 +1910,21 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b"))
             }),
             {
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "description": "a non empty string",
+                  "title": "NonEmptyString",
+                  "minLength": 1
+                }
+              },
               "type": "object",
               "required": [
                 "b"
               ],
               "properties": {
                 "b": {
-                  "type": "string",
-                  "description": "a non empty string",
-                  "title": "NonEmptyString",
-                  "minLength": 1
+                  "$ref": "#/$defs/NonEmptyString"
                 }
               },
               "additionalProperties": false
@@ -1888,6 +1940,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             {
               "$ref": "#/$defs/myid",
               "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "description": "a non empty string",
+                  "title": "NonEmptyString",
+                  "minLength": 1
+                },
                 "myid": {
                   "type": "object",
                   "required": [
@@ -1895,10 +1953,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                   ],
                   "properties": {
                     "b": {
-                      "type": "string",
-                      "description": "a non empty string",
-                      "title": "NonEmptyString",
-                      "minLength": 1
+                      "$ref": "#/$defs/NonEmptyString"
                     }
                   },
                   "additionalProperties": false,
@@ -1940,14 +1995,19 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
         })),
         {
-          "type": "object",
-          "required": [],
-          "properties": {
-            "a": {
+          "$defs": {
+            "NonEmptyString": {
               "type": "string",
               "description": "a non empty string",
               "title": "NonEmptyString",
               "minLength": 1
+            }
+          },
+          "type": "object",
+          "required": [],
+          "properties": {
+            "a": {
+              "$ref": "#/$defs/NonEmptyString"
             }
           },
           "additionalProperties": false
@@ -2271,16 +2331,21 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         a: Schema.NonEmptyString.pipe(Schema.compose(Schema.NumberFromString))
       }),
       {
+        "$defs": {
+          "NonEmptyString": {
+            "type": "string",
+            "description": "a non empty string",
+            "title": "NonEmptyString",
+            "minLength": 1
+          }
+        },
         "type": "object",
         "required": [
           "a"
         ],
         "properties": {
           "a": {
-            "type": "string",
-            "description": "a non empty string",
-            "title": "NonEmptyString",
-            "minLength": 1
+            "$ref": "#/$defs/NonEmptyString"
           }
         },
         "additionalProperties": false
@@ -2324,6 +2389,22 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           }
         }
       })
+    })
+
+    it("Refinement", () => {
+      expectJSONSchema(
+        Schema.String.pipe(Schema.minLength(2)).annotations({ identifier: "MyID" }),
+        {
+          "$defs": {
+            "MyID": {
+              "type": "string",
+              "description": "a string at least 2 character(s) long",
+              "minLength": 2
+            }
+          },
+          "$ref": "#/$defs/MyID"
+        }
+      )
     })
 
     describe("Struct", () => {
@@ -2697,6 +2778,21 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "description": "description"
         }
       )
+      expectJSONSchemaOnly(
+        Schema.String.annotations({
+          identifier: "MyID",
+          jsonSchema: { "type": "custom", "description": "description" }
+        }),
+        {
+          "$defs": {
+            "MyID": {
+              "type": "custom",
+              "description": "description"
+            }
+          },
+          "$ref": "#/$defs/MyID"
+        }
+      )
     })
 
     it("Number", () => {
@@ -2783,11 +2879,32 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
     })
 
-    it("refinement", () => {
-      expectJSONSchemaOnly(Schema.Int.annotations({ jsonSchema: { "type": "custom" } }), {
-        "description": "an integer",
-        "title": "Int",
-        "type": "custom"
+    describe("Refinement", () => {
+      it("Int", () => {
+        expectJSONSchemaOnly(Schema.Int.annotations({ jsonSchema: { "type": "custom" } }), {
+          "$defs": {
+            "Int": {
+              "description": "an integer",
+              "title": "Int",
+              "type": "custom"
+            }
+          },
+          "$ref": "#/$defs/Int"
+        })
+      })
+
+      it("custom", () => {
+        expectJSONSchema(
+          Schema.String.pipe(Schema.filter(() => true, { jsonSchema: {} })).annotations({ identifier: "MyID" }),
+          {
+            "$ref": "#/$defs/MyID",
+            "$defs": {
+              "MyID": {
+                "type": "string"
+              }
+            }
+          }
+        )
       })
     })
 

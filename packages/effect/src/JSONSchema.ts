@@ -308,18 +308,14 @@ export const DEFINITION_PREFIX = "#/$defs/"
 
 const get$ref = (id: string): string => `${DEFINITION_PREFIX}${id}`
 
-const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefined => {
-  switch (ast.from._tag) {
+const getTransformation = (ast: AST.AST): AST.AST | undefined => {
+  switch (ast._tag) {
     case "Transformation":
       return ast.from
     case "Refinement":
-      return getRefinementInnerTransformation(ast.from)
-    case "Suspend": {
-      const from = ast.from.f()
-      if (AST.isRefinement(from)) {
-        return getRefinementInnerTransformation(from)
-      }
-    }
+      return getTransformation(ast.from)
+    case "Suspend":
+      return getTransformation(ast.f())
   }
 }
 
@@ -342,7 +338,7 @@ const go = (
   handleIdentifier: boolean,
   path: ReadonlyArray<PropertyKey>
 ): JsonSchema7 => {
-  if (handleIdentifier && !AST.isTransformation(ast) && !AST.isRefinement(ast)) {
+  if (handleIdentifier && getTransformation(ast) === undefined) {
     const identifier = AST.getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
@@ -358,19 +354,12 @@ const go = (
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema7
     if (AST.isRefinement(ast)) {
-      const t = getRefinementInnerTransformation(ast)
+      const t = getTransformation(ast)
       if (t === undefined) {
-        try {
-          return {
-            ...go(ast.from, $defs, false, path),
-            ...getJsonSchemaAnnotations(ast),
-            ...handler
-          }
-        } catch (e) {
-          return {
-            ...getJsonSchemaAnnotations(ast),
-            ...handler
-          }
+        return {
+          ...go(ast.from, $defs, false, path),
+          ...getJsonSchemaAnnotations(ast),
+          ...handler
         }
       } else if (!isOverrideAnnotation(handler)) {
         return go(t, $defs, true, path)
