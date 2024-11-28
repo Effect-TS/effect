@@ -2541,6 +2541,54 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           }
         )
       })
+
+      it("with identifier annotation", () => {
+        class A extends Schema.Class<A>("A")({ a: Schema.String }, {
+          identifier: "MyA",
+          description: "description",
+          title: "title"
+        }) {}
+        expectJSONSchema(Schema.typeSchema(A), {
+          "$defs": {
+            "MyA": {
+              "type": "object",
+              "required": ["a"],
+              "properties": {
+                "a": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "description": "description",
+              "title": "title"
+            }
+          },
+          "$ref": "#/$defs/MyA"
+        })
+        expectJSONSchema(
+          Schema.typeSchema(A).annotations({
+            description: "mydescription",
+            title: "mytitle"
+          }),
+          {
+            "$defs": {
+              "MyA": {
+                "type": "object",
+                "required": ["a"],
+                "properties": {
+                  "a": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "mydescription",
+                "title": "mytitle"
+              }
+            },
+            "$ref": "#/$defs/MyA"
+          }
+        )
+      })
     })
   })
 
