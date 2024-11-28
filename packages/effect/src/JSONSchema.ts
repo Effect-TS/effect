@@ -342,6 +342,18 @@ const go = (
   handleIdentifier: boolean,
   path: ReadonlyArray<PropertyKey>
 ): JsonSchema7 => {
+  if (handleIdentifier && !AST.isTransformation(ast) && !AST.isRefinement(ast)) {
+    const identifier = AST.getJSONIdentifier(ast)
+    if (Option.isSome(identifier)) {
+      const id = identifier.value
+      const out = { $ref: get$ref(id) }
+      if (!Record.has($defs, id)) {
+        $defs[id] = out
+        $defs[id] = go(ast, $defs, false, path)
+      }
+      return out
+    }
+  }
   const hook = AST.getJSONSchemaAnnotation(ast)
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema7
@@ -350,7 +362,7 @@ const go = (
       if (t === undefined) {
         try {
           return {
-            ...go(ast.from, $defs, true, path),
+            ...go(ast.from, $defs, false, path),
             ...getJsonSchemaAnnotations(ast),
             ...handler
           }
@@ -368,18 +380,9 @@ const go = (
   }
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
-    return go(surrogate.value, $defs, handleIdentifier, path)
-  }
-  if (handleIdentifier && !AST.isTransformation(ast) && !AST.isRefinement(ast)) {
-    const identifier = AST.getJSONIdentifier(ast)
-    if (Option.isSome(identifier)) {
-      const id = identifier.value
-      const out = { $ref: get$ref(id) }
-      if (!Record.has($defs, id)) {
-        $defs[id] = out
-        $defs[id] = go(ast, $defs, false, path)
-      }
-      return out
+    return {
+      ...go(surrogate.value, $defs, false, path),
+      ...getJsonSchemaAnnotations(ast)
     }
   }
   switch (ast._tag) {

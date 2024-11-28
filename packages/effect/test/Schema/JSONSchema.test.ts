@@ -2247,7 +2247,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Class", () => {
-    it("should support make(Class)", () => {
+    it("should generate the same JSON Schema as Schema.encodedSchema(Class)", () => {
       class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
       expectJSONSchema(A, {
         "type": "object",
@@ -2261,47 +2261,56 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         },
         "additionalProperties": false
       })
+      expect(JSONSchema.make(A)).toEqual(JSONSchema.make(Schema.encodedSchema(A)))
     })
+  })
 
-    it("should support typeSchema(Class)", () => {
-      class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
-      expectJSONSchema(Schema.typeSchema(A), {
+  it("compose", () => {
+    expectJSONSchemaJsonSchemaAnnotations(
+      Schema.Struct({
+        a: Schema.NonEmptyString.pipe(Schema.compose(Schema.NumberFromString))
+      }),
+      {
         "type": "object",
         "required": [
           "a"
         ],
         "properties": {
           "a": {
-            "type": "string"
+            "type": "string",
+            "description": "a non empty string",
+            "title": "NonEmptyString",
+            "minLength": 1
           }
         },
         "additionalProperties": false
-      })
-    })
+      }
+    )
+  })
 
-    it("should support typeSchema(Class) with custom annotation", () => {
-      class A extends Schema.Class<A>("A")({ a: Schema.String }, {
-        jsonSchema: { "type": "custom JSON Schema" }
-      }) {}
-      expectJSONSchemaOnly(Schema.typeSchema(A), {
-        "type": "custom JSON Schema"
-      })
-    })
-
-    it("should support encodedSchema(Class)", () => {
-      class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
-      expectJSONSchemaJsonSchemaAnnotations(Schema.encodedSchema(A), {
-        "type": "object",
-        "required": [
-          "a"
-        ],
-        "properties": {
-          "a": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      })
+  describe("extend", () => {
+    it("should correctly generate JSON Schemas for a schema created by extending two refinements", () => {
+      // TODO: why expectJSONSchemaJsonSchemaAnnotations raises an error?
+      expectJSONSchema(
+        Schema.Struct({
+          a: Schema.String
+        }).pipe(Schema.filter(() => true, { jsonSchema: { description: "a" } })).pipe(Schema.extend(
+          Schema.Struct({
+            b: JsonNumber
+          }).pipe(Schema.filter(() => true, { jsonSchema: { title: "b" } }))
+        )),
+        {
+          "additionalProperties": false,
+          "description": "a",
+          "properties": {
+            "a": { "type": "string" },
+            "b": { "type": "number" }
+          },
+          "required": ["a", "b"],
+          "title": "b",
+          "type": "object"
+        }
+      )
     })
   })
 
@@ -2487,7 +2496,83 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
   })
 
+  describe("surrogate annotation support", () => {
+    describe("Class", () => {
+      it("should support typeSchema(Class)", () => {
+        class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
+        expectJSONSchema(Schema.typeSchema(A), {
+          "$defs": {
+            "A": {
+              "type": "object",
+              "required": ["a"],
+              "properties": {
+                "a": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "description": "an instance of A",
+              "title": "A"
+            }
+          },
+          "$ref": "#/$defs/A"
+        })
+        expectJSONSchema(
+          Schema.typeSchema(A).annotations({
+            description: "mydescription",
+            title: "mytitle"
+          }),
+          {
+            "$defs": {
+              "A": {
+                "type": "object",
+                "required": ["a"],
+                "properties": {
+                  "a": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "mydescription",
+                "title": "mytitle"
+              }
+            },
+            "$ref": "#/$defs/A"
+          }
+        )
+      })
+    })
+  })
+
   describe("jsonSchema annotation support", () => {
+    it("should have higher priority than surrogate annotation", () => {
+      expectJSONSchema(
+        Schema.String.annotations({
+          [AST.SurrogateAnnotationId]: Schema.Number.ast,
+          jsonSchema: { "type": "custom" }
+        }),
+        {
+          "type": "custom"
+        }
+      )
+    })
+
+    describe("Class", () => {
+      it("should support typeSchema(Class) with custom annotation", () => {
+        class A extends Schema.Class<A>("A")({ a: Schema.String }, {
+          jsonSchema: { "type": "custom JSON Schema" }
+        }) {}
+        expectJSONSchemaOnly(Schema.typeSchema(A), {
+          "$defs": {
+            "A": {
+              "type": "custom JSON Schema"
+            }
+          },
+          "$ref": "#/$defs/A"
+        })
+      })
+    })
+
     it("Void", () => {
       expectJSONSchemaOnly(Schema.Void.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "type": "custom JSON Schema"
@@ -2627,7 +2712,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
-    it("suspend", () => {
+    it("Suspend", () => {
       interface A {
         readonly a: string
         readonly as: ReadonlyArray<A>
@@ -2716,55 +2801,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         {
           "type": "string",
           "description": "a string that will be trimmed"
-        }
-      )
-    })
-  })
-
-  it("compose", () => {
-    expectJSONSchemaJsonSchemaAnnotations(
-      Schema.Struct({
-        a: Schema.NonEmptyString.pipe(Schema.compose(Schema.NumberFromString))
-      }),
-      {
-        "type": "object",
-        "required": [
-          "a"
-        ],
-        "properties": {
-          "a": {
-            "type": "string",
-            "description": "a non empty string",
-            "title": "NonEmptyString",
-            "minLength": 1
-          }
-        },
-        "additionalProperties": false
-      }
-    )
-  })
-
-  describe("extend", () => {
-    it("should correctly generate JSON Schemas for a schema created by extending two refinements", () => {
-      // TODO: why expectJSONSchemaJsonSchemaAnnotations raises an error?
-      expectJSONSchema(
-        Schema.Struct({
-          a: Schema.String
-        }).pipe(Schema.filter(() => true, { jsonSchema: { description: "a" } })).pipe(Schema.extend(
-          Schema.Struct({
-            b: JsonNumber
-          }).pipe(Schema.filter(() => true, { jsonSchema: { title: "b" } }))
-        )),
-        {
-          "additionalProperties": false,
-          "description": "a",
-          "properties": {
-            "a": { "type": "string" },
-            "b": { "type": "number" }
-          },
-          "required": ["a", "b"],
-          "title": "b",
-          "type": "object"
         }
       )
     })
