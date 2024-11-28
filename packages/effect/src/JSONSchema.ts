@@ -338,6 +338,11 @@ const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
     ("enum" in jsonSchema) || ("$ref" in jsonSchema)
 }
 
+// Returns true if the schema is an enum with no other properties.
+// This is used to merge enums together.
+const isEnumOnly = (schema: JsonSchema7): schema is JsonSchema7Enum =>
+  "enum" in schema && Object.keys(schema).length === 1
+
 const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
@@ -543,7 +548,6 @@ const go = (
       return merge(output, getJsonSchemaAnnotations(ast))
     }
     case "Union": {
-      const enums: Array<AST.LiteralValue> = []
       const anyOf: Array<JsonSchema7> = []
       for (const type of ast.types) {
         const schema = go(type, $defs, true, path)
@@ -551,20 +555,22 @@ const go = (
           if (Object.keys(schema).length > 1) {
             anyOf.push(schema)
           } else {
-            for (const e of schema.enum) {
-              enums.push(e)
+            const last = anyOf[anyOf.length - 1]
+            if (last !== undefined && isEnumOnly(last)) {
+              for (const e of schema.enum) {
+                last.enum.push(e)
+              }
+            } else {
+              anyOf.push(schema)
             }
           }
         } else {
           anyOf.push(schema)
         }
       }
-      if (anyOf.length === 0) {
-        return merge({ enum: enums }, getJsonSchemaAnnotations(ast))
+      if (anyOf.length === 1 && isEnumOnly(anyOf[0])) {
+        return merge({ enum: anyOf[0].enum }, getJsonSchemaAnnotations(ast))
       } else {
-        if (enums.length >= 1) {
-          anyOf.push({ enum: enums })
-        }
         return merge({ anyOf }, getJsonSchemaAnnotations(ast))
       }
     }
