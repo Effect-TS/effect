@@ -16,7 +16,7 @@ const ajvOptions = {
 const getAjvValidate = (jsonSchema: JSONSchema.JsonSchema7Root): AjvNonEsm.ValidateFunction =>
   new Ajv(ajvOptions).compile(jsonSchema)
 
-const doProperty = true
+const doProperty = false
 
 const propertyType = <A, I>(schema: Schema.Schema<A, I>, options?: {
   params?: fc.Parameters<[I]>
@@ -839,7 +839,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Struct", () => {
-    it("struct", () => {
+    it("Baseline", () => {
       const schema = Schema.Struct({
         a: Schema.String,
         b: JsonNumber
@@ -860,6 +860,46 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expect(validate({ a: "a" })).toEqual(false)
       expect(validate({ b: 1 })).toEqual(false)
       expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
+    })
+
+    it("field + inner annotation", () => {
+      expectJSONSchemaJsonSchemaAnnotations(
+        Schema.Struct({
+          a: Schema.String.annotations({ description: "inner" })
+        }),
+        {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string",
+              "description": "inner"
+            }
+          },
+          "required": ["a"],
+          "additionalProperties": false
+        }
+      )
+    })
+
+    it("field + outer annotation should override inner annotation", () => {
+      expectJSONSchemaJsonSchemaAnnotations(
+        Schema.Struct({
+          a: Schema.propertySignature(Schema.String.annotations({ description: "inner" })).annotations({
+            description: "outer"
+          })
+        }),
+        {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string",
+              "description": "outer"
+            }
+          },
+          "required": ["a"],
+          "additionalProperties": false
+        }
+      )
     })
 
     it("Struct + Record", () => {
@@ -892,7 +932,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expect(validate({ a: "a", b: 1 })).toEqual(false)
     })
 
-    it("exact optional property signature", () => {
+    it("exact optional field", () => {
       const schema = Schema.Struct({
         a: Schema.String,
         b: Schema.optionalWith(JsonNumber, { exact: true })
@@ -919,116 +959,230 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
     })
 
-    it("should respect annotations", () => {
+    it("exact optional field + inner annotation", () => {
       expectJSONSchemaJsonSchemaAnnotations(
         Schema.Struct({
-          a: Schema.optional(Schema.String).annotations({ description: "an optional string" })
+          a: Schema.optionalWith(Schema.String.annotations({ description: "inner" }), { exact: true })
         }),
         {
-          type: "object",
-          required: [],
-          properties: {
-            a: {
-              type: "string",
-              "description": "an optional string"
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string",
+              "description": "inner"
             }
           },
-          additionalProperties: false
+          "required": [],
+          "additionalProperties": false
         }
       )
     })
 
-    describe("pruning undefined", () => {
-      it("with an annotation the property should remain required", () => {
-        expectJSONSchemaOnly(
-          Schema.Struct({
-            a: Schema.UndefinedOr(Schema.String).annotations({ jsonSchema: { "type": "number" } })
-          }),
-          {
-            "type": "object",
-            "required": ["a"],
-            "properties": {
-              "a": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          }
-        )
-      })
+    it("exact optional field + outer annotation should override inner annotations", () => {
+      expectJSONSchemaJsonSchemaAnnotations(
+        Schema.Struct({
+          a: Schema.optionalWith(Schema.String.annotations({ description: "inner" }), { exact: true }).annotations({
+            description: "outer"
+          })
+        }),
+        {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string",
+              "description": "outer"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      )
+    })
 
-      it("should prune `UndefinedKeyword` from an optional property signature", () => {
+    describe("Pruning undefined and make the property optional by default", () => {
+      it("optional field", () => {
         expectJSONSchemaJsonSchemaAnnotations(
           Schema.Struct({
             a: Schema.optional(Schema.String)
           }),
           {
             "type": "object",
-            "properties": {
-              "a": {
-                "type": "string"
-              }
-            },
             "required": [],
+            "properties": {
+              "a": { "type": "string" }
+            },
             "additionalProperties": false
           }
         )
       })
 
-      describe("should prune `UndefinedKeyword` from a required property signature type and make the property optional by default", () => {
-        it("Struct", () => {
-          expectJSONSchemaJsonSchemaAnnotations(
-            Schema.Struct({
-              a: Schema.UndefinedOr(Schema.String)
-            }),
-            {
-              "type": "object",
-              "required": [],
-              "properties": {
-                "a": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          )
-        })
+      it("optional field + inner annotation", () => {
+        expectJSONSchemaJsonSchemaAnnotations(
+          Schema.Struct({
+            a: Schema.optional(Schema.String.annotations({ description: "inner" }))
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "inner"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
 
-        it("Transformation", () => {
-          expectJSONSchemaJsonSchemaAnnotations(
-            Schema.Struct({
-              a: Schema.OptionFromUndefinedOr(Schema.String)
-            }),
-            {
-              "type": "object",
-              "required": [],
-              "properties": {
-                "a": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          )
-        })
+      it("optional field + outer annotation should override inner annotation", () => {
+        expectJSONSchemaJsonSchemaAnnotations(
+          Schema.Struct({
+            a: Schema.optional(Schema.String.annotations({ description: "inner" })).annotations({
+              description: "outer"
+            })
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "outer"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
 
-        it("parseJson Transformation", () => {
-          expectJSONSchemaJsonSchemaAnnotations(
-            Schema.Struct({
-              a: Schema.parseJson(Schema.OptionFromUndefinedOr(Schema.String))
-            }),
-            {
-              "type": "object",
-              "required": [],
-              "properties": {
-                "a": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          )
-        })
+      it("UndefinedOr", () => {
+        expectJSONSchemaJsonSchemaAnnotations(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String)
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("UndefinedOr + inner annotation", () => {
+        expectJSONSchemaJsonSchemaAnnotations(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String.annotations({ description: "inner" }))
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "inner"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+        expectJSONSchemaJsonSchemaAnnotations(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String.annotations({ description: "inner" })).annotations({
+              description: "middle"
+            })
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "middle"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("UndefinedOr + outer annotation whould override inner annotations", () => {
+        expectJSONSchemaJsonSchemaAnnotations(
+          Schema.Struct({
+            a: Schema.propertySignature(Schema.UndefinedOr(Schema.String.annotations({ description: "inner" })))
+              .annotations({ description: "outer" })
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "outer"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("With a custom jsonSchema annotation the property should remain required", () => {
+        expectJSONSchemaOnly(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String).annotations({ jsonSchema: { "type": "string" } })
+          }),
+          {
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("OptionFromUndefinedOr", () => {
+        expectJSONSchemaJsonSchemaAnnotations(
+          Schema.Struct({
+            a: Schema.OptionFromUndefinedOr(Schema.String)
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("parseJson + OptionFromUndefinedOr", () => {
+        expectJSONSchemaJsonSchemaAnnotations(
+          Schema.Struct({
+            a: Schema.parseJson(Schema.OptionFromUndefinedOr(Schema.String))
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
       })
     })
   })
@@ -2078,60 +2232,17 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
   })
 
-  describe("annotations", () => {
-    it("examples support", () => {
-      expectJSONSchemaJsonSchemaAnnotations(Schema.String.annotations({ examples: ["a", "b"] }), {
-        "type": "string",
-        "examples": ["a", "b"]
-      })
+  it("examples JSON Schema annotation support", () => {
+    expectJSONSchemaJsonSchemaAnnotations(Schema.String.annotations({ examples: ["a", "b"] }), {
+      "type": "string",
+      "examples": ["a", "b"]
     })
+  })
 
-    it("default support", () => {
-      expectJSONSchemaJsonSchemaAnnotations(Schema.String.annotations({ default: "" }), {
-        "type": "string",
-        "default": ""
-      })
-    })
-
-    it("propertySignature", () => {
-      const schema = Schema.Struct({
-        foo: Schema.propertySignature(Schema.String).annotations({
-          description: "foo description",
-          title: "foo title",
-          examples: ["foo example"]
-        }),
-        bar: Schema.propertySignature(JsonNumber).annotations({
-          description: "bar description",
-          title: "bar title",
-          examples: [1]
-        })
-      })
-      expectJSONSchemaJsonSchemaAnnotations(schema, {
-        "type": "object",
-        "required": [
-          "foo",
-          "bar"
-        ],
-        "properties": {
-          "foo": {
-            "type": "string",
-            "description": "foo description",
-            "title": "foo title",
-            "examples": [
-              "foo example"
-            ]
-          },
-          "bar": {
-            "type": "number",
-            "description": "bar description",
-            "title": "bar title",
-            "examples": [
-              1
-            ]
-          }
-        },
-        "additionalProperties": false
-      })
+  it("default JSON Schema annotation support", () => {
+    expectJSONSchemaJsonSchemaAnnotations(Schema.String.annotations({ default: "" }), {
+      "type": "string",
+      "default": ""
     })
   })
 

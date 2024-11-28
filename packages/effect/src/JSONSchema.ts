@@ -520,10 +520,18 @@ const go = (
         const name = ps.name
         if (Predicate.isString(name)) {
           const pruned = pruneUndefinedFromPropertySignature(ps.type)
-          output.properties[name] = merge(
-            go(pruned ? pruned : ps.type, $defs, true, path.concat(ps.name)),
-            getJsonSchemaAnnotations(ps)
-          )
+          if (pruned) {
+            output.properties[name] = {
+              ...go(pruned, $defs, true, path.concat(ps.name)),
+              ...getJsonSchemaAnnotations(ps.type),
+              ...getJsonSchemaAnnotations(ps)
+            }
+          } else {
+            output.properties[name] = {
+              ...go(ps.type, $defs, true, path.concat(ps.name)),
+              ...getJsonSchemaAnnotations(ps)
+            }
+          }
           // ---------------------------------------------
           // handle optional property signatures
           // ---------------------------------------------
