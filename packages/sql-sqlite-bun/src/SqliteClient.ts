@@ -78,9 +78,11 @@ export const make = (
 ): Effect.Effect<SqliteClient, never, Scope.Scope> =>
   Effect.gen(function*(_) {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(
+        options.transformResultNames
+      ).array :
+      undefined
 
     const makeConnection = Effect.gen(function*(_) {
       const db = new Database(options.filename, {
@@ -103,10 +105,6 @@ export const make = (
           catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
-      const runTransform = options.transformResultNames
-        ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
-        : run
-
       const runValues = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
@@ -117,8 +115,10 @@ export const make = (
         })
 
       return identity<SqliteConnection>({
-        execute(sql, params) {
-          return runTransform(sql, params)
+        execute(sql, params, transformRows) {
+          return transformRows
+            ? Effect.map(run(sql, params), transformRows)
+            : run(sql, params)
         },
         executeRaw(sql, params) {
           return run(sql, params)
@@ -126,11 +126,8 @@ export const make = (
         executeValues(sql, params) {
           return runValues(sql, params)
         },
-        executeWithoutTransform(sql, params) {
-          return run(sql, params)
-        },
-        executeUnprepared(sql, params) {
-          return runTransform(sql, params)
+        executeUnprepared(sql, params, transformRows) {
+          return this.execute(sql, params, transformRows)
         },
         executeStream(_sql, _params) {
           return Effect.dieMessage("executeStream not implemented")
@@ -172,7 +169,8 @@ export const make = (
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
-        ]
+        ],
+        transformRows
       }) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,

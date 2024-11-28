@@ -276,3 +276,21 @@ it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => 
       expect(query).toEqual(`SELECT * from "people_test"`)
     }))
 })
+
+it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient transforms", (it) => {
+  it.effect("insert helper", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const [query, params] = sql`INSERT INTO people ${sql.insert({ firstName: "Tim", age: 10 })}`.compile()
+      expect(query).toEqual(`INSERT INTO people ("first_name","age") VALUES ($1,$2)`)
+      expect(params).toEqual(["Tim", 10])
+    }))
+
+  it.effect("insert helper withoutTransforms", () =>
+    Effect.gen(function*() {
+      const sql = (yield* PgClient.PgClient).withoutTransforms()
+      const [query, params] = sql`INSERT INTO people ${sql.insert({ first_name: "Tim", age: 10 })}`.compile()
+      expect(query).toEqual(`INSERT INTO people ("first_name","age") VALUES ($1,$2)`)
+      expect(params).toEqual(["Tim", 10])
+    }))
+})

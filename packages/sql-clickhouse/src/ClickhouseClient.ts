@@ -15,7 +15,7 @@ import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
-import { dual, identity } from "effect/Function"
+import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
@@ -91,7 +91,7 @@ export const make = (
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames
       ? Statement.defaultTransforms(options.transformResultNames).array
-      : identity
+      : undefined
 
     const client = Clickhouse.createClient(options)
 
@@ -165,28 +165,29 @@ export const make = (
         )
       }
 
-      private runTransform(sql: string, params: ReadonlyArray<Primitive>) {
-        return options.transformResultNames
+      execute(
+        sql: string,
+        params: ReadonlyArray<Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return transformRows
           ? Effect.map(this.run(sql, params), transformRows)
           : this.run(sql, params)
-      }
-
-      execute(sql: string, params: ReadonlyArray<Primitive>) {
-        return this.runTransform(sql, params)
       }
       executeRaw(sql: string, params: ReadonlyArray<Primitive>) {
         return this.runRaw(sql, params)
       }
-      executeWithoutTransform(sql: string, params: ReadonlyArray<Primitive>) {
-        return this.run(sql, params)
-      }
       executeValues(sql: string, params: ReadonlyArray<Primitive>) {
         return this.run(sql, params, "JSONCompact")
       }
-      executeUnprepared(sql: string, params?: ReadonlyArray<Primitive>) {
-        return this.runTransform(sql, params ?? [])
+      executeUnprepared(sql: string, params: ReadonlyArray<Primitive>, transformRows?: any) {
+        return this.execute(sql, params, transformRows)
       }
-      executeStream(sql: string, params: ReadonlyArray<Primitive>) {
+      executeStream(
+        sql: string,
+        params: ReadonlyArray<Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
         return this.runRaw(sql, params, "JSONEachRow").pipe(
           Effect.map((result) => {
             if (!("stream" in result)) {
@@ -207,7 +208,8 @@ export const make = (
               }
             }
             return Effect.tryPromise({
-              try: () => Promise.all(promises).then((rows) => Chunk.unsafeFromArray(transformRows(rows))),
+              try: () =>
+                Promise.all(promises).then((rows) => Chunk.unsafeFromArray(transformRows ? transformRows(rows) : rows)),
               catch: (cause) => new SqlError({ cause, message: "Failed to parse row" })
             })
           }),
@@ -227,7 +229,8 @@ export const make = (
           [Otel.SEMATTRS_DB_SYSTEM, "clickhouse"],
           [Otel.SEMATTRS_DB_NAME, options.database ?? "default"]
         ],
-        beginTransaction: "BEGIN TRANSACTION"
+        beginTransaction: "BEGIN TRANSACTION",
+        transformRows
       }),
       {
         [TypeId]: TypeId as TypeId,
