@@ -326,13 +326,6 @@ const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefi
 const isParseJsonTransformation = (ast: AST.AST): boolean =>
   ast.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
 
-function merge(a: JsonSchemaAnnotations, b: JsonSchema7): JsonSchema7
-function merge(a: JsonSchema7, b: JsonSchemaAnnotations): JsonSchema7
-function merge(a: JsonSchema7, b: JsonSchema7): JsonSchema7
-function merge(a: object, b: object): object {
-  return { ...a, ...b }
-}
-
 const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
   return ("type" in jsonSchema) || ("oneOf" in jsonSchema) || ("anyOf" in jsonSchema) || ("const" in jsonSchema) ||
     ("enum" in jsonSchema) || ("$ref" in jsonSchema)
@@ -395,9 +388,9 @@ const go = (
     case "Literal": {
       const literal = ast.literal
       if (literal === null) {
-        return merge({ enum: [null] }, getJsonSchemaAnnotations(ast))
+        return { enum: [null], ...getJsonSchemaAnnotations(ast) }
       } else if (Predicate.isString(literal) || Predicate.isNumber(literal) || Predicate.isBoolean(literal)) {
-        return merge({ enum: [literal] }, getJsonSchemaAnnotations(ast))
+        return { enum: [literal], ...getJsonSchemaAnnotations(ast) }
       }
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     }
@@ -406,15 +399,15 @@ const go = (
     case "UndefinedKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "VoidKeyword":
-      return merge(voidJsonSchema, getJsonSchemaAnnotations(ast))
+      return { ...voidJsonSchema, ...getJsonSchemaAnnotations(ast) }
     case "NeverKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "UnknownKeyword":
-      return merge(unknownJsonSchema, getJsonSchemaAnnotations(ast))
+      return { ...unknownJsonSchema, ...getJsonSchemaAnnotations(ast) }
     case "AnyKeyword":
-      return merge(anyJsonSchema, getJsonSchemaAnnotations(ast))
+      return { ...anyJsonSchema, ...getJsonSchemaAnnotations(ast) }
     case "ObjectKeyword":
-      return merge(objectJsonSchema, getJsonSchemaAnnotations(ast))
+      return { ...objectJsonSchema, ...getJsonSchemaAnnotations(ast) }
     case "StringKeyword":
       return { type: "string", ...getASTJsonSchemaAnnotations(ast) }
     case "NumberKeyword":
@@ -426,18 +419,14 @@ const go = (
     case "SymbolKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "TupleType": {
-      const elements = ast.elements.map((e, i) =>
-        merge(
-          go(e.type, $defs, true, path.concat(i)),
-          getJsonSchemaAnnotations(e)
-        )
-      )
-      const rest = ast.rest.map((annotatedAST) =>
-        merge(
-          go(annotatedAST.type, $defs, true, path),
-          getJsonSchemaAnnotations(annotatedAST)
-        )
-      )
+      const elements = ast.elements.map((e, i) => ({
+        ...go(e.type, $defs, true, path.concat(i)),
+        ...getJsonSchemaAnnotations(e)
+      }))
+      const rest = ast.rest.map((annotatedAST) => ({
+        ...go(annotatedAST.type, $defs, true, path),
+        ...getJsonSchemaAnnotations(annotatedAST)
+      }))
       const output: JsonSchema7Array = { type: "array" }
       // ---------------------------------------------
       // handle elements
@@ -474,11 +463,11 @@ const go = (
         }
       }
 
-      return merge(output, getJsonSchemaAnnotations(ast))
+      return { ...output, ...getJsonSchemaAnnotations(ast) }
     }
     case "TypeLiteral": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-        return merge(empty(), getJsonSchemaAnnotations(ast))
+        return { ...empty(), ...getJsonSchemaAnnotations(ast) }
       }
       let patternProperties: JsonSchema7 | undefined = undefined
       let propertyNames: JsonSchema7 | undefined = undefined
@@ -553,7 +542,7 @@ const go = (
         output.propertyNames = propertyNames
       }
 
-      return merge(output, getJsonSchemaAnnotations(ast))
+      return { ...output, ...getJsonSchemaAnnotations(ast) }
     }
     case "Union": {
       const anyOf: Array<JsonSchema7> = []
@@ -577,16 +566,17 @@ const go = (
         }
       }
       if (anyOf.length === 1 && isEnumOnly(anyOf[0])) {
-        return merge({ enum: anyOf[0].enum }, getJsonSchemaAnnotations(ast))
+        return { enum: anyOf[0].enum, ...getJsonSchemaAnnotations(ast) }
       } else {
-        return merge({ anyOf }, getJsonSchemaAnnotations(ast))
+        return { anyOf, ...getJsonSchemaAnnotations(ast) }
       }
     }
     case "Enums": {
-      return merge({
+      return {
         $comment: "/schemas/enums",
-        anyOf: ast.enums.map((e) => ({ title: e[0], enum: [e[1]] }))
-      }, getJsonSchemaAnnotations(ast))
+        anyOf: ast.enums.map((e) => ({ title: e[0], enum: [e[1]] })),
+        ...getJsonSchemaAnnotations(ast)
+      }
     }
     case "Refinement": {
       if (AST.encodedBoundAST(ast) === ast) {
@@ -596,11 +586,12 @@ const go = (
     }
     case "TemplateLiteral": {
       const regex = AST.getTemplateLiteralRegExp(ast)
-      return merge({
+      return {
         type: "string",
         description: "a template literal",
-        pattern: regex.source
-      }, getJsonSchemaAnnotations(ast))
+        pattern: regex.source,
+        ...getJsonSchemaAnnotations(ast)
+      }
     }
     case "Suspend": {
       const identifier = Option.orElse(AST.getJSONIdentifier(ast), () => AST.getJSONIdentifier(ast.f()))
