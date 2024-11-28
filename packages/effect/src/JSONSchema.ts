@@ -328,7 +328,7 @@ const go = (
   handleIdentifier: boolean,
   path: ReadonlyArray<PropertyKey>
 ): JsonSchema7 => {
-  if (handleIdentifier && getTransformationFrom(ast) === undefined) {
+  if (handleIdentifier) {
     const identifier = AST.getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
@@ -347,7 +347,7 @@ const go = (
       const t = getTransformationFrom(ast)
       if (t === undefined) {
         return {
-          ...go(ast.from, $defs, handleIdentifier, path),
+          ...go(ast.from, $defs, false, path),
           ...getJsonSchemaAnnotations(ast),
           ...handler
         }
@@ -360,7 +360,7 @@ const go = (
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
     return {
-      ...go(surrogate.value, $defs, handleIdentifier, path),
+      ...go(surrogate.value, $defs, false, path),
       ...getJsonSchemaAnnotations(ast)
     }
   }

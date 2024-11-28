@@ -1510,8 +1510,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   describe("Transformation", () => {
     it("NumberFromString", () => {
       expectJSONSchema(Schema.NumberFromString, {
-        "type": "string",
-        "description": "a string that will be parsed into a number"
+        "$defs": {
+          "NumberFromString": {
+            "type": "string",
+            "description": "a string that will be parsed into a number"
+          }
+        },
+        "$ref": "#/$defs/NumberFromString"
       })
     })
 
@@ -1519,8 +1524,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expectJSONSchema(
         Schema.DateFromString,
         {
-          "type": "string",
-          "description": "a string that will be parsed into a Date"
+          "$defs": {
+            "DateFromString": {
+              "type": "string",
+              "description": "a string that will be parsed into a Date"
+            }
+          },
+          "$ref": "#/$defs/DateFromString"
         }
       )
     })
@@ -1529,8 +1539,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expectJSONSchema(
         Schema.Date,
         {
-          "type": "string",
-          "description": "a string that will be parsed into a Date"
+          "$defs": {
+            "Date": {
+              "type": "string",
+              "description": "a string that will be parsed into a Date"
+            }
+          },
+          "$ref": "#/$defs/Date"
         }
       )
     })
@@ -1577,14 +1592,19 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           value: Schema.NumberFromString
         }),
         {
+          "$defs": {
+            "NumberFromString": {
+              "type": "string",
+              "description": "a string that will be parsed into a number"
+            }
+          },
           "type": "object",
           "description": "a record that will be parsed into a ReadonlyMap",
           "required": [],
           "properties": {},
           "patternProperties": {
             "": {
-              "type": "string",
-              "description": "a string that will be parsed into a number"
+              "$ref": "#/$defs/NumberFromString"
             }
           },
           "propertyNames": {
@@ -1603,14 +1623,19 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           value: Schema.NumberFromString
         }),
         {
+          "$defs": {
+            "NumberFromString": {
+              "type": "string",
+              "description": "a string that will be parsed into a number"
+            }
+          },
           "type": "object",
           "description": "a record that will be parsed into a Map",
           "required": [],
           "properties": {},
           "patternProperties": {
             "": {
-              "type": "string",
-              "description": "a string that will be parsed into a number"
+              "$ref": "#/$defs/NumberFromString"
             }
           },
           "propertyNames": {
@@ -1624,7 +1649,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
     describe("TypeLiteralTransformations", () => {
       describe("manual TypeLiteralTransformation", () => {
-        it("an identifier annotation on the transformation should not overwrite an annotation set on the from part", () => {
+        it("an identifier annotation on the transformation should overwrite an annotation set on the from part", () => {
           const schema = Schema.make(
             new AST.Transformation(
               new AST.TypeLiteral([], [], { [AST.IdentifierAnnotationId]: "IDFrom" }),
@@ -1634,9 +1659,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             )
           )
           expectJSONSchema(schema, {
-            "$ref": "#/$defs/IDFrom",
+            "$ref": "#/$defs/ID",
             "$defs": {
-              "IDFrom": {
+              "ID": {
                 "$id": "/schemas/{}",
                 "anyOf": [
                   {
@@ -1976,15 +2001,20 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
         })),
         {
-          type: "object",
-          required: ["a"],
-          properties: {
-            a: {
+          "$defs": {
+            "NumberFromString": {
               "type": "string",
               "description": "a string that will be parsed into a number"
             }
           },
-          additionalProperties: false
+          "type": "object",
+          "required": ["a"],
+          "properties": {
+            "a": {
+              "$ref": "#/$defs/NumberFromString"
+            }
+          },
+          "additionalProperties": false
         }
       )
     })
@@ -2908,37 +2938,76 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
     })
 
-    it("transformation", () => {
+    it("Transformation", () => {
       expectJSONSchemaOnly(Schema.NumberFromString.annotations({ jsonSchema: { "type": "custom" } }), {
-        "type": "custom"
+        "$defs": {
+          "NumberFromString": {
+            "type": "custom"
+          }
+        },
+        "$ref": "#/$defs/NumberFromString"
       })
     })
 
     it("refinement of a transformation with an override annotation", () => {
       expectJSONSchemaOnly(Schema.Date.annotations({ jsonSchema: { type: "string", format: "date-time" } }), {
-        "format": "date-time",
-        "type": "string"
+        "$defs": {
+          "Date": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "$ref": "#/$defs/Date"
       })
       expectJSONSchemaOnly(
         Schema.Date.annotations({
           jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
         }),
-        { anyOf: [{ type: "object" }, { type: "array" }] }
+        {
+          "$defs": {
+            "Date": {
+              "anyOf": [{ "type": "object" }, { "type": "array" }]
+            }
+          },
+          "$ref": "#/$defs/Date"
+        }
       )
       expectJSONSchemaOnly(
         Schema.Date.annotations({
           jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
         }),
-        { anyOf: [{ type: "object" }, { type: "array" }] }
+        {
+          "$defs": {
+            "Date": {
+              "anyOf": [{ "type": "object" }, { "type": "array" }]
+            }
+          },
+          "$ref": "#/$defs/Date"
+        }
       )
-      expectJSONSchemaOnly(Schema.Date.annotations({ jsonSchema: { $ref: "x" } }), {
-        $ref: "x"
+      expectJSONSchemaOnly(Schema.Date.annotations({ jsonSchema: { "$ref": "x" } }), {
+        "$defs": {
+          "Date": {
+            "$ref": "x"
+          }
+        },
+        "$ref": "#/$defs/Date"
       })
-      expectJSONSchemaOnly(Schema.Date.annotations({ jsonSchema: { const: 1 } }), {
-        const: 1
+      expectJSONSchemaOnly(Schema.Date.annotations({ jsonSchema: { "const": 1 } }), {
+        "$defs": {
+          "Date": {
+            "const": 1
+          }
+        },
+        "$ref": "#/$defs/Date"
       })
-      expectJSONSchemaOnly(Schema.Date.annotations({ jsonSchema: { enum: [1] } }), {
-        enum: [1]
+      expectJSONSchemaOnly(Schema.Date.annotations({ jsonSchema: { "enum": [1] } }), {
+        "$defs": {
+          "Date": {
+            "enum": [1]
+          }
+        },
+        "$ref": "#/$defs/Date"
       })
     })
 
