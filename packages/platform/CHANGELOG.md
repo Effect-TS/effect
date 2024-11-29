@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.69.29
+
+### Patch Changes
+
+- [#4024](https://github.com/Effect-TS/effect/pull/4024) [`24cc35e`](https://github.com/Effect-TS/effect/commit/24cc35e26d6ed4a076470bc687ffd99cc50991b3) Thanks @tim-smart! - improve HttpApi handling of payload encoding types
+
 ## 0.69.28
 
 ### Patch Changes

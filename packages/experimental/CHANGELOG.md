@@ -1,5 +1,15 @@
 # @effect/experimental
 
+## 0.32.13
+
+### Patch Changes
+
+- [#4021](https://github.com/Effect-TS/effect/pull/4021) [`e9dfea3`](https://github.com/Effect-TS/effect/commit/e9dfea3f394444ebd8929e5cfe05ce740cf84d6e) Thanks @tim-smart! - add .reactive method to SqlClient interface
+
+- Updated dependencies [[`24cc35e`](https://github.com/Effect-TS/effect/commit/24cc35e26d6ed4a076470bc687ffd99cc50991b3)]:
+  - @effect/platform-node@0.64.31
+  - @effect/platform@0.69.29
+
 ## 0.32.12
 
 ### Patch Changes
