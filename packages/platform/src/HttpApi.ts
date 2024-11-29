@@ -282,6 +282,10 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
       readonly endpoint: HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>
       readonly mergedAnnotations: Context.Context<never>
       readonly middleware: ReadonlySet<HttpApiMiddleware.TagClassAny>
+      readonly payloads: ReadonlyMap<string, {
+        readonly encoding: HttpApiSchema.Encoding
+        readonly ast: AST.AST
+      }>
       readonly successes: ReadonlyMap<number, Option.Option<AST.AST>>
       readonly errors: ReadonlyMap<number, Option.Option<AST.AST>>
     }) => void
@@ -311,6 +315,7 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
         endpoint,
         middleware: new Set([...group.middlewares, ...endpoint.middlewares]),
         mergedAnnotations: Context.merge(groupAnnotations, endpoint.annotations),
+        payloads: endpoint.payloadSchema._tag === "Some" ? extractPayloads(endpoint.payloadSchema.value.ast) : emptyMap,
         successes: extractMembers(endpoint.successSchema.ast, new Map(), HttpApiSchema.getStatusSuccessAST),
         errors
       })
@@ -319,6 +324,8 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
 }
 
 // -------------------------------------------------------------------------------------
+
+const emptyMap = new Map<never, never>()
 
 const extractMembers = (
   topAst: AST.AST,
@@ -350,6 +357,44 @@ const extractMembers = (
         )
       )
     )
+  }
+  if (topAst._tag === "Union") {
+    for (const type of topAst.types) {
+      process(type)
+    }
+  } else {
+    process(topAst)
+  }
+  return members
+}
+
+const extractPayloads = (topAst: AST.AST): ReadonlyMap<string, {
+  readonly encoding: HttpApiSchema.Encoding
+  readonly ast: AST.AST
+}> => {
+  const members = new Map<string, {
+    encoding: HttpApiSchema.Encoding
+    ast: AST.AST
+  }>()
+  function process(ast: AST.AST) {
+    if (ast._tag === "NeverKeyword") {
+      return
+    }
+    ast = AST.annotations(ast, {
+      ...topAst.annotations,
+      ...ast.annotations
+    })
+    const encoding = HttpApiSchema.getEncoding(ast)
+    const contentType = HttpApiSchema.getMultipart(ast) ? "multipart/form-data" : encoding.contentType
+    const current = members.get(contentType)
+    if (current === undefined) {
+      members.set(contentType, {
+        encoding,
+        ast
+      })
+    } else {
+      current.ast = AST.Union.make([current.ast, ast])
+    }
   }
   if (topAst._tag === "Union") {
     for (const type of topAst.types) {

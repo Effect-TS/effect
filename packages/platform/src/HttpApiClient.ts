@@ -4,6 +4,7 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import type * as Predicate from "effect/Predicate"
@@ -15,12 +16,14 @@ import * as HttpApi from "./HttpApi.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
 import type { HttpApiGroup } from "./HttpApiGroup.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
+import * as HttpBody from "./HttpBody.js"
 import * as HttpClient from "./HttpClient.js"
 import * as HttpClientError from "./HttpClientError.js"
 import * as HttpClientRequest from "./HttpClientRequest.js"
 import * as HttpClientResponse from "./HttpClientResponse.js"
 import * as HttpMethod from "./HttpMethod.js"
 import type { HttpApiMiddleware } from "./index.js"
+import * as UrlParams from "./UrlParams.js"
 
 /**
  * @since 1.0.0
@@ -160,8 +163,13 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
         successes.forEach((ast, status) => {
           decodeMap[status] = ast._tag === "None" ? responseAsVoid : schemaToResponse(ast.value)
         })
-        const encodePayload = endpoint.payloadSchema.pipe(
-          Option.map(Schema.encodeUnknown)
+        const encodePayloadBody = endpoint.payloadSchema.pipe(
+          Option.map((schema) => {
+            if (HttpMethod.hasBody(endpoint.method)) {
+              return Schema.encodeUnknown(payloadSchemaBody(schema as any))
+            }
+            return Schema.encodeUnknown(schema)
+          })
         )
         const encodeHeaders = endpoint.headersSchema.pipe(
           Option.map(Schema.encodeUnknown)
@@ -180,13 +188,16 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
             let httpRequest = HttpClientRequest.make(endpoint.method)(
               request && request.path ? makeUrl(request.path) : endpoint.path
             )
-            if (request.payload instanceof FormData) {
+            if (request && request.payload instanceof FormData) {
               httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
-            } else if (encodePayload._tag === "Some") {
-              const payload = yield* encodePayload.value(request.payload)
-              httpRequest = HttpMethod.hasBody(endpoint.method)
-                ? yield* Effect.orDie(HttpClientRequest.bodyJson(httpRequest, payload))
-                : HttpClientRequest.setUrlParams(httpRequest, payload as any)
+            } else if (encodePayloadBody._tag === "Some") {
+              if (HttpMethod.hasBody(endpoint.method)) {
+                const body = (yield* encodePayloadBody.value(request.payload)) as HttpBody.HttpBody
+                httpRequest = HttpClientRequest.setBody(httpRequest, body)
+              } else {
+                const urlParams = (yield* encodePayloadBody.value(request.payload)) as Record<string, string>
+                httpRequest = HttpClientRequest.setUrlParams(httpRequest, urlParams)
+              }
             }
             if (encodeHeaders._tag === "Some") {
               httpRequest = HttpClientRequest.setHeaders(
@@ -416,3 +427,58 @@ const statusCodeError = (response: HttpClientResponse.HttpClientResponse) =>
   )
 
 const responseAsVoid = (_response: HttpClientResponse.HttpClientResponse) => Effect.void
+
+const HttpBodyFromSelf = Schema.declare(HttpBody.isHttpBody)
+
+const payloadSchemaBody = (schema: Schema.Schema.All): Schema.Schema<any, HttpBody.HttpBody> => {
+  const members = schema.ast._tag === "Union" ? schema.ast.types : [schema.ast]
+  return Schema.Union(...members.map(bodyFromPayload)) as any
+}
+
+const bodyFromPayloadCache = globalValue(
+  "@effect/platform/HttpApiClient/bodyFromPayloadCache",
+  () => new WeakMap<AST.AST, Schema.Schema.Any>()
+)
+
+const bodyFromPayload = (ast: AST.AST) => {
+  if (bodyFromPayloadCache.has(ast)) {
+    return bodyFromPayloadCache.get(ast)!
+  }
+  const schema = Schema.make(ast)
+  const encoding = HttpApiSchema.getEncoding(ast)
+  const transform = Schema.transformOrFail(
+    HttpBodyFromSelf,
+    schema,
+    {
+      decode(fromA, _, ast) {
+        return ParseResult.fail(new ParseResult.Forbidden(ast, fromA, "encode only schema"))
+      },
+      encode(toI, _, ast) {
+        switch (encoding.kind) {
+          case "Json": {
+            return HttpBody.json(toI).pipe(
+              ParseResult.mapError((error) => new ParseResult.Type(ast, toI, `Could not encode as JSON: ${error}`))
+            )
+          }
+          case "Text": {
+            if (typeof toI !== "string") {
+              return ParseResult.fail(new ParseResult.Type(ast, toI, "Expected a string"))
+            }
+            return ParseResult.succeed(HttpBody.text(toI))
+          }
+          case "UrlParams": {
+            return ParseResult.succeed(HttpBody.urlParams(UrlParams.fromInput(toI as any)))
+          }
+          case "Uint8Array": {
+            if (!(toI instanceof Uint8Array)) {
+              return ParseResult.fail(new ParseResult.Type(ast, toI, "Expected a Uint8Array"))
+            }
+            return ParseResult.succeed(HttpBody.uint8Array(toI))
+          }
+        }
+      }
+    }
+  )
+  bodyFromPayloadCache.set(ast, transform)
+  return transform
+}

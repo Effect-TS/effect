@@ -211,7 +211,7 @@ describe("HttpApi", () => {
       assert.strictEqual(response.status, 200)
     }).pipe(Effect.provide(HttpLive)))
 
-  it.effect("multipart or json", () =>
+  it.effect("multiple payload types", () =>
     Effect.gen(function*() {
       const client = yield* HttpApiClient.make(Api)
       let [group, response] = yield* client.groups.create({
@@ -229,6 +229,11 @@ describe("HttpApi", () => {
       })
       assert.deepStrictEqual(group, new Group({ id: 1, name: "Some group" }))
       assert.strictEqual(response.status, 200)
+
+      group = yield* client.groups.create({
+        payload: { foo: "Some group" }
+      })
+      assert.deepStrictEqual(group, new Group({ id: 1, name: "Some group" }))
     }).pipe(Effect.provide(HttpLive)))
 
   it("OpenAPI spec", () => {
@@ -287,6 +292,9 @@ class GroupsApi extends HttpApiGroup.make("groups")
     HttpApiEndpoint.post("create", "/")
       .setPayload(Schema.Union(
         Schema.Struct(Struct.pick(Group.fields, "name")),
+        Schema.Struct({ foo: Schema.String }).pipe(
+          HttpApiSchema.withEncoding({ kind: "UrlParams" })
+        ),
         HttpApiSchema.Multipart(
           Schema.Struct(Struct.pick(Group.fields, "name"))
         )
@@ -456,7 +464,13 @@ const HttpGroupsLive = HttpApiBuilder.group(
         path.id === 0
           ? Effect.fail(new GroupError())
           : Effect.succeed(new Group({ id: 1, name: "foo" })))
-      .handle("create", ({ payload }) => Effect.succeed(new Group({ id: 1, name: payload.name })))
+      .handle("create", ({ payload }) =>
+        Effect.succeed(
+          new Group({
+            id: 1,
+            name: "foo" in payload ? payload.foo : payload.name
+          })
+        ))
 )
 
 const HttpApiLive = Layer.provide(HttpApiBuilder.api(Api), [

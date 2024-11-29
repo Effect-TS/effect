@@ -231,7 +231,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       })
       spec.tags!.push(tag)
     },
-    onEndpoint({ endpoint, errors, group, middleware, successes }) {
+    onEndpoint({ endpoint, errors, group, middleware, payloads, successes }) {
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       const op: DeepMutable<OpenAPISpecOperation> = {
@@ -266,35 +266,15 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
           op.security!.push({ [name]: [] })
         }
       })
-      endpoint.payloadSchema.pipe(
-        Option.filter(() => HttpMethod.hasBody(endpoint.method)),
-        Option.map((schema) => {
-          const content: Mutable<OpenApiSpecContent> = {}
-          const members = schema.ast._tag === "Union" ? schema.ast.types : [schema.ast]
-          const jsonTypes: Array<AST.AST> = []
-          const multipartTypes: Array<AST.AST> = []
-
-          for (const member of members) {
-            if (HttpApiSchema.getMultipart(member)) {
-              multipartTypes.push(member)
-            } else {
-              jsonTypes.push(member)
-            }
+      if (payloads.size > 0) {
+        const content: Mutable<OpenApiSpecContent> = {}
+        payloads.forEach(({ ast }, contentType) => {
+          content[contentType as OpenApiSpecContentType] = {
+            schema: makeJsonSchemaOrRef(Schema.make(ast))
           }
-
-          if (jsonTypes.length > 0) {
-            content["application/json"] = {
-              schema: makeJsonSchemaOrRef(Schema.make(AST.Union.make(jsonTypes)))
-            }
-          }
-          if (multipartTypes.length > 0) {
-            content["multipart/form-data"] = {
-              schema: makeJsonSchemaOrRef(Schema.make(AST.Union.make(multipartTypes)))
-            }
-          }
-          op.requestBody = { content, required: true }
         })
-      )
+        op.requestBody = { content, required: true }
+      }
       for (const [status, ast] of successes) {
         if (op.responses![status]) continue
         op.responses![status] = {
