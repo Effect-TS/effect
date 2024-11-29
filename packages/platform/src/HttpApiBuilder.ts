@@ -39,6 +39,7 @@ import * as HttpServerRequest from "./HttpServerRequest.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
 import * as OpenApi from "./OpenApi.js"
 import type { Path } from "./Path.js"
+import * as UrlParams from "./UrlParams.js"
 
 /**
  * The router that the API endpoints are attached to.
@@ -516,12 +517,24 @@ const requestPayload = (
   | FileSystem
   | Path
   | Scope
-> =>
-  HttpMethod.hasBody(request.method)
-    ? request.headers["content-type"].includes("multipart/form-data")
-      ? Effect.orDie(request.multipart)
-      : Effect.orDie(request.json)
-    : Effect.succeed(urlParams)
+> => {
+  if (!HttpMethod.hasBody(request.method)) {
+    return Effect.succeed(urlParams)
+  }
+  const contentType = request.headers["content-type"]
+    ? request.headers["content-type"].toLowerCase().trim()
+    : "application/json"
+  if (contentType.includes("application/json")) {
+    return Effect.orDie(request.json)
+  } else if (contentType.includes("multipart/form-data")) {
+    return Effect.orDie(request.multipart)
+  } else if (contentType.includes("x-www-form-urlencoded")) {
+    return Effect.map(Effect.orDie(request.urlParamsBody), UrlParams.toRecord)
+  } else if (contentType.startsWith("text/")) {
+    return Effect.orDie(request.text)
+  }
+  return Effect.map(Effect.orDie(request.arrayBuffer), (buffer) => new Uint8Array(buffer))
+}
 
 type MiddlewareMap = Map<string, {
   readonly tag: HttpApiMiddleware.TagClassAny

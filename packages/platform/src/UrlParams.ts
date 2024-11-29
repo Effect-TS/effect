@@ -211,6 +211,40 @@ const baseUrl = (): string | undefined => {
 }
 
 /**
+ * Builds a `Record` containing all the key-value pairs in the given `UrlParams`
+ * as `string` (if only one value for a key) or a `NonEmptyArray<string>`
+ * (when more than one value for a key)
+ *
+ * @example
+ * import { UrlParams } from "@effect/platform"
+ *
+ * const urlParams = UrlParams.fromInput({ a: 1, b: true, c: "string", e: [1, 2, 3] })
+ * const result = UrlParams.toRecord(urlParams)
+ *
+ * assert.deepStrictEqual(
+ *   result,
+ *   { "a": "1", "b": "true", "c": "string", "e": ["1", "2", "3"] }
+ * )
+ *
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyArray<string>> => {
+  const out: Record<string, string | Arr.NonEmptyArray<string>> = {}
+  for (const [k, value] of self) {
+    const curr = out[k]
+    if (curr === undefined) {
+      out[k] = value
+    } else if (typeof curr === "string") {
+      out[k] = [curr, value]
+    } else {
+      curr.push(value)
+    }
+  }
+  return out
+}
+
+/**
  * @since 1.0.0
  * @category schema
  */

@@ -113,6 +113,18 @@
                 "additionalProperties": false
               }
             },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["foo"],
+                "properties": {
+                  "foo": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
             "multipart/form-data": {
               "schema": {
                 "type": "object",
