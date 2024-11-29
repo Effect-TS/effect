@@ -222,13 +222,13 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
   return out
 }
 
-const anyJsonSchema: JsonSchema7 = { $id: "/schemas/any" }
+const constAny: JsonSchema7 = { $id: "/schemas/any" }
 
-const unknownJsonSchema: JsonSchema7 = { $id: "/schemas/unknown" }
+const constUnknown: JsonSchema7 = { $id: "/schemas/unknown" }
 
-const voidJsonSchema: JsonSchema7 = { $id: "/schemas/void" }
+const constVoid: JsonSchema7 = { $id: "/schemas/void" }
 
-const objectJsonSchema: JsonSchema7 = {
+const constAnyObject: JsonSchema7 = {
   "$id": "/schemas/object",
   "anyOf": [
     { "type": "object" },
@@ -236,13 +236,13 @@ const objectJsonSchema: JsonSchema7 = {
   ]
 }
 
-const empty = (): JsonSchema7 => ({
+const constEmpty: JsonSchema7 = {
   "$id": "/schemas/{}",
   "anyOf": [
     { "type": "object" },
     { "type": "array" }
   ]
-})
+}
 
 const $schema = "http://json-schema.org/draft-07/schema#"
 
@@ -381,15 +381,15 @@ const go = (
     case "UndefinedKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "VoidKeyword":
-      return { ...voidJsonSchema, ...getJsonSchemaAnnotations(ast) }
+      return { ...constVoid, ...getJsonSchemaAnnotations(ast) }
     case "NeverKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "UnknownKeyword":
-      return { ...unknownJsonSchema, ...getJsonSchemaAnnotations(ast) }
+      return { ...constUnknown, ...getJsonSchemaAnnotations(ast) }
     case "AnyKeyword":
-      return { ...anyJsonSchema, ...getJsonSchemaAnnotations(ast) }
+      return { ...constAny, ...getJsonSchemaAnnotations(ast) }
     case "ObjectKeyword":
-      return { ...objectJsonSchema, ...getJsonSchemaAnnotations(ast) }
+      return { ...constAnyObject, ...getJsonSchemaAnnotations(ast) }
     case "StringKeyword":
       return { type: "string", ...getASTJsonSchemaAnnotations(ast) }
     case "NumberKeyword":
@@ -449,7 +449,7 @@ const go = (
     }
     case "TypeLiteral": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-        return { ...empty(), ...getJsonSchemaAnnotations(ast) }
+        return { ...constEmpty, ...getJsonSchemaAnnotations(ast) }
       }
       let patternProperties: JsonSchema7 | undefined = undefined
       let propertyNames: JsonSchema7 | undefined = undefined
