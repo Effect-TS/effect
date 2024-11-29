@@ -1,4 +1,4 @@
-import AjvNonEsm from "ajv"
+import Ajv from "ajv"
 import * as A from "effect/Arbitrary"
 import * as JSONSchema from "effect/JSONSchema"
 import * as Schema from "effect/Schema"
@@ -6,30 +6,24 @@ import * as AST from "effect/SchemaAST"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-const Ajv = AjvNonEsm.default
-
-const ajvOptions = {
+const ajvOptions: Ajv.Options = {
   strictTuples: false,
   allowMatchingProperties: true
 }
 
-const getAjvValidate = (jsonSchema: JSONSchema.JsonSchema7Root): AjvNonEsm.ValidateFunction =>
-  new Ajv(ajvOptions).compile(jsonSchema)
+const getAjvValidate = (jsonSchema: JSONSchema.JsonSchema7Root): Ajv.ValidateFunction =>
+  // new instance of Ajv is created for each schema to avoid error: "schema with key or id "/schemas/any" already exists"
+  new Ajv.default(ajvOptions).compile(jsonSchema)
 
-const doProperty = false
-
-const propertyType = <A, I>(schema: Schema.Schema<A, I>, options?: {
-  params?: fc.Parameters<[I]>
-}) => {
-  if (!doProperty) {
-    return
+const propertyType = <A, I>(schema: Schema.Schema<A, I>, params?: fc.Parameters<[I]>) => {
+  if (true as boolean) {
+    const encodedBoundSchema = Schema.encodedBoundSchema(schema)
+    const arb = A.make(encodedBoundSchema)
+    const is = Schema.is(encodedBoundSchema)
+    const jsonSchema = JSONSchema.make(schema)
+    const validate = getAjvValidate(jsonSchema)
+    fc.assert(fc.property(arb, (i) => is(i) && validate(i)), params)
   }
-  const encodedBoundSchema = Schema.encodedBoundSchema(schema)
-  const arb = A.make(encodedBoundSchema)
-  const is = Schema.is(encodedBoundSchema)
-  const jsonSchema = JSONSchema.make(schema)
-  const validate = getAjvValidate(jsonSchema)
-  fc.assert(fc.property(arb, (i) => is(i) && validate(i)), options?.params)
 }
 
 const expectJSONSchemaOnly = <A, I>(
@@ -46,30 +40,23 @@ const expectJSONSchemaOnly = <A, I>(
 const expectJSONSchema = <A, I>(
   schema: Schema.Schema<A, I>,
   expected: object,
-  propertyTypeOptions?: {
-    params?: fc.Parameters<[I]>
-  }
+  params?: fc.Parameters<[I]>
 ) => {
   expectJSONSchemaOnly(schema, expected)
-  propertyType(schema, propertyTypeOptions)
+  propertyType(schema, params)
 }
 
 const expectJSONSchemaJsonSchemaAnnotations = <A, I>(
   schema: Schema.Schema<A, I>,
   expected: object,
-  propertyTypeOptions?: {
-    params?: fc.Parameters<[I]>
-  }
+  params?: fc.Parameters<[I]>
 ) => {
-  expectJSONSchemaOnly(schema, expected)
-  propertyType(schema, propertyTypeOptions)
+  expectJSONSchema(schema, expected, params)
   const jsonSchemaAnnotations = {
     description: "mydescription",
     title: "mytitle"
   }
-  const schemaWithAnnotations = schema.annotations(jsonSchemaAnnotations)
-  expectJSONSchemaOnly(schemaWithAnnotations, { ...expected, ...jsonSchemaAnnotations })
-  propertyType(schemaWithAnnotations, propertyTypeOptions)
+  expectJSONSchema(schema.annotations(jsonSchemaAnnotations), { ...expected, ...jsonSchemaAnnotations }, params)
 }
 
 const expectError = <A, I>(schema: Schema.Schema<A, I>, message: string) => {
@@ -650,7 +637,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "additionalItems": false
       }
       expectJSONSchemaJsonSchemaAnnotations(schema, jsonSchema)
-      const validate = new Ajv({ strictTuples: false }).compile(jsonSchema)
+      const validate = getAjvValidate(jsonSchema)
       expect(validate([])).toEqual(true)
       expect(validate([1])).toEqual(true)
       expect(validate(["a"])).toEqual(false)
@@ -716,7 +703,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "additionalItems": false
       }
       expectJSONSchemaJsonSchemaAnnotations(schema, jsonSchema)
-      const validate = new Ajv({ strictTuples: false }).compile(jsonSchema)
+      const validate = getAjvValidate(jsonSchema)
       expect(validate(["a"])).toEqual(true)
       expect(validate(["a", 1])).toEqual(true)
       expect(validate([])).toEqual(false)
@@ -771,7 +758,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         }
       }
       expectJSONSchemaJsonSchemaAnnotations(schema, jsonSchema)
-      const validate = new Ajv({ strictTuples: false }).compile(jsonSchema)
+      const validate = getAjvValidate(jsonSchema)
       expect(validate([])).toEqual(true)
       expect(validate(["a"])).toEqual(true)
       expect(validate(["a", 1])).toEqual(true)
@@ -815,18 +802,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         }
       }
       expectJSONSchemaJsonSchemaAnnotations(schema, jsonSchema)
-      const validate = new Ajv({ strictTuples: false }).compile({
-        "type": "array",
-        "items": [
-          {
-            "type": "string"
-          }
-        ],
-        "minItems": 1,
-        "additionalItems": {
-          "type": "number"
-        }
-      })
+      const validate = getAjvValidate(jsonSchema)
       expect(validate(["a"])).toEqual(true)
       expect(validate(["a", 1])).toEqual(true)
       expect(validate(["a", 1, 2])).toEqual(true)
@@ -1150,9 +1126,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "type": "object",
             "required": ["a"],
             "properties": {
-              "a": {
-                "type": "string"
-              }
+              "a": { "type": "string" }
             },
             "additionalProperties": false
           }
@@ -1993,12 +1967,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
   })
 
-  describe("Schema.parseJson", () => {
+  describe("parseJson", () => {
     it(`should correctly generate JSON Schemas by targeting the "to" side of transformations`, () => {
       expectJSONSchemaOnly(
-        // Define a schema that parses a JSON string into a structured object
         Schema.parseJson(Schema.Struct({
-          a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
+          a: Schema.parseJson(Schema.NumberFromString)
         })),
         {
           "$defs": {
@@ -2019,7 +1992,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
-    it("Schema.parseJson + TypeLiteralTransformations", () => {
+    it("TypeLiteralTransformations", () => {
       expectJSONSchemaOnly(
         Schema.parseJson(Schema.Struct({
           a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
@@ -2294,7 +2267,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           }
         }
       }
-      expectJSONSchema(Operation, jsonSchema, { params: { numRuns: 5 } })
+      expectJSONSchema(Operation, jsonSchema, { numRuns: 5 })
       const validate = getAjvValidate(jsonSchema)
       expect(validate({
         type: "operation",
