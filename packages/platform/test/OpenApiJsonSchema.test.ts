@@ -1503,7 +1503,12 @@ schema (Suspend): <suspended schema>`
         jsonSchema: { "type": "custom JSON Schema" }
       }) {}
       expectJSONSchema(Schema.typeSchema(A), {
-        "type": "custom JSON Schema"
+        "$defs": {
+          "A": {
+            "type": "custom JSON Schema"
+          }
+        },
+        "$ref": "#/$defs/A"
       })
     })
 
@@ -1815,7 +1820,12 @@ schema (Suspend): <suspended schema>`
 
     it("transformation", () => {
       expectJSONSchema(Schema.NumberFromString.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+        "$defs": {
+          "NumberFromString": {
+            "type": "custom JSON Schema"
+          }
+        },
+        "$ref": "#/$defs/NumberFromString"
       })
     })
 
@@ -3585,7 +3595,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("Transformation", () => {
     it("NumberFromString", () => {
-      const expected = {
+      expectJSONSchemaProperty(Schema.NumberFromString, {
         "$defs": {
           "NumberFromString": {
             "type": "string",
@@ -3593,10 +3603,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           }
         },
         "$ref": "#/$defs/NumberFromString"
-      }
-      expectJSONSchemaProperty(Schema.NumberFromString, expected)
-      expectJSONSchemaProperty(Schema.encodedBoundSchema(Schema.NumberFromString), expected)
-      expectJSONSchemaProperty(Schema.encodedSchema(Schema.NumberFromString), expected)
+      })
     })
 
     it("DateFromString", () => {
@@ -3726,99 +3733,86 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
-    describe("TypeLiteralTransformations", () => {
-      describe("manual TypeLiteralTransformation", () => {
-        it("an identifier annotation on the transformation should overwrite an annotation set on the from part", () => {
-          const schema = Schema.make(
-            new AST.Transformation(
-              new AST.TypeLiteral([], [], { [AST.IdentifierAnnotationId]: "IDFrom" }),
-              new AST.TypeLiteral([], []),
-              new AST.TypeLiteralTransformation([]),
-              { [AST.IdentifierAnnotationId]: "ID" }
-            )
+    describe("TypeLiteralTransformation", () => {
+      it("a title annotation on the transformation should not overwrite an annotation set on the from part", () => {
+        const schema = Schema.make(
+          new AST.Transformation(
+            new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
+              [AST.TitleAnnotationId]: "37f2e3af-6610-4ac3-a4c3-beaef52968eb"
+            }),
+            new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
+              [AST.TitleAnnotationId]: "3b536202-f423-43e7-898a-154352a49bb8"
+            }),
+            new AST.TypeLiteralTransformation([]),
+            { [AST.TitleAnnotationId]: "4165c953-db36-4e85-a834-e48f2378a4b6" }
           )
-          expectJSONSchemaProperty(schema, {
-            "$ref": "#/$defs/ID",
-            "$defs": {
-              "ID": {
-                "$id": "/schemas/{}",
-                "anyOf": [
-                  {
-                    "type": "object"
-                  },
-                  {
-                    "type": "array"
-                  }
-                ]
-              }
-            }
-          })
+        )
+        expectJSONSchemaProperty(schema, {
+          "type": "object",
+          "required": ["a"],
+          "properties": {
+            "a": { "type": "string" }
+          },
+          "additionalProperties": false,
+          "title": "37f2e3af-6610-4ac3-a4c3-beaef52968eb"
         })
+      })
 
-        it("a title annotation on the transformation should not overwrite an annotation set on the from part", () => {
-          const schema = Schema.make(
-            new AST.Transformation(
-              new AST.TypeLiteral([], [], { [AST.TitleAnnotationId]: "from title" }),
-              new AST.TypeLiteral([], []),
-              new AST.TypeLiteralTransformation([]),
-              { [AST.TitleAnnotationId]: "transformation title" }
-            )
+      it("a description annotation on the transformation should not overwrite an annotation set on the from part", () => {
+        const schema = Schema.make(
+          new AST.Transformation(
+            new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
+              [AST.DescriptionAnnotationId]: "5fb557a4-1a98-461c-b72b-e826ff0ceede"
+            }),
+            new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
+              [AST.DescriptionAnnotationId]: "328d0f5d-7947-4659-84b9-f44639575976"
+            }),
+            new AST.TypeLiteralTransformation([]),
+            { [AST.DescriptionAnnotationId]: "7261dcd6-17a3-4d43-9dd6-69806e22ec46" }
           )
-          expectJSONSchemaProperty(schema, {
-            "$id": "/schemas/{}",
-            "anyOf": [
-              {
-                "type": "object"
-              },
-              {
-                "type": "array"
-              }
-            ],
-            "title": "from title"
-          })
-        })
-
-        it("a description annotation on the transformation should not overwrite an annotation set on the from part", () => {
-          const schema = Schema.make(
-            new AST.Transformation(
-              new AST.TypeLiteral([], [], { [AST.DescriptionAnnotationId]: "from description" }),
-              new AST.TypeLiteral([], []),
-              new AST.TypeLiteralTransformation([]),
-              { [AST.DescriptionAnnotationId]: "transformation description" }
-            )
-          )
-          expectJSONSchemaProperty(schema, {
-            "$id": "/schemas/{}",
-            "anyOf": [
-              {
-                "type": "object"
-              },
-              {
-                "type": "array"
-              }
-            ],
-            "description": "from description"
-          })
+        )
+        expectJSONSchemaProperty(schema, {
+          "type": "object",
+          "required": ["a"],
+          "properties": {
+            "a": { "type": "string" }
+          },
+          "additionalProperties": false,
+          "description": "5fb557a4-1a98-461c-b72b-e826ff0ceede"
         })
       })
 
       describe("optionalWith", () => {
         describe(`{ default: () => ... } option`, () => {
-          it("base", () => {
+          it("with transformation description and title", () => {
             expectJSONSchemaProperty(
               Schema.Struct({
-                a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
+                a: Schema.optionalWith(
+                  Schema.NonEmptyString.annotations({
+                    description: "inner-description",
+                    title: "inner-title"
+                  }),
+                  { default: () => "" }
+                ).annotations({
+                  description: "middle-description",
+                  title: "middle-title"
+                })
+              }).annotations({
+                description: "outer-description",
+                title: "outer-title"
               }),
               {
                 "$defs": {
                   "NonEmptyString": {
                     "type": "string",
-                    "description": "a non empty string",
-                    "title": "NonEmptyString",
+                    "description": "inner-description",
+                    "title": "inner-title",
                     "minLength": 1
                   }
                 },
                 "type": "object",
+                "description": "outer-description",
+                "title": "outer-title",
                 "required": [],
                 "properties": {
                   "a": {
@@ -3826,129 +3820,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                   }
                 },
                 "additionalProperties": false
-              }
-            )
-          })
-
-          it("with property signature annotations", () => {
-            const schema = Schema.Struct({
-              a: Schema.optionalWith(Schema.NonEmptyString.annotations({ description: "inner" }), {
-                default: () => ""
-              }).annotations({ description: "outer" })
-            })
-            expectJSONSchemaProperty(schema, {
-              "$defs": {
-                "NonEmptyString": {
-                  "type": "string",
-                  "description": "inner",
-                  "title": "NonEmptyString",
-                  "minLength": 1
-                }
-              },
-              "type": "object",
-              "required": [],
-              "properties": {
-                "a": {
-                  "$ref": "#/$defs/NonEmptyString"
-                }
-              },
-              "additionalProperties": false
-            })
-            expectJSONSchemaProperty(Schema.typeSchema(schema), {
-              "$defs": {
-                "NonEmptyString": {
-                  "type": "string",
-                  "description": "inner",
-                  "title": "NonEmptyString",
-                  "minLength": 1
-                }
-              },
-              "type": "object",
-              "required": [
-                "a"
-              ],
-              "properties": {
-                "a": {
-                  "$ref": "#/$defs/NonEmptyString",
-                  "description": "outer"
-                }
-              },
-              "additionalProperties": false
-            })
-            expectJSONSchemaProperty(Schema.encodedSchema(schema), {
-              "type": "object",
-              "required": [],
-              "properties": {
-                "a": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            })
-          })
-
-          it("with transformation annotations", () => {
-            expectJSONSchemaProperty(
-              Schema.Struct({
-                a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
-              }).annotations({
-                description: "37206c09-5874-4023-a909-fdad0a5880fa",
-                title: "0dd0767e-2926-4a5d-b436-f1be9bf6eb22"
-              }),
-              {
-                "$defs": {
-                  "NonEmptyString": {
-                    "type": "string",
-                    "description": "a non empty string",
-                    "title": "NonEmptyString",
-                    "minLength": 1
-                  }
-                },
-                "type": "object",
-                "description": "37206c09-5874-4023-a909-fdad0a5880fa",
-                "title": "0dd0767e-2926-4a5d-b436-f1be9bf6eb22",
-                "required": [],
-                "properties": {
-                  "a": {
-                    "$ref": "#/$defs/NonEmptyString"
-                  }
-                },
-                "additionalProperties": false
-              }
-            )
-          })
-
-          it("with transformation identifier annotation", () => {
-            expectJSONSchemaProperty(
-              Schema.Struct({
-                a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
-              }).annotations({
-                identifier: "9c770281-0f1e-4dd3-8aa1-58a4d91f4520",
-                description: "3a759a22-86c6-41a4-a596-6c4ad09940bf",
-                title: "0113292b-31a4-4ede-8524-564272f2be52"
-              }),
-              {
-                "$ref": "#/$defs/9c770281-0f1e-4dd3-8aa1-58a4d91f4520",
-                "$defs": {
-                  "NonEmptyString": {
-                    "type": "string",
-                    "description": "a non empty string",
-                    "title": "NonEmptyString",
-                    "minLength": 1
-                  },
-                  "9c770281-0f1e-4dd3-8aa1-58a4d91f4520": {
-                    "type": "object",
-                    "description": "3a759a22-86c6-41a4-a596-6c4ad09940bf",
-                    "title": "0113292b-31a4-4ede-8524-564272f2be52",
-                    "required": [],
-                    "properties": {
-                      "a": {
-                        "$ref": "#/$defs/NonEmptyString"
-                      }
-                    },
-                    "additionalProperties": false
-                  }
-                }
               }
             )
           })
@@ -4434,8 +4305,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Class", () => {
-    it("should generate the same JSON Schema as Schema.encodedSchema(Class)", () => {
-      class A extends Schema.Class<A>("7a8b06e3-ebc1-4bdd-ab0d-3ec493d96d95")({ a: Schema.String }) {}
+    it("should generate the same JSON Schema as the input", () => {
+      const input = Schema.Struct({ a: Schema.String })
+      class A extends Schema.Class<A>("7a8b06e3-ebc1-4bdd-ab0d-3ec493d96d95")(input) {}
       expectJSONSchemaProperty(A, {
         "type": "object",
         "required": [
@@ -4448,7 +4320,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         },
         "additionalProperties": false
       })
-      expect(JSONSchema.make(A)).toEqual(JSONSchema.make(Schema.encodedSchema(A)))
+      expect(JSONSchema.make(A)).toEqual(JSONSchema.make(input))
     })
   })
 
@@ -4684,58 +4556,79 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
     })
 
-    it("should borrow the identifier annotation when generating a schema through `encodedSchema()`", () => {
-      interface Category {
-        readonly name: string
-        readonly categories: ReadonlyArray<Category>
-      }
-
-      const schema: Schema.Schema<Category> = Schema.Struct({
-        name: Schema.String,
-        categories: Schema.Array(
-          Schema.suspend(() => schema).annotations({ identifier: "0956eb10-753b-4ac5-a90b-ebb39d95541d" })
-        )
-      })
-
-      expectJSONSchema(Schema.encodedSchema(schema), {
-        "type": "object",
-        "required": [
-          "name",
-          "categories"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "categories": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/0956eb10-753b-4ac5-a90b-ebb39d95541d"
-            }
-          }
-        },
-        "additionalProperties": false,
-        "$defs": {
-          "0956eb10-753b-4ac5-a90b-ebb39d95541d": {
-            "type": "object",
-            "required": [
-              "name",
-              "categories"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "categories": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/0956eb10-753b-4ac5-a90b-ebb39d95541d"
-                }
+    describe("Transformation", () => {
+      describe("TypeLiteralTransformation", () => {
+        it("an identifier annotation on the transformation should overwrite an annotation set on the from part", () => {
+          const schema = Schema.make(
+            new AST.Transformation(
+              new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
+                [AST.IdentifierAnnotationId]: "0f70b90b-b268-46c8-a5a3-035139ad9126"
+              }),
+              new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
+                [AST.IdentifierAnnotationId]: "77bb2410-9cf3-47cf-af76-fa3be1a3c626"
+              }),
+              new AST.TypeLiteralTransformation([]),
+              { [AST.IdentifierAnnotationId]: "18e1de28-a15e-4373-bd2f-d53903942656" }
+            )
+          )
+          expectJSONSchemaProperty(schema, {
+            "$defs": {
+              "18e1de28-a15e-4373-bd2f-d53903942656": {
+                "type": "object",
+                "required": ["a"],
+                "properties": {
+                  "a": { "type": "string" }
+                },
+                "additionalProperties": false
               }
             },
-            "additionalProperties": false
-          }
-        }
+            "$ref": "#/$defs/18e1de28-a15e-4373-bd2f-d53903942656"
+          })
+        })
+
+        it("with transformation description, title and identifier", () => {
+          expectJSONSchemaProperty(
+            Schema.Struct({
+              a: Schema.optionalWith(
+                Schema.NonEmptyString.annotations({
+                  description: "inner-description",
+                  title: "inner-title"
+                }),
+                { default: () => "" }
+              ).annotations({
+                description: "middle-description",
+                title: "middle-title"
+              })
+            }).annotations({
+              description: "outer-description",
+              title: "outer-title",
+              identifier: "75d9b539-eb6b-48d3-81dd-61176a9bce78"
+            }),
+            {
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "description": "inner-description",
+                  "title": "inner-title",
+                  "minLength": 1
+                },
+                "75d9b539-eb6b-48d3-81dd-61176a9bce78": {
+                  "type": "object",
+                  "description": "outer-description",
+                  "title": "outer-title",
+                  "required": [],
+                  "properties": {
+                    "a": {
+                      "$ref": "#/$defs/NonEmptyString"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "$ref": "#/$defs/75d9b539-eb6b-48d3-81dd-61176a9bce78"
+            }
+          )
+        })
       })
     })
   })
@@ -5358,6 +5251,183 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "additionalProperties": false
         }
       )
+    })
+  })
+
+  describe("Schema.encodedBoundSchema", () => {
+    it("Refinement", () => {
+      const schema = Schema.Array(Schema.NumberFromString).pipe(Schema.minItems(2)).annotations(
+        { identifier: "7848c831-fa50-4e36-aee8-65d2648c0120" }
+      )
+      expectJSONSchema(Schema.encodedBoundSchema(schema), {
+        "$defs": {
+          "7848c831-fa50-4e36-aee8-65d2648c0120": {
+            "description": "an array of at least 2 items",
+            "items": {
+              "$ref": "#/$defs/NumberFromString"
+            },
+            "minItems": 2,
+            "type": "array"
+          },
+          "NumberFromString": {
+            "description": "a string that will be parsed into a number",
+            "type": "string"
+          }
+        },
+        "$ref": "#/$defs/7848c831-fa50-4e36-aee8-65d2648c0120"
+      })
+    })
+
+    it("should apply a stable filter only if the from part doesn't contain a transformation", () => {
+      const schema = Schema.Unknown.pipe(Schema.compose(Schema.Array(Schema.String)), Schema.minItems(1))
+      expectJSONSchema(Schema.encodedBoundSchema(schema), {
+        "$id": "/schemas/unknown",
+        "title": "unknown"
+      })
+    })
+
+    describe("should borrow the identifier", () => {
+      it("Suspend", () => {
+        interface Category {
+          readonly name: string
+          readonly categories: ReadonlyArray<Category>
+        }
+
+        const schema: Schema.Schema<Category> = Schema.Struct({
+          name: Schema.String,
+          categories: Schema.Array(
+            Schema.suspend(() => schema).annotations({ identifier: "9456cebc-bb96-4fe7-8766-cc1e0f0bb823" })
+          )
+        })
+
+        expectJSONSchema(Schema.encodedBoundSchema(schema), {
+          "type": "object",
+          "required": [
+            "name",
+            "categories"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/9456cebc-bb96-4fe7-8766-cc1e0f0bb823"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "$defs": {
+            "9456cebc-bb96-4fe7-8766-cc1e0f0bb823": {
+              "type": "object",
+              "required": [
+                "name",
+                "categories"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "categories": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/9456cebc-bb96-4fe7-8766-cc1e0f0bb823"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        })
+      })
+    })
+
+    describe("Transformation", () => {
+      it("NumberFromString", () => {
+        expectJSONSchemaProperty(Schema.encodedBoundSchema(Schema.NumberFromString), {
+          "$defs": {
+            "NumberFromString": {
+              "type": "string",
+              "description": "a string that will be parsed into a number"
+            }
+          },
+          "$ref": "#/$defs/NumberFromString"
+        })
+      })
+    })
+  })
+
+  describe("Schema.encodedSchema", () => {
+    describe("should borrow the identifier", () => {
+      it("Suspend", () => {
+        interface Category {
+          readonly name: string
+          readonly categories: ReadonlyArray<Category>
+        }
+
+        const schema: Schema.Schema<Category> = Schema.Struct({
+          name: Schema.String,
+          categories: Schema.Array(
+            Schema.suspend(() => schema).annotations({ identifier: "0956eb10-753b-4ac5-a90b-ebb39d95541d" })
+          )
+        })
+
+        expectJSONSchema(Schema.encodedSchema(schema), {
+          "type": "object",
+          "required": [
+            "name",
+            "categories"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/0956eb10-753b-4ac5-a90b-ebb39d95541d"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "$defs": {
+            "0956eb10-753b-4ac5-a90b-ebb39d95541d": {
+              "type": "object",
+              "required": [
+                "name",
+                "categories"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "categories": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/0956eb10-753b-4ac5-a90b-ebb39d95541d"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        })
+      })
+    })
+
+    describe("Transformation", () => {
+      it("NumberFromString", () => {
+        expectJSONSchemaProperty(Schema.encodedSchema(Schema.NumberFromString), {
+          "$defs": {
+            "NumberFromString": {
+              "type": "string",
+              "description": "a string that will be parsed into a number"
+            }
+          },
+          "$ref": "#/$defs/NumberFromString"
+        })
+      })
     })
   })
 })

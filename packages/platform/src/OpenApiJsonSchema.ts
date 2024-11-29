@@ -348,6 +348,28 @@ const go = (
     readonly getRef: (id: string) => string
   }
 ): JsonSchema => {
+  const surrogate = AST.getSurrogateAnnotation(ast)
+  if (handleIdentifier && !AST.isRefinement(ast)) {
+    const identifier = AST.getJSONIdentifier(
+      Option.isSome(surrogate) ?
+        {
+          annotations: {
+            ...(ast._tag === "Transformation" ? ast.to.annotations : {}),
+            ...ast.annotations
+          }
+        } :
+        ast
+    )
+    if (Option.isSome(identifier)) {
+      const id = identifier.value
+      const out = { $ref: options.getRef(id) }
+      if (!Record.has($defs, id)) {
+        $defs[id] = out
+        $defs[id] = go(ast, $defs, false, path, options)
+      }
+      return out
+    }
+  }
   const hook = AST.getJSONSchemaAnnotation(ast)
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema
@@ -374,28 +396,6 @@ const go = (
       }
     }
     return handler
-  }
-  const surrogate = AST.getSurrogateAnnotation(ast)
-  if (handleIdentifier && !AST.isRefinement(ast)) {
-    const identifier = AST.getJSONIdentifier(
-      Option.isSome(surrogate) ?
-        {
-          annotations: {
-            ...(ast._tag === "Transformation" ? ast.to.annotations : {}),
-            ...ast.annotations
-          }
-        } :
-        ast
-    )
-    if (Option.isSome(identifier)) {
-      const id = identifier.value
-      const out = { $ref: options.getRef(id) }
-      if (!Record.has($defs, id)) {
-        $defs[id] = out
-        $defs[id] = go(ast, $defs, false, path, options)
-      }
-      return out
-    }
   }
   if (Option.isSome(surrogate)) {
     return {
