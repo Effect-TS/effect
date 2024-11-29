@@ -4478,7 +4478,7 @@ export type ParseJsonOptions = {
 const JsonString = String$.annotations({
   [AST.IdentifierAnnotationId]: "JsonString",
   [AST.TitleAnnotationId]: "JsonString",
-  [AST.DescriptionAnnotationId]: "a JSON string"
+  [AST.DescriptionAnnotationId]: "a string that will be parsed as JSON"
 })
 
 const getParseJsonTransformation = (options?: ParseJsonOptions) =>
