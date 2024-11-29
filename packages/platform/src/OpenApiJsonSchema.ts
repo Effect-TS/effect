@@ -312,21 +312,6 @@ const pruneUndefinedFromPropertySignature = (ast: AST.AST): AST.AST | undefined 
   }
 }
 
-const getRefinementInnerTransformation = (ast: AST.Refinement): AST.AST | undefined => {
-  switch (ast.from._tag) {
-    case "Transformation":
-      return ast.from
-    case "Refinement":
-      return getRefinementInnerTransformation(ast.from)
-    case "Suspend": {
-      const from = ast.from.f()
-      if (AST.isRefinement(from)) {
-        return getRefinementInnerTransformation(from)
-      }
-    }
-  }
-}
-
 const isParseJsonTransformation = (ast: AST.AST): boolean =>
   ast.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
 
@@ -374,18 +359,15 @@ const go = (
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema
     if (AST.isRefinement(ast)) {
-      const t = getRefinementInnerTransformation(ast)
+      const t = AST.getTransformationFrom(ast)
       if (t === undefined) {
         return {
-          ...go(ast.from, $defs, true, path, options),
+          ...go(ast.from, $defs, false, path, options),
           ...getJsonSchemaAnnotations(ast),
           ...handler
         }
       } else if (!isOverrideAnnotation(handler)) {
-        return {
-          ...go(t, $defs, true, path, options),
-          ...getJsonSchemaAnnotations(ast)
-        }
+        return go(t, $defs, handleIdentifier, path, options)
       }
     }
     return handler

@@ -1903,39 +1903,18 @@ schema (Suspend): <suspended schema>`
 
     it("refinement of a transformation without an override annotation", () => {
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString()), {
-        $defs: {
-          "Trim": {
-            "type": "string",
-            "title": "Trimmed",
-            "description": "a string that will be trimmed"
-          }
-        },
-        $ref: "#/$defs/Trim",
-        "description": "a non empty string"
+        "type": "string",
+        "description": "a string that will be trimmed"
       })
       expectJSONSchema(Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "Description" } })), {
-        $defs: {
-          "Trim": {
-            "type": "string",
-            "title": "Trimmed",
-            "description": "a string that will be trimmed"
-          }
-        },
-        $ref: "#/$defs/Trim",
-        "description": "a non empty string"
+        "type": "string",
+        "description": "a string that will be trimmed"
       })
       expectJSONSchema(
         Schema.Trim.pipe(Schema.nonEmptyString()).annotations({ jsonSchema: { title: "Description" } }),
         {
-          $defs: {
-            "Trim": {
-              "type": "string",
-              "title": "Trimmed",
-              "description": "a string that will be trimmed"
-            }
-          },
-          $ref: "#/$defs/Trim",
-          "description": "a non empty string"
+          "type": "string",
+          "description": "a string that will be trimmed"
         }
       )
     })
