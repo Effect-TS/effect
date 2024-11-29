@@ -25,7 +25,7 @@
         "security": [],
         "responses": {
           "200": {
-            "description": "an instance of Group",
+            "description": "Group",
             "content": {
               "application/json": {
                 "schema": {
@@ -45,7 +45,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -55,7 +55,7 @@
             }
           },
           "418": {
-            "description": "an instance of GroupError"
+            "description": "GroupError"
           }
         }
       }
@@ -70,7 +70,7 @@
         "security": [],
         "responses": {
           "200": {
-            "description": "an instance of Group",
+            "description": "Group",
             "content": {
               "application/json": {
                 "schema": {
@@ -90,7 +90,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -100,7 +100,7 @@
             }
           },
           "418": {
-            "description": "an instance of GroupError"
+            "description": "GroupError"
           }
         },
         "requestBody": {
@@ -147,7 +147,7 @@
         ],
         "responses": {
           "200": {
-            "description": "an instance of User",
+            "description": "User",
             "content": {
               "application/json": {
                 "schema": {
@@ -167,7 +167,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -202,7 +202,7 @@
         ],
         "responses": {
           "200": {
-            "description": "an instance of User",
+            "description": "User",
             "content": {
               "application/json": {
                 "schema": {
@@ -229,7 +229,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -306,7 +306,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -316,7 +316,7 @@
             }
           },
           "500": {
-            "description": "an instance of NoStatusError",
+            "description": "NoStatusError",
             "content": {
               "application/json": {
                 "schema": {
@@ -375,7 +375,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -456,9 +456,7 @@
             "type": "string"
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of Group",
-        "title": "Group"
+        "additionalProperties": false
       },
       "NumberFromString": {
         "type": "string",
@@ -533,8 +531,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "The request did not match the expected schema",
-        "title": "HttpApiDecodeError"
+        "description": "The request did not match the expected schema"
       },
       "GlobalError": {
         "type": "object",
@@ -548,9 +545,7 @@
             ]
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of GlobalError",
-        "title": "GlobalError"
+        "additionalProperties": false
       },
       "User": {
         "type": "object",
@@ -570,9 +565,7 @@
             "$ref": "#/components/schemas/DateTimeUtc"
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of User",
-        "title": "User"
+        "additionalProperties": false
       },
       "DateTimeUtc": {
         "description": "a string that will be parsed into a DateTime.Utc",
@@ -590,9 +583,7 @@
             ]
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of UserError",
-        "title": "UserError"
+        "additionalProperties": false
       },
       "NoStatusError": {
         "type": "object",
@@ -606,9 +597,7 @@
             ]
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of NoStatusError",
-        "title": "NoStatusError"
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

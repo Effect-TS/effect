@@ -333,18 +333,8 @@ const go = (
     readonly getRef: (id: string) => string
   }
 ): JsonSchema => {
-  const surrogate = AST.getSurrogateAnnotation(ast)
   if (handleIdentifier) {
-    const identifier = AST.getJSONIdentifier(
-      Option.isSome(surrogate) ?
-        {
-          annotations: {
-            ...(ast._tag === "Transformation" ? ast.to.annotations : {}),
-            ...ast.annotations
-          }
-        } :
-        ast
-    )
+    const identifier = AST.getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
       const out = { $ref: options.getRef(id) }
@@ -372,9 +362,11 @@ const go = (
     }
     return handler
   }
+  const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
     return {
-      ...go(surrogate.value, $defs, handleIdentifier, path, options),
+      ...go(surrogate.value, $defs, false, path, options),
+      // TODO
       ...(ast._tag === "Transformation" ? getJsonSchemaAnnotations(ast.to) : {}),
       ...getJsonSchemaAnnotations(ast)
     }

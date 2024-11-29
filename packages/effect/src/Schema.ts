@@ -8215,8 +8215,6 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
         },
         {
           identifier,
-          title: identifier,
-          description: `an instance of ${identifier}`,
           pretty: (pretty) => (self: any) => `${identifier}(${pretty(self)})`,
           // @ts-expect-error
           arbitrary: (arb) => (fc) => arb(fc).map((props) => new this(props)),
@@ -8229,7 +8227,10 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
         encodedSide,
         declaration,
         { strict: true, decode: (input) => new this(input, true), encode: identity }
-      ).annotations({ [AST.SurrogateAnnotationId]: schema.ast })
+      ).annotations({
+        [AST.JSONIdentifierAnnotationId]: identifier,
+        [AST.SurrogateAnnotationId]: schema.ast
+      })
       astCache.set(this, transformation.ast)
       return transformation.ast
     }

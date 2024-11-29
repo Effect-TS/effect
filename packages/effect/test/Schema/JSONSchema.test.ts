@@ -2004,22 +2004,26 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Class", () => {
-    it("should generate the same JSON Schema as the input", () => {
+    it("should use the identifier as JSON Schema identifier", () => {
       const input = Schema.Struct({ a: Schema.String })
       class A extends Schema.Class<A>("7a8b06e3-ebc1-4bdd-ab0d-3ec493d96d95")(input) {}
       expectJSONSchemaProperty(A, {
-        "type": "object",
-        "required": [
-          "a"
-        ],
-        "properties": {
-          "a": {
-            "type": "string"
+        "$defs": {
+          "7a8b06e3-ebc1-4bdd-ab0d-3ec493d96d95": {
+            "type": "object",
+            "required": [
+              "a"
+            ],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
           }
         },
-        "additionalProperties": false
+        "$ref": "#/$defs/7a8b06e3-ebc1-4bdd-ab0d-3ec493d96d95"
       })
-      expect(JSONSchema.make(A)).toEqual(JSONSchema.make(input))
     })
   })
 
@@ -2346,9 +2350,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                   "type": "string"
                 }
               },
-              "additionalProperties": false,
-              "description": "an instance of 70ac1a3e-d046-4be0-8b32-8be7eced43a3",
-              "title": "70ac1a3e-d046-4be0-8b32-8be7eced43a3"
+              "additionalProperties": false
             }
           },
           "$ref": "#/$defs/70ac1a3e-d046-4be0-8b32-8be7eced43a3"
