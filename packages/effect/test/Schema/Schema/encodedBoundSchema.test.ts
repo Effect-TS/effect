@@ -66,7 +66,7 @@ describe("encodedBoundSchema", () => {
       await Util.expectDecodeUnknownFailure(
         bound,
         ["a"],
-        `{ ReadonlyArray<String2> | filter }
+        `an array of at least 2 items
 └─ From side refinement failure
    └─ ReadonlyArray<String2>
       └─ [0]
@@ -77,9 +77,9 @@ describe("encodedBoundSchema", () => {
       await Util.expectDecodeUnknownFailure(
         bound,
         ["ab"],
-        `{ ReadonlyArray<String2> | filter }
+        `an array of at least 2 items
 └─ Predicate refinement failure
-   └─ Expected { ReadonlyArray<String2> | filter }, actual ["ab"]`
+   └─ Expected an array of at least 2 items, actual ["ab"]`
       )
     })
 
@@ -91,7 +91,7 @@ describe("encodedBoundSchema", () => {
       await Util.expectDecodeUnknownFailure(
         bound,
         ["a"],
-        `{ ReadonlyArray<String2> | filter }
+        `an array of at most 2 items
 └─ From side refinement failure
    └─ ReadonlyArray<String2>
       └─ [0]
@@ -102,9 +102,9 @@ describe("encodedBoundSchema", () => {
       await Util.expectDecodeUnknownFailure(
         bound,
         ["ab", "cd", "ef"],
-        `{ ReadonlyArray<String2> | filter }
+        `an array of at most 2 items
 └─ Predicate refinement failure
-   └─ Expected { ReadonlyArray<String2> | filter }, actual ["ab","cd","ef"]`
+   └─ Expected an array of at most 2 items, actual ["ab","cd","ef"]`
       )
     })
 
@@ -116,7 +116,7 @@ describe("encodedBoundSchema", () => {
       await Util.expectDecodeUnknownFailure(
         bound,
         ["a"],
-        `{ ReadonlyArray<String2> | filter }
+        `an array of exactly 2 item(s)
 └─ From side refinement failure
    └─ ReadonlyArray<String2>
       └─ [0]
@@ -127,16 +127,16 @@ describe("encodedBoundSchema", () => {
       await Util.expectDecodeUnknownFailure(
         bound,
         ["ab"],
-        `{ ReadonlyArray<String2> | filter }
+        `an array of exactly 2 item(s)
 └─ Predicate refinement failure
-   └─ Expected { ReadonlyArray<String2> | filter }, actual ["ab"]`
+   └─ Expected an array of exactly 2 item(s), actual ["ab"]`
       )
       await Util.expectDecodeUnknownFailure(
         bound,
         ["ab", "cd", "ef"],
-        `{ ReadonlyArray<String2> | filter }
+        `an array of exactly 2 item(s)
 └─ Predicate refinement failure
-   └─ Expected { ReadonlyArray<String2> | filter }, actual ["ab","cd","ef"]`
+   └─ Expected an array of exactly 2 item(s), actual ["ab","cd","ef"]`
       )
     })
   })
