@@ -2652,17 +2652,17 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
       expectJSONSchema(
         Schema.String.annotations({
-          identifier: "MyID",
+          identifier: "630d10c4-7030-45e7-894d-2c0bf5acadcf",
           jsonSchema: { "type": "custom", "description": "description" }
         }),
         {
           "$defs": {
-            "MyID": {
+            "630d10c4-7030-45e7-894d-2c0bf5acadcf": {
               "type": "custom",
               "description": "description"
             }
           },
-          "$ref": "#/$defs/MyID"
+          "$ref": "#/$defs/630d10c4-7030-45e7-894d-2c0bf5acadcf"
         }
       )
     })
@@ -2767,11 +2767,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
       it("custom", () => {
         expectJSONSchemaProperty(
-          Schema.String.pipe(Schema.filter(() => true, { jsonSchema: {} })).annotations({ identifier: "MyID" }),
+          Schema.String.pipe(Schema.filter(() => true, { jsonSchema: {} })).annotations({
+            identifier: "230acf3d-b3b0-4c3e-8ccc-5ca089c80014"
+          }),
           {
-            "$ref": "#/$defs/MyID",
+            "$ref": "#/$defs/230acf3d-b3b0-4c3e-8ccc-5ca089c80014",
             "$defs": {
-              "MyID": {
+              "230acf3d-b3b0-4c3e-8ccc-5ca089c80014": {
                 "type": "string"
               }
             }
