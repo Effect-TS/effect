@@ -1292,7 +1292,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("Transformation", () => {
     it("NumberFromString", () => {
-      expectJSONSchemaProperty(Schema.NumberFromString, {
+      const expected = {
         "$defs": {
           "NumberFromString": {
             "type": "string",
@@ -1300,7 +1300,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           }
         },
         "$ref": "#/$defs/NumberFromString"
-      })
+      }
+      expectJSONSchemaProperty(Schema.NumberFromString, expected)
+      expectJSONSchemaProperty(Schema.encodedBoundSchema(Schema.NumberFromString), expected)
+      expectJSONSchemaProperty(Schema.encodedSchema(Schema.NumberFromString), expected)
     })
 
     it("DateFromString", () => {

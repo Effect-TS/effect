@@ -2656,8 +2656,10 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
       }
       return from
     }
-    case "Transformation":
-      return encodedAST_(ast.from, isBound)
+    case "Transformation": {
+      const identifier = createJSONIdentifierAnnotation(ast)
+      return encodedAST_(identifier ? annotations(ast.from, identifier) : ast.from, isBound)
+    }
   }
   return ast
 }
