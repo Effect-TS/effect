@@ -561,7 +561,8 @@ const go = (
       }
     }
     case "Refinement": {
-      if (AST.encodedBoundAST(ast) === ast) {
+      // The jsonSchema annotation is required only if the refinement does not have a transformation
+      if (getTransformationFrom(ast) === undefined) {
         throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
       }
       return go(ast.from, $defs, handleIdentifier, path)
