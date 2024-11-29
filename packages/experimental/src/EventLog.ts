@@ -21,6 +21,7 @@ import type { EventGroup } from "./EventGroup.js"
 import type { EventJournalError, RemoteEntry, RemoteId } from "./EventJournal.js"
 import { Entry, EventJournal, makeEntryId } from "./EventJournal.js"
 import { type EventLogRemote } from "./EventLogRemote.js"
+import * as Reactivity from "./Reactivity.js"
 
 /**
  * @since 1.0.0
@@ -341,6 +342,29 @@ export const groupCompaction = <Events extends Event.Any, R>(
 
 /**
  * @since 1.0.0
+ * @category reactivity
+ */
+export const groupReactivity = <Events extends Event.Any>(
+  group: EventGroup<Events>,
+  keys:
+    | { readonly [Tag in Event.Tag<Events>]?: ReadonlyArray<string> }
+    | ReadonlyArray<string>
+): Layer.Layer<never, never, EventLog> =>
+  Effect.gen(function*() {
+    const log = yield* EventLog
+    if (!Array.isArray(keys)) {
+      yield* log.registerReactivity(keys as any)
+      return
+    }
+    const obj: Record<string, ReadonlyArray<string>> = {}
+    for (const tag in group.events) {
+      obj[tag] = keys
+    }
+    yield* log.registerReactivity(obj)
+  }).pipe(Layer.scopedDiscard)
+
+/**
+ * @since 1.0.0
  * @category layers
  */
 export class Registry extends Context.Tag("@effect/experimental/EventLog/Registry")<
@@ -398,6 +422,7 @@ export class EventLog extends Context.Tag("@effect/experimental/EventLog/EventLo
       readonly write: (entry: Entry) => Effect.Effect<void>
     }) => Effect.Effect<void>
   }) => Effect.Effect<void, never, Scope>
+  readonly registerReactivity: (keys: Record<string, ReadonlyArray<string>>) => Effect.Effect<void, never, Scope>
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
   readonly destroy: Effect.Effect<void, EventJournalError>
 }>() {}
@@ -416,6 +441,9 @@ const make = Effect.gen(function*() {
     }) => Effect.Effect<void>
   }>()
   const journalSemaphore = yield* Effect.makeSemaphore(1)
+
+  const reactivity = yield* Reactivity.Reactivity
+  const reactivityKeys: Record<string, ReadonlyArray<string>> = {}
 
   const runRemote = (remote: EventLogRemote) =>
     Effect.gen(function*() {
@@ -502,6 +530,13 @@ const make = Effect.gen(function*() {
                   entry,
                   conflicts: decodedConflicts
                 })
+                if (reactivityKeys[entry.event]) {
+                  for (const key of reactivityKeys[entry.event]) {
+                    reactivity.unsafeInvalidate({
+                      [key]: [entry.primaryKey]
+                    })
+                  }
+                }
               }).pipe(
                 Effect.catchAllCause(Effect.log),
                 Effect.annotateLogs({
@@ -558,11 +593,22 @@ const make = Effect.gen(function*() {
           primaryKey: handler.event.primaryKey(options.payload),
           payload,
           effect: (entry) =>
-            handler.handler({
-              payload: options.payload,
-              entry,
-              conflicts: []
-            })
+            Effect.tap(
+              handler.handler({
+                payload: options.payload,
+                entry,
+                conflicts: []
+              }),
+              () => {
+                if (reactivityKeys[entry.event]) {
+                  for (const key of reactivityKeys[entry.event]) {
+                    reactivity.unsafeInvalidate({
+                      [key]: [entry.primaryKey]
+                    })
+                  }
+                }
+              }
+            )
         }))
       }).pipe(
         Effect.mapInputContext((context) => Context.merge(handler.context, context))
@@ -595,6 +641,10 @@ const make = Effect.gen(function*() {
             }
           })
       ),
+    registerReactivity: (keys) =>
+      Effect.sync(() => {
+        Object.assign(reactivityKeys, keys)
+      }),
     destroy: journal.destroy
   })
 })
@@ -604,7 +654,7 @@ const make = Effect.gen(function*() {
  * @category layers
  */
 export const layerEventLog: Layer.Layer<EventLog, never, EventJournal | Identity> = Layer.scoped(EventLog, make).pipe(
-  Layer.provide(Registry.layer)
+  Layer.provide([Registry.layer, Reactivity.layer])
 )
 
 /**
