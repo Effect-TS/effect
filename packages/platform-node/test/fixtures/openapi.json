@@ -356,9 +356,7 @@
                       "type": "string"
                     },
                     "length": {
-                      "type": "integer",
-                      "description": "an integer",
-                      "title": "Int"
+                      "$ref": "#/components/schemas/Int"
                     }
                   },
                   "additionalProperties": false
@@ -399,8 +397,7 @@
                   "file": {
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "format": "binary"
+                      "$ref": "#/components/schemas/PersistedFile"
                     },
                     "description": "an array of exactly 1 item(s)",
                     "minItems": 1,
@@ -436,9 +433,7 @@
             "type": "string"
           },
           "length": {
-            "description": "an integer",
-            "title": "Int",
-            "type": "integer"
+            "$ref": "#/components/schemas/Int"
           }
         },
         "required": [
@@ -455,9 +450,7 @@
         ],
         "properties": {
           "id": {
-            "type": "integer",
-            "description": "an integer",
-            "title": "Int"
+            "$ref": "#/components/schemas/Int"
           },
           "name": {
             "type": "string"
@@ -470,6 +463,15 @@
       "NumberFromString": {
         "type": "string",
         "description": "a string that will be parsed into a number"
+      },
+      "PersistedFile": {
+        "format": "binary",
+        "type": "string"
+      },
+      "Int": {
+        "description": "an integer",
+        "title": "Int",
+        "type": "integer"
       },
       "HttpApiDecodeError": {
         "type": "object",
@@ -559,9 +561,7 @@
         ],
         "properties": {
           "id": {
-            "type": "integer",
-            "description": "an integer",
-            "title": "Int"
+            "$ref": "#/components/schemas/Int"
           },
           "name": {
             "type": "string"
