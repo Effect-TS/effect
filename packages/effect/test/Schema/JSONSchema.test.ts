@@ -1584,6 +1584,24 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               },
               "additionalProperties": false
             })
+            expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "description": "inner",
+                  "title": "NonEmptyString",
+                  "minLength": 1
+                }
+              },
+              "type": "object",
+              "required": [],
+              "properties": {
+                "a": {
+                  "$ref": "#/$defs/NonEmptyString"
+                }
+              },
+              "additionalProperties": false
+            })
             expectJSONSchemaProperty(Schema.encodedSchema(schema), {
               "type": "object",
               "required": [],

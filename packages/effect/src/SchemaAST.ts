@@ -2599,6 +2599,22 @@ function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
   return changed ? out : as
 }
 
+/**
+ * Returns the from part of a transformation if it exists
+ *
+ * @internal
+ */
+export const getTransformationFrom = (ast: AST): AST | undefined => {
+  switch (ast._tag) {
+    case "Transformation":
+      return ast.from
+    case "Refinement":
+      return getTransformationFrom(ast.from)
+    case "Suspend":
+      return getTransformationFrom(ast.f())
+  }
+}
+
 const encodedAST_ = (ast: AST, isBound: boolean): AST => {
   switch (ast._tag) {
     case "Declaration": {
@@ -2650,7 +2666,7 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
         if (from === ast.from) {
           return ast
         }
-        if (!isTransformation(ast.from) && hasStableFilter(ast)) {
+        if (getTransformationFrom(ast.from) === undefined && hasStableFilter(ast)) {
           return new Refinement(from, ast.filter)
         }
       }

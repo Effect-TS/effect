@@ -297,18 +297,6 @@ const pruneUndefinedFromPropertySignature = (ast: AST.AST): AST.AST | undefined 
   }
 }
 
-// Returns the from part of a transformation if it exists
-const getTransformationFrom = (ast: AST.AST): AST.AST | undefined => {
-  switch (ast._tag) {
-    case "Transformation":
-      return ast.from
-    case "Refinement":
-      return getTransformationFrom(ast.from)
-    case "Suspend":
-      return getTransformationFrom(ast.f())
-  }
-}
-
 const isParseJsonTransformation = (ast: AST.AST): boolean =>
   ast.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
 
@@ -344,7 +332,7 @@ const go = (
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema7
     if (AST.isRefinement(ast)) {
-      const t = getTransformationFrom(ast)
+      const t = AST.getTransformationFrom(ast)
       if (t === undefined) {
         return {
           ...go(ast.from, $defs, false, path),
@@ -562,7 +550,7 @@ const go = (
     }
     case "Refinement": {
       // The jsonSchema annotation is required only if the refinement does not have a transformation
-      if (getTransformationFrom(ast) === undefined) {
+      if (AST.getTransformationFrom(ast) === undefined) {
         throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
       }
       return go(ast.from, $defs, handleIdentifier, path)
