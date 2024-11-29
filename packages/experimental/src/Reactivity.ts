@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -75,7 +74,6 @@ export const make = Effect.sync(() => {
 
       const handledEffect = Effect.matchCause(effect, {
         onFailure(cause) {
-          if (Cause.isInterruptedOnly(cause)) return
           results.unsafeDone(Exit.failCause(cause))
         },
         onSuccess(a) {
@@ -84,7 +82,7 @@ export const make = Effect.sync(() => {
       })
 
       function run() {
-        runFork(handledEffect)
+        runFork(handledEffect, { onlyIfMissing: true })
       }
 
       yield* Scope.addFinalizer(
