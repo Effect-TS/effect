@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -79,7 +80,7 @@ export interface MysqlClientConfig {
  */
 export const make = (
   options: MysqlClientConfig
-): Effect.Effect<MysqlClient, SqlError, Scope> =>
+): Effect.Effect<MysqlClient, SqlError, Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -240,7 +241,7 @@ export const make = (
     }
 
     return Object.assign(
-      Client.make({
+      yield* Client.make({
         acquirer: Effect.succeed(poolConnection),
         transactionAcquirer,
         compiler,
@@ -267,7 +268,7 @@ export const layerConfig = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -281,7 +282,7 @@ export const layer = (
       Context.make(MysqlClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category compiler

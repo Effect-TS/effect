@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { D1Database, D1PreparedStatement } from "@cloudflare/workers-types"
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -67,7 +68,7 @@ export interface D1ClientConfig {
  */
 export const make = (
   options: D1ClientConfig
-): Effect.Effect<D1Client, never, Scope.Scope> =>
+): Effect.Effect<D1Client, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -164,7 +165,7 @@ export const make = (
     const transactionAcquirer = Effect.dieMessage("transactions are not supported in D1")
 
     return Object.assign(
-      Client.make({
+      (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
@@ -173,7 +174,7 @@ export const make = (
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
         ],
         transformRows
-      }) as D1Client,
+      })) as D1Client,
       {
         [TypeId]: TypeId as TypeId,
         config: options
@@ -197,7 +198,7 @@ export const layerConfig = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -211,4 +212,4 @@ export const layer = (
       Context.make(D1Client, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
-  )
+  ).pipe(Layer.provide(Reactivity.layer))

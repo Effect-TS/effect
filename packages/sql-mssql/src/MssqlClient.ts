@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -117,7 +118,7 @@ const TransactionConnection = Client.TransactionConnection as unknown as Context
  */
 export const make = (
   options: MssqlClientConfig
-): Effect.Effect<MssqlClient, SqlError, Scope.Scope> =>
+): Effect.Effect<MssqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
     const compiler = makeCompiler(options.transformQueryNames)
@@ -367,7 +368,7 @@ export const make = (
     })
 
     return identity<MssqlClient>(Object.assign(
-      Client.make({
+      yield* Client.make({
         acquirer: pool.get,
         compiler,
         spanAttributes,
@@ -429,7 +430,7 @@ export const layerConfig = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -443,7 +444,7 @@ export const layer = (
       Context.make(MssqlClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category compiler

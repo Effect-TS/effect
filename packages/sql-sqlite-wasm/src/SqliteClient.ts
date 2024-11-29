@@ -133,7 +133,7 @@ export const makeMemory = (
       if (options.installReactivityHooks) {
         sqlite3.update_hook(db, (_op, _db, table, rowid) => {
           if (!table) return
-          const id = Number(rowid)
+          const id = String(Number(rowid))
           reactivity.unsafeInvalidate({ [table]: [id] })
         })
       }
@@ -237,7 +237,7 @@ export const makeMemory = (
     )
 
     return Object.assign(
-      Client.make({
+      (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
@@ -246,7 +246,7 @@ export const makeMemory = (
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
         ],
         transformRows
-      }) as SqliteClient,
+      })) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
         config: options,
@@ -396,7 +396,7 @@ export const make = (
     )
 
     return Object.assign(
-      Client.make({
+      (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
@@ -405,7 +405,7 @@ export const make = (
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
         ],
         transformRows
-      }) as SqliteClient,
+      })) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
         config: options,

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -135,7 +136,7 @@ interface PostgresOptions extends postgres.Options<{}> {
  */
 export const make = (
   options: PgClientConfig
-): Effect.Effect<PgClient, SqlError, Scope.Scope> =>
+): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*(_) {
     const compiler = makeCompiler(
       options.transformQueryNames,
@@ -252,7 +253,7 @@ export const make = (
     }
 
     return Object.assign(
-      Client.make({
+      yield* Client.make({
         acquirer: Effect.succeed(new ConnectionImpl(client)),
         transactionAcquirer: Effect.map(
           Effect.acquireRelease(
@@ -321,7 +322,7 @@ export const layerConfig = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -335,7 +336,7 @@ export const layer = (
       Context.make(PgClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category constructor
