@@ -376,17 +376,10 @@ const go = (
     if (AST.isRefinement(ast)) {
       const t = getRefinementInnerTransformation(ast)
       if (t === undefined) {
-        try {
-          return {
-            ...go(ast.from, $defs, true, path, options),
-            ...getJsonSchemaAnnotations(ast),
-            ...handler
-          }
-        } catch (e) {
-          return {
-            ...getJsonSchemaAnnotations(ast),
-            ...handler
-          }
+        return {
+          ...go(ast.from, $defs, true, path, options),
+          ...getJsonSchemaAnnotations(ast),
+          ...handler
         }
       } else if (!isOverrideAnnotation(handler)) {
         return {
@@ -621,7 +614,8 @@ const go = (
       }
     }
     case "Refinement": {
-      if (AST.encodedBoundAST(ast) === ast) {
+      // The jsonSchema annotation is required only if the refinement does not have a transformation
+      if (AST.getTransformationFrom(ast) === undefined) {
         throw new Error(getJSONSchemaMissingAnnotationErrorMessage(path, ast))
       }
       return go(ast.from, $defs, true, path, options)
