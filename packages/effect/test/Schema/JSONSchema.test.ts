@@ -6,12 +6,14 @@ import * as AST from "effect/SchemaAST"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
+type Root = JSONSchema.JsonSchema7Root
+
 const ajvOptions: Ajv.Options = {
   strictTuples: false,
   allowMatchingProperties: true
 }
 
-const getAjvValidate = (jsonSchema: JSONSchema.JsonSchema7Root): Ajv.ValidateFunction =>
+const getAjvValidate = (jsonSchema: Root): Ajv.ValidateFunction =>
   // new instance of Ajv is created for each schema to avoid error: "schema with key or id "/schemas/any" already exists"
   new Ajv.default(ajvOptions).compile(jsonSchema)
 
@@ -232,7 +234,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   it("Object", () => {
-    const jsonSchema: JSONSchema.JsonSchema7Root = {
+    const jsonSchema: Root = {
       "$id": "/schemas/object",
       "anyOf": [
         {
@@ -258,7 +260,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   it("empty struct: Schema.Struct({})", () => {
     const schema = Schema.Struct({})
-    const jsonSchema: JSONSchema.JsonSchema7Root = {
+    const jsonSchema: Root = {
       "$id": "/schemas/{}",
 
       "anyOf": [{
@@ -317,7 +319,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   it("TemplateLiteral", () => {
     const schema = Schema.TemplateLiteral(Schema.Literal("a"), Schema.Number)
-    const jsonSchema: JSONSchema.JsonSchema7Root = {
+    const jsonSchema: Root = {
       "type": "string",
       "pattern": "^a[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$",
       "description": "a template literal"
@@ -568,7 +570,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   describe("Tuple", () => {
     it("empty tuple", () => {
       const schema = Schema.Tuple()
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "array",
         "maxItems": 0
       }
@@ -580,7 +582,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
     it("element", () => {
       const schema = Schema.Tuple(JsonNumber)
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "array",
         "items": [{
           "type": "number"
@@ -630,7 +632,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
     it("optionalElement", () => {
       const schema = Schema.Tuple(Schema.optionalElement(JsonNumber))
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "array",
         "minItems": 0,
         "items": [
@@ -691,7 +693,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           description: "outer?"
         })
       )
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "array",
         "minItems": 1,
         "items": [
@@ -717,7 +719,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
     it("rest", () => {
       const schema = Schema.Array(JsonNumber)
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "array",
         "items": {
           "type": "number"
@@ -748,7 +750,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         [Schema.optionalElement(Schema.String)],
         Schema.element(JsonNumber.annotations({ description: "inner" }))
       )
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "array",
         "minItems": 0,
         "items": [
@@ -795,7 +797,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
     it("element + rest", () => {
       const schema = Schema.Tuple([Schema.String], JsonNumber)
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "array",
         "items": [{
           "type": "string"
@@ -834,7 +836,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         a: Schema.String,
         b: JsonNumber
       })
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "object",
         "properties": {
           "a": { "type": "string" },
@@ -896,7 +898,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       const schema = Schema.Struct({
         a: Schema.String
       }, Schema.Record({ key: Schema.String, value: Schema.String }))
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "object",
         "required": [
           "a"
@@ -927,7 +929,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         a: Schema.String,
         b: Schema.optionalWith(JsonNumber, { exact: true })
       })
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "object",
         "properties": {
           "a": {
@@ -1050,7 +1052,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       const schema = Schema.Record(
         { key: Schema.TemplateLiteral(Schema.String, Schema.Literal("-"), Schema.String), value: JsonNumber }
       )
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "object",
         "required": [],
         "properties": {},
@@ -1077,7 +1079,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       const schema = Schema.Record(
         { key: Schema.String.pipe(Schema.pattern(new RegExp("^.*-.*$"))), value: JsonNumber }
       )
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "object",
         "required": [],
         "properties": {},
@@ -1859,7 +1861,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           as: Schema.Array(schema)
         })
       ).annotations({ identifier: "cdb51157-6f4a-42c1-9075-5b9af3a1448c" })
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "$ref": "#/$defs/cdb51157-6f4a-42c1-9075-5b9af3a1448c",
         "$defs": {
           "cdb51157-6f4a-42c1-9075-5b9af3a1448c": {
@@ -1909,7 +1911,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           })
         )
       })
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "type": "object",
         "required": [
           "a",
@@ -1971,7 +1973,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         name: Schema.String,
         categories: Schema.Array(Schema.suspend((): Schema.Schema<Category> => schema))
       }).annotations({ identifier: "5c2a4755-f8f2-4290-a40f-ed247803a1a0" })
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "$ref": "#/$defs/5c2a4755-f8f2-4290-a40f-ed247803a1a0",
         "$defs": {
           "5c2a4755-f8f2-4290-a40f-ed247803a1a0": {
@@ -2046,7 +2048,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         })
       ).annotations({ identifier: "e0f2ce47-eac7-4991-8730-90ebe4e0ffda" })
 
-      const jsonSchema: JSONSchema.JsonSchema7Root = {
+      const jsonSchema: Root = {
         "$ref": "#/$defs/e0f2ce47-eac7-4991-8730-90ebe4e0ffda",
         "$defs": {
           "e0f2ce47-eac7-4991-8730-90ebe4e0ffda": {
