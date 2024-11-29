@@ -349,7 +349,7 @@ const go = (
   }
 ): JsonSchema => {
   const surrogate = AST.getSurrogateAnnotation(ast)
-  if (handleIdentifier && !AST.isRefinement(ast)) {
+  if (handleIdentifier) {
     const identifier = AST.getJSONIdentifier(
       Option.isSome(surrogate) ?
         {

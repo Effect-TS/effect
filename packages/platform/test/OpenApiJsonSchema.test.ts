@@ -1077,10 +1077,15 @@ schema (Refinement): { string | filter }`
     it("Trimmed", () => {
       const schema = Schema.Trimmed
       expectJSONSchemaProperty(schema, {
-        "description": "a string with no leading or trailing whitespace",
-        "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
-        "title": "Trimmed",
-        "type": "string"
+        "$defs": {
+          "Trimmed": {
+            "description": "a string with no leading or trailing whitespace",
+            "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
+            "title": "Trimmed",
+            "type": "string"
+          }
+        },
+        "$ref": "#/$defs/Trimmed"
       })
     })
   })
@@ -1500,12 +1505,12 @@ schema (Suspend): <suspended schema>`
 
     it("should support make(S.typeSchema(Class)) with custom annotation", () => {
       class A extends Schema.Class<A>("A")({ a: Schema.String }, {
-        jsonSchema: { "type": "custom JSON Schema" }
+        jsonSchema: { "type": "custom" }
       }) {}
       expectJSONSchema(Schema.typeSchema(A), {
         "$defs": {
           "A": {
-            "type": "custom JSON Schema"
+            "type": "custom"
           }
         },
         "$ref": "#/$defs/A"
@@ -1639,36 +1644,36 @@ schema (Suspend): <suspended schema>`
 
   describe("should handle jsonSchema annotations", () => {
     it("Void", () => {
-      expectJSONSchema(Schema.Void.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Void.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Never", () => {
-      expectJSONSchema(Schema.Never.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Never.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Literal", () => {
-      expectJSONSchema(Schema.Literal("a").annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Literal("a").annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("SymbolFromSelf", () => {
-      expectJSONSchema(Schema.SymbolFromSelf.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.SymbolFromSelf.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("UniqueSymbolFromSelf", () => {
       expectJSONSchema(
         Schema.UniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")).annotations({
-          jsonSchema: { "type": "custom JSON Schema" }
+          jsonSchema: { "type": "custom" }
         }),
         {
-          "type": "custom JSON Schema"
+          "type": "custom"
         }
       )
     })
@@ -1676,65 +1681,65 @@ schema (Suspend): <suspended schema>`
     it("TemplateLiteral", () => {
       expectJSONSchema(
         Schema.TemplateLiteral(Schema.Literal("a"), Schema.String, Schema.Literal("b")).annotations({
-          jsonSchema: { "type": "custom JSON Schema" }
+          jsonSchema: { "type": "custom" }
         }),
         {
-          "type": "custom JSON Schema"
+          "type": "custom"
         }
       )
     })
 
     it("Undefined", () => {
-      expectJSONSchema(Schema.Undefined.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Undefined.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Unknown", () => {
-      expectJSONSchema(Schema.Unknown.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Unknown.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Any", () => {
-      expectJSONSchema(Schema.Any.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Any.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Object", () => {
-      expectJSONSchema(Schema.Object.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Object.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("String", () => {
       expectJSONSchema(
         Schema.String.annotations({
-          jsonSchema: { "type": "custom JSON Schema", "description": "description" }
+          jsonSchema: { "type": "custom", "description": "description" }
         }),
         {
-          "type": "custom JSON Schema",
+          "type": "custom",
           "description": "description"
         }
       )
     })
 
     it("Number", () => {
-      expectJSONSchema(Schema.Number.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Number.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("BigintFromSelf", () => {
-      expectJSONSchema(Schema.BigIntFromSelf.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.BigIntFromSelf.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Boolean", () => {
-      expectJSONSchema(Schema.Boolean.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Boolean.annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
@@ -1743,16 +1748,16 @@ schema (Suspend): <suspended schema>`
         Apple,
         Banana
       }
-      expectJSONSchema(Schema.Enums(Fruits).annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Enums(Fruits).annotations({ jsonSchema: { "type": "custom" } }), {
+        "type": "custom"
       })
     })
 
     it("Tuple", () => {
       expectJSONSchema(
-        Schema.Tuple(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom JSON Schema" } }),
+        Schema.Tuple(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom" } }),
         {
-          "type": "custom JSON Schema"
+          "type": "custom"
         }
       )
     })
@@ -1760,19 +1765,19 @@ schema (Suspend): <suspended schema>`
     it("Struct", () => {
       expectJSONSchema(
         Schema.Struct({ a: Schema.String, b: JsonNumber }).annotations({
-          jsonSchema: { "type": "custom JSON Schema" }
+          jsonSchema: { "type": "custom" }
         }),
         {
-          "type": "custom JSON Schema"
+          "type": "custom"
         }
       )
     })
 
     it("Union", () => {
       expectJSONSchema(
-        Schema.Union(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom JSON Schema" } }),
+        Schema.Union(Schema.String, JsonNumber).annotations({ jsonSchema: { "type": "custom" } }),
         {
-          "type": "custom JSON Schema"
+          "type": "custom"
         }
       )
     })
@@ -1785,7 +1790,7 @@ schema (Suspend): <suspended schema>`
       const schema = Schema.Struct({
         a: Schema.String,
         as: Schema.Array(
-          Schema.suspend((): Schema.Schema<A> => schema).annotations({ jsonSchema: { "type": "custom JSON Schema" } })
+          Schema.suspend((): Schema.Schema<A> => schema).annotations({ jsonSchema: { "type": "custom" } })
         )
       })
 
@@ -1802,7 +1807,7 @@ schema (Suspend): <suspended schema>`
           "as": {
             "type": "array",
             "items": {
-              "type": "custom JSON Schema"
+              "type": "custom"
             }
           }
         },
@@ -1811,18 +1816,23 @@ schema (Suspend): <suspended schema>`
     })
 
     it("refinement", () => {
-      expectJSONSchema(Schema.Int.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
-        "description": "an integer",
-        "title": "Int",
-        "type": "custom JSON Schema"
+      expectJSONSchema(Schema.Int.annotations({ jsonSchema: { "type": "custom" } }), {
+        "$defs": {
+          "Int": {
+            "description": "an integer",
+            "title": "Int",
+            "type": "custom"
+          }
+        },
+        "$ref": "#/$defs/Int"
       })
     })
 
     it("transformation", () => {
-      expectJSONSchema(Schema.NumberFromString.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
+      expectJSONSchema(Schema.NumberFromString.annotations({ jsonSchema: { "type": "custom" } }), {
         "$defs": {
           "NumberFromString": {
-            "type": "custom JSON Schema"
+            "type": "custom"
           }
         },
         "$ref": "#/$defs/NumberFromString"
@@ -1831,29 +1841,63 @@ schema (Suspend): <suspended schema>`
 
     it("refinement of a transformation with an override annotation", () => {
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { type: "string", format: "date-time" } }), {
-        "format": "date-time",
-        "type": "string"
+        "$defs": {
+          "Date": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "$ref": "#/$defs/Date"
       })
       expectJSONSchema(
         Schema.Date.annotations({
           jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
         }),
-        { anyOf: [{ type: "object" }, { type: "array" }] }
+        {
+          "$defs": {
+            "Date": {
+              "anyOf": [{ "type": "object" }, { "type": "array" }]
+            }
+          },
+          "$ref": "#/$defs/Date"
+        }
       )
       expectJSONSchema(
         Schema.Date.annotations({
           jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
         }),
-        { anyOf: [{ type: "object" }, { type: "array" }] }
+        {
+          "$defs": {
+            "Date": {
+              "anyOf": [{ "type": "object" }, { "type": "array" }]
+            }
+          },
+          "$ref": "#/$defs/Date"
+        }
       )
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { $ref: "x" } }), {
-        $ref: "x"
+        "$defs": {
+          "Date": {
+            "$ref": "x"
+          }
+        },
+        "$ref": "#/$defs/Date"
       })
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { const: 1 } }), {
-        const: 1
+        "$defs": {
+          "Date": {
+            "const": 1
+          }
+        },
+        "$ref": "#/$defs/Date"
       })
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { enum: [1] } }), {
-        enum: [1]
+        "$defs": {
+          "Date": {
+            "enum": [1]
+          }
+        },
+        "$ref": "#/$defs/Date"
       })
     })
 
@@ -1904,16 +1948,21 @@ schema (Suspend): <suspended schema>`
           a: Schema.NonEmptyString.pipe(Schema.compose(Schema.NumberFromString))
         }),
         {
+          "$defs": {
+            "NonEmptyString": {
+              "type": "string",
+              "description": "a non empty string",
+              "title": "NonEmptyString",
+              "minLength": 1
+            }
+          },
           "type": "object",
           "required": [
             "a"
           ],
           "properties": {
             "a": {
-              "type": "string",
-              "description": "a non empty string",
-              "title": "NonEmptyString",
-              "minLength": 1
+              "$ref": "#/$defs/NonEmptyString"
             }
           },
           "additionalProperties": false
@@ -1927,6 +1976,14 @@ schema (Suspend): <suspended schema>`
           a: Schema.OptionFromNullOr(Schema.NonEmptyString)
         }),
         {
+          "$defs": {
+            "NonEmptyString": {
+              "type": "string",
+              "description": "a non empty string",
+              "title": "NonEmptyString",
+              "minLength": 1
+            }
+          },
           "type": "object",
           "required": [
             "a"
@@ -1935,10 +1992,7 @@ schema (Suspend): <suspended schema>`
             "a": {
               "anyOf": [
                 {
-                  "type": "string",
-                  "description": "a non empty string",
-                  "title": "NonEmptyString",
-                  "minLength": 1
+                  "$ref": "#/$defs/NonEmptyString"
                 },
                 {
                   "enum": [null]
@@ -1962,14 +2016,19 @@ schema (Suspend): <suspended schema>`
               a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
             }),
             {
-              "type": "object",
-              "required": [],
-              "properties": {
-                "a": {
+              "$defs": {
+                "NonEmptyString": {
                   "type": "string",
                   "description": "a non empty string",
                   "title": "NonEmptyString",
                   "minLength": 1
+                }
+              },
+              "type": "object",
+              "required": [],
+              "properties": {
+                "a": {
+                  "$ref": "#/$defs/NonEmptyString"
                 }
               },
               "additionalProperties": false
@@ -1979,35 +2038,45 @@ schema (Suspend): <suspended schema>`
 
         it("with property signature annotations", () => {
           const schema = Schema.Struct({
-            a: Schema.optionalWith(Schema.NonEmptyString.annotations({ description: "an optional field" }), {
+            a: Schema.optionalWith(Schema.NonEmptyString.annotations({ description: "inner" }), {
               default: () => ""
-            })
-              .annotations({ description: "a required field" })
+            }).annotations({ description: "outer" })
           })
           expectJSONSchemaProperty(schema, {
+            "$defs": {
+              "NonEmptyString": {
+                "type": "string",
+                "description": "inner",
+                "title": "NonEmptyString",
+                "minLength": 1
+              }
+            },
             "type": "object",
             "required": [],
             "properties": {
               "a": {
-                "type": "string",
-                "description": "an optional field",
-                "title": "NonEmptyString",
-                "minLength": 1
+                "$ref": "#/$defs/NonEmptyString"
               }
             },
             "additionalProperties": false
           })
           expectJSONSchemaProperty(Schema.typeSchema(schema), {
+            "$defs": {
+              "NonEmptyString": {
+                "type": "string",
+                "description": "inner",
+                "title": "NonEmptyString",
+                "minLength": 1
+              }
+            },
             "type": "object",
             "required": [
               "a"
             ],
             "properties": {
               "a": {
-                "type": "string",
-                "description": "a required field",
-                "title": "NonEmptyString",
-                "minLength": 1
+                "$ref": "#/$defs/NonEmptyString",
+                "description": "outer"
               }
             },
             "additionalProperties": false
@@ -2030,16 +2099,21 @@ schema (Suspend): <suspended schema>`
               a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
             }).annotations({ description: "mydescription", title: "mytitle" }),
             {
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "description": "a non empty string",
+                  "title": "NonEmptyString",
+                  "minLength": 1
+                }
+              },
               "type": "object",
               "description": "mydescription",
               "title": "mytitle",
               "required": [],
               "properties": {
                 "a": {
-                  "type": "string",
-                  "description": "a non empty string",
-                  "title": "NonEmptyString",
-                  "minLength": 1
+                  "$ref": "#/$defs/NonEmptyString"
                 }
               },
               "additionalProperties": false
@@ -2055,6 +2129,12 @@ schema (Suspend): <suspended schema>`
             {
               "$ref": "#/$defs/myid",
               "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "description": "a non empty string",
+                  "title": "NonEmptyString",
+                  "minLength": 1
+                },
                 "myid": {
                   "type": "object",
                   "description": "mydescription",
@@ -2062,10 +2142,7 @@ schema (Suspend): <suspended schema>`
                   "required": [],
                   "properties": {
                     "a": {
-                      "type": "string",
-                      "description": "a non empty string",
-                      "title": "NonEmptyString",
-                      "minLength": 1
+                      "$ref": "#/$defs/NonEmptyString"
                     }
                   },
                   "additionalProperties": false
@@ -2083,14 +2160,19 @@ schema (Suspend): <suspended schema>`
               a: Schema.optionalWith(Schema.NonEmptyString, { as: "Option" })
             }),
             {
-              "type": "object",
-              "required": [],
-              "properties": {
-                "a": {
+              "$defs": {
+                "NonEmptyString": {
                   "type": "string",
                   "description": "a non empty string",
                   "title": "NonEmptyString",
                   "minLength": 1
+                }
+              },
+              "type": "object",
+              "required": [],
+              "properties": {
+                "a": {
+                  "$ref": "#/$defs/NonEmptyString"
                 }
               },
               "additionalProperties": false
@@ -2106,15 +2188,18 @@ schema (Suspend): <suspended schema>`
             {
               "$ref": "#/$defs/myid",
               "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "description": "a non empty string",
+                  "title": "NonEmptyString",
+                  "minLength": 1
+                },
                 "myid": {
                   "type": "object",
                   "required": [],
                   "properties": {
                     "a": {
-                      "type": "string",
-                      "description": "a non empty string",
-                      "title": "NonEmptyString",
-                      "minLength": 1
+                      "$ref": "#/$defs/NonEmptyString"
                     }
                   },
                   "additionalProperties": false,
@@ -2135,16 +2220,21 @@ schema (Suspend): <suspended schema>`
             a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b"))
           }),
           {
+            "$defs": {
+              "NonEmptyString": {
+                "type": "string",
+                "description": "a non empty string",
+                "title": "NonEmptyString",
+                "minLength": 1
+              }
+            },
             "type": "object",
             "required": [
               "b"
             ],
             "properties": {
               "b": {
-                "type": "string",
-                "description": "a non empty string",
-                "title": "NonEmptyString",
-                "minLength": 1
+                "$ref": "#/$defs/NonEmptyString"
               }
             },
             "additionalProperties": false
@@ -2160,6 +2250,12 @@ schema (Suspend): <suspended schema>`
           {
             "$ref": "#/$defs/myid",
             "$defs": {
+              "NonEmptyString": {
+                "type": "string",
+                "description": "a non empty string",
+                "title": "NonEmptyString",
+                "minLength": 1
+              },
               "myid": {
                 "type": "object",
                 "required": [
@@ -2167,10 +2263,7 @@ schema (Suspend): <suspended schema>`
                 ],
                 "properties": {
                   "b": {
-                    "type": "string",
-                    "description": "a non empty string",
-                    "title": "NonEmptyString",
-                    "minLength": 1
+                    "$ref": "#/$defs/NonEmptyString"
                   }
                 },
                 "additionalProperties": false,
@@ -2224,16 +2317,21 @@ schema (Suspend): <suspended schema>`
           a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
         })),
         {
+          "$defs": {
+            "NonEmptyString": {
+              "type": "string",
+              "description": "a non empty string",
+              "title": "NonEmptyString",
+              "minLength": 1
+            }
+          },
           "contentMediaType": "application/json",
           "contentSchema": {
             "type": "object",
             "required": [],
             "properties": {
               "a": {
-                "type": "string",
-                "description": "a non empty string",
-                "title": "NonEmptyString",
-                "minLength": 1
+                "$ref": "#/$defs/NonEmptyString"
               }
             },
             "additionalProperties": false
@@ -2346,13 +2444,13 @@ schema (Suspend): <suspended schema>`
     expectJSONSchema(
       Schema.DateFromString,
       {
-        $defs: {
+        "$defs": {
           "DateFromString": {
             "type": "string",
             "description": "a string that will be parsed into a Date"
           }
         },
-        $ref: "#/$defs/DateFromString"
+        "$ref": "#/$defs/DateFromString"
       }
     )
   })
@@ -2361,13 +2459,16 @@ schema (Suspend): <suspended schema>`
     expectJSONSchema(
       Schema.Date,
       {
-        $defs: {
+        "$defs": {
+          "Date": {
+            "$ref": "#/$defs/DateFromString"
+          },
           "DateFromString": {
             "type": "string",
             "description": "a string that will be parsed into a Date"
           }
         },
-        $ref: "#/$defs/DateFromString"
+        "$ref": "#/$defs/Date"
       }
     )
   })
