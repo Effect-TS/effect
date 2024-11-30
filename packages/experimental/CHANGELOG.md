@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.32.15
+
+### Patch Changes
+
+- [#4029](https://github.com/Effect-TS/effect/pull/4029) [`5e17400`](https://github.com/Effect-TS/effect/commit/5e1740017cb97026e7f583c5fe71847c606df388) Thanks @gcanti! - Avoid "Cannot access 'ParentSpan' before initialization" error during module initialization
+
 ## 0.32.14
 
 ### Patch Changes
