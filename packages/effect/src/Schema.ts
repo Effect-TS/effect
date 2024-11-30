@@ -8168,14 +8168,16 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
   disableToString?: boolean | undefined
 }): any => {
   const classSymbol = Symbol.for(`effect/Schema/${kind}/${identifier}`)
+
+  const ts = typeSchema(schema)
+  const declarationSurrogate = ts.annotations({ identifier, ...annotations })
+  const typeSide = ts.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Type side)` })
+  const transformationSurrogate = schema.annotations({ ...annotations })
   const validateSchema = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Constructor)` })
-  const encodedSide: Schema.Any = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Encoded side)` })
-  const typeSide = typeSchema(schema).annotations({
-    [AST.AutoTitleAnnotationId]: `${identifier} (Type side)`,
-    identifier,
-    ...annotations
-  })
+  const encodedSide = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Encoded side)` })
+
   const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && ParseResult.is(typeSide)(u)
+
   const klass = class extends Base {
     constructor(
       props: { [x: string | symbol]: unknown } = {},
@@ -8202,6 +8204,7 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
       if (astCache.has(this)) {
         return astCache.get(this)!
       }
+
       const declaration: Schema.Any = declare(
         [typeSide],
         {
@@ -8223,17 +8226,18 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
           // @ts-expect-error
           arbitrary: (arb) => (fc) => arb(fc).map((props) => new this(props)),
           equivalence: identity,
-          [AST.SurrogateAnnotationId]: typeSide.ast,
+          [AST.SurrogateAnnotationId]: declarationSurrogate.ast,
           ...annotations
         }
       )
+
       const transformation = transform(
         encodedSide,
         declaration,
         { strict: true, decode: (input) => new this(input, true), encode: identity }
       ).annotations({
         [AST.JSONIdentifierAnnotationId]: identifier,
-        [AST.SurrogateAnnotationId]: schema.ast
+        [AST.SurrogateAnnotationId]: transformationSurrogate.ast
       })
       astCache.set(this, transformation.ast)
       return transformation.ast
