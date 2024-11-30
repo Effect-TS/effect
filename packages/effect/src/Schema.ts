@@ -4466,61 +4466,61 @@ export const split = (separator: string): transform<typeof String$, Array$<typeo
     { strict: true, decode: string_.split(separator), encode: array_.join(separator) }
   )
 
-function getFieldsTypes(ast: AST.AST, result: {
+function getFieldsTypes(ast: AST.AST, fieldTypes: {
   arrays: Set<string>
-  strings: Set<string>
+  regular: Set<string>
 }, propName?: string): {
   arrays: Set<string>
-  strings: Set<string>
+  regular: Set<string>
 } {
   switch (ast._tag) {
     case "Suspend": {
-      return getFieldsTypes(ast.f(), result, propName)
+      return getFieldsTypes(ast.f(), fieldTypes, propName)
     }
     case "Refinement": {
-      return getFieldsTypes(ast.from, result, propName)
+      return getFieldsTypes(ast.from, fieldTypes, propName)
     }
     case "Union": {
-      return ast.types.reduce((acc, cur) => getFieldsTypes(cur, acc, propName), result)
+      return ast.types.reduce((acc, cur) => getFieldsTypes(cur, acc, propName), fieldTypes)
     }
     case "Transformation": {
-      return getFieldsTypes(ast.from, result, propName)
+      return getFieldsTypes(ast.from, fieldTypes, propName)
     }
     case "TypeLiteral": {
       ast.propertySignatures.forEach((ps) => {
         const psName = ps.name
         if (typeof psName === "string") {
-          getFieldsTypes(ps.type, result, psName)
+          getFieldsTypes(ps.type, fieldTypes, psName)
         }
       })
-      return result
+      return fieldTypes
     }
     case "TupleType": {
       if (propName !== undefined) {
-        result.arrays.add(propName)
+        fieldTypes.arrays.add(propName)
       }
-      return result
+      return fieldTypes
     }
     default: {
       if (propName !== undefined) {
-        result.strings.add(propName)
+        fieldTypes.regular.add(propName)
       }
-      return result
+      return fieldTypes
     }
   }
 }
 
 function compileFormDataToObject(ast: AST.AST) {
-  const fieldsTypes = getFieldsTypes(ast, { arrays: new Set(), strings: new Set() })
+  const fieldsTypes = getFieldsTypes(ast, { arrays: new Set(), regular: new Set() })
 
-  return (fd: FormData): Record<string, string | ReadonlyArray<string>> => {
+  return (fd: FormData): Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>> => {
     const obj: Record<string, any> = {}
     fieldsTypes.arrays.forEach((arrayFieldKey) => (obj[arrayFieldKey] = []))
 
     fd.forEach((value, key) => {
       if (typeof value !== "string") return
 
-      if (fieldsTypes.strings.has(key)) {
+      if (fieldsTypes.regular.has(key)) {
         obj[key] = value
       } else if (fieldsTypes.arrays.has(key)) {
         obj[key].push(value)
@@ -4533,7 +4533,7 @@ function compileFormDataToObject(ast: AST.AST) {
   }
 }
 
-function objectToFormData(obj: Record<string, string | ReadonlyArray<string>>): FormData {
+function objectToFormData(obj: Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>): FormData {
   const fd = new FormData()
   Object.entries(obj).forEach((member) => {
     const [key, value] = member
@@ -4547,10 +4547,10 @@ function objectToFormData(obj: Record<string, string | ReadonlyArray<string>>): 
 }
 
 const formDataParse = (options: {
-  formDataToObject: (fd: FormData) => Record<string, string | ReadonlyArray<string>>
-  objectToFormData: (obj: Record<string, string | ReadonlyArray<string>>) => FormData
+  formDataToObject: (fd: FormData) => Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>
+  objectToFormData: (obj: Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>) => FormData
 }) =>
-<A extends Record<string, string | ReadonlyArray<string>>, R>(
+<A extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>, R>(
   decodeUnknown: ParseResult.DecodeUnknown<A, R>
 ): ParseResult.DeclarationDecodeUnknown<FormData, R> =>
 (u, _options, ast) =>
@@ -4559,15 +4559,15 @@ const formDataParse = (options: {
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 const formDataArbitrary =
-  (objectToFormData: (obj: Record<string, string | ReadonlyArray<string>>) => FormData) =>
-  <A extends Record<string, string | ReadonlyArray<string>>>(
+  (objectToFormData: (obj: Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>) => FormData) =>
+  <A extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>>(
     value: LazyArbitrary<A>
   ): LazyArbitrary<FormData> =>
   (fc) => value(fc).map(objectToFormData)
 
 const formDataEquivalence =
-  (formDataToObject: (fd: FormData) => Record<string, string | ReadonlyArray<string>>) =>
-  <A extends Record<string, string | ReadonlyArray<string>>>(
+  (formDataToObject: (fd: FormData) => Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>) =>
+  <A extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>>(
     isEquivalent: Equivalence.Equivalence<A>
   ) => Equivalence.make<FormData>((a, b) => isEquivalent(formDataToObject(a) as A, formDataToObject(b) as A))
 
@@ -4589,8 +4589,8 @@ export interface FormDataFromSelf<Value extends Schema.Any> extends
  * @since 3.11.0
  */
 export const FormDataFromSelf = <
-  A extends Record<string, string | ReadonlyArray<string>>,
-  I extends Record<string, string | ReadonlyArray<string>>,
+  A extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>,
+  I extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>,
   R
 >(
   value: Schema<A, I, R>
@@ -4633,7 +4633,7 @@ export interface FormData$<Value extends Schema.Any> extends
 /** @ignore */
 const FormData$ = <
   A,
-  I extends Record<string, string | ReadonlyArray<string>>,
+  I extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>,
   R
 >(
   value: Schema<A, I, R>
