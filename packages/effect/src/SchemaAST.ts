@@ -2016,9 +2016,14 @@ export const isTypeLiteralTransformation: (ast: TransformationKind) => ast is Ty
  *
  * @since 3.10.0
  */
-export const annotations = (ast: AST, annotations: Annotations): AST => {
+export const annotations = (ast: AST, a: Annotations): AST => {
   const d = Object.getOwnPropertyDescriptors(ast)
-  d.annotations.value = { ...ast.annotations, ...annotations }
+  const value = { ...ast.annotations, ...a }
+  const surrogate = getSurrogateAnnotation(ast)
+  if (Option.isSome(surrogate)) {
+    value[SurrogateAnnotationId] = annotations(surrogate.value, a)
+  }
+  d.annotations.value = value
   return Object.create(Object.getPrototypeOf(ast), d)
 }
 

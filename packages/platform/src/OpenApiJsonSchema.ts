@@ -375,8 +375,7 @@ const go = (
     return {
       ...go(surrogate.value, $defs, handleIdentifier, path, options),
       // TODO
-      ...(ast._tag === "Transformation" ? getJsonSchemaAnnotations(ast.to) : {}),
-      ...getJsonSchemaAnnotations(ast)
+      ...(ast._tag === "Transformation" ? getJsonSchemaAnnotations(ast.to) : {})
     }
   }
   switch (ast._tag) {

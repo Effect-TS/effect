@@ -8170,7 +8170,11 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
   const classSymbol = Symbol.for(`effect/Schema/${kind}/${identifier}`)
   const validateSchema = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Constructor)` })
   const encodedSide: Schema.Any = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Encoded side)` })
-  const typeSide = typeSchema(schema).annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Type side)` })
+  const typeSide = typeSchema(schema).annotations({
+    [AST.AutoTitleAnnotationId]: `${identifier} (Type side)`,
+    identifier,
+    ...annotations
+  })
   const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && ParseResult.is(typeSide)(u)
   const klass = class extends Base {
     constructor(

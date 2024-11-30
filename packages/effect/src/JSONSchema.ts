@@ -357,10 +357,7 @@ const go = (
   }
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
-    return {
-      ...go(surrogate.value, $defs, handleIdentifier, path, options),
-      ...getJsonSchemaAnnotations(ast)
-    }
+    return go(surrogate.value, $defs, handleIdentifier, path, options)
   }
   switch (ast._tag) {
     case "Declaration":
