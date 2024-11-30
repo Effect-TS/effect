@@ -1977,8 +1977,7 @@ schema (Suspend): <suspended schema>`
                 {
                   "enum": [null]
                 }
-              ],
-              "description": "Option<NonEmptyString>"
+              ]
             }
           },
           "additionalProperties": false

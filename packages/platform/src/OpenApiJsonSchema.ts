@@ -625,30 +625,24 @@ const go = (
           contentSchema: go(ast.to, $defs, handleIdentifier, path, options)
         }
       }
-      // let next = ast.from
-      // if (AST.isTypeLiteralTransformation(ast.transformation)) {
-      //   // Annotations from the transformation are applied unless there are user-defined annotations on the form side,
-      //   // ensuring that the user's intended annotations are included in the generated schema.
-      //   const identifier = AST.getIdentifierAnnotation(ast)
-      //   if (Option.isSome(identifier) && Option.isNone(AST.getIdentifierAnnotation(next))) {
-      //     next = AST.annotations(next, { [AST.IdentifierAnnotationId]: identifier.value })
-      //   }
-      //   const title = AST.getTitleAnnotation(ast)
-      //   if (Option.isSome(title) && Option.isNone(AST.getTitleAnnotation(next))) {
-      //     next = AST.annotations(next, { [AST.TitleAnnotationId]: title.value })
-      //   }
-      //   const description = AST.getDescriptionAnnotation(ast)
-      //   if (Option.isSome(description) && Option.isNone(AST.getDescriptionAnnotation(next))) {
-      //     next = AST.annotations(next, { [AST.DescriptionAnnotationId]: description.value })
-      //   }
-      // }
-      // return go(next, $defs, handleIdentifier, path, options)
-      // TODO
-      return {
-        ...getASTJsonSchemaAnnotations(ast.to),
-        ...go(ast.from, $defs, handleIdentifier, path, options),
-        ...getJsonSchemaAnnotations(ast)
+      let next = ast.from
+      if (AST.isTypeLiteralTransformation(ast.transformation)) {
+        // Annotations from the transformation are applied unless there are user-defined annotations on the form side,
+        // ensuring that the user's intended annotations are included in the generated schema.
+        const identifier = AST.getIdentifierAnnotation(ast)
+        if (Option.isSome(identifier) && Option.isNone(AST.getIdentifierAnnotation(next))) {
+          next = AST.annotations(next, { [AST.IdentifierAnnotationId]: identifier.value })
+        }
+        const title = AST.getTitleAnnotation(ast)
+        if (Option.isSome(title) && Option.isNone(AST.getTitleAnnotation(next))) {
+          next = AST.annotations(next, { [AST.TitleAnnotationId]: title.value })
+        }
+        const description = AST.getDescriptionAnnotation(ast)
+        if (Option.isSome(description) && Option.isNone(AST.getDescriptionAnnotation(next))) {
+          next = AST.annotations(next, { [AST.DescriptionAnnotationId]: description.value })
+        }
       }
+      return go(next, $defs, handleIdentifier, path, options)
     }
   }
 }
