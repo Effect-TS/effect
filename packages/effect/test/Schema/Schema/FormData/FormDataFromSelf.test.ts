@@ -3,7 +3,7 @@ import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
-function objectToFormData(obj: Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>): FormData {
+function objectToFormData(obj: Record<string, string | Blob | ReadonlyArray<string | Blob>>): FormData {
   const fd = new FormData()
   Object.entries(obj).forEach((member) => {
     const [key, value] = member
@@ -18,14 +18,18 @@ function objectToFormData(obj: Record<string, FormDataEntryValue | ReadonlyArray
 }
 
 const FileFromSelf = S.instanceOf(File, {
-  pretty: () => (f) => `File(${f.name})`
+  pretty: () => (f) => `File(${JSON.stringify(f.name)})`
+})
+const BlobFromSelf = S.instanceOf(Blob, {
+  pretty: () => (b) => `Blob(${JSON.stringify({ size: b.size, type: b.type })})`
 })
 
 describe("FormDataFromSelf", () => {
   const _schema = S.Struct({
     str: S.String,
     arr: S.Array(S.String),
-    file: FileFromSelf
+    file: FileFromSelf,
+    blob: BlobFromSelf
   })
   const schema = S.FormDataFromSelf(_schema)
 
@@ -34,7 +38,10 @@ describe("FormDataFromSelf", () => {
   })
 
   it("equivalence", () => {
-    const isEquivalent = S.equivalence(schema)
+    const isEquivalent = S.equivalence(S.FormDataFromSelf(S.Struct({
+      str: S.String,
+      arr: S.Array(S.String)
+    })))
 
     expect(isEquivalent(
       objectToFormData({ str: "str" }),
@@ -66,19 +73,19 @@ describe("FormDataFromSelf", () => {
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(
       schema,
-      objectToFormData({ str: "prop1", file: new File([], "filename.txt") }),
-      objectToFormData({ str: "prop1", file: new File([], "filename.txt") })
+      objectToFormData({ str: "prop1", file: new File([], "filename.txt"), blob: new Blob([]) }),
+      objectToFormData({ str: "prop1", file: new File([], "filename.txt"), blob: new Blob([]) })
     )
     await Util.expectDecodeUnknownSuccess(
       schema,
-      objectToFormData({ str: "prop1", file: new File([], "filename.txt") }),
-      objectToFormData({ str: "prop1", file: new File([], "filename.txt"), arr: [] })
+      objectToFormData({ str: "prop1", file: new File([], "filename.txt"), blob: new Blob([]) }),
+      objectToFormData({ str: "prop1", file: new File([], "filename.txt"), arr: [], blob: new Blob([]) })
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       objectToFormData({}),
-      `FormData<{ readonly str: string; readonly arr: ReadonlyArray<string>; readonly file: File }>
-└─ { readonly str: string; readonly arr: ReadonlyArray<string>; readonly file: File }
+      `FormData<{ readonly str: string; readonly arr: ReadonlyArray<string>; readonly file: File; readonly blob: Blob }>
+└─ { readonly str: string; readonly arr: ReadonlyArray<string>; readonly file: File; readonly blob: Blob }
    └─ ["str"]
       └─ is missing`
     )
@@ -89,11 +96,13 @@ describe("FormDataFromSelf", () => {
       schema,
       objectToFormData({
         str: "str",
-        file: new File([], "filename.txt")
+        file: new File([], "filename.txt"),
+        blob: new Blob([])
       }),
       objectToFormData({
         str: "str",
-        file: new File([], "filename.txt")
+        file: new File([], "filename.txt"),
+        blob: new Blob([])
       })
     )
     await Util.expectEncodeSuccess(
@@ -101,11 +110,17 @@ describe("FormDataFromSelf", () => {
       objectToFormData({
         str: "str",
         file: new File([], "filename.txt"),
+        blob: new Blob([], {
+          type: "blobType"
+        }),
         arr: []
       }),
       objectToFormData({
         str: "str",
-        file: new File([], "filename.txt")
+        file: new File([], "filename.txt"),
+        blob: new Blob([], {
+          type: "blobType"
+        })
       })
     )
   })
@@ -117,8 +132,13 @@ describe("FormDataFromSelf", () => {
       arr: ["arr1", "arr2"],
       prop1: ["el1", "el2"],
       prop2: "prop2",
-      file: new File([], "filename.txt")
+      file: new File([], "filename.txt"),
+      blob: new Blob([], {
+        type: "blobType"
+      })
     })
-    expect(pretty(fd)).toEqual(`FormData({ "str": "str", "arr": ["arr1", "arr2"], "file": File(filename.txt) })`)
+    expect(pretty(fd)).toEqual(
+      `FormData({ "str": "str", "arr": ["arr1", "arr2"], "file": File("filename.txt"), "blob": Blob({"size":0,"type":"blobtype"}) })`
+    )
   })
 })

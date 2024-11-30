@@ -4513,7 +4513,7 @@ function getFieldsTypes(ast: AST.AST, fieldTypes: {
 function compileFormDataToObject(ast: AST.AST) {
   const fieldsTypes = getFieldsTypes(ast, { arrays: new Set(), regular: new Set() })
 
-  return (fd: FormData): Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>> => {
+  return (fd: FormData): Record<string, string | Blob | ReadonlyArray<string | Blob>> => {
     const obj: Record<string, any> = {}
     fieldsTypes.arrays.forEach((arrayFieldKey) => (obj[arrayFieldKey] = []))
 
@@ -4531,7 +4531,7 @@ function compileFormDataToObject(ast: AST.AST) {
   }
 }
 
-function objectToFormData(obj: Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>): FormData {
+function objectToFormData(obj: Record<string, string | Blob | ReadonlyArray<string | Blob>>): FormData {
   const fd = new FormData()
   Object.entries(obj).forEach((member) => {
     const [key, value] = member
@@ -4545,10 +4545,10 @@ function objectToFormData(obj: Record<string, FormDataEntryValue | ReadonlyArray
 }
 
 const formDataParse = (options: {
-  formDataToObject: (fd: FormData) => Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>
-  objectToFormData: (obj: Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>) => FormData
+  formDataToObject: (fd: FormData) => Record<string, string | Blob | ReadonlyArray<string | Blob>>
+  objectToFormData: (obj: Record<string, string | Blob | ReadonlyArray<string | Blob>>) => FormData
 }) =>
-<A extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>, R>(
+<A extends Record<string, string | Blob | ReadonlyArray<string | Blob>>, R>(
   decodeUnknown: ParseResult.DecodeUnknown<A, R>
 ): ParseResult.DeclarationDecodeUnknown<FormData, R> =>
 (u, _options, ast) =>
@@ -4557,15 +4557,15 @@ const formDataParse = (options: {
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 const formDataArbitrary =
-  (objectToFormData: (obj: Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>) => FormData) =>
-  <A extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>>(
+  (objectToFormData: (obj: Record<string, string | Blob | ReadonlyArray<string | Blob>>) => FormData) =>
+  <A extends Record<string, string | Blob | ReadonlyArray<string | Blob>>>(
     value: LazyArbitrary<A>
   ): LazyArbitrary<FormData> =>
   (fc) => value(fc).map(objectToFormData)
 
 const formDataEquivalence =
-  (formDataToObject: (fd: FormData) => Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>) =>
-  <A extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>>(
+  (formDataToObject: (fd: FormData) => Record<string, string | Blob | ReadonlyArray<string | Blob>>) =>
+  <A extends Record<string, string | Blob | ReadonlyArray<string | Blob>>>(
     isEquivalent: Equivalence.Equivalence<A>
   ) => Equivalence.make<FormData>((a, b) => isEquivalent(formDataToObject(a) as A, formDataToObject(b) as A))
 
@@ -4587,8 +4587,8 @@ export interface FormDataFromSelf<Value extends Schema.Any> extends
  * @since 3.11.0
  */
 export const FormDataFromSelf = <
-  A extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>,
-  I extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>,
+  A extends Record<string, string | Blob | ReadonlyArray<string | Blob>>,
+  I extends Record<string, string | Blob | ReadonlyArray<string | Blob>>,
   R
 >(
   value: Schema<A, I, R>
@@ -4631,7 +4631,7 @@ export interface FormData$<Value extends Schema.Any> extends
 /** @ignore */
 const FormData$ = <
   A,
-  I extends Record<string, FormDataEntryValue | ReadonlyArray<FormDataEntryValue>>,
+  I extends Record<string, string | Blob | ReadonlyArray<string | Blob>>,
   R
 >(
   value: Schema<A, I, R>
