@@ -4444,15 +4444,22 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("extend", () => {
     it("should correctly generate JSON Schemas for a schema created by extending two refinements", () => {
-      // TODO: why expectJsonSchemaAnnotations raises an error?
-      expectJSONSchemaProperty(
+      expectJsonSchemaAnnotations(
         Schema.Struct({
           a: Schema.String
-        }).pipe(Schema.filter(() => true, { jsonSchema: { description: "c5052c04-d6c9-44f3-9c8f-ede707d6ce38" } }))
+        }).pipe(
+          Schema.filter(() => true, {
+            jsonSchema: { "c5052c04-d6c9-44f3-9c8f-ede707d6ce38": "c5052c04-d6c9-44f3-9c8f-ede707d6ce38" }
+          })
+        )
           .pipe(Schema.extend(
             Schema.Struct({
               b: JsonNumber
-            }).pipe(Schema.filter(() => true, { jsonSchema: { title: "940b4ea4-6313-4b59-9e64-ff7a41b8eb15" } }))
+            }).pipe(
+              Schema.filter(() => true, {
+                jsonSchema: { "940b4ea4-6313-4b59-9e64-ff7a41b8eb15": "940b4ea4-6313-4b59-9e64-ff7a41b8eb15" }
+              })
+            )
           )),
         {
           "type": "object",
@@ -4461,8 +4468,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "a": { "type": "string" },
             "b": { "type": "number" }
           },
-          "description": "c5052c04-d6c9-44f3-9c8f-ede707d6ce38",
-          "title": "940b4ea4-6313-4b59-9e64-ff7a41b8eb15",
+          "c5052c04-d6c9-44f3-9c8f-ede707d6ce38": "c5052c04-d6c9-44f3-9c8f-ede707d6ce38",
+          "940b4ea4-6313-4b59-9e64-ff7a41b8eb15": "940b4ea4-6313-4b59-9e64-ff7a41b8eb15",
           "additionalProperties": false
         }
       )
