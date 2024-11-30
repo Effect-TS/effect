@@ -1,5 +1,12 @@
 # @effect/sql-libsql
 
+## 0.10.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/sql@0.21.2
+
 ## 0.10.1
 
 ### Patch Changes

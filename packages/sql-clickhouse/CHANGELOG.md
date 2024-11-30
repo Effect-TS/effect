@@ -1,5 +1,12 @@
 # @effect/sql-clickhouse
 
+## 0.6.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/sql@0.21.2
+
 ## 0.6.1
 
 ### Patch Changes
