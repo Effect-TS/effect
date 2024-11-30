@@ -64,7 +64,11 @@ export const Span: Schema.Schema<Span, SpanFrom> = Schema.Struct({
   sampled: Schema.Boolean,
   attributes: Schema.ReadonlyMap({ key: Schema.String, value: Schema.Unknown }),
   status: SpanStatus,
-  parent: Schema.Option(Schema.suspend(() => ParentSpan))
+  parent: Schema.Option(
+    Schema.suspend(() => ParentSpan)
+      // add a title annotation to avoid "Cannot access 'ParentSpan' before initialization" error during module initialization
+      .annotations({ title: "ParentSpan" })
+  )
 })
 
 /**
