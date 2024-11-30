@@ -345,7 +345,7 @@ const go = (
       const t = AST.getTransformationFrom(ast)
       if (t === undefined) {
         return {
-          ...go(ast.from, $defs, false, path, options),
+          ...go(ast.from, $defs, handleIdentifier, path, options),
           ...getJsonSchemaAnnotations(ast),
           ...handler
         }
@@ -358,7 +358,7 @@ const go = (
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
     return {
-      ...go(surrogate.value, $defs, false, path, options),
+      ...go(surrogate.value, $defs, handleIdentifier, path, options),
       ...getJsonSchemaAnnotations(ast)
     }
   }

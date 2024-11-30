@@ -360,7 +360,7 @@ const go = (
       const t = getTransformationFrom(ast)
       if (t === undefined) {
         return {
-          ...go(ast.from, $defs, false, path, options),
+          ...go(ast.from, $defs, handleIdentifier, path, options),
           ...getJsonSchemaAnnotations(ast),
           ...handler
         }
@@ -373,7 +373,7 @@ const go = (
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
     return {
-      ...go(surrogate.value, $defs, false, path, options),
+      ...go(surrogate.value, $defs, handleIdentifier, path, options),
       // TODO
       ...(ast._tag === "Transformation" ? getJsonSchemaAnnotations(ast.to) : {}),
       ...getJsonSchemaAnnotations(ast)
@@ -616,10 +616,7 @@ const go = (
       if (Option.isNone(identifier)) {
         throw new Error(getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
       }
-      return {
-        ...go(ast.f(), $defs, true, path, options),
-        ...getJsonSchemaAnnotations(ast)
-      }
+      return go(ast.f(), $defs, handleIdentifier, path, options)
     }
     case "Transformation": {
       // Properly handle S.parseJson transformations by focusing on
@@ -630,13 +627,31 @@ const go = (
         return {
           type: "string",
           contentMediaType: "application/json",
-          contentSchema: go(ast.to, $defs, true, path, options),
-          ...getJsonSchemaAnnotations(ast)
+          contentSchema: go(ast.to, $defs, handleIdentifier, path, options)
         }
       }
+      // let next = ast.from
+      // if (AST.isTypeLiteralTransformation(ast.transformation)) {
+      //   // Annotations from the transformation are applied unless there are user-defined annotations on the form side,
+      //   // ensuring that the user's intended annotations are included in the generated schema.
+      //   const identifier = AST.getIdentifierAnnotation(ast)
+      //   if (Option.isSome(identifier) && Option.isNone(AST.getIdentifierAnnotation(next))) {
+      //     next = AST.annotations(next, { [AST.IdentifierAnnotationId]: identifier.value })
+      //   }
+      //   const title = AST.getTitleAnnotation(ast)
+      //   if (Option.isSome(title) && Option.isNone(AST.getTitleAnnotation(next))) {
+      //     next = AST.annotations(next, { [AST.TitleAnnotationId]: title.value })
+      //   }
+      //   const description = AST.getDescriptionAnnotation(ast)
+      //   if (Option.isSome(description) && Option.isNone(AST.getDescriptionAnnotation(next))) {
+      //     next = AST.annotations(next, { [AST.DescriptionAnnotationId]: description.value })
+      //   }
+      // }
+      // return go(next, $defs, handleIdentifier, path, options)
+      // TODO
       return {
         ...getASTJsonSchemaAnnotations(ast.to),
-        ...go(ast.from, $defs, true, path, options),
+        ...go(ast.from, $defs, handleIdentifier, path, options),
         ...getJsonSchemaAnnotations(ast)
       }
     }
