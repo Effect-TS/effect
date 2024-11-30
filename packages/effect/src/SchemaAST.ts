@@ -2670,7 +2670,8 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
           return new Refinement(from, ast.filter, ast.annotations)
         }
       }
-      return from
+      const identifier = createJSONIdentifierAnnotation(ast)
+      return identifier ? annotations(from, identifier) : from
     }
     case "Transformation": {
       const identifier = createJSONIdentifierAnnotation(ast)

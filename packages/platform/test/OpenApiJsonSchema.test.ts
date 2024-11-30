@@ -2062,11 +2062,16 @@ schema (Suspend): <suspended schema>`
             "additionalProperties": false
           })
           expectJSONSchemaProperty(Schema.encodedSchema(schema), {
+            "$defs": {
+              "NonEmptyString": {
+                "type": "string"
+              }
+            },
             "type": "object",
             "required": [],
             "properties": {
               "a": {
-                "type": "string"
+                "$ref": "#/$defs/NonEmptyString"
               }
             },
             "additionalProperties": false
@@ -5337,98 +5342,403 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
   })
 
-  describe("Schema.encodedBoundSchema", () => {
-    it("Refinement", () => {
-      const schema = Schema.Array(Schema.NumberFromString).pipe(Schema.minItems(2)).annotations(
-        { identifier: "7848c831-fa50-4e36-aee8-65d2648c0120" }
-      )
-      expectJSONSchema(Schema.encodedBoundSchema(schema), {
-        "$defs": {
-          "7848c831-fa50-4e36-aee8-65d2648c0120": {
-            "description": "an array of at least 2 items",
-            "items": {
-              "$ref": "#/$defs/NumberFromString"
-            },
-            "minItems": 2,
-            "type": "array"
-          },
-          "NumberFromString": {
-            "description": "a string that will be parsed into a number",
-            "type": "string"
-          }
-        },
-        "$ref": "#/$defs/7848c831-fa50-4e36-aee8-65d2648c0120"
-      })
-    })
-
-    it("should apply a stable filter only if the from part doesn't contain a transformation", () => {
-      const schema = Schema.Unknown.pipe(Schema.compose(Schema.Array(Schema.String)), Schema.minItems(1))
-      expectJSONSchema(Schema.encodedBoundSchema(schema), {
-        "$id": "/schemas/unknown",
-        "title": "unknown"
-      })
-    })
-
-    describe("should borrow the identifier", () => {
-      it("Suspend", () => {
-        interface Category {
-          readonly name: string
-          readonly categories: ReadonlyArray<Category>
-        }
-
-        const schema: Schema.Schema<Category> = Schema.Struct({
-          name: Schema.String,
-          categories: Schema.Array(
-            Schema.suspend(() => schema).annotations({ identifier: "9456cebc-bb96-4fe7-8766-cc1e0f0bb823" })
-          )
-        })
-
-        expectJSONSchema(Schema.encodedBoundSchema(schema), {
-          "type": "object",
-          "required": [
-            "name",
-            "categories"
-          ],
-          "properties": {
-            "name": {
-              "type": "string"
-            },
-            "categories": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/9456cebc-bb96-4fe7-8766-cc1e0f0bb823"
-              }
-            }
-          },
-          "additionalProperties": false,
-          "$defs": {
-            "9456cebc-bb96-4fe7-8766-cc1e0f0bb823": {
-              "type": "object",
-              "required": [
-                "name",
-                "categories"
-              ],
-              "properties": {
-                "name": {
+  describe("Schema.encodedBoundSchema / Schema.encodedSchema", () => {
+    describe("borrowing the identifier", () => {
+      describe("Declaration", () => {
+        it("without inner transformation", () => {
+          const schema = Schema.Chunk(Schema.String).annotations({ identifier: "72e47719-6e43-4498-abfb-b8d98b233e55" })
+          const expected = {
+            "$defs": {
+              "72e47719-6e43-4498-abfb-b8d98b233e55": {
+                "items": {
                   "type": "string"
                 },
-                "categories": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/$defs/9456cebc-bb96-4fe7-8766-cc1e0f0bb823"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
+                "type": "array"
+              }
+            },
+            "$ref": "#/$defs/72e47719-6e43-4498-abfb-b8d98b233e55"
           }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+
+        it("with inner transformation", () => {
+          const schema = Schema.Chunk(Schema.NumberFromString).annotations({
+            identifier: "e4be2cb9-227a-4160-b4a6-d2e3db09eb24"
+          })
+          const expected = {
+            "$defs": {
+              "NumberFromString": {
+                "description": "a string that will be parsed into a number",
+                "type": "string"
+              },
+              "e4be2cb9-227a-4160-b4a6-d2e3db09eb24": {
+                "items": {
+                  "$ref": "#/$defs/NumberFromString"
+                },
+                "type": "array"
+              }
+            },
+            "$ref": "#/$defs/e4be2cb9-227a-4160-b4a6-d2e3db09eb24"
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
         })
       })
-    })
 
-    describe("Transformation", () => {
-      it("NumberFromString", () => {
-        expectJSONSchemaProperty(Schema.encodedBoundSchema(Schema.NumberFromString), {
+      describe("Refinement", () => {
+        it("without from transformation", () => {
+          const schema = Schema.Trimmed
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
+            "$defs": {
+              "Trimmed": {
+                "description": "a string with no leading or trailing whitespace",
+                "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
+                "title": "Trimmed",
+                "type": "string"
+              }
+            },
+            "$ref": "#/$defs/Trimmed"
+          })
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), {
+            "$defs": {
+              "Trimmed": {
+                "type": "string"
+              }
+            },
+            "$ref": "#/$defs/Trimmed"
+          })
+        })
+
+        it("with from transformation", () => {
+          const schema = Schema.compose(Schema.String, Schema.Trimmed).annotations({
+            identifier: "29840acc-99d1-41c6-82dd-31932521e7ea"
+          })
+          const expected = {
+            "$defs": {
+              "29840acc-99d1-41c6-82dd-31932521e7ea": {
+                "type": "string"
+              }
+            },
+            "$ref": "#/$defs/29840acc-99d1-41c6-82dd-31932521e7ea"
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+
+        it("a stable filter without inner transformations", () => {
+          const schema = Schema.Array(Schema.NumberFromString).pipe(Schema.minItems(2)).annotations(
+            { identifier: "7848c831-fa50-4e36-aee8-65d2648c0120" }
+          )
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
+            "$defs": {
+              "7848c831-fa50-4e36-aee8-65d2648c0120": {
+                "description": "an array of at least 2 items",
+                "items": {
+                  "$ref": "#/$defs/NumberFromString"
+                },
+                "minItems": 2,
+                "type": "array"
+              },
+              "NumberFromString": {
+                "description": "a string that will be parsed into a number",
+                "type": "string"
+              }
+            },
+            "$ref": "#/$defs/7848c831-fa50-4e36-aee8-65d2648c0120"
+          })
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), {
+            "$defs": {
+              "7848c831-fa50-4e36-aee8-65d2648c0120": {
+                "items": {
+                  "$ref": "#/$defs/NumberFromString"
+                },
+                "type": "array"
+              },
+              "NumberFromString": {
+                "description": "a string that will be parsed into a number",
+                "type": "string"
+              }
+            },
+            "$ref": "#/$defs/7848c831-fa50-4e36-aee8-65d2648c0120"
+          })
+        })
+
+        it("a stable filter with inner transformations SHOULD NOT borrow the annotations, identifier included", () => {
+          const schema = Schema.compose(Schema.Unknown, Schema.Array(Schema.String)).pipe(Schema.minItems(1))
+          const expected = {
+            "$id": "/schemas/unknown",
+            "title": "unknown"
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+      })
+
+      describe("Tuple", () => {
+        it("without inner transformations", () => {
+          const schema = Schema.Tuple(Schema.String).annotations({
+            identifier: "4d8bbca3-9462-4679-8ee6-e4e718711552"
+          })
+          const expected = {
+            "$defs": {
+              "4d8bbca3-9462-4679-8ee6-e4e718711552": {
+                "additionalItems": false,
+                "items": [{ "type": "string" }],
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "$ref": "#/$defs/4d8bbca3-9462-4679-8ee6-e4e718711552"
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+
+        it("with inner transformations", () => {
+          const schema = Schema.Tuple(Schema.NumberFromString).annotations({
+            identifier: "5f699d98-b193-4436-9ac5-145a532a2b4d"
+          })
+          const expected = {
+            "$defs": {
+              "NumberFromString": {
+                "description": "a string that will be parsed into a number",
+                "type": "string"
+              },
+              "5f699d98-b193-4436-9ac5-145a532a2b4d": {
+                "additionalItems": false,
+                "items": [{ "$ref": "#/$defs/NumberFromString" }],
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "$ref": "#/$defs/5f699d98-b193-4436-9ac5-145a532a2b4d"
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+      })
+
+      describe("Struct", () => {
+        it("without inner transformations", () => {
+          const schema = Schema.Struct({ a: Schema.String }).annotations({
+            identifier: "c8d0663b-c41b-4b6f-8b6e-bff59afc87c3"
+          })
+          const expected = {
+            "$defs": {
+              "c8d0663b-c41b-4b6f-8b6e-bff59afc87c3": {
+                "additionalProperties": false,
+                "properties": {
+                  "a": { "type": "string" }
+                },
+                "required": ["a"],
+                "type": "object"
+              }
+            },
+            "$ref": "#/$defs/c8d0663b-c41b-4b6f-8b6e-bff59afc87c3"
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+
+        it("with inner transformations", () => {
+          const schema = Schema.Struct({ a: Schema.NumberFromString }).annotations({
+            identifier: "bc516245-69d0-4671-82e1-8629a656e99a"
+          })
+          const expected = {
+            "$defs": {
+              "NumberFromString": {
+                "description": "a string that will be parsed into a number",
+                "type": "string"
+              },
+              "bc516245-69d0-4671-82e1-8629a656e99a": {
+                "additionalProperties": false,
+                "properties": {
+                  "a": {
+                    "$ref": "#/$defs/NumberFromString"
+                  }
+                },
+                "required": ["a"],
+                "type": "object"
+              }
+            },
+            "$ref": "#/$defs/bc516245-69d0-4671-82e1-8629a656e99a"
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+      })
+
+      describe("Union", () => {
+        it("without inner transformations", () => {
+          const schema = Schema.Union(Schema.String, Schema.Number).annotations({
+            identifier: "c0c853a6-9029-49d9-9a63-08aa542ec7da"
+          })
+          const expected = {
+            "$defs": {
+              "c0c853a6-9029-49d9-9a63-08aa542ec7da": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "number" }
+                ]
+              }
+            },
+            "$ref": "#/$defs/c0c853a6-9029-49d9-9a63-08aa542ec7da"
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+
+        it("with inner transformations", () => {
+          const schema = Schema.Union(Schema.String, Schema.NumberFromString).annotations({
+            identifier: "a9c6e11c-e1a2-482e-9748-e0ce161b926a"
+          })
+          const expected = {
+            "$defs": {
+              "NumberFromString": {
+                "description": "a string that will be parsed into a number",
+                "type": "string"
+              },
+              "a9c6e11c-e1a2-482e-9748-e0ce161b926a": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "$ref": "#/$defs/NumberFromString" }
+                ]
+              }
+            },
+            "$ref": "#/$defs/a9c6e11c-e1a2-482e-9748-e0ce161b926a"
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+      })
+
+      describe("Suspend", () => {
+        it("without inner transformations", () => {
+          interface Category {
+            readonly name: string
+            readonly categories: ReadonlyArray<Category>
+          }
+
+          const schema: Schema.Schema<Category> = Schema.Struct({
+            name: Schema.String,
+            categories: Schema.Array(
+              Schema.suspend(() => schema).annotations({ identifier: "9456cebc-bb96-4fe7-8766-cc1e0f0bb823" })
+            )
+          })
+
+          const expected = {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/9456cebc-bb96-4fe7-8766-cc1e0f0bb823"
+                }
+              }
+            },
+            "additionalProperties": false,
+            "$defs": {
+              "9456cebc-bb96-4fe7-8766-cc1e0f0bb823": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categories"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/9456cebc-bb96-4fe7-8766-cc1e0f0bb823"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+
+        it("with inner transformations", () => {
+          interface Category {
+            readonly name: number
+            readonly categories: ReadonlyArray<Category>
+          }
+          interface CategoryEncoded {
+            readonly name: string
+            readonly categories: ReadonlyArray<CategoryEncoded>
+          }
+
+          const schema: Schema.Schema<Category, CategoryEncoded> = Schema.Struct({
+            name: Schema.NumberFromString,
+            categories: Schema.Array(
+              Schema.suspend(() => schema).annotations({ identifier: "1e7880a8-555c-46e9-8b58-500e441134bf" })
+            )
+          })
+
+          const expected = {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/NumberFromString"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/1e7880a8-555c-46e9-8b58-500e441134bf"
+                }
+              }
+            },
+            "additionalProperties": false,
+            "$defs": {
+              "NumberFromString": {
+                "description": "a string that will be parsed into a number",
+                "type": "string"
+              },
+              "1e7880a8-555c-46e9-8b58-500e441134bf": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categories"
+                ],
+                "properties": {
+                  "name": {
+                    "$ref": "#/$defs/NumberFromString"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/1e7880a8-555c-46e9-8b58-500e441134bf"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+        })
+      })
+
+      it("Transformation", () => {
+        const expected = {
           "$defs": {
             "NumberFromString": {
               "type": "string",
@@ -5436,80 +5746,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             }
           },
           "$ref": "#/$defs/NumberFromString"
-        })
-      })
-    })
-  })
-
-  describe("Schema.encodedSchema", () => {
-    describe("should borrow the identifier", () => {
-      it("Suspend", () => {
-        interface Category {
-          readonly name: string
-          readonly categories: ReadonlyArray<Category>
         }
-
-        const schema: Schema.Schema<Category> = Schema.Struct({
-          name: Schema.String,
-          categories: Schema.Array(
-            Schema.suspend(() => schema).annotations({ identifier: "0956eb10-753b-4ac5-a90b-ebb39d95541d" })
-          )
-        })
-
-        expectJSONSchema(Schema.encodedSchema(schema), {
-          "type": "object",
-          "required": [
-            "name",
-            "categories"
-          ],
-          "properties": {
-            "name": {
-              "type": "string"
-            },
-            "categories": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/0956eb10-753b-4ac5-a90b-ebb39d95541d"
-              }
-            }
-          },
-          "additionalProperties": false,
-          "$defs": {
-            "0956eb10-753b-4ac5-a90b-ebb39d95541d": {
-              "type": "object",
-              "required": [
-                "name",
-                "categories"
-              ],
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "categories": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/$defs/0956eb10-753b-4ac5-a90b-ebb39d95541d"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          }
-        })
-      })
-    })
-
-    describe("Transformation", () => {
-      it("NumberFromString", () => {
-        expectJSONSchemaProperty(Schema.encodedSchema(Schema.NumberFromString), {
-          "$defs": {
-            "NumberFromString": {
-              "type": "string",
-              "description": "a string that will be parsed into a number"
-            }
-          },
-          "$ref": "#/$defs/NumberFromString"
-        })
+        expectJSONSchemaProperty(Schema.encodedBoundSchema(Schema.NumberFromString), expected)
+        expectJSONSchemaProperty(Schema.encodedSchema(Schema.NumberFromString), expected)
       })
     })
   })
