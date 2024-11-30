@@ -1,4 +1,3 @@
-import * as MultipartNode from "@effect/platform-node-shared/NodeMultipart"
 import * as Cookies from "@effect/platform/Cookies"
 import * as Etag from "@effect/platform/Etag"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
@@ -28,9 +27,9 @@ import type { ReadonlyRecord } from "effect/Record"
 import type * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { Readable } from "node:stream"
 import * as BunContext from "../BunContext.js"
 import * as Platform from "../BunHttpPlatform.js"
+import * as MultipartBun from "./multipart.js"
 
 /** @internal */
 export const make = (
@@ -343,13 +342,13 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
       return this.multipartEffect
     }
     this.multipartEffect = Effect.runSync(Effect.cached(
-      MultipartNode.persisted(Readable.fromWeb(this.source.body! as any), this.headers)
+      MultipartBun.persisted(this.source)
     ))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return MultipartNode.stream(Readable.fromWeb(this.source.body! as any), this.headers)
+    return MultipartBun.stream(this.source)
   }
 
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.RequestError> | undefined
