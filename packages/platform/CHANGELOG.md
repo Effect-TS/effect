@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.69.31
+
+### Patch Changes
+
+- [#4035](https://github.com/Effect-TS/effect/pull/4035) [`e6d4a37`](https://github.com/Effect-TS/effect/commit/e6d4a37c1d7e657b5ea44063a1cf586808228fe5) Thanks @tim-smart! - add template literal api for defining HttpApiEndpoint path schema
+
 ## 0.69.30
 
 ### Patch Changes
