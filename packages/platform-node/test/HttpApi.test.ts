@@ -282,14 +282,11 @@ class Authorization extends HttpApiMiddleware.Tag<Authorization>()("Authorizatio
 
 class GroupsApi extends HttpApiGroup.make("groups")
   .add(
-    HttpApiEndpoint.get("findById", "/:id")
-      .setPath(Schema.Struct({
-        id: Schema.NumberFromString
-      }))
+    HttpApiEndpoint.get("findById")`/${HttpApiSchema.param("id", Schema.NumberFromString)}`
       .addSuccess(Group)
   )
   .add(
-    HttpApiEndpoint.post("create", "/")
+    HttpApiEndpoint.post("create")`/`
       .setPayload(Schema.Union(
         Schema.Struct(Struct.pick(Group.fields, "name")),
         Schema.Struct({ foo: Schema.String }).pipe(
@@ -309,14 +306,11 @@ class GroupsApi extends HttpApiGroup.make("groups")
 
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("findById", "/:id")
-      .setPath(Schema.Struct({
-        id: Schema.NumberFromString
-      }))
+    HttpApiEndpoint.get("findById")`/${HttpApiSchema.param("id", Schema.NumberFromString)}`
       .addSuccess(User)
   )
   .add(
-    HttpApiEndpoint.post("create", "/")
+    HttpApiEndpoint.post("create")`/`
       .setPayload(Schema.Struct(Struct.omit(
         User.fields,
         "id",
@@ -329,7 +323,7 @@ class UsersApi extends HttpApiGroup.make("users")
       .addError(UserError)
   )
   .add(
-    HttpApiEndpoint.get("list", "/")
+    HttpApiEndpoint.get("list")`/`
       .setHeaders(Schema.Struct({
         page: Schema.NumberFromString.pipe(
           Schema.optionalWith({ default: () => 1 })
@@ -342,7 +336,7 @@ class UsersApi extends HttpApiGroup.make("users")
       .annotateContext(OpenApi.annotations({ identifier: "listUsers" }))
   )
   .add(
-    HttpApiEndpoint.post("upload", "/upload")
+    HttpApiEndpoint.post("upload")`/upload`
       .setPayload(HttpApiSchema.Multipart(Schema.Struct({
         file: Multipart.SingleFileSchema
       })))

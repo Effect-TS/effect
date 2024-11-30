@@ -40,10 +40,7 @@ export class Authentication extends HttpApiMiddleware.Tag<Authentication>()("Aut
 
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("findById", "/:id")
-      .setPath(Schema.Struct({
-        id: Schema.NumberFromString
-      }))
+    HttpApiEndpoint.get("findById")`/${HttpApiSchema.param("id", Schema.NumberFromString)}`
       .addSuccess(User)
       .setHeaders(Schema.Struct({
         page: Schema.NumberFromString.pipe(
