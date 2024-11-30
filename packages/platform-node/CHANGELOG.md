@@ -1,5 +1,15 @@
 # @effect/platform-node
 
+## 0.64.32
+
+### Patch Changes
+
+- [#4025](https://github.com/Effect-TS/effect/pull/4025) [`270f199`](https://github.com/Effect-TS/effect/commit/270f199b31810fd643e4c22818698adcbdb5d396) Thanks @tim-smart! - update OpenApi version to 3.1.0
+
+- Updated dependencies [[`270f199`](https://github.com/Effect-TS/effect/commit/270f199b31810fd643e4c22818698adcbdb5d396)]:
+  - @effect/platform@0.69.30
+  - @effect/platform-node-shared@0.19.31
+
 ## 0.64.31
 
 ### Patch Changes
