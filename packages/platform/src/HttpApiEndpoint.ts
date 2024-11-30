@@ -628,6 +628,47 @@ export declare namespace HttpApiEndpoint {
       _RE | HttpApiMiddleware.HttpApiMiddleware.ErrorContext<R>
     > :
     never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type PathEntries<Schemas extends ReadonlyArray<HttpApiSchema.AnyString>> =
+    Extract<keyof Schemas, string> extends infer K ?
+      K extends keyof Schemas ? Schemas[K] extends HttpApiSchema.Param<infer _Name, infer _S> ? [_Name, _S] :
+        Schemas[K] extends HttpApiSchema.AnyString ? [K, Schemas[K]]
+        : never
+      : never
+      : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ExtractPath<Schemas extends ReadonlyArray<HttpApiSchema.AnyString>> = {
+    readonly [Entry in PathEntries<Schemas> as Entry[0]]: Entry[1]["Type"]
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Constructor<Name extends string, Method extends HttpMethod> = <
+    const Schemas extends ReadonlyArray<HttpApiSchema.AnyString>
+  >(
+    segments: TemplateStringsArray,
+    ...schemas: Schemas
+  ) => HttpApiEndpoint<
+    Name,
+    Method,
+    Schemas["length"] extends 0 ? never : Types.Simplify<ExtractPath<Schemas>>,
+    never,
+    never,
+    never,
+    void,
+    never,
+    Schemas[number]["Context"]
+  >
 }
 
 const Proto = {
@@ -753,66 +794,115 @@ const makeProto = <
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Method extends HttpMethod>(method: Method) =>
-<const Name extends string>(
-  name: Name,
-  path: HttpRouter.PathInput
-): HttpApiEndpoint<Name, Method> =>
-  makeProto({
-    name,
-    path,
-    method,
-    pathSchema: Option.none(),
-    urlParamsSchema: Option.none(),
-    payloadSchema: Option.none(),
-    headersSchema: Option.none(),
-    successSchema: HttpApiSchema.NoContent as any,
-    errorSchema: Schema.Never as any,
-    annotations: Context.empty(),
-    middlewares: new Set()
-  })
+export const make = <Method extends HttpMethod>(method: Method): {
+  <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, Method>
+  <const Name extends string>(name: Name, path: HttpRouter.PathInput): HttpApiEndpoint<Name, Method>
+} =>
+  ((name: string, ...args: [HttpRouter.PathInput]) => {
+    if (args.length === 1) {
+      return makeProto({
+        name,
+        path: args[0],
+        method,
+        pathSchema: Option.none(),
+        urlParamsSchema: Option.none(),
+        payloadSchema: Option.none(),
+        headersSchema: Option.none(),
+        successSchema: HttpApiSchema.NoContent as any,
+        errorSchema: Schema.Never as any,
+        annotations: Context.empty(),
+        middlewares: new Set()
+      })
+    }
+    return (segments: TemplateStringsArray, ...schemas: ReadonlyArray<HttpApiSchema.AnyString>) => {
+      let path = segments[0] as HttpRouter.PathInput
+      let pathSchema = Option.none<Schema.Schema.Any>()
+      if (schemas.length > 0) {
+        const obj: Record<string, Schema.Schema.Any> = {}
+        for (let i = 0; i < schemas.length; i++) {
+          const schema = schemas[i]
+          const key = HttpApiSchema.getParam(schema.ast) ?? String(i)
+          obj[key] = schema
+          path += `:${key}${segments[i + 1]}`
+        }
+        pathSchema = Option.some(Schema.Struct(obj))
+      }
+      return makeProto({
+        name,
+        path,
+        method,
+        pathSchema,
+        urlParamsSchema: Option.none(),
+        payloadSchema: Option.none(),
+        headersSchema: Option.none(),
+        successSchema: HttpApiSchema.NoContent as any,
+        errorSchema: Schema.Never as any,
+        annotations: Context.empty(),
+        middlewares: new Set()
+      })
+    }
+  }) as any
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const get: <const Name extends string>(
-  name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "GET"> = make("GET")
+export const get: {
+  <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "GET">
+  <const Name extends string>(
+    name: Name,
+    path: HttpRouter.PathInput
+  ): HttpApiEndpoint<Name, "GET", never, never, never, never, void, never, never, never>
+} = make("GET")
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const post: <const Name extends string>(
-  name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "POST"> = make("POST")
+export const post: {
+  <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "POST">
+  <const Name extends string>(
+    name: Name,
+    path: HttpRouter.PathInput
+  ): HttpApiEndpoint<Name, "POST", never, never, never, never, void, never, never, never>
+} = make("POST")
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const put: <const Name extends string>(
-  name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "PUT"> = make("PUT")
+export const put: {
+  <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "PUT">
+  <const Name extends string>(
+    name: Name,
+    path: HttpRouter.PathInput
+  ): HttpApiEndpoint<Name, "PUT", never, never, never, never, void, never, never, never>
+} = make("PUT")
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const patch: <const Name extends string>(
-  name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "PATCH"> = make("PATCH")
+export const patch: {
+  <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "PATCH">
+  <const Name extends string>(
+    name: Name,
+    path: HttpRouter.PathInput
+  ): HttpApiEndpoint<Name, "PATCH", never, never, never, never, void, never, never, never>
+} = make(
+  "PATCH"
+)
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const del: <const Name extends string>(
-  name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "DELETE"> = make("DELETE")
+export const del: {
+  <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "DELETE">
+  <const Name extends string>(
+    name: Name,
+    path: HttpRouter.PathInput
+  ): HttpApiEndpoint<Name, "DELETE", never, never, never, never, void, never, never, never>
+} = make(
+  "DELETE"
+)

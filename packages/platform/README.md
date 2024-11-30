@@ -31,7 +31,7 @@ Let's define a simple CRUD API for managing users. First, we need to make an
 `HttpApiGroup` that contains our endpoints.
 
 ```ts
-import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 
 // Our domain "User" Schema
@@ -44,17 +44,16 @@ class User extends Schema.Class<User>("User")({
 const usersApi = HttpApiGroup.make("users")
   .add(
     // each endpoint has a name and a path
-    HttpApiEndpoint.get("findById", "/users/:id")
+    // You can use a template string to define path parameter schemas
+    HttpApiEndpoint.get(
+      "findById"
+    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
       // the endpoint can have a Schema for a successful response
       .addSuccess(User)
-      // and here is a Schema for the path parameters
-      .setPath(
-        Schema.Struct({
-          id: Schema.NumberFromString
-        })
-      )
   )
   .add(
+    // you can also pass the path as a string and use `.setPath` to define the
+    // path parameter schema
     HttpApiEndpoint.post("create", "/users")
       .addSuccess(User)
       // and here is a Schema for the request payload / body
@@ -68,9 +67,15 @@ const usersApi = HttpApiGroup.make("users")
       )
   )
   // by default, the endpoint will respond with a 204 No Content
-  .add(HttpApiEndpoint.del("delete", "/users/:id"))
   .add(
-    HttpApiEndpoint.patch("update", "/users/:id")
+    HttpApiEndpoint.del(
+      "delete"
+    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
+  )
+  .add(
+    HttpApiEndpoint.patch(
+      "update"
+    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
       .addSuccess(User)
       .setPayload(
         Schema.Struct({
@@ -85,7 +90,9 @@ We will use this API style in the following examples:
 
 ```ts
 class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById", "/users/:id")
+  HttpApiEndpoint.get(
+    "findById"
+  )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
   // ... same as above
 ) {}
 ```
@@ -117,7 +124,9 @@ import { OpenApi } from "@effect/platform"
 
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("findById", "/users/:id")
+    HttpApiEndpoint.get(
+      "findById"
+    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
     // ... same as above
   )
   // add an OpenApi title & description
@@ -170,11 +179,12 @@ class Unauthorized extends Schema.TaggedError<Unauthorized>()(
 
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("findById", "/users/:id")
+    HttpApiEndpoint.get(
+      "findById"
+    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
       // here we are adding our error response
       .addError(UserNotFound, { status: 404 })
       .addSuccess(User)
-      .setPath(Schema.Struct({ id: Schema.NumberFromString }))
   )
   // or we could add an error to the group
   .addError(Unauthorized, { status: 401 }) {}
@@ -195,7 +205,7 @@ shape of the multipart request.
 import { HttpApiSchema, Multipart } from "@effect/platform"
 
 class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.post("upload", "/users/upload").setPayload(
+  HttpApiEndpoint.post("upload")`/users/upload`.setPayload(
     HttpApiSchema.Multipart(
       Schema.Struct({
         // add a "files" field to the schema
@@ -215,7 +225,7 @@ Here is an example of changing the encoding to text/csv:
 
 ```ts
 class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("csv", "/users/csv").addSuccess(
+  HttpApiEndpoint.get("csv")`/users/csv`.addSuccess(
     Schema.String.pipe(
       HttpApiSchema.withEncoding({
         kind: "Text",
@@ -248,7 +258,8 @@ import {
   HttpApi,
   HttpApiBuilder,
   HttpApiEndpoint,
-  HttpApiGroup
+  HttpApiGroup,
+  HttpApiSchema
 } from "@effect/platform"
 import { DateTime, Effect, Layer, Schema } from "effect"
 
@@ -260,13 +271,11 @@ class User extends Schema.Class<User>("User")({
 }) {}
 
 class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById", "/users/:id")
-    .addSuccess(User)
-    .setPath(
-      Schema.Struct({
-        id: Schema.NumberFromString
-      })
-    )
+  HttpApiEndpoint.get(
+    "findById"
+  )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`.addSuccess(
+    User
+  )
 ) {}
 
 class MyApi extends HttpApi.empty.add(UsersApi) {}
@@ -428,7 +437,7 @@ class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger", {
 // apply the middleware to an `HttpApiGroup`
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("findById", "/:id")
+    HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`
       // apply the middleware to a single endpoint
       .middleware(Logger)
   )
@@ -492,7 +501,7 @@ class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
 // apply the middleware to an `HttpApiGroup`
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("findById", "/:id")
+    HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`
       // apply the middleware to a single endpoint
       .middleware(Authorization)
   )

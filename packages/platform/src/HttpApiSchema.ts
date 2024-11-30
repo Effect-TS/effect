@@ -37,6 +37,14 @@ export const AnnotationEmptyDecodeable: unique symbol = Symbol.for(
  */
 export const AnnotationEncoding: unique symbol = Symbol.for("@effect/platform/HttpApiSchema/AnnotationEncoding")
 
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const AnnotationParam: unique symbol = Symbol.for(
+  "@effect/platform/HttpApiSchema/AnnotationParam"
+)
+
 const mergedAnnotations = (ast: AST.AST): Record<symbol, unknown> =>
   ast._tag === "Transformation" ?
     {
@@ -77,6 +85,12 @@ const encodingJson: Encoding = {
  * @category annotations
  */
 export const getEncoding = (ast: AST.AST): Encoding => getAnnotation<Encoding>(ast, AnnotationEncoding) ?? encodingJson
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const getParam = (ast: AST.AST): string | undefined => ast.annotations[AnnotationParam] as string | undefined
 
 /**
  * @since 1.0.0
@@ -155,13 +169,36 @@ export const UnionUnify = <A extends Schema.Schema.All, B extends Schema.Schema.
   )))
 }
 
+type Void$ = typeof Schema.Void
+
 /**
  * @since 1.0.0
- * @category params
+ * @category path params
  */
-export interface PathParams extends Schema.Record$<typeof Schema.String, typeof Schema.String> {}
+export interface Param<Name extends string, S extends Schema.Schema.Any>
+  extends Schema.Schema<S["Type"], S["Encoded"], S["Context"]>
+{
+  readonly [AnnotationParam]: Name
+}
 
-type Void$ = typeof Schema.Void
+/**
+ * @since 1.0.0
+ * @category path params
+ */
+export const param: {
+  <Name extends string>(name: Name): <S extends AnyString>(schema: S) => Param<Name, S>
+  <Name extends string, S extends AnyString>(name: Name, schema: S): Param<Name, S>
+} = dual(
+  2,
+  <Name extends string, S extends AnyString>(name: Name, schema: S): Param<Name, S> =>
+    schema.annotations({ [AnnotationParam]: name }) as any
+)
+
+/**
+ * @since 1.0.0
+ * @category path params
+ */
+export type AnyString = Schema.Schema<any, string, never> | Schema.Schema<any, string, any>
 
 /**
  * @since 1.0.0
