@@ -274,7 +274,7 @@ export const makeMemory: Effect.Effect<typeof EventJournal.Service> = Effect.gen
         const uncommittedRemotes: Array<RemoteEntry> = []
         const uncommitted: Array<Entry> = []
         for (const remoteEntry of options.entries) {
-          if (!byId.has(remoteEntry.entry.idString)) {
+          if (byId.has(remoteEntry.entry.idString)) {
             if (remoteEntry.remoteSequence > remote.sequence) {
               remote.sequence = remoteEntry.remoteSequence
             }

@@ -72,17 +72,29 @@ export const make = Effect.sync(() => {
       const results = yield* Mailbox.make<A, E>()
       const runFork = yield* FiberHandle.makeRuntime<R>()
 
-      const handledEffect = Effect.matchCause(effect, {
-        onFailure(cause) {
-          results.unsafeDone(Exit.failCause(cause))
-        },
-        onSuccess(a) {
-          results.unsafeOffer(a)
+      let running = false
+      let pending = false
+      const handleExit = (exit: Exit.Exit<A, E>) => {
+        if (exit._tag === "Failure") {
+          results.unsafeDone(Exit.failCause(exit.cause))
+        } else {
+          results.unsafeOffer(exit.value)
         }
-      })
+        if (pending) {
+          pending = false
+          run()
+        } else {
+          running = false
+        }
+      }
 
       function run() {
-        runFork(handledEffect, { onlyIfMissing: true })
+        if (running) {
+          pending = true
+          return
+        }
+        running = true
+        runFork(effect).addObserver(handleExit)
       }
 
       yield* Scope.addFinalizer(
