@@ -600,7 +600,7 @@ const go = (
       if (getTransformationFrom(ast) === undefined) {
         throw new Error(getJSONSchemaMissingAnnotationErrorMessage(path, ast))
       }
-      return go(ast.from, $defs, true, path, options)
+      return go(ast.from, $defs, handleIdentifier, path, options)
     }
     case "TemplateLiteral": {
       const regex = AST.getTemplateLiteralRegExp(ast)

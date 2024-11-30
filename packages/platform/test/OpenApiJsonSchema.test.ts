@@ -2446,9 +2446,6 @@ schema (Suspend): <suspended schema>`
       {
         "$defs": {
           "Date": {
-            "$ref": "#/$defs/DateFromString"
-          },
-          "DateFromString": {
             "type": "string",
             "description": "a string that will be parsed into a Date"
           }
