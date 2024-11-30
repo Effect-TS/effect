@@ -22,6 +22,7 @@ import * as HttpClientError from "./HttpClientError.js"
 import * as HttpClientRequest from "./HttpClientRequest.js"
 import * as HttpClientResponse from "./HttpClientResponse.js"
 import * as HttpMethod from "./HttpMethod.js"
+import type { PathInput } from "./HttpRouter.js"
 import type { HttpApiMiddleware } from "./index.js"
 import * as UrlParams from "./UrlParams.js"
 
@@ -70,6 +71,7 @@ export declare namespace Client {
     HttpApiEndpoint<
       infer _Name,
       infer _Method,
+      infer _PathInput,
       infer _Path,
       infer _UrlParams,
       infer _Payload,
@@ -115,7 +117,7 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
     }) => void
     readonly onEndpoint: (options: {
       readonly group: HttpApiGroup.AnyWithProps
-      readonly endpoint: HttpApiEndpoint<string, HttpMethod.HttpMethod>
+      readonly endpoint: HttpApiEndpoint<string, HttpMethod.HttpMethod, PathInput>
       readonly mergedAnnotations: Context.Context<never>
       readonly middleware: ReadonlySet<HttpApiMiddleware.TagClassAny>
       readonly successes: ReadonlyMap<number, Option.Option<AST.AST>>

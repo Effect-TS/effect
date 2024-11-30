@@ -43,6 +43,7 @@ export const isHttpApiEndpoint = (u: unknown): u is HttpApiEndpoint<any, any, an
 export interface HttpApiEndpoint<
   out Name extends string,
   out Method extends HttpMethod,
+  out PathInput extends HttpRouter.PathInput = never,
   in out Path = never,
   in out UrlParams = never,
   in out Payload = never,
@@ -54,7 +55,7 @@ export interface HttpApiEndpoint<
 > extends Pipeable {
   readonly [TypeId]: TypeId
   readonly name: Name
-  readonly path: HttpRouter.PathInput
+  readonly path: PathInput
   readonly method: Method
   readonly pathSchema: Option.Option<Schema.Schema<Path, unknown, R>>
   readonly urlParamsSchema: Option.Option<Schema.Schema<UrlParams, unknown, R>>
@@ -77,6 +78,7 @@ export interface HttpApiEndpoint<
   ): HttpApiEndpoint<
     Name,
     Method,
+    PathInput,
     Path,
     UrlParams,
     Payload,
@@ -99,6 +101,7 @@ export interface HttpApiEndpoint<
   ): HttpApiEndpoint<
     Name,
     Method,
+    PathInput,
     Path,
     UrlParams,
     Payload,
@@ -124,6 +127,7 @@ export interface HttpApiEndpoint<
   ): HttpApiEndpoint<
     Name,
     Method,
+    PathInput,
     Path,
     UrlParams,
     Schema.Schema.Type<P>,
@@ -139,10 +143,11 @@ export interface HttpApiEndpoint<
    * used to validate the path parameters before the handler is called.
    */
   setPath<Path extends Schema.Schema.Any>(
-    schema: Path & HttpApiEndpoint.ValidatePath<Path>
+    schema: Path & HttpApiEndpoint.ValidatePath<PathInput, Path>
   ): HttpApiEndpoint<
     Name,
     Method,
+    PathInput,
     Schema.Schema.Type<Path>,
     UrlParams,
     Payload,
@@ -161,6 +166,7 @@ export interface HttpApiEndpoint<
   ): HttpApiEndpoint<
     Name,
     Method,
+    PathInput,
     Path,
     Schema.Schema.Type<UrlParams>,
     Payload,
@@ -180,6 +186,7 @@ export interface HttpApiEndpoint<
   ): HttpApiEndpoint<
     Name,
     Method,
+    PathInput,
     Path,
     UrlParams,
     Payload,
@@ -195,7 +202,7 @@ export interface HttpApiEndpoint<
    */
   prefix(
     prefix: HttpRouter.PathInput
-  ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
+  ): HttpApiEndpoint<Name, Method, PathInput, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
 
   /**
    * Add an `HttpApiMiddleware` to the endpoint.
@@ -203,6 +210,7 @@ export interface HttpApiEndpoint<
   middleware<I extends HttpApiMiddleware.HttpApiMiddleware.AnyId, S>(middleware: Context.Tag<I, S>): HttpApiEndpoint<
     Name,
     Method,
+    PathInput,
     Path,
     UrlParams,
     Payload,
@@ -219,14 +227,14 @@ export interface HttpApiEndpoint<
   annotate<I, S>(
     tag: Context.Tag<I, S>,
     value: S
-  ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
+  ): HttpApiEndpoint<Name, Method, PathInput, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
 
   /**
    * Merge the annotations of the endpoint with the provided context.
    */
   annotateContext<I>(
     context: Context.Context<I>
-  ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
+  ): HttpApiEndpoint<Name, Method, PathInput, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
 }
 
 /**
@@ -247,7 +255,9 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export interface AnyWithProps extends HttpApiEndpoint<string, HttpMethod, any, any, any, any, any, any, any> {}
+  export interface AnyWithProps
+    extends HttpApiEndpoint<string, HttpMethod, HttpRouter.PathInput, any, any, any, any, any, any, any>
+  {}
 
   /**
    * @since 1.0.0
@@ -256,6 +266,7 @@ export declare namespace HttpApiEndpoint {
   export type Name<Endpoint> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -274,6 +285,7 @@ export declare namespace HttpApiEndpoint {
   export type Success<Endpoint extends Any> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -292,6 +304,7 @@ export declare namespace HttpApiEndpoint {
   export type Error<Endpoint extends Any> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -310,6 +323,7 @@ export declare namespace HttpApiEndpoint {
   export type PathParsed<Endpoint extends Any> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -328,6 +342,7 @@ export declare namespace HttpApiEndpoint {
   export type UrlParams<Endpoint extends Any> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -346,6 +361,7 @@ export declare namespace HttpApiEndpoint {
   export type Payload<Endpoint extends Any> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -364,6 +380,7 @@ export declare namespace HttpApiEndpoint {
   export type Headers<Endpoint extends Any> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -382,6 +399,7 @@ export declare namespace HttpApiEndpoint {
   export type Request<Endpoint extends Any> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -420,6 +438,7 @@ export declare namespace HttpApiEndpoint {
   export type Context<Endpoint> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -438,6 +457,7 @@ export declare namespace HttpApiEndpoint {
   export type ErrorContext<Endpoint> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -536,9 +556,16 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type ValidatePath<S extends Schema.Schema.Any> = S extends Schema.Schema<infer _A, infer _I, infer _R>
-    ? [_I] extends [Readonly<Record<string, string | undefined>>] ? {}
-    : `Path schema must be encodeable to strings`
+  export type ValidatePath<
+    PathInput extends HttpRouter.PathInput,
+    S extends Schema.Schema.Any,
+    Components = HttpRouter.PathInputComponents<PathInput>
+  > = S extends Schema.Schema<infer _A, infer _I, infer _R> ?
+    [_I] extends [Components] ?
+      [Components] extends [_I] ?
+        [_I] extends [Readonly<Record<string, string | undefined>>] ? {} : `Path schema must be encodeable to strings`
+      : ["Redundant path components:", Exclude<keyof _I, keyof Components>]
+    : ["Missing path components:", Exclude<keyof Components, keyof _I>]
     : {}
 
   /**
@@ -578,6 +605,7 @@ export declare namespace HttpApiEndpoint {
   export type AddError<Endpoint extends Any, E, R> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -589,6 +617,7 @@ export declare namespace HttpApiEndpoint {
   > ? HttpApiEndpoint<
       _Name,
       _Method,
+      _PathInput,
       _Path,
       _UrlParams,
       _Payload,
@@ -607,6 +636,7 @@ export declare namespace HttpApiEndpoint {
   export type AddContext<Endpoint extends Any, R> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
+    infer _PathInput,
     infer _Path,
     infer _UrlParams,
     infer _Payload,
@@ -618,6 +648,7 @@ export declare namespace HttpApiEndpoint {
   > ? HttpApiEndpoint<
       _Name,
       _Method,
+      _PathInput,
       _Path,
       _UrlParams,
       _Payload,
@@ -726,6 +757,7 @@ const Proto = {
 const makeProto = <
   Name extends string,
   Method extends HttpMethod,
+  PathInput extends HttpRouter.PathInput,
   Path,
   UrlParams,
   Payload,
@@ -736,7 +768,7 @@ const makeProto = <
   RE
 >(options: {
   readonly name: Name
-  readonly path: HttpRouter.PathInput
+  readonly path: PathInput
   readonly method: Method
   readonly pathSchema: Option.Option<Schema.Schema<Path, unknown, R>>
   readonly urlParamsSchema: Option.Option<Schema.Schema<UrlParams, unknown, R>>
@@ -746,73 +778,74 @@ const makeProto = <
   readonly errorSchema: Schema.Schema<Error, unknown, RE>
   readonly annotations: Context.Context<never>
   readonly middlewares: ReadonlySet<HttpApiMiddleware.TagClassAny>
-}): HttpApiEndpoint<Name, Method, Path, Payload, Headers, Success, Error, R, RE> =>
+}): HttpApiEndpoint<Name, Method, PathInput, Path, Payload, Headers, Success, Error, R, RE> =>
   Object.assign(Object.create(Proto), options)
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Method extends HttpMethod>(method: Method) =>
-<const Name extends string>(
-  name: Name,
-  path: HttpRouter.PathInput
-): HttpApiEndpoint<Name, Method> =>
-  makeProto({
-    name,
-    path,
-    method,
-    pathSchema: Option.none(),
-    urlParamsSchema: Option.none(),
-    payloadSchema: Option.none(),
-    headersSchema: Option.none(),
-    successSchema: HttpApiSchema.NoContent as any,
-    errorSchema: Schema.Never as any,
-    annotations: Context.empty(),
-    middlewares: new Set()
-  })
+export const make =
+  <Method extends HttpMethod, PathInput extends HttpRouter.PathInput>(method: Method) =>
+  <const Name extends string>(
+    name: Name,
+    path: PathInput
+  ): HttpApiEndpoint<Name, Method, PathInput> =>
+    makeProto({
+      name,
+      path,
+      method,
+      pathSchema: Option.none(),
+      urlParamsSchema: Option.none(),
+      payloadSchema: Option.none(),
+      headersSchema: Option.none(),
+      successSchema: HttpApiSchema.NoContent as any,
+      errorSchema: Schema.Never as any,
+      annotations: Context.empty(),
+      middlewares: new Set()
+    })
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const get: <const Name extends string>(
+export const get: <const Name extends string, PathInput extends HttpRouter.PathInput>(
   name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "GET"> = make("GET")
+  path: PathInput
+) => HttpApiEndpoint<Name, "GET", PathInput> = make("GET")
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const post: <const Name extends string>(
+export const post: <const Name extends string, PathInput extends HttpRouter.PathInput>(
   name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "POST"> = make("POST")
+  path: PathInput
+) => HttpApiEndpoint<Name, "POST", PathInput> = make("POST")
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const put: <const Name extends string>(
+export const put: <const Name extends string, PathInput extends HttpRouter.PathInput>(
   name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "PUT"> = make("PUT")
+  path: PathInput
+) => HttpApiEndpoint<Name, "PUT", PathInput> = make("PUT")
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const patch: <const Name extends string>(
+export const patch: <const Name extends string, PathInput extends HttpRouter.PathInput>(
   name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "PATCH"> = make("PATCH")
+  path: PathInput
+) => HttpApiEndpoint<Name, "PATCH", PathInput> = make("PATCH")
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const del: <const Name extends string>(
+export const del: <const Name extends string, PathInput extends HttpRouter.PathInput>(
   name: Name,
-  path: HttpRouter.PathInput
-) => HttpApiEndpoint<Name, "DELETE"> = make("DELETE")
+  path: PathInput
+) => HttpApiEndpoint<Name, "DELETE", PathInput> = make("DELETE")

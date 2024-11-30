@@ -279,7 +279,7 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
     }) => void
     readonly onEndpoint: (options: {
       readonly group: HttpApiGroup.HttpApiGroup.AnyWithProps
-      readonly endpoint: HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>
+      readonly endpoint: HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod, PathInput>
       readonly mergedAnnotations: Context.Context<never>
       readonly middleware: ReadonlySet<HttpApiMiddleware.TagClassAny>
       readonly payloads: ReadonlyMap<string, {
@@ -300,7 +300,9 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
       group,
       mergedAnnotations: groupAnnotations
     })
-    const endpoints = Object.values(group.endpoints) as Iterable<HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod>>
+    const endpoints = Object.values(group.endpoints) as Iterable<
+      HttpApiEndpoint.HttpApiEndpoint<string, HttpMethod, PathInput>
+    >
     for (const endpoint of endpoints) {
       if (
         options.predicate && !options.predicate({

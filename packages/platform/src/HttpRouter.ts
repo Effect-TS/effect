@@ -167,6 +167,20 @@ export type RouteTypeId = typeof RouteTypeId
 export type PathInput = `/${string}` | "*"
 
 /**
+ * @internal
+ */
+type _PathInputComponents<PI extends string, Acc extends Record<string, string> = {}> = PI extends
+  `${infer Component}/${infer Rest}` ? _PathInputComponents<Rest, Acc & Record<Component, any>>
+  : { [K in keyof Acc | PI as K extends `:${infer C}` ? C extends "" ? never : C : never]: any }
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type PathInputComponents<PI extends PathInput> = PathInput extends "*" ? {}
+  : _PathInputComponents<PI>
+
+/**
  * @since 1.0.0
  * @category models
  */
