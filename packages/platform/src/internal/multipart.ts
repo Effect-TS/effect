@@ -408,6 +408,8 @@ export const toPersisted = (
           ;(persisted[part.key] as Array<string>).push(part.value)
         }
         return Effect.void
+      } else if (part.name === "") {
+        return Effect.void
       }
       const file = part
       const path = path_.join(dir, path_.basename(file.name).slice(-128))
