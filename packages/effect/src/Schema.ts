@@ -4518,8 +4518,6 @@ function compileFormDataToObject(ast: AST.AST) {
     fieldsTypes.arrays.forEach((arrayFieldKey) => (obj[arrayFieldKey] = []))
 
     fd.forEach((value, key) => {
-      if (typeof value !== "string") return
-
       if (fieldsTypes.regular.has(key)) {
         obj[key] = value
       } else if (fieldsTypes.arrays.has(key)) {
