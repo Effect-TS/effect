@@ -72,6 +72,22 @@ const expectError = <A, I>(schema: Schema.Schema<A, I>, message: string) => {
 // Using this instead of Schema.JsonNumber to avoid cluttering the output with unnecessary description and title
 const JsonNumber = Schema.Number.pipe(Schema.filter((n) => Number.isFinite(n), { jsonSchema: {} }))
 
+describe("makeWithDefs", () => {
+  it("should generate a JSON Schema with definitions", () => {
+    const defs = {}
+    const jsonSchema = JSONSchema.makeWithDefs(Schema.NumberFromString, { defs, defsPath: "#/components/schemas/" })
+    expect(jsonSchema).toStrictEqual({
+      "$ref": "#/components/schemas/NumberFromString"
+    })
+    expect(defs).toStrictEqual({
+      "NumberFromString": {
+        "description": "a string that will be parsed into a number",
+        "type": "string"
+      }
+    })
+  })
+})
+
 describe("JSONSchema", () => {
   describe("Unsupported schemas", () => {
     describe("Missing jsonSchema annotation Error", () => {

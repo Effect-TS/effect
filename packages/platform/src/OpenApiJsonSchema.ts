@@ -212,7 +212,7 @@ export type Root = JsonSchema & {
  * @since 1.0.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Root => {
-  const $defs: Record<string, any> = {}
+  const $defs: Record<string, JsonSchema> = {}
   const out = makeWithDefs(schema, { defs: $defs })
   if (!Record.isEmptyRecord($defs)) {
     out.$defs = $defs
@@ -225,18 +225,12 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Root => {
  * @since 1.0.0
  */
 export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
-  readonly defs: Record<string, any>
+  readonly defs: Record<string, JsonSchema>
   readonly defsPath?: string
 }): Root => {
   const defsPath = options.defsPath ?? "#/$defs/"
   const getRef = (id: string) => `${defsPath}${id}`
-  const out = go(schema.ast, options.defs, true, [], { getRef }) as Root
-  for (const id in options.defs) {
-    if (options.defs[id]["$ref"] === getRef(id)) {
-      delete options.defs[id]
-    }
-  }
-  return out
+  return go(schema.ast, options.defs, true, [], { getRef })
 }
 
 const constAny: JsonSchema = { $id: "/schemas/any" }
