@@ -93,13 +93,13 @@ importers:
         version: 2.1.4(@types/node@22.9.3)(playwright@1.46.0)(typescript@5.7.2)(vite@5.4.0(@types/node@22.9.3)(terser@5.36.0))(vitest@2.1.4)
       '@vitest/coverage-v8':
         specifier: ^2.1.4
-        version: 2.1.4(@vitest/browser@2.1.4(@types/node@22.9.3)(playwright@1.46.0)(typescript@5.7.2)(vite@5.4.0(@types/node@22.9.3)(terser@5.36.0))(vitest@2.1.4))(vitest@2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))
+        version: 2.1.4(@vitest/browser@2.1.4)(vitest@2.1.4)
       '@vitest/expect':
         specifier: ^2.1.4
         version: 2.1.4
       '@vitest/web-worker':
         specifier: ^2.1.4
-        version: 2.1.4(vitest@2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))
+        version: 2.1.4(vitest@2.1.4)
       ast-types:
         specifier: ^0.14.2
         version: 0.14.2
@@ -352,7 +352,7 @@ importers:
         version: 3.0.13
       vitest-websocket-mock:
         specifier: ^0.4.0
-        version: 0.4.0(vitest@2.1.4(@edge-runtime/vm@4.0.3)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))
+        version: 0.4.0(vitest@2.1.4)
       ws:
         specifier: ^8.18.0
         version: 8.18.0
@@ -465,8 +465,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       undici:
-        specifier: ^6.19.7
-        version: 6.19.7
+        specifier: ^7.0.0
+        version: 7.0.0
       ws:
         specifier: ^8.18.0
         version: 8.18.0
@@ -7142,9 +7142,9 @@ packages:
     resolution: {integrity: sha512-72RFADWFqKmUb2hmmvNODKL3p9hcB6Gt2DOQMis1SEBaV6a4MH8soBvzg+95CYhCKPFedut2JY9bMfrDl9D23g==}
     engines: {node: '>=14.0'}
 
-  undici@6.19.7:
-    resolution: {integrity: sha512-HR3W/bMGPSr90i8AAp2C4DM3wChFdJPLrWYpIS++LxS8K+W535qftjt+4MyjNYHeWabMj1nvtmLIi7l++iq91A==}
-    engines: {node: '>=18.17'}
+  undici@7.0.0:
+    resolution: {integrity: sha512-c4xi3kWnQJrb7h2q8aJYKvUzmz7boCgz1cUCC6OwdeM5Tr2P0hDuthr2iut4ggqsz+Cnh20U/LoTzbKIdDS/Nw==}
+    engines: {node: '>=20.18.1'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
     resolution: {integrity: sha512-dA8WbNeb2a6oQzAQ55YlT5vQAWGV9WXOsi3SskE3bcCdM0P4SDd+24zS/OCacdRq5BkdsRj9q3Pg6YyQoxIGqg==}
@@ -11098,7 +11098,7 @@ snapshots:
       - vite
     optional: true
 
-  '@vitest/coverage-v8@2.1.4(@vitest/browser@2.1.4(@types/node@22.9.3)(playwright@1.46.0)(typescript@5.7.2)(vite@5.4.0(@types/node@22.9.3)(terser@5.36.0))(vitest@2.1.4))(vitest@2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))':
+  '@vitest/coverage-v8@2.1.4(@vitest/browser@2.1.4)(vitest@2.1.4)':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -11169,7 +11169,7 @@ snapshots:
       loupe: 3.1.2
       tinyrainbow: 1.2.0
 
-  '@vitest/web-worker@2.1.4(vitest@2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))':
+  '@vitest/web-worker@2.1.4(vitest@2.1.4)':
     dependencies:
       debug: 4.3.7
       vitest: 2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0)
@@ -12296,7 +12296,7 @@ snapshots:
       debug: 4.3.6
       enhanced-resolve: 5.17.1
       eslint: 9.9.1
-      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-plugin-import@2.30.0)(eslint@9.9.1))(eslint@9.9.1)
+      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.9.1)
       fast-glob: 3.3.2
       get-tsconfig: 4.8.0
       is-bun-module: 1.1.0
@@ -12309,7 +12309,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-module-utils@2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-plugin-import@2.30.0)(eslint@9.9.1))(eslint@9.9.1):
+  eslint-module-utils@2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.9.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -12359,7 +12359,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.9.1
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-plugin-import@2.30.0)(eslint@9.9.1))(eslint@9.9.1)
+      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.9.1)
       hasown: 2.0.2
       is-core-module: 2.15.1
       is-glob: 4.0.3
@@ -15484,7 +15484,7 @@ snapshots:
     dependencies:
       '@fastify/busboy': 2.1.1
 
-  undici@6.19.7: {}
+  undici@7.0.0: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
@@ -15582,7 +15582,7 @@ snapshots:
       terser: 5.36.0
     optional: true
 
-  vitest-websocket-mock@0.4.0(vitest@2.1.4(@edge-runtime/vm@4.0.3)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0)):
+  vitest-websocket-mock@0.4.0(vitest@2.1.4):
     dependencies:
       '@vitest/utils': 2.1.4
       mock-socket: 9.3.1
