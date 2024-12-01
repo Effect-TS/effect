@@ -2,7 +2,9 @@ import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import type { RuntimeFiber } from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
+import * as FiberSet from "effect/FiberSet"
 import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
@@ -12,7 +14,7 @@ import type * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type { ParseOptions } from "effect/SchemaAST"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import type * as AsyncInput from "effect/SingleProducerAsyncInput"
 import * as Stream from "effect/Stream"
 import * as MP from "multipasta"
@@ -291,6 +293,72 @@ export const makeChannel = <IE>(
     ([, mailbox]) => mailbox.shutdown
   )
 
+/** @internal */
+export const makeMailbox = (
+  options: {
+    readonly headers: Record<string, string>
+    readonly partBufferSize?: number | undefined
+  }
+): Effect.Effect<
+  readonly [
+    Mailbox.Mailbox<Multipart.Part, Multipart.MultipartError>,
+    write: (chunk: Uint8Array | null) => Promise<void>
+  ],
+  never,
+  Scope.Scope
+> =>
+  Effect.gen(function*() {
+    const scope = yield* Effect.scope
+    const config = yield* makeConfig(options.headers)
+    const partsMailbox = yield* Mailbox.make<Multipart.Part, Multipart.MultipartError>(1)
+    yield* Scope.addFinalizer(scope, partsMailbox.shutdown)
+    const runFork = yield* FiberSet.makeRuntime()
+    let fiber: RuntimeFiber<any, any> | undefined = undefined
+
+    const parser = MP.make({
+      ...config,
+      onField(info, value) {
+        fiber = runFork(partsMailbox.offer(new FieldImpl(info.name, info.contentType, MP.decodeField(info, value))))
+      },
+      onFile(info) {
+        const mailbox = Effect.runSync(Mailbox.make<Uint8Array>(options.partBufferSize ?? 16))
+        fiber = runFork(partsMailbox.offer(new FileMailboxImpl(info, mailbox)))
+        return function(chunk) {
+          if (chunk === null) {
+            mailbox.unsafeDone(Exit.void)
+          } else if (!mailbox.unsafeOffer(chunk)) {
+            fiber = runFork(mailbox.offer(chunk))
+          }
+        }
+      },
+      onError(error) {
+        partsMailbox.unsafeDone(Exit.fail(convertError(error)))
+      },
+      onDone() {
+        partsMailbox.unsafeDone(Exit.void)
+      }
+    })
+
+    function write(chunk: Uint8Array | null): Promise<void> {
+      return new Promise((resolve) => {
+        if (chunk === null) {
+          parser.end()
+        } else {
+          parser.write(chunk)
+        }
+        if (fiber === undefined) {
+          return resolve()
+        }
+        fiber.addObserver(() => {
+          fiber = undefined
+          return resolve()
+        })
+      })
+    }
+
+    return [partsMailbox, write] as const
+  })
+
 const writeExit = <A, E>(
   self: Exit.Exit<A, E>
 ): Channel.Channel<never, unknown, E> => self._tag === "Success" ? Channel.void : Channel.failCause(self.cause)
@@ -365,6 +433,35 @@ class FileImpl extends PartBase implements Multipart.File {
     this.name = info.filename ?? info.name
     this.contentType = info.contentType
     this.content = Stream.fromChannel(channel)
+  }
+
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Multipart/Part",
+      _tag: "File",
+      key: this.key,
+      name: this.name,
+      contentType: this.contentType
+    }
+  }
+}
+
+class FileMailboxImpl extends PartBase implements Multipart.File {
+  readonly _tag = "File"
+  readonly key: string
+  readonly name: string
+  readonly contentType: string
+  readonly content: Stream.Stream<Uint8Array, Multipart.MultipartError>
+
+  constructor(
+    info: MP.PartInfo,
+    readonly mailbox: Mailbox.ReadonlyMailbox<Uint8Array>
+  ) {
+    super()
+    this.key = info.name
+    this.name = info.filename ?? info.name
+    this.contentType = info.contentType
+    this.content = Mailbox.toStream(mailbox)
   }
 
   toJSON(): unknown {

@@ -7,6 +7,7 @@ import type * as Chunk from "effect/Chunk"
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
 import type { Inspectable } from "effect/Inspectable"
+import type { Mailbox } from "effect/Mailbox"
 import type * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
 import type * as Schema from "effect/Schema"
@@ -263,6 +264,18 @@ export const makeChannel: <IE>(
   bufferSize?: number
 ) => Channel.Channel<Chunk.Chunk<Part>, Chunk.Chunk<Uint8Array>, MultipartError | IE, IE, unknown, unknown> =
   internal.makeChannel
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeMailbox: (
+  options: { readonly headers: Record<string, string>; readonly partBufferSize?: number | undefined }
+) => Effect.Effect<
+  readonly [Mailbox<Part, MultipartError>, write: (chunk: Uint8Array | null) => Promise<void>],
+  never,
+  Scope.Scope
+> = internal.makeMailbox
 
 /**
  * @since 1.0.0
