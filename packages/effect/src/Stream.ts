@@ -3419,8 +3419,8 @@ export const paginateEffect: <S, A, E, R>(
 
 /**
  * Partition a stream using a predicate. The first stream will contain all
- * element evaluated to true and the second one will contain all element
- * evaluated to false. The faster stream may advance by up to buffer elements
+ * element evaluated to false and the second one will contain all element
+ * evaluated to true. The faster stream may advance by up to buffer elements
  * further than the slower one.
  *
  * @example
@@ -3433,15 +3433,15 @@ export const paginateEffect: <S, A, E, R>(
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
- *     const [evens, odds] = yield* partition
- *     console.log(yield* Stream.runCollect(evens))
+ *     const [odds, evens] = yield* partition
  *     console.log(yield* Stream.runCollect(odds))
+ *     console.log(yield* Stream.runCollect(evens))
  *   })
  * )
  *
  * // Effect.runPromise(program)
- * // { _id: 'Chunk', values: [ 2, 4, 6, 8, 10 ] }
  * // { _id: 'Chunk', values: [ 1, 3, 5, 7, 9 ] }
+ * // { _id: 'Chunk', values: [ 2, 4, 6, 8, 10 ] }
  * ```
  *
  * @since 2.0.0
