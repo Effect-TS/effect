@@ -546,7 +546,7 @@ export declare namespace HttpApiEndpoint {
    * @category models
    */
   export type ValidateUrlParams<S extends Schema.Schema.Any> = S extends Schema.Schema<infer _A, infer _I, infer _R>
-    ? [_I] extends [Readonly<Record<string, string | undefined>>] ? {}
+    ? [_I] extends [Readonly<Record<string, string | ReadonlyArray<string> | undefined>>] ? {}
     : `UrlParams schema must be encodeable to strings`
     : {}
 
@@ -852,7 +852,7 @@ export const get: {
   <const Name extends string>(
     name: Name,
     path: HttpRouter.PathInput
-  ): HttpApiEndpoint<Name, "GET", never, never, never, never, void, never, never, never>
+  ): HttpApiEndpoint<Name, "GET">
 } = make("GET")
 
 /**
@@ -864,7 +864,7 @@ export const post: {
   <const Name extends string>(
     name: Name,
     path: HttpRouter.PathInput
-  ): HttpApiEndpoint<Name, "POST", never, never, never, never, void, never, never, never>
+  ): HttpApiEndpoint<Name, "POST">
 } = make("POST")
 
 /**
@@ -876,7 +876,7 @@ export const put: {
   <const Name extends string>(
     name: Name,
     path: HttpRouter.PathInput
-  ): HttpApiEndpoint<Name, "PUT", never, never, never, never, void, never, never, never>
+  ): HttpApiEndpoint<Name, "PUT">
 } = make("PUT")
 
 /**
@@ -888,7 +888,7 @@ export const patch: {
   <const Name extends string>(
     name: Name,
     path: HttpRouter.PathInput
-  ): HttpApiEndpoint<Name, "PATCH", never, never, never, never, void, never, never, never>
+  ): HttpApiEndpoint<Name, "PATCH">
 } = make(
   "PATCH"
 )
@@ -902,7 +902,7 @@ export const del: {
   <const Name extends string>(
     name: Name,
     path: HttpRouter.PathInput
-  ): HttpApiEndpoint<Name, "DELETE", never, never, never, never, void, never, never, never>
+  ): HttpApiEndpoint<Name, "DELETE">
 } = make(
   "DELETE"
 )
