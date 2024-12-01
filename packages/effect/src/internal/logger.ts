@@ -341,7 +341,11 @@ export const structuredMessage = (u: unknown): unknown => {
       return String(u)
     }
     default: {
-      return Inspectable.toJSON(u)
+      try {
+        return Inspectable.toJSON(u)
+      } catch (e) {
+        return Inspectable.redact(u)
+      }
     }
   }
 }
