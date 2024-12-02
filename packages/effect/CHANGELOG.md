@@ -1,5 +1,13 @@
 # effect
 
+## 3.11.1
+
+### Patch Changes
+
+- [#4052](https://github.com/Effect-TS/effect/pull/4052) [`dd8a2d8`](https://github.com/Effect-TS/effect/commit/dd8a2d8e80d33b16719fc69361eaedf0b59d4620) Thanks @tim-smart! - ensure pool.get is interrupted on shutdown
+
+- [#4059](https://github.com/Effect-TS/effect/pull/4059) [`a71bfef`](https://github.com/Effect-TS/effect/commit/a71bfef46f5061bb2502a61a333638a987b62273) Thanks @IMax153! - Ensure that the current time zone context tag type is properly exported
+
 ## 3.11.0
 
 ### Minor Changes
