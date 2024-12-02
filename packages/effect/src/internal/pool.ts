@@ -226,7 +226,9 @@ class PoolImpl<A, E> extends Effectable.Class<A, E, Scope> implements Pool<A, E>
                 circular.forkIn(core.interruptible(this.resize), this.scope)
               ),
               function loop(): Effect<PoolItem<A, E>> {
-                if (self.available.size > 0) {
+                if (self.isShuttingDown) {
+                  return core.interrupt
+                } else if (self.available.size > 0) {
                   return core.succeed(Iterable.unsafeHead(self.available))
                 }
                 self.availableLatch.unsafeClose()
@@ -328,6 +330,7 @@ class PoolImpl<A, E> extends Effectable.Class<A, E, Scope> implements Pool<A, E>
         return item.finalizer
       }).pipe(
         core.zipRight(this.semaphore.releaseAll),
+        core.zipRight(this.availableLatch.open),
         core.zipRight(semaphore.take(size))
       )
     })
