@@ -3418,16 +3418,26 @@ export const paginateEffect: <S, A, E, R>(
 ) => Stream<A, E, R> = internal.paginateEffect
 
 /**
- * Partition a stream using a predicate. The first stream will contain all
- * element evaluated to false and the second one will contain all element
- * evaluated to true. The faster stream may advance by up to buffer elements
- * further than the slower one.
+ * Splits a stream into two substreams based on a predicate.
+ *
+ * **Details**
+ *
+ * The `Stream.partition` function splits a stream into two parts: one for
+ * elements that satisfy the predicate (evaluated to `true`) and another for
+ * those that do not (evaluated to `false`).
+ *
+ * The faster stream may advance up to `bufferSize` elements ahead of the slower
+ * one.
+ *
+ * @see {@link partitionEither} for partitioning a stream based on effectful
+ * conditions.
  *
  * @example
  * ```ts
+ * // Title: Partitioning a Stream into Even and Odd Numbers
  * import { Effect, Stream } from "effect"
  *
- * const partition = Stream.range(1, 10).pipe(
+ * const partition = Stream.range(1, 9).pipe(
  *   Stream.partition((n) => n % 2 === 0, { bufferSize: 5 })
  * )
  *
@@ -3441,7 +3451,7 @@ export const paginateEffect: <S, A, E, R>(
  *
  * // Effect.runPromise(program)
  * // { _id: 'Chunk', values: [ 1, 3, 5, 7, 9 ] }
- * // { _id: 'Chunk', values: [ 2, 4, 6, 8, 10 ] }
+ * // { _id: 'Chunk', values: [ 2, 4, 6, 8 ] }
  * ```
  *
  * @since 2.0.0
@@ -3473,16 +3483,29 @@ export const partition: {
 } = internal.partition
 
 /**
- * Split a stream by an effectful predicate. The faster stream may advance by
- * up to buffer elements further than the slower one.
+ * Splits a stream into two substreams based on an effectful condition.
+ *
+ * **Details**
+ *
+ * The `Stream.partitionEither` function is used to divide a stream into two
+ * parts: one for elements that satisfy a condition producing `Either.left`
+ * values, and another for those that produce `Either.right` values. This
+ * function applies an effectful predicate to each element in the stream to
+ * determine which substream it belongs to.
+ *
+ * The faster stream may advance up to `bufferSize` elements ahead of the slower
+ * one.
+ *
+ * @see {@link partition} for partitioning a stream based on simple conditions.
  *
  * @example
  * ```ts
+ * // Title: Partitioning a Stream with an Effectful Predicate
  * import { Effect, Either, Stream } from "effect"
  *
  * const partition = Stream.range(1, 9).pipe(
  *   Stream.partitionEither(
- *     (n) => Effect.succeed(n % 2 === 0 ? Either.left(n) : Either.right(n)),
+ *     (n) => Effect.succeed(n % 2 === 0 ? Either.right(n) : Either.left(n)),
  *     { bufferSize: 5 }
  *   )
  * )
@@ -3496,8 +3519,8 @@ export const partition: {
  * )
  *
  * // Effect.runPromise(program)
- * // { _id: 'Chunk', values: [ 2, 4, 6, 8 ] }
  * // { _id: 'Chunk', values: [ 1, 3, 5, 7, 9 ] }
+ * // { _id: 'Chunk', values: [ 2, 4, 6, 8 ] }
  * ```
  *
  * @since 2.0.0
