@@ -350,11 +350,19 @@ class UsersApi extends HttpApiGroup.make("users")
   .annotateContext(OpenApi.annotations({ title: "Users API" }))
 {}
 
+class TopLevelApi extends HttpApiGroup.make("root", { topLevel: true })
+  .add(
+    HttpApiEndpoint.get("healthz")`/healthz`
+      .addSuccess(HttpApiSchema.NoContent.annotations({ description: "Empty" }))
+  )
+{}
+
 class AnotherApi extends HttpApi.empty.add(GroupsApi) {}
 
 class Api extends HttpApi.empty
   .addHttpApi(AnotherApi)
   .add(UsersApi.prefix("/users"))
+  .add(TopLevelApi)
   .addError(GlobalError, { status: 413 })
   .annotateContext(OpenApi.annotations({
     title: "API",
@@ -468,9 +476,16 @@ const HttpGroupsLive = HttpApiBuilder.group(
         ))
 )
 
+const TopLevelLive = HttpApiBuilder.group(
+  Api,
+  "root",
+  (handlers) => handlers.handle("healthz", (_) => Effect.void)
+)
+
 const HttpApiLive = Layer.provide(HttpApiBuilder.api(Api), [
   HttpGroupsLive,
-  HttpUsersLive
+  HttpUsersLive,
+  TopLevelLive
 ])
 
 const HttpLive = HttpApiBuilder.serve().pipe(

@@ -286,8 +286,14 @@ export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
         readonly encoding: HttpApiSchema.Encoding
         readonly ast: AST.AST
       }>
-      readonly successes: ReadonlyMap<number, Option.Option<AST.AST>>
-      readonly errors: ReadonlyMap<number, Option.Option<AST.AST>>
+      readonly successes: ReadonlyMap<number, {
+        readonly ast: Option.Option<AST.AST>
+        readonly description: Option.Option<string>
+      }>
+      readonly errors: ReadonlyMap<number, {
+        readonly ast: Option.Option<AST.AST>
+        readonly description: Option.Option<string>
+      }>
     }) => void
   }
 ) => {
@@ -329,9 +335,15 @@ const emptyMap = new Map<never, never>()
 
 const extractMembers = (
   topAst: AST.AST,
-  inherited: ReadonlyMap<number, Option.Option<AST.AST>>,
+  inherited: ReadonlyMap<number, {
+    readonly ast: Option.Option<AST.AST>
+    readonly description: Option.Option<string>
+  }>,
   getStatus: (ast: AST.AST) => number
-): ReadonlyMap<number, Option.Option<AST.AST>> => {
+): ReadonlyMap<number, {
+  readonly ast: Option.Option<AST.AST>
+  readonly description: Option.Option<string>
+}> => {
   const members = new Map(inherited)
   function process(ast: AST.AST) {
     if (ast._tag === "NeverKeyword") {
@@ -343,19 +355,24 @@ const extractMembers = (
     })
     const status = getStatus(ast)
     const emptyDecodeable = HttpApiSchema.getEmptyDecodeable(ast)
-    const current = members.get(status) ?? Option.none()
+    const current = members.get(status)
     members.set(
       status,
-      current.pipe(
-        Option.map((current) =>
-          AST.Union.make(
-            current._tag === "Union" ? [...current.types, ast] : [current, ast]
-          )
+      {
+        description: (current ? current.description : Option.none()).pipe(
+          Option.orElse(() => getDescriptionOrIdentifier(ast))
         ),
-        Option.orElse(() =>
-          !emptyDecodeable && AST.encodedAST(ast)._tag === "VoidKeyword" ? Option.none() : Option.some(ast)
+        ast: (current ? current.ast : Option.none()).pipe(
+          Option.map((current) =>
+            AST.Union.make(
+              current._tag === "Union" ? [...current.types, ast] : [current, ast]
+            )
+          ),
+          Option.orElse(() =>
+            !emptyDecodeable && AST.encodedAST(ast)._tag === "VoidKeyword" ? Option.none() : Option.some(ast)
+          )
         )
-      )
+      }
     )
   }
   if (topAst._tag === "Union") {
@@ -404,6 +421,16 @@ const extractPayloads = (topAst: AST.AST): ReadonlyMap<string, {
     process(topAst)
   }
   return members
+}
+
+const getDescriptionOrIdentifier = (ast: AST.PropertySignature | AST.AST): Option.Option<string> => {
+  const annotations = "to" in ast ?
+    {
+      ...ast.to.annotations,
+      ...ast.annotations
+    } :
+    ast.annotations
+  return Option.fromNullable(annotations[AST.DescriptionAnnotationId] ?? annotations[AST.IdentifierAnnotationId] as any)
 }
 
 /**

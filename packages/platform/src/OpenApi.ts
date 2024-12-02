@@ -6,7 +6,6 @@ import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
 import * as Schema from "effect/Schema"
-import * as AST from "effect/SchemaAST"
 import type { DeepMutable, Mutable } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
 import * as HttpApiMiddleware from "./HttpApiMiddleware.js"
@@ -90,9 +89,10 @@ export class Override extends Context.Tag("@effect/platform/OpenApi/Override")<O
  * @since 1.0.0
  * @category annotations
  */
-export class Transform
-  extends Context.Tag("@effect/platform/OpenApi/Transform")<Transform, (openApiSpec: OpenAPISpec) => OpenAPISpec>()
-{}
+export class Transform extends Context.Tag("@effect/platform/OpenApi/Transform")<
+  Transform,
+  (openApiSpec: Record<string, any>) => Record<string, any>
+>() {}
 
 const contextPartial = <Tags extends Record<string, Context.Tag<any, any>>>(tags: Tags): (
   options: {
@@ -119,18 +119,15 @@ export const annotations: (
   options: {
     readonly identifier?: string | undefined
     readonly title?: string | undefined
-    readonly summary?: string | undefined
     readonly version?: string | undefined
     readonly description?: string | undefined
     readonly license?: OpenAPISpecLicense | undefined
+    readonly summary?: string | undefined
     readonly externalDocs?: OpenAPISpecExternalDocs | undefined
     readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined
     readonly format?: string | undefined
     readonly override?: Record<string, unknown> | undefined
-    /**
-     * Transforms the generated OpenAPI specification
-     */
-    readonly transform?: ((openApiSpec: OpenAPISpec) => OpenAPISpec) | undefined
+    readonly transform?: ((openApiSpec: Record<string, any>) => Record<string, any>) | undefined
   }
 ) => Context.Context<never> = contextPartial({
   identifier: Identifier,
@@ -217,7 +214,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
   })
   HttpApi.reflect(api as any, {
     onGroup({ group }) {
-      const tag: Mutable<OpenAPISpecTag> = {
+      let tag: Mutable<OpenAPISpecTag> = {
         name: Context.getOrElse(group.annotations, Title, () => group.identifier)
       }
       Option.map(Context.getOption(group.annotations, Description), (description) => {
@@ -229,12 +226,15 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       Option.map(Context.getOption(group.annotations, Override), (override) => {
         Object.assign(tag, override)
       })
+      Option.map(Context.getOption(group.annotations, Transform), (fn) => {
+        tag = fn(tag) as OpenAPISpecTag
+      })
       spec.tags!.push(tag)
     },
     onEndpoint({ endpoint, errors, group, middleware, payloads, successes }) {
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
-      const op: DeepMutable<OpenAPISpecOperation> = {
+      let op: DeepMutable<OpenAPISpecOperation> = {
         tags: [Context.getOrElse(group.annotations, Title, () => group.identifier)],
         operationId: Context.getOrElse(
           endpoint.annotations,
@@ -275,10 +275,10 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
         })
         op.requestBody = { content, required: true }
       }
-      for (const [status, ast] of successes) {
+      for (const [status, { ast, description }] of successes) {
         if (op.responses![status]) continue
         op.responses![status] = {
-          description: Option.getOrElse(getDescriptionOrIdentifier(ast), () => "Success")
+          description: Option.getOrElse(description, () => "Success")
         }
         ast.pipe(
           Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
@@ -343,10 +343,10 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
           })
         }
       }
-      for (const [status, ast] of errors) {
+      for (const [status, { ast, description }] of errors) {
         if (op.responses![status]) continue
         op.responses![status] = {
-          description: Option.getOrElse(getDescriptionOrIdentifier(ast), () => "Error")
+          description: Option.getOrElse(description, () => "Error")
         }
         ast.pipe(
           Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
@@ -365,12 +365,15 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       Option.map(Context.getOption(endpoint.annotations, Override), (override) => {
         Object.assign(op, override)
       })
+      Option.map(Context.getOption(endpoint.annotations, Transform), (transformFn) => {
+        op = transformFn(op)
+      })
       spec.paths[path][method] = op
     }
   })
 
   Option.map(Context.getOption(api.annotations, Transform), (transformFn) => {
-    spec = transformFn(spec)
+    spec = transformFn(spec) as OpenAPISpec
   })
 
   apiCache.set(self, spec)
@@ -413,21 +416,6 @@ const makeSecurityScheme = (security: HttpApiSecurity): OpenAPISecurityScheme =>
     }
   }
 }
-
-const getDescriptionOrIdentifier = (ast: Option.Option<AST.PropertySignature | AST.AST>): Option.Option<string> =>
-  ast.pipe(
-    Option.map((ast) =>
-      "to" in ast ?
-        {
-          ...ast.to.annotations,
-          ...ast.annotations
-        } :
-        ast.annotations
-    ),
-    Option.flatMapNullable((annotations) =>
-      annotations[AST.DescriptionAnnotationId] ?? annotations[AST.IdentifierAnnotationId] as any
-    )
-  )
 
 /**
  * @category models
