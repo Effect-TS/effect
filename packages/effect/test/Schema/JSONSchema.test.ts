@@ -88,6 +88,59 @@ describe("makeWithDefs", () => {
   })
 })
 
+describe("parseJson", () => {
+  it(`should correctly generate JSON Schemas by targeting the "to" side of transformations`, () => {
+    const schema = Schema.parseJson(Schema.Struct({
+      a: Schema.parseJson(Schema.NumberFromString)
+    }))
+    expectJSONSchema(
+      schema,
+      {
+        "$defs": {
+          "NumberFromString": {
+            "type": "string",
+            "description": "a string that will be parsed into a number"
+          }
+        },
+        "type": "object",
+        "required": ["a"],
+        "properties": {
+          "a": {
+            "$ref": "#/$defs/NumberFromString"
+          }
+        },
+        "additionalProperties": false
+      }
+    )
+  })
+
+  it("TypeLiteralTransformations", () => {
+    expectJSONSchema(
+      Schema.parseJson(Schema.Struct({
+        a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
+      })),
+      {
+        "$defs": {
+          "NonEmptyString": {
+            "type": "string",
+            "description": "a non empty string",
+            "title": "NonEmptyString",
+            "minLength": 1
+          }
+        },
+        "type": "object",
+        "required": [],
+        "properties": {
+          "a": {
+            "$ref": "#/$defs/NonEmptyString"
+          }
+        },
+        "additionalProperties": false
+      }
+    )
+  })
+})
+
 describe("JSONSchema", () => {
   describe("Unsupported schemas", () => {
     describe("Missing jsonSchema annotation Error", () => {
@@ -1670,58 +1723,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           )
         })
       })
-    })
-  })
-
-  describe("parseJson", () => {
-    it(`should correctly generate JSON Schemas by targeting the "to" side of transformations`, () => {
-      expectJSONSchema(
-        Schema.parseJson(Schema.Struct({
-          a: Schema.parseJson(Schema.NumberFromString)
-        })),
-        {
-          "$defs": {
-            "NumberFromString": {
-              "type": "string",
-              "description": "a string that will be parsed into a number"
-            }
-          },
-          "type": "object",
-          "required": ["a"],
-          "properties": {
-            "a": {
-              "$ref": "#/$defs/NumberFromString"
-            }
-          },
-          "additionalProperties": false
-        }
-      )
-    })
-
-    it("TypeLiteralTransformations", () => {
-      expectJSONSchema(
-        Schema.parseJson(Schema.Struct({
-          a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
-        })),
-        {
-          "$defs": {
-            "NonEmptyString": {
-              "type": "string",
-              "description": "a non empty string",
-              "title": "NonEmptyString",
-              "minLength": 1
-            }
-          },
-          "type": "object",
-          "required": [],
-          "properties": {
-            "a": {
-              "$ref": "#/$defs/NonEmptyString"
-            }
-          },
-          "additionalProperties": false
-        }
-      )
     })
   })
 
