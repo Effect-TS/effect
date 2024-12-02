@@ -351,7 +351,7 @@ export const fromIterable: <R extends Route<any, any>>(
  * @category constructors
  */
 export const makeRoute: <E, R>(
-  method: Method.HttpMethod,
+  method: Method.HttpMethod | "*",
   path: PathInput,
   handler: Route.Handler<E, R>,
   options?: { readonly prefix?: string | undefined; readonly uninterruptible?: boolean | undefined } | undefined
