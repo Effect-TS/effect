@@ -226,7 +226,7 @@
             }
           },
           "400": {
-            "description": "Error",
+            "description": "The request did not match the expected schema",
             "content": {
               "application/json": {
                 "schema": {
@@ -260,14 +260,14 @@
                 "type": "object",
                 "required": ["name"],
                 "properties": {
-                  "name": {
-                    "type": "string"
-                  },
                   "uuid": {
+                    "type": "string",
                     "description": "a Universally Unique Identifier",
-                    "format": "uuid",
-                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
                     "title": "UUID",
+                    "format": "uuid",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                  },
+                  "name": {
                     "type": "string"
                   }
                 },
@@ -280,8 +280,6 @@
       },
       "get": {
         "tags": ["Users API"],
-        "deprecated": true,
-        "summary": "test summary",
         "operationId": "listUsers",
         "parameters": [
           {
@@ -342,7 +340,9 @@
               }
             }
           }
-        }
+        },
+        "summary": "test summary",
+        "deprecated": true
       }
     },
     "/users/upload": {
@@ -424,6 +424,39 @@
           "required": true
         }
       }
+    },
+    "/healthz": {
+      "get": {
+        "tags": ["root"],
+        "operationId": "healthz",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Empty"
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "an instance of GlobalError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "tags": [
@@ -434,25 +467,28 @@
       "name": "Users API"
     },
     {
+      "name": "root"
+    },
+    {
       "name": "Tag from OpenApi.Transform annotation"
     }
   ],
   "components": {
     "schemas": {
       "ComponentsSchema": {
-        "additionalProperties": false,
+        "type": "object",
+        "required": ["contentType", "length"],
         "properties": {
           "contentType": {
             "type": "string"
           },
           "length": {
+            "type": "integer",
             "description": "an integer",
-            "title": "Int",
-            "type": "integer"
+            "title": "Int"
           }
         },
-        "required": ["contentType", "length"],
-        "type": "object"
+        "additionalProperties": false
       },
       "Group": {
         "type": "object",
@@ -549,14 +585,14 @@
             "description": "an integer",
             "title": "Int"
           },
-          "name": {
-            "type": "string"
-          },
           "uuid": {
+            "type": "string",
             "description": "a Universally Unique Identifier",
-            "format": "uuid",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
             "title": "UUID",
+            "format": "uuid",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "name": {
             "type": "string"
           },
           "createdAt": {

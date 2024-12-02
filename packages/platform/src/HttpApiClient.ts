@@ -118,8 +118,14 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
       readonly endpoint: HttpApiEndpoint<string, HttpMethod.HttpMethod>
       readonly mergedAnnotations: Context.Context<never>
       readonly middleware: ReadonlySet<HttpApiMiddleware.TagClassAny>
-      readonly successes: ReadonlyMap<number, Option.Option<AST.AST>>
-      readonly errors: ReadonlyMap<number, Option.Option<AST.AST>>
+      readonly successes: ReadonlyMap<number, {
+        readonly ast: Option.Option<AST.AST>
+        readonly description: Option.Option<string>
+      }>
+      readonly errors: ReadonlyMap<number, {
+        readonly ast: Option.Option<AST.AST>
+        readonly description: Option.Option<string>
+      }>
       readonly endpointFn: Function
     }) => void
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
@@ -152,7 +158,7 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
           (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>
         > = { orElse: statusOrElse }
         const decodeResponse = HttpClientResponse.matchStatus(decodeMap)
-        errors.forEach((ast, status) => {
+        errors.forEach(({ ast }, status) => {
           if (ast._tag === "None") {
             decodeMap[status] = statusCodeError
             return
@@ -160,7 +166,7 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
           const decode = schemaToResponse(ast.value)
           decodeMap[status] = (response) => Effect.flatMap(decode(response), Effect.fail)
         })
-        successes.forEach((ast, status) => {
+        successes.forEach(({ ast }, status) => {
           decodeMap[status] = ast._tag === "None" ? responseAsVoid : schemaToResponse(ast.value)
         })
         const encodePayloadBody = endpoint.payloadSchema.pipe(
