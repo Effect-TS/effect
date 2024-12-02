@@ -298,7 +298,7 @@ abstract class MicroCauseImpl<Tag extends string, E> extends globalThis.Error im
   }
 }
 
-class FailImpl<E> extends MicroCauseImpl<"Fail", E> implements MicroCause.Fail<E> {
+class Fail<E> extends MicroCauseImpl<"Fail", E> implements MicroCause.Fail<E> {
   constructor(
     readonly error: E,
     traces: ReadonlyArray<string> = []
@@ -315,9 +315,9 @@ class FailImpl<E> extends MicroCauseImpl<"Fail", E> implements MicroCause.Fail<E
 export const causeFail = <E>(
   error: E,
   traces: ReadonlyArray<string> = []
-): MicroCause<E> => new FailImpl(error, traces)
+): MicroCause<E> => new Fail(error, traces)
 
-class DieImpl extends MicroCauseImpl<"Die", never> implements MicroCause.Die {
+class Die extends MicroCauseImpl<"Die", never> implements MicroCause.Die {
   constructor(
     readonly defect: unknown,
     traces: ReadonlyArray<string> = []
@@ -334,9 +334,9 @@ class DieImpl extends MicroCauseImpl<"Die", never> implements MicroCause.Die {
 export const causeDie = (
   defect: unknown,
   traces: ReadonlyArray<string> = []
-): MicroCause<never> => new DieImpl(defect, traces)
+): MicroCause<never> => new Die(defect, traces)
 
-class InterruptImpl extends MicroCauseImpl<"Interrupt", never> implements MicroCause.Interrupt {
+class Interrupt extends MicroCauseImpl<"Interrupt", never> implements MicroCause.Interrupt {
   constructor(traces: ReadonlyArray<string> = []) {
     super("Interrupt", "interrupted", traces)
   }
@@ -349,7 +349,7 @@ class InterruptImpl extends MicroCauseImpl<"Interrupt", never> implements MicroC
  */
 export const causeInterrupt = (
   traces: ReadonlyArray<string> = []
-): MicroCause<never> => new InterruptImpl(traces)
+): MicroCause<never> => new Interrupt(traces)
 
 /**
  * @since 3.4.6
@@ -405,30 +405,30 @@ export const causeWithTrace: {
 })
 
 // ----------------------------------------------------------------------------
-// Fiber
+// MicroFiber
 // ----------------------------------------------------------------------------
 
 /**
  * @since 3.11.0
  * @experimental
- * @category Fiber
+ * @category MicroFiber
  */
-export const FiberTypeId = Symbol.for("effect/Micro/Fiber")
+export const MicroFiberTypeId = Symbol.for("effect/Micro/MicroFiber")
 
 /**
  * @since 3.11.0
  * @experimental
- * @category Fiber
+ * @category MicroFiber
  */
-export type FiberTypeId = typeof FiberTypeId
+export type MicroFiberTypeId = typeof MicroFiberTypeId
 
 /**
  * @since 3.11.0
  * @experimental
- * @category Fiber
+ * @category MicroFiber
  */
-export interface Fiber<out A, out E = never> {
-  readonly [FiberTypeId]: Fiber.Variance<A, E>
+export interface MicroFiber<out A, out E = never> {
+  readonly [MicroFiberTypeId]: MicroFiber.Variance<A, E>
 
   readonly currentOpCount: number
   readonly getRef: <I, A>(ref: Context.Reference<I, A>) => A
@@ -441,13 +441,13 @@ export interface Fiber<out A, out E = never> {
 /**
  * @since 3.11.0
  * @experimental
- * @category Fiber
+ * @category MicroFiber
  */
-export declare namespace Fiber {
+export declare namespace MicroFiber {
   /**
    * @since 3.11.0
    * @experimental
-   * @category Fiber
+   * @category MicroFiber
    */
   export interface Variance<out A, out E = never> {
     readonly _A: Covariant<A>
@@ -460,13 +460,13 @@ const fiberVariance = {
   _E: identity
 }
 
-class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
-  readonly [FiberTypeId]: Fiber.Variance<A, E>
+class MicroFiberImpl<in out A = any, in out E = any> implements MicroFiber<A, E> {
+  readonly [MicroFiberTypeId]: MicroFiber.Variance<A, E>
 
   readonly _stack: Array<Primitive> = []
   readonly _observers: Array<(exit: MicroExit<A, E>) => void> = []
   _exit: MicroExit<A, E> | undefined
-  public _children: Set<FiberImpl<any, any>> | undefined
+  public _children: Set<MicroFiberImpl<any, any>> | undefined
 
   public currentOpCount = 0
 
@@ -474,7 +474,7 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
     public context: Context.Context<never>,
     public interruptible = true
   ) {
-    this[FiberTypeId] = fiberVariance
+    this[MicroFiberTypeId] = fiberVariance
   }
 
   getRef<I, A>(ref: Context.Reference<I, A>): A {
@@ -561,7 +561,7 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
       }
     } catch (error) {
       if (!hasProperty(current, evaluate)) {
-        return exitDie(`Micro/Fiber.runLoop: Not a valid effect: ${String(current)}`)
+        return exitDie(`MicroFiber.runLoop: Not a valid effect: ${String(current)}`)
       }
       return exitDie(error)
     }
@@ -569,7 +569,7 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
 
   getCont<S extends successCont | failureCont>(
     symbol: S
-  ): Primitive & Record<S, (value: any, fiber: FiberImpl) => Primitive> | undefined {
+  ): Primitive & Record<S, (value: any, fiber: MicroFiberImpl) => Primitive> | undefined {
     while (true) {
       const op = this._stack.pop()
       if (!op) return undefined
@@ -586,16 +586,16 @@ class FiberImpl<in out A = any, in out E = any> implements Fiber<A, E> {
     return Yield
   }
 
-  children(): Set<Fiber<any, any>> {
+  children(): Set<MicroFiber<any, any>> {
     return this._children ??= new Set()
   }
 }
 
 const fiberMiddleware = globalValue("effect/Micro/fiberMiddleware", () => ({
-  interruptChildren: undefined as ((fiber: FiberImpl) => Micro<void> | undefined) | undefined
+  interruptChildren: undefined as ((fiber: MicroFiberImpl) => Micro<void> | undefined) | undefined
 }))
 
-const fiberInterruptChildren = (fiber: FiberImpl) => {
+const fiberInterruptChildren = (fiber: MicroFiberImpl) => {
   if (fiber._children === undefined || fiber._children.size === 0) {
     return undefined
   }
@@ -605,17 +605,24 @@ const fiberInterruptChildren = (fiber: FiberImpl) => {
 /**
  * @since 3.11.0
  * @experimental
- * @category Fiber
+ * @category MicroFiber
  */
-export const fiberAwait = <A, E>(self: Fiber<A, E>): Micro<MicroExit<A, E>> =>
+export const fiberAwait = <A, E>(self: MicroFiber<A, E>): Micro<MicroExit<A, E>> =>
   async((resume) => sync(self.addObserver((exit) => resume(succeed(exit)))))
+
+/**
+ * @since 3.11.2
+ * @experimental
+ * @category MicroFiber
+ */
+export const fiberJoin = <A, E>(self: MicroFiber<A, E>): Micro<A, E> => flatten(fiberAwait(self))
 
 /**
  * @since 3.11.0
  * @experimental
- * @category Fiber
+ * @category MicroFiber
  */
-export const fiberInterrupt = <A, E>(self: Fiber<A, E>): Micro<void> =>
+export const fiberInterrupt = <A, E>(self: MicroFiber<A, E>): Micro<void> =>
   suspend(() => {
     self.unsafeInterrupt()
     return asVoid(fiberAwait(self))
@@ -624,9 +631,9 @@ export const fiberInterrupt = <A, E>(self: Fiber<A, E>): Micro<void> =>
 /**
  * @since 3.11.0
  * @experimental
- * @category Fiber
+ * @category MicroFiber
  */
-export const fiberInterruptAll = <A extends Iterable<Fiber<any, any>>>(fibers: A): Micro<void> =>
+export const fiberInterruptAll = <A extends Iterable<MicroFiber<any, any>>>(fibers: A): Micro<void> =>
   suspend(() => {
     for (const fiber of fibers) fiber.unsafeInterrupt()
     const iter = fibers[Symbol.iterator]()
@@ -672,16 +679,16 @@ type Yield = typeof Yield
 
 interface Primitive {
   readonly [identifier]: string
-  readonly [successCont]: ((value: unknown, fiber: FiberImpl) => Primitive | Yield) | undefined
+  readonly [successCont]: ((value: unknown, fiber: MicroFiberImpl) => Primitive | Yield) | undefined
   readonly [failureCont]:
-    | ((cause: MicroCause<unknown>, fiber: FiberImpl) => Primitive | Yield)
+    | ((cause: MicroCause<unknown>, fiber: MicroFiberImpl) => Primitive | Yield)
     | undefined
   readonly [ensureCont]:
-    | ((fiber: FiberImpl) =>
-      | ((value: unknown, fiber: FiberImpl) => Primitive | Yield)
+    | ((fiber: MicroFiberImpl) =>
+      | ((value: unknown, fiber: MicroFiberImpl) => Primitive | Yield)
       | undefined)
     | undefined
-  [evaluate](fiber: FiberImpl): Primitive | Yield
+  [evaluate](fiber: MicroFiberImpl): Primitive | Yield
 }
 
 const microVariance = {
@@ -702,7 +709,7 @@ const MicroProto = {
   },
   toJSON(this: Primitive) {
     return {
-      _id: "effect/Micro",
+      _id: "Micro",
       op: this[identifier],
       ...(args in this ? { args: this[args] } : undefined)
     }
@@ -715,20 +722,20 @@ const MicroProto = {
   }
 }
 
-function defaultEvaluate(_fiber: FiberImpl): Primitive | Yield {
+function defaultEvaluate(_fiber: MicroFiberImpl): Primitive | Yield {
   return exitDie(`Micro.evaluate: Not implemented`) as any
 }
 
 const makePrimitiveProto = <Op extends string>(options: {
   readonly op: Op
-  readonly eval?: (fiber: FiberImpl) => Primitive | Micro<any, any, any> | Yield
-  readonly contA?: (this: Primitive, value: any, fiber: FiberImpl) => Primitive | Micro<any, any, any> | Yield
+  readonly eval?: (fiber: MicroFiberImpl) => Primitive | Micro<any, any, any> | Yield
+  readonly contA?: (this: Primitive, value: any, fiber: MicroFiberImpl) => Primitive | Micro<any, any, any> | Yield
   readonly contE?: (
     this: Primitive,
     cause: MicroCause<any>,
-    fiber: FiberImpl
+    fiber: MicroFiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
-  readonly ensure?: (this: Primitive, fiber: FiberImpl) => void | ((value: any, fiber: FiberImpl) => void)
+  readonly ensure?: (this: Primitive, fiber: MicroFiberImpl) => void | ((value: any, fiber: MicroFiberImpl) => void)
 }): Primitive => ({
   ...MicroProto,
   [identifier]: options.op,
@@ -743,22 +750,22 @@ const makePrimitive = <Fn extends (...args: Array<any>) => any, Single extends b
   readonly single?: Single
   readonly eval?: (
     this: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
-    fiber: FiberImpl
+    fiber: MicroFiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
   readonly contA?: (
     this: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
     value: any,
-    fiber: FiberImpl
+    fiber: MicroFiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
   readonly contE?: (
     this: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
     cause: MicroCause<any>,
-    fiber: FiberImpl
+    fiber: MicroFiberImpl
   ) => Primitive | Micro<any, any, any> | Yield
   readonly ensure?: (
     this: Primitive & { readonly [args]: Single extends true ? Parameters<Fn>[0] : Parameters<Fn> },
-    fiber: FiberImpl
-  ) => void | ((value: any, fiber: FiberImpl) => void)
+    fiber: MicroFiberImpl
+  ) => void | ((value: any, fiber: MicroFiberImpl) => void)
 }): Fn => {
   const Proto = makePrimitiveProto(options as any)
   return function() {
@@ -775,7 +782,7 @@ const makeExit = <Fn extends (...args: Array<any>) => any, Prop extends string>(
     this:
       & MicroExit<unknown, unknown>
       & { [args]: Parameters<Fn>[0] },
-    fiber: FiberImpl<unknown, unknown>
+    fiber: MicroFiberImpl<unknown, unknown>
   ) => Primitive | Yield
 }): Fn => {
   const Proto = {
@@ -787,7 +794,7 @@ const makeExit = <Fn extends (...args: Array<any>) => any, Prop extends string>(
     },
     toJSON(this: any) {
       return {
-        _id: "effect/Micro/Exit",
+        _id: "MicroExit",
         _tag: options.op,
         [options.prop]: this[args]
       }
@@ -1095,16 +1102,16 @@ export const tryPromise = <A, E>(options: {
   }, options.try.length !== 0)
 
 /**
- * Create a `Micro` effect using the current `Fiber`.
+ * Create a `Micro` effect using the current `MicroFiber`.
  *
  * @since 3.4.0
  * @experimental
  * @category constructors
  */
-export const withFiber: <A, E = never, R = never>(
-  evaluate: (fiber: FiberImpl<A, E>) => Micro<A, E, R>
+export const withMicroFiber: <A, E = never, R = never>(
+  evaluate: (fiber: MicroFiberImpl<A, E>) => Micro<A, E, R>
 ) => Micro<A, E, R> = makePrimitive({
-  op: "WithFiber",
+  op: "WithMicroFiber",
   eval(fiber) {
     return this[args](fiber)
   }
@@ -1117,7 +1124,7 @@ export const withFiber: <A, E = never, R = never>(
  * @experimental
  * @category constructors
  */
-export const yieldFlush: Micro<void> = withFiber((fiber) => {
+export const yieldFlush: Micro<void> = withMicroFiber((fiber) => {
   fiber.getRef(CurrentScheduler).flush()
   return exitVoid
 })
@@ -1232,7 +1239,7 @@ const fromIterator: (
     fiber._stack.push(this)
     return yieldWrapGet(state.value)
   },
-  eval(this: any, fiber: FiberImpl) {
+  eval(this: any, fiber: MicroFiberImpl) {
     return this[successCont](undefined, fiber)
   }
 })
@@ -1403,13 +1410,13 @@ export const sandbox = <A, E, R>(self: Micro<A, E, R>): Micro<A, MicroCause<E>, 
 export const raceAll = <Eff extends Micro<any, any, any>>(
   all: Iterable<Eff>
 ): Micro<Micro.Success<Eff>, Micro.Error<Eff>, Micro.Context<Eff>> =>
-  withFiber((parent) =>
+  withMicroFiber((parent) =>
     async((resume) => {
       const effects = Arr.fromIterable(all)
       const len = effects.length
       let doneCount = 0
       let done = false
-      const fibers = new Set<Fiber<any, any>>()
+      const fibers = new Set<MicroFiber<any, any>>()
       const causes: Array<MicroCause<any>> = []
       const onExit = (exit: MicroExit<any, any>) => {
         doneCount++
@@ -1450,10 +1457,10 @@ export const raceAll = <Eff extends Micro<any, any, any>>(
 export const raceAllFirst = <Eff extends Micro<any, any, any>>(
   all: Iterable<Eff>
 ): Micro<Micro.Success<Eff>, Micro.Error<Eff>, Micro.Context<Eff>> =>
-  withFiber((parent) =>
+  withMicroFiber((parent) =>
     async((resume) => {
       let done = false
-      const fibers = new Set<Fiber<any, any>>()
+      const fibers = new Set<MicroFiber<any, any>>()
       const onExit = (exit: MicroExit<any, any>) => {
         done = true
         resume(fibers.size === 0 ? exit : flatMap(fiberInterruptAll(fibers), () => exit))
@@ -1537,7 +1544,7 @@ export const flatMap: {
 )
 const OnSuccessProto = makePrimitiveProto({
   op: "OnSuccess",
-  eval(this: any, fiber: FiberImpl): Primitive {
+  eval(this: any, fiber: MicroFiberImpl): Primitive {
     fiber._stack.push(this)
     return this[args]
   }
@@ -1754,7 +1761,7 @@ export const exitVoidAll = <I extends Iterable<MicroExit<any, any>>>(
  */
 export interface MicroScheduler {
   readonly scheduleTask: (task: () => void, priority: number) => void
-  readonly shouldYield: (fiber: Fiber<unknown, unknown>) => boolean
+  readonly shouldYield: (fiber: MicroFiber<unknown, unknown>) => boolean
   readonly flush: () => void
 }
 
@@ -1804,7 +1811,7 @@ export class MicroSchedulerDefault implements MicroScheduler {
   /**
    * @since 3.5.9
    */
-  shouldYield(fiber: Fiber<unknown, unknown>) {
+  shouldYield(fiber: MicroFiber<unknown, unknown>) {
     return fiber.currentOpCount >= fiber.getRef(MaxOpsBeforeYield)
   }
 
@@ -1830,7 +1837,7 @@ export const service: {
   <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I>
 } =
   (<I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
-    withFiber((fiber) => succeed(Context.unsafeGet(fiber.context, tag)))) as any
+    withMicroFiber((fiber) => succeed(Context.unsafeGet(fiber.context, tag)))) as any
 
 /**
  * Access the given `Context.Tag` from the environment, without tracking the
@@ -1845,7 +1852,7 @@ export const service: {
  */
 export const serviceOption = <I, S>(
   tag: Context.Tag<I, S>
-): Micro<Option.Option<S>> => withFiber((fiber) => succeed(Context.getOption(fiber.context, tag)))
+): Micro<Option.Option<S>> => withMicroFiber((fiber) => succeed(Context.getOption(fiber.context, tag)))
 
 /**
  * Update the Context with the given mapping function.
@@ -1865,7 +1872,7 @@ export const updateContext: {
     self: Micro<A, E, R>,
     f: (context: Context.Context<R2>) => Context.Context<NoInfer<R>>
   ): Micro<A, E, R2> =>
-    withFiber<A, E, R2>((fiber) => {
+    withMicroFiber<A, E, R2>((fiber) => {
       const prev = fiber.context as Context.Context<R2>
       fiber.context = f(prev)
       return onExit(
@@ -1911,7 +1918,7 @@ export const updateService: {
     tag: Context.Reference<I, A>,
     f: (value: A) => A
   ): Micro<XA, E, R> =>
-    withFiber((fiber) => {
+    withMicroFiber((fiber) => {
       const prev = Context.unsafeGet(fiber.context, tag)
       fiber.context = Context.add(fiber.context, tag, f(prev))
       return onExit(
@@ -1932,7 +1939,7 @@ export const updateService: {
  * @category environment
  */
 export const context = <R>(): Micro<Context.Context<R>> => getContext as any
-const getContext = withFiber((fiber) => succeed(fiber.context))
+const getContext = withMicroFiber((fiber) => succeed(fiber.context))
 
 /**
  * Merge the given `Context` with the current context.
@@ -2579,7 +2586,7 @@ export const catchAllCause: {
 )
 const OnFailureProto = makePrimitiveProto({
   op: "OnFailure",
-  eval(this: any, fiber: FiberImpl): Primitive {
+  eval(this: any, fiber: MicroFiberImpl): Primitive {
     fiber._stack.push(this as any)
     return this[args]
   }
@@ -3039,7 +3046,7 @@ export const matchCauseEffect: {
 )
 const OnSuccessAndFailureProto = makePrimitiveProto({
   op: "OnSuccessAndFailure",
-  eval(this: any, fiber: FiberImpl): Primitive {
+  eval(this: any, fiber: MicroFiberImpl): Primitive {
     fiber._stack.push(this)
     return this[args]
   }
@@ -3630,7 +3637,7 @@ export const interrupt: Micro<never> = failCause(causeInterrupt())
 export const uninterruptible = <A, E, R>(
   self: Micro<A, E, R>
 ): Micro<A, E, R> =>
-  withFiber((fiber) => {
+  withMicroFiber((fiber) => {
     if (!fiber.interruptible) return self
     fiber.interruptible = false
     fiber._stack.push(setInterruptible(true))
@@ -3658,7 +3665,7 @@ const setInterruptible: (interruptible: boolean) => Primitive = makePrimitive({
 export const interruptible = <A, E, R>(
   self: Micro<A, E, R>
 ): Micro<A, E, R> =>
-  withFiber((fiber) => {
+  withMicroFiber((fiber) => {
     if (fiber.interruptible) return self
     fiber.interruptible = true
     fiber._stack.push(setInterruptible(false))
@@ -3693,7 +3700,7 @@ export const uninterruptibleMask = <A, E, R>(
     restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>
   ) => Micro<A, E, R>
 ): Micro<A, E, R> =>
-  withFiber((fiber) => {
+  withMicroFiber((fiber) => {
     if (!fiber.interruptible) return f(identity)
     fiber.interruptible = false
     fiber._stack.push(setInterruptible(true))
@@ -3876,7 +3883,7 @@ export const forEach: {
   readonly concurrency?: Concurrency | undefined
   readonly discard?: boolean | undefined
 }): Micro<any, E, R> =>
-  withFiber((parent) => {
+  withMicroFiber((parent) => {
     const concurrencyOption = options?.concurrency === "inherit"
       ? parent.getRef(CurrentConcurrency)
       : options?.concurrency ?? 1
@@ -3906,7 +3913,7 @@ export const forEach: {
       )
     }
     return async((resume) => {
-      const fibers = new Set<Fiber<unknown, unknown>>()
+      const fibers = new Set<MicroFiber<unknown, unknown>>()
       let result: MicroExit<any, any> | undefined = undefined
       let inProgress = 0
       let doneCount = 0
@@ -4084,7 +4091,7 @@ export {
 // ----------------------------------------------------------------------------
 
 /**
- * Run the `Micro` effect in a new `Fiber` that can be awaited, joined, or
+ * Run the `Micro` effect in a new `MicroFiber` that can be awaited, joined, or
  * aborted.
  *
  * When the parent `Micro` finishes, this `Micro` will be aborted.
@@ -4095,19 +4102,19 @@ export {
  */
 export const fork = <A, E, R>(
   self: Micro<A, E, R>
-): Micro<Fiber<A, E>, never, R> =>
-  withFiber((fiber) => {
+): Micro<MicroFiber<A, E>, never, R> =>
+  withMicroFiber((fiber) => {
     fiberMiddleware.interruptChildren ??= fiberInterruptChildren
     return succeed(unsafeFork(fiber, self))
   })
 
 const unsafeFork = <FA, FE, A, E, R>(
-  parent: FiberImpl<FA, FE>,
+  parent: MicroFiberImpl<FA, FE>,
   effect: Micro<A, E, R>,
   immediate = false,
   daemon = false
-): Fiber<A, E> => {
-  const child = new FiberImpl<A, E>(parent.context, parent.interruptible)
+): MicroFiber<A, E> => {
+  const child = new MicroFiberImpl<A, E>(parent.context, parent.interruptible)
   if (!daemon) {
     parent.children().add(child)
     child.addObserver(() => parent.children().delete(child))
@@ -4121,7 +4128,7 @@ const unsafeFork = <FA, FE, A, E, R>(
 }
 
 /**
- * Run the `Micro` effect in a new `Fiber` that can be awaited, joined, or
+ * Run the `Micro` effect in a new `MicroFiber` that can be awaited, joined, or
  * aborted.
  *
  * It will not be aborted when the parent `Micro` finishes.
@@ -4132,10 +4139,10 @@ const unsafeFork = <FA, FE, A, E, R>(
  */
 export const forkDaemon = <A, E, R>(
   self: Micro<A, E, R>
-): Micro<Fiber<A, E>, never, R> => withFiber((fiber) => succeed(unsafeFork(fiber, self, false, true)))
+): Micro<MicroFiber<A, E>, never, R> => withMicroFiber((fiber) => succeed(unsafeFork(fiber, self, false, true)))
 
 /**
- * Run the `Micro` effect in a new `Fiber` that can be awaited, joined, or
+ * Run the `Micro` effect in a new `MicroFiber` that can be awaited, joined, or
  * aborted.
  *
  * The lifetime of the handle will be attached to the provided `MicroScope`.
@@ -4145,11 +4152,11 @@ export const forkDaemon = <A, E, R>(
  * @category fiber & forking
  */
 export const forkIn: {
-  (scope: MicroScope): <A, E, R>(self: Micro<A, E, R>) => Micro<Fiber<A, E>, never, R>
-  <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<Fiber<A, E>, never, R>
+  (scope: MicroScope): <A, E, R>(self: Micro<A, E, R>) => Micro<MicroFiber<A, E>, never, R>
+  <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<MicroFiber<A, E>, never, R>
 } = dual(
   2,
-  <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<Fiber<A, E>, never, R> =>
+  <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<MicroFiber<A, E>, never, R> =>
     uninterruptibleMask((restore) =>
       flatMap(scope.fork, (scope) =>
         tap(
@@ -4160,7 +4167,7 @@ export const forkIn: {
 )
 
 /**
- * Run the `Micro` effect in a new `Fiber` that can be awaited, joined, or
+ * Run the `Micro` effect in a new `MicroFiber` that can be awaited, joined, or
  * aborted.
  *
  * The lifetime of the handle will be attached to the current `MicroScope`.
@@ -4169,7 +4176,7 @@ export const forkIn: {
  * @experimental
  * @category fiber & forking
  */
-export const forkScoped = <A, E, R>(self: Micro<A, E, R>): Micro<Fiber<A, E>, never, R | MicroScope> =>
+export const forkScoped = <A, E, R>(self: Micro<A, E, R>): Micro<MicroFiber<A, E>, never, R | MicroScope> =>
   flatMap(scope, (scope) => forkIn(self, scope))
 
 // ----------------------------------------------------------------------------
@@ -4177,7 +4184,7 @@ export const forkScoped = <A, E, R>(self: Micro<A, E, R>): Micro<Fiber<A, E>, ne
 // ----------------------------------------------------------------------------
 
 /**
- * Execute the `Micro` effect and return a `Fiber` that can be awaited, joined,
+ * Execute the `Micro` effect and return a `MicroFiber` that can be awaited, joined,
  * or aborted.
  *
  * You can listen for the result by adding an observer using the handle's
@@ -4207,8 +4214,8 @@ export const runFork = <A, E>(
     readonly signal?: AbortSignal | undefined
     readonly scheduler?: MicroScheduler | undefined
   } | undefined
-): FiberImpl<A, E> => {
-  const fiber = new FiberImpl<A, E>(CurrentScheduler.context(
+): MicroFiberImpl<A, E> => {
+  const fiber = new MicroFiberImpl<A, E>(CurrentScheduler.context(
     options?.scheduler ?? new MicroSchedulerDefault()
   ))
   fiber.evaluate(effect as any)
@@ -4270,7 +4277,7 @@ export const runPromise = <A, E>(
  * Attempt to execute the `Micro` effect synchronously and return the `MicroExit`.
  *
  * If any asynchronous effects are encountered, the function will return a
- * `CauseDie` containing the `Fiber`.
+ * `CauseDie` containing the `MicroFiber`.
  *
  * @since 3.4.6
  * @experimental
