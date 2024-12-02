@@ -6,7 +6,7 @@ import type * as DateTime from "./DateTime.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as equivalence from "./Equivalence.js"
-import { dual, pipe } from "./Function.js"
+import { constVoid, dual, pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
 import { format, type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
 import * as dateTime from "./internal/dateTime.js"
@@ -281,9 +281,9 @@ export const parse = (cron: string, tz?: DateTime.TimeZone): Either.Either<Cron,
  * @since 2.0.0
  */
 export const match = (cron: Cron, date: DateTime.DateTime.Input): boolean => {
-  const zoned = dateTime.unsafeMakeZoned(date)
-  const adjusted = Option.isSome(cron.tz) ? dateTime.setZone(zoned, cron.tz.value) : zoned
-  const parts = dateTime.toParts(adjusted)
+  const parts = dateTime.unsafeMakeZoned(date, {
+    timeZone: Option.getOrUndefined(cron.tz)
+  }).pipe(dateTime.toParts)
 
   if (cron.minutes.size !== 0 && !cron.minutes.has(parts.minutes)) {
     return false
@@ -338,9 +338,24 @@ const daysInMonth = (date: Date): number =>
  * @since 2.0.0
  */
 export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
-  const zoned = dateTime.unsafeMakeZoned(now ?? new Date())
-  const adjusted = Option.isSome(cron.tz) ? dateTime.setZone(zoned, cron.tz.value) : zoned
-  const result = dateTime.mutate(adjusted, (current) => {
+  const zoned = dateTime.unsafeMakeZoned(now ?? new Date(), {
+    timeZone: Option.getOrUndefined(cron.tz)
+  })
+
+  const adjustDst = dateTime.isUtc(zoned) ? constVoid : (date: Date) => {
+    const parts = dateTime.unsafeMakeZoned(date, {
+      timeZone: zoned.zone,
+      adjustForTimeZone: true
+    }).pipe(dateTime.toParts)
+
+    // Check if the zoned date parts match the utc date parts.
+    if (!(parts.hours === date.getUTCHours() && parts.minutes === date.getUTCMinutes())) {
+      // If they don't match, we need to adjust for daylight savings time.
+      date.setUTCHours(date.getUTCHours() + 1, cron.first.minute)
+    }
+  }
+
+  const result = dateTime.mutate(zoned, (current) => {
     current.setUTCMinutes(current.getUTCMinutes() + 1, 0, 0)
 
     for (let i = 0; i < 10_000; i++) {
@@ -349,10 +364,12 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
         const nextMinute = cron.next.minute[currentMinute]
         if (nextMinute === undefined) {
           current.setUTCHours(current.getUTCHours() + 1, cron.first.minute)
+          adjustDst(current)
           continue
         }
         if (nextMinute > currentMinute) {
           current.setUTCMinutes(nextMinute)
+          adjustDst(current)
           continue
         }
       }
@@ -363,10 +380,12 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
         if (nextHour === undefined) {
           current.setUTCDate(current.getUTCDate() + 1)
           current.setUTCHours(cron.first.hour, cron.first.minute)
+          adjustDst(current)
           continue
         }
         if (nextHour > currentHour) {
           current.setUTCHours(nextHour, cron.first.minute)
+          adjustDst(current)
           continue
         }
       }
@@ -391,6 +410,7 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
         if (addDays !== 0) {
           current.setUTCDate(current.getUTCDate() + addDays)
           current.setUTCHours(cron.first.hour, cron.first.minute)
+          adjustDst(current)
           continue
         }
       }
@@ -402,11 +422,13 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
           current.setUTCFullYear(current.getUTCFullYear() + 1)
           current.setUTCMonth(cron.first.month, cron.first.day)
           current.setUTCHours(cron.first.hour, cron.first.minute)
+          adjustDst(current)
           continue
         }
         if (nextMonth > currentMonth) {
           current.setUTCMonth(nextMonth - 1, cron.first.day)
           current.setUTCHours(cron.first.hour, cron.first.minute)
+          adjustDst(current)
           continue
         }
       }

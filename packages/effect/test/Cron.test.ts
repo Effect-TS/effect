@@ -3,6 +3,7 @@ import * as DateTime from "effect/DateTime"
 import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import { identity } from "effect/Function"
+import * as Option from "effect/Option"
 import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
@@ -144,22 +145,24 @@ describe("Cron", () => {
     deepStrictEqual(next("0 0 29 2 *", new Date("2025-01-01 00:00:00")), new Date("2028-02-29 00:00:00"))
   })
 
-  it.skip("handles transitions accross daylight savings time changes", () => {
+  it("handles transitions accross daylight savings time changes", () => {
     const berlin = DateTime.zoneUnsafeMakeNamed("Europe/Berlin")
-    const make = (date: DateTime.DateTime.Input) =>
-      DateTime.unsafeMakeZoned(date, {
-        timeZone: berlin,
-        adjustForTimeZone: true
-      }).pipe(DateTime.toDateUtc)
+    const make = (date: string) => DateTime.makeZonedFromString(date).pipe(Option.getOrThrow)
+    const sequence = Cron.sequence(parse("30 * * * *", berlin), make("2024-03-31T00:00:00.000+01:00[Europe/Berlin]"))
 
-    const start = make("2024-03-31 00:00:00")
-    const sequence = Cron.sequence(parse("30 * * * *", berlin), start)
-    const next = () => sequence.next().value
+    const next = (): DateTime.Zoned =>
+      DateTime.unsafeMakeZoned(sequence.next().value, {
+        timeZone: berlin
+      })
 
-    deepStrictEqual(next(), make("2024-03-31 00:30:00"))
-    deepStrictEqual(next(), make("2024-03-31 01:30:00"))
-    deepStrictEqual(next(), make("2024-03-31 02:30:00"))
-    deepStrictEqual(next(), make("2024-03-31 03:30:00")) // Get's stuck here (time of transition)
-    deepStrictEqual(next(), make("2024-03-31 04:30:00")) // This is never reached
+    const a = make("2024-03-31T00:30:00.000+01:00[Europe/Berlin]")
+    const b = make("2024-03-31T01:30:00.000+01:00[Europe/Berlin]")
+    const c = make("2024-03-31T03:30:00.000+02:00[Europe/Berlin]")
+    const d = make("2024-03-31T04:30:00.000+02:00[Europe/Berlin]")
+
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), a.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), b.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), c.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), d.pipe(DateTime.formatIsoZoned))
   })
 })
