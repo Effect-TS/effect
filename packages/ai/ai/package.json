@@ -1,7 +1,7 @@
 {
   "name": "@effect/ai",
   "type": "module",
-  "version": "0.2.32",
+  "version": "0.3.0",
   "license": "MIT",
   "description": "Effect modules for working with AI apis",
   "homepage": "https://effect.website",

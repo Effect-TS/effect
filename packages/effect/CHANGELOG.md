@@ -1,5 +1,108 @@
 # effect
 
+## 3.11.0
+
+### Minor Changes
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`147434b`](https://github.com/Effect-TS/effect/commit/147434b03d5e1fd692dd9f126e5ab0910f3b76d3) Thanks @IMax153! - Ensure scopes are preserved by stream / sink / channel operations
+
+  **NOTE**: This change does modify the public signature of several `Stream` / `Sink` / `Channel` methods. Namely, certain run methods that previously removed a `Scope` from the environment will no longer do so. This was a bug with the previous implementation of how scopes were propagated, and is why this change is being made in a minor release.
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`6e69493`](https://github.com/Effect-TS/effect/commit/6e694930048bbaf98110f35f41566aeb9752d471) Thanks @tim-smart! - add Context.Reference - a Tag with a default value
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`147434b`](https://github.com/Effect-TS/effect/commit/147434b03d5e1fd692dd9f126e5ab0910f3b76d3) Thanks @IMax153! - Add `Effect.scopedWith` to run an effect that depends on a `Scope`, and then closes the `Scope` after the effect has completed
+
+  ```ts
+  import { Effect, Scope } from "effect"
+
+  const program: Effect.Effect<void> = Effect.scopedWith((scope) =>
+    Effect.acquireRelease(Effect.log("Acquiring..."), () =>
+      Effect.log("Releasing...")
+    ).pipe(Scope.extend(scope))
+  )
+
+  Effect.runPromise(program)
+  // Output:
+  // timestamp=2024-11-26T16:44:54.158Z level=INFO fiber=#0 message=Acquiring...
+  // timestamp=2024-11-26T16:44:54.165Z level=INFO fiber=#0 message=Releasing...
+  ```
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`d9fe79b`](https://github.com/Effect-TS/effect/commit/d9fe79bb5a3fe105d8e7a3bc2922a8ad936a5d10) Thanks @tim-smart! - remove Env, EnvRef & FiberFlags from Micro
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`251d189`](https://github.com/Effect-TS/effect/commit/251d189420bbba71990574e91098c499065f9a9b) Thanks @KhraksMamtsov! - `Config.url` constructor has been added, which parses a string using `new URL()`
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`5a259f3`](https://github.com/Effect-TS/effect/commit/5a259f3711b4369f55d885b568bdb21136155261) Thanks @tim-smart! - use fiber based runtime for Micro module
+
+  - Improved performance
+  - Improved interruption model
+  - Consistency with the Effect data type
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`b4ce4ea`](https://github.com/Effect-TS/effect/commit/b4ce4ea7fd514a7e572f2dcd879c98f334981b0e) Thanks @SandroMaglione! - New methods `extractAll` and `extractSchema` to `UrlParams` (added `Schema.BooleanFromString`).
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`15fcc5a`](https://github.com/Effect-TS/effect/commit/15fcc5a0ea4bbf40ab48fa6a04fdda74f76f4c07) Thanks @fubhy! - Integrated `DateTime` with `Cron` to add timezone support for cron expressions.
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`9bc9a47`](https://github.com/Effect-TS/effect/commit/9bc9a476800dc645903c888a68bb1d3baa3383c6) Thanks @KhraksMamtsov! - `URL` and `URLFromSelf` schemas have been added
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`aadb8a4`](https://github.com/Effect-TS/effect/commit/aadb8a48d2cba197c06ec9996505510e48e4e5cb) Thanks @fubhy! - Added `BigDecimal.toExponential` for scientific notation formatting of `BigDecimal` values.
+
+  The implementation of `BigDecimal.format` now uses scientific notation for values with
+  at least 16 decimal places or trailing zeroes. Previously, extremely large or small values
+  could cause `OutOfMemory` errors when formatting.
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`1e2747c`](https://github.com/Effect-TS/effect/commit/1e2747c63a4820d1459cbbc88c71212983bd68bd) Thanks @KhraksMamtsov! - - JSONSchema module
+
+  - add `format?: string` optional field to `JsonSchema7String` interface
+  - Schema module
+    - add custom json schema annotation to `UUID` schema including `format: "uuid"`
+  - OpenApiJsonSchema module
+    - add `format?: string` optional field to `String` and ` Numeric` interfaces
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`e0b9b09`](https://github.com/Effect-TS/effect/commit/e0b9b09e70c386b2da17d1f0a15b0511861c89e8) Thanks @mikearnaldi! - Implement Effect.fn to define traced functions.
+
+  ```ts
+  import { Effect } from "effect"
+
+  const logExample = Effect.fn("example")(function* <N extends number>(n: N) {
+    yield* Effect.annotateCurrentSpan("n", n)
+    yield* Effect.logInfo(`got: ${n}`)
+    yield* Effect.fail(new Error())
+  }, Effect.delay("1 second"))
+
+  Effect.runFork(logExample(100).pipe(Effect.catchAllCause(Effect.logError)))
+  ```
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`c36f3b9`](https://github.com/Effect-TS/effect/commit/c36f3b95df5ce9d71b66f22f26ce12eda8d3e848) Thanks @KhraksMamtsov! - `Config.redacted` has been made more flexible and can now wrap any other config. This allows to transform or validate config values before it’s hidden.
+
+  ```ts
+  import { Config } from "effect"
+
+  Effect.gen(function* () {
+    // can be any string including empty
+    const pass1 = yield* Config.redacted("PASSWORD")
+    //    ^? Redacted<string>
+
+    // can't be empty string
+    const pass2 = yield* Config.redacted(Config.nonEmptyString("PASSWORD"))
+    //    ^? Redacted<string>
+
+    const pass2 = yield* Config.redacted(Config.number("SECRET_NUMBER"))
+    //    ^? Redacted<number>
+  })
+  ```
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`aadb8a4`](https://github.com/Effect-TS/effect/commit/aadb8a48d2cba197c06ec9996505510e48e4e5cb) Thanks @fubhy! - Added `BigDecimal.unsafeFromNumber` and `BigDecimal.safeFromNumber`.
+
+  Deprecated `BigDecimal.fromNumber` in favour of `BigDecimal.unsafeFromNumber`.
+
+  The current implementation of `BigDecimal.fromNumber` and `BigDecimal.unsafeFromNumber` now throws
+  a `RangeError` for numbers that are not finite such as `NaN`, `+Infinity` or `-Infinity`.
+
+### Patch Changes
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`5eff3f6`](https://github.com/Effect-TS/effect/commit/5eff3f6fa3aae7e86948a62cbfd63b8d6c3bdf92) Thanks @tim-smart! - fix multipart support for bun http server
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`9264162`](https://github.com/Effect-TS/effect/commit/9264162a82783a651776fb7b87604564a63e7070) Thanks @IMax153! - inherit child fibers created by merged streams
+
 ## 3.10.20
 
 ### Patch Changes
