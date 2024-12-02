@@ -2261,71 +2261,6 @@ schema (Suspend): <suspended schema>`
     })
   })
 
-  describe("Schema.parseJson", () => {
-    it(`should correctly generate JSON Schemas by targeting the "to" side of transformations`, () => {
-      expectJSONSchema(
-        // Define a schema that parses a JSON string into a structured object
-        Schema.parseJson(Schema.Struct({
-          a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
-        })),
-        {
-          $defs: {
-            "NumberFromString": {
-              "type": "string",
-              "description": "a string that will be parsed into a number"
-            }
-          },
-          type: "string",
-          contentMediaType: "application/json",
-          contentSchema: {
-            type: "object",
-            required: ["a"],
-            properties: {
-              a: {
-                contentMediaType: "application/json",
-                contentSchema: {
-                  $ref: "#/$defs/NumberFromString"
-                },
-                type: "string"
-              }
-            },
-            additionalProperties: false
-          }
-        }
-      )
-    })
-
-    it("Schema.parseJson + TypeLiteralTransformations", () => {
-      expectJSONSchema(
-        Schema.parseJson(Schema.Struct({
-          a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
-        })),
-        {
-          "$defs": {
-            "NonEmptyString": {
-              "type": "string",
-              "description": "a non empty string",
-              "title": "NonEmptyString",
-              "minLength": 1
-            }
-          },
-          "contentMediaType": "application/json",
-          "contentSchema": {
-            "type": "object",
-            "required": [],
-            "properties": {
-              "a": {
-                "$ref": "#/$defs/NonEmptyString"
-              }
-            },
-            "additionalProperties": false
-          },
-          "type": "string"
-        }
-      )
-    })
-  })
-
   describe("Schema.extend", () => {
     it("should correctly generate JSON Schemas for a schema created by extending two refinements", () => {
       expectJSONSchema(
@@ -2455,7 +2390,60 @@ schema (Suspend): <suspended schema>`
   })
 })
 
-describe.skip("JSONSchema", () => {
+describe("parseJson", () => {
+  it(`should correctly generate JSON Schemas by targeting the "to" side of transformations`, () => {
+    const schema = Schema.parseJson(Schema.Struct({
+      a: Schema.parseJson(Schema.NumberFromString)
+    }))
+    expectJSONSchema(
+      schema,
+      {
+        "$defs": {
+          "NumberFromString": {
+            "type": "string",
+            "description": "a string that will be parsed into a number"
+          }
+        },
+        "type": "object",
+        "required": ["a"],
+        "properties": {
+          "a": {
+            "$ref": "#/$defs/NumberFromString"
+          }
+        },
+        "additionalProperties": false
+      }
+    )
+  })
+
+  it("TypeLiteralTransformations", () => {
+    expectJSONSchema(
+      Schema.parseJson(Schema.Struct({
+        a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
+      })),
+      {
+        "$defs": {
+          "NonEmptyString": {
+            "type": "string",
+            "description": "a non empty string",
+            "title": "NonEmptyString",
+            "minLength": 1
+          }
+        },
+        "type": "object",
+        "required": [],
+        "properties": {
+          "a": {
+            "$ref": "#/$defs/NonEmptyString"
+          }
+        },
+        "additionalProperties": false
+      }
+    )
+  })
+})
+
+describe("JSONSchema", () => {
   describe("Unsupported schemas", () => {
     describe("Missing jsonSchema annotation Error", () => {
       it("Declaration", () => {
@@ -4037,58 +4025,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           )
         })
       })
-    })
-  })
-
-  describe("parseJson", () => {
-    it(`should correctly generate JSON Schemas by targeting the "to" side of transformations`, () => {
-      expectJSONSchema(
-        Schema.parseJson(Schema.Struct({
-          a: Schema.parseJson(Schema.NumberFromString)
-        })),
-        {
-          "$defs": {
-            "NumberFromString": {
-              "type": "string",
-              "description": "a string that will be parsed into a number"
-            }
-          },
-          "type": "object",
-          "required": ["a"],
-          "properties": {
-            "a": {
-              "$ref": "#/$defs/NumberFromString"
-            }
-          },
-          "additionalProperties": false
-        }
-      )
-    })
-
-    it("TypeLiteralTransformations", () => {
-      expectJSONSchema(
-        Schema.parseJson(Schema.Struct({
-          a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
-        })),
-        {
-          "$defs": {
-            "NonEmptyString": {
-              "type": "string",
-              "description": "a non empty string",
-              "title": "NonEmptyString",
-              "minLength": 1
-            }
-          },
-          "type": "object",
-          "required": [],
-          "properties": {
-            "a": {
-              "$ref": "#/$defs/NonEmptyString"
-            }
-          },
-          "additionalProperties": false
-        }
-      )
     })
   })
 

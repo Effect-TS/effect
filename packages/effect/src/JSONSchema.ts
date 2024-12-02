@@ -210,22 +210,26 @@ export type JsonSchema7Root = JsonSchema7 & {
  * @since 3.10.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
-  const $defs: Record<string, any> = {}
-  const out = makeWithDefs(schema, { defs: $defs })
+  const defs: Record<string, any> = {}
+  const out = makeWithOptions(schema, { defs })
   out.$schema = $schema
-  if (!Record.isEmptyRecord($defs)) {
-    out.$defs = $defs
+  if (!Record.isEmptyRecord(defs)) {
+    out.$defs = defs
   }
   return out
 }
 
-/** @internal */
-export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
+/**
+ * @category encoding
+ * @since 3.11.2
+ */
+export const makeWithOptions = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
   readonly defs: Record<string, JsonSchema7>
   readonly defsPath?: string
+  readonly getRef?: (id: string) => string
 }): JsonSchema7Root => {
   const defsPath = options.defsPath ?? "#/$defs/"
-  const getRef = (id: string) => `${defsPath}${id}`
+  const getRef = options.getRef ?? ((id: string) => `${defsPath}${id}`)
   return go(schema.ast, options.defs, true, [], { getRef })
 }
 

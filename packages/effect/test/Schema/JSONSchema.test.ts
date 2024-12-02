@@ -72,10 +72,10 @@ const expectError = <A, I>(schema: Schema.Schema<A, I>, message: string) => {
 // Using this instead of Schema.JsonNumber to avoid cluttering the output with unnecessary description and title
 const JsonNumber = Schema.Number.pipe(Schema.filter((n) => Number.isFinite(n), { jsonSchema: {} }))
 
-describe("makeWithDefs", () => {
+describe("makeWithOptions", () => {
   it("should generate a JSON Schema with definitions", () => {
     const defs = {}
-    const jsonSchema = JSONSchema.makeWithDefs(Schema.NumberFromString, { defs, defsPath: "#/components/schemas/" })
+    const jsonSchema = JSONSchema.makeWithOptions(Schema.NumberFromString, { defs, defsPath: "#/components/schemas/" })
     expect(jsonSchema).toStrictEqual({
       "$ref": "#/components/schemas/NumberFromString"
     })
