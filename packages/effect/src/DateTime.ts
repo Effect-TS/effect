@@ -958,11 +958,10 @@ export const setPartsUtc: {
 // current time zone
 // =============================================================================
 
-// =============================================================================
-// current time zone
-// =============================================================================
-
-/** @internal */
+/**
+ * @since 3.11.0
+ * @category current time zone
+ */
 export class CurrentTimeZone extends Context.Tag("effect/DateTime/CurrentTimeZone")<CurrentTimeZone, TimeZone>() {}
 
 /**
