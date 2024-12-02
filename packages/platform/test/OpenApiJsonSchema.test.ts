@@ -1717,10 +1717,11 @@ schema (Suspend): <suspended schema>`
     it("String", () => {
       expectJSONSchema(
         Schema.String.annotations({
-          jsonSchema: { "type": "custom", "description": "description" }
+          jsonSchema: { "type": "custom", "format": "uuid", "description": "description" }
         }),
         {
           "type": "custom",
+          "format": "uuid",
           "description": "description"
         }
       )
@@ -4854,11 +4855,16 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("String", () => {
       expectJSONSchema(
         Schema.String.annotations({
-          jsonSchema: { "type": "custom", "description": "description" }
+          jsonSchema: {
+            "type": "custom",
+            "description": "description",
+            "format": "uuid"
+          }
         }),
         {
           "type": "custom",
-          "description": "description"
+          "description": "description",
+          "format": "uuid"
         }
       )
       expectJSONSchema(
