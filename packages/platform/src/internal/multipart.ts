@@ -397,30 +397,36 @@ export const toPersisted = (
     const fs = yield* FileSystem.FileSystem
     const path_ = yield* Path.Path
     const dir = yield* fs.makeTempDirectoryScoped()
-    return yield* Stream.runFoldEffect(
-      stream,
-      Object.create(null) as Record<string, Array<Multipart.PersistedFile> | string>,
-      (persisted, part) => {
-        if (part._tag === "Field") {
+    const persisted: Record<string, Array<Multipart.PersistedFile> | Array<string> | string> = Object.create(null)
+    yield* Stream.runForEach(stream, (part) => {
+      if (part._tag === "Field") {
+        if (!(part.key in persisted)) {
           persisted[part.key] = part.value
-          return Effect.succeed(persisted)
+        } else if (typeof persisted[part.key] === "string") {
+          persisted[part.key] = [persisted[part.key] as string, part.value]
+        } else {
+          ;(persisted[part.key] as Array<string>).push(part.value)
         }
-        const file = part
-        const path = path_.join(dir, path_.basename(file.name).slice(-128))
-        if (!Array.isArray(persisted[part.key])) {
-          persisted[part.key] = []
-        }
-        ;(persisted[part.key] as Array<Multipart.PersistedFile>).push(
-          new PersistedFileImpl(
-            file.key,
-            file.name,
-            file.contentType,
-            path
-          )
-        )
-        return Effect.as(writeFile(path, file), persisted)
+        return Effect.void
+      } else if (part.name === "") {
+        return Effect.void
       }
-    )
+      const file = part
+      const path = path_.join(dir, path_.basename(file.name).slice(-128))
+      const filePart = new PersistedFileImpl(
+        file.key,
+        file.name,
+        file.contentType,
+        path
+      )
+      if (Array.isArray(persisted[part.key])) {
+        ;(persisted[part.key] as Array<Multipart.PersistedFile>).push(filePart)
+      } else {
+        persisted[part.key] = [filePart]
+      }
+      return writeFile(path, file)
+    })
+    return persisted
   }).pipe(
     Effect.catchTags({
       SystemError: (cause) => Effect.fail(new MultipartError({ reason: "InternalError", cause })),

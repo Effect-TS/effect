@@ -1358,6 +1358,17 @@ export const unwrapScoped: <A, In, L, E, R>(
 ) => Sink<A, In, L, E, Exclude<R, Scope.Scope>> = internal.unwrapScoped
 
 /**
+ * Constructs a `Sink` from a function which receives a `Scope` and returns
+ * an effect that will result in a `Sink` if successful.
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const unwrapScopedWith: <A, In, L, E, R>(
+  f: (scope: Scope.Scope) => Effect.Effect<Sink<A, In, L, E, R>, E, R>
+) => Sink<A, In, L, E, R> = internal.unwrapScopedWith
+
+/**
  * Returns the sink that executes this one and times its execution.
  *
  * @since 2.0.0

@@ -7,7 +7,7 @@ import * as Effect from "../../Effect.js"
 import * as ExecutionStrategy from "../../ExecutionStrategy.js"
 import * as Exit from "../../Exit.js"
 import * as Fiber from "../../Fiber.js"
-import { identity, pipe } from "../../Function.js"
+import { dual, identity, pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
 import * as Scope from "../../Scope.js"
 import type * as UpstreamPullStrategy from "../../UpstreamPullStrategy.js"
@@ -1092,14 +1092,18 @@ export const readUpstream = <A, E2, R, E>(
 }
 
 /** @internal */
-export const run = <Env, InErr, InDone, OutErr, OutDone>(
-  self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
-): Effect.Effect<OutDone, OutErr, Exclude<Env, Scope.Scope>> => pipe(runScoped(self), Effect.scoped)
-
-/** @internal */
-export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
-  self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
-): Effect.Effect<OutDone, OutErr, Env | Scope.Scope> => {
+export const runIn = dual<
+  (scope: Scope.Scope) => <Env, InErr, InDone, OutErr, OutDone>(
+    self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
+  ) => Effect.Effect<OutDone, OutErr, Env>,
+  <Env, InErr, InDone, OutErr, OutDone>(
+    self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>,
+    scope: Scope.Scope
+  ) => Effect.Effect<OutDone, OutErr, Env>
+>(2, <Env, InErr, InDone, OutErr, OutDone>(
+  self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>,
+  scope: Scope.Scope
+) => {
   const run = (
     channelDeferred: Deferred.Deferred<OutDone, OutErr>,
     scopeDeferred: Deferred.Deferred<void>,
@@ -1109,8 +1113,7 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
       Effect.sync(() => new ChannelExecutor(self, void 0, identity)),
       (exec) =>
         Effect.suspend(() =>
-          pipe(
-            runScopedInterpret(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec),
+          runScopedInterpret(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec).pipe(
             Effect.intoDeferred(channelDeferred),
             Effect.zipRight(Deferred.await(channelDeferred)),
             Effect.zipLeft(Deferred.await(scopeDeferred))
@@ -1128,33 +1131,34 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
       }
     )
   return Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Effect.scope, (parent) =>
-      pipe(
-        Effect.all([
-          Scope.fork(parent, ExecutionStrategy.sequential),
-          Deferred.make<OutDone, OutErr>(),
-          Deferred.make<void>()
-        ]),
-        Effect.flatMap(([child, channelDeferred, scopeDeferred]) =>
-          pipe(
-            Effect.forkScoped(restore(run(channelDeferred, scopeDeferred, child))),
-            Effect.flatMap((fiber) =>
-              pipe(
-                Scope.addFinalizer(
-                  parent,
-                  Deferred.succeed(scopeDeferred, void 0).pipe(
-                    Effect.zipRight(Effect.yieldNow())
+    Effect.all([
+      Scope.fork(scope, ExecutionStrategy.sequential),
+      Deferred.make<OutDone, OutErr>(),
+      Deferred.make<void>()
+    ]).pipe(Effect.flatMap(([child, channelDeferred, scopeDeferred]) =>
+      restore(run(channelDeferred, scopeDeferred, child)).pipe(
+        Effect.forkIn(scope),
+        Effect.flatMap((fiber) =>
+          scope.addFinalizer(() =>
+            Deferred.isDone(channelDeferred).pipe(
+              Effect.flatMap((isDone) =>
+                isDone
+                  ? Deferred.succeed(scopeDeferred, void 0).pipe(
+                    Effect.zipRight(Fiber.await(fiber)),
+                    Effect.zipRight(Fiber.inheritAll(fiber))
                   )
-                ),
-                Effect.zipRight(restore(Deferred.await(channelDeferred))),
-                Effect.zipLeft(Fiber.inheritAll(fiber))
+                  : Deferred.succeed(scopeDeferred, void 0).pipe(
+                    Effect.zipRight(Fiber.interrupt(fiber)),
+                    Effect.zipRight(Fiber.inheritAll(fiber))
+                  )
               )
             )
-          )
+          ).pipe(Effect.zipRight(restore(Deferred.await(channelDeferred))))
         )
-      ))
+      )
+    ))
   )
-}
+})
 
 /** @internal */
 const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(

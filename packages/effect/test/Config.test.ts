@@ -34,6 +34,16 @@ const assertSuccess = <A>(
   expect(result).toStrictEqual(Exit.succeed(a))
 }
 
+const assertEqualSuccess = <A>(
+  config: Config.Config<A>,
+  map: ReadonlyArray<readonly [string, string]>,
+  a: A
+) => {
+  const configProvider = ConfigProvider.fromMap(new Map(map))
+  const result = Effect.runSync(Effect.exit(configProvider.load(config)))
+  expect(Equal.equals(Exit.succeed(a), result)).toBe(true)
+}
+
 describe("Config", () => {
   describe("boolean", () => {
     it("name = undefined", () => {
@@ -62,6 +72,27 @@ describe("Config", () => {
         config,
         [["BOOL", "value"]],
         ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
+      )
+    })
+  })
+
+  describe("url", () => {
+    it("name != undefined", () => {
+      const config = Config.url("WEBSITE_URL")
+      assertSuccess(
+        config,
+        [["WEBSITE_URL", "https://effect.website/docs/introduction#what-is-effect"]],
+        new URL("https://effect.website/docs/introduction#what-is-effect")
+      )
+      assertFailure(
+        config,
+        [["WEBSITE_URL", "abra-kadabra"]],
+        ConfigError.InvalidData(["WEBSITE_URL"], "Expected an URL value but received abra-kadabra")
+      )
+      assertFailure(
+        config,
+        [],
+        ConfigError.MissingData(["WEBSITE_URL"], "Expected WEBSITE_URL to exist in the provided map")
       )
     })
   })
@@ -513,7 +544,12 @@ describe("Config", () => {
 
     it("name != undefined", () => {
       const config = Config.redacted("SECRET")
-      assertSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
+      assertEqualSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
+    })
+
+    it("can wrap generic Config", () => {
+      const config = Config.redacted(Config.integer("NUM"))
+      assertEqualSuccess(config, [["NUM", "2"]], Redacted.make(2))
     })
   })
 
@@ -526,7 +562,7 @@ describe("Config", () => {
 
       it("name != undefined", () => {
         const config = Config.secret("SECRET")
-        assertSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
+        assertEqualSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
       })
     })
 

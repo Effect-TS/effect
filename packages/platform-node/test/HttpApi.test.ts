@@ -211,6 +211,31 @@ describe("HttpApi", () => {
       assert.strictEqual(response.status, 200)
     }).pipe(Effect.provide(HttpLive)))
 
+  it.effect("multiple payload types", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      let [group, response] = yield* client.groups.create({
+        payload: { name: "Some group" },
+        withResponse: true
+      })
+      assert.deepStrictEqual(group, new Group({ id: 1, name: "Some group" }))
+      assert.strictEqual(response.status, 200)
+
+      const data = new FormData()
+      data.set("name", "Some group")
+      ;[group, response] = yield* client.groups.create({
+        payload: data,
+        withResponse: true
+      })
+      assert.deepStrictEqual(group, new Group({ id: 1, name: "Some group" }))
+      assert.strictEqual(response.status, 200)
+
+      group = yield* client.groups.create({
+        payload: { foo: "Some group" }
+      })
+      assert.deepStrictEqual(group, new Group({ id: 1, name: "Some group" }))
+    }).pipe(Effect.provide(HttpLive)))
+
   it("OpenAPI spec", () => {
     const spec = OpenApi.fromApi(Api)
     assert.deepStrictEqual(spec, OpenApiFixture as any)
@@ -224,6 +249,7 @@ class NoStatusError extends Schema.TaggedClass<NoStatusError>()("NoStatusError",
 
 class User extends Schema.Class<User>("User")({
   id: Schema.Int,
+  uuid: Schema.optional(Schema.UUID),
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
 }) {}
@@ -257,15 +283,20 @@ class Authorization extends HttpApiMiddleware.Tag<Authorization>()("Authorizatio
 
 class GroupsApi extends HttpApiGroup.make("groups")
   .add(
-    HttpApiEndpoint.get("findById", "/:id")
-      .setPath(Schema.Struct({
-        id: Schema.NumberFromString
-      }))
+    HttpApiEndpoint.get("findById")`/${HttpApiSchema.param("id", Schema.NumberFromString)}`
       .addSuccess(Group)
   )
   .add(
-    HttpApiEndpoint.post("create", "/")
-      .setPayload(Schema.Struct(Struct.pick(Group.fields, "name")))
+    HttpApiEndpoint.post("create")`/`
+      .setPayload(Schema.Union(
+        Schema.Struct(Struct.pick(Group.fields, "name")),
+        Schema.Struct({ foo: Schema.String }).pipe(
+          HttpApiSchema.withEncoding({ kind: "UrlParams" })
+        ),
+        HttpApiSchema.Multipart(
+          Schema.Struct(Struct.pick(Group.fields, "name"))
+        )
+      ))
       .addSuccess(Group)
   )
   .addError(GroupError.pipe(
@@ -276,14 +307,11 @@ class GroupsApi extends HttpApiGroup.make("groups")
 
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("findById", "/:id")
-      .setPath(Schema.Struct({
-        id: Schema.NumberFromString
-      }))
+    HttpApiEndpoint.get("findById")`/${HttpApiSchema.param("id", Schema.NumberFromString)}`
       .addSuccess(User)
   )
   .add(
-    HttpApiEndpoint.post("create", "/")
+    HttpApiEndpoint.post("create")`/`
       .setPayload(Schema.Struct(Struct.omit(
         User.fields,
         "id",
@@ -296,7 +324,7 @@ class UsersApi extends HttpApiGroup.make("users")
       .addError(UserError)
   )
   .add(
-    HttpApiEndpoint.get("list", "/")
+    HttpApiEndpoint.get("list")`/`
       .setHeaders(Schema.Struct({
         page: Schema.NumberFromString.pipe(
           Schema.optionalWith({ default: () => 1 })
@@ -309,7 +337,7 @@ class UsersApi extends HttpApiGroup.make("users")
       .annotateContext(OpenApi.annotations({ identifier: "listUsers" }))
   )
   .add(
-    HttpApiEndpoint.post("upload", "/upload")
+    HttpApiEndpoint.post("upload")`/upload`
       .setPayload(HttpApiSchema.Multipart(Schema.Struct({
         file: Multipart.SingleFileSchema
       })))
@@ -431,7 +459,13 @@ const HttpGroupsLive = HttpApiBuilder.group(
         path.id === 0
           ? Effect.fail(new GroupError())
           : Effect.succeed(new Group({ id: 1, name: "foo" })))
-      .handle("create", ({ payload }) => Effect.succeed(new Group({ id: 1, name: payload.name })))
+      .handle("create", ({ payload }) =>
+        Effect.succeed(
+          new Group({
+            id: 1,
+            name: "foo" in payload ? payload.foo : payload.name
+          })
+        ))
 )
 
 const HttpApiLive = Layer.provide(HttpApiBuilder.api(Api), [

@@ -1,5 +1,81 @@
 # @effect/platform-node
 
+## 0.65.1
+
+### Patch Changes
+
+- Updated dependencies [[`dd8a2d8`](https://github.com/Effect-TS/effect/commit/dd8a2d8e80d33b16719fc69361eaedf0b59d4620), [`a71bfef`](https://github.com/Effect-TS/effect/commit/a71bfef46f5061bb2502a61a333638a987b62273)]:
+  - effect@3.11.1
+  - @effect/platform@0.70.1
+  - @effect/platform-node-shared@0.20.1
+
+## 0.65.0
+
+### Minor Changes
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`672bde5`](https://github.com/Effect-TS/effect/commit/672bde5bec51c7d6f9862828e6a654cb2cb6f93d) Thanks @tim-smart! - support array of values in /platform url param schemas
+
+### Patch Changes
+
+- [#3835](https://github.com/Effect-TS/effect/pull/3835) [`5eff3f6`](https://github.com/Effect-TS/effect/commit/5eff3f6fa3aae7e86948a62cbfd63b8d6c3bdf92) Thanks @tim-smart! - fix multipart support for bun http server
+
+- Updated dependencies [[`147434b`](https://github.com/Effect-TS/effect/commit/147434b03d5e1fd692dd9f126e5ab0910f3b76d3), [`6e69493`](https://github.com/Effect-TS/effect/commit/6e694930048bbaf98110f35f41566aeb9752d471), [`147434b`](https://github.com/Effect-TS/effect/commit/147434b03d5e1fd692dd9f126e5ab0910f3b76d3), [`5eff3f6`](https://github.com/Effect-TS/effect/commit/5eff3f6fa3aae7e86948a62cbfd63b8d6c3bdf92), [`d9fe79b`](https://github.com/Effect-TS/effect/commit/d9fe79bb5a3fe105d8e7a3bc2922a8ad936a5d10), [`251d189`](https://github.com/Effect-TS/effect/commit/251d189420bbba71990574e91098c499065f9a9b), [`5a259f3`](https://github.com/Effect-TS/effect/commit/5a259f3711b4369f55d885b568bdb21136155261), [`b4ce4ea`](https://github.com/Effect-TS/effect/commit/b4ce4ea7fd514a7e572f2dcd879c98f334981b0e), [`15fcc5a`](https://github.com/Effect-TS/effect/commit/15fcc5a0ea4bbf40ab48fa6a04fdda74f76f4c07), [`9bc9a47`](https://github.com/Effect-TS/effect/commit/9bc9a476800dc645903c888a68bb1d3baa3383c6), [`aadb8a4`](https://github.com/Effect-TS/effect/commit/aadb8a48d2cba197c06ec9996505510e48e4e5cb), [`1e2747c`](https://github.com/Effect-TS/effect/commit/1e2747c63a4820d1459cbbc88c71212983bd68bd), [`9264162`](https://github.com/Effect-TS/effect/commit/9264162a82783a651776fb7b87604564a63e7070), [`e0b9b09`](https://github.com/Effect-TS/effect/commit/e0b9b09e70c386b2da17d1f0a15b0511861c89e8), [`c36f3b9`](https://github.com/Effect-TS/effect/commit/c36f3b95df5ce9d71b66f22f26ce12eda8d3e848), [`672bde5`](https://github.com/Effect-TS/effect/commit/672bde5bec51c7d6f9862828e6a654cb2cb6f93d), [`aadb8a4`](https://github.com/Effect-TS/effect/commit/aadb8a48d2cba197c06ec9996505510e48e4e5cb)]:
+  - effect@3.11.0
+  - @effect/platform@0.70.0
+  - @effect/platform-node-shared@0.20.0
+
+## 0.64.34
+
+### Patch Changes
+
+- Updated dependencies [[`3069614`](https://github.com/Effect-TS/effect/commit/30696149271129fc618f6f2ccd1d8f2f6c0f9cd7), [`09a5e52`](https://github.com/Effect-TS/effect/commit/09a5e522fd9b221f05d85b1d1c8a740d4973c302)]:
+  - effect@3.10.20
+  - @effect/platform@0.69.32
+  - @effect/platform-node-shared@0.19.33
+
+## 0.64.33
+
+### Patch Changes
+
+- [#4035](https://github.com/Effect-TS/effect/pull/4035) [`e6d4a37`](https://github.com/Effect-TS/effect/commit/e6d4a37c1d7e657b5ea44063a1cf586808228fe5) Thanks @tim-smart! - add template literal api for defining HttpApiEndpoint path schema
+
+- Updated dependencies [[`e6d4a37`](https://github.com/Effect-TS/effect/commit/e6d4a37c1d7e657b5ea44063a1cf586808228fe5)]:
+  - @effect/platform@0.69.31
+  - @effect/platform-node-shared@0.19.32
+
+## 0.64.32
+
+### Patch Changes
+
+- [#4025](https://github.com/Effect-TS/effect/pull/4025) [`270f199`](https://github.com/Effect-TS/effect/commit/270f199b31810fd643e4c22818698adcbdb5d396) Thanks @tim-smart! - update OpenApi version to 3.1.0
+
+- Updated dependencies [[`270f199`](https://github.com/Effect-TS/effect/commit/270f199b31810fd643e4c22818698adcbdb5d396)]:
+  - @effect/platform@0.69.30
+  - @effect/platform-node-shared@0.19.31
+
+## 0.64.31
+
+### Patch Changes
+
+- [#4024](https://github.com/Effect-TS/effect/pull/4024) [`24cc35e`](https://github.com/Effect-TS/effect/commit/24cc35e26d6ed4a076470bc687ffd99cc50991b3) Thanks @tim-smart! - improve HttpApi handling of payload encoding types
+
+- Updated dependencies [[`24cc35e`](https://github.com/Effect-TS/effect/commit/24cc35e26d6ed4a076470bc687ffd99cc50991b3)]:
+  - @effect/platform@0.69.29
+  - @effect/platform-node-shared@0.19.30
+
+## 0.64.30
+
+### Patch Changes
+
+- [#4007](https://github.com/Effect-TS/effect/pull/4007) [`944025b`](https://github.com/Effect-TS/effect/commit/944025bc5ce139f4a85846aa689bf30ec06a8ec1) Thanks @gcanti! - Wrap JSDoc @example tags with a TypeScript fence, closes #4002
+
+- [#4016](https://github.com/Effect-TS/effect/pull/4016) [`a9e00e4`](https://github.com/Effect-TS/effect/commit/a9e00e43f0b5dd22c1f9d5b78be6383daea09c20) Thanks @tim-smart! - allow using HttpApiSchema.Multipart in a union
+
+- Updated dependencies [[`edd72be`](https://github.com/Effect-TS/effect/commit/edd72be57b904d60c9cbffc2537901821a9da537), [`a3e2771`](https://github.com/Effect-TS/effect/commit/a3e277170a1f7cf61fd629acb60304c7e81d9498), [`944025b`](https://github.com/Effect-TS/effect/commit/944025bc5ce139f4a85846aa689bf30ec06a8ec1), [`54addee`](https://github.com/Effect-TS/effect/commit/54addee438a644bf010646c52042c7b89c5fc0a7), [`a9e00e4`](https://github.com/Effect-TS/effect/commit/a9e00e43f0b5dd22c1f9d5b78be6383daea09c20)]:
+  - @effect/platform@0.69.28
+  - effect@3.10.19
+  - @effect/platform-node-shared@0.19.29
+
 ## 0.64.29
 
 ### Patch Changes

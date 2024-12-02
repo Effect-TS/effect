@@ -1,3 +1,4 @@
+import { Reactivity } from "@effect/experimental"
 import { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
@@ -10,7 +11,7 @@ const makeClient = Effect.gen(function*(_) {
   return yield* _(SqliteClient.make({
     filename: dir + "/test.db"
   }))
-}).pipe(Effect.provide(NodeFileSystem.layer))
+}).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
 
 describe("Client", () => {
   it.scoped("should work", () =>

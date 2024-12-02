@@ -159,7 +159,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
   const api = self as unknown as HttpApi.HttpApi.AnyWithProps
   const jsonSchemaDefs: Record<string, JsonSchema.JsonSchema> = {}
   let spec: DeepMutable<OpenAPISpec> = {
-    openapi: "3.0.3",
+    openapi: "3.1.0",
     info: {
       title: Context.getOrElse(api.annotations, Title, () => "Api"),
       version: Context.getOrElse(api.annotations, Version, () => "0.0.1")
@@ -231,7 +231,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       })
       spec.tags!.push(tag)
     },
-    onEndpoint({ endpoint, errors, group, middleware, successes }) {
+    onEndpoint({ endpoint, errors, group, middleware, payloads, successes }) {
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       const op: DeepMutable<OpenAPISpecOperation> = {
@@ -266,19 +266,15 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
           op.security!.push({ [name]: [] })
         }
       })
-      endpoint.payloadSchema.pipe(
-        Option.filter(() => HttpMethod.hasBody(endpoint.method)),
-        Option.map((schema) => {
-          op.requestBody = {
-            content: {
-              [HttpApiSchema.getMultipart(schema.ast) ? "multipart/form-data" : "application/json"]: {
-                schema: makeJsonSchemaOrRef(schema)
-              }
-            },
-            required: true
+      if (payloads.size > 0) {
+        const content: Mutable<OpenApiSpecContent> = {}
+        payloads.forEach(({ ast }, contentType) => {
+          content[contentType as OpenApiSpecContentType] = {
+            schema: makeJsonSchemaOrRef(Schema.make(ast))
           }
         })
-      )
+        op.requestBody = { content, required: true }
+      }
       for (const [status, ast] of successes) {
         if (op.responses![status]) continue
         op.responses![status] = {
@@ -438,7 +434,7 @@ const getDescriptionOrIdentifier = (ast: Option.Option<AST.PropertySignature | A
  * @since 1.0.0
  */
 export interface OpenAPISpec {
-  readonly openapi: "3.0.3"
+  readonly openapi: "3.1.0"
   readonly info: OpenAPISpecInfo
   readonly servers?: Array<OpenAPISpecServer>
   readonly paths: OpenAPISpecPaths

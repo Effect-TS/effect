@@ -10,6 +10,7 @@ import * as WaSqlite from "@effect/wa-sqlite"
 import SQLiteESMFactory from "@effect/wa-sqlite/dist/wa-sqlite.mjs"
 import { MemoryVFS } from "@effect/wa-sqlite/src/examples/MemoryVFS.js"
 import * as Otel from "@opentelemetry/semantic-conventions"
+import { Chunk } from "effect"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -20,8 +21,6 @@ import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
-import type * as Mailbox from "effect/Mailbox"
-import type { ReadonlyRecord } from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as ScopedRef from "effect/ScopedRef"
 import * as Stream from "effect/Stream"
@@ -46,14 +45,6 @@ export type TypeId = typeof TypeId
 export interface SqliteClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientMemoryConfig
-  readonly reactive: <A, E, R>(
-    keys: ReadonlyArray<string> | ReadonlyRecord<string, ReadonlyArray<number>>,
-    effect: Effect.Effect<A, E, R>
-  ) => Stream.Stream<A, E, R>
-  readonly reactiveMailbox: <A, E, R>(
-    keys: ReadonlyArray<string> | ReadonlyRecord<string, ReadonlyArray<number>>,
-    effect: Effect.Effect<A, E, R>
-  ) => Effect.Effect<Mailbox.ReadonlyMailbox<A>, E, R | Scope.Scope>
   readonly export: Effect.Effect<Uint8Array, SqlError>
   readonly import: (data: Uint8Array) => Effect.Effect<void, SqlError>
 
@@ -115,9 +106,11 @@ export const makeMemory = (
   Effect.gen(function*() {
     const reactivity = yield* Reactivity.Reactivity
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(
+        options.transformResultNames
+      ).array :
+      undefined
 
     const makeConnection = Effect.gen(function*() {
       const sqlite3 = yield* initEffect
@@ -140,7 +133,7 @@ export const makeMemory = (
       if (options.installReactivityHooks) {
         sqlite3.update_hook(db, (_op, _db, table, rowid) => {
           if (!table) return
-          const id = Number(rowid)
+          const id = String(Number(rowid))
           reactivity.unsafeInvalidate({ [table]: [id] })
         })
       }
@@ -175,13 +168,11 @@ export const makeMemory = (
           catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
-      const runTransform = options.transformResultNames
-        ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
-        : run
-
       return identity<SqliteConnection>({
-        execute(sql, params) {
-          return runTransform(sql, params)
+        execute(sql, params, transformRows) {
+          return transformRows
+            ? Effect.map(run(sql, params), transformRows)
+            : run(sql, params)
         },
         executeRaw(sql, params) {
           return run(sql, params)
@@ -189,31 +180,31 @@ export const makeMemory = (
         executeValues(sql, params) {
           return run(sql, params, "array")
         },
-        executeWithoutTransform(sql, params) {
-          return run(sql, params)
+        executeUnprepared(sql, params, transformRows) {
+          return this.execute(sql, params, transformRows)
         },
-        executeUnprepared(sql, params) {
-          return runTransform(sql, params)
-        },
-        executeStream(sql, params) {
-          return Stream.fromIterableEffect(Effect.try({
-            *try() {
-              for (const stmt of sqlite3.statements(db, sql)) {
-                let columns: Array<string> | undefined
-                sqlite3.bind_collection(stmt, params as any)
-                while (sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
-                  columns = columns ?? sqlite3.column_names(stmt)
-                  const row = sqlite3.row(stmt)
-                  const obj: Record<string, any> = {}
-                  for (let i = 0; i < columns.length; i++) {
-                    obj[columns[i]] = row[i]
-                  }
-                  yield obj
+        executeStream(sql, params, transformRows) {
+          function* stream() {
+            for (const stmt of sqlite3.statements(db, sql)) {
+              let columns: Array<string> | undefined
+              sqlite3.bind_collection(stmt, params as any)
+              while (sqlite3.step(stmt) === WaSqlite.SQLITE_ROW) {
+                columns = columns ?? sqlite3.column_names(stmt)
+                const row = sqlite3.row(stmt)
+                const obj: Record<string, any> = {}
+                for (let i = 0; i < columns.length; i++) {
+                  obj[columns[i]] = row[i]
                 }
+                yield obj
               }
-            },
-            catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
-          }))
+            }
+          }
+          return Stream.suspend(() => Stream.fromIteratorSucceed(stream()[Symbol.iterator]())).pipe(
+            transformRows
+              ? Stream.mapChunks((chunk) => Chunk.unsafeFromArray(transformRows(Chunk.toReadonlyArray(chunk))))
+              : identity,
+            Stream.mapError((cause) => new SqlError({ cause, message: "Failed to execute statement" }))
+          )
         },
         export: Effect.try({
           try: () => sqlite3.serialize(db, "main"),
@@ -246,20 +237,19 @@ export const makeMemory = (
     )
 
     return Object.assign(
-      Client.make({
+      (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
-        ]
-      }) as SqliteClient,
+        ],
+        transformRows
+      })) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        reactive: reactivity.stream,
-        reactiveMailbox: reactivity.query,
         export: semaphore.withPermits(1)(connection.export),
         import(data: Uint8Array) {
           return semaphore.withPermits(1)(connection.import(data))
@@ -278,9 +268,9 @@ export const make = (
   Effect.gen(function*() {
     const reactivity = yield* Reactivity.Reactivity
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(options.transformResultNames).array :
+      undefined
     const pending = new Map<number, (effect: Exit.Exit<any, SqlError>) => void>()
 
     const makeConnection = Effect.gen(function*() {
@@ -357,13 +347,11 @@ export const make = (
           : Effect.map(rows, extractRows)
       }
 
-      const runTransform = options.transformResultNames
-        ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
-        : run
-
       return identity<SqliteConnection>({
-        execute(sql, params) {
-          return runTransform(sql, params)
+        execute(sql, params, transformRows) {
+          return transformRows
+            ? Effect.map(run(sql, params), transformRows)
+            : run(sql, params)
         },
         executeRaw(sql, params) {
           return run(sql, params)
@@ -371,11 +359,8 @@ export const make = (
         executeValues(sql, params) {
           return run(sql, params, "array")
         },
-        executeWithoutTransform(sql, params) {
-          return run(sql, params)
-        },
-        executeUnprepared(sql, params) {
-          return runTransform(sql, params)
+        executeUnprepared(sql, params, transformRows) {
+          return this.execute(sql, params, transformRows)
         },
         executeStream() {
           return Effect.dieMessage("executeStream not implemented")
@@ -411,20 +396,19 @@ export const make = (
     )
 
     return Object.assign(
-      Client.make({
+      (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
-        ]
-      }) as SqliteClient,
+        ],
+        transformRows
+      })) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        reactive: reactivity.stream,
-        reactiveMailbox: reactivity.query,
         export: Effect.flatMap(acquirer, (connection) => connection.export),
         import(data: Uint8Array) {
           return Effect.flatMap(acquirer, (connection) => connection.import(data))

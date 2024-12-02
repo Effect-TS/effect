@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-bun",
   "type": "module",
-  "version": "0.49.29",
+  "version": "0.50.1",
   "license": "MIT",
   "description": "Platform specific implementations for the Bun runtime",
   "homepage": "https://effect.website",
@@ -45,7 +45,8 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@effect/platform-node-shared": "workspace:^"
+    "@effect/platform-node-shared": "workspace:^",
+    "multipasta": "^0.2.5"
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",

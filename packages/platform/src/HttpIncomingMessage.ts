@@ -13,7 +13,7 @@ import type { ParseOptions } from "effect/SchemaAST"
 import type * as Stream from "effect/Stream"
 import * as FileSystem from "./FileSystem.js"
 import type * as Headers from "./Headers.js"
-import type * as UrlParams from "./UrlParams.js"
+import * as UrlParams from "./UrlParams.js"
 
 /**
  * @since 1.0.0
@@ -56,13 +56,17 @@ export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyUrlParams = <A, I extends Readonly<Record<string, string | undefined>>, R>(
+export const schemaBodyUrlParams = <
+  A,
+  I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>,
+  R
+>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
-  const parse = Schema.decodeUnknown(schema, options)
+  const decode = UrlParams.schemaStruct(schema, options)
   return <E>(self: HttpIncomingMessage<E>): Effect.Effect<A, E | ParseResult.ParseError, R> =>
-    Effect.flatMap(self.urlParamsBody, (_) => parse(Object.fromEntries(_)))
+    Effect.flatMap(self.urlParamsBody, decode)
 }
 
 /**

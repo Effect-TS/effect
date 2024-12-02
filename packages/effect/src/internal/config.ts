@@ -180,6 +180,19 @@ export const boolean = (name?: string): Config.Config<boolean> => {
 }
 
 /** @internal */
+export const url = (name?: string): Config.Config<URL> => {
+  const config = primitive(
+    "an URL property",
+    (text) =>
+      Either.try({
+        try: () => new URL(text),
+        catch: (_) => configError.InvalidData([], `Expected an URL value but received ${text}`)
+      })
+  )
+  return name === undefined ? config : nested(config, name)
+}
+
+/** @internal */
 export const array = <A>(config: Config.Config<A>, name?: string): Config.Config<Array<A>> => {
   return pipe(chunk(config, name), map(Chunk.toArray))
 }
@@ -424,12 +437,11 @@ export const secret = (name?: string): Config.Config<Secret.Secret> => {
 }
 
 /** @internal */
-export const redacted = (name?: string): Config.Config<Redacted.Redacted> => {
-  const config = primitive(
-    "a redacted property",
-    (text) => Either.right(redacted_.make(text))
-  )
-  return name === undefined ? config : nested(config, name)
+export const redacted = <A>(
+  nameOrConfig?: string | Config.Config<A>
+): Config.Config<Redacted.Redacted<A | string>> => {
+  const config: Config.Config<A | string> = isConfig(nameOrConfig) ? nameOrConfig : string(nameOrConfig)
+  return map(config, redacted_.make)
 }
 
 /** @internal */

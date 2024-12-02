@@ -1,9 +1,13 @@
 /**
  * @since 1.0.0
  */
+import type { Reactivity } from "@effect/experimental/Reactivity"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
+import type { ReadonlyMailbox } from "effect/Mailbox"
+import type { ReadonlyRecord } from "effect/Record"
 import type { CloseableScope, Scope } from "effect/Scope"
+import type { Stream } from "effect/Stream"
 import type { NoInfer } from "effect/Types"
 import * as internal from "./internal/client.js"
 import type { Connection } from "./SqlConnection.js"
@@ -34,6 +38,11 @@ export interface SqlClient extends Constructor {
    */
   readonly safe: this
 
+  /**
+   * Copy of the client without transformations.
+   */
+  readonly withoutTransforms: () => this
+
   readonly reserve: Effect<Connection, SqlError, Scope>
 
   /**
@@ -42,6 +51,23 @@ export interface SqlClient extends Constructor {
   readonly withTransaction: <R, E, A>(
     self: Effect<A, E, R>
   ) => Effect<A, E | SqlError, R>
+
+  /**
+   * Use the Reactivity service from @effect/experimental to create a reactive
+   * query.
+   */
+  readonly reactive: <A, E, R>(
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    effect: Effect<A, E, R>
+  ) => Stream<A, E, R>
+  /**
+   * Use the Reactivity service from @effect/experimental to create a reactive
+   * query.
+   */
+  readonly reactiveMailbox: <A, E, R>(
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    effect: Effect<A, E, R>
+  ) => Effect<ReadonlyMailbox<A, E>, never, R | Scope>
 }
 
 /**
@@ -69,6 +95,11 @@ export namespace SqlClient {
     readonly commit?: string | undefined
     readonly savepoint?: ((name: string) => string) | undefined
     readonly rollbackSavepoint?: ((name: string) => string) | undefined
+    readonly transformRows?: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+    readonly reactiveMailbox?: <A, E, R>(
+      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+      effect: Effect<A, E, R>
+    ) => Effect<ReadonlyMailbox<A, E>, never, R | Scope>
   }
 }
 
@@ -76,15 +107,7 @@ export namespace SqlClient {
  * @category constructors
  * @since 1.0.0
  */
-export const make: ({
-  acquirer,
-  beginTransaction,
-  commit,
-  rollback,
-  rollbackSavepoint,
-  savepoint,
-  transactionAcquirer
-}: SqlClient.MakeOptions) => SqlClient = internal.make
+export const make: (options: SqlClient.MakeOptions) => Effect<SqlClient, never, Reactivity> = internal.make
 
 /**
  * @since 1.0.0

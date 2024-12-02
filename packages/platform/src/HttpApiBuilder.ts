@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -38,6 +39,7 @@ import * as HttpServerRequest from "./HttpServerRequest.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
 import * as OpenApi from "./OpenApi.js"
 import type { Path } from "./Path.js"
+import * as UrlParams from "./UrlParams.js"
 
 /**
  * The router that the API endpoints are attached to.
@@ -111,13 +113,13 @@ export const httpApp: Effect.Effect<
   const encodeError = Schema.encodeUnknown(errorSchema)
   return router.pipe(
     apiMiddleware,
-    Effect.catchAll((error) =>
-      Effect.matchEffect(Effect.provide(encodeError(error), context), {
-        onFailure: () => Effect.die(error),
+    Effect.catchAllCause((cause) =>
+      Effect.matchEffect(Effect.provide(encodeError(Cause.squash(cause)), context), {
+        onFailure: () => Effect.failCause(cause),
         onSuccess: Effect.succeed
       })
     )
-  )
+  ) as any
 })
 
 /**
@@ -508,20 +510,31 @@ export const handler = <
 
 const requestPayload = (
   request: HttpServerRequest.HttpServerRequest,
-  urlParams: ReadonlyRecord<string, string | Array<string>>,
-  isMultipart: boolean
+  urlParams: ReadonlyRecord<string, string | Array<string>>
 ): Effect.Effect<
   unknown,
   never,
   | FileSystem
   | Path
   | Scope
-> =>
-  HttpMethod.hasBody(request.method)
-    ? isMultipart
-      ? Effect.orDie(request.multipart)
-      : Effect.orDie(request.json)
-    : Effect.succeed(urlParams)
+> => {
+  if (!HttpMethod.hasBody(request.method)) {
+    return Effect.succeed(urlParams)
+  }
+  const contentType = request.headers["content-type"]
+    ? request.headers["content-type"].toLowerCase().trim()
+    : "application/json"
+  if (contentType.includes("application/json")) {
+    return Effect.orDie(request.json)
+  } else if (contentType.includes("multipart/form-data")) {
+    return Effect.orDie(request.multipart)
+  } else if (contentType.includes("x-www-form-urlencoded")) {
+    return Effect.map(Effect.orDie(request.urlParamsBody), UrlParams.toRecord)
+  } else if (contentType.startsWith("text/")) {
+    return Effect.orDie(request.text)
+  }
+  return Effect.map(Effect.orDie(request.arrayBuffer), (buffer) => new Uint8Array(buffer))
+}
 
 type MiddlewareMap = Map<string, {
   readonly tag: HttpApiMiddleware.TagClassAny
@@ -554,10 +567,6 @@ const handlerToRoute = (
 ): HttpRouter.Route<any, any> => {
   const endpoint = endpoint_ as HttpApiEndpoint.HttpApiEndpoint.AnyWithProps
   const decodePath = Option.map(endpoint.pathSchema, Schema.decodeUnknown)
-  const isMultipart = endpoint.payloadSchema.pipe(
-    Option.map((schema) => HttpApiSchema.getMultipart(schema.ast)),
-    Option.getOrElse(() => false)
-  )
   const decodePayload = Option.map(endpoint.payloadSchema, Schema.decodeUnknown)
   const decodeHeaders = Option.map(endpoint.headersSchema, Schema.decodeUnknown)
   const decodeUrlParams = Option.map(endpoint.urlParamsSchema, Schema.decodeUnknown)
@@ -579,7 +588,7 @@ const handlerToRoute = (
         }
         if (decodePayload._tag === "Some") {
           request.payload = yield* Effect.flatMap(
-            requestPayload(httpRequest, urlParams, isMultipart),
+            requestPayload(httpRequest, urlParams),
             decodePayload.value
           )
         }

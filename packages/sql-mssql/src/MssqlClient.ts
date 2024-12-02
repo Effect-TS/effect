@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -96,7 +97,8 @@ export interface MssqlClientConfig {
 
 interface MssqlConnection extends Connection {
   readonly call: (
-    procedure: Procedure.ProcedureWithValues<any, any, any>
+    procedure: Procedure.ProcedureWithValues<any, any, any>,
+    transformRows: ((rows: ReadonlyArray<any>) => ReadonlyArray<any>) | undefined
   ) => Effect.Effect<any, SqlError>
 
   readonly begin: Effect.Effect<void, SqlError>
@@ -116,14 +118,16 @@ const TransactionConnection = Client.TransactionConnection as unknown as Context
  */
 export const make = (
   options: MssqlClientConfig
-): Effect.Effect<MssqlClient, SqlError, Scope.Scope> =>
+): Effect.Effect<MssqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
     const compiler = makeCompiler(options.transformQueryNames)
 
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(
+        options.transformResultNames
+      ).array :
+      undefined
     const spanAttributes: ReadonlyArray<[string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
       [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_MSSQL],
@@ -176,7 +180,6 @@ export const make = (
       const run = (
         sql: string,
         values?: ReadonlyArray<any>,
-        transform = true,
         rowsAsArray = false
       ) =>
         Effect.async<any, SqlError>((resume) => {
@@ -190,10 +193,6 @@ export const make = (
               result = result.map((row: any) => row.map((_: any) => _.value))
             } else {
               result = rowsToObjects(result)
-
-              if (transform && options.transformResultNames) {
-                result = transformRows(result) as any
-              }
             }
 
             resume(Effect.succeed(result))
@@ -218,7 +217,10 @@ export const make = (
           conn.execSql(req)
         })
 
-      const runProcedure = (procedure: Procedure.ProcedureWithValues<any, any, any>) =>
+      const runProcedure = (
+        procedure: Procedure.ProcedureWithValues<any, any, any>,
+        transformRows: ((rows: ReadonlyArray<any>) => ReadonlyArray<any>) | undefined
+      ) =>
         Effect.async<any, SqlError>((resume) => {
           const result: Record<string, any> = {}
 
@@ -229,7 +231,7 @@ export const make = (
                 resume(Effect.fail(new SqlError({ cause, message: "Failed to execute statement" })))
               } else {
                 rows = rowsToObjects(rows)
-                if (options.transformResultNames) {
+                if (transformRows) {
                   rows = transformRows(rows) as any
                 }
                 resume(
@@ -262,26 +264,25 @@ export const make = (
         })
 
       const connection = identity<MssqlConnection>({
-        execute(sql, params) {
-          return run(sql, params)
+        execute(sql, params, transformRows) {
+          return transformRows
+            ? Effect.map(run(sql, params), transformRows)
+            : run(sql, params)
         },
         executeRaw(sql, params) {
-          return run(sql, params, false)
-        },
-        executeWithoutTransform(sql, params) {
-          return run(sql, params, false)
+          return run(sql, params)
         },
         executeValues(sql, params) {
-          return run(sql, params, true, true)
+          return run(sql, params, true)
         },
-        executeUnprepared(sql, params) {
-          return run(sql, params)
+        executeUnprepared(sql, params, transformRows) {
+          return this.execute(sql, params, transformRows)
         },
         executeStream() {
           return Effect.dieMessage("executeStream not implemented")
         },
-        call: (procedure) => {
-          return runProcedure(procedure)
+        call(procedure, transformRows) {
+          return runProcedure(procedure, transformRows)
         },
         begin: Effect.async<void, SqlError>((resume) => {
           conn.beginTransaction((cause) => {
@@ -367,10 +368,11 @@ export const make = (
     })
 
     return identity<MssqlClient>(Object.assign(
-      Client.make({
+      yield* Client.make({
         acquirer: pool.get,
         compiler,
-        spanAttributes
+        spanAttributes,
+        transformRows
       }),
       {
         [TypeId]: TypeId as TypeId,
@@ -387,7 +389,27 @@ export const make = (
           A
         >(
           procedure: Procedure.ProcedureWithValues<I, O, A>
-        ) => Effect.scoped(Effect.flatMap(pool.get, (_) => _.call(procedure)))
+        ) => Effect.scoped(Effect.flatMap(pool.get, (_) => _.call(procedure, transformRows))),
+        withoutTransforms() {
+          const statement = Statement.make(pool.get, compiler.withoutTransform, spanAttributes, undefined)
+          const client = Object.assign(
+            statement,
+            this,
+            statement,
+            {
+              call: <
+                I extends Record<string, Parameter<any>>,
+                O extends Record<string, Parameter<any>>,
+                A
+              >(
+                procedure: Procedure.ProcedureWithValues<I, O, A>
+              ) => Effect.scoped(Effect.flatMap(pool.get, (_) => _.call(procedure, undefined)))
+            }
+          )
+          ;(client as any).safe = client
+          ;(client as any).withoutTransforms = () => client
+          return client
+        }
       }
     ))
   })
@@ -408,7 +430,7 @@ export const layerConfig = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -422,7 +444,7 @@ export const layer = (
       Context.make(MssqlClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category compiler

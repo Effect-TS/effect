@@ -12,6 +12,7 @@ import type * as Predicate from "effect/Predicate"
 import type { Ref } from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
+import type { NoInfer } from "effect/Types"
 import type { Cookies } from "./Cookies.js"
 import type * as Error from "./HttpClientError.js"
 import type * as ClientRequest from "./HttpClientRequest.js"
@@ -496,22 +497,29 @@ export const retry: {
 } = internal.retry
 
 /**
- * Retries common transient errors, such as rate limiting or network issues.
+ * Retries common transient errors, such as rate limiting, timeouts or network issues.
+ *
+ * Specifying a `while` predicate allows you to consider other errors as
+ * transient.
  *
  * @since 1.0.0
  * @category error handling
  */
 export const retryTransient: {
   <B, E, R1 = never>(
-    options:
-      | { readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>; readonly times?: number }
-      | Schedule.Schedule<B, NoInfer<E>, R1>
+    options: {
+      readonly while?: Predicate.Predicate<NoInfer<E>>
+      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly times?: number
+    } | Schedule.Schedule<B, NoInfer<E>, R1>
   ): <R>(self: HttpClient<E, R>) => HttpClient<E, R1 | R>
   <E, R, B, R1 = never>(
     self: HttpClient<E, R>,
-    options:
-      | { readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>; readonly times?: number }
-      | Schedule.Schedule<B, NoInfer<E>, R1>
+    options: {
+      readonly while?: Predicate.Predicate<NoInfer<E>>
+      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly times?: number
+    } | Schedule.Schedule<B, NoInfer<E>, R1>
   ): HttpClient<E, R1 | R>
 } = internal.retryTransient
 

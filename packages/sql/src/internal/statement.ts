@@ -73,7 +73,12 @@ const withStatement = <A, X, E, R>(
       return f(self)
     }
     return Effect.flatMap(
-      transform.value(self, make(self.acquirer, self.compiler), fiber.getFiberRefs(), span) as Effect.Effect<
+      transform.value(
+        self,
+        make(self.acquirer, self.compiler, self.spanAttributes, self.transformRows),
+        fiber.getFiberRefs(),
+        span
+      ) as Effect.Effect<
         StatementPrimitive<A>
       >,
       f
@@ -92,7 +97,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     readonly segments: ReadonlyArray<Statement.Segment>,
     readonly acquirer: Connection.Connection.Acquirer,
     readonly compiler: Statement.Compiler,
-    readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
+    readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>,
+    readonly transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) {
     super()
   }
@@ -125,7 +131,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
   get withoutTransform(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
     return this.withConnection(
       "executeWithoutTransform",
-      (connection, sql, params) => connection.executeWithoutTransform(sql, params),
+      (connection, sql, params) => connection.execute(sql, params, undefined),
       true
     )
   }
@@ -149,7 +155,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
           }
           span.attribute(Otel.SEMATTRS_DB_OPERATION, "executeStream")
           span.attribute(Otel.SEMATTRS_DB_STATEMENT, sql)
-          return Effect.map(this.acquirer, (_) => _.executeStream(sql, params))
+          return Effect.map(this.acquirer, (_) => _.executeStream(sql, params, this.transformRows))
         })
     ))
   }
@@ -164,7 +170,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
   get unprepared(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
     return this.withConnection(
       "executeUnprepared",
-      (connection, sql, params) => connection.executeUnprepared(sql, params)
+      (connection, sql, params) => connection.executeUnprepared(sql, params, this.transformRows)
     )
   }
 
@@ -172,7 +178,10 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     return this.compiler.compile(this, withoutTransform ?? false)
   }
   commit(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
-    return this.withConnection("execute", (connection, sql, params) => connection.execute(sql, params))
+    return this.withConnection(
+      "execute",
+      (connection, sql, params) => connection.execute(sql, params, this.transformRows)
+    )
   }
   toJSON() {
     const [sql, params] = this.compile()
@@ -283,17 +292,22 @@ const isHelper = (u: unknown): u is Statement.Helper =>
 
 const constructorCache = globalValue(
   "@effect/sql/Statement/constructorCache",
-  () => new WeakMap<Connection.Connection.Acquirer, Statement.Constructor>()
+  () => ({
+    transforms: new WeakMap<Connection.Connection.Acquirer, Statement.Constructor>(),
+    noTransforms: new WeakMap<Connection.Connection.Acquirer, Statement.Constructor>()
+  })
 )
 
 /** @internal */
 export const make = (
   acquirer: Connection.Connection.Acquirer,
   compiler: Statement.Compiler,
-  spanAttributes: ReadonlyArray<readonly [string, unknown]> = []
+  spanAttributes: ReadonlyArray<readonly [string, unknown]>,
+  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
 ): Statement.Constructor => {
-  if (constructorCache.has(acquirer)) {
-    return constructorCache.get(acquirer)!
+  const cache = transformRows === undefined ? constructorCache.noTransforms : constructorCache.transforms
+  if (cache.has(acquirer)) {
+    return cache.get(acquirer)!
   }
   const self = Object.assign(
     function sql(strings: unknown, ...args: Array<any>): any {
@@ -303,7 +317,8 @@ export const make = (
           compiler,
           strings as TemplateStringsArray,
           args,
-          spanAttributes
+          spanAttributes,
+          transformRows
         )
       } else if (typeof strings === "string") {
         return new IdentifierImpl(strings)
@@ -320,7 +335,8 @@ export const make = (
           [new LiteralImpl(sql, params)],
           acquirer,
           compiler,
-          spanAttributes
+          spanAttributes,
+          transformRows
         )
       },
       literal(sql: string) {
@@ -352,7 +368,7 @@ export const make = (
     }
   )
 
-  constructorCache.set(acquirer, self)
+  cache.set(acquirer, self)
 
   return self
 }
@@ -363,7 +379,8 @@ export const statement = (
   compiler: Statement.Compiler,
   strings: TemplateStringsArray,
   args: Array<Statement.Argument>,
-  spanAttributes: ReadonlyArray<readonly [string, unknown]>
+  spanAttributes: ReadonlyArray<readonly [string, unknown]>,
+  transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
 ): Statement.Statement<Connection.Row> => {
   const segments: Array<Statement.Segment> = strings[0].length > 0 ? [new LiteralImpl(strings[0])] : []
 
@@ -385,7 +402,7 @@ export const statement = (
     }
   }
 
-  return new StatementPrimitive<Connection.Row>(segments, acquirer, compiler, spanAttributes)
+  return new StatementPrimitive<Connection.Row>(segments, acquirer, compiler, spanAttributes, transformRows)
 }
 
 /** @internal */
@@ -510,7 +527,8 @@ class CompilerImpl implements Statement.Compiler {
       columns: ReadonlyArray<string>,
       values: ReadonlyArray<Statement.Primitive>,
       returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
-    ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>]
+    ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
+    readonly disableTransforms = false
   ) {}
 
   compile(
@@ -518,6 +536,7 @@ class CompilerImpl implements Statement.Compiler {
     withoutTransform = false,
     placeholderOverride?: (u: unknown) => string
   ): readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>] {
+    withoutTransform = withoutTransform || this.disableTransforms
     const cacheSymbol = withoutTransform ? statementCacheNoTransformSymbol : statementCacheSymbol
     if (cacheSymbol in statement) {
       return (statement as any)[cacheSymbol]
@@ -728,6 +747,19 @@ class CompilerImpl implements Statement.Compiler {
       return result
     }
     return (statement as any)[cacheSymbol] = result
+  }
+
+  get withoutTransform() {
+    return new CompilerImpl(
+      this.dialect,
+      this.parameterPlaceholder,
+      this.onIdentifier,
+      this.onRecordUpdate,
+      this.onCustom,
+      this.onInsert,
+      this.onRecordUpdateSingle,
+      true
+    ) as this
   }
 }
 

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
@@ -135,16 +136,18 @@ interface PostgresOptions extends postgres.Options<{}> {
  */
 export const make = (
   options: PgClientConfig
-): Effect.Effect<PgClient, SqlError, Scope.Scope> =>
+): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*(_) {
     const compiler = makeCompiler(
       options.transformQueryNames,
       options.transformJson
     )
-    const transformRows = Statement.defaultTransforms(
-      options.transformResultNames!,
-      options.transformJson
-    ).array
+    const transformRows = options.transformResultNames ?
+      Statement.defaultTransforms(
+        options.transformResultNames,
+        options.transformJson
+      ).array :
+      undefined
 
     const opts: PartialWithUndefined<PostgresOptions> = {
       max: options.maxConnections ?? 10,
@@ -207,14 +210,14 @@ export const make = (
         })
       }
 
-      private runTransform(query: postgres.PendingQuery<any>) {
-        return options.transformResultNames
-          ? Effect.map(this.run(query), transformRows)
-          : this.run(query)
-      }
-
-      execute(sql: string, params: ReadonlyArray<Primitive>) {
-        return this.runTransform(this.pg.unsafe(sql, params as any))
+      execute(
+        sql: string,
+        params: ReadonlyArray<Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return transformRows
+          ? Effect.map(this.run(this.pg.unsafe(sql, params as any)), transformRows)
+          : this.run(this.pg.unsafe(sql, params as any))
       }
       executeRaw(sql: string, params: ReadonlyArray<Primitive>) {
         return this.run(this.pg.unsafe(sql, params as any))
@@ -225,10 +228,18 @@ export const make = (
       executeValues(sql: string, params: ReadonlyArray<Primitive>) {
         return this.run(this.pg.unsafe(sql, params as any).values())
       }
-      executeUnprepared(sql: string, params?: ReadonlyArray<Primitive>) {
-        return this.runTransform(this.pg.unsafe(sql, params as any))
+      executeUnprepared(
+        sql: string,
+        params: ReadonlyArray<Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return this.execute(sql, params, transformRows)
       }
-      executeStream(sql: string, params: ReadonlyArray<Primitive>) {
+      executeStream(
+        sql: string,
+        params: ReadonlyArray<Primitive>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
         return Stream.mapChunks(
           Stream.fromAsyncIterable(
             this.pg.unsafe(sql, params as any).cursor(16) as AsyncIterable<
@@ -236,17 +247,13 @@ export const make = (
             >,
             (cause) => new SqlError({ cause, message: "Failed to execute statement" })
           ),
-          Chunk.flatMap((rows) =>
-            Chunk.unsafeFromArray(
-              options.transformResultNames ? transformRows(rows) : rows
-            )
-          )
+          Chunk.flatMap((rows) => Chunk.unsafeFromArray(transformRows ? transformRows(rows) : rows))
         )
       }
     }
 
     return Object.assign(
-      Client.make({
+      yield* Client.make({
         acquirer: Effect.succeed(new ConnectionImpl(client)),
         transactionAcquirer: Effect.map(
           Effect.acquireRelease(
@@ -265,7 +272,8 @@ export const make = (
           [Otel.SEMATTRS_DB_NAME, opts.database ?? options.username ?? "postgres"],
           ["server.address", opts.host ?? "localhost"],
           ["server.port", opts.port ?? 5432]
-        ]
+        ],
+        transformRows
       }),
       {
         [TypeId]: TypeId as TypeId,
@@ -314,7 +322,7 @@ export const layerConfig = (
         )
       )
     )
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category layers
@@ -328,7 +336,7 @@ export const layer = (
       Context.make(PgClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))
-  )
+  ).pipe(Layer.provide(Reactivity.layer))
 
 /**
  * @category constructor

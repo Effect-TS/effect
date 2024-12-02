@@ -3,7 +3,7 @@ import * as Statement from "@effect/sql/Statement"
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
-const sql = Statement.make(Effect.void as any, MssqlClient.makeCompiler())
+const sql = Statement.make(Effect.void as any, MssqlClient.makeCompiler(), [], undefined)
 
 describe("mssql", () => {
   it("insert helper", () => {

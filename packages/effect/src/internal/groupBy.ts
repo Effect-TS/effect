@@ -12,6 +12,7 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate } from "../Predicate.js"
 import * as Queue from "../Queue.js"
 import * as Ref from "../Ref.js"
+import * as Scope from "../Scope.js"
 import type * as Stream from "../Stream.js"
 import type * as Take from "../Take.js"
 import type { NoInfer } from "../Types.js"
@@ -487,29 +488,19 @@ export const groupByKey = dual<
             )
           )
       })
-    return make(stream.unwrapScoped(
-      pipe(
-        Effect.sync(() => new Map<K, Queue.Queue<Take.Take<A, E>>>()),
-        Effect.flatMap((map) =>
-          pipe(
-            Effect.acquireRelease(
-              Queue.unbounded<Take.Take<readonly [K, Queue.Queue<Take.Take<A, E>>], E>>(),
-              (queue) => Queue.shutdown(queue)
-            ),
-            Effect.flatMap((queue) =>
-              pipe(
-                self,
-                stream.toChannel,
-                core.pipeTo(loop(map, queue)),
-                channel.drain,
-                channelExecutor.runScoped,
-                Effect.forkScoped,
-                Effect.as(stream.flattenTake(stream.fromQueue(queue, { shutdown: true })))
-              )
-            )
-          )
+    return make(stream.unwrapScopedWith((scope) =>
+      Effect.gen(function*() {
+        const map = new Map<K, Queue.Queue<Take.Take<A, E>>>()
+        const queue = yield* Queue.unbounded<Take.Take<readonly [K, Queue.Queue<Take.Take<A, E>>], E>>()
+        yield* Scope.addFinalizer(scope, Queue.shutdown(queue))
+        return yield* stream.toChannel(self).pipe(
+          core.pipeTo(loop(map, queue)),
+          channel.drain,
+          channelExecutor.runIn(scope),
+          Effect.forkIn(scope),
+          Effect.as(stream.flattenTake(stream.fromQueue(queue, { shutdown: true })))
         )
-      )
+      })
     ))
   }
 )

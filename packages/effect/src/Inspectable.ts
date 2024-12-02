@@ -32,13 +32,17 @@ export interface Inspectable {
  * @since 2.0.0
  */
 export const toJSON = (x: unknown): unknown => {
-  if (
-    hasProperty(x, "toJSON") && isFunction(x["toJSON"]) &&
-    x["toJSON"].length === 0
-  ) {
-    return x.toJSON()
-  } else if (Array.isArray(x)) {
-    return x.map(toJSON)
+  try {
+    if (
+      hasProperty(x, "toJSON") && isFunction(x["toJSON"]) &&
+      x["toJSON"].length === 0
+    ) {
+      return x.toJSON()
+    } else if (Array.isArray(x)) {
+      return x.map(toJSON)
+    }
+  } catch (_) {
+    return {}
   }
   return redact(x)
 }

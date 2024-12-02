@@ -114,7 +114,7 @@ export const isPersistedFile: (u: unknown) => u is PersistedFile = internal.isPe
  * @category models
  */
 export interface Persisted {
-  readonly [key: string]: ReadonlyArray<PersistedFile> | string
+  readonly [key: string]: ReadonlyArray<PersistedFile> | ReadonlyArray<string> | string
 }
 
 /**

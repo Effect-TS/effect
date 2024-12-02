@@ -3418,30 +3418,40 @@ export const paginateEffect: <S, A, E, R>(
 ) => Stream<A, E, R> = internal.paginateEffect
 
 /**
- * Partition a stream using a predicate. The first stream will contain all
- * element evaluated to true and the second one will contain all element
- * evaluated to false. The faster stream may advance by up to buffer elements
- * further than the slower one.
+ * Splits a stream into two substreams based on a predicate.
+ *
+ * **Details**
+ *
+ * The `Stream.partition` function splits a stream into two parts: one for
+ * elements that satisfy the predicate (evaluated to `true`) and another for
+ * those that do not (evaluated to `false`).
+ *
+ * The faster stream may advance up to `bufferSize` elements ahead of the slower
+ * one.
+ *
+ * @see {@link partitionEither} for partitioning a stream based on effectful
+ * conditions.
  *
  * @example
  * ```ts
+ * // Title: Partitioning a Stream into Even and Odd Numbers
  * import { Effect, Stream } from "effect"
  *
- * const partition = Stream.range(1, 10).pipe(
+ * const partition = Stream.range(1, 9).pipe(
  *   Stream.partition((n) => n % 2 === 0, { bufferSize: 5 })
  * )
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
- *     const [evens, odds] = yield* partition
- *     console.log(yield* Stream.runCollect(evens))
+ *     const [odds, evens] = yield* partition
  *     console.log(yield* Stream.runCollect(odds))
+ *     console.log(yield* Stream.runCollect(evens))
  *   })
  * )
  *
  * // Effect.runPromise(program)
- * // { _id: 'Chunk', values: [ 2, 4, 6, 8, 10 ] }
  * // { _id: 'Chunk', values: [ 1, 3, 5, 7, 9 ] }
+ * // { _id: 'Chunk', values: [ 2, 4, 6, 8 ] }
  * ```
  *
  * @since 2.0.0
@@ -3473,16 +3483,29 @@ export const partition: {
 } = internal.partition
 
 /**
- * Split a stream by an effectful predicate. The faster stream may advance by
- * up to buffer elements further than the slower one.
+ * Splits a stream into two substreams based on an effectful condition.
+ *
+ * **Details**
+ *
+ * The `Stream.partitionEither` function is used to divide a stream into two
+ * parts: one for elements that satisfy a condition producing `Either.left`
+ * values, and another for those that produce `Either.right` values. This
+ * function applies an effectful predicate to each element in the stream to
+ * determine which substream it belongs to.
+ *
+ * The faster stream may advance up to `bufferSize` elements ahead of the slower
+ * one.
+ *
+ * @see {@link partition} for partitioning a stream based on simple conditions.
  *
  * @example
  * ```ts
+ * // Title: Partitioning a Stream with an Effectful Predicate
  * import { Effect, Either, Stream } from "effect"
  *
  * const partition = Stream.range(1, 9).pipe(
  *   Stream.partitionEither(
- *     (n) => Effect.succeed(n % 2 === 0 ? Either.left(n) : Either.right(n)),
+ *     (n) => Effect.succeed(n % 2 === 0 ? Either.right(n) : Either.left(n)),
  *     { bufferSize: 5 }
  *   )
  * )
@@ -3496,8 +3519,8 @@ export const partition: {
  * )
  *
  * // Effect.runPromise(program)
- * // { _id: 'Chunk', values: [ 2, 4, 6, 8 ] }
  * // { _id: 'Chunk', values: [ 1, 3, 5, 7, 9 ] }
+ * // { _id: 'Chunk', values: [ 2, 4, 6, 8 ] }
  * ```
  *
  * @since 2.0.0
@@ -4076,8 +4099,7 @@ export const run: {
  * @since 2.0.0
  * @category destructors
  */
-export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk.Chunk<A>, E, Exclude<R, Scope.Scope>> =
-  internal.runCollect
+export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk.Chunk<A>, E, R> = internal.runCollect
 
 /**
  * Runs the stream and emits the number of elements processed
@@ -4085,8 +4107,7 @@ export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk
  * @since 2.0.0
  * @category destructors
  */
-export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number, E, Exclude<R, Scope.Scope>> =
-  internal.runCount
+export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number, E, R> = internal.runCount
 
 /**
  * Runs the stream only for its effects. The emitted elements are discarded.
@@ -4094,8 +4115,7 @@ export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number,
  * @since 2.0.0
  * @category destructors
  */
-export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E, Exclude<R, Scope.Scope>> =
-  internal.runDrain
+export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E, R> = internal.runDrain
 
 /**
  * Executes a pure fold over the stream of values - reduces all elements in
@@ -4105,8 +4125,8 @@ export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E
  * @category destructors
  */
 export const runFold: {
-  <S, A>(s: S, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
-  <A, E, R, S>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, Exclude<R, Scope.Scope>>
+  <S, A>(s: S, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, R>
+  <A, E, R, S>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, R>
 } = internal.runFold
 
 /**
@@ -4166,17 +4186,8 @@ export const runFoldScopedEffect: {
  * @category destructors
  */
 export const runFoldWhile: {
-  <S, A>(
-    s: S,
-    cont: Predicate<S>,
-    f: (s: S, a: A) => S
-  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
-  <A, E, R, S>(
-    self: Stream<A, E, R>,
-    s: S,
-    cont: Predicate<S>,
-    f: (s: S, a: A) => S
-  ): Effect.Effect<S, E, Exclude<R, Scope.Scope>>
+  <S, A>(s: S, cont: Predicate<S>, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, R>
+  <A, E, R, S>(self: Stream<A, E, R>, s: S, cont: Predicate<S>, f: (s: S, a: A) => S): Effect.Effect<S, E, R>
 } = internal.runFoldWhile
 
 /**
@@ -4590,6 +4601,17 @@ export const scheduleWith: {
  */
 export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, Exclude<R, Scope.Scope>> =
   internal.scoped
+
+/**
+ * Use a function that receives a scope and returns an effect to emit an output
+ * element. The output element will be the result of the returned effect, if
+ * successful.
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect.Effect<A, E, R>) => Stream<A, E, R> =
+  internal.scopedWith
 
 /**
  * Emits a sliding window of `n` elements.
@@ -5435,6 +5457,18 @@ export const unwrap: <A, E2, R2, E, R>(effect: Effect.Effect<Stream<A, E2, R2>, 
 export const unwrapScoped: <A, E2, R2, E, R>(
   effect: Effect.Effect<Stream<A, E2, R2>, E, R>
 ) => Stream<A, E | E2, R2 | Exclude<R, Scope.Scope>> = internal.unwrapScoped
+
+/**
+ * Creates a stream produced from a function which receives a `Scope` and
+ * returns an `Effect`. The resulting stream will emit a single element, which
+ * will be the result of the returned effect, if successful.
+ *
+ * @since 3.11.0
+ * @category constructors
+ */
+export const unwrapScopedWith: <A, E2, R2, E, R>(
+  f: (scope: Scope.Scope) => Effect.Effect<Stream<A, E2, R2>, E, R>
+) => Stream<A, E | E2, R | R2> = internal.unwrapScopedWith
 
 /**
  * Updates the specified service within the context of the `Stream`.

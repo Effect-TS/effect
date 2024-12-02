@@ -25,6 +25,7 @@ import { dual } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import type { TypeLambda } from "./HKT.js"
+import * as internalCause from "./internal/cause.js"
 import * as _console from "./internal/console.js"
 import { TagProto } from "./internal/context.js"
 import * as effect from "./internal/core-effect.js"
@@ -59,7 +60,7 @@ import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type { Concurrency, Contravariant, Covariant, NoExcessProperties, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
-import type { YieldWrap } from "./Utils.js"
+import { internalCall, isGeneratorFunction, type YieldWrap } from "./Utils.js"
 
 /**
  * @since 2.0.0
@@ -150,6 +151,9 @@ export interface Blocked<out A, out E> extends Effect<A, E> {
 declare module "./Context.js" {
   interface Tag<Id, Value> extends Effect<Value, never, Id> {
     [Symbol.iterator](): EffectGenerator<Tag<Id, Value>>
+  }
+  interface Reference<Id, Value> extends Effect<Value> {
+    [Symbol.iterator](): EffectGenerator<Reference<Id, Value>>
   }
   interface TagUnifyIgnore {
     Effect?: true
@@ -4293,6 +4297,17 @@ export const scope: Effect<Scope.Scope, never, Scope.Scope> = fiberRuntime.scope
  */
 export const scopeWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) => Effect<A, E, R | Scope.Scope> =
   fiberRuntime.scopeWith
+
+/**
+ * Creates a `Scope`, passes it to the specified effectful function, and then
+ * closes the scope as soon as the effect is complete (whether through success,
+ * failure, or interruption).
+ *
+ * @since 3.11.0
+ * @category scoping, resources & finalization
+ */
+export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) => Effect<A, E, R> =
+  fiberRuntime.scopedWith
 
 /**
  * Scopes all resources used in this workflow to the lifetime of the workflow,
@@ -9761,4 +9776,328 @@ export declare namespace Service {
    */
   export type MakeAccessors<Make> = Make extends { readonly accessors: true } ? true
     : false
+}
+
+/**
+ * @since 3.11.0
+ * @category models
+ */
+export namespace fn {
+  /**
+   * @since 3.11.0
+   * @category models
+   */
+  export type FnEffect<AEff, Eff extends YieldWrap<Effect<any, any, any>>> = Effect<
+    AEff,
+    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+  >
+
+  /**
+   * @since 3.11.0
+   * @category models
+   */
+  export type Gen = {
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
+      body: (...args: Args) => Generator<Eff, AEff, never>
+    ): (...args: Args) => fn.FnEffect<AEff, Eff>
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A extends Effect<any, any, any>>(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (_: fn.FnEffect<AEff, Eff>) => A
+    ): (...args: Args) => A
+    <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B extends Effect<any, any, any>>(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      b: (_: A) => B
+    ): (...args: Args) => B
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C extends Effect<any, any, any>
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      b: (_: A) => B,
+      c: (_: B) => C
+    ): (...args: Args) => C
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D extends Effect<any, any, any>
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      b: (_: A) => B,
+      c: (_: B) => C,
+      d: (_: C) => D
+    ): (...args: Args) => D
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E extends Effect<any, any, any>
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      b: (_: A) => B,
+      c: (_: B) => C,
+      d: (_: C) => D,
+      e: (_: D) => E
+    ): (...args: Args) => E
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F extends Effect<any, any, any>
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      b: (_: A) => B,
+      c: (_: B) => C,
+      d: (_: C) => D,
+      e: (_: D) => E,
+      f: (_: E) => F
+    ): (...args: Args) => F
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G extends Effect<any, any, any>
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      b: (_: A) => B,
+      c: (_: B) => C,
+      d: (_: C) => D,
+      e: (_: D) => E,
+      f: (_: E) => F,
+      g: (_: F) => G
+    ): (...args: Args) => G
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H extends Effect<any, any, any>
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      b: (_: A) => B,
+      c: (_: B) => C,
+      d: (_: C) => D,
+      e: (_: D) => E,
+      f: (_: E) => F,
+      g: (_: F) => G,
+      h: (_: G) => H
+    ): (...args: Args) => H
+    <
+      Eff extends YieldWrap<Effect<any, any, any>>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I extends Effect<any, any, any>
+    >(
+      body: (...args: Args) => Generator<Eff, AEff, never>,
+      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      b: (_: A) => B,
+      c: (_: B) => C,
+      d: (_: C) => D,
+      e: (_: D) => E,
+      f: (_: E) => F,
+      g: (_: F) => G,
+      h: (_: G) => H,
+      i: (_: H) => I
+    ): (...args: Args) => I
+  }
+
+  /**
+   * @since 3.11.0
+   * @category models
+   */
+  export type NonGen = {
+    <Eff extends Effect<any, any, any>, Args extends Array<any>>(
+      body: (...args: Args) => Eff
+    ): (...args: Args) => Eff
+    <Eff extends Effect<any, any, any>, A, Args extends Array<any>>(
+      body: (...args: Args) => A,
+      a: (_: A) => Eff
+    ): (...args: Args) => Eff
+    <Eff extends Effect<any, any, any>, A, B, Args extends Array<any>>(
+      body: (...args: Args) => A,
+      a: (_: A) => B,
+      b: (_: B) => Eff
+    ): (...args: Args) => Eff
+    <Eff extends Effect<any, any, any>, A, B, C, Args extends Array<any>>(
+      body: (...args: Args) => A,
+      a: (_: A) => B,
+      b: (_: B) => C,
+      c: (_: C) => Eff
+    ): (...args: Args) => Eff
+    <Eff extends Effect<any, any, any>, A, B, C, D, Args extends Array<any>>(
+      body: (...args: Args) => A,
+      a: (_: A) => B,
+      b: (_: B) => C,
+      c: (_: C) => D,
+      d: (_: D) => Eff
+    ): (...args: Args) => Eff
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, Args extends Array<any>>(
+      body: (...args: Args) => A,
+      a: (_: A) => B,
+      b: (_: B) => C,
+      c: (_: C) => D,
+      d: (_: D) => E,
+      e: (_: E) => Eff
+    ): (...args: Args) => Eff
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, Args extends Array<any>>(
+      body: (...args: Args) => A,
+      a: (_: A) => B,
+      b: (_: B) => C,
+      c: (_: C) => D,
+      d: (_: D) => E,
+      e: (_: E) => F,
+      f: (_: E) => Eff
+    ): (...args: Args) => Eff
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, Args extends Array<any>>(
+      body: (...args: Args) => A,
+      a: (_: A) => B,
+      b: (_: B) => C,
+      c: (_: C) => D,
+      d: (_: D) => E,
+      e: (_: E) => F,
+      f: (_: E) => G,
+      g: (_: G) => Eff
+    ): (...args: Args) => Eff
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, Args extends Array<any>>(
+      body: (...args: Args) => A,
+      a: (_: A) => B,
+      b: (_: B) => C,
+      c: (_: C) => D,
+      d: (_: D) => E,
+      e: (_: E) => F,
+      f: (_: E) => G,
+      g: (_: G) => H,
+      h: (_: H) => Eff
+    ): (...args: Args) => Eff
+    <Eff extends Effect<any, any, any>, A, B, C, D, E, F, G, H, I, Args extends Array<any>>(
+      body: (...args: Args) => A,
+      a: (_: A) => B,
+      b: (_: B) => C,
+      c: (_: C) => D,
+      d: (_: D) => E,
+      e: (_: E) => F,
+      f: (_: E) => G,
+      g: (_: G) => H,
+      h: (_: H) => I,
+      i: (_: H) => Eff
+    ): (...args: Args) => Eff
+  }
+}
+
+/**
+ * Creates a function that returns an Effect which is automatically traced with a span pointing to the call site.
+ *
+ * The function can be created both using a generator function that can yield effects or using a normal function.
+ *
+ * @since 3.11.0
+ * @category function
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const logExample = Effect.fn("logExample")(
+ *   function*<N extends number>(n: N) {
+ *     yield* Effect.annotateCurrentSpan("n", n)
+ *     yield* Effect.logInfo(`got: ${n}`)
+ *     yield* Effect.fail(new Error())
+ *   },
+ *   Effect.delay("1 second")
+ * )
+ *
+ * Effect.runFork(
+ *   // this location is printed on the stack trace of the following `Effect.logError`
+ *   logExample(100).pipe(
+ *     Effect.catchAllCause(Effect.logError)
+ *   )
+ * )
+ */
+export const fn: (
+  name: string,
+  options?: Tracer.SpanOptions
+) => fn.Gen & fn.NonGen = (name, options) => (body: Function, ...pipeables: Array<any>) => {
+  return function(this: any, ...args: Array<any>) {
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    const error = new Error()
+    Error.stackTraceLimit = limit
+    let cache: false | string = false
+    const captureStackTrace = () => {
+      if (cache !== false) {
+        return cache
+      }
+      if (error.stack) {
+        const stack = error.stack.trim().split("\n")
+        cache = stack.slice(2).join("\n").trim()
+        return cache
+      }
+    }
+    let effect: Effect<any, any, any>
+    let fnError: any = undefined
+    try {
+      effect = isGeneratorFunction(body)
+        ? gen(() => internalCall(() => body.apply(this, args)))
+        : body.apply(this, args)
+    } catch (error) {
+      fnError = error
+      effect = die(error)
+    }
+    try {
+      for (const x of pipeables) {
+        effect = x(effect)
+      }
+    } catch (error) {
+      effect = fnError
+        ? failCause(internalCause.sequential(
+          internalCause.die(fnError),
+          internalCause.die(error)
+        ))
+        : die(error)
+    }
+    const opts: any = (options && "captureStackTrace" in options) ? options : { captureStackTrace, ...options }
+    return withSpan(effect, name, opts)
+  }
 }

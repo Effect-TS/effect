@@ -621,6 +621,27 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   }
 
   /**
+   * Transfers all children of this fiber that are currently running to the
+   * specified fiber scope.
+   *
+   * **NOTE**: This method must be invoked by the fiber itself after it has
+   * evaluated the effects but prior to exiting.
+   */
+  transferChildren(scope: fiberScope.FiberScope) {
+    const children = this._children
+    // Clear the children of the current fiber
+    this._children = null
+    if (children !== null && children.size > 0) {
+      for (const child of children) {
+        // If the child is still running, add it to the scope
+        if (child._exitValue === null) {
+          scope.add(this.currentRuntimeFlags, child)
+        }
+      }
+    }
+  }
+
+  /**
    * On the current thread, executes all messages in the fiber's inbox. This
    * method may return before all work is done, in the event the fiber executes
    * an asynchronous operation.
@@ -1093,23 +1114,21 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
 
   ["Micro"](op: Micro.Micro<any, any, never> & { _op: "Micro" }) {
     return core.unsafeAsync<any, any>((microResume) => {
-      const env = Micro.envUnsafeMakeEmpty().pipe(
-        Micro.envSet(Micro.currentContext, this.getFiberRef(core.currentContext))
-      )
       let resume = microResume
-      op[Micro.runSymbol](env, (result) => {
-        if (result._tag === "Right") {
-          return resume(core.exitSucceed(result.right))
+      const fiber = Micro.runFork(Micro.provideContext(op, this.currentContext))
+      fiber.addObserver((exit) => {
+        if (exit._tag === "Success") {
+          return resume(core.exitSucceed(exit.value))
         }
-        switch (result.left._tag) {
+        switch (exit.cause._tag) {
           case "Interrupt": {
             return resume(core.exitFailCause(internalCause.interrupt(FiberId.none)))
           }
           case "Fail": {
-            return resume(core.fail(result.left.error))
+            return resume(core.fail(exit.cause.error))
           }
           case "Die": {
-            return resume(core.die(result.left.defect))
+            return resume(core.die(exit.cause.defect))
           }
         }
       })
@@ -1117,7 +1136,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         resume = (_: any) => {
           abortResume(core.void)
         }
-        Micro.envGet(env, Micro.currentAbortController).abort()
+        fiber.unsafeInterrupt()
       })
     })
   }
@@ -2835,6 +2854,11 @@ export const scopeWith = <A, E, R>(
   f: (scope: Scope.Scope) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R | Scope.Scope> => core.flatMap(scopeTag, f)
 
+/** @internal */
+export const scopedWith = <A, E, R>(
+  f: (scope: Scope.Scope) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> => core.flatMap(scopeMake(), (scope) => core.onExit(f(scope), (exit) => scope.close(exit)))
+
 /* @internal */
 export const scopedEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, Scope.Scope>> =>
   core.flatMap(scopeMake(), (scope) => scopeUse(effect, scope))
@@ -2878,12 +2902,7 @@ export const using = dual<
     self: Effect.Effect<A, E, R>,
     use: (a: A) => Effect.Effect<A2, E2, R2>
   ) => Effect.Effect<A2, E | E2, Exclude<R, Scope.Scope> | R2>
->(2, (self, use) =>
-  core.acquireUseRelease(
-    scopeMake(),
-    (scope) => core.flatMap(scopeExtend(self, scope), use),
-    (scope, exit) => core.scopeClose(scope, exit)
-  ))
+>(2, (self, use) => scopedWith((scope) => core.flatMap(scopeExtend(self, scope), use)))
 
 /** @internal */
 export const validate = dual<

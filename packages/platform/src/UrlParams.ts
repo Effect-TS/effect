@@ -172,13 +172,7 @@ export const remove: {
 
 /**
  * @since 1.0.0
- * @category combinators
- */
-export const toString = (self: UrlParams): string => new URLSearchParams(self as any).toString()
-
-/**
- * @since 1.0.0
- * @category constructors
+ * @category conversions
  */
 export const makeUrl = (url: string, params: UrlParams, hash: Option.Option<string>): Either.Either<URL, Error> => {
   try {
@@ -198,6 +192,12 @@ export const makeUrl = (url: string, params: UrlParams, hash: Option.Option<stri
   }
 }
 
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toString = (self: UrlParams): string => new URLSearchParams(self as any).toString()
+
 const baseUrl = (): string | undefined => {
   if (
     "location" in globalThis &&
@@ -208,6 +208,40 @@ const baseUrl = (): string | undefined => {
     return location.origin + location.pathname
   }
   return undefined
+}
+
+/**
+ * Builds a `Record` containing all the key-value pairs in the given `UrlParams`
+ * as `string` (if only one value for a key) or a `NonEmptyArray<string>`
+ * (when more than one value for a key)
+ *
+ * @example
+ * import { UrlParams } from "@effect/platform"
+ *
+ * const urlParams = UrlParams.fromInput({ a: 1, b: true, c: "string", e: [1, 2, 3] })
+ * const result = UrlParams.toRecord(urlParams)
+ *
+ * assert.deepStrictEqual(
+ *   result,
+ *   { "a": "1", "b": "true", "c": "string", "e": ["1", "2", "3"] }
+ * )
+ *
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyArray<string>> => {
+  const out: Record<string, string | Arr.NonEmptyArray<string>> = {}
+  for (const [k, value] of self) {
+    const curr = out[k]
+    if (curr === undefined) {
+      out[k] = value
+    } else if (typeof curr === "string") {
+      out[k] = [curr, value]
+    } else {
+      curr.push(value)
+    }
+  }
+  return out
 }
 
 /**
@@ -228,4 +262,36 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
     (field: string) => (self: UrlParams) => Effect.Effect<A, ParseResult.ParseError, R>,
     (self: UrlParams, field: string) => Effect.Effect<A, ParseResult.ParseError, R>
   >(2, (self, field) => parse(Option.getOrElse(getLast(self, field), () => "")))
+}
+
+/**
+ * Extract schema from all key-value pairs in the given `UrlParams`.
+ *
+ * @example
+ * import { Effect, Schema } from "effect"
+ * import { UrlParams } from "@effect/platform"
+ *
+ * Effect.gen(function* () {
+ *   const urlParams = UrlParams.fromInput({ "a": [10, "string"], "b": false })
+ *   const result = yield* UrlParams.schemaStruct(Schema.Struct({
+ *     a: Schema.Tuple(Schema.NumberFromString, Schema.String),
+ *     b: Schema.BooleanFromString
+ *   }))(urlParams)
+ *
+ *   assert.deepStrictEqual(result, {
+ *     a: [10, "string"],
+ *     b: false
+ *   })
+ * })
+ *
+ * @since 1.0.0
+ * @category schema
+ */
+export const schemaStruct = <A, I extends Record<string, string | ReadonlyArray<string> | undefined>, R>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) =>
+(self: UrlParams): Effect.Effect<A, ParseResult.ParseError, R> => {
+  const parse = Schema.decodeUnknown(schema, options)
+  return parse(toRecord(self))
 }

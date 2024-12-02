@@ -15,7 +15,8 @@ import type { Primitive } from "./Statement.js"
 export interface Connection {
   readonly execute: (
     sql: string,
-    params: ReadonlyArray<Primitive>
+    params: ReadonlyArray<Primitive>,
+    transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) => Effect<ReadonlyArray<any>, SqlError>
 
   /**
@@ -29,13 +30,9 @@ export interface Connection {
 
   readonly executeStream: (
     sql: string,
-    params: ReadonlyArray<Primitive>
+    params: ReadonlyArray<Primitive>,
+    transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) => Stream<any, SqlError>
-
-  readonly executeWithoutTransform: (
-    sql: string,
-    params: ReadonlyArray<Primitive>
-  ) => Effect<ReadonlyArray<any>, SqlError>
 
   readonly executeValues: (
     sql: string,
@@ -44,7 +41,8 @@ export interface Connection {
 
   readonly executeUnprepared: (
     sql: string,
-    params?: ReadonlyArray<Primitive> | undefined
+    params: ReadonlyArray<Primitive>,
+    transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) => Effect<ReadonlyArray<any>, SqlError>
 }
 
