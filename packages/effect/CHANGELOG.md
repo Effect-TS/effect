@@ -1,5 +1,15 @@
 # effect
 
+## 3.11.2
+
+### Patch Changes
+
+- [#4063](https://github.com/Effect-TS/effect/pull/4063) [`01cee56`](https://github.com/Effect-TS/effect/commit/01cee560b58d94b24cc20e98083251b73e658b41) Thanks @tim-smart! - Micro adjustments
+
+  - rename Fiber to MicroFiber
+  - add Micro.fiberJoin api
+  - adjust output when inspecting Micro data types
+
 ## 3.11.1
 
 ### Patch Changes

@@ -1,5 +1,21 @@
 # @effect/platform
 
+## 0.70.2
+
+### Patch Changes
+
+- [#4064](https://github.com/Effect-TS/effect/pull/4064) [`c2249ea`](https://github.com/Effect-TS/effect/commit/c2249ea13fd98ab7d9aa628787931356d8ec2860) Thanks @tim-smart! - HttpApi OpenApi adjustments
+
+  - Allow using transform annotation on endpoints & groups
+  - Preserve descriptions for "empty" schemas
+
+- [#4055](https://github.com/Effect-TS/effect/pull/4055) [`1358aa5`](https://github.com/Effect-TS/effect/commit/1358aa5326eaa85ef13ee8d1fed0b4a4288ed3eb) Thanks @thewilkybarkid! - Allow creating a route for all methods
+
+- [#4062](https://github.com/Effect-TS/effect/pull/4062) [`1de3fe7`](https://github.com/Effect-TS/effect/commit/1de3fe7d1cbafd6391eaa38c2300b99e332cc2aa) Thanks @tim-smart! - simplify HttpApiClient param regex
+
+- Updated dependencies [[`01cee56`](https://github.com/Effect-TS/effect/commit/01cee560b58d94b24cc20e98083251b73e658b41)]:
+  - effect@3.11.2
+
 ## 0.70.1
 
 ### Patch Changes
