@@ -169,7 +169,15 @@ export const MicroCauseTypeId = Symbol.for("effect/Micro/MicroCause")
 export type MicroCauseTypeId = typeof MicroCauseTypeId
 
 /**
- * A Micro Cause is a data type that represents the different ways a Micro can fail.
+ * A `MicroCause` is a data type that represents the different ways a `Micro` can fail.
+ *
+ * **Details**
+ *
+ * `MicroCause` comes in three forms:
+ *
+ * - `Die`: Indicates an unforeseen defect that wasn't planned for in the system's logic.
+ * - `Fail`: Covers anticipated errors that are recognized and typically handled within the application.
+ * - `Interrupt`: Signifies an operation that has been purposefully stopped.
  *
  * @since 3.4.6
  * @experimental
@@ -838,10 +846,10 @@ export const failCause: <E>(cause: MicroCause<E>) => Micro<never, E> = makeExit(
 })
 
 /**
- * Creates a `Micro` effect that will fail with the specified error.
+ * Creates a `Micro` effect that fails with the given error.
  *
- * This will result in a `CauseFail`, where the error is tracked at the
- * type level.
+ * This results in a `Fail` variant of the `MicroCause` type, where the error is
+ * tracked at the type level.
  *
  * @since 3.4.0
  * @experimental
@@ -850,10 +858,10 @@ export const failCause: <E>(cause: MicroCause<E>) => Micro<never, E> = makeExit(
 export const fail = <E>(error: E): Micro<never, E> => failCause(causeFail(error))
 
 /**
- * Creates a `Micro` effect that will succeed with the lazily evaluated value.
+ * Creates a `Micro` effect that succeeds with a lazily evaluated value.
  *
- * If the evaluation of the value throws an error, the effect will fail with
- * `CauseDie`.
+ * If the evaluation of the value throws an error, the effect will fail with a
+ * `Die` variant of the `MicroCause` type.
  *
  * @since 3.4.0
  * @experimental
@@ -915,7 +923,7 @@ export const yieldNowWith: (priority?: number) => Micro<void> = makePrimitive({
 export const yieldNow: Micro<void> = yieldNowWith(0)
 
 /**
- * Creates a `Micro` effect that will succeed with `Option.Some` of the value.
+ * Creates a `Micro` effect that will succeed with the value wrapped in `Some`.
  *
  * @since 3.4.0
  * @experimental
@@ -924,7 +932,7 @@ export const yieldNow: Micro<void> = yieldNowWith(0)
 export const succeedSome = <A>(a: A): Micro<Option.Option<A>> => succeed(Option.some(a))
 
 /**
- * Creates a `Micro` effect that will succeed with `Option.None`.
+ * Creates a `Micro` effect that succeeds with `None`.
  *
  * @since 3.4.0
  * @experimental
@@ -945,8 +953,8 @@ export const failCauseSync = <E>(evaluate: LazyArg<MicroCause<E>>): Micro<never,
 /**
  * Creates a `Micro` effect that will die with the specified error.
  *
- * This will result in a `CauseDie`, where the error is not tracked at
- * the type level.
+ * This results in a `Die` variant of the `MicroCause` type, where the error is
+ * not tracked at the type level.
  *
  * @since 3.4.0
  * @experimental
@@ -957,8 +965,8 @@ export const die = (defect: unknown): Micro<never> => exitDie(defect)
 /**
  * Creates a `Micro` effect that will fail with the lazily evaluated error.
  *
- * This will result in a `CauseFail`, where the error is tracked at the
- * type level.
+ * This results in a `Fail` variant of the `MicroCause` type, where the error is
+ * tracked at the type level.
  *
  * @since 3.4.6
  * @experimental
@@ -1018,9 +1026,6 @@ export {
    * The `Micro` equivalent of a try / catch block, which allows you to map
    * thrown errors to a specific error type.
    *
-   * @since 3.4.0
-   * @experimental
-   * @category constructors
    * @example
    * ```ts
    * import { Micro } from "effect"
@@ -1030,13 +1035,19 @@ export {
    *   catch: (cause) => new Error("caught", { cause })
    * })
    * ```
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category constructors
    */
   try_ as try
 }
 
 /**
- * Wrap a `Promise` into a `Micro` effect. Any errors will result in a
- * `CauseDie`.
+ * Wrap a `Promise` into a `Micro` effect.
+ *
+ * Any errors will result in a `Die` variant of the `MicroCause` type, where the
+ * error is not tracked at the type level.
  *
  * @since 3.4.0
  * @experimental
@@ -1054,9 +1065,6 @@ export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): M
  * Wrap a `Promise` into a `Micro` effect. Any errors will be caught and
  * converted into a specific error type.
  *
- * @since 3.4.0
- * @experimental
- * @category constructors
  * @example
  * ```ts
  * import { Micro } from "effect"
@@ -1066,6 +1074,10 @@ export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): M
  *   catch: (cause) => new Error("caught", { cause })
  * })
  * ```
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
  */
 export const tryPromise = <A, E>(options: {
   readonly try: (signal: AbortSignal) => PromiseLike<A>
@@ -1243,7 +1255,7 @@ export const as: {
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, value: B): Micro<B, E, R> => map(self, (_) => value))
 
 /**
- * Wrap the success value of this `Micro` effect in an `Option.Some`.
+ * Wrap the success value of this `Micro` effect in a `Some`.
  *
  * @since 3.4.0
  * @experimental
@@ -1265,11 +1277,11 @@ export const flip = <A, E, R>(self: Micro<A, E, R>): Micro<E, A, R> =>
   })
 
 /**
- * A more flexible version of `flatMap`, that combines `map` and `flatMap` into
- * a single api.
+ * A more flexible version of `flatMap` that combines `map` and `flatMap` into a
+ * single API.
  *
- * It also allows you to pass in a `Micro` effect directly, which will be
- * executed after the current effect.
+ * It also lets you directly pass a `Micro` effect, which will be executed after
+ * the current effect.
  *
  * @since 3.4.0
  * @experimental
@@ -1429,7 +1441,7 @@ export const raceAll = <Eff extends Micro<any, any, any>>(
 /**
  * Returns an effect that races all the specified effects,
  * yielding the value of the first effect to succeed or fail. Losers of
- * the race will be interrupted immediately
+ * the race will be interrupted immediately.
  *
  * @since 3.4.0
  * @experimental
@@ -1463,7 +1475,7 @@ export const raceAllFirst = <Eff extends Micro<any, any, any>>(
 
 /**
  * Returns an effect that races two effects, yielding the value of the first
- * effect to succeed. Losers of the race will be interrupted immediately
+ * effect to succeed. Losers of the race will be interrupted immediately.
  *
  * @since 3.4.0
  * @experimental
@@ -1480,7 +1492,7 @@ export const race: {
 
 /**
  * Returns an effect that races two effects, yielding the value of the first
- * effect to succeed *or* fail. Losers of the race will be interrupted immediately
+ * effect to succeed *or* fail. Losers of the race will be interrupted immediately.
  *
  * @since 3.4.0
  * @experimental
@@ -1567,10 +1579,9 @@ export const map: {
 // ----------------------------------------------------------------------------
 
 /**
- * The MicroExit type is a data type that represents the result of a Micro
- * computation.
- *
- * It uses the `Either` data type to represent the success and failure cases.
+ * The `MicroExit` type is used to represent the result of a `Micro` computation. It
+ * can either be successful, containing a value of type `A`, or it can fail,
+ * containing an error of type `E` wrapped in a `MicroCause`.
  *
  * @since 3.4.6
  * @experimental
@@ -2046,10 +2057,8 @@ export class CurrentScheduler extends Context.Reference<CurrentScheduler>()<
  * If you have a `Micro` that uses `concurrency: "inherit"`, you can use this
  * api to control the concurrency of that `Micro` when it is run.
  *
- * @since 3.4.0
- * @experimental
- * @category environment refs
  * @example
+ * ```ts
  * import * as Micro from "effect/Micro"
  *
  * Micro.forEach([1, 2, 3], (n) => Micro.succeed(n), {
@@ -2057,6 +2066,11 @@ export class CurrentScheduler extends Context.Reference<CurrentScheduler>()<
  * }).pipe(
  *   Micro.withConcurrency(2) // use a concurrency of 2
  * )
+ * ```
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category environment refs
  */
 export const withConcurrency: {
   (
@@ -2613,7 +2627,7 @@ export const catchCauseIf: {
 /**
  * Catch the error of the given `Micro` effect, allowing you to recover from it.
  *
- * It only catches expected (`MicroCause.Fail`) errors.
+ * It only catches expected errors.
  *
  * @since 3.4.6
  * @experimental
@@ -3659,9 +3673,6 @@ export const interruptible = <A, E, R>(
  * You can use the `restore` function to restore a `Micro` effect to the
  * interruptibility state before the `uninterruptibleMask` was applied.
  *
- * @since 3.4.0
- * @experimental
- * @category interruption
  * @example
  * ```ts
  * import * as Micro from "effect/Micro"
@@ -3672,6 +3683,10 @@ export const interruptible = <A, E, R>(
  *   )
  * )
  * ```
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category interruption
  */
 export const uninterruptibleMask = <A, E, R>(
   f: (
@@ -4069,14 +4084,14 @@ export {
 // ----------------------------------------------------------------------------
 
 /**
- * Run the `Micro` effect in a new `Handle` that can be awaited, joined, or
+ * Run the `Micro` effect in a new `Fiber` that can be awaited, joined, or
  * aborted.
  *
  * When the parent `Micro` finishes, this `Micro` will be aborted.
  *
  * @since 3.4.0
  * @experimental
- * @category handle & forking
+ * @category fiber & forking
  */
 export const fork = <A, E, R>(
   self: Micro<A, E, R>
@@ -4106,28 +4121,28 @@ const unsafeFork = <FA, FE, A, E, R>(
 }
 
 /**
- * Run the `Micro` effect in a new `Handle` that can be awaited, joined, or
+ * Run the `Micro` effect in a new `Fiber` that can be awaited, joined, or
  * aborted.
  *
  * It will not be aborted when the parent `Micro` finishes.
  *
  * @since 3.4.0
  * @experimental
- * @category handle & forking
+ * @category fiber & forking
  */
 export const forkDaemon = <A, E, R>(
   self: Micro<A, E, R>
 ): Micro<Fiber<A, E>, never, R> => withFiber((fiber) => succeed(unsafeFork(fiber, self, false, true)))
 
 /**
- * Run the `Micro` effect in a new `Handle` that can be awaited, joined, or
+ * Run the `Micro` effect in a new `Fiber` that can be awaited, joined, or
  * aborted.
  *
  * The lifetime of the handle will be attached to the provided `MicroScope`.
  *
  * @since 3.4.0
  * @experimental
- * @category handle & forking
+ * @category fiber & forking
  */
 export const forkIn: {
   (scope: MicroScope): <A, E, R>(self: Micro<A, E, R>) => Micro<Fiber<A, E>, never, R>
@@ -4145,14 +4160,14 @@ export const forkIn: {
 )
 
 /**
- * Run the `Micro` effect in a new `Handle` that can be awaited, joined, or
+ * Run the `Micro` effect in a new `Fiber` that can be awaited, joined, or
  * aborted.
  *
  * The lifetime of the handle will be attached to the current `MicroScope`.
  *
  * @since 3.4.0
  * @experimental
- * @category handle & forking
+ * @category fiber & forking
  */
 export const forkScoped = <A, E, R>(self: Micro<A, E, R>): Micro<Fiber<A, E>, never, R | MicroScope> =>
   flatMap(scope, (scope) => forkIn(self, scope))
@@ -4162,15 +4177,12 @@ export const forkScoped = <A, E, R>(self: Micro<A, E, R>): Micro<Fiber<A, E>, ne
 // ----------------------------------------------------------------------------
 
 /**
- * Execute the `Micro` effect and return a `Handle` that can be awaited, joined,
+ * Execute the `Micro` effect and return a `Fiber` that can be awaited, joined,
  * or aborted.
  *
  * You can listen for the result by adding an observer using the handle's
  * `addObserver` method.
  *
- * @since 3.4.0
- * @experimental
- * @category execution
  * @example
  * ```ts
  * import * as Micro from "effect/Micro"
@@ -4184,6 +4196,10 @@ export const forkScoped = <A, E, R>(self: Micro<A, E, R>): Micro<Fiber<A, E>, ne
  *   console.log(exit)
  * })
  * ```
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category execution
  */
 export const runFork = <A, E>(
   effect: Micro<A, E>,
@@ -4254,7 +4270,7 @@ export const runPromise = <A, E>(
  * Attempt to execute the `Micro` effect synchronously and return the `MicroExit`.
  *
  * If any asynchronous effects are encountered, the function will return a
- * `CauseDie` containing the `Handle`.
+ * `CauseDie` containing the `Fiber`.
  *
  * @since 3.4.6
  * @experimental
