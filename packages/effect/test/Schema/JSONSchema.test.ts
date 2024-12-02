@@ -2631,18 +2631,22 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         { "type": "custom" }
       )
     })
+
     it("UUID", () => {
       expectJSONSchema(
         Schema.UUID,
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "description": "a Universally Unique Identifier",
-          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-          "title": "UUID",
-          "type": "string",
-          "format": "uuid"
-        },
-        false
+          "$defs": {
+            "UUID": {
+              "description": "a Universally Unique Identifier",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+              "title": "UUID",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "$ref": "#/$defs/UUID"
+        }
       )
     })
 

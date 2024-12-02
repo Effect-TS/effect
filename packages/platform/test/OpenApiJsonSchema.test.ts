@@ -4935,6 +4935,24 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
+    it("UUID", () => {
+      expectJSONSchema(
+        Schema.UUID,
+        {
+          "$defs": {
+            "UUID": {
+              "description": "a Universally Unique Identifier",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+              "title": "UUID",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "$ref": "#/$defs/UUID"
+        }
+      )
+    })
+
     it("Suspend", () => {
       interface A {
         readonly a: string

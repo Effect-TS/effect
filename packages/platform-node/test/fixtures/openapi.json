@@ -264,11 +264,7 @@
                     "type": "string"
                   },
                   "uuid": {
-                    "description": "a Universally Unique Identifier",
-                    "format": "uuid",
-                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-                    "title": "UUID",
-                    "type": "string"
+                    "$ref": "#/components/schemas/UUID"
                   }
                 },
                 "additionalProperties": false
@@ -470,6 +466,13 @@
         "format": "binary",
         "type": "string"
       },
+      "UUID": {
+        "description": "a Universally Unique Identifier",
+        "format": "uuid",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        "title": "UUID",
+        "type": "string"
+      },
       "Int": {
         "description": "an integer",
         "title": "Int",
@@ -548,11 +551,7 @@
             "type": "string"
           },
           "uuid": {
-            "description": "a Universally Unique Identifier",
-            "format": "uuid",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-            "title": "UUID",
-            "type": "string"
+            "$ref": "#/components/schemas/UUID"
           },
           "createdAt": {
             "$ref": "#/components/schemas/DateTimeUtc"
