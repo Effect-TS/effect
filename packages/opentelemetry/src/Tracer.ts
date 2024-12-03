@@ -14,7 +14,7 @@ import type { Resource } from "./Resource.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect<EffectTracer, never, Otel.Tracer> = internal.make
+export const make: Effect<EffectTracer, never, OtelTracer> = internal.make
 
 /**
  * @since 1.0.0
@@ -39,49 +39,87 @@ export const currentOtelSpan: Effect<Otel.Span, NoSuchElementException> = intern
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer<never, never, Resource | Otel.TracerProvider> = internal.layer
+export const layerWithoutOtelTracer: Layer<never, never, OtelTracer> = internal.layerWithoutOtelTracer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerGlobal: Layer<never, never, Resource> = internal.layerGlobal
+export const layer: Layer<OtelTracer, never, Resource | OtelTracerProvider> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerTracer: Layer<Otel.Tracer, never, Resource | Otel.TracerProvider> = internal.layerTracer
+export const layerGlobal: Layer<OtelTracer, never, Resource> = internal.layerGlobal
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerGlobalTracer: Layer<Otel.Tracer, never, Resource> = internal.layerGlobalTracer
+export const layerTracer: Layer<OtelTracer, never, Resource | OtelTracerProvider> = internal.layerTracer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerGlobalTracer: Layer<OtelTracer, never, Resource> = internal.layerGlobalTracer
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const TracerProvider: Tag<Otel.TracerProvider, Otel.TracerProvider> = internal.TracerProvider
+export interface OtelTracerProvider {
+  readonly _: unique symbol
+}
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const Tracer: Tag<Otel.Tracer, Otel.Tracer> = internal.Tracer
+export const OtelTracerProvider: Tag<OtelTracerProvider, Otel.TracerProvider> = internal.TracerProvider
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const TraceFlags: Tag<Otel.TraceFlags, Otel.TraceFlags> = internal.traceFlagsTag
+export interface OtelTracer {
+  readonly _: unique symbol
+}
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const TraceState: Tag<Otel.TraceState, Otel.TraceState> = internal.traceStateTag
+export const OtelTracer: Tag<OtelTracer, Otel.Tracer> = internal.Tracer
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export interface OtelTraceFlags {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const OtelTraceFlags: Tag<OtelTraceFlags, Otel.TraceFlags> = internal.traceFlagsTag
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export interface OtelTraceState {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const OtelTraceState: Tag<OtelTraceState, Otel.TraceState> = internal.traceStateTag
 
 /**
  * Set the effect's parent span from the given opentelemetry `SpanContext`.
