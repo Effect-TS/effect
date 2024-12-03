@@ -260,6 +260,9 @@
                 "type": "object",
                 "required": ["name"],
                 "properties": {
+                  "name": {
+                    "type": "string"
+                  },
                   "uuid": {
                     "$ref": "#/components/schemas/UUID"
                   }
@@ -436,7 +439,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -579,6 +582,9 @@
         "properties": {
           "id": {
             "$ref": "#/components/schemas/Int"
+          },
+          "name": {
+            "type": "string"
           },
           "uuid": {
             "$ref": "#/components/schemas/UUID"
