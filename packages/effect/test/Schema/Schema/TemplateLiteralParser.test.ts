@@ -20,6 +20,80 @@ schema (SymbolKeyword): symbol`)
     expect(schema.params).toStrictEqual(params)
   })
 
+  describe("string literal based schemas", () => {
+    it("decoding", async () => {
+      const schema = Schema.TemplateLiteralParser("foo")
+      await Util.expectDecodeUnknownSuccess(schema, "foo", ["foo"])
+    })
+
+    it("encoding", async () => {
+      const schema = Schema.TemplateLiteralParser("foo")
+      await Util.expectEncodeSuccess(schema, ["foo"], "foo")
+    })
+  })
+
+  describe("literal based schemas", () => {
+    it("decoding", async () => {
+      const schema = Schema.TemplateLiteralParser(Schema.Literal("foo"))
+      await Util.expectDecodeUnknownSuccess(schema, "foo", ["foo"])
+    })
+
+    it("encoding", async () => {
+      const schema = Schema.TemplateLiteralParser(Schema.Literal("foo"))
+      await Util.expectEncodeSuccess(schema, ["foo"], "foo")
+    })
+  })
+
+  describe("literal union based schemas", () => {
+    it("decoding", async () => {
+      const schema = Schema.TemplateLiteralParser(Schema.Literal("foo", "bar"))
+      await Util.expectDecodeUnknownSuccess(schema, "foo", ["foo"])
+      await Util.expectDecodeUnknownSuccess(schema, "bar", ["bar"])
+    })
+
+    it("encoding", async () => {
+      const schema = Schema.TemplateLiteralParser(Schema.Literal("foo", "bar"))
+      await Util.expectEncodeSuccess(schema, ["foo"], "foo")
+      await Util.expectEncodeSuccess(schema, ["bar"], "bar")
+    })
+  })
+
+  describe("union of literals based schemas", () => {
+    it("decoding", async () => {
+      const schema = Schema.TemplateLiteralParser(Schema.Union(Schema.Literal("foo")))
+      await Util.expectDecodeUnknownSuccess(schema, "foo", ["foo"])
+    })
+
+    it("encoding", async () => {
+      const schema = Schema.TemplateLiteralParser(Schema.Union(Schema.Literal("foo")))
+      await Util.expectEncodeSuccess(schema, ["foo"], "foo")
+    })
+  })
+
+  describe("complex literal schemas", () => {
+    it("decoding", async () => {
+      const schema = Schema.TemplateLiteralParser(
+        Schema.Union(Schema.Literal("foo", "bar"), Schema.Literal("baz")),
+        "cux"
+      )
+
+      await Util.expectDecodeUnknownSuccess(schema, "foocux", ["foo", "cux"])
+      await Util.expectDecodeUnknownSuccess(schema, "barcux", ["bar", "cux"])
+      await Util.expectDecodeUnknownSuccess(schema, "bazcux", ["baz", "cux"])
+    })
+
+    it("encoding", async () => {
+      const schema = Schema.TemplateLiteralParser(
+        Schema.Union(Schema.Literal("foo", "bar"), Schema.Literal("baz")),
+        "cux"
+      )
+
+      await Util.expectEncodeSuccess(schema, ["foo", "cux"], "foocux")
+      await Util.expectEncodeSuccess(schema, ["bar", "cux"], "barcux")
+      await Util.expectEncodeSuccess(schema, ["baz", "cux"], "bazcux")
+    })
+  })
+
   describe("number based schemas", () => {
     it("decoding", async () => {
       const schema = Schema.TemplateLiteralParser(Schema.Int, "a")
