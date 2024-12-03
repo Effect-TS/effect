@@ -3853,13 +3853,14 @@ export const whileLoop: <A, E, R>(options: {
 })
 
 /**
- * For each element of the provided iterable, run the effect and collect the results.
+ * For each element of the provided iterable, run the effect and collect the
+ * results.
  *
  * If the `discard` option is set to `true`, the results will be discarded and
  * the effect will return `void`.
  *
- * The `concurrency` option can be set to control how many effects are run in
- * parallel. By default, the effects are run sequentially.
+ * The `concurrency` option can be set to control how many effects are run
+ * concurrently. By default, the effects are run sequentially.
  *
  * @since 3.4.0
  * @experimental
@@ -3971,7 +3972,8 @@ export const forEach: {
 /**
  * Effectfully filter the elements of the provided iterable.
  *
- * Use the `concurrency` option to control how many elements are processed in parallel.
+ * Use the `concurrency` option to control how many elements are processed
+ * concurrently.
  *
  * @since 3.4.0
  * @experimental
@@ -3990,7 +3992,8 @@ export const filter = <A, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Mic
 /**
  * Effectfully filter the elements of the provided iterable.
  *
- * Use the `concurrency` option to control how many elements are processed in parallel.
+ * Use the `concurrency` option to control how many elements are processed
+ * concurrently.
  *
  * @since 3.4.0
  * @experimental

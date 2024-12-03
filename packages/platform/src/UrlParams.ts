@@ -216,6 +216,7 @@ const baseUrl = (): string | undefined => {
  * (when more than one value for a key)
  *
  * @example
+ * ```ts
  * import { UrlParams } from "@effect/platform"
  *
  * const urlParams = UrlParams.fromInput({ a: 1, b: true, c: "string", e: [1, 2, 3] })
@@ -225,6 +226,7 @@ const baseUrl = (): string | undefined => {
  *   result,
  *   { "a": "1", "b": "true", "c": "string", "e": ["1", "2", "3"] }
  * )
+ * ```
  *
  * @since 1.0.0
  * @category conversions
@@ -268,6 +270,7 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
  * Extract schema from all key-value pairs in the given `UrlParams`.
  *
  * @example
+ * ```ts
  * import { Effect, Schema } from "effect"
  * import { UrlParams } from "@effect/platform"
  *
@@ -283,6 +286,7 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
  *     b: false
  *   })
  * })
+ * ```
  *
  * @since 1.0.0
  * @category schema
