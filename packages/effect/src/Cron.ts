@@ -342,16 +342,16 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
     timeZone: Option.getOrUndefined(cron.tz)
   })
 
-  const adjustDst = dateTime.isUtc(zoned) ? constVoid : (date: Date) => {
-    const parts = dateTime.unsafeMakeZoned(date, {
+  const adjustDst = dateTime.isUtc(zoned) ? constVoid : (current: Date) => {
+    const adjusted = dateTime.unsafeMakeZoned(current, {
       timeZone: zoned.zone,
       adjustForTimeZone: true
-    }).pipe(dateTime.toParts)
+    }).pipe(dateTime.toDate)
 
-    // Check if the zoned date parts match the utc date parts.
-    if (!(parts.hours === date.getUTCHours() && parts.minutes === date.getUTCMinutes())) {
-      // If they don't match, we need to adjust for daylight savings time.
-      date.setUTCHours(date.getUTCHours() + 1, cron.first.minute)
+    // TODO: This implementation currently only skips forward when transitioning into daylight savings time.
+    const drift = current.getTime() - adjusted.getTime()
+    if (drift > 0) {
+      current.setTime(current.getTime() + drift)
     }
   }
 
