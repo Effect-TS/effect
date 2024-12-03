@@ -342,7 +342,7 @@ export const fromIterable = <R extends Router.Route<any, any>>(
 
 /** @internal */
 export const makeRoute = <E, R>(
-  method: Method.HttpMethod,
+  method: Method.HttpMethod | "*",
   path: Router.PathInput,
   handler: Router.Route.Handler<E, R>,
   options?: {

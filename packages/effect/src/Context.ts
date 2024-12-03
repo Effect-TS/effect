@@ -485,14 +485,55 @@ export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
 export const Tag: <const Id extends string>(id: Id) => <Self, Shape>() => TagClass<Self, Id, Shape> = internal.Tag
 
 /**
- * @example
- * import { Context, Layer } from "effect"
+ * Creates a context tag with a default value.
  *
- * class MyTag extends Context.Reference<MyTag>()("MyTag", {
- *   defaultValue: () => ({ myNum: 108 })
- * }) {
- *  static Live = Layer.succeed(this, { myNum: 108 })
- * }
+ * **Details**
+ *
+ * `Context.Reference` allows you to create a tag that can hold a value. You can
+ * provide a default value for the service, which will automatically be used
+ * when the context is accessed, or override it with a custom implementation
+ * when needed.
+ *
+ * @example
+ * ```ts
+ * // Title: Declaring a Tag with a default value
+ * import { Context, Effect } from "effect"
+ *
+ * class SpecialNumber extends Context.Reference<SpecialNumber>()(
+ *   "SpecialNumber",
+ *   { defaultValue: () => 2048 }
+ * ) {}
+ *
+ * //      ┌─── Effect<void, never, never>
+ * //      ▼
+ * const program = Effect.gen(function* () {
+ *   const specialNumber = yield* SpecialNumber
+ *   console.log(`The special number is ${specialNumber}`)
+ * })
+ *
+ * // No need to provide the SpecialNumber implementation
+ * Effect.runPromise(program)
+ * // Output: The special number is 2048
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: Overriding the default value
+ * import { Context, Effect } from "effect"
+ *
+ * class SpecialNumber extends Context.Reference<SpecialNumber>()(
+ *   "SpecialNumber",
+ *   { defaultValue: () => 2048 }
+ * ) {}
+ *
+ * const program = Effect.gen(function* () {
+ *   const specialNumber = yield* SpecialNumber
+ *   console.log(`The special number is ${specialNumber}`)
+ * })
+ *
+ * Effect.runPromise(program.pipe(Effect.provideService(SpecialNumber, -1)))
+ * // Output: The special number is -1
+ * ```
  *
  * @since 3.11.0
  * @category constructors

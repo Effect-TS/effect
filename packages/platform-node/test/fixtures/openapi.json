@@ -226,7 +226,7 @@
             }
           },
           "400": {
-            "description": "Error",
+            "description": "The request did not match the expected schema",
             "content": {
               "application/json": {
                 "schema": {
@@ -260,9 +260,6 @@
                 "type": "object",
                 "required": ["name"],
                 "properties": {
-                  "name": {
-                    "type": "string"
-                  },
                   "uuid": {
                     "$ref": "#/components/schemas/UUID"
                   }
@@ -276,8 +273,6 @@
       },
       "get": {
         "tags": ["Users API"],
-        "deprecated": true,
-        "summary": "test summary",
         "operationId": "listUsers",
         "parameters": [
           {
@@ -338,7 +333,9 @@
               }
             }
           }
-        }
+        },
+        "summary": "test summary",
+        "deprecated": true
       }
     },
     "/users/upload": {
@@ -417,6 +414,39 @@
           "required": true
         }
       }
+    },
+    "/healthz": {
+      "get": {
+        "tags": ["root"],
+        "operationId": "healthz",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Empty"
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "an instance of GlobalError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "tags": [
@@ -427,13 +457,17 @@
       "name": "Users API"
     },
     {
+      "name": "root"
+    },
+    {
       "name": "Tag from OpenApi.Transform annotation"
     }
   ],
   "components": {
     "schemas": {
       "ComponentsSchema": {
-        "additionalProperties": false,
+        "type": "object",
+        "required": ["contentType", "length"],
         "properties": {
           "contentType": {
             "type": "string"
@@ -442,8 +476,7 @@
             "$ref": "#/components/schemas/Int"
           }
         },
-        "required": ["contentType", "length"],
-        "type": "object"
+        "additionalProperties": false
       },
       "Group": {
         "type": "object",
@@ -546,9 +579,6 @@
         "properties": {
           "id": {
             "$ref": "#/components/schemas/Int"
-          },
-          "name": {
-            "type": "string"
           },
           "uuid": {
             "$ref": "#/components/schemas/UUID"

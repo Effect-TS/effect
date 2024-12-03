@@ -895,11 +895,13 @@ export const fromNumber: (n: number) => BigDecimal = unsafeFromNumber
  * @param n - The `number` value to create a `BigDecimal` from.
  *
  * @example
+ * ```ts
  * import { BigDecimal, Option } from "effect"
  *
  * assert.deepStrictEqual(BigDecimal.safeFromNumber(123), Option.some(BigDecimal.make(123n, 0)))
  * assert.deepStrictEqual(BigDecimal.safeFromNumber(123.456), Option.some(BigDecimal.make(123456n, 3)))
  * assert.deepStrictEqual(BigDecimal.safeFromNumber(Infinity), Option.none())
+ * ```
  *
  * @since 3.11.0
  * @category constructors
@@ -1058,9 +1060,11 @@ export const format = (n: BigDecimal): string => {
  * @param n - The `BigDecimal` to format.
  *
  * @example
+ * ```ts
  * import { toExponential, make } from "effect/BigDecimal"
  *
  * assert.deepStrictEqual(toExponential(make(123456n, -5)), "1.23456e+10")
+ * ```
  *
  * @since 3.11.0
  * @category conversions

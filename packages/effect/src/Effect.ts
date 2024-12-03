@@ -10033,10 +10033,11 @@ export namespace fn {
  *
  * The function can be created both using a generator function that can yield effects or using a normal function.
  *
- * @since 3.11.0
- * @category function
+ * `Effect.fn` also acts as a `pipe` function, allowing you to create a pipeline after the function definition.
  *
  * @example
+ * ```ts
+ * // Title: Creating a traced function with a generator function
  * import { Effect } from "effect"
  *
  * const logExample = Effect.fn("logExample")(
@@ -10044,16 +10045,35 @@ export namespace fn {
  *     yield* Effect.annotateCurrentSpan("n", n)
  *     yield* Effect.logInfo(`got: ${n}`)
  *     yield* Effect.fail(new Error())
- *   },
- *   Effect.delay("1 second")
+ *   }
  * )
  *
  * Effect.runFork(
- *   // this location is printed on the stack trace of the following `Effect.logError`
+ *   // This location is printed in the stack trace of the following `Effect.logError`
  *   logExample(100).pipe(
  *     Effect.catchAllCause(Effect.logError)
  *   )
  * )
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: Creating a traced function with a pipeline
+ * import { Effect } from "effect"
+ *
+ * const logExample = Effect.fn("example")(
+ *   function* <N extends number>(n: N) {
+ *     yield* Effect.annotateCurrentSpan("n", n)
+ *     yield* Effect.logInfo(`got: ${n}`)
+ *     yield* Effect.fail(new Error())
+ *   },
+ *   // Add a delay to the effect
+ *   Effect.delay("1 second")
+ * )
+ * ```
+ *
+ * @since 3.11.0
+ * @category function
  */
 export const fn: (
   name: string,
