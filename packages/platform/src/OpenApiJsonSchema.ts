@@ -83,9 +83,6 @@ export interface String extends Annotations {
   maxLength?: number
   pattern?: string
   format?: string
-  contentEncoding?: string
-  contentMediaType?: string
-  contentSchema?: JsonSchema
 }
 
 /**
@@ -202,8 +199,8 @@ export type JsonSchema =
  * @category model
  * @since 1.0.0
  */
-export type Root = JSONSchema.JsonSchema7 & {
-  $defs?: Record<string, JSONSchema.JsonSchema7>
+export type Root = JsonSchema & {
+  $defs?: Record<string, JsonSchema>
 }
 
 /**
@@ -211,8 +208,8 @@ export type Root = JSONSchema.JsonSchema7 & {
  * @since 1.0.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Root => {
-  const defs: Record<string, JSONSchema.JsonSchema7> = {}
-  const out = makeWithDefs(schema, { defs })
+  const defs: Record<string, JsonSchema> = {}
+  const out: Root = makeWithDefs(schema, { defs })
   if (!Record.isEmptyRecord(defs)) {
     out.$defs = defs
   }
@@ -224,14 +221,8 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Root => {
  * @since 1.0.0
  */
 export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
-  readonly defs: Record<string, JSONSchema.JsonSchema7>
+  readonly defs: Record<string, JsonSchema>
   readonly defsPath?: string
-}): Root => {
-  const defsPath = options.defsPath ?? "#/$defs/"
-  const getRef = (id: string) => `${defsPath}${id}`
-  return JSONSchema.makeWithOptions(schema, {
-    defs: options.defs,
-    defsPath,
-    getRef
-  })
+}): JsonSchema => {
+  return JSONSchema.makeWithOptions(schema, options)
 }

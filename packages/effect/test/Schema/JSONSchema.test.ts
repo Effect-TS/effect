@@ -73,18 +73,34 @@ const expectError = <A, I>(schema: Schema.Schema<A, I>, message: string) => {
 const JsonNumber = Schema.Number.pipe(Schema.filter((n) => Number.isFinite(n), { jsonSchema: {} }))
 
 describe("makeWithOptions", () => {
-  it("should generate a JSON Schema with definitions", () => {
+  it("defsPath", () => {
+    const schema = Schema.String.annotations({ identifier: "08368672-2c02-4d6d-92b0-dd0019b33a7b" })
     const defs = {}
-    const jsonSchema = JSONSchema.makeWithOptions(Schema.NumberFromString, { defs, defsPath: "#/components/schemas/" })
+    const jsonSchema = JSONSchema.makeWithOptions(schema, {
+      defs,
+      defsPath: "#/components/schemas/"
+    })
     expect(jsonSchema).toStrictEqual({
-      "$ref": "#/components/schemas/NumberFromString"
+      "$ref": "#/components/schemas/08368672-2c02-4d6d-92b0-dd0019b33a7b"
     })
     expect(defs).toStrictEqual({
-      "NumberFromString": {
-        "description": "a string that will be parsed into a number",
+      "08368672-2c02-4d6d-92b0-dd0019b33a7b": {
         "type": "string"
       }
     })
+  })
+
+  it("ignoreTopLevelIdentifier", () => {
+    const schema = Schema.String.annotations({ identifier: "1b205579-f159-48d4-a218-f09426bca040" })
+    const defs = {}
+    const jsonSchema = JSONSchema.makeWithOptions(schema, {
+      defs,
+      ignoreTopLevelIdentifier: true
+    })
+    expect(jsonSchema).toStrictEqual({
+      "type": "string"
+    })
+    expect(defs).toStrictEqual({})
   })
 })
 
