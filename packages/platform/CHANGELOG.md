@@ -1,5 +1,23 @@
 # @effect/platform
 
+## 0.70.3
+
+### Patch Changes
+
+- [#4065](https://github.com/Effect-TS/effect/pull/4065) [`7044730`](https://github.com/Effect-TS/effect/commit/70447306be1aeeb7d87c230b2a96ec87b993ede9) Thanks @KhraksMamtsov! - Ensure the uniqueness of the parameters at the type level
+
+  ```ts
+  import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+  import { Schema } from "effect"
+
+  HttpApiEndpoint.get(
+    "test"
+  )`/${HttpApiSchema.param("id", Schema.NumberFromString)}/${
+    // @ts-expect-error: Argument of type 'Param<"id", typeof NumberFromString>' is not assignable to parameter of type '"Duplicate param :id"'
+    HttpApiSchema.param("id", Schema.NumberFromString)
+  }`
+  ```
+
 ## 0.70.2
 
 ### Patch Changes

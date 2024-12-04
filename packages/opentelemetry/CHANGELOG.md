@@ -1,5 +1,15 @@
 # @effect/opentelemetry
 
+## 0.41.0
+
+### Minor Changes
+
+- [#4070](https://github.com/Effect-TS/effect/pull/4070) [`ac662f4`](https://github.com/Effect-TS/effect/commit/ac662f44646bb3370528e76b0545cf485bcf659c) Thanks @tim-smart! - ensure opentelemetry tags have unique identifiers
+
+### Patch Changes
+
+- [#4070](https://github.com/Effect-TS/effect/pull/4070) [`ac662f4`](https://github.com/Effect-TS/effect/commit/ac662f44646bb3370528e76b0545cf485bcf659c) Thanks @tim-smart! - expose Otel Tracer in Tracer layers
+
 ## 0.40.2
 
 ### Patch Changes

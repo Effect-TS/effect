@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-http",
-  "version": "0.43.2",
+  "version": "0.43.3",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",

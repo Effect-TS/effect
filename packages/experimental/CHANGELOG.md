@@ -1,5 +1,13 @@
 # @effect/experimental
 
+## 0.33.3
+
+### Patch Changes
+
+- Updated dependencies [[`7044730`](https://github.com/Effect-TS/effect/commit/70447306be1aeeb7d87c230b2a96ec87b993ede9)]:
+  - @effect/platform@0.70.3
+  - @effect/platform-node@0.65.3
+
 ## 0.33.2
 
 ### Patch Changes
