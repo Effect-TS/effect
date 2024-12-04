@@ -1,5 +1,16 @@
 # @effect/ai-openai
 
+## 0.5.3
+
+### Patch Changes
+
+- [#4071](https://github.com/Effect-TS/effect/pull/4071) [`da3a607`](https://github.com/Effect-TS/effect/commit/da3a607bea16d4f08c5937cadfde0447c4123f40) Thanks @tim-smart! - use openai response_format for structured completions
+
+- Updated dependencies [[`7044730`](https://github.com/Effect-TS/effect/commit/70447306be1aeeb7d87c230b2a96ec87b993ede9), [`da3a607`](https://github.com/Effect-TS/effect/commit/da3a607bea16d4f08c5937cadfde0447c4123f40)]:
+  - @effect/platform@0.70.3
+  - @effect/ai@0.3.3
+  - @effect/experimental@0.33.3
+
 ## 0.5.2
 
 ### Patch Changes

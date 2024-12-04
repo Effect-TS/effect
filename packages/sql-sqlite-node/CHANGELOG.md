@@ -1,5 +1,13 @@
 # @effect/sql-sqlite-node
 
+## 0.23.3
+
+### Patch Changes
+
+- Updated dependencies [[`7044730`](https://github.com/Effect-TS/effect/commit/70447306be1aeeb7d87c230b2a96ec87b993ede9)]:
+  - @effect/platform@0.70.3
+  - @effect/sql@0.22.3
+
 ## 0.23.2
 
 ### Patch Changes
