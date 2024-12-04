@@ -94,11 +94,11 @@ describe("guards", () => {
     expect(AST.isParameter(S.TemplateLiteral(S.String, S.Literal("-"), S.String).ast))
       .toEqual(true)
     expect(AST.isParameter(S.String.pipe(S.minLength(2)).ast)).toEqual(true)
+    expect(AST.isParameter(S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c")).ast)).toEqual(
+      true
+    )
     expect(AST.isParameter(S.Number.pipe(S.int()).ast)).toEqual(false)
     expect(AST.isParameter(S.NumberFromString.ast)).toEqual(false)
-    expect(AST.isParameter(S.NumberFromString.pipe(S.int()).ast))
-    expect(AST.isParameter(S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c")).ast)).toEqual(
-      false
-    )
+    expect(AST.isParameter(S.NumberFromString.pipe(S.int()).ast)).toEqual(false)
   })
 })

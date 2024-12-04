@@ -585,6 +585,7 @@ const go = (
       const regex = AST.getTemplateLiteralRegExp(ast)
       return merge({
         type: "string",
+        title: String(ast),
         description: "a template literal",
         pattern: regex.source
       }, getJsonSchemaAnnotations(ast))

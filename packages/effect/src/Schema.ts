@@ -708,64 +708,48 @@ type TemplateLiteralParameter = Schema.AnyNoContext | AST.LiteralValue
 export const TemplateLiteral = <Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParameter>>(
   ...[head, ...tail]: Params
 ): TemplateLiteral<Join<Params>> => {
-  let astOrs: ReadonlyArray<AST.TemplateLiteral | string> = getTemplateLiterals(
-    getTemplateLiteralParameterAST(head)
-  )
-  for (const span of tail) {
-    astOrs = array_.flatMap(
-      astOrs,
-      (a) => getTemplateLiterals(getTemplateLiteralParameterAST(span)).map((b) => combineTemplateLiterals(a, b))
-    )
-  }
-  return make(AST.Union.make(astOrs.map((astOr) => Predicate.isString(astOr) ? new AST.Literal(astOr) : astOr)))
-}
+  const spans: Array<AST.TemplateLiteralSpan> = []
+  let h = ""
+  let ts = tail
 
-const getTemplateLiteralParameterAST = (span: TemplateLiteralParameter): AST.AST =>
-  isSchema(span) ? span.ast : new AST.Literal(String(span))
+  if (isSchema(head)) {
+    if (AST.isLiteral(head.ast)) {
+      h = String(head.ast.literal)
+    } else {
+      ts = [head, ...ts]
+    }
+  } else {
+    h = String(head)
+  }
 
-const combineTemplateLiterals = (
-  a: AST.TemplateLiteral | string,
-  b: AST.TemplateLiteral | string
-): AST.TemplateLiteral | string => {
-  if (Predicate.isString(a)) {
-    return Predicate.isString(b) ?
-      a + b :
-      new AST.TemplateLiteral(a + b.head, b.spans)
+  for (let i = 0; i < ts.length; i++) {
+    const item = ts[i]
+    if (isSchema(item)) {
+      if (i < ts.length - 1) {
+        const next = ts[i + 1]
+        if (isSchema(next)) {
+          if (AST.isLiteral(next.ast)) {
+            spans.push(new AST.TemplateLiteralSpan(item.ast, String(next.ast.literal)))
+            i++
+            continue
+          }
+        } else {
+          spans.push(new AST.TemplateLiteralSpan(item.ast, String(next)))
+          i++
+          continue
+        }
+      }
+      spans.push(new AST.TemplateLiteralSpan(item.ast, ""))
+    } else {
+      spans.push(new AST.TemplateLiteralSpan(new AST.Literal(item), ""))
+    }
   }
-  if (Predicate.isString(b)) {
-    return new AST.TemplateLiteral(
-      a.head,
-      array_.modifyNonEmptyLast(
-        a.spans,
-        (span) => new AST.TemplateLiteralSpan(span.type, span.literal + b)
-      )
-    )
-  }
-  return new AST.TemplateLiteral(
-    a.head,
-    array_.appendAll(
-      array_.modifyNonEmptyLast(
-        a.spans,
-        (span) => new AST.TemplateLiteralSpan(span.type, span.literal + String(b.head))
-      ),
-      b.spans
-    )
-  )
-}
 
-const getTemplateLiterals = (
-  ast: AST.AST
-): ReadonlyArray<AST.TemplateLiteral | string> => {
-  switch (ast._tag) {
-    case "Literal":
-      return [String(ast.literal)]
-    case "NumberKeyword":
-    case "StringKeyword":
-      return [new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(ast, "")])]
-    case "Union":
-      return array_.flatMap(ast.types, getTemplateLiterals)
+  if (array_.isNonEmptyArray(spans)) {
+    return make(new AST.TemplateLiteral(h, spans))
+  } else {
+    return make(new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(new AST.Literal(h), "")]))
   }
-  throw new Error(errors_.getSchemaUnsupportedLiteralSpanErrorMessage(ast))
 }
 
 type TemplateLiteralParserParameters = Schema.Any | AST.LiteralValue
@@ -821,17 +805,21 @@ export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArra
   }
   const from = TemplateLiteral(...encodedSchemas as any)
   const re = AST.getTemplateLiteralCapturingRegExp(from.ast as AST.TemplateLiteral)
-  return class TemplateLiteralParserClass extends transform(from, Tuple(...typeSchemas), {
+  return class TemplateLiteralParserClass extends transformOrFail(from, Tuple(...typeSchemas), {
     strict: false,
-    decode: (s) => {
-      const out: Array<number | string> = re.exec(s)!.slice(1, params.length + 1)
-      for (let i = 0; i < numbers.length; i++) {
-        const index = numbers[i]
-        out[index] = Number(out[index])
+    decode: (s, _, ast) => {
+      const match = re.exec(s)
+      if (match) {
+        const out: Array<number | string> = match.slice(1, params.length + 1)
+        for (let i = 0; i < numbers.length; i++) {
+          const index = numbers[i]
+          out[index] = Number(out[index])
+        }
+        return ParseResult.succeed(out)
       }
-      return out
+      return ParseResult.fail(new ParseResult.Type(ast, s, `${re.source}: no match for ${JSON.stringify(s)}`))
     },
-    encode: (tuple) => tuple.join("")
+    encode: (tuple) => ParseResult.succeed(tuple.join(""))
   }) {
     static params = params.slice()
   } as any
