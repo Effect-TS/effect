@@ -338,11 +338,13 @@ const daysInMonth = (date: Date): number =>
  * @since 2.0.0
  */
 export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
+  const tz = Option.getOrUndefined(cron.tz)
   const zoned = dateTime.unsafeMakeZoned(now ?? new Date(), {
-    timeZone: Option.getOrUndefined(cron.tz)
+    timeZone: tz
   })
 
-  const adjustDst = dateTime.isUtc(zoned) ? constVoid : (current: Date) => {
+  const utc = tz !== undefined && dateTime.isTimeZoneNamed(tz) && tz.id === "UTC"
+  const adjustDst = utc ? constVoid : (current: Date) => {
     const adjusted = dateTime.unsafeMakeZoned(current, {
       timeZone: zoned.zone,
       adjustForTimeZone: true
