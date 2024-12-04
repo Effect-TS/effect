@@ -94,6 +94,7 @@ export interface CompletionOptions {
     readonly name: string
     readonly description: string
     readonly parameters: JsonSchema.JsonSchema7
+    readonly structured: boolean
   }>
   readonly required: boolean | string
 }
@@ -110,6 +111,7 @@ export const make = (options: {
       readonly name: string
       readonly description: string
       readonly parameters: JsonSchema.JsonSchema7
+      readonly structured: boolean
     }>
     readonly required: boolean | string
   }) => Effect.Effect<AiResponse, AiError>
@@ -120,6 +122,7 @@ export const make = (options: {
       readonly name: string
       readonly description: string
       readonly parameters: JsonSchema.JsonSchema7
+      readonly structured: boolean
     }>
     readonly required: boolean | string
   }) => Stream.Stream<AiResponse, AiError>
@@ -164,7 +167,7 @@ export const make = (options: {
             options.create({
               input: input as Chunk.NonEmptyChunk<Message>,
               system: Option.orElse(system, () => parentSystem),
-              tools: [convertTool(schema)],
+              tools: [convertTool(schema, true)],
               required: true
             })
           ),
@@ -211,7 +214,12 @@ export const make = (options: {
       },
       toolkit({ concurrency, input: inputInput, required = false, tools }) {
         const input = AiInput.make(inputInput)
-        const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema7 }> = []
+        const toolArr: Array<{
+          name: string
+          description: string
+          parameters: JsonSchema.JsonSchema7
+          structured: boolean
+        }> = []
         for (const [, tool] of tools.toolkit.tools) {
           toolArr.push(convertTool(tool as any))
         }
@@ -235,7 +243,12 @@ export const make = (options: {
         ) as any
       },
       toolkitStream({ concurrency, input, required = false, tools }) {
-        const toolArr: Array<{ name: string; description: string; parameters: JsonSchema.JsonSchema7 }> = []
+        const toolArr: Array<{
+          name: string
+          description: string
+          parameters: JsonSchema.JsonSchema7
+          structured: boolean
+        }> = []
         for (const [, tool] of tools.toolkit.tools) {
           toolArr.push(convertTool(tool as any))
         }
@@ -265,10 +278,11 @@ export const make = (options: {
     })
   })
 
-const convertTool = <A, I, R>(tool: Completions.StructuredSchema<A, I, R>) => ({
+const convertTool = <A, I, R>(tool: Completions.StructuredSchema<A, I, R>, structured = false) => ({
   name: tool._tag ?? tool.identifier,
   description: getDescription(tool.ast),
-  parameters: JsonSchema.make(tool)
+  parameters: JsonSchema.make(tool),
+  structured
 })
 
 const getDescription = (ast: AST.AST): string => {
