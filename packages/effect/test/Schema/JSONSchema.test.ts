@@ -1175,6 +1175,7 @@ schema (Refinement): { string | filter }`
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "string",
       "pattern": "^a[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$",
+      "title": "`a${number}`",
       "description": "a template literal"
     }
     expectJSONSchema(schema, jsonSchema)

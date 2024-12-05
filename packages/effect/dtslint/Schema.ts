@@ -2695,6 +2695,18 @@ S.Array(S.String).pipe(S.minItems(1), S.maxItems(2))
 // TemplateLiteralParser
 // ---------------------------------------------
 
+// $ExpectType Schema<readonly ["a"], "a", never>
+S.asSchema(S.TemplateLiteralParser("a"))
+
+// $ExpectType TemplateLiteralParser<["a"]>
+S.TemplateLiteralParser("a")
+
+// $ExpectType Schema<readonly ["a", "b"], "ab", never>
+S.asSchema(S.TemplateLiteralParser("a", "b"))
+
+// $ExpectType TemplateLiteralParser<["a", "b"]>
+S.TemplateLiteralParser("a", "b")
+
 // $ExpectType Schema<readonly [number, "a"], `${number}a`, never>
 S.asSchema(S.TemplateLiteralParser(S.Int, "a"))
 

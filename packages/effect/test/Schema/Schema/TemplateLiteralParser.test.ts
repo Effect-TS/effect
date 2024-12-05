@@ -1,6 +1,18 @@
+import type * as array_ from "effect/Array"
 import * as Schema from "effect/Schema"
+import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
+
+type TemplateLiteralParameter = Schema.Schema.AnyNoContext | AST.LiteralValue
+
+const expectCapturingPattern = (
+  params: array_.NonEmptyReadonlyArray<TemplateLiteralParameter>,
+  expectedPattern: string
+) => {
+  const ast = Schema.TemplateLiteral(...params).ast as AST.TemplateLiteral
+  expect(AST.getTemplateLiteralCapturingRegExp(ast).source).toEqual(expectedPattern)
+}
 
 describe("TemplateLiteralParser", () => {
   it("should throw on unsupported template literal spans", () => {
@@ -8,10 +20,73 @@ describe("TemplateLiteralParser", () => {
       new Error(`Unsupported template literal span
 schema (BooleanKeyword): boolean`)
     )
-    expect(() => Schema.TemplateLiteralParser(Schema.SymbolFromSelf)).toThrow(
+
+    expect(() => Schema.TemplateLiteralParser(Schema.Union(Schema.Boolean, Schema.SymbolFromSelf))).toThrow(
       new Error(`Unsupported template literal span
-schema (SymbolKeyword): symbol`)
+schema (Union): boolean | symbol`)
     )
+  })
+
+  describe("getTemplateLiteralCapturingRegExp", () => {
+    it(`"a"`, () => {
+      expectCapturingPattern(["a"], "^(a)$")
+    })
+
+    it(`"a" + "b"`, () => {
+      expectCapturingPattern(["a", "b"], "^(a)(b)$")
+    })
+
+    it(`("a" | "b") + "c"`, () => {
+      expectCapturingPattern([Schema.Literal("a", "b"), "c"], "^(a|b)(c)$")
+    })
+
+    it(`("a" | "b) + "c" + ("d" | "e")`, () => {
+      expectCapturingPattern([Schema.Literal("a", "b"), "c", Schema.Literal("d", "e")], "^(a|b)(c)(d|e)$")
+    })
+
+    it(`("a" | "b") + string + ("d" | "e")`, () => {
+      expectCapturingPattern([Schema.Literal("a", "b"), Schema.String, Schema.Literal("d", "e")], "^(a|b)(.*)(d|e)$")
+    })
+
+    it(`"a" + string`, () => {
+      expectCapturingPattern(["a", Schema.String], "^(a)(.*)$")
+    })
+
+    it(`"a" + string + "b"`, () => {
+      expectCapturingPattern(["a", Schema.String, "b"], "^(a)(.*)(b)$")
+    })
+
+    it(`"a" + string + "b" + number`, () => {
+      expectCapturingPattern(
+        ["a", Schema.String, "b", Schema.Number],
+        "^(a)(.*)(b)([+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?)$"
+      )
+    })
+
+    it(`"a" + number`, () => {
+      expectCapturingPattern(["a", Schema.Number], "^(a)([+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?)$")
+    })
+
+    it(`string + "a"`, () => {
+      expectCapturingPattern([Schema.String, "a"], "^(.*)(a)$")
+    })
+
+    it(`number + "a"`, () => {
+      expectCapturingPattern([Schema.Number, "a"], "^([+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?)(a)$")
+    })
+
+    it(`(string | 1) + (number | true)`, () => {
+      expectCapturingPattern([
+        Schema.Union(Schema.String, Schema.Literal(1)),
+        Schema.Union(Schema.Number, Schema.Literal(true))
+      ], "^(.*|1)([+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?|true)$")
+    })
+
+    it(`(("a" | "b") | "c")`, () => {
+      expectCapturingPattern([
+        Schema.Union(Schema.Union(Schema.Literal("a"), Schema.Literal("b")), Schema.Literal("c"))
+      ], "^(a|b|c)$")
+    })
   })
 
   it("should expose the params", () => {
@@ -20,9 +95,40 @@ schema (SymbolKeyword): symbol`)
     expect(schema.params).toStrictEqual(params)
   })
 
-  describe("number based schemas", () => {
-    it("decoding", async () => {
+  describe("decoding", () => {
+    it(`"a"`, async () => {
+      const schema = Schema.TemplateLiteralParser("a")
+
+      await Util.expectDecodeUnknownSuccess(schema, "a", ["a"])
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        "",
+        `(\`a\` <-> readonly ["a"])
+└─ Encoded side transformation failure
+   └─ Expected \`a\`, actual ""`
+      )
+
+      await Util.expectEncodeSuccess(schema, ["a"], "a")
+    })
+
+    it(`"a" + "b"`, async () => {
+      const schema = Schema.TemplateLiteralParser("a", "b")
+
+      await Util.expectDecodeUnknownSuccess(schema, "ab", ["a", "b"])
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        "a",
+        `(\`ab\` <-> readonly ["a", "b"])
+└─ Encoded side transformation failure
+   └─ Expected \`ab\`, actual "a"`
+      )
+
+      await Util.expectEncodeSuccess(schema, ["a", "b"], "ab")
+    })
+
+    it(`Int + "a"`, async () => {
       const schema = Schema.TemplateLiteralParser(Schema.Int, "a")
+
       await Util.expectDecodeUnknownSuccess(schema, "1a", [1, "a"])
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -35,39 +141,24 @@ schema (SymbolKeyword): symbol`)
             └─ Predicate refinement failure
                └─ Expected Int, actual 1.1`
       )
-    })
 
-    it("encoding", async () => {
-      const schema = Schema.TemplateLiteralParser(Schema.Int, "a", Schema.Char)
-      await Util.expectEncodeSuccess(schema, [1, "a", "b"], "1ab")
+      await Util.expectEncodeSuccess(schema, [1, "a"], "1a")
       await Util.expectEncodeFailure(
         schema,
-        [1.1, "a", ""],
-        `(\`\${number}a\${string}\` <-> readonly [Int, "a", Char])
+        [1.1, "a"],
+        `(\`\${number}a\` <-> readonly [Int, "a"])
 └─ Type side transformation failure
-   └─ readonly [Int, "a", Char]
+   └─ readonly [Int, "a"]
       └─ [0]
          └─ Int
             └─ Predicate refinement failure
                └─ Expected Int, actual 1.1`
       )
-      await Util.expectEncodeFailure(
-        schema,
-        [1, "a", ""],
-        `(\`\${number}a\${string}\` <-> readonly [Int, "a", Char])
-└─ Type side transformation failure
-   └─ readonly [Int, "a", Char]
-      └─ [2]
-         └─ Char
-            └─ Predicate refinement failure
-               └─ Expected Char, actual ""`
-      )
     })
-  })
 
-  describe("string based schemas", () => {
-    it("decoding", async () => {
+    it(`NumberFromString + "a" + NonEmptyString`, async () => {
       const schema = Schema.TemplateLiteralParser(Schema.NumberFromString, "a", Schema.NonEmptyString)
+
       await Util.expectDecodeUnknownSuccess(schema, "100ab", [100, "a", "b"])
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -80,21 +171,18 @@ schema (SymbolKeyword): symbol`)
             └─ Transformation process failure
                └─ Expected NumberFromString, actual "-"`
       )
-    })
 
-    it("encoding", async () => {
-      const schema = Schema.TemplateLiteralParser(Schema.NumberFromString, "a", Schema.Char)
       await Util.expectEncodeSuccess(schema, [100, "a", "b"], "100ab")
       await Util.expectEncodeFailure(
         schema,
         [100, "a", ""],
-        `(\`\${string}a\${string}\` <-> readonly [NumberFromString, "a", Char])
+        `(\`\${string}a\${string}\` <-> readonly [NumberFromString, "a", NonEmptyString])
 └─ Type side transformation failure
-   └─ readonly [NumberFromString, "a", Char]
+   └─ readonly [NumberFromString, "a", NonEmptyString]
       └─ [2]
-         └─ Char
+         └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected Char, actual ""`
+               └─ Expected NonEmptyString, actual ""`
       )
     })
   })
