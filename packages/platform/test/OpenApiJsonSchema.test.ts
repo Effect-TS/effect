@@ -372,6 +372,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     const jsonSchema: Root = {
       "type": "string",
       "pattern": "^a[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$",
+      "title": "`a${number}`",
       "description": "a template literal"
     }
     expectJsonSchemaAnnotations(schema, jsonSchema)
