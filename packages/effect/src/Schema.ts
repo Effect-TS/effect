@@ -784,6 +784,12 @@ export interface TemplateLiteralParser<Params extends array_.NonEmptyReadonlyArr
   readonly params: Params
 }
 
+const literalValueCoercions: Record<string, ((v: AST.LiteralValue) => AST.LiteralValue)> = {
+  bigint: (v: AST.LiteralValue) => Predicate.isString(v) ? BigInt(v) : v,
+  boolean: (v: AST.LiteralValue) => v === "true" ? true : v === "false" ? false : v,
+  null: (v: AST.LiteralValue) => v === "null" ? null : v
+}
+
 /**
  * @category template literal
  * @since 3.10.0
@@ -793,20 +799,29 @@ export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArra
 ): TemplateLiteralParser<Params> => {
   const encodedSchemas: Array<Schema.Any> = []
   const typeSchemas: Array<Schema.Any> = []
-  const numbers: Array<number> = []
+  const coercions: Record<number, ((v: AST.LiteralValue) => AST.LiteralValue) | undefined> = {}
   for (let i = 0; i < params.length; i++) {
-    const p = params[i]
-    if (isSchema(p)) {
-      const encoded = encodedSchema(p)
+    const param = params[i]
+    if (isSchema(param)) {
+      const encoded = encodedSchema(param)
       if (AST.isNumberKeyword(encoded.ast)) {
-        numbers.push(i)
+        coercions[i] = Number
       }
       encodedSchemas.push(encoded)
-      typeSchemas.push(p)
+      typeSchemas.push(param)
     } else {
-      const literal = Literal(p)
-      encodedSchemas.push(literal)
-      typeSchemas.push(literal)
+      const schema = Literal(param)
+      if (Predicate.isNumber(param)) {
+        coercions[i] = Number
+      } else if (Predicate.isBigInt(param)) {
+        coercions[i] = literalValueCoercions.bigint
+      } else if (Predicate.isBoolean(param)) {
+        coercions[i] = literalValueCoercions.boolean
+      } else if (Predicate.isNull(param)) {
+        coercions[i] = literalValueCoercions.null
+      }
+      encodedSchemas.push(schema)
+      typeSchemas.push(schema)
     }
   }
   const from = TemplateLiteral(...encodedSchemas as any)
@@ -816,10 +831,12 @@ export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArra
     decode: (s, _, ast) => {
       const match = re.exec(s)
       if (match) {
-        const out: Array<number | string> = match.slice(1, params.length + 1)
-        for (let i = 0; i < numbers.length; i++) {
-          const index = numbers[i]
-          out[index] = Number(out[index])
+        const out: Array<AST.LiteralValue> = match.slice(1, params.length + 1)
+        for (let i = 0; i < out.length; i++) {
+          const coerce = coercions[i]
+          if (coerce) {
+            out[i] = coerce(out[i])
+          }
         }
         return ParseResult.succeed(out)
       }
