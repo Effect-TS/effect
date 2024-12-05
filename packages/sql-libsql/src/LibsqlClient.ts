@@ -80,13 +80,13 @@ export declare namespace LibsqlClientConfig {
      *
      * https://github.com/libsql/libsql-client-ts#supported-urls
      */
-    readonly url: string
+    readonly url: string | URL
     /** Authentication token for the database. */
     readonly authToken?: string | undefined
     /** Encryption key for the database. */
     readonly encryptionKey?: string | undefined
     /** URL of a remote server to synchronize database with. */
-    readonly syncUrl?: string | undefined
+    readonly syncUrl?: string | URL | undefined
     /** Sync interval in seconds. */
     readonly syncInterval?: number | undefined
     /** Enables or disables TLS for `libsql:` URLs.
@@ -225,7 +225,11 @@ export const make = (
       ? new LibsqlConnectionImpl(options.liveClient)
       : yield* Effect.map(
         Effect.acquireRelease(
-          Effect.sync(() => Libsql.createClient(options as Libsql.Config)),
+          Effect.sync(() =>
+            Libsql.createClient(
+              { ...options, url: options.url.toString(), syncUrl: options.syncUrl?.toString() } as Libsql.Config
+            )
+          ),
           (sdk) => Effect.sync(() => sdk.close())
         ),
         (sdk) => new LibsqlConnectionImpl(sdk)
