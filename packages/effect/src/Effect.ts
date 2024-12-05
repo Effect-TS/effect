@@ -10123,49 +10123,71 @@ export namespace fn {
  * @since 3.11.0
  * @category function
  */
-export const fn: (
-  name: string,
-  options?: Tracer.SpanOptions
-) => fn.Gen & fn.NonGen = (name, options) => (body: Function, ...pipeables: Array<any>) => {
-  return function(this: any, ...args: Array<any>) {
-    const limit = Error.stackTraceLimit
-    Error.stackTraceLimit = 2
-    const error = new Error()
-    Error.stackTraceLimit = limit
-    let cache: false | string = false
-    const captureStackTrace = () => {
-      if (cache !== false) {
-        return cache
-      }
-      if (error.stack) {
-        const stack = error.stack.trim().split("\n")
-        cache = stack.slice(2).join("\n").trim()
-        return cache
+export const fn:
+  & fn.Gen
+  & fn.NonGen
+  & ((
+    name: string,
+    options?: Tracer.SpanOptions
+  ) => fn.Gen & fn.NonGen) = function(nameOrBody: Function | string, ...pipeables: Array<any>) {
+    if (typeof nameOrBody !== "string") {
+      return function(this: any) {
+        return fnApply(this, nameOrBody, arguments as any, pipeables)
+      } as any
+    }
+    const name = nameOrBody
+    const options = pipeables[0]
+    return (body: Function, ...pipeables: Array<any>) => {
+      return function(this: any, ...args: Array<any>) {
+        const limit = Error.stackTraceLimit
+        Error.stackTraceLimit = 2
+        const error = new Error()
+        Error.stackTraceLimit = limit
+        let cache: false | string = false
+        const captureStackTrace = () => {
+          if (cache !== false) {
+            return cache
+          }
+          if (error.stack) {
+            const stack = error.stack.trim().split("\n")
+            cache = stack.slice(2).join("\n").trim()
+            return cache
+          }
+        }
+        const effect = fnApply(this, body, args, pipeables)
+        const opts: any = (options && "captureStackTrace" in options) ? options : { captureStackTrace, ...options }
+        return withSpan(effect, name, opts)
       }
     }
-    let effect: Effect<any, any, any>
-    let fnError: any = undefined
+  }
+
+function fnApply(self: any, body: Function, args: Array<any>, pipeables: Array<any>) {
+  let effect: Effect<any, any, any>
+  let fnError: any = undefined
+  if (isGeneratorFunction(body)) {
+    effect = gen(() => internalCall(() => body.apply(self, args)))
+  } else {
     try {
-      effect = isGeneratorFunction(body)
-        ? gen(() => internalCall(() => body.apply(this, args)))
-        : body.apply(this, args)
+      effect = body.apply(self, args)
     } catch (error) {
       fnError = error
       effect = die(error)
     }
-    try {
-      for (const x of pipeables) {
-        effect = x(effect)
-      }
-    } catch (error) {
-      effect = fnError
-        ? failCause(internalCause.sequential(
-          internalCause.die(fnError),
-          internalCause.die(error)
-        ))
-        : die(error)
-    }
-    const opts: any = (options && "captureStackTrace" in options) ? options : { captureStackTrace, ...options }
-    return withSpan(effect, name, opts)
   }
+  if (pipeables.length === 0) {
+    return effect
+  }
+  try {
+    for (const x of pipeables) {
+      effect = x(effect)
+    }
+  } catch (error) {
+    effect = fnError
+      ? failCause(internalCause.sequential(
+        internalCause.die(fnError),
+        internalCause.die(error)
+      ))
+      : die(error)
+  }
+  return effect
 }
