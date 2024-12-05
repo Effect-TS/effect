@@ -1,5 +1,170 @@
 # effect
 
+## 3.11.3
+
+### Patch Changes
+
+- [#4080](https://github.com/Effect-TS/effect/pull/4080) [`90906f7`](https://github.com/Effect-TS/effect/commit/90906f7f154b12c7182e8f39e3c55ef3937db857) Thanks @gcanti! - Fix the `Schema.TemplateLiteral` output type when the arguments include a branded type.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteral(
+    "a ",
+    Schema.String.pipe(Schema.brand("MyBrand"))
+  )
+
+  // type Type = `a ${Schema.brand<typeof Schema.String, "MyBrand"> & string}`
+  // | `a ${Schema.brand<typeof Schema.String, "MyBrand"> & number}`
+  // | `a ${Schema.brand<typeof Schema.String, "MyBrand"> & bigint}`
+  // | `a ${Schema.brand<...> & false}`
+  // | `a ${Schema.brand<...> & true}`
+  type Type = typeof schema.Type
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteral(
+    "a ",
+    Schema.String.pipe(Schema.brand("MyBrand"))
+  )
+
+  // type Type = `a ${string & Brand<"MyBrand">}`
+  type Type = typeof schema.Type
+  ```
+
+- [#4076](https://github.com/Effect-TS/effect/pull/4076) [`3862cd3`](https://github.com/Effect-TS/effect/commit/3862cd3c7f6a542ed65fb81255b3bd696ce2f567) Thanks @gcanti! - Schema: fix bug in `Schema.TemplateLiteralParser` resulting in a runtime error.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteralParser("a", "b")
+  // throws TypeError: Cannot read properties of undefined (reading 'replace')
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteralParser("a", "b")
+
+  console.log(Schema.decodeUnknownSync(schema)("ab"))
+  // Output: [ 'a', 'b' ]
+  ```
+
+- [#4076](https://github.com/Effect-TS/effect/pull/4076) [`3862cd3`](https://github.com/Effect-TS/effect/commit/3862cd3c7f6a542ed65fb81255b3bd696ce2f567) Thanks @gcanti! - SchemaAST: fix `TemplateLiteral` model.
+
+  Added `Literal` and `Union` as valid types.
+
+- [#4083](https://github.com/Effect-TS/effect/pull/4083) [`343b6aa`](https://github.com/Effect-TS/effect/commit/343b6aa6ac4a74276bfc7c63ccbf4a1d72bc1bed) Thanks @gcanti! - Preserve `MissingMessageAnnotation`s on property signature declarations when another field is a property signature transformation.
+
+  Before
+
+  ```ts
+  import { Console, Effect, ParseResult, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.String).annotations({
+      missingMessage: () => "message1"
+    }),
+    b: Schema.propertySignature(Schema.String)
+      .annotations({ missingMessage: () => "message2" })
+      .pipe(Schema.fromKey("c")), // <= transformation
+    d: Schema.propertySignature(Schema.String).annotations({
+      missingMessage: () => "message3"
+    })
+  })
+
+  Effect.runPromiseExit(
+    Schema.decodeUnknown(schema, { errors: "all" })({}).pipe(
+      Effect.tapError((error) =>
+        Console.log(ParseResult.ArrayFormatter.formatErrorSync(error))
+      )
+    )
+  )
+  /*
+  Output:
+  [
+    { _tag: 'Missing', path: [ 'a' ], message: 'is missing' }, // <= wrong
+    { _tag: 'Missing', path: [ 'c' ], message: 'message2' },
+    { _tag: 'Missing', path: [ 'd' ], message: 'is missing' } // <= wrong
+  ]
+  */
+  ```
+
+  After
+
+  ```ts
+  import { Console, Effect, ParseResult, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.String).annotations({
+      missingMessage: () => "message1"
+    }),
+    b: Schema.propertySignature(Schema.String)
+      .annotations({ missingMessage: () => "message2" })
+      .pipe(Schema.fromKey("c")), // <= transformation
+    d: Schema.propertySignature(Schema.String).annotations({
+      missingMessage: () => "message3"
+    })
+  })
+
+  Effect.runPromiseExit(
+    Schema.decodeUnknown(schema, { errors: "all" })({}).pipe(
+      Effect.tapError((error) =>
+        Console.log(ParseResult.ArrayFormatter.formatErrorSync(error))
+      )
+    )
+  )
+  /*
+  Output:
+  [
+    { _tag: 'Missing', path: [ 'a' ], message: 'message1' },
+    { _tag: 'Missing', path: [ 'c' ], message: 'message2' },
+    { _tag: 'Missing', path: [ 'd' ], message: 'message3' }
+  ]
+  */
+  ```
+
+- [#4081](https://github.com/Effect-TS/effect/pull/4081) [`afba339`](https://github.com/Effect-TS/effect/commit/afba339adc11dad56b5a3b7ca94487e58f34d613) Thanks @gcanti! - Fix the behavior of `Schema.TemplateLiteralParser` when the arguments include literals other than string literals.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteralParser(Schema.String, 1)
+
+  console.log(Schema.decodeUnknownSync(schema)("a1"))
+  /*
+  throws
+  ParseError: (`${string}1` <-> readonly [string, 1])
+  └─ Type side transformation failure
+     └─ readonly [string, 1]
+        └─ [1]
+           └─ Expected 1, actual "1"
+  */
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteralParser(Schema.String, 1)
+
+  console.log(Schema.decodeUnknownSync(schema)("a1"))
+  // Output: [ 'a', 1 ]
+  ```
+
 ## 3.11.2
 
 ### Patch Changes
