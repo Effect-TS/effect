@@ -2559,6 +2559,8 @@ export interface TypeLiteral<
   ): Simplify<TypeLiteral.Type<Fields, Records>>
 }
 
+const preserveMissingMessageAnnotation = AST.whiteListAnnotations([AST.MissingMessageAnnotationId])
+
 const getDefaultTypeLiteralAST = <
   Fields extends Struct.Fields,
   const Records extends IndexSignature.Records
@@ -2579,7 +2581,7 @@ const getDefaultTypeLiteralAST = <
             const type = ast.type
             const isOptional = ast.isOptional
             const toAnnotations = ast.annotations
-            from.push(new AST.PropertySignature(key, type, isOptional, true))
+            from.push(new AST.PropertySignature(key, type, isOptional, true, preserveMissingMessageAnnotation(ast)))
             to.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, toAnnotations))
             pss.push(
               new AST.PropertySignature(key, type, isOptional, true, toAnnotations)

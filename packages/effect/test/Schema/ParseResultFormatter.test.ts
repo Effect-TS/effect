@@ -141,26 +141,60 @@ describe("ParseResultFormatter", () => {
     })
 
     describe("missing message", () => {
-      it("Struct", async () => {
-        const schema = S.Struct({
-          a: S.propertySignature(S.String).annotations({
-            description: "my description",
-            missingMessage: () => "my missing message"
+      describe("Struct", () => {
+        it("PropertySignatureDeclaration", async () => {
+          const schema = S.Struct({
+            a: S.propertySignature(S.String).annotations({
+              missingMessage: () => "a80b642a-729f-4676-ba6a-235964afd52b"
+            })
           })
-        })
-        const input = {}
-        await Util.expectDecodeUnknownFailure(
-          schema,
-          input,
-          `{ readonly a: string }
+          const input = {}
+          await Util.expectDecodeUnknownFailure(
+            schema,
+            input,
+            `{ readonly a: string }
 └─ ["a"]
-   └─ my missing message`
-        )
-        expectIssues(schema, input, [{
-          _tag: "Missing",
-          path: ["a"],
-          message: "my missing message"
-        }])
+   └─ a80b642a-729f-4676-ba6a-235964afd52b`
+          )
+          expectIssues(schema, input, [{
+            _tag: "Missing",
+            path: ["a"],
+            message: "a80b642a-729f-4676-ba6a-235964afd52b"
+          }])
+        })
+
+        it("PropertySignatureDeclaration + PropertySignatureTransformation", async () => {
+          const schema = S.Struct({
+            a: S.propertySignature(S.String).annotations({
+              missingMessage: () => "1ff9f37a-1f50-4ee2-906d-e824067d4cf7"
+            }),
+            b: S.propertySignature(S.String).annotations({
+              missingMessage: () => "132f0e48-ae12-4bbb-8473-3dd433de2eb0"
+            }).pipe(S.fromKey("c"))
+          })
+          const input = {}
+          await Util.expectDecodeUnknownFailure(
+            schema,
+            input,
+            `(Struct (Encoded side) <-> Struct (Type side))
+└─ Encoded side transformation failure
+   └─ Struct (Encoded side)
+      ├─ ["a"]
+      │  └─ 1ff9f37a-1f50-4ee2-906d-e824067d4cf7
+      └─ ["c"]
+         └─ 132f0e48-ae12-4bbb-8473-3dd433de2eb0`,
+            Util.allErrors
+          )
+          expectIssues(schema, input, [{
+            _tag: "Missing",
+            path: ["a"],
+            message: "1ff9f37a-1f50-4ee2-906d-e824067d4cf7"
+          }, {
+            _tag: "Missing",
+            path: ["c"],
+            message: "132f0e48-ae12-4bbb-8473-3dd433de2eb0"
+          }])
+        })
       })
 
       describe("Tuple", () => {
