@@ -1270,6 +1270,9 @@ S.TemplateLiteral("a", S.Number.pipe(S.brand("MyBrand")))
 // $ExpectType TemplateLiteral<`a${number & Brand<"MyBrand">}`>
 S.TemplateLiteral(S.Literal("a"), S.Number.pipe(S.brand("MyBrand")))
 
+// $ExpectType TemplateLiteral<`a${string}` | `a${number}`>
+S.TemplateLiteral("a", S.Union(S.Number, S.String))
+
 // ---------------------------------------------
 // attachPropertySignature
 // ---------------------------------------------
@@ -2868,6 +2871,9 @@ S.asSchema(S.TemplateLiteralParser(S.NumberFromString, "a", S.NonEmptyString))
 
 // $ExpectType Schema<readonly ["/", number, "/", "a" | "b"], `/${number}/a` | `/${number}/b`, never>
 S.asSchema(S.TemplateLiteralParser("/", S.Int, "/", S.Literal("a", "b")))
+
+// $ExpectType Schema<readonly ["a", string | number], `a${string}` | `a${number}`, never>
+S.asSchema(S.TemplateLiteralParser("a", S.Union(S.Number, S.String)))
 
 // ---------------------------------------------
 // UndefinedOr

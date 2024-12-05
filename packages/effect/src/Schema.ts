@@ -689,11 +689,16 @@ const makeEnumsClass = <A extends EnumsDefinition>(
  */
 export const Enums = <A extends EnumsDefinition>(enums: A): Enums<A> => makeEnumsClass(enums)
 
-type GetTemplateLiteralType<Params> = Params extends [infer Head, ...infer Tail] ?
-  Head extends AST.LiteralValue ? `${Head}${GetTemplateLiteralType<Tail>}` :
-  Head extends Schema<infer A extends AST.LiteralValue, infer _I> ? `${A}${GetTemplateLiteralType<Tail>}` :
-  never :
-  ``
+type AppendType<
+  Template extends string,
+  Next
+> = Next extends AST.LiteralValue ? `${Template}${Next}`
+  : Next extends Schema<infer A extends AST.LiteralValue, infer _I, infer _R> ? `${Template}${A}`
+  : never
+
+type GetTemplateLiteralType<Params> = Params extends [...infer Init, infer Last] ?
+  AppendType<GetTemplateLiteralType<Init>, Last>
+  : ``
 
 /**
  * @category API interface
@@ -762,12 +767,16 @@ type GetTemplateLiteralParserType<Params> = Params extends [infer Head, ...infer
   ]
   : []
 
-type GetTemplateLiteralParserEncoded<Params> = Params extends [infer Head, ...infer Tail] ?
-  Head extends AST.LiteralValue ? `${Head}${GetTemplateLiteralParserEncoded<Tail>}` :
-  Head extends Schema<infer _A, infer I extends AST.LiteralValue, infer _R> ?
-    `${I}${GetTemplateLiteralParserEncoded<Tail>}` :
-  never :
-  ``
+type AppendEncoded<
+  Template extends string,
+  Next
+> = Next extends AST.LiteralValue ? `${Template}${Next}`
+  : Next extends Schema<infer _A, infer I extends AST.LiteralValue, infer _R> ? `${Template}${I}`
+  : never
+
+type GetTemplateLiteralParserEncoded<Params> = Params extends [...infer Init, infer Last] ?
+  AppendEncoded<GetTemplateLiteralParserEncoded<Init>, Last>
+  : ``
 
 /**
  * @category API interface
