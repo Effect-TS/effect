@@ -186,4 +186,29 @@ schema (Union): boolean | symbol`)
       )
     })
   })
+
+  it("1", async () => {
+    const schema = Schema.TemplateLiteralParser(1)
+    await Util.expectDecodeUnknownSuccess(schema, "1", [1])
+  })
+
+  it("1n", async () => {
+    const schema = Schema.TemplateLiteralParser(1n)
+    await Util.expectDecodeUnknownSuccess(schema, "1", [1n])
+  })
+
+  it("true", async () => {
+    const schema = Schema.TemplateLiteralParser(true)
+    await Util.expectDecodeUnknownSuccess(schema, "true", [true])
+  })
+
+  it("false", async () => {
+    const schema = Schema.TemplateLiteralParser(false)
+    await Util.expectDecodeUnknownSuccess(schema, "false", [false])
+  })
+
+  it("null", async () => {
+    const schema = Schema.TemplateLiteralParser(null)
+    await Util.expectDecodeUnknownSuccess(schema, "null", [null])
+  })
 })
