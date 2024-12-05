@@ -2102,18 +2102,17 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           a: Schema.String
         }).pipe(
           Schema.filter(() => true, {
-            jsonSchema: { "c5052c04-d6c9-44f3-9c8f-ede707d6ce38": "c5052c04-d6c9-44f3-9c8f-ede707d6ce38" }
+            jsonSchema: { "examples": ["c5052c04-d6c9-44f3-9c8f-ede707d6ce38"] }
           })
-        )
-          .pipe(Schema.extend(
-            Schema.Struct({
-              b: JsonNumber
-            }).pipe(
-              Schema.filter(() => true, {
-                jsonSchema: { "940b4ea4-6313-4b59-9e64-ff7a41b8eb15": "940b4ea4-6313-4b59-9e64-ff7a41b8eb15" }
-              })
-            )
-          )),
+        ).pipe(Schema.extend(
+          Schema.Struct({
+            b: JsonNumber
+          }).pipe(
+            Schema.filter(() => true, {
+              jsonSchema: { "$comment": "940b4ea4-6313-4b59-9e64-ff7a41b8eb15" }
+            })
+          )
+        )),
         {
           "type": "object",
           "required": ["a", "b"],
@@ -2121,8 +2120,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "a": { "type": "string" },
             "b": { "type": "number" }
           },
-          "c5052c04-d6c9-44f3-9c8f-ede707d6ce38": "c5052c04-d6c9-44f3-9c8f-ede707d6ce38",
-          "940b4ea4-6313-4b59-9e64-ff7a41b8eb15": "940b4ea4-6313-4b59-9e64-ff7a41b8eb15",
+          "examples": ["c5052c04-d6c9-44f3-9c8f-ede707d6ce38"],
+          "$comment": "940b4ea4-6313-4b59-9e64-ff7a41b8eb15",
           "additionalProperties": false
         }
       )
@@ -3254,22 +3253,39 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
       describe("Union", () => {
         it("without inner transformations", () => {
-          const schema = Schema.Union(Schema.String, Schema.Number).annotations({
+          const schema = Schema.Union(Schema.String, Schema.JsonNumber).annotations({
             identifier: "c0c853a6-9029-49d9-9a63-08aa542ec7da"
           })
-          const expected = {
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "$defs": {
+              "JsonNumber": {
+                "description": "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
+                "title": "JSON-compatible number",
+                "type": "number"
+              },
               "c0c853a6-9029-49d9-9a63-08aa542ec7da": {
                 "anyOf": [
                   { "type": "string" },
-                  { "type": "number" }
+                  { "$ref": "#/$defs/JsonNumber" }
                 ]
               }
             },
             "$ref": "#/$defs/c0c853a6-9029-49d9-9a63-08aa542ec7da"
-          }
-          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
-          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+          })
+          expectJSONSchema(Schema.encodedSchema(schema), {
+            "$defs": {
+              "JsonNumber": {
+                "type": "number"
+              },
+              "c0c853a6-9029-49d9-9a63-08aa542ec7da": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "$ref": "#/$defs/JsonNumber" }
+                ]
+              }
+            },
+            "$ref": "#/$defs/c0c853a6-9029-49d9-9a63-08aa542ec7da"
+          })
         })
 
         it("with inner transformations", () => {
