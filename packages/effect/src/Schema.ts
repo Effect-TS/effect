@@ -689,9 +689,11 @@ const makeEnumsClass = <A extends EnumsDefinition>(
  */
 export const Enums = <A extends EnumsDefinition>(enums: A): Enums<A> => makeEnumsClass(enums)
 
-type Join<Params> = Params extends [infer Head, ...infer Tail] ?
-  `${(Head extends Schema<infer A> ? A : Head) & (AST.LiteralValue)}${Join<Tail>}`
-  : ""
+type GetTemplateLiteralType<Params> = Params extends [infer Head, ...infer Tail] ?
+  Head extends AST.LiteralValue ? `${Head}${GetTemplateLiteralType<Tail>}` :
+  Head extends Schema<infer A extends AST.LiteralValue, infer _I> ? `${A}${GetTemplateLiteralType<Tail>}` :
+  never :
+  ``
 
 /**
  * @category API interface
@@ -707,7 +709,7 @@ type TemplateLiteralParameter = Schema.AnyNoContext | AST.LiteralValue
  */
 export const TemplateLiteral = <Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParameter>>(
   ...[head, ...tail]: Params
-): TemplateLiteral<Join<Params>> => {
+): TemplateLiteral<GetTemplateLiteralType<Params>> => {
   const spans: Array<AST.TemplateLiteralSpan> = []
   let h = ""
   let ts = tail
@@ -754,14 +756,18 @@ export const TemplateLiteral = <Params extends array_.NonEmptyReadonlyArray<Temp
 
 type TemplateLiteralParserParameters = Schema.Any | AST.LiteralValue
 
-type TemplateLiteralParserParametersType<T> = T extends [infer Head, ...infer Tail] ?
-  readonly [Head extends Schema<infer A, infer _I, infer _R> ? A : Head, ...TemplateLiteralParserParametersType<Tail>]
+type GetTemplateLiteralParserType<Params> = Params extends [infer Head, ...infer Tail] ? readonly [
+    Head extends Schema<infer A, infer _I, infer _R> ? A : Head,
+    ...GetTemplateLiteralParserType<Tail>
+  ]
   : []
 
-type TemplateLiteralParserParametersEncoded<T> = T extends [infer Head, ...infer Tail] ? `${
-    & (Head extends Schema<infer _A, infer I, infer _R> ? I : Head)
-    & (AST.LiteralValue)}${TemplateLiteralParserParametersEncoded<Tail>}`
-  : ""
+type GetTemplateLiteralParserEncoded<Params> = Params extends [infer Head, ...infer Tail] ?
+  Head extends AST.LiteralValue ? `${Head}${GetTemplateLiteralParserEncoded<Tail>}` :
+  Head extends Schema<infer _A, infer I extends AST.LiteralValue, infer _R> ?
+    `${I}${GetTemplateLiteralParserEncoded<Tail>}` :
+  never :
+  ``
 
 /**
  * @category API interface
@@ -770,8 +776,8 @@ type TemplateLiteralParserParametersEncoded<T> = T extends [infer Head, ...infer
 export interface TemplateLiteralParser<Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParserParameters>>
   extends
     Schema<
-      TemplateLiteralParserParametersType<Params>,
-      TemplateLiteralParserParametersEncoded<Params>,
+      GetTemplateLiteralParserType<Params>,
+      GetTemplateLiteralParserEncoded<Params>,
       Schema.Context<Params[number]>
     >
 {
