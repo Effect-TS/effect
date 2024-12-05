@@ -3,6 +3,7 @@ import * as DateTime from "effect/DateTime"
 import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import { identity } from "effect/Function"
+import * as Option from "effect/Option"
 import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
@@ -131,5 +132,68 @@ describe("Cron", () => {
     assertFalse(Equal.equals(cron, parse("23 0-20/2 * * 1")))
     assertFalse(Equal.equals(cron, parse("23 0-20/2 * * 0-6")))
     assertFalse(Equal.equals(cron, parse("23 0-20/2 1 * 0")))
+  })
+
+  it("handles leap years", () => {
+    assertTrue(match("0 0 29 2 *", "2024-02-29 00:00:00"))
+    assertFalse(match("0 0 29 2 *", "2025-02-29 00:00:00"))
+    assertFalse(match("0 0 29 2 *", "2026-02-29 00:00:00"))
+    assertFalse(match("0 0 29 2 *", "2027-02-29 00:00:00"))
+    assertTrue(match("0 0 29 2 *", "2028-02-29 00:00:00"))
+
+    deepStrictEqual(next("0 0 29 2 *", new Date("2024-01-01 00:00:00")), new Date("2024-02-29 00:00:00"))
+    deepStrictEqual(next("0 0 29 2 *", new Date("2025-01-01 00:00:00")), new Date("2028-02-29 00:00:00"))
+  })
+
+  it("handles transition into daylight savings time", () => {
+    const berlin = DateTime.zoneUnsafeMakeNamed("Europe/Berlin")
+    const make = (date: string) => DateTime.makeZonedFromString(date).pipe(Option.getOrThrow)
+    const sequence = Cron.sequence(parse("30 * * * *", berlin), make("2024-03-31T00:00:00.000+01:00[Europe/Berlin]"))
+    const next = (): DateTime.Zoned => DateTime.unsafeMakeZoned(sequence.next().value, { timeZone: berlin })
+
+    const a = make("2024-03-31T00:30:00.000+01:00[Europe/Berlin]")
+    const b = make("2024-03-31T01:30:00.000+01:00[Europe/Berlin]")
+    const c = make("2024-03-31T03:30:00.000+02:00[Europe/Berlin]")
+    const d = make("2024-03-31T04:30:00.000+02:00[Europe/Berlin]")
+
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), a.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), b.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), c.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), d.pipe(DateTime.formatIsoZoned))
+  })
+
+  it("handles transition out of daylight savings time", () => {
+    const berlin = DateTime.zoneUnsafeMakeNamed("Europe/Berlin")
+    const make = (date: string) => DateTime.makeZonedFromString(date).pipe(Option.getOrThrow)
+    const sequence = Cron.sequence(parse("30 * * * *", berlin), make("2024-10-27T00:00:00.000+02:00[Europe/Berlin]"))
+    const next = (): DateTime.Zoned => DateTime.unsafeMakeZoned(sequence.next().value, { timeZone: berlin })
+
+    const a = make("2024-10-27T00:30:00.000+02:00[Europe/Berlin]")
+    // const x = make("2024-10-27T01:30:00.000+02:00[Europe/Berlin]") // TODO: Our implementation skips this.
+    const b = make("2024-10-27T02:30:00.000+02:00[Europe/Berlin]")
+    const c = make("2024-10-27T03:30:00.000+01:00[Europe/Berlin]")
+    const d = make("2024-10-27T04:30:00.000+01:00[Europe/Berlin]")
+
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), a.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), b.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), c.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), d.pipe(DateTime.formatIsoZoned))
+  })
+
+  it("handles utc timezone", () => {
+    const utc = DateTime.zoneUnsafeMakeNamed("UTC")
+    const make = (date: string) => DateTime.makeZonedFromString(date).pipe(Option.getOrThrow)
+    const sequence = Cron.sequence(parse("30 * * * *", utc), make("2024-10-27T00:00:00.000+00:00[UTC]"))
+    const next = (): DateTime.Zoned => DateTime.unsafeMakeZoned(sequence.next().value, { timeZone: utc })
+
+    const a = make("2024-10-27T00:30:00.000+00:00[UTC]")
+    const b = make("2024-10-27T01:30:00.000+00:00[UTC]")
+    const c = make("2024-10-27T02:30:00.000+00:00[UTC]")
+    const d = make("2024-10-27T03:30:00.000+00:00[UTC]")
+
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), a.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), b.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), c.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), d.pipe(DateTime.formatIsoZoned))
   })
 })

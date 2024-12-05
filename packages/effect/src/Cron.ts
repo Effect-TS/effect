@@ -6,7 +6,7 @@ import type * as DateTime from "./DateTime.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as equivalence from "./Equivalence.js"
-import { dual, pipe } from "./Function.js"
+import { constVoid, dual, pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
 import { format, type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
 import * as dateTime from "./internal/dateTime.js"
@@ -41,9 +41,25 @@ export interface Cron extends Pipeable, Equal.Equal, Inspectable {
   readonly days: ReadonlySet<number>
   readonly months: ReadonlySet<number>
   readonly weekdays: ReadonlySet<number>
+  /** @internal */
+  readonly first: {
+    readonly minute: number
+    readonly hour: number
+    readonly day: number
+    readonly month: number
+    readonly weekday: number
+  }
+  /** @internal */
+  readonly next: {
+    readonly minute: ReadonlyArray<number | undefined>
+    readonly hour: ReadonlyArray<number | undefined>
+    readonly day: ReadonlyArray<number | undefined>
+    readonly month: ReadonlyArray<number | undefined>
+    readonly weekday: ReadonlyArray<number | undefined>
+  }
 }
 
-const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays" | "tz"> = {
+const CronProto = {
   [TypeId]: TypeId,
   [Equal.symbol](this: Cron, that: unknown) {
     return isCron(that) && equals(this, that)
@@ -79,7 +95,7 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
   pipe() {
     return pipeArguments(this, arguments)
   }
-} as const
+}
 
 /**
  * Checks if a given value is a `Cron` instance.
@@ -99,14 +115,7 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
  * @since 2.0.0
  * @category constructors
  */
-export const make = ({
-  days,
-  hours,
-  minutes,
-  months,
-  tz,
-  weekdays
-}: {
+export const make = (values: {
   readonly minutes: Iterable<number>
   readonly hours: Iterable<number>
   readonly days: Iterable<number>
@@ -115,13 +124,54 @@ export const make = ({
   readonly tz?: DateTime.TimeZone | undefined
 }): Cron => {
   const o: Mutable<Cron> = Object.create(CronProto)
-  o.minutes = new Set(Arr.sort(minutes, N.Order))
-  o.hours = new Set(Arr.sort(hours, N.Order))
-  o.days = new Set(Arr.sort(days, N.Order))
-  o.months = new Set(Arr.sort(months, N.Order))
-  o.weekdays = new Set(Arr.sort(weekdays, N.Order))
-  o.tz = Option.fromNullable(tz)
+  o.minutes = new Set(Arr.sort(values.minutes, N.Order))
+  o.hours = new Set(Arr.sort(values.hours, N.Order))
+  o.days = new Set(Arr.sort(values.days, N.Order))
+  o.months = new Set(Arr.sort(values.months, N.Order))
+  o.weekdays = new Set(Arr.sort(values.weekdays, N.Order))
+  o.tz = Option.fromNullable(values.tz)
+
+  const minutes = Array.from(o.minutes)
+  const hours = Array.from(o.hours)
+  const days = Array.from(o.days)
+  const months = Array.from(o.months)
+  const weekdays = Array.from(o.weekdays)
+
+  o.first = {
+    minute: minutes[0] ?? 0,
+    hour: hours[0] ?? 0,
+    day: days[0] ?? 1,
+    month: (months[0] ?? 1) - 1,
+    weekday: weekdays[0] ?? 0
+  }
+
+  o.next = {
+    minute: nextLookupTable(minutes, 60),
+    hour: nextLookupTable(hours, 24),
+    day: nextLookupTable(days, 32),
+    month: nextLookupTable(months, 13),
+    weekday: nextLookupTable(weekdays, 7)
+  }
+
   return o
+}
+
+const nextLookupTable = (values: ReadonlyArray<number>, size: number): Array<number | undefined> => {
+  const result = new Array(size).fill(undefined)
+  if (values.length === 0) {
+    return result
+  }
+
+  let current: number | undefined = undefined
+  let index = values.length - 1
+  for (let i = size - 1; i >= 0; i--) {
+    while (index >= 0 && values[index] >= i) {
+      current = values[index--]
+    }
+    result[i] = current
+  }
+
+  return result
 }
 
 /**
@@ -149,7 +199,7 @@ export interface ParseError {
   readonly input?: string
 }
 
-const ParseErrorProto: Omit<ParseError, "input" | "message"> = {
+const ParseErrorProto = {
   _tag: "ParseError",
   [ParseErrorTypeId]: ParseErrorTypeId
 }
@@ -231,9 +281,9 @@ export const parse = (cron: string, tz?: DateTime.TimeZone): Either.Either<Cron,
  * @since 2.0.0
  */
 export const match = (cron: Cron, date: DateTime.DateTime.Input): boolean => {
-  const zoned = dateTime.unsafeMakeZoned(date)
-  const adjusted = Option.isSome(cron.tz) ? dateTime.setZone(zoned, cron.tz.value) : zoned
-  const parts = dateTime.toParts(adjusted)
+  const parts = dateTime.unsafeMakeZoned(date, {
+    timeZone: Option.getOrUndefined(cron.tz)
+  }).pipe(dateTime.toParts)
 
   if (cron.minutes.size !== 0 && !cron.minutes.has(parts.minutes)) {
     return false
@@ -262,6 +312,9 @@ export const match = (cron: Cron, date: DateTime.DateTime.Input): boolean => {
   return cron.days.has(parts.day) || cron.weekdays.has(parts.weekDay)
 }
 
+const daysInMonth = (date: Date): number =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate()
+
 /**
  * Returns the next run `Date` for the given `Cron` instance.
  *
@@ -285,66 +338,101 @@ export const match = (cron: Cron, date: DateTime.DateTime.Input): boolean => {
  * @since 2.0.0
  */
 export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
-  const { days, hours, minutes, months, weekdays } = cron
+  const tz = Option.getOrUndefined(cron.tz)
+  const zoned = dateTime.unsafeMakeZoned(now ?? new Date(), {
+    timeZone: tz
+  })
 
-  const restrictMinutes = minutes.size !== 0
-  const restrictHours = hours.size !== 0
-  const restrictDays = days.size !== 0
-  const restrictMonths = months.size !== 0
-  const restrictWeekdays = weekdays.size !== 0
+  const utc = tz !== undefined && dateTime.isTimeZoneNamed(tz) && tz.id === "UTC"
+  const adjustDst = utc ? constVoid : (current: Date) => {
+    const adjusted = dateTime.unsafeMakeZoned(current, {
+      timeZone: zoned.zone,
+      adjustForTimeZone: true
+    }).pipe(dateTime.toDate)
 
-  // TODO: This is unsafe.
-  const zoned = dateTime.unsafeMakeZoned(now ?? new Date())
-  const adjusted = Option.isSome(cron.tz) ? dateTime.setZone(zoned, cron.tz.value) : zoned
+    // TODO: This implementation currently only skips forward when transitioning into daylight savings time.
+    const drift = current.getTime() - adjusted.getTime()
+    if (drift > 0) {
+      current.setTime(current.getTime() + drift)
+    }
+  }
 
-  // TODO: This algorithm can be optimized to avoid some unnecessary iterations.
-  const result = dateTime.mutate(adjusted, (current) => {
-    // Increment by one minute to ensure we don't match the current date.
-    current.setUTCMinutes(current.getUTCMinutes() + 1)
-    current.setUTCSeconds(0)
-    current.setUTCMilliseconds(0)
+  const result = dateTime.mutate(zoned, (current) => {
+    current.setUTCMinutes(current.getUTCMinutes() + 1, 0, 0)
 
     for (let i = 0; i < 10_000; i++) {
-      if (restrictMonths && !months.has(current.getUTCMonth() + 1)) {
-        current.setUTCMonth(current.getUTCMonth() + 1)
-        current.setUTCDate(1)
-        current.setUTCHours(0)
-        current.setUTCMinutes(0)
-        continue
-      }
-
-      if (restrictDays && restrictWeekdays) {
-        if (!days.has(current.getUTCDate()) && !weekdays.has(current.getUTCDay())) {
-          current.setUTCDate(current.getUTCDate() + 1)
-          current.setUTCHours(0)
-          current.setUTCMinutes(0)
+      if (cron.minutes.size !== 0) {
+        const currentMinute = current.getUTCMinutes()
+        const nextMinute = cron.next.minute[currentMinute]
+        if (nextMinute === undefined) {
+          current.setUTCHours(current.getUTCHours() + 1, cron.first.minute)
+          adjustDst(current)
           continue
         }
-      } else if (restrictDays) {
-        if (!days.has(current.getUTCDate())) {
-          current.setUTCDate(current.getUTCDate() + 1)
-          current.setUTCHours(0)
-          current.setUTCMinutes(0)
-          continue
-        }
-      } else if (restrictWeekdays) {
-        if (!weekdays.has(current.getUTCDay())) {
-          current.setUTCDate(current.getUTCDate() + 1)
-          current.setUTCHours(0)
-          current.setUTCMinutes(0)
+        if (nextMinute > currentMinute) {
+          current.setUTCMinutes(nextMinute)
+          adjustDst(current)
           continue
         }
       }
 
-      if (restrictHours && !hours.has(current.getUTCHours())) {
-        current.setUTCHours(current.getUTCHours() + 1)
-        current.setUTCMinutes(0)
-        continue
+      if (cron.hours.size !== 0) {
+        const currentHour = current.getUTCHours()
+        const nextHour = cron.next.hour[currentHour]
+        if (nextHour === undefined) {
+          current.setUTCDate(current.getUTCDate() + 1)
+          current.setUTCHours(cron.first.hour, cron.first.minute)
+          adjustDst(current)
+          continue
+        }
+        if (nextHour > currentHour) {
+          current.setUTCHours(nextHour, cron.first.minute)
+          adjustDst(current)
+          continue
+        }
       }
 
-      if (restrictMinutes && !minutes.has(current.getUTCMinutes())) {
-        current.setUTCMinutes(current.getUTCMinutes() + 1)
-        continue
+      if (cron.weekdays.size !== 0 || cron.days.size !== 0) {
+        let a: number = Infinity
+        let b: number = Infinity
+
+        if (cron.weekdays.size !== 0) {
+          const currentWeekday = current.getUTCDay()
+          const nextWeekday = cron.next.weekday[currentWeekday]
+          a = nextWeekday === undefined ? 7 - currentWeekday + cron.first.weekday : nextWeekday - currentWeekday
+        }
+
+        if (cron.days.size !== 0 && a !== 0) {
+          const currentDay = current.getUTCDate()
+          const nextDay = cron.next.day[currentDay]
+          b = nextDay === undefined ? daysInMonth(current) - currentDay + cron.first.day : nextDay - currentDay
+        }
+
+        const addDays = Math.min(a, b)
+        if (addDays !== 0) {
+          current.setUTCDate(current.getUTCDate() + addDays)
+          current.setUTCHours(cron.first.hour, cron.first.minute)
+          adjustDst(current)
+          continue
+        }
+      }
+
+      if (cron.months.size !== 0) {
+        const currentMonth = current.getUTCMonth() + 1
+        const nextMonth = cron.next.month[currentMonth]
+        if (nextMonth === undefined) {
+          current.setUTCFullYear(current.getUTCFullYear() + 1)
+          current.setUTCMonth(cron.first.month, cron.first.day)
+          current.setUTCHours(cron.first.hour, cron.first.minute)
+          adjustDst(current)
+          continue
+        }
+        if (nextMonth > currentMonth) {
+          current.setUTCMonth(nextMonth - 1, cron.first.day)
+          current.setUTCHours(cron.first.hour, cron.first.minute)
+          adjustDst(current)
+          continue
+        }
       }
 
       return
