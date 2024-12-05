@@ -224,5 +224,9 @@ export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
   readonly defs: Record<string, JsonSchema>
   readonly defsPath?: string
 }): JsonSchema => {
-  return JSONSchema.makeWithOptions(schema, options)
+  return JSONSchema.makeWithOptions(schema, {
+    definitions: options.defs,
+    definitionPath: options.defsPath,
+    target: "OpenApi3.1"
+  })
 }

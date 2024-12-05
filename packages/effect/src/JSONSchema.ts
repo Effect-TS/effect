@@ -211,37 +211,40 @@ export type JsonSchema7Root = JsonSchema7 & {
  * @since 3.10.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
-  const defs: Record<string, any> = {}
-  const out: JsonSchema7Root = makeWithOptions(schema, { defs })
+  const definitions: Record<string, any> = {}
+  const out: JsonSchema7Root = makeWithOptions(schema, { definitions })
   out.$schema = $schema
-  if (!Record.isEmptyRecord(defs)) {
-    out.$defs = defs
+  if (!Record.isEmptyRecord(definitions)) {
+    out.$defs = definitions
   }
   return out
 }
+
+type Target = "JsonSchema7" | "OpenApi3.1" | "OpenAI"
 
 /**
  * Creates a schema with additional options and definitions.
  *
  * This function takes a base schema and enhances it with options such as:
  *
- * - `defs`: A record of definitions that are included in the schema.
- * - `defsPath`: The path to the definitions within the schema (defaults to "#/$defs/").
- * - `ignoreTopLevelIdentifier`: A flag to control whether the top-level identifier is included in the schema (defaults to `false`).
+ * - `definitions`: A record of definitions that are included in the schema.
+ * - `definitionPath`: The path to the definitions within the schema (defaults to "#/$defs/").
+ * - `target`: Which spec to target (defaults to "JsonSchema7").
  *
  * @category encoding
  * @since 3.11.3
  * @experimental
  */
 export const makeWithOptions = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
-  readonly defs: Record<string, JsonSchema7>
-  readonly defsPath?: string
-  readonly ignoreTopLevelIdentifier?: boolean
+  readonly definitions: Record<string, JsonSchema7>
+  readonly definitionPath?: string
+  readonly target?: Target
 }): JsonSchema7 => {
-  const defsPath = options.defsPath ?? "#/$defs/"
-  const getRef = (id: string) => `${defsPath}${id}`
-  const handleIdentifier = options.ignoreTopLevelIdentifier !== true
-  return go(schema.ast, options.defs, handleIdentifier, [], { getRef })
+  const definitionPath = options.definitionPath ?? "#/$defs/"
+  const getRef = (id: string) => `${definitionPath}${id}`
+  const target: Target = options.target ?? "JsonSchema7"
+  const handleIdentifier = target !== "OpenAI"
+  return go(schema.ast, options.definitions, handleIdentifier, [], { getRef, target })
 }
 
 const constAny: JsonSchema7 = { $id: "/schemas/any" }
@@ -339,6 +342,7 @@ const go = (
   path: ReadonlyArray<PropertyKey>,
   options: {
     readonly getRef: (id: string) => string
+    readonly target: Target
   }
 ): JsonSchema7 => {
   if (handleIdentifier) {
@@ -600,6 +604,9 @@ const go = (
       // derived from the 'from' side (type: string), ensuring the output matches the intended
       // complex schema type.
       if (isParseJsonTransformation(ast.from)) {
+        if (options.target === "OpenApi3.1") {
+          return { "type": "string" }
+        }
         return go(ast.to, $defs, handleIdentifier, path, options)
       }
       let next = ast.from

@@ -73,87 +73,93 @@ const expectError = <A, I>(schema: Schema.Schema<A, I>, message: string) => {
 const JsonNumber = Schema.Number.pipe(Schema.filter((n) => Number.isFinite(n), { jsonSchema: {} }))
 
 describe("makeWithOptions", () => {
-  it("defsPath", () => {
+  it("definitionsPath", () => {
     const schema = Schema.String.annotations({ identifier: "08368672-2c02-4d6d-92b0-dd0019b33a7b" })
-    const defs = {}
+    const definitions = {}
     const jsonSchema = JSONSchema.makeWithOptions(schema, {
-      defs,
-      defsPath: "#/components/schemas/"
+      definitions,
+      definitionPath: "#/components/schemas/"
     })
     expect(jsonSchema).toStrictEqual({
       "$ref": "#/components/schemas/08368672-2c02-4d6d-92b0-dd0019b33a7b"
     })
-    expect(defs).toStrictEqual({
+    expect(definitions).toStrictEqual({
       "08368672-2c02-4d6d-92b0-dd0019b33a7b": {
         "type": "string"
       }
     })
   })
 
-  it("ignoreTopLevelIdentifier", () => {
-    const schema = Schema.String.annotations({ identifier: "1b205579-f159-48d4-a218-f09426bca040" })
-    const defs = {}
-    const jsonSchema = JSONSchema.makeWithOptions(schema, {
-      defs,
-      ignoreTopLevelIdentifier: true
+  describe(`target: "OpenAI"`, () => {
+    it("should ignore identifiers at the top level", () => {
+      const schema = Schema.String.annotations({ identifier: "1b205579-f159-48d4-a218-f09426bca040" })
+      const definitions = {}
+      const jsonSchema = JSONSchema.makeWithOptions(schema, {
+        definitions,
+        target: "OpenAI"
+      })
+      expect(jsonSchema).toStrictEqual({
+        "type": "string"
+      })
+      expect(definitions).toStrictEqual({})
     })
-    expect(jsonSchema).toStrictEqual({
-      "type": "string"
-    })
-    expect(defs).toStrictEqual({})
   })
 })
 
 describe("parseJson", () => {
-  it(`should correctly generate JSON Schemas by targeting the "to" side of transformations`, () => {
-    const schema = Schema.parseJson(Schema.Struct({
-      a: Schema.parseJson(Schema.NumberFromString)
-    }))
-    expectJSONSchema(
-      schema,
-      {
-        "$defs": {
-          "NumberFromString": {
-            "type": "string",
-            "description": "a string that will be parsed into a number"
+  describe(`target: "JsonSchema7"`, () => {
+    describe(`should generate JSON Schemas by targeting the "to" side of parseJson`, () => {
+      it("Struct", () => {
+        const schema = Schema.parseJson(Schema.Struct({
+          a: Schema.parseJson(Schema.NumberFromString)
+        }))
+        expectJSONSchema(
+          schema,
+          {
+            "$defs": {
+              "NumberFromString": {
+                "type": "string",
+                "description": "a string that will be parsed into a number"
+              }
+            },
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+              "a": {
+                "$ref": "#/$defs/NumberFromString"
+              }
+            },
+            "additionalProperties": false
           }
-        },
-        "type": "object",
-        "required": ["a"],
-        "properties": {
-          "a": {
-            "$ref": "#/$defs/NumberFromString"
-          }
-        },
-        "additionalProperties": false
-      }
-    )
-  })
+        )
+      })
 
-  it("TypeLiteralTransformations", () => {
-    expectJSONSchema(
-      Schema.parseJson(Schema.Struct({
-        a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
-      })),
-      {
-        "$defs": {
-          "NonEmptyString": {
-            "type": "string",
-            "description": "a non empty string",
-            "title": "NonEmptyString",
-            "minLength": 1
+      it("Struct with TypeLiteralTransformations", () => {
+        expectJSONSchema(
+          Schema.parseJson(Schema.Struct({
+            a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
+          })),
+          {
+            "$defs": {
+              "NonEmptyString": {
+                "type": "string",
+                "description": "a non empty string",
+                "title": "NonEmptyString",
+                "minLength": 1
+              }
+            },
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "$ref": "#/$defs/NonEmptyString"
+              }
+            },
+            "additionalProperties": false
           }
-        },
-        "type": "object",
-        "required": [],
-        "properties": {
-          "a": {
-            "$ref": "#/$defs/NonEmptyString"
-          }
-        },
-        "additionalProperties": false
-      }
-    )
+        )
+      })
+    })
   })
 })
 
