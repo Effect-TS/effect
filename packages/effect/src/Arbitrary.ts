@@ -184,15 +184,29 @@ const go = (
       return (fc) => {
         const string = fc.string({ maxLength: 5 })
         const number = fc.float({ noDefaultInfinity: true }).filter((n) => !Number.isNaN(n))
-        const components: Array<FastCheck.Arbitrary<string | number>> = [fc.constant(ast.head)]
-        for (const span of ast.spans) {
-          if (AST.isStringKeyword(span.type)) {
-            components.push(string)
-          } else {
-            components.push(number)
+
+        const components: Array<FastCheck.Arbitrary<string | number>> = ast.head !== "" ? [fc.constant(ast.head)] : []
+
+        const addArb = (ast: AST.TemplateLiteralSpan["type"]) => {
+          switch (ast._tag) {
+            case "StringKeyword":
+              return components.push(string)
+            case "NumberKeyword":
+              return components.push(number)
+            case "Literal":
+              return components.push(fc.constant(String(ast.literal)))
+            case "Union":
+              return ast.types.forEach(addArb)
           }
-          components.push(fc.constant(span.literal))
         }
+
+        ast.spans.forEach((span) => {
+          addArb(span.type)
+          if (span.literal !== "") {
+            components.push(fc.constant(span.literal))
+          }
+        })
+
         return fc.tuple(...components).map((spans) => spans.join(""))
       }
     }

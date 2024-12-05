@@ -581,6 +581,7 @@ const go = (
       const regex = AST.getTemplateLiteralRegExp(ast)
       return {
         type: "string",
+        title: String(ast),
         description: "a template literal",
         pattern: regex.source,
         ...getJsonSchemaAnnotations(ast)

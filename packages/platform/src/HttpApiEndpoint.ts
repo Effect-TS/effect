@@ -575,6 +575,25 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
+  export type ValidateParams<
+    Schemas extends ReadonlyArray<HttpApiSchema.AnyString>,
+    Prev extends HttpApiSchema.AnyString = never
+  > = Schemas extends [
+    infer Head extends HttpApiSchema.AnyString,
+    ...infer Tail extends ReadonlyArray<HttpApiSchema.AnyString>
+  ] ? [
+      Head extends HttpApiSchema.Param<infer _Name, infer _S>
+        ? HttpApiSchema.Param<_Name, any> extends Prev ? `Duplicate param :${_Name}`
+        : Head :
+        Head,
+      ...ValidateParams<Tail, Prev | Head>
+    ]
+    : Schemas
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type AddError<Endpoint extends Any, E, R> = Endpoint extends HttpApiEndpoint<
     infer _Name,
     infer _Method,
@@ -657,7 +676,7 @@ export declare namespace HttpApiEndpoint {
     const Schemas extends ReadonlyArray<HttpApiSchema.AnyString>
   >(
     segments: TemplateStringsArray,
-    ...schemas: Schemas
+    ...schemas: ValidateParams<Schemas>
   ) => HttpApiEndpoint<
     Name,
     Method,

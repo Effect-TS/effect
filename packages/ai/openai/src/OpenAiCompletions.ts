@@ -24,15 +24,27 @@ const make = (options: {
     const client = yield* OpenAiClient
     const config = yield* OpenAiConfig.getOrUndefined
 
-    const makeRequest = ({ input, required, system, tools }: Completions.CompletionOptions) =>
-      Effect.map(
+    const makeRequest = ({ input, required, system, tools }: Completions.CompletionOptions) => {
+      const useStructured = tools.length === 1 && tools[0].structured
+      return Effect.map(
         Effect.context<never>(),
         (context): typeof Generated.CreateChatCompletionRequest.Encoded => ({
           model: options.model,
           ...config,
           ...context.unsafeMap.get(OpenAiConfig.key),
           messages: makeMessages(input, system),
-          tools: tools.length > 0 ?
+          response_format: useStructured ?
+            {
+              type: "json_schema",
+              json_schema: {
+                strict: true,
+                name: tools[0].name,
+                description: tools[0].description,
+                schema: tools[0].parameters
+              }
+            } :
+            undefined,
+          tools: !useStructured && tools.length > 0 ?
             tools.map((tool) => ({
               type: "function",
               function: {
@@ -43,7 +55,7 @@ const make = (options: {
               }
             })) :
             undefined,
-          tool_choice: tools.length > 0 ?
+          tool_choice: !useStructured && tools.length > 0 ?
             typeof required === "boolean" ? (required ? "required" : "auto") : {
               type: "function",
               function: { name: required }
@@ -51,6 +63,7 @@ const make = (options: {
             undefined
         })
       )
+    }
 
     return yield* Completions.make({
       create(options) {
@@ -66,7 +79,13 @@ const make = (options: {
               })
             )
           ),
-          Effect.flatMap((response) => makeResponse(response, "create"))
+          Effect.flatMap((response) =>
+            makeResponse(
+              response,
+              "create",
+              options.tools.length === 1 && options.tools[0].structured ? options.tools[0] : undefined
+            )
+          )
         )
       },
       stream(options) {
@@ -220,8 +239,12 @@ const makeContentPart = (
 
 const makeResponse = (
   response: Generated.CreateChatCompletionResponse,
-  method: string
-): Effect.Effect<AiResponse.AiResponse, AiError> =>
+  method: string,
+  structuredTool?: {
+    readonly name: string
+    readonly description: string
+  }
+) =>
   Arr.head(response.choices).pipe(
     Effect.mapError(() =>
       new AiError({
@@ -231,7 +254,17 @@ const makeResponse = (
       })
     ),
     Effect.flatMap((choice) => {
-      const response = typeof choice.message.content === "string" ?
+      if (structuredTool) {
+        return AiResponse.AiResponse.empty.withToolCallsJson([
+          {
+            id: response.id,
+            name: structuredTool.name,
+            params: choice.message.content!
+          }
+        ])
+      }
+
+      const res = typeof choice.message.content === "string" ?
         AiResponse.AiResponse.fromText({
           role: AiRole.model,
           content: choice.message.content!
@@ -239,14 +272,14 @@ const makeResponse = (
         AiResponse.AiResponse.empty
 
       if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
-        return response.withToolCallsJson(choice.message.tool_calls.map((toolCall) => ({
+        return res.withToolCallsJson(choice.message.tool_calls.map((toolCall) => ({
           id: toolCall.id,
           name: toolCall.function.name,
           params: toolCall.function.arguments
         })))
       }
 
-      return Effect.succeed(response)
+      return Effect.succeed(res)
     })
   )
 

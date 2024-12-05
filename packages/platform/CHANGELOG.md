@@ -1,5 +1,30 @@
 # @effect/platform
 
+## 0.70.4
+
+### Patch Changes
+
+- Updated dependencies [[`90906f7`](https://github.com/Effect-TS/effect/commit/90906f7f154b12c7182e8f39e3c55ef3937db857), [`3862cd3`](https://github.com/Effect-TS/effect/commit/3862cd3c7f6a542ed65fb81255b3bd696ce2f567), [`3862cd3`](https://github.com/Effect-TS/effect/commit/3862cd3c7f6a542ed65fb81255b3bd696ce2f567), [`343b6aa`](https://github.com/Effect-TS/effect/commit/343b6aa6ac4a74276bfc7c63ccbf4a1d72bc1bed), [`afba339`](https://github.com/Effect-TS/effect/commit/afba339adc11dad56b5a3b7ca94487e58f34d613)]:
+  - effect@3.11.3
+
+## 0.70.3
+
+### Patch Changes
+
+- [#4065](https://github.com/Effect-TS/effect/pull/4065) [`7044730`](https://github.com/Effect-TS/effect/commit/70447306be1aeeb7d87c230b2a96ec87b993ede9) Thanks @KhraksMamtsov! - Ensure the uniqueness of the parameters at the type level
+
+  ```ts
+  import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+  import { Schema } from "effect"
+
+  HttpApiEndpoint.get(
+    "test"
+  )`/${HttpApiSchema.param("id", Schema.NumberFromString)}/${
+    // @ts-expect-error: Argument of type 'Param<"id", typeof NumberFromString>' is not assignable to parameter of type '"Duplicate param :id"'
+    HttpApiSchema.param("id", Schema.NumberFromString)
+  }`
+  ```
+
 ## 0.70.2
 
 ### Patch Changes

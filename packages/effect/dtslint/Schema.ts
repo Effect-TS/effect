@@ -1168,6 +1168,54 @@ S.instanceOf(Test)
 // TemplateLiteral
 // ---------------------------------------------
 
+// $ExpectType TemplateLiteral<"a">
+S.TemplateLiteral("a")
+
+// $ExpectType TemplateLiteral<"a">
+S.TemplateLiteral(S.Literal("a"))
+
+// $ExpectType TemplateLiteral<"1">
+S.TemplateLiteral(1)
+
+// $ExpectType TemplateLiteral<"1">
+S.TemplateLiteral(S.Literal(1))
+
+// $ExpectType TemplateLiteral<string>
+S.TemplateLiteral(S.String)
+
+// $ExpectType TemplateLiteral<`${number}`>
+S.TemplateLiteral(S.Number)
+
+// $ExpectType TemplateLiteral<"ab">
+S.TemplateLiteral("a", "b")
+
+// $ExpectType TemplateLiteral<"ab">
+S.TemplateLiteral(S.Literal("a"), S.Literal("b"))
+
+// $ExpectType TemplateLiteral<`a${string}`>
+S.TemplateLiteral("a", S.String)
+
+// $ExpectType TemplateLiteral<`a${string}`>
+S.TemplateLiteral(S.Literal("a"), S.String)
+
+// $ExpectType TemplateLiteral<`a${number}`>
+S.TemplateLiteral("a", S.Number)
+
+// $ExpectType TemplateLiteral<`a${number}`>
+S.TemplateLiteral(S.Literal("a"), S.Number)
+
+// $ExpectType TemplateLiteral<`${string}a`>
+S.TemplateLiteral(S.String, "a")
+
+// $ExpectType TemplateLiteral<`${string}a`>
+S.TemplateLiteral(S.String, S.Literal("a"))
+
+// $ExpectType TemplateLiteral<`${number}a`>
+S.TemplateLiteral(S.Number, "a")
+
+// $ExpectType TemplateLiteral<`${number}a`>
+S.TemplateLiteral(S.Number, S.Literal("a"))
+
 // $ExpectType TemplateLiteral<`${string}0`>
 S.TemplateLiteral(S.String, 0)
 
@@ -1182,18 +1230,6 @@ S.TemplateLiteral(S.String, 1n)
 
 // $ExpectType TemplateLiteral<`${string}a` | `${string}0`>
 S.TemplateLiteral(S.String, S.Literal("a", 0))
-
-// $ExpectType TemplateLiteral<`a${string}`>
-S.TemplateLiteral(S.Literal("a"), S.String)
-
-// $ExpectType TemplateLiteral<`a${string}`>
-S.TemplateLiteral("a", S.String)
-
-// $ExpectType TemplateLiteral<`${string}/`>
-S.TemplateLiteral(S.String, S.Literal("/"))
-
-// $ExpectType TemplateLiteral<`${string}/`>
-S.TemplateLiteral(S.String, "/")
 
 // $ExpectType TemplateLiteral<`${string}/${number}`>
 S.TemplateLiteral(S.String, S.Literal("/"), S.Number)
@@ -1210,6 +1246,32 @@ S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))
 
 // $ExpectType TemplateLiteral<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
 S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), "_id")
+
+// Branded type support
+
+// $ExpectType TemplateLiteral<`${string & Brand<"MyBrand">}`>
+S.TemplateLiteral(S.String.pipe(S.brand("MyBrand")))
+
+// $ExpectType TemplateLiteral<`${number & Brand<"MyBrand">}`>
+S.TemplateLiteral(S.Number.pipe(S.brand("MyBrand")))
+
+// $ExpectType TemplateLiteral<`a${string & Brand<"MyBrand">}`>
+S.TemplateLiteral("a", S.String.pipe(S.brand("MyBrand")))
+
+// $ExpectType TemplateLiteral<`a${string & Brand<"MyBrand">}`>
+S.TemplateLiteral(S.Literal("a"), S.String.pipe(S.brand("MyBrand")))
+
+// $ExpectType TemplateLiteral<`${"a" & Brand<"L">}${string & Brand<"MyBrand">}`>
+S.TemplateLiteral(S.Literal("a").pipe(S.brand("L")), S.String.pipe(S.brand("MyBrand")))
+
+// $ExpectType TemplateLiteral<`a${number & Brand<"MyBrand">}`>
+S.TemplateLiteral("a", S.Number.pipe(S.brand("MyBrand")))
+
+// $ExpectType TemplateLiteral<`a${number & Brand<"MyBrand">}`>
+S.TemplateLiteral(S.Literal("a"), S.Number.pipe(S.brand("MyBrand")))
+
+// $ExpectType TemplateLiteral<`a${string}` | `a${number}`>
+S.TemplateLiteral("a", S.Union(S.Number, S.String))
 
 // ---------------------------------------------
 // attachPropertySignature
@@ -2695,23 +2757,123 @@ S.Array(S.String).pipe(S.minItems(1), S.maxItems(2))
 // TemplateLiteralParser
 // ---------------------------------------------
 
+// $ExpectType Schema<readonly ["a"], "a", never>
+S.asSchema(S.TemplateLiteralParser("a"))
+
+// $ExpectType Schema<readonly ["a"], "a", never>
+S.asSchema(S.TemplateLiteralParser(S.Literal("a")))
+
+// $ExpectType Schema<readonly [1], "1", never>
+S.asSchema(S.TemplateLiteralParser(1))
+
+// $ExpectType Schema<readonly [1], "1", never>
+S.asSchema(S.TemplateLiteralParser(S.Literal(1)))
+
+// $ExpectType Schema<readonly [string], string, never>
+S.asSchema(S.TemplateLiteralParser(S.String))
+
+// $ExpectType Schema<readonly [number], `${number}`, never>
+S.asSchema(S.TemplateLiteralParser(S.Number))
+
+// $ExpectType Schema<readonly ["a", "b"], "ab", never>
+S.asSchema(S.TemplateLiteralParser("a", "b"))
+
+// $ExpectType Schema<readonly ["a", "b"], "ab", never>
+S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.Literal("b")))
+
+// $ExpectType Schema<readonly ["a", string], `a${string}`, never>
+S.asSchema(S.TemplateLiteralParser("a", S.String))
+
+// $ExpectType Schema<readonly ["a", string], `a${string}`, never>
+S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.String))
+
+// $ExpectType Schema<readonly ["a", number], `a${number}`, never>
+S.asSchema(S.TemplateLiteralParser("a", S.Number))
+
+// $ExpectType Schema<readonly ["a", number], `a${number}`, never>
+S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.Number))
+
+// $ExpectType Schema<readonly [string, "a"], `${string}a`, never>
+S.asSchema(S.TemplateLiteralParser(S.String, "a"))
+
+// $ExpectType Schema<readonly [string, "a"], `${string}a`, never>
+S.asSchema(S.TemplateLiteralParser(S.String, S.Literal("a")))
+
+// $ExpectType Schema<readonly [number, "a"], `${number}a`, never>
+S.asSchema(S.TemplateLiteralParser(S.Number, "a"))
+
+// $ExpectType Schema<readonly [number, "a"], `${number}a`, never>
+S.asSchema(S.TemplateLiteralParser(S.Number, S.Literal("a")))
+
+// $ExpectType Schema<readonly [string, 0], `${string}0`, never>
+S.asSchema(S.TemplateLiteralParser(S.String, 0))
+
+// $ExpectType Schema<readonly [string, true], `${string}true`, never>
+S.asSchema(S.TemplateLiteralParser(S.String, true))
+
+// $ExpectType Schema<readonly [string, null], `${string}null`, never>
+S.asSchema(S.TemplateLiteralParser(S.String, null))
+
+// $ExpectType Schema<readonly [string, 1n], `${string}1`, never>
+S.asSchema(S.TemplateLiteralParser(S.String, 1n))
+
+// $ExpectType Schema<readonly [string, 0 | "a"], `${string}a` | `${string}0`, never>
+S.asSchema(S.TemplateLiteralParser(S.String, S.Literal("a", 0)))
+
+// $ExpectType Schema<readonly [string, "/", number], `${string}/${number}`, never>
+S.asSchema(S.TemplateLiteralParser(S.String, S.Literal("/"), S.Number))
+
+// $ExpectType Schema<readonly [string, "/", number], `${string}/${number}`, never>
+S.asSchema(S.TemplateLiteralParser(S.String, "/", S.Number))
+
+// example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
+
+// $ExpectType Schema<readonly ["welcome_email" | "email_heading" | "footer_title" | "footer_sendoff", "_id"], "welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id", never>
+S.asSchema(S.TemplateLiteralParser(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id")))
+
+// $TemplateLiteralParser Schema<readonly ["welcome_email" | "email_heading" | "footer_title" | "footer_sendoff", "_id"], "welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id", never>
+S.asSchema(S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), "_id"))
+
+// Branded type support
+
+// $ExpectType Schema<readonly [string & Brand<"MyBrand">], string, never>
+S.asSchema(S.TemplateLiteralParser(S.String.pipe(S.brand("MyBrand"))))
+
+// $ExpectType Schema<readonly [number & Brand<"MyBrand">], `${number}`, never>
+S.asSchema(S.TemplateLiteralParser(S.Number.pipe(S.brand("MyBrand"))))
+
+// $ExpectType Schema<readonly ["a", string & Brand<"MyBrand">], `a${string}`, never>
+S.asSchema(S.TemplateLiteralParser("a", S.String.pipe(S.brand("MyBrand"))))
+
+// $ExpectType Schema<readonly ["a", string & Brand<"MyBrand">], `a${string}`, never>
+S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.String.pipe(S.brand("MyBrand"))))
+
+// $ExpectType Schema<readonly ["a" & Brand<"L">, string & Brand<"MyBrand">], `a${string}`, never>
+S.asSchema(S.TemplateLiteralParser(S.Literal("a").pipe(S.brand("L")), S.String.pipe(S.brand("MyBrand"))))
+
+// $ExpectType Schema<readonly ["a", number & Brand<"MyBrand">], `a${number}`, never>
+S.asSchema(S.TemplateLiteralParser("a", S.Number.pipe(S.brand("MyBrand"))))
+
+// $ExpectType Schema<readonly ["a", number & Brand<"MyBrand">], `a${number}`, never>
+S.asSchema(S.TemplateLiteralParser(S.Literal("a"), S.Number.pipe(S.brand("MyBrand"))))
+
+// $ExpectType Schema<readonly ["a"], "a", never>
+S.asSchema(S.TemplateLiteralParser("a"))
+
+// $ExpectType Schema<readonly ["a", "b"], "ab", never>
+S.asSchema(S.TemplateLiteralParser("a", "b"))
+
 // $ExpectType Schema<readonly [number, "a"], `${number}a`, never>
 S.asSchema(S.TemplateLiteralParser(S.Int, "a"))
-
-// $ExpectType TemplateLiteralParser<[typeof Int, "a"]>
-S.TemplateLiteralParser(S.Int, "a")
 
 // $ExpectType Schema<readonly [number, "a", string], `${string}a${string}`, never>
 S.asSchema(S.TemplateLiteralParser(S.NumberFromString, "a", S.NonEmptyString))
 
-// $ExpectType TemplateLiteralParser<[typeof NumberFromString, "a", typeof NonEmptyString]>
-S.TemplateLiteralParser(S.NumberFromString, "a", S.NonEmptyString)
-
 // $ExpectType Schema<readonly ["/", number, "/", "a" | "b"], `/${number}/a` | `/${number}/b`, never>
 S.asSchema(S.TemplateLiteralParser("/", S.Int, "/", S.Literal("a", "b")))
 
-// $ExpectType TemplateLiteralParser<["/", typeof Int, "/", Literal<["a", "b"]>]>
-S.TemplateLiteralParser("/", S.Int, "/", S.Literal("a", "b"))
+// $ExpectType Schema<readonly ["a", string | number], `a${string}` | `a${number}`, never>
+S.asSchema(S.TemplateLiteralParser("a", S.Union(S.Number, S.String)))
 
 // ---------------------------------------------
 // UndefinedOr

@@ -1,7 +1,20 @@
+import type * as array_ from "effect/Array"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
+
+type TemplateLiteralParameter = S.Schema.AnyNoContext | AST.LiteralValue
+
+const expectAST = (
+  params: array_.NonEmptyReadonlyArray<TemplateLiteralParameter>,
+  expectedAST: AST.TemplateLiteral,
+  expectedString: string
+) => {
+  const ast = S.TemplateLiteral(...params).ast
+  expect(ast).toEqual(expectedAST)
+  expect(String(ast)).toEqual(expectedString)
+}
 
 describe("TemplateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {
@@ -9,92 +22,147 @@ describe("TemplateLiteral", () => {
       new Error(`Unsupported template literal span
 schema (BooleanKeyword): boolean`)
     )
-    expect(() => S.TemplateLiteral(S.SymbolFromSelf)).toThrow(
+
+    expect(() => S.TemplateLiteral(S.Union(S.Boolean, S.SymbolFromSelf))).toThrow(
       new Error(`Unsupported template literal span
-schema (SymbolKeyword): symbol`)
+schema (Union): boolean | symbol`)
     )
   })
 
-  describe("AST", () => {
-    it("a", () => {
-      const expected = new AST.Literal("a")
-      expect(S.TemplateLiteral(S.Literal("a")).ast).toEqual(expected)
-      expect(S.TemplateLiteral("a").ast).toEqual(expected)
+  describe("AST and toString", () => {
+    it(`"a"`, () => {
+      const expectedAST = new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(S.Literal("a").ast, "")])
+      const expectedString = "`a`"
+      expectAST([S.Literal("a")], expectedAST, expectedString)
+      expectAST(["a"], expectedAST, expectedString)
     })
 
-    it("a b", () => {
-      const expected = new AST.Literal("a b")
-      expect(S.TemplateLiteral(S.Literal("a"), S.Literal(" "), S.Literal("b")).ast).toEqual(expected)
-      expect(S.TemplateLiteral("a", " ", "b").ast).toEqual(expected)
+    it(`"a" + "b"`, () => {
+      const expectedAST = new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(S.Literal("b").ast, "")])
+      const expectedString = "`ab`"
+      expectAST([S.Literal("a"), S.Literal("b")], expectedAST, expectedString)
+      expectAST(["a", "b"], expectedAST, expectedString)
     })
 
-    it("(a | b) c", () => {
-      const expected = AST.Union.make([new AST.Literal("ac"), new AST.Literal("bc")])
-      expect(S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c")).ast).toEqual(expected)
-      expect(S.TemplateLiteral(S.Literal("a", "b"), "c").ast).toEqual(expected)
-    })
-
-    it("(a | b) c (d | e)", () => {
-      const expected = AST.Union.make([
-        new AST.Literal("acd"),
-        new AST.Literal("ace"),
-        new AST.Literal("bcd"),
-        new AST.Literal("bce")
+    it(`("a" | "b") + "c"`, () => {
+      const expectedAST = new AST.TemplateLiteral("", [
+        new AST.TemplateLiteralSpan(S.Literal("a", "b").ast, "c")
       ])
-      expect(S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c"), S.Literal("d", "e")).ast).toEqual(expected)
-      expect(S.TemplateLiteral(S.Literal("a", "b"), "c", S.Literal("d", "e")).ast).toEqual(expected)
+      const expectedString = "`${\"a\" | \"b\"}c`"
+      expectAST([S.Literal("a", "b"), S.Literal("c")], expectedAST, expectedString)
+      expectAST([S.Literal("a", "b"), "c"], expectedAST, expectedString)
     })
 
-    it("(a | b) string (d | e)", () => {
-      const schema = S.TemplateLiteral(S.Literal("a", "b"), S.String, S.Literal("d", "e"))
-      expect(schema.ast).toEqual(
-        AST.Union.make([
-          new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
-          new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")]),
-          new AST.TemplateLiteral("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
-          new AST.TemplateLiteral("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")])
-        ])
-      )
+    it(`("a" | "b) + "c" + ("d" | "e")`, () => {
+      const expectedAST = new AST.TemplateLiteral("", [
+        new AST.TemplateLiteralSpan(S.Literal("a", "b").ast, "c"),
+        new AST.TemplateLiteralSpan(S.Literal("d", "e").ast, "")
+      ])
+      const expectedString = "`${\"a\" | \"b\"}c${\"d\" | \"e\"}`"
+      expectAST([S.Literal("a", "b"), S.Literal("c"), S.Literal("d", "e")], expectedAST, expectedString)
+      expectAST([S.Literal("a", "b"), "c", S.Literal("d", "e")], expectedAST, expectedString)
     })
 
-    it("a${string}", () => {
-      const expected = new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "")])
-      expect(S.TemplateLiteral(S.Literal("a"), S.String).ast).toEqual(expected)
-      expect(S.TemplateLiteral("a", S.String).ast).toEqual(expected)
+    it(`("a" | "b") + string + ("d" | "e")`, () => {
+      const expectedAST = new AST.TemplateLiteral("", [
+        new AST.TemplateLiteralSpan(S.Literal("a", "b").ast, ""),
+        new AST.TemplateLiteralSpan(S.String.ast, ""),
+        new AST.TemplateLiteralSpan(S.Literal("d", "e").ast, "")
+      ])
+      const expectedString = "`${\"a\" | \"b\"}${string}${\"d\" | \"e\"}`"
+      expectAST([S.Literal("a", "b"), S.String, S.Literal("d", "e")], expectedAST, expectedString)
     })
 
-    it("a${string}b", () => {
-      const expected = new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "b")])
-      expect(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")).ast).toEqual(expected)
-      expect(S.TemplateLiteral("a", S.String, "b").ast).toEqual(expected)
+    it(`"a" + string`, () => {
+      const expectedAST = new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "")])
+      const expectedString = "`a${string}`"
+      expectAST([S.Literal("a"), S.String], expectedAST, expectedString)
+      expectAST(["a", S.String], expectedAST, expectedString)
+    })
+
+    it(`"a" + string + "b"`, () => {
+      const expectedAST = new AST.TemplateLiteral("a", [
+        new AST.TemplateLiteralSpan(AST.stringKeyword, "b")
+      ])
+      const expectedString = "`a${string}b`"
+      expectAST([S.Literal("a"), S.String, S.Literal("b")], expectedAST, expectedString)
+      expectAST(["a", S.String, "b"], expectedAST, expectedString)
+    })
+
+    it(`"a" + string + "b" + number`, () => {
+      const expectedAST = new AST.TemplateLiteral("a", [
+        new AST.TemplateLiteralSpan(AST.stringKeyword, "b"),
+        new AST.TemplateLiteralSpan(AST.numberKeyword, "")
+      ])
+      const expectedString = "`a${string}b${number}`"
+      expectAST([S.Literal("a"), S.String, S.Literal("b"), S.Number], expectedAST, expectedString)
+      expectAST(["a", S.String, "b", S.Number], expectedAST, expectedString)
+    })
+
+    it(`"a" + number`, () => {
+      const expectedAST = new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.numberKeyword, "")])
+      const expectedString = "`a${number}`"
+      expectAST([S.Literal("a"), S.Number], expectedAST, expectedString)
+      expectAST(["a", S.Number], expectedAST, expectedString)
+    })
+
+    it(`string + "a"`, () => {
+      const expectedAST = new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(AST.stringKeyword, "a")])
+      const expectedString = "`${string}a`"
+      expectAST([S.String, S.Literal("a")], expectedAST, expectedString)
+      expectAST([S.String, "a"], expectedAST, expectedString)
+    })
+
+    it(`number + "a"`, () => {
+      const expectedAST = new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(AST.numberKeyword, "a")])
+      const expectedString = "`${number}a`"
+      expectAST([S.Number, S.Literal("a")], expectedAST, expectedString)
+      expectAST([S.Number, "a"], expectedAST, expectedString)
+    })
+
+    it(`(string | 1) + (number | true)`, () => {
+      const expectedAST = new AST.TemplateLiteral("", [
+        new AST.TemplateLiteralSpan(S.Union(S.String, S.Literal(1)).ast, ""),
+        new AST.TemplateLiteralSpan(S.Union(S.Number, S.Literal(true)).ast, "")
+      ])
+      const expectedString = "`${string | \"1\"}${number | \"true\"}`"
+      expectAST([S.Union(S.String, S.Literal(1)), S.Union(S.Number, S.Literal(true))], expectedAST, expectedString)
+    })
+
+    it(`(("a" | "b") | "c")`, () => {
+      const expectedAST = new AST.TemplateLiteral("", [
+        new AST.TemplateLiteralSpan(S.Union(S.Union(S.Literal("a"), S.Literal("b")), S.Literal("c")).ast, "")
+      ])
+      const expectedString = "`${\"a\" | \"b\" | \"c\"}`"
+      expectAST([S.Union(S.Union(S.Literal("a"), S.Literal("b")), S.Literal("c"))], expectedAST, expectedString)
     })
   })
 
   describe("decoding", () => {
-    it("a", async () => {
+    it(`"a"`, async () => {
       const schema = S.TemplateLiteral("a")
       await Util.expectDecodeUnknownSuccess(schema, "a")
 
-      await Util.expectDecodeUnknownFailure(schema, "ab", `Expected "a", actual "ab"`)
-      await Util.expectDecodeUnknownFailure(schema, "", `Expected "a", actual ""`)
-      await Util.expectDecodeUnknownFailure(schema, null, `Expected "a", actual null`)
+      await Util.expectDecodeUnknownFailure(schema, "ab", `Expected \`a\`, actual "ab"`)
+      await Util.expectDecodeUnknownFailure(schema, "", `Expected \`a\`, actual ""`)
+      await Util.expectDecodeUnknownFailure(schema, null, `Expected \`a\`, actual null`)
     })
 
-    it("a b", async () => {
+    it(`"a b"`, async () => {
       const schema = S.TemplateLiteral("a", " ", "b")
       await Util.expectDecodeUnknownSuccess(schema, "a b")
 
-      await Util.expectDecodeUnknownFailure(schema, "a  b", `Expected "a b", actual "a  b"`)
+      await Util.expectDecodeUnknownFailure(schema, "a  b", `Expected \`a b\`, actual "a  b"`)
     })
 
-    it("[${string}]", async () => {
+    it(`"[" + string + "]"`, async () => {
       const schema = S.TemplateLiteral("[", S.String, "]")
       await Util.expectDecodeUnknownSuccess(schema, "[a]")
 
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `[${string}]`, actual \"a\"")
     })
 
-    it("a${string}", async () => {
+    it(`"a" + string`, async () => {
       const schema = S.TemplateLiteral("a", S.String)
       await Util.expectDecodeUnknownSuccess(schema, "a")
       await Util.expectDecodeUnknownSuccess(schema, "ab")
@@ -111,7 +179,7 @@ schema (SymbolKeyword): symbol`)
       )
     })
 
-    it("a${number}", async () => {
+    it(`"a" + number`, async () => {
       const schema = S.TemplateLiteral("a", S.Number)
       await Util.expectDecodeUnknownSuccess(schema, "a1")
       await Util.expectDecodeUnknownSuccess(schema, "a1.2")
@@ -147,14 +215,14 @@ schema (SymbolKeyword): symbol`)
       )
     })
 
-    it("${string}", async () => {
+    it(`string`, async () => {
       const schema = S.TemplateLiteral(S.String)
       await Util.expectDecodeUnknownSuccess(schema, "a")
       await Util.expectDecodeUnknownSuccess(schema, "ab")
       await Util.expectDecodeUnknownSuccess(schema, "")
     })
 
-    it("a${string}b", async () => {
+    it(`"a" + string + "b"`, async () => {
       const schema = S.TemplateLiteral("a", S.String, "b")
       await Util.expectDecodeUnknownSuccess(schema, "ab")
       await Util.expectDecodeUnknownSuccess(schema, "acb")
@@ -177,7 +245,7 @@ schema (SymbolKeyword): symbol`)
       await Util.expectEncodeSuccess(schema, "acb", "acb")
     })
 
-    it("a${string}b${string}", async () => {
+    it(`"a" + string + "b" + string`, async () => {
       const schema = S.TemplateLiteral("a", S.String, "b", S.String)
       await Util.expectDecodeUnknownSuccess(schema, "ab")
       await Util.expectDecodeUnknownSuccess(schema, "acb")
@@ -207,52 +275,46 @@ schema (SymbolKeyword): symbol`)
       await Util.expectDecodeUnknownFailure(
         schema,
         "_id",
-        `"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id"
-├─ Expected "welcome_email_id", actual "_id"
-├─ Expected "email_heading_id", actual "_id"
-├─ Expected "footer_title_id", actual "_id"
-└─ Expected "footer_sendoff_id", actual "_id"`
+        `Expected \`\${"welcome_email" | "email_heading" | "footer_title" | "footer_sendoff"}_id\`, actual "_id"`
       )
     })
 
-    it("${string}${0}", async () => {
+    it(`string + 0`, async () => {
       const schema = S.TemplateLiteral(S.String, 0)
       await Util.expectDecodeUnknownSuccess(schema, "a0")
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}0`, actual \"a\"")
     })
 
-    it("${string}${true}", async () => {
+    it(`string + true`, async () => {
       const schema = S.TemplateLiteral(S.String, true)
       await Util.expectDecodeUnknownSuccess(schema, "atrue")
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}true`, actual \"a\"")
     })
 
-    it("${string}${null}", async () => {
+    it(`string + null`, async () => {
       const schema = S.TemplateLiteral(S.String, null)
       await Util.expectDecodeUnknownSuccess(schema, "anull")
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}null`, actual \"a\"")
     })
 
-    it("${string}${1n}", async () => {
+    it(`string + 1n`, async () => {
       const schema = S.TemplateLiteral(S.String, 1n)
       await Util.expectDecodeUnknownSuccess(schema, "a1")
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}1`, actual \"a\"")
     })
 
-    it("${string}${a | 0}", async () => {
+    it(`string + ("a" | 0)`, async () => {
       const schema = S.TemplateLiteral(S.String, S.Literal("a", 0))
       await Util.expectDecodeUnknownSuccess(schema, "a0")
       await Util.expectDecodeUnknownSuccess(schema, "aa")
       await Util.expectDecodeUnknownFailure(
         schema,
         "b",
-        `\`\${string}a\` | \`\${string}0\`
-├─ Expected \`\${string}a\`, actual "b"
-└─ Expected \`\${string}0\`, actual "b"`
+        `Expected \`\${string}\${"a" | "0"}\`, actual "b"`
       )
     })
 
-    it("${string | 1}${Number | true}", async () => {
+    it(`(string | 1) + (number | true)`, async () => {
       const schema = S.TemplateLiteral(S.Union(S.String, S.Literal(1)), S.Union(S.Number, S.Literal(true)))
       await Util.expectDecodeUnknownSuccess(schema, "atrue")
       await Util.expectDecodeUnknownSuccess(schema, "-2")
@@ -260,20 +322,8 @@ schema (SymbolKeyword): symbol`)
       await Util.expectDecodeUnknownFailure(
         schema,
         "",
-        `\`\${string}\${number}\` | \`\${string}true\` | \`1\${number}\` | "1true"
-├─ Expected \`\${string}\${number}\`, actual ""
-├─ Expected \`\${string}true\`, actual ""
-├─ Expected \`1\${number}\`, actual ""
-└─ Expected "1true", actual ""`
+        `Expected \`\${string | "1"}\${number | "true"}\`, actual ""`
       )
     })
-  })
-
-  it("toString", () => {
-    expect(String(S.TemplateLiteral("a").ast)).toBe(`"a"`)
-    expect(String(S.TemplateLiteral(S.Literal("a", "b")).ast)).toBe(`"a" | "b"`)
-    expect(String(S.TemplateLiteral(S.Union(S.String, S.Literal(1)), S.Union(S.Number, S.Literal(true))).ast)).toBe(
-      "`${string}${number}` | `${string}true` | `1${number}` | \"1true\""
-    )
   })
 })

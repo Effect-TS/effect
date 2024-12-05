@@ -1088,18 +1088,69 @@ export class Enums implements Annotated {
  */
 export const isEnums: (ast: AST) => ast is Enums = createASTGuard("Enums")
 
+type TemplateLiteralSpanBaseType = StringKeyword | NumberKeyword | Literal
+
+type TemplateLiteralSpanType = TemplateLiteralSpanBaseType | Union<TemplateLiteralSpanType>
+
+const isTemplateLiteralSpanType = (ast: AST): ast is TemplateLiteralSpanType => {
+  switch (ast._tag) {
+    case "Literal":
+    case "NumberKeyword":
+    case "StringKeyword":
+      return true
+    case "Union":
+      return ast.types.every(isTemplateLiteralSpanType)
+  }
+  return false
+}
+
+const templateLiteralSpanUnionTypeToString = (type: TemplateLiteralSpanType): string => {
+  switch (type._tag) {
+    case "Literal":
+      return JSON.stringify(String(type.literal))
+    case "StringKeyword":
+      return "string"
+    case "NumberKeyword":
+      return "number"
+    case "Union":
+      return type.types.map(templateLiteralSpanUnionTypeToString).join(" | ")
+  }
+}
+
+const templateLiteralSpanTypeToString = (type: TemplateLiteralSpanType): string => {
+  switch (type._tag) {
+    case "Literal":
+      return String(type.literal)
+    case "StringKeyword":
+      return "${string}"
+    case "NumberKeyword":
+      return "${number}"
+    case "Union":
+      return "${" + type.types.map(templateLiteralSpanUnionTypeToString).join(" | ") + "}"
+  }
+}
+
 /**
  * @category model
  * @since 3.10.0
  */
 export class TemplateLiteralSpan {
-  constructor(readonly type: StringKeyword | NumberKeyword, readonly literal: string) {}
+  /**
+   * @since 3.10.0
+   */
+  readonly type: TemplateLiteralSpanType
+  constructor(type: AST, readonly literal: string) {
+    if (isTemplateLiteralSpanType(type)) {
+      this.type = type
+    } else {
+      throw new Error(errors_.getSchemaUnsupportedLiteralSpanErrorMessage(type))
+    }
+  }
   /**
    * @since 3.10.0
    */
   toString() {
-    const type = "${" + String(this.type) + "}"
-    return type + this.literal
+    return templateLiteralSpanTypeToString(this.type) + this.literal
   }
   /**
    * @since 3.10.0
@@ -1146,7 +1197,7 @@ export class TemplateLiteral implements Annotated {
 }
 
 const formatTemplateLiteral = (ast: TemplateLiteral): string =>
-  "`" + ast.head + ast.spans.map((span) => String(span)).join("") +
+  "`" + ast.head + ast.spans.map(String).join("") +
   "`"
 
 /**
@@ -1611,7 +1662,7 @@ export const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
  * @category model
  * @since 3.10.0
  */
-export class Union implements Annotated {
+export class Union<M extends AST = AST> implements Annotated {
   static make = (types: ReadonlyArray<AST>, annotations?: Annotations): AST => {
     return isMembers(types) ? new Union(types, annotations) : types.length === 1 ? types[0] : neverKeyword
   }
@@ -1623,15 +1674,12 @@ export class Union implements Annotated {
    * @since 3.10.0
    */
   readonly _tag = "Union"
-  private constructor(readonly types: Members<AST>, readonly annotations: Annotations = {}) {}
+  private constructor(readonly types: Members<M>, readonly annotations: Annotations = {}) {}
   /**
    * @since 3.10.0
    */
   toString() {
-    return Option.getOrElse(
-      getExpected(this),
-      () => this.types.map(String).join(" | ")
-    )
+    return Option.getOrElse(getExpected(this), () => this.types.map(String).join(" | "))
   }
   /**
    * @since 3.10.0
@@ -2037,23 +2085,51 @@ export const keyof = (ast: AST): AST => Union.unify(_keyof(ast))
 const STRING_KEYWORD_PATTERN = ".*"
 const NUMBER_KEYWORD_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
 
+const getTemplateLiteralPattern = (type: TemplateLiteralSpanType): string => {
+  switch (type._tag) {
+    case "StringKeyword":
+      return STRING_KEYWORD_PATTERN
+    case "NumberKeyword":
+      return NUMBER_KEYWORD_PATTERN
+    case "Literal":
+      return regexp.escape(String(type.literal))
+    case "Union":
+      return type.types.map(getTemplateLiteralPattern).join("|")
+  }
+}
+
 /**
  * @since 3.10.0
  */
 export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
-  let pattern = `^${regexp.escape(ast.head)}`
+  let pattern = `^`
+  if (ast.head !== "") {
+    pattern += regexp.escape(ast.head)
+  }
 
   for (const span of ast.spans) {
-    if (isStringKeyword(span.type)) {
-      pattern += STRING_KEYWORD_PATTERN
-    } else if (isNumberKeyword(span.type)) {
-      pattern += NUMBER_KEYWORD_PATTERN
+    const p = getTemplateLiteralPattern(span.type)
+    pattern += isUnion(span.type) ? `(${p})` : p
+    if (span.literal !== "") {
+      pattern += regexp.escape(span.literal)
     }
-    pattern += regexp.escape(span.literal)
   }
 
   pattern += "$"
   return new RegExp(pattern)
+}
+
+const getTemplateLiteralCapturingPattern = (type: TemplateLiteralSpanType): string => {
+  switch (type._tag) {
+    case "StringKeyword":
+      return STRING_KEYWORD_PATTERN
+    case "NumberKeyword":
+      return NUMBER_KEYWORD_PATTERN
+    case "Literal":
+      return regexp.escape(String(type.literal))
+    case "Union":
+      return type.types.map(getTemplateLiteralCapturingPattern).join("|")
+  }
 }
 
 /**
@@ -2066,11 +2142,7 @@ export const getTemplateLiteralCapturingRegExp = (ast: TemplateLiteral): RegExp 
   }
 
   for (const span of ast.spans) {
-    if (isStringKeyword(span.type)) {
-      pattern += `(${STRING_KEYWORD_PATTERN})`
-    } else if (isNumberKeyword(span.type)) {
-      pattern += `(${NUMBER_KEYWORD_PATTERN})`
-    }
+    pattern += `(${getTemplateLiteralCapturingPattern(span.type)})`
     if (span.literal !== "") {
       pattern += `(${regexp.escape(span.literal)})`
     }
@@ -2718,15 +2790,8 @@ export const getParameterBase = (
   }
 }
 
-const equalsTemplateLiteralSpan = Arr.getEquivalence<TemplateLiteralSpan>((self, that) =>
-  self.type._tag === that.type._tag && self.literal === that.literal
-)
-
-const equalsEnums = Arr.getEquivalence<readonly [string, string | number]>((self, that) =>
-  that[0] === self[0] && that[1] === self[1]
-)
-
-const equals = (self: AST, that: AST) => {
+/** @internal  */
+export const equals = (self: AST, that: AST): boolean => {
   switch (self._tag) {
     case "Literal":
       return isLiteral(that) && that.literal === self.literal
@@ -2748,16 +2813,27 @@ const equals = (self: AST, that: AST) => {
       return isTemplateLiteral(that) && that.head === self.head && equalsTemplateLiteralSpan(that.spans, self.spans)
     case "Enums":
       return isEnums(that) && equalsEnums(that.enums, self.enums)
+    case "Union":
+      return isUnion(that) && equalsUnion(self.types, that.types)
     case "Refinement":
     case "TupleType":
     case "TypeLiteral":
-    case "Union":
     case "Suspend":
     case "Transformation":
     case "Declaration":
       return self === that
   }
 }
+
+const equalsTemplateLiteralSpan = Arr.getEquivalence<TemplateLiteralSpan>((self, that): boolean => {
+  return self.literal === that.literal && equals(self.type, that.type)
+})
+
+const equalsEnums = Arr.getEquivalence<readonly [string, string | number]>((self, that) =>
+  that[0] === self[0] && that[1] === self[1]
+)
+
+const equalsUnion = Arr.getEquivalence<AST>(equals)
 
 const intersection = Arr.intersectionWith(equals)
 

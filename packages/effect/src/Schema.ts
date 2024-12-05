@@ -689,9 +689,16 @@ const makeEnumsClass = <A extends EnumsDefinition>(
  */
 export const Enums = <A extends EnumsDefinition>(enums: A): Enums<A> => makeEnumsClass(enums)
 
-type Join<Params> = Params extends [infer Head, ...infer Tail] ?
-  `${(Head extends Schema<infer A> ? A : Head) & (AST.LiteralValue)}${Join<Tail>}`
-  : ""
+type AppendType<
+  Template extends string,
+  Next
+> = Next extends AST.LiteralValue ? `${Template}${Next}`
+  : Next extends Schema<infer A extends AST.LiteralValue, infer _I, infer _R> ? `${Template}${A}`
+  : never
+
+type GetTemplateLiteralType<Params> = Params extends [...infer Init, infer Last] ?
+  AppendType<GetTemplateLiteralType<Init>, Last>
+  : ``
 
 /**
  * @category API interface
@@ -707,77 +714,69 @@ type TemplateLiteralParameter = Schema.AnyNoContext | AST.LiteralValue
  */
 export const TemplateLiteral = <Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParameter>>(
   ...[head, ...tail]: Params
-): TemplateLiteral<Join<Params>> => {
-  let astOrs: ReadonlyArray<AST.TemplateLiteral | string> = getTemplateLiterals(
-    getTemplateLiteralParameterAST(head)
-  )
-  for (const span of tail) {
-    astOrs = array_.flatMap(
-      astOrs,
-      (a) => getTemplateLiterals(getTemplateLiteralParameterAST(span)).map((b) => combineTemplateLiterals(a, b))
-    )
-  }
-  return make(AST.Union.make(astOrs.map((astOr) => Predicate.isString(astOr) ? new AST.Literal(astOr) : astOr)))
-}
+): TemplateLiteral<GetTemplateLiteralType<Params>> => {
+  const spans: Array<AST.TemplateLiteralSpan> = []
+  let h = ""
+  let ts = tail
 
-const getTemplateLiteralParameterAST = (span: TemplateLiteralParameter): AST.AST =>
-  isSchema(span) ? span.ast : new AST.Literal(String(span))
+  if (isSchema(head)) {
+    if (AST.isLiteral(head.ast)) {
+      h = String(head.ast.literal)
+    } else {
+      ts = [head, ...ts]
+    }
+  } else {
+    h = String(head)
+  }
 
-const combineTemplateLiterals = (
-  a: AST.TemplateLiteral | string,
-  b: AST.TemplateLiteral | string
-): AST.TemplateLiteral | string => {
-  if (Predicate.isString(a)) {
-    return Predicate.isString(b) ?
-      a + b :
-      new AST.TemplateLiteral(a + b.head, b.spans)
+  for (let i = 0; i < ts.length; i++) {
+    const item = ts[i]
+    if (isSchema(item)) {
+      if (i < ts.length - 1) {
+        const next = ts[i + 1]
+        if (isSchema(next)) {
+          if (AST.isLiteral(next.ast)) {
+            spans.push(new AST.TemplateLiteralSpan(item.ast, String(next.ast.literal)))
+            i++
+            continue
+          }
+        } else {
+          spans.push(new AST.TemplateLiteralSpan(item.ast, String(next)))
+          i++
+          continue
+        }
+      }
+      spans.push(new AST.TemplateLiteralSpan(item.ast, ""))
+    } else {
+      spans.push(new AST.TemplateLiteralSpan(new AST.Literal(item), ""))
+    }
   }
-  if (Predicate.isString(b)) {
-    return new AST.TemplateLiteral(
-      a.head,
-      array_.modifyNonEmptyLast(
-        a.spans,
-        (span) => new AST.TemplateLiteralSpan(span.type, span.literal + b)
-      )
-    )
-  }
-  return new AST.TemplateLiteral(
-    a.head,
-    array_.appendAll(
-      array_.modifyNonEmptyLast(
-        a.spans,
-        (span) => new AST.TemplateLiteralSpan(span.type, span.literal + String(b.head))
-      ),
-      b.spans
-    )
-  )
-}
 
-const getTemplateLiterals = (
-  ast: AST.AST
-): ReadonlyArray<AST.TemplateLiteral | string> => {
-  switch (ast._tag) {
-    case "Literal":
-      return [String(ast.literal)]
-    case "NumberKeyword":
-    case "StringKeyword":
-      return [new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(ast, "")])]
-    case "Union":
-      return array_.flatMap(ast.types, getTemplateLiterals)
+  if (array_.isNonEmptyArray(spans)) {
+    return make(new AST.TemplateLiteral(h, spans))
+  } else {
+    return make(new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(new AST.Literal(h), "")]))
   }
-  throw new Error(errors_.getSchemaUnsupportedLiteralSpanErrorMessage(ast))
 }
 
 type TemplateLiteralParserParameters = Schema.Any | AST.LiteralValue
 
-type TemplateLiteralParserParametersType<T> = T extends [infer Head, ...infer Tail] ?
-  readonly [Head extends Schema<infer A, infer _I, infer _R> ? A : Head, ...TemplateLiteralParserParametersType<Tail>]
+type GetTemplateLiteralParserType<Params> = Params extends [infer Head, ...infer Tail] ? readonly [
+    Head extends Schema<infer A, infer _I, infer _R> ? A : Head,
+    ...GetTemplateLiteralParserType<Tail>
+  ]
   : []
 
-type TemplateLiteralParserParametersEncoded<T> = T extends [infer Head, ...infer Tail] ? `${
-    & (Head extends Schema<infer _A, infer I, infer _R> ? I : Head)
-    & (AST.LiteralValue)}${TemplateLiteralParserParametersEncoded<Tail>}`
-  : ""
+type AppendEncoded<
+  Template extends string,
+  Next
+> = Next extends AST.LiteralValue ? `${Template}${Next}`
+  : Next extends Schema<infer _A, infer I extends AST.LiteralValue, infer _R> ? `${Template}${I}`
+  : never
+
+type GetTemplateLiteralParserEncoded<Params> = Params extends [...infer Init, infer Last] ?
+  AppendEncoded<GetTemplateLiteralParserEncoded<Init>, Last>
+  : ``
 
 /**
  * @category API interface
@@ -786,12 +785,18 @@ type TemplateLiteralParserParametersEncoded<T> = T extends [infer Head, ...infer
 export interface TemplateLiteralParser<Params extends array_.NonEmptyReadonlyArray<TemplateLiteralParserParameters>>
   extends
     Schema<
-      TemplateLiteralParserParametersType<Params>,
-      TemplateLiteralParserParametersEncoded<Params>,
+      GetTemplateLiteralParserType<Params>,
+      GetTemplateLiteralParserEncoded<Params>,
       Schema.Context<Params[number]>
     >
 {
   readonly params: Params
+}
+
+const literalValueCoercions: Record<string, ((v: AST.LiteralValue) => AST.LiteralValue)> = {
+  bigint: (v: AST.LiteralValue) => Predicate.isString(v) ? BigInt(v) : v,
+  boolean: (v: AST.LiteralValue) => v === "true" ? true : v === "false" ? false : v,
+  null: (v: AST.LiteralValue) => v === "null" ? null : v
 }
 
 /**
@@ -803,35 +808,50 @@ export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArra
 ): TemplateLiteralParser<Params> => {
   const encodedSchemas: Array<Schema.Any> = []
   const typeSchemas: Array<Schema.Any> = []
-  const numbers: Array<number> = []
+  const coercions: Record<number, ((v: AST.LiteralValue) => AST.LiteralValue) | undefined> = {}
   for (let i = 0; i < params.length; i++) {
-    const p = params[i]
-    if (isSchema(p)) {
-      const encoded = encodedSchema(p)
+    const param = params[i]
+    if (isSchema(param)) {
+      const encoded = encodedSchema(param)
       if (AST.isNumberKeyword(encoded.ast)) {
-        numbers.push(i)
+        coercions[i] = Number
       }
       encodedSchemas.push(encoded)
-      typeSchemas.push(p)
+      typeSchemas.push(param)
     } else {
-      const literal = Literal(p)
-      encodedSchemas.push(literal)
-      typeSchemas.push(literal)
+      const schema = Literal(param)
+      if (Predicate.isNumber(param)) {
+        coercions[i] = Number
+      } else if (Predicate.isBigInt(param)) {
+        coercions[i] = literalValueCoercions.bigint
+      } else if (Predicate.isBoolean(param)) {
+        coercions[i] = literalValueCoercions.boolean
+      } else if (Predicate.isNull(param)) {
+        coercions[i] = literalValueCoercions.null
+      }
+      encodedSchemas.push(schema)
+      typeSchemas.push(schema)
     }
   }
   const from = TemplateLiteral(...encodedSchemas as any)
   const re = AST.getTemplateLiteralCapturingRegExp(from.ast as AST.TemplateLiteral)
-  return class TemplateLiteralParserClass extends transform(from, Tuple(...typeSchemas), {
+  return class TemplateLiteralParserClass extends transformOrFail(from, Tuple(...typeSchemas), {
     strict: false,
-    decode: (s) => {
-      const out: Array<number | string> = re.exec(s)!.slice(1, params.length + 1)
-      for (let i = 0; i < numbers.length; i++) {
-        const index = numbers[i]
-        out[index] = Number(out[index])
+    decode: (s, _, ast) => {
+      const match = re.exec(s)
+      if (match) {
+        const out: Array<AST.LiteralValue> = match.slice(1, params.length + 1)
+        for (let i = 0; i < out.length; i++) {
+          const coerce = coercions[i]
+          if (coerce) {
+            out[i] = coerce(out[i])
+          }
+        }
+        return ParseResult.succeed(out)
       }
-      return out
+      return ParseResult.fail(new ParseResult.Type(ast, s, `${re.source}: no match for ${JSON.stringify(s)}`))
     },
-    encode: (tuple) => tuple.join("")
+    encode: (tuple) => ParseResult.succeed(tuple.join(""))
   }) {
     static params = params.slice()
   } as any
@@ -2548,6 +2568,8 @@ export interface TypeLiteral<
   ): Simplify<TypeLiteral.Type<Fields, Records>>
 }
 
+const preserveMissingMessageAnnotation = AST.whiteListAnnotations([AST.MissingMessageAnnotationId])
+
 const getDefaultTypeLiteralAST = <
   Fields extends Struct.Fields,
   const Records extends IndexSignature.Records
@@ -2568,7 +2590,7 @@ const getDefaultTypeLiteralAST = <
             const type = ast.type
             const isOptional = ast.isOptional
             const toAnnotations = ast.annotations
-            from.push(new AST.PropertySignature(key, type, isOptional, true))
+            from.push(new AST.PropertySignature(key, type, isOptional, true, preserveMissingMessageAnnotation(ast)))
             to.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, toAnnotations))
             pss.push(
               new AST.PropertySignature(key, type, isOptional, true, toAnnotations)
