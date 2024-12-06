@@ -86,6 +86,7 @@ export interface JsonSchema7String extends JsonSchemaAnnotations {
   maxLength?: number
   pattern?: string
   format?: string
+  contentMediaType?: string
 }
 
 /**
@@ -220,16 +221,25 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
   return out
 }
 
-type Target = "JsonSchema7" | "OpenApi3.1" | "OpenAI"
+type Target = "jsonSchema7" | "jsonSchema2019-09" | "openApi3.1"
+
+type ParseJsonStrategy = "from" | "to"
 
 /**
  * Creates a schema with additional options and definitions.
  *
- * This function takes a base schema and enhances it with options such as:
- *
  * - `definitions`: A record of definitions that are included in the schema.
  * - `definitionPath`: The path to the definitions within the schema (defaults to "#/$defs/").
- * - `target`: Which spec to target (defaults to "JsonSchema7").
+ * - `target`: Which spec to target. Possible values are:
+ *   - `'jsonSchema7'`: JSON Schema draft-07 (default behavior).
+ *   - `'jsonSchema2019-09'`: JSON Schema draft-2019-09.
+ *   - `'openApi3.1'`: OpenAPI 3.1.
+ * - `topLevelReferenceStrategy`: Controls the handling of the top-level reference. Possible values are:
+ *   - `"keep"`: Keep the top-level reference (default behavior).
+ *   - `"skip"`: Skip the top-level reference.
+ * - `parseJsonStrategy`: Controls the handling of the `parseJson` transformation. Possible values are:
+ *   - `"to"`: Use the `to` side of the transformation (default behavior).
+ *   - `"from"`: Use the `from` side of the transformation.
  *
  * @category encoding
  * @since 3.11.3
@@ -239,12 +249,19 @@ export const makeWithOptions = <A, I, R>(schema: Schema.Schema<A, I, R>, options
   readonly definitions: Record<string, JsonSchema7>
   readonly definitionPath?: string
   readonly target?: Target
+  readonly topLevelReferenceStrategy?: "skip" | "keep"
+  readonly parseJsonStrategy?: ParseJsonStrategy
 }): JsonSchema7 => {
   const definitionPath = options.definitionPath ?? "#/$defs/"
-  const getRef = (id: string) => `${definitionPath}${id}`
-  const target: Target = options.target ?? "JsonSchema7"
-  const handleIdentifier = target !== "OpenAI"
-  return go(schema.ast, options.definitions, handleIdentifier, [], { getRef, target })
+  const getRef = (id: string) => definitionPath + id
+  const target: Target = options.target ?? "jsonSchema7"
+  const handleIdentifier = options.topLevelReferenceStrategy !== "skip"
+  const parseJsonStrategy = options.parseJsonStrategy ?? "to"
+  return go(schema.ast, options.definitions, handleIdentifier, [], {
+    getRef,
+    target,
+    parseJsonStrategy
+  })
 }
 
 const constAny: JsonSchema7 = { $id: "/schemas/any" }
@@ -343,6 +360,7 @@ const go = (
   options: {
     readonly getRef: (id: string) => string
     readonly target: Target
+    readonly parseJsonStrategy: ParseJsonStrategy
   }
 ): JsonSchema7 => {
   if (handleIdentifier) {
@@ -599,15 +617,21 @@ const go = (
       return go(ast.f(), $defs, handleIdentifier, path, options)
     }
     case "Transformation": {
-      // Properly handle S.parseJson transformations by focusing on
-      // the 'to' side of the AST. This approach prevents the generation of useless schemas
-      // derived from the 'from' side (type: string), ensuring the output matches the intended
-      // complex schema type.
       if (isParseJsonTransformation(ast.from)) {
-        if (options.target === "OpenApi3.1") {
-          return { "type": "string" }
+        switch (options.parseJsonStrategy) {
+          case "to":
+            return go(ast.to, $defs, handleIdentifier, path, options)
+          case "from": {
+            const out: any = {
+              "type": "string",
+              "contentMediaType": "application/json"
+            }
+            if (options.target !== "jsonSchema7") {
+              out["contentSchema"] = go(ast.to, $defs, handleIdentifier, path, options)
+            }
+            return out
+          }
         }
-        return go(ast.to, $defs, handleIdentifier, path, options)
       }
       let next = ast.from
       if (AST.isTypeLiteralTransformation(ast.transformation)) {

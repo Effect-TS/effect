@@ -83,6 +83,8 @@ export interface String extends Annotations {
   maxLength?: number
   pattern?: string
   format?: string
+  contentMediaType?: string
+  contentSchema?: JsonSchema
 }
 
 /**
@@ -217,16 +219,27 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Root => {
 }
 
 /**
+ * Creates a schema with additional options and definitions.
+ *
+ * - `defs`: A record of definitions that are included in the schema.
+ * - `defsPath`: The path to the definitions within the schema (defaults to "#/$defs/").
+ * - `topLevelReferenceStrategy`: Controls the handling of the top-level reference. Possible values are:
+ *   - `"keep"`: Keep the top-level reference (default behavior).
+ *   - `"skip"`: Skip the top-level reference.
+ *
  * @category encoding
  * @since 1.0.0
  */
 export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
   readonly defs: Record<string, JsonSchema>
   readonly defsPath?: string
+  readonly topLevelReferenceStrategy?: "skip" | "keep"
 }): JsonSchema => {
   return JSONSchema.makeWithOptions(schema, {
     definitions: options.defs,
-    definitionPath: options.defsPath,
-    target: "OpenApi3.1"
+    definitionPath: options.defsPath ?? "#/components/schemas/",
+    target: "openApi3.1",
+    topLevelReferenceStrategy: options.topLevelReferenceStrategy ?? "keep",
+    parseJsonStrategy: "from"
   })
 }

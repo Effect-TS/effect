@@ -2,36 +2,54 @@ import * as OpenApiJsonSchema from "@effect/platform/OpenApiJsonSchema"
 import * as Schema from "effect/Schema"
 import { describe, expect, it } from "vitest"
 
-const expectJSONSchema = <A, I>(
-  schema: Schema.Schema<A, I>,
-  expected: object
-) => {
-  const jsonSchema = OpenApiJsonSchema.make(schema)
-  expect(jsonSchema).toStrictEqual(expected)
-  return jsonSchema
-}
-
-describe("parseJson", () => {
-  describe(`target: "JsonSchema7"`, () => {
-    describe(`should generate JSON Schemas by targeting the "from" side of parseJson`, () => {
-      it("Struct", () => {
-        const schema = Schema.parseJson(Schema.Struct({
-          a: Schema.parseJson(Schema.NumberFromString)
-        }))
-        expectJSONSchema(
-          schema,
-          { "type": "string" }
-        )
-      })
-
-      it("Struct with TypeLiteralTransformations", () => {
-        expectJSONSchema(
-          Schema.parseJson(Schema.Struct({
-            a: Schema.optionalWith(Schema.NonEmptyString, { default: () => "" })
-          })),
-          { "type": "string" }
-        )
-      })
+describe("OpenApiJsonSchema", () => {
+  it("default options", () => {
+    const schema = Schema.Struct({
+      a: Schema.NumberFromString,
+      b: Schema.parseJson(Schema.Struct({
+        c: Schema.parseJson(Schema.Int)
+      }))
+    })
+    const defs: Record<string, OpenApiJsonSchema.JsonSchema> = {}
+    const jsonSchema = OpenApiJsonSchema.makeWithDefs(schema, { defs })
+    expect(jsonSchema).toStrictEqual({
+      "additionalProperties": false,
+      "properties": {
+        "a": {
+          "$ref": "#/components/schemas/NumberFromString"
+        },
+        "b": {
+          "type": "string",
+          "contentMediaType": "application/json",
+          "contentSchema": {
+            "type": "object",
+            "required": ["c"],
+            "properties": {
+              "c": {
+                "type": "string",
+                "contentMediaType": "application/json",
+                "contentSchema": {
+                  "$ref": "#/components/schemas/Int"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["a", "b"],
+      "type": "object"
+    })
+    expect(defs).toStrictEqual({
+      "Int": {
+        "description": "an integer",
+        "title": "Int",
+        "type": "integer"
+      },
+      "NumberFromString": {
+        "description": "a string that will be parsed into a number",
+        "type": "string"
+      }
     })
   })
 })
