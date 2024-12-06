@@ -1132,7 +1132,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
           }
         }
       })
-      return core.async<void>((abortResume) => {
+      return core.unsafeAsync<void>((abortResume) => {
         resume = (_: any) => {
           abortResume(core.void)
         }
