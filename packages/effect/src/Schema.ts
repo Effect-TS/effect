@@ -6118,6 +6118,19 @@ export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): SchemaClass
   )
 
 /**
+ * Get the first element of a `NonEmptyReadonlyArray`.
+ *
+ * @category NonEmptyReadonlyArray transformations
+ * @since 3.12.0
+ */
+export const headNonEmpty = <A, I, R>(self: Schema<array_.NonEmptyReadonlyArray<A>, I, R>): SchemaClass<A, I, R> =>
+  transform(
+    self,
+    getNumberIndexedAccess(typeSchema(self)),
+    { strict: true, decode: array_.headNonEmpty, encode: array_.of }
+  )
+
+/**
  * Retrieves the first element of a `ReadonlyArray`.
  *
  * If the array is empty, it returns the `fallback` argument if provided; otherwise, it fails.
