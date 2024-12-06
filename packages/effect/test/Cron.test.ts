@@ -75,6 +75,10 @@ describe("Cron", () => {
     assertFalse(match("5 4 * * SUN", "2024-01-08 04:05:00"))
     assertFalse(match("5 4 * * SUN", "2025-01-07 04:05:00"))
 
+    assertTrue(match("42 5 0 * 8 *", "2024-08-01 00:05:42"))
+    assertFalse(match("42 5 0 * 8 *", "2024-09-01 00:05:42"))
+    assertFalse(match("42 5 0 * 8 *", "2024-08-01 01:05:42"))
+
     const london = DateTime.zoneUnsafeMakeNamed("Europe/London")
     const londonTime = DateTime.unsafeMakeZoned("2024-06-01 14:15:00Z", {
       timeZone: london,
@@ -98,6 +102,7 @@ describe("Cron", () => {
     deepStrictEqual(next("23 0-20/2 * * 0", after), new Date("2024-01-07 00:23:00"))
     deepStrictEqual(next("5 4 * * SUN", after), new Date("2024-01-07 04:05:00"))
     deepStrictEqual(next("5 4 * DEC SUN", after), new Date("2024-12-01 04:05:00"))
+    deepStrictEqual(next("30 5 0 8 2 *", after), new Date("2024-02-08 00:05:30"))
 
     const london = DateTime.zoneUnsafeMakeNamed("Europe/London")
     const londonTime = DateTime.unsafeMakeZoned("2024-02-08 00:05:00Z", {
