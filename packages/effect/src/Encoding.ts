@@ -147,13 +147,13 @@ export const DecodeException: (input: string, message?: string) => DecodeExcepti
 export const isDecodeException: (u: unknown) => u is DecodeException = Common.isDecodeException
 
 /**
- * @since 3.11.0
+ * @since 3.12.0
  * @category symbols
  */
 export const EncodeExceptionTypeId: unique symbol = Common.EncodeExceptionTypeId
 
 /**
- * @since 3.11.0
+ * @since 3.12.0
  * @category symbols
  */
 export type EncodeExceptionTypeId = typeof EncodeExceptionTypeId
@@ -161,7 +161,7 @@ export type EncodeExceptionTypeId = typeof EncodeExceptionTypeId
 /**
  * Represents a checked exception which occurs when encoding fails.
  *
- * @since 3.11.0
+ * @since 3.12.0
  * @category models
  */
 export interface EncodeException {
@@ -174,7 +174,7 @@ export interface EncodeException {
 /**
  * Creates a checked exception which occurs when encoding fails.
  *
- * @since 3.11.0
+ * @since 3.12.0
  * @category errors
  */
 export const EncodeException: (input: string, message?: string) => EncodeException = Common.EncodeException
@@ -182,7 +182,7 @@ export const EncodeException: (input: string, message?: string) => EncodeExcepti
 /**
  * Returns `true` if the specified value is an `Exception`, `false` otherwise.
  *
- * @since 3.11.0
+ * @since 3.12.0
  * @category refinements
  */
 export const isEncodeException: (u: unknown) => u is EncodeException = Common.isEncodeException
