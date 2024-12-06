@@ -5911,7 +5911,7 @@ export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): SchemaClass
    * Get the first element of a `NonEmptyReadonlyArray`.
    *
    * @category NonEmptyReadonlyArray transformations
-   * @since 3.11.0
+   * @since 3.12.0
    */
   export const headNonEmpty = <A, I, R>(self: Schema<array_.NonEmptyReadonlyArray<A>, I, R>): SchemaClass<A, I, R> => transform(
     self,
