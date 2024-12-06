@@ -5796,7 +5796,7 @@ export const StringFromHex: Schema<string> = makeEncodingTransformation(
  * router.push(searchParams.toString()) // router.push("?hello=hello%20world")
  *
  * @category string transformations
- * @since 3.11.0
+ * @since 3.12.0
  */
 export const StringFromUriComponent = transformOrFail(
     String$.annotations({

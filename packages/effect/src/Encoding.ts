@@ -92,7 +92,7 @@ export const decodeHexString = (str: string) => Either.map(decodeHex(str), (_) =
  * Encodes a UTF-8 `string` into a URI component `string`.
  *
  * @category encoding
- * @since 3.11.0
+ * @since 3.12.0
  */
 export const encodeUriComponent = (str: string): Either.Either<string,EncodeException> => Either.try({ try: () => encodeURIComponent(str), catch: (e) => EncodeException(str, (e as URIError).message) })
 
