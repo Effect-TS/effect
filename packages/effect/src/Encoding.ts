@@ -100,7 +100,7 @@ export const encodeUriComponent = (str: string): Either.Either<string,EncodeExce
  * Decodes a URI component `string` into a UTF-8 `string`.
  *
  * @category decoding
- * @since 3.11.0
+ * @since 3.12.0
  */
 export const decodeUriComponent = (str: string): Either.Either<string, DecodeException> =>
   Either.try({ try: () => decodeURIComponent(str), catch: (e) => DecodeException(str, (e as URIError).message) })
