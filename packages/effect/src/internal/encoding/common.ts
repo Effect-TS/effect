@@ -24,7 +24,9 @@ export const DecodeException = (input: string, message?: string): Encoding.Decod
 export const isDecodeException = (u: unknown): u is Encoding.DecodeException => hasProperty(u, DecodeExceptionTypeId)
 
 /** @internal */
-export const EncodeExceptionTypeId: Encoding.EncodeExceptionTypeId = Symbol.for("effect/Encoding/errors/Encode") as Encoding.EncodeExceptionTypeId
+export const EncodeExceptionTypeId: Encoding.EncodeExceptionTypeId = Symbol.for(
+  "effect/Encoding/errors/Encode"
+) as Encoding.EncodeExceptionTypeId
 
 /** @internal */
 export const EncodeException = (input: string, message?: string): Encoding.EncodeException => {

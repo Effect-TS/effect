@@ -176,10 +176,10 @@ describe("UriComponent", () => {
     "hello%2world"
   ]
 
-  const invalidEncode: Array<string> =[
+  const invalidEncode: Array<string> = [
     "\uD800",
     "\uDFFF"
-  ];
+  ]
 
   it.each(valid)(`should decode %j => %j`, (uri: string, raw: string) => {
     const decoded = Encoding.decodeUriComponent(uri)

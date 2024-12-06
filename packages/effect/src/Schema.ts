@@ -5799,24 +5799,24 @@ export const StringFromHex: Schema<string> = makeEncodingTransformation(
  * @since 3.12.0
  */
 export const StringFromUriComponent = transformOrFail(
-    String$.annotations({
-      description: `A string that is interpreted as being UriComponent-encoded and will be decoded into a UTF-8 string`
-    }),
-    String$,
-    {
-      strict: true,
-      decode: (s, _, ast) =>
-        either_.mapLeft(
-          Encoding.decodeUriComponent(s),
-          (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
-        ),
-      encode: (u, _, ast) =>
-        either_.mapLeft(
-          Encoding.encodeUriComponent(u),
-          (encodeException) => new ParseResult.Type(ast, u, encodeException.message)
-        ),
-    }
-  ).annotations({ identifier: `StringFromUriComponent` })
+  String$.annotations({
+    description: `A string that is interpreted as being UriComponent-encoded and will be decoded into a UTF-8 string`
+  }),
+  String$,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      either_.mapLeft(
+        Encoding.decodeUriComponent(s),
+        (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
+      ),
+    encode: (u, _, ast) =>
+      either_.mapLeft(
+        Encoding.encodeUriComponent(u),
+        (encodeException) => new ParseResult.Type(ast, u, encodeException.message)
+      )
+  }
+).annotations({ identifier: `StringFromUriComponent` })
 
 /**
  * @category schema id
