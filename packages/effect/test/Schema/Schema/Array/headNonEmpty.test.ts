@@ -9,7 +9,7 @@ describe("headNonEmpty", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       ["a"],
-`(readonly [NumberFromString, ...NumberFromString[]] <-> number | number)
+      `(readonly [NumberFromString, ...NumberFromString[]] <-> number | number)
 └─ Encoded side transformation failure
    └─ readonly [NumberFromString, ...NumberFromString[]]
       └─ [0]
