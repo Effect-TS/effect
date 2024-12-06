@@ -5793,7 +5793,7 @@ export const StringFromHex: Schema<string> = makeEncodingTransformation(
  * const searchParams = new URLSearchParams()
  * searchParams.append("hello", encoded)
  *
- * router.push(searchParams.toString()) // router.push("?hello=hello%20world")
+ * console.log(searchParams.toString()) // ?hello=hello%20world"
  *
  * @category string transformations
  * @since 3.12.0
