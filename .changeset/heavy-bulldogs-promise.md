@@ -2,7 +2,7 @@
 "effect": patch
 ---
 
-Correct the output order when generating a JSON Schema from a Union that includes literals and primitive schemas.
+JSONSchema: Correct the output order when generating a JSON Schema from a Union that includes literals and primitive schemas.
 
 Before
 
