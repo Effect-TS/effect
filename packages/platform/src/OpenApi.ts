@@ -299,7 +299,8 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
               name,
               in: "path",
               schema: jsonSchema,
-              required: schema.required.includes(name)
+              required: schema.required.includes(name),
+              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
             })
           })
         }
@@ -312,7 +313,8 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
               name,
               in: "query",
               schema: jsonSchema,
-              required: schema.required.includes(name)
+              required: schema.required.includes(name),
+              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
             })
           })
         }
@@ -325,7 +327,8 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
               name,
               in: "header",
               schema: jsonSchema,
-              required: schema.required.includes(name)
+              required: schema.required.includes(name),
+              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
             })
           })
         }
@@ -338,7 +341,8 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
               name,
               in: "query",
               schema: jsonSchema,
-              required: schema.required.includes(name)
+              required: schema.required.includes(name),
+              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
             })
           })
         }
