@@ -41,12 +41,14 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^",
     "testcontainers": "^10.11.0"
   },
   "peerDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
     "effect": "workspace:^"
