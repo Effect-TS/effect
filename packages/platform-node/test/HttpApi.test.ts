@@ -81,7 +81,8 @@ describe("HttpApi", () => {
       Effect.gen(function*() {
         const client = yield* HttpApiClient.make(Api)
         const users = yield* client.users.list({
-          headers: { page: 1 }
+          headers: { page: 1 },
+          urlParams: {}
         })
         const user = users[0]
         assert.deepStrictEqual(
@@ -150,7 +151,7 @@ describe("HttpApi", () => {
   it.effect("handler level context", () =>
     Effect.gen(function*() {
       const client = yield* HttpApiClient.make(Api)
-      const users = yield* client.users.list({ headers: { page: 1 } })
+      const users = yield* client.users.list({ headers: { page: 1 }, urlParams: {} })
       const user = users[0]
       assert.strictEqual(user.name, "page 1")
       assert.deepStrictEqual(user.createdAt, DateTime.unsafeMake(0))
@@ -206,7 +207,7 @@ describe("HttpApi", () => {
   it.effect("client withResponse", () =>
     Effect.gen(function*() {
       const client = yield* HttpApiClient.make(Api)
-      const [users, response] = yield* client.users.list({ headers: { page: 1 }, withResponse: true })
+      const [users, response] = yield* client.users.list({ headers: { page: 1 }, urlParams: {}, withResponse: true })
       assert.strictEqual(users[0].name, "page 1")
       assert.strictEqual(response.status, 200)
     }).pipe(Effect.provide(HttpLive)))
@@ -329,6 +330,9 @@ class UsersApi extends HttpApiGroup.make("users")
         page: Schema.NumberFromString.pipe(
           Schema.optionalWith({ default: () => 1 })
         )
+      }))
+      .setUrlParams(Schema.Struct({
+        query: Schema.optional(Schema.String).annotations({ description: "search query" })
       }))
       .addSuccess(Schema.Array(User))
       .addError(NoStatusError)
