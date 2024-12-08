@@ -529,6 +529,14 @@ export const unsafeAsync = <A, E = never, R = never>(
 }
 
 /* @internal */
+export const asyncInterrupt = <A, E = never, R = never>(
+  register: (
+    callback: (_: Effect.Effect<A, E, R>) => void
+  ) => void | Effect.Effect<void, never, R>,
+  blockingOn: FiberId.FiberId = FiberId.none
+): Effect.Effect<A, E, R> => suspend(() => unsafeAsync(register, blockingOn))
+
+/* @internal */
 export const async = <A, E = never, R = never>(
   resume: (
     callback: (_: Effect.Effect<A, E, R>) => void,
