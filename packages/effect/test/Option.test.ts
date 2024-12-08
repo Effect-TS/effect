@@ -26,7 +26,7 @@ describe("Option", () => {
       const y = yield* Option.some(2)
       return x + y
     })
-
+    // eslint-disable-next-line require-yield
     const b = Option.gen(function*() {
       return 10
     })
