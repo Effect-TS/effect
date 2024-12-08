@@ -9,8 +9,6 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
-import * as Mailbox from "effect/Mailbox"
-import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 import * as Net from "node:net"
 import type { Duplex } from "node:stream"
@@ -76,10 +74,8 @@ export const fromDuplex = <RO>(
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiberRuntime<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) =>
     Effect.gen(function*() {
-      const sendQueue = yield* Mailbox.make<Uint8Array | string | Socket.CloseEvent>({
-        capacity: fiber.getFiberRef(Socket.currentSendQueueCapacity),
-        strategy: "dropping"
-      })
+      let currentSocket: Duplex | undefined
+      const latch = yield* Effect.makeLatch(false)
       const openContext = fiber.currentContext as Context.Context<RO>
       const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
         Effect.gen(function*() {
@@ -128,43 +124,39 @@ export const fromDuplex = <RO>(
           conn.on("error", onError)
           conn.on("close", onClose)
 
-          yield* sendQueue.take.pipe(
-            Effect.flatMap((chunk) =>
-              Effect.async<void, Socket.SocketError, never>((resume) => {
-                if (Socket.isCloseEvent(chunk)) {
-                  conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
-                  resume(Effect.fail(
-                    new Socket.SocketCloseError({ reason: "Close", code: 1000, closeReason: chunk.reason })
-                  ))
-                } else {
-                  conn.write(chunk, (cause) => {
-                    resume(
-                      cause ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", cause })) : Effect.void
-                    )
-                  })
-                }
-              })
-            ),
-            Effect.forever,
-            Effect.catchTag("NoSuchElementException", () =>
-              Effect.async((resume) => {
-                conn.end(() => resume(Effect.void))
-              })),
-            FiberSet.run(fiberSet),
-            Effect.withUnhandledErrorLogLevel(Option.none())
-          )
+          currentSocket = conn
+          yield* latch.open
 
           return yield* FiberSet.join(fiberSet)
         }).pipe(
           Effect.mapInputContext((input: Context.Context<R | Scope.Scope>) => Context.merge(openContext, input)),
+          Effect.ensuring(Effect.sync(() => {
+            latch.unsafeClose()
+            currentSocket = undefined
+          })),
           Effect.scoped,
           Effect.interruptible
         )
 
-      const write = (chunk: Uint8Array | string | Socket.CloseEvent) => sendQueue.offer(chunk)
+      const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
+        latch.whenOpen(Effect.async<void>((resume) => {
+          const conn = currentSocket!
+          if (Socket.isCloseEvent(chunk)) {
+            conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
+          } else {
+            currentSocket!.write(chunk, (cause) => {
+              resume(cause ? Effect.die(new Socket.SocketGenericError({ reason: "Write", cause })) : Effect.void)
+            })
+          }
+        }))
+
       const writer = Effect.acquireRelease(
         Effect.succeed(write),
-        () => sendQueue.end
+        () =>
+          Effect.sync(() => {
+            if (!currentSocket || currentSocket.writableEnded) return
+            currentSocket.end()
+          })
       )
 
       return Socket.Socket.of({

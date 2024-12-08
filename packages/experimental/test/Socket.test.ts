@@ -84,7 +84,7 @@ describe("Socket", () => {
   })
 
   describe("TransformStream", () => {
-    it.effect("works", () =>
+    it.scoped("works", () =>
       Effect.gen(function*() {
         const readable = Stream.make("A", "B", "C").pipe(
           Stream.tap(() => Effect.sleep(50)),
@@ -108,7 +108,8 @@ describe("Socket", () => {
               Effect.zipRight(write("World"))
             )
           ),
-          Effect.scoped
+          Effect.scoped,
+          Effect.forkScoped
         )
         const received: Array<string> = []
         yield* socket.run((chunk) =>

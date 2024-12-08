@@ -47,7 +47,7 @@ class Semaphore {
   }
 
   readonly take = (n: number): Effect.Effect<number> =>
-    core.async<number>((resume) => {
+    core.asyncInterrupt<number>((resume) => {
       if (this.free < n) {
         const observer = () => {
           if (this.free < n) {
@@ -153,7 +153,7 @@ class Latch extends Effectable.Class<void> implements Effect.Latch {
     }
     return this.unsafeSchedule(fiber)
   })
-  await = core.unsafeAsync<void>((resume) => {
+  await = core.asyncInterrupt<void>((resume) => {
     if (this.isOpen) {
       return resume(core.void)
     }

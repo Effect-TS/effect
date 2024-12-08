@@ -299,7 +299,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   take: Effect<A, E | NoSuchElementException> = core.suspend(() =>
     this.unsafeTake() ?? core.zipRight(this.awaitTake, this.take)
   )
-  await: Effect<void, E> = core.unsafeAsync<void, E>((resume) => {
+  await: Effect<void, E> = core.asyncInterrupt<void, E>((resume) => {
     if (this.state._tag === "Done") {
       return resume(this.state.exit)
     }
@@ -337,7 +337,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
   }
 
   private offerRemainingSingle(message: A) {
-    return core.unsafeAsync<boolean>((resume) => {
+    return core.asyncInterrupt<boolean>((resume) => {
       if (this.state._tag !== "Open") {
         return resume(exitFalse)
       }
@@ -351,7 +351,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
     })
   }
   private offerRemainingArray(remaining: Array<A>) {
-    return core.unsafeAsync<Chunk.Chunk<A>>((resume) => {
+    return core.asyncInterrupt<Chunk.Chunk<A>>((resume) => {
       if (this.state._tag !== "Open") {
         return resume(core.exitSucceed(Chunk.unsafeFromArray(remaining)))
       }
@@ -394,7 +394,7 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
     }
     return false
   }
-  private awaitTake = core.unsafeAsync<void, E>((resume) => {
+  private awaitTake = core.asyncInterrupt<void, E>((resume) => {
     if (this.state._tag === "Done") {
       return resume(this.state.exit)
     }
