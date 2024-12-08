@@ -588,6 +588,9 @@ importers:
         specifier: ^1.25.1
         version: 1.25.1
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
@@ -611,6 +614,9 @@ importers:
         specifier: ^1.24.1
         version: 1.25.1
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
@@ -685,6 +691,9 @@ importers:
         specifier: ^1.25.1
         version: 1.25.1
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
@@ -708,6 +717,9 @@ importers:
         specifier: ^18.3.0
         version: 18.3.0
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
@@ -728,6 +740,9 @@ importers:
         specifier: ^3.11.0
         version: 3.11.0
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
@@ -751,6 +766,9 @@ importers:
         specifier: ^3.4.4
         version: 3.4.4
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
@@ -771,6 +789,9 @@ importers:
         specifier: ^1.25.1
         version: 1.25.1
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
@@ -794,6 +815,9 @@ importers:
         specifier: ^11.1.2
         version: 11.1.2
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform/dist
@@ -814,6 +838,9 @@ importers:
         specifier: ^1.25.1
         version: 1.25.1
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
@@ -831,6 +858,9 @@ importers:
         specifier: ^1.25.1
         version: 1.25.1
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
@@ -5473,7 +5503,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.6:
