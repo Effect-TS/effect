@@ -1,5 +1,19 @@
 # @effect/sql-libsql
 
+## 0.11.5
+
+### Patch Changes
+
+- [#4082](https://github.com/Effect-TS/effect/pull/4082) [`733f8be`](https://github.com/Effect-TS/effect/commit/733f8be16d71f46875598458e41d640c6f1b1d29) Thanks @thewilkybarkid! - Allow use of the URL object with libSQL
+
+- [#4090](https://github.com/Effect-TS/effect/pull/4090) [`e993627`](https://github.com/Effect-TS/effect/commit/e9936278d9b72a8b96c37cf7968d0e095069c488) Thanks @rocwang! - Add the missing dependency on @effect/experimental to @effect/sql-X
+
+- Updated dependencies [[`415f4c9`](https://github.com/Effect-TS/effect/commit/415f4c98321868531727a83cbaad70164f5e4c40), [`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f), [`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f)]:
+  - @effect/platform@0.70.5
+  - effect@3.11.4
+  - @effect/experimental@0.33.5
+  - @effect/sql@0.22.5
+
 ## 0.11.4
 
 ### Patch Changes

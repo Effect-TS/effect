@@ -1,5 +1,16 @@
 # @effect/platform-bun
 
+## 0.50.5
+
+### Patch Changes
+
+- [#4095](https://github.com/Effect-TS/effect/pull/4095) [`76b5996`](https://github.com/Effect-TS/effect/commit/76b59960a25149c37344977002a36f3116c8610c) Thanks @Zamion101! - Implement remoteAddress using BunServer.requestIp(source)
+
+- Updated dependencies [[`415f4c9`](https://github.com/Effect-TS/effect/commit/415f4c98321868531727a83cbaad70164f5e4c40), [`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f), [`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f)]:
+  - @effect/platform@0.70.5
+  - effect@3.11.4
+  - @effect/platform-node-shared@0.20.5
+
 ## 0.50.4
 
 ### Patch Changes

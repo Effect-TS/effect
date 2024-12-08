@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.70.5
+
+### Patch Changes
+
+- [#4091](https://github.com/Effect-TS/effect/pull/4091) [`415f4c9`](https://github.com/Effect-TS/effect/commit/415f4c98321868531727a83cbaad70164f5e4c40) Thanks @ryskajakub! - http api param inherits description from schema
+
+- [#4087](https://github.com/Effect-TS/effect/pull/4087) [`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2) Thanks @tim-smart! - remove Socket write indirection
+
+- Updated dependencies [[`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f)]:
+  - effect@3.11.4
+
 ## 0.70.4
 
 ### Patch Changes

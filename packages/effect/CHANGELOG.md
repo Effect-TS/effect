@@ -1,5 +1,15 @@
 # effect
 
+## 3.11.4
+
+### Patch Changes
+
+- [#4087](https://github.com/Effect-TS/effect/pull/4087) [`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2) Thanks @tim-smart! - remove use of .unsafeAsync in non-suspended contexts
+
+- [#4010](https://github.com/Effect-TS/effect/pull/4010) [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f) Thanks @fubhy! - Add support for daylight savings time transitions
+
+- [#4010](https://github.com/Effect-TS/effect/pull/4010) [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f) Thanks @fubhy! - Improved efficiency of `Cron.next` lookup
+
 ## 3.11.3
 
 ### Patch Changes
