@@ -4222,6 +4222,7 @@ export const lowercased =
       filter((a) => a === a.toLowerCase(), {
         schemaId: LowercasedSchemaId,
         description: "a lowercase string",
+        jsonSchema: { pattern: "^[^A-Z]*$" },
         ...annotations
       })
     )
@@ -4252,6 +4253,7 @@ export const capitalized =
       filter((a) => a[0]?.toUpperCase() === a[0], {
         schemaId: CapitalizedSchemaId,
         description: "a capitalized string",
+        jsonSchema: { pattern: "^[^a-z]?.*$" },
         ...annotations
       })
     )
@@ -4282,6 +4284,7 @@ export const uncapitalized =
       filter((a) => a[0]?.toLowerCase() === a[0], {
         schemaId: UncapitalizedSchemaId,
         description: "a uncapitalized string",
+        jsonSchema: { pattern: "^[^A-Z]?.*$" },
         ...annotations
       })
     )
@@ -4312,6 +4315,7 @@ export const uppercased =
       filter((a) => a === a.toUpperCase(), {
         schemaId: UppercasedSchemaId,
         description: "an uppercase string",
+        jsonSchema: { pattern: "^[^a-z]*$" },
         ...annotations
       })
     )

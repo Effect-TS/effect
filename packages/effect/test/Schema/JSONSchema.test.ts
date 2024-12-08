@@ -719,6 +719,66 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$ref": "#/$defs/Trimmed"
       })
     })
+
+    it("Lowercased", () => {
+      const schema = Schema.Lowercased
+      expectJSONSchemaProperty(schema, {
+        "$defs": {
+          "Lowercased": {
+            "description": "a lowercase string",
+            "pattern": "^[^A-Z]*$",
+            "title": "Lowercased",
+            "type": "string"
+          }
+        },
+        "$ref": "#/$defs/Lowercased"
+      })
+    })
+
+    it("Uppercased", () => {
+      const schema = Schema.Uppercased
+      expectJSONSchemaProperty(schema, {
+        "$defs": {
+          "Uppercased": {
+            "description": "an uppercase string",
+            "pattern": "^[^a-z]*$",
+            "title": "Uppercased",
+            "type": "string"
+          }
+        },
+        "$ref": "#/$defs/Uppercased"
+      })
+    })
+
+    it("Capitalized", () => {
+      const schema = Schema.Capitalized
+      expectJSONSchemaProperty(schema, {
+        "$defs": {
+          "Capitalized": {
+            "description": "a capitalized string",
+            "pattern": "^[^a-z]?.*$",
+            "title": "Capitalized",
+            "type": "string"
+          }
+        },
+        "$ref": "#/$defs/Capitalized"
+      })
+    })
+
+    it("Uncapitalized", () => {
+      const schema = Schema.Uncapitalized
+      expectJSONSchemaProperty(schema, {
+        "$defs": {
+          "Uncapitalized": {
+            "description": "a uncapitalized string",
+            "pattern": "^[^A-Z]?.*$",
+            "title": "Uncapitalized",
+            "type": "string"
+          }
+        },
+        "$ref": "#/$defs/Uncapitalized"
+      })
+    })
   })
 
   describe("Tuple", () => {
