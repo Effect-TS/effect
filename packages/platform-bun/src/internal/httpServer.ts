@@ -250,7 +250,11 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return this.source.url
   }
   get remoteAddress(): Option.Option<string> {
-    return this.remoteAddressOverride ? Option.some(this.remoteAddressOverride) : Option.none()
+    return this.remoteAddressOverride 
+    ? Option.some(this.remoteAddressOverride) 
+    : this.bunServer.requestIP(this.source)
+      ? Option.some(this.bunServer.requestIP(this.source)!.address)
+      : Option.none()
   }
   get headers(): Headers.Headers {
     this.headersOverride ??= Headers.fromInput(this.source.headers)

@@ -2397,6 +2397,7 @@ timestamp=2024-05-19T09:53:29.877Z level=INFO fiber=#0 message="Listening on htt
 ### xForwardedHeaders
 
 This middleware handles `X-Forwarded-*` headers, useful when your app is behind a reverse proxy or load balancer and you need to retrieve the original client's IP and host information.
+**WARNING:** The `X-Forwarded-*` headers are untrustworthy when no trusted reverse proxy or load balancer is between the client and server.
 
 ```ts
 import {
