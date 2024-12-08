@@ -2064,9 +2064,14 @@ export const isTypeLiteralTransformation: (ast: TransformationKind) => ast is Ty
  *
  * @since 3.10.0
  */
-export const annotations = (ast: AST, annotations: Annotations): AST => {
+export const annotations = (ast: AST, a: Annotations): AST => {
   const d = Object.getOwnPropertyDescriptors(ast)
-  d.annotations.value = { ...ast.annotations, ...annotations }
+  const value = { ...ast.annotations, ...a }
+  const surrogate = getSurrogateAnnotation(ast)
+  if (Option.isSome(surrogate)) {
+    value[SurrogateAnnotationId] = annotations(surrogate.value, a)
+  }
+  d.annotations.value = value
   return Object.create(Object.getPrototypeOf(ast), d)
 }
 
@@ -2671,6 +2676,22 @@ function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
   return changed ? out : as
 }
 
+/**
+ * Returns the from part of a transformation if it exists
+ *
+ * @internal
+ */
+export const getTransformationFrom = (ast: AST): AST | undefined => {
+  switch (ast._tag) {
+    case "Transformation":
+      return ast.from
+    case "Refinement":
+      return getTransformationFrom(ast.from)
+    case "Suspend":
+      return getTransformationFrom(ast.f())
+  }
+}
+
 const encodedAST_ = (ast: AST, isBound: boolean): AST => {
   switch (ast._tag) {
     case "Declaration": {
@@ -2722,14 +2743,17 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
         if (from === ast.from) {
           return ast
         }
-        if (!isTransformation(ast.from) && hasStableFilter(ast)) {
-          return new Refinement(from, ast.filter)
+        if (getTransformationFrom(ast.from) === undefined && hasStableFilter(ast)) {
+          return new Refinement(from, ast.filter, ast.annotations)
         }
       }
-      return from
+      const identifier = createJSONIdentifierAnnotation(ast)
+      return identifier ? annotations(from, identifier) : from
     }
-    case "Transformation":
-      return encodedAST_(ast.from, isBound)
+    case "Transformation": {
+      const identifier = createJSONIdentifierAnnotation(ast)
+      return encodedAST_(identifier ? annotations(ast.from, identifier) : ast.from, isBound)
+    }
   }
   return ast
 }
