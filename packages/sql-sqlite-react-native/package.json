@@ -39,11 +39,13 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/sql": "workspace:^",
     "@op-engineering/op-sqlite": "7.1.0",
     "effect": "workspace:^"
   },
   "peerDependencies": {
+    "@effect/experimental": "workspace:^",
     "@effect/sql": "workspace:^",
     "@op-engineering/op-sqlite": "7.1.0",
     "effect": "workspace:^"
