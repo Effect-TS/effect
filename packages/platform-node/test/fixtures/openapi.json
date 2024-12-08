@@ -294,7 +294,7 @@
             "description": "search query",
             "in": "query",
             "name": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "description": "search query",
               "type": "string"
