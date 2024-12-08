@@ -5784,16 +5784,22 @@ export const StringFromHex: Schema<string> = makeEncodingTransformation(
 
 /**
  * Decodes a URI component encoded string into a UTF-8 string.
+ * Can be used to store data in a URL.
  *
  * @example
+ * ```ts
  * import { Schema } from "effect"
  *
- * const encoded = Schema.encodeSync(Schema.StringFromUriComponent)("hello world")
+ * const PaginationSchema = Schema.Struct({
+ *   maxItemPerPage: Schema.Number,
+ *   page: Schema.Number
+ * })
  *
- * const searchParams = new URLSearchParams()
- * searchParams.append("hello", encoded)
+ * const UrlSchema = Schema.compose(Schema.StringFromUriComponent, Schema.parseJson(PaginationSchema))
  *
- * console.log(searchParams.toString()) // ?hello=hello%20world"
+ * console.log(Schema.encodeSync(UrlSchema)({ maxItemPerPage: 10, page: 1 }))
+ * Output: %7B%22maxItemPerPage%22%3A10%2C%22page%22%3A1%7D
+ * ```
  *
  * @category string transformations
  * @since 3.12.0
