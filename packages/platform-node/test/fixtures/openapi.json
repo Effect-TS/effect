@@ -289,6 +289,16 @@
               "$ref": "#/components/schemas/NumberFromString"
             },
             "required": false
+          },
+          {
+            "description": "search query",
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "description": "search query",
+              "type": "string"
+            }
           }
         ],
         "security": [
