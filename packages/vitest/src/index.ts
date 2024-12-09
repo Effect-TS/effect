@@ -3,6 +3,7 @@
  */
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
+import type * as FC from "effect/FastCheck"
 import type * as Layer from "effect/Layer"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
@@ -66,7 +67,8 @@ export namespace Vitest {
         R,
         [{ [K in keyof S]: Schema.Schema.Type<S[K]> }, V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext]
       >,
-      timeout?: number | V.TestOptions
+      timeout?: number | V.TestOptions,
+      check?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }>
     ) => void
   }
 
@@ -99,7 +101,8 @@ export namespace Vitest {
         schemas: { [K in keyof S]: Schema.Schema.Type<S[K]> },
         ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
       ) => void,
-      timeout?: number | V.TestOptions
+      timeout?: number | V.TestOptions,
+      check?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }>
     ) => void
   }
 }

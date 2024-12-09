@@ -97,13 +97,13 @@ const makeTester = <R>(
       (args, ctx) => run(ctx, [args], self) as any
     )
 
-  const prop: Vitest.Vitest.Tester<R>["prop"] = (name, schemaObj, self, timeout) => {
+  const prop: Vitest.Vitest.Tester<R>["prop"] = (name, schemaObj, self, timeout, check) => {
     if (Array.isArray(schemaObj)) {
       const arbs = schemaObj.map((schema) => Arbitrary.make(schema))
       return V.it(
         name,
         // @ts-ignore
-        (ctx) => fc.assert(fc.asyncProperty(...arbs, (...as) => run(ctx, [as as any, ctx], self))),
+        (ctx) => fc.assert(fc.asyncProperty(...arbs, (...as) => run(ctx, [as as any, ctx], self)), check),
         timeout
       )
     }
@@ -118,7 +118,7 @@ const makeTester = <R>(
     return V.it(
       name,
       // @ts-ignore
-      (ctx) => fc.assert(fc.asyncProperty(arbs, (...as) => run(ctx, [as[0] as any, ctx], self))),
+      (ctx) => fc.assert(fc.asyncProperty(arbs, (...as) => run(ctx, [as[0] as any, ctx], self)), check),
       timeout
     )
   }
@@ -126,13 +126,13 @@ const makeTester = <R>(
   return Object.assign(f, { skip, skipIf, runIf, only, each, prop })
 }
 
-export const prop: Vitest.Vitest.Methods["prop"] = (name, schemaObj, self, timeout) => {
+export const prop: Vitest.Vitest.Methods["prop"] = (name, schemaObj, self, timeout, check) => {
   if (Array.isArray(schemaObj)) {
     const arbs = schemaObj.map((schema) => Arbitrary.make(schema))
     return V.it(
       name,
       // @ts-ignore
-      (ctx) => fc.assert(fc.property(...arbs, (...as) => self(as, ctx))),
+      (ctx) => fc.assert(fc.property(...arbs, (...as) => self(as, ctx)), check),
       timeout
     )
   }
@@ -147,7 +147,7 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, schemaObj, self, timeo
   return V.it(
     name,
     // @ts-ignore
-    (ctx) => fc.assert(fc.property(arbs, (...as) => self(as[0], ctx))),
+    (ctx) => fc.assert(fc.property(arbs, (...as) => self(as[0], ctx)), check),
     timeout
   )
 }
