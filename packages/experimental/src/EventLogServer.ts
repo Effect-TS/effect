@@ -4,6 +4,7 @@
 import type * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import type { SocketError } from "@effect/platform/Socket"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -29,7 +30,7 @@ import * as MsgPack from "./MsgPack.js"
 export const makeHttpHandler: Effect.Effect<
   Effect.Effect<
     HttpServerResponse.HttpServerResponse,
-    HttpServerError.RequestError,
+    HttpServerError.RequestError | SocketError,
     HttpServerRequest.HttpServerRequest | Scope
   >,
   never,
