@@ -40,7 +40,7 @@ export const makeHandler: Effect.Effect<
     const write = (response: typeof ProtocolResponse.Type) => Effect.suspend(() => writeRaw(encodeResponse(response)))
     const subscriptions = yield* FiberMap.make<number>()
 
-    yield* write(new Hello({ remoteId }))
+    yield* Effect.fork(write(new Hello({ remoteId })))
 
     yield* socket.run((data) => {
       const request = decodeRequest(data)
