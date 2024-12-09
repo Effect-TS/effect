@@ -235,11 +235,10 @@ export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
   readonly defsPath?: string
   readonly topLevelReferenceStrategy?: "skip" | "keep"
 }): JsonSchema => {
-  return JSONSchema.makeWithOptions(schema, {
+  return JSONSchema.fromAST(schema.ast, {
     definitions: options.defs,
     definitionPath: options.defsPath ?? "#/components/schemas/",
     target: "openApi3.1",
-    topLevelReferenceStrategy: options.topLevelReferenceStrategy ?? "keep",
-    parseJsonStrategy: "from"
+    topLevelReferenceStrategy: options.topLevelReferenceStrategy ?? "keep"
   })
 }

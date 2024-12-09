@@ -213,7 +213,13 @@ export type JsonSchema7Root = JsonSchema7 & {
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
   const definitions: Record<string, any> = {}
-  const out: JsonSchema7Root = makeWithOptions(schema, { definitions })
+  const ast = AST.isTransformation(schema.ast) && isParseJsonTransformation(schema.ast.from)
+    // Special case top level `parseJson` transformations
+    ? schema.ast.to
+    : schema.ast
+  const out: JsonSchema7Root = fromAST(ast, {
+    definitions
+  })
   out.$schema = $schema
   if (!Record.isEmptyRecord(definitions)) {
     out.$defs = definitions
@@ -223,44 +229,46 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
 
 type Target = "jsonSchema7" | "jsonSchema2019-09" | "openApi3.1"
 
-type ParseJsonStrategy = "from" | "to"
+type TopLevelReferenceStrategy = "skip" | "keep"
 
 /**
- * Creates a schema with additional options and definitions.
+ * Returns a JSON Schema with additional options and definitions.
+ *
+ * **Warning**
+ *
+ * This function is experimental and subject to change.
+ *
+ * **Details**
  *
  * - `definitions`: A record of definitions that are included in the schema.
- * - `definitionPath`: The path to the definitions within the schema (defaults to "#/$defs/").
+ * - `definitionPath`: The path to the definitions within the schema (defaults
+ *   to "#/$defs/").
  * - `target`: Which spec to target. Possible values are:
  *   - `'jsonSchema7'`: JSON Schema draft-07 (default behavior).
  *   - `'jsonSchema2019-09'`: JSON Schema draft-2019-09.
  *   - `'openApi3.1'`: OpenAPI 3.1.
- * - `topLevelReferenceStrategy`: Controls the handling of the top-level reference. Possible values are:
+ * - `topLevelReferenceStrategy`: Controls the handling of the top-level
+ *   reference. Possible values are:
  *   - `"keep"`: Keep the top-level reference (default behavior).
  *   - `"skip"`: Skip the top-level reference.
- * - `parseJsonStrategy`: Controls the handling of the `parseJson` transformation. Possible values are:
- *   - `"to"`: Use the `to` side of the transformation (default behavior).
- *   - `"from"`: Use the `from` side of the transformation.
  *
  * @category encoding
  * @since 3.11.3
  * @experimental
  */
-export const makeWithOptions = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
+export const fromAST = (ast: AST.AST, options: {
   readonly definitions: Record<string, JsonSchema7>
   readonly definitionPath?: string
   readonly target?: Target
-  readonly topLevelReferenceStrategy?: "skip" | "keep"
-  readonly parseJsonStrategy?: ParseJsonStrategy
+  readonly topLevelReferenceStrategy?: TopLevelReferenceStrategy
 }): JsonSchema7 => {
   const definitionPath = options.definitionPath ?? "#/$defs/"
   const getRef = (id: string) => definitionPath + id
   const target: Target = options.target ?? "jsonSchema7"
   const handleIdentifier = options.topLevelReferenceStrategy !== "skip"
-  const parseJsonStrategy = options.parseJsonStrategy ?? "to"
-  return go(schema.ast, options.definitions, handleIdentifier, [], {
+  return go(ast, options.definitions, handleIdentifier, [], {
     getRef,
-    target,
-    parseJsonStrategy
+    target
   })
 }
 
@@ -333,8 +341,10 @@ const pruneUndefinedFromPropertySignature = (ast: AST.AST): AST.AST | undefined 
         }
         break
       }
+      case "Suspend":
+        return pruneUndefinedFromPropertySignature(ast.f())
       case "Transformation":
-        return pruneUndefinedFromPropertySignature(isParseJsonTransformation(ast.from) ? ast.to : ast.from)
+        return pruneUndefinedFromPropertySignature(ast.from)
     }
   }
 }
@@ -360,7 +370,6 @@ const go = (
   options: {
     readonly getRef: (id: string) => string
     readonly target: Target
-    readonly parseJsonStrategy: ParseJsonStrategy
   }
 ): JsonSchema7 => {
   if (handleIdentifier) {
@@ -618,20 +627,14 @@ const go = (
     }
     case "Transformation": {
       if (isParseJsonTransformation(ast.from)) {
-        switch (options.parseJsonStrategy) {
-          case "to":
-            return go(ast.to, $defs, handleIdentifier, path, options)
-          case "from": {
-            const out: any = {
-              "type": "string",
-              "contentMediaType": "application/json"
-            }
-            if (options.target !== "jsonSchema7") {
-              out["contentSchema"] = go(ast.to, $defs, handleIdentifier, path, options)
-            }
-            return out
-          }
+        const out: JsonSchema7String & { contentSchema?: JsonSchema7 } = {
+          "type": "string",
+          "contentMediaType": "application/json"
         }
+        if (options.target !== "jsonSchema7") {
+          out["contentSchema"] = go(ast.to, $defs, handleIdentifier, path, options)
+        }
+        return out
       }
       let next = ast.from
       if (AST.isTypeLiteralTransformation(ast.transformation)) {

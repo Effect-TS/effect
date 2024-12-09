@@ -76,7 +76,7 @@ describe("makeWithOptions", () => {
   it("definitionsPath", () => {
     const schema = Schema.String.annotations({ identifier: "08368672-2c02-4d6d-92b0-dd0019b33a7b" })
     const definitions = {}
-    const jsonSchema = JSONSchema.makeWithOptions(schema, {
+    const jsonSchema = JSONSchema.fromAST(schema.ast, {
       definitions,
       definitionPath: "#/components/schemas/"
     })
@@ -90,16 +90,15 @@ describe("makeWithOptions", () => {
     })
   })
 
-  describe("parseJsonStrategy", () => {
-    describe(`"from"`, () => {
-      it(`target: "jsonSchema7"`, () => {
+  describe("target", () => {
+    describe("jsonSchema7", () => {
+      it("parseJson handling", () => {
         const schema = Schema.parseJson(Schema.Struct({
           a: Schema.parseJson(Schema.NumberFromString)
         }))
         const definitions = {}
-        const jsonSchema = JSONSchema.makeWithOptions(schema, {
-          definitions,
-          parseJsonStrategy: "from"
+        const jsonSchema = JSONSchema.fromAST(schema.ast, {
+          definitions
         })
         expect(jsonSchema).toStrictEqual({
           "type": "string",
@@ -107,15 +106,16 @@ describe("makeWithOptions", () => {
         })
         expect(definitions).toStrictEqual({})
       })
+    })
 
-      it(`target: "jsonSchema2019-09"`, () => {
+    describe("jsonSchema2019-09", () => {
+      it("parseJson handling", () => {
         const schema = Schema.parseJson(Schema.Struct({
           a: Schema.parseJson(Schema.NumberFromString)
         }))
         const definitions = {}
-        const jsonSchema = JSONSchema.makeWithOptions(schema, {
+        const jsonSchema = JSONSchema.fromAST(schema.ast, {
           definitions,
-          parseJsonStrategy: "from",
           target: "jsonSchema2019-09"
         })
         expect(jsonSchema).toStrictEqual({
@@ -143,15 +143,16 @@ describe("makeWithOptions", () => {
           }
         })
       })
+    })
 
-      it(`target: "openApi3.1"`, () => {
+    describe("openApi3.1", () => {
+      it("parseJson handling", () => {
         const schema = Schema.parseJson(Schema.Struct({
           a: Schema.parseJson(Schema.NumberFromString)
         }))
         const definitions = {}
-        const jsonSchema = JSONSchema.makeWithOptions(schema, {
+        const jsonSchema = JSONSchema.fromAST(schema.ast, {
           definitions,
-          parseJsonStrategy: "from",
           target: "openApi3.1"
         })
         expect(jsonSchema).toStrictEqual({
@@ -180,40 +181,13 @@ describe("makeWithOptions", () => {
         })
       })
     })
-
-    describe(`"to"`, () => {
-      it(`should generate JSON Schemas by targeting the "to" side of parseJson`, () => {
-        const schema = Schema.parseJson(Schema.Struct({
-          a: Schema.parseJson(Schema.NumberFromString)
-        }))
-        expectJSONSchema(
-          schema,
-          {
-            "$defs": {
-              "NumberFromString": {
-                "type": "string",
-                "description": "a string that will be parsed into a number"
-              }
-            },
-            "type": "object",
-            "required": ["a"],
-            "properties": {
-              "a": {
-                "$ref": "#/$defs/NumberFromString"
-              }
-            },
-            "additionalProperties": false
-          }
-        )
-      })
-    })
   })
 
   describe("topLevelReferenceStrategy", () => {
     it(`"skip"`, () => {
       const schema = Schema.String.annotations({ identifier: "1b205579-f159-48d4-a218-f09426bca040" })
       const definitions = {}
-      const jsonSchema = JSONSchema.makeWithOptions(schema, {
+      const jsonSchema = JSONSchema.fromAST(schema.ast, {
         definitions,
         topLevelReferenceStrategy: "skip"
       })
@@ -226,6 +200,26 @@ describe("makeWithOptions", () => {
 })
 
 describe("make", () => {
+  it("handling of a top level `parseJson` should targeting the \"to\" side", () => {
+    const schema = Schema.parseJson(Schema.Struct({
+      a: Schema.parseJson(Schema.NumberFromString)
+    }))
+    expectJSONSchema(
+      schema,
+      {
+        "type": "object",
+        "required": ["a"],
+        "properties": {
+          "a": {
+            "type": "string",
+            "contentMediaType": "application/json"
+          }
+        },
+        "additionalProperties": false
+      }
+    )
+  })
+
   describe("Unsupported schemas", () => {
     describe("Missing jsonSchema annotation Error", () => {
       it("Declaration", () => {
@@ -3109,7 +3103,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
-    it("OptionFromUndefinedOr", () => {
+    it("Transformation: OptionFromUndefinedOr", () => {
       expectJsonSchemaAnnotations(
         Schema.Struct({
           a: Schema.OptionFromUndefinedOr(Schema.String)
@@ -3127,10 +3121,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
-    it("parseJson + OptionFromUndefinedOr", () => {
+    it("Suspend", () => {
       expectJsonSchemaAnnotations(
         Schema.Struct({
-          a: Schema.parseJson(Schema.OptionFromUndefinedOr(Schema.String))
+          a: Schema.suspend(() => Schema.UndefinedOr(Schema.String))
         }),
         {
           "type": "object",
