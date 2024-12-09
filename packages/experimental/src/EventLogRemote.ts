@@ -234,7 +234,7 @@ export const fromSocket: Effect.Effect<
                 const deferred = yield* Deferred.make<void>()
                 const id = pendingCounter++
                 pending.set(id, deferred)
-                yield* write(
+                yield* Effect.orDie(write(
                   new WriteEntries({
                     publicKey: identity.publicKey,
                     id,
@@ -244,7 +244,7 @@ export const fromSocket: Effect.Effect<
                       encryptedEntry
                     }))
                   })
-                )
+                ))
                 yield* Deferred.await(deferred)
               }),
             changes: (identity, startSequence) =>
@@ -253,14 +253,14 @@ export const fromSocket: Effect.Effect<
                 const mailbox = yield* RcMap.get(subscriptions, id)
                 identities.set(mailbox, identity)
                 yield* Effect.acquireRelease(
-                  write(
+                  Effect.orDie(write(
                     new RequestChanges({
                       publicKey: identity.publicKey,
                       subscriptionId: id,
                       startSequence
                     })
-                  ),
-                  () => write(new StopChanges({ subscriptionId: id }))
+                  )),
+                  () => Effect.ignore(write(new StopChanges({ subscriptionId: id })))
                 )
                 return mailbox
               })
