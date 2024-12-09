@@ -64,6 +64,8 @@ describe("make", () => {
     const schema = S.Struct({})
     expect(schema.make({})).toStrictEqual({})
     expect(schema.make(undefined)).toStrictEqual({})
+    expect(schema.make(undefined, true)).toStrictEqual({})
+    expect(schema.make(undefined, false)).toStrictEqual({})
     expect(schema.make()).toStrictEqual({})
   })
 
@@ -73,6 +75,8 @@ describe("make", () => {
     })
     expect(schema.make({})).toStrictEqual({ a: 0 })
     expect(schema.make(undefined)).toStrictEqual({ a: 0 })
+    expect(schema.make(undefined, true)).toStrictEqual({ a: 0 })
+    expect(schema.make(undefined, false)).toStrictEqual({ a: 0 })
     expect(schema.make()).toStrictEqual({ a: 0 })
   })
 

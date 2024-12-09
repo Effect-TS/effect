@@ -156,11 +156,15 @@ describe("Class", () => {
     it("should accept void if the Class has no fields", () => {
       class A extends S.Class<A>("A")({}) {}
       expect({ ...new A() }).toStrictEqual({})
+      expect({ ...new A(undefined) }).toStrictEqual({})
       expect({ ...new A(undefined, true) }).toStrictEqual({})
+      expect({ ...new A(undefined, false) }).toStrictEqual({})
       expect({ ...new A({}) }).toStrictEqual({})
 
       expect({ ...A.make() }).toStrictEqual({})
+      expect({ ...A.make(undefined) }).toStrictEqual({})
       expect({ ...A.make(undefined, true) }).toStrictEqual({})
+      expect({ ...A.make(undefined, false) }).toStrictEqual({})
       expect({ ...A.make({}) }).toStrictEqual({})
     })
 
@@ -170,10 +174,14 @@ describe("Class", () => {
       }) {}
       expect({ ...new A() }).toStrictEqual({ a: "" })
       expect({ ...new A(undefined) }).toStrictEqual({ a: "" })
+      expect({ ...new A(undefined, true) }).toStrictEqual({ a: "" })
+      expect({ ...new A(undefined, false) }).toStrictEqual({ a: "" })
       expect({ ...new A({}) }).toStrictEqual({ a: "" })
 
       expect({ ...A.make() }).toStrictEqual({ a: "" })
       expect({ ...A.make(undefined) }).toStrictEqual({ a: "" })
+      expect({ ...A.make(undefined, true) }).toStrictEqual({ a: "" })
+      expect({ ...A.make(undefined, false) }).toStrictEqual({ a: "" })
       expect({ ...A.make({}) }).toStrictEqual({ a: "" })
     })
   })
