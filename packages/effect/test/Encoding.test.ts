@@ -161,3 +161,47 @@ describe("Hex", () => {
     assert(Encoding.isDecodeException(result.left))
   })
 })
+
+describe("UriComponent", () => {
+  const valid: Array<[uri: string, raw: string]> = [
+    ["", ""],
+    ["hello", "hello"],
+    ["hello%20world", "hello world"],
+    ["hello%20world%2F", "hello world/"],
+    ["%20", " "],
+    ["%2F", "/"]
+  ]
+
+  const invalidDecode: Array<string> = [
+    "hello%2world"
+  ]
+
+  const invalidEncode: Array<string> = [
+    "\uD800",
+    "\uDFFF"
+  ]
+
+  it.each(valid)(`should decode %j => %j`, (uri: string, raw: string) => {
+    const decoded = Encoding.decodeUriComponent(uri)
+    assert(Either.isRight(decoded))
+    deepStrictEqual(decoded.right, raw)
+  })
+
+  it.each(valid)(`should encode %j => %j`, (uri: string, raw: string) => {
+    const encoded = Encoding.encodeUriComponent(raw)
+    assert(Either.isRight(encoded))
+    deepStrictEqual(encoded.right, uri)
+  })
+
+  it.each(invalidDecode)(`should refuse to decode %j`, (uri: string) => {
+    const result = Encoding.decodeUriComponent(uri)
+    assert(Either.isLeft(result))
+    assert(Encoding.isDecodeException(result.left))
+  })
+
+  it.each(invalidEncode)(`should refuse to encode %j`, (raw: string) => {
+    const result = Encoding.encodeUriComponent(raw)
+    assert(Either.isLeft(result))
+    assert(Encoding.isEncodeException(result.left))
+  })
+})
