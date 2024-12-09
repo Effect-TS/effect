@@ -2563,7 +2563,9 @@ export interface TypeLiteral<
     annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records>
   make(
-    props: Simplify<TypeLiteral.Constructor<Fields, Records>>,
+    props: RequiredKeys<TypeLiteral.Constructor<Fields, Records>> extends never
+      ? void | Simplify<TypeLiteral.Constructor<Fields, Records>>
+      : Simplify<TypeLiteral.Constructor<Fields, Records>>,
     options?: MakeOptions
   ): Simplify<TypeLiteral.Type<Fields, Records>>
 }

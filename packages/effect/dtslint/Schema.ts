@@ -2603,7 +2603,7 @@ const make3 = S.Struct({
   a: S.withConstructorDefault(S.propertySignature(S.String), () => "")
 }).make
 
-// $ExpectType { readonly a?: string; }
+// $ExpectType void | { readonly a?: string; } | undefined
 hole<Parameters<typeof make3>["0"]>()
 
 class AA extends S.Class<AA>("AA")({
@@ -2638,7 +2638,7 @@ S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", con
 const make4 =
   S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) }).make
 
-// $ExpectType { readonly a?: string; }
+// $ExpectType void | { readonly a?: string; } | undefined
 hole<Parameters<typeof make4>["0"]>()
 
 // ---------------------------------------------
