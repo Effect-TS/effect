@@ -502,8 +502,8 @@ export const scanRight: {
  * @since 2.0.0
  */
 export const isArray: {
-  (self: unknown): self is Array<unknown>
   <T>(self: T): self is Extract<T, ReadonlyArray<any>>
+  (self: unknown): self is Array<unknown>
 } = Array.isArray
 
 /**
