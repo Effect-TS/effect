@@ -253,7 +253,7 @@ type TopLevelReferenceStrategy = "skip" | "keep"
  *   - `"skip"`: Skip the top-level reference.
  *
  * @category encoding
- * @since 3.11.3
+ * @since 3.11.5
  * @experimental
  */
 export const fromAST = (ast: AST.AST, options: {
