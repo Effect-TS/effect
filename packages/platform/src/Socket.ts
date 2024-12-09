@@ -487,7 +487,9 @@ export const fromWebSocket = <RO>(
       runRaw((data) =>
         typeof data === "string"
           ? handler(encoder.encode(data))
-          : handler(data)
+          : data instanceof Uint8Array
+          ? handler(data)
+          : handler(new Uint8Array(data))
       )
 
     const write = (chunk: Uint8Array | string | CloseEvent) =>
