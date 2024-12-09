@@ -104,7 +104,7 @@ export const encodeUriComponent = (str: string): Either.Either<string, EncodeExc
  * @since 3.12.0
  */
 export const decodeUriComponent = (str: string): Either.Either<string, DecodeException> =>
-  Either.try({ try: () => decodeURIComponent(str), catch: (e) => DecodeException(str, (e as URIError).message) })
+  Either.try({ try: () => decodeURIComponent(str), catch: (e) => DecodeException(str, e instanceof Error ? e.message : "Invalid input") })
 
 /**
  * @since 2.0.0
