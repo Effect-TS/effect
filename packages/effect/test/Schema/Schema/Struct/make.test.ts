@@ -115,4 +115,11 @@ describe("make", () => {
     Util.expectConstructorSuccess(schema, { [b]: 2 }, { a: "", [b]: 2 })
     Util.expectConstructorSuccess(schema, {}, { a: "", [b]: 0 })
   })
+
+  it("withConstructorDefault + withDecodingDefault", () => {
+    const schema = S.Struct({
+      a: S.optional(S.Number).pipe(S.withConstructorDefault(() => 0), S.withDecodingDefault(() => 1))
+    })
+    Util.expectConstructorSuccess(schema, {}, { a: 0 })
+  })
 })
