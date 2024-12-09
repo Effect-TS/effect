@@ -145,6 +145,10 @@ export const getSchemaExtendErrorMessage = (x: AST.AST, y: AST.AST, path: Readon
 export const getSchemaUnsupportedLiteralSpanErrorMessage = (ast: AST.AST) =>
   getErrorMessage("Unsupported template literal span", undefined, undefined, ast)
 
+/** @internal */
+export const getSchemaUnsupportedWithDecodingDefaultErrorMessage = (ast: AST.AST) =>
+  getErrorMessage("Unsupported `withDecodingDefault` operation", undefined, undefined, ast)
+
 // ---------------------------------------------
 // AST
 // ---------------------------------------------

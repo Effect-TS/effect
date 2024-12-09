@@ -1900,7 +1900,7 @@ export const withDecodingDefault: {
     R
   >(
     self: PropertySignature<"?:", Type, Key, "?:", Encoded, HasDefault, R>
-  ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, HasDefault, R>
+  ) => PropertySignature<":", Type, Key, "?:", Encoded, HasDefault, R>
   <
     Type,
     Key extends PropertyKey,
@@ -1910,7 +1910,7 @@ export const withDecodingDefault: {
   >(
     self: PropertySignature<"?:", Type, Key, "?:", Encoded, HasDefault, R>,
     defaultValue: () => Types.NoInfer<Type>
-  ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, HasDefault, R>
+  ): PropertySignature<":", Type, Key, "?:", Encoded, HasDefault, R>
 } = dual(2, <
   Type,
   Key extends PropertyKey,
@@ -1919,27 +1919,41 @@ export const withDecodingDefault: {
 >(
   self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
   defaultValue: () => Types.NoInfer<Type>
-): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R> => {
+): PropertySignature<":", Type, Key, "?:", Encoded, true, R> => {
   const ast = self.ast
   switch (ast._tag) {
-    case "PropertySignatureDeclaration":
+    case "PropertySignatureDeclaration": {
+      const to = AST.typeAST(ast.type)
       return makePropertySignature(
         new PropertySignatureTransformation(
-          ast,
-          new ToPropertySignature(AST.typeAST(ast.type), false, true, {}, undefined),
+          new FromPropertySignature(ast.type, ast.isOptional, ast.isReadonly, ast.annotations),
+          new ToPropertySignature(to, false, true, {}, ast.defaultValue),
           (o) => applyDefaultValue(o, defaultValue),
           identity
         )
       )
-    case "PropertySignatureTransformation":
+    }
+
+    case "PropertySignatureTransformation": {
+      const to = AST.typeAST(ast.to.type)
+      if (to !== ast.to.type) {
+        throw new Error(errors_.getSchemaUnsupportedWithDecodingDefaultErrorMessage(ast.to.type))
+      }
       return makePropertySignature(
         new PropertySignatureTransformation(
           ast.from,
-          new ToPropertySignature(ast.to.type, false, ast.to.isReadonly, ast.to.annotations, ast.to.defaultValue),
+          new ToPropertySignature(
+            to,
+            false,
+            ast.to.isReadonly,
+            ast.to.annotations,
+            ast.to.defaultValue
+          ),
           (o) => applyDefaultValue(ast.decode(o), defaultValue),
           ast.encode
         )
       )
+    }
   }
 })
 
@@ -1951,7 +1965,7 @@ export const withDecodingDefault: {
  */
 export const withDefaults: {
   <Type>(defaults: {
-    constructor: () => Types.NoInfer<Exclude<Type, undefined>>
+    constructor: () => Types.NoInfer<Type>
     decoding: () => Types.NoInfer<Type>
   }): <
     Key extends PropertyKey,
@@ -1959,7 +1973,7 @@ export const withDefaults: {
     R
   >(
     self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>
-  ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
+  ) => PropertySignature<":", Type, Key, "?:", Encoded, true, R>
   <
     Type,
     Key extends PropertyKey,
@@ -1968,10 +1982,10 @@ export const withDefaults: {
   >(
     self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
     defaults: {
-      constructor: () => Types.NoInfer<Exclude<Type, undefined>>
+      constructor: () => Types.NoInfer<Type>
       decoding: () => Types.NoInfer<Type>
     }
-  ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
+  ): PropertySignature<":", Type, Key, "?:", Encoded, true, R>
 } = dual(2, <
   Type,
   Key extends PropertyKey,
@@ -1980,11 +1994,12 @@ export const withDefaults: {
 >(
   self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
   defaults: {
-    constructor: () => Types.NoInfer<Exclude<Type, undefined>>
+    constructor: () => Types.NoInfer<Type>
     decoding: () => Types.NoInfer<Type>
   }
-): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R> =>
-  self.pipe(withDecodingDefault(defaults.decoding), withConstructorDefault(defaults.constructor)))
+): PropertySignature<":", Type, Key, "?:", Encoded, true, R> => {
+  return withDecodingDefault(withConstructorDefault(self, defaults.constructor), defaults.decoding)
+})
 
 /**
  * Enhances a property signature by specifying a different key for it in the Encoded type.

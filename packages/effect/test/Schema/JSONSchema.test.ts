@@ -301,7 +301,7 @@ schema (UndefinedKeyword): undefined`
           `Missing annotation
 at path: ["a"]
 details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (UndefinedKeyword): undefined`
+schema (NeverKeyword): never`
         )
       })
 
@@ -1858,6 +1858,40 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                   "title": "119da226-70aa-4ae6-ab63-7db10c7e9dde"
                 }
               }
+            }
+          )
+        })
+      })
+
+      describe("withDecodingDefault", () => {
+        it("optional + String", () => {
+          expectJSONSchemaProperty(
+            Schema.Struct({
+              a: Schema.optional(Schema.String).pipe(Schema.withDecodingDefault(() => "a"))
+            }),
+            {
+              "type": "object",
+              "required": [],
+              "properties": {
+                "a": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          )
+        })
+
+        it("optional + UndefinedOr(String)", () => {
+          expectJSONSchemaProperty(
+            Schema.Struct({
+              a: Schema.optional(Schema.UndefinedOr(Schema.String)).pipe(Schema.withDecodingDefault(() => "a"))
+            }),
+            {
+              "type": "object",
+              "required": [],
+              "properties": {
+                "a": { "type": "string" }
+              },
+              "additionalProperties": false
             }
           )
         })
