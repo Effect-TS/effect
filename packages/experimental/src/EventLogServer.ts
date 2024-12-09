@@ -4,7 +4,7 @@
 import type * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import type { SocketError } from "@effect/platform/Socket"
+import type * as Socket from "@effect/platform/Socket"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -25,23 +25,17 @@ import * as MsgPack from "./MsgPack.js"
 
 /**
  * @since 1.0.0
- * @category websockets
+ * @category constructors
  */
-export const makeHttpHandler: Effect.Effect<
-  Effect.Effect<
-    HttpServerResponse.HttpServerResponse,
-    HttpServerError.RequestError | SocketError,
-    HttpServerRequest.HttpServerRequest | Scope
-  >,
+export const makeHandler: Effect.Effect<
+  (socket: Socket.Socket) => Effect.Effect<void, Socket.SocketError, Scope>,
   never,
   Storage
 > = Effect.gen(function*() {
   const storage = yield* Storage
   const remoteId = yield* storage.getId
 
-  return Effect.gen(function*() {
-    const request = yield* HttpServerRequest.HttpServerRequest
-    const socket = yield* request.upgrade
+  function* handler(socket: Socket.Socket) {
     const writeRaw = yield* socket.writer
     const write = (response: typeof ProtocolResponse.Type) => Effect.suspend(() => writeRaw(encodeResponse(response)))
     const subscriptions = yield* FiberMap.make<number>()
@@ -89,7 +83,33 @@ export const makeHttpHandler: Effect.Effect<
         }
       }
     }).pipe(Effect.catchAllCause(Effect.logDebug))
+  }
 
+  return (socket) =>
+    Effect.gen(() => handler(socket)).pipe(Effect.annotateLogs({
+      module: "EventLogServer"
+    }))
+})
+
+/**
+ * @since 1.0.0
+ * @category websockets
+ */
+export const makeHandlerHttp: Effect.Effect<
+  Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    HttpServerError.RequestError | Socket.SocketError,
+    HttpServerRequest.HttpServerRequest | Scope
+  >,
+  never,
+  Storage
+> = Effect.gen(function*() {
+  const handler = yield* makeHandler
+
+  return Effect.gen(function*() {
+    const request = yield* HttpServerRequest.HttpServerRequest
+    const socket = yield* request.upgrade
+    yield* handler(socket)
     return HttpServerResponse.empty()
   }).pipe(Effect.annotateLogs({
     module: "EventLogServer"
