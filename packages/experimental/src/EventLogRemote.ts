@@ -10,7 +10,7 @@ import * as Mailbox from "effect/Mailbox"
 import * as RcMap from "effect/RcMap"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
-import type { Scope } from "effect/Scope"
+import * as Scope from "effect/Scope"
 import type { Entry } from "./EventJournal.js"
 import { RemoteEntry, RemoteId } from "./EventJournal.js"
 import type { Identity } from "./EventLog.js"
@@ -27,7 +27,7 @@ export interface EventLogRemote {
   readonly changes: (
     identity: typeof Identity.Service,
     startSequence: number
-  ) => Effect.Effect<Mailbox.ReadonlyMailbox<RemoteEntry>, never, Scope>
+  ) => Effect.Effect<Mailbox.ReadonlyMailbox<RemoteEntry>, never, Scope.Scope>
   readonly write: (identity: typeof Identity.Service, entries: ReadonlyArray<Entry>) => Effect.Effect<void>
 }
 
@@ -38,6 +38,69 @@ export interface EventLogRemote {
 export class Hello extends Schema.TaggedClass<Hello>("@effect/experimental/EventLogRemote/Hello")("Hello", {
   remoteId: RemoteId
 }) {}
+
+/**
+ * @since 1.0.0
+ * @category protocol
+ */
+export class ChunkedMessage
+  extends Schema.TaggedClass<ChunkedMessage>("@effect/experimental/EventLogRemote/ChunkedMessage")("ChunkedMessage", {
+    id: Schema.Number,
+    part: Schema.Tuple(Schema.Number, Schema.Number),
+    data: Schema.Uint8ArrayFromSelf
+  })
+{
+  /**
+   * @since 1.0.0
+   */
+  static split(id: number, data: Uint8Array): ReadonlyArray<ChunkedMessage> {
+    const parts = Math.ceil(data.byteLength / constChunkSize)
+    const result: Array<ChunkedMessage> = new Array(parts)
+    for (let i = 0; i < parts; i++) {
+      const start = i * constChunkSize
+      const end = Math.min((i + 1) * constChunkSize, data.byteLength)
+      result[i] = new ChunkedMessage({ id, part: [i, parts], data: data.subarray(start, end) })
+    }
+    return result
+  }
+
+  /**
+   * @since 1.0.0
+   */
+  static join(
+    map: Map<number, {
+      readonly parts: Array<Uint8Array>
+      count: number
+      bytes: number
+    }>,
+    part: ChunkedMessage
+  ): Uint8Array | undefined {
+    const [index, total] = part.part
+    let entry = map.get(part.id)
+    if (!entry) {
+      entry = {
+        parts: new Array(total),
+        count: 0,
+        bytes: 0
+      }
+      map.set(part.id, entry)
+    }
+    entry.parts[index] = part.data
+    entry.count++
+    entry.bytes += part.data.byteLength
+    if (entry.count !== total) {
+      return
+    }
+    const data = new Uint8Array(entry.bytes)
+    let offset = 0
+    for (const part of entry.parts) {
+      data.set(part, offset)
+      offset += part.byteLength
+    }
+    map.delete(part.id)
+    return data
+  }
+}
 
 /**
  * @since 1.0.0
@@ -115,6 +178,7 @@ export const ProtocolRequest = Schema.Union(
   WriteEntries,
   RequestChanges,
   StopChanges,
+  ChunkedMessage,
   Ping
 )
 
@@ -144,6 +208,7 @@ export const ProtocolResponse = Schema.Union(
   Hello,
   Ack,
   Changes,
+  ChunkedMessage,
   Pong
 )
 
@@ -176,6 +241,8 @@ export class RemoteAdditions
   )
 {}
 
+const constChunkSize = 512_000
+
 /**
  * @since 1.0.0
  * @category construtors
@@ -183,18 +250,35 @@ export class RemoteAdditions
 export const fromSocket: Effect.Effect<
   void,
   never,
-  Scope | EventLog | EventLogEncryption | Socket.Socket
+  Scope.Scope | EventLog | EventLogEncryption | Socket.Socket
 > = Effect.gen(function*() {
   const log = yield* EventLog
   const socket = yield* Socket.Socket
   const encryption = yield* EventLogEncryption
+  const scope = yield* Effect.scope
   const writeRaw = yield* socket.writer
 
-  const write = (request: typeof ProtocolRequest.Type) => Effect.suspend(() => writeRaw(encodeRequest(request)))
+  function* writeGen(request: typeof ProtocolRequest.Type) {
+    const data = encodeRequest(request)
+    if (request._tag !== "WriteEntries" || data.byteLength <= constChunkSize) {
+      return yield* writeRaw(data)
+    }
+    const id = request.id
+    for (const part of ChunkedMessage.split(id, data)) {
+      yield* writeRaw(encodeRequest(part))
+    }
+  }
+
+  const write = (request: typeof ProtocolRequest.Type) => Effect.gen(() => writeGen(request))
 
   yield* Effect.gen(function*() {
     let pendingCounter = 0
     const pending = new Map<number, Deferred.Deferred<void>>()
+    const chunks = new Map<number, {
+      readonly parts: Array<Uint8Array>
+      count: number
+      bytes: number
+    }>()
 
     let subscriptionIdCounter = 0
     const subscriptions = yield* RcMap.make({
@@ -222,8 +306,7 @@ export const fromSocket: Effect.Effect<
       Effect.interruptible
     )
 
-    return yield* socket.run((data) => {
-      const res = decodeResponse(data)
+    function handleMessage(res: typeof ProtocolResponse.Type) {
       switch (res._tag) {
         case "Hello": {
           return log.registerRemote({
@@ -264,7 +347,7 @@ export const fromSocket: Effect.Effect<
                 )
                 return mailbox
               })
-          })
+          }).pipe(Scope.extend(scope))
         }
         case "Ack": {
           const deferred = pending.get(res.id)
@@ -289,8 +372,17 @@ export const fromSocket: Effect.Effect<
             yield* mailbox.offerAll(entries)
           }).pipe(Effect.scoped)
         }
+        case "ChunkedMessage": {
+          const data = ChunkedMessage.join(chunks, res)
+          if (!data) return
+          return handleMessage(decodeResponse(data))
+        }
       }
-    }).pipe(Effect.raceFirst(Deferred.await(badPing)))
+    }
+
+    return yield* socket.run((data) => handleMessage(decodeResponse(data))).pipe(
+      Effect.raceFirst(Deferred.await(badPing))
+    )
   }).pipe(
     Effect.scoped,
     Effect.tapErrorCause(Effect.logDebug),
@@ -314,7 +406,7 @@ export const fromSocket: Effect.Effect<
  */
 export const fromWebSocket = (
   url: string
-): Effect.Effect<void, never, Scope | EventLogEncryption | EventLog | Socket.WebSocketConstructor> =>
+): Effect.Effect<void, never, Scope.Scope | EventLogEncryption | EventLog | Socket.WebSocketConstructor> =>
   Effect.gen(function*() {
     const socket = yield* Socket.makeWebSocket(url)
     return yield* fromSocket.pipe(

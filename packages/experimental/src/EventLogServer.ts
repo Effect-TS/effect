@@ -14,36 +14,54 @@ import * as Mailbox from "effect/Mailbox"
 import * as PubSub from "effect/PubSub"
 import * as RcMap from "effect/RcMap"
 import * as Schema from "effect/Schema"
-import type { Scope } from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Uuid from "uuid"
 import type { RemoteId } from "./EventJournal.js"
 import { EntryId, makeRemoteId } from "./EventJournal.js"
 import { EncryptedRemoteEntry } from "./EventLogEncryption.js"
-import type { ProtocolResponse } from "./EventLogRemote.js"
-import { Ack, Changes, decodeRequest, encodeResponse, Hello, Pong } from "./EventLogRemote.js"
+import type { ProtocolRequest, ProtocolResponse } from "./EventLogRemote.js"
+import { Ack, Changes, ChunkedMessage, decodeRequest, encodeResponse, Hello, Pong } from "./EventLogRemote.js"
 import * as MsgPack from "./MsgPack.js"
+
+const constChunkSize = 512_000
 
 /**
  * @since 1.0.0
  * @category constructors
  */
 export const makeHandler: Effect.Effect<
-  (socket: Socket.Socket) => Effect.Effect<void, Socket.SocketError, Scope>,
+  (socket: Socket.Socket) => Effect.Effect<void, Socket.SocketError, Scope.Scope>,
   never,
   Storage
 > = Effect.gen(function*() {
   const storage = yield* Storage
   const remoteId = yield* storage.getId
+  let chunkId = 0
 
   function* handler(socket: Socket.Socket) {
-    const writeRaw = yield* socket.writer
-    const write = (response: typeof ProtocolResponse.Type) => Effect.suspend(() => writeRaw(encodeResponse(response)))
     const subscriptions = yield* FiberMap.make<number>()
+    const writeRaw = yield* socket.writer
+    const chunks = new Map<number, {
+      readonly parts: Array<Uint8Array>
+      count: number
+      bytes: number
+    }>()
+
+    function* writeGen(response: typeof ProtocolResponse.Type) {
+      const data = encodeResponse(response)
+      if (response._tag !== "Changes" || data.byteLength <= constChunkSize) {
+        return yield* writeRaw(data)
+      }
+      const id = chunkId++
+      for (const part of ChunkedMessage.split(id, data)) {
+        yield* writeRaw(encodeResponse(part))
+      }
+    }
+    const write = (response: typeof ProtocolResponse.Type) => Effect.gen(() => writeGen(response))
 
     yield* Effect.fork(write(new Hello({ remoteId })))
 
-    yield* socket.run((data) => {
-      const request = decodeRequest(data)
+    function handleRequest(request: typeof ProtocolRequest.Type) {
       switch (request._tag) {
         case "Ping": {
           return write(new Pong({ id: request.id }))
@@ -73,16 +91,25 @@ export const makeHandler: Effect.Effect<
                   })
                 )
               ),
-              Effect.forever,
-              FiberMap.run(subscriptions, request.subscriptionId)
+              Effect.forever
             )
-          })
+          }).pipe(
+            Effect.scoped,
+            FiberMap.run(subscriptions, request.subscriptionId)
+          )
         }
         case "StopChanges": {
           return FiberMap.remove(subscriptions, request.subscriptionId)
         }
+        case "ChunkedMessage": {
+          const data = ChunkedMessage.join(chunks, request)
+          if (!data) return
+          return handleRequest(decodeRequest(data))
+        }
       }
-    }).pipe(Effect.catchAllCause(Effect.logDebug))
+    }
+
+    yield* socket.run((data) => handleRequest(decodeRequest(data))).pipe(Effect.catchAllCause(Effect.logDebug))
   }
 
   return (socket) =>
@@ -99,7 +126,7 @@ export const makeHandlerHttp: Effect.Effect<
   Effect.Effect<
     HttpServerResponse.HttpServerResponse,
     HttpServerError.RequestError | Socket.SocketError,
-    HttpServerRequest.HttpServerRequest | Scope
+    HttpServerRequest.HttpServerRequest | Scope.Scope
   >,
   never,
   Storage
@@ -155,7 +182,7 @@ export class Storage extends Context.Tag("@effect/experimental/EventLogServer/St
     readonly changes: (
       publicKey: string,
       startSequence: number
-    ) => Effect.Effect<Mailbox.ReadonlyMailbox<EncryptedRemoteEntry>, never, Scope>
+    ) => Effect.Effect<Mailbox.ReadonlyMailbox<EncryptedRemoteEntry>, never, Scope.Scope>
   }
 >() {}
 
@@ -163,7 +190,7 @@ export class Storage extends Context.Tag("@effect/experimental/EventLogServer/St
  * @since 1.0.0
  * @category storage
  */
-export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Scope> = Effect.gen(function*() {
+export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Scope.Scope> = Effect.gen(function*() {
   const knownIds = new Map<string, number>()
   const journals = new Map<string, Array<EncryptedRemoteEntry>>()
   const remoteId = makeRemoteId()
