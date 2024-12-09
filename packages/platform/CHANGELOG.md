@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.70.6
+
+### Patch Changes
+
+- [#4097](https://github.com/Effect-TS/effect/pull/4097) [`9a5b8e3`](https://github.com/Effect-TS/effect/commit/9a5b8e36d184bd4967a88752cb6e755e1be263af) Thanks @tim-smart! - handle WebSocket's that emit ArrayBuffer instead of Uint8Array
+
 ## 0.70.5
 
 ### Patch Changes
