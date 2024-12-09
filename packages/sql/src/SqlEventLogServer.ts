@@ -24,6 +24,7 @@ import type { SqlError } from "./SqlError.js"
 export const makeStorage = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
+  readonly batchSize?: number
 }): Effect.Effect<
   typeof EventLogServer.Storage.Service,
   SqlError,
@@ -35,6 +36,7 @@ export const makeStorage = (options?: {
 
     const tablePrefix = options?.entryTablePrefix ?? "effect_events"
     const remoteIdTable = options?.remoteIdTable ?? "effect_remote_id"
+    const batchSize = options?.batchSize ?? 200
 
     yield* sql.onDialectOrElse({
       pg: () =>
@@ -126,30 +128,45 @@ export const makeStorage = (options?: {
         Effect.gen(function*() {
           if (entries.length === 0) return
           const { pubsub, table } = yield* RcMap.get(resources, publicKey)
-          const ids: Array<EntryId> = []
           const forInsert: Array<
             {
-              iv: Uint8Array
-              entry_id: Uint8Array
-              encrypted_entry: Uint8Array
+              readonly ids: Array<EntryId>
+              readonly entries: Array<
+                {
+                  iv: Uint8Array
+                  entry_id: Uint8Array
+                  encrypted_entry: Uint8Array
+                }
+              >
             }
-          > = []
+          > = [{
+            ids: [],
+            entries: []
+          }]
+          let currentBatch = forInsert[0]
           for (const entry of entries) {
-            ids.push(entry.entryId)
-            forInsert.push({
+            currentBatch.ids.push(entry.entryId)
+            currentBatch.entries.push({
               iv: entry.iv,
               entry_id: entry.entryId,
               encrypted_entry: entry.encryptedEntry
             })
+            if (currentBatch.entries.length === batchSize) {
+              currentBatch = { ids: [], entries: [] }
+              forInsert.push(currentBatch)
+            }
           }
-          const encryptedEntries = yield* pipe(
-            sql`INSERT INTO ${sql(table)} ${sql.insert(forInsert)} ON CONFLICT DO NOTHING`.withoutTransform,
-            Effect.zipRight(sql`SELECT * FROM ${sql(table)} WHERE ${sql.in("entry_id", ids)} ORDER BY sequence ASC`),
-            Effect.flatMap(decodeEntries)
-          )
-          yield* pubsub.offerAll(encryptedEntries)
+          for (const batch of forInsert) {
+            const encryptedEntries = yield* pipe(
+              sql`INSERT INTO ${sql(table)} ${sql.insert(batch.entries)} ON CONFLICT DO NOTHING`.withoutTransform,
+              Effect.zipRight(
+                sql`SELECT * FROM ${sql(table)} WHERE ${sql.in("entry_id", batch.ids)} ORDER BY sequence ASC`
+              ),
+              Effect.flatMap(decodeEntries)
+            )
+            yield* pubsub.offerAll(encryptedEntries)
+          }
         }).pipe(
-          Effect.retry({ times: 3 }),
           Effect.orDie,
           Effect.scoped
         ),
