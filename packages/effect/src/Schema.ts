@@ -5798,7 +5798,7 @@ export const StringFromHex: Schema<string> = makeEncodingTransformation(
  * const UrlSchema = Schema.compose(Schema.StringFromUriComponent, Schema.parseJson(PaginationSchema))
  *
  * console.log(Schema.encodeSync(UrlSchema)({ maxItemPerPage: 10, page: 1 }))
- * Output: %7B%22maxItemPerPage%22%3A10%2C%22page%22%3A1%7D
+ * // Output: %7B%22maxItemPerPage%22%3A10%2C%22page%22%3A1%7D
  * ```
  *
  * @category string transformations
