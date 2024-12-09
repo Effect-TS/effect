@@ -24,7 +24,7 @@ import type { SqlError } from "./SqlError.js"
 export const makeStorage = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
-  readonly batchSize?: number
+  readonly insertBatchSize?: number
 }): Effect.Effect<
   typeof EventLogServer.Storage.Service,
   SqlError,
@@ -36,7 +36,7 @@ export const makeStorage = (options?: {
 
     const tablePrefix = options?.entryTablePrefix ?? "effect_events"
     const remoteIdTable = options?.remoteIdTable ?? "effect_remote_id"
-    const batchSize = options?.batchSize ?? 200
+    const insertBatchSize = options?.insertBatchSize ?? 200
 
     yield* sql.onDialectOrElse({
       pg: () =>
@@ -151,7 +151,7 @@ export const makeStorage = (options?: {
               entry_id: entry.entryId,
               encrypted_entry: entry.encryptedEntry
             })
-            if (currentBatch.entries.length === batchSize) {
+            if (currentBatch.entries.length === insertBatchSize) {
               currentBatch = { ids: [], entries: [] }
               forInsert.push(currentBatch)
             }
@@ -230,6 +230,7 @@ const decodeEntries = Schema.decodeUnknown(Schema.Array(EncryptedRemoteEntryFrom
 export const layerStorage = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
+  readonly insertBatchSize?: number
 }): Layer.Layer<EventLogServer.Storage, SqlError, SqlClient.SqlClient | EventLogEncryption> =>
   Layer.scoped(EventLogServer.Storage, makeStorage(options))
 
@@ -240,6 +241,7 @@ export const layerStorage = (options?: {
 export const layerStorageSubtle = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
+  readonly insertBatchSize?: number
 }): Layer.Layer<EventLogServer.Storage, SqlError, SqlClient.SqlClient> =>
   layerStorage(options).pipe(
     Layer.provide(layerSubtle)
