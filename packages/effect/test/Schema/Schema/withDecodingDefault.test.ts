@@ -8,7 +8,7 @@ describe("withDecodingDefault", () => {
       const prop = S.optional(S.String).pipe(S.withDecodingDefault(() => ""))
       const schema = S.Struct({ a: prop })
       await Util.expectDecodeUnknownSuccess(schema, {}, { a: "" })
-      await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: "" })
+      await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: undefined })
       await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
     })
 
@@ -25,7 +25,7 @@ describe("withDecodingDefault", () => {
       const prop = S.optional(S.String).pipe(S.fromKey("b"), S.withDecodingDefault(() => ""))
       const schema = S.Struct({ a: prop })
       await Util.expectDecodeUnknownSuccess(schema, {}, { a: "" })
-      await Util.expectDecodeUnknownSuccess(schema, { b: undefined }, { a: "" })
+      await Util.expectDecodeUnknownSuccess(schema, { b: undefined }, { a: undefined })
       await Util.expectDecodeUnknownSuccess(schema, { b: "a" }, { a: "a" })
     })
 

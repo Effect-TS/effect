@@ -1880,11 +1880,9 @@ export const withConstructorDefault: {
   }
 })
 
-const applyDefaultValue = <A>(o: option_.Option<A>, defaultValue: () => A) =>
-  option_.match(o, {
-    onNone: () => option_.some(defaultValue()),
-    onSome: (value) => option_.some(value === undefined ? defaultValue() : value)
-  })
+const applyDefaultValue = <A>(o: option_.Option<A>, defaultValue: () => A) => {
+  return option_.some(option_.getOrElse(o, defaultValue))
+}
 
 /**
  * Enhances a property signature with a default decoding value.
@@ -1935,15 +1933,11 @@ export const withDecodingDefault: {
     }
 
     case "PropertySignatureTransformation": {
-      const to = AST.typeAST(ast.to.type)
-      if (to !== ast.to.type) {
-        throw new Error(errors_.getSchemaUnsupportedWithDecodingDefaultErrorMessage(ast.to.type))
-      }
       return makePropertySignature(
         new PropertySignatureTransformation(
           ast.from,
           new ToPropertySignature(
-            to,
+            ast.to.type,
             false,
             ast.to.isReadonly,
             ast.to.annotations,
@@ -1998,7 +1992,7 @@ export const withDefaults: {
     decoding: () => Types.NoInfer<Type>
   }
 ): PropertySignature<":", Type, Key, "?:", Encoded, true, R> => {
-  return withDecodingDefault(withConstructorDefault(self, defaults.constructor), defaults.decoding)
+  return withConstructorDefault(withDecodingDefault(self, defaults.decoding), defaults.constructor)
 })
 
 /**
