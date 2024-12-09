@@ -23,7 +23,7 @@
         "security": [],
         "responses": {
           "200": {
-            "description": "an instance of Group",
+            "description": "Group",
             "content": {
               "application/json": {
                 "schema": {
@@ -43,7 +43,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -53,7 +53,7 @@
             }
           },
           "418": {
-            "description": "an instance of GroupError"
+            "description": "GroupError"
           }
         }
       }
@@ -66,7 +66,7 @@
         "security": [],
         "responses": {
           "200": {
-            "description": "an instance of Group",
+            "description": "Group",
             "content": {
               "application/json": {
                 "schema": {
@@ -86,7 +86,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -96,7 +96,7 @@
             }
           },
           "418": {
-            "description": "an instance of GroupError"
+            "description": "GroupError"
           }
         },
         "requestBody": {
@@ -163,7 +163,7 @@
         ],
         "responses": {
           "200": {
-            "description": "an instance of User",
+            "description": "User",
             "content": {
               "application/json": {
                 "schema": {
@@ -183,7 +183,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -216,7 +216,7 @@
         ],
         "responses": {
           "200": {
-            "description": "an instance of User",
+            "description": "User",
             "content": {
               "application/json": {
                 "schema": {
@@ -243,7 +243,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -260,15 +260,11 @@
                 "type": "object",
                 "required": ["name"],
                 "properties": {
-                  "uuid": {
-                    "type": "string",
-                    "description": "a Universally Unique Identifier",
-                    "title": "UUID",
-                    "format": "uuid",
-                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-                  },
                   "name": {
                     "type": "string"
+                  },
+                  "uuid": {
+                    "$ref": "#/components/schemas/UUID"
                   }
                 },
                 "additionalProperties": false
@@ -331,7 +327,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -341,7 +337,7 @@
             }
           },
           "500": {
-            "description": "an instance of NoStatusError",
+            "description": "NoStatusError",
             "content": {
               "application/json": {
                 "schema": {
@@ -378,9 +374,7 @@
                       "type": "string"
                     },
                     "length": {
-                      "type": "integer",
-                      "description": "an integer",
-                      "title": "Int"
+                      "$ref": "#/components/schemas/Int"
                     }
                   },
                   "additionalProperties": false
@@ -399,7 +393,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -419,8 +413,7 @@
                   "file": {
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "format": "binary"
+                      "$ref": "#/components/schemas/PersistedFile"
                     },
                     "description": "an array of exactly 1 item(s)",
                     "minItems": 1,
@@ -456,7 +449,7 @@
             }
           },
           "413": {
-            "description": "an instance of GlobalError",
+            "description": "GlobalError",
             "content": {
               "application/json": {
                 "schema": {
@@ -493,9 +486,7 @@
             "type": "string"
           },
           "length": {
-            "type": "integer",
-            "description": "an integer",
-            "title": "Int"
+            "$ref": "#/components/schemas/Int"
           }
         },
         "additionalProperties": false
@@ -505,21 +496,33 @@
         "required": ["id", "name"],
         "properties": {
           "id": {
-            "type": "integer",
-            "description": "an integer",
-            "title": "Int"
+            "$ref": "#/components/schemas/Int"
           },
           "name": {
             "type": "string"
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of Group",
-        "title": "Group"
+        "additionalProperties": false
       },
       "NumberFromString": {
         "type": "string",
         "description": "a string that will be parsed into a number"
+      },
+      "PersistedFile": {
+        "format": "binary",
+        "type": "string"
+      },
+      "UUID": {
+        "description": "a Universally Unique Identifier",
+        "format": "uuid",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        "title": "UUID",
+        "type": "string"
+      },
+      "Int": {
+        "description": "an integer",
+        "title": "Int",
+        "type": "integer"
       },
       "HttpApiDecodeError": {
         "type": "object",
@@ -571,8 +574,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "The request did not match the expected schema",
-        "title": "HttpApiDecodeError"
+        "description": "The request did not match the expected schema"
       },
       "GlobalError": {
         "type": "object",
@@ -582,36 +584,26 @@
             "enum": ["GlobalError"]
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of GlobalError",
-        "title": "GlobalError"
+        "additionalProperties": false
       },
       "User": {
         "type": "object",
         "required": ["id", "name", "createdAt"],
         "properties": {
           "id": {
-            "type": "integer",
-            "description": "an integer",
-            "title": "Int"
-          },
-          "uuid": {
-            "type": "string",
-            "description": "a Universally Unique Identifier",
-            "title": "UUID",
-            "format": "uuid",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            "$ref": "#/components/schemas/Int"
           },
           "name": {
             "type": "string"
+          },
+          "uuid": {
+            "$ref": "#/components/schemas/UUID"
           },
           "createdAt": {
             "$ref": "#/components/schemas/DateTimeUtc"
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of User",
-        "title": "User"
+        "additionalProperties": false
       },
       "DateTimeUtc": {
         "description": "a string that will be parsed into a DateTime.Utc",
@@ -625,9 +617,7 @@
             "enum": ["UserError"]
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of UserError",
-        "title": "UserError"
+        "additionalProperties": false
       },
       "NoStatusError": {
         "type": "object",
@@ -637,9 +627,7 @@
             "enum": ["NoStatusError"]
           }
         },
-        "additionalProperties": false,
-        "description": "an instance of NoStatusError",
-        "title": "NoStatusError"
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

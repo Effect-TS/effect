@@ -4222,6 +4222,7 @@ export const lowercased =
       filter((a) => a === a.toLowerCase(), {
         schemaId: LowercasedSchemaId,
         description: "a lowercase string",
+        jsonSchema: { pattern: "^[^A-Z]*$" },
         ...annotations
       })
     )
@@ -4252,6 +4253,7 @@ export const capitalized =
       filter((a) => a[0]?.toUpperCase() === a[0], {
         schemaId: CapitalizedSchemaId,
         description: "a capitalized string",
+        jsonSchema: { pattern: "^[^a-z]?.*$" },
         ...annotations
       })
     )
@@ -4282,6 +4284,7 @@ export const uncapitalized =
       filter((a) => a[0]?.toLowerCase() === a[0], {
         schemaId: UncapitalizedSchemaId,
         description: "a uncapitalized string",
+        jsonSchema: { pattern: "^[^A-Z]?.*$" },
         ...annotations
       })
     )
@@ -4312,6 +4315,7 @@ export const uppercased =
       filter((a) => a === a.toUpperCase(), {
         schemaId: UppercasedSchemaId,
         description: "an uppercase string",
+        jsonSchema: { pattern: "^[^a-z]*$" },
         ...annotations
       })
     )
@@ -4500,7 +4504,7 @@ export type ParseJsonOptions = {
 const JsonString = String$.annotations({
   [AST.IdentifierAnnotationId]: "JsonString",
   [AST.TitleAnnotationId]: "JsonString",
-  [AST.DescriptionAnnotationId]: "a JSON string"
+  [AST.DescriptionAnnotationId]: "a string that will be parsed as JSON"
 })
 
 const getParseJsonTransformation = (options?: ParseJsonOptions) =>
@@ -8237,10 +8241,16 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
   disableToString?: boolean | undefined
 }): any => {
   const classSymbol = Symbol.for(`effect/Schema/${kind}/${identifier}`)
+
+  const ts = typeSchema(schema)
+  const declarationSurrogate = ts.annotations({ identifier, ...annotations })
+  const typeSide = ts.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Type side)` })
+  const transformationSurrogate = schema.annotations({ ...annotations })
   const validateSchema = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Constructor)` })
-  const encodedSide: Schema.Any = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Encoded side)` })
-  const typeSide = typeSchema(schema).annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Type side)` })
+  const encodedSide = schema.annotations({ [AST.AutoTitleAnnotationId]: `${identifier} (Encoded side)` })
+
   const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && ParseResult.is(typeSide)(u)
+
   const klass = class extends Base {
     constructor(
       props: { [x: string | symbol]: unknown } = {},
@@ -8267,6 +8277,7 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
       if (astCache.has(this)) {
         return astCache.get(this)!
       }
+
       const declaration: Schema.Any = declare(
         [typeSide],
         {
@@ -8284,21 +8295,23 @@ const makeClass = ({ Base, annotations, disableToString, fields, identifier, kin
         },
         {
           identifier,
-          title: identifier,
-          description: `an instance of ${identifier}`,
           pretty: (pretty) => (self: any) => `${identifier}(${pretty(self)})`,
           // @ts-expect-error
           arbitrary: (arb) => (fc) => arb(fc).map((props) => new this(props)),
           equivalence: identity,
-          [AST.SurrogateAnnotationId]: typeSide.ast,
+          [AST.SurrogateAnnotationId]: declarationSurrogate.ast,
           ...annotations
         }
       )
+
       const transformation = transform(
         encodedSide,
         declaration,
         { strict: true, decode: (input) => new this(input, true), encode: identity }
-      ).annotations({ [AST.SurrogateAnnotationId]: schema.ast })
+      ).annotations({
+        [AST.JSONIdentifierAnnotationId]: identifier,
+        [AST.SurrogateAnnotationId]: transformationSurrogate.ast
+      })
       astCache.set(this, transformation.ast)
       return transformation.ast
     }

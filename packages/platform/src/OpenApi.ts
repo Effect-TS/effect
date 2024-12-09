@@ -171,8 +171,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
   }
   function makeJsonSchemaOrRef(schema: Schema.Schema.All): JsonSchema.JsonSchema {
     return JsonSchema.makeWithDefs(schema as any, {
-      defs: jsonSchemaDefs,
-      defsPath: "#/components/schemas/"
+      defs: jsonSchemaDefs
     })
   }
   function registerSecurity(
