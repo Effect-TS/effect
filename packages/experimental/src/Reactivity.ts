@@ -82,7 +82,7 @@ export const make = Effect.sync(() => {
         }
         if (pending) {
           pending = false
-          run()
+          runFork(effect).addObserver(handleExit)
         } else {
           running = false
         }
