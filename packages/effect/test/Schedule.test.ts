@@ -594,7 +594,6 @@ describe("Schedule", () => {
         ]
         assert.deepStrictEqual(result, expected)
       }))
-
     it.effect("recur at time matching cron expression", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
@@ -617,6 +616,34 @@ describe("Schedule", () => {
           "Mon Jan 15 2024 04:30:00",
           "Wed Jan 17 2024 04:30:00",
           "Wed Jan 24 2024 04:30:00"
+        ]
+        assert.deepStrictEqual(result, expected)
+      }))
+    it.effect("recur at time matching cron expression (second granularity)", () =>
+      Effect.gen(function*($) {
+        const ref = yield* $(Ref.make<ReadonlyArray<string>>([]))
+        yield* $(TestClock.setTime(new Date(2024, 0, 1, 0, 0, 0).getTime()))
+        const schedule = Schedule.cron("*/3 * * * * *")
+        yield* $(
+          TestClock.currentTimeMillis,
+          Effect.tap((instant) => Ref.update(ref, Array.append(format(instant)))),
+          Effect.repeat(schedule),
+          Effect.fork
+        )
+        yield* $(TestClock.adjust("30 seconds"))
+        const result = yield* $(Ref.get(ref))
+        const expected = [
+          "Mon Jan 01 2024 00:00:00",
+          "Mon Jan 01 2024 00:00:03",
+          "Mon Jan 01 2024 00:00:06",
+          "Mon Jan 01 2024 00:00:09",
+          "Mon Jan 01 2024 00:00:12",
+          "Mon Jan 01 2024 00:00:15",
+          "Mon Jan 01 2024 00:00:18",
+          "Mon Jan 01 2024 00:00:21",
+          "Mon Jan 01 2024 00:00:24",
+          "Mon Jan 01 2024 00:00:27",
+          "Mon Jan 01 2024 00:00:30"
         ]
         assert.deepStrictEqual(result, expected)
       }))
