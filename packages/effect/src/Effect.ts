@@ -9787,27 +9787,33 @@ export namespace fn {
    * @since 3.11.0
    * @category models
    */
-  export type FnEffect<AEff, Eff extends YieldWrap<Effect<any, any, any>>> = Effect<
-    AEff,
-    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
-    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
-  >
-
-  /**
-   * @since 3.11.0
-   * @category models
-   */
   export type Gen = {
     <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
       body: (...args: Args) => Generator<Eff, AEff, never>
-    ): (...args: Args) => fn.FnEffect<AEff, Eff>
+    ): (...args: Args) => Effect<
+      AEff,
+      [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+      [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+    >
     <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A extends Effect<any, any, any>>(
       body: (...args: Args) => Generator<Eff, AEff, never>,
-      a: (_: fn.FnEffect<AEff, Eff>) => A
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >
+      ) => A
     ): (...args: Args) => A
     <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>, A, B extends Effect<any, any, any>>(
       body: (...args: Args) => Generator<Eff, AEff, never>,
-      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >
+      ) => A,
       b: (_: A) => B
     ): (...args: Args) => B
     <
@@ -9819,7 +9825,13 @@ export namespace fn {
       C extends Effect<any, any, any>
     >(
       body: (...args: Args) => Generator<Eff, AEff, never>,
-      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >
+      ) => A,
       b: (_: A) => B,
       c: (_: B) => C
     ): (...args: Args) => C
@@ -9833,7 +9845,13 @@ export namespace fn {
       D extends Effect<any, any, any>
     >(
       body: (...args: Args) => Generator<Eff, AEff, never>,
-      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >
+      ) => A,
       b: (_: A) => B,
       c: (_: B) => C,
       d: (_: C) => D
@@ -9849,7 +9867,13 @@ export namespace fn {
       E extends Effect<any, any, any>
     >(
       body: (...args: Args) => Generator<Eff, AEff, never>,
-      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >
+      ) => A,
       b: (_: A) => B,
       c: (_: B) => C,
       d: (_: C) => D,
@@ -9867,7 +9891,13 @@ export namespace fn {
       F extends Effect<any, any, any>
     >(
       body: (...args: Args) => Generator<Eff, AEff, never>,
-      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >
+      ) => A,
       b: (_: A) => B,
       c: (_: B) => C,
       d: (_: C) => D,
@@ -9887,7 +9917,13 @@ export namespace fn {
       G extends Effect<any, any, any>
     >(
       body: (...args: Args) => Generator<Eff, AEff, never>,
-      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >
+      ) => A,
       b: (_: A) => B,
       c: (_: B) => C,
       d: (_: C) => D,
@@ -9909,7 +9945,13 @@ export namespace fn {
       H extends Effect<any, any, any>
     >(
       body: (...args: Args) => Generator<Eff, AEff, never>,
-      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >
+      ) => A,
       b: (_: A) => B,
       c: (_: B) => C,
       d: (_: C) => D,
@@ -9933,7 +9975,13 @@ export namespace fn {
       I extends Effect<any, any, any>
     >(
       body: (...args: Args) => Generator<Eff, AEff, never>,
-      a: (_: fn.FnEffect<AEff, Eff>) => A,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+          [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+        >
+      ) => A,
       b: (_: A) => B,
       c: (_: B) => C,
       d: (_: C) => D,
