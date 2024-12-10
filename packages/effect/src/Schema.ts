@@ -9393,11 +9393,11 @@ export class BooleanFromString extends transform(
  * @category Config validations
  * @since 3.10.0
  */
-export const Config = <A>(name: string, schema: Schema<A, string>): config_.Config<A> => {
+export const Config = <A, B extends string>(name: string, schema: Schema<A, B>): config_.Config<A> => {
   const decodeEither_ = decodeEither(schema)
   return config_.string(name).pipe(
     config_.mapOrFail((a) =>
-      decodeEither_(a).pipe(
+      decodeEither_(a as B).pipe(
         either_.mapLeft((error) => configError_.InvalidData([], ParseResult.TreeFormatter.formatErrorSync(error)))
       )
     )
