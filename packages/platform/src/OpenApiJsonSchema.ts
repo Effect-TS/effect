@@ -21,6 +21,15 @@ export interface Annotations {
  * @category model
  * @since 1.0.0
  */
+export interface Never extends Annotations {
+  $id: "/schemas/never"
+  not: {}
+}
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Any extends Annotations {
   $id: "/schemas/any"
 }
@@ -194,6 +203,7 @@ export interface Object extends Annotations {
  * @since 0.71.0
  */
 export type JsonSchema =
+  | Never
   | Any
   | Unknown
   | Void

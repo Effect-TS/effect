@@ -22,6 +22,15 @@ export interface JsonSchemaAnnotations {
 
 /**
  * @category model
+ * @since 3.11.5
+ */
+export interface JsonSchema7Never extends JsonSchemaAnnotations {
+  $id: "/schemas/never"
+  not: {}
+}
+
+/**
+ * @category model
  * @since 3.10.0
  */
 export interface JsonSchema7Any extends JsonSchemaAnnotations {
@@ -195,6 +204,7 @@ export interface JsonSchema7Object extends JsonSchemaAnnotations {
  * @since 3.10.0
  */
 export type JsonSchema7 =
+  | JsonSchema7Never
   | JsonSchema7Any
   | JsonSchema7Unknown
   | JsonSchema7Void
@@ -285,11 +295,22 @@ export const fromAST = (ast: AST.AST, options: {
   })
 }
 
-const constAny: JsonSchema7 = { $id: "/schemas/any" }
+const constNever: JsonSchema7 = {
+  "$id": "/schemas/never",
+  "not": {}
+}
 
-const constUnknown: JsonSchema7 = { $id: "/schemas/unknown" }
+const constAny: JsonSchema7 = {
+  "$id": "/schemas/any"
+}
 
-const constVoid: JsonSchema7 = { $id: "/schemas/void" }
+const constUnknown: JsonSchema7 = {
+  "$id": "/schemas/unknown"
+}
+
+const constVoid: JsonSchema7 = {
+  "$id": "/schemas/void"
+}
 
 const constAnyObject: JsonSchema7 = {
   "$id": "/schemas/object",
@@ -479,7 +500,7 @@ const go = (
     case "VoidKeyword":
       return { ...constVoid, ...getJsonSchemaAnnotations(ast) }
     case "NeverKeyword":
-      return { enum: [], ...getJsonSchemaAnnotations(ast) }
+      return { ...constNever, ...getJsonSchemaAnnotations(ast) }
     case "UnknownKeyword":
       return { ...constUnknown, ...getJsonSchemaAnnotations(ast) }
     case "AnyKeyword":

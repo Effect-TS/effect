@@ -236,27 +236,27 @@ describe("filter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { tags: ["AB", "B"] },
-        `{ readonly tags: an array of at least 3 items }
+        `{ readonly tags: an array of at least 3 item(s) }
 └─ ["tags"]
-   └─ an array of at least 3 items
-      ├─ an array of at least 3 items
+   └─ an array of at least 3 item(s)
+      ├─ an array of at least 3 item(s)
       │  └─ From side refinement failure
       │     └─ ReadonlyArray<a string at least 2 character(s) long>
       │        └─ [1]
       │           └─ a string at least 2 character(s) long
       │              └─ Predicate refinement failure
       │                 └─ Expected a string at least 2 character(s) long, actual "B"
-      └─ an array of at least 3 items
+      └─ an array of at least 3 item(s)
          └─ Predicate refinement failure
-            └─ Expected an array of at least 3 items, actual ["AB","B"]`,
+            └─ Expected an array of at least 3 item(s), actual ["AB","B"]`,
         Util.allErrors
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { tags: ["AB", "B"] },
-        `{ readonly tags: an array of at least 3 items }
+        `{ readonly tags: an array of at least 3 item(s) }
 └─ ["tags"]
-   └─ an array of at least 3 items
+   └─ an array of at least 3 item(s)
       └─ From side refinement failure
          └─ ReadonlyArray<a string at least 2 character(s) long>
             └─ [1]
@@ -272,7 +272,7 @@ describe("filter", () => {
           tags: S.Array(S.String).pipe(S.minItems(1))
         }),
         {},
-        `{ readonly tags: an array of at least 1 items }
+        `{ readonly tags: an array of at least 1 item(s) }
 └─ ["tags"]
    └─ is missing`,
         Util.allErrors
@@ -282,7 +282,7 @@ describe("filter", () => {
           tags: S.Array(S.String).pipe(S.minItems(1), S.maxItems(3))
         }),
         {},
-        `{ readonly tags: an array of at most 3 items }
+        `{ readonly tags: an array of at most 3 item(s) }
 └─ ["tags"]
    └─ is missing`,
         Util.allErrors
