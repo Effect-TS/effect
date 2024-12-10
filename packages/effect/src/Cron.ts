@@ -36,6 +36,7 @@ export type TypeId = typeof TypeId
 export interface Cron extends Pipeable, Equal.Equal, Inspectable {
   readonly [TypeId]: TypeId
   readonly tz: Option.Option<DateTime.TimeZone>
+  readonly seconds: ReadonlySet<number>
   readonly minutes: ReadonlySet<number>
   readonly hours: ReadonlySet<number>
   readonly days: ReadonlySet<number>
@@ -43,6 +44,7 @@ export interface Cron extends Pipeable, Equal.Equal, Inspectable {
   readonly weekdays: ReadonlySet<number>
   /** @internal */
   readonly first: {
+    readonly second: number
     readonly minute: number
     readonly hour: number
     readonly day: number
@@ -51,6 +53,7 @@ export interface Cron extends Pipeable, Equal.Equal, Inspectable {
   }
   /** @internal */
   readonly next: {
+    readonly second: ReadonlyArray<number | undefined>
     readonly minute: ReadonlyArray<number | undefined>
     readonly hour: ReadonlyArray<number | undefined>
     readonly day: ReadonlyArray<number | undefined>
@@ -67,6 +70,7 @@ const CronProto = {
   [Hash.symbol](this: Cron): number {
     return pipe(
       Hash.hash(this.tz),
+      Hash.combine(Hash.array(Arr.fromIterable(this.seconds))),
       Hash.combine(Hash.array(Arr.fromIterable(this.minutes))),
       Hash.combine(Hash.array(Arr.fromIterable(this.hours))),
       Hash.combine(Hash.array(Arr.fromIterable(this.days))),
@@ -82,6 +86,7 @@ const CronProto = {
     return {
       _id: "Cron",
       tz: this.tz,
+      seconds: Arr.fromIterable(this.seconds),
       minutes: Arr.fromIterable(this.minutes),
       hours: Arr.fromIterable(this.hours),
       days: Arr.fromIterable(this.days),
@@ -116,6 +121,7 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
  * @category constructors
  */
 export const make = (values: {
+  readonly seconds?: Iterable<number> | undefined
   readonly minutes: Iterable<number>
   readonly hours: Iterable<number>
   readonly days: Iterable<number>
@@ -124,6 +130,7 @@ export const make = (values: {
   readonly tz?: DateTime.TimeZone | undefined
 }): Cron => {
   const o: Mutable<Cron> = Object.create(CronProto)
+  o.seconds = new Set(Arr.sort(values.seconds ?? [0], N.Order))
   o.minutes = new Set(Arr.sort(values.minutes, N.Order))
   o.hours = new Set(Arr.sort(values.hours, N.Order))
   o.days = new Set(Arr.sort(values.days, N.Order))
@@ -131,6 +138,7 @@ export const make = (values: {
   o.weekdays = new Set(Arr.sort(values.weekdays, N.Order))
   o.tz = Option.fromNullable(values.tz)
 
+  const seconds = Array.from(o.seconds)
   const minutes = Array.from(o.minutes)
   const hours = Array.from(o.hours)
   const days = Array.from(o.days)
@@ -138,6 +146,7 @@ export const make = (values: {
   const weekdays = Array.from(o.weekdays)
 
   o.first = {
+    second: seconds[0] ?? 0,
     minute: minutes[0] ?? 0,
     hour: hours[0] ?? 0,
     day: days[0] ?? 1,
@@ -146,6 +155,7 @@ export const make = (values: {
   }
 
   o.next = {
+    second: nextLookupTable(seconds, 60),
     minute: nextLookupTable(minutes, 60),
     hour: nextLookupTable(hours, 24),
     day: nextLookupTable(days, 32),
@@ -233,7 +243,8 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  * import { Cron, Either } from "effect"
  *
  * // At 04:00 on every day-of-month from 8 through 14.
- * assert.deepStrictEqual(Cron.parse("0 4 8-14 * *"), Either.right(Cron.make({
+ * assert.deepStrictEqual(Cron.parse("0 0 4 8-14 * *"), Either.right(Cron.make({
+ *   seconds: [0],
  *   minutes: [0],
  *   hours: [4],
  *   days: [8, 9, 10, 11, 12, 13, 14],
@@ -247,12 +258,17 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  */
 export const parse = (cron: string, tz?: DateTime.TimeZone): Either.Either<Cron, ParseError> => {
   const segments = cron.split(" ").filter(String.isNonEmpty)
-  if (segments.length !== 5) {
+  if (segments.length !== 5 && segments.length !== 6) {
     return Either.left(ParseError(`Invalid number of segments in cron expression`, cron))
   }
 
-  const [minutes, hours, days, months, weekdays] = segments
+  if (segments.length === 5) {
+    segments.unshift("0")
+  }
+
+  const [seconds, minutes, hours, days, months, weekdays] = segments
   return Either.all({
+    seconds: parseSegment(seconds, secondOptions),
     minutes: parseSegment(minutes, minuteOptions),
     hours: parseSegment(hours, hourOptions),
     days: parseSegment(days, dayOptions),
@@ -284,6 +300,10 @@ export const match = (cron: Cron, date: DateTime.DateTime.Input): boolean => {
   const parts = dateTime.unsafeMakeZoned(date, {
     timeZone: Option.getOrUndefined(cron.tz)
   }).pipe(dateTime.toParts)
+
+  if (cron.seconds.size !== 0 && !cron.seconds.has(parts.seconds)) {
+    return false
+  }
 
   if (cron.minutes.size !== 0 && !cron.minutes.has(parts.minutes)) {
     return false
@@ -358,19 +378,34 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
   }
 
   const result = dateTime.mutate(zoned, (current) => {
-    current.setUTCMinutes(current.getUTCMinutes() + 1, 0, 0)
+    current.setUTCSeconds(current.getUTCSeconds() + 1, 0)
 
     for (let i = 0; i < 10_000; i++) {
+      if (cron.seconds.size !== 0) {
+        const currentSecond = current.getUTCSeconds()
+        const nextSecond = cron.next.second[currentSecond]
+        if (nextSecond === undefined) {
+          current.setUTCMinutes(current.getUTCMinutes() + 1, cron.first.second)
+          adjustDst(current)
+          continue
+        }
+        if (nextSecond > currentSecond) {
+          current.setUTCSeconds(nextSecond)
+          adjustDst(current)
+          continue
+        }
+      }
+
       if (cron.minutes.size !== 0) {
         const currentMinute = current.getUTCMinutes()
         const nextMinute = cron.next.minute[currentMinute]
         if (nextMinute === undefined) {
-          current.setUTCHours(current.getUTCHours() + 1, cron.first.minute)
+          current.setUTCHours(current.getUTCHours() + 1, cron.first.minute, cron.first.second)
           adjustDst(current)
           continue
         }
         if (nextMinute > currentMinute) {
-          current.setUTCMinutes(nextMinute)
+          current.setUTCMinutes(nextMinute, cron.first.second)
           adjustDst(current)
           continue
         }
@@ -381,12 +416,12 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
         const nextHour = cron.next.hour[currentHour]
         if (nextHour === undefined) {
           current.setUTCDate(current.getUTCDate() + 1)
-          current.setUTCHours(cron.first.hour, cron.first.minute)
+          current.setUTCHours(cron.first.hour, cron.first.minute, cron.first.second)
           adjustDst(current)
           continue
         }
         if (nextHour > currentHour) {
-          current.setUTCHours(nextHour, cron.first.minute)
+          current.setUTCHours(nextHour, cron.first.minute, cron.first.second)
           adjustDst(current)
           continue
         }
@@ -411,7 +446,7 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
         const addDays = Math.min(a, b)
         if (addDays !== 0) {
           current.setUTCDate(current.getUTCDate() + addDays)
-          current.setUTCHours(cron.first.hour, cron.first.minute)
+          current.setUTCHours(cron.first.hour, cron.first.minute, cron.first.second)
           adjustDst(current)
           continue
         }
@@ -423,13 +458,13 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
         if (nextMonth === undefined) {
           current.setUTCFullYear(current.getUTCFullYear() + 1)
           current.setUTCMonth(cron.first.month, cron.first.day)
-          current.setUTCHours(cron.first.hour, cron.first.minute)
+          current.setUTCHours(cron.first.hour, cron.first.minute, cron.first.second)
           adjustDst(current)
           continue
         }
         if (nextMonth > currentMonth) {
           current.setUTCMonth(nextMonth - 1, cron.first.day)
-          current.setUTCHours(cron.first.hour, cron.first.minute)
+          current.setUTCHours(cron.first.hour, cron.first.minute, cron.first.second)
           adjustDst(current)
           continue
         }
@@ -463,6 +498,7 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
  * @since 2.0.0
  */
 export const Equivalence: equivalence.Equivalence<Cron> = equivalence.make((self, that) =>
+  restrictionsEquals(self.seconds, that.seconds) &&
   restrictionsEquals(self.minutes, that.minutes) &&
   restrictionsEquals(self.hours, that.hours) &&
   restrictionsEquals(self.days, that.days) &&
@@ -486,32 +522,32 @@ export const equals: {
 } = dual(2, (self: Cron, that: Cron): boolean => Equivalence(self, that))
 
 interface SegmentOptions {
-  segment: string
   min: number
   max: number
   aliases?: Record<string, number> | undefined
 }
 
+const secondOptions: SegmentOptions = {
+  min: 0,
+  max: 59
+}
+
 const minuteOptions: SegmentOptions = {
-  segment: "minute",
   min: 0,
   max: 59
 }
 
 const hourOptions: SegmentOptions = {
-  segment: "hour",
   min: 0,
   max: 23
 }
 
 const dayOptions: SegmentOptions = {
-  segment: "day",
   min: 1,
   max: 31
 }
 
 const monthOptions: SegmentOptions = {
-  segment: "month",
   min: 1,
   max: 12,
   aliases: {
@@ -531,7 +567,6 @@ const monthOptions: SegmentOptions = {
 }
 
 const weekdayOptions: SegmentOptions = {
-  segment: "weekday",
   min: 0,
   max: 6,
   aliases: {
