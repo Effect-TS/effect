@@ -766,6 +766,286 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$ref": "#/$defs/Uncapitalized"
       })
     })
+
+    describe("should handle merge conflicts", () => {
+      it("minLength + minLength", () => {
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.minLength(1), Schema.minLength(2)), {
+          "type": "string",
+          "description": "a string at least 2 character(s) long",
+          "minLength": 2
+        })
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.minLength(2), Schema.minLength(1)), {
+          "type": "string",
+          "description": "a string at least 1 character(s) long",
+          "minLength": 1,
+          "allOf": [
+            { "minLength": 2 }
+          ]
+        })
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.minLength(2), Schema.minLength(1), Schema.minLength(2)), {
+          "type": "string",
+          "description": "a string at least 2 character(s) long",
+          "minLength": 2
+        })
+      })
+
+      it("maxLength + maxLength", () => {
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.maxLength(1), Schema.maxLength(2)), {
+          "type": "string",
+          "description": "a string at most 2 character(s) long",
+          "maxLength": 2,
+          "allOf": [
+            { "maxLength": 1 }
+          ]
+        })
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.maxLength(2), Schema.maxLength(1)), {
+          "type": "string",
+          "description": "a string at most 1 character(s) long",
+          "maxLength": 1
+        })
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.maxLength(1), Schema.maxLength(2), Schema.maxLength(1)), {
+          "type": "string",
+          "description": "a string at most 1 character(s) long",
+          "maxLength": 1
+        })
+      })
+
+      it("pattern + pattern", () => {
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.startsWith("a"), Schema.endsWith("c")), {
+          "type": "string",
+          "description": "a string ending with \"c\"",
+          "pattern": "^.*c$",
+          "allOf": [
+            { "pattern": "^a" }
+          ]
+        })
+        expectJSONSchemaProperty(
+          Schema.String.pipe(Schema.startsWith("a"), Schema.endsWith("c"), Schema.startsWith("a")),
+          {
+            "type": "string",
+            "description": "a string starting with \"a\"",
+            "pattern": "^a",
+            "allOf": [
+              { "pattern": "^.*c$" }
+            ]
+          }
+        )
+        expectJSONSchemaProperty(
+          Schema.String.pipe(Schema.endsWith("c"), Schema.startsWith("a"), Schema.endsWith("c")),
+          {
+            "type": "string",
+            "description": "a string ending with \"c\"",
+            "pattern": "^.*c$",
+            "allOf": [
+              { "pattern": "^a" }
+            ]
+          }
+        )
+      })
+
+      it("minItems + minItems", () => {
+        expectJSONSchemaProperty(Schema.Array(Schema.String).pipe(Schema.minItems(1), Schema.minItems(2)), {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "an array of at least 2 item(s)",
+          "minItems": 2
+        })
+        expectJSONSchemaProperty(Schema.Array(Schema.String).pipe(Schema.minItems(2), Schema.minItems(1)), {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "an array of at least 1 item(s)",
+          "minItems": 1,
+          "allOf": [
+            { "minItems": 2 }
+          ]
+        })
+        expectJSONSchemaProperty(
+          Schema.Array(Schema.String).pipe(Schema.minItems(2), Schema.minItems(1), Schema.minItems(2)),
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "an array of at least 2 item(s)",
+            "minItems": 2
+          }
+        )
+      })
+
+      it("maxItems + maxItems", () => {
+        expectJSONSchemaProperty(Schema.Array(Schema.String).pipe(Schema.maxItems(1), Schema.maxItems(2)), {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "an array of at most 2 item(s)",
+          "maxItems": 2,
+          "allOf": [
+            { "maxItems": 1 }
+          ]
+        })
+        expectJSONSchemaProperty(Schema.Array(Schema.String).pipe(Schema.maxItems(2), Schema.maxItems(1)), {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "an array of at most 1 item(s)",
+          "maxItems": 1
+        })
+        expectJSONSchemaProperty(
+          Schema.Array(Schema.String).pipe(Schema.maxItems(1), Schema.maxItems(2), Schema.maxItems(1)),
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "an array of at most 1 item(s)",
+            "maxItems": 1
+          }
+        )
+      })
+
+      it("minimum + minimum", () => {
+        expectJSONSchemaProperty(Schema.Number.pipe(Schema.greaterThanOrEqualTo(1), Schema.greaterThanOrEqualTo(2)), {
+          "type": "number",
+          "description": "a number greater than or equal to 2",
+          "minimum": 2
+        })
+        expectJSONSchemaProperty(Schema.Number.pipe(Schema.greaterThanOrEqualTo(2), Schema.greaterThanOrEqualTo(1)), {
+          "type": "number",
+          "minimum": 1,
+          "description": "a number greater than or equal to 1",
+          "allOf": [
+            { "minimum": 2 }
+          ]
+        })
+        expectJSONSchemaProperty(
+          Schema.Number.pipe(
+            Schema.greaterThanOrEqualTo(2),
+            Schema.greaterThanOrEqualTo(1),
+            Schema.greaterThanOrEqualTo(2)
+          ),
+          {
+            "type": "number",
+            "description": "a number greater than or equal to 2",
+            "minimum": 2
+          }
+        )
+      })
+
+      it("maximum + maximum", () => {
+        expectJSONSchemaProperty(Schema.Number.pipe(Schema.lessThanOrEqualTo(1), Schema.lessThanOrEqualTo(2)), {
+          "type": "number",
+          "description": "a number less than or equal to 2",
+          "maximum": 2,
+          "allOf": [
+            { "maximum": 1 }
+          ]
+        })
+        expectJSONSchemaProperty(Schema.Number.pipe(Schema.lessThanOrEqualTo(2), Schema.lessThanOrEqualTo(1)), {
+          "type": "number",
+          "description": "a number less than or equal to 1",
+          "maximum": 1
+        })
+        expectJSONSchemaProperty(
+          Schema.Number.pipe(Schema.lessThanOrEqualTo(1), Schema.lessThanOrEqualTo(2), Schema.lessThanOrEqualTo(1)),
+          {
+            "type": "number",
+            "description": "a number less than or equal to 1",
+            "maximum": 1
+          }
+        )
+      })
+
+      it("exclusiveMinimum + exclusiveMinimum", () => {
+        expectJSONSchemaProperty(Schema.Number.pipe(Schema.greaterThan(1), Schema.greaterThan(2)), {
+          "type": "number",
+          "description": "a number greater than 2",
+          "exclusiveMinimum": 2
+        })
+        expectJSONSchemaProperty(Schema.Number.pipe(Schema.greaterThan(2), Schema.greaterThan(1)), {
+          "type": "number",
+          "exclusiveMinimum": 1,
+          "description": "a number greater than 1",
+          "allOf": [
+            { "exclusiveMinimum": 2 }
+          ]
+        })
+        expectJSONSchemaProperty(
+          Schema.Number.pipe(
+            Schema.greaterThan(2),
+            Schema.greaterThan(1),
+            Schema.greaterThan(2)
+          ),
+          {
+            "type": "number",
+            "description": "a number greater than 2",
+            "exclusiveMinimum": 2
+          }
+        )
+      })
+
+      it("exclusiveMaximum + exclusiveMaximum", () => {
+        expectJSONSchemaProperty(Schema.Number.pipe(Schema.lessThan(1), Schema.lessThan(2)), {
+          "type": "number",
+          "description": "a number less than 2",
+          "exclusiveMaximum": 2,
+          "allOf": [
+            { "exclusiveMaximum": 1 }
+          ]
+        })
+        expectJSONSchemaProperty(Schema.Number.pipe(Schema.lessThan(2), Schema.lessThan(1)), {
+          "type": "number",
+          "description": "a number less than 1",
+          "exclusiveMaximum": 1
+        })
+        expectJSONSchemaProperty(
+          Schema.Number.pipe(Schema.lessThan(1), Schema.lessThan(2), Schema.lessThan(1)),
+          {
+            "type": "number",
+            "description": "a number less than 1",
+            "exclusiveMaximum": 1
+          }
+        )
+      })
+
+      it("multipleOf + multipleOf", () => {
+        expectJSONSchemaProperty(Schema.Number.pipe(Schema.multipleOf(2), Schema.multipleOf(3)), {
+          "type": "number",
+          "description": "a number divisible by 3",
+          "multipleOf": 3,
+          "allOf": [
+            { "multipleOf": 2 }
+          ]
+        })
+        expectJSONSchemaProperty(
+          Schema.Number.pipe(Schema.multipleOf(2), Schema.multipleOf(3), Schema.multipleOf(3)),
+          {
+            "type": "number",
+            "description": "a number divisible by 3",
+            "multipleOf": 3,
+            "allOf": [
+              { "multipleOf": 2 }
+            ]
+          }
+        )
+        expectJSONSchemaProperty(
+          Schema.Number.pipe(Schema.multipleOf(3), Schema.multipleOf(2), Schema.multipleOf(3)),
+          {
+            "type": "number",
+            "description": "a number divisible by 3",
+            "multipleOf": 3,
+            "allOf": [
+              { "multipleOf": 2 }
+            ]
+          }
+        )
+      })
+    })
   })
 
   describe("Tuple", () => {
@@ -3281,7 +3561,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "$defs": {
               "7848c831-fa50-4e36-aee8-65d2648c0120": {
-                "description": "an array of at least 2 items",
+                "description": "an array of at least 2 item(s)",
                 "items": {
                   "$ref": "#/$defs/NumberFromString"
                 },

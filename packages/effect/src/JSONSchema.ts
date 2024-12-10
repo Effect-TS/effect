@@ -87,6 +87,11 @@ export interface JsonSchema7String extends JsonSchemaAnnotations {
   pattern?: string
   format?: string
   contentMediaType?: string
+  allOf?: Array<{
+    minLength?: number
+    maxLength?: number
+    pattern?: string
+  }>
 }
 
 /**
@@ -98,6 +103,14 @@ export interface JsonSchema7Numeric extends JsonSchemaAnnotations {
   exclusiveMinimum?: number
   maximum?: number
   exclusiveMaximum?: number
+  multipleOf?: number
+  allOf?: Array<{
+    minimum?: number
+    exclusiveMinimum?: number
+    maximum?: number
+    exclusiveMaximum?: number
+    multipleOf?: number
+  }>
 }
 
 /**
@@ -376,6 +389,34 @@ const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
 const isEnumOnly = (schema: JsonSchema7): schema is JsonSchema7Enum =>
   "enum" in schema && Object.keys(schema).length === 1
 
+const mergeRefinements = (from: any, jsonSchema: any, annotations: any): any => {
+  const out: any = { ...from, ...annotations, ...jsonSchema }
+  out.allOf ??= []
+
+  const handle = (name: string, filter: (i: any) => boolean) => {
+    if (name in jsonSchema && name in from) {
+      out.allOf.unshift({ [name]: from[name] })
+      out.allOf = out.allOf.filter(filter)
+    }
+  }
+
+  handle("minLength", (i) => i.minLength > jsonSchema.minLength)
+  handle("maxLength", (i) => i.maxLength < jsonSchema.maxLength)
+  handle("pattern", (i) => i.pattern !== jsonSchema.pattern)
+  handle("minItems", (i) => i.minItems > jsonSchema.minItems)
+  handle("maxItems", (i) => i.maxItems < jsonSchema.maxItems)
+  handle("minimum", (i) => i.minimum > jsonSchema.minimum)
+  handle("maximum", (i) => i.maximum < jsonSchema.maximum)
+  handle("exclusiveMinimum", (i) => i.exclusiveMinimum > jsonSchema.exclusiveMinimum)
+  handle("exclusiveMaximum", (i) => i.exclusiveMaximum < jsonSchema.exclusiveMaximum)
+  handle("multipleOf", (i) => i.multipleOf !== jsonSchema.multipleOf)
+
+  if (out.allOf.length === 0) {
+    delete out.allOf
+  }
+  return out
+}
+
 const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
@@ -404,11 +445,11 @@ const go = (
     if (AST.isRefinement(ast)) {
       const t = AST.getTransformationFrom(ast)
       if (t === undefined) {
-        return {
-          ...go(ast.from, $defs, handleIdentifier, path, options),
-          ...getJsonSchemaAnnotations(ast),
-          ...handler
-        }
+        return mergeRefinements(
+          go(ast.from, $defs, handleIdentifier, path, options),
+          handler,
+          getJsonSchemaAnnotations(ast)
+        )
       } else if (!isOverrideAnnotation(handler)) {
         return go(t, $defs, handleIdentifier, path, options)
       }

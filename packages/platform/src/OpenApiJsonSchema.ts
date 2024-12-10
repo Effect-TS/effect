@@ -85,6 +85,11 @@ export interface String extends Annotations {
   format?: string
   contentMediaType?: string
   contentSchema?: JsonSchema
+  allOf?: globalThis.Array<{
+    minLength?: number
+    maxLength?: number
+    pattern?: string
+  }>
 }
 
 /**
@@ -96,7 +101,15 @@ export interface Numeric extends Annotations {
   exclusiveMinimum?: number
   maximum?: number
   exclusiveMaximum?: number
+  multipleOf?: number
   format?: string
+  allOf?: globalThis.Array<{
+    minimum?: number
+    exclusiveMinimum?: number
+    maximum?: number
+    exclusiveMaximum?: number
+    multipleOf?: number
+  }>
 }
 
 /**
