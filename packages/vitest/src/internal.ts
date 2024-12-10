@@ -12,6 +12,7 @@ import * as Fiber from "effect/Fiber"
 import { flow, identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import { isObject } from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
@@ -102,8 +103,13 @@ const makeTester = <R>(
       const arbs = schemaObj.map((schema) => Arbitrary.make(schema))
       return V.it(
         name,
-        // @ts-ignore
-        (ctx) => fc.assert(fc.asyncProperty(...arbs, (...as) => run(ctx, [as as any, ctx], self))),
+        (ctx) =>
+          // @ts-ignore
+          fc.assert(
+            // @ts-ignore
+            fc.asyncProperty(...arbs, (...as) => run(ctx, [as as any, ctx], self)),
+            isObject(timeout) ? timeout?.fastCheck : {}
+          ),
         timeout
       )
     }
@@ -117,8 +123,14 @@ const makeTester = <R>(
 
     return V.it(
       name,
-      // @ts-ignore
-      (ctx) => fc.assert(fc.asyncProperty(arbs, (...as) => run(ctx, [as[0] as any, ctx], self))),
+      (ctx) =>
+        // @ts-ignore
+        fc.assert(
+          fc.asyncProperty(arbs, (...as) =>
+            // @ts-ignore
+            run(ctx, [as[0] as any, ctx], self)),
+          isObject(timeout) ? timeout?.fastCheck : {}
+        ),
       timeout
     )
   }
@@ -132,7 +144,7 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, schemaObj, self, timeo
     return V.it(
       name,
       // @ts-ignore
-      (ctx) => fc.assert(fc.property(...arbs, (...as) => self(as, ctx))),
+      (ctx) => fc.assert(fc.property(...arbs, (...as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {}),
       timeout
     )
   }
@@ -147,7 +159,7 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, schemaObj, self, timeo
   return V.it(
     name,
     // @ts-ignore
-    (ctx) => fc.assert(fc.property(arbs, (...as) => self(as[0], ctx))),
+    (ctx) => fc.assert(fc.property(arbs, (...as) => self(as[0], ctx)), check),
     timeout
   )
 }
