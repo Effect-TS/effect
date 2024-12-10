@@ -56,4 +56,17 @@ describe("Config", () => {
       )
     )
   })
+
+  it("should work with a template literal", () => {
+    const config = Schema.Config("A", Schema.TemplateLiteral("a", Schema.Number))
+    assertSuccess(config, [["A", "a1"]], "a1")
+    assertFailure(
+      config,
+      [["A", "ab"]],
+      ConfigError.InvalidData(
+        ["A"],
+        `Expected \`a$\{number}\`, actual "ab"`
+      )
+    )
+  })
 })
