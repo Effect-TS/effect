@@ -288,11 +288,11 @@ schema (UndefinedKeyword): undefined`
 
       it("Struct with an unsupported field", () => {
         expectError(
-          Schema.Struct({ a: Schema.Undefined }),
+          Schema.Struct({ a: Schema.SymbolFromSelf }),
           `Missing annotation
 at path: ["a"]
 details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (UndefinedKeyword): undefined`
+schema (SymbolKeyword): symbol`
         )
       })
 
@@ -2943,6 +2943,63 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Pruning `undefined` and make the property optional by default", () => {
+    it("Undefined", () => {
+      expectJsonSchemaAnnotations(
+        Schema.Struct({
+          a: Schema.Undefined
+        }),
+        {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "a": {
+              "enum": [],
+              "title": "never"
+            }
+          },
+          "additionalProperties": false
+        }
+      )
+    })
+
+    it.skip("UndefinedOr(Undefined)", () => {
+      expectJsonSchemaAnnotations(
+        Schema.Struct({
+          a: Schema.UndefinedOr(Schema.Undefined)
+        }),
+        {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "a": {
+              "enum": [],
+              "title": "never"
+            }
+          },
+          "additionalProperties": false
+        }
+      )
+    })
+
+    it("Nested `Undefined`s", () => {
+      expectJsonSchemaAnnotations(
+        Schema.Struct({
+          a: Schema.UndefinedOr(Schema.UndefinedOr(Schema.Undefined))
+        }),
+        {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "a": {
+              "enum": [],
+              "title": "never"
+            }
+          },
+          "additionalProperties": false
+        }
+      )
+    })
+
     it("Schema.optional", () => {
       expectJsonSchemaAnnotations(
         Schema.Struct({
@@ -3036,7 +3093,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
-    it("UndefinedOr + annotation should override inner annotations", () => {
+    it("UndefinedOr + annotation should not override inner annotations", () => {
       expectJsonSchemaAnnotations(
         Schema.Struct({
           a: Schema.UndefinedOr(Schema.String.annotations({ description: "inner" })).annotations({
@@ -3049,7 +3106,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "properties": {
             "a": {
               "type": "string",
-              "description": "middle"
+              "description": "inner"
             }
           },
           "additionalProperties": false
