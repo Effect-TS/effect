@@ -439,8 +439,8 @@ export const cron = (expression: string | Cron.Cron): Schedule.Schedule<[number,
       }
 
       next = Cron.next(cron, date).getTime()
-      const start = beginningOfMinute(next)
-      const end = endOfMinute(next)
+      const start = beginningOfSecond(next)
+      const end = endOfSecond(next)
       return core.succeed([
         [false, [next, start, end]],
         [start, end],
