@@ -3,6 +3,7 @@ import * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Cron from "../Cron.js"
+import type * as DateTime from "../DateTime.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
 import * as Either from "../Either.js"
@@ -413,8 +414,11 @@ export const mapInputEffect = dual<
     )))
 
 /** @internal */
-export const cron = (expression: string | Cron.Cron): Schedule.Schedule<[number, number]> => {
-  const parsed = Cron.isCron(expression) ? Either.right(expression) : Cron.parse(expression)
+export const cron: {
+  (expression: Cron.Cron): Schedule.Schedule<[number, number]>
+  (expression: string, tz?: DateTime.TimeZone | string): Schedule.Schedule<[number, number]>
+} = (expression: string | Cron.Cron, tz?: DateTime.TimeZone | string): Schedule.Schedule<[number, number]> => {
+  const parsed = Cron.isCron(expression) ? Either.right(expression) : Cron.parse(expression, tz)
   return makeWithState<[boolean, [number, number, number]], unknown, [number, number]>(
     [true, [Number.MIN_SAFE_INTEGER, 0, 0]],
     (now, _, [initial, previous]) => {
