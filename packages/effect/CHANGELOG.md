@@ -1,5 +1,418 @@
 # effect
 
+## 3.11.5
+
+### Patch Changes
+
+- [#4019](https://github.com/Effect-TS/effect/pull/4019) [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8) Thanks @gcanti! - Add missing `jsonSchema` annotations to the following filters:
+
+  - `lowercased`
+  - `capitalized`
+  - `uncapitalized`
+  - `uppercased`
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.Uppercased
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  throws:
+  Error: Missing annotation
+  details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
+  schema (Refinement): Uppercased
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Uppercased
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  Output:
+  {
+    "$ref": "#/$defs/Uppercased",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "Uppercased": {
+        "type": "string",
+        "description": "an uppercase string",
+        "title": "Uppercased",
+        "pattern": "^[^a-z]*$"
+      }
+    }
+  }
+  */
+  ```
+
+- [#4111](https://github.com/Effect-TS/effect/pull/4111) [`22905cf`](https://github.com/Effect-TS/effect/commit/22905cf5addfb1ff3d2a6135c52036be958ae911) Thanks @gcanti! - JSONSchema: merge refinement fragments instead of just overwriting them.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  export const schema = Schema.String.pipe(
+    Schema.startsWith("a"), // <= overwritten!
+    Schema.endsWith("c")
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a string ending with \"c\"",
+    "pattern": "^.*c$" // <= overwritten!
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  export const schema = Schema.String.pipe(
+    Schema.startsWith("a"), // <= preserved!
+    Schema.endsWith("c")
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "type": "string",
+    "description": "a string ending with \"c\"",
+    "pattern": "^.*c$",
+    "allOf": [
+      {
+        "pattern": "^a" // <= preserved!
+      }
+    ],
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  }
+  */
+  ```
+
+- [#4019](https://github.com/Effect-TS/effect/pull/4019) [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8) Thanks @gcanti! - JSONSchema: Correct the output order when generating a JSON Schema from a Union that includes literals and primitive schemas.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Union(Schema.Literal(1, 2), Schema.String)
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "enum": [
+          1,
+          2
+        ]
+      }
+    ]
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Union(Schema.Literal(1, 2), Schema.String)
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "anyOf": [
+      {
+        "enum": [
+          1,
+          2
+        ]
+      },
+      {
+        "type": "string"
+      }
+    ]
+  }
+  */
+  ```
+
+- [#4107](https://github.com/Effect-TS/effect/pull/4107) [`1e59e4f`](https://github.com/Effect-TS/effect/commit/1e59e4fd778da18296812a2a32f36ca8ae50f60d) Thanks @tim-smart! - remove FnEffect type to improve return type of Effect.fn
+
+- [#4108](https://github.com/Effect-TS/effect/pull/4108) [`8d914e5`](https://github.com/Effect-TS/effect/commit/8d914e504e7a22d0ea628e8af265ee450ff9530f) Thanks @gcanti! - JSONSchema: represent `never` as `{"not":{}}`
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Never
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  throws:
+  Error: Missing annotation
+  details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
+  schema (NeverKeyword): never
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Never
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$id": "/schemas/never",
+    "not": {},
+    "title": "never",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  }
+  */
+  ```
+
+- [#4115](https://github.com/Effect-TS/effect/pull/4115) [`03bb00f`](https://github.com/Effect-TS/effect/commit/03bb00faa74f9e168a54a8cc0828a664fbb1ab05) Thanks @tim-smart! - avoid using non-namespaced "async" internally
+
+- [#4019](https://github.com/Effect-TS/effect/pull/4019) [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8) Thanks @gcanti! - JSONSchema: fix special case in `parseJson` handling to target the "to" side of the transformation only at the top level.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.parseJson(
+    Schema.Struct({
+      a: Schema.parseJson(
+        Schema.Struct({
+          b: Schema.String
+        })
+      )
+    })
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "a"
+    ],
+    "properties": {
+      "a": {
+        "type": "object",
+        "required": [
+          "b"
+        ],
+        "properties": {
+          "b": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.parseJson(
+    Schema.Struct({
+      a: Schema.parseJson(
+        Schema.Struct({
+          b: Schema.String
+        })
+      )
+    })
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "type": "object",
+    "required": [
+      "a"
+    ],
+    "properties": {
+      "a": {
+        "type": "string",
+        "contentMediaType": "application/json"
+      }
+    },
+    "additionalProperties": false,
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  }
+  */
+  ```
+
+- [#4101](https://github.com/Effect-TS/effect/pull/4101) [`14e1149`](https://github.com/Effect-TS/effect/commit/14e1149f1af5a022f06eb8c2e4ba9fec17fe7426) Thanks @gcanti! - Schema: align the `make` constructor of structs with the behavior of the Class API constructors when all fields have a default.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.Number).pipe(
+      Schema.withConstructorDefault(() => 0)
+    )
+  })
+
+  // TypeScript error: Expected 1-2 arguments, but got 0.ts(2554)
+  console.log(schema.make())
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.propertySignature(Schema.Number).pipe(
+      Schema.withConstructorDefault(() => 0)
+    )
+  })
+
+  console.log(schema.make())
+  // Output: { a: 0 }
+  ```
+
+- [#4019](https://github.com/Effect-TS/effect/pull/4019) [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8) Thanks @gcanti! - JSONSchema: Fix issue where `identifier` is ignored when a refinement is applied to a schema, closes #4012
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NonEmptyString
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a non empty string",
+    "title": "NonEmptyString",
+    "minLength": 1
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NonEmptyString
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$ref": "#/$defs/NonEmptyString",
+    "$defs": {
+      "NonEmptyString": {
+        "type": "string",
+        "description": "a non empty string",
+        "title": "NonEmptyString",
+        "minLength": 1
+      }
+    }
+  }
+  */
+  ```
+
+- [#4019](https://github.com/Effect-TS/effect/pull/4019) [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8) Thanks @gcanti! - JSONSchema: Use identifier with Class APIs to create a `$ref` instead of inlining the schema.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  class A extends Schema.Class<A>("A")({
+    a: Schema.String
+  }) {}
+
+  console.log(JSON.stringify(JSONSchema.make(A), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "a"
+    ],
+    "properties": {
+      "a": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  class A extends Schema.Class<A>("A")({
+    a: Schema.String
+  }) {}
+
+  console.log(JSON.stringify(JSONSchema.make(A), null, 2))
+  /*
+  {
+    "$ref": "#/$defs/A",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "A": {
+        "type": "object",
+        "required": [
+          "a"
+        ],
+        "properties": {
+          "a": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+  */
+  ```
+
 ## 3.11.4
 
 ### Patch Changes
