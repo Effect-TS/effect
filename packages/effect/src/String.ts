@@ -749,7 +749,7 @@ const isLineBreak2 = (char0: string, char1: string): boolean => char0.charCodeAt
 const linesSeparated = (self: string, stripped: boolean): LinesIterator => new LinesIterator(self, stripped)
 
 /**
- * Truncates a string to a specified length and by default adds the omission string (e.g. "...") to the end of the string.
+ * Truncates a string to a specified length and by default adds the omission string "..." to the end of the string.
  * @since 3.12.0
  *
  * @example
