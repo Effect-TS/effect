@@ -1,5 +1,63 @@
 # @effect/platform
 
+## 0.70.7
+
+### Patch Changes
+
+- [#4111](https://github.com/Effect-TS/effect/pull/4111) [`22905cf`](https://github.com/Effect-TS/effect/commit/22905cf5addfb1ff3d2a6135c52036be958ae911) Thanks @gcanti! - JSONSchema: merge refinement fragments instead of just overwriting them.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  export const schema = Schema.String.pipe(
+    Schema.startsWith("a"), // <= overwritten!
+    Schema.endsWith("c")
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a string ending with \"c\"",
+    "pattern": "^.*c$" // <= overwritten!
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  export const schema = Schema.String.pipe(
+    Schema.startsWith("a"), // <= preserved!
+    Schema.endsWith("c")
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "type": "string",
+    "description": "a string ending with \"c\"",
+    "pattern": "^.*c$",
+    "allOf": [
+      {
+        "pattern": "^a" // <= preserved!
+      }
+    ],
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  }
+  */
+  ```
+
+- [#4019](https://github.com/Effect-TS/effect/pull/4019) [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8) Thanks @gcanti! - OpenApiJsonSchema: Use the experimental `JSONSchema.fromAST` API for implementation.
+
+- Updated dependencies [[`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`22905cf`](https://github.com/Effect-TS/effect/commit/22905cf5addfb1ff3d2a6135c52036be958ae911), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`1e59e4f`](https://github.com/Effect-TS/effect/commit/1e59e4fd778da18296812a2a32f36ca8ae50f60d), [`8d914e5`](https://github.com/Effect-TS/effect/commit/8d914e504e7a22d0ea628e8af265ee450ff9530f), [`03bb00f`](https://github.com/Effect-TS/effect/commit/03bb00faa74f9e168a54a8cc0828a664fbb1ab05), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`14e1149`](https://github.com/Effect-TS/effect/commit/14e1149f1af5a022f06eb8c2e4ba9fec17fe7426), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8)]:
+  - effect@3.11.5
+
 ## 0.70.6
 
 ### Patch Changes
