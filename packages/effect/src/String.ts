@@ -747,3 +747,93 @@ const isLineBreak = (char: string): boolean => {
 const isLineBreak2 = (char0: string, char1: string): boolean => char0.charCodeAt(0) === CR && char1.charCodeAt(0) === LF
 
 const linesSeparated = (self: string, stripped: boolean): LinesIterator => new LinesIterator(self, stripped)
+
+/**
+ * Truncates a string to a specified length and by default adds the omission string (e.g. "...") to the end of the string.
+ * @since 3.12.0
+ *
+ * @example
+ * import { truncate } from "effect/String";
+ * truncate("Hello World!", 5); // "Hello..."
+ */
+export const truncate: {
+  (
+    str: string,
+    lengthOrOptions:
+      | number
+      | {
+        /**
+         * The length to truncate the string to.
+         */
+        length: number
+
+        /**
+         * The separator to use to truncate the string.
+         */
+        separator?: string
+        /**
+         * The omission string to add to the end of the truncated string. Defaults to "...".
+         */
+        omission?: string
+      }
+  ): string
+
+  (
+    lengthOrOptions:
+      | number
+      | {
+        /**
+         * The length to truncate the string to.
+         */
+        length: number
+
+        /**
+         * The separator to use to truncate the string. Use " " to truncate evenly on a word boundary.
+         */
+        separator?: string
+
+        /**
+         * The omission string to add to the end of the truncated string. Defaults to "...".
+         */
+        omission?: string
+      }
+  ): (str: string) => string
+} = dual(
+  2,
+  (
+    str: string,
+    lengthOrOptions:
+      | number
+      | {
+        length: number
+        separator?: string
+        omission?: string
+      }
+  ) => {
+    const len = typeof lengthOrOptions === "number"
+      ? lengthOrOptions
+      : lengthOrOptions.length
+
+    if (str.length <= len) {
+      return str
+    }
+
+    let subString = str.slice(0, len)
+
+    if (
+      typeof lengthOrOptions === "object" &&
+      typeof lengthOrOptions.separator === "string"
+    ) {
+      subString = subString.slice(
+        0,
+        subString.lastIndexOf(lengthOrOptions.separator)
+      )
+    }
+
+    const omission = typeof lengthOrOptions === "object"
+      ? (lengthOrOptions.omission ?? "...")
+      : "..."
+
+    return subString + omission
+  }
+)
