@@ -67,10 +67,11 @@ export const Clipboard: Context.Tag<Clipboard, Clipboard> = Context.GenericTag<C
  * @category constructor
  */
 export const make = (
-  impl: Omit<Clipboard, "clear" | "writeBlob">
+  impl: Omit<Clipboard, "clear" | "writeBlob" | TypeId>
 ): Clipboard =>
   Clipboard.of({
     ...impl,
+    [TypeId]: TypeId,
     clear: impl.writeString(""),
     writeBlob: (blob: Blob) => impl.write([new ClipboardItem({ [blob.type]: blob })])
   })
@@ -84,7 +85,6 @@ export const make = (
 export const layer: Layer.Layer<Clipboard> = Layer.succeed(
   Clipboard,
   make({
-    [TypeId]: TypeId,
     read: Effect.tryPromise({
       try: () => navigator.clipboard.read(),
       catch: (cause) =>
