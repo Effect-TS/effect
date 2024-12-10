@@ -7,7 +7,7 @@ import * as Option from "effect/Option"
 import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
-const parse = (input: string, tz?: DateTime.TimeZone) => Either.getOrThrowWith(Cron.parse(input, tz), identity)
+const parse = (input: string, tz?: DateTime.TimeZone | string) => Either.getOrThrowWith(Cron.parse(input, tz), identity)
 const match = (input: Cron.Cron | string, date: DateTime.DateTime.Input) =>
   Cron.match(Cron.isCron(input) ? input : parse(input), date)
 const next = (input: Cron.Cron | string, after?: DateTime.DateTime.Input) =>
@@ -151,10 +151,12 @@ describe("Cron", () => {
   })
 
   it("handles transition into daylight savings time", () => {
-    const berlin = DateTime.zoneUnsafeMakeNamed("Europe/Berlin")
     const make = (date: string) => DateTime.makeZonedFromString(date).pipe(Option.getOrThrow)
-    const sequence = Cron.sequence(parse("30 * * * *", berlin), make("2024-03-31T00:00:00.000+01:00[Europe/Berlin]"))
-    const next = (): DateTime.Zoned => DateTime.unsafeMakeZoned(sequence.next().value, { timeZone: berlin })
+    const sequence = Cron.sequence(
+      parse("30 * * * *", "Europe/Berlin"),
+      make("2024-03-31T00:00:00.000+01:00[Europe/Berlin]")
+    )
+    const next = (): DateTime.Zoned => DateTime.unsafeMakeZoned(sequence.next().value, { timeZone: "Europe/Berlin" })
 
     const a = make("2024-03-31T00:30:00.000+01:00[Europe/Berlin]")
     const b = make("2024-03-31T01:30:00.000+01:00[Europe/Berlin]")
@@ -168,10 +170,12 @@ describe("Cron", () => {
   })
 
   it("handles transition out of daylight savings time", () => {
-    const berlin = DateTime.zoneUnsafeMakeNamed("Europe/Berlin")
     const make = (date: string) => DateTime.makeZonedFromString(date).pipe(Option.getOrThrow)
-    const sequence = Cron.sequence(parse("30 * * * *", berlin), make("2024-10-27T00:00:00.000+02:00[Europe/Berlin]"))
-    const next = (): DateTime.Zoned => DateTime.unsafeMakeZoned(sequence.next().value, { timeZone: berlin })
+    const sequence = Cron.sequence(
+      parse("30 * * * *", "Europe/Berlin"),
+      make("2024-10-27T00:00:00.000+02:00[Europe/Berlin]")
+    )
+    const next = (): DateTime.Zoned => DateTime.unsafeMakeZoned(sequence.next().value, { timeZone: "Europe/Berlin" })
 
     const a = make("2024-10-27T00:30:00.000+02:00[Europe/Berlin]")
     // const x = make("2024-10-27T01:30:00.000+02:00[Europe/Berlin]") // TODO: Our implementation skips this.
