@@ -256,7 +256,7 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  * @since 2.0.0
  * @category constructors
  */
-export const parse = (cron: string, tz?: DateTime.TimeZone): Either.Either<Cron, ParseError> => {
+export const parse = (cron: string, tz?: DateTime.TimeZone | string): Either.Either<Cron, ParseError> => {
   const segments = cron.split(" ").filter(String.isNonEmpty)
   if (segments.length !== 5 && segments.length !== 6) {
     return Either.left(ParseError(`Invalid number of segments in cron expression`, cron))
@@ -267,15 +267,46 @@ export const parse = (cron: string, tz?: DateTime.TimeZone): Either.Either<Cron,
   }
 
   const [seconds, minutes, hours, days, months, weekdays] = segments
+  const zone = tz === undefined || dateTime.isTimeZone(tz) ?
+    Either.right(tz) :
+    Either.fromOption(dateTime.zoneFromString(tz), () => ParseError(`Invalid time zone in cron expression`, tz))
+
   return Either.all({
+    tz: zone,
     seconds: parseSegment(seconds, secondOptions),
     minutes: parseSegment(minutes, minuteOptions),
     hours: parseSegment(hours, hourOptions),
     days: parseSegment(days, dayOptions),
     months: parseSegment(months, monthOptions),
     weekdays: parseSegment(weekdays, weekdayOptions)
-  }).pipe(Either.map((segments) => make({ ...segments, tz })))
+  }).pipe(Either.map(make))
 }
+
+/**
+ * Parses a cron expression into a `Cron` instance.
+ *
+ * Throws on failure.
+ *
+ * @param cron - The cron expression to parse.
+ *
+ * @example
+ * ```ts
+ * import { Cron } from "effect"
+ *
+ * // At 04:00 on every day-of-month from 8 through 14.
+ * assert.deepStrictEqual(Cron.unsafeParse("0 4 8-14 * *"), Cron.make({
+ *   minutes: [0],
+ *   hours: [4],
+ *   days: [8, 9, 10, 11, 12, 13, 14],
+ *   months: [],
+ *   weekdays: []
+ * }))
+ * ```
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const unsafeParse = (cron: string, tz?: DateTime.TimeZone | string): Cron => Either.getOrThrow(parse(cron, tz))
 
 /**
  * Checks if a given `Date` falls within an active `Cron` time window.
