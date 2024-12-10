@@ -29,6 +29,5 @@ it.prop(
       if (prev.name > curr.name) throw new Error("Invalid on name")
     }
   },
-  { fails: true },
-  { seed: 1485455336, path: "352:3:7:9:9:13:12:11", endOnFailure: true }
+  { fails: true, fastCheck: { seed: 1485455336, path: "352:3:7:9:9:13:12:11", endOnFailure: true } }
 )

@@ -67,8 +67,7 @@ export namespace Vitest {
         R,
         [{ [K in keyof S]: Schema.Schema.Type<S[K]> }, V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext]
       >,
-      timeout?: number | V.TestOptions,
-      check?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }>
+      timeout?: number | V.TestOptions & { fastCheck?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }> }
     ) => void
   }
 
@@ -101,8 +100,7 @@ export namespace Vitest {
         schemas: { [K in keyof S]: Schema.Schema.Type<S[K]> },
         ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
       ) => void,
-      timeout?: number | V.TestOptions,
-      check?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }>
+      timeout?: number | V.TestOptions & { fastCheck?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }> }
     ) => void
   }
 }
@@ -198,7 +196,7 @@ export const prop: <const S extends Vitest.SchemaObj>(
     schemas: { [K in keyof S]: Schema.Schema.Type<S[K]> },
     ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
   ) => void,
-  timeout?: number | V.TestOptions
+  timeout?: number | V.TestOptions & { fastCheck?: FC.Parameters<{ [K in keyof S]: Schema.Schema.Type<S[K]> }> }
 ) => void = internal.prop
 
 /**

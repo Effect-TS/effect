@@ -14,7 +14,6 @@ it.effect.prop(
       expect(foo).toEqual("foo")
       return num === num
     }),
-  {},
-  { numRuns: 200 }
+  { fastCheck: { numRuns: 200 } }
 )
 ```
