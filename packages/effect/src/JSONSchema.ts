@@ -424,7 +424,7 @@ const go = (
     case "VoidKeyword":
       return { ...constVoid, ...getJsonSchemaAnnotations(ast) }
     case "NeverKeyword":
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+      return { enum: [], ...getJsonSchemaAnnotations(ast) }
     case "UnknownKeyword":
       return { ...constUnknown, ...getJsonSchemaAnnotations(ast) }
     case "AnyKeyword":

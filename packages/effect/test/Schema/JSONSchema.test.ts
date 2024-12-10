@@ -267,15 +267,6 @@ schema (UndefinedKeyword): undefined`
         )
       })
 
-      it("Never", () => {
-        expectError(
-          Schema.Never,
-          `Missing annotation
-details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (NeverKeyword): never`
-        )
-      })
-
       it("Schema.Literal with a bigint literal", () => {
         expectError(
           Schema.Literal(1n),
@@ -366,6 +357,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
   })
 
+  it("Never", () => {
+    expectJsonSchemaAnnotations(Schema.Never, {
+      "enum": [],
+      "title": "never"
+    })
+  })
+
   it("Any", () => {
     expectJsonSchemaAnnotations(Schema.Any, {
       "$id": "/schemas/any",
@@ -384,12 +382,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     const jsonSchema: Root = {
       "$id": "/schemas/object",
       "anyOf": [
-        {
-          "type": "object"
-        },
-        {
-          "type": "array"
-        }
+        { "type": "object" },
+        { "type": "array" }
       ],
       "description": "an object in the TypeScript meaning, i.e. the `object` type",
       "title": "object"
@@ -409,7 +403,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     const schema = Schema.Struct({})
     const jsonSchema: Root = {
       "$id": "/schemas/{}",
-
       "anyOf": [{
         "type": "object"
       }, {
