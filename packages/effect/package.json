@@ -50,6 +50,6 @@
     "zod": "^3.23.5"
   },
   "dependencies": {
-    "fast-check": "^3.21.0"
+    "fast-check": "^3.23.1"
   }
 }
