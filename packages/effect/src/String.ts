@@ -768,7 +768,7 @@ export const truncate: {
         length: number
 
         /**
-         * The separator to use to truncate the string.
+         * The separator to use to truncate the string. Use " " to truncate evenly on a word boundary.
          */
         separator?: string
         /**
