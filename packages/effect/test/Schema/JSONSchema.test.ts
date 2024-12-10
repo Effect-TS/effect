@@ -52,7 +52,7 @@ const expectJSONSchemaProperty = <A, I>(
   expectProperty(schema, jsonSchema, params)
 }
 
-const expectJsonSchemaAnnotations = <A, I>(
+const expectJSONSchemaAnnotations = <A, I>(
   schema: Schema.Schema<A, I>,
   expected: object,
   params?: fc.Parameters<[I]>
@@ -358,21 +358,25 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   it("Never", () => {
-    expectJsonSchemaAnnotations(Schema.Never, {
-      "enum": [],
+    const jsonSchema: Root = {
+      "$id": "/schemas/never",
+      "not": {},
       "title": "never"
-    })
+    }
+    expectJSONSchema(Schema.Never, jsonSchema)
+    const validate = getAjvValidate(jsonSchema)
+    expect(validate(null)).toEqual(false)
   })
 
   it("Any", () => {
-    expectJsonSchemaAnnotations(Schema.Any, {
+    expectJSONSchemaAnnotations(Schema.Any, {
       "$id": "/schemas/any",
       "title": "any"
     })
   })
 
   it("Unknown", () => {
-    expectJsonSchemaAnnotations(Schema.Unknown, {
+    expectJSONSchemaAnnotations(Schema.Unknown, {
       "$id": "/schemas/unknown",
       "title": "unknown"
     })
@@ -388,7 +392,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       "description": "an object in the TypeScript meaning, i.e. the `object` type",
       "title": "object"
     }
-    expectJsonSchemaAnnotations(Schema.Object, jsonSchema)
+    expectJSONSchemaAnnotations(Schema.Object, jsonSchema)
 
     const validate = getAjvValidate(jsonSchema)
     expect(validate({})).toEqual(true)
@@ -409,7 +413,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "type": "array"
       }]
     }
-    expectJsonSchemaAnnotations(schema, jsonSchema)
+    expectJSONSchemaAnnotations(schema, jsonSchema)
     const validate = getAjvValidate(jsonSchema)
     expect(validate({})).toEqual(true)
     expect(validate({ a: 1 })).toEqual(true)
@@ -420,14 +424,14 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   it("Void", () => {
-    expectJsonSchemaAnnotations(Schema.Void, {
+    expectJSONSchemaAnnotations(Schema.Void, {
       "$id": "/schemas/void",
       "title": "void"
     })
   })
 
   it("String", () => {
-    expectJsonSchemaAnnotations(Schema.String, {
+    expectJSONSchemaAnnotations(Schema.String, {
       "type": "string"
     })
   })
@@ -452,7 +456,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   it("Boolean", () => {
-    expectJsonSchemaAnnotations(Schema.Boolean, {
+    expectJSONSchemaAnnotations(Schema.Boolean, {
       "type": "boolean"
     })
   })
@@ -465,7 +469,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       "title": "`a${number}`",
       "description": "a template literal"
     }
-    expectJsonSchemaAnnotations(schema, jsonSchema)
+    expectJSONSchemaAnnotations(schema, jsonSchema)
     const validate = getAjvValidate(jsonSchema)
     expect(validate("a1")).toEqual(true)
     expect(validate("a12")).toEqual(true)
@@ -475,43 +479,43 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("Literal", () => {
     it("Null", () => {
-      expectJsonSchemaAnnotations(Schema.Null, {
+      expectJSONSchemaAnnotations(Schema.Null, {
         "enum": [null]
       })
     })
 
     it("string literals", () => {
-      expectJsonSchemaAnnotations(Schema.Literal("a"), {
+      expectJSONSchemaAnnotations(Schema.Literal("a"), {
         "enum": ["a"]
       })
-      expectJsonSchemaAnnotations(Schema.Literal("a", "b"), {
+      expectJSONSchemaAnnotations(Schema.Literal("a", "b"), {
         "enum": ["a", "b"]
       })
     })
 
     it("number literals", () => {
-      expectJsonSchemaAnnotations(Schema.Literal(1), {
+      expectJSONSchemaAnnotations(Schema.Literal(1), {
         "enum": [1]
       })
-      expectJsonSchemaAnnotations(Schema.Literal(1, 2), {
+      expectJSONSchemaAnnotations(Schema.Literal(1, 2), {
         "enum": [1, 2]
       })
     })
 
     it("boolean literals", () => {
-      expectJsonSchemaAnnotations(Schema.Literal(true), {
+      expectJSONSchemaAnnotations(Schema.Literal(true), {
         "enum": [true]
       })
-      expectJsonSchemaAnnotations(Schema.Literal(false), {
+      expectJSONSchemaAnnotations(Schema.Literal(false), {
         "enum": [false]
       })
-      expectJsonSchemaAnnotations(Schema.Literal(true, false), {
+      expectJSONSchemaAnnotations(Schema.Literal(true, false), {
         "enum": [true, false]
       })
     })
 
     it("union of literals", () => {
-      expectJsonSchemaAnnotations(Schema.Literal(1, true), {
+      expectJSONSchemaAnnotations(Schema.Literal(1, true), {
         "enum": [1, true]
       })
     })
@@ -523,7 +527,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         Apple,
         Banana
       }
-      expectJsonSchemaAnnotations(Schema.Enums(Fruits), {
+      expectJSONSchemaAnnotations(Schema.Enums(Fruits), {
         "$comment": "/schemas/enums",
         "anyOf": [
           {
@@ -543,7 +547,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         Apple = "apple",
         Banana = "banana"
       }
-      expectJsonSchemaAnnotations(Schema.Enums(Fruits), {
+      expectJSONSchemaAnnotations(Schema.Enums(Fruits), {
         "$comment": "/schemas/enums",
         "anyOf": [
           {
@@ -564,7 +568,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         Banana = "banana",
         Cantaloupe = 0
       }
-      expectJsonSchemaAnnotations(Schema.Enums(Fruits), {
+      expectJSONSchemaAnnotations(Schema.Enums(Fruits), {
         "$comment": "/schemas/enums",
         "anyOf": [
           {
@@ -589,7 +593,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      expectJsonSchemaAnnotations(Schema.Enums(Fruits), {
+      expectJSONSchemaAnnotations(Schema.Enums(Fruits), {
         "$comment": "/schemas/enums",
         "anyOf": [
           {
@@ -611,7 +615,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("Refinement", () => {
     it("minLength", () => {
-      expectJsonSchemaAnnotations(Schema.String.pipe(Schema.minLength(1)), {
+      expectJSONSchemaAnnotations(Schema.String.pipe(Schema.minLength(1)), {
         "type": "string",
         "description": "a string at least 1 character(s) long",
         "minLength": 1
@@ -619,7 +623,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("maxLength", () => {
-      expectJsonSchemaAnnotations(Schema.String.pipe(Schema.maxLength(1)), {
+      expectJSONSchemaAnnotations(Schema.String.pipe(Schema.maxLength(1)), {
         "type": "string",
         "description": "a string at most 1 character(s) long",
         "maxLength": 1
@@ -627,7 +631,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("length: number", () => {
-      expectJsonSchemaAnnotations(Schema.String.pipe(Schema.length(1)), {
+      expectJSONSchemaAnnotations(Schema.String.pipe(Schema.length(1)), {
         "type": "string",
         "description": "a single character",
         "maxLength": 1,
@@ -636,7 +640,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("length: { min, max }", () => {
-      expectJsonSchemaAnnotations(Schema.String.pipe(Schema.length({ min: 2, max: 4 })), {
+      expectJSONSchemaAnnotations(Schema.String.pipe(Schema.length({ min: 2, max: 4 })), {
         "type": "string",
         "description": "a string at least 2 character(s) and at most 4 character(s) long",
         "maxLength": 4,
@@ -645,7 +649,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("greaterThan", () => {
-      expectJsonSchemaAnnotations(JsonNumber.pipe(Schema.greaterThan(1)), {
+      expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.greaterThan(1)), {
         "type": "number",
         "description": "a number greater than 1",
         "exclusiveMinimum": 1
@@ -653,7 +657,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("greaterThanOrEqualTo", () => {
-      expectJsonSchemaAnnotations(JsonNumber.pipe(Schema.greaterThanOrEqualTo(1)), {
+      expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.greaterThanOrEqualTo(1)), {
         "type": "number",
         "description": "a number greater than or equal to 1",
         "minimum": 1
@@ -661,7 +665,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("lessThan", () => {
-      expectJsonSchemaAnnotations(JsonNumber.pipe(Schema.lessThan(1)), {
+      expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.lessThan(1)), {
         "type": "number",
         "description": "a number less than 1",
         "exclusiveMaximum": 1
@@ -669,7 +673,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("lessThanOrEqualTo", () => {
-      expectJsonSchemaAnnotations(JsonNumber.pipe(Schema.lessThanOrEqualTo(1)), {
+      expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.lessThanOrEqualTo(1)), {
         "type": "number",
         "description": "a number less than or equal to 1",
         "maximum": 1
@@ -677,7 +681,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("pattern", () => {
-      expectJsonSchemaAnnotations(Schema.String.pipe(Schema.pattern(/^abb+$/)), {
+      expectJSONSchemaAnnotations(Schema.String.pipe(Schema.pattern(/^abb+$/)), {
         "type": "string",
         "description": "a string matching the pattern ^abb+$",
         "pattern": "^abb+$"
@@ -685,7 +689,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("int", () => {
-      expectJsonSchemaAnnotations(JsonNumber.pipe(Schema.int()), {
+      expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.int()), {
         "type": "integer",
         "title": "integer",
         "description": "an integer"
@@ -766,6 +770,286 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$ref": "#/$defs/Uncapitalized"
       })
     })
+
+    describe("should handle merge conflicts", () => {
+      it("minLength + minLength", () => {
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.minLength(1), Schema.minLength(2)), {
+          "type": "string",
+          "description": "a string at least 2 character(s) long",
+          "minLength": 2
+        })
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.minLength(2), Schema.minLength(1)), {
+          "type": "string",
+          "description": "a string at least 1 character(s) long",
+          "minLength": 1,
+          "allOf": [
+            { "minLength": 2 }
+          ]
+        })
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.minLength(2), Schema.minLength(1), Schema.minLength(2)), {
+          "type": "string",
+          "description": "a string at least 2 character(s) long",
+          "minLength": 2
+        })
+      })
+
+      it("maxLength + maxLength", () => {
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.maxLength(1), Schema.maxLength(2)), {
+          "type": "string",
+          "description": "a string at most 2 character(s) long",
+          "maxLength": 2,
+          "allOf": [
+            { "maxLength": 1 }
+          ]
+        })
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.maxLength(2), Schema.maxLength(1)), {
+          "type": "string",
+          "description": "a string at most 1 character(s) long",
+          "maxLength": 1
+        })
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.maxLength(1), Schema.maxLength(2), Schema.maxLength(1)), {
+          "type": "string",
+          "description": "a string at most 1 character(s) long",
+          "maxLength": 1
+        })
+      })
+
+      it("pattern + pattern", () => {
+        expectJSONSchemaProperty(Schema.String.pipe(Schema.startsWith("a"), Schema.endsWith("c")), {
+          "type": "string",
+          "description": "a string ending with \"c\"",
+          "pattern": "^.*c$",
+          "allOf": [
+            { "pattern": "^a" }
+          ]
+        })
+        expectJSONSchemaProperty(
+          Schema.String.pipe(Schema.startsWith("a"), Schema.endsWith("c"), Schema.startsWith("a")),
+          {
+            "type": "string",
+            "description": "a string starting with \"a\"",
+            "pattern": "^a",
+            "allOf": [
+              { "pattern": "^.*c$" }
+            ]
+          }
+        )
+        expectJSONSchemaProperty(
+          Schema.String.pipe(Schema.endsWith("c"), Schema.startsWith("a"), Schema.endsWith("c")),
+          {
+            "type": "string",
+            "description": "a string ending with \"c\"",
+            "pattern": "^.*c$",
+            "allOf": [
+              { "pattern": "^a" }
+            ]
+          }
+        )
+      })
+
+      it("minItems + minItems", () => {
+        expectJSONSchemaProperty(Schema.Array(Schema.String).pipe(Schema.minItems(1), Schema.minItems(2)), {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "an array of at least 2 item(s)",
+          "minItems": 2
+        })
+        expectJSONSchemaProperty(Schema.Array(Schema.String).pipe(Schema.minItems(2), Schema.minItems(1)), {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "an array of at least 1 item(s)",
+          "minItems": 1,
+          "allOf": [
+            { "minItems": 2 }
+          ]
+        })
+        expectJSONSchemaProperty(
+          Schema.Array(Schema.String).pipe(Schema.minItems(2), Schema.minItems(1), Schema.minItems(2)),
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "an array of at least 2 item(s)",
+            "minItems": 2
+          }
+        )
+      })
+
+      it("maxItems + maxItems", () => {
+        expectJSONSchemaProperty(Schema.Array(Schema.String).pipe(Schema.maxItems(1), Schema.maxItems(2)), {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "an array of at most 2 item(s)",
+          "maxItems": 2,
+          "allOf": [
+            { "maxItems": 1 }
+          ]
+        })
+        expectJSONSchemaProperty(Schema.Array(Schema.String).pipe(Schema.maxItems(2), Schema.maxItems(1)), {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "an array of at most 1 item(s)",
+          "maxItems": 1
+        })
+        expectJSONSchemaProperty(
+          Schema.Array(Schema.String).pipe(Schema.maxItems(1), Schema.maxItems(2), Schema.maxItems(1)),
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "an array of at most 1 item(s)",
+            "maxItems": 1
+          }
+        )
+      })
+
+      it("minimum + minimum", () => {
+        expectJSONSchemaProperty(JsonNumber.pipe(Schema.greaterThanOrEqualTo(1), Schema.greaterThanOrEqualTo(2)), {
+          "type": "number",
+          "description": "a number greater than or equal to 2",
+          "minimum": 2
+        })
+        expectJSONSchemaProperty(JsonNumber.pipe(Schema.greaterThanOrEqualTo(2), Schema.greaterThanOrEqualTo(1)), {
+          "type": "number",
+          "minimum": 1,
+          "description": "a number greater than or equal to 1",
+          "allOf": [
+            { "minimum": 2 }
+          ]
+        })
+        expectJSONSchemaProperty(
+          JsonNumber.pipe(
+            Schema.greaterThanOrEqualTo(2),
+            Schema.greaterThanOrEqualTo(1),
+            Schema.greaterThanOrEqualTo(2)
+          ),
+          {
+            "type": "number",
+            "description": "a number greater than or equal to 2",
+            "minimum": 2
+          }
+        )
+      })
+
+      it("maximum + maximum", () => {
+        expectJSONSchemaProperty(JsonNumber.pipe(Schema.lessThanOrEqualTo(1), Schema.lessThanOrEqualTo(2)), {
+          "type": "number",
+          "description": "a number less than or equal to 2",
+          "maximum": 2,
+          "allOf": [
+            { "maximum": 1 }
+          ]
+        })
+        expectJSONSchemaProperty(JsonNumber.pipe(Schema.lessThanOrEqualTo(2), Schema.lessThanOrEqualTo(1)), {
+          "type": "number",
+          "description": "a number less than or equal to 1",
+          "maximum": 1
+        })
+        expectJSONSchemaProperty(
+          JsonNumber.pipe(Schema.lessThanOrEqualTo(1), Schema.lessThanOrEqualTo(2), Schema.lessThanOrEqualTo(1)),
+          {
+            "type": "number",
+            "description": "a number less than or equal to 1",
+            "maximum": 1
+          }
+        )
+      })
+
+      it("exclusiveMinimum + exclusiveMinimum", () => {
+        expectJSONSchemaProperty(JsonNumber.pipe(Schema.greaterThan(1), Schema.greaterThan(2)), {
+          "type": "number",
+          "description": "a number greater than 2",
+          "exclusiveMinimum": 2
+        })
+        expectJSONSchemaProperty(JsonNumber.pipe(Schema.greaterThan(2), Schema.greaterThan(1)), {
+          "type": "number",
+          "exclusiveMinimum": 1,
+          "description": "a number greater than 1",
+          "allOf": [
+            { "exclusiveMinimum": 2 }
+          ]
+        })
+        expectJSONSchemaProperty(
+          JsonNumber.pipe(
+            Schema.greaterThan(2),
+            Schema.greaterThan(1),
+            Schema.greaterThan(2)
+          ),
+          {
+            "type": "number",
+            "description": "a number greater than 2",
+            "exclusiveMinimum": 2
+          }
+        )
+      })
+
+      it("exclusiveMaximum + exclusiveMaximum", () => {
+        expectJSONSchemaProperty(JsonNumber.pipe(Schema.lessThan(1), Schema.lessThan(2)), {
+          "type": "number",
+          "description": "a number less than 2",
+          "exclusiveMaximum": 2,
+          "allOf": [
+            { "exclusiveMaximum": 1 }
+          ]
+        })
+        expectJSONSchemaProperty(JsonNumber.pipe(Schema.lessThan(2), Schema.lessThan(1)), {
+          "type": "number",
+          "description": "a number less than 1",
+          "exclusiveMaximum": 1
+        })
+        expectJSONSchemaProperty(
+          JsonNumber.pipe(Schema.lessThan(1), Schema.lessThan(2), Schema.lessThan(1)),
+          {
+            "type": "number",
+            "description": "a number less than 1",
+            "exclusiveMaximum": 1
+          }
+        )
+      })
+
+      it("multipleOf + multipleOf", () => {
+        expectJSONSchema(JsonNumber.pipe(Schema.multipleOf(2), Schema.multipleOf(3)), {
+          "type": "number",
+          "description": "a number divisible by 3",
+          "multipleOf": 3,
+          "allOf": [
+            { "multipleOf": 2 }
+          ]
+        })
+        expectJSONSchema(
+          JsonNumber.pipe(Schema.multipleOf(2), Schema.multipleOf(3), Schema.multipleOf(3)),
+          {
+            "type": "number",
+            "description": "a number divisible by 3",
+            "multipleOf": 3,
+            "allOf": [
+              { "multipleOf": 2 }
+            ]
+          }
+        )
+        expectJSONSchema(
+          JsonNumber.pipe(Schema.multipleOf(3), Schema.multipleOf(2), Schema.multipleOf(3)),
+          {
+            "type": "number",
+            "description": "a number divisible by 3",
+            "multipleOf": 3,
+            "allOf": [
+              { "multipleOf": 2 }
+            ]
+          }
+        )
+      })
+    })
   })
 
   describe("Tuple", () => {
@@ -775,7 +1059,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "type": "array",
         "maxItems": 0
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate([])).toEqual(true)
       expect(validate([1])).toEqual(false)
@@ -791,7 +1075,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "minItems": 1,
         "additionalItems": false
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate([1])).toEqual(true)
       expect(validate([])).toEqual(false)
@@ -800,7 +1084,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("element + inner annotations", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Tuple(JsonNumber.annotations({ description: "inner" })),
         {
           "type": "array",
@@ -815,7 +1099,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("element + outer annotations should override inner annotations", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Tuple(
           Schema.element(JsonNumber.annotations({ description: "inner" })).annotations({ description: "outer" })
         ),
@@ -843,7 +1127,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         ],
         "additionalItems": false
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate([])).toEqual(true)
       expect(validate([1])).toEqual(true)
@@ -852,7 +1136,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("optionalElement + inner annotations", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Tuple(Schema.optionalElement(JsonNumber).annotations({ description: "inner" })),
         {
           "type": "array",
@@ -869,7 +1153,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("optionalElement + outer annotations should override inner annotations", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Tuple(
           Schema.optionalElement(JsonNumber).annotations({ description: "inner" }).annotations({ description: "outer" })
         ),
@@ -909,7 +1193,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         ],
         "additionalItems": false
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate(["a"])).toEqual(true)
       expect(validate(["a", 1])).toEqual(true)
@@ -926,7 +1210,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "type": "number"
         }
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate([])).toEqual(true)
       expect(validate([1])).toEqual(true)
@@ -937,7 +1221,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("rest + inner annotations", () => {
-      expectJsonSchemaAnnotations(Schema.Array(JsonNumber.annotations({ description: "inner" })), {
+      expectJSONSchemaAnnotations(Schema.Array(JsonNumber.annotations({ description: "inner" })), {
         "type": "array",
         "items": {
           "type": "number",
@@ -964,7 +1248,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "description": "inner"
         }
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate([])).toEqual(true)
       expect(validate(["a"])).toEqual(true)
@@ -975,7 +1259,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("optionalElement + rest + outer annotations should override inner annotations", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Tuple(
           [Schema.optionalElement(Schema.String)],
           Schema.element(JsonNumber.annotations({ description: "inner" })).annotations({ description: "outer" })
@@ -1008,7 +1292,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "type": "number"
         }
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate(["a"])).toEqual(true)
       expect(validate(["a", 1])).toEqual(true)
@@ -1046,7 +1330,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "required": ["a", "b"],
         "additionalProperties": false
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate({ a: "a", b: 1 })).toEqual(true)
       expect(validate({})).toEqual(false)
@@ -1056,7 +1340,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("field + inner annotation", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.String.annotations({ description: "inner" })
         }),
@@ -1075,7 +1359,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("field + outer annotation should override inner annotation", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.propertySignature(Schema.String.annotations({ description: "inner" })).annotations({
             description: "outer"
@@ -1115,7 +1399,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           }
         }
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate({ a: "a" })).toEqual(true)
       expect(validate({ a: "a", b: "b" })).toEqual(true)
@@ -1143,7 +1427,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "required": ["a"],
         "additionalProperties": false
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate({ a: "a", b: 1 })).toEqual(true)
       expect(validate({ a: "a" })).toEqual(true)
@@ -1153,7 +1437,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("exact optional field + inner annotation", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.optionalWith(Schema.String.annotations({ description: "inner" }), { exact: true })
         }),
@@ -1172,7 +1456,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("exact optional field + outer annotation should override inner annotations", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.optionalWith(Schema.String.annotations({ description: "inner" }), { exact: true }).annotations({
             description: "outer"
@@ -1195,7 +1479,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("Record", () => {
     it("Record(refinement, number)", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Record({ key: Schema.String.pipe(Schema.minLength(1)), value: JsonNumber }),
         {
           "type": "object",
@@ -1216,7 +1500,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("Record(string, number)", () => {
-      expectJsonSchemaAnnotations(Schema.Record({ key: Schema.String, value: JsonNumber }), {
+      expectJSONSchemaAnnotations(Schema.Record({ key: Schema.String, value: JsonNumber }), {
         "type": "object",
         "properties": {},
         "required": [],
@@ -1229,7 +1513,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("Record('a' | 'b', number)", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Record(
           { key: Schema.Union(Schema.Literal("a"), Schema.Literal("b")), value: JsonNumber }
         ),
@@ -1265,7 +1549,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "type": "string"
         }
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate({})).toEqual(true)
       expect(validate({ "-": 1 })).toEqual(true)
@@ -1295,7 +1579,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "type": "string"
         }
       }
-      expectJsonSchemaAnnotations(schema, jsonSchema)
+      expectJSONSchemaAnnotations(schema, jsonSchema)
       expect(jsonSchema).toStrictEqual(jsonSchema)
       const validate = getAjvValidate(jsonSchema)
       expect(validate({})).toEqual(true)
@@ -1310,7 +1594,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("Union", () => {
     it("string | JsonNumber", () => {
-      expectJsonSchemaAnnotations(Schema.Union(Schema.String, JsonNumber), {
+      expectJSONSchemaAnnotations(Schema.Union(Schema.String, JsonNumber), {
         "anyOf": [
           { "type": "string" },
           { "type": "number" }
@@ -1320,13 +1604,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
     describe("Union including literals", () => {
       it(`1 | 2`, () => {
-        expectJsonSchemaAnnotations(Schema.Union(Schema.Literal(1), Schema.Literal(2)), {
+        expectJSONSchemaAnnotations(Schema.Union(Schema.Literal(1), Schema.Literal(2)), {
           "enum": [1, 2]
         })
       })
 
       it(`1(with description) | 2`, () => {
-        expectJsonSchemaAnnotations(
+        expectJSONSchemaAnnotations(
           Schema.Union(
             Schema.Literal(1).annotations({ description: "43d87cd1-df64-457f-8119-0401ecd1399e" }),
             Schema.Literal(2)
@@ -1341,7 +1625,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`1 | 2(with description)`, () => {
-        expectJsonSchemaAnnotations(
+        expectJSONSchemaAnnotations(
           Schema.Union(
             Schema.Literal(1),
             Schema.Literal(2).annotations({ description: "28e1ba58-7c13-4667-88cb-2baa1ac31a0f" })
@@ -1356,7 +1640,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`1 | 2 | string`, () => {
-        expectJsonSchemaAnnotations(Schema.Union(Schema.Literal(1), Schema.Literal(2), Schema.String), {
+        expectJSONSchemaAnnotations(Schema.Union(Schema.Literal(1), Schema.Literal(2), Schema.String), {
           "anyOf": [
             { "enum": [1, 2] },
             { "type": "string" }
@@ -1365,7 +1649,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`(1 | 2) | string`, () => {
-        expectJsonSchemaAnnotations(Schema.Union(Schema.Literal(1, 2), Schema.String), {
+        expectJSONSchemaAnnotations(Schema.Union(Schema.Literal(1, 2), Schema.String), {
           "anyOf": [
             { "enum": [1, 2] },
             { "type": "string" }
@@ -1374,7 +1658,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`(1 | 2)(with description) | string`, () => {
-        expectJsonSchemaAnnotations(
+        expectJSONSchemaAnnotations(
           Schema.Union(
             Schema.Literal(1, 2).annotations({ description: "d0121d0e-8b56-4a2e-9963-47a0965d6a3c" }),
             Schema.String
@@ -1389,7 +1673,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`(1 | 2)(with description) | 3 | string`, () => {
-        expectJsonSchemaAnnotations(
+        expectJSONSchemaAnnotations(
           Schema.Union(
             Schema.Literal(1, 2).annotations({ description: "eca4431f-c97c-454f-8167-6c2e81430c6b" }),
             Schema.Literal(3),
@@ -1406,7 +1690,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`1(with description) | 2 | string`, () => {
-        expectJsonSchemaAnnotations(
+        expectJSONSchemaAnnotations(
           Schema.Union(
             Schema.Literal(1).annotations({ description: "867c07f5-5710-477c-8296-239694e86562" }),
             Schema.Literal(2),
@@ -1423,7 +1707,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`1 | 2(with description) | string`, () => {
-        expectJsonSchemaAnnotations(
+        expectJSONSchemaAnnotations(
           Schema.Union(
             Schema.Literal(1),
             Schema.Literal(2).annotations({ description: "4e49a840-5fb8-43f6-916f-565cbf532db4" }),
@@ -1440,7 +1724,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`string | 1 | 2 `, () => {
-        expectJsonSchemaAnnotations(Schema.Union(Schema.String, Schema.Literal(1), Schema.Literal(2)), {
+        expectJSONSchemaAnnotations(Schema.Union(Schema.String, Schema.Literal(1), Schema.Literal(2)), {
           "anyOf": [
             { "type": "string" },
             { "enum": [1, 2] }
@@ -1449,7 +1733,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`string | (1 | 2) `, () => {
-        expectJsonSchemaAnnotations(Schema.Union(Schema.String, Schema.Literal(1, 2)), {
+        expectJSONSchemaAnnotations(Schema.Union(Schema.String, Schema.Literal(1, 2)), {
           "anyOf": [
             { "type": "string" },
             { "enum": [1, 2] }
@@ -1458,7 +1742,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`string | 1(with description) | 2`, () => {
-        expectJsonSchemaAnnotations(
+        expectJSONSchemaAnnotations(
           Schema.Union(
             Schema.String,
             Schema.Literal(1).annotations({ description: "26521e57-cfb6-4563-abe2-2fe920398e16" }),
@@ -1475,7 +1759,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       it(`string | 1 | 2(with description)`, () => {
-        expectJsonSchemaAnnotations(
+        expectJSONSchemaAnnotations(
           Schema.Union(
             Schema.String,
             Schema.Literal(1),
@@ -1537,7 +1821,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("OptionFromNullOr", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.OptionFromNullOr(Schema.NonEmptyString)
         }),
@@ -2139,14 +2423,14 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   it("examples JSON Schema annotation support", () => {
-    expectJsonSchemaAnnotations(Schema.String.annotations({ examples: ["a", "b"] }), {
+    expectJSONSchemaAnnotations(Schema.String.annotations({ examples: ["a", "b"] }), {
       "type": "string",
       "examples": ["a", "b"]
     })
   })
 
   it("default JSON Schema annotation support", () => {
-    expectJsonSchemaAnnotations(Schema.String.annotations({ default: "" }), {
+    expectJSONSchemaAnnotations(Schema.String.annotations({ default: "" }), {
       "type": "string",
       "default": ""
     })
@@ -2177,7 +2461,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   it("compose", () => {
-    expectJsonSchemaAnnotations(
+    expectJSONSchemaAnnotations(
       Schema.Struct({
         a: Schema.NonEmptyString.pipe(Schema.compose(Schema.NumberFromString))
       }),
@@ -2206,7 +2490,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("extend", () => {
     it("should correctly generate JSON Schemas for a schema created by extending two refinements", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.String
         }).pipe(
@@ -2383,7 +2667,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
     describe("Union", () => {
       it("Union of literals with identifiers", () => {
-        expectJsonSchemaAnnotations(
+        expectJSONSchemaAnnotations(
           Schema.Union(
             Schema.Literal("a").annotations({
               description: "ef296f1c-01fe-4a20-bd35-ed449c964c49",
@@ -2944,7 +3228,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("Pruning `undefined` and make the property optional by default", () => {
     it("Undefined", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.Undefined
         }),
@@ -2953,7 +3237,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "required": [],
           "properties": {
             "a": {
-              "enum": [],
+              "$id": "/schemas/never",
+              "not": {},
               "title": "never"
             }
           },
@@ -2963,7 +3248,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it.skip("UndefinedOr(Undefined)", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.UndefinedOr(Schema.Undefined)
         }),
@@ -2972,7 +3257,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "required": [],
           "properties": {
             "a": {
-              "enum": [],
+              "$id": "/schemas/never",
+              "not": {},
               "title": "never"
             }
           },
@@ -2982,7 +3268,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("Nested `Undefined`s", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.UndefinedOr(Schema.UndefinedOr(Schema.Undefined))
         }),
@@ -2991,7 +3277,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "required": [],
           "properties": {
             "a": {
-              "enum": [],
+              "$id": "/schemas/never",
+              "not": {},
               "title": "never"
             }
           },
@@ -3001,7 +3288,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("Schema.optional", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.optional(Schema.String)
         }),
@@ -3017,7 +3304,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("Schema.optional + inner annotation", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.optional(Schema.String.annotations({ description: "inner" }))
         }),
@@ -3036,7 +3323,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("Schema.optional + outer annotation should override inner annotation", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.optional(Schema.String.annotations({ description: "inner" })).annotations({
             description: "outer"
@@ -3057,7 +3344,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("UndefinedOr", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.UndefinedOr(Schema.String)
         }),
@@ -3075,7 +3362,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("UndefinedOr + inner annotation", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.UndefinedOr(Schema.String.annotations({ description: "inner" }))
         }),
@@ -3094,7 +3381,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("UndefinedOr + annotation should not override inner annotations", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.UndefinedOr(Schema.String.annotations({ description: "inner" })).annotations({
             description: "middle"
@@ -3115,7 +3402,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("UndefinedOr + propertySignature annotation should override inner and middle annotations", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.propertySignature(
             Schema.UndefinedOr(Schema.String.annotations({ description: "inner" })).annotations({
@@ -3154,7 +3441,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("Transformation: OptionFromUndefinedOr", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.OptionFromUndefinedOr(Schema.String)
         }),
@@ -3172,7 +3459,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     it("Suspend", () => {
-      expectJsonSchemaAnnotations(
+      expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.suspend(() => Schema.UndefinedOr(Schema.String))
         }),
@@ -3281,7 +3568,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "$defs": {
               "7848c831-fa50-4e36-aee8-65d2648c0120": {
-                "description": "an array of at least 2 items",
+                "description": "an array of at least 2 item(s)",
                 "items": {
                   "$ref": "#/$defs/NumberFromString"
                 },

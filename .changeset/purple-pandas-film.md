@@ -2,7 +2,7 @@
 "effect": patch
 ---
 
-JSONSchema: represent `never` as `{ enum: [] }`
+JSONSchema: represent `never` as `{"not":{}}`
 
 Before
 
@@ -30,7 +30,8 @@ const schema = Schema.Never
 console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
 /*
 {
-  "enum": [],
+  "$id": "/schemas/never",
+  "not": {},
   "title": "never",
   "$schema": "http://json-schema.org/draft-07/schema#"
 }

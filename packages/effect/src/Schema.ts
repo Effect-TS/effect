@@ -5922,7 +5922,7 @@ export const minItems = <A>(
       (a) => a.length >= minItems,
       {
         schemaId: MinItemsSchemaId,
-        description: `an array of at least ${minItems} items`,
+        description: `an array of at least ${minItems} item(s)`,
         jsonSchema: { minItems },
         [AST.StableFilterAnnotationId]: true,
         ...annotations
@@ -5955,7 +5955,7 @@ export const maxItems = <A>(
   self.pipe(
     filter((a) => a.length <= n, {
       schemaId: MaxItemsSchemaId,
-      description: `an array of at most ${n} items`,
+      description: `an array of at most ${n} item(s)`,
       jsonSchema: { maxItems: n },
       [AST.StableFilterAnnotationId]: true,
       ...annotations
