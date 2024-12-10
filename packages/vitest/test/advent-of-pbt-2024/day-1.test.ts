@@ -1,7 +1,7 @@
 import { it } from "@effect/vitest"
 import { Schema } from "effect"
 
-const Letter = Schema.Struct({
+class Letter extends Schema.Class<Letter>("Letter")({
   name: Schema.String.pipe(
     Schema.minLength(1),
     Schema.filter((s) => s.match(/^[a-z]+$/) !== null)
@@ -9,16 +9,18 @@ const Letter = Schema.Struct({
   age: Schema.Int.pipe(
     Schema.between(1, 77)
   )
-})
+}) {
+  static Array = Schema.Array(this)
+}
 
-function sortLetters(letters: ReadonlyArray<Schema.Schema.Type<typeof Letter>>) {
+function sortLetters(letters: Schema.Schema.Type<typeof Letter.Array>) {
   const clonedLetters = [...letters]
   return clonedLetters.sort((la, lb) => la.age - lb.age || la.name.codePointAt(0)! - lb.name.codePointAt(0)!)
 }
 
 it.prop(
   "day #1: should properly sort letters",
-  [Schema.Array(Letter)],
+  [Letter.Array],
   ([unsortedLetters]) => {
     const letters = sortLetters(unsortedLetters)
     for (let i = 1; i < letters.length; ++i) {
