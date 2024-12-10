@@ -536,8 +536,7 @@ export const asyncInterrupt = <A, E = never, R = never>(
   blockingOn: FiberId.FiberId = FiberId.none
 ): Effect.Effect<A, E, R> => suspend(() => unsafeAsync(register, blockingOn))
 
-/* @internal */
-export const async = <A, E = never, R = never>(
+const async_ = <A, E = never, R = never>(
   resume: (
     callback: (_: Effect.Effect<A, E, R>) => void,
     signal: AbortSignal
@@ -579,6 +578,10 @@ export const async = <A, E = never, R = never>(
       }) :
       effect
   })
+}
+export {
+  /** @internal */
+  async_ as async
 }
 
 /* @internal */
@@ -820,7 +823,7 @@ export const andThen: {
     if (isEffect(b)) {
       return b
     } else if (isPromiseLike(b)) {
-      return async<any, Cause.UnknownException>((resume) => {
+      return unsafeAsync<any, Cause.UnknownException>((resume) => {
         b.then((a) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
       })
     }
@@ -1304,7 +1307,7 @@ export const tap = dual<
       if (isEffect(b)) {
         return as(b, a)
       } else if (isPromiseLike(b)) {
-        return async<any, Cause.UnknownException>((resume) => {
+        return unsafeAsync<any, Cause.UnknownException>((resume) => {
           b.then((_) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
         })
       }
@@ -1567,7 +1570,7 @@ export const zipWith: {
 ): Effect.Effect<B, E | E2, R | R2> => flatMap(self, (a) => map(that, (b) => f(a, b))))
 
 /* @internal */
-export const never: Effect.Effect<never> = async<never>(() => {
+export const never: Effect.Effect<never> = asyncInterrupt<never>(() => {
   const interval = setInterval(() => {
     //
   }, 2 ** 31 - 1)
@@ -2842,7 +2845,7 @@ export const deferredMakeAs = <A, E = never>(fiberId: FiberId.FiberId): Effect.E
 
 /* @internal */
 export const deferredAwait = <A, E>(self: Deferred.Deferred<A, E>): Effect.Effect<A, E> =>
-  async<A, E>((resume) => {
+  asyncInterrupt<A, E>((resume) => {
     const state = MutableRef.get(self.state)
     switch (state._tag) {
       case DeferredOpCodes.OP_STATE_DONE: {
