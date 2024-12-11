@@ -8292,6 +8292,8 @@ const makeClass = <Fields extends Struct.Fields>(
 
   const transformationSurrogate = schema.annotations({
     [AST.JSONIdentifierAnnotationId]: identifier,
+    ...encodedAnnotations,
+    ...typeAnnotations,
     ...transformationAnnotations
   })
 

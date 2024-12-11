@@ -596,6 +596,7 @@ details: Duplicate key "a"`)
             },
             "TransformationID": {
               "additionalProperties": false,
+              "description": "TypeDescription",
               "properties": {
                 "a": {
                   "$ref": "#/$defs/NonEmptyString"
