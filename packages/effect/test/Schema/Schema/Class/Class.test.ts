@@ -1,10 +1,15 @@
-import { Context, Effect } from "effect"
-import * as Data from "effect/Data"
-import * as Equal from "effect/Equal"
-import * as ParseResult from "effect/ParseResult"
-import * as Pretty from "effect/Pretty"
-import * as S from "effect/Schema"
-import * as AST from "effect/SchemaAST"
+import {
+  Context,
+  Data,
+  Effect,
+  Equal,
+  JSONSchema,
+  Option,
+  ParseResult,
+  Pretty,
+  Schema as S,
+  SchemaAST as AST
+} from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
@@ -71,7 +76,7 @@ describe("Class", () => {
 
   it("should add an identifier annotation", () => {
     class A extends S.Class<A>("MyName")({ a: S.String }) {}
-    expect((A.ast as AST.Transformation).to.annotations[AST.IdentifierAnnotationId]).toEqual("MyName")
+    expect(A.ast.to.annotations[AST.IdentifierAnnotationId]).toEqual("MyName")
   })
 
   describe("constructor", () => {
@@ -202,13 +207,6 @@ describe("Class", () => {
       }
     }
     expect(new A({ a: "a" }).getter).toEqual("getter: a")
-  })
-
-  it("should support annotations when declaring the Class", () => {
-    class A extends S.Class<A>("A")({
-      a: S.String
-    }, { title: "X" }) {}
-    expect((A.ast as AST.Transformation).to.annotations[AST.TitleAnnotationId]).toEqual("X")
   })
 
   it("using S.annotations() on a Class should return a Schema", () => {
@@ -491,5 +489,128 @@ details: Duplicate key "a"`)
     const a = A.make({ n: 1 })
     expect(a instanceof A).toEqual(true)
     expect(a.a()).toEqual("1a")
+  })
+
+  describe("should support annotations when declaring the Class", () => {
+    it("single argument", async () => {
+      class A extends S.Class<A>("A")({
+        a: S.NonEmptyString
+      }, { title: "mytitle" }) {}
+
+      expect(A.ast.to.annotations[AST.TitleAnnotationId]).toEqual("mytitle")
+
+      await Util.expectEncodeFailure(
+        A,
+        { a: "" },
+        `(A (Encoded side) <-> A)
+└─ Type side transformation failure
+   └─ mytitle
+      └─ ["a"]
+         └─ NonEmptyString
+            └─ Predicate refinement failure
+               └─ Expected NonEmptyString, actual ""`
+      )
+    })
+
+    it("tuple argument", async () => {
+      class A extends S.Class<A>("A")(
+        {
+          a: S.NonEmptyString
+        },
+        [
+          { identifier: "TypeID", description: "TypeDescription" },
+          { identifier: "TransformationID" },
+          { identifier: "EncodedID" }
+        ]
+      ) {}
+      expect(AST.getIdentifierAnnotation(A.ast.to)).toEqual(Option.some("TypeID"))
+      expect(AST.getIdentifierAnnotation(A.ast)).toEqual(Option.some("TransformationID"))
+      expect(AST.getIdentifierAnnotation(A.ast.from)).toEqual(Option.some("EncodedID"))
+
+      await Util.expectDecodeUnknownFailure(
+        A,
+        {},
+        `TransformationID
+└─ Encoded side transformation failure
+   └─ EncodedID
+      └─ ["a"]
+         └─ is missing`
+      )
+
+      await Util.expectEncodeFailure(
+        A,
+        { a: "" },
+        `TransformationID
+└─ Type side transformation failure
+   └─ TypeID
+      └─ ["a"]
+         └─ NonEmptyString
+            └─ Predicate refinement failure
+               └─ Expected NonEmptyString, actual ""`
+      )
+
+      const ctor = { make: A.make.bind(A) }
+
+      Util.expectConstructorFailure(
+        ctor,
+        null,
+        `TypeID
+└─ ["a"]
+   └─ is missing`
+      )
+
+      expect(JSONSchema.make(S.typeSchema(A))).toStrictEqual({
+        "$defs": {
+          "NonEmptyString": {
+            "description": "a non empty string",
+            "minLength": 1,
+            "title": "NonEmptyString",
+            "type": "string"
+          },
+          "TypeID": {
+            "additionalProperties": false,
+            "description": "TypeDescription",
+            "properties": {
+              "a": {
+                "$ref": "#/$defs/NonEmptyString"
+              }
+            },
+            "required": [
+              "a"
+            ],
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/TypeID",
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      })
+
+      expect(JSONSchema.make(A)).toStrictEqual(
+        {
+          "$defs": {
+            "NonEmptyString": {
+              "description": "a non empty string",
+              "minLength": 1,
+              "title": "NonEmptyString",
+              "type": "string"
+            },
+            "TransformationID": {
+              "additionalProperties": false,
+              "properties": {
+                "a": {
+                  "$ref": "#/$defs/NonEmptyString"
+                }
+              },
+              "required": [
+                "a"
+              ],
+              "type": "object"
+            }
+          },
+          "$ref": "#/$defs/TransformationID",
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      )
+    })
   })
 })
