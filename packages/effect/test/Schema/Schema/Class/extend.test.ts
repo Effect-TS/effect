@@ -1,4 +1,4 @@
-import * as S from "effect/Schema"
+import { JSONSchema, Option, Schema as S, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
@@ -189,5 +189,134 @@ describe("extend", () => {
     }) {}
 
     expect(new OverrideExtended4({ a: "a", b: 2 }).b).toEqual(1)
+  })
+
+  describe("should support annotations when declaring the Class", () => {
+    it("single argument", async () => {
+      class A extends S.Class<A>("A")({
+        a: S.NonEmptyString
+      }) {}
+      class B extends A.extend<B>("B")({
+        b: S.NonEmptyString
+      }, { title: "mytitle" }) {}
+
+      expect(B.ast.to.annotations[AST.TitleAnnotationId]).toEqual("mytitle")
+
+      await Util.expectEncodeFailure(
+        B,
+        { a: "a", b: "" },
+        `(B (Encoded side) <-> B)
+└─ Type side transformation failure
+   └─ mytitle
+      └─ ["b"]
+         └─ NonEmptyString
+            └─ Predicate refinement failure
+               └─ Expected NonEmptyString, actual ""`
+      )
+    })
+
+    it("tuple argument", async () => {
+      class A extends S.Class<A>("A")({
+        a: S.NonEmptyString
+      }) {}
+      class B extends A.extend<B>("B")({
+        b: S.NonEmptyString
+      }, [
+        { identifier: "TypeID", description: "TypeDescription" },
+        { identifier: "TransformationID" },
+        { identifier: "EncodedID" }
+      ]) {}
+      expect(AST.getIdentifierAnnotation(B.ast.to)).toEqual(Option.some("TypeID"))
+      expect(AST.getIdentifierAnnotation(B.ast)).toEqual(Option.some("TransformationID"))
+      expect(AST.getIdentifierAnnotation(B.ast.from)).toEqual(Option.some("EncodedID"))
+
+      await Util.expectDecodeUnknownFailure(
+        B,
+        {},
+        `TransformationID
+└─ Encoded side transformation failure
+   └─ EncodedID
+      └─ ["a"]
+         └─ is missing`
+      )
+
+      await Util.expectEncodeFailure(
+        B,
+        { a: "a", b: "" },
+        `TransformationID
+└─ Type side transformation failure
+   └─ TypeID
+      └─ ["b"]
+         └─ NonEmptyString
+            └─ Predicate refinement failure
+               └─ Expected NonEmptyString, actual ""`
+      )
+
+      const ctor = { make: B.make.bind(B) }
+
+      Util.expectConstructorFailure(
+        ctor,
+        null,
+        `TypeID
+└─ ["a"]
+   └─ is missing`
+      )
+
+      expect(JSONSchema.make(S.typeSchema(B))).toStrictEqual({
+        "$defs": {
+          "NonEmptyString": {
+            "description": "a non empty string",
+            "minLength": 1,
+            "title": "NonEmptyString",
+            "type": "string"
+          },
+          "TypeID": {
+            "additionalProperties": false,
+            "description": "TypeDescription",
+            "properties": {
+              "a": {
+                "$ref": "#/$defs/NonEmptyString"
+              },
+              "b": {
+                "$ref": "#/$defs/NonEmptyString"
+              }
+            },
+            "required": ["a", "b"],
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/TypeID",
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      })
+
+      expect(JSONSchema.make(B)).toStrictEqual(
+        {
+          "$defs": {
+            "NonEmptyString": {
+              "description": "a non empty string",
+              "minLength": 1,
+              "title": "NonEmptyString",
+              "type": "string"
+            },
+            "TransformationID": {
+              "additionalProperties": false,
+              "description": "TypeDescription",
+              "properties": {
+                "a": {
+                  "$ref": "#/$defs/NonEmptyString"
+                },
+                "b": {
+                  "$ref": "#/$defs/NonEmptyString"
+                }
+              },
+              "required": ["a", "b"],
+              "type": "object"
+            }
+          },
+          "$ref": "#/$defs/TransformationID",
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      )
+    })
   })
 })
