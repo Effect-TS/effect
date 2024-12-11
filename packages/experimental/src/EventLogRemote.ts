@@ -130,7 +130,6 @@ export class Ack extends Schema.TaggedClass<Ack>("@effect/experimental/EventLogR
 export class RequestChanges
   extends Schema.TaggedClass<RequestChanges>("@effect/experimental/EventLogRemote/RequestChanges")("RequestChanges", {
     publicKey: Schema.String,
-    subscriptionId: Schema.Number,
     startSequence: Schema.Number
   })
 {}
@@ -140,7 +139,7 @@ export class RequestChanges
  * @category protocol
  */
 export class Changes extends Schema.TaggedClass<Changes>("@effect/experimental/EventLogRemote/Changes")("Changes", {
-  subscriptionId: Schema.Number,
+  publicKey: Schema.String,
   entries: Schema.Array(EncryptedRemoteEntry)
 }) {}
 
@@ -150,7 +149,7 @@ export class Changes extends Schema.TaggedClass<Changes>("@effect/experimental/E
  */
 export class StopChanges
   extends Schema.TaggedClass<StopChanges>("@effect/experimental/EventLogRemote/StopChanges")("StopChanges", {
-    subscriptionId: Schema.Number
+    publicKey: Schema.String
   })
 {}
 
@@ -280,12 +279,15 @@ export const fromSocket: Effect.Effect<
       bytes: number
     }>()
 
-    let subscriptionIdCounter = 0
     const subscriptions = yield* RcMap.make({
-      lookup: (_subscriptionId: number) =>
+      lookup: (publicKey: string) =>
         Effect.acquireRelease(
           Mailbox.make<RemoteEntry>(),
-          (mailbox) => mailbox.shutdown
+          (mailbox) =>
+            Effect.zipRight(
+              mailbox.shutdown,
+              Effect.ignoreLogged(write(new StopChanges({ publicKey })))
+            )
         )
     })
     const identities = new WeakMap<any, typeof Identity.Service>()
@@ -332,19 +334,14 @@ export const fromSocket: Effect.Effect<
               }),
             changes: (identity, startSequence) =>
               Effect.gen(function*() {
-                const id = subscriptionIdCounter++
-                const mailbox = yield* RcMap.get(subscriptions, id)
+                const mailbox = yield* RcMap.get(subscriptions, identity.publicKey)
                 identities.set(mailbox, identity)
-                yield* Effect.acquireRelease(
-                  Effect.orDie(write(
-                    new RequestChanges({
-                      publicKey: identity.publicKey,
-                      subscriptionId: id,
-                      startSequence
-                    })
-                  )),
-                  () => Effect.ignore(write(new StopChanges({ subscriptionId: id })))
-                )
+                yield* Effect.orDie(write(
+                  new RequestChanges({
+                    publicKey: identity.publicKey,
+                    startSequence
+                  })
+                ))
                 return mailbox
               })
           }).pipe(Scope.extend(scope))
@@ -366,7 +363,7 @@ export const fromSocket: Effect.Effect<
         }
         case "Changes": {
           return Effect.gen(function*() {
-            const mailbox = yield* RcMap.get(subscriptions, res.subscriptionId)
+            const mailbox = yield* RcMap.get(subscriptions, res.publicKey)
             const identity = identities.get(mailbox)!
             const entries = yield* encryption.decrypt(identity, res.entries)
             yield* mailbox.offerAll(entries)

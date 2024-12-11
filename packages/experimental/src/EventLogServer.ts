@@ -39,7 +39,7 @@ export const makeHandler: Effect.Effect<
   let chunkId = 0
 
   function* handler(socket: Socket.Socket) {
-    const subscriptions = yield* FiberMap.make<number>()
+    const subscriptions = yield* FiberMap.make<string>()
     const writeRaw = yield* socket.writer
     const chunks = new Map<number, {
       readonly parts: Array<Uint8Array>
@@ -86,7 +86,7 @@ export const makeHandler: Effect.Effect<
               Effect.flatMap(([entries]) =>
                 write(
                   new Changes({
-                    subscriptionId: request.subscriptionId,
+                    publicKey: request.publicKey,
                     entries: Chunk.toReadonlyArray(entries)
                   })
                 )
@@ -95,11 +95,11 @@ export const makeHandler: Effect.Effect<
             )
           }).pipe(
             Effect.scoped,
-            FiberMap.run(subscriptions, request.subscriptionId)
+            FiberMap.run(subscriptions, request.publicKey)
           )
         }
         case "StopChanges": {
-          return FiberMap.remove(subscriptions, request.subscriptionId)
+          return FiberMap.remove(subscriptions, request.publicKey)
         }
         case "ChunkedMessage": {
           const data = ChunkedMessage.join(chunks, request)
