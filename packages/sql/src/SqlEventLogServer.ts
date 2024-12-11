@@ -86,7 +86,10 @@ export const makeStorage = (options?: {
                   iv BYTEA NOT NULL,
                   entry_id BYTEA UNIQUE NOT NULL,
                   encrypted_entry BYTEA NOT NULL
-                )`.withoutTransform,
+                );
+                CREATE INDEX IF NOT EXISTS ${sql(`idx_${table}_sequence`)} ON ${sql(table)} (sequence);
+                CREATE INDEX IF NOT EXISTS ${sql(`idx_${table}_entry_id`)} ON ${sql(table)} (entry_id);`
+                .withoutTransform,
             mysql: () =>
               sql`
                 CREATE TABLE IF NOT EXISTS ${sql(table)} (
@@ -102,7 +105,9 @@ export const makeStorage = (options?: {
                   iv VARBINARY(12) NOT NULL,
                   entry_id VARBINARY(16) UNIQUE NOT NULL,
                   encrypted_entry VARBINARY(MAX) NOT NULL
-                )`.withoutTransform,
+                );
+                CREATE INDEX ${sql(`idx_${table}_sequence`)} ON ${sql(table)} (sequence);
+                CREATE INDEX ${sql(`idx_${table}_entry_id`)} ON ${sql(table)} (entry_id);`.withoutTransform,
             orElse: () =>
               sql`
                 CREATE TABLE IF NOT EXISTS ${sql(table)} (
@@ -110,7 +115,10 @@ export const makeStorage = (options?: {
                   iv BLOB NOT NULL,
                   entry_id BLOB UNIQUE NOT NULL,
                   encrypted_entry BLOB NOT NULL
-                )`.withoutTransform
+                );
+                CREATE INDEX IF NOT EXISTS ${sql(`idx_${table}_sequence`)} ON ${sql(table)} (sequence);
+                CREATE INDEX IF NOT EXISTS ${sql(`idx_${table}_entry_id`)} ON ${sql(table)} (entry_id);`
+                .withoutTransform
           })
 
           const pubsub = yield* Effect.acquireRelease(

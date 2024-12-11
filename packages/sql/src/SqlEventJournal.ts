@@ -38,7 +38,11 @@ export const make = (options?: {
             primary_key TEXT NOT NULL,
             payload BYTEA NOT NULL,
             timestamp BIGINT NOT NULL
-          )`.withoutTransform,
+          );
+          CREATE INDEX IF NOT EXISTS ${sql(`idx_${entryTable}_timestamp`)} ON ${sql(entryTable)} (timestamp);
+          CREATE INDEX IF NOT EXISTS ${sql(`idx_${entryTable}_lookup`)} ON ${
+          sql(entryTable)
+        } (event, primary_key, timestamp);`.withoutTransform,
       mysql: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sql(entryTable)} (
@@ -47,16 +51,31 @@ export const make = (options?: {
             primary_key TEXT NOT NULL,
             payload BLOB NOT NULL,
             timestamp BIGINT NOT NULL
-          )`.withoutTransform,
+          );
+          CREATE INDEX ${sql(`idx_${entryTable}_timestamp`)} ON ${sql(entryTable)} (timestamp);
+          CREATE INDEX ${sql(`idx_${entryTable}_lookup`)} ON ${sql(entryTable)} (event, primary_key, timestamp);`
+          .withoutTransform,
       mssql: () =>
         sql`
-          CREATE TABLE IF NOT EXISTS ${sql(entryTable)} (
-            id UNIQUEIDENTIFIER PRIMARY KEY,
-            event NVARCHAR(MAX) NOT NULL,
-            primary_key NVARCHAR(MAX) NOT NULL,
-            payload VARBINARY(MAX) NOT NULL,
-            timestamp BIGINT NOT NULL
-          )`.withoutTransform,
+          IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${entryTable}')
+          BEGIN
+            CREATE TABLE ${entryTable} (
+              id UNIQUEIDENTIFIER PRIMARY KEY,
+              event NVARCHAR(MAX) NOT NULL,
+              primary_key NVARCHAR(MAX) NOT NULL,
+              payload VARBINARY(MAX) NOT NULL,
+              timestamp BIGINT NOT NULL
+            )
+          END;
+          IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_${entryTable}_timestamp')
+          BEGIN
+            CREATE INDEX ${sql(`idx_${entryTable}_timestamp`)} ON ${sql(entryTable)} (timestamp);
+          END;
+          IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_${entryTable}_lookup')
+          BEGIN
+            CREATE INDEX ${sql(`idx_${entryTable}_lookup`)} ON ${sql(entryTable)} (event, primary_key, timestamp);
+          END`
+          .withoutTransform,
       orElse: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sql(entryTable)} (
@@ -65,7 +84,12 @@ export const make = (options?: {
             primary_key TEXT NOT NULL,
             payload BLOB NOT NULL,
             timestamp BIGINT NOT NULL
-          )`.withoutTransform
+          );
+          CREATE INDEX IF NOT EXISTS ${sql(`idx_${entryTable}_timestamp`)} ON ${sql(entryTable)} (timestamp);
+          CREATE INDEX IF NOT EXISTS ${sql(`idx_${entryTable}_lookup`)} ON ${
+          sql(entryTable)
+        } (event, primary_key, timestamp);`
+          .withoutTransform
     })
 
     yield* sql.onDialectOrElse({
@@ -76,7 +100,9 @@ export const make = (options?: {
             entry_id UUID NOT NULL,
             sequence INT NOT NULL,
             PRIMARY KEY (remote_id, entry_id)
-          )`.withoutTransform,
+         );
+         CREATE INDEX IF NOT EXISTS ${sql(`idx_${remotesTable}_remote_id`)} ON ${sql(remotesTable)} (remote_id);`
+          .withoutTransform,
       mysql: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sql(remotesTable)} (
@@ -84,15 +110,23 @@ export const make = (options?: {
             entry_id BINARY(16) NOT NULL,
             sequence INT NOT NULL,
             PRIMARY KEY (remote_id, entry_id)
-          )`.withoutTransform,
+          );
+          CREATE INDEX ${sql(`idx_${remotesTable}_remote_id`)} ON ${sql(remotesTable)} (remote_id);`.withoutTransform,
       mssql: () =>
         sql`
-          CREATE TABLE IF NOT EXISTS ${sql(remotesTable)} (
-            remote_id UNIQUEIDENTIFIER NOT NULL,
-            entry_id UNIQUEIDENTIFIER NOT NULL,
-            sequence INT NOT NULL,
-            PRIMARY KEY (remote_id, entry_id)
-          )`.withoutTransform,
+          IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${remotesTable}')
+          BEGIN
+            CREATE TABLE ${remotesTable} (
+              remote_id UNIQUEIDENTIFIER NOT NULL,
+              entry_id UNIQUEIDENTIFIER NOT NULL,
+              sequence INT NOT NULL,
+              PRIMARY KEY (remote_id, entry_id)
+            )
+          END;
+          IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_${remotesTable}_remote_id')
+          BEGIN
+            CREATE INDEX ${sql(`idx_${remotesTable}_remote_id`)} ON ${sql(remotesTable)} (remote_id);
+          END`.withoutTransform,
       orElse: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sql(remotesTable)} (
@@ -100,7 +134,9 @@ export const make = (options?: {
             entry_id BLOB NOT NULL,
             sequence INT NOT NULL,
             PRIMARY KEY (remote_id, entry_id)
-          )`.withoutTransform
+          );
+          CREATE INDEX IF NOT EXISTS ${sql(`idx_${remotesTable}_remote_id`)} ON ${sql(remotesTable)} (remote_id);`
+          .withoutTransform
     })
 
     const EntrySqlEncoded = sql.onDialectOrElse({
