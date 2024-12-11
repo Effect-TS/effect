@@ -2017,61 +2017,75 @@ export const linkSpans = dual<
 
 const bigint0 = BigInt(0)
 
+const filterDisablePropagation: (self: Option.Option<Tracer.AnySpan>) => Option.Option<Tracer.AnySpan> = Option.flatMap(
+  (span) =>
+    Context.get(span.context, internalTracer.DisablePropagation)
+      ? span._tag === "Span" ? filterDisablePropagation(span.parent) : Option.none()
+      : Option.some(span)
+)
+
 /** @internal */
 export const unsafeMakeSpan = <XA, XE>(
   fiber: FiberRuntime<XA, XE>,
   name: string,
   options: Tracer.SpanOptions
 ) => {
-  const enabled = fiber.getFiberRef(core.currentTracerEnabled)
-  if (enabled === false) {
-    return core.noopSpan(name)
-  }
-
+  const disablePropagation = !fiber.getFiberRef(core.currentTracerEnabled) ||
+    (options.context && Context.get(options.context, internalTracer.DisablePropagation))
   const context = fiber.getFiberRef(core.currentContext)
-  const services = fiber.getFiberRef(defaultServices.currentServices)
-
-  const tracer = Context.get(services, internalTracer.tracerTag)
-  const clock = Context.get(services, Clock.Clock)
-  const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
-
-  const fiberRefs = fiber.getFiberRefs()
-  const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
-  const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
-
   const parent = options.parent
     ? Option.some(options.parent)
     : options.root
     ? Option.none()
-    : Context.getOption(context, internalTracer.spanTag)
+    : filterDisablePropagation(Context.getOption(context, internalTracer.spanTag))
 
-  const links = linksFromEnv._tag === "Some" ?
-    options.links !== undefined ?
-      [
-        ...Chunk.toReadonlyArray(linksFromEnv.value),
-        ...(options.links ?? [])
-      ] :
-      Chunk.toReadonlyArray(linksFromEnv.value) :
-    options.links ?? Arr.empty()
+  let span: Tracer.Span
 
-  const span = tracer.span(
-    name,
-    parent,
-    options.context ?? Context.empty(),
-    links,
-    timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0,
-    options.kind ?? "internal"
-  )
+  if (disablePropagation) {
+    span = core.noopSpan({
+      name,
+      parent,
+      context: Context.add(options.context ?? Context.empty(), internalTracer.DisablePropagation, true)
+    })
+  } else {
+    const services = fiber.getFiberRef(defaultServices.currentServices)
+
+    const tracer = Context.get(services, internalTracer.tracerTag)
+    const clock = Context.get(services, Clock.Clock)
+    const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
+
+    const fiberRefs = fiber.getFiberRefs()
+    const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
+    const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
+
+    const links = linksFromEnv._tag === "Some" ?
+      options.links !== undefined ?
+        [
+          ...Chunk.toReadonlyArray(linksFromEnv.value),
+          ...(options.links ?? [])
+        ] :
+        Chunk.toReadonlyArray(linksFromEnv.value) :
+      options.links ?? Arr.empty()
+
+    span = tracer.span(
+      name,
+      parent,
+      options.context ?? Context.empty(),
+      links,
+      timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0,
+      options.kind ?? "internal"
+    )
+
+    if (annotationsFromEnv._tag === "Some") {
+      HashMap.forEach(annotationsFromEnv.value, (value, key) => span.attribute(key, value))
+    }
+    if (options.attributes !== undefined) {
+      Object.entries(options.attributes).forEach(([k, v]) => span.attribute(k, v))
+    }
+  }
 
   if (typeof options.captureStackTrace === "function") {
     internalCause.spanToTrace.set(span, options.captureStackTrace)
-  }
-
-  if (annotationsFromEnv._tag === "Some") {
-    HashMap.forEach(annotationsFromEnv.value, (value, key) => span.attribute(key, value))
-  }
-  if (options.attributes !== undefined) {
-    Object.entries(options.attributes).forEach(([k, v]) => span.attribute(k, v))
   }
 
   return span
