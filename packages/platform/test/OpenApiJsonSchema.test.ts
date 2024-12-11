@@ -2,6 +2,8 @@ import * as OpenApiJsonSchema from "@effect/platform/OpenApiJsonSchema"
 import * as Schema from "effect/Schema"
 import { describe, expect, it } from "vitest"
 
+type NullableCase = [string, Schema.Schema.Any, object]
+
 describe("OpenApiJsonSchema", () => {
   it("default options", () => {
     const schema = Schema.Struct({
@@ -51,5 +53,24 @@ describe("OpenApiJsonSchema", () => {
         "type": "string"
       }
     })
+  })
+  it.for<NullableCase>([
+    ["union of 2 types", Schema.NullOr(Schema.Union(Schema.String, Schema.Number)), {
+      anyOf: [{
+        type: "string"
+      }, {
+        type: "number"
+      }],
+      nullable: true
+    }],
+    ["only one simple type", Schema.NullOr(Schema.String), {
+      type: "string",
+      nullable: true
+    }],
+    ["only null", Schema.Null, { enum: [null] }]
+  ])("nullable case: %s", ([_name, schema, expected]) => {
+    const defs: Record<string, OpenApiJsonSchema.JsonSchema> = {}
+    const jsonSchema = OpenApiJsonSchema.makeWithDefs(schema, { defs })
+    expect(jsonSchema).toStrictEqual(expected)
   })
 })

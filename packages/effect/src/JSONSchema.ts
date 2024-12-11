@@ -2,6 +2,7 @@
  * @since 3.10.0
  */
 
+import * as Either from "./Either.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as Option from "./Option.js"
 import * as Predicate from "./Predicate.js"
@@ -636,31 +637,62 @@ const go = (
       return { ...output, ...getJsonSchemaAnnotations(ast) }
     }
     case "Union": {
-      const anyOf: Array<JsonSchema7> = []
-      for (const type of ast.types) {
-        const schema = go(type, $defs, true, path, options)
-        if ("enum" in schema) {
-          if (Object.keys(schema).length > 1) {
-            anyOf.push(schema)
-          } else {
-            const last = anyOf[anyOf.length - 1]
-            if (last !== undefined && isEnumOnly(last)) {
-              for (const e of schema.enum) {
-                last.enum.push(e)
-              }
-            } else {
-              anyOf.push(schema)
-            }
-          }
-        } else {
-          anyOf.push(schema)
+      const NonNullable = {}
+
+      type UnionOrSingleSchema = Either.Either<[{ nullable: true } | {}, Array<AST.AST>], JsonSchema7>
+
+      // https://swagger.io/docs/specification/v3_0/data-models/data-types/#null
+      const renderAsOpenApi = (): UnionOrSingleSchema => {
+        const [containsNull, restAstTypes] = ast.types.reduce<[boolean, Array<AST.AST>]>(
+          (prev, current) =>
+            current._tag === "Literal" && current.literal === null
+              ? [true, prev[1]]
+              : [prev[0], [...prev[1], current]],
+          [false, []]
+        )
+
+        const nullable = containsNull ? { nullable: true } : NonNullable
+        if (restAstTypes.length === 1) {
+          return Either.left({
+            ...go(restAstTypes[0], $defs, true, path, options),
+            ...nullable,
+            ...getASTJsonSchemaAnnotations(restAstTypes[0])
+          } as JsonSchema7)
         }
+        return Either.right([nullable, restAstTypes] as const)
       }
-      if (anyOf.length === 1 && isEnumOnly(anyOf[0])) {
-        return { enum: anyOf[0].enum, ...getJsonSchemaAnnotations(ast) }
-      } else {
-        return { anyOf, ...getJsonSchemaAnnotations(ast) }
-      }
+
+      const unionOrSingleSchema: UnionOrSingleSchema = options.target === "openApi3.1"
+        ? renderAsOpenApi()
+        : Either.right([NonNullable, [...ast.types]])
+
+      return unionOrSingleSchema.pipe(Either.map(([nullable, astTypes]) => {
+        const anyOf: Array<JsonSchema7> = []
+        for (const type of astTypes) {
+          const schema = go(type, $defs, true, path, options)
+          if ("enum" in schema) {
+            if (Object.keys(schema).length > 1) {
+              anyOf.push(schema)
+            } else {
+              const last = anyOf[anyOf.length - 1]
+              if (last !== undefined && isEnumOnly(last)) {
+                for (const e of schema.enum) {
+                  last.enum.push(e)
+                }
+              } else {
+                anyOf.push(schema)
+              }
+            }
+          } else {
+            anyOf.push(schema)
+          }
+        }
+        if (anyOf.length === 1 && isEnumOnly(anyOf[0])) {
+          return { enum: anyOf[0].enum, ...getJsonSchemaAnnotations(ast), ...nullable } as JsonSchema7
+        } else {
+          return { anyOf, ...getJsonSchemaAnnotations(ast), ...nullable } as JsonSchema7
+        }
+      })).pipe(Either.merge)
     }
     case "Enums": {
       return {
