@@ -4,6 +4,7 @@ import {
   HttpApiBuilder,
   HttpApiClient,
   HttpApiEndpoint,
+  HttpApiError,
   HttpApiGroup,
   HttpApiMiddleware,
   HttpApiSchema,
@@ -76,6 +77,7 @@ class TopLevelApi extends HttpApiGroup.make("topLevel", { topLevel: true })
       .addSuccess(HttpApiSchema.Text({
         contentType: "text/csv"
       }))
+      .addError(HttpApiError.Conflict)
   )
   .add(
     HttpApiEndpoint.get("binary", "/binary")
