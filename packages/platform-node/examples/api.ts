@@ -108,9 +108,9 @@ class PeopleApi extends HttpApiGroup.make("people")
   .prefix("/people")
 {}
 
-class AnotherApi extends HttpApi.empty.add(PeopleApi).prefix("/v2") {}
+class AnotherApi extends HttpApi.make("another").add(PeopleApi).prefix("/v2") {}
 
-class MyApi extends HttpApi.empty
+class MyApi extends HttpApi.make("api")
   .add(UsersApi)
   .add(TopLevelApi)
   .addHttpApi(AnotherApi)

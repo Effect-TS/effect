@@ -69,7 +69,7 @@ const Group2 = HttpApiGroup.make("Group2")
   .addError(Group2Error)
   .add(EndpointC)
 
-const TestApi = HttpApi.empty
+const TestApi = HttpApi.make("test")
   .middleware(ApiSecurity)
   .addError(ApiError)
   .add(Group1)

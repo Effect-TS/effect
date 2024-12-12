@@ -55,12 +55,12 @@ export class Router extends HttpRouter.Tag("@effect/platform/HttpApiBuilder/Rout
  * @since 1.0.0
  * @category constructors
  */
-export const api = <Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
-  api: HttpApi.HttpApi<Groups, E, R>
+export const api = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
+  api: HttpApi.HttpApi<Id, Groups, E, R>
 ): Layer.Layer<
   HttpApi.Api,
   never,
-  HttpApiGroup.HttpApiGroup.ToService<Groups> | R | HttpApiGroup.HttpApiGroup.ErrorContext<Groups>
+  HttpApiGroup.HttpApiGroup.ToService<Id, Groups> | R | HttpApiGroup.HttpApiGroup.ErrorContext<Groups>
 > =>
   Layer.effect(
     HttpApi.Api,
@@ -132,7 +132,7 @@ export const httpApp: Effect.Effect<
  * import { HttpApi, HttpApiBuilder, HttpServer } from "@effect/platform"
  * import { Layer } from "effect"
  *
- * class MyApi extends HttpApi.empty {}
+ * class MyApi extends HttpApi.make("api") {}
  *
  * const MyApiLive = HttpApiBuilder.api(MyApi)
  *
@@ -429,19 +429,20 @@ const makeHandlers = <E, Provides, R, Endpoints extends HttpApiEndpoint.HttpApiE
  * @category handlers
  */
 export const group = <
+  ApiId extends string,
   Groups extends HttpApiGroup.HttpApiGroup.Any,
   ApiError,
   ApiR,
   const Name extends HttpApiGroup.HttpApiGroup.Name<Groups>,
   Return
 >(
-  api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
+  api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
   groupName: Name,
   build: (
     handlers: Handlers.FromGroup<ApiError, ApiR, HttpApiGroup.HttpApiGroup.WithName<Groups, Name>>
   ) => Handlers.ValidateReturn<Return>
 ): Layer.Layer<
-  HttpApiGroup.ApiGroup<Name>,
+  HttpApiGroup.ApiGroup<ApiId, Name>,
   Handlers.Error<Return>,
   | Handlers.Context<Return>
   | HttpApiGroup.HttpApiGroup.MiddlewareWithName<Groups, Name>
@@ -481,6 +482,7 @@ export const group = <
  * @category handlers
  */
 export const handler = <
+  ApiId extends string,
   Groups extends HttpApiGroup.HttpApiGroup.Any,
   ApiError,
   ApiR,
@@ -488,7 +490,7 @@ export const handler = <
   const Name extends HttpApiGroup.HttpApiGroup.EndpointsWithName<Groups, GroupName>["name"],
   R
 >(
-  _api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
+  _api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
   _groupName: GroupName,
   _name: Name,
   f: HttpApiEndpoint.HttpApiEndpoint.HandlerWithName<
@@ -824,15 +826,15 @@ export const middleware: {
       readonly withContext: true
     }
   ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | RX>
-  <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, EX = never, RX = never>(
-    api: HttpApi.HttpApi<Groups, Error, ErrorR>,
+  <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, EX = never, RX = never>(
+    api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
     middleware: MiddlewareFn<NoInfer<Error>> | Effect.Effect<MiddlewareFn<NoInfer<Error>>, EX, RX>,
     options?: {
       readonly withContext?: false | undefined
     }
   ): Layer.Layer<never, EX, RX>
-  <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, R, EX = never, RX = never>(
-    api: HttpApi.HttpApi<Groups, Error, ErrorR>,
+  <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, R, EX = never, RX = never>(
+    api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
     middleware: MiddlewareFn<NoInfer<Error>, R> | Effect.Effect<MiddlewareFn<NoInfer<Error>, R>, EX, RX>,
     options: {
       readonly withContext: true
@@ -881,15 +883,15 @@ export const middlewareScoped: {
       readonly withContext: true
     }
   ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | Exclude<RX, Scope>>
-  <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, EX, RX>(
-    api: HttpApi.HttpApi<Groups, Error, ErrorR>,
+  <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, EX, RX>(
+    api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
     middleware: Effect.Effect<MiddlewareFn<NoInfer<Error>>, EX, RX>,
     options?: {
       readonly withContext?: false | undefined
     }
   ): Layer.Layer<never, EX, Exclude<RX, Scope>>
-  <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, R, EX, RX>(
-    api: HttpApi.HttpApi<Groups, Error, ErrorR>,
+  <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, R, EX, RX>(
+    api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
     middleware: Effect.Effect<MiddlewareFn<NoInfer<Error>, R>, EX, RX>,
     options: {
       readonly withContext: true

@@ -45,12 +45,14 @@ export const isHttpApi = (u: unknown): u is HttpApi.Any => Predicate.hasProperty
  * @category models
  */
 export interface HttpApi<
+  out Id extends string,
   out Groups extends HttpApiGroup.HttpApiGroup.Any = never,
   in out E = never,
   out R = never
 > extends Pipeable {
   new(_: never): {}
   readonly [TypeId]: TypeId
+  readonly identifier: Id
   readonly groups: Record.ReadonlyRecord<string, Groups>
   readonly annotations: Context.Context<never>
   readonly errorSchema: Schema.Schema<E, unknown, R>
@@ -59,11 +61,14 @@ export interface HttpApi<
   /**
    * Add a `HttpApiGroup` to the `HttpApi`.
    */
-  add<A extends HttpApiGroup.HttpApiGroup.Any>(group: A): HttpApi<Groups | A, E, R>
+  add<A extends HttpApiGroup.HttpApiGroup.Any>(group: A): HttpApi<Id, Groups | A, E, R>
   /**
    * Add another `HttpApi` to the `HttpApi`.
    */
-  addHttpApi<Groups2 extends HttpApiGroup.HttpApiGroup.Any, E2, R2>(api: HttpApi<Groups2, E2, R2>): HttpApi<
+  addHttpApi<Id2 extends string, Groups2 extends HttpApiGroup.HttpApiGroup.Any, E2, R2>(
+    api: HttpApi<Id2, Groups2, E2, R2>
+  ): HttpApi<
+    Id,
     Groups | HttpApiGroup.HttpApiGroup.AddContext<Groups2, R2>,
     E | E2,
     R
@@ -76,11 +81,11 @@ export interface HttpApi<
     annotations?: {
       readonly status?: number | undefined
     }
-  ): HttpApi<Groups, E | A, R | RX>
+  ): HttpApi<Id, Groups, E | A, R | RX>
   /**
    * Prefix all endpoints in the `HttpApi`.
    */
-  prefix(prefix: PathInput): HttpApi<Groups, E, R>
+  prefix(prefix: PathInput): HttpApi<Id, Groups, E, R>
   /**
    * Add a middleware to a `HttpApi`. It will be applied to all endpoints in the
    * `HttpApi`.
@@ -88,6 +93,7 @@ export interface HttpApi<
   middleware<I extends HttpApiMiddleware.HttpApiMiddleware.AnyId, S>(
     middleware: Context.Tag<I, S>
   ): HttpApi<
+    Id,
     Groups,
     E | HttpApiMiddleware.HttpApiMiddleware.Error<I>,
     R | I | HttpApiMiddleware.HttpApiMiddleware.ErrorContext<I>
@@ -95,11 +101,11 @@ export interface HttpApi<
   /**
    * Annotate the `HttpApi`.
    */
-  annotate<I, S>(tag: Context.Tag<I, S>, value: S): HttpApi<Groups, E, R>
+  annotate<I, S>(tag: Context.Tag<I, S>, value: S): HttpApi<Id, Groups, E, R>
   /**
    * Annotate the `HttpApi` with a Context.
    */
-  annotateContext<I>(context: Context.Context<I>): HttpApi<Groups, E, R>
+  annotateContext<I>(context: Context.Context<I>): HttpApi<Id, Groups, E, R>
 }
 
 /**
@@ -109,7 +115,7 @@ export interface HttpApi<
 export class Api extends Context.Tag("@effect/platform/HttpApi/Api")<
   Api,
   {
-    readonly api: HttpApi<HttpApiGroup.HttpApiGroup.AnyWithProps>
+    readonly api: HttpApi<string, HttpApiGroup.HttpApiGroup.AnyWithProps>
     readonly context: Context.Context<never>
   }
 >() {}
@@ -131,7 +137,7 @@ export declare namespace HttpApi {
    * @since 1.0.0
    * @category models
    */
-  export type AnyWithProps = HttpApi<HttpApiGroup.HttpApiGroup.AnyWithProps, any, any>
+  export type AnyWithProps = HttpApi<string, HttpApiGroup.HttpApiGroup.AnyWithProps, any, any>
 }
 
 const Proto = {
@@ -144,6 +150,7 @@ const Proto = {
     group: HttpApiGroup.HttpApiGroup.AnyWithProps
   ) {
     return makeProto({
+      identifier: this.identifier,
       groups: Record.set(this.groups, group.identifier, group),
       errorSchema: this.errorSchema,
       annotations: this.annotations,
@@ -158,10 +165,11 @@ const Proto = {
     for (const key in api.groups) {
       const newGroup: Mutable<HttpApiGroup.HttpApiGroup.AnyWithProps> = api.groups[key].annotateContext(Context.empty())
       newGroup.annotations = Context.merge(api.annotations, newGroup.annotations)
-      newGroup.middlewares = new Set([...this.middlewares, ...newGroup.middlewares])
+      newGroup.middlewares = new Set([...api.middlewares, ...newGroup.middlewares])
       newGroups[key] = newGroup as any
     }
     return makeProto({
+      identifier: this.identifier,
       groups: newGroups,
       errorSchema: HttpApiSchema.UnionUnify(this.errorSchema, api.errorSchema),
       annotations: this.annotations,
@@ -174,6 +182,7 @@ const Proto = {
     annotations?: { readonly status?: number }
   ) {
     return makeProto({
+      identifier: this.identifier,
       groups: this.groups,
       errorSchema: HttpApiSchema.UnionUnify(
         this.errorSchema,
@@ -187,6 +196,7 @@ const Proto = {
   },
   prefix(this: HttpApi.AnyWithProps, prefix: PathInput) {
     return makeProto({
+      identifier: this.identifier,
       groups: Record.map(this.groups, (group) => group.prefix(prefix)),
       errorSchema: this.errorSchema,
       annotations: this.annotations,
@@ -195,6 +205,7 @@ const Proto = {
   },
   middleware(this: HttpApi.AnyWithProps, tag: HttpApiMiddleware.TagClassAny) {
     return makeProto({
+      identifier: this.identifier,
       groups: this.groups,
       errorSchema: HttpApiSchema.UnionUnify(
         this.errorSchema,
@@ -208,6 +219,7 @@ const Proto = {
   },
   annotate(this: HttpApi.AnyWithProps, tag: Context.Tag<any, any>, value: any) {
     return makeProto({
+      identifier: this.identifier,
       groups: this.groups,
       errorSchema: this.errorSchema,
       annotations: Context.add(this.annotations, tag, value),
@@ -216,6 +228,7 @@ const Proto = {
   },
   annotateContext(this: HttpApi.AnyWithProps, context: Context.Context<any>) {
     return makeProto({
+      identifier: this.identifier,
       groups: this.groups,
       errorSchema: this.errorSchema,
       annotations: Context.merge(this.annotations, context),
@@ -224,14 +237,15 @@ const Proto = {
   }
 }
 
-const makeProto = <Groups extends HttpApiGroup.HttpApiGroup.Any, E, I, R>(
+const makeProto = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, I, R>(
   options: {
+    readonly identifier: Id
     readonly groups: Record.ReadonlyRecord<string, Groups>
     readonly errorSchema: Schema.Schema<E, I, R>
     readonly annotations: Context.Context<never>
     readonly middlewares: ReadonlySet<HttpApiMiddleware.TagClassAny>
   }
-): HttpApi<Groups, E, R> => {
+): HttpApi<Id, Groups, E, R> => {
   function HttpApi() {}
   Object.setPrototypeOf(HttpApi, Proto)
   HttpApi.groups = options.groups
@@ -250,12 +264,14 @@ const makeProto = <Groups extends HttpApiGroup.HttpApiGroup.Any, E, I, R>(
  * @since 1.0.0
  * @category constructors
  */
-export const empty: HttpApi<never, HttpApiDecodeError> = makeProto({
-  groups: new Map() as any,
-  errorSchema: HttpApiDecodeError,
-  annotations: Context.empty(),
-  middlewares: new Set()
-})
+export const make = <const Id extends string>(identifier: Id): HttpApi<Id, never, HttpApiDecodeError> =>
+  makeProto({
+    identifier,
+    groups: new Map() as any,
+    errorSchema: HttpApiDecodeError,
+    annotations: Context.empty(),
+    middlewares: new Set()
+  })
 
 /**
  * Extract metadata from an `HttpApi`, which can be used to generate documentation
@@ -266,8 +282,8 @@ export const empty: HttpApi<never, HttpApiDecodeError> = makeProto({
  * @since 1.0.0
  * @category reflection
  */
-export const reflect = <Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
-  self: HttpApi<Groups, Error, R>,
+export const reflect = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, R>(
+  self: HttpApi<Id, Groups, Error, R>,
   options: {
     readonly predicate?: Predicate.Predicate<{
       readonly endpoint: HttpApiEndpoint.HttpApiEndpoint.AnyWithProps

@@ -41,13 +41,14 @@ class User extends Schema.Class<User>("User")({
   createdAt: Schema.DateTimeUtc
 }) {}
 
+// Our user id path parameter schema
+const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+
 const usersApi = HttpApiGroup.make("users")
   .add(
     // each endpoint has a name and a path
     // You can use a template string to define path parameter schemas
-    HttpApiEndpoint.get(
-      "findById"
-    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
+    HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
       // the endpoint can have a Schema for a successful response
       .addSuccess(User)
   )
@@ -67,15 +68,9 @@ const usersApi = HttpApiGroup.make("users")
       )
   )
   // by default, the endpoint will respond with a 204 No Content
+  .add(HttpApiEndpoint.del("delete")`/users/${UserIdParam}`)
   .add(
-    HttpApiEndpoint.del(
-      "delete"
-    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
-  )
-  .add(
-    HttpApiEndpoint.patch(
-      "update"
-    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
+    HttpApiEndpoint.patch("update")`/users/${UserIdParam}`
       .addSuccess(User)
       .setPayload(
         Schema.Struct({
@@ -90,9 +85,7 @@ We will use this API style in the following examples:
 
 ```ts
 class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get(
-    "findById"
-  )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
   // ... same as above
 ) {}
 ```
@@ -104,13 +97,13 @@ Once you have defined your groups, you can combine them into a single `HttpApi`.
 ```ts
 import { HttpApi } from "@effect/platform"
 
-class MyApi extends HttpApi.empty.add(UsersApi) {}
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
 ```
 
 Or with the non-opaque style:
 
 ```ts
-const api = HttpApi.empty.add(usersApi)
+const api = HttpApi.make("myApi").add(usersApi)
 ```
 
 ### Adding OpenApi annotations
@@ -124,9 +117,7 @@ import { OpenApi } from "@effect/platform"
 
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get(
-      "findById"
-    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
+    HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
     // ... same as above
   )
   // add an OpenApi title & description
@@ -147,7 +138,7 @@ included.
 You can also add OpenApi annotations to the top-level `HttpApi`:
 
 ```ts
-class MyApi extends HttpApi.empty
+class MyApi extends HttpApi.make("myApi")
   .add(UsersApi)
   .annotate(OpenApi.Title, "My API") {}
 ```
@@ -179,9 +170,7 @@ class Unauthorized extends Schema.TaggedError<Unauthorized>()(
 
 class UsersApi extends HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get(
-      "findById"
-    )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`
+    HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
       // here we are adding our error response
       .addError(UserNotFound, { status: 404 })
       .addSuccess(User)
@@ -270,15 +259,14 @@ class User extends Schema.Class<User>("User")({
   createdAt: Schema.DateTimeUtc
 }) {}
 
+// Our user id path parameter schema
+const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+
 class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get(
-    "findById"
-  )`/users/${HttpApiSchema.param("id", Schema.NumberFromString)}`.addSuccess(
-    User
-  )
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
 ) {}
 
-class MyApi extends HttpApi.empty.add(UsersApi) {}
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
 
 // --------------------------------------------
 // Implementation
@@ -289,10 +277,10 @@ const UsersApiLive: Layer.Layer<HttpApiGroup.ApiGroup<"users">> =
   HttpApiBuilder.group(MyApi, "users", (handlers) =>
     handlers
       // the parameters & payload are passed to the handler function.
-      .handle("findById", ({ path: { id } }) =>
+      .handle("findById", ({ path: { userId } }) =>
         Effect.succeed(
           new User({
-            id,
+            id: userId,
             name: "John Doe",
             createdAt: DateTime.unsafeNow()
           })
@@ -323,8 +311,8 @@ const UsersApiLive: Layer.Layer<
   // we can return an Effect that creates our handlers
   Effect.gen(function* () {
     const repository = yield* UsersRepository
-    return handlers.handle("findById", ({ path: { id } }) =>
-      repository.findById(id)
+    return handlers.handle("findById", ({ path: { userId } }) =>
+      repository.findById(userId)
     )
   })
 )
@@ -642,7 +630,7 @@ Effect.gen(function* () {
     // You can transform the HttpClient to add things like authentication
     // transformClient: ....
   })
-  const user = yield* client.users.findById({ path: { id: 1 } })
+  const user = yield* client.users.findById({ path: { userId: 1 } })
   yield* Effect.log(user)
 })
 ```

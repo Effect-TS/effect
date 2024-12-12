@@ -139,8 +139,9 @@ export interface HttpApiGroup<
  * @since 1.0.0
  * @category models
  */
-export interface ApiGroup<Name extends string> {
+export interface ApiGroup<ApiId extends string, Name extends string> {
   readonly _: unique symbol
+  readonly apiId: ApiId
   readonly name: Name
 }
 
@@ -168,8 +169,8 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type ToService<A> = A extends
-    HttpApiGroup<infer Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ? ApiGroup<Name>
+  export type ToService<ApiId extends string, A> = A extends
+    HttpApiGroup<infer Name, infer _Endpoints, infer _Error, infer _R, infer _TopLevel> ? ApiGroup<ApiId, Name>
     : never
 
   /**

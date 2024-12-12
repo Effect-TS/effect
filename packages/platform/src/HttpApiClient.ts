@@ -102,8 +102,8 @@ export declare namespace Client {
 /**
  * @internal
  */
-const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
-  api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
+const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiError, ApiR>(
+  api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
   options: {
     readonly predicate?: Predicate.Predicate<{
       readonly endpoint: HttpApiEndpoint.AnyWithProps
@@ -240,8 +240,8 @@ const makeClient = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
-  api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
+export const make = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiError, ApiR>(
+  api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
     readonly transformResponse?:
@@ -272,12 +272,13 @@ export const make = <Groups extends HttpApiGroup.Any, ApiError, ApiR>(
  * @category constructors
  */
 export const group = <
+  ApiId extends string,
   Groups extends HttpApiGroup.Any,
   ApiError,
   ApiR,
   const GroupName extends Groups["identifier"]
 >(
-  api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
+  api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
   groupId: GroupName,
   options?: {
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
@@ -311,13 +312,14 @@ export const group = <
  * @category constructors
  */
 export const endpoint = <
+  ApiId extends string,
   Groups extends HttpApiGroup.Any,
   ApiError,
   ApiR,
   const GroupName extends HttpApiGroup.Name<Groups>,
   const EndpointName extends HttpApiEndpoint.Name<HttpApiGroup.EndpointsWithName<Groups, GroupName>>
 >(
-  api: HttpApi.HttpApi<Groups, ApiError, ApiR>,
+  api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
   groupName: GroupName,
   endpointName: EndpointName,
   options?: {
