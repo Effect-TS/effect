@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
+import { constFalse } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
@@ -85,6 +86,14 @@ export class Deprecated extends Context.Tag("@effect/platform/OpenApi/Deprecated
 export class Override extends Context.Tag("@effect/platform/OpenApi/Override")<Override, Record<string, unknown>>() {}
 
 /**
+ * @since 1.0.0
+ * @category annotations
+ */
+export class Exclude extends Context.Reference<Exclude>()("@effect/platform/OpenApi/Exclude", {
+  defaultValue: constFalse
+}) {}
+
+/**
  * Transforms the generated OpenAPI specification
  * @since 1.0.0
  * @category annotations
@@ -127,6 +136,7 @@ export const annotations: (
     readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined
     readonly format?: string | undefined
     readonly override?: Record<string, unknown> | undefined
+    readonly exclude?: boolean | undefined
     readonly transform?: ((openApiSpec: Record<string, any>) => Record<string, any>) | undefined
   }
 ) => Context.Context<never> = contextPartial({
@@ -140,6 +150,7 @@ export const annotations: (
   servers: Servers,
   format: Format,
   override: Override,
+  exclude: Exclude,
   transform: Transform
 })
 
@@ -213,6 +224,9 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
   })
   HttpApi.reflect(api as any, {
     onGroup({ group }) {
+      if (Context.get(group.annotations, Exclude)) {
+        return
+      }
       let tag: Mutable<OpenAPISpecTag> = {
         name: Context.getOrElse(group.annotations, Title, () => group.identifier)
       }
@@ -230,7 +244,10 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       })
       spec.tags!.push(tag)
     },
-    onEndpoint({ endpoint, errors, group, middleware, payloads, successes }) {
+    onEndpoint({ endpoint, errors, group, mergedAnnotations, middleware, payloads, successes }) {
+      if (Context.get(mergedAnnotations, Exclude)) {
+        return
+      }
       const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       let op: DeepMutable<OpenAPISpecOperation> = {

@@ -361,9 +361,9 @@ class TopLevelApi extends HttpApiGroup.make("root", { topLevel: true })
   )
 {}
 
-class AnotherApi extends HttpApi.empty.add(GroupsApi) {}
+class AnotherApi extends HttpApi.make("another").add(GroupsApi) {}
 
-class Api extends HttpApi.empty
+class Api extends HttpApi.make("api")
   .addHttpApi(AnotherApi)
   .add(UsersApi.prefix("/users"))
   .add(TopLevelApi)
