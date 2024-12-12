@@ -164,3 +164,17 @@ export const externalSpan: (
  */
 export const tracerWith: <A, E, R>(f: (tracer: Tracer) => Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
   defaultServices.tracerWith
+
+/**
+ * @since 3.12.0
+ * @category annotations
+ */
+export interface DisablePropagation {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 3.12.0
+ * @category annotations
+ */
+export const DisablePropagation: Context.Reference<DisablePropagation, boolean> = internal.DisablePropagation

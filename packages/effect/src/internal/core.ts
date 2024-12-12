@@ -3062,14 +3062,11 @@ export const currentSpanFromFiber = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Opt
   return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
 }
 
-const NoopSpanProto: Tracer.Span = {
+const NoopSpanProto: Omit<Tracer.Span, "parent" | "name" | "context"> = {
   _tag: "Span",
   spanId: "noop",
   traceId: "noop",
-  name: "noop",
   sampled: false,
-  parent: Option.none(),
-  context: Context.empty(),
   status: {
     _tag: "Ended",
     startTime: BigInt(0),
@@ -3085,8 +3082,8 @@ const NoopSpanProto: Tracer.Span = {
 }
 
 /** @internal */
-export const noopSpan = (name: string): Tracer.Span => {
-  const span = Object.create(NoopSpanProto)
-  span.name = name
-  return span
-}
+export const noopSpan = (options: {
+  readonly name: string
+  readonly parent: Option.Option<Tracer.AnySpan>
+  readonly context: Context.Context<never>
+}): Tracer.Span => Object.assign(Object.create(NoopSpanProto), options)
