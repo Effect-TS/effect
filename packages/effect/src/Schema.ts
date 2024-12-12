@@ -4667,7 +4667,13 @@ export {
  * @category schema id
  * @since 3.10.0
  */
-export const FiniteSchemaId: unique symbol = Symbol.for("effect/SchemaId/Finite")
+export const FiniteSchemaId: unique symbol = filters_.FiniteSchemaId
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
+export type FiniteSchemaId = typeof FiniteSchemaId
 
 /**
  * Ensures that the provided value is a finite number.
@@ -4680,9 +4686,10 @@ export const FiniteSchemaId: unique symbol = Symbol.for("effect/SchemaId/Finite"
 export const finite =
   <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
-      filter((a) => Number.isFinite(a), {
+      filter(Number.isFinite, {
         schemaId: FiniteSchemaId,
         description: "a finite number",
+        jsonSchema: { "type": "number" },
         ...annotations
       })
     )
@@ -4902,7 +4909,13 @@ export const between = <A extends number>(
  * @category schema id
  * @since 3.10.0
  */
-export const NonNaNSchemaId: unique symbol = Symbol.for("effect/SchemaId/NonNaN")
+export const NonNaNSchemaId: unique symbol = filters_.NonNaNSchemaId
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
+export type NonNaNSchemaId = typeof NonNaNSchemaId
 
 /**
  * @category number filters
@@ -5056,7 +5069,13 @@ export class NonNegative extends Number$.pipe(
  * @category schema id
  * @since 3.10.0
  */
-export const JsonNumberSchemaId: unique symbol = Symbol.for("effect/SchemaId/JsonNumber")
+export const JsonNumberSchemaId: unique symbol = filters_.JsonNumberSchemaId
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
+export type JsonNumberSchemaId = typeof JsonNumberSchemaId
 
 /**
  * The `JsonNumber` is a schema for representing JSON numbers. It ensures that the provided value is a valid
@@ -5079,12 +5098,11 @@ export const JsonNumberSchemaId: unique symbol = Symbol.for("effect/SchemaId/Jso
  * @since 3.10.0
  */
 export class JsonNumber extends Number$.pipe(
-  filter(Number.isFinite, {
+  finite({
     schemaId: JsonNumberSchemaId,
     identifier: "JsonNumber",
     title: "JSON-compatible number",
-    description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
-    jsonSchema: { type: "number" }
+    description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity"
   })
 ) {}
 

@@ -2,85 +2,100 @@ import type * as Schema from "../../Schema.js"
 
 /** @internal */
 export const GreaterThanSchemaId: Schema.GreaterThanSchemaId = Symbol.for(
-  "effect/schema/GreaterThan"
+  "effect/SchemaId/GreaterThan"
 ) as Schema.GreaterThanSchemaId
 
 /** @internal */
 export const GreaterThanOrEqualToSchemaId: Schema.GreaterThanOrEqualToSchemaId = Symbol.for(
-  "effect/schema/GreaterThanOrEqualTo"
+  "effect/SchemaId/GreaterThanOrEqualTo"
 ) as Schema.GreaterThanOrEqualToSchemaId
 
 /** @internal */
 export const LessThanSchemaId: Schema.LessThanSchemaId = Symbol.for(
-  "effect/schema/LessThan"
+  "effect/SchemaId/LessThan"
 ) as Schema.LessThanSchemaId
 
 /** @internal */
 export const LessThanOrEqualToSchemaId: Schema.LessThanOrEqualToSchemaId = Symbol.for(
-  "effect/schema/LessThanOrEqualTo"
+  "effect/SchemaId/LessThanOrEqualTo"
 ) as Schema.LessThanOrEqualToSchemaId
 
 /** @internal */
 export const IntSchemaId: Schema.IntSchemaId = Symbol.for(
-  "effect/schema/Int"
+  "effect/SchemaId/Int"
 ) as Schema.IntSchemaId
 
 /** @internal */
+export const NonNaNSchemaId: Schema.NonNaNSchemaId = Symbol.for(
+  "effect/SchemaId/NonNaN"
+) as Schema.NonNaNSchemaId
+
+/** @internal */
+export const FiniteSchemaId: Schema.FiniteSchemaId = Symbol.for(
+  "effect/SchemaId/Finite"
+) as Schema.FiniteSchemaId
+
+/** @internal */
+export const JsonNumberSchemaId: Schema.JsonNumberSchemaId = Symbol.for(
+  "effect/SchemaId/JsonNumber"
+) as Schema.JsonNumberSchemaId
+
+/** @internal */
 export const BetweenSchemaId: Schema.BetweenSchemaId = Symbol.for(
-  "effect/schema/Between"
+  "effect/SchemaId/Between"
 ) as Schema.BetweenSchemaId
 
 /** @internal */
 export const GreaterThanBigintSchemaId: Schema.GreaterThanBigIntSchemaId = Symbol.for(
-  "effect/schema/GreaterThanBigint"
+  "effect/SchemaId/GreaterThanBigint"
 ) as Schema.GreaterThanBigIntSchemaId
 
 /** @internal */
 export const GreaterThanOrEqualToBigIntSchemaId: Schema.GreaterThanOrEqualToBigIntSchemaId = Symbol.for(
-  "effect/schema/GreaterThanOrEqualToBigint"
+  "effect/SchemaId/GreaterThanOrEqualToBigint"
 ) as Schema.GreaterThanOrEqualToBigIntSchemaId
 
 /** @internal */
 export const LessThanBigIntSchemaId: Schema.LessThanBigIntSchemaId = Symbol.for(
-  "effect/schema/LessThanBigint"
+  "effect/SchemaId/LessThanBigint"
 ) as Schema.LessThanBigIntSchemaId
 
 /** @internal */
 export const LessThanOrEqualToBigIntSchemaId: Schema.LessThanOrEqualToBigIntSchemaId = Symbol.for(
-  "effect/schema/LessThanOrEqualToBigint"
+  "effect/SchemaId/LessThanOrEqualToBigint"
 ) as Schema.LessThanOrEqualToBigIntSchemaId
 
 /** @internal */
 export const BetweenBigintSchemaId: Schema.BetweenBigIntSchemaId = Symbol.for(
-  "effect/schema/BetweenBigint"
+  "effect/SchemaId/BetweenBigint"
 ) as Schema.BetweenBigIntSchemaId
 
 /** @internal */
 export const MinLengthSchemaId: Schema.MinLengthSchemaId = Symbol.for(
-  "effect/schema/MinLength"
+  "effect/SchemaId/MinLength"
 ) as Schema.MinLengthSchemaId
 
 /** @internal */
 export const MaxLengthSchemaId: Schema.MaxLengthSchemaId = Symbol.for(
-  "effect/schema/MaxLength"
+  "effect/SchemaId/MaxLength"
 ) as Schema.MaxLengthSchemaId
 
 /** @internal */
 export const LengthSchemaId: Schema.LengthSchemaId = Symbol.for(
-  "effect/schema/Length"
+  "effect/SchemaId/Length"
 ) as Schema.LengthSchemaId
 
 /** @internal */
 export const MinItemsSchemaId: Schema.MinItemsSchemaId = Symbol.for(
-  "effect/schema/MinItems"
+  "effect/SchemaId/MinItems"
 ) as Schema.MinItemsSchemaId
 
 /** @internal */
 export const MaxItemsSchemaId: Schema.MaxItemsSchemaId = Symbol.for(
-  "effect/schema/MaxItems"
+  "effect/SchemaId/MaxItems"
 ) as Schema.MaxItemsSchemaId
 
 /** @internal */
 export const ItemsCountSchemaId: Schema.ItemsCountSchemaId = Symbol.for(
-  "effect/schema/ItemsCount"
+  "effect/SchemaId/ItemsCount"
 ) as Schema.ItemsCountSchemaId
