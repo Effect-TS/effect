@@ -341,6 +341,9 @@ importers:
         specifier: ^11.0.3
         version: 11.0.3
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20240806.0
+        version: 4.20241022.0
       '@types/ws':
         specifier: ^8.5.12
         version: 8.5.12
