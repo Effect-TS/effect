@@ -1,7 +1,7 @@
-/// <reference types="@cloudflare/workers-types" />
 /**
  * @since 1.0.0
  */
+/// <reference types="@cloudflare/workers-types" />
 import { DurableObject } from "cloudflare:workers"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
@@ -17,6 +17,9 @@ import * as EventLogServer from "../EventLogServer.js"
  * @category DurableObject
  */
 export abstract class EventLogDurableObject extends DurableObject {
+  /**
+   * @since 1.0.0
+   */
   readonly runtime: ManagedRuntime.ManagedRuntime<EventLogServer.Storage, never>
 
   constructor(options: {
@@ -29,6 +32,9 @@ export abstract class EventLogDurableObject extends DurableObject {
     this.runtime = ManagedRuntime.make(options.storageLayer)
   }
 
+  /**
+   * @since 1.0.0
+   */
   webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
     return this.handleRequest(
       ws,
@@ -48,6 +54,9 @@ export abstract class EventLogDurableObject extends DurableObject {
       bytes: number
     }
   >()
+  /**
+   * @since 1.0.0
+   */
   private async handleRequest(
     ws: WebSocket,
     request: typeof EventLogRemote.ProtocolRequest.Type
@@ -110,6 +119,9 @@ export abstract class EventLogDurableObject extends DurableObject {
     }
   }
 
+  /**
+   * @since 1.0.0
+   */
   private encodeChanges(
     publicKey: string,
     entries: ReadonlyArray<EncryptedRemoteEntry>
@@ -131,14 +143,23 @@ export abstract class EventLogDurableObject extends DurableObject {
     return changes
   }
 
+  /**
+   * @since 1.0.0
+   */
   webSocketError(_ws: WebSocket, error: Error): void {
     this.runtime.runFork(Effect.logWarning(Cause.fail(error)))
   }
 
+  /**
+   * @since 1.0.0
+   */
   webSocketClose(_ws: WebSocket, code: number, reason: string): void {
     this.runtime.runFork(Effect.logWarning("WebSocket closed", { code, reason }))
   }
 
+  /**
+   * @since 1.0.0
+   */
   async fetch(): Promise<Response> {
     const webSocketPair = new WebSocketPair()
     const [client, server] = Object.values(webSocketPair)
