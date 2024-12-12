@@ -126,7 +126,7 @@ export const makeStorage = (options?: {
       getId: Effect.succeed(remoteId),
       write: (publicKey, entries) =>
         Effect.gen(function*() {
-          if (entries.length === 0) return
+          if (entries.length === 0) return []
           const { pubsub, table } = yield* RcMap.get(resources, publicKey)
           const forInsert: Array<
             {
@@ -156,6 +156,7 @@ export const makeStorage = (options?: {
               forInsert.push(currentBatch)
             }
           }
+          const allEntries: Array<EncryptedRemoteEntry> = []
           for (const batch of forInsert) {
             const encryptedEntries = yield* pipe(
               sql`INSERT INTO ${sql(table)} ${sql.insert(batch.entries)} ON CONFLICT DO NOTHING`.withoutTransform,
@@ -165,7 +166,10 @@ export const makeStorage = (options?: {
               Effect.flatMap(decodeEntries)
             )
             yield* pubsub.offerAll(encryptedEntries)
+            // eslint-disable-next-line no-restricted-syntax
+            allEntries.push(...encryptedEntries)
           }
+          return allEntries
         }).pipe(
           Effect.orDie,
           Effect.scoped

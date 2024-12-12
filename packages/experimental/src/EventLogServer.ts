@@ -178,7 +178,10 @@ export class Storage extends Context.Tag("@effect/experimental/EventLogServer/St
   Storage,
   {
     readonly getId: Effect.Effect<RemoteId>
-    readonly write: (publicKey: string, entries: ReadonlyArray<PersistedEntry>) => Effect.Effect<void>
+    readonly write: (
+      publicKey: string,
+      entries: ReadonlyArray<PersistedEntry>
+    ) => Effect.Effect<ReadonlyArray<EncryptedRemoteEntry>>
     readonly changes: (
       publicKey: string,
       startSequence: number
@@ -214,8 +217,10 @@ export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Sco
     getId: Effect.succeed(remoteId),
     write: (publicKey, entries) =>
       Effect.gen(function*() {
-        const pubsub = yield* RcMap.get(pubsubs, publicKey)
+        const active = yield* RcMap.keys(pubsubs)
+        const pubsub = active.includes(publicKey) ? yield* RcMap.get(pubsubs, publicKey) : undefined
         const journal = ensureJournal(publicKey)
+        const encryptedEntries: Array<EncryptedRemoteEntry> = []
         for (const entry of entries) {
           const idString = entry.entryIdString
           if (knownIds.has(idString)) continue
@@ -225,10 +230,12 @@ export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Sco
             iv: entry.iv,
             encryptedEntry: entry.encryptedEntry
           })
+          encryptedEntries.push(encrypted)
           knownIds.set(idString, encrypted.sequence)
           journal.push(encrypted)
-          pubsub.unsafeOffer(encrypted)
+          pubsub?.unsafeOffer(encrypted)
         }
+        return encryptedEntries
       }).pipe(Effect.scoped),
     changes: (publicKey, startSequence) =>
       Effect.gen(function*() {
