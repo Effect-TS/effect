@@ -77,6 +77,8 @@
       "include": [
         "*.ts",
         "DevTools/*.ts",
+        "EventLogRemote/*.ts",
+        "EventLogServer/*.ts",
         "Machine/*.ts",
         "Persistence/*.ts",
         "SocketServer/*.ts"
