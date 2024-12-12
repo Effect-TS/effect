@@ -87,7 +87,7 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
    * Merges a set of new annotations with existing ones, potentially overwriting
    * any duplicates.
    */
-  annotations(annotations: Annotations.Schema<A>): Schema<A, I, R>
+  annotations(annotations: Annotations.GenericSchema<A>): Schema<A, I, R>
 }
 
 /**
@@ -107,7 +107,7 @@ export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
   static Context: R
   static [TypeId] = variance
   static ast = ast
-  static annotations(annotations: Annotations.Schema<A>) {
+  static annotations(annotations: Annotations.GenericSchema<A>) {
     return make<A, I, R>(mergeSchemaAnnotations(this.ast, annotations))
   }
   static pipe() {
@@ -204,7 +204,7 @@ export declare namespace Annotable {
  * @since 3.10.0
  */
 export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> extends Schema<A, I, R> {
-  annotations(annotations: Annotations.Schema<A>): Self
+  annotations(annotations: Annotations.GenericSchema<A>): Self
 }
 
 /**
@@ -3928,6 +3928,15 @@ export declare namespace Annotations {
   }
 
   /**
+   * @since 3.11.6
+   */
+  export interface GenericSchema<A> extends Schema<A> {
+    readonly arbitrary?: (..._: any) => LazyArbitrary<A>
+    readonly pretty?: (..._: any) => pretty_.Pretty<A>
+    readonly equivalence?: (..._: any) => Equivalence.Equivalence<A>
+  }
+
+  /**
    * @since 3.10.0
    */
   export interface Filter<A, P = A> extends Schema<A, readonly [P]> {}
@@ -3941,11 +3950,12 @@ export declare namespace Annotations {
  * @since 3.10.0
  */
 export const annotations: {
-  <S extends Annotable.All>(annotations: Annotations.Schema<Schema.Type<S>>): (self: S) => Annotable.Self<S>
-  <S extends Annotable.All>(self: S, annotations: Annotations.Schema<Schema.Type<S>>): Annotable.Self<S>
+  <S extends Annotable.All>(annotations: Annotations.GenericSchema<Schema.Type<S>>): (self: S) => Annotable.Self<S>
+  <S extends Annotable.All>(self: S, annotations: Annotations.GenericSchema<Schema.Type<S>>): Annotable.Self<S>
 } = dual(
   2,
-  <A, I, R>(self: Schema<A, I, R>, annotations: Annotations.Schema<A>): Schema<A, I, R> => self.annotations(annotations)
+  <A, I, R>(self: Schema<A, I, R>, annotations: Annotations.GenericSchema<A>): Schema<A, I, R> =>
+    self.annotations(annotations)
 )
 
 type Rename<A, M> = {
