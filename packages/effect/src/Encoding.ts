@@ -95,7 +95,10 @@ export const decodeHexString = (str: string) => Either.map(decodeHex(str), (_) =
  * @since 3.12.0
  */
 export const encodeUriComponent = (str: string): Either.Either<string, EncodeException> =>
-  Either.try({ try: () => encodeURIComponent(str), catch: (e) => EncodeException(str, e instanceof Error ? e.message : "Invalid input") })
+  Either.try({
+    try: () => encodeURIComponent(str),
+    catch: (e) => EncodeException(str, e instanceof Error ? e.message : "Invalid input")
+  })
 
 /**
  * Decodes a URI component `string` into a UTF-8 `string`.
@@ -104,7 +107,10 @@ export const encodeUriComponent = (str: string): Either.Either<string, EncodeExc
  * @since 3.12.0
  */
 export const decodeUriComponent = (str: string): Either.Either<string, DecodeException> =>
-  Either.try({ try: () => decodeURIComponent(str), catch: (e) => DecodeException(str, e instanceof Error ? e.message : "Invalid input") })
+  Either.try({
+    try: () => decodeURIComponent(str),
+    catch: (e) => DecodeException(str, e instanceof Error ? e.message : "Invalid input")
+  })
 
 /**
  * @since 2.0.0
