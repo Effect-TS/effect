@@ -535,6 +535,7 @@
               "required": ["_tag", "path", "message"],
               "properties": {
                 "_tag": {
+                  "type": "string",
                   "enum": [
                     "Pointer",
                     "Unexpected",
@@ -570,6 +571,7 @@
             "type": "string"
           },
           "_tag": {
+            "type": "string",
             "enum": ["HttpApiDecodeError"]
           }
         },
@@ -581,6 +583,7 @@
         "required": ["_tag"],
         "properties": {
           "_tag": {
+            "type": "string",
             "enum": ["GlobalError"]
           }
         },
@@ -614,6 +617,7 @@
         "required": ["_tag"],
         "properties": {
           "_tag": {
+            "type": "string",
             "enum": ["UserError"]
           }
         },
@@ -624,6 +628,7 @@
         "required": ["_tag"],
         "properties": {
           "_tag": {
+            "type": "string",
             "enum": ["NoStatusError"]
           }
         },

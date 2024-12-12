@@ -162,6 +162,7 @@ export interface Array extends Annotations {
  * @since 1.0.0
  */
 export interface Enum extends Annotations {
+  type?: "string" | "number" | "boolean"
   enum: globalThis.Array<AST.LiteralValue>
 }
 
@@ -172,6 +173,7 @@ export interface Enum extends Annotations {
 export interface Enums extends Annotations {
   $comment: "/schemas/enums"
   anyOf: globalThis.Array<{
+    type: "string" | "number"
     title: string
     enum: [string | number]
   }>
