@@ -98,7 +98,10 @@ class Deferred {
     const config = this.config
     switch (config._tag) {
       case "StringConstraints": {
-        return (fc) => fc.string(config.constraints)
+        const pattern = config.pattern
+        return pattern !== undefined ?
+          (fc) => fc.stringMatching(new RegExp(pattern)) :
+          (fc) => fc.string(config.constraints)
       }
       case "NumberConstraints": {
         return config.isInteger ?

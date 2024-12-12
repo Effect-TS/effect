@@ -4125,7 +4125,6 @@ export const pattern = <A extends string>(
         [PatternSchemaId]: { regex },
         description: `a string matching the pattern ${pattern}`,
         jsonSchema: { pattern },
-        arbitrary: () => (fc) => fc.stringMatching(regex) as any,
         ...annotations
       }
     )
