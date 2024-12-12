@@ -2,9 +2,12 @@
  * @since 1.0.0
  */
 import type { Brand } from "effect/Brand"
+import * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
 import type { LazyArg } from "effect/Function"
-import { constVoid, dual } from "effect/Function"
+import { constant, constVoid, dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import { hasProperty } from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Struct from "effect/Struct"
@@ -227,7 +230,7 @@ export const asEmpty: {
     self: S,
     options: {
       readonly status: number
-      readonly decode?: LazyArg<Schema.Schema.Type<S>>
+      readonly decode: LazyArg<Schema.Schema.Type<S>>
     }
   ): asEmpty<S>
 } = dual(
@@ -236,14 +239,14 @@ export const asEmpty: {
     self: S,
     options: {
       readonly status: number
-      readonly decode?: LazyArg<Schema.Schema.Type<S>>
+      readonly decode: LazyArg<Schema.Schema.Type<S>>
     }
   ): asEmpty<S> =>
     Schema.transform(
-      Schema.Void,
+      Schema.Void.annotations(self.ast.annotations),
       Schema.typeSchema(self),
       {
-        decode: options.decode as any,
+        decode: options.decode,
         encode: constVoid
       }
     ).annotations(annotations({
@@ -455,4 +458,59 @@ export const deunionize = (
     astCache.set(ast, schema)
     schemas.add(schema)
   }
+}
+
+/**
+ * @since 1.0.0
+ * @category empty errors
+ */
+export interface EmptyErrorClass<Self, Tag> extends Schema.Schema<Self, void> {
+  new(_: void): { readonly _tag: Tag } & Effect.Effect<never, Self>
+}
+
+/**
+ * @since 1.0.0
+ * @category empty errors
+ */
+export const EmptyError = <Self>() =>
+<const Tag extends string>(options: {
+  readonly tag: Tag
+  readonly status: number
+}): EmptyErrorClass<Self, Tag> => {
+  const symbol = Symbol.for(`@effect/platform/HttpApiSchema/EmptyError/${options.tag}`)
+  class EmptyError extends Effectable.StructuralClass<never, Self> {
+    readonly _tag: Tag = options.tag
+    commit(): Effect.Effect<never, Self> {
+      return Effect.fail(this) as any
+    }
+  }
+  ;(EmptyError as any).prototype[symbol] = symbol
+  Object.assign(EmptyError, {
+    [Schema.TypeId]: Schema.Void[Schema.TypeId],
+    pipe: Schema.Void.pipe,
+    annotations(this: any, annotations: any) {
+      return Schema.make(this.ast).annotations(annotations)
+    }
+  })
+  let transform: Schema.Schema.Any | undefined
+  Object.defineProperty(EmptyError, "ast", {
+    get() {
+      if (transform) {
+        return transform.ast
+      }
+      const self = this as any
+      transform = asEmpty(
+        Schema.declare((u) => hasProperty(u, symbol), {
+          identifier: options.tag,
+          title: options.tag
+        }),
+        {
+          status: options.status,
+          decode: constant(new self())
+        }
+      )
+      return transform.ast
+    }
+  })
+  return EmptyError as any
 }
