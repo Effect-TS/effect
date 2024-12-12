@@ -9,10 +9,10 @@ import { assert, describe, expect, it } from "vitest"
 const expectConstraints = <A, I>(
   schema: S.Schema<A, I, never>,
   constraints:
-    | Arbitrary.StringConstraints
-    | Arbitrary.NumberConstraints
-    | Arbitrary.BigIntConstraints
-    | Arbitrary.ArrayConstraints
+    | ReturnType<typeof Arbitrary.makeStringConstraints>
+    | ReturnType<typeof Arbitrary.makeNumberConstraints>
+    | ReturnType<typeof Arbitrary.makeBigIntConstraints>
+    | ReturnType<typeof Arbitrary.makeArrayConstraints>
 ) => {
   const ast = schema.ast
   if (AST.isRefinement(ast)) {
@@ -524,19 +524,19 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     describe("array filters", () => {
       it("minItems", () => {
         const schema = S.Array(S.String).pipe(S.minItems(2))
-        expectConstraints(schema, new Arbitrary.ArrayConstraints({ minLength: 2 }))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 2 }))
         expectValidArbitrary(schema)
       })
 
       it("maxItems", () => {
         const schema = S.Array(S.String).pipe(S.maxItems(5))
-        expectConstraints(schema, new Arbitrary.ArrayConstraints({ maxLength: 5 }))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ maxLength: 5 }))
         expectValidArbitrary(schema)
       })
 
       it("itemsCount", () => {
         const schema = S.Array(S.String).pipe(S.itemsCount(10))
-        expectConstraints(schema, new Arbitrary.ArrayConstraints({ minLength: 10, maxLength: 10 }))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 10, maxLength: 10 }))
         expectValidArbitrary(schema)
       })
     })
@@ -544,31 +544,31 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     describe("string filters", () => {
       it("minLength", () => {
         const schema = S.String.pipe(S.minLength(2))
-        expectConstraints(schema, new Arbitrary.StringConstraints({ minLength: 2 }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2 }))
         expectValidArbitrary(schema)
       })
 
       it("maxLength", () => {
         const schema = S.String.pipe(S.maxLength(5))
-        expectConstraints(schema, new Arbitrary.StringConstraints({ maxLength: 5 }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ maxLength: 5 }))
         expectValidArbitrary(schema)
       })
 
       it("length: number", () => {
         const schema = S.String.pipe(S.length(10))
-        expectConstraints(schema, new Arbitrary.StringConstraints({ minLength: 10, maxLength: 10 }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 10, maxLength: 10 }))
         expectValidArbitrary(schema)
       })
 
       it("length: { min, max }", () => {
         const schema = S.String.pipe(S.length({ min: 2, max: 5 }))
-        expectConstraints(schema, new Arbitrary.StringConstraints({ minLength: 2, maxLength: 5 }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
         expectValidArbitrary(schema)
       })
 
       it("minLength + maxLength", () => {
         const schema = S.String.pipe(S.minLength(2), S.maxLength(5))
-        expectConstraints(schema, new Arbitrary.StringConstraints({ minLength: 2, maxLength: 5 }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
         expectValidArbitrary(schema)
       })
 
@@ -577,7 +577,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
           S.minLength(2),
           S.maxLength(5)
         )
-        expectConstraints(schema, new Arbitrary.StringConstraints({ minLength: 2, maxLength: 5 }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
         expectValidArbitrary(schema)
       })
 
@@ -586,33 +586,33 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
           S.minLength(2),
           S.maxLength(5)
         ).annotations({ arbitrary: () => (fc) => fc.string() })
-        expectConstraints(schema, new Arbitrary.StringConstraints({ minLength: 2, maxLength: 5 }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
         expectValidArbitrary(schema)
       })
 
       it("startsWith", () => {
         const schema = S.String.pipe(S.startsWith("a"))
-        expectConstraints(schema, new Arbitrary.StringConstraints({ pattern: "^a" }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ pattern: "^a" }))
         expectValidArbitrary(schema)
       })
 
       it("endsWith", () => {
         const schema = S.String.pipe(S.endsWith("a"))
-        expectConstraints(schema, new Arbitrary.StringConstraints({ pattern: "^.*a$" }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ pattern: "^.*a$" }))
         expectValidArbitrary(schema)
       })
 
       it("pattern", () => {
         const regex = /^[A-Z]{3}[0-9]{3}$/
         const schema = S.String.pipe(S.pattern(regex))
-        expectConstraints(schema, new Arbitrary.StringConstraints({ pattern: regex.source }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ pattern: regex.source }))
         expectValidArbitrary(schema)
       })
 
       it("nonEmptyString + pattern", () => {
         const regex = /^[-]*$/
         const schema = S.String.pipe(S.nonEmptyString(), S.pattern(regex))
-        expectConstraints(schema, new Arbitrary.StringConstraints({ minLength: 1, pattern: regex.source }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 1, pattern: regex.source }))
         expectValidArbitrary(schema)
       })
     })
@@ -620,67 +620,67 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     describe("number filters", () => {
       it("nonNaN", () => {
         const schema = S.Number.pipe(S.nonNaN())
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ noNaN: true }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ noNaN: true }))
         expectValidArbitrary(schema)
       })
 
       it("finite", () => {
         const schema = S.Number.pipe(S.finite())
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ noNaN: true, noDefaultInfinity: true }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ noNaN: true, noDefaultInfinity: true }))
         expectValidArbitrary(schema)
       })
 
       it("JsonNumber", () => {
         const schema = S.JsonNumber
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ noDefaultInfinity: true, noNaN: true }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ noDefaultInfinity: true, noNaN: true }))
         expectValidArbitrary(schema)
       })
 
       it("int", () => {
         const schema = S.Number.pipe(S.int())
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ isInteger: true }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ isInteger: true }))
         expectValidArbitrary(schema)
       })
 
       it("between int", () => {
         const schema = S.Number.pipe(S.between(2, 5), S.int())
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ isInteger: true, min: 2, max: 5 }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ isInteger: true, min: 2, max: 5 }))
         expectValidArbitrary(schema)
       })
 
       it("int between", () => {
         const schema = S.Number.pipe(S.int(), S.between(2, 5))
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ isInteger: true, min: 2, max: 5 }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ isInteger: true, min: 2, max: 5 }))
         expectValidArbitrary(schema)
       })
 
       it("lessThanOrEqualTo", () => {
         const schema = S.Number.pipe(S.lessThanOrEqualTo(5))
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ max: 5 }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ max: 5 }))
         expectValidArbitrary(schema)
       })
 
       it("greaterThanOrEqualTo", () => {
         const schema = S.Number.pipe(S.greaterThanOrEqualTo(2))
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ min: 2 }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ min: 2 }))
         expectValidArbitrary(schema)
       })
 
       it("lessThan", () => {
         const schema = S.Number.pipe(S.lessThan(5))
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ max: 5, maxExcluded: true }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ max: 5, maxExcluded: true }))
         expectValidArbitrary(schema)
       })
 
       it("greaterThan", () => {
         const schema = S.Number.pipe(S.greaterThan(2))
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ min: 2, minExcluded: true }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ min: 2, minExcluded: true }))
         expectValidArbitrary(schema)
       })
 
       it("between", () => {
         const schema = S.Number.pipe(S.between(2, 5))
-        expectConstraints(schema, new Arbitrary.NumberConstraints({ min: 2, max: 5 }))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ min: 2, max: 5 }))
         expectValidArbitrary(schema)
       })
     })
@@ -688,31 +688,31 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     describe("bigint filters", () => {
       it("lessThanOrEqualTo", () => {
         const schema = S.BigIntFromSelf.pipe(S.lessThanOrEqualToBigInt(BigInt(5)))
-        expectConstraints(schema, new Arbitrary.BigIntConstraints({ max: BigInt(5) }))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ max: BigInt(5) }))
         expectValidArbitrary(schema)
       })
 
       it("greaterThanOrEqualTo", () => {
         const schema = S.BigIntFromSelf.pipe(S.greaterThanOrEqualToBigInt(BigInt(2)))
-        expectConstraints(schema, new Arbitrary.BigIntConstraints({ min: BigInt(2) }))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2) }))
         expectValidArbitrary(schema)
       })
 
       it("lessThan", () => {
         const schema = S.BigIntFromSelf.pipe(S.lessThanBigInt(BigInt(5)))
-        expectConstraints(schema, new Arbitrary.BigIntConstraints({ max: BigInt(5) }))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ max: BigInt(5) }))
         expectValidArbitrary(schema)
       })
 
       it("greaterThan", () => {
         const schema = S.BigIntFromSelf.pipe(S.greaterThanBigInt(BigInt(2)))
-        expectConstraints(schema, new Arbitrary.BigIntConstraints({ min: BigInt(2) }))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2) }))
         expectValidArbitrary(schema)
       })
 
       it("between", () => {
         const schema = S.BigIntFromSelf.pipe(S.betweenBigInt(BigInt(2), BigInt(5)))
-        expectConstraints(schema, new Arbitrary.BigIntConstraints({ min: BigInt(2), max: BigInt(5) }))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2), max: BigInt(5) }))
         expectValidArbitrary(schema)
       })
     })

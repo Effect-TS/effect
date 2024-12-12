@@ -11,6 +11,7 @@ import * as Option from "./Option.js"
 import * as Predicate from "./Predicate.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
+import type * as Types from "./Types.js"
 
 /**
  * @category model
@@ -112,127 +113,133 @@ class Deferred {
   }
 }
 
-/**
- * @since 3.11.6
- */
-export class StringConstraints {
-  readonly _tag = "StringConstraints"
+interface StringConstraints {
+  readonly _tag: "StringConstraints"
   readonly constraints: FastCheck.StringSharedConstraints
   readonly pattern?: string
-  constructor(
-    options: {
-      readonly minLength?: number | undefined
-      readonly maxLength?: number | undefined
-      readonly pattern?: string | undefined
-    }
-  ) {
-    this.constraints = {}
-    if (Predicate.isNumber(options.minLength)) {
-      this.constraints.minLength = options.minLength
-    }
-    if (Predicate.isNumber(options.maxLength)) {
-      this.constraints.maxLength = options.maxLength
-    }
-    if (Predicate.isString(options.pattern)) {
-      this.pattern = options.pattern
-    }
-  }
 }
 
-/**
- * @since 3.11.6
- */
-export class NumberConstraints {
-  readonly _tag = "NumberConstraints"
+/** @internal */
+export const makeStringConstraints = (options: {
+  readonly minLength?: number | undefined
+  readonly maxLength?: number | undefined
+  readonly pattern?: string | undefined
+}): StringConstraints => {
+  const out: Types.Mutable<StringConstraints> = {
+    _tag: "StringConstraints",
+    constraints: {}
+  }
+  if (Predicate.isNumber(options.minLength)) {
+    out.constraints.minLength = options.minLength
+  }
+  if (Predicate.isNumber(options.maxLength)) {
+    out.constraints.maxLength = options.maxLength
+  }
+  if (Predicate.isString(options.pattern)) {
+    out.pattern = options.pattern
+  }
+  return out
+}
+
+interface NumberConstraints {
+  readonly _tag: "NumberConstraints"
   readonly constraints: FastCheck.FloatConstraints
   readonly isInteger: boolean
-  constructor(
-    options: {
-      readonly isInteger?: boolean
-      readonly min?: number | undefined
-      readonly minExcluded?: boolean | undefined
-      readonly max?: number | undefined
-      readonly maxExcluded?: boolean | undefined
-      readonly noNaN?: boolean | undefined
-      readonly noDefaultInfinity?: boolean | undefined
-    }
-  ) {
-    this.constraints = {}
-    this.isInteger = options.isInteger ?? false
-    if (Predicate.isNumber(options.min)) {
-      this.constraints.min = Math.fround(options.min)
-    }
-    if (Predicate.isBoolean(options.minExcluded)) {
-      this.constraints.minExcluded = options.minExcluded
-    }
-    if (Predicate.isNumber(options.max)) {
-      this.constraints.max = Math.fround(options.max)
-    }
-    if (Predicate.isBoolean(options.maxExcluded)) {
-      this.constraints.maxExcluded = options.maxExcluded
-    }
-    if (Predicate.isBoolean(options.noNaN)) {
-      this.constraints.noNaN = options.noNaN
-    }
-    if (Predicate.isBoolean(options.noDefaultInfinity)) {
-      this.constraints.noDefaultInfinity = options.noDefaultInfinity
-    }
-  }
 }
 
-/**
- * @since 3.11.6
- */
-export class BigIntConstraints {
-  readonly _tag = "BigIntConstraints"
+/** @internal */
+export const makeNumberConstraints = (options: {
+  readonly isInteger?: boolean | undefined
+  readonly min?: number | undefined
+  readonly minExcluded?: boolean | undefined
+  readonly max?: number | undefined
+  readonly maxExcluded?: boolean | undefined
+  readonly noNaN?: boolean | undefined
+  readonly noDefaultInfinity?: boolean | undefined
+}): NumberConstraints => {
+  const out: Types.Mutable<NumberConstraints> = {
+    _tag: "NumberConstraints",
+    constraints: {},
+    isInteger: options.isInteger ?? false
+  }
+  if (Predicate.isNumber(options.min)) {
+    out.constraints.min = Math.fround(options.min)
+  }
+  if (Predicate.isBoolean(options.minExcluded)) {
+    out.constraints.minExcluded = options.minExcluded
+  }
+  if (Predicate.isNumber(options.max)) {
+    out.constraints.max = Math.fround(options.max)
+  }
+  if (Predicate.isBoolean(options.maxExcluded)) {
+    out.constraints.maxExcluded = options.maxExcluded
+  }
+  if (Predicate.isBoolean(options.noNaN)) {
+    out.constraints.noNaN = options.noNaN
+  }
+  if (Predicate.isBoolean(options.noDefaultInfinity)) {
+    out.constraints.noDefaultInfinity = options.noDefaultInfinity
+  }
+  return out
+}
+
+interface BigIntConstraints {
+  readonly _tag: "BigIntConstraints"
   readonly constraints: FastCheck.BigIntConstraints
-  constructor(
-    options: {
-      readonly min?: bigint | undefined
-      readonly max?: bigint | undefined
-    }
-  ) {
-    this.constraints = {}
-    if (Predicate.isBigInt(options.min)) {
-      this.constraints.min = options.min
-    }
-    if (Predicate.isBigInt(options.max)) {
-      this.constraints.max = options.max
-    }
-  }
 }
 
-/**
- * @since 3.11.6
- */
-export class ArrayConstraints {
-  readonly _tag = "ArrayConstraints"
+/** @internal */
+export const makeBigIntConstraints = (options: {
+  readonly min?: bigint | undefined
+  readonly max?: bigint | undefined
+}): BigIntConstraints => {
+  const out: Types.Mutable<BigIntConstraints> = {
+    _tag: "BigIntConstraints",
+    constraints: {}
+  }
+  if (Predicate.isBigInt(options.min)) {
+    out.constraints.min = options.min
+  }
+  if (Predicate.isBigInt(options.max)) {
+    out.constraints.max = options.max
+  }
+  return out
+}
+
+interface ArrayConstraints {
+  readonly _tag: "ArrayConstraints"
   readonly constraints: FastCheck.ArrayConstraints
-  constructor(
-    options: {
-      readonly minLength?: number | undefined
-      readonly maxLength?: number | undefined
-    }
-  ) {
-    this.constraints = {}
-    if (Predicate.isNumber(options.minLength)) {
-      this.constraints.minLength = options.minLength
-    }
-    if (Predicate.isNumber(options.maxLength)) {
-      this.constraints.maxLength = options.maxLength
-    }
-  }
 }
 
-class ArrayConfig extends ArrayConstraints {
-  constructor(
-    options: {
-      readonly minLength?: number | undefined
-      readonly maxLength?: number | undefined
-    },
-    readonly ast: AST.TupleType
-  ) {
-    super(options)
+/** @internal */
+export const makeArrayConstraints = (options: {
+  readonly minLength?: number | undefined
+  readonly maxLength?: number | undefined
+}): ArrayConstraints => {
+  const out: Types.Mutable<ArrayConstraints> = {
+    _tag: "ArrayConstraints",
+    constraints: {}
+  }
+  if (Predicate.isNumber(options.minLength)) {
+    out.constraints.minLength = options.minLength
+  }
+  if (Predicate.isNumber(options.maxLength)) {
+    out.constraints.maxLength = options.maxLength
+  }
+  return out
+}
+
+interface ArrayConfig extends ArrayConstraints {
+  readonly ast: AST.TupleType
+}
+
+const makeArrayConfig = (options: {
+  readonly minLength?: number | undefined
+  readonly maxLength?: number | undefined
+}, ast: AST.TupleType): ArrayConfig => {
+  return {
+    ast,
+    ...makeArrayConstraints(options)
   }
 }
 
@@ -267,6 +274,10 @@ const go = (
   }
 }
 
+const constStringConstraints = makeStringConstraints({})
+const constNumberConstraints = makeNumberConstraints({})
+const constBigIntConstraints = makeBigIntConstraints({})
+
 /** @internal */
 export const toOp = (
   ast: AST.AST,
@@ -289,13 +300,13 @@ export const toOp = (
     case "AnyKeyword":
       return new Succeed((fc) => fc.anything())
     case "StringKeyword":
-      return new Deferred(new StringConstraints({}))
+      return new Deferred(constStringConstraints)
     case "NumberKeyword":
-      return new Deferred(new NumberConstraints({}))
+      return new Deferred(constNumberConstraints)
     case "BooleanKeyword":
       return new Succeed((fc) => fc.boolean())
     case "BigIntKeyword":
-      return new Deferred(new BigIntConstraints({}))
+      return new Deferred(constBigIntConstraints)
     case "SymbolKeyword":
       return new Succeed((fc) => fc.string().map((s) => Symbol.for(s)))
     case "ObjectKeyword":
@@ -351,7 +362,7 @@ export const toOp = (
       }
     }
     case "TupleType":
-      return new Deferred(new ArrayConfig({}, ast))
+      return new Deferred(makeArrayConfig({}, ast))
     case "TypeLiteral": {
       const propertySignaturesTypes = ast.propertySignatures.map((ps) => go(ps.type, ctx, path.concat(ps.name)))
       const indexSignatures = ast.indexSignatures.map((is) =>
@@ -473,13 +484,13 @@ const getConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constra
 
   switch (_tag) {
     case "StringConstraints":
-      return new StringConstraints(jsonSchema)
+      return makeStringConstraints(jsonSchema)
     case "NumberConstraints": {
       switch (TypeAnnotationId) {
         case filters_.NonNaNSchemaId:
-          return new NumberConstraints({ noNaN: true })
+          return makeNumberConstraints({ noNaN: true })
         default:
-          return new NumberConstraints({
+          return makeNumberConstraints({
             isInteger: "type" in jsonSchema && jsonSchema.type === "integer",
             noNaN: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
             noDefaultInfinity: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
@@ -491,9 +502,9 @@ const getConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constra
       }
     }
     case "BigIntConstraints":
-      return new BigIntConstraints(ast.annotations[TypeAnnotationId] as any)
+      return makeBigIntConstraints(ast.annotations[TypeAnnotationId] as any)
     case "ArrayConstraints":
-      return new ArrayConstraints({
+      return makeArrayConstraints({
         minLength: jsonSchema.minItems,
         maxLength: jsonSchema.maxItems
       })
@@ -527,7 +538,7 @@ const merge = (c1: Config, c2: Constraints | undefined): Config => {
     switch (c1._tag) {
       case "StringConstraints": {
         if (c2._tag === "StringConstraints") {
-          return new StringConstraints({
+          return makeStringConstraints({
             minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
             maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength),
             pattern: c1.pattern ?? c2.pattern
@@ -537,7 +548,7 @@ const merge = (c1: Config, c2: Constraints | undefined): Config => {
       }
       case "NumberConstraints": {
         if (c2._tag === "NumberConstraints") {
-          return new NumberConstraints({
+          return makeNumberConstraints({
             isInteger: c1.isInteger || c2.isInteger,
             min: getMax(c1.constraints.min, c2.constraints.min),
             minExcluded: getOr(c1.constraints.minExcluded, c2.constraints.minExcluded),
@@ -551,7 +562,7 @@ const merge = (c1: Config, c2: Constraints | undefined): Config => {
       }
       case "BigIntConstraints": {
         if (c2._tag === "BigIntConstraints") {
-          return new BigIntConstraints({
+          return makeBigIntConstraints({
             min: getMax(c1.constraints.min, c2.constraints.min),
             max: getMin(c1.constraints.max, c2.constraints.max)
           })
@@ -560,7 +571,7 @@ const merge = (c1: Config, c2: Constraints | undefined): Config => {
       }
       case "ArrayConstraints": {
         if (c2._tag === "ArrayConstraints") {
-          return new ArrayConfig({
+          return makeArrayConfig({
             minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
             maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength)
           }, c1.ast)

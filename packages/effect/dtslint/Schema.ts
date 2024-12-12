@@ -1370,14 +1370,17 @@ pipe(
     ) => true,
     {
       arbitrary: (
-        _from // $ExpectType LazyArbitrary<string>
+        _from, // $ExpectType LazyArbitrary<string>
+        _ctx // $ExpectType ArbitraryGenerationContext
       ) =>
       (fc) => fc.string(),
       pretty: (
         _from // $ExpectType Pretty<string>
       ) =>
       (s) => s,
-      equivalence: () =>
+      equivalence: (
+        _from // $ExpectType Equivalence<string>
+      ) =>
       (
         _a, // $ExpectType string
         _b // $ExpectType string
@@ -1385,6 +1388,30 @@ pipe(
     }
   )
 )
+
+pipe(
+  S.String,
+  S.filter((_s) => true)
+).annotations({
+  arbitrary: (
+    // $ExpectType any[]
+    ..._x
+  ) =>
+  (fc) => fc.string(),
+  pretty: (
+    // $ExpectType any[]
+    ..._x
+  ) =>
+  (s) => s,
+  equivalence: (
+    // $ExpectType any[]
+    ..._x
+  ) =>
+  (
+    _a, // $ExpectType string
+    _b // $ExpectType string
+  ) => true
+})
 
 // ---------------------------------------------
 // filterEffect
