@@ -120,7 +120,8 @@ export class WriteEntries
  * @category protocol
  */
 export class Ack extends Schema.TaggedClass<Ack>("@effect/experimental/EventLogRemote/Ack")("Ack", {
-  id: Schema.Number
+  id: Schema.Number,
+  sequenceNumbers: Schema.Array(Schema.Number)
 }) {}
 
 /**
@@ -275,7 +276,11 @@ export const fromSocket = (options?: {
 
     yield* Effect.gen(function*() {
       let pendingCounter = 0
-      const pending = new Map<number, Deferred.Deferred<void>>()
+      const pending = new Map<number, {
+        readonly entries: ReadonlyArray<Entry>
+        readonly deferred: Deferred.Deferred<void>
+        readonly publicKey: string
+      }>()
       const chunks = new Map<number, {
         readonly parts: Array<Uint8Array>
         count: number
@@ -323,7 +328,11 @@ export const fromSocket = (options?: {
                   const encrypted = yield* encryption.encrypt(identity, entries)
                   const deferred = yield* Deferred.make<void>()
                   const id = pendingCounter++
-                  pending.set(id, deferred)
+                  pending.set(id, {
+                    entries,
+                    deferred,
+                    publicKey: identity.publicKey
+                  })
                   yield* Effect.orDie(write(
                     new WriteEntries({
                       publicKey: identity.publicKey,
@@ -352,12 +361,22 @@ export const fromSocket = (options?: {
             }).pipe(Scope.extend(scope))
           }
           case "Ack": {
-            const deferred = pending.get(res.id)
-            if (deferred) {
+            return Effect.gen(function*() {
+              const entry = pending.get(res.id)
+              if (!entry) return
               pending.delete(res.id)
-              return Deferred.unsafeDone(deferred, Exit.void)
-            }
-            return
+              const { deferred, entries, publicKey } = entry
+              const remoteEntries = res.sequenceNumbers.map((sequenceNumber, i) => {
+                const entry = entries[i]
+                return new RemoteEntry({
+                  remoteSequence: sequenceNumber,
+                  entry
+                })
+              })
+              const mailbox = yield* RcMap.get(subscriptions, publicKey)
+              yield* mailbox.offerAll(remoteEntries)
+              yield* Deferred.done(deferred, Exit.void)
+            })
           }
           case "Pong": {
             latestPong = res.id

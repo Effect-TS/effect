@@ -46,6 +46,7 @@ export const makeHandler: Effect.Effect<
       count: number
       bytes: number
     }>()
+    let latestSequence = -1
 
     function* writeGen(response: typeof ProtocolResponse.Type) {
       const data = encodeResponse(response)
@@ -75,22 +76,35 @@ export const makeHandler: Effect.Effect<
                 encryptedEntry
               })
             )
-            yield* storage.write(request.publicKey, entries)
-            return yield* write(new Ack({ id: request.id }))
+            const encrypted = yield* storage.write(request.publicKey, entries)
+            latestSequence = encrypted[encrypted.length - 1].sequence
+            return yield* write(
+              new Ack({
+                id: request.id,
+                sequenceNumbers: encrypted.map((e) => e.sequence)
+              })
+            )
           })
         }
         case "RequestChanges": {
           return Effect.gen(function*() {
             const changes = yield* storage.changes(request.publicKey, request.startSequence)
             yield* changes.takeAll.pipe(
-              Effect.flatMap(([entries]) =>
-                write(
+              Effect.flatMap(function([entries]) {
+                const latestEntries: Array<EncryptedRemoteEntry> = []
+                for (const entry of entries) {
+                  if (entry.sequence <= latestSequence) continue
+                  latestEntries.push(entry)
+                  latestSequence = entry.sequence
+                }
+                if (latestEntries.length === 0) return Effect.void
+                return write(
                   new Changes({
                     publicKey: request.publicKey,
                     entries: Chunk.toReadonlyArray(entries)
                   })
                 )
-              ),
+              }),
               Effect.forever
             )
           }).pipe(
