@@ -246,167 +246,175 @@ const constChunkSize = 512_000
  * @since 1.0.0
  * @category construtors
  */
-export const fromSocket: Effect.Effect<
+export const fromSocket = (options?: {
+  readonly disablePing?: boolean
+}): Effect.Effect<
   void,
   never,
   Scope.Scope | EventLog | EventLogEncryption | Socket.Socket
-> = Effect.gen(function*() {
-  const log = yield* EventLog
-  const socket = yield* Socket.Socket
-  const encryption = yield* EventLogEncryption
-  const scope = yield* Effect.scope
-  const writeRaw = yield* socket.writer
+> =>
+  Effect.gen(function*() {
+    const log = yield* EventLog
+    const socket = yield* Socket.Socket
+    const encryption = yield* EventLogEncryption
+    const scope = yield* Effect.scope
+    const writeRaw = yield* socket.writer
 
-  function* writeGen(request: typeof ProtocolRequest.Type) {
-    const data = encodeRequest(request)
-    if (request._tag !== "WriteEntries" || data.byteLength <= constChunkSize) {
-      return yield* writeRaw(data)
-    }
-    const id = request.id
-    for (const part of ChunkedMessage.split(id, data)) {
-      yield* writeRaw(encodeRequest(part))
-    }
-  }
-
-  const write = (request: typeof ProtocolRequest.Type) => Effect.gen(() => writeGen(request))
-
-  yield* Effect.gen(function*() {
-    let pendingCounter = 0
-    const pending = new Map<number, Deferred.Deferred<void>>()
-    const chunks = new Map<number, {
-      readonly parts: Array<Uint8Array>
-      count: number
-      bytes: number
-    }>()
-
-    const subscriptions = yield* RcMap.make({
-      lookup: (publicKey: string) =>
-        Effect.acquireRelease(
-          Mailbox.make<RemoteEntry>(),
-          (mailbox) =>
-            Effect.zipRight(
-              mailbox.shutdown,
-              Effect.ignoreLogged(write(new StopChanges({ publicKey })))
-            )
-        )
-    })
-    const identities = new WeakMap<any, typeof Identity.Service>()
-    const badPing = yield* Deferred.make<never, Error>()
-
-    let latestPing = 0
-    let latestPong = 0
-
-    yield* Effect.suspend(() => {
-      if (latestPing !== latestPong) {
-        return Deferred.fail(badPing, new Error("Ping timeout"))
+    function* writeGen(request: typeof ProtocolRequest.Type) {
+      const data = encodeRequest(request)
+      if (request._tag !== "WriteEntries" || data.byteLength <= constChunkSize) {
+        return yield* writeRaw(data)
       }
-      return write(new Ping({ id: ++latestPing }))
-    }).pipe(
-      Effect.delay(10000),
-      Effect.forever,
-      Effect.fork,
-      Effect.interruptible
-    )
+      const id = request.id
+      for (const part of ChunkedMessage.split(id, data)) {
+        yield* writeRaw(encodeRequest(part))
+      }
+    }
 
-    function handleMessage(res: typeof ProtocolResponse.Type) {
-      switch (res._tag) {
-        case "Hello": {
-          return log.registerRemote({
-            id: res.remoteId,
-            write: (identity, entries) =>
-              Effect.gen(function*() {
-                const encrypted = yield* encryption.encrypt(identity, entries)
-                const deferred = yield* Deferred.make<void>()
-                const id = pendingCounter++
-                pending.set(id, deferred)
-                yield* Effect.orDie(write(
-                  new WriteEntries({
-                    publicKey: identity.publicKey,
-                    id,
-                    iv: encrypted.iv,
-                    encryptedEntries: encrypted.encryptedEntries.map((encryptedEntry, i) => ({
-                      entryId: entries[i].id,
-                      encryptedEntry
-                    }))
-                  })
-                ))
-                yield* Deferred.await(deferred)
-              }),
-            changes: (identity, startSequence) =>
-              Effect.gen(function*() {
-                const mailbox = yield* RcMap.get(subscriptions, identity.publicKey)
-                identities.set(mailbox, identity)
-                yield* Effect.orDie(write(
-                  new RequestChanges({
-                    publicKey: identity.publicKey,
-                    startSequence
-                  })
-                ))
-                return mailbox
-              })
-          }).pipe(Scope.extend(scope))
-        }
-        case "Ack": {
-          const deferred = pending.get(res.id)
-          if (deferred) {
-            pending.delete(res.id)
-            return Deferred.unsafeDone(deferred, Exit.void)
+    const write = (request: typeof ProtocolRequest.Type) => Effect.gen(() => writeGen(request))
+
+    yield* Effect.gen(function*() {
+      let pendingCounter = 0
+      const pending = new Map<number, Deferred.Deferred<void>>()
+      const chunks = new Map<number, {
+        readonly parts: Array<Uint8Array>
+        count: number
+        bytes: number
+      }>()
+
+      const subscriptions = yield* RcMap.make({
+        lookup: (publicKey: string) =>
+          Effect.acquireRelease(
+            Mailbox.make<RemoteEntry>(),
+            (mailbox) =>
+              Effect.zipRight(
+                mailbox.shutdown,
+                Effect.ignoreLogged(write(new StopChanges({ publicKey })))
+              )
+          )
+      })
+      const identities = new WeakMap<any, typeof Identity.Service>()
+      const badPing = yield* Deferred.make<never, Error>()
+
+      let latestPing = 0
+      let latestPong = 0
+
+      if (options?.disablePing !== true) {
+        yield* Effect.suspend(() => {
+          if (latestPing !== latestPong) {
+            return Deferred.fail(badPing, new Error("Ping timeout"))
           }
-          return
-        }
-        case "Pong": {
-          latestPong = res.id
-          if (res.id === latestPing) {
+          return write(new Ping({ id: ++latestPing }))
+        }).pipe(
+          Effect.delay(10000),
+          Effect.forever,
+          Effect.fork,
+          Effect.interruptible
+        )
+      }
+
+      function handleMessage(res: typeof ProtocolResponse.Type) {
+        switch (res._tag) {
+          case "Hello": {
+            return log.registerRemote({
+              id: res.remoteId,
+              write: (identity, entries) =>
+                Effect.gen(function*() {
+                  const encrypted = yield* encryption.encrypt(identity, entries)
+                  const deferred = yield* Deferred.make<void>()
+                  const id = pendingCounter++
+                  pending.set(id, deferred)
+                  yield* Effect.orDie(write(
+                    new WriteEntries({
+                      publicKey: identity.publicKey,
+                      id,
+                      iv: encrypted.iv,
+                      encryptedEntries: encrypted.encryptedEntries.map((encryptedEntry, i) => ({
+                        entryId: entries[i].id,
+                        encryptedEntry
+                      }))
+                    })
+                  ))
+                  yield* Deferred.await(deferred)
+                }),
+              changes: (identity, startSequence) =>
+                Effect.gen(function*() {
+                  const mailbox = yield* RcMap.get(subscriptions, identity.publicKey)
+                  identities.set(mailbox, identity)
+                  yield* Effect.orDie(write(
+                    new RequestChanges({
+                      publicKey: identity.publicKey,
+                      startSequence
+                    })
+                  ))
+                  return mailbox
+                })
+            }).pipe(Scope.extend(scope))
+          }
+          case "Ack": {
+            const deferred = pending.get(res.id)
+            if (deferred) {
+              pending.delete(res.id)
+              return Deferred.unsafeDone(deferred, Exit.void)
+            }
             return
           }
-          return Effect.fail(new Error("Pong id mismatch"))
-        }
-        case "Changes": {
-          return Effect.gen(function*() {
-            const mailbox = yield* RcMap.get(subscriptions, res.publicKey)
-            const identity = identities.get(mailbox)!
-            const entries = yield* encryption.decrypt(identity, res.entries)
-            yield* mailbox.offerAll(entries)
-          }).pipe(Effect.scoped)
-        }
-        case "ChunkedMessage": {
-          const data = ChunkedMessage.join(chunks, res)
-          if (!data) return
-          return handleMessage(decodeResponse(data))
+          case "Pong": {
+            latestPong = res.id
+            if (res.id === latestPing) {
+              return
+            }
+            return Effect.fail(new Error("Pong id mismatch"))
+          }
+          case "Changes": {
+            return Effect.gen(function*() {
+              const mailbox = yield* RcMap.get(subscriptions, res.publicKey)
+              const identity = identities.get(mailbox)!
+              const entries = yield* encryption.decrypt(identity, res.entries)
+              yield* mailbox.offerAll(entries)
+            }).pipe(Effect.scoped)
+          }
+          case "ChunkedMessage": {
+            const data = ChunkedMessage.join(chunks, res)
+            if (!data) return
+            return handleMessage(decodeResponse(data))
+          }
         }
       }
-    }
 
-    return yield* socket.run((data) => handleMessage(decodeResponse(data))).pipe(
-      Effect.raceFirst(Deferred.await(badPing))
-    )
-  }).pipe(
-    Effect.scoped,
-    Effect.tapErrorCause(Effect.logDebug),
-    Effect.retry({
-      schedule: Schedule.exponential(100).pipe(
-        Schedule.union(Schedule.spaced(5000))
+      return yield* socket.run((data) => handleMessage(decodeResponse(data))).pipe(
+        Effect.raceFirst(Deferred.await(badPing))
       )
-    }),
-    Effect.annotateLogs({
-      service: "EventLogRemote",
-      method: "fromSocket"
-    }),
-    Effect.forkScoped,
-    Effect.interruptible
-  )
-})
+    }).pipe(
+      Effect.scoped,
+      Effect.tapErrorCause(Effect.logDebug),
+      Effect.retry({
+        schedule: Schedule.exponential(100).pipe(
+          Schedule.union(Schedule.spaced(5000))
+        )
+      }),
+      Effect.annotateLogs({
+        service: "EventLogRemote",
+        method: "fromSocket"
+      }),
+      Effect.forkScoped,
+      Effect.interruptible
+    )
+  })
 
 /**
  * @since 1.0.0
  * @category construtors
  */
 export const fromWebSocket = (
-  url: string
+  url: string,
+  options?: {
+    readonly disablePing?: boolean
+  }
 ): Effect.Effect<void, never, Scope.Scope | EventLogEncryption | EventLog | Socket.WebSocketConstructor> =>
   Effect.gen(function*() {
     const socket = yield* Socket.makeWebSocket(url)
-    return yield* fromSocket.pipe(
+    return yield* fromSocket(options).pipe(
       Effect.provideService(Socket.Socket, socket)
     )
   })
@@ -416,22 +424,28 @@ export const fromWebSocket = (
  * @category layers
  */
 export const layerWebSocket = (
-  url: string
+  url: string,
+  options?: {
+    readonly disablePing?: boolean
+  }
 ): Layer.Layer<
   never,
   never,
   | Socket.WebSocketConstructor
   | EventLog
   | EventLogEncryption
-> => Layer.scopedDiscard(fromWebSocket(url))
+> => Layer.scopedDiscard(fromWebSocket(url, options))
 
 /**
  * @since 1.0.0
  * @category layers
  */
 export const layerWebSocketBrowser = (
-  url: string
+  url: string,
+  options?: {
+    readonly disablePing?: boolean
+  }
 ): Layer.Layer<never, never, EventLog> =>
-  layerWebSocket(url).pipe(
+  layerWebSocket(url, options).pipe(
     Layer.provide([layerSubtle, Socket.layerWebSocketConstructorGlobal])
   )
