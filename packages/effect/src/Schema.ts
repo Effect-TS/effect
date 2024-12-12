@@ -87,7 +87,7 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
    * Merges a set of new annotations with existing ones, potentially overwriting
    * any duplicates.
    */
-  annotations(annotations: Annotations.Schema<A>): Schema<A, I, R>
+  annotations(annotations: Annotations.GenericSchema<A>): Schema<A, I, R>
 }
 
 /**
@@ -107,7 +107,7 @@ export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
   static Context: R
   static [TypeId] = variance
   static ast = ast
-  static annotations(annotations: Annotations.Schema<A>) {
+  static annotations(annotations: Annotations.GenericSchema<A>) {
     return make<A, I, R>(mergeSchemaAnnotations(this.ast, annotations))
   }
   static pipe() {
@@ -204,7 +204,7 @@ export declare namespace Annotable {
  * @since 3.10.0
  */
 export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> extends Schema<A, I, R> {
-  annotations(annotations: Annotations.Schema<A>): Self
+  annotations(annotations: Annotations.GenericSchema<A>): Self
 }
 
 /**
@@ -3928,6 +3928,15 @@ export declare namespace Annotations {
   }
 
   /**
+   * @since 3.11.6
+   */
+  export interface GenericSchema<A> extends Schema<A> {
+    readonly arbitrary?: (..._: any) => LazyArbitrary<A>
+    readonly pretty?: (..._: any) => pretty_.Pretty<A>
+    readonly equivalence?: (..._: any) => Equivalence.Equivalence<A>
+  }
+
+  /**
    * @since 3.10.0
    */
   export interface Filter<A, P = A> extends Schema<A, readonly [P]> {}
@@ -3941,11 +3950,12 @@ export declare namespace Annotations {
  * @since 3.10.0
  */
 export const annotations: {
-  <S extends Annotable.All>(annotations: Annotations.Schema<Schema.Type<S>>): (self: S) => Annotable.Self<S>
-  <S extends Annotable.All>(self: S, annotations: Annotations.Schema<Schema.Type<S>>): Annotable.Self<S>
+  <S extends Annotable.All>(annotations: Annotations.GenericSchema<Schema.Type<S>>): (self: S) => Annotable.Self<S>
+  <S extends Annotable.All>(self: S, annotations: Annotations.GenericSchema<Schema.Type<S>>): Annotable.Self<S>
 } = dual(
   2,
-  <A, I, R>(self: Schema<A, I, R>, annotations: Annotations.Schema<A>): Schema<A, I, R> => self.annotations(annotations)
+  <A, I, R>(self: Schema<A, I, R>, annotations: Annotations.GenericSchema<A>): Schema<A, I, R> =>
+    self.annotations(annotations)
 )
 
 type Rename<A, M> = {
@@ -4115,7 +4125,6 @@ export const pattern = <A extends string>(
         [PatternSchemaId]: { regex },
         description: `a string matching the pattern ${pattern}`,
         jsonSchema: { pattern },
-        arbitrary: () => (fc) => fc.stringMatching(regex) as any,
         ...annotations
       }
     )
@@ -4667,7 +4676,13 @@ export {
  * @category schema id
  * @since 3.10.0
  */
-export const FiniteSchemaId: unique symbol = Symbol.for("effect/SchemaId/Finite")
+export const FiniteSchemaId: unique symbol = filters_.FiniteSchemaId
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
+export type FiniteSchemaId = typeof FiniteSchemaId
 
 /**
  * Ensures that the provided value is a finite number.
@@ -4680,9 +4695,10 @@ export const FiniteSchemaId: unique symbol = Symbol.for("effect/SchemaId/Finite"
 export const finite =
   <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
-      filter((a) => Number.isFinite(a), {
+      filter(Number.isFinite, {
         schemaId: FiniteSchemaId,
         description: "a finite number",
+        jsonSchema: { "type": "number" },
         ...annotations
       })
     )
@@ -4902,7 +4918,13 @@ export const between = <A extends number>(
  * @category schema id
  * @since 3.10.0
  */
-export const NonNaNSchemaId: unique symbol = Symbol.for("effect/SchemaId/NonNaN")
+export const NonNaNSchemaId: unique symbol = filters_.NonNaNSchemaId
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
+export type NonNaNSchemaId = typeof NonNaNSchemaId
 
 /**
  * @category number filters
@@ -5056,7 +5078,13 @@ export class NonNegative extends Number$.pipe(
  * @category schema id
  * @since 3.10.0
  */
-export const JsonNumberSchemaId: unique symbol = Symbol.for("effect/SchemaId/JsonNumber")
+export const JsonNumberSchemaId: unique symbol = filters_.JsonNumberSchemaId
+
+/**
+ * @category schema id
+ * @since 3.10.0
+ */
+export type JsonNumberSchemaId = typeof JsonNumberSchemaId
 
 /**
  * The `JsonNumber` is a schema for representing JSON numbers. It ensures that the provided value is a valid
@@ -5079,12 +5107,11 @@ export const JsonNumberSchemaId: unique symbol = Symbol.for("effect/SchemaId/Jso
  * @since 3.10.0
  */
 export class JsonNumber extends Number$.pipe(
-  filter(Number.isFinite, {
+  finite({
     schemaId: JsonNumberSchemaId,
     identifier: "JsonNumber",
     title: "JSON-compatible number",
-    description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
-    jsonSchema: { type: "number" }
+    description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity"
   })
 ) {}
 

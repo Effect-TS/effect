@@ -1,34 +1,78 @@
+import { Schema as S, SchemaAST as AST } from "effect"
 import * as Arbitrary from "effect/Arbitrary"
+import * as fc from "effect/FastCheck"
 import * as Order from "effect/Order"
 import { isUnknown } from "effect/Predicate"
-import * as S from "effect/Schema"
 import { expectValidArbitrary } from "effect/test/Schema/TestUtils"
-import * as fc from "fast-check"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
+
+const expectConstraints = <A, I>(
+  schema: S.Schema<A, I, never>,
+  constraints:
+    | ReturnType<typeof Arbitrary.makeStringConstraints>
+    | ReturnType<typeof Arbitrary.makeNumberConstraints>
+    | ReturnType<typeof Arbitrary.makeBigIntConstraints>
+    | ReturnType<typeof Arbitrary.makeArrayConstraints>
+) => {
+  const ast = schema.ast
+  if (AST.isRefinement(ast)) {
+    const op = Arbitrary.toOp(ast, { maxDepth: 2 }, [])
+    switch (op._tag) {
+      case "Deferred": {
+        switch (op.config._tag) {
+          case "StringConstraints":
+          case "NumberConstraints":
+          case "BigIntConstraints":
+            return expect(op.config).toEqual(constraints)
+          case "ArrayConstraints": {
+            const { ast: _ast, ...rest } = op.config
+            return expect(rest).toEqual(constraints)
+          }
+        }
+      }
+      case "Succeed":
+        // eslint-disable-next-line no-console
+        console.log(op)
+        assert.fail(`expected a Deferred, got a Succeed`)
+    }
+  } else {
+    assert.fail(`expected a Refinement, got ${ast._tag}`)
+  }
+}
 
 describe("Arbitrary", () => {
-  it("should throw on declarations without annotations", () => {
-    const schema = S.declare(isUnknown)
-    expect(() => Arbitrary.makeLazy(schema)).toThrow(
-      new Error(`Missing annotation
+  describe("Unsupported schemas", () => {
+    it("should throw on declarations without annotations", () => {
+      const schema = S.declare(isUnknown)
+      expect(() => Arbitrary.makeLazy(schema)).toThrow(
+        new Error(`Missing annotation
 details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
 schema (Declaration): <declaration schema>`)
-    )
-  })
+      )
+    })
 
-  it("the errors should disply a path", () => {
-    expect(() => Arbitrary.makeLazy(S.Tuple(S.declare(isUnknown)))).toThrow(
-      new Error(`Missing annotation
+    it("the errors should disply a path", () => {
+      expect(() => Arbitrary.makeLazy(S.Tuple(S.declare(isUnknown)))).toThrow(
+        new Error(`Missing annotation
 at path: [0]
 details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
 schema (Declaration): <declaration schema>`)
-    )
-    expect(() => Arbitrary.makeLazy(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
-      new Error(`Missing annotation
+      )
+      expect(() => Arbitrary.makeLazy(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
+        new Error(`Missing annotation
 at path: ["a"]
 details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
 schema (Declaration): <declaration schema>`)
-    )
+      )
+    })
+
+    it("Never", () => {
+      expect(() => Arbitrary.makeLazy(S.Never)).toThrow(
+        new Error(`Missing annotation
+details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
+schema (NeverKeyword): never`)
+      )
+    })
   })
 
   it("make(S.typeSchema(schema))", () => {
@@ -47,7 +91,62 @@ schema (Declaration): <declaration schema>`)
     expectValidArbitrary(S.encodedSchema(schema))
   })
 
-  describe("templateLiteral", () => {
+  it("String", () => {
+    const schema = S.String
+    expectValidArbitrary(schema)
+  })
+
+  it("Void", () => {
+    expectValidArbitrary(S.Void)
+  })
+
+  it("Boolean", () => {
+    expectValidArbitrary(S.Number)
+  })
+
+  it("boolean", () => {
+    expectValidArbitrary(S.Boolean)
+  })
+
+  it("BigIntFromSelf", () => {
+    expectValidArbitrary(S.BigIntFromSelf)
+  })
+
+  it("SymbolFromSelf", () => {
+    expectValidArbitrary(S.SymbolFromSelf)
+  })
+
+  it("Object", () => {
+    expectValidArbitrary(S.Object)
+  })
+
+  it("Any", () => {
+    expectValidArbitrary(S.Any)
+  })
+
+  it("Unknown", () => {
+    expectValidArbitrary(S.Unknown)
+  })
+
+  describe("Literal", () => {
+    it("1", () => {
+      const schema = S.Literal(1)
+      expectValidArbitrary(schema)
+    })
+
+    it(`1 + "a"`, () => {
+      const schema = S.Literal(1, "a")
+      expectValidArbitrary(schema)
+    })
+  })
+
+  it("UniqueSymbolFromSelf", () => {
+    const a = Symbol.for("effect/Schema/test/a")
+    const schema = S.UniqueSymbolFromSelf(a)
+    expectValidArbitrary(schema)
+  })
+
+  describe("TemplateLiteral", () => {
     it("a", () => {
       const schema = S.TemplateLiteral(S.Literal("a"))
       expectValidArbitrary(schema)
@@ -84,157 +183,152 @@ schema (Declaration): <declaration schema>`)
     })
   })
 
-  it("never", () => {
-    expect(() => Arbitrary.makeLazy(S.Never)(fc)).toThrow(
-      new Error(`Unsupported schema
-details: Cannot build an Arbitrary for this schema
-schema (NeverKeyword): never`)
-    )
-  })
-
-  it("string", () => {
-    expectValidArbitrary(S.String)
-  })
-
-  it("void", () => {
-    expectValidArbitrary(S.Void)
-  })
-
-  it("number", () => {
-    expectValidArbitrary(S.Number)
-  })
-
-  it("boolean", () => {
-    expectValidArbitrary(S.Boolean)
-  })
-
-  it("bigint", () => {
-    expectValidArbitrary(S.BigIntFromSelf)
-  })
-
-  it("symbol", () => {
-    expectValidArbitrary(S.SymbolFromSelf)
-  })
-
-  it("object", () => {
-    expectValidArbitrary(S.Object)
-  })
-
-  it("any", () => {
-    expectValidArbitrary(S.Any)
-  })
-
-  it("unknown", () => {
-    expectValidArbitrary(S.Unknown)
-  })
-
-  it("literal 1 member", () => {
-    const schema = S.Literal(1)
-    expectValidArbitrary(schema)
-  })
-
-  it("literal 2 members", () => {
-    const schema = S.Literal(1, "a")
-    expectValidArbitrary(schema)
-  })
-
-  it("uniqueSymbolFromSelf", () => {
-    const a = Symbol.for("effect/Schema/test/a")
-    const schema = S.UniqueSymbolFromSelf(a)
-    expectValidArbitrary(schema)
-  })
-
-  it("empty enums should throw", () => {
-    enum Fruits {}
-    const schema = S.Enums(Fruits)
-    expect(() => Arbitrary.makeLazy(schema)(fc)).toThrow(
-      new Error(`Empty Enums schema
+  describe("Enums", () => {
+    it("empty enums should throw", () => {
+      enum Fruits {}
+      const schema = S.Enums(Fruits)
+      expect(() => Arbitrary.makeLazy(schema)(fc)).toThrow(
+        new Error(`Empty Enums schema
 details: Generating an Arbitrary for this schema requires at least one enum`)
-    )
+      )
+    })
+
+    it("Numeric enums", () => {
+      enum Fruits {
+        Apple,
+        Banana
+      }
+      const schema = S.Enums(Fruits)
+      expectValidArbitrary(schema)
+    })
+
+    it("String enums", () => {
+      enum Fruits {
+        Apple = "apple",
+        Banana = "banana",
+        Cantaloupe = 0
+      }
+      const schema = S.Enums(Fruits)
+      expectValidArbitrary(schema)
+    })
+
+    it("Const enums", () => {
+      const Fruits = {
+        Apple: "apple",
+        Banana: "banana",
+        Cantaloupe: 3
+      } as const
+      const schema = S.Enums(Fruits)
+      expectValidArbitrary(schema)
+    })
   })
 
-  it("Numeric enums", () => {
-    enum Fruits {
-      Apple,
-      Banana
-    }
-    const schema = S.Enums(Fruits)
+  describe("Struct", () => {
+    it("fields", () => {
+      const schema = S.Struct({ a: S.String, b: S.Number })
+      expectValidArbitrary(schema)
+    })
+
+    it("fields + record", () => {
+      const schema = S.Struct({ a: S.String }, S.Record({ key: S.String, value: S.Union(S.String, S.Number) }))
+      expectValidArbitrary(schema)
+    })
+
+    it("required property signature", () => {
+      const schema = S.Struct({ a: S.Number })
+      expectValidArbitrary(schema)
+    })
+
+    it("required property signature with undefined", () => {
+      const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
+      expectValidArbitrary(schema)
+    })
+
+    it("optional property signature", () => {
+      const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
+      expectValidArbitrary(schema)
+    })
+
+    it("optional property signature with undefined", () => {
+      const schema = S.Struct({
+        a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true })
+      })
+      expectValidArbitrary(schema)
+    })
+  })
+
+  describe("Record", () => {
+    it("Record(string, string)", () => {
+      const schema = S.Record({ key: S.String, value: S.String })
+      expectValidArbitrary(schema)
+    })
+
+    it("Record(symbol, string)", () => {
+      const schema = S.Record({ key: S.SymbolFromSelf, value: S.String })
+      expectValidArbitrary(schema)
+    })
+  })
+
+  it("union", () => {
+    const schema = S.Union(S.String, S.Number)
     expectValidArbitrary(schema)
   })
 
-  it("String enums", () => {
-    enum Fruits {
-      Apple = "apple",
-      Banana = "banana",
-      Cantaloupe = 0
-    }
-    const schema = S.Enums(Fruits)
-    expectValidArbitrary(schema)
-  })
+  describe("Tuple", () => {
+    it("empty", () => {
+      const schema = S.Tuple()
+      expectValidArbitrary(schema)
+    })
 
-  it("Const enums", () => {
-    const Fruits = {
-      Apple: "apple",
-      Banana: "banana",
-      Cantaloupe: 3
-    } as const
-    const schema = S.Enums(Fruits)
-    expectValidArbitrary(schema)
-  })
+    it("required element", () => {
+      const schema = S.Tuple(S.Number)
+      expectValidArbitrary(schema)
+    })
 
-  it("tuple. empty", () => {
-    const schema = S.Tuple()
-    expectValidArbitrary(schema)
-  })
+    it("required element with undefined", () => {
+      const schema = S.Tuple(S.Union(S.Number, S.Undefined))
+      expectValidArbitrary(schema)
+    })
 
-  it("tuple. required element", () => {
-    const schema = S.Tuple(S.Number)
-    expectValidArbitrary(schema)
-  })
+    it("optional element", () => {
+      const schema = S.Tuple(S.optionalElement(S.Number))
+      expectValidArbitrary(schema)
+    })
 
-  it("tuple. required element with undefined", () => {
-    const schema = S.Tuple(S.Union(S.Number, S.Undefined))
-    expectValidArbitrary(schema)
-  })
+    it("optional element with undefined", () => {
+      const schema = S.Tuple(S.optionalElement(S.Union(S.Number, S.Undefined)))
+      expectValidArbitrary(schema)
+    })
 
-  it("tuple. optional element", () => {
-    const schema = S.Tuple(S.optionalElement(S.Number))
-    expectValidArbitrary(schema)
-  })
+    it("e e?", () => {
+      const schema = S.Tuple(S.String, S.optionalElement(S.Number))
+      expectValidArbitrary(schema)
+    })
 
-  it("tuple. optional element with undefined", () => {
-    const schema = S.Tuple(S.optionalElement(S.Union(S.Number, S.Undefined)))
-    expectValidArbitrary(schema)
-  })
+    it("e r", () => {
+      const schema = S.Tuple([S.String], S.Number)
+      expectValidArbitrary(schema)
+    })
 
-  it("tuple. e e?", () => {
-    const schema = S.Tuple(S.String, S.optionalElement(S.Number))
-    expectValidArbitrary(schema)
-  })
+    it("e? r", () => {
+      const schema = S.Tuple([S.optionalElement(S.String)], S.Number)
+      expectValidArbitrary(schema)
+    })
 
-  it("tuple. e r", () => {
-    const schema = S.Tuple([S.String], S.Number)
-    expectValidArbitrary(schema)
-  })
+    it("r", () => {
+      const schema = S.Array(S.Number)
+      expectValidArbitrary(schema)
+    })
 
-  it("tuple. e? r", () => {
-    const schema = S.Tuple([S.optionalElement(S.String)], S.Number)
-    expectValidArbitrary(schema)
-  })
+    it("r e", () => {
+      const schema = S.Tuple([], S.String, S.Number)
+      expectValidArbitrary(schema)
+    })
 
-  it("tuple. r", () => {
-    const schema = S.Array(S.Number)
-    expectValidArbitrary(schema)
-  })
-
-  it("tuple. r e", () => {
-    const schema = S.Tuple([], S.String, S.Number)
-    expectValidArbitrary(schema)
-  })
-
-  it("tuple. e r e", () => {
-    const schema = S.Tuple([S.String], S.Number, S.Boolean)
-    expectValidArbitrary(schema)
+    it("e r e", () => {
+      const schema = S.Tuple([S.String], S.Number, S.Boolean)
+      expectValidArbitrary(schema)
+    })
   })
 
   describe("suspend", () => {
@@ -426,262 +520,277 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     })
   })
 
-  describe("struct", () => {
-    it("required property signature", () => {
-      const schema = S.Struct({ a: S.Number })
-      expectValidArbitrary(schema)
+  describe("Refinement", () => {
+    describe("array filters", () => {
+      it("minItems", () => {
+        const schema = S.Array(S.String).pipe(S.minItems(2))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 2 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("maxItems", () => {
+        const schema = S.Array(S.String).pipe(S.maxItems(5))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ maxLength: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("itemsCount", () => {
+        const schema = S.Array(S.String).pipe(S.itemsCount(10))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 10, maxLength: 10 }))
+        expectValidArbitrary(schema)
+      })
     })
 
-    it("required property signature with undefined", () => {
-      const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
-      expectValidArbitrary(schema)
+    describe("string filters", () => {
+      it("minLength", () => {
+        const schema = S.String.pipe(S.minLength(2))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("maxLength", () => {
+        const schema = S.String.pipe(S.maxLength(5))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ maxLength: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("length: number", () => {
+        const schema = S.String.pipe(S.length(10))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 10, maxLength: 10 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("length: { min, max }", () => {
+        const schema = S.String.pipe(S.length({ min: 2, max: 5 }))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("minLength + maxLength", () => {
+        const schema = S.String.pipe(S.minLength(2), S.maxLength(5))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("arb + minLength + maxLength", () => {
+        const schema = S.String.annotations({ arbitrary: () => (fc) => fc.string() }).pipe(
+          S.minLength(2),
+          S.maxLength(5)
+        )
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("minLength + maxLength + arb", () => {
+        const schema = S.String.pipe(
+          S.minLength(2),
+          S.maxLength(5)
+        ).annotations({ arbitrary: () => (fc) => fc.string() })
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("startsWith", () => {
+        const schema = S.String.pipe(S.startsWith("a"))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ pattern: "^a" }))
+        expectValidArbitrary(schema)
+      })
+
+      it("endsWith", () => {
+        const schema = S.String.pipe(S.endsWith("a"))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ pattern: "^.*a$" }))
+        expectValidArbitrary(schema)
+      })
+
+      it("pattern", () => {
+        const regex = /^[A-Z]{3}[0-9]{3}$/
+        const schema = S.String.pipe(S.pattern(regex))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ pattern: regex.source }))
+        expectValidArbitrary(schema)
+      })
+
+      it("nonEmptyString + pattern", () => {
+        const regex = /^[-]*$/
+        const schema = S.String.pipe(S.nonEmptyString(), S.pattern(regex))
+        expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 1, pattern: regex.source }))
+        expectValidArbitrary(schema)
+      })
     })
 
-    it("optional property signature", () => {
-      const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
-      expectValidArbitrary(schema)
+    describe("number filters", () => {
+      it("nonNaN", () => {
+        const schema = S.Number.pipe(S.nonNaN())
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ noNaN: true }))
+        expectValidArbitrary(schema)
+      })
+
+      it("finite", () => {
+        const schema = S.Number.pipe(S.finite())
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ noNaN: true, noDefaultInfinity: true }))
+        expectValidArbitrary(schema)
+      })
+
+      it("JsonNumber", () => {
+        const schema = S.JsonNumber
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ noDefaultInfinity: true, noNaN: true }))
+        expectValidArbitrary(schema)
+      })
+
+      it("int", () => {
+        const schema = S.Number.pipe(S.int())
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ isInteger: true }))
+        expectValidArbitrary(schema)
+      })
+
+      it("between int", () => {
+        const schema = S.Number.pipe(S.between(2, 5), S.int())
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ isInteger: true, min: 2, max: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("int between", () => {
+        const schema = S.Number.pipe(S.int(), S.between(2, 5))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ isInteger: true, min: 2, max: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("lessThanOrEqualTo", () => {
+        const schema = S.Number.pipe(S.lessThanOrEqualTo(5))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ max: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("greaterThanOrEqualTo", () => {
+        const schema = S.Number.pipe(S.greaterThanOrEqualTo(2))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ min: 2 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("lessThan", () => {
+        const schema = S.Number.pipe(S.lessThan(5))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ max: 5, maxExcluded: true }))
+        expectValidArbitrary(schema)
+      })
+
+      it("greaterThan", () => {
+        const schema = S.Number.pipe(S.greaterThan(2))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ min: 2, minExcluded: true }))
+        expectValidArbitrary(schema)
+      })
+
+      it("between", () => {
+        const schema = S.Number.pipe(S.between(2, 5))
+        expectConstraints(schema, Arbitrary.makeNumberConstraints({ min: 2, max: 5 }))
+        expectValidArbitrary(schema)
+      })
     })
 
-    it("optional property signature with undefined", () => {
-      const schema = S.Struct({ a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true }) })
-      expectValidArbitrary(schema)
-    })
+    describe("bigint filters", () => {
+      it("lessThanOrEqualTo", () => {
+        const schema = S.BigIntFromSelf.pipe(S.lessThanOrEqualToBigInt(BigInt(5)))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ max: BigInt(5) }))
+        expectValidArbitrary(schema)
+      })
 
-    it("baseline", () => {
-      const schema = S.Struct({ a: S.String, b: S.Number })
-      expectValidArbitrary(schema)
+      it("greaterThanOrEqualTo", () => {
+        const schema = S.BigIntFromSelf.pipe(S.greaterThanOrEqualToBigInt(BigInt(2)))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2) }))
+        expectValidArbitrary(schema)
+      })
+
+      it("lessThan", () => {
+        const schema = S.BigIntFromSelf.pipe(S.lessThanBigInt(BigInt(5)))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ max: BigInt(5) }))
+        expectValidArbitrary(schema)
+      })
+
+      it("greaterThan", () => {
+        const schema = S.BigIntFromSelf.pipe(S.greaterThanBigInt(BigInt(2)))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2) }))
+        expectValidArbitrary(schema)
+      })
+
+      it("between", () => {
+        const schema = S.BigIntFromSelf.pipe(S.betweenBigInt(BigInt(2), BigInt(5)))
+        expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2), max: BigInt(5) }))
+        expectValidArbitrary(schema)
+      })
     })
   })
 
-  it("union", () => {
-    const schema = S.Union(S.String, S.Number)
-    expectValidArbitrary(schema)
-  })
-
-  it("record(string, string)", () => {
-    const schema = S.Record({ key: S.String, value: S.String })
-    expectValidArbitrary(schema)
-  })
-
-  it("record(symbol, string)", () => {
-    const schema = S.Record({ key: S.SymbolFromSelf, value: S.String })
-    expectValidArbitrary(schema)
-  })
-
-  describe("array filters", () => {
-    it("minItems", () => {
-      const schema = S.Array(S.String).pipe(S.minItems(2))
-      expectValidArbitrary(schema)
-    })
-
-    it("maxItems", () => {
-      const schema = S.Array(S.String).pipe(S.maxItems(5))
-      expectValidArbitrary(schema)
-    })
-
-    it("itemsCount", () => {
-      const schema = S.Array(S.String).pipe(S.itemsCount(3))
-      expectValidArbitrary(schema)
+  describe("Transformation", () => {
+    describe("number transformations", () => {
+      it("clamp with numbers with decimals", () => {
+        const schema = S.Number.pipe(S.clamp(1.3, 3.1))
+        expectValidArbitrary(schema)
+      })
     })
   })
 
-  it("extend/ struct record", () => {
-    const schema = S.Struct({ a: S.String }, S.Record({ key: S.String, value: S.Union(S.String, S.Number) }))
-    expectValidArbitrary(schema)
-  })
-
-  describe("string filters", () => {
-    it("minLength", () => {
-      const schema = S.String.pipe(S.minLength(1))
-      expectValidArbitrary(schema)
-    })
-
-    it("maxLength", () => {
-      const schema = S.String.pipe(S.maxLength(2))
-      expectValidArbitrary(schema)
-    })
-
-    it("length: number", () => {
-      const schema = S.String.pipe(S.length(10))
-      expectValidArbitrary(schema)
-    })
-
-    it("length: { min, max }", () => {
-      const schema = S.String.pipe(S.length({ min: 2, max: 5 }))
-      expectValidArbitrary(schema)
-    })
-
-    it("startsWith", () => {
-      const schema = S.String.pipe(S.startsWith("a"))
-      expectValidArbitrary(schema)
-    })
-
-    it("endsWith", () => {
-      const schema = S.String.pipe(S.endsWith("a"))
-      expectValidArbitrary(schema)
-    })
-
-    it("pattern", () => {
-      const regexp = /^[A-Z]{3}[0-9]{3}$/
-      const schema = S.String.pipe(S.pattern(regexp))
-      expectValidArbitrary(schema)
-    })
-
-    // issue #2312
-    it.skip("nonEmpty pattern", () => {
-      const schema = S.String.pipe(S.nonEmptyString(), S.pattern(/^[-]*$/))
-      expectValidArbitrary(schema)
-    })
-  })
-
-  describe("number filters", () => {
-    it("int", () => {
-      const schema = S.Number.pipe(S.int())
-      expectValidArbitrary(schema)
-    })
-
-    it("between int", () => {
-      const schema = S.Number.pipe(S.between(1, 10), S.int())
-      expectValidArbitrary(schema)
-    })
-
-    it("int between", () => {
-      const schema = S.Number.pipe(S.int(), S.between(1, 10))
-      expectValidArbitrary(schema)
-    })
-
-    it("lessThanOrEqualTo", () => {
-      const schema = S.Number.pipe(S.lessThanOrEqualTo(1))
-      expectValidArbitrary(schema)
-    })
-
-    it("greaterThanOrEqualTo", () => {
-      const schema = S.Number.pipe(S.greaterThanOrEqualTo(1))
-      expectValidArbitrary(schema)
-    })
-
-    it("lessThan", () => {
-      const schema = S.Number.pipe(S.lessThan(1))
-      expectValidArbitrary(schema)
-    })
-
-    it("greaterThan", () => {
-      const schema = S.Number.pipe(S.greaterThan(1))
-      expectValidArbitrary(schema)
-    })
-
-    it("between", () => {
-      const schema = S.Number.pipe(S.between(1, 10))
-      expectValidArbitrary(schema)
-    })
-
-    it("nonNaN", () => {
-      const schema = S.Number.pipe(S.nonNaN())
-      expectValidArbitrary(schema)
-    })
-
-    it("finite", () => {
-      const schema = S.Number.pipe(S.finite())
-      expectValidArbitrary(schema)
-    })
-
-    it("NumberConstraints should support doubles as constraints", () => {
-      const schema = S.Number.pipe(S.clamp(1.3, 3.1))
-      expectValidArbitrary(schema)
-    })
-  })
-
-  describe("bigint filters", () => {
-    it("lessThanOrEqualTo", () => {
-      const schema = S.BigInt.pipe(S.lessThanOrEqualToBigInt(BigInt(1)))
-      expectValidArbitrary(schema)
-    })
-
-    it("greaterThanOrEqualTo", () => {
-      const schema = S.BigInt.pipe(S.greaterThanOrEqualToBigInt(BigInt(1)))
-      expectValidArbitrary(schema)
-    })
-
-    it("lessThan", () => {
-      const schema = S.BigInt.pipe(S.lessThanBigInt(BigInt(1)))
-      expectValidArbitrary(schema)
-    })
-
-    it("greaterThan", () => {
-      const schema = S.BigInt.pipe(S.greaterThanBigInt(BigInt(1)))
-      expectValidArbitrary(schema)
-    })
-
-    it("between", () => {
-      const schema = S.BigInt.pipe(S.betweenBigInt(BigInt(1), BigInt(10)))
-      expectValidArbitrary(schema)
-    })
-  })
-
-  describe("should handle annotations", () => {
+  describe("arbitrary annotation", () => {
     const expectHook = <A, I>(source: S.Schema<A, I>) => {
       const schema = source.annotations({ arbitrary: () => (fc) => fc.constant("custom arbitrary") as any })
-      const arb = Arbitrary.makeLazy(schema)(fc)
+      const arb = Arbitrary.make(schema)
       expect(fc.sample(arb, 1)[0]).toEqual("custom arbitrary")
     }
 
-    it("void", () => {
+    it("Void", () => {
       expectHook(S.Void)
     })
 
-    it("never", () => {
+    it("Never", () => {
       expectHook(S.Never)
     })
 
-    it("literal", () => {
+    it("Literal", () => {
       expectHook(S.Literal("a"))
     })
 
-    it("symbol", () => {
+    it("Symbol", () => {
       expectHook(S.Symbol)
     })
 
-    it("uniqueSymbolFromSelf", () => {
+    it("UniqueSymbolFromSelf", () => {
       expectHook(S.UniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")))
     })
 
-    it("templateLiteral", () => {
+    it("TemplateLiteral", () => {
       expectHook(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")))
     })
 
-    it("undefined", () => {
+    it("Undefined", () => {
       expectHook(S.Undefined)
     })
 
-    it("unknown", () => {
+    it("Unknown", () => {
       expectHook(S.Unknown)
     })
 
-    it("any", () => {
+    it("Any", () => {
       expectHook(S.Any)
     })
 
-    it("object", () => {
+    it("Object", () => {
       expectHook(S.Object)
     })
 
-    it("string", () => {
+    it("String", () => {
       expectHook(S.String)
     })
 
-    it("number", () => {
+    it("Number", () => {
       expectHook(S.Number)
     })
 
-    it("bigintFromSelf", () => {
+    it("BigIntFromSelf", () => {
       expectHook(S.BigIntFromSelf)
     })
 
-    it("boolean", () => {
+    it("Boolean", () => {
       expectHook(S.Boolean)
     })
 
-    it("enums", () => {
+    it("Enums", () => {
       enum Fruits {
         Apple,
         Banana
@@ -689,15 +798,15 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       expectHook(S.Enums(Fruits))
     })
 
-    it("tuple", () => {
+    it("Tuple", () => {
       expectHook(S.Tuple(S.String, S.Number))
     })
 
-    it("struct", () => {
+    it("Struct", () => {
       expectHook(S.Struct({ a: S.String, b: S.Number }))
     })
 
-    it("union", () => {
+    it("Union", () => {
       expectHook(S.Union(S.String, S.Number))
     })
 
@@ -713,11 +822,24 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       expectHook(schema)
     })
 
-    it("refinement", () => {
-      expectHook(S.Int)
+    describe("Refinement", () => {
+      it("NonEmptyString", () => {
+        expectHook(S.NonEmptyString)
+      })
+
+      it("should provide the `from` Arbitrary", () => {
+        const schema = S.String.pipe(S.filter((s) => s.length > 2, {
+          arbitrary: (from, ctx) => (fc) => {
+            assert.isFunction(from)
+            assert.isObject(ctx)
+            return from(fc).filter((s) => s.length > 2)
+          }
+        }))
+        expectValidArbitrary(schema)
+      })
     })
 
-    it("transformation", () => {
+    it("Transformation", () => {
       expectHook(S.NumberFromString)
     })
   })

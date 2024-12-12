@@ -11,6 +11,7 @@ import * as Option from "./Option.js"
 import * as Predicate from "./Predicate.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
+import type * as Types from "./Types.js"
 
 /**
  * @category model
@@ -25,8 +26,9 @@ export interface LazyArbitrary<A> {
  * @since 3.10.0
  */
 export interface ArbitraryGenerationContext {
-  readonly depthIdentifier?: string
   readonly maxDepth: number
+  readonly depthIdentifier?: string
+  readonly constraints?: StringConstraints | NumberConstraints | BigIntConstraints | ArrayConstraints
 }
 
 /**
@@ -59,58 +61,196 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): FastCheck.Arbitra
 
 const getArbitraryAnnotation = AST.getAnnotation<ArbitraryAnnotation<any, any>>(AST.ArbitraryAnnotationId)
 
-const getRefinementFromArbitrary = (
-  ast: AST.Refinement,
-  ctx: Context,
-  path: ReadonlyArray<PropertyKey>
-) => {
-  const constraints = combineConstraints(ctx.constraints, getConstraints(ast))
-  return go(ast.from, constraints ? { ...ctx, constraints } : ctx, path)
-}
+type Op = Succeed | Deferred
 
-const getSuspendedContext = (
-  ctx: Context,
-  ast: AST.Suspend
-): Context => {
-  if (ctx.depthIdentifier !== undefined) {
-    return ctx
-  }
-  const depthIdentifier = AST.getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() => AST.getIdentifierAnnotation(ast.f())),
-    Option.getOrElse(() => "SuspendDefaultDepthIdentifier")
-  )
-  return { ...ctx, depthIdentifier }
-}
+/**
+ * Represents an arbitrary with optional filters.
+ */
+class Succeed {
+  readonly _tag = "Succeed"
+  constructor(
+    readonly lazyArbitrary: LazyArbitrary<any>,
+    readonly filters: Array<Predicate.Predicate<any>> = []
+  ) {}
 
-const getSuspendedArray = (
-  fc: typeof FastCheck,
-  depthIdentifier: string,
-  maxDepth: number,
-  item: FastCheck.Arbitrary<any>,
-  constraints?: FastCheck.ArrayConstraints
-) => {
-  let minLength = 1
-  let maxLength = 2
-  if (constraints && constraints.minLength !== undefined && constraints.minLength > minLength) {
-    minLength = constraints.minLength
-    if (minLength > maxLength) {
-      maxLength = minLength
+  toLazyArbitrary(): LazyArbitrary<any> {
+    return (fc) => {
+      let out = this.lazyArbitrary(fc)
+      for (const f of this.filters) {
+        out = out.filter(f)
+      }
+      return out
     }
   }
-  return fc.oneof(
-    { maxDepth, depthIdentifier },
-    fc.constant([]),
-    fc.array(item, { minLength, maxLength })
-  )
 }
 
-interface Context extends ArbitraryGenerationContext {
-  readonly constraints?: Constraints
+/**
+ * Represents a deferred arbitrary value generator with optional filters.
+ */
+class Deferred {
+  readonly _tag = "Deferred"
+  constructor(
+    readonly config: Config,
+    readonly filters: Array<Predicate.Predicate<any>> = []
+  ) {}
+
+  toLazyArbitrary(ctx: ArbitraryGenerationContext, path: ReadonlyArray<PropertyKey>): LazyArbitrary<any> {
+    const config = this.config
+    switch (config._tag) {
+      case "StringConstraints": {
+        const pattern = config.pattern
+        return pattern !== undefined ?
+          (fc) => fc.stringMatching(new RegExp(pattern)) :
+          (fc) => fc.string(config.constraints)
+      }
+      case "NumberConstraints": {
+        return config.isInteger ?
+          (fc) => fc.integer(config.constraints) :
+          (fc) => fc.float(config.constraints)
+      }
+      case "BigIntConstraints":
+        return (fc) => fc.bigInt(config.constraints)
+      case "ArrayConstraints":
+        return goTupleType(config.ast, ctx, path, config.constraints)
+    }
+  }
 }
+
+interface StringConstraints {
+  readonly _tag: "StringConstraints"
+  readonly constraints: FastCheck.StringSharedConstraints
+  readonly pattern?: string
+}
+
+/** @internal */
+export const makeStringConstraints = (options: {
+  readonly minLength?: number | undefined
+  readonly maxLength?: number | undefined
+  readonly pattern?: string | undefined
+}): StringConstraints => {
+  const out: Types.Mutable<StringConstraints> = {
+    _tag: "StringConstraints",
+    constraints: {}
+  }
+  if (Predicate.isNumber(options.minLength)) {
+    out.constraints.minLength = options.minLength
+  }
+  if (Predicate.isNumber(options.maxLength)) {
+    out.constraints.maxLength = options.maxLength
+  }
+  if (Predicate.isString(options.pattern)) {
+    out.pattern = options.pattern
+  }
+  return out
+}
+
+interface NumberConstraints {
+  readonly _tag: "NumberConstraints"
+  readonly constraints: FastCheck.FloatConstraints
+  readonly isInteger: boolean
+}
+
+/** @internal */
+export const makeNumberConstraints = (options: {
+  readonly isInteger?: boolean | undefined
+  readonly min?: number | undefined
+  readonly minExcluded?: boolean | undefined
+  readonly max?: number | undefined
+  readonly maxExcluded?: boolean | undefined
+  readonly noNaN?: boolean | undefined
+  readonly noDefaultInfinity?: boolean | undefined
+}): NumberConstraints => {
+  const out: Types.Mutable<NumberConstraints> = {
+    _tag: "NumberConstraints",
+    constraints: {},
+    isInteger: options.isInteger ?? false
+  }
+  if (Predicate.isNumber(options.min)) {
+    out.constraints.min = Math.fround(options.min)
+  }
+  if (Predicate.isBoolean(options.minExcluded)) {
+    out.constraints.minExcluded = options.minExcluded
+  }
+  if (Predicate.isNumber(options.max)) {
+    out.constraints.max = Math.fround(options.max)
+  }
+  if (Predicate.isBoolean(options.maxExcluded)) {
+    out.constraints.maxExcluded = options.maxExcluded
+  }
+  if (Predicate.isBoolean(options.noNaN)) {
+    out.constraints.noNaN = options.noNaN
+  }
+  if (Predicate.isBoolean(options.noDefaultInfinity)) {
+    out.constraints.noDefaultInfinity = options.noDefaultInfinity
+  }
+  return out
+}
+
+interface BigIntConstraints {
+  readonly _tag: "BigIntConstraints"
+  readonly constraints: FastCheck.BigIntConstraints
+}
+
+/** @internal */
+export const makeBigIntConstraints = (options: {
+  readonly min?: bigint | undefined
+  readonly max?: bigint | undefined
+}): BigIntConstraints => {
+  const out: Types.Mutable<BigIntConstraints> = {
+    _tag: "BigIntConstraints",
+    constraints: {}
+  }
+  if (Predicate.isBigInt(options.min)) {
+    out.constraints.min = options.min
+  }
+  if (Predicate.isBigInt(options.max)) {
+    out.constraints.max = options.max
+  }
+  return out
+}
+
+interface ArrayConstraints {
+  readonly _tag: "ArrayConstraints"
+  readonly constraints: FastCheck.ArrayConstraints
+}
+
+/** @internal */
+export const makeArrayConstraints = (options: {
+  readonly minLength?: number | undefined
+  readonly maxLength?: number | undefined
+}): ArrayConstraints => {
+  const out: Types.Mutable<ArrayConstraints> = {
+    _tag: "ArrayConstraints",
+    constraints: {}
+  }
+  if (Predicate.isNumber(options.minLength)) {
+    out.constraints.minLength = options.minLength
+  }
+  if (Predicate.isNumber(options.maxLength)) {
+    out.constraints.maxLength = options.maxLength
+  }
+  return out
+}
+
+interface ArrayConfig extends ArrayConstraints {
+  readonly ast: AST.TupleType
+}
+
+const makeArrayConfig = (options: {
+  readonly minLength?: number | undefined
+  readonly maxLength?: number | undefined
+}, ast: AST.TupleType): ArrayConfig => {
+  return {
+    ast,
+    ...makeArrayConstraints(options)
+  }
+}
+
+type Config = StringConstraints | NumberConstraints | BigIntConstraints | ArrayConfig
 
 const go = (
   ast: AST.AST,
-  ctx: Context,
+  ctx: ArbitraryGenerationContext,
   path: ReadonlyArray<PropertyKey>
 ): LazyArbitrary<any> => {
   const hook = getArbitraryAnnotation(ast)
@@ -118,70 +258,70 @@ const go = (
     switch (ast._tag) {
       case "Declaration":
         return hook.value(...ast.typeParameters.map((p) => go(p, ctx, path)), ctx)
-      case "Refinement":
-        return hook.value(getRefinementFromArbitrary(ast, ctx, path), ctx)
+      case "Refinement": {
+        const op = toOp(ast, ctx, path)
+        ctx = op._tag === "Deferred" ? { ...ctx, constraints: op.config } : ctx
+        const from = go(ast.from, ctx, path)
+        return new Succeed(hook.value(from, ctx), op.filters).toLazyArbitrary()
+      }
       default:
         return hook.value(ctx)
     }
   }
+  const op = toOp(ast, ctx, path)
+  switch (op._tag) {
+    case "Succeed":
+      return op.toLazyArbitrary()
+    case "Deferred":
+      return new Succeed(op.toLazyArbitrary(ctx, path), op.filters).toLazyArbitrary()
+  }
+}
+
+const constStringConstraints = makeStringConstraints({})
+const constNumberConstraints = makeNumberConstraints({})
+const constBigIntConstraints = makeBigIntConstraints({})
+
+/** @internal */
+export const toOp = (
+  ast: AST.AST,
+  ctx: ArbitraryGenerationContext,
+  path: ReadonlyArray<PropertyKey>
+): Op => {
   switch (ast._tag) {
-    case "Declaration": {
+    case "Declaration":
       throw new Error(errors_.getArbitraryMissingAnnotationErrorMessage(path, ast))
-    }
     case "Literal":
-      return (fc) => fc.constant(ast.literal)
+      return new Succeed((fc) => fc.constant(ast.literal))
     case "UniqueSymbol":
-      return (fc) => fc.constant(ast.symbol)
+      return new Succeed((fc) => fc.constant(ast.symbol))
     case "UndefinedKeyword":
-      return (fc) => fc.constant(undefined)
+      return new Succeed((fc) => fc.constant(undefined))
     case "NeverKeyword":
-      return () => {
-        throw new Error(errors_.getArbitraryUnsupportedErrorMessage(path, ast))
-      }
+      throw new Error(errors_.getArbitraryMissingAnnotationErrorMessage(path, ast))
+    case "VoidKeyword":
     case "UnknownKeyword":
     case "AnyKeyword":
-    case "VoidKeyword":
-      return (fc) => fc.anything()
+      return new Succeed((fc) => fc.anything())
     case "StringKeyword":
-      return (fc) => {
-        if (ctx.constraints) {
-          switch (ctx.constraints._tag) {
-            case "StringConstraints":
-              return fc.string(ctx.constraints.constraints)
-          }
-        }
-        return fc.string()
-      }
+      return new Deferred(constStringConstraints)
     case "NumberKeyword":
-      return (fc) => {
-        if (ctx.constraints) {
-          switch (ctx.constraints._tag) {
-            case "NumberConstraints":
-              return fc.float(ctx.constraints.constraints)
-            case "IntegerConstraints":
-              return fc.integer(ctx.constraints.constraints)
-          }
-        }
-        return fc.float()
-      }
+      return new Deferred(constNumberConstraints)
     case "BooleanKeyword":
-      return (fc) => fc.boolean()
+      return new Succeed((fc) => fc.boolean())
     case "BigIntKeyword":
-      return (fc) => {
-        if (ctx.constraints) {
-          switch (ctx.constraints._tag) {
-            case "BigIntConstraints":
-              return fc.bigInt(ctx.constraints.constraints)
-          }
-        }
-        return fc.bigInt()
-      }
+      return new Deferred(constBigIntConstraints)
     case "SymbolKeyword":
-      return (fc) => fc.string().map((s) => Symbol.for(s))
+      return new Succeed((fc) => fc.string().map((s) => Symbol.for(s)))
     case "ObjectKeyword":
-      return (fc) => fc.oneof(fc.object(), fc.array(fc.anything()))
-    case "TemplateLiteral": {
-      return (fc) => {
+      return new Succeed((fc) => fc.oneof(fc.object(), fc.array(fc.anything())))
+    case "Enums": {
+      if (ast.enums.length === 0) {
+        throw new Error(errors_.getArbitraryEmptyEnumErrorMessage(path))
+      }
+      return new Succeed((fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value))))
+    }
+    case "TemplateLiteral":
+      return new Succeed((fc) => {
         const string = fc.string({ maxLength: 5 })
         const number = fc.float({ noDefaultInfinity: true }).filter((n) => !Number.isNaN(n))
 
@@ -208,72 +348,30 @@ const go = (
         })
 
         return fc.tuple(...components).map((spans) => spans.join(""))
+      })
+    case "Refinement": {
+      const from = toOp(ast.from, ctx, path)
+      const filters: Op["filters"] = [
+        ...from.filters,
+        (a) => Option.isNone(ast.filter(a, AST.defaultParseOption, ast))
+      ]
+      switch (from._tag) {
+        case "Succeed": {
+          return new Succeed(from.lazyArbitrary, filters)
+        }
+        case "Deferred": {
+          return new Deferred(merge(from.config, getConstraints(from.config._tag, ast)), filters)
+        }
       }
     }
-    case "TupleType": {
-      const elements: Array<LazyArbitrary<any>> = []
-      let hasOptionals = false
-      let i = 0
-      for (const element of ast.elements) {
-        elements.push(go(element.type, ctx, path.concat(i++)))
-        if (element.isOptional) {
-          hasOptionals = true
-        }
-      }
-      const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, ctx, path))
-      return (fc) => {
-        // ---------------------------------------------
-        // handle elements
-        // ---------------------------------------------
-        let output = fc.tuple(...elements.map((arb) => arb(fc)))
-        if (hasOptionals) {
-          const indexes = fc.tuple(
-            ...ast.elements.map((element) => element.isOptional ? fc.boolean() : fc.constant(true))
-          )
-          output = output.chain((tuple) =>
-            indexes.map((booleans) => {
-              for (const [i, b] of booleans.reverse().entries()) {
-                if (!b) {
-                  tuple.splice(booleans.length - i, 1)
-                }
-              }
-              return tuple
-            })
-          )
-        }
-
-        // ---------------------------------------------
-        // handle rest element
-        // ---------------------------------------------
-        if (Arr.isNonEmptyReadonlyArray(rest)) {
-          const [head, ...tail] = rest
-          const item = head(fc)
-          const constraints: FastCheck.ArrayConstraints | undefined =
-            ctx.constraints && ctx.constraints._tag === "ArrayConstraints"
-              ? ctx.constraints.constraints
-              : undefined
-          output = output.chain((as) => {
-            return (ctx.depthIdentifier !== undefined
-              ? getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, constraints)
-              : fc.array(item, constraints)).map((rest) => [...as, ...rest])
-          })
-          // ---------------------------------------------
-          // handle post rest elements
-          // ---------------------------------------------
-          for (let j = 0; j < tail.length; j++) {
-            output = output.chain((as) => tail[j](fc).map((a) => [...as, a]))
-          }
-        }
-
-        return output
-      }
-    }
+    case "TupleType":
+      return new Deferred(makeArrayConfig({}, ast))
     case "TypeLiteral": {
       const propertySignaturesTypes = ast.propertySignatures.map((ps) => go(ps.type, ctx, path.concat(ps.name)))
       const indexSignatures = ast.indexSignatures.map((is) =>
         [go(is.parameter, ctx, path), go(is.type, ctx, path)] as const
       )
-      return (fc) => {
+      return new Succeed((fc) => {
         const arbs: any = {}
         const requiredKeys: Array<PropertyKey> = []
         // ---------------------------------------------
@@ -304,258 +402,116 @@ const go = (
         }
 
         return output
-      }
+      })
     }
     case "Union": {
       const types = ast.types.map((member) => go(member, ctx, path))
-      return (fc) => fc.oneof(...types.map((arb) => arb(fc)))
-    }
-    case "Enums": {
-      if (ast.enums.length === 0) {
-        throw new Error(errors_.getArbitraryEmptyEnumErrorMessage(path))
-      }
-      return (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
-    }
-    case "Refinement": {
-      const from = getRefinementFromArbitrary(ast, ctx, path)
-      return (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, AST.defaultParseOption, ast)))
+      return new Succeed((fc) => fc.oneof(...types.map((arb) => arb(fc))))
     }
     case "Suspend": {
       const get = util_.memoizeThunk(() => {
         return go(ast.f(), getSuspendedContext(ctx, ast), path)
       })
-      return (fc) => fc.constant(null).chain(() => get()(fc))
+      return new Succeed((fc) => fc.constant(null).chain(() => get()(fc)))
     }
     case "Transformation":
-      return go(ast.to, ctx, path)
+      return new Succeed(go(ast.to, ctx, path))
   }
 }
 
-/** @internal */
-export class NumberConstraints {
-  readonly _tag = "NumberConstraints"
-  readonly constraints: FastCheck.FloatConstraints
-  constructor(options: {
-    readonly min?: number | undefined
-    readonly max?: number | undefined
-    readonly noNaN?: boolean | undefined
-    readonly noDefaultInfinity?: boolean | undefined
-  }) {
-    this.constraints = {}
-    if (Predicate.isNumber(options.min)) {
-      this.constraints.min = Math.fround(options.min)
-    }
-    if (Predicate.isNumber(options.max)) {
-      this.constraints.max = Math.fround(options.max)
-    }
-    if (Predicate.isBoolean(options.noNaN)) {
-      this.constraints.noNaN = options.noNaN
-    }
-    if (Predicate.isBoolean(options.noDefaultInfinity)) {
-      this.constraints.noDefaultInfinity = options.noDefaultInfinity
+const goTupleType = (
+  ast: AST.TupleType,
+  ctx: ArbitraryGenerationContext,
+  path: ReadonlyArray<PropertyKey>,
+  constraints: FastCheck.ArrayConstraints
+): LazyArbitrary<any> => {
+  const elements: Array<LazyArbitrary<any>> = []
+  let hasOptionals = false
+  let i = 0
+  for (const element of ast.elements) {
+    elements.push(go(element.type, ctx, path.concat(i++)))
+    if (element.isOptional) {
+      hasOptionals = true
     }
   }
-}
+  const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, ctx, path))
+  return (fc) => {
+    // ---------------------------------------------
+    // handle elements
+    // ---------------------------------------------
+    let output = fc.tuple(...elements.map((arb) => arb(fc)))
+    if (hasOptionals) {
+      const indexes = fc.tuple(
+        ...ast.elements.map((element) => element.isOptional ? fc.boolean() : fc.constant(true))
+      )
+      output = output.chain((tuple) =>
+        indexes.map((booleans) => {
+          for (const [i, b] of booleans.reverse().entries()) {
+            if (!b) {
+              tuple.splice(booleans.length - i, 1)
+            }
+          }
+          return tuple
+        })
+      )
+    }
 
-/** @internal */
-export class StringConstraints {
-  readonly _tag = "StringConstraints"
-  readonly constraints: FastCheck.StringSharedConstraints
-  constructor(options: {
-    readonly minLength?: number | undefined
-    readonly maxLength?: number | undefined
-  }) {
-    this.constraints = {}
-    if (Predicate.isNumber(options.minLength)) {
-      this.constraints.minLength = options.minLength
-    }
-    if (Predicate.isNumber(options.maxLength)) {
-      this.constraints.maxLength = options.maxLength
-    }
-  }
-}
-
-/** @internal */
-export class IntegerConstraints {
-  readonly _tag = "IntegerConstraints"
-  readonly constraints: FastCheck.IntegerConstraints
-  constructor(options: {
-    readonly min?: number | undefined
-    readonly max?: number | undefined
-  }) {
-    this.constraints = {}
-    if (Predicate.isNumber(options.min)) {
-      this.constraints.min = options.min
-    }
-    if (Predicate.isNumber(options.max)) {
-      this.constraints.max = options.max
-    }
-  }
-}
-
-/** @internal */
-export class ArrayConstraints {
-  readonly _tag = "ArrayConstraints"
-  readonly constraints: FastCheck.ArrayConstraints
-  constructor(options: {
-    readonly minLength?: number | undefined
-    readonly maxLength?: number | undefined
-  }) {
-    this.constraints = {}
-    if (Predicate.isNumber(options.minLength)) {
-      this.constraints.minLength = options.minLength
-    }
-    if (Predicate.isNumber(options.maxLength)) {
-      this.constraints.maxLength = options.maxLength
-    }
-  }
-}
-
-/** @internal */
-export class BigIntConstraints {
-  readonly _tag = "BigIntConstraints"
-  readonly constraints: FastCheck.BigIntConstraints
-  constructor(options: {
-    readonly min?: bigint | undefined
-    readonly max?: bigint | undefined
-  }) {
-    this.constraints = {}
-    if (Predicate.isBigInt(options.min)) {
-      this.constraints.min = options.min
-    }
-    if (Predicate.isBigInt(options.max)) {
-      this.constraints.max = options.max
-    }
-  }
-}
-
-/** @internal */
-export type Constraints =
-  | NumberConstraints
-  | StringConstraints
-  | IntegerConstraints
-  | ArrayConstraints
-  | BigIntConstraints
-
-/** @internal */
-export const getConstraints = (ast: AST.Refinement): Constraints | undefined => {
-  const TypeAnnotationId = ast.annotations[AST.SchemaIdAnnotationId]
-  const jsonSchema: any = ast.annotations[AST.JSONSchemaAnnotationId]
-  switch (TypeAnnotationId) {
-    // int
-    case filters_.IntSchemaId:
-      return new IntegerConstraints({})
-    // number
-    case filters_.GreaterThanSchemaId:
-    case filters_.GreaterThanOrEqualToSchemaId:
-    case filters_.LessThanSchemaId:
-    case filters_.LessThanOrEqualToSchemaId:
-    case filters_.BetweenSchemaId:
-      return new NumberConstraints({
-        min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
-        max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum
+    // ---------------------------------------------
+    // handle rest element
+    // ---------------------------------------------
+    if (Arr.isNonEmptyReadonlyArray(rest)) {
+      const [head, ...tail] = rest
+      const item = head(fc)
+      output = output.chain((as) => {
+        return (ctx.depthIdentifier !== undefined
+          ? getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, constraints)
+          : fc.array(item, constraints)).map((rest) => [...as, ...rest])
       })
-    // bigint
-    case filters_.GreaterThanBigintSchemaId:
-    case filters_.GreaterThanOrEqualToBigIntSchemaId:
-    case filters_.LessThanBigIntSchemaId:
-    case filters_.LessThanOrEqualToBigIntSchemaId:
-    case filters_.BetweenBigintSchemaId: {
-      const constraints: any = ast.annotations[TypeAnnotationId]
-      return new BigIntConstraints(constraints)
+      // ---------------------------------------------
+      // handle post rest elements
+      // ---------------------------------------------
+      for (let j = 0; j < tail.length; j++) {
+        output = output.chain((as) => tail[j](fc).map((a) => [...as, a]))
+      }
     }
-    // string
-    case filters_.MinLengthSchemaId:
-    case filters_.MaxLengthSchemaId:
-    case filters_.LengthSchemaId:
-      return new StringConstraints(jsonSchema)
-    // array
-    case filters_.MinItemsSchemaId:
-    case filters_.MaxItemsSchemaId:
-    case filters_.ItemsCountSchemaId:
-      return new ArrayConstraints({
+
+    return output
+  }
+}
+
+type Constraints = StringConstraints | NumberConstraints | BigIntConstraints | ArrayConstraints
+
+const getConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constraints | undefined => {
+  const TypeAnnotationId: any = ast.annotations[AST.SchemaIdAnnotationId]
+  const jsonSchema: Record<string, any> = Option.getOrElse(AST.getJSONSchemaAnnotation(ast), () => ({}))
+
+  switch (_tag) {
+    case "StringConstraints":
+      return makeStringConstraints(jsonSchema)
+    case "NumberConstraints": {
+      switch (TypeAnnotationId) {
+        case filters_.NonNaNSchemaId:
+          return makeNumberConstraints({ noNaN: true })
+        default:
+          return makeNumberConstraints({
+            isInteger: "type" in jsonSchema && jsonSchema.type === "integer",
+            noNaN: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
+            noDefaultInfinity: "type" in jsonSchema && jsonSchema.type === "number" ? true : undefined,
+            min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
+            minExcluded: "exclusiveMinimum" in jsonSchema ? true : undefined,
+            max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum,
+            maxExcluded: "exclusiveMaximum" in jsonSchema ? true : undefined
+          })
+      }
+    }
+    case "BigIntConstraints":
+      return makeBigIntConstraints(ast.annotations[TypeAnnotationId] as any)
+    case "ArrayConstraints":
+      return makeArrayConstraints({
         minLength: jsonSchema.minItems,
         maxLength: jsonSchema.maxItems
       })
   }
-}
-
-/** @internal */
-export const combineConstraints = (
-  c1: Constraints | undefined,
-  c2: Constraints | undefined
-): Constraints | undefined => {
-  if (c1 === undefined) {
-    return c2
-  }
-  if (c2 === undefined) {
-    return c1
-  }
-  switch (c1._tag) {
-    case "ArrayConstraints": {
-      switch (c2._tag) {
-        case "ArrayConstraints":
-          return new ArrayConstraints({
-            minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
-            maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength)
-          })
-      }
-      break
-    }
-    case "NumberConstraints": {
-      switch (c2._tag) {
-        case "NumberConstraints":
-          return new NumberConstraints({
-            min: getMax(c1.constraints.min, c2.constraints.min),
-            max: getMin(c1.constraints.max, c2.constraints.max),
-            noNaN: getOr(c1.constraints.noNaN, c2.constraints.noNaN),
-            noDefaultInfinity: getOr(c1.constraints.noDefaultInfinity, c2.constraints.noDefaultInfinity)
-          })
-        case "IntegerConstraints":
-          return new IntegerConstraints({
-            min: getMax(c1.constraints.min, c2.constraints.min),
-            max: getMin(c1.constraints.max, c2.constraints.max)
-          })
-      }
-      break
-    }
-    case "BigIntConstraints": {
-      switch (c2._tag) {
-        case "BigIntConstraints":
-          return new BigIntConstraints({
-            min: getMax(c1.constraints.min, c2.constraints.min),
-            max: getMin(c1.constraints.max, c2.constraints.max)
-          })
-      }
-      break
-    }
-    case "StringConstraints": {
-      switch (c2._tag) {
-        case "StringConstraints":
-          return new StringConstraints({
-            minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
-            maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength)
-          })
-      }
-      break
-    }
-    case "IntegerConstraints": {
-      switch (c2._tag) {
-        case "NumberConstraints":
-        case "IntegerConstraints": {
-          return new IntegerConstraints({
-            min: getMax(c1.constraints.min, c2.constraints.min),
-            max: getMin(c1.constraints.max, c2.constraints.max)
-          })
-        }
-      }
-      break
-    }
-  }
-}
-
-const getOr = (a: boolean | undefined, b: boolean | undefined): boolean | undefined => {
-  return a === undefined ? b : b === undefined ? a : a || b
 }
 
 function getMax(n1: bigint | undefined, n2: bigint | undefined): bigint | undefined
@@ -574,4 +530,94 @@ function getMin(
   n2: bigint | number | undefined
 ): bigint | number | undefined {
   return n1 === undefined ? n2 : n2 === undefined ? n1 : n1 <= n2 ? n1 : n2
+}
+
+const getOr = (a: boolean | undefined, b: boolean | undefined): boolean | undefined => {
+  return a === undefined ? b : b === undefined ? a : a || b
+}
+
+const merge = (c1: Config, c2: Constraints | undefined): Config => {
+  if (c2) {
+    switch (c1._tag) {
+      case "StringConstraints": {
+        if (c2._tag === "StringConstraints") {
+          return makeStringConstraints({
+            minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
+            maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength),
+            pattern: c1.pattern ?? c2.pattern
+          })
+        }
+        break
+      }
+      case "NumberConstraints": {
+        if (c2._tag === "NumberConstraints") {
+          return makeNumberConstraints({
+            isInteger: c1.isInteger || c2.isInteger,
+            min: getMax(c1.constraints.min, c2.constraints.min),
+            minExcluded: getOr(c1.constraints.minExcluded, c2.constraints.minExcluded),
+            max: getMin(c1.constraints.max, c2.constraints.max),
+            maxExcluded: getOr(c1.constraints.maxExcluded, c2.constraints.maxExcluded),
+            noNaN: getOr(c1.constraints.noNaN, c2.constraints.noNaN),
+            noDefaultInfinity: getOr(c1.constraints.noDefaultInfinity, c2.constraints.noDefaultInfinity)
+          })
+        }
+        break
+      }
+      case "BigIntConstraints": {
+        if (c2._tag === "BigIntConstraints") {
+          return makeBigIntConstraints({
+            min: getMax(c1.constraints.min, c2.constraints.min),
+            max: getMin(c1.constraints.max, c2.constraints.max)
+          })
+        }
+        break
+      }
+      case "ArrayConstraints": {
+        if (c2._tag === "ArrayConstraints") {
+          return makeArrayConfig({
+            minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
+            maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength)
+          }, c1.ast)
+        }
+        break
+      }
+    }
+  }
+  return c1
+}
+
+const getSuspendedArray = (
+  fc: typeof FastCheck,
+  depthIdentifier: string,
+  maxDepth: number,
+  item: FastCheck.Arbitrary<any>,
+  constraints?: FastCheck.ArrayConstraints
+) => {
+  let minLength = 1
+  let maxLength = 2
+  if (constraints && constraints.minLength !== undefined && constraints.minLength > minLength) {
+    minLength = constraints.minLength
+    if (minLength > maxLength) {
+      maxLength = minLength
+    }
+  }
+  return fc.oneof(
+    { maxDepth, depthIdentifier },
+    fc.constant([]),
+    fc.array(item, { minLength, maxLength })
+  )
+}
+
+const getSuspendedContext = (
+  ctx: ArbitraryGenerationContext,
+  ast: AST.Suspend
+): ArbitraryGenerationContext => {
+  if (ctx.depthIdentifier !== undefined) {
+    return ctx
+  }
+  const depthIdentifier = AST.getIdentifierAnnotation(ast).pipe(
+    Option.orElse(() => AST.getIdentifierAnnotation(ast.f())),
+    Option.getOrElse(() => "SuspendDefaultDepthIdentifier")
+  )
+  return { ...ctx, depthIdentifier }
 }
