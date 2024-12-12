@@ -174,6 +174,13 @@ export const makeStorage = (options?: {
           Effect.orDie,
           Effect.scoped
         ),
+      entries: (publicKey, startSequence) =>
+        Effect.gen(function*() {
+          const { table } = yield* RcMap.get(resources, publicKey)
+          return yield* sql`SELECT * FROM ${sql(table)} WHERE sequence >= ${startSequence} ORDER BY sequence ASC`.pipe(
+            Effect.flatMap(decodeEntries)
+          )
+        }).pipe(Effect.orDie, Effect.scoped),
       changes: (publicKey, startSequence) =>
         Effect.gen(function*() {
           const { pubsub, table } = yield* RcMap.get(resources, publicKey)

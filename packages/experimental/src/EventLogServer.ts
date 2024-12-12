@@ -182,6 +182,10 @@ export class Storage extends Context.Tag("@effect/experimental/EventLogServer/St
       publicKey: string,
       entries: ReadonlyArray<PersistedEntry>
     ) => Effect.Effect<ReadonlyArray<EncryptedRemoteEntry>>
+    readonly entries: (
+      publicKey: string,
+      startSequence: number
+    ) => Effect.Effect<ReadonlyArray<EncryptedRemoteEntry>>
     readonly changes: (
       publicKey: string,
       startSequence: number
@@ -237,6 +241,7 @@ export const makeStorageMemory: Effect.Effect<typeof Storage.Service, never, Sco
         }
         return encryptedEntries
       }).pipe(Effect.scoped),
+    entries: (publicKey, startSequence) => Effect.sync(() => ensureJournal(publicKey).slice(startSequence)),
     changes: (publicKey, startSequence) =>
       Effect.gen(function*() {
         const mailbox = yield* Mailbox.make<EncryptedRemoteEntry>()
