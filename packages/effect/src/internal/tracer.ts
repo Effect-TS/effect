@@ -3,6 +3,7 @@
  */
 import * as Context from "../Context.js"
 import type * as Exit from "../Exit.js"
+import { constFalse } from "../Function.js"
 import type * as Option from "../Option.js"
 import type * as Tracer from "../Tracer.js"
 
@@ -135,3 +136,8 @@ export const addSpanStackTrace = (options: Tracer.SpanOptions | undefined): Trac
     }
   }
 }
+
+/** @internal */
+export const DisablePropagation = Context.Reference<Tracer.DisablePropagation>()("effect/Tracer/DisablePropagation", {
+  defaultValue: constFalse
+})
