@@ -484,6 +484,7 @@ type Options = {
 type Path = ReadonlyArray<PropertyKey>
 
 const isContentSchemaSupported = (options: Options) => options.target !== "jsonSchema7"
+
 const isNullTypeKeywordSupported = (options: Options) => options.target !== "openApi3.1"
 
 const go = (
@@ -698,37 +699,34 @@ const go = (
     }
     case "Union": {
       const anyOf: Array<JsonSchema7> = []
+      let last: JsonSchema7 | undefined = undefined
       for (const type of ast.types) {
         const schema = go(type, $defs, true, path, options)
-        if ("enum" in schema) {
-          if (!isEnumOnly(schema)) {
-            anyOf.push(schema)
-          } else {
-            const last = anyOf[anyOf.length - 1]
-            if (last !== undefined && isEnumOnly(last)) {
-              for (const e of schema.enum) {
-                last.enum.push(e)
-              }
-            } else {
-              anyOf.push(schema)
-            }
-          }
+        if ("enum" in schema && isEnumOnly(schema) && last !== undefined && isEnumOnly(last)) {
+          last.enum = last.enum.concat(schema.enum)
         } else {
-          anyOf.push(schema)
+          anyOf.push(last = schema)
         }
       }
-      if (anyOf.length === 1 && isEnumOnly(anyOf[0])) {
-        return addEnumType({ enum: anyOf[0].enum, ...getJsonSchemaAnnotations(ast) })
-      } else {
-        return { anyOf, ...getJsonSchemaAnnotations(ast) }
-      }
+
+      const out = anyOf.length === 1
+        ? isEnumOnly(anyOf[0]) ? addEnumType({ enum: anyOf[0].enum }) : anyOf[0]
+        : { anyOf }
+
+      return { ...out, ...getJsonSchemaAnnotations(ast) }
     }
     case "Enums": {
-      return {
-        $comment: "/schemas/enums",
-        anyOf: ast.enums.map((e) => addEnumType({ title: e[0], enum: [e[1]] })),
-        ...getJsonSchemaAnnotations(ast)
-      }
+      const anyOf = ast.enums.map((e) => addEnumType({ title: e[0], enum: [e[1]] }))
+      return anyOf.length >= 1 ?
+        {
+          $comment: "/schemas/enums",
+          anyOf,
+          ...getJsonSchemaAnnotations(ast)
+        } :
+        {
+          ...constNever,
+          ...getJsonSchemaAnnotations(ast)
+        }
     }
     case "Refinement": {
       // The jsonSchema annotation is required only if the refinement does not have a transformation

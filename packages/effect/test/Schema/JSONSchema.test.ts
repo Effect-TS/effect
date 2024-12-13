@@ -680,6 +680,32 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Enums", () => {
+    it("empty enum", () => {
+      enum Empty {}
+      const jsonSchema = expectJSONSchema(Schema.Enums(Empty), {
+        "$id": "/schemas/never",
+        "not": {}
+      })
+      const validate = getAjvValidate(jsonSchema)
+      expect(validate(1)).toEqual(false)
+    })
+
+    it("single enum", () => {
+      enum Fruits {
+        Apple
+      }
+      expectJSONSchemaAnnotations(Schema.Enums(Fruits), {
+        "$comment": "/schemas/enums",
+        "anyOf": [
+          {
+            "type": "number",
+            "title": "Apple",
+            "enum": [0]
+          }
+        ]
+      })
+    })
+
     it("numeric enums", () => {
       enum Fruits {
         Apple,
