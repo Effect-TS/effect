@@ -1,5 +1,147 @@
 # @effect/platform
 
+## 0.71.2
+
+### Patch Changes
+
+- [#4138](https://github.com/Effect-TS/effect/pull/4138) [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e) Thanks @gcanti! - JSONSchema: handle the `nullable` keyword for OpenAPI target, closes #4075.
+
+  Before
+
+  ```ts
+  import { OpenApiJsonSchema } from "@effect/platform"
+  import { Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(JSON.stringify(OpenApiJsonSchema.make(schema), null, 2))
+  /*
+  {
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "enum": [
+          null
+        ]
+      }
+    ]
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { OpenApiJsonSchema } from "@effect/platform"
+  import { Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(JSON.stringify(OpenApiJsonSchema.make(schema), null, 2))
+  /*
+  {
+    "type": "string",
+    "nullable": true
+  }
+  */
+  ```
+
+- [#4128](https://github.com/Effect-TS/effect/pull/4128) [`8d978c5`](https://github.com/Effect-TS/effect/commit/8d978c53f6fcc98d9d645ecba3e4b55d4297dd36) Thanks @gcanti! - JSONSchema: add `type` for homogeneous enum schemas, closes #4127
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Literal("a", "b")
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "enum": [
+      "a",
+      "b"
+    ]
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Literal("a", "b")
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "enum": [
+      "a",
+      "b"
+    ]
+  }
+  */
+  ```
+
+- [#4138](https://github.com/Effect-TS/effect/pull/4138) [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e) Thanks @gcanti! - JSONSchema: use `{ "type": "null" }` to represent the `null` literal
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "enum": [
+          null
+        ]
+      }
+    ]
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ]
+  }
+  */
+  ```
+
+- Updated dependencies [[`2408616`](https://github.com/Effect-TS/effect/commit/24086163b60b09cc6d0885bd565ef080dcbe866b), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e), [`8d978c5`](https://github.com/Effect-TS/effect/commit/8d978c53f6fcc98d9d645ecba3e4b55d4297dd36), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e)]:
+  - effect@3.11.7
+
 ## 0.71.1
 
 ### Patch Changes
