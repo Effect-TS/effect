@@ -754,86 +754,70 @@ const linesSeparated = (self: string, stripped: boolean): LinesIterator => new L
  *
  * @example
  * import { truncate } from "effect/String";
- * truncate("Hello World!", 5); // "Hello..."
+ * truncate("Hello World!", { length: 5 }); // "Hello..."
  */
 export const truncate: {
   (
     str: string,
-    lengthOrOptions:
-      | number
-      | {
-        /**
-         * The length to truncate the string to.
-         */
-        length: number
+    options: {
+      /**
+       * The length to truncate the string to.
+       */
+      readonly length: number
 
-        /**
-         * The separator to use to truncate the string. Use " " to truncate evenly on a word boundary.
-         */
-        separator?: string
-        /**
-         * The omission string to add to the end of the truncated string. Defaults to "...".
-         */
-        omission?: string
-      }
+      /**
+       * The separator to use to truncate the string. Use " " to truncate evenly on a word boundary.
+       */
+      readonly separator?: string
+      /**
+       * The omission string to add to the end of the truncated string. Defaults to "...".
+       */
+      readonly omission?: string
+    }
   ): string
 
   (
-    lengthOrOptions:
-      | number
-      | {
-        /**
-         * The length to truncate the string to.
-         */
-        length: number
+    options: {
+      /**
+       * The length to truncate the string to.
+       */
+      readonly length: number
 
-        /**
-         * The separator to use to truncate the string. Use " " to truncate evenly on a word boundary.
-         */
-        separator?: string
+      /**
+       * The separator to use to truncate the string. Use " " to truncate evenly on a word boundary.
+       */
+      readonly separator?: string
 
-        /**
-         * The omission string to add to the end of the truncated string. Defaults to "...".
-         */
-        omission?: string
-      }
+      /**
+       * The omission string to add to the end of the truncated string. Defaults to "...".
+       */
+      readonly omission?: string
+    }
   ): (str: string) => string
 } = dual(
   2,
   (
     str: string,
-    lengthOrOptions:
-      | number
-      | {
-        length: number
-        separator?: string
-        omission?: string
-      }
+    options: {
+      readonly length: number
+      readonly separator?: string
+      readonly omission?: string
+    }
   ) => {
-    const len = typeof lengthOrOptions === "number"
-      ? lengthOrOptions
-      : lengthOrOptions.length
-
-    if (str.length <= len) {
+    if (str.length <= options.length) {
       return str
     }
 
-    let subString = str.slice(0, len)
+    let subString = str.slice(0, options.length)
 
-    if (
-      typeof lengthOrOptions === "object" &&
-      typeof lengthOrOptions.separator === "string"
-    ) {
+    if (typeof options.separator === "string") {
       subString = subString.slice(
         0,
-        subString.lastIndexOf(lengthOrOptions.separator)
+        subString.lastIndexOf(options.separator)
       )
     }
 
-    const omission = typeof lengthOrOptions === "object"
-      ? (lengthOrOptions.omission ?? "...")
-      : "..."
-
+    const omission = options.omission ?? "..."
     return subString + omission
   }
 )

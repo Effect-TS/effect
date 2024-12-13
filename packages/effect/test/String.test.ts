@@ -282,7 +282,6 @@ describe("String", () => {
   })
 
   it("truncate", () => {
-    expect(S.truncate("Hello World!", 5)).toBe("Hello...")
     expect(S.truncate("Hello World!", { length: 5 })).toBe("Hello...")
     expect(S.truncate("Hello World!", { length: 5, omission: "" })).toBe("Hello")
     expect(S.truncate("Hello World!", { length: 7 })).toBe("Hello W...")
