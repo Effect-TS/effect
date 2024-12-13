@@ -429,6 +429,36 @@ export const merge: {
 } = internal.merge
 
 /**
+ * Merges any number of `Context`s, returning a new `Context` containing the services of all.
+ *
+ * @param ctxs - The `Context`s to merge.
+ *
+ * @example
+ * ```ts
+ * import { Context } from "effect"
+ *
+ * const Port = Context.GenericTag<{ PORT: number }>("Port")
+ * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+ * const Host = Context.GenericTag<{ HOST: string }>("Host")
+ *
+ * const firstContext = Context.make(Port, { PORT: 8080 })
+ * const secondContext = Context.make(Timeout, { TIMEOUT: 5000 })
+ * const thirdContext = Context.make(Host, { HOST: "localhost" })
+ *
+ * const Services = Context.mergeAll(firstContext, secondContext, thirdContext)
+ *
+ * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
+ * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+ * assert.deepStrictEqual(Context.get(Services, Host), { HOST: "localhost" })
+ * ```
+ *
+ * @since 2.0.0
+ */
+export const mergeAll: <T extends Array<unknown>>(
+  ...ctxs: [...{ [K in keyof T]: Context<T[K]> }]
+) => Context<T[number]> = internal.mergeAll
+
+/**
  * Returns a new `Context` that contains only the specified services.
  *
  * @param self - The `Context` to prune services from.

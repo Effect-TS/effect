@@ -1,3 +1,4 @@
+import * as A from "../Array.js"
 import type * as C from "../Context.js"
 import * as Equal from "../Equal.js"
 import type { LazyArg } from "../Function.js"
@@ -294,6 +295,16 @@ export const merge = dual<
   }
   return makeContext(map)
 })
+
+/** @internal */
+export const mergeAll = <T extends Array<unknown>>(
+  ...ctxs: [...{ [K in keyof T]: C.Context<T[K]> }]
+): C.Context<T[number]> =>
+  A.reduce(
+    ctxs,
+    empty() as C.Context<T[number]>,
+    merge
+  )
 
 /** @internal */
 export const pick =
