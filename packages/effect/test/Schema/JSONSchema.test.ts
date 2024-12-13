@@ -33,13 +33,43 @@ const expectProperty = <A, I>(
 
 const expectJSONSchema = <A, I>(
   schema: Schema.Schema<A, I>,
-  expected: object
+  expectedJsonSchema: object
 ) => {
   const jsonSchema = JSONSchema.make(schema)
   expect(jsonSchema).toStrictEqual({
     "$schema": "http://json-schema.org/draft-07/schema#",
-    ...expected
+    ...expectedJsonSchema
   })
+  return jsonSchema
+}
+
+const expectJSONSchema2019 = <A, I>(
+  schema: Schema.Schema<A, I>,
+  expectedJsonSchema: object,
+  expectedDefinitions: object
+) => {
+  const definitions = {}
+  const jsonSchema = JSONSchema.fromAST(schema.ast, {
+    definitions,
+    target: "jsonSchema2019-09"
+  })
+  expect(jsonSchema).toStrictEqual(expectedJsonSchema)
+  expect(definitions).toStrictEqual(expectedDefinitions)
+  return jsonSchema
+}
+
+const expectJSONSchemaOpenApi31 = <A, I>(
+  schema: Schema.Schema<A, I>,
+  expectedJsonSchema: object,
+  expectedDefinitions: object
+) => {
+  const definitions = {}
+  const jsonSchema = JSONSchema.fromAST(schema.ast, {
+    definitions,
+    target: "openApi3.1"
+  })
+  expect(jsonSchema).toStrictEqual(expectedJsonSchema)
+  expect(definitions).toStrictEqual(expectedDefinitions)
   return jsonSchema
 }
 
@@ -92,6 +122,52 @@ describe("makeWithOptions", () => {
 
   describe("target", () => {
     describe("jsonSchema7", () => {
+      describe("nullable handling", () => {
+        it("Null", () => {
+          const schema = Schema.Null
+          expectJSONSchemaAnnotations(schema, { "type": "null" })
+        })
+
+        it("NullOr", () => {
+          const schema = Schema.NullOr(Schema.String)
+          expectJSONSchemaAnnotations(schema, {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          })
+        })
+
+        it("Literal | null", () => {
+          const schema = Schema.Literal("a", null)
+          expectJSONSchemaAnnotations(schema, {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              { "type": "null" }
+            ]
+          })
+        })
+
+        it("Literal | null(with description)", () => {
+          const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
+          expectJSONSchemaAnnotations(schema, {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              {
+                "type": "null",
+                "description": "mydescription"
+              }
+            ]
+          })
+        })
+      })
+
       it("parseJson handling", () => {
         const schema = Schema.parseJson(Schema.Struct({
           a: Schema.parseJson(Schema.NumberFromString)
@@ -109,16 +185,57 @@ describe("makeWithOptions", () => {
     })
 
     describe("jsonSchema2019-09", () => {
+      describe("nullable handling", () => {
+        it("Null", () => {
+          const schema = Schema.Null
+          expectJSONSchema2019(schema, { "type": "null" }, {})
+        })
+
+        it("NullOr", () => {
+          const schema = Schema.NullOr(Schema.String)
+          expectJSONSchema2019(schema, {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          }, {})
+        })
+
+        it("Literal | null", () => {
+          const schema = Schema.Literal("a", null)
+          expectJSONSchema2019(schema, {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              { "type": "null" }
+            ]
+          }, {})
+        })
+
+        it("Literal | null(with description)", () => {
+          const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
+          expectJSONSchema2019(schema, {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              {
+                "type": "null",
+                "description": "mydescription"
+              }
+            ]
+          }, {})
+        })
+      })
+
       it("parseJson handling", () => {
         const schema = Schema.parseJson(Schema.Struct({
           a: Schema.parseJson(Schema.NumberFromString)
         }))
-        const definitions = {}
-        const jsonSchema = JSONSchema.fromAST(schema.ast, {
-          definitions,
-          target: "jsonSchema2019-09"
-        })
-        expect(jsonSchema).toStrictEqual({
+        expectJSONSchema2019(schema, {
           "type": "string",
           "contentMediaType": "application/json",
           "contentSchema": {
@@ -135,8 +252,7 @@ describe("makeWithOptions", () => {
             },
             "additionalProperties": false
           }
-        })
-        expect(definitions).toStrictEqual({
+        }, {
           "NumberFromString": {
             "description": "a string that will be parsed into a number",
             "type": "string"
@@ -146,16 +262,44 @@ describe("makeWithOptions", () => {
     })
 
     describe("openApi3.1", () => {
+      describe("nullable handling", () => {
+        it("Null", () => {
+          const schema = Schema.Null
+          expectJSONSchemaOpenApi31(schema, { "enum": [null] }, {})
+        })
+
+        it.skip("NullOr", () => {
+          const schema = Schema.NullOr(Schema.String)
+          expectJSONSchemaOpenApi31(schema, {
+            "type": "string",
+            "nullable": true
+          }, {})
+        })
+
+        it.skip("Literal | null", () => {
+          const schema = Schema.Literal("a", null)
+          expectJSONSchemaOpenApi31(schema, {
+            "type": "string",
+            "enum": ["a"],
+            "nullable": true
+          }, {})
+        })
+
+        it.skip("Literal | null(with description)", () => {
+          const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
+          expectJSONSchemaOpenApi31(schema, {
+            "type": "string",
+            "enum": ["a"],
+            "nullable": true
+          }, {})
+        })
+      })
+
       it("parseJson handling", () => {
         const schema = Schema.parseJson(Schema.Struct({
           a: Schema.parseJson(Schema.NumberFromString)
         }))
-        const definitions = {}
-        const jsonSchema = JSONSchema.fromAST(schema.ast, {
-          definitions,
-          target: "openApi3.1"
-        })
-        expect(jsonSchema).toStrictEqual({
+        expectJSONSchemaOpenApi31(schema, {
           "type": "string",
           "contentMediaType": "application/json",
           "contentSchema": {
@@ -172,8 +316,7 @@ describe("makeWithOptions", () => {
             },
             "additionalProperties": false
           }
-        })
-        expect(definitions).toStrictEqual({
+        }, {
           "NumberFromString": {
             "description": "a string that will be parsed into a number",
             "type": "string"
@@ -478,9 +621,17 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Literal", () => {
-    it("Null", () => {
+    it("null literal", () => {
       expectJSONSchemaAnnotations(Schema.Null, {
-        "enum": [null]
+        "type": "null"
+      })
+      expectJSONSchemaProperty(Schema.Null.annotations({ identifier: "9b7d3b2b-3b3a-4741-8c4c-9cae776c47f6" }), {
+        "$defs": {
+          "9b7d3b2b-3b3a-4741-8c4c-9cae776c47f6": {
+            "type": "null"
+          }
+        },
+        "$ref": "#/$defs/9b7d3b2b-3b3a-4741-8c4c-9cae776c47f6"
       })
     })
 
@@ -1924,12 +2075,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "properties": {
             "a": {
               "anyOf": [
-                {
-                  "$ref": "#/$defs/NonEmptyString"
-                },
-                {
-                  "enum": [null]
-                }
+                { "$ref": "#/$defs/NonEmptyString" },
+                { "type": "null" }
               ]
             }
           },

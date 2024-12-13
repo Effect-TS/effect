@@ -4,7 +4,6 @@
 import * as JSONSchema from "effect/JSONSchema"
 import * as Record from "effect/Record"
 import type * as Schema from "effect/Schema"
-import type * as AST from "effect/SchemaAST"
 
 /**
  * @category model
@@ -163,7 +162,7 @@ export interface Array extends Annotations {
  */
 export interface Enum extends Annotations {
   type?: "string" | "number" | "boolean"
-  enum: globalThis.Array<AST.LiteralValue>
+  enum: globalThis.Array<string | number | boolean | null>
 }
 
 /**
@@ -256,14 +255,15 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Root => {
  * @since 1.0.0
  */
 export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
-  readonly defs: Record<string, JsonSchema>
+  readonly defs: Record<string, any>
   readonly defsPath?: string
   readonly topLevelReferenceStrategy?: "skip" | "keep"
 }): JsonSchema => {
-  return JSONSchema.fromAST(schema.ast, {
+  const jsonSchema = JSONSchema.fromAST(schema.ast, {
     definitions: options.defs,
     definitionPath: options.defsPath ?? "#/components/schemas/",
     target: "openApi3.1",
     topLevelReferenceStrategy: options.topLevelReferenceStrategy ?? "keep"
   })
+  return jsonSchema as JsonSchema
 }

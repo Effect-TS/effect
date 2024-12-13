@@ -87,6 +87,14 @@ export interface JsonSchema7Ref extends JsonSchemaAnnotations {
 
 /**
  * @category model
+ * @since 3.11.6
+ */
+export interface JsonSchema7Null extends JsonSchemaAnnotations {
+  type: "null"
+}
+
+/**
+ * @category model
  * @since 3.10.0
  */
 export interface JsonSchema7String extends JsonSchemaAnnotations {
@@ -164,7 +172,7 @@ export interface JsonSchema7Array extends JsonSchemaAnnotations {
  */
 export interface JsonSchema7Enum extends JsonSchemaAnnotations {
   type?: "string" | "number" | "boolean"
-  enum: Array<AST.LiteralValue>
+  enum: Array<string | number | boolean>
 }
 
 /**
@@ -213,6 +221,7 @@ export type JsonSchema7 =
   | JsonSchema7object
   | JsonSchema7empty
   | JsonSchema7Ref
+  | JsonSchema7Null
   | JsonSchema7String
   | JsonSchema7Number
   | JsonSchema7Integer
@@ -242,11 +251,17 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
     // Special case top level `parseJson` transformations
     ? schema.ast.to
     : schema.ast
-  const out: JsonSchema7Root = fromAST(ast, {
+  const jsonSchema = fromAST(ast, {
     definitions
   })
-  out.$schema = $schema
-  if (!Record.isEmptyRecord(definitions)) {
+  const out: JsonSchema7Root = {
+    $schema,
+    $defs: {},
+    ...jsonSchema
+  }
+  if (Record.isEmptyRecord(definitions)) {
+    delete out.$defs
+  } else {
     out.$defs = definitions
   }
   return out
@@ -414,16 +429,21 @@ const isEnumOnly = (schema: JsonSchema7): schema is JsonSchema7Enum => {
   return "enum" in schema && (len === 1 || ("type" in schema && len === 2))
 }
 
+// Some validators do not support enums without a type keyword. This function
+// adds a type keyword to the schema if it is missing and the enum values are
+// homogeneous.
 const addEnumType = (schema: JsonSchema7Enum): JsonSchema7Enum => {
-  const es = schema["enum"]
-  if (es.every(Predicate.isString)) {
-    return { "type": "string", ...schema }
-  }
-  if (es.every(Predicate.isNumber)) {
-    return { "type": "number", ...schema }
-  }
-  if (es.every(Predicate.isBoolean)) {
-    return { "type": "boolean", ...schema }
+  if (!("type" in schema)) {
+    const type: "string" | "number" | "boolean" | undefined = schema.enum.every(Predicate.isString) ?
+      "string" :
+      schema.enum.every(Predicate.isNumber) ?
+      "number" :
+      schema.enum.every(Predicate.isBoolean) ?
+      "boolean" :
+      undefined
+    if (type !== undefined) {
+      return { type, ...schema }
+    }
   }
   return schema
 }
@@ -456,15 +476,22 @@ const mergeRefinements = (from: any, jsonSchema: any, annotations: any): any => 
   return out
 }
 
+type Options = {
+  readonly getRef: (id: string) => string
+  readonly target: Target
+}
+
+type Path = ReadonlyArray<PropertyKey>
+
+const isContentSchemaSupported = (options: Options) => options.target !== "jsonSchema7"
+const isNullTypeKeywordSupported = (options: Options) => options.target !== "openApi3.1"
+
 const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
   handleIdentifier: boolean,
-  path: ReadonlyArray<PropertyKey>,
-  options: {
-    readonly getRef: (id: string) => string
-    readonly target: Target
-  }
+  path: Path,
+  options: Options
 ): JsonSchema7 => {
   if (handleIdentifier) {
     const identifier = AST.getJSONIdentifier(ast)
@@ -504,19 +531,28 @@ const go = (
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "Literal": {
       const literal = ast.literal
-      if (Predicate.isBigInt(literal)) {
-        throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
-      }
       if (literal === null) {
-        return { enum: [null], ...getJsonSchemaAnnotations(ast) }
-      }
-      if (Predicate.isString(literal)) {
+        if (isNullTypeKeywordSupported(options)) {
+          // https://json-schema.org/draft-07/draft-handrews-json-schema-validation-00.pdf
+          // Section 6.1.1
+          return { type: "null", ...getJsonSchemaAnnotations(ast) }
+        } else {
+          // OpenAPI 3.1 does not support the "null" type keyword
+          // https://swagger.io/docs/specification/v3_0/data-models/data-types/#null
+          return {
+            // @ts-expect-error
+            enum: [null],
+            ...getJsonSchemaAnnotations(ast)
+          }
+        }
+      } else if (Predicate.isString(literal)) {
         return { type: "string", enum: [literal], ...getJsonSchemaAnnotations(ast) }
-      }
-      if (Predicate.isNumber(literal)) {
+      } else if (Predicate.isNumber(literal)) {
         return { type: "number", enum: [literal], ...getJsonSchemaAnnotations(ast) }
+      } else if (Predicate.isBoolean(literal)) {
+        return { type: "boolean", enum: [literal], ...getJsonSchemaAnnotations(ast) }
       }
-      return { type: "boolean", enum: [literal], ...getJsonSchemaAnnotations(ast) }
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     }
     case "UniqueSymbol":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
@@ -724,7 +760,7 @@ const go = (
           "type": "string",
           "contentMediaType": "application/json"
         }
-        if (options.target !== "jsonSchema7") {
+        if (isContentSchemaSupported(options)) {
           out["contentSchema"] = go(ast.to, $defs, handleIdentifier, path, options)
         }
         return out
