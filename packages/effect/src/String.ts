@@ -769,6 +769,7 @@ export const truncate: {
        * The separator to use to truncate the string. Use " " to truncate evenly on a word boundary.
        */
       readonly separator?: string
+
       /**
        * The omission string to add to the end of the truncated string. Defaults to "...".
        */
