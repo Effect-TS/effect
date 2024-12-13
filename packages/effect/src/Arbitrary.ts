@@ -268,6 +268,9 @@ const go = (
         return hook.value(ctx)
     }
   }
+  if (AST.isDeclaration(ast)) {
+    throw new Error(errors_.getArbitraryMissingAnnotationErrorMessage(path, ast))
+  }
   const op = toOp(ast, ctx, path)
   switch (op._tag) {
     case "Succeed":
@@ -289,7 +292,7 @@ export const toOp = (
 ): Op => {
   switch (ast._tag) {
     case "Declaration":
-      throw new Error(errors_.getArbitraryMissingAnnotationErrorMessage(path, ast))
+      return new Succeed(go(ast, ctx, path))
     case "Literal":
       return new Succeed((fc) => fc.constant(ast.literal))
     case "UniqueSymbol":

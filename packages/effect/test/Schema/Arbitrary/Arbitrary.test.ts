@@ -521,6 +521,13 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
   })
 
   describe("Refinement", () => {
+    describe("declaration filters", () => {
+      it("ValidDateFromSelf", () => {
+        const schema = S.ValidDateFromSelf
+        expectValidArbitrary(schema)
+      })
+    })
+
     describe("array filters", () => {
       it("minItems", () => {
         const schema = S.Array(S.String).pipe(S.minItems(2))
