@@ -158,14 +158,14 @@ export const toWebHandler = <LA, LE>(
     readonly memoMap?: Layer.MemoMap
   }
 ): {
-  readonly handler: (request: Request) => Promise<Response>
+  readonly handler: (request: Request, context?: Context.Context<never> | undefined) => Promise<Response>
   readonly dispose: () => Promise<void>
 } => {
   const runtime = ManagedRuntime.make(
     Layer.mergeAll(layer, Router.Live, Middleware.layer),
     options?.memoMap
   )
-  let handlerCached: ((request: Request) => Promise<Response>) | undefined
+  let handlerCached: ((request: Request, context?: Context.Context<never> | undefined) => Promise<Response>) | undefined
   const handlerPromise = Effect.gen(function*() {
     const app = yield* httpApp
     const rt = yield* runtime.runtimeEffect
@@ -173,11 +173,11 @@ export const toWebHandler = <LA, LE>(
     handlerCached = handler
     return handler
   }).pipe(runtime.runPromise)
-  function handler(request: Request): Promise<Response> {
+  function handler(request: Request, context?: Context.Context<never> | undefined): Promise<Response> {
     if (handlerCached !== undefined) {
-      return handlerCached(request)
+      return handlerCached(request, context)
     }
-    return handlerPromise.then((handler) => handler(request))
+    return handlerPromise.then((handler) => handler(request, context))
   }
   return { handler, dispose: runtime.dispose } as const
 }
