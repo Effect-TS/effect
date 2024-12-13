@@ -4,7 +4,7 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import type * as FiberRef from "effect/FiberRef"
+import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
@@ -160,11 +160,20 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
       )
       return Effect.void
     }, middleware)
-    return (request: Request): Promise<Response> =>
+    return (request: Request, context?: Context.Context<never> | undefined): Promise<Response> =>
       new Promise((resolve) => {
+        const contextMap = new Map<string, any>(
+          context ?
+            [
+              ...runtime.context.unsafeMap,
+              ...context.unsafeMap
+            ] :
+            runtime.context.unsafeMap
+        )
         const httpServerRequest = ServerRequest.fromWeb(request)
+        contextMap.set(ServerRequest.HttpServerRequest.key, httpServerRequest)
         ;(httpServerRequest as any)[resolveSymbol] = resolve
-        const fiber = run(Effect.provideService(httpApp, ServerRequest.HttpServerRequest, httpServerRequest))
+        const fiber = run(Effect.locally(httpApp as any, FiberRef.currentContext, Context.unsafeMake(contextMap)))
         request.signal?.addEventListener("abort", () => {
           fiber.unsafeInterruptAsFork(ServerError.clientAbortFiberId)
         }, { once: true })
@@ -179,7 +188,9 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
 export const toWebHandler: <E>(
   self: Default<E, Scope.Scope>,
   middleware?: HttpMiddleware | undefined
-) => (request: Request) => Promise<Response> = toWebHandlerRuntime(Runtime.defaultRuntime)
+) => (request: Request, context?: Context.Context<never> | undefined) => Promise<Response> = toWebHandlerRuntime(
+  Runtime.defaultRuntime
+)
 
 /**
  * @since 1.0.0
@@ -191,12 +202,13 @@ export const toWebHandlerLayer = <E, R, RE>(
   middleware?: HttpMiddleware | undefined
 ): {
   readonly close: () => Promise<void>
-  readonly handler: (request: Request) => Promise<Response>
+  readonly handler: (request: Request, context?: Context.Context<never> | undefined) => Promise<Response>
 } => {
   const scope = Effect.runSync(Scope.make())
   const close = () => Effect.runPromise(Scope.close(scope, Exit.void))
   const build = Effect.map(Layer.toRuntime(layer), (_) => toWebHandlerRuntime(_)(self, middleware))
   const runner = Effect.runPromise(Scope.extend(build, scope))
-  const handler = (request: Request): Promise<Response> => runner.then((handler) => handler(request))
+  const handler = (request: Request, context?: Context.Context<never> | undefined): Promise<Response> =>
+    runner.then((handler) => handler(request, context))
   return { close, handler } as const
 }
