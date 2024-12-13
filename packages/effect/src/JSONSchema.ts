@@ -487,6 +487,9 @@ const isContentSchemaSupported = (options: Options) => options.target !== "jsonS
 
 const isNullTypeKeywordSupported = (options: Options) => options.target !== "openApi3.1"
 
+const isNeverJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Never =>
+  "$id" in jsonSchema && jsonSchema.$id === "/schemas/never"
+
 const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
@@ -701,19 +704,28 @@ const go = (
       const anyOf: Array<JsonSchema7> = []
       let last: JsonSchema7 | undefined = undefined
       for (const type of ast.types) {
-        const schema = go(type, $defs, true, path, options)
-        if ("enum" in schema && isEnumOnly(schema) && last !== undefined && isEnumOnly(last)) {
-          last.enum = last.enum.concat(schema.enum)
-        } else {
-          anyOf.push(last = schema)
+        const jsonSchema = go(type, $defs, true, path, options)
+        if (!isNeverJSONSchema(jsonSchema)) {
+          if ("enum" in jsonSchema && isEnumOnly(jsonSchema) && last !== undefined && isEnumOnly(last)) {
+            last.enum = last.enum.concat(jsonSchema.enum)
+          } else {
+            anyOf.push(last = jsonSchema)
+          }
         }
       }
 
-      const out = anyOf.length === 1
-        ? isEnumOnly(anyOf[0]) ? addEnumType({ enum: anyOf[0].enum }) : anyOf[0]
-        : { anyOf }
-
-      return { ...out, ...getJsonSchemaAnnotations(ast) }
+      switch (anyOf.length) {
+        case 0:
+          return { ...constNever, ...getJsonSchemaAnnotations(ast) }
+        case 1: {
+          const head = anyOf[0]
+          return isEnumOnly(head) ?
+            addEnumType({ enum: head.enum, ...getJsonSchemaAnnotations(ast) })
+            : { ...head, ...getJsonSchemaAnnotations(ast) }
+        }
+        default:
+          return { anyOf, ...getJsonSchemaAnnotations(ast) }
+      }
     }
     case "Enums": {
       const anyOf = ast.enums.map((e) => addEnumType({ title: e[0], enum: [e[1]] }))

@@ -1787,6 +1787,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Union", () => {
+    it("should ignore never members", () => {
+      expectJSONSchemaAnnotations(Schema.Union(Schema.String, Schema.Never), {
+        "type": "string"
+      })
+      expectJSONSchemaAnnotations(Schema.Union(Schema.String, Schema.Union(Schema.Never, Schema.Never)), {
+        "type": "string"
+      })
+    })
+
     it("string | JsonNumber", () => {
       expectJSONSchemaAnnotations(Schema.Union(Schema.String, JsonNumber), {
         "anyOf": [
@@ -3508,7 +3517,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
-    it.skip("UndefinedOr(Undefined)", () => {
+    it("UndefinedOr(Undefined)", () => {
       expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.UndefinedOr(Schema.Undefined)

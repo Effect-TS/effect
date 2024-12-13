@@ -3,7 +3,7 @@
 "effect": patch
 ---
 
-add `type` for homogeneous enum schemas, closes #4127
+JSONSchema: add `type` for homogeneous enum schemas, closes #4127
 
 Before
 
