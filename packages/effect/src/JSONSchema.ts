@@ -163,6 +163,7 @@ export interface JsonSchema7Array extends JsonSchemaAnnotations {
  * @since 3.10.0
  */
 export interface JsonSchema7Enum extends JsonSchemaAnnotations {
+  type?: "string" | "number" | "boolean"
   enum: Array<AST.LiteralValue>
 }
 
@@ -173,6 +174,7 @@ export interface JsonSchema7Enum extends JsonSchemaAnnotations {
 export interface JsonSchema7Enums extends JsonSchemaAnnotations {
   $comment: "/schemas/enums"
   anyOf: Array<{
+    type: "string" | "number"
     title: string
     enum: [string | number]
   }>
@@ -405,10 +407,26 @@ const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
     ("enum" in jsonSchema) || ("$ref" in jsonSchema)
 }
 
-// Returns true if the schema is an enum with no other properties.
-// This is used to merge enums together.
-const isEnumOnly = (schema: JsonSchema7): schema is JsonSchema7Enum =>
-  "enum" in schema && Object.keys(schema).length === 1
+// Returns true if the schema is an enum with no other properties other than the
+// optional "type". This is used to merge enums together.
+const isEnumOnly = (schema: JsonSchema7): schema is JsonSchema7Enum => {
+  const len = Object.keys(schema).length
+  return "enum" in schema && (len === 1 || ("type" in schema && len === 2))
+}
+
+const addEnumType = (schema: JsonSchema7Enum): JsonSchema7Enum => {
+  const es = schema["enum"]
+  if (es.every(Predicate.isString)) {
+    return { "type": "string", ...schema }
+  }
+  if (es.every(Predicate.isNumber)) {
+    return { "type": "number", ...schema }
+  }
+  if (es.every(Predicate.isBoolean)) {
+    return { "type": "boolean", ...schema }
+  }
+  return schema
+}
 
 const mergeRefinements = (from: any, jsonSchema: any, annotations: any): any => {
   const out: any = { ...from, ...annotations, ...jsonSchema }
@@ -486,12 +504,19 @@ const go = (
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "Literal": {
       const literal = ast.literal
+      if (Predicate.isBigInt(literal)) {
+        throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+      }
       if (literal === null) {
         return { enum: [null], ...getJsonSchemaAnnotations(ast) }
-      } else if (Predicate.isString(literal) || Predicate.isNumber(literal) || Predicate.isBoolean(literal)) {
-        return { enum: [literal], ...getJsonSchemaAnnotations(ast) }
       }
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+      if (Predicate.isString(literal)) {
+        return { type: "string", enum: [literal], ...getJsonSchemaAnnotations(ast) }
+      }
+      if (Predicate.isNumber(literal)) {
+        return { type: "number", enum: [literal], ...getJsonSchemaAnnotations(ast) }
+      }
+      return { type: "boolean", enum: [literal], ...getJsonSchemaAnnotations(ast) }
     }
     case "UniqueSymbol":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
@@ -640,7 +665,7 @@ const go = (
       for (const type of ast.types) {
         const schema = go(type, $defs, true, path, options)
         if ("enum" in schema) {
-          if (Object.keys(schema).length > 1) {
+          if (!isEnumOnly(schema)) {
             anyOf.push(schema)
           } else {
             const last = anyOf[anyOf.length - 1]
@@ -657,7 +682,7 @@ const go = (
         }
       }
       if (anyOf.length === 1 && isEnumOnly(anyOf[0])) {
-        return { enum: anyOf[0].enum, ...getJsonSchemaAnnotations(ast) }
+        return addEnumType({ enum: anyOf[0].enum, ...getJsonSchemaAnnotations(ast) })
       } else {
         return { anyOf, ...getJsonSchemaAnnotations(ast) }
       }
@@ -665,7 +690,7 @@ const go = (
     case "Enums": {
       return {
         $comment: "/schemas/enums",
-        anyOf: ast.enums.map((e) => ({ title: e[0], enum: [e[1]] })),
+        anyOf: ast.enums.map((e) => addEnumType({ title: e[0], enum: [e[1]] })),
         ...getJsonSchemaAnnotations(ast)
       }
     }

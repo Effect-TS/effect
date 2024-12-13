@@ -486,30 +486,37 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
     it("string literals", () => {
       expectJSONSchemaAnnotations(Schema.Literal("a"), {
+        "type": "string",
         "enum": ["a"]
       })
       expectJSONSchemaAnnotations(Schema.Literal("a", "b"), {
+        "type": "string",
         "enum": ["a", "b"]
       })
     })
 
     it("number literals", () => {
       expectJSONSchemaAnnotations(Schema.Literal(1), {
+        "type": "number",
         "enum": [1]
       })
       expectJSONSchemaAnnotations(Schema.Literal(1, 2), {
+        "type": "number",
         "enum": [1, 2]
       })
     })
 
     it("boolean literals", () => {
       expectJSONSchemaAnnotations(Schema.Literal(true), {
+        "type": "boolean",
         "enum": [true]
       })
       expectJSONSchemaAnnotations(Schema.Literal(false), {
+        "type": "boolean",
         "enum": [false]
       })
       expectJSONSchemaAnnotations(Schema.Literal(true, false), {
+        "type": "boolean",
         "enum": [true, false]
       })
     })
@@ -531,10 +538,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$comment": "/schemas/enums",
         "anyOf": [
           {
+            "type": "number",
             "title": "Apple",
             "enum": [0]
           },
           {
+            "type": "number",
             "title": "Banana",
             "enum": [1]
           }
@@ -551,10 +560,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$comment": "/schemas/enums",
         "anyOf": [
           {
+            "type": "string",
             "title": "Apple",
             "enum": ["apple"]
           },
           {
+            "type": "string",
             "title": "Banana",
             "enum": ["banana"]
           }
@@ -572,14 +583,17 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$comment": "/schemas/enums",
         "anyOf": [
           {
+            "type": "string",
             "title": "Apple",
             "enum": ["apple"]
           },
           {
+            "type": "string",
             "title": "Banana",
             "enum": ["banana"]
           },
           {
+            "type": "number",
             "title": "Cantaloupe",
             "enum": [0]
           }
@@ -597,14 +611,17 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$comment": "/schemas/enums",
         "anyOf": [
           {
+            "type": "string",
             "title": "Apple",
             "enum": ["apple"]
           },
           {
+            "type": "string",
             "title": "Banana",
             "enum": ["banana"]
           },
           {
+            "type": "number",
             "title": "Cantaloupe",
             "enum": [3]
           }
@@ -1605,6 +1622,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     describe("Union including literals", () => {
       it(`1 | 2`, () => {
         expectJSONSchemaAnnotations(Schema.Union(Schema.Literal(1), Schema.Literal(2)), {
+          "type": "number",
           "enum": [1, 2]
         })
       })
@@ -1617,8 +1635,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           ),
           {
             "anyOf": [
-              { "enum": [1], "description": "43d87cd1-df64-457f-8119-0401ecd1399e" },
-              { "enum": [2] }
+              {
+                "type": "number",
+                "enum": [1],
+                "description": "43d87cd1-df64-457f-8119-0401ecd1399e"
+              },
+              {
+                "type": "number",
+                "enum": [2]
+              }
             ]
           }
         )
@@ -1632,8 +1657,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           ),
           {
             "anyOf": [
-              { "enum": [1] },
-              { "enum": [2], "description": "28e1ba58-7c13-4667-88cb-2baa1ac31a0f" }
+              {
+                "type": "number",
+                "enum": [1]
+              },
+              {
+                "type": "number",
+                "enum": [2],
+                "description": "28e1ba58-7c13-4667-88cb-2baa1ac31a0f"
+              }
             ]
           }
         )
@@ -1642,7 +1674,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it(`1 | 2 | string`, () => {
         expectJSONSchemaAnnotations(Schema.Union(Schema.Literal(1), Schema.Literal(2), Schema.String), {
           "anyOf": [
-            { "enum": [1, 2] },
+            {
+              "type": "number",
+              "enum": [1, 2]
+            },
             { "type": "string" }
           ]
         })
@@ -1651,7 +1686,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it(`(1 | 2) | string`, () => {
         expectJSONSchemaAnnotations(Schema.Union(Schema.Literal(1, 2), Schema.String), {
           "anyOf": [
-            { "enum": [1, 2] },
+            {
+              "type": "number",
+              "enum": [1, 2]
+            },
             { "type": "string" }
           ]
         })
@@ -1665,7 +1703,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           ),
           {
             "anyOf": [
-              { "enum": [1, 2], "description": "d0121d0e-8b56-4a2e-9963-47a0965d6a3c" },
+              {
+                "type": "number",
+                "description": "d0121d0e-8b56-4a2e-9963-47a0965d6a3c",
+                "enum": [1, 2]
+              },
               { "type": "string" }
             ]
           }
@@ -1681,8 +1723,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           ),
           {
             "anyOf": [
-              { "enum": [1, 2], "description": "eca4431f-c97c-454f-8167-6c2e81430c6b" },
-              { "enum": [3] },
+              {
+                "type": "number",
+                "description": "eca4431f-c97c-454f-8167-6c2e81430c6b",
+                "enum": [1, 2]
+              },
+              {
+                "type": "number",
+                "enum": [3]
+              },
               { "type": "string" }
             ]
           }
@@ -1698,8 +1747,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           ),
           {
             "anyOf": [
-              { "enum": [1], "description": "867c07f5-5710-477c-8296-239694e86562" },
-              { "enum": [2] },
+              {
+                "type": "number",
+                "description": "867c07f5-5710-477c-8296-239694e86562",
+                "enum": [1]
+              },
+              {
+                "type": "number",
+                "enum": [2]
+              },
               { "type": "string" }
             ]
           }
@@ -1715,8 +1771,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           ),
           {
             "anyOf": [
-              { "enum": [1] },
-              { "enum": [2], "description": "4e49a840-5fb8-43f6-916f-565cbf532db4" },
+              {
+                "type": "number",
+                "enum": [1]
+              },
+              {
+                "type": "number",
+                "description": "4e49a840-5fb8-43f6-916f-565cbf532db4",
+                "enum": [2]
+              },
               { "type": "string" }
             ]
           }
@@ -1727,7 +1790,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         expectJSONSchemaAnnotations(Schema.Union(Schema.String, Schema.Literal(1), Schema.Literal(2)), {
           "anyOf": [
             { "type": "string" },
-            { "enum": [1, 2] }
+            {
+              "type": "number",
+              "enum": [1, 2]
+            }
           ]
         })
       })
@@ -1736,7 +1802,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         expectJSONSchemaAnnotations(Schema.Union(Schema.String, Schema.Literal(1, 2)), {
           "anyOf": [
             { "type": "string" },
-            { "enum": [1, 2] }
+            {
+              "type": "number",
+              "enum": [1, 2]
+            }
           ]
         })
       })
@@ -1751,8 +1820,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           {
             "anyOf": [
               { "type": "string" },
-              { "enum": [1], "description": "26521e57-cfb6-4563-abe2-2fe920398e16" },
-              { "enum": [2] }
+              {
+                "type": "number",
+                "description": "26521e57-cfb6-4563-abe2-2fe920398e16",
+                "enum": [1]
+              },
+              {
+                "type": "number",
+                "enum": [2]
+              }
             ]
           }
         )
@@ -1768,8 +1844,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           {
             "anyOf": [
               { "type": "string" },
-              { "enum": [1] },
-              { "enum": [2], "description": "c4fb2a01-68ff-43d2-81d0-de799c06e9c0" }
+              {
+                "type": "number",
+                "enum": [1]
+              },
+              {
+                "type": "number",
+                "description": "c4fb2a01-68ff-43d2-81d0-de799c06e9c0",
+                "enum": [2]
+              }
             ]
           }
         )
@@ -2355,9 +2438,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             ],
             "properties": {
               "type": {
+                "type": "string",
                 "enum": ["operation"]
               },
               "operator": {
+                "type": "string",
                 "enum": ["+", "-"]
               },
               "left": {
@@ -2377,6 +2462,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             ],
             "properties": {
               "type": {
+                "type": "string",
                 "enum": ["expression"]
               },
               "value": {
@@ -2681,10 +2767,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           {
             "$defs": {
               "170d659f-112e-4e3b-85db-464b668f2aed": {
+                "type": "string",
                 "enum": ["a"],
                 "description": "ef296f1c-01fe-4a20-bd35-ed449c964c49"
               },
               "2a4e4f67-3732-4f7b-a505-856e51dd1578": {
+                "type": "string",
                 "enum": ["b"],
                 "description": "effbf54b-a62d-455b-86fa-97a5af46c6f3"
               }
