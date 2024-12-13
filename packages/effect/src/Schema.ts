@@ -6233,8 +6233,8 @@ export class DateFromSelf extends declare(
   {
     identifier: "DateFromSelf",
     description: "a potentially invalid Date instance",
-    pretty: (): pretty_.Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`,
-    arbitrary: (): LazyArbitrary<Date> => (fc) => fc.date({ noInvalidDate: false }),
+    pretty: () => (date) => `new Date(${JSON.stringify(date)})`,
+    arbitrary: () => (fc) => fc.date({ noInvalidDate: false }),
     equivalence: () => Equivalence.Date
   }
 ) {}
