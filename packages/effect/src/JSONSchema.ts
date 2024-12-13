@@ -87,7 +87,7 @@ export interface JsonSchema7Ref extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 3.11.6
+ * @since 3.11.7
  */
 export interface JsonSchema7Null extends JsonSchemaAnnotations {
   type: "null"
@@ -424,28 +424,28 @@ const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
 
 // Returns true if the schema is an enum with no other properties other than the
 // optional "type". This is used to merge enums together.
-const isEnumOnly = (schema: JsonSchema7): schema is JsonSchema7Enum => {
-  const len = Object.keys(schema).length
-  return "enum" in schema && (len === 1 || ("type" in schema && len === 2))
+const isMergeableEnum = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Enum => {
+  const len = Object.keys(jsonSchema).length
+  return "enum" in jsonSchema && (len === 1 || ("type" in jsonSchema && len === 2))
 }
 
 // Some validators do not support enums without a type keyword. This function
 // adds a type keyword to the schema if it is missing and the enum values are
 // homogeneous.
-const addEnumType = (schema: JsonSchema7Enum): JsonSchema7Enum => {
-  if (!("type" in schema)) {
-    const type: "string" | "number" | "boolean" | undefined = schema.enum.every(Predicate.isString) ?
+const addEnumType = (jsonSchema: JsonSchema7): JsonSchema7 => {
+  if ("enum" in jsonSchema && !("type" in jsonSchema)) {
+    const type: "string" | "number" | "boolean" | undefined = jsonSchema.enum.every(Predicate.isString) ?
       "string" :
-      schema.enum.every(Predicate.isNumber) ?
+      jsonSchema.enum.every(Predicate.isNumber) ?
       "number" :
-      schema.enum.every(Predicate.isBoolean) ?
+      jsonSchema.enum.every(Predicate.isBoolean) ?
       "boolean" :
       undefined
     if (type !== undefined) {
-      return { type, ...schema }
+      return { type, ...jsonSchema }
     }
   }
-  return schema
+  return jsonSchema
 }
 
 const mergeRefinements = (from: any, jsonSchema: any, annotations: any): any => {
@@ -702,14 +702,14 @@ const go = (
     }
     case "Union": {
       const anyOf: Array<JsonSchema7> = []
-      let last: JsonSchema7 | undefined = undefined
       for (const type of ast.types) {
         const jsonSchema = go(type, $defs, true, path, options)
         if (!isNeverJSONSchema(jsonSchema)) {
-          if ("enum" in jsonSchema && isEnumOnly(jsonSchema) && last !== undefined && isEnumOnly(last)) {
-            last.enum = last.enum.concat(jsonSchema.enum)
+          const last = anyOf[anyOf.length - 1]
+          if (isMergeableEnum(jsonSchema) && last !== undefined && isMergeableEnum(last)) {
+            anyOf[anyOf.length - 1] = { enum: last.enum.concat(jsonSchema.enum) }
           } else {
-            anyOf.push(last = jsonSchema)
+            anyOf.push(jsonSchema)
           }
         }
       }
@@ -718,13 +718,10 @@ const go = (
         case 0:
           return { ...constNever, ...getJsonSchemaAnnotations(ast) }
         case 1: {
-          const head = anyOf[0]
-          return isEnumOnly(head) ?
-            addEnumType({ enum: head.enum, ...getJsonSchemaAnnotations(ast) })
-            : { ...head, ...getJsonSchemaAnnotations(ast) }
+          return { ...addEnumType(anyOf[0]), ...getJsonSchemaAnnotations(ast) }
         }
         default:
-          return { anyOf, ...getJsonSchemaAnnotations(ast) }
+          return { anyOf: anyOf.map(addEnumType), ...getJsonSchemaAnnotations(ast) }
       }
     }
     case "Enums": {
