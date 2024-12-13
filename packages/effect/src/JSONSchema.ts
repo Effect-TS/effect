@@ -487,8 +487,36 @@ const isContentSchemaSupported = (options: Options) => options.target !== "jsonS
 
 const isNullTypeKeywordSupported = (options: Options) => options.target !== "openApi3.1"
 
+// https://swagger.io/docs/specification/v3_0/data-models/data-types/#null
+const isNullableKeywordSupported = (options: Options) => options.target === "openApi3.1"
+
 const isNeverJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Never =>
   "$id" in jsonSchema && jsonSchema.$id === "/schemas/never"
+
+const isAnyJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Any =>
+  "$id" in jsonSchema && jsonSchema.$id === "/schemas/any"
+
+const isUnknownJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Unknown =>
+  "$id" in jsonSchema && jsonSchema.$id === "/schemas/unknown"
+
+const isVoidJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Void =>
+  "$id" in jsonSchema && jsonSchema.$id === "/schemas/void"
+
+const shrink = (members: Array<JsonSchema7>): Array<JsonSchema7> => {
+  let i = members.findIndex(isAnyJSONSchema)
+  if (i !== -1) {
+    members = [members[i]]
+  }
+  i = members.findIndex(isUnknownJSONSchema)
+  if (i !== -1) {
+    members = [members[i]]
+  }
+  i = members.findIndex(isVoidJSONSchema)
+  if (i !== -1) {
+    members = [members[i]]
+  }
+  return members
+}
 
 const go = (
   ast: AST.AST,
@@ -701,28 +729,77 @@ const go = (
       return { ...output, ...getJsonSchemaAnnotations(ast) }
     }
     case "Union": {
-      const anyOf: Array<JsonSchema7> = []
+      const members: Array<JsonSchema7> = []
       for (const type of ast.types) {
         const jsonSchema = go(type, $defs, true, path, options)
         if (!isNeverJSONSchema(jsonSchema)) {
-          const last = anyOf[anyOf.length - 1]
+          const last = members[members.length - 1]
           if (isMergeableEnum(jsonSchema) && last !== undefined && isMergeableEnum(last)) {
-            anyOf[anyOf.length - 1] = { enum: last.enum.concat(jsonSchema.enum) }
+            members[members.length - 1] = { enum: last.enum.concat(jsonSchema.enum) }
           } else {
-            anyOf.push(jsonSchema)
+            members.push(jsonSchema)
           }
         }
       }
 
-      switch (anyOf.length) {
-        case 0:
-          return { ...constNever, ...getJsonSchemaAnnotations(ast) }
-        case 1: {
-          return { ...addEnumType(anyOf[0]), ...getJsonSchemaAnnotations(ast) }
+      const anyOf = shrink(members)
+
+      const finalize = (anyOf: Array<JsonSchema7>) => {
+        switch (anyOf.length) {
+          case 0:
+            return {
+              ...constNever,
+              ...getJsonSchemaAnnotations(ast)
+            }
+          case 1: {
+            return {
+              ...addEnumType(anyOf[0]),
+              ...getJsonSchemaAnnotations(ast)
+            }
+          }
+          default:
+            return {
+              anyOf: anyOf.map(addEnumType),
+              ...getJsonSchemaAnnotations(ast)
+            }
         }
-        default:
-          return { anyOf: anyOf.map(addEnumType), ...getJsonSchemaAnnotations(ast) }
       }
+
+      if (isNullableKeywordSupported(options)) {
+        let nullable = false
+        const nonNullables: Array<JsonSchema7> = []
+        for (const s of anyOf) {
+          if ("nullable" in s) {
+            nullable = true
+            const nn = { ...s }
+            delete nn.nullable
+            nonNullables.push(nn)
+          } else if (isMergeableEnum(s)) {
+            const nnes = s.enum.filter((e) => e !== null)
+            if (nnes.length < s.enum.length) {
+              nullable = true
+              if (nnes.length === 0) {
+                continue
+              }
+              const nn = { ...s }
+              nn.enum = nnes
+              nonNullables.push(nn)
+            }
+          } else {
+            nonNullables.push(s)
+          }
+        }
+        if (nullable) {
+          const out = finalize(nonNullables)
+          if (!isAnyJSONSchema(out) && !isUnknownJSONSchema(out)) {
+            // @ts-expect-error
+            out.nullable = nullable
+          }
+          return out
+        }
+      }
+
+      return finalize(anyOf)
     }
     case "Enums": {
       const anyOf = ast.enums.map((e) => addEnumType({ title: e[0], enum: [e[1]] }))

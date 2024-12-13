@@ -23,6 +23,7 @@ export interface Annotations {
 export interface Never extends Annotations {
   $id: "/schemas/never"
   not: {}
+  nullable?: boolean
 }
 
 /**
@@ -59,6 +60,7 @@ export interface AnyObject extends Annotations {
     { type: "object" },
     { type: "array" }
   ]
+  nullable?: boolean
 }
 
 /**
@@ -71,6 +73,7 @@ export interface Empty extends Annotations {
     { type: "object" },
     { type: "array" }
   ]
+  nullable?: boolean
 }
 
 /**
@@ -79,6 +82,7 @@ export interface Empty extends Annotations {
  */
 export interface Ref extends Annotations {
   $ref: string
+  nullable?: boolean
 }
 
 /**
@@ -98,6 +102,7 @@ export interface String extends Annotations {
     maxLength?: number
     pattern?: string
   }>
+  nullable?: boolean
 }
 
 /**
@@ -118,6 +123,7 @@ export interface Numeric extends Annotations {
     exclusiveMaximum?: number
     multipleOf?: number
   }>
+  nullable?: boolean
 }
 
 /**
@@ -142,6 +148,7 @@ export interface Integer extends Numeric {
  */
 export interface Boolean extends Annotations {
   type: "boolean"
+  nullable?: boolean
 }
 
 /**
@@ -154,6 +161,7 @@ export interface Array extends Annotations {
   minItems?: number
   maxItems?: number
   additionalItems?: JsonSchema | boolean
+  nullable?: boolean
 }
 
 /**
@@ -163,6 +171,7 @@ export interface Array extends Annotations {
 export interface Enum extends Annotations {
   type?: "string" | "number" | "boolean"
   enum: globalThis.Array<string | number | boolean | null>
+  nullable?: boolean
 }
 
 /**
@@ -176,6 +185,7 @@ export interface Enums extends Annotations {
     title: string
     enum: [string | number]
   }>
+  nullable?: boolean
 }
 
 /**
@@ -184,6 +194,7 @@ export interface Enums extends Annotations {
  */
 export interface AnyOf extends Annotations {
   anyOf: globalThis.Array<JsonSchema>
+  nullable?: boolean
 }
 
 /**
@@ -197,6 +208,7 @@ export interface Object extends Annotations {
   additionalProperties?: boolean | JsonSchema
   patternProperties?: Record<string, JsonSchema>
   propertyNames?: JsonSchema
+  nullable?: boolean
 }
 
 /**
