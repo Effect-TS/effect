@@ -1,24 +1,29 @@
 ---
-"@effect/platform": patch
 "effect": patch
 ---
 
-JSONSchema: add `type` for homogeneous enum schemas, closes #4127
+JSONSchema: ignore never members in unions.
 
 Before
 
 ```ts
 import { JSONSchema, Schema } from "effect"
 
-const schema = Schema.Literal("a", "b")
+const schema = Schema.Union(Schema.String, Schema.Never)
 
 console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
 /*
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "enum": [
-    "a",
-    "b"
+  "anyOf": [
+    {
+      "type": "string"
+    },
+    {
+      "$id": "/schemas/never",
+      "not": {},
+      "title": "never"
+    }
   ]
 }
 */
@@ -29,17 +34,13 @@ After
 ```ts
 import { JSONSchema, Schema } from "effect"
 
-const schema = Schema.Literal("a", "b")
+const schema = Schema.Union(Schema.String, Schema.Never)
 
 console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
 /*
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "string",
-  "enum": [
-    "a",
-    "b"
-  ]
+  "type": "string"
 }
 */
 ```

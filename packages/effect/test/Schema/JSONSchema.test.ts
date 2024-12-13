@@ -33,13 +33,43 @@ const expectProperty = <A, I>(
 
 const expectJSONSchema = <A, I>(
   schema: Schema.Schema<A, I>,
-  expected: object
+  expectedJsonSchema: object
 ) => {
   const jsonSchema = JSONSchema.make(schema)
   expect(jsonSchema).toStrictEqual({
     "$schema": "http://json-schema.org/draft-07/schema#",
-    ...expected
+    ...expectedJsonSchema
   })
+  return jsonSchema
+}
+
+const expectJSONSchema2019 = <A, I>(
+  schema: Schema.Schema<A, I>,
+  expectedJsonSchema: object,
+  expectedDefinitions: object
+) => {
+  const definitions = {}
+  const jsonSchema = JSONSchema.fromAST(schema.ast, {
+    definitions,
+    target: "jsonSchema2019-09"
+  })
+  expect(jsonSchema).toStrictEqual(expectedJsonSchema)
+  expect(definitions).toStrictEqual(expectedDefinitions)
+  return jsonSchema
+}
+
+const expectJSONSchemaOpenApi31 = <A, I>(
+  schema: Schema.Schema<A, I>,
+  expectedJsonSchema: object,
+  expectedDefinitions: object
+) => {
+  const definitions = {}
+  const jsonSchema = JSONSchema.fromAST(schema.ast, {
+    definitions,
+    target: "openApi3.1"
+  })
+  expect(jsonSchema).toStrictEqual(expectedJsonSchema)
+  expect(definitions).toStrictEqual(expectedDefinitions)
   return jsonSchema
 }
 
@@ -92,6 +122,96 @@ describe("makeWithOptions", () => {
 
   describe("target", () => {
     describe("jsonSchema7", () => {
+      describe("nullable handling", () => {
+        it("Null", () => {
+          const schema = Schema.Null
+          expectJSONSchemaAnnotations(schema, { "type": "null" })
+        })
+
+        it("NullOr(String)", () => {
+          const schema = Schema.NullOr(Schema.String)
+          expectJSONSchemaAnnotations(schema, {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          })
+        })
+
+        it("NullOr(Any)", () => {
+          const schema = Schema.NullOr(Schema.Any)
+          expectJSONSchemaAnnotations(schema, {
+            "$id": "/schemas/any",
+            "title": "any"
+          })
+        })
+
+        it("NullOr(Unknown)", () => {
+          const schema = Schema.NullOr(Schema.Unknown)
+          expectJSONSchemaAnnotations(schema, {
+            "$id": "/schemas/unknown",
+            "title": "unknown"
+          })
+        })
+
+        it("NullOr(Void)", () => {
+          const schema = Schema.NullOr(Schema.Void)
+          expectJSONSchemaAnnotations(schema, {
+            "$id": "/schemas/void",
+            "title": "void"
+          })
+        })
+
+        it("Literal | null", () => {
+          const schema = Schema.Literal("a", null)
+          expectJSONSchemaAnnotations(schema, {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              { "type": "null" }
+            ]
+          })
+        })
+
+        it("Literal | null(with description)", () => {
+          const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
+          expectJSONSchemaAnnotations(schema, {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              {
+                "type": "null",
+                "description": "mydescription"
+              }
+            ]
+          })
+        })
+
+        it("Nested nullable unions", () => {
+          const schema = Schema.Union(Schema.NullOr(Schema.String), Schema.Literal("a", null))
+          expectJSONSchemaAnnotations(schema, {
+            "anyOf": [
+              {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ]
+              },
+              {
+                "anyOf": [
+                  { "type": "string", "enum": ["a"] },
+                  { "type": "null" }
+                ]
+              }
+            ]
+          })
+        })
+      })
+
       it("parseJson handling", () => {
         const schema = Schema.parseJson(Schema.Struct({
           a: Schema.parseJson(Schema.NumberFromString)
@@ -109,16 +229,101 @@ describe("makeWithOptions", () => {
     })
 
     describe("jsonSchema2019-09", () => {
+      describe("nullable handling", () => {
+        it("Null", () => {
+          const schema = Schema.Null
+          expectJSONSchema2019(schema, { "type": "null" }, {})
+        })
+
+        it("NullOr(String)", () => {
+          const schema = Schema.NullOr(Schema.String)
+          expectJSONSchema2019(schema, {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          }, {})
+        })
+
+        it("NullOr(Any)", () => {
+          const schema = Schema.NullOr(Schema.Any)
+          expectJSONSchema2019(schema, {
+            "$id": "/schemas/any",
+            "title": "any"
+          }, {})
+        })
+
+        it("NullOr(Unknown)", () => {
+          const schema = Schema.NullOr(Schema.Unknown)
+          expectJSONSchema2019(schema, {
+            "$id": "/schemas/unknown",
+            "title": "unknown"
+          }, {})
+        })
+
+        it("NullOr(Void)", () => {
+          const schema = Schema.NullOr(Schema.Void)
+          expectJSONSchema2019(schema, {
+            "$id": "/schemas/void",
+            "title": "void"
+          }, {})
+        })
+
+        it("Literal | null", () => {
+          const schema = Schema.Literal("a", null)
+          expectJSONSchema2019(schema, {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              { "type": "null" }
+            ]
+          }, {})
+        })
+
+        it("Literal | null(with description)", () => {
+          const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
+          expectJSONSchema2019(schema, {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              {
+                "type": "null",
+                "description": "mydescription"
+              }
+            ]
+          }, {})
+        })
+
+        it("Nested nullable unions", () => {
+          const schema = Schema.Union(Schema.NullOr(Schema.String), Schema.Literal("a", null))
+          expectJSONSchema2019(schema, {
+            "anyOf": [
+              {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ]
+              },
+              {
+                "anyOf": [
+                  { "type": "string", "enum": ["a"] },
+                  { "type": "null" }
+                ]
+              }
+            ]
+          }, {})
+        })
+      })
+
       it("parseJson handling", () => {
         const schema = Schema.parseJson(Schema.Struct({
           a: Schema.parseJson(Schema.NumberFromString)
         }))
-        const definitions = {}
-        const jsonSchema = JSONSchema.fromAST(schema.ast, {
-          definitions,
-          target: "jsonSchema2019-09"
-        })
-        expect(jsonSchema).toStrictEqual({
+        expectJSONSchema2019(schema, {
           "type": "string",
           "contentMediaType": "application/json",
           "contentSchema": {
@@ -135,8 +340,7 @@ describe("makeWithOptions", () => {
             },
             "additionalProperties": false
           }
-        })
-        expect(definitions).toStrictEqual({
+        }, {
           "NumberFromString": {
             "description": "a string that will be parsed into a number",
             "type": "string"
@@ -146,16 +350,216 @@ describe("makeWithOptions", () => {
     })
 
     describe("openApi3.1", () => {
+      describe("nullable handling", () => {
+        it("Null", () => {
+          const schema = Schema.Null
+          expectJSONSchemaOpenApi31(schema, { "enum": [null] }, {})
+        })
+
+        it("NullOr(String)", () => {
+          const schema = Schema.NullOr(Schema.String)
+          expectJSONSchemaOpenApi31(schema, {
+            "type": "string",
+            "nullable": true
+          }, {})
+        })
+
+        it("NullOr(Any)", () => {
+          const schema = Schema.NullOr(Schema.Any)
+          expectJSONSchemaOpenApi31(schema, {
+            "$id": "/schemas/any",
+            "title": "any"
+          }, {})
+        })
+
+        it("NullOr(Unknown)", () => {
+          const schema = Schema.NullOr(Schema.Unknown)
+          expectJSONSchemaOpenApi31(schema, {
+            "$id": "/schemas/unknown",
+            "title": "unknown"
+          }, {})
+        })
+
+        it("NullOr(Void)", () => {
+          const schema = Schema.NullOr(Schema.Void)
+          expectJSONSchemaOpenApi31(schema, {
+            "$id": "/schemas/void",
+            "title": "void"
+          }, {})
+        })
+
+        it("NullOr(Object)", () => {
+          const schema = Schema.NullOr(Schema.Object)
+          expectJSONSchemaOpenApi31(schema, {
+            "$id": "/schemas/object",
+            "anyOf": [
+              { "type": "object" },
+              { "type": "array" }
+            ],
+            "description": "an object in the TypeScript meaning, i.e. the `object` type",
+            "nullable": true,
+            "title": "object"
+          }, {})
+        })
+
+        it("NullOr(Struct({}))", () => {
+          const schema = Schema.NullOr(Schema.Struct({}))
+          expectJSONSchemaOpenApi31(schema, {
+            "$id": "/schemas/{}",
+            "anyOf": [
+              { "type": "object" },
+              { "type": "array" }
+            ],
+            "nullable": true
+          }, {})
+        })
+
+        it("NullOr(Ref)", () => {
+          const schema = Schema.NullOr(
+            Schema.String.annotations({ identifier: "b812aaa1-cfe1-4dda-8c9c-360bfa6cb855" })
+          )
+          expectJSONSchemaOpenApi31(schema, {
+            "$ref": "#/$defs/b812aaa1-cfe1-4dda-8c9c-360bfa6cb855",
+            "nullable": true
+          }, {
+            "b812aaa1-cfe1-4dda-8c9c-360bfa6cb855": {
+              "type": "string"
+            }
+          })
+        })
+
+        it("NullOr(Number)", () => {
+          const schema = Schema.NullOr(Schema.Number)
+          expectJSONSchemaOpenApi31(schema, {
+            "type": "number",
+            "nullable": true
+          }, {})
+        })
+
+        it("NullOr(Int)", () => {
+          const schema = Schema.NullOr(Schema.Int)
+          expectJSONSchemaOpenApi31(schema, {
+            "$ref": "#/$defs/Int",
+            "nullable": true
+          }, {
+            "Int": {
+              "description": "an integer",
+              "title": "Int",
+              "type": "integer"
+            }
+          })
+        })
+
+        it("NullOr(Boolean)", () => {
+          const schema = Schema.NullOr(Schema.Boolean)
+          expectJSONSchemaOpenApi31(schema, {
+            "type": "boolean",
+            "nullable": true
+          }, {})
+        })
+
+        it("NullOr(Array)", () => {
+          const schema = Schema.NullOr(Schema.Array(Schema.String))
+          expectJSONSchemaOpenApi31(schema, {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          }, {})
+        })
+
+        it("NullOr(Enum)", () => {
+          enum Fruits {
+            Apple,
+            Banana
+          }
+          const schema = Schema.NullOr(Schema.Enums(Fruits))
+          expectJSONSchemaOpenApi31(schema, {
+            "$comment": "/schemas/enums",
+            "anyOf": [
+              {
+                "type": "number",
+                "title": "Apple",
+                "enum": [0]
+              },
+              {
+                "type": "number",
+                "title": "Banana",
+                "enum": [1]
+              }
+            ],
+            "nullable": true
+          }, {})
+        })
+
+        it("NullOr(Literal)", () => {
+          const schema = Schema.NullOr(Schema.Literal("a"))
+          expectJSONSchemaOpenApi31(schema, {
+            "type": "string",
+            "enum": ["a"],
+            "nullable": true
+          }, {})
+        })
+
+        it("Literal | null", () => {
+          const schema = Schema.Literal("a", null)
+          expectJSONSchemaOpenApi31(schema, {
+            "type": "string",
+            "enum": ["a"],
+            "nullable": true
+          }, {})
+        })
+
+        it("Literal | null(with description)", () => {
+          const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
+          expectJSONSchemaOpenApi31(schema, {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              {
+                "description": "mydescription",
+                "enum": [null]
+              }
+            ]
+          }, {})
+        })
+
+        it("Nested nullable unions", () => {
+          const schema = Schema.Union(Schema.NullOr(Schema.String), Schema.Literal("a", null))
+          expectJSONSchemaOpenApi31(schema, {
+            "anyOf": [
+              { "type": "string" },
+              {
+                "type": "string",
+                "enum": ["a"]
+              }
+            ],
+            "nullable": true
+          }, {})
+        })
+
+        it("NullOr(Struct({ a: String }))", () => {
+          const schema = Schema.NullOr(Schema.Struct({ a: Schema.String }))
+          expectJSONSchemaOpenApi31(schema, {
+            "additionalProperties": false,
+            "nullable": true,
+            "properties": {
+              "a": { "type": "string" }
+            },
+            "required": ["a"],
+            "type": "object"
+          }, {})
+        })
+      })
+
       it("parseJson handling", () => {
         const schema = Schema.parseJson(Schema.Struct({
           a: Schema.parseJson(Schema.NumberFromString)
         }))
-        const definitions = {}
-        const jsonSchema = JSONSchema.fromAST(schema.ast, {
-          definitions,
-          target: "openApi3.1"
-        })
-        expect(jsonSchema).toStrictEqual({
+        expectJSONSchemaOpenApi31(schema, {
           "type": "string",
           "contentMediaType": "application/json",
           "contentSchema": {
@@ -172,8 +576,7 @@ describe("makeWithOptions", () => {
             },
             "additionalProperties": false
           }
-        })
-        expect(definitions).toStrictEqual({
+        }, {
           "NumberFromString": {
             "description": "a string that will be parsed into a number",
             "type": "string"
@@ -478,9 +881,17 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Literal", () => {
-    it("Null", () => {
+    it("null literal", () => {
       expectJSONSchemaAnnotations(Schema.Null, {
-        "enum": [null]
+        "type": "null"
+      })
+      expectJSONSchemaProperty(Schema.Null.annotations({ identifier: "9b7d3b2b-3b3a-4741-8c4c-9cae776c47f6" }), {
+        "$defs": {
+          "9b7d3b2b-3b3a-4741-8c4c-9cae776c47f6": {
+            "type": "null"
+          }
+        },
+        "$ref": "#/$defs/9b7d3b2b-3b3a-4741-8c4c-9cae776c47f6"
       })
     })
 
@@ -529,6 +940,32 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Enums", () => {
+    it("empty enum", () => {
+      enum Empty {}
+      const jsonSchema = expectJSONSchema(Schema.Enums(Empty), {
+        "$id": "/schemas/never",
+        "not": {}
+      })
+      const validate = getAjvValidate(jsonSchema)
+      expect(validate(1)).toEqual(false)
+    })
+
+    it("single enum", () => {
+      enum Fruits {
+        Apple
+      }
+      expectJSONSchemaAnnotations(Schema.Enums(Fruits), {
+        "$comment": "/schemas/enums",
+        "anyOf": [
+          {
+            "type": "number",
+            "title": "Apple",
+            "enum": [0]
+          }
+        ]
+      })
+    })
+
     it("numeric enums", () => {
       enum Fruits {
         Apple,
@@ -1610,6 +2047,15 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Union", () => {
+    it("should ignore never members", () => {
+      expectJSONSchema(Schema.Union(Schema.String, Schema.Never), {
+        "type": "string"
+      })
+      expectJSONSchema(Schema.Union(Schema.String, Schema.Union(Schema.Never, Schema.Never)), {
+        "type": "string"
+      })
+    })
+
     it("string | JsonNumber", () => {
       expectJSONSchemaAnnotations(Schema.Union(Schema.String, JsonNumber), {
         "anyOf": [
@@ -1924,12 +2370,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "properties": {
             "a": {
               "anyOf": [
-                {
-                  "$ref": "#/$defs/NonEmptyString"
-                },
-                {
-                  "enum": [null]
-                }
+                { "$ref": "#/$defs/NonEmptyString" },
+                { "type": "null" }
               ]
             }
           },
@@ -3335,7 +3777,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       )
     })
 
-    it.skip("UndefinedOr(Undefined)", () => {
+    it("UndefinedOr(Undefined)", () => {
       expectJSONSchemaAnnotations(
         Schema.Struct({
           a: Schema.UndefinedOr(Schema.Undefined)

@@ -1,25 +1,24 @@
 ---
-"@effect/platform": patch
 "effect": patch
 ---
 
-JSONSchema: add `type` for homogeneous enum schemas, closes #4127
+JSONSchema: handle empty native enums.
 
 Before
 
 ```ts
 import { JSONSchema, Schema } from "effect"
 
-const schema = Schema.Literal("a", "b")
+enum Empty {}
+
+const schema = Schema.Enums(Empty)
 
 console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
 /*
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "enum": [
-    "a",
-    "b"
-  ]
+  "$comment": "/schemas/enums",
+  "anyOf": [] // <= invalid schema!
 }
 */
 ```
@@ -29,17 +28,16 @@ After
 ```ts
 import { JSONSchema, Schema } from "effect"
 
-const schema = Schema.Literal("a", "b")
+enum Empty {}
+
+const schema = Schema.Enums(Empty)
 
 console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
 /*
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "string",
-  "enum": [
-    "a",
-    "b"
-  ]
+  "$id": "/schemas/never",
+  "not": {}
 }
 */
 ```

@@ -3,22 +3,28 @@
 "effect": patch
 ---
 
-JSONSchema: add `type` for homogeneous enum schemas, closes #4127
+JSONSchema: use `{ "type": "null" }` to represent the `null` literal
 
 Before
 
 ```ts
 import { JSONSchema, Schema } from "effect"
 
-const schema = Schema.Literal("a", "b")
+const schema = Schema.NullOr(Schema.String)
 
 console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
 /*
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "enum": [
-    "a",
-    "b"
+  "anyOf": [
+    {
+      "type": "string"
+    },
+    {
+      "enum": [
+        null
+      ]
+    }
   ]
 }
 */
@@ -29,16 +35,19 @@ After
 ```ts
 import { JSONSchema, Schema } from "effect"
 
-const schema = Schema.Literal("a", "b")
+const schema = Schema.NullOr(Schema.String)
 
 console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
 /*
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "string",
-  "enum": [
-    "a",
-    "b"
+  "anyOf": [
+    {
+      "type": "string"
+    },
+    {
+      "type": "null"
+    }
   ]
 }
 */
