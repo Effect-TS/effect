@@ -346,7 +346,15 @@ export const make = (
     yield* pool.get.pipe(
       Effect.tap((connection) => connection.executeRaw("SELECT 1", [])),
       Effect.mapError(({ cause }) => new SqlError({ cause, message: "MssqlClient: Failed to connect" })),
-      Effect.scoped
+      Effect.scoped,
+      Effect.timeoutFail({
+        duration: options.connectTimeout ?? Duration.seconds(5),
+        onTimeout: () =>
+          new SqlError({
+            message: "MssqlClient: Connection timeout",
+            cause: new Error("connection timeout")
+          })
+      })
     )
 
     const withTransaction = Client.makeWithTransaction({

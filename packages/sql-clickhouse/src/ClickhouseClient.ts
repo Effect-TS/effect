@@ -14,6 +14,7 @@ import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { dual } from "effect/Function"
@@ -102,6 +103,15 @@ export const make = (
         catch: (cause) => new SqlError({ cause, message: "ClickhouseClient: Failed to connect" })
       }),
       () => Effect.promise(() => client.close())
+    ).pipe(
+      Effect.timeoutFail({
+        duration: Duration.seconds(5),
+        onTimeout: () =>
+          new SqlError({
+            message: "ClickhouseClient: Connection timeout",
+            cause: new Error("connection timeout")
+          })
+      })
     )
 
     class ConnectionImpl implements Connection {
