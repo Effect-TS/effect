@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.71.3
+
+### Patch Changes
+
+- [#4147](https://github.com/Effect-TS/effect/pull/4147) [`6984508`](https://github.com/Effect-TS/effect/commit/6984508c87f1bd91213b44c19b25ab5e2dcc1ce0) Thanks @tim-smart! - ensure HttpApi union schemas don't transfer non-api related annotations
+
+- [#4145](https://github.com/Effect-TS/effect/pull/4145) [`883639c`](https://github.com/Effect-TS/effect/commit/883639cc8ce47757f1cd39439391a8028c0812fe) Thanks @tim-smart! - ensure HttpApi preserves referential equality of error schemas
+
 ## 0.71.2
 
 ### Patch Changes
