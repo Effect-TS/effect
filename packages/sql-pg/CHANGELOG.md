@@ -1,5 +1,11 @@
 # @effect/sql-pg
 
+## 0.24.3
+
+### Patch Changes
+
+- [#4143](https://github.com/Effect-TS/effect/pull/4143) [`f7f2dd6`](https://github.com/Effect-TS/effect/commit/f7f2dd6794abe3709950543ef44fab03f265a1e0) Thanks @tim-smart! - add timeout to sql connection attempts
+
 ## 0.24.2
 
 ### Patch Changes
