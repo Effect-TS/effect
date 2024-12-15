@@ -281,9 +281,20 @@ export const make = (options: {
 const convertTool = <A, I, R>(tool: Completions.StructuredSchema<A, I, R>, structured = false) => ({
   name: tool._tag ?? tool.identifier,
   description: getDescription(tool.ast),
-  parameters: JsonSchema.make(tool),
+  parameters: makeJsonSchema(tool.ast),
   structured
 })
+
+const makeJsonSchema = (ast: AST.AST): JsonSchema.JsonSchema7 => {
+  const $defs = {}
+  const schema = JsonSchema.fromAST(ast, {
+    definitions: $defs,
+    topLevelReferenceStrategy: "skip"
+  })
+  if (Object.keys($defs).length === 0) return schema
+  ;(schema as any).$defs = $defs
+  return schema
+}
 
 const getDescription = (ast: AST.AST): string => {
   const annotations = ast._tag === "Transformation" ?
