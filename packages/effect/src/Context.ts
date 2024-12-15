@@ -452,7 +452,7 @@ export const merge: {
  * assert.deepStrictEqual(Context.get(Services, Host), { HOST: "localhost" })
  * ```
  *
- * @since 2.0.0
+ * @since 3.12.0
  */
 export const mergeAll: <T extends Array<unknown>>(
   ...ctxs: [...{ [K in keyof T]: Context<T[K]> }]
