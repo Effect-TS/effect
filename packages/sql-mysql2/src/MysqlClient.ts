@@ -207,6 +207,15 @@ export const make = (
         Effect.async<void>((resume) => {
           pool.end(() => resume(Effect.void))
         })
+    ).pipe(
+      Effect.timeoutFail({
+        duration: Duration.seconds(5),
+        onTimeout: () =>
+          new SqlError({
+            message: "MysqlClient: Connection timeout",
+            cause: new Error("connection timeout")
+          })
+      })
     )
 
     const poolConnection = new ConnectionImpl(pool)

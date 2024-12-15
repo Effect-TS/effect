@@ -195,6 +195,15 @@ export const make = (
         catch: (cause) => new SqlError({ cause, message: "PgClient: Failed to connect" })
       }),
       () => Effect.promise(() => client.end())
+    ).pipe(
+      Effect.timeoutFail({
+        duration: options.connectTimeout ?? Duration.seconds(5),
+        onTimeout: () =>
+          new SqlError({
+            cause: new Error("Connection timed out"),
+            message: "PgClient: Connection timed out"
+          })
+      })
     )
 
     class ConnectionImpl implements Connection {
