@@ -361,7 +361,7 @@ const extractMembers = (
       return
     }
     ast = AST.annotations(ast, {
-      ...topAst.annotations,
+      ...HttpApiSchema.extractAnnotations(topAst.annotations),
       ...ast.annotations
     })
     const status = getStatus(ast)
@@ -409,7 +409,7 @@ const extractPayloads = (topAst: AST.AST): ReadonlyMap<string, {
       return
     }
     ast = AST.annotations(ast, {
-      ...topAst.annotations,
+      ...HttpApiSchema.extractAnnotations(topAst.annotations),
       ...ast.annotations
     })
     const encoding = HttpApiSchema.getEncoding(ast)

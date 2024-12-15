@@ -48,6 +48,30 @@ export const AnnotationParam: unique symbol = Symbol.for(
   "@effect/platform/HttpApiSchema/AnnotationParam"
 )
 
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const extractAnnotations = (ast: AST.Annotations): AST.Annotations => {
+  const result: Record<symbol, unknown> = {}
+  if (AnnotationStatus in ast) {
+    result[AnnotationStatus] = ast[AnnotationStatus]
+  }
+  if (AnnotationEmptyDecodeable in ast) {
+    result[AnnotationEmptyDecodeable] = ast[AnnotationEmptyDecodeable]
+  }
+  if (AnnotationEncoding in ast) {
+    result[AnnotationEncoding] = ast[AnnotationEncoding]
+  }
+  if (AnnotationParam in ast) {
+    result[AnnotationParam] = ast[AnnotationParam]
+  }
+  if (AnnotationMultipart in ast) {
+    result[AnnotationMultipart] = ast[AnnotationMultipart]
+  }
+  return result
+}
+
 const mergedAnnotations = (ast: AST.AST): Record<symbol, unknown> =>
   ast._tag === "Transformation" ?
     {
