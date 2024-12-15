@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.4.3
+
+### Patch Changes
+
+- [#4139](https://github.com/Effect-TS/effect/pull/4139) [`1237ae8`](https://github.com/Effect-TS/effect/commit/1237ae847f6f0ff57eb7dcb4723ae6f5073fb925) Thanks @tim-smart! - fix json schema output for Ai completions
+
 ## 0.4.2
 
 ### Patch Changes
