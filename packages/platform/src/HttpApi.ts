@@ -186,9 +186,9 @@ const Proto = {
       groups: this.groups,
       errorSchema: HttpApiSchema.UnionUnify(
         this.errorSchema,
-        schema.annotations(HttpApiSchema.annotations({
-          status: annotations?.status ?? HttpApiSchema.getStatusError(schema)
-        }))
+        annotations?.status
+          ? schema.annotations(HttpApiSchema.annotations({ status: annotations.status }))
+          : schema
       ),
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -207,12 +207,7 @@ const Proto = {
     return makeProto({
       identifier: this.identifier,
       groups: this.groups,
-      errorSchema: HttpApiSchema.UnionUnify(
-        this.errorSchema,
-        tag.failure.annotations(HttpApiSchema.annotations({
-          status: HttpApiSchema.getStatusError(tag.failure)
-        }) as any)
-      ),
+      errorSchema: HttpApiSchema.UnionUnify(this.errorSchema, tag.failure),
       annotations: this.annotations,
       middlewares: new Set([...this.middlewares, tag])
     })

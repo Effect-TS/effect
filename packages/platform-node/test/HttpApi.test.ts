@@ -323,6 +323,7 @@ class UsersApi extends HttpApiGroup.make("users")
       }))
       .addSuccess(User)
       .addError(UserError)
+      .addError(UserError) // ensure errors are deduplicated
   )
   .add(
     HttpApiEndpoint.get("list")`/`
