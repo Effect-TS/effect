@@ -700,11 +700,9 @@ const Proto = {
     schema: Schema.Schema.Any,
     annotations?: { readonly status?: number }
   ) {
-    schema = schema.pipe(
-      Schema.annotations(HttpApiSchema.annotations({
-        status: annotations?.status ?? HttpApiSchema.getStatusSuccess(schema)
-      }))
-    )
+    schema = annotations?.status ?
+      schema.annotations(HttpApiSchema.annotations({ status: annotations.status })) :
+      schema
     return makeProto({
       ...this,
       successSchema: this.successSchema === HttpApiSchema.NoContent ?
@@ -717,11 +715,7 @@ const Proto = {
       ...this,
       errorSchema: HttpApiSchema.UnionUnify(
         this.errorSchema,
-        schema.pipe(
-          Schema.annotations(HttpApiSchema.annotations({
-            status: annotations?.status ?? HttpApiSchema.getStatusError(schema)
-          }))
-        )
+        annotations?.status ? schema.annotations(HttpApiSchema.annotations({ status: annotations.status })) : schema
       )
     })
   },
@@ -758,14 +752,7 @@ const Proto = {
   middleware(this: HttpApiEndpoint.AnyWithProps, middleware: HttpApiMiddleware.TagClassAny) {
     return makeProto({
       ...this,
-      errorSchema: HttpApiSchema.UnionUnify(
-        this.errorSchema,
-        middleware.failure.pipe(
-          Schema.annotations(HttpApiSchema.annotations({
-            status: HttpApiSchema.getStatusError(middleware.failure)
-          }))
-        )
-      ),
+      errorSchema: HttpApiSchema.UnionUnify(this.errorSchema, middleware.failure),
       middlewares: new Set([...this.middlewares, middleware])
     })
   },

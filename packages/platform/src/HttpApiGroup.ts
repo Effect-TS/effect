@@ -309,9 +309,7 @@ const Proto = {
       endpoints: this.endpoints,
       errorSchema: HttpApiSchema.UnionUnify(
         this.errorSchema,
-        schema.annotations(HttpApiSchema.annotations({
-          status: annotations?.status ?? HttpApiSchema.getStatusError(schema)
-        }))
+        annotations?.status ? schema.annotations(HttpApiSchema.annotations({ status: annotations.status })) : schema
       ),
       annotations: this.annotations,
       middlewares: this.middlewares
@@ -332,12 +330,7 @@ const Proto = {
       identifier: this.identifier,
       topLevel: this.topLevel,
       endpoints: this.endpoints,
-      errorSchema: HttpApiSchema.UnionUnify(
-        this.errorSchema,
-        middleware.failure.annotations(HttpApiSchema.annotations({
-          status: HttpApiSchema.getStatusError(middleware.failure)
-        }) as any)
-      ),
+      errorSchema: HttpApiSchema.UnionUnify(this.errorSchema, middleware.failure),
       annotations: this.annotations,
       middlewares: new Set([...this.middlewares, middleware])
     })
