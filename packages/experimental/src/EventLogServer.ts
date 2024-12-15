@@ -68,6 +68,14 @@ export const makeHandler: Effect.Effect<
           return write(new Pong({ id: request.id }))
         }
         case "WriteEntries": {
+          if (request.encryptedEntries.length === 0) {
+            return write(
+              new Ack({
+                id: request.id,
+                sequenceNumbers: []
+              })
+            )
+          }
           return Effect.gen(function*() {
             const entries = request.encryptedEntries.map(({ encryptedEntry, entryId }) =>
               new PersistedEntry({
