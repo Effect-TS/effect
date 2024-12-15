@@ -136,6 +136,9 @@
       "@effect/sql-sqlite-bun": ["./packages/sql-sqlite-bun/src/index.js"],
       "@effect/sql-sqlite-bun/*": ["./packages/sql-sqlite-bun/src/*.js"],
       "@effect/sql-sqlite-bun/test/*": ["./packages/sql-sqlite-bun/test/*.js"],
+      "@effect/sql-sqlite-do": ["./packages/sql-sqlite-do/src/index.js"],
+      "@effect/sql-sqlite-do/*": ["./packages/sql-sqlite-do/src/*.js"],
+      "@effect/sql-sqlite-do/test/*": ["./packages/sql-sqlite-do/test/*.js"],
       "@effect/sql-sqlite-node": ["./packages/sql-sqlite-node/src/index.js"],
       "@effect/sql-sqlite-node/*": ["./packages/sql-sqlite-node/src/*.js"],
       "@effect/sql-sqlite-node/test/*": [

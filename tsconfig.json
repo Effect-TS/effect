@@ -31,6 +31,7 @@
     { "path": "packages/sql-mysql2" },
     { "path": "packages/sql-pg" },
     { "path": "packages/sql-sqlite-bun" },
+    { "path": "packages/sql-sqlite-do" },
     { "path": "packages/sql-sqlite-node" },
     { "path": "packages/sql-sqlite-react-native" },
     { "path": "packages/sql-sqlite-wasm" },

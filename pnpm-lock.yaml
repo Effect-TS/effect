@@ -806,6 +806,26 @@ importers:
         version: link:../effect/dist
     publishDirectory: dist
 
+  packages/sql-sqlite-do:
+    dependencies:
+      '@opentelemetry/semantic-conventions':
+        specifier: ^1.25.1
+        version: 1.25.1
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20240806.0
+        version: 4.20241022.0
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental/dist
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
   packages/sql-sqlite-node:
     dependencies:
       '@opentelemetry/semantic-conventions':
@@ -5503,6 +5523,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.6:
@@ -9678,8 +9699,7 @@ snapshots:
 
   '@cloudflare/workers-types@4.20240806.0': {}
 
-  '@cloudflare/workers-types@4.20241022.0':
-    optional: true
+  '@cloudflare/workers-types@4.20241022.0': {}
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:

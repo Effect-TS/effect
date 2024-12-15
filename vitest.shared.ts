@@ -57,6 +57,7 @@ const config: UserConfig = {
       ...alias("sql-mysql2"),
       ...alias("sql-pg"),
       ...alias("sql-sqlite-bun"),
+      ...alias("sql-sqlite-do"),
       ...alias("sql-sqlite-node"),
       ...alias("sql-sqlite-react-native"),
       ...alias("sql-sqlite-wasm"),
