@@ -256,6 +256,39 @@ describe("Context", () => {
     expect(result.pipe(Context.get(A))).toEqual({ a: 0 })
   })
 
+  it("mergeAll", () => {
+    const env = Context.mergeAll(
+      Context.make(A, { a: 0 }),
+      Context.make(B, { b: 1 }),
+      Context.make(C, { c: 2 })
+    )
+
+    const pruned = pipe(
+      env,
+      Context.pick(A, B)
+    )
+
+    expect(pipe(
+      pruned,
+      Context.get(A)
+    )).toEqual({ a: 0 })
+
+    expect(pipe(
+      pruned,
+      Context.getOption(B)
+    )).toEqual(O.some({ b: 1 }))
+
+    expect(pipe(
+      pruned,
+      Context.getOption(C)
+    )).toEqual(O.none())
+
+    expect(pipe(
+      env,
+      Context.getOption(C)
+    )).toEqual(O.some({ c: 2 }))
+  })
+
   it("isContext", () => {
     expect(Context.isContext(Context.empty())).toEqual(true)
     expect(Context.isContext(null)).toEqual(false)
