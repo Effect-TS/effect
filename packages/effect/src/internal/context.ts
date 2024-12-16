@@ -296,6 +296,19 @@ export const merge = dual<
 })
 
 /** @internal */
+export const mergeAll = <T extends Array<unknown>>(
+  ...ctxs: [...{ [K in keyof T]: C.Context<T[K]> }]
+): C.Context<T[number]> => {
+  const map = new Map()
+  for (const ctx of ctxs) {
+    for (const [tag, s] of ctx.unsafeMap) {
+      map.set(tag, s)
+    }
+  }
+  return makeContext(map)
+}
+
+/** @internal */
 export const pick =
   <Services, S extends Array<C.ValidTagsById<Services>>>(...tags: S) =>
   (self: C.Context<Services>): C.Context<
