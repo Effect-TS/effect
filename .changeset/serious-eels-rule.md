@@ -2,4 +2,4 @@
 "@effect/platform-node": minor
 ---
 
-upgrade undici to 7.x and move to peerDependencies
+upgrade undici to 7.x and expose re-exports in Undici module

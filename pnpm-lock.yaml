@@ -467,6 +467,9 @@ importers:
       mime:
         specifier: ^3.0.0
         version: 3.0.0
+      undici:
+        specifier: ^7.1.0
+        version: 7.1.0
       ws:
         specifier: ^8.18.0
         version: 8.18.0
@@ -483,9 +486,6 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-      undici:
-        specifier: ^7.1.0
-        version: 7.1.0
     publishDirectory: dist
 
   packages/platform-node-shared:
