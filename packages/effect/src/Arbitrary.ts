@@ -5,7 +5,7 @@
 import * as Arr from "./Array.js"
 import * as FastCheck from "./FastCheck.js"
 import * as errors_ from "./internal/schema/errors.js"
-import * as filters_ from "./internal/schema/filters.js"
+import * as schemaId_ from "./internal/schema/schemaId.js"
 import * as util_ from "./internal/schema/util.js"
 import * as Option from "./Option.js"
 import * as Predicate from "./Predicate.js"
@@ -28,7 +28,7 @@ export interface LazyArbitrary<A> {
 export interface ArbitraryGenerationContext {
   readonly maxDepth: number
   readonly depthIdentifier?: string
-  readonly constraints?: StringConstraints | NumberConstraints | BigIntConstraints | ArrayConstraints
+  readonly constraints?: StringConstraints | NumberConstraints | BigIntConstraints | DateConstraints | ArrayConstraints
 }
 
 /**
@@ -110,6 +110,8 @@ class Deferred {
       }
       case "BigIntConstraints":
         return (fc) => fc.bigInt(config.constraints)
+      case "DateConstraints":
+        return (fc) => fc.date(config.constraints)
       case "ArrayConstraints":
         return goTupleType(config.ast, ctx, path, config.constraints)
     }
@@ -232,6 +234,32 @@ export const makeArrayConstraints = (options: {
   return out
 }
 
+interface DateConstraints {
+  readonly _tag: "DateConstraints"
+  readonly constraints: FastCheck.DateConstraints
+}
+
+/** @internal */
+export const makeDateConstraints = (options: {
+  readonly min?: Date | undefined
+  readonly max?: Date | undefined
+  readonly noInvalidDate?: boolean | undefined
+}): DateConstraints => {
+  const out: Types.Mutable<DateConstraints> = {
+    _tag: "DateConstraints",
+    constraints: {
+      noInvalidDate: options.noInvalidDate ?? false
+    }
+  }
+  if (Predicate.isDate(options.min)) {
+    out.constraints.min = options.min
+  }
+  if (Predicate.isDate(options.max)) {
+    out.constraints.max = options.max
+  }
+  return out
+}
+
 interface ArrayConfig extends ArrayConstraints {
   readonly ast: AST.TupleType
 }
@@ -246,7 +274,7 @@ const makeArrayConfig = (options: {
   }
 }
 
-type Config = StringConstraints | NumberConstraints | BigIntConstraints | ArrayConfig
+type Config = StringConstraints | NumberConstraints | BigIntConstraints | DateConstraints | ArrayConfig
 
 const go = (
   ast: AST.AST,
@@ -291,8 +319,14 @@ export const toOp = (
   path: ReadonlyArray<PropertyKey>
 ): Op => {
   switch (ast._tag) {
-    case "Declaration":
+    case "Declaration": {
+      const TypeAnnotationId: any = ast.annotations[AST.SchemaIdAnnotationId]
+      switch (TypeAnnotationId) {
+        case schemaId_.DateFromSelfSchemaId:
+          return new Deferred(makeDateConstraints(ast.annotations[TypeAnnotationId] as any))
+      }
       return new Succeed(go(ast, ctx, path))
+    }
     case "Literal":
       return new Succeed((fc) => fc.constant(ast.literal))
     case "UniqueSymbol":
@@ -482,7 +516,7 @@ const goTupleType = (
   }
 }
 
-type Constraints = StringConstraints | NumberConstraints | BigIntConstraints | ArrayConstraints
+type Constraints = StringConstraints | NumberConstraints | BigIntConstraints | DateConstraints | ArrayConstraints
 
 const getConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constraints | undefined => {
   const TypeAnnotationId: any = ast.annotations[AST.SchemaIdAnnotationId]
@@ -493,7 +527,7 @@ const getConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constra
       return makeStringConstraints(jsonSchema)
     case "NumberConstraints": {
       switch (TypeAnnotationId) {
-        case filters_.NonNaNSchemaId:
+        case schemaId_.NonNaNSchemaId:
           return makeNumberConstraints({ noNaN: true })
         default:
           return makeNumberConstraints({
@@ -509,6 +543,8 @@ const getConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constra
     }
     case "BigIntConstraints":
       return makeBigIntConstraints(ast.annotations[TypeAnnotationId] as any)
+    case "DateConstraints":
+      return makeDateConstraints(ast.annotations[TypeAnnotationId] as any)
     case "ArrayConstraints":
       return makeArrayConstraints({
         minLength: jsonSchema.minItems,
@@ -517,21 +553,23 @@ const getConstraints = (_tag: Constraints["_tag"], ast: AST.Refinement): Constra
   }
 }
 
+function getMax(n1: Date | undefined, n2: Date | undefined): Date | undefined
 function getMax(n1: bigint | undefined, n2: bigint | undefined): bigint | undefined
 function getMax(n1: number | undefined, n2: number | undefined): number | undefined
 function getMax(
-  n1: bigint | number | undefined,
-  n2: bigint | number | undefined
-): bigint | number | undefined {
+  n1: bigint | number | Date | undefined,
+  n2: bigint | number | Date | undefined
+): bigint | number | Date | undefined {
   return n1 === undefined ? n2 : n2 === undefined ? n1 : n1 <= n2 ? n2 : n1
 }
 
+function getMin(n1: Date | undefined, n2: Date | undefined): Date | undefined
 function getMin(n1: bigint | undefined, n2: bigint | undefined): bigint | undefined
 function getMin(n1: number | undefined, n2: number | undefined): number | undefined
 function getMin(
-  n1: bigint | number | undefined,
-  n2: bigint | number | undefined
-): bigint | number | undefined {
+  n1: bigint | number | Date | undefined,
+  n2: bigint | number | Date | undefined
+): bigint | number | Date | undefined {
   return n1 === undefined ? n2 : n2 === undefined ? n1 : n1 <= n2 ? n1 : n2
 }
 
@@ -571,6 +609,16 @@ const merge = (c1: Config, c2: Constraints | undefined): Config => {
           return makeBigIntConstraints({
             min: getMax(c1.constraints.min, c2.constraints.min),
             max: getMin(c1.constraints.max, c2.constraints.max)
+          })
+        }
+        break
+      }
+      case "DateConstraints": {
+        if (c2._tag === "DateConstraints") {
+          return makeDateConstraints({
+            min: getMax(c1.constraints.min, c2.constraints.min),
+            max: getMin(c1.constraints.max, c2.constraints.max),
+            noInvalidDate: getOr(c1.constraints.noInvalidDate, c2.constraints.noInvalidDate)
           })
         }
         break

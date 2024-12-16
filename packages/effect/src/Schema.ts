@@ -29,7 +29,7 @@ import { globalValue } from "./GlobalValue.js"
 import * as hashMap_ from "./HashMap.js"
 import * as hashSet_ from "./HashSet.js"
 import * as errors_ from "./internal/schema/errors.js"
-import * as filters_ from "./internal/schema/filters.js"
+import * as schemaId_ from "./internal/schema/schemaId.js"
 import * as util_ from "./internal/schema/util.js"
 import * as list_ from "./List.js"
 import * as number_ from "./Number.js"
@@ -4035,7 +4035,7 @@ export const trimmed =
  * @category schema id
  * @since 3.10.0
  */
-export const MaxLengthSchemaId: unique symbol = filters_.MaxLengthSchemaId
+export const MaxLengthSchemaId: unique symbol = schemaId_.MaxLengthSchemaId
 
 /**
  * @category schema id
@@ -4068,7 +4068,7 @@ export const maxLength = <A extends string>(
  * @category schema id
  * @since 3.10.0
  */
-export const MinLengthSchemaId: unique symbol = filters_.MinLengthSchemaId
+export const MinLengthSchemaId: unique symbol = schemaId_.MinLengthSchemaId
 
 /**
  * @category schema id
@@ -4343,7 +4343,7 @@ export class Uppercased extends String$.pipe(
  * @category schema id
  * @since 3.10.0
  */
-export const LengthSchemaId: unique symbol = filters_.LengthSchemaId
+export const LengthSchemaId: unique symbol = schemaId_.LengthSchemaId
 
 /**
  * @category schema id
@@ -4676,7 +4676,7 @@ export {
  * @category schema id
  * @since 3.10.0
  */
-export const FiniteSchemaId: unique symbol = filters_.FiniteSchemaId
+export const FiniteSchemaId: unique symbol = schemaId_.FiniteSchemaId
 
 /**
  * @category schema id
@@ -4707,7 +4707,7 @@ export const finite =
  * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanSchemaId: unique symbol = filters_.GreaterThanSchemaId
+export const GreaterThanSchemaId: unique symbol = schemaId_.GreaterThanSchemaId
 
 /**
  * @category schema id
@@ -4722,15 +4722,15 @@ export type GreaterThanSchemaId = typeof GreaterThanSchemaId
  * @since 3.10.0
  */
 export const greaterThan = <A extends number>(
-  min: number,
+  exclusiveMinimum: number,
   annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a) => a > min, {
+    filter((a) => a > exclusiveMinimum, {
       schemaId: GreaterThanSchemaId,
-      description: min === 0 ? "a positive number" : `a number greater than ${min}`,
-      jsonSchema: { exclusiveMinimum: min },
+      description: exclusiveMinimum === 0 ? "a positive number" : `a number greater than ${exclusiveMinimum}`,
+      jsonSchema: { exclusiveMinimum },
       ...annotations
     })
   )
@@ -4739,7 +4739,7 @@ export const greaterThan = <A extends number>(
  * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanOrEqualToSchemaId: unique symbol = filters_.GreaterThanOrEqualToSchemaId
+export const GreaterThanOrEqualToSchemaId: unique symbol = schemaId_.GreaterThanOrEqualToSchemaId
 
 /**
  * @category schema id
@@ -4754,15 +4754,15 @@ export type GreaterThanOrEqualToSchemaId = typeof GreaterThanOrEqualToSchemaId
  * @since 3.10.0
  */
 export const greaterThanOrEqualTo = <A extends number>(
-  min: number,
+  minimum: number,
   annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a) => a >= min, {
+    filter((a) => a >= minimum, {
       schemaId: GreaterThanOrEqualToSchemaId,
-      description: min === 0 ? "a non-negative number" : `a number greater than or equal to ${min}`,
-      jsonSchema: { minimum: min },
+      description: minimum === 0 ? "a non-negative number" : `a number greater than or equal to ${minimum}`,
+      jsonSchema: { minimum },
       ...annotations
     })
   )
@@ -4795,7 +4795,7 @@ export const multipleOf = <A extends number>(
  * @category schema id
  * @since 3.10.0
  */
-export const IntSchemaId: unique symbol = filters_.IntSchemaId
+export const IntSchemaId: unique symbol = schemaId_.IntSchemaId
 
 /**
  * @category schema id
@@ -4823,7 +4823,7 @@ export const int =
  * @category schema id
  * @since 3.10.0
  */
-export const LessThanSchemaId: unique symbol = filters_.LessThanSchemaId
+export const LessThanSchemaId: unique symbol = schemaId_.LessThanSchemaId
 
 /**
  * @category schema id
@@ -4838,13 +4838,13 @@ export type LessThanSchemaId = typeof LessThanSchemaId
  * @since 3.10.0
  */
 export const lessThan =
-  <A extends number>(max: number, annotations?: Annotations.Filter<A>) =>
+  <A extends number>(exclusiveMaximum: number, annotations?: Annotations.Filter<A>) =>
   <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
-      filter((a) => a < max, {
+      filter((a) => a < exclusiveMaximum, {
         schemaId: LessThanSchemaId,
-        description: max === 0 ? "a negative number" : `a number less than ${max}`,
-        jsonSchema: { exclusiveMaximum: max },
+        description: exclusiveMaximum === 0 ? "a negative number" : `a number less than ${exclusiveMaximum}`,
+        jsonSchema: { exclusiveMaximum },
         ...annotations
       })
     )
@@ -4853,7 +4853,7 @@ export const lessThan =
  * @category schema id
  * @since 3.10.0
  */
-export const LessThanOrEqualToSchemaId: unique symbol = filters_.LessThanOrEqualToSchemaId
+export const LessThanOrEqualToSchemaId: unique symbol = schemaId_.LessThanOrEqualToSchemaId
 
 /**
  * @category schema id
@@ -4868,15 +4868,15 @@ export type LessThanOrEqualToSchemaId = typeof LessThanOrEqualToSchemaId
  * @since 3.10.0
  */
 export const lessThanOrEqualTo = <A extends number>(
-  max: number,
+  maximum: number,
   annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a) => a <= max, {
+    filter((a) => a <= maximum, {
       schemaId: LessThanOrEqualToSchemaId,
-      description: max === 0 ? "a non-positive number" : `a number less than or equal to ${max}`,
-      jsonSchema: { maximum: max },
+      description: maximum === 0 ? "a non-positive number" : `a number less than or equal to ${maximum}`,
+      jsonSchema: { maximum },
       ...annotations
     })
   )
@@ -4885,7 +4885,7 @@ export const lessThanOrEqualTo = <A extends number>(
  * @category schema id
  * @since 3.10.0
  */
-export const BetweenSchemaId: unique symbol = filters_.BetweenSchemaId
+export const BetweenSchemaId: unique symbol = schemaId_.BetweenSchemaId
 
 /**
  * @category schema id
@@ -4900,16 +4900,16 @@ export type BetweenSchemaId = typeof BetweenSchemaId
  * @since 3.10.0
  */
 export const between = <A extends number>(
-  min: number,
-  max: number,
+  minimum: number,
+  maximum: number,
   annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a) => a >= min && a <= max, {
+    filter((a) => a >= minimum && a <= maximum, {
       schemaId: BetweenSchemaId,
-      description: `a number between ${min} and ${max}`,
-      jsonSchema: { maximum: max, minimum: min },
+      description: `a number between ${minimum} and ${maximum}`,
+      jsonSchema: { minimum, maximum },
       ...annotations
     })
   )
@@ -4918,7 +4918,7 @@ export const between = <A extends number>(
  * @category schema id
  * @since 3.10.0
  */
-export const NonNaNSchemaId: unique symbol = filters_.NonNaNSchemaId
+export const NonNaNSchemaId: unique symbol = schemaId_.NonNaNSchemaId
 
 /**
  * @category schema id
@@ -5078,7 +5078,7 @@ export class NonNegative extends Number$.pipe(
  * @category schema id
  * @since 3.10.0
  */
-export const JsonNumberSchemaId: unique symbol = filters_.JsonNumberSchemaId
+export const JsonNumberSchemaId: unique symbol = schemaId_.JsonNumberSchemaId
 
 /**
  * @category schema id
@@ -5146,7 +5146,7 @@ export {
  * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanBigIntSchemaId: unique symbol = filters_.GreaterThanBigintSchemaId
+export const GreaterThanBigIntSchemaId: unique symbol = schemaId_.GreaterThanBigintSchemaId
 
 /**
  * @category schema id
@@ -5176,7 +5176,7 @@ export const greaterThanBigInt = <A extends bigint>(
  * @category schema id
  * @since 3.10.0
  */
-export const GreaterThanOrEqualToBigIntSchemaId: unique symbol = filters_.GreaterThanOrEqualToBigIntSchemaId
+export const GreaterThanOrEqualToBigIntSchemaId: unique symbol = schemaId_.GreaterThanOrEqualToBigIntSchemaId
 
 /**
  * @category schema id
@@ -5208,7 +5208,7 @@ export const greaterThanOrEqualToBigInt = <A extends bigint>(
  * @category schema id
  * @since 3.10.0
  */
-export const LessThanBigIntSchemaId: unique symbol = filters_.LessThanBigIntSchemaId
+export const LessThanBigIntSchemaId: unique symbol = schemaId_.LessThanBigIntSchemaId
 
 /**
  * @category schema id
@@ -5238,7 +5238,7 @@ export const lessThanBigInt = <A extends bigint>(
  * @category schema id
  * @since 3.10.0
  */
-export const LessThanOrEqualToBigIntSchemaId: unique symbol = filters_.LessThanOrEqualToBigIntSchemaId
+export const LessThanOrEqualToBigIntSchemaId: unique symbol = schemaId_.LessThanOrEqualToBigIntSchemaId
 
 /**
  * @category schema id
@@ -5268,7 +5268,7 @@ export const lessThanOrEqualToBigInt = <A extends bigint>(
  * @category schema id
  * @since 3.10.0
  */
-export const BetweenBigIntSchemaId: unique symbol = filters_.BetweenBigintSchemaId
+export const BetweenBigIntSchemaId: unique symbol = schemaId_.BetweenBigintSchemaId
 
 /**
  * @category schema id
@@ -5289,7 +5289,7 @@ export const betweenBigInt = <A extends bigint>(
   self.pipe(
     filter((a) => a >= min && a <= max, {
       schemaId: BetweenBigIntSchemaId,
-      [BetweenBigIntSchemaId]: { max, min },
+      [BetweenBigIntSchemaId]: { min, max },
       description: `a bigint between ${min}n and ${max}n`,
       ...annotations
     })
@@ -5921,7 +5921,7 @@ export const StringFromHex: Schema<string> = makeEncodingTransformation(
  * @category schema id
  * @since 3.10.0
  */
-export const MinItemsSchemaId: unique symbol = filters_.MinItemsSchemaId
+export const MinItemsSchemaId: unique symbol = schemaId_.MinItemsSchemaId
 
 /**
  * @category schema id
@@ -5962,7 +5962,7 @@ export const minItems = <A>(
  * @category schema id
  * @since 3.10.0
  */
-export const MaxItemsSchemaId: unique symbol = filters_.MaxItemsSchemaId
+export const MaxItemsSchemaId: unique symbol = schemaId_.MaxItemsSchemaId
 
 /**
  * @category schema id
@@ -5993,7 +5993,7 @@ export const maxItems = <A>(
  * @category schema id
  * @since 3.10.0
  */
-export const ItemsCountSchemaId: unique symbol = filters_.ItemsCountSchemaId
+export const ItemsCountSchemaId: unique symbol = schemaId_.ItemsCountSchemaId
 
 /**
  * @category schema id
@@ -6091,6 +6091,7 @@ export const validDate =
     self.pipe(
       filter((a) => !Number.isNaN(a.getTime()), {
         schemaId: ValidDateSchemaId,
+        [ValidDateSchemaId]: { noInvalidDate: true },
         description: "a valid Date",
         ...annotations
       })
@@ -6207,19 +6208,31 @@ export const BetweenDateSchemaId: unique symbol = Symbol.for("effect/SchemaId/Be
  * @since 3.10.0
  */
 export const betweenDate = <A extends Date>(
-  minimum: Date,
-  maximum: Date,
+  min: Date,
+  max: Date,
   annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a) => a <= maximum && a >= minimum, {
+    filter((a) => a <= max && a >= min, {
       schemaId: BetweenDateSchemaId,
-      [BetweenDateSchemaId]: { maximum, minimum },
-      description: `a date between ${util_.formatDate(minimum)} and ${util_.formatDate(maximum)}`,
+      [BetweenDateSchemaId]: { max, min },
+      description: `a date between ${util_.formatDate(min)} and ${util_.formatDate(max)}`,
       ...annotations
     })
   )
+
+/**
+ * @category schema id
+ * @since 3.11.8
+ */
+export const DateFromSelfSchemaId: unique symbol = schemaId_.DateFromSelfSchemaId
+
+/**
+ * @category schema id
+ * @since 3.11.8
+ */
+export type DateFromSelfSchemaId = typeof DateFromSelfSchemaId
 
 /**
  * Describes a schema that accommodates potentially invalid `Date` instances,
@@ -6232,6 +6245,8 @@ export class DateFromSelf extends declare(
   Predicate.isDate,
   {
     identifier: "DateFromSelf",
+    schemaId: DateFromSelfSchemaId,
+    [DateFromSelfSchemaId]: { noInvalidDate: false },
     description: "a potentially invalid Date instance",
     pretty: () => (date) => `new Date(${JSON.stringify(date)})`,
     arbitrary: () => (fc) => fc.date({ noInvalidDate: false }),

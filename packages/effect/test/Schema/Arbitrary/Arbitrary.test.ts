@@ -12,6 +12,7 @@ const expectConstraints = <A, I>(
     | ReturnType<typeof Arbitrary.makeStringConstraints>
     | ReturnType<typeof Arbitrary.makeNumberConstraints>
     | ReturnType<typeof Arbitrary.makeBigIntConstraints>
+    | ReturnType<typeof Arbitrary.makeDateConstraints>
     | ReturnType<typeof Arbitrary.makeArrayConstraints>
 ) => {
   const ast = schema.ast
@@ -23,6 +24,7 @@ const expectConstraints = <A, I>(
           case "StringConstraints":
           case "NumberConstraints":
           case "BigIntConstraints":
+          case "DateConstraints":
             return expect(op.config).toEqual(constraints)
           case "ArrayConstraints": {
             const { ast: _ast, ...rest } = op.config
@@ -143,6 +145,16 @@ schema (NeverKeyword): never`)
   it("UniqueSymbolFromSelf", () => {
     const a = Symbol.for("effect/Schema/test/a")
     const schema = S.UniqueSymbolFromSelf(a)
+    expectValidArbitrary(schema)
+  })
+
+  it("DateFromSelf", () => {
+    const schema = S.DateFromSelf
+    expectValidArbitrary(schema)
+  })
+
+  it("DurationFromSelf", () => {
+    const schema = S.DurationFromSelf
     expectValidArbitrary(schema)
   })
 
@@ -720,6 +732,47 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       it("between", () => {
         const schema = S.BigIntFromSelf.pipe(S.betweenBigInt(BigInt(2), BigInt(5)))
         expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2), max: BigInt(5) }))
+        expectValidArbitrary(schema)
+      })
+    })
+
+    describe("date filters", () => {
+      it("ValidDateFromSelf", () => {
+        const schema = S.ValidDateFromSelf
+        expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: true }))
+        expectValidArbitrary(schema)
+      })
+
+      it("lessThanOrEqualTo", () => {
+        const schema = S.DateFromSelf.pipe(S.lessThanOrEqualToDate(new Date(5)))
+        expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: false, max: new Date(5) }))
+        expectValidArbitrary(schema)
+      })
+
+      it("greaterThanOrEqualTo", () => {
+        const schema = S.DateFromSelf.pipe(S.greaterThanOrEqualToDate(new Date(2)))
+        expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: false, min: new Date(2) }))
+        expectValidArbitrary(schema)
+      })
+
+      it("lessThan", () => {
+        const schema = S.DateFromSelf.pipe(S.lessThanDate(new Date(5)))
+        expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: false, max: new Date(5) }))
+        expectValidArbitrary(schema)
+      })
+
+      it("greaterThan", () => {
+        const schema = S.DateFromSelf.pipe(S.greaterThanDate(new Date(2)))
+        expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: false, min: new Date(2) }))
+        expectValidArbitrary(schema)
+      })
+
+      it("between", () => {
+        const schema = S.DateFromSelf.pipe(S.betweenDate(new Date(2), new Date(5)))
+        expectConstraints(
+          schema,
+          Arbitrary.makeDateConstraints({ noInvalidDate: false, min: new Date(2), max: new Date(5) })
+        )
         expectValidArbitrary(schema)
       })
     })
