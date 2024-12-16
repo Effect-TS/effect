@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Arbitrary: optmize date based refinements
+Arbitrary: optimize date-based refinements
