@@ -8,9 +8,9 @@ import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import type * as Https from "node:https"
-import type * as Undici from "undici"
 import * as internal from "./internal/httpClient.js"
 import * as internalUndici from "./internal/httpClientUndici.js"
+import type * as Undici from "./Undici.js"
 
 /**
  * @since 1.0.0
