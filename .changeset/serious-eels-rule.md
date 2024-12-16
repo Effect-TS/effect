@@ -1,5 +1,5 @@
 ---
-"@effect/platform-node": patch
+"@effect/platform-node": minor
 ---
 
-Use Undici 7
+upgrade undici to 7.x and move to peerDependencies

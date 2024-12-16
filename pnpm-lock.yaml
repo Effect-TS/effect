@@ -467,9 +467,6 @@ importers:
       mime:
         specifier: ^3.0.0
         version: 3.0.0
-      undici:
-        specifier: ^7.1.0
-        version: 7.1.0
       ws:
         specifier: ^8.18.0
         version: 8.18.0
@@ -486,6 +483,9 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect/dist
+      undici:
+        specifier: ^7.1.0
+        version: 7.1.0
     publishDirectory: dist
 
   packages/platform-node-shared:
@@ -5523,7 +5523,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.6:
@@ -6928,6 +6927,7 @@ packages:
 
   sudo-prompt@9.2.1:
     resolution: {integrity: sha512-Mu7R0g4ig9TUuGSxJavny5Rv0egCEtpZRNMrZaYS1vxkiIxGiGUwoezU3LazIQ+KE04hTrTfNPgxU5gzi7F5Pw==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   supports-color@5.5.0:
     resolution: {integrity: sha512-QjVjwdXIt408MIiAqCX4oUKsgU2EqAGzs2Ppkm4aQYbjm+ZEWEcW4SfFNTr4uMNZma0ey4f5lgLrkB0aX0QMow==}
