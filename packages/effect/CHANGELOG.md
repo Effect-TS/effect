@@ -1,5 +1,11 @@
 # effect
 
+## 3.11.8
+
+### Patch Changes
+
+- [#4150](https://github.com/Effect-TS/effect/pull/4150) [`1a6b52d`](https://github.com/Effect-TS/effect/commit/1a6b52dcf020d36e38a7bc90b648152cf5a8ccba) Thanks @gcanti! - Arbitrary: optimize date-based refinements
+
 ## 3.11.7
 
 ### Patch Changes

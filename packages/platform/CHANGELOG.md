@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.71.4
+
+### Patch Changes
+
+- [#4152](https://github.com/Effect-TS/effect/pull/4152) [`909181a`](https://github.com/Effect-TS/effect/commit/909181a9ce9052a80432ccf52187e0723004bf7f) Thanks @tim-smart! - accept Headers.Input in HttpServerResponse constructors
+
+- [#4152](https://github.com/Effect-TS/effect/pull/4152) [`909181a`](https://github.com/Effect-TS/effect/commit/909181a9ce9052a80432ccf52187e0723004bf7f) Thanks @tim-smart! - add HttpServerResponse.redirect api
+
+- Updated dependencies [[`1a6b52d`](https://github.com/Effect-TS/effect/commit/1a6b52dcf020d36e38a7bc90b648152cf5a8ccba)]:
+  - effect@3.11.8
+
 ## 0.71.3
 
 ### Patch Changes

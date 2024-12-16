@@ -1,5 +1,18 @@
 # @effect/platform-node
 
+## 0.67.0
+
+### Minor Changes
+
+- [#4149](https://github.com/Effect-TS/effect/pull/4149) [`011e2b6`](https://github.com/Effect-TS/effect/commit/011e2b604e2e61e7b788243b0aab105fd301ec7f) Thanks @thewilkybarkid! - upgrade undici to 7.x and expose re-exports in Undici module
+
+### Patch Changes
+
+- Updated dependencies [[`909181a`](https://github.com/Effect-TS/effect/commit/909181a9ce9052a80432ccf52187e0723004bf7f), [`909181a`](https://github.com/Effect-TS/effect/commit/909181a9ce9052a80432ccf52187e0723004bf7f), [`1a6b52d`](https://github.com/Effect-TS/effect/commit/1a6b52dcf020d36e38a7bc90b648152cf5a8ccba)]:
+  - @effect/platform@0.71.4
+  - effect@3.11.8
+  - @effect/platform-node-shared@0.21.4
+
 ## 0.66.3
 
 ### Patch Changes
