@@ -50,7 +50,7 @@ export interface HttpServerResponse extends Effect.Effect<HttpServerResponse>, I
 export interface Options {
   readonly status?: number | undefined
   readonly statusText?: string | undefined
-  readonly headers?: Headers.Headers | undefined
+  readonly headers?: Headers.Input | undefined
   readonly cookies?: Cookies | undefined
   readonly contentType?: string | undefined
   readonly contentLength?: number | undefined
@@ -83,6 +83,13 @@ export const isServerResponse: (u: unknown) => u is HttpServerResponse = interna
  * @category constructors
  */
 export const empty: (options?: Options.WithContent | undefined) => HttpServerResponse = internal.empty
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const redirect: (location: string, options?: Options.WithContentType | undefined) => HttpServerResponse =
+  internal.redirect
 
 /**
  * @since 1.0.0
