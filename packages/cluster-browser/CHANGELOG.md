@@ -1,5 +1,13 @@
 # @effect/cluster
 
+## 0.14.4
+
+### Patch Changes
+
+- Updated dependencies [[`1a6b52d`](https://github.com/Effect-TS/effect/commit/1a6b52dcf020d36e38a7bc90b648152cf5a8ccba)]:
+  - effect@3.11.8
+  - @effect/rpc@0.46.4
+
 ## 0.14.3
 
 ### Patch Changes
