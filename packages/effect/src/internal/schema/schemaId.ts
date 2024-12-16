@@ -1,6 +1,11 @@
 import type * as Schema from "../../Schema.js"
 
 /** @internal */
+export const DateFromSelfSchemaId: Schema.DateFromSelfSchemaId = Symbol.for(
+  "effect/SchemaId/DateFromSelf"
+) as Schema.DateFromSelfSchemaId
+
+/** @internal */
 export const GreaterThanSchemaId: Schema.GreaterThanSchemaId = Symbol.for(
   "effect/SchemaId/GreaterThan"
 ) as Schema.GreaterThanSchemaId
