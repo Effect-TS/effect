@@ -58,8 +58,7 @@ export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient =>
               body,
               // leave timeouts to Effect.timeout etc
               headersTimeout: 60 * 60 * 1000,
-              bodyTimeout: 0,
-              throwOnError: false
+              bodyTimeout: 0
             }),
           catch: (cause) =>
             new Error.RequestError({
