@@ -1705,30 +1705,30 @@ const _existsParFound = Symbol.for("effect/Effect/existsPar/found")
 
 /* @internal */
 export const exists: {
-  <A, E, R>(f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
+  <A, E, R>(predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly concurrentFinalizers?: boolean | undefined
   }): (elements: Iterable<A>) => Effect.Effect<boolean, E, R>
-  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
+  <A, E, R>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly concurrentFinalizers?: boolean | undefined
   }): Effect.Effect<boolean, E, R>
 } = dual(
   (args) => Predicate.isIterable(args[0]) && !core.isEffect(args[0]),
-  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
+  <A, E, R>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
   }) =>
     concurrency.matchSimple(
       options?.concurrency,
-      () => core.suspend(() => existsLoop(elements[Symbol.iterator](), 0, f)),
+      () => core.suspend(() => existsLoop(elements[Symbol.iterator](), 0, predicate)),
       () =>
         core.matchEffect(
           forEach(
             elements,
-            (a, i) => core.if_(f(a, i), { onTrue: () => core.fail(_existsParFound), onFalse: () => core.void }),
+            (a, i) => core.if_(predicate(a, i), { onTrue: () => core.fail(_existsParFound), onFalse: () => core.void }),
             options
           ),
           {
@@ -1757,7 +1757,7 @@ const existsLoop = <A, E, R>(
 /* @internal */
 export const filter = dual<
   <A, E, R>(
-    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>,
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
@@ -1765,7 +1765,7 @@ export const filter = dual<
       readonly concurrentFinalizers?: boolean | undefined
     }
   ) => (elements: Iterable<A>) => Effect.Effect<Array<A>, E, R>,
-  <A, E, R>(elements: Iterable<A>, f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>, options?: {
+  <A, E, R>(elements: Iterable<A>, predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly negate?: boolean | undefined
@@ -1773,13 +1773,13 @@ export const filter = dual<
   }) => Effect.Effect<Array<A>, E, R>
 >(
   (args) => Predicate.isIterable(args[0]) && !core.isEffect(args[0]),
-  <A, E, R>(elements: Iterable<A>, f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>, options?: {
+  <A, E, R>(elements: Iterable<A>, predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
     readonly negate?: boolean | undefined
     readonly concurrentFinalizers?: boolean | undefined
   }) => {
-    const predicate = options?.negate ? (a: A, i: number) => core.map(f(a, i), Boolean.not) : f
+    const predicate_ = options?.negate ? (a: A, i: number) => core.map(predicate(a, i), Boolean.not) : predicate
     return concurrency.matchSimple(
       options?.concurrency,
       () =>
@@ -1788,7 +1788,7 @@ export const filter = dual<
             (effect, a, i) =>
               core.zipWith(
                 effect,
-                core.suspend(() => predicate(a, i)),
+                core.suspend(() => predicate_(a, i)),
                 (list, b) => b ? [a, ...list] : list
               ),
             core.sync(() => new Array<A>()) as Effect.Effect<Array<A>, E, R>
@@ -1798,7 +1798,7 @@ export const filter = dual<
         core.map(
           forEach(
             elements,
-            (a, i) => core.map(predicate(a, i), (b) => (b ? Option.some(a) : Option.none())),
+            (a, i) => core.map(predicate_(a, i), (b) => (b ? Option.some(a) : Option.none())),
             options
           ),
           RA.getSomes
