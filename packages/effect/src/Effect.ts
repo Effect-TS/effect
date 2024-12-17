@@ -11576,9 +11576,31 @@ export const fn:
     name: string,
     options?: Tracer.SpanOptions
   ) => fn.Gen & fn.NonGen) = function(nameOrBody: Function | string, ...pipeables: Array<any>) {
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    const error0 = new Error()
+    Error.stackTraceLimit = limit
     if (typeof nameOrBody !== "string") {
-      return function(this: any) {
-        return fnApply(this, nameOrBody, arguments as any, pipeables)
+      return function(this: any, ...args: Array<any>) {
+        const limit = Error.stackTraceLimit
+        Error.stackTraceLimit = 2
+        const error = new Error()
+        Error.stackTraceLimit = limit
+        let cache: false | string = false
+        const captureStackTrace = () => {
+          if (cache !== false) {
+            return cache
+          }
+          if (error.stack) {
+            const stack0 = error0.stack!.trim().split("\n")
+            const stack = error.stack.trim().split("\n")
+            cache = `${stack0.slice(2).join("\n").trim()}\n${stack.slice(2).join("\n").trim()}`
+            return cache
+          }
+        }
+        const effect = fnApply(this, nameOrBody, args, pipeables)
+        const opts: any = { captureStackTrace }
+        return withSpan(effect, "<anonymous>", opts)
       } as any
     }
     const name = nameOrBody
@@ -11595,8 +11617,9 @@ export const fn:
             return cache
           }
           if (error.stack) {
+            const stack0 = error0.stack!.trim().split("\n")
             const stack = error.stack.trim().split("\n")
-            cache = stack.slice(2).join("\n").trim()
+            cache = `${stack0.slice(2).join("\n").trim()}\n${stack.slice(2).join("\n").trim()}`
             return cache
           }
         }
