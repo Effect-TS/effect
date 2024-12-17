@@ -208,7 +208,10 @@ describe("HttpClient", () => {
         ] as const
       ])
     )
-    const r = Inspectable.withRedactableContext(fiberRefs, () => Inspectable.toStringUnknown(request))
+    const r = Effect.gen(function*() {
+      yield* Effect.setFiberRefs(fiberRefs)
+      return Inspectable.toStringUnknown(request)
+    }).pipe(Effect.runSync)
     const redacted = JSON.parse(r)
 
     assert.deepStrictEqual(redacted, {
