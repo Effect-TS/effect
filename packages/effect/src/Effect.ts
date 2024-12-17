@@ -37,6 +37,7 @@ import * as layer from "./internal/layer.js"
 import * as query from "./internal/query.js"
 import * as _runtime from "./internal/runtime.js"
 import * as _schedule from "./internal/schedule.js"
+import * as internalTracer from "./internal/tracer.js"
 import type * as Layer from "./Layer.js"
 import type { LogLevel } from "./LogLevel.js"
 import type * as ManagedRuntime from "./ManagedRuntime.js"
@@ -60,7 +61,7 @@ import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type { Concurrency, Contravariant, Covariant, NoExcessProperties, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
-import { internalCall, isGeneratorFunction, type YieldWrap } from "./Utils.js"
+import { isGeneratorFunction, type YieldWrap } from "./Utils.js"
 
 /**
  * @since 2.0.0
@@ -11578,29 +11579,26 @@ export const fn:
   ) => fn.Gen & fn.NonGen) = function(nameOrBody: Function | string, ...pipeables: Array<any>) {
     const limit = Error.stackTraceLimit
     Error.stackTraceLimit = 2
-    const error0 = new Error()
+    const errorDef = new Error()
     Error.stackTraceLimit = limit
     if (typeof nameOrBody !== "string") {
       return function(this: any, ...args: Array<any>) {
         const limit = Error.stackTraceLimit
         Error.stackTraceLimit = 2
-        const error = new Error()
+        const errorCall = new Error()
         Error.stackTraceLimit = limit
-        let cache: false | string = false
-        const captureStackTrace = () => {
-          if (cache !== false) {
-            return cache
-          }
-          if (error.stack) {
-            const stack0 = error0.stack!.trim().split("\n")
-            const stack = error.stack.trim().split("\n")
-            cache = `${stack0.slice(2).join("\n").trim()}\n${stack.slice(2).join("\n").trim()}`
-            return cache
-          }
-        }
-        const effect = fnApply(this, nameOrBody, args, pipeables)
-        const opts: any = { captureStackTrace }
-        return withSpan(effect, "<anonymous>", opts)
+        return fnApply({
+          self: this,
+          body: nameOrBody,
+          args,
+          pipeables,
+          spanName: "<anonymous>",
+          spanOptions: {
+            context: internalTracer.DisablePropagation.context(true)
+          },
+          errorDef,
+          errorCall
+        })
       } as any
     }
     const name = nameOrBody
@@ -11609,54 +11607,111 @@ export const fn:
       return function(this: any, ...args: Array<any>) {
         const limit = Error.stackTraceLimit
         Error.stackTraceLimit = 2
-        const error = new Error()
+        const errorCall = new Error()
         Error.stackTraceLimit = limit
-        let cache: false | string = false
-        const captureStackTrace = () => {
-          if (cache !== false) {
-            return cache
-          }
-          if (error.stack) {
-            const stack0 = error0.stack!.trim().split("\n")
-            const stack = error.stack.trim().split("\n")
-            cache = `${stack0.slice(2).join("\n").trim()}\n${stack.slice(2).join("\n").trim()}`
-            return cache
-          }
-        }
-        const effect = fnApply(this, body, args, pipeables)
-        const opts: any = (options && "captureStackTrace" in options) ? options : { captureStackTrace, ...options }
-        return withSpan(effect, name, opts)
+        return fnApply({
+          self: this,
+          body,
+          args,
+          pipeables,
+          spanName: name,
+          spanOptions: options,
+          errorDef,
+          errorCall
+        })
       }
     }
   }
 
-function fnApply(self: any, body: Function, args: Array<any>, pipeables: Array<any>) {
+function fnApply(options: {
+  readonly self: any
+  readonly body: Function
+  readonly args: Array<any>
+  readonly pipeables: Array<any>
+  readonly spanName: string
+  readonly spanOptions: Tracer.SpanOptions
+  readonly errorDef: Error
+  readonly errorCall: Error
+}) {
   let effect: Effect<any, any, any>
   let fnError: any = undefined
-  if (isGeneratorFunction(body)) {
-    effect = gen(() => internalCall(() => body.apply(self, args)))
+  if (isGeneratorFunction(options.body)) {
+    effect = core.fromIterator(() => options.body.apply(options.self, options.args))
   } else {
     try {
-      effect = body.apply(self, args)
+      effect = options.body.apply(options.self, options.args)
     } catch (error) {
       fnError = error
       effect = die(error)
     }
   }
-  if (pipeables.length === 0) {
-    return effect
-  }
-  try {
-    for (const x of pipeables) {
-      effect = x(effect)
+  if (options.pipeables.length > 0) {
+    try {
+      for (const x of options.pipeables) {
+        effect = x(effect)
+      }
+    } catch (error) {
+      effect = fnError
+        ? failCause(internalCause.sequential(
+          internalCause.die(fnError),
+          internalCause.die(error)
+        ))
+        : die(error)
     }
-  } catch (error) {
-    effect = fnError
-      ? failCause(internalCause.sequential(
-        internalCause.die(fnError),
-        internalCause.die(error)
-      ))
-      : die(error)
   }
-  return effect
+
+  let cache: false | string = false
+  const captureStackTrace = () => {
+    if (cache !== false) {
+      return cache
+    }
+    if (options.errorCall.stack) {
+      const stackDef = options.errorDef.stack!.trim().split("\n")
+      const stackCall = options.errorCall.stack.trim().split("\n")
+      cache = `${stackDef.slice(2).join("\n").trim()}\n${stackCall.slice(2).join("\n").trim()}`
+      return cache
+    }
+  }
+  const opts: any = (options.spanOptions && "captureStackTrace" in options.spanOptions)
+    ? options.spanOptions
+    : { captureStackTrace, ...options.spanOptions }
+  return withSpan(effect, options.spanName, opts)
 }
+
+/**
+ * Creates a function that returns an Effect.
+ *
+ * The function can be created using a generator function that can yield
+ * effects.
+ *
+ * `Effect.fnUntraced` also acts as a `pipe` function, allowing you to create a pipeline after the function definition.
+ *
+ * @example
+ * ```ts
+ * // Title: Creating a traced function with a generator function
+ * import { Effect } from "effect"
+ *
+ * const logExample = Effect.fnUntraced(function*<N extends number>(n: N) {
+ *   yield* Effect.annotateCurrentSpan("n", n)
+ *   yield* Effect.logInfo(`got: ${n}`)
+ *   yield* Effect.fail(new Error())
+ * })
+ *
+ * Effect.runFork(logExample(100))
+ * ```
+ *
+ * @since 3.12.0
+ * @category function
+ */
+export const fnUntraced: fn.Gen = (body: Function, ...pipeables: Array<any>) =>
+  pipeables.length === 0
+    ? function(this: any, ...args: Array<any>) {
+      return core.fromIterator(() => body.apply(this, args))
+    }
+    : function(this: any, ...args: Array<any>) {
+      let effect = core.fromIterator(() => body.apply(this, args))
+      for (const x of pipeables) {
+        effect = x(effect)
+      }
+      return effect
+    }
