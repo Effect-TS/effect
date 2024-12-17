@@ -17,18 +17,14 @@ describe("DateTimeUtcFromDate", () => {
       null,
       `DateTimeUtcFromDate
 └─ Encoded side transformation failure
-   └─ ValidDateFromSelf
-      └─ From side refinement failure
-         └─ Expected DateFromSelf, actual null`
+   └─ Expected DateFromSelf, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       S.DateTimeUtcFromDate,
       new Date(NaN),
       `DateTimeUtcFromDate
-└─ Encoded side transformation failure
-   └─ ValidDateFromSelf
-      └─ Predicate refinement failure
-         └─ Expected ValidDateFromSelf, actual Invalid Date`
+└─ Transformation process failure
+   └─ Expected DateTimeUtcFromDate, actual Invalid Date`
     )
   })
 

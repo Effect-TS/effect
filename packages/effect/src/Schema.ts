@@ -6360,13 +6360,13 @@ export class DateTimeUtcFromNumber extends transformOrFail(
 ).annotations({ identifier: "DateTimeUtcFromNumber" }) {}
 
 /**
- * Defines a schema that attempts to convert a valid `Date` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
+ * Defines a schema that attempts to convert a `Date` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
  *
  * @category DateTime.Utc transformations
  * @since 3.11.0
  */
 export class DateTimeUtcFromDate extends transformOrFail(
-  ValidDateFromSelf.annotations({ description: "a valid Date that will be parsed into a DateTime.Utc" }),
+  DateFromSelf.annotations({ description: "a Date that will be parsed into a DateTime.Utc" }),
   DateTimeUtcFromSelf,
   {
     strict: true,
