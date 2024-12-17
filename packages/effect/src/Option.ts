@@ -120,7 +120,7 @@ export const none = <A = never>(): Option<A> => option.none
 export const some: <A>(value: A) => Option<A> = option.some
 
 /**
- * Tests if a value is a `Option`.
+ * Checks if a given value is an `Option` value.
  *
  * @param input - The value to check.
  *

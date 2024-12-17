@@ -664,23 +664,23 @@ export const filterOrFail: {
 /* @internal */
 export const findFirst: {
   <A, E, R>(
-    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<Option.Option<A>, E, R>
   <A, E, R>(
     elements: Iterable<A>,
-    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Option.Option<A>, E, R>
 } = dual(
   2,
   <A, E, R>(
     elements: Iterable<A>,
-    f: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, E, R>
   ): Effect.Effect<Option.Option<A>, E, R> =>
     core.suspend(() => {
       const iterator = elements[Symbol.iterator]()
       const next = iterator.next()
       if (!next.done) {
-        return findLoop(iterator, 0, f, next.value)
+        return findLoop(iterator, 0, predicate, next.value)
       }
       return core.succeed(Option.none())
     })
@@ -762,15 +762,18 @@ export const match: {
 /* @internal */
 export const every: {
   <A, E, R>(
-    f: (a: A, i: number) => Effect.Effect<boolean, E, R>
+    predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<boolean, E, R>
-  <A, E, R>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<boolean, E, R>): Effect.Effect<boolean, E, R>
+  <A, E, R>(
+    elements: Iterable<A>,
+    predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>
+  ): Effect.Effect<boolean, E, R>
 } = dual(
   2,
   <A, E, R>(
     elements: Iterable<A>,
-    f: (a: A, i: number) => Effect.Effect<boolean, E, R>
-  ): Effect.Effect<boolean, E, R> => core.suspend(() => forAllLoop(elements[Symbol.iterator](), 0, f))
+    predicate: (a: A, i: number) => Effect.Effect<boolean, E, R>
+  ): Effect.Effect<boolean, E, R> => core.suspend(() => forAllLoop(elements[Symbol.iterator](), 0, predicate))
 )
 
 const forAllLoop = <A, E, R>(
