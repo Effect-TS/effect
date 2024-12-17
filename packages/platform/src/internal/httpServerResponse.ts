@@ -98,10 +98,10 @@ export const empty = (options?: ServerResponse.Options.WithContent | undefined):
 
 /** @internal */
 export const redirect = (
-  location: string,
+  location: string | URL,
   options?: ServerResponse.Options.WithContentType | undefined
 ): ServerResponse.HttpServerResponse => {
-  const headers = Headers.unsafeFromRecord({ location })
+  const headers = Headers.unsafeFromRecord({ location: location.toString() })
   return new ServerResponseImpl(
     options?.status ?? 301,
     options?.statusText,
