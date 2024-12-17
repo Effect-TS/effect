@@ -1610,8 +1610,7 @@ export const mergeAll: {
  * work with valid data. The function ensures that failures are captured, while
  * successes are processed normally.
  *
- * @see {@link validateAll} for a function that either collects all failures or
- * all successes.
+ * @see {@link validateAll} for a function that either collects all failures or all successes.
  * @see {@link validateFirst} for a function that stops at the first success.
  *
  * @example
@@ -1661,8 +1660,47 @@ export const partition: {
 } = fiberRuntime.partition
 
 /**
- * Folds an `Iterable<A>` using an effectual function `f`, working sequentially
- * from left to right.
+ * Combines an `Iterable<A>` using an effectual function `f`, working
+ * sequentially from left to right.
+ *
+ * **Details**
+ *
+ * This function takes an iterable and applies a function `f` to each element in
+ * the iterable. The function works sequentially, starting with an initial value
+ * `zero` and then combining it with each element in the collection. The
+ * provided function `f` is called for each element in the iterable, allowing
+ * you to accumulate a result based on the current value and the element being
+ * processed.
+ *
+ * **When to Use**
+ *
+ * The function is often used for operations like summing a collection of
+ * numbers or combining results from multiple tasks. It ensures that operations
+ * are performed one after the other, maintaining the order of the elements.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const processOrder = (id: number) =>
+ *   Effect.succeed(`Order ${id} processed`)
+ *     .pipe(Effect.tap(Console.log), Effect.delay(500 - (id * 100)))
+ *
+ * const program = Effect.reduce(
+ *   [1, 2, 3, 4],
+ *   [],
+ *   (acc: Array<string>, id: number, i: number) =>
+ *     processOrder(id)
+ *       .pipe(Effect.map((order) => [...acc, order]))
+ * )
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // Order 1 processed
+ * // Order 2 processed
+ * // Order 3 processed
+ * // Order 4 processed
+ * ```
  *
  * @since 2.0.0
  * @category Collecting
@@ -6869,25 +6907,141 @@ export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) =
   core.flatten
 
 /**
- * Returns an effect that races this effect with all the specified effects,
- * yielding the value of the first effect to succeed with a value. Losers of
- * the race will be interrupted immediately
+ * Races two effects and returns the result of the first successful one.
+ *
+ * **Details**
+ *
+ * This function takes two effects and runs them concurrently. The first effect
+ * that successfully completes will determine the result of the race, and the
+ * other effect will be interrupted.
+ *
+ * If neither effect succeeds, the function will fail with a {@link Cause}
+ * containing all the errors.
+ *
+ * **When to Use**
+ *
+ * This is useful when you want to run two effects concurrently, but only care
+ * about the first one to succeed. It is commonly used in cases like timeouts,
+ * retries, or when you want to optimize for the faster response without
+ * worrying about the other effect.
+ *
+ * **Handling Success or Failure with Either**
+ *
+ * If you want to handle the result of whichever task completes first, whether
+ * it succeeds or fails, you can use the `Effect.either` function. This function
+ * wraps the result in an {@link Either} type, allowing you to see if the result
+ * was a success (`Right`) or a failure (`Left`).
+ *
+ * @see {@link raceAll} for a version that handles multiple effects.
+ * @see {@link raceFirst} for a version that returns the result of the first effect to complete.
+ *
+ * @example
+ * ```ts
+ * // Title: Both Tasks Succeed
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.succeed("task1").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() => Console.log("task1 interrupted"))
+ * )
+ * const task2 = Effect.succeed("task2").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() => Console.log("task2 interrupted"))
+ * )
+ *
+ * const program = Effect.race(task1, task2)
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // task1 done
+ * // task2 interrupted
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: One Task Fails, One Succeeds
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.fail("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() => Console.log("task1 interrupted"))
+ * )
+ * const task2 = Effect.succeed("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() => Console.log("task2 interrupted"))
+ * )
+ *
+ * const program = Effect.race(task1, task2)
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // task2 done
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: Both Tasks Fail
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.fail("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() => Console.log("task1 interrupted"))
+ * )
+ * const task2 = Effect.fail("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() => Console.log("task2 interrupted"))
+ * )
+ *
+ * const program = Effect.race(task1, task2)
+ *
+ * Effect.runPromiseExit(program).then(console.log)
+ * // Output:
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: {
+ * //     _id: 'Cause',
+ * //     _tag: 'Parallel',
+ * //     left: { _id: 'Cause', _tag: 'Fail', failure: 'task1' },
+ * //     right: { _id: 'Cause', _tag: 'Fail', failure: 'task2' }
+ * //   }
+ * // }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: Handling Success or Failure with Either
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.fail("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() => Console.log("task1 interrupted"))
+ * )
+ * const task2 = Effect.succeed("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() => Console.log("task2 interrupted"))
+ * )
+ *
+ * // Run both tasks concurrently, wrapping the result
+ * // in Either to capture success or failure
+ * const program = Effect.race(Effect.either(task1), Effect.either(task2))
+ *
+ * Effect.runPromise(program).then(console.log)
+ * // Output:
+ * // task2 interrupted
+ * // { _id: 'Either', _tag: 'Left', left: 'task1' }
+ * ```
  *
  * @since 2.0.0
- * @category sequencing
- */
-export const raceAll: <Eff extends Effect<any, any, any>>(
-  all: Iterable<Eff>
-) => Effect<Effect.Success<Eff>, Effect.Error<Eff>, Effect.Context<Eff>> = fiberRuntime.raceAll
-
-/**
- * Returns an effect that races this effect with the specified effect,
- * returning the first successful `A` from the faster side. If one effect
- * succeeds, the other will be interrupted. If neither succeeds, then the
- * effect will fail with some error.
- *
- * @since 2.0.0
- * @category sequencing
+ * @category Racing
  */
 export const race: {
   <A2, E2, R2>(that: Effect<A2, E2, R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A2 | A, E2 | E, R2 | R>
@@ -6895,19 +7049,262 @@ export const race: {
 } = fiberRuntime.race
 
 /**
- * Returns an effect that races this effect with the specified effect,
- * yielding the first result to complete, whether by success or failure. If
- * neither effect completes, then the composed effect will not complete.
+ * Races multiple effects and returns the first successful result.
  *
- * WARNING: The raced effect will safely interrupt the "loser", but will not
- * resume until the loser has been cleanly terminated. If early return is
- * desired, then instead of performing `l raceFirst r`, perform
- * `l.disconnect raceFirst r.disconnect`, which disconnects left and right
- * interrupt signal, allowing a fast return, with interruption performed
- * in the background.
+ * **Details**
+ *
+ * This function runs multiple effects concurrently and returns the result of
+ * the first one to succeed. If one effect succeeds, the others will be
+ * interrupted.
+ *
+ * If none of the effects succeed, the function will fail with the last error
+ * encountered.
+ *
+ * **When to Use**
+ *
+ * This is useful when you want to race multiple effects, but only care about
+ * the first one to succeed. It is commonly used in cases like timeouts,
+ * retries, or when you want to optimize for the faster response without
+ * worrying about the other effects.
+ *
+ * @see {@link race} for a version that handles only two effects.
+ *
+ * @example
+ * ```ts
+ * // Title: All Tasks Succeed
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.succeed("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() => Console.log("task1 interrupted"))
+ * )
+ * const task2 = Effect.succeed("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() => Console.log("task2 interrupted"))
+ * )
+ *
+ * const task3 = Effect.succeed("task3").pipe(
+ *   Effect.delay("150 millis"),
+ *   Effect.tap(Console.log("task3 done")),
+ *   Effect.onInterrupt(() => Console.log("task3 interrupted"))
+ * )
+ *
+ * const program = Effect.raceAll([task1, task2, task3])
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // task1 done
+ * // task2 interrupted
+ * // task3 interrupted
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: One Task Fails, Two Tasks Succeed
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.fail("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() => Console.log("task1 interrupted"))
+ * )
+ * const task2 = Effect.succeed("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() => Console.log("task2 interrupted"))
+ * )
+ *
+ * const task3 = Effect.succeed("task3").pipe(
+ *   Effect.delay("150 millis"),
+ *   Effect.tap(Console.log("task3 done")),
+ *   Effect.onInterrupt(() => Console.log("task3 interrupted"))
+ * )
+ *
+ * const program = Effect.raceAll([task1, task2, task3])
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // task3 done
+ * // task2 interrupted
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: All Tasks Fail
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.fail("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() => Console.log("task1 interrupted"))
+ * )
+ * const task2 = Effect.fail("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() => Console.log("task2 interrupted"))
+ * )
+ *
+ * const task3 = Effect.fail("task3").pipe(
+ *   Effect.delay("150 millis"),
+ *   Effect.tap(Console.log("task3 done")),
+ *   Effect.onInterrupt(() => Console.log("task3 interrupted"))
+ * )
+ *
+ * const program = Effect.raceAll([task1, task2, task3])
+ *
+ * Effect.runPromiseExit(program).then(console.log)
+ * // Output:
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'task2' }
+ * // }
+ * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Racing
+ */
+export const raceAll: <Eff extends Effect<any, any, any>>(
+  all: Iterable<Eff>
+) => Effect<Effect.Success<Eff>, Effect.Error<Eff>, Effect.Context<Eff>> = fiberRuntime.raceAll
+
+/**
+ * Races two effects and returns the result of the first one to complete.
+ *
+ * **Details**
+ *
+ * This function takes two effects and runs them concurrently, returning the
+ * result of the first one that completes, regardless of whether it succeeds or
+ * fails.
+ *
+ * **When to Use**
+ *
+ * This function is useful when you want to race two operations, and you want to
+ * proceed with whichever one finishes first, regardless of whether it succeeds
+ * or fails.
+ *
+ * **Disconnecting Effects**
+ *
+ * The `Effect.raceFirst` function safely interrupts the “loser” effect once the other completes, but it will not resume until the loser is cleanly terminated.
+ *
+ * If you want a quicker return, you can disconnect the interrupt signal for both effects. Instead of calling:
+ *
+ * ```ts
+ * Effect.raceFirst(task1, task2)
+ * ```
+ *
+ * You can use:
+ *
+ * ```ts
+ * Effect.raceFirst(Effect.disconnect(task1), Effect.disconnect(task2))
+ * ```
+ *
+ * This allows both effects to complete independently while still terminating the losing effect in the background.
+ *
+ * @example
+ * ```ts
+ * // Title: Both Tasks Succeed
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.succeed("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() =>
+ *     Console.log("task1 interrupted").pipe(Effect.delay("100 millis"))
+ *   )
+ * )
+ * const task2 = Effect.succeed("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() =>
+ *     Console.log("task2 interrupted").pipe(Effect.delay("100 millis"))
+ *   )
+ * )
+ *
+ * const program = Effect.raceFirst(task1, task2).pipe(
+ *   Effect.tap(Console.log("more work..."))
+ * )
+ *
+ * Effect.runPromiseExit(program).then(console.log)
+ * // Output:
+ * // task1 done
+ * // task2 interrupted
+ * // more work...
+ * // { _id: 'Exit', _tag: 'Success', value: 'task1' }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: One Task Fails, One Succeeds
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.fail("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() =>
+ *     Console.log("task1 interrupted").pipe(Effect.delay("100 millis"))
+ *   )
+ * )
+ * const task2 = Effect.succeed("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() =>
+ *     Console.log("task2 interrupted").pipe(Effect.delay("100 millis"))
+ *   )
+ * )
+ *
+ * const program = Effect.raceFirst(task1, task2).pipe(
+ *   Effect.tap(Console.log("more work..."))
+ * )
+ *
+ * Effect.runPromiseExit(program).then(console.log)
+ * // Output:
+ * // task2 interrupted
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'task1' }
+ * // }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: Using Effect.disconnect for Quicker Return
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.succeed("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() =>
+ *     Console.log("task1 interrupted").pipe(Effect.delay("100 millis"))
+ *   )
+ * )
+ * const task2 = Effect.succeed("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() =>
+ *     Console.log("task2 interrupted").pipe(Effect.delay("100 millis"))
+ *   )
+ * )
+ *
+ * // Race the two tasks with disconnect to allow quicker return
+ * const program = Effect.raceFirst(
+ *   Effect.disconnect(task1),
+ *   Effect.disconnect(task2)
+ * ).pipe(Effect.tap(Console.log("more work...")))
+ *
+ * Effect.runPromiseExit(program).then(console.log)
+ * // Output:
+ * // task1 done
+ * // more work...
+ * // { _id: 'Exit', _tag: 'Success', value: 'task1' }
+ * // task2 interrupted
+ * ```
+ *
+ * @since 2.0.0
+ * @category Racing
  */
 export const raceFirst: {
   <A2, E2, R2>(that: Effect<A2, E2, R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<A2 | A, E2 | E, R2 | R>
@@ -6915,11 +7312,64 @@ export const raceFirst: {
 } = circular.raceFirst
 
 /**
- * Returns an effect that races this effect with the specified effect, calling
- * the specified finisher as soon as one result or the other has been computed.
+ * Races two effects and calls a finisher when the first one completes.
+ *
+ * **Details**
+ *
+ * This function runs two effects concurrently and calls a specified “finisher”
+ * function once one of the effects completes, regardless of whether it succeeds
+ * or fails.
+ *
+ * The finisher functions for each effect allow you to handle the results of
+ * each effect as soon as they complete.
+ *
+ * The function takes two finisher callbacks, one for each effect, and allows
+ * you to specify how to handle the result of the race.
+ *
+ * **When to Use**
+ *
+ * This function is useful when you need to react to the completion of either
+ * effect without waiting for both to finish. It can be used whenever you want
+ * to take action based on the first available result.
+ *
+ * @example
+ * ```ts
+ * // Title: Handling Results of Concurrent Tasks
+ * import { Effect, Console } from "effect"
+ *
+ * const task1 = Effect.succeed("task1").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Console.log("task1 done")),
+ *   Effect.onInterrupt(() =>
+ *     Console.log("task1 interrupted").pipe(Effect.delay("100 millis"))
+ *   )
+ * )
+ * const task2 = Effect.succeed("task2").pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Console.log("task2 done")),
+ *   Effect.onInterrupt(() =>
+ *     Console.log("task2 interrupted").pipe(Effect.delay("100 millis"))
+ *   )
+ * )
+ *
+ * const program = Effect.raceWith(task1, task2, {
+ *   onSelfDone: (exit) => Console.log(`task1 exited with ${exit}`),
+ *   onOtherDone: (exit) => Console.log(`task2 exited with ${exit}`)
+ * })
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // task1 done
+ * // task1 exited with {
+ * //   "_id": "Exit",
+ * //   "_tag": "Success",
+ * //   "value": "task1"
+ * // }
+ * // task2 interrupted
+ * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Racing
  */
 export const raceWith: {
   <A1, E1, R1, E, A, A2, E2, R2, A3, E3, R3>(
