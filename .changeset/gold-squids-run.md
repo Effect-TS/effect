@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-add DateTimeUtcFromDate and DateTimeZonedFromDate schemas
+add DateTimeUtcFromDate schema
