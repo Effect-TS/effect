@@ -6363,7 +6363,7 @@ export class DateTimeUtcFromNumber extends transformOrFail(
  * Defines a schema that attempts to convert a `Date` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
  *
  * @category DateTime.Utc transformations
- * @since 3.11.0
+ * @since 3.12.0
  */
 export class DateTimeUtcFromDate extends transformOrFail(
   DateFromSelf.annotations({ description: "a Date that will be parsed into a DateTime.Utc" }),
