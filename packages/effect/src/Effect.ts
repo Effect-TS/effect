@@ -261,7 +261,7 @@ export declare namespace Effect {
 export const isEffect: (u: unknown) => u is Effect<unknown, unknown, unknown> = core.isEffect
 
 /**
- * Returns an effect that caches its result for a specified {@link Duration},
+ * Returns an effect that caches its result for a specified `Duration`,
  * known as "timeToLive" (TTL).
  *
  * **Details**
@@ -486,7 +486,7 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  * input, it is stored and reused for subsequent calls with the same input,
  * reducing the need to recompute the result.
  *
- * The function can optionally take an {@link Equivalence} parameter to
+ * The function can optionally take an `Equivalence` parameter to
  * determine how inputs are compared for caching purposes.
  *
  * **When to Use**
@@ -962,7 +962,7 @@ export declare namespace All {
  *
  * The function also allows you to customize how the effects are handled by
  * specifying options such as concurrency, batching, and how finalizers behave.
- * These options provide flexibility in running the effects in parallel or
+ * These options provide flexibility in running the effects concurrently or
  * adjusting other execution details.
  *
  * @example
@@ -1001,7 +1001,7 @@ export const allSuccesses: <X extends Effect<any, any, any>>(
 ) => Effect<Array<Effect.Success<X>>, never, Effect.Context<X>> = fiberRuntime.allSuccesses
 
 /**
- * Drops all elements until the effectful predicate returns `true`.
+ * Drops elements until the effectful predicate returns `true`.
  *
  * **Details**
  *
@@ -1053,7 +1053,7 @@ export const dropUntil: {
 } = effect.dropUntil
 
 /**
- * Drops all elements as long as the predicate returns `true`.
+ * Drops elements as long as the predicate returns `true`.
  *
  * **Details**
  *
@@ -1102,6 +1102,111 @@ export const dropWhile: {
   ): (elements: Iterable<A>) => Effect<Array<A>, E, R>
   <A, E, R>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<boolean, E, R>): Effect<Array<A>, E, R>
 } = effect.dropWhile
+
+/**
+ * Takes elements from a collection until the effectful predicate returns
+ * `true`.
+ *
+ * **Details**
+ *
+ * This function processes a collection of elements and uses an effectful
+ * predicate to decide when to stop taking elements. The elements are taken from
+ * the beginning of the collection until the predicate returns `true`.
+ *
+ * The predicate is a function that takes an element and its index in the
+ * collection, and returns an effect that resolves to a boolean.
+ *
+ * Once the predicate returns `true`, the remaining elements of the collection
+ * are discarded, and the function stops taking more elements.
+ *
+ * **Note**: The first element for which the predicate returns `true` is also
+ * included in the result.
+ *
+ * **When to Use**
+ *
+ * Use this function when you want to conditionally take elements from a
+ * collection based on a dynamic condition. For example, you may want to collect
+ * numbers from a list until a certain threshold is reached, or gather items
+ * until a specific condition is met.
+ *
+ * @see {@link takeWhile} for a similar function that takes elements while the
+ * predicate returns `true`.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4, 5, 6]
+ * const predicate = (n: number, i: number) => Effect.succeed(n > 3)
+ *
+ * const program = Effect.gen(function*() {
+ *   const result = yield* Effect.takeUntil(numbers, predicate)
+ *   console.log(result)
+ * })
+ *
+ * Effect.runFork(program)
+ * // Output: [ 1, 2, 3, 4 ]
+ * ```
+ *
+ * @since 2.0.0
+ * @category Collecting
+ */
+export const takeUntil: {
+  <A, R, E>(
+    predicate: (a: NoInfer<A>, i: number) => Effect<boolean, E, R>
+  ): (elements: Iterable<A>) => Effect<Array<A>, E, R>
+  <A, E, R>(
+    elements: Iterable<A>,
+    predicate: (a: NoInfer<A>, i: number) => Effect<boolean, E, R>
+  ): Effect<Array<A>, E, R>
+} = effect.takeUntil
+
+/**
+ * Takes elements as long as the predicate returns `true`.
+ *
+ * **Details**
+ *
+ * This function processes a collection of elements and uses a predicate to
+ * decide whether to take an element.
+ *
+ * The predicate is a function that takes an element and its index, and it
+ * returns an effect that evaluates to a boolean.
+ *
+ * As long as the predicate returns `true`, elements will continue to be taken
+ * from the collection.
+ *
+ * Once the predicate returns `false`, the remaining elements are discarded.
+ *
+ * @see {@link takeUntil} for a similar function that takes elements until the predicate returns `true`.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4, 5, 6]
+ * const predicate = (n: number, i: number) => Effect.succeed(n <= 3)
+ *
+ * const program = Effect.gen(function*() {
+ *   const result = yield* Effect.takeWhile(numbers, predicate)
+ *   console.log(result)
+ * })
+ *
+ * Effect.runFork(program)
+ * // Output: [1, 2, 3]
+ * ```
+ *
+ * @since 2.0.0
+ * @category Collecting
+ */
+export const takeWhile: {
+  <A, E, R>(
+    predicate: (a: NoInfer<A>, i: number) => Effect<boolean, E, R>
+  ): (elements: Iterable<A>) => Effect<Array<A>, E, R>
+  <A, E, R>(
+    elements: Iterable<A>,
+    predicate: (a: NoInfer<A>, i: number) => Effect<boolean, E, R>
+  ): Effect<Array<A>, E, R>
+} = effect.takeWhile
 
 /**
  * Determines whether all elements of the iterable satisfy the effectful
@@ -1536,9 +1641,10 @@ export const head: <A, E, R>(self: Effect<Iterable<A>, E, R>) => Effect<A, Cause
  *
  * **Options**
  *
- * The function also allows for some configuration options such as concurrency
- * and batching behavior, providing flexibility in how the effects are
- * processed.
+ * The function also allows you to customize how the effects are handled by
+ * specifying options such as concurrency, batching, and how finalizers behave.
+ * These options provide flexibility in running the effects concurrently or
+ * adjusting other execution details.
  *
  * @example
  * ```ts
@@ -1660,7 +1766,7 @@ export const partition: {
 } = fiberRuntime.partition
 
 /**
- * Combines an `Iterable<A>` using an effectual function `f`, working
+ * Reduces an `Iterable<A>` using an effectual function `f`, working
  * sequentially from left to right.
  *
  * **Details**
@@ -1678,28 +1784,32 @@ export const partition: {
  * numbers or combining results from multiple tasks. It ensures that operations
  * are performed one after the other, maintaining the order of the elements.
  *
+ * @see {@link reduceWhile} for a similar function that stops the process based on a predicate.
+ * @see {@link reduceRight} for a similar function that works from right to left.
+ *
  * @example
  * ```ts
  * import { Console, Effect } from "effect"
  *
  * const processOrder = (id: number) =>
- *   Effect.succeed(`Order ${id} processed`)
- *     .pipe(Effect.tap(Console.log), Effect.delay(500 - (id * 100)))
+ *   Effect.succeed({ id, price: 100 * id })
+ *     .pipe(Effect.tap(() => Console.log(`Order ${id} processed`)), Effect.delay(500 - (id * 100)))
  *
  * const program = Effect.reduce(
  *   [1, 2, 3, 4],
- *   [],
- *   (acc: Array<string>, id: number, i: number) =>
+ *   0,
+ *   (acc, id, i) =>
  *     processOrder(id)
- *       .pipe(Effect.map((order) => [...acc, order]))
+ *       .pipe(Effect.map((order) => acc + order.price))
  * )
  *
- * Effect.runFork(program)
+ * Effect.runPromise(program).then(console.log)
  * // Output:
  * // Order 1 processed
  * // Order 2 processed
  * // Order 3 processed
  * // Order 4 processed
+ * // 1000
  * ```
  *
  * @since 2.0.0
@@ -1711,51 +1821,51 @@ export const reduce: {
 } = effect.reduce
 
 /**
- * Reduces an `Iterable<Effect<A, E, R>>` to a single effect.
+ * Reduces an `Iterable<A>` using an effectual function `body`, working
+ * sequentially from left to right, stopping the process early when the
+ * predicate `while` is not satisfied.
  *
- * @since 2.0.0
- * @category Collecting
- */
-export const reduceEffect: {
-  <Z, E, R, Eff extends Effect<any, any, any>>(
-    zero: Effect<Z, E, R>,
-    f: (acc: NoInfer<Z>, a: Effect.Success<Eff>, i: number) => Z,
-    options?:
-      | {
-        readonly concurrency?: Concurrency | undefined
-        readonly batching?: boolean | "inherit" | undefined
-        readonly concurrentFinalizers?: boolean | undefined
-      }
-      | undefined
-  ): (elements: Iterable<Eff>) => Effect<Z, E | Effect.Error<Eff>, R | Effect.Context<Eff>>
-  <Eff extends Effect<any, any, any>, Z, E, R>(
-    elements: Iterable<Eff>,
-    zero: Effect<Z, E, R>,
-    f: (acc: NoInfer<Z>, a: Effect.Success<Eff>, i: number) => Z,
-    options?:
-      | {
-        readonly concurrency?: Concurrency | undefined
-        readonly batching?: boolean | "inherit" | undefined
-        readonly concurrentFinalizers?: boolean | undefined
-      }
-      | undefined
-  ): Effect<Z, E | Effect.Error<Eff>, R | Effect.Context<Eff>>
-} = fiberRuntime.reduceEffect
-
-/**
- * Reduces an `Iterable<A>` using an effectual function `f`, working sequentially from right to left.
+ * **Details**
  *
- * @since 2.0.0
- * @category Collecting
- */
-export const reduceRight: {
-  <A, Z, R, E>(zero: Z, f: (a: A, z: Z, i: number) => Effect<Z, E, R>): (elements: Iterable<A>) => Effect<Z, E, R>
-  <A, Z, R, E>(elements: Iterable<A>, zero: Z, f: (a: A, z: Z, i: number) => Effect<Z, E, R>): Effect<Z, E, R>
-} = effect.reduceRight
-
-/**
- * Folds over the elements in this chunk from the left, stopping the fold early
- * when the predicate is not satisfied.
+ * This function processes a collection of elements, applying a function `body`
+ * to reduce them to a single value, starting from the first element. It checks
+ * the value of the accumulator against a predicate (`while`). If at any point
+ * the predicate returns `false`, the reduction stops, and the accumulated
+ * result is returned.
+ *
+ * **When to Use**
+ *
+ * Use this function when you need to reduce a collection of elements, but only
+ * continue the process as long as a certain condition holds true. For example,
+ * if you want to sum values in a list but stop as soon as the sum exceeds a
+ * certain threshold, you can use this function.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const processOrder = (id: number) =>
+ *   Effect.succeed({ id, price: 100 * id })
+ *     .pipe(Effect.tap(() => Console.log(`Order ${id} processed`)), Effect.delay(500 - (id * 100)))
+ *
+ * const program = Effect.reduceWhile(
+ *   [1, 2, 3, 4],
+ *   0,
+ *   {
+ *     body: (acc, id, i) =>
+ *       processOrder(id)
+ *         .pipe(Effect.map((order) => acc + order.price)),
+ *     while: (acc) => acc < 500
+ *   }
+ * )
+ *
+ * Effect.runPromise(program).then(console.log)
+ * // Output:
+ * // Order 1 processed
+ * // Order 2 processed
+ * // Order 3 processed
+ * // 600
+ * ```
  *
  * @since 2.0.0
  * @category Collecting
@@ -1773,7 +1883,159 @@ export const reduceWhile: {
 } = effect.reduceWhile
 
 /**
+ * Reduces an `Iterable<A>` using an effectual function `f`, working
+ * sequentially from right to left.
+ *
+ * **Details**
+ *
+ * This function takes an iterable and applies a function `f` to each element in
+ * the iterable. The function works sequentially, starting with an initial value
+ * `zero` and then combining it with each element in the collection. The
+ * provided function `f` is called for each element in the iterable, allowing
+ * you to accumulate a result based on the current value and the element being
+ * processed.
+ *
+ * **When to Use**
+ *
+ * The function is often used for operations like summing a collection of
+ * numbers or combining results from multiple tasks. It ensures that operations
+ * are performed one after the other, maintaining the order of the elements.
+ *
+ * @see {@link reduce} for a similar function that works from left to right.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const processOrder = (id: number) =>
+ *   Effect.succeed({ id, price: 100 * id })
+ *     .pipe(Effect.tap(() => Console.log(`Order ${id} processed`)), Effect.delay(500 - (id * 100)))
+ *
+ * const program = Effect.reduceRight(
+ *   [1, 2, 3, 4],
+ *   0,
+ *   (id, acc, i) =>
+ *     processOrder(id)
+ *       .pipe(Effect.map((order) => acc + order.price))
+ * )
+ *
+ * Effect.runPromise(program).then(console.log)
+ * // Output:
+ * // Order 4 processed
+ * // Order 3 processed
+ * // Order 2 processed
+ * // Order 1 processed
+ * // 1000
+ * ```
+ *
+ * @since 2.0.0
+ * @category Collecting
+ */
+export const reduceRight: {
+  <A, Z, R, E>(zero: Z, f: (a: A, z: Z, i: number) => Effect<Z, E, R>): (elements: Iterable<A>) => Effect<Z, E, R>
+  <A, Z, R, E>(elements: Iterable<A>, zero: Z, f: (a: A, z: Z, i: number) => Effect<Z, E, R>): Effect<Z, E, R>
+} = effect.reduceRight
+
+/**
+ * Reduces an `Iterable<Effect<A, E, R>>` to a single effect.
+ *
+ * **Details**
+ *
+ * This function processes a collection of effects and combines them into one
+ * single effect. It starts with an initial effect (`zero`) and applies a
+ * function `f` to each element in the collection.
+ *
+ * **Options**
+ *
+ * The function also allows you to customize how the effects are handled by
+ * specifying options such as concurrency, batching, and how finalizers behave.
+ * These options provide flexibility in running the effects concurrently or
+ * adjusting other execution details.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const processOrder = (id: number) =>
+ *   Effect.succeed({ id, price: 100 * id })
+ *     .pipe(Effect.tap(() => Console.log(`Order ${id} processed`)), Effect.delay(500 - (id * 100)))
+ *
+ * const program = Effect.reduceEffect(
+ *   [processOrder(1), processOrder(2), processOrder(3), processOrder(4)],
+ *   Effect.succeed(0),
+ *   (acc, order, i) => acc + order.price
+ * )
+ *
+ * Effect.runPromise(program).then(console.log)
+ * // Output:
+ * // Order 1 processed
+ * // Order 2 processed
+ * // Order 3 processed
+ * // Order 4 processed
+ * // 1000
+ * ```
+ *
+ * @since 2.0.0
+ * @category Collecting
+ */
+export const reduceEffect: {
+  <Z, E, R, Eff extends Effect<any, any, any>>(
+    zero: Effect<Z, E, R>,
+    f: (z: NoInfer<Z>, a: Effect.Success<Eff>, i: number) => Z,
+    options?:
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
+      | undefined
+  ): (elements: Iterable<Eff>) => Effect<Z, E | Effect.Error<Eff>, R | Effect.Context<Eff>>
+  <Eff extends Effect<any, any, any>, Z, E, R>(
+    elements: Iterable<Eff>,
+    zero: Effect<Z, E, R>,
+    f: (z: NoInfer<Z>, a: Effect.Success<Eff>, i: number) => Z,
+    options?:
+      | {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
+      | undefined
+  ): Effect<Z, E | Effect.Error<Eff>, R | Effect.Context<Eff>>
+} = fiberRuntime.reduceEffect
+
+/**
  * Replicates the given effect `n` times.
+ *
+ * **Details**
+ *
+ * This function takes an effect and replicates it a specified number of times
+ * (`n`). The result is an array of `n` effects, each of which is identical to
+ * the original effect.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const task = Effect.succeed("Hello, World!").pipe(
+ *   Effect.tap(Console.log)
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   // Replicate the task 3 times
+ *   const tasks = Effect.replicate(task, 3)
+ *   for (const t of tasks) {
+ *     // Run each task
+ *     yield* t
+ *   }
+ * })
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // Hello, World!
+ * // Hello, World!
+ * // Hello, World!
+ * ```
  *
  * @since 2.0.0
  */
@@ -1783,8 +2045,48 @@ export const replicate: {
 } = fiberRuntime.replicate
 
 /**
- * Performs this effect the specified number of times and collects the
- * results.
+ * Performs this effect the specified number of times and collects the results.
+ *
+ * **Details**
+ *
+ * This function repeats an effect multiple times and collects the results into
+ * an array. You specify how many times to execute the effect, and it runs that
+ * many times, either in sequence or concurrently depending on the provided
+ * options.
+ *
+ * **Options**
+ *
+ * If the `discard` option is set to `true`, the intermediate results are not
+ * collected, and the final result of the operation is `void`.
+ *
+ * The function also allows you to customize how the effects are handled by
+ * specifying options such as concurrency, batching, and how finalizers behave.
+ * These options provide flexibility in running the effects concurrently or
+ * adjusting other execution details.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * let counter = 0
+ *
+ * const task = Effect.sync(() => ++counter).pipe(
+ *   Effect.tap(() => Console.log(`Task completed`))
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   // Replicate the task 3 times and collect the results
+ *   const results = yield* Effect.replicateEffect(task, 3)
+ *   yield* Console.log(`Results: ${results.join(", ")}`)
+ * })
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // Task completed
+ * // Task completed
+ * // Task completed
+ * // Results: 1, 2, 3
+ * ```
  *
  * @since 2.0.0
  * @category Collecting
@@ -1829,38 +2131,6 @@ export const replicateEffect: {
     }
   ): Effect<void, E, R>
 } = fiberRuntime.replicateEffect
-
-/**
- * Takes elements until the effectual predicate returns true.
- *
- * @since 2.0.0
- * @category Collecting
- */
-export const takeUntil: {
-  <A, R, E>(
-    predicate: (a: NoInfer<A>, i: number) => Effect<boolean, E, R>
-  ): (elements: Iterable<A>) => Effect<Array<A>, E, R>
-  <A, E, R>(
-    elements: Iterable<A>,
-    predicate: (a: NoInfer<A>, i: number) => Effect<boolean, E, R>
-  ): Effect<Array<A>, E, R>
-} = effect.takeUntil
-
-/**
- * Takes all elements so long as the effectual predicate returns true.
- *
- * @since 2.0.0
- * @category Collecting
- */
-export const takeWhile: {
-  <A, E, R>(
-    predicate: (a: NoInfer<A>, i: number) => Effect<boolean, E, R>
-  ): (elements: Iterable<A>) => Effect<Array<A>, E, R>
-  <A, E, R>(
-    elements: Iterable<A>,
-    predicate: (a: NoInfer<A>, i: number) => Effect<boolean, E, R>
-  ): Effect<Array<A>, E, R>
-} = effect.takeWhile
 
 /**
  * Applies an effectful operation to each element in a collection while
@@ -1966,6 +2236,8 @@ export const validateAll: {
  * This function is similar to {@link validateAll} but with a key difference: it
  * returns the first successful result or all errors if none of the operations
  * succeed.
+ *
+ * **Details**
  *
  * This function processes a collection of elements and applies an effectful
  * operation to each. Unlike {@link validateAll}, which accumulates both
@@ -2236,18 +2508,24 @@ export const withFiberRuntime: <A, E = never, R = never>(
 export const fail: <E>(error: E) => Effect<never, E> = core.fail
 
 /**
+ * Creates an `Effect` that fails with the specified error, evaluated lazily.
+ *
  * @since 2.0.0
  * @category Creating Effects
  */
 export const failSync: <E>(evaluate: LazyArg<E>) => Effect<never, E> = core.failSync
 
 /**
+ * Creates an `Effect` that fails with the specified `Cause`.
+ *
  * @since 2.0.0
  * @category Creating Effects
  */
 export const failCause: <E>(cause: Cause.Cause<E>) => Effect<never, E> = core.failCause
 
 /**
+ * Creates an `Effect` that fails with the specified `Cause`, evaluated lazily.
+ *
  * @since 2.0.0
  * @category Creating Effects
  */
@@ -2350,6 +2628,8 @@ export const dieMessage: (message: string) => Effect<never> = core.dieMessage
 
 /**
  * Creates an effect that dies with the specified error, evaluated lazily.
+ *
+ * **Details**
  *
  * This function allows you to create an effect that will terminate with a fatal error.
  * The error is provided as a lazy argument, meaning it will only be evaluated when the effect runs.
@@ -2694,8 +2974,15 @@ export interface Adapter {
 }
 
 /**
- * Returns an effect that will never produce anything. The moral equivalent of
- * `while(true) {}`, only without the wasted CPU cycles.
+ * An effect that that runs indefinitely and never produces any result. The
+ * moral equivalent of `while(true) {}`, only without the wasted CPU cycles.
+ *
+ * **When to Use**
+ *
+ * It could be useful for long-running background tasks or to simulate waiting
+ * behavior without actually consuming resources. This effect is ideal for cases
+ * where you want to keep the program alive or in a certain state without
+ * performing any active work.
  *
  * @since 2.0.0
  * @category Creating Effects
@@ -2703,10 +2990,23 @@ export interface Adapter {
 export const never: Effect<never> = core.never
 
 /**
- * Requires the option produced by this value to be `None`.
+ * Ensures the `Option` is `None`, returning `void`. Otherwise, raises a
+ * `NoSuchElementException`.
+ *
+ * **Details**
+ *
+ * This function checks if the provided `Option` is `None`. If it is, it returns
+ * an effect that produces no result (i.e., `void`). If the `Option` is not
+ * `None` (i.e., it contains a value), the function will raise a
+ * `NoSuchElementException` error.
+ *
+ * **When to Use**
+ *
+ * This is useful when you want to ensure that a certain value is absent (i.e.,
+ * `None`) before continuing execution, and to handle cases where the value is
+ * unexpectedly present.
  *
  * @since 2.0.0
- * @category Creating Effects
  */
 export const none: <A, E, R>(
   self: Effect<Option.Option<A>, E, R>
@@ -2794,6 +3094,15 @@ export const succeed: <A>(value: A) => Effect<A> = core.succeed
 /**
  * Returns an effect which succeeds with `None`.
  *
+ * **When to Use**
+ *
+ * Use this function when you need to represent the absence of a value in your
+ * code, especially when working with optional data. This can be helpful when
+ * you want to indicate that no result is available without throwing an error or
+ * performing additional logic.
+ *
+ * @see {@link succeedSome} to create an effect that succeeds with a `Some` value.
+ *
  * @since 2.0.0
  * @category Creating Effects
  */
@@ -2801,6 +3110,8 @@ export const succeedNone: Effect<Option.Option<never>> = effect.succeedNone
 
 /**
  * Returns an effect which succeeds with the value wrapped in a `Some`.
+ *
+ * @see {@link succeedNone} for a similar function that returns `None` when the value is absent.
  *
  * @since 2.0.0
  * @category Creating Effects
@@ -2943,8 +3254,19 @@ export const suspend: <A, E, R>(effect: LazyArg<Effect<A, E, R>>) => Effect<A, E
 export const sync: <A>(thunk: LazyArg<A>) => Effect<A> = core.sync
 
 const _void: Effect<void> = core.void
+
 export {
   /**
+   * Represents an effect that does nothing and produces no value.
+   *
+   * **When to Use**
+   *
+   * Use this effect when you need to represent an effect that does nothing.
+   * This is useful in scenarios where you need to satisfy an effect-based
+   * interface or control program flow without performing any operations. For
+   * example, it can be used in situations where you want to return an effect
+   * from a function but do not need to compute or return any result.
+   *
    * @since 2.0.0
    * @category Creating Effects
    */
@@ -2973,7 +3295,45 @@ const _catch: {
 
 export {
   /**
-   * Recovers from specified error.
+   * Recovers from a specified error by catching it and handling it with a provided function.
+   *
+   * **Details**
+   *
+   * This function allows you to recover from specific errors that occur during
+   * the execution of an effect. It works by catching a specific type of error
+   * (identified by a discriminator) and then handling it using a provided
+   * handler function. The handler can return a new effect that helps recover
+   * from the error, allowing the program to continue. If the error doesn't
+   * match the specified type, the function allows the original effect to
+   * continue as it was.
+   *
+   * @see {@link catchTag} for a version that can recover from errors based on a `_tag` discriminator.
+   *
+   * @example
+   * ```ts
+   * import { Console, Effect } from "effect"
+   *
+   * class NetworkError {
+   *   readonly _tag = "NetworkError"
+   * }
+   * class ValidationError {
+   *   readonly _tag = "ValidationError"
+   * }
+   *
+   * // Simulate an effect that may fail
+   * const task: Effect.Effect<never, NetworkError | ValidationError, never> = Effect.fail(new NetworkError())
+   *
+   * const program = Effect.gen(function*() {
+   *   const result = yield* Effect.catch(task, "_tag", {
+   *     failure: "NetworkError",
+   *     onFailure: (error) => Effect.succeed(`recovered from error: ${error._tag}`)
+   *   })
+   *   console.log(`Result: ${result}`)
+   * })
+   *
+   * Effect.runFork(program)
+   * // Output: Result: recovered from error: NetworkError
+   * ```
    *
    * @since 2.0.0
    * @category Error handling
@@ -4216,8 +4576,8 @@ export const checkInterruptible: <A, E, R>(f: (isInterruptible: boolean) => Effe
  * error or trigger alternative logic. This enables faster timeout handling
  * without waiting for the completion of the long-running task.
  *
- * @see {@link Effect.timeout} for a version that interrupts the effect.
- * @see {@link Effect.uninterruptible} for creating an uninterruptible effect.
+ * @see {@link timeout} for a version that interrupts the effect.
+ * @see {@link uninterruptible} for creating an uninterruptible effect.
  *
  * @example
  * ```ts
@@ -6915,7 +7275,7 @@ export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) =
  * that successfully completes will determine the result of the race, and the
  * other effect will be interrupted.
  *
- * If neither effect succeeds, the function will fail with a {@link Cause}
+ * If neither effect succeeds, the function will fail with a `Cause`
  * containing all the errors.
  *
  * **When to Use**
@@ -6929,7 +7289,7 @@ export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) =
  *
  * If you want to handle the result of whichever task completes first, whether
  * it succeeds or fails, you can use the `Effect.either` function. This function
- * wraps the result in an {@link Either} type, allowing you to see if the result
+ * wraps the result in an `Either` type, allowing you to see if the result
  * was a success (`Right`) or a failure (`Left`).
  *
  * @see {@link raceAll} for a version that handles multiple effects.
