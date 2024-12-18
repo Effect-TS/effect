@@ -377,7 +377,7 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
       (typeof url === "string" ? Effect.succeed(url) : url).pipe(
         Effect.flatMap((url) => Effect.map(WebSocketConstructor, (f) => f(url, options?.protocols)))
       ),
-      (ws) => Effect.sync(() => ws.close())
+      (ws) => Effect.sync(() => ws.close(1000))
     ),
     options
   )
