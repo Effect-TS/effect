@@ -14,6 +14,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
 
 /**
@@ -82,9 +83,9 @@ export declare namespace LibsqlClientConfig {
      */
     readonly url: string | URL
     /** Authentication token for the database. */
-    readonly authToken?: string | undefined
+    readonly authToken?: Redacted.Redacted | undefined
     /** Encryption key for the database. */
-    readonly encryptionKey?: string | undefined
+    readonly encryptionKey?: Redacted.Redacted | undefined
     /** URL of a remote server to synchronize database with. */
     readonly syncUrl?: string | URL | undefined
     /** Sync interval in seconds. */
@@ -227,7 +228,17 @@ export const make = (
         Effect.acquireRelease(
           Effect.sync(() =>
             Libsql.createClient(
-              { ...options, url: options.url.toString(), syncUrl: options.syncUrl?.toString() } as Libsql.Config
+              {
+                ...options,
+                authToken: Redacted.isRedacted(options.authToken)
+                  ? Redacted.value(options.authToken)
+                  : options.authToken,
+                encryptionKey: Redacted.isRedacted(options.encryptionKey)
+                  ? Redacted.value(options.encryptionKey)
+                  : options.encryptionKey,
+                url: options.url.toString(),
+                syncUrl: options.syncUrl?.toString()
+              } as Libsql.Config
             )
           ),
           (sdk) => Effect.sync(() => sdk.close())
