@@ -28,5 +28,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: tim-smart/next-release-action@main
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.EFFECT_BOT_GH }}
           packages: effect,@effect/platform
