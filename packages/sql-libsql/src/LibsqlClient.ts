@@ -83,9 +83,9 @@ export declare namespace LibsqlClientConfig {
      */
     readonly url: string | URL
     /** Authentication token for the database. */
-    readonly authToken?: Redacted.Redacted | string | undefined
+    readonly authToken?: Redacted.Redacted | undefined
     /** Encryption key for the database. */
-    readonly encryptionKey?: Redacted.Redacted | string | undefined
+    readonly encryptionKey?: Redacted.Redacted | undefined
     /** URL of a remote server to synchronize database with. */
     readonly syncUrl?: string | URL | undefined
     /** Sync interval in seconds. */
