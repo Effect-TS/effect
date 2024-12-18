@@ -22,7 +22,7 @@ After
 
 ```ts
 import { LibsqlClient } from "@effect/sql-libsql"
-import { Redacted } from "effect"
+import { Config } from "effect"
 
 LibsqlClient.layerConfig({
   url: Config.string("LIBSQL_URL"),
