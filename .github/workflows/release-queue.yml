@@ -35,5 +35,5 @@ jobs:
         with:
           github_token: ${{ secrets.EFFECT_BOT_GH }}
           packages: effect,@effect/platform
-          git_user: Effect Bot
+          git_user: effect-bot
           git_email: tech-ops@effectful.co
