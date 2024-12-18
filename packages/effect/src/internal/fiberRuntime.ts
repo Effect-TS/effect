@@ -2706,7 +2706,7 @@ const raceAllArbiter = <E, E1, A, A1>(
 export const reduceEffect = dual<
   <Z, E, R, Eff extends Effect.Effect<any, any, any>>(
     zero: Effect.Effect<Z, E, R>,
-    f: (acc: NoInfer<Z>, a: Effect.Effect.Success<Eff>, i: number) => Z,
+    f: (z: NoInfer<Z>, a: Effect.Effect.Success<Eff>, i: number) => Z,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
@@ -2716,7 +2716,7 @@ export const reduceEffect = dual<
   <Eff extends Effect.Effect<any, any, any>, Z, E, R>(
     elements: Iterable<Eff>,
     zero: Effect.Effect<Z, E, R>,
-    f: (acc: NoInfer<Z>, a: Effect.Effect.Success<Eff>, i: number) => Z,
+    f: (z: NoInfer<Z>, a: Effect.Effect.Success<Eff>, i: number) => Z,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
@@ -2726,7 +2726,7 @@ export const reduceEffect = dual<
 >((args) => Predicate.isIterable(args[0]) && !core.isEffect(args[0]), <A, E, R, Z>(
   elements: Iterable<Effect.Effect<A, E, R>>,
   zero: Effect.Effect<Z, E, R>,
-  f: (acc: NoInfer<Z>, a: NoInfer<A>, i: number) => Z,
+  f: (z: NoInfer<Z>, a: NoInfer<A>, i: number) => Z,
   options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
