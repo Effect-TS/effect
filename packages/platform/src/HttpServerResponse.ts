@@ -88,7 +88,7 @@ export const empty: (options?: Options.WithContent | undefined) => HttpServerRes
  * @since 1.0.0
  * @category constructors
  */
-export const redirect: (location: string, options?: Options.WithContentType | undefined) => HttpServerResponse =
+export const redirect: (location: string | URL, options?: Options.WithContentType | undefined) => HttpServerResponse =
   internal.redirect
 
 /**
