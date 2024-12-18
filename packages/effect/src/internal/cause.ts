@@ -1107,7 +1107,7 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
         if (typeof stack === "string") {
           const locationMatchAll = stack.matchAll(locationRegex)
           let match = false
-          for (const [location] of locationMatchAll) {
+          for (const [, location] of locationMatchAll) {
             match = true
             out.push(`    at ${current.name} (${location})`)
           }
