@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.71.5
+
+### Patch Changes
+
+- [#4154](https://github.com/Effect-TS/effect/pull/4154) [`05d71f8`](https://github.com/Effect-TS/effect/commit/05d71f85622305705d8316817694a09762e60865) Thanks @thewilkybarkid! - Support URL objects in HttpServerResponse.redirect
+
+- [#4157](https://github.com/Effect-TS/effect/pull/4157) [`e66b920`](https://github.com/Effect-TS/effect/commit/e66b9205f25ab425d30640886eb3fb2c4715bc26) Thanks @tim-smart! - ensure WebSocket's are always closed with an explicit code
+
 ## 0.71.4
 
 ### Patch Changes
