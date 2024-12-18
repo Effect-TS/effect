@@ -2,4 +2,30 @@
 "@effect/sql-libsql": patch
 ---
 
-Allow use of Redacted values with libSQL
+libSQL now requires redacted values instead of strings for:
+
+- `authToken`
+- `encryptionKey`
+
+Before
+
+```ts
+import { LibsqlClient } from "@effect/sql-libsql"
+
+LibsqlClient.layerConfig({
+  url: Config.string("LIBSQL_URL"),
+  authToken: Config.string("LIBSQL_AUTH_TOKEN")
+})
+```
+
+After
+
+```ts
+import { LibsqlClient } from "@effect/sql-libsql"
+import { Redacted } from "effect"
+
+LibsqlClient.layerConfig({
+  url: Config.string("LIBSQL_URL"),
+  authToken: Config.redacted("LIBSQL_AUTH_TOKEN")
+})
+```
