@@ -20,7 +20,7 @@
     "lint-fix": "pnpm lint --fix",
     "docgen": "pnpm --recursive --parallel exec docgen && node scripts/docs.mjs",
     "dtslint": "pnpm --recursive --parallel run dtslint",
-    "dtslint-clean": "dtslint --installAll",
+    "dtslint-clean": "dtslint --clean",
     "changeset-version": "changeset version && node scripts/version.mjs",
     "changeset-publish": "pnpm codemod && pnpm lint-fix && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
   },
