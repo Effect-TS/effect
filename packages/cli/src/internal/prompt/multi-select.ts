@@ -294,7 +294,7 @@ function handleProcess<A>(options: SelectOptions<A> & MultiSelectOptions) {
 
 function handleRender<A>(options: SelectOptions<A>) {
   return (state: State, action: Prompt.Prompt.Action<State, Array<A>>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: () => renderSubmission(state, options)
