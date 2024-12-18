@@ -83,7 +83,7 @@ Effect.gen(function*() {
   const clientEndpointEffect = HttpApiClient.endpoint(TestApi, "Group1", "EndpointA")
   // $ExpectType never
   type _clientEndpointEffectError = Effect.Effect.Error<typeof clientEndpointEffect>
-  // $ExpectType "ApiErrorR" | "Group1ErrorR" | "EndpointAErrorR" | "EndpointASuccessR" | "EndpointASecurityErrorR" | "Group1SecurityErrorR" | "ApiSecurityErrorR" | HttpClient<HttpClientError, Scope>
+  // $ExpectType "ApiErrorR" | "Group1ErrorR" | "EndpointAErrorR" | "EndpointASuccessR" | "EndpointASecurityErrorR" | "Group1SecurityErrorR" | "ApiSecurityErrorR" | HttpClient
   type _clientEndpointEffectContext = Effect.Effect.Context<typeof clientEndpointEffect>
 
   const clientEndpoint = yield* clientEndpointEffect
@@ -100,7 +100,7 @@ Effect.gen(function*() {
   const clientGroupEffect = HttpApiClient.group(TestApi, "Group1")
   // $ExpectType never
   type _clientGroupEffectError = Effect.Effect.Error<typeof clientGroupEffect>
-  // $ExpectType "ApiErrorR" | "Group1ErrorR" | "EndpointAErrorR" | "EndpointASuccessR" | "EndpointBErrorR" | "EndpointBSuccessR" | "EndpointASecurityErrorR" | "EndpointBSecurityErrorR" | "Group1SecurityErrorR" | "ApiSecurityErrorR" | HttpClient<HttpClientError, Scope>
+  // $ExpectType "ApiErrorR" | "Group1ErrorR" | "EndpointAErrorR" | "EndpointASuccessR" | "EndpointBErrorR" | "EndpointBSuccessR" | "EndpointASecurityErrorR" | "EndpointBSecurityErrorR" | "Group1SecurityErrorR" | "ApiSecurityErrorR" | HttpClient
   type _clientGroupEffectContext = Effect.Effect.Context<typeof clientGroupEffect>
 
   const clientGroup = yield* clientGroupEffect
@@ -117,7 +117,7 @@ Effect.gen(function*() {
   const clientApiEffect = HttpApiClient.make(TestApi)
   // $ExpectType never
   type _clientApiEffectError = Effect.Effect.Error<typeof clientApiEffect>
-  // $ExpectType "ApiErrorR" | "Group1ErrorR" | "EndpointAErrorR" | "EndpointASuccessR" | "EndpointBErrorR" | "EndpointBSuccessR" | "EndpointASecurityErrorR" | "EndpointBSecurityErrorR" | "Group1SecurityErrorR" | "ApiSecurityErrorR" | "Group2ErrorR" | "EndpointCErrorR" | "EndpointCSuccessR" | HttpClient<HttpClientError, Scope>
+  // $ExpectType "ApiErrorR" | "Group1ErrorR" | "EndpointAErrorR" | "EndpointASuccessR" | "EndpointBErrorR" | "EndpointBSuccessR" | "EndpointASecurityErrorR" | "EndpointBSecurityErrorR" | "Group1SecurityErrorR" | "ApiSecurityErrorR" | "Group2ErrorR" | "EndpointCErrorR" | "EndpointCSuccessR" | HttpClient
   type _clientApiEffectContext = Effect.Effect.Context<typeof clientApiEffect>
 
   const clientApi = yield* clientApiEffect
