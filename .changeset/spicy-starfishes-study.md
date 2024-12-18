@@ -1,5 +1,5 @@
 ---
-"@effect/sql-libsql": patch
+"@effect/sql-libsql": minor
 ---
 
 libSQL now requires redacted values instead of strings for:
