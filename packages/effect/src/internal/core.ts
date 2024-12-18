@@ -1427,13 +1427,23 @@ export const whileLoop = <A, E, R>(
 }
 
 /* @internal */
-export const gen: typeof Effect.gen = function() {
-  const f = arguments.length === 1 ? arguments[0] : arguments[1].bind(arguments[0])
-  return suspend(() => {
+export const fromIterator = <Eff extends YieldWrap<Effect.Effect<any, any, any>>, AEff>(
+  iterator: LazyArg<Iterator<Eff, AEff, never>>
+): Effect.Effect<
+  AEff,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect.Effect<infer _A, infer E, infer _R>>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect.Effect<infer _A, infer _E, infer R>>] ? R : never
+> =>
+  suspend(() => {
     const effect = new EffectPrimitive(OpCodes.OP_ITERATOR) as any
-    effect.effect_instruction_i0 = f(pipe)
+    effect.effect_instruction_i0 = iterator()
     return effect
   })
+
+/* @internal */
+export const gen: typeof Effect.gen = function() {
+  const f = arguments.length === 1 ? arguments[0] : arguments[1].bind(arguments[0])
+  return fromIterator(() => f(pipe))
 }
 
 /* @internal */
