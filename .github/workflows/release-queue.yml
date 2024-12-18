@@ -25,7 +25,7 @@ jobs:
       - run: gh pr checkout ${{ github.event.pull_request.number }}
         if: github.event.pull_request
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.EFFECT_BOT_GH }}
       - uses: tim-smart/next-release-action@main
         with:
           github_token: ${{ secrets.EFFECT_BOT_GH }}
