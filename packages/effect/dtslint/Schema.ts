@@ -2922,3 +2922,19 @@ S.NullOr(S.Never)
 
 // $ExpectType NullishOr<typeof Never>
 S.NullishOr(S.Never)
+
+// ---------------------------------------------
+// Config
+// ---------------------------------------------
+
+// $ExpectType Config<string>
+S.Config("A", S.String)
+
+// $ExpectType Config<boolean>
+S.Config("A", S.BooleanFromString)
+
+// $ExpectType Config<`a${string}`>
+S.Config("A", S.TemplateLiteral(S.Literal("a"), S.String))
+
+// @ts-expect-error
+S.Config("A", S.Boolean)

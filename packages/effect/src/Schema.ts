@@ -9495,12 +9495,12 @@ export class BooleanFromString extends transform(
  * @category Config validations
  * @since 3.10.0
  */
-export const Config = <A>(name: string, schema: Schema<A, string>): config_.Config<A> => {
-  const decodeEither_ = decodeEither(schema)
+export const Config = <A, I extends string>(name: string, schema: Schema<A, I>): config_.Config<A> => {
+  const decodeUnknownEither = ParseResult.decodeUnknownEither(schema)
   return config_.string(name).pipe(
-    config_.mapOrFail((a) =>
-      decodeEither_(a).pipe(
-        either_.mapLeft((error) => configError_.InvalidData([], ParseResult.TreeFormatter.formatErrorSync(error)))
+    config_.mapOrFail((s) =>
+      decodeUnknownEither(s).pipe(
+        either_.mapLeft((error) => configError_.InvalidData([], ParseResult.TreeFormatter.formatIssueSync(error)))
       )
     )
   )
