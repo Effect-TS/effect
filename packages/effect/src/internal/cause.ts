@@ -1073,7 +1073,7 @@ export const prettyErrorMessage = (u: unknown): string => {
   return stringifyCircular(u)
 }
 
-const locationRegex = /\((.*)\)/
+const locationRegex = /\((.*)\)/g
 
 /** @internal */
 export const spanToTrace = globalValue("effect/Tracer/spanToTrace", () => new WeakMap())
@@ -1105,9 +1105,15 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
       if (typeof stackFn === "function") {
         const stack = stackFn()
         if (typeof stack === "string") {
-          const locationMatch = stack.match(locationRegex)
-          const location = locationMatch ? locationMatch[1] : stack.replace(/^at /, "")
-          out.push(`    at ${current.name} (${location})`)
+          const locationMatchAll = stack.matchAll(locationRegex)
+          let match = false
+          for (const [, location] of locationMatchAll) {
+            match = true
+            out.push(`    at ${current.name} (${location})`)
+          }
+          if (!match) {
+            out.push(`    at ${current.name} (${stack.replace(/^at /, "")})`)
+          }
         } else {
           out.push(`    at ${current.name}`)
         }
