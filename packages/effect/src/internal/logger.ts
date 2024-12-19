@@ -3,7 +3,6 @@ import * as Context from "../Context.js"
 import * as FiberRefs from "../FiberRefs.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
-import { globalValue } from "../GlobalValue.js"
 import * as HashMap from "../HashMap.js"
 import * as Inspectable from "../Inspectable.js"
 import * as List from "../List.js"
@@ -572,6 +571,3 @@ const prettyLoggerBrowser = (options: {
     }
   )
 }
-
-/** @internal */
-export const prettyLoggerDefault = globalValue("effect/Logger/prettyLoggerDefault", () => prettyLogger())
