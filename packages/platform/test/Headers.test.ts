@@ -1,11 +1,11 @@
 import * as Headers from "@effect/platform/Headers"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FiberId, FiberRef, FiberRefs, HashSet, Inspectable, Logger } from "effect"
+import { Console, Effect, FiberId, FiberRef, FiberRefs, HashSet, Inspectable, Logger } from "effect"
 import * as Redacted from "effect/Redacted"
 
 describe("Headers", () => {
   describe("Redactable", () => {
-    it("one key", () => {
+    it("one key", async () => {
       const headers = Headers.fromInput({
         "Content-Type": "application/json",
         "Authorization": "Bearer some-token",
@@ -20,8 +20,11 @@ describe("Headers", () => {
           ] as const
         ])
       )
-      const r = Inspectable.withRedactableContext(fiberRefs, () => Inspectable.toStringUnknown(headers))
-      const redacted = JSON.parse(r)
+      const r = Effect.gen(function*() {
+        yield* Effect.setFiberRefs(fiberRefs)
+        return Inspectable.toStringUnknown(headers)
+      }).pipe(Effect.runSync)
+      const redacted = JSON.parse(r) as any
 
       assert.deepEqual(redacted, {
         "content-type": "application/json",
@@ -45,7 +48,10 @@ describe("Headers", () => {
           ] as const
         ])
       )
-      const r = Inspectable.withRedactableContext(fiberRefs, () => Inspectable.toStringUnknown({ headers }))
+      const r = Effect.gen(function*() {
+        yield* Effect.setFiberRefs(fiberRefs)
+        return Inspectable.toStringUnknown({ headers })
+      }).pipe(Effect.runSync)
       const redacted = JSON.parse(r) as { headers: unknown }
 
       assert.deepEqual(redacted.headers, {
@@ -72,6 +78,7 @@ describe("Headers", () => {
         yield* Effect.log(headers).pipe(
           Effect.annotateLogs({ headers })
         )
+        yield* Console.log(headers)
         assert.include(messages[0], "application/json")
         assert.notInclude(messages[0], "some-token")
         assert.notInclude(messages[0], "some-key")
