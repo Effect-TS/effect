@@ -2993,8 +2993,6 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
   const ast = AST.annotations(
     self.ast,
     toASTAnnotations({
-      title: `${String(self.ast)} & Brand<${util_.formatUnknown(brand)}>`,
-      description: `${String(self.ast)} & Brand<${util_.formatUnknown(brand)}>`,
       [AST.BrandAnnotationId]: annotation,
       ...annotations
     })

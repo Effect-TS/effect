@@ -23,12 +23,6 @@ describe("brand", () => {
   })
 
   describe("annotations", () => {
-    it("toString / format", () => {
-      const schema = S.Number.pipe(S.brand("A"))
-      expect(String(schema)).toBe(`number & Brand<"A">`)
-      expect(S.format(schema)).toBe(`number & Brand<"A">`)
-    })
-
     it("using .annotations() twice", () => {
       const schema = S.Number.pipe(S.brand("A"))
       const annotatedSchema = schema.annotations({
@@ -56,15 +50,15 @@ describe("brand", () => {
       const schema = S.Number.pipe(
         S.int(),
         S.brand("A", {
-          description: "an A brand"
+          description: "description"
         })
       )
+      expect(String(schema)).toBe(`description & Brand<"A">`)
 
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A"],
-        [AST.TitleAnnotationId]: `an integer & Brand<"A">`,
-        [AST.DescriptionAnnotationId]: "an A brand",
+        [AST.DescriptionAnnotationId]: "description",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
     })
@@ -74,15 +68,16 @@ describe("brand", () => {
         S.int(),
         S.brand("A"),
         S.brand("B", {
-          description: "a B brand"
+          description: "description"
         })
       )
+
+      expect(String(schema)).toBe(`description & Brand<"A"> & Brand<"B">`)
 
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A", "B"],
-        [AST.TitleAnnotationId]: `an integer & Brand<"A"> & Brand<"B">`,
-        [AST.DescriptionAnnotationId]: "a B brand",
+        [AST.DescriptionAnnotationId]: "description",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
     })
@@ -94,14 +89,16 @@ describe("brand", () => {
         S.int(),
         S.brand(A),
         S.brand(B, {
-          description: "a B brand"
+          description: "description"
         })
       )
+
+      expect(String(schema)).toBe("description & Brand<Symbol(A)> & Brand<Symbol(B)>")
+
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: [A, B],
-        [AST.TitleAnnotationId]: "an integer & Brand<Symbol(A)> & Brand<Symbol(B)>",
-        [AST.DescriptionAnnotationId]: "a B brand",
+        [AST.DescriptionAnnotationId]: "description",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
     })
