@@ -4,10 +4,10 @@
 
 import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
-import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as Option from "../Option.js"
 import { hasProperty } from "../Predicate.js"
 import { EffectPrototype } from "./effectable.js"
+import { format, NodeInspectSymbol, toJSON } from "./inspectable.js"
 
 const TypeId: Option.TypeId = Symbol.for("effect/Option") as Option.TypeId
 

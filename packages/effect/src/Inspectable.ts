@@ -4,13 +4,13 @@
 import * as Context from "./Context.js"
 import type { RuntimeFiber } from "./Fiber.js"
 import { globalValue } from "./GlobalValue.js"
-import { hasProperty, isFunction } from "./Predicate.js"
+import * as internal from "./internal/inspectable.js"
 
 /**
  * @since 2.0.0
  * @category symbols
  */
-export const NodeInspectSymbol = Symbol.for("nodejs.util.inspect.custom")
+export const NodeInspectSymbol: unique symbol = internal.NodeInspectSymbol
 
 /**
  * @since 2.0.0
@@ -31,41 +31,17 @@ export interface Inspectable {
 /**
  * @since 2.0.0
  */
-export const toJSON = (x: unknown): unknown => {
-  try {
-    if (
-      hasProperty(x, "toJSON") && isFunction(x["toJSON"]) &&
-      x["toJSON"].length === 0
-    ) {
-      return x.toJSON()
-    } else if (Array.isArray(x)) {
-      return x.map(toJSON)
-    }
-  } catch (_) {
-    return {}
-  }
-  return redact(x)
-}
+export const toJSON: (x: unknown) => unknown = internal.toJSON
 
 /**
  * @since 2.0.0
  */
-export const format = (x: unknown): string => JSON.stringify(x, null, 2)
+export const format: (x: unknown) => string = internal.format
 
 /**
  * @since 2.0.0
  */
-export const BaseProto: Inspectable = {
-  toJSON() {
-    return toJSON(this)
-  },
-  [NodeInspectSymbol]() {
-    return this.toJSON()
-  },
-  toString() {
-    return format(this.toJSON())
-  }
-}
+export const BaseProto: Inspectable = internal.BaseProto
 
 /**
  * @since 2.0.0
@@ -92,41 +68,26 @@ export abstract class Class {
 /**
  * @since 2.0.0
  */
-export const toStringUnknown = (u: unknown, whitespace: number | string | undefined = 2): string => {
-  if (typeof u === "string") {
-    return u
-  }
-  try {
-    return typeof u === "object" ? stringifyCircular(u, whitespace) : String(u)
-  } catch (_) {
-    return String(u)
-  }
-}
+export const toStringUnknown: (u: unknown, whitespace?: number | string | undefined) => string =
+  internal.toStringUnknown
 
 /**
  * @since 2.0.0
  */
-export const stringifyCircular = (obj: unknown, whitespace?: number | string | undefined): string => {
-  let cache: Array<unknown> = []
-  const retVal = JSON.stringify(
-    obj,
-    (_key, value) =>
-      typeof value === "object" && value !== null
-        ? cache.includes(value)
-          ? undefined // circular reference
-          : cache.push(value) && (isRedactable(value) ? redact(value) : value)
-        : value,
-    whitespace
-  )
-  ;(cache as any) = undefined
-  return retVal
-}
+export const stringifyCircular: (obj: unknown, whitespace?: number | string | undefined) => string =
+  internal.stringifyCircular
 
 /**
  * @since 3.10.0
  * @category redactable
  */
-export const symbolRedactable: unique symbol = Symbol.for("effect/Inspectable/Redactable")
+export const symbolRedactable: unique symbol = internal.symbolRedactable
+
+/**
+ * @since 3.12.0
+ * @category redactable
+ */
+export type symbolRedactable = typeof symbolRedactable
 
 /**
  * @since 3.10.0
@@ -140,16 +101,13 @@ export interface Redactable {
  * @since 3.10.0
  * @category redactable
  */
-export const isRedactable = (u: unknown): u is Redactable =>
-  typeof u === "object" && u !== null && symbolRedactable in u
+export const isRedactable: (u: unknown) => u is Redactable = internal.isRedactable
 
 /**
  * @since 3.10.0
  * @category redactable
  */
-export const redact = (u: unknown): unknown => {
-  return isRedactable(u) ? u[symbolRedactable]() : u
-}
+export const redact: (u: unknown) => unknown = internal.redact
 
 const redactableContext = globalValue("effect/Inspectable/redactableContext", () => new WeakMap<any, any>())
 
