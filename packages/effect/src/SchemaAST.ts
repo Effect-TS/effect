@@ -2925,10 +2925,21 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
 
 const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), () => ast._tag)
 
+function getBrands(ast: Annotated): string {
+  return Option.match(getBrandAnnotation(ast), {
+    onNone: () => "",
+    onSome: (brands) => brands.map((brand) => ` & Brand<${util_.formatUnknown(brand)}>`).join("")
+  })
+}
+
 const getExpected = (ast: Annotated): Option.Option<string> => {
   return getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() => getTitleAnnotation(ast)),
-    Option.orElse(() => getDescriptionAnnotation(ast)),
-    Option.orElse(() => getAutoTitleAnnotation(ast))
+    Option.orElse(() =>
+      getTitleAnnotation(ast).pipe(
+        Option.orElse(() => getDescriptionAnnotation(ast)),
+        Option.orElse(() => getAutoTitleAnnotation(ast)),
+        Option.map((s) => s + getBrands(ast))
+      )
+    )
   )
 }
