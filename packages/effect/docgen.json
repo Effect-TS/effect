@@ -6,9 +6,12 @@
     "strict": true,
     "skipLibCheck": true,
     "moduleResolution": "Bundler",
-    "module": "ES2022",
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM"],
+    "module": "Preserve",
+    "target": "ES2023",
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
     "paths": {
       "effect": ["../../../effect/src/index.js"],
       "effect/*": ["../../../effect/src/*.js"],
