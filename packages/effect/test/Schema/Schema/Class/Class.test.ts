@@ -564,7 +564,6 @@ details: Duplicate key "a"`)
           "NonEmptyString": {
             "description": "a non empty string",
             "minLength": 1,
-            "title": "NonEmptyString",
             "type": "string"
           },
           "TypeID": {
@@ -591,7 +590,6 @@ details: Duplicate key "a"`)
             "NonEmptyString": {
               "description": "a non empty string",
               "minLength": 1,
-              "title": "NonEmptyString",
               "type": "string"
             },
             "TransformationID": {

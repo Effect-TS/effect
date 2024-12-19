@@ -267,7 +267,6 @@ describe("extend", () => {
           "NonEmptyString": {
             "description": "a non empty string",
             "minLength": 1,
-            "title": "NonEmptyString",
             "type": "string"
           },
           "TypeID": {
@@ -295,7 +294,6 @@ describe("extend", () => {
             "NonEmptyString": {
               "description": "a non empty string",
               "minLength": 1,
-              "title": "NonEmptyString",
               "type": "string"
             },
             "TransformationID": {

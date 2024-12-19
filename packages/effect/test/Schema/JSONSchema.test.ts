@@ -444,7 +444,6 @@ describe("makeWithOptions", () => {
           }, {
             "Int": {
               "description": "an integer",
-              "title": "Int",
               "type": "integer"
             }
           })
@@ -850,8 +849,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       "$defs": {
         "JsonNumber": {
           "type": "number",
-          "description": "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
-          "title": "JSON-compatible number"
+          "description": "a finite number (excluding NaN, +Infinity, and -Infinity)"
         }
       },
       "$ref": "#/$defs/JsonNumber"
@@ -1145,7 +1143,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("int", () => {
       expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.int()), {
         "type": "integer",
-        "title": "integer",
         "description": "an integer"
       })
     })
@@ -1157,7 +1154,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "Trimmed": {
             "description": "a string with no leading or trailing whitespace",
             "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
-            "title": "Trimmed",
             "type": "string"
           }
         },
@@ -1172,7 +1168,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "Lowercased": {
             "description": "a lowercase string",
             "pattern": "^[^A-Z]*$",
-            "title": "Lowercased",
             "type": "string"
           }
         },
@@ -1187,7 +1182,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "Uppercased": {
             "description": "an uppercase string",
             "pattern": "^[^a-z]*$",
-            "title": "Uppercased",
             "type": "string"
           }
         },
@@ -1202,7 +1196,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "Capitalized": {
             "description": "a capitalized string",
             "pattern": "^[^a-z]?.*$",
-            "title": "Capitalized",
             "type": "string"
           }
         },
@@ -1217,7 +1210,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "Uncapitalized": {
             "description": "a uncapitalized string",
             "pattern": "^[^A-Z]?.*$",
-            "title": "Uncapitalized",
             "type": "string"
           }
         },
@@ -2359,7 +2351,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "NonEmptyString": {
               "type": "string",
               "description": "a non empty string",
-              "title": "NonEmptyString",
               "minLength": 1
             }
           },
@@ -2545,7 +2536,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                   "NonEmptyString": {
                     "type": "string",
                     "description": "a non empty string",
-                    "title": "NonEmptyString",
                     "minLength": 1
                   }
                 },
@@ -2576,7 +2566,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                   "NonEmptyString": {
                     "type": "string",
                     "description": "a non empty string",
-                    "title": "NonEmptyString",
                     "minLength": 1
                   },
                   "aa6f48cd-03e4-470a-beb7-5f7cc532c676": {
@@ -2609,7 +2598,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 "NonEmptyString": {
                   "type": "string",
                   "description": "a non empty string",
-                  "title": "NonEmptyString",
                   "minLength": 1
                 }
               },
@@ -2642,7 +2630,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 "NonEmptyString": {
                   "type": "string",
                   "description": "a non empty string",
-                  "title": "NonEmptyString",
                   "minLength": 1
                 },
                 "d5ff7bc8-1bd5-42a7-8186-e29fd4c217ea": {
@@ -2998,7 +2985,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "NonEmptyString": {
             "type": "string",
             "description": "a non empty string",
-            "title": "NonEmptyString",
             "minLength": 1
           }
         },
@@ -3585,7 +3571,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "UUID": {
               "description": "a Universally Unique Identifier",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-              "title": "UUID",
               "type": "string",
               "format": "uuid"
             }
@@ -3634,7 +3619,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "$defs": {
             "Int": {
               "description": "an integer",
-              "title": "Int",
               "type": "custom"
             }
           },
@@ -4059,7 +4043,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               "Trimmed": {
                 "description": "a string with no leading or trailing whitespace",
                 "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
-                "title": "Trimmed",
                 "type": "string"
               }
             },
@@ -4242,9 +4225,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "$defs": {
               "JsonNumber": {
-                "description": "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
-                "title": "JSON-compatible number",
-                "type": "number"
+                "type": "number",
+                "description": "a finite number (excluding NaN, +Infinity, and -Infinity)"
               },
               "c0c853a6-9029-49d9-9a63-08aa542ec7da": {
                 "anyOf": [
