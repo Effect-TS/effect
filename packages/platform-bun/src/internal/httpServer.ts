@@ -208,6 +208,7 @@ function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
 class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
+  readonly headers: Headers.Headers
   constructor(
     readonly source: Request,
     public resolve: (response: Response) => void,
@@ -219,6 +220,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
+    this.headers = headersOverride ?? Headers.fromInput(source.headers)
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -253,10 +255,6 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return this.remoteAddressOverride
       ? Option.some(this.remoteAddressOverride)
       : Option.fromNullable(this.bunServer.requestIP(this.source)?.address)
-  }
-  get headers(): Headers.Headers {
-    this.headersOverride ??= Headers.fromInput(this.source.headers)
-    return this.headersOverride
   }
 
   private cachedCookies: ReadonlyRecord<string, string> | undefined

@@ -121,17 +121,15 @@ export const annotateHeaders: {
 } = dual(2, <Req extends Schema.TaggedRequest.All, R>(
   self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
   headers: Headers.Input
-): RequestResolver.RequestResolver<Rpc.Request<Req>, R> => {
-  const resolved = Headers.fromInput(headers)
-  return RequestResolver.makeWithEntry((requests) => {
+): RequestResolver.RequestResolver<Rpc.Request<Req>, R> =>
+  RequestResolver.makeWithEntry((requests) => {
     requests.forEach((entries) =>
       entries.forEach((entry) => {
-        ;(entry.request as any).headers = Headers.merge(entry.request.headers, resolved)
+        ;(entry.request as any).headers = Headers.merge(entry.request.headers, Headers.fromInput(headers))
       })
     )
     return self.runAll(requests)
-  })
-})
+  }))
 
 /**
  * @since 1.0.0

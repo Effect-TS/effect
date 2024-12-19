@@ -27,6 +27,7 @@ export const fromWeb = (
 class ClientResponseImpl extends Inspectable.Class implements ClientResponse.HttpClientResponse {
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
   readonly [TypeId]: ClientResponse.TypeId
+  readonly headers: Headers.Headers
 
   constructor(
     readonly request: ClientRequest.HttpClientRequest,
@@ -35,6 +36,7 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
     super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
     this[TypeId] = TypeId
+    this.headers = Headers.fromInput(this.source.headers)
   }
 
   toJSON(): unknown {
@@ -47,10 +49,6 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
 
   get status(): number {
     return this.source.status
-  }
-
-  get headers(): Headers.Headers {
-    return Headers.fromInput(this.source.headers)
   }
 
   cachedCookies?: Cookies.Cookies

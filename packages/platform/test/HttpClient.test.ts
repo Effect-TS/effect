@@ -1,14 +1,13 @@
 import {
   Cookies,
   FetchHttpClient,
-  Headers,
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
   UrlParams
 } from "@effect/platform"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Either, FiberId, FiberRefs, Inspectable, Ref, Struct } from "effect"
+import { Either, Inspectable, Ref, Struct } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -200,19 +199,7 @@ describe("HttpClient", () => {
       })
     )
 
-    const fiberRefs = FiberRefs.unsafeMake(
-      new Map([
-        [
-          Headers.currentRedactedNames,
-          [[FiberId.none, ["Authorization"]] as const]
-        ] as const
-      ])
-    )
-    const r = Effect.gen(function*() {
-      yield* Effect.setFiberRefs(fiberRefs)
-      return Inspectable.toStringUnknown(request)
-    }).pipe(Effect.runSync)
-    const redacted = JSON.parse(r)
+    const redacted = JSON.parse(Inspectable.toStringUnknown(request))
 
     assert.deepStrictEqual(redacted, {
       _id: "@effect/platform/HttpClientRequest",

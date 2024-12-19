@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-
+import * as Context from "./Context.js"
 import type { RuntimeFiber } from "./Fiber.js"
-import type * as FiberRefs from "./FiberRefs.js"
+import { globalValue } from "./GlobalValue.js"
 import { hasProperty, isFunction } from "./Predicate.js"
 
 /**
@@ -126,15 +126,15 @@ export const stringifyCircular = (obj: unknown, whitespace?: number | string | u
  * @since 3.10.0
  * @category redactable
  */
-export interface Redactable {
-  readonly [symbolRedactable]: (fiberRefs: FiberRefs.FiberRefs) => unknown
-}
+export const symbolRedactable: unique symbol = Symbol.for("effect/Inspectable/Redactable")
 
 /**
  * @since 3.10.0
  * @category redactable
  */
-export const symbolRedactable: unique symbol = Symbol.for("effect/Inspectable/Redactable")
+export interface Redactable {
+  [symbolRedactable](): unknown
+}
 
 /**
  * @since 3.10.0
@@ -143,18 +143,56 @@ export const symbolRedactable: unique symbol = Symbol.for("effect/Inspectable/Re
 export const isRedactable = (u: unknown): u is Redactable =>
   typeof u === "object" && u !== null && symbolRedactable in u
 
-const currentFiberURI = "effect/FiberCurrent"
-
 /**
  * @since 3.10.0
  * @category redactable
  */
 export const redact = (u: unknown): unknown => {
-  if (isRedactable(u)) {
-    const fiber = (globalThis as any)[currentFiberURI] as RuntimeFiber<any, any> | undefined
-    if (fiber !== undefined) {
-      return u[symbolRedactable](fiber.getFiberRefs())
+  return isRedactable(u) ? u[symbolRedactable]() : u
+}
+
+const redactableContext = globalValue("effect/Inspectable/redactableContext", () => new WeakMap<any, any>())
+
+/**
+ * @since 3.12.0
+ * @category redactable
+ */
+export const makeRedactableContext = <A>(make: (context: Context.Context<never>) => A): {
+  readonly register: (self: unknown, context?: Context.Context<never>, input?: unknown) => void
+  readonly get: (u: unknown) => A
+} => ({
+  register(self, context, input) {
+    if (input && redactableContext.has(input)) {
+      redactableContext.set(self, redactableContext.get(input))
+      return
     }
+    redactableContext.set(self, make(context ?? currentContext() ?? Context.empty()))
+  },
+  get(u) {
+    return redactableContext.has(u) ? redactableContext.get(u) : make(currentContext() ?? Context.empty())
   }
-  return u
+})
+
+/**
+ * @since 3.12.0
+ * @category redactable
+ */
+export const RedactableClass = <Self>() =>
+<A>(options: {
+  readonly context: (fiberRefs: Context.Context<never>) => A
+  readonly redact: (self: Self, context: A) => unknown
+}): new(context?: Context.Context<never>, input?: unknown) => Redactable => {
+  const redactable = makeRedactableContext(options.context)
+  function Redactable(this: any, context?: Context.Context<never>, input?: unknown) {
+    redactable.register(this, context, input)
+  }
+  Redactable.prototype[symbolRedactable] = function() {
+    return options.redact(this, redactable.get(this))
+  }
+  return Redactable as any
+}
+
+const currentContext = (): Context.Context<never> | undefined => {
+  const fiber = (globalThis as any)["effect/FiberCurrent"] as RuntimeFiber<any> | undefined
+  return fiber ? fiber.currentContext : undefined
 }

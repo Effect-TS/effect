@@ -188,6 +188,7 @@ const removeHost = (url: string) => {
 class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpServerRequest {
   readonly [TypeId]: ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
+  readonly headers: Headers.Headers
   constructor(
     readonly source: Request,
     readonly url: string,
@@ -197,6 +198,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     super()
     this[TypeId] = TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
+    this.headers = headersOverride ?? Headers.fromInput(source.headers)
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -227,10 +229,6 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
   }
   get remoteAddress(): Option.Option<string> {
     return this.remoteAddressOverride ? Option.some(this.remoteAddressOverride) : Option.none()
-  }
-  get headers(): Headers.Headers {
-    this.headersOverride ??= Headers.fromInput(this.source.headers)
-    return this.headersOverride
   }
 
   private cachedCookies: ReadonlyRecord<string, string> | undefined
