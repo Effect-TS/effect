@@ -793,10 +793,38 @@ export interface TemplateLiteralParser<Params extends array_.NonEmptyReadonlyArr
   readonly params: Params
 }
 
-const literalValueCoercions: Record<string, ((v: AST.LiteralValue) => AST.LiteralValue)> = {
-  bigint: (v: AST.LiteralValue) => Predicate.isString(v) ? BigInt(v) : v,
-  boolean: (v: AST.LiteralValue) => v === "true" ? true : v === "false" ? false : v,
-  null: (v: AST.LiteralValue) => v === "null" ? null : v
+function getTemplateLiteralParserCoercedElement(encoded: Schema.Any, schema: Schema.Any): Schema.Any | undefined {
+  const ast = encoded.ast
+  switch (ast._tag) {
+    case "Literal": {
+      const literal = ast.literal
+      if (!Predicate.isString(literal)) {
+        const s = String(literal)
+        return transform(Literal(s), schema, {
+          strict: true,
+          decode: () => literal,
+          encode: () => s
+        })
+      }
+      break
+    }
+    case "NumberKeyword":
+      return compose(NumberFromString, schema)
+    case "Union": {
+      const members: Array<Schema.Any> = []
+      let hasCoercions = false
+      for (const member of ast.types) {
+        const schema = make(member)
+        const encoded = encodedSchema(schema)
+        const coerced = getTemplateLiteralParserCoercedElement(encoded, schema)
+        if (coerced) {
+          hasCoercions = true
+        }
+        members.push(coerced ?? schema)
+      }
+      return hasCoercions ? compose(Union(...members), schema) : schema
+    }
+  }
 }
 
 /**
@@ -807,49 +835,36 @@ export const TemplateLiteralParser = <Params extends array_.NonEmptyReadonlyArra
   ...params: Params
 ): TemplateLiteralParser<Params> => {
   const encodedSchemas: Array<Schema.Any> = []
-  const typeSchemas: Array<Schema.Any> = []
-  const coercions: Record<number, ((v: AST.LiteralValue) => AST.LiteralValue) | undefined> = {}
+  const elements: Array<Schema.Any> = []
+  const schemas: Array<Schema.Any> = []
+  let coerced = false
   for (let i = 0; i < params.length; i++) {
     const param = params[i]
-    if (isSchema(param)) {
-      const encoded = encodedSchema(param)
-      if (AST.isNumberKeyword(encoded.ast)) {
-        coercions[i] = Number
-      }
-      encodedSchemas.push(encoded)
-      typeSchemas.push(param)
+    const schema = isSchema(param) ? param : Literal(param)
+    schemas.push(schema)
+    const encoded = encodedSchema(schema)
+    encodedSchemas.push(encoded)
+    const element = getTemplateLiteralParserCoercedElement(encoded, schema)
+    if (element) {
+      elements.push(element)
+      coerced = true
     } else {
-      const schema = Literal(param)
-      if (Predicate.isNumber(param)) {
-        coercions[i] = Number
-      } else if (Predicate.isBigInt(param)) {
-        coercions[i] = literalValueCoercions.bigint
-      } else if (Predicate.isBoolean(param)) {
-        coercions[i] = literalValueCoercions.boolean
-      } else if (Predicate.isNull(param)) {
-        coercions[i] = literalValueCoercions.null
-      }
-      encodedSchemas.push(schema)
-      typeSchemas.push(schema)
+      elements.push(schema)
     }
   }
   const from = TemplateLiteral(...encodedSchemas as any)
   const re = AST.getTemplateLiteralCapturingRegExp(from.ast as AST.TemplateLiteral)
-  return class TemplateLiteralParserClass extends transformOrFail(from, Tuple(...typeSchemas), {
+  let to = Tuple(...elements)
+  if (coerced) {
+    to = to.annotations({ [AST.AutoTitleAnnotationId]: format(Tuple(...schemas)) })
+  }
+  return class TemplateLiteralParserClass extends transformOrFail(from, to, {
     strict: false,
     decode: (s, _, ast) => {
       const match = re.exec(s)
-      if (match) {
-        const out: Array<AST.LiteralValue> = match.slice(1, params.length + 1)
-        for (let i = 0; i < out.length; i++) {
-          const coerce = coercions[i]
-          if (coerce) {
-            out[i] = coerce(out[i])
-          }
-        }
-        return ParseResult.succeed(out)
-      }
-      return ParseResult.fail(new ParseResult.Type(ast, s, `${re.source}: no match for ${JSON.stringify(s)}`))
+      return match
+        ? ParseResult.succeed(match.slice(1, params.length + 1))
+        : ParseResult.fail(new ParseResult.Type(ast, s, `${re.source}: no match for ${JSON.stringify(s)}`))
     },
     encode: (tuple) => ParseResult.succeed(tuple.join(""))
   }) {

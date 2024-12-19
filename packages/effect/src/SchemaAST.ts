@@ -1088,7 +1088,7 @@ export class Enums implements Annotated {
  */
 export const isEnums: (ast: AST) => ast is Enums = createASTGuard("Enums")
 
-type TemplateLiteralSpanBaseType = StringKeyword | NumberKeyword | Literal
+type TemplateLiteralSpanBaseType = StringKeyword | NumberKeyword | Literal | TemplateLiteral
 
 type TemplateLiteralSpanType = TemplateLiteralSpanBaseType | Union<TemplateLiteralSpanType>
 
@@ -1097,6 +1097,7 @@ const isTemplateLiteralSpanType = (ast: AST): ast is TemplateLiteralSpanType => 
     case "Literal":
     case "NumberKeyword":
     case "StringKeyword":
+    case "TemplateLiteral":
       return true
     case "Union":
       return ast.types.every(isTemplateLiteralSpanType)
@@ -1112,6 +1113,8 @@ const templateLiteralSpanUnionTypeToString = (type: TemplateLiteralSpanType): st
       return "string"
     case "NumberKeyword":
       return "number"
+    case "TemplateLiteral":
+      return String(type)
     case "Union":
       return type.types.map(templateLiteralSpanUnionTypeToString).join(" | ")
   }
@@ -1125,6 +1128,8 @@ const templateLiteralSpanTypeToString = (type: TemplateLiteralSpanType): string 
       return "${string}"
     case "NumberKeyword":
       return "${number}"
+    case "TemplateLiteral":
+      return "${" + String(type) + "}"
     case "Union":
       return "${" + type.types.map(templateLiteralSpanUnionTypeToString).join(" | ") + "}"
   }
@@ -2085,72 +2090,75 @@ export const keyof = (ast: AST): AST => Union.unify(_keyof(ast))
 const STRING_KEYWORD_PATTERN = ".*"
 const NUMBER_KEYWORD_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
 
-const getTemplateLiteralPattern = (type: TemplateLiteralSpanType): string => {
+const getTemplateLiteralSpanTypePattern = (type: TemplateLiteralSpanType, capture: boolean): string => {
   switch (type._tag) {
+    case "Literal":
+      return regexp.escape(String(type.literal))
     case "StringKeyword":
       return STRING_KEYWORD_PATTERN
     case "NumberKeyword":
       return NUMBER_KEYWORD_PATTERN
-    case "Literal":
-      return regexp.escape(String(type.literal))
+    case "TemplateLiteral":
+      return getTemplateLiteralPattern(type, capture, false)
     case "Union":
-      return type.types.map(getTemplateLiteralPattern).join("|")
+      return type.types.map((type) => getTemplateLiteralSpanTypePattern(type, capture)).join("|")
   }
 }
 
-/**
- * @since 3.10.0
- */
-export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
-  let pattern = `^`
+const handleTemplateLiteralSpanTypeParens = (
+  type: TemplateLiteralSpanType,
+  s: string,
+  capture: boolean,
+  top: boolean
+) => {
+  if (isUnion(type)) {
+    if (capture && !top) {
+      return `(?:${s})`
+    }
+  } else if (!capture || !top) {
+    return s
+  }
+  return `(${s})`
+}
+
+const getTemplateLiteralPattern = (ast: TemplateLiteral, capture: boolean, top: boolean): string => {
+  let pattern = ``
   if (ast.head !== "") {
-    pattern += regexp.escape(ast.head)
+    const head = regexp.escape(ast.head)
+    pattern += capture && top ? `(${head})` : head
   }
 
   for (const span of ast.spans) {
-    const p = getTemplateLiteralPattern(span.type)
-    pattern += isUnion(span.type) ? `(${p})` : p
+    const spanPattern = getTemplateLiteralSpanTypePattern(span.type, capture)
+    pattern += handleTemplateLiteralSpanTypeParens(span.type, spanPattern, capture, top)
     if (span.literal !== "") {
-      pattern += regexp.escape(span.literal)
+      const literal = regexp.escape(span.literal)
+      pattern += capture && top ? `(${literal})` : literal
     }
   }
 
-  pattern += "$"
-  return new RegExp(pattern)
-}
-
-const getTemplateLiteralCapturingPattern = (type: TemplateLiteralSpanType): string => {
-  switch (type._tag) {
-    case "StringKeyword":
-      return STRING_KEYWORD_PATTERN
-    case "NumberKeyword":
-      return NUMBER_KEYWORD_PATTERN
-    case "Literal":
-      return regexp.escape(String(type.literal))
-    case "Union":
-      return type.types.map(getTemplateLiteralCapturingPattern).join("|")
-  }
+  return pattern
 }
 
 /**
+ * Generates a regular expression from a `TemplateLiteral` AST node.
+ *
+ * @see {@link getTemplateLiteralCapturingRegExp} for a variant that captures the pattern.
+ *
  * @since 3.10.0
  */
-export const getTemplateLiteralCapturingRegExp = (ast: TemplateLiteral): RegExp => {
-  let pattern = `^`
-  if (ast.head !== "") {
-    pattern += `(${regexp.escape(ast.head)})`
-  }
+export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp =>
+  new RegExp(`^${getTemplateLiteralPattern(ast, false, true)}$`)
 
-  for (const span of ast.spans) {
-    pattern += `(${getTemplateLiteralCapturingPattern(span.type)})`
-    if (span.literal !== "") {
-      pattern += `(${regexp.escape(span.literal)})`
-    }
-  }
-
-  pattern += "$"
-  return new RegExp(pattern)
-}
+/**
+ * Generates a regular expression that captures the pattern defined by the given `TemplateLiteral` AST.
+ *
+ * @see {@link getTemplateLiteralRegExp} for a variant that does not capture the pattern.
+ *
+ * @since 3.10.0
+ */
+export const getTemplateLiteralCapturingRegExp = (ast: TemplateLiteral): RegExp =>
+  new RegExp(`^${getTemplateLiteralPattern(ast, true, true)}$`)
 
 /**
  * @since 3.10.0

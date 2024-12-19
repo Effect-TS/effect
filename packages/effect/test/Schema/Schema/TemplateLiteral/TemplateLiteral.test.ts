@@ -6,6 +6,14 @@ import { describe, expect, it } from "vitest"
 
 type TemplateLiteralParameter = S.Schema.AnyNoContext | AST.LiteralValue
 
+const expectPattern = (
+  params: array_.NonEmptyReadonlyArray<TemplateLiteralParameter>,
+  expectedPattern: string
+) => {
+  const ast = S.TemplateLiteral(...params).ast as AST.TemplateLiteral
+  expect(AST.getTemplateLiteralRegExp(ast).source).toEqual(expectedPattern)
+}
+
 const expectAST = (
   params: array_.NonEmptyReadonlyArray<TemplateLiteralParameter>,
   expectedAST: AST.TemplateLiteral,
@@ -26,6 +34,34 @@ schema (BooleanKeyword): boolean`)
     expect(() => S.TemplateLiteral(S.Union(S.Boolean, S.SymbolFromSelf))).toThrow(
       new Error(`Unsupported template literal span
 schema (Union): boolean | symbol`)
+    )
+  })
+
+  it("getTemplateLiteralRegExp", () => {
+    expectPattern(["a"], "^a$")
+    expectPattern(["a", "b"], "^ab$")
+    expectPattern([S.Literal("a", "b"), "c"], "^(a|b)c$")
+    expectPattern([S.Literal("a", "b"), "c", S.Literal("d", "e")], "^(a|b)c(d|e)$")
+    expectPattern([S.Literal("a", "b"), S.String, S.Literal("d", "e")], "^(a|b).*(d|e)$")
+    expectPattern(["a", S.String], "^a.*$")
+    expectPattern(["a", S.String, "b"], "^a.*b$")
+    expectPattern(
+      ["a", S.String, "b", S.Number],
+      "^a.*b[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$"
+    )
+    expectPattern(["a", S.Number], "^a[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$")
+    expectPattern([S.String, "a"], "^.*a$")
+    expectPattern([S.Number, "a"], "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?a$")
+    expectPattern(
+      [S.Union(S.String, S.Literal(1)), S.Union(S.Number, S.Literal(true))],
+      "^(.*|1)([+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?|true)$"
+    )
+    expectPattern([S.Union(S.Literal("a", "b"), S.Literal(1, 2))], "^(a|b|1|2)$")
+    expectPattern(["c", S.Union(S.TemplateLiteral("a", S.String, "b"), S.Literal("e")), "d"], "^c(a.*b|e)d$")
+    expectPattern(["<", S.TemplateLiteral("h", S.Literal(1, 2)), ">"], "^<h(1|2)>$")
+    expectPattern(
+      ["-", S.Union(S.TemplateLiteral("a", S.Literal("b", "c")), S.TemplateLiteral("d", S.Literal("e", "f")))],
+      "^-(a(b|c)|d(e|f))$"
     )
   })
 
@@ -135,6 +171,36 @@ schema (Union): boolean | symbol`)
       ])
       const expectedString = "`${\"a\" | \"b\" | \"c\"}`"
       expectAST([S.Union(S.Union(S.Literal("a"), S.Literal("b")), S.Literal("c"))], expectedAST, expectedString)
+    })
+
+    it("`${string}`", () => {
+      const expectedAST = new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(S.String.ast, "")])
+      const expectedString = "`${string}`"
+      expectAST([S.String], expectedAST, expectedString)
+    })
+
+    it("`${number}`", () => {
+      const expectedAST = new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(S.Number.ast, "")])
+      const expectedString = "`${number}`"
+      expectAST([S.Number], expectedAST, expectedString)
+    })
+
+    it("`${`${string}`}`", () => {
+      const schema = S.TemplateLiteral(S.String)
+      const expectedAST = new AST.TemplateLiteral("", [
+        new AST.TemplateLiteralSpan(schema.ast, "")
+      ])
+      const expectedString = "`${`${string}`}`"
+      expectAST([schema], expectedAST, expectedString)
+    })
+
+    it("`${`${string}` | \"a\"}`", () => {
+      const schema = S.Union(S.TemplateLiteral(S.String), S.Literal("a"))
+      const expectedAST = new AST.TemplateLiteral("", [
+        new AST.TemplateLiteralSpan(schema.ast, "")
+      ])
+      const expectedString = "`${`${string}` | \"a\"}`"
+      expectAST([schema], expectedAST, expectedString)
     })
   })
 
@@ -324,6 +390,30 @@ schema (Union): boolean | symbol`)
         "",
         `Expected \`\${string | "1"}\${number | "true"}\`, actual ""`
       )
+    })
+
+    it("`c${`a${string}b` | \"e\"}d`", async () => {
+      const schema = S.TemplateLiteral(
+        "c",
+        S.Union(S.TemplateLiteral("a", S.String, "b"), S.Literal("e")),
+        "d"
+      )
+      await Util.expectDecodeUnknownSuccess(schema, "ced")
+      await Util.expectDecodeUnknownSuccess(schema, "cabd")
+      await Util.expectDecodeUnknownSuccess(schema, "casbd")
+      await Util.expectDecodeUnknownSuccess(schema, "ca  bd")
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        "",
+        "Expected `c${`a${string}b` | \"e\"}d`, actual \"\""
+      )
+    })
+
+    it("`<${`h${\"1\" | \"2\"}`}>`", async () => {
+      const schema = S.TemplateLiteral("<", S.TemplateLiteral("h", S.Literal(1, 2)), ">")
+      await Util.expectDecodeUnknownSuccess(schema, "<h1>")
+      await Util.expectDecodeUnknownSuccess(schema, "<h2>")
+      await Util.expectDecodeUnknownFailure(schema, "<h3>", "Expected `<${`h${\"1\" | \"2\"}`}>`, actual \"<h3>\"")
     })
   })
 })
