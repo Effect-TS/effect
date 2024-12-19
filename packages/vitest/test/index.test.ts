@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it, layer } from "@effect/vitest"
-import { Context, Effect, Layer, Schema } from "effect"
+import { Context, Effect, FastCheck, Layer, Schema } from "effect"
 
 it.live(
   "live %s",
@@ -160,17 +160,31 @@ layer(Foo.Live)("layer", (it) => {
 
 const realNumber = Schema.Finite.pipe(Schema.nonNaN())
 
-it.prop("symmetry", [realNumber, realNumber], ([a, b]) => a + b === b + a)
+it.prop("symmetry", [realNumber, FastCheck.integer()], ([a, b]) => a + b === b + a)
 
-it.effect.prop("symmetry", [realNumber, realNumber], ([a, b]) =>
+it.prop(
+  "symmetry with object",
+  { a: realNumber, b: FastCheck.integer() },
+  ({ a, b }) => a + b === b + a
+)
+
+it.effect.prop("symmetry", [realNumber, FastCheck.integer()], ([a, b]) =>
   Effect.gen(function*() {
     yield* Effect.void
+
+    return a + b === b + a
+  }))
+
+it.effect.prop("symmetry with object", { a: realNumber, b: FastCheck.integer() }, ({ a, b }) =>
+  Effect.gen(function*() {
+    yield* Effect.void
+
     return a + b === b + a
   }))
 
 it.scoped.prop(
   "should detect the substring",
-  { a: Schema.String, b: Schema.String, c: Schema.String },
+  { a: Schema.String, b: Schema.String, c: FastCheck.string() },
   ({ a, b, c }) =>
     Effect.gen(function*() {
       yield* Effect.scope
