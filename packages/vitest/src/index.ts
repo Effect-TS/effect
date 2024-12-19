@@ -3,6 +3,7 @@
  */
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
+import type * as FastCheck from "effect/FastCheck"
 import type * as Layer from "effect/Layer"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
@@ -40,7 +41,9 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
-  export type SchemaObj = Array<Schema.Schema.Any> | { [K in string]: Schema.Schema.Any }
+  export type Arbitraries =
+    | Array<Schema.Schema.Any | FastCheck.Arbitrary<any>>
+    | { [K in string]: Schema.Schema.Any | FastCheck.Arbitrary<any> }
 
   /**
    * @since 1.0.0
@@ -57,14 +60,17 @@ export namespace Vitest {
     /**
      * @since 1.0.0
      */
-    prop: <const S extends SchemaObj, A, E>(
+    prop: <const Arbs extends Arbitraries, A, E>(
       name: string,
-      schemas: S,
+      arbitraries: Arbs,
       self: TestFunction<
         A,
         E,
         R,
-        [{ [K in keyof S]: Schema.Schema.Type<S[K]> }, V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext]
+        [
+          { [K in keyof Arbs]: Arbs[K] extends FastCheck.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
+          V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
+        ]
       >,
       timeout?: number | V.TestOptions
     ) => void
@@ -92,11 +98,11 @@ export namespace Vitest {
     /**
      * @since 1.0.0
      */
-    readonly prop: <const S extends SchemaObj>(
+    readonly prop: <const Arbs extends Arbitraries>(
       name: string,
-      schemas: S,
+      arbitraries: Arbs,
       self: (
-        schemas: { [K in keyof S]: Schema.Schema.Type<S[K]> },
+        properties: { [K in keyof Arbs]: K extends FastCheck.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
         ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
       ) => void,
       timeout?: number | V.TestOptions
@@ -188,11 +194,11 @@ export const flakyTest: <A, E, R>(
 /**
  * @since 1.0.0
  */
-export const prop: <const S extends Vitest.SchemaObj>(
+export const prop: <const Arbs extends Vitest.Arbitraries>(
   name: string,
-  schemas: S,
+  arbitraries: Arbs,
   self: (
-    schemas: { [K in keyof S]: Schema.Schema.Type<S[K]> },
+    properties: { [K in keyof Arbs]: K extends FastCheck.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
     ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
   ) => void,
   timeout?: number | V.TestOptions
