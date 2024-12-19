@@ -2993,10 +2993,10 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
   const ast = AST.annotations(
     self.ast,
     toASTAnnotations({
-      // add a default title annotation containing the brand
-      title: String(self.ast) + ` & Brand<${util_.formatUnknown(brand)}>`,
-      ...annotations,
-      [AST.BrandAnnotationId]: annotation
+      title: `${String(self.ast)} & Brand<${util_.formatUnknown(brand)}>`,
+      description: `${String(self.ast)} & Brand<${util_.formatUnknown(brand)}>`,
+      [AST.BrandAnnotationId]: annotation,
+      ...annotations
     })
   )
   return makeBrandClass(ast)
@@ -4258,7 +4258,7 @@ export const lowercased =
  * @since 3.10.0
  */
 export class Lowercased extends String$.pipe(
-  lowercased({ identifier: "Lowercased", title: "Lowercased" })
+  lowercased({ identifier: "Lowercased" })
 ) {}
 
 /**
@@ -4289,7 +4289,7 @@ export const capitalized =
  * @since 3.10.0
  */
 export class Capitalized extends String$.pipe(
-  capitalized({ identifier: "Capitalized", title: "Capitalized" })
+  capitalized({ identifier: "Capitalized" })
 ) {}
 
 /**
@@ -4320,7 +4320,7 @@ export const uncapitalized =
  * @since 3.10.0
  */
 export class Uncapitalized extends String$.pipe(
-  uncapitalized({ identifier: "Uncapitalized", title: "Uncapitalized" })
+  uncapitalized({ identifier: "Uncapitalized" })
 ) {}
 
 /**
@@ -4351,7 +4351,7 @@ export const uppercased =
  * @since 3.10.0
  */
 export class Uppercased extends String$.pipe(
-  uppercased({ identifier: "Uppercased", title: "Uppercased" })
+  uppercased({ identifier: "Uppercased" })
 ) {}
 
 /**
@@ -4470,7 +4470,7 @@ export class Uncapitalize extends transform(
  * @since 3.10.0
  */
 export class Trimmed extends String$.pipe(
-  trimmed({ identifier: "Trimmed", title: "Trimmed" })
+  trimmed({ identifier: "Trimmed" })
 ) {}
 
 /**
@@ -4490,7 +4490,7 @@ export class Trimmed extends String$.pipe(
  * @since 3.10.0
  */
 export class NonEmptyTrimmedString extends Trimmed.pipe(
-  nonEmptyString({ identifier: "NonEmptyTrimmedString", title: "NonEmptyTrimmedString" })
+  nonEmptyString({ identifier: "NonEmptyTrimmedString" })
 ) {}
 
 /**
@@ -4584,7 +4584,7 @@ export const parseJson: {
  * @since 3.10.0
  */
 export class NonEmptyString extends String$.pipe(
-  nonEmptyString({ identifier: "NonEmptyString", title: "NonEmptyString" })
+  nonEmptyString({ identifier: "NonEmptyString" })
 ) {}
 
 /**
@@ -4607,7 +4607,6 @@ export class UUID extends String$.pipe(
   pattern(uuidRegexp, {
     schemaId: UUIDSchemaId,
     identifier: "UUID",
-    title: "UUID",
     jsonSchema: {
       format: "uuid",
       pattern: uuidRegexp.source
@@ -4638,7 +4637,6 @@ export class ULID extends String$.pipe(
   pattern(ulidRegexp, {
     schemaId: ULIDSchemaId,
     identifier: "ULID",
-    title: "ULID",
     description: "a Universally Unique Lexicographically Sortable Identifier",
     arbitrary: (): LazyArbitrary<string> => (fc) => fc.ulid()
   })
@@ -4652,7 +4650,6 @@ export class ULID extends String$.pipe(
  */
 export class URLFromSelf extends instanceOf(URL, {
   identifier: "URLFromSelf",
-  title: "URLFromSelf",
   arbitrary: (): LazyArbitrary<URL> => (fc) => fc.webUrl().map((s) => new URL(s)),
   pretty: () => (url) => url.toString()
 }) {}
@@ -4672,7 +4669,6 @@ class URL$ extends transformOrFail(
   }
 ).annotations({
   identifier: "URL",
-  title: "URL",
   pretty: () => (url) => url.toString()
 }) {}
 
@@ -4712,7 +4708,7 @@ export const finite =
     self.pipe(
       filter(Number.isFinite, {
         schemaId: FiniteSchemaId,
-        description: "a finite number",
+        description: "a finite number (excluding NaN, +Infinity, and -Infinity)",
         jsonSchema: { "type": "number" },
         ...annotations
       })
@@ -4827,7 +4823,6 @@ export const int =
     self.pipe(
       filter((a) => Number.isSafeInteger(a), {
         schemaId: IntSchemaId,
-        title: "integer",
         description: "an integer",
         jsonSchema: { type: "integer" },
         ...annotations
@@ -5043,26 +5038,26 @@ export class NumberFromString extends parseNumber(String$.annotations({
  * @category number constructors
  * @since 3.10.0
  */
-export class Finite extends Number$.pipe(finite({ identifier: "Finite", title: "Finite" })) {}
+export class Finite extends Number$.pipe(finite({ identifier: "Finite" })) {}
 
 /**
  * @category number constructors
  * @since 3.10.0
  */
-export class Int extends Number$.pipe(int({ identifier: "Int", title: "Int" })) {}
+export class Int extends Number$.pipe(int({ identifier: "Int" })) {}
 
 /**
  * @category number constructors
  * @since 3.10.0
  */
-export class NonNaN extends Number$.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" })) {}
+export class NonNaN extends Number$.pipe(nonNaN({ identifier: "NonNaN" })) {}
 
 /**
  * @category number constructors
  * @since 3.10.0
  */
 export class Positive extends Number$.pipe(
-  positive({ identifier: "Positive", title: "Positive" })
+  positive({ identifier: "Positive" })
 ) {}
 
 /**
@@ -5070,7 +5065,7 @@ export class Positive extends Number$.pipe(
  * @since 3.10.0
  */
 export class Negative extends Number$.pipe(
-  negative({ identifier: "Negative", title: "Negative" })
+  negative({ identifier: "Negative" })
 ) {}
 
 /**
@@ -5078,7 +5073,7 @@ export class Negative extends Number$.pipe(
  * @since 3.10.0
  */
 export class NonPositive extends Number$.pipe(
-  nonPositive({ identifier: "NonPositive", title: "NonPositive" })
+  nonPositive({ identifier: "NonPositive" })
 ) {}
 
 /**
@@ -5086,7 +5081,7 @@ export class NonPositive extends Number$.pipe(
  * @since 3.10.0
  */
 export class NonNegative extends Number$.pipe(
-  nonNegative({ identifier: "NonNegative", title: "NonNegative" })
+  nonNegative({ identifier: "NonNegative" })
 ) {}
 
 /**
@@ -5124,9 +5119,7 @@ export type JsonNumberSchemaId = typeof JsonNumberSchemaId
 export class JsonNumber extends Number$.pipe(
   finite({
     schemaId: JsonNumberSchemaId,
-    identifier: "JsonNumber",
-    title: "JSON-compatible number",
-    description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity"
+    identifier: "JsonNumber"
   })
 ) {}
 
@@ -5385,7 +5378,7 @@ export {
  * @since 3.10.0
  */
 export const PositiveBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.pipe(
-  positiveBigInt({ identifier: "PositiveBigintFromSelf", title: "PositiveBigintFromSelf" })
+  positiveBigInt({ identifier: "PositiveBigintFromSelf" })
 )
 
 /**
@@ -5393,7 +5386,7 @@ export const PositiveBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.pip
  * @since 3.10.0
  */
 export const PositiveBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
-  positiveBigInt({ identifier: "PositiveBigint", title: "PositiveBigint" })
+  positiveBigInt({ identifier: "PositiveBigint" })
 )
 
 /**
@@ -5401,7 +5394,7 @@ export const PositiveBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
  * @since 3.10.0
  */
 export const NegativeBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.pipe(
-  negativeBigInt({ identifier: "NegativeBigintFromSelf", title: "NegativeBigintFromSelf" })
+  negativeBigInt({ identifier: "NegativeBigintFromSelf" })
 )
 
 /**
@@ -5409,7 +5402,7 @@ export const NegativeBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.pip
  * @since 3.10.0
  */
 export const NegativeBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
-  negativeBigInt({ identifier: "NegativeBigint", title: "NegativeBigint" })
+  negativeBigInt({ identifier: "NegativeBigint" })
 )
 
 /**
@@ -5417,7 +5410,7 @@ export const NegativeBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
  * @since 3.10.0
  */
 export const NonPositiveBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.pipe(
-  nonPositiveBigInt({ identifier: "NonPositiveBigintFromSelf", title: "NonPositiveBigintFromSelf" })
+  nonPositiveBigInt({ identifier: "NonPositiveBigintFromSelf" })
 )
 
 /**
@@ -5425,7 +5418,7 @@ export const NonPositiveBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.
  * @since 3.10.0
  */
 export const NonPositiveBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
-  nonPositiveBigInt({ identifier: "NonPositiveBigint", title: "NonPositiveBigint" })
+  nonPositiveBigInt({ identifier: "NonPositiveBigint" })
 )
 
 /**
@@ -5433,7 +5426,7 @@ export const NonPositiveBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
  * @since 3.10.0
  */
 export const NonNegativeBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.pipe(
-  nonNegativeBigInt({ identifier: "NonNegativeBigintFromSelf", title: "NonNegativeBigintFromSelf" })
+  nonNegativeBigInt({ identifier: "NonNegativeBigintFromSelf" })
 )
 
 /**
@@ -5441,7 +5434,7 @@ export const NonNegativeBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.
  * @since 3.10.0
  */
 export const NonNegativeBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
-  nonNegativeBigInt({ identifier: "NonNegativeBigint", title: "NonNegativeBigint" })
+  nonNegativeBigInt({ identifier: "NonNegativeBigint" })
 )
 
 /**
@@ -5799,13 +5792,21 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
   }
 )
 
+/**
+ * @category Uint8 constructors
+ * @since 3.11.9
+ */
+const Uint8FromSelf = Number$.pipe(
+  between(0, 255, {
+    identifier: "Uint8FromSelf",
+    description: "a 8-bit unsigned integer"
+  })
+)
+
 const Uint8Array$: Schema<Uint8Array, ReadonlyArray<number>> = transform(
-  Array$(Number$.pipe(
-    between(0, 255, {
-      title: "8-bit unsigned integer",
-      description: "a 8-bit unsigned integer"
-    })
-  )).annotations({ description: "an array of 8-bit unsigned integers that will be parsed into a Uint8Array" }),
+  Array$(Uint8FromSelf).annotations({
+    description: "an array of 8-bit unsigned integers that will be parsed into a Uint8Array"
+  }),
   Uint8ArrayFromSelf,
   { strict: true, decode: (numbers) => Uint8Array.from(numbers), encode: (uint8Array) => Array.from(uint8Array) }
 ).annotations({ identifier: "Uint8Array" })
@@ -7524,10 +7525,7 @@ export const positiveBigDecimal = <A extends bigDecimal_.BigDecimal>(
  * @since 3.10.0
  */
 export const PositiveBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal>> = BigDecimalFromSelf.pipe(
-  positiveBigDecimal({
-    identifier: "PositiveBigDecimalFromSelf",
-    title: "PositiveBigDecimalFromSelf"
-  })
+  positiveBigDecimal({ identifier: "PositiveBigDecimalFromSelf" })
 )
 
 /**
@@ -7559,10 +7557,7 @@ export const nonNegativeBigDecimal = <A extends bigDecimal_.BigDecimal>(
  * @since 3.10.0
  */
 export const NonNegativeBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal>> = BigDecimalFromSelf.pipe(
-  nonNegativeBigDecimal({
-    identifier: "NonNegativeBigDecimalFromSelf",
-    title: "NonNegativeBigDecimalFromSelf"
-  })
+  nonNegativeBigDecimal({ identifier: "NonNegativeBigDecimalFromSelf" })
 )
 
 /**
@@ -7594,10 +7589,7 @@ export const negativeBigDecimal = <A extends bigDecimal_.BigDecimal>(
  * @since 3.10.0
  */
 export const NegativeBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal>> = BigDecimalFromSelf.pipe(
-  negativeBigDecimal({
-    identifier: "NegativeBigDecimalFromSelf",
-    title: "NegativeBigDecimalFromSelf"
-  })
+  negativeBigDecimal({ identifier: "NegativeBigDecimalFromSelf" })
 )
 
 /**
@@ -7629,10 +7621,7 @@ export const nonPositiveBigDecimal = <A extends bigDecimal_.BigDecimal>(
  * @since 3.10.0
  */
 export const NonPositiveBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal>> = BigDecimalFromSelf.pipe(
-  nonPositiveBigDecimal({
-    identifier: "NonPositiveBigDecimalFromSelf",
-    title: "NonPositiveBigDecimalFromSelf"
-  })
+  nonPositiveBigDecimal({ identifier: "NonPositiveBigDecimalFromSelf" })
 )
 
 /**
@@ -8558,14 +8547,8 @@ const FiberIdNoneEncoded = Struct({
 
 const FiberIdRuntimeEncoded = Struct({
   _tag: Literal("Runtime"),
-  id: Int.annotations({
-    title: "id",
-    description: "id"
-  }),
-  startTimeMillis: Int.annotations({
-    title: "startTimeMillis",
-    description: "startTimeMillis"
-  })
+  id: Int,
+  startTimeMillis: Int
 }).annotations({ identifier: "FiberIdRuntimeEncoded" })
 
 const FiberIdCompositeEncoded = Struct({

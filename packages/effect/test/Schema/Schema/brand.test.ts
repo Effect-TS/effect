@@ -63,7 +63,7 @@ describe("brand", () => {
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A"],
-        [AST.TitleAnnotationId]: `integer & Brand<"A">`,
+        [AST.TitleAnnotationId]: `an integer & Brand<"A">`,
         [AST.DescriptionAnnotationId]: "an A brand",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
@@ -81,7 +81,7 @@ describe("brand", () => {
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A", "B"],
-        [AST.TitleAnnotationId]: `integer & Brand<"A"> & Brand<"B">`,
+        [AST.TitleAnnotationId]: `an integer & Brand<"A"> & Brand<"B">`,
         [AST.DescriptionAnnotationId]: "a B brand",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
@@ -100,7 +100,7 @@ describe("brand", () => {
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: [A, B],
-        [AST.TitleAnnotationId]: "integer & Brand<Symbol(A)> & Brand<Symbol(B)>",
+        [AST.TitleAnnotationId]: "an integer & Brand<Symbol(A)> & Brand<Symbol(B)>",
         [AST.DescriptionAnnotationId]: "a B brand",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
