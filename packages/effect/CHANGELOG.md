@@ -1,5 +1,104 @@
 # effect
 
+## 3.11.9
+
+### Patch Changes
+
+- [#4113](https://github.com/Effect-TS/effect/pull/4113) [`1c08a0b`](https://github.com/Effect-TS/effect/commit/1c08a0b8505badcffb4d9cade5a746ea90c9557e) Thanks @thewilkybarkid! - Schema: Support template literals in `Schema.Config`.
+
+  **Example**
+
+  ```ts
+  import { Schema } from "effect"
+
+  // const config: Config<`a${string}`>
+  const config = Schema.Config(
+    "A",
+    Schema.TemplateLiteral(Schema.Literal("a"), Schema.String)
+  )
+  ```
+
+- [#4174](https://github.com/Effect-TS/effect/pull/4174) [`1ce703b`](https://github.com/Effect-TS/effect/commit/1ce703b041bbd7560c5c437c9b9be48f027937fd) Thanks @gcanti! - Schema: Add support for `TemplateLiteral` parameters in `TemplateLiteral`, closes #4166.
+
+  This update also adds support for `TemplateLiteral` and `TemplateLiteralParser` parameters in `TemplateLiteralParser`.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteralParser(
+    "<",
+    Schema.TemplateLiteralParser("h", Schema.Literal(1, 2)),
+    ">"
+  )
+  /*
+  throws:
+  Error: Unsupported template literal span
+  schema (TemplateLiteral): `h${"1" | "2"}`
+  */
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  // Schema<readonly ["<", readonly ["h", 2 | 1], ">"], "<h2>" | "<h1>", never>
+  const schema = Schema.TemplateLiteralParser(
+    "<",
+    Schema.TemplateLiteralParser("h", Schema.Literal(1, 2)),
+    ">"
+  )
+
+  console.log(Schema.decodeUnknownSync(schema)("<h1>"))
+  // Output: [ '<', [ 'h', 1 ], '>' ]
+  ```
+
+- [#4174](https://github.com/Effect-TS/effect/pull/4174) [`1ce703b`](https://github.com/Effect-TS/effect/commit/1ce703b041bbd7560c5c437c9b9be48f027937fd) Thanks @gcanti! - Schema: Fix bug in `TemplateLiteralParser` where unions of numeric literals were not coerced correctly.
+
+  Before
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteralParser("a", Schema.Literal(1, 2))
+
+  console.log(Schema.decodeUnknownSync(schema)("a1"))
+  /*
+  throws:
+  ParseError: (`a${"1" | "2"}` <-> readonly ["a", 1 | 2])
+  └─ Type side transformation failure
+     └─ readonly ["a", 1 | 2]
+        └─ [1]
+           └─ 1 | 2
+              ├─ Expected 1, actual "1"
+              └─ Expected 2, actual "1"
+  */
+  ```
+
+  After
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteralParser("a", Schema.Literal(1, 2))
+
+  console.log(Schema.decodeUnknownSync(schema)("a1"))
+  // Output: [ 'a', 1 ]
+
+  console.log(Schema.decodeUnknownSync(schema)("a2"))
+  // Output: [ 'a', 2 ]
+
+  console.log(Schema.decodeUnknownSync(schema)("a3"))
+  /*
+  throws:
+  ParseError: (`a${"1" | "2"}` <-> readonly ["a", 1 | 2])
+  └─ Encoded side transformation failure
+     └─ Expected `a${"1" | "2"}`, actual "a3"
+  */
+  ```
+
 ## 3.11.8
 
 ### Patch Changes
