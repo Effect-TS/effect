@@ -142,12 +142,12 @@ export abstract class IncomingMessageImpl<E> extends Inspectable.Class
       return this._headers
     }
     if (this._rawHeaderString === "") {
-      return this._headers = Headers.empty
+      return this._headers = Headers.empty()
     }
     const parser = HeaderParser.make()
     const result = parser(encoder.encode(this._rawHeaderString + "\r\n"), 0)
     this._rawHeaders = result._tag === "Headers" ? result.headers : undefined
-    const parsed = result._tag === "Headers" ? Headers.fromInput(result.headers) : Headers.empty
+    const parsed = result._tag === "Headers" ? Headers.fromInput(result.headers) : Headers.empty()
     return this._headers = parsed
   }
 

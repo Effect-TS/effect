@@ -303,7 +303,7 @@ export const RequestSchema = <A, I, R>(
  */
 export const currentHeaders: FiberRef.FiberRef<Headers.Headers> = globalValue(
   "@effect/rpc/Rpc/currentHeaders",
-  () => FiberRef.unsafeMake(Headers.empty)
+  () => FiberRef.unsafeMake(Headers.empty())
 )
 
 /**
@@ -313,10 +313,15 @@ export const currentHeaders: FiberRef.FiberRef<Headers.Headers> = globalValue(
 export const annotateHeaders: {
   (headers: Headers.Input): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <A, E, R>(self: Effect.Effect<A, E, R>, headers: Headers.Input): Effect.Effect<A, E, R>
-} = dual(2, (self, headers) => {
-  const resolved = Headers.fromInput(headers)
-  return Effect.locallyWith(self, currentHeaders, (prev) => ({ ...prev, ...resolved }))
-})
+} = dual(
+  2,
+  (self, headers) =>
+    Effect.locallyWith(
+      self,
+      currentHeaders,
+      (prev) => ({ ...prev, ...Headers.fromInput(headers) })
+    )
+)
 
 /**
  * @since 1.0.0
