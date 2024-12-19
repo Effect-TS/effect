@@ -1,5 +1,45 @@
 # @effect/sql-libsql
 
+## 0.14.0
+
+### Minor Changes
+
+- [#4112](https://github.com/Effect-TS/effect/pull/4112) [`28de34a`](https://github.com/Effect-TS/effect/commit/28de34a9f8329bc4f08339ea45a66fa771541774) Thanks @thewilkybarkid! - libSQL now requires redacted values instead of strings for:
+
+  - `authToken`
+  - `encryptionKey`
+
+  Before
+
+  ```ts
+  import { LibsqlClient } from "@effect/sql-libsql"
+
+  LibsqlClient.layerConfig({
+    url: Config.string("LIBSQL_URL"),
+    authToken: Config.string("LIBSQL_AUTH_TOKEN")
+  })
+  ```
+
+  After
+
+  ```ts
+  import { LibsqlClient } from "@effect/sql-libsql"
+  import { Config } from "effect"
+
+  LibsqlClient.layerConfig({
+    url: Config.string("LIBSQL_URL"),
+    authToken: Config.redacted("LIBSQL_AUTH_TOKEN")
+  })
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`1c08a0b`](https://github.com/Effect-TS/effect/commit/1c08a0b8505badcffb4d9cade5a746ea90c9557e), [`1ce703b`](https://github.com/Effect-TS/effect/commit/1ce703b041bbd7560c5c437c9b9be48f027937fd), [`1ce703b`](https://github.com/Effect-TS/effect/commit/1ce703b041bbd7560c5c437c9b9be48f027937fd)]:
+  - effect@3.11.9
+  - @effect/experimental@0.35.2
+  - @effect/platform@0.71.6
+  - @effect/sql@0.24.2
+
 ## 0.13.1
 
 ### Patch Changes
