@@ -7,8 +7,11 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import type { ParseError } from "effect/ParseResult"
-import type * as Schema from "effect/Schema"
+import * as ParseResult from "effect/ParseResult"
+import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import { Packr, Unpackr } from "msgpackr"
+import * as Msgpackr from "msgpackr"
 import * as ChannelSchema from "./ChannelSchema.js"
 
 /**
@@ -283,3 +286,43 @@ export const duplexSchema: {
   InDone,
   R | IR | OR
 > => ChannelSchema.duplexUnknown(duplex(self), options))
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export interface schema<S extends Schema.Schema.Any> extends Schema.transformOrFail<Schema.Schema<Uint8Array>, S> {}
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const schema = <S extends Schema.Schema.Any>(schema: S): schema<S> =>
+  Schema.transformOrFail(
+    Schema.Uint8ArrayFromSelf,
+    schema,
+    {
+      decode(fromA, _, ast) {
+        return ParseResult.try({
+          try: () => Msgpackr.decode(fromA) as Schema.Schema.Encoded<S>,
+          catch: (cause) =>
+            new ParseResult.Type(
+              ast,
+              fromA,
+              Predicate.hasProperty(cause, "message") ? String(cause.message) : String(cause)
+            )
+        })
+      },
+      encode(toI, _, ast) {
+        return ParseResult.try({
+          try: () => Msgpackr.encode(toI),
+          catch: (cause) =>
+            new ParseResult.Type(
+              ast,
+              toI,
+              Predicate.hasProperty(cause, "message") ? String(cause.message) : String(cause)
+            )
+        })
+      }
+    }
+  )

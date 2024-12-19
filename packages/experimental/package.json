@@ -39,7 +39,8 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "msgpackr": "^1.10.2"
+    "msgpackr": "^1.10.2",
+    "uuid": "^11.0.3"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",
@@ -64,6 +65,7 @@
     }
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240806.0",
     "@types/ws": "^8.5.12",
     "ioredis": "^5.4.1",
     "lmdb": "^3.0.13",
@@ -75,6 +77,8 @@
       "include": [
         "*.ts",
         "DevTools/*.ts",
+        "EventLogRemote/*.ts",
+        "EventLogServer/*.ts",
         "Machine/*.ts",
         "Persistence/*.ts",
         "SocketServer/*.ts"
