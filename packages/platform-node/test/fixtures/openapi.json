@@ -516,12 +516,10 @@
         "description": "a Universally Unique Identifier",
         "format": "uuid",
         "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-        "title": "UUID",
         "type": "string"
       },
       "Int": {
         "description": "an integer",
-        "title": "Int",
         "type": "integer"
       },
       "HttpApiDecodeError": {
