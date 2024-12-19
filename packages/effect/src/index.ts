@@ -798,12 +798,6 @@ export * as ScopedRef from "./ScopedRef.js"
 
 /**
  * @since 2.0.0
- * @deprecated
- */
-export * as Secret from "./Secret.js"
-
-/**
- * @since 2.0.0
  */
 export * as SingleProducerAsyncInput from "./SingleProducerAsyncInput.js"
 

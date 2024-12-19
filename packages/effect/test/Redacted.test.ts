@@ -2,7 +2,6 @@ import * as Chunk from "effect/Chunk"
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
 import * as Redacted from "effect/Redacted"
-import * as Secret from "effect/Secret"
 import { assert, describe, it } from "vitest"
 
 describe("Redacted", () => {
@@ -48,25 +47,5 @@ describe("Redacted", () => {
   it("Hash", () => {
     assert.strictEqual(Hash.hash(Redacted.make(1)), Hash.hash(Redacted.make(1)))
     assert.notStrictEqual(Hash.hash(Redacted.make(1)), Hash.hash(Redacted.make(2)))
-  })
-
-  describe("Secret extends Redacted", () => {
-    it("Redacted.isRedacted", () => {
-      const secret = Secret.fromString("test")
-      assert.isTrue(
-        Redacted.isRedacted(secret)
-      )
-    })
-    it("Redacted.unsafeWipe", () => {
-      const secret = Secret.fromString("test")
-      assert.isTrue(
-        Redacted.unsafeWipe(secret)
-      )
-    })
-    it("Redacted.value", () => {
-      const value = "test"
-      const secret = Secret.fromString(value)
-      assert.strictEqual(value, Redacted.value(secret))
-    })
   })
 })
