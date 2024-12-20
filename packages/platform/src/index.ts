@@ -252,6 +252,11 @@ export * as Transferable from "./Transferable.js"
 /**
  * @since 1.0.0
  */
+export * as Url from "./Url.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as UrlParams from "./UrlParams.js"
 
 /**
