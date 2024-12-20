@@ -4582,11 +4582,12 @@ export const scheduleWith: {
  *
  * // Creating a single-valued stream from a scoped resource
  * const stream = Stream.scoped(
- *   Effect.acquireUseRelease(
- *     Console.log("acquire"),
- *     () => Console.log("use"),
- *     () => Console.log("release")
- *   )
+ *  Effect.acquireRelease(
+ *    Console.log("acquire"),
+ *    () => Console.log("release")
+ *  )
+ * ).pipe(
+ *  Stream.flatMap(() => Console.log("use"))
  * )
  *
  * // Effect.runPromise(Stream.runCollect(stream)).then(console.log)
