@@ -849,7 +849,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       "$defs": {
         "JsonNumber": {
           "type": "number",
-          "description": "a finite number (excluding NaN, +Infinity, and -Infinity)"
+          "title": "finite",
+          "description": "a finite number"
         }
       },
       "$ref": "#/$defs/JsonNumber"
@@ -4226,7 +4227,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "$defs": {
               "JsonNumber": {
                 "type": "number",
-                "description": "a finite number (excluding NaN, +Infinity, and -Infinity)"
+                "title": "finite",
+                "description": "a finite number"
               },
               "c0c853a6-9029-49d9-9a63-08aa542ec7da": {
                 "anyOf": [

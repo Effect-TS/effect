@@ -4,6 +4,10 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("brand", () => {
+  it("toString", () => {
+    expect(String(S.String.pipe(S.brand("my-brand")))).toStrictEqual(`string & Brand<"my-brand">`)
+  })
+
   it("the constructor should validate the input by default", () => {
     const schema = S.NonEmptyString.pipe(S.brand("A"))
     Util.expectConstructorSuccess(schema, "a")

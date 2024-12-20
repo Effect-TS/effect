@@ -5,6 +5,68 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("filter", () => {
+  describe("error messages", () => {
+    it("single refinement", async () => {
+      const schema = S.Number.pipe(S.int())
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        null,
+        `an integer
+└─ From side refinement failure
+   └─ Expected number, actual null`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        1.1,
+        `an integer
+└─ Predicate refinement failure
+   └─ Expected an integer, actual 1.1`
+      )
+    })
+
+    it("double refinement", async () => {
+      const schema = S.Number.pipe(S.int(), S.positive())
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        null,
+        `an integer & a positive number
+└─ From side refinement failure
+   └─ an integer
+      └─ From side refinement failure
+         └─ Expected number, actual null`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        1.1,
+        `an integer & a positive number
+└─ From side refinement failure
+   └─ an integer
+      └─ Predicate refinement failure
+         └─ Expected an integer, actual 1.1`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        -1,
+        `an integer & a positive number
+└─ Predicate refinement failure
+   └─ Expected a positive number, actual -1`
+      )
+    })
+
+    it("with an anonymous refinement", async () => {
+      const schema = S.Number.pipe(S.filter(() => false), S.positive())
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        1,
+        `{ number | filter } & a positive number
+└─ From side refinement failure
+   └─ { number | filter }
+      └─ Predicate refinement failure
+         └─ Expected { number | filter }, actual 1`
+      )
+    })
+  })
+
   it("annotation options", () => {
     const schema = S.String.pipe(
       S.filter((s): s is string => s.length === 1, {
@@ -282,7 +344,7 @@ describe("filter", () => {
           tags: S.Array(S.String).pipe(S.minItems(1), S.maxItems(3))
         }),
         {},
-        `{ readonly tags: an array of at most 3 item(s) }
+        `{ readonly tags: an array of at least 1 item(s) & an array of at most 3 item(s) }
 └─ ["tags"]
    └─ is missing`,
         Util.allErrors

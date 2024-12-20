@@ -4694,9 +4694,7 @@ export const FiniteSchemaId: unique symbol = schemaId_.FiniteSchemaId
 export type FiniteSchemaId = typeof FiniteSchemaId
 
 /**
- * Ensures that the provided value is a finite number.
- *
- * This schema filters out non-finite numeric values, allowing only finite numbers to pass through.
+ * Ensures that the provided value is a finite number (excluding NaN, +Infinity, and -Infinity).
  *
  * @category number filters
  * @since 3.10.0
@@ -4706,7 +4704,8 @@ export const finite =
     self.pipe(
       filter(Number.isFinite, {
         schemaId: FiniteSchemaId,
-        description: "a finite number (excluding NaN, +Infinity, and -Infinity)",
+        title: "finite",
+        description: "a finite number",
         jsonSchema: { "type": "number" },
         ...annotations
       })
@@ -4813,6 +4812,8 @@ export const IntSchemaId: unique symbol = schemaId_.IntSchemaId
 export type IntSchemaId = typeof IntSchemaId
 
 /**
+ * Ensures that the provided value is an integer number (excluding NaN, +Infinity, and -Infinity).
+ *
  * @category number filters
  * @since 3.10.0
  */
@@ -5605,20 +5606,16 @@ export class DurationFromMillis extends transform(
   { strict: true, decode: (ms) => duration_.millis(ms), encode: (n) => duration_.toMillis(n) }
 ).annotations({ identifier: "DurationFromMillis" }) {}
 
-const hrTime: Schema<readonly [seconds: number, nanos: number]> = Tuple(
-  NonNegative.pipe(
-    finite({
-      [AST.TitleAnnotationId]: "seconds",
-      [AST.DescriptionAnnotationId]: "seconds"
-    })
-  ),
-  NonNegative.pipe(
-    finite({
-      [AST.TitleAnnotationId]: "nanos",
-      [AST.DescriptionAnnotationId]: "nanos"
-    })
-  )
-)
+/**
+ * @category number constructors
+ * @since 3.11.10
+ */
+export const NonNegativeInt = NonNegative.pipe(int()).annotations({ identifier: "NonNegativeInt" })
+
+const HRTime: Schema<readonly [seconds: number, nanos: number]> = Tuple(
+  element(NonNegativeInt).annotations({ title: "seconds" }),
+  element(NonNegativeInt).annotations({ title: "nanos" })
+).annotations({ identifier: "HRTime" })
 
 /**
  * A schema that transforms a `[number, number]` tuple into a `Duration`.
@@ -5627,7 +5624,7 @@ const hrTime: Schema<readonly [seconds: number, nanos: number]> = Tuple(
  * @since 3.10.0
  */
 export class Duration extends transform(
-  hrTime.annotations({ description: "a tuple of seconds and nanos that will be parsed into a Duration" }),
+  HRTime.annotations({ description: "a tuple of seconds and nanos that will be parsed into a Duration" }),
   DurationFromSelf,
   {
     strict: true,
@@ -5791,18 +5788,18 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
 )
 
 /**
- * @category Uint8 constructors
- * @since 3.11.9
+ * @category number constructors
+ * @since 3.11.10
  */
-const Uint8FromSelf = Number$.pipe(
+export const Uint8 = Number$.pipe(
   between(0, 255, {
-    identifier: "Uint8FromSelf",
+    identifier: "Uint8",
     description: "a 8-bit unsigned integer"
   })
 )
 
 const Uint8Array$: Schema<Uint8Array, ReadonlyArray<number>> = transform(
-  Array$(Uint8FromSelf).annotations({
+  Array$(Uint8).annotations({
     description: "an array of 8-bit unsigned integers that will be parsed into a Uint8Array"
   }),
   Uint8ArrayFromSelf,

@@ -1786,10 +1786,21 @@ export class Refinement<From extends AST = AST> implements Annotated {
     readonly annotations: Annotations = {}
   ) {}
   /**
+   * @since 3.11.10
+   */
+  getExpected(): string {
+    return Option.getOrElse(getExpected(this), () => `{ ${this.from} | filter }`)
+  }
+  /**
    * @since 3.10.0
    */
   toString() {
-    return Option.getOrElse(getExpected(this), () => `{ ${this.from} | filter }`)
+    return getIdentifierAnnotation(this).pipe(Option.getOrElse(() =>
+      Option.match(getOrElseExpected(this), {
+        onNone: () => `{ ${this.from} | filter }`,
+        onSome: (expected) => isRefinement(this.from) ? String(this.from) + " & " + expected : expected
+      })
+    ))
   }
   /**
    * @since 3.10.0
@@ -2932,14 +2943,12 @@ function getBrands(ast: Annotated): string {
   })
 }
 
-const getExpected = (ast: Annotated): Option.Option<string> => {
-  return getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() =>
-      getTitleAnnotation(ast).pipe(
-        Option.orElse(() => getDescriptionAnnotation(ast)),
-        Option.orElse(() => getAutoTitleAnnotation(ast)),
-        Option.map((s) => s + getBrands(ast))
-      )
-    )
+const getOrElseExpected = (ast: Annotated): Option.Option<string> =>
+  getTitleAnnotation(ast).pipe(
+    Option.orElse(() => getDescriptionAnnotation(ast)),
+    Option.orElse(() => getAutoTitleAnnotation(ast)),
+    Option.map((s) => s + getBrands(ast))
   )
-}
+
+const getExpected = (ast: Annotated): Option.Option<string> =>
+  Option.orElse(getIdentifierAnnotation(ast), () => getOrElseExpected(ast))

@@ -1103,7 +1103,7 @@ describe("ParseResultFormatter", () => {
       └─ From side refinement failure
          └─ C
             └─ [0]
-               └─ { readonly b: a string at most 2 character(s) long }
+               └─ { readonly b: a string at least 1 character(s) long & a string at most 2 character(s) long }
                   └─ ["b"]
                      └─ type`
       )
@@ -1123,7 +1123,7 @@ describe("ParseResultFormatter", () => {
       └─ From side refinement failure
          └─ C
             └─ [0]
-               └─ { readonly b: a string at most 2 character(s) long }
+               └─ { readonly b: a string at least 1 character(s) long & a string at most 2 character(s) long }
                   └─ ["b"]
                      └─ minLength`
       )
@@ -1143,7 +1143,7 @@ describe("ParseResultFormatter", () => {
       └─ From side refinement failure
          └─ C
             └─ [0]
-               └─ { readonly b: a string at most 2 character(s) long }
+               └─ { readonly b: a string at least 1 character(s) long & a string at most 2 character(s) long }
                   └─ ["b"]
                      └─ maxLength`
       )

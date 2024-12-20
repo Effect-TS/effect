@@ -17,9 +17,9 @@ describe("Duration", () => {
       [-500, 0],
       `Duration
 └─ Encoded side transformation failure
-   └─ a tuple of seconds and nanos that will be parsed into a Duration
+   └─ HRTime
       └─ [0]
-         └─ seconds
+         └─ NonNegativeInt
             └─ From side refinement failure
                └─ NonNegative
                   └─ Predicate refinement failure
@@ -30,9 +30,9 @@ describe("Duration", () => {
       [0, -123],
       `Duration
 └─ Encoded side transformation failure
-   └─ a tuple of seconds and nanos that will be parsed into a Duration
+   └─ HRTime
       └─ [1]
-         └─ nanos
+         └─ NonNegativeInt
             └─ From side refinement failure
                └─ NonNegative
                   └─ Predicate refinement failure
@@ -43,14 +43,14 @@ describe("Duration", () => {
       123,
       `Duration
 └─ Encoded side transformation failure
-   └─ Expected a tuple of seconds and nanos that will be parsed into a Duration, actual 123`
+   └─ Expected HRTime, actual 123`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       123n,
       `Duration
 └─ Encoded side transformation failure
-   └─ Expected a tuple of seconds and nanos that will be parsed into a Duration, actual 123n`
+   └─ Expected HRTime, actual 123n`
     )
   })
 

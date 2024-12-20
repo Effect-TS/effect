@@ -1848,9 +1848,13 @@ const getParseIssueTitleAnnotation = (issue: ParseIssue): Option.Option<string> 
 const formatTypeMessage = (e: Type): Effect.Effect<string> =>
   getMessage(e).pipe(
     Effect.orElse(() => getParseIssueTitleAnnotation(e)),
-    Effect.catchAll(() =>
-      Effect.succeed(e.message ?? `Expected ${String(e.ast)}, actual ${util_.formatUnknown(e.actual)}`)
-    )
+    Effect.catchAll(() => {
+      const message = e.message ??
+        `Expected ${"getExpected" in e.ast ? e.ast.getExpected() : String(e.ast)}, actual ${
+          util_.formatUnknown(e.actual)
+        }`
+      return Effect.succeed(message)
+    })
   )
 
 const getParseIssueTitle = (
