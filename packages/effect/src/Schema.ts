@@ -5991,6 +5991,48 @@ export const StringFromHex: Schema<string> = makeEncodingTransformation(
 )
 
 /**
+ * Decodes a URI component encoded string into a UTF-8 string.
+ * Can be used to store data in a URL.
+ *
+ * @example
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const PaginationSchema = Schema.Struct({
+ *   maxItemPerPage: Schema.Number,
+ *   page: Schema.Number
+ * })
+ *
+ * const UrlSchema = Schema.compose(Schema.StringFromUriComponent, Schema.parseJson(PaginationSchema))
+ *
+ * console.log(Schema.encodeSync(UrlSchema)({ maxItemPerPage: 10, page: 1 }))
+ * // Output: %7B%22maxItemPerPage%22%3A10%2C%22page%22%3A1%7D
+ * ```
+ *
+ * @category string transformations
+ * @since 3.12.0
+ */
+export const StringFromUriComponent = transformOrFail(
+  String$.annotations({
+    description: `A string that is interpreted as being UriComponent-encoded and will be decoded into a UTF-8 string`
+  }),
+  String$,
+  {
+    strict: true,
+    decode: (s, _, ast) =>
+      either_.mapLeft(
+        Encoding.decodeUriComponent(s),
+        (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
+      ),
+    encode: (u, _, ast) =>
+      either_.mapLeft(
+        Encoding.encodeUriComponent(u),
+        (encodeException) => new ParseResult.Type(ast, u, encodeException.message)
+      )
+  }
+).annotations({ identifier: `StringFromUriComponent` })
+
+/**
  * @category schema id
  * @since 3.10.0
  */
@@ -6115,6 +6157,19 @@ export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): SchemaClass
     self,
     OptionFromSelf(getNumberIndexedAccess(typeSchema(self))),
     { strict: true, decode: array_.head, encode: option_.match({ onNone: () => [], onSome: array_.of }) }
+  )
+
+/**
+ * Get the first element of a `NonEmptyReadonlyArray`.
+ *
+ * @category NonEmptyReadonlyArray transformations
+ * @since 3.12.0
+ */
+export const headNonEmpty = <A, I, R>(self: Schema<array_.NonEmptyReadonlyArray<A>, I, R>): SchemaClass<A, I, R> =>
+  transform(
+    self,
+    getNumberIndexedAccess(typeSchema(self)),
+    { strict: true, decode: array_.headNonEmpty, encode: array_.of }
   )
 
 /**
@@ -6440,6 +6495,22 @@ export class DateTimeUtcFromNumber extends transformOrFail(
     encode: (dt) => ParseResult.succeed(dateTime.toEpochMillis(dt))
   }
 ).annotations({ identifier: "DateTimeUtcFromNumber" }) {}
+
+/**
+ * Defines a schema that attempts to convert a `Date` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.
+ *
+ * @category DateTime.Utc transformations
+ * @since 3.12.0
+ */
+export class DateTimeUtcFromDate extends transformOrFail(
+  DateFromSelf.annotations({ description: "a Date that will be parsed into a DateTime.Utc" }),
+  DateTimeUtcFromSelf,
+  {
+    strict: true,
+    decode: decodeDateTime,
+    encode: (dt) => ParseResult.succeed(dateTime.toDateUtc(dt))
+  }
+).annotations({ identifier: "DateTimeUtcFromDate" }) {}
 
 /**
  * Defines a schema that attempts to convert a `string` to a `DateTime.Utc` instance using the `DateTime.unsafeMake` constructor.

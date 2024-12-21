@@ -1428,13 +1428,23 @@ export const whileLoop = <A, E, R>(
 }
 
 /* @internal */
-export const gen: typeof Effect.gen = function() {
-  const f = arguments.length === 1 ? arguments[0] : arguments[1].bind(arguments[0])
-  return suspend(() => {
+export const fromIterator = <Eff extends YieldWrap<Effect.Effect<any, any, any>>, AEff>(
+  iterator: LazyArg<Iterator<Eff, AEff, never>>
+): Effect.Effect<
+  AEff,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect.Effect<infer _A, infer E, infer _R>>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect.Effect<infer _A, infer _E, infer R>>] ? R : never
+> =>
+  suspend(() => {
     const effect = new EffectPrimitive(OpCodes.OP_ITERATOR) as any
-    effect.effect_instruction_i0 = f(pipe)
+    effect.effect_instruction_i0 = iterator()
     return effect
   })
+
+/* @internal */
+export const gen: typeof Effect.gen = function() {
+  const f = arguments.length === 1 ? arguments[0] : arguments[1].bind(arguments[0])
+  return fromIterator(() => f(pipe))
 }
 
 /* @internal */
@@ -3063,14 +3073,11 @@ export const currentSpanFromFiber = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Opt
   return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
 }
 
-const NoopSpanProto: Tracer.Span = {
+const NoopSpanProto: Omit<Tracer.Span, "parent" | "name" | "context"> = {
   _tag: "Span",
   spanId: "noop",
   traceId: "noop",
-  name: "noop",
   sampled: false,
-  parent: Option.none(),
-  context: Context.empty(),
   status: {
     _tag: "Ended",
     startTime: BigInt(0),
@@ -3086,8 +3093,8 @@ const NoopSpanProto: Tracer.Span = {
 }
 
 /** @internal */
-export const noopSpan = (name: string): Tracer.Span => {
-  const span = Object.create(NoopSpanProto)
-  span.name = name
-  return span
-}
+export const noopSpan = (options: {
+  readonly name: string
+  readonly parent: Option.Option<Tracer.AnySpan>
+  readonly context: Context.Context<never>
+}): Tracer.Span => Object.assign(Object.create(NoopSpanProto), options)

@@ -53,6 +53,17 @@ export interface Runtime<in R> extends Pipeable {
 }
 
 /**
+ * @since 3.12.0
+ */
+export declare namespace Runtime {
+  /**
+   * @since 3.12.0
+   * @category Type Extractors
+   */
+  export type Context<T extends Runtime<any>> = [T] extends [Runtime<infer R>] ? R : never
+}
+
+/**
  * @since 2.0.0
  * @category models
  */
