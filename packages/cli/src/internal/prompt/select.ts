@@ -167,7 +167,7 @@ function processNext<A>(state: State, choices: Prompt.Prompt.SelectOptions<A>["c
 
 function handleRender<A>(options: SelectOptions<A>) {
   return (state: State, action: Prompt.Prompt.Action<State, A>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: () => renderSubmission(state, options)
