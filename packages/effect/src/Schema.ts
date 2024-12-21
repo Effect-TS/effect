@@ -1940,8 +1940,8 @@ export const withDecodingDefault: {
     case "PropertySignatureDeclaration":
       return makePropertySignature(
         new PropertySignatureTransformation(
-          ast,
-          new ToPropertySignature(AST.typeAST(ast.type), false, true, {}, undefined),
+          new FromPropertySignature(ast.type, ast.isOptional, ast.isReadonly, ast.annotations),
+          new ToPropertySignature(AST.typeAST(ast.type), false, true, {}, ast.defaultValue),
           (o) => applyDefaultValue(o, defaultValue),
           identity
         )
