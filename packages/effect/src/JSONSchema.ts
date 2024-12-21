@@ -382,35 +382,9 @@ const getASTJsonSchemaAnnotations = (ast: AST.AST): JsonSchemaAnnotations => {
   }
 }
 
-const pruneUndefinedFromPropertySignature = (ast: AST.AST): AST.AST | undefined => {
+const pruneUndefined = (ast: AST.AST): AST.AST | undefined => {
   if (Option.isNone(AST.getJSONSchemaAnnotation(ast))) {
-    switch (ast._tag) {
-      case "UndefinedKeyword":
-        return AST.neverKeyword
-      case "Union": {
-        const types: Array<AST.AST> = []
-        let hasUndefined = false
-        for (const type of ast.types) {
-          const pruned = pruneUndefinedFromPropertySignature(type)
-          if (pruned) {
-            hasUndefined = true
-            if (!AST.isNeverKeyword(pruned)) {
-              types.push(pruned)
-            }
-          } else {
-            types.push(type)
-          }
-        }
-        if (hasUndefined) {
-          return AST.Union.make(types)
-        }
-        break
-      }
-      case "Suspend":
-        return pruneUndefinedFromPropertySignature(ast.f())
-      case "Transformation":
-        return pruneUndefinedFromPropertySignature(ast.from)
-    }
+    return AST.pruneUndefined(ast, pruneUndefined, (ast) => pruneUndefined(ast.from))
   }
 }
 
@@ -700,7 +674,7 @@ const go = (
         const ps = ast.propertySignatures[i]
         const name = ps.name
         if (Predicate.isString(name)) {
-          const pruned = pruneUndefinedFromPropertySignature(ps.type)
+          const pruned = pruneUndefined(ps.type)
           output.properties[name] = {
             ...go(pruned ?? ps.type, $defs, true, path.concat(ps.name), options),
             ...getJsonSchemaAnnotations(ps)

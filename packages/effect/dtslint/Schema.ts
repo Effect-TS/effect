@@ -2646,6 +2646,21 @@ hole<ConstructorParameters<typeof AA>>()
 // withDecodingDefault
 // ---------------------------------------------
 
+S.Struct({
+  a: S.optional(S.String).pipe(
+    S.withConstructorDefault(() => undefined),
+    // @ts-expect-error
+    S.withDecodingDefault(() => "")
+  )
+})
+
+S.Struct({
+  a: S.optional(S.String).pipe(
+    // @ts-expect-error
+    S.withDecodingDefault(() => undefined)
+  )
+})
+
 // $ExpectType Schema<{ readonly a: string; }, { readonly a?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.optional(S.String).pipe(S.withDecodingDefault(() => "")) }))
 
@@ -2655,6 +2670,17 @@ S.Struct({ a: S.optional(S.String).pipe(S.withDecodingDefault(() => "")) })
 // ---------------------------------------------
 // withDefaults
 // ---------------------------------------------
+
+S.Struct({
+  a: S.optional(S.String).pipe(
+    S.withDefaults({
+      // @ts-expect-error
+      decoding: () => undefined,
+      // @ts-expect-error
+      constructor: () => undefined
+    })
+  )
+})
 
 // $ExpectType Schema<{ readonly a: string; }, { readonly a?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) }))

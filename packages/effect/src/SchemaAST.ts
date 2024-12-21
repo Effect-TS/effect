@@ -2946,3 +2946,38 @@ const getOrElseExpected = (ast: Annotated): Option.Option<string> =>
 
 const getExpected = (ast: Annotated): Option.Option<string> =>
   Option.orElse(getIdentifierAnnotation(ast), () => getOrElseExpected(ast))
+
+/** @internal */
+export const pruneUndefined = (
+  ast: AST,
+  self: (ast: AST) => AST | undefined,
+  onTransformation: (ast: Transformation) => AST | undefined
+): AST | undefined => {
+  switch (ast._tag) {
+    case "UndefinedKeyword":
+      return neverKeyword
+    case "Union": {
+      const types: Array<AST> = []
+      let hasUndefined = false
+      for (const type of ast.types) {
+        const pruned = self(type)
+        if (pruned) {
+          hasUndefined = true
+          if (!isNeverKeyword(pruned)) {
+            types.push(pruned)
+          }
+        } else {
+          types.push(type)
+        }
+      }
+      if (hasUndefined) {
+        return Union.make(types)
+      }
+      break
+    }
+    case "Suspend":
+      return self(ast.f())
+    case "Transformation":
+      return onTransformation(ast)
+  }
+}
