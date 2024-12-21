@@ -14,7 +14,7 @@ describe("betweenBigDecimal", () => {
     Util.expectConstructorFailure(
       schema,
       BigDecimal.make(-2n, 0),
-      `a BigDecimal between -1 and 1
+      `betweenBigDecimal(-1, 1)
 └─ Predicate refinement failure
    └─ Expected a BigDecimal between -1 and 1, actual BigDecimal(-2)`
     )
@@ -24,7 +24,7 @@ describe("betweenBigDecimal", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "2",
-      `a BigDecimal between -1 and 1
+      `betweenBigDecimal(-1, 1)
 └─ Predicate refinement failure
    └─ Expected a BigDecimal between -1 and 1, actual BigDecimal(2)`
     )

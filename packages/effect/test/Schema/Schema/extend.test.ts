@@ -43,9 +43,7 @@ describe("extend", () => {
       const startsWith = Schema.String.pipe(Schema.startsWith("start:"), Schema.brand("start:"))
       const endsWith = Schema.String.pipe(Schema.endsWith(":end"), Schema.brand(":end"))
       const schema = Schema.extend(startsWith, endsWith)
-      expect(String(schema.ast)).toBe(
-        `a string starting with "start:" & Brand<"start:"> & a string ending with ":end" & Brand<":end">`
-      )
+      expect(String(schema.ast)).toBe(`startsWith("start:") & Brand<"start:"> & endsWith(":end") & Brand<":end">`)
       expect(schema.ast.annotations[AST.BrandAnnotationId]).toStrictEqual([":end"])
       const from = (schema.ast as AST.Refinement).from
       expect(from.annotations[AST.BrandAnnotationId]).toStrictEqual(["start:"])
@@ -91,7 +89,7 @@ describe("extend", () => {
       const gt0 = Schema.Number.pipe(Schema.greaterThan(0), Schema.brand("> 0"))
       const lt2 = Schema.Number.pipe(Schema.lessThan(2), Schema.brand("< 2"))
       const schema = Schema.extend(gt0, lt2)
-      expect(String(schema.ast)).toBe(`a positive number & Brand<"> 0"> & a number less than 2 & Brand<"< 2">`)
+      expect(String(schema.ast)).toBe(`greaterThan(0) & Brand<"> 0"> & lessThan(2) & Brand<"< 2">`)
       expect(schema.ast.annotations[AST.BrandAnnotationId]).toStrictEqual(["< 2"])
       const from = (schema.ast as AST.Refinement).from
       expect(from.annotations[AST.BrandAnnotationId]).toStrictEqual(["> 0"])
@@ -210,7 +208,7 @@ describe("extend", () => {
       })
       const schema = Schema.extend(A, B)
       expect(String(schema)).toBe(
-        `{ readonly nested: { readonly same: a string starting with "start:" & a string ending with ":end"; readonly different1: string; readonly different2: string } }`
+        `{ readonly nested: { readonly same: startsWith("start:") & endsWith(":end"); readonly different1: string; readonly different2: string } }`
       )
       await Util.expectDecodeUnknownSuccess(
         schema,
@@ -231,13 +229,13 @@ describe("extend", () => {
             different2: ""
           }
         },
-        `{ readonly nested: { readonly same: a string starting with "start:" & a string ending with ":end"; readonly different1: string; readonly different2: string } }
+        `{ readonly nested: { readonly same: startsWith("start:") & endsWith(":end"); readonly different1: string; readonly different2: string } }
 └─ ["nested"]
-   └─ { readonly same: a string starting with "start:" & a string ending with ":end"; readonly different1: string; readonly different2: string }
+   └─ { readonly same: startsWith("start:") & endsWith(":end"); readonly different1: string; readonly different2: string }
       └─ ["same"]
-         └─ a string starting with "start:" & a string ending with ":end"
+         └─ startsWith("start:") & endsWith(":end")
             └─ From side refinement failure
-               └─ a string starting with "start:"
+               └─ startsWith("start:")
                   └─ Predicate refinement failure
                      └─ Expected a string starting with "start:", actual ""`
       )
@@ -250,11 +248,11 @@ describe("extend", () => {
             different2: ""
           }
         },
-        `{ readonly nested: { readonly same: a string starting with "start:" & a string ending with ":end"; readonly different1: string; readonly different2: string } }
+        `{ readonly nested: { readonly same: startsWith("start:") & endsWith(":end"); readonly different1: string; readonly different2: string } }
 └─ ["nested"]
-   └─ { readonly same: a string starting with "start:" & a string ending with ":end"; readonly different1: string; readonly different2: string }
+   └─ { readonly same: startsWith("start:") & endsWith(":end"); readonly different1: string; readonly different2: string }
       └─ ["same"]
-         └─ a string starting with "start:" & a string ending with ":end"
+         └─ startsWith("start:") & endsWith(":end")
             └─ Predicate refinement failure
                └─ Expected a string ending with ":end", actual "start:5"`
       )

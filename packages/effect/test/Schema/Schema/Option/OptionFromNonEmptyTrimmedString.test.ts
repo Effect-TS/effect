@@ -37,7 +37,7 @@ describe("OptionFromNonEmptyTrimmedString", () => {
    └─ Option<NonEmptyTrimmedString>
       └─ NonEmptyTrimmedString
          └─ Predicate refinement failure
-            └─ Expected NonEmptyTrimmedString, actual ""`
+            └─ Expected a non empty string, actual ""`
     )
   })
 })

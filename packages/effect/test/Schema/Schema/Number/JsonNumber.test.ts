@@ -13,14 +13,14 @@ describe("JsonNumber", () => {
       NaN,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber, actual NaN`
+   └─ Expected a finite number, actual NaN`
     )
     await Util.expectDecodeUnknownFailure(
       S.JsonNumber,
       Number.NaN,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber, actual NaN`
+   └─ Expected a finite number, actual NaN`
     )
   })
 
@@ -30,28 +30,28 @@ describe("JsonNumber", () => {
       Infinity,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber, actual Infinity`
+   └─ Expected a finite number, actual Infinity`
     )
     await Util.expectDecodeUnknownFailure(
       S.JsonNumber,
       -Infinity,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber, actual -Infinity`
+   └─ Expected a finite number, actual -Infinity`
     )
     await Util.expectDecodeUnknownFailure(
       S.JsonNumber,
       Number.POSITIVE_INFINITY,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber, actual Infinity`
+   └─ Expected a finite number, actual Infinity`
     )
     await Util.expectDecodeUnknownFailure(
       S.JsonNumber,
       Number.NEGATIVE_INFINITY,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber, actual -Infinity`
+   └─ Expected a finite number, actual -Infinity`
     )
   })
 })

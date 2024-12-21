@@ -415,6 +415,7 @@
                     "items": {
                       "$ref": "#/components/schemas/PersistedFile"
                     },
+                    "title": "itemsCount(1)",
                     "description": "an array of exactly 1 item(s)",
                     "minItems": 1,
                     "maxItems": 1
@@ -519,6 +520,7 @@
         "type": "string"
       },
       "Int": {
+        "title": "int",
         "description": "an integer",
         "type": "integer"
       },

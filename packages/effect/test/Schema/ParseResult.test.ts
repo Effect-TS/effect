@@ -3,61 +3,80 @@ import * as P from "effect/ParseResult"
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import { inspect } from "node:util"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
+
+const expectGetRefinementExpected = (schema: S.Schema.Any, expected: string) => {
+  if (AST.isRefinement(schema.ast)) {
+    expect(P.getRefinementExpected(schema.ast)).toBe(expected)
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(schema.ast)
+    assert.fail(`expected a Refinement`)
+  }
+}
 
 describe("ParseResult", () => {
   const typeParseError1 = P.parseError(new P.Type(S.String.ast, null))
   const typeParseError2 = P.parseError(new P.Type(S.Number.ast, null))
 
-  it("toString()", () => {
-    const schema = S.Struct({ a: S.String })
-    expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
-      Either.left(`{ readonly a: string }
+  it("getRefinementExpected", () => {
+    expectGetRefinementExpected(S.Number.pipe(S.filter(() => true)), "{ number | filter }")
+    expectGetRefinementExpected(S.Number.pipe(S.int()), "an integer")
+    expectGetRefinementExpected(S.Number.pipe(S.int(), S.positive()), "a positive number")
+    expectGetRefinementExpected(S.Int.pipe(S.positive()), "a positive number")
+  })
+
+  describe("ParseError", () => {
+    it("toString()", () => {
+      const schema = S.Struct({ a: S.String })
+      expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
+        Either.left(`{ readonly a: string }
 └─ ["a"]
    └─ is missing`)
-    )
-  })
+      )
+    })
 
-  it("toJSON()", () => {
-    const schema = S.Struct({ a: S.String })
-    expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => (e as any).toJSON())))
-      .toStrictEqual(
-        Either.left({
-          _id: "ParseError",
-          message: `{ readonly a: string }
+    it("toJSON()", () => {
+      const schema = S.Struct({ a: S.String })
+      expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => (e as any).toJSON())))
+        .toStrictEqual(
+          Either.left({
+            _id: "ParseError",
+            message: `{ readonly a: string }
 └─ ["a"]
    └─ is missing`
-        })
-      )
-  })
+          })
+        )
+    })
 
-  it("[NodeInspectSymbol]", () => {
-    const schema = S.Struct({ a: S.String })
-    expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => inspect(e))))
-      .toStrictEqual(
-        Either.left(inspect({
-          _id: "ParseError",
-          message: `{ readonly a: string }
+    it("[NodeInspectSymbol]", () => {
+      const schema = S.Struct({ a: S.String })
+      expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => inspect(e))))
+        .toStrictEqual(
+          Either.left(inspect({
+            _id: "ParseError",
+            message: `{ readonly a: string }
 └─ ["a"]
    └─ is missing`
-        }))
-      )
-  })
+          }))
+        )
+    })
 
-  it("Error.stack", () => {
-    expect(
-      P.parseError(new P.Type(S.String.ast, 1)).stack?.startsWith(
-        `ParseError: Expected string, actual 1`
+    it("Error.stack", () => {
+      expect(
+        P.parseError(new P.Type(S.String.ast, 1)).stack?.startsWith(
+          `ParseError: Expected string, actual 1`
+        )
       )
-    )
-      .toEqual(true)
-  })
+        .toEqual(true)
+    })
 
-  it("Effect.catchTag can be used to catch ParseError", () => {
-    const program = Effect.fail(typeParseError1).pipe(
-      Effect.catchTag("ParseError", () => Effect.succeed(1))
-    )
-    expect(Effect.runSync(program)).toBe(1)
+    it("Effect.catchTag can be used to catch ParseError", () => {
+      const program = Effect.fail(typeParseError1).pipe(
+        Effect.catchTag("ParseError", () => Effect.succeed(1))
+      )
+      expect(Effect.runSync(program)).toBe(1)
+    })
   })
 
   it("map (Either)", () => {

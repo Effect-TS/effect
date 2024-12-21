@@ -16,7 +16,7 @@ describe("brand", () => {
       "",
       `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmptyString, actual ""`
+   └─ Expected a non empty string, actual ""`
     )
   })
 
@@ -57,11 +57,12 @@ describe("brand", () => {
           description: "description"
         })
       )
-      expect(String(schema)).toBe(`description & Brand<"A">`)
+      expect(String(schema)).toBe(`int & Brand<"A">`)
 
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A"],
+        [AST.TitleAnnotationId]: "int",
         [AST.DescriptionAnnotationId]: "description",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
@@ -76,11 +77,12 @@ describe("brand", () => {
         })
       )
 
-      expect(String(schema)).toBe(`description & Brand<"A"> & Brand<"B">`)
+      expect(String(schema)).toBe(`int & Brand<"A"> & Brand<"B">`)
 
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A", "B"],
+        [AST.TitleAnnotationId]: "int",
         [AST.DescriptionAnnotationId]: "description",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
@@ -97,11 +99,12 @@ describe("brand", () => {
         })
       )
 
-      expect(String(schema)).toBe("description & Brand<Symbol(A)> & Brand<Symbol(B)>")
+      expect(String(schema)).toBe("int & Brand<Symbol(A)> & Brand<Symbol(B)>")
 
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: [A, B],
+        [AST.TitleAnnotationId]: "int",
         [AST.DescriptionAnnotationId]: "description",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })

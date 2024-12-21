@@ -23,7 +23,7 @@ describe("maxLength", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "aa",
-      `a string at most 1 character(s) long
+      `maxLength(1)
 └─ Predicate refinement failure
    └─ Expected a string at most 1 character(s) long, actual "aa"`
     )

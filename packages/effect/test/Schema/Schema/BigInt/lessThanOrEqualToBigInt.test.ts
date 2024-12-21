@@ -10,7 +10,7 @@ describe("lessThanOrEqualToBigInt", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       1n,
-      `a non-positive bigint
+      `lessThanOrEqualToBigInt(0)
 └─ Predicate refinement failure
    └─ Expected a non-positive bigint, actual 1n`
     )

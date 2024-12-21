@@ -13,17 +13,24 @@ describe("Finite", () => {
     await Util.expectDecodeUnknownSuccess(schema, 1)
     await Util.expectDecodeUnknownFailure(
       schema,
+      NaN,
+      `Finite
+└─ Predicate refinement failure
+   └─ Expected a finite number, actual NaN`
+    )
+    await Util.expectDecodeUnknownFailure(
+      schema,
       Infinity,
       `Finite
 └─ Predicate refinement failure
-   └─ Expected Finite, actual Infinity`
+   └─ Expected a finite number, actual Infinity`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       -Infinity,
       `Finite
 └─ Predicate refinement failure
-   └─ Expected Finite, actual -Infinity`
+   └─ Expected a finite number, actual -Infinity`
     )
   })
 })

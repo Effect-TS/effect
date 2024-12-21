@@ -23,7 +23,7 @@ describe("Duration", () => {
             └─ From side refinement failure
                └─ NonNegative
                   └─ Predicate refinement failure
-                     └─ Expected NonNegative, actual -500`
+                     └─ Expected a non-negative number, actual -500`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -36,7 +36,7 @@ describe("Duration", () => {
             └─ From side refinement failure
                └─ NonNegative
                   └─ Predicate refinement failure
-                     └─ Expected NonNegative, actual -123`
+                     └─ Expected a non-negative number, actual -123`
     )
     await Util.expectDecodeUnknownFailure(
       schema,

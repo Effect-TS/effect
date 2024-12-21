@@ -16,7 +16,7 @@ describe("NonNegativeBigIntFromSelf", () => {
       -1n,
       `NonNegativeBigintFromSelf
 └─ Predicate refinement failure
-   └─ Expected NonNegativeBigintFromSelf, actual -1n`
+   └─ Expected a non-negative bigint, actual -1n`
     )
   })
 })

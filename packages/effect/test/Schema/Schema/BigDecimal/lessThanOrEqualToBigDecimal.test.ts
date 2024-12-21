@@ -4,19 +4,19 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("lessThanOrEqualToBigDecimal", () => {
-  const max = BigDecimal.fromNumber(5)
+  const max = BigDecimal.unsafeFromNumber(5)
   const schema = S.BigDecimal.pipe(S.lessThanOrEqualToBigDecimal(max))
 
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(
       schema,
       "5",
-      BigDecimal.normalize(BigDecimal.fromNumber(5))
+      BigDecimal.normalize(BigDecimal.unsafeFromNumber(5))
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "6",
-      `a BigDecimal less than or equal to 5
+      `lessThanOrEqualToBigDecimal(5)
 └─ Predicate refinement failure
    └─ Expected a BigDecimal less than or equal to 5, actual BigDecimal(6)`
     )

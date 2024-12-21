@@ -15,7 +15,7 @@ details: Expected an integer greater than or equal to 1, actual -1`)
     await Util.expectDecodeUnknownFailure(
       schema,
       [1],
-      `an array of at least 2 item(s)
+      `minItems(2)
 └─ Predicate refinement failure
    └─ Expected an array of at least 2 item(s), actual [1]`
     )

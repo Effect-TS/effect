@@ -11,14 +11,14 @@ describe("filter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `an integer
+        `int
 └─ From side refinement failure
    └─ Expected number, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         1.1,
-        `an integer
+        `int
 └─ Predicate refinement failure
    └─ Expected an integer, actual 1.1`
       )
@@ -29,25 +29,25 @@ describe("filter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `an integer & a positive number
+        `int & positive
 └─ From side refinement failure
-   └─ an integer
+   └─ int
       └─ From side refinement failure
          └─ Expected number, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         1.1,
-        `an integer & a positive number
+        `int & positive
 └─ From side refinement failure
-   └─ an integer
+   └─ int
       └─ Predicate refinement failure
          └─ Expected an integer, actual 1.1`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         -1,
-        `an integer & a positive number
+        `int & positive
 └─ Predicate refinement failure
    └─ Expected a positive number, actual -1`
       )
@@ -58,7 +58,7 @@ describe("filter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         1,
-        `{ number | filter } & a positive number
+        `{ number | filter } & positive
 └─ From side refinement failure
    └─ { number | filter }
       └─ Predicate refinement failure
@@ -103,7 +103,7 @@ describe("filter", () => {
       "",
       `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmptyString, actual ""`
+   └─ Expected a non empty string, actual ""`
     )
   })
 
@@ -166,7 +166,7 @@ describe("filter", () => {
 └─ From side refinement failure
    └─ Test
       └─ ["a"]
-         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+         └─ { readonly b: string; readonly c: minLength(1) }
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
@@ -210,7 +210,7 @@ describe("filter", () => {
 └─ From side refinement failure
    └─ Test
       └─ ["a"]
-         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+         └─ { readonly b: string; readonly c: minLength(1) }
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
@@ -256,7 +256,7 @@ describe("filter", () => {
 └─ From side refinement failure
    └─ Test
       └─ ["a"]
-         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+         └─ { readonly b: string; readonly c: minLength(1) }
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
@@ -298,17 +298,17 @@ describe("filter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { tags: ["AB", "B"] },
-        `{ readonly tags: an array of at least 3 item(s) }
+        `{ readonly tags: minItems(3) }
 └─ ["tags"]
-   └─ an array of at least 3 item(s)
-      ├─ an array of at least 3 item(s)
+   └─ minItems(3)
+      ├─ minItems(3)
       │  └─ From side refinement failure
-      │     └─ ReadonlyArray<a string at least 2 character(s) long>
+      │     └─ ReadonlyArray<minLength(2)>
       │        └─ [1]
-      │           └─ a string at least 2 character(s) long
+      │           └─ minLength(2)
       │              └─ Predicate refinement failure
       │                 └─ Expected a string at least 2 character(s) long, actual "B"
-      └─ an array of at least 3 item(s)
+      └─ minItems(3)
          └─ Predicate refinement failure
             └─ Expected an array of at least 3 item(s), actual ["AB","B"]`,
         Util.allErrors
@@ -316,13 +316,13 @@ describe("filter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { tags: ["AB", "B"] },
-        `{ readonly tags: an array of at least 3 item(s) }
+        `{ readonly tags: minItems(3) }
 └─ ["tags"]
-   └─ an array of at least 3 item(s)
+   └─ minItems(3)
       └─ From side refinement failure
-         └─ ReadonlyArray<a string at least 2 character(s) long>
+         └─ ReadonlyArray<minLength(2)>
             └─ [1]
-               └─ a string at least 2 character(s) long
+               └─ minLength(2)
                   └─ Predicate refinement failure
                      └─ Expected a string at least 2 character(s) long, actual "B"`
       )
@@ -334,7 +334,7 @@ describe("filter", () => {
           tags: S.Array(S.String).pipe(S.minItems(1))
         }),
         {},
-        `{ readonly tags: an array of at least 1 item(s) }
+        `{ readonly tags: minItems(1) }
 └─ ["tags"]
    └─ is missing`,
         Util.allErrors
@@ -344,7 +344,7 @@ describe("filter", () => {
           tags: S.Array(S.String).pipe(S.minItems(1), S.maxItems(3))
         }),
         {},
-        `{ readonly tags: an array of at least 1 item(s) & an array of at most 3 item(s) }
+        `{ readonly tags: minItems(1) & maxItems(3) }
 └─ ["tags"]
    └─ is missing`,
         Util.allErrors

@@ -8,6 +8,7 @@ Schema: refactor annotations:
 - export internal `NonNegativeInt` schema
 - Remove title annotations that are identical to identifiers
 - Avoid setting a title annotation when applying branding
+- Add more title annotations to refinements
 - Improve `toString` output and provide more precise error messages for refinements:
 
   Before
@@ -39,14 +40,14 @@ Schema: refactor annotations:
   const schema = Schema.Number.pipe(Schema.int(), Schema.positive())
 
   console.log(String(schema))
-  // Output: an integer & a positive number
+  // Output: int & positive
 
   Schema.decodeUnknownSync(schema)(1.1)
   /*
   throws:
-  ParseError: an integer & a positive number
+  ParseError: int & positive
   └─ From side refinement failure
-    └─ an integer
+    └─ int
         └─ Predicate refinement failure
           └─ Expected an integer, actual 1.1
   */

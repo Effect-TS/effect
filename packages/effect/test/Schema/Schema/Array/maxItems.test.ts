@@ -8,7 +8,7 @@ describe("maxItems", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       [1, 2, 3],
-      `an array of at most 2 item(s)
+      `maxItems(2)
 └─ Predicate refinement failure
    └─ Expected an array of at most 2 item(s), actual [1,2,3]`
     )

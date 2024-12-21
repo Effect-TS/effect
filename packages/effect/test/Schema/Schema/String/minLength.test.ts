@@ -23,7 +23,7 @@ describe("minLength", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "",
-      `a string at least 1 character(s) long
+      `minLength(1)
 └─ Predicate refinement failure
    └─ Expected a string at least 1 character(s) long, actual ""`
     )

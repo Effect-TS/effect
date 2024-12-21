@@ -22,14 +22,14 @@ describe("lessThan", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       0,
-      `a negative number
+      `lessThan(0)
 └─ Predicate refinement failure
    └─ Expected a negative number, actual 0`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       1,
-      `a negative number
+      `lessThan(0)
 └─ Predicate refinement failure
    └─ Expected a negative number, actual 1`
     )

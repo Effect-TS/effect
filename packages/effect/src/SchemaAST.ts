@@ -1786,12 +1786,6 @@ export class Refinement<From extends AST = AST> implements Annotated {
     readonly annotations: Annotations = {}
   ) {}
   /**
-   * @since 3.11.10
-   */
-  getExpected(): string {
-    return Option.getOrElse(getExpected(this), () => `{ ${this.from} | filter }`)
-  }
-  /**
    * @since 3.10.0
    */
   toString() {

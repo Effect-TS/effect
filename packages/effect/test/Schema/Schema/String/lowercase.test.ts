@@ -27,7 +27,7 @@ describe("Lowercase", () => {
 └─ Type side transformation failure
    └─ Lowercased
       └─ Predicate refinement failure
-         └─ Expected Lowercased, actual "A"`
+         └─ Expected a lowercase string, actual "A"`
     )
   })
 })

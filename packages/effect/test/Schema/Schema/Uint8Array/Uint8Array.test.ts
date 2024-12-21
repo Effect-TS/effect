@@ -24,7 +24,7 @@ describe("Uint8Array > Uint8Array", () => {
       └─ [0]
          └─ Uint8
             └─ Predicate refinement failure
-               └─ Expected Uint8, actual 12354`
+               └─ Expected a 8-bit unsigned integer, actual 12354`
     )
   })
 

@@ -94,14 +94,14 @@ describe("Class", () => {
 └─ ["a"]
    └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmptyString, actual ""`)
+         └─ Expected a non empty string, actual ""`)
       )
       expect(() => A.make({ a: "" })).toThrow(
         new Error(`A (Constructor)
 └─ ["a"]
    └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmptyString, actual ""`)
+         └─ Expected a non empty string, actual ""`)
       )
     })
 
@@ -243,7 +243,7 @@ describe("Class", () => {
       └─ ["a"]
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`
+               └─ Expected a non empty string, actual ""`
     )
   })
 
@@ -260,7 +260,7 @@ describe("Class", () => {
       └─ ["a"]
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`
+               └─ Expected a non empty string, actual ""`
     )
   })
 
@@ -508,7 +508,7 @@ details: Duplicate key "a"`)
       └─ ["a"]
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`
+               └─ Expected a non empty string, actual ""`
       )
     })
 
@@ -546,7 +546,7 @@ details: Duplicate key "a"`)
       └─ ["a"]
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`
+               └─ Expected a non empty string, actual ""`
       )
 
       const ctor = { make: A.make.bind(A) }
@@ -562,6 +562,7 @@ details: Duplicate key "a"`)
       expect(JSONSchema.make(S.typeSchema(A))).toStrictEqual({
         "$defs": {
           "NonEmptyString": {
+            "title": "nonEmptyString",
             "description": "a non empty string",
             "minLength": 1,
             "type": "string"
@@ -588,6 +589,7 @@ details: Duplicate key "a"`)
         {
           "$defs": {
             "NonEmptyString": {
+              "title": "nonEmptyString",
               "description": "a non empty string",
               "minLength": 1,
               "type": "string"

@@ -43,6 +43,7 @@ describe("OpenApiJsonSchema", () => {
     expect(defs).toStrictEqual({
       "Int": {
         "description": "an integer",
+        "title": "int",
         "type": "integer"
       },
       "NumberFromString": {

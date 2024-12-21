@@ -22,14 +22,14 @@ describe("betweenDate", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       new Date(-2),
-      `a date between 1969-12-31T23:59:59.999Z and 1970-01-01T00:00:00.001Z
+      `betweenDate(1969-12-31T23:59:59.999Z, 1970-01-01T00:00:00.001Z)
 └─ Predicate refinement failure
    └─ Expected a date between 1969-12-31T23:59:59.999Z and 1970-01-01T00:00:00.001Z, actual 1969-12-31T23:59:59.998Z`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       new Date(2),
-      `a date between 1969-12-31T23:59:59.999Z and 1970-01-01T00:00:00.001Z
+      `betweenDate(1969-12-31T23:59:59.999Z, 1970-01-01T00:00:00.001Z)
 └─ Predicate refinement failure
    └─ Expected a date between 1969-12-31T23:59:59.999Z and 1970-01-01T00:00:00.001Z, actual 1970-01-01T00:00:00.002Z`
     )

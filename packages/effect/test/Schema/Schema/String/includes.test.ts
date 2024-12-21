@@ -28,7 +28,7 @@ describe("includes", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "",
-      `a string including "a"
+      `includes("a")
 └─ Predicate refinement failure
    └─ Expected a string including "a", actual ""`
     )

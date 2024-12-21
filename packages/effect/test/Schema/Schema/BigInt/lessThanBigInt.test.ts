@@ -9,14 +9,14 @@ describe("lessThanBigInt", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       0n,
-      `a negative bigint
+      `lessThanBigInt(0)
 └─ Predicate refinement failure
    └─ Expected a negative bigint, actual 0n`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       1n,
-      `a negative bigint
+      `lessThanBigInt(0)
 └─ Predicate refinement failure
    └─ Expected a negative bigint, actual 1n`
     )

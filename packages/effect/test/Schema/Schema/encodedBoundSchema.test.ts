@@ -40,7 +40,7 @@ describe("encodedBoundSchema", () => {
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
-               └─ Expected String2, actual "a"`
+               └─ Expected a string at least 2 character(s) long, actual "a"`
     )
 
     await Util.expectDecodeUnknownFailure(
@@ -53,7 +53,7 @@ describe("encodedBoundSchema", () => {
 └─ ["b"]
    └─ String3
       └─ Predicate refinement failure
-         └─ Expected String3, actual "ab"`
+         └─ Expected a string at least 3 character(s) long, actual "ab"`
     )
   })
 
@@ -66,18 +66,18 @@ describe("encodedBoundSchema", () => {
       await Util.expectDecodeUnknownFailure(
         bound,
         ["a"],
-        `an array of at least 2 item(s)
+        `minItems(2)
 └─ From side refinement failure
    └─ ReadonlyArray<String2>
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
-               └─ Expected String2, actual "a"`
+               └─ Expected a string at least 2 character(s) long, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         bound,
         ["ab"],
-        `an array of at least 2 item(s)
+        `minItems(2)
 └─ Predicate refinement failure
    └─ Expected an array of at least 2 item(s), actual ["ab"]`
       )
@@ -91,18 +91,18 @@ describe("encodedBoundSchema", () => {
       await Util.expectDecodeUnknownFailure(
         bound,
         ["a"],
-        `an array of at most 2 item(s)
+        `maxItems(2)
 └─ From side refinement failure
    └─ ReadonlyArray<String2>
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
-               └─ Expected String2, actual "a"`
+               └─ Expected a string at least 2 character(s) long, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         bound,
         ["ab", "cd", "ef"],
-        `an array of at most 2 item(s)
+        `maxItems(2)
 └─ Predicate refinement failure
    └─ Expected an array of at most 2 item(s), actual ["ab","cd","ef"]`
       )
@@ -116,25 +116,25 @@ describe("encodedBoundSchema", () => {
       await Util.expectDecodeUnknownFailure(
         bound,
         ["a"],
-        `an array of exactly 2 item(s)
+        `itemsCount(2)
 └─ From side refinement failure
    └─ ReadonlyArray<String2>
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
-               └─ Expected String2, actual "a"`
+               └─ Expected a string at least 2 character(s) long, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         bound,
         ["ab"],
-        `an array of exactly 2 item(s)
+        `itemsCount(2)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual ["ab"]`
       )
       await Util.expectDecodeUnknownFailure(
         bound,
         ["ab", "cd", "ef"],
-        `an array of exactly 2 item(s)
+        `itemsCount(2)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual ["ab","cd","ef"]`
       )

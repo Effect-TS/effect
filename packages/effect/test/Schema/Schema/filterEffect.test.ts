@@ -70,7 +70,7 @@ describe("filterEffect", () => {
 └─ Encoded side transformation failure
    └─ Test
       └─ ["a"]
-         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+         └─ { readonly b: string; readonly c: minLength(1) }
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
@@ -115,7 +115,7 @@ describe("filterEffect", () => {
 └─ Encoded side transformation failure
    └─ Test
       └─ ["a"]
-         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+         └─ { readonly b: string; readonly c: minLength(1) }
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
@@ -161,7 +161,7 @@ describe("filterEffect", () => {
 └─ Encoded side transformation failure
    └─ Test
       └─ ["a"]
-         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+         └─ { readonly b: string; readonly c: minLength(1) }
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )

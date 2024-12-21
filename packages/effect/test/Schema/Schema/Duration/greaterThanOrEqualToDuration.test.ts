@@ -22,7 +22,7 @@ describe("greaterThanOrEqualToDuration", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       Duration.decode("4 seconds"),
-      `a Duration greater than or equal to Duration(5s)
+      `greaterThanOrEqualToDuration(5 seconds)
 └─ Predicate refinement failure
    └─ Expected a Duration greater than or equal to Duration(5s), actual Duration(4s)`
     )
