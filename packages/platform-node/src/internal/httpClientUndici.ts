@@ -97,6 +97,7 @@ function noopErrorHandler(_: any) {}
 class ClientResponseImpl extends Inspectable.Class implements ClientResponse.HttpClientResponse {
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
   readonly [ClientResponse.TypeId]: ClientResponse.TypeId
+  readonly headers: Headers.Headers
 
   constructor(
     readonly request: ClientRequest.HttpClientRequest,
@@ -105,6 +106,7 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
     super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
     this[ClientResponse.TypeId] = ClientResponse.TypeId
+    this.headers = Headers.fromInput(this.source.headers)
     source.body.on("error", noopErrorHandler)
   }
 
@@ -126,10 +128,6 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
       return this.cachedCookies = Cookies.fromSetCookie(Array.isArray(header) ? header : [header])
     }
     return this.cachedCookies = Cookies.empty
-  }
-
-  get headers(): Headers.Headers {
-    return Headers.fromInput(this.source.headers)
   }
 
   get remoteAddress(): Option.Option<string> {

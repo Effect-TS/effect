@@ -213,15 +213,20 @@ class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> impl
     readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>,
     private upgradeEffect?: Effect.Effect<Socket.Socket, Error.RequestError>,
     readonly url = source.url!,
-    private headersOverride?: Headers.Headers,
+    headersOverride?: Headers.Headers,
     remoteAddressOverride?: string
   ) {
-    super(source, (cause) =>
-      new Error.RequestError({
-        request: this,
-        reason: "Decode",
-        cause
-      }), remoteAddressOverride)
+    super(
+      source,
+      (cause) =>
+        new Error.RequestError({
+          request: this,
+          reason: "Decode",
+          cause
+        }),
+      remoteAddressOverride,
+      headersOverride
+    )
     this[ServerRequest.TypeId] = ServerRequest.TypeId
   }
 
@@ -260,11 +265,6 @@ class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> impl
 
   get method(): HttpMethod {
     return this.source.method!.toUpperCase() as HttpMethod
-  }
-
-  get headers(): Headers.Headers {
-    this.headersOverride ??= this.source.headers as Headers.Headers
-    return this.headersOverride
   }
 
   private multipartEffect:

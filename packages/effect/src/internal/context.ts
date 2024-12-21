@@ -4,12 +4,12 @@ import type { LazyArg } from "../Function.js"
 import { dual } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
-import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as O from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as STM from "../STM.js"
 import { EffectPrototype, effectVariance } from "./effectable.js"
+import { format, NodeInspectSymbol, toJSON } from "./inspectable.js"
 import * as option from "./option.js"
 
 /** @internal */
