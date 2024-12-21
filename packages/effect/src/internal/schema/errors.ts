@@ -1,4 +1,4 @@
-import * as array_ from "effect/Array"
+import * as array_ from "../../Array.js"
 import type * as AST from "../../SchemaAST.js"
 import * as util_ from "./util.js"
 

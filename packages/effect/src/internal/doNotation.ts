@@ -1,6 +1,6 @@
-import type { NoInfer } from "effect/Types"
 import { dual } from "../Function.js"
 import type { Kind, TypeLambda } from "../HKT.js"
+import type { NoInfer } from "../Types.js"
 
 type Map<F extends TypeLambda> = {
   <A, B>(f: (a: A) => B): <R, O, E>(self: Kind<F, R, O, E, A>) => Kind<F, R, O, E, B>
