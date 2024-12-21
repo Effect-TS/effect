@@ -13,6 +13,7 @@ import { flow, identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as Schedule from "effect/Schedule"
+import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
@@ -97,9 +98,9 @@ const makeTester = <R>(
       (args, ctx) => run(ctx, [args], self) as any
     )
 
-  const prop: Vitest.Vitest.Tester<R>["prop"] = (name, schemaObj, self, timeout) => {
-    if (Array.isArray(schemaObj)) {
-      const arbs = schemaObj.map((schema) => Arbitrary.make(schema))
+  const prop: Vitest.Vitest.Tester<R>["prop"] = (name, arbitraries, self, timeout) => {
+    if (Array.isArray(arbitraries)) {
+      const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
       return V.it(
         name,
         // @ts-ignore
@@ -109,8 +110,8 @@ const makeTester = <R>(
     }
 
     const arbs = fc.record(
-      Object.keys(schemaObj).reduce(function(result, key) {
-        result[key] = Arbitrary.make(schemaObj[key])
+      Object.keys(arbitraries).reduce(function(result, key) {
+        result[key] = Schema.isSchema(arbitraries[key]) ? Arbitrary.make(arbitraries[key]) : arbitraries[key]
         return result
       }, {} as Record<string, fc.Arbitrary<any>>)
     )
@@ -126,9 +127,9 @@ const makeTester = <R>(
   return Object.assign(f, { skip, skipIf, runIf, only, each, prop })
 }
 
-export const prop: Vitest.Vitest.Methods["prop"] = (name, schemaObj, self, timeout) => {
-  if (Array.isArray(schemaObj)) {
-    const arbs = schemaObj.map((schema) => Arbitrary.make(schema))
+export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, timeout) => {
+  if (Array.isArray(arbitraries)) {
+    const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
     return V.it(
       name,
       // @ts-ignore
@@ -138,8 +139,8 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, schemaObj, self, timeo
   }
 
   const arbs = fc.record(
-    Object.keys(schemaObj).reduce(function(result, key) {
-      result[key] = Arbitrary.make(schemaObj[key])
+    Object.keys(arbitraries).reduce(function(result, key) {
+      result[key] = Schema.isSchema(arbitraries[key]) ? Arbitrary.make(arbitraries[key]) : arbitraries[key]
       return result
     }, {} as Record<string, fc.Arbitrary<any>>)
   )
