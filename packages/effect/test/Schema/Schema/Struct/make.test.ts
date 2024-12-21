@@ -118,7 +118,7 @@ describe("make", () => {
 
   it("withConstructorDefault + withDecodingDefault", () => {
     const schema = S.Struct({
-      a: S.optional(S.Number).pipe(S.withConstructorDefault(() => 0), S.withDecodingDefault(() => 1))
+      a: S.optional(S.Number).pipe(S.withDecodingDefault(() => 1), S.withConstructorDefault(() => 0))
     })
     Util.expectConstructorSuccess(schema, {}, { a: 0 })
   })

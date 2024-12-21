@@ -1901,6 +1901,14 @@ const applyDefaultValue = <A>(o: option_.Option<A>, defaultValue: () => A) =>
     onSome: (value) => option_.some(value === undefined ? defaultValue() : value)
   })
 
+const pruneUndefined = (ast: AST.AST): AST.AST | undefined =>
+  AST.pruneUndefined(ast, pruneUndefined, (ast) => {
+    const pruned = pruneUndefined(ast.to)
+    if (pruned) {
+      return new AST.Transformation(ast.from, pruned, ast.transformation)
+    }
+  })
+
 /**
  * Enhances a property signature with a default decoding value.
  *
@@ -1908,53 +1916,61 @@ const applyDefaultValue = <A>(o: option_.Option<A>, defaultValue: () => A) =>
  * @since 3.10.0
  */
 export const withDecodingDefault: {
-  <Type>(defaultValue: () => Types.NoInfer<Type>): <
+  <Type>(defaultValue: () => Types.NoInfer<Exclude<Type, undefined>>): <
     Key extends PropertyKey,
     Encoded,
-    HasDefault extends boolean,
     R
   >(
-    self: PropertySignature<"?:", Type, Key, "?:", Encoded, HasDefault, R>
-  ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, HasDefault, R>
+    self: PropertySignature<"?:", Type, Key, "?:", Encoded, false, R>
+  ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, false, R>
   <
     Type,
     Key extends PropertyKey,
     Encoded,
-    HasDefault extends boolean,
     R
   >(
-    self: PropertySignature<"?:", Type, Key, "?:", Encoded, HasDefault, R>,
-    defaultValue: () => Types.NoInfer<Type>
-  ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, HasDefault, R>
+    self: PropertySignature<"?:", Type, Key, "?:", Encoded, false, R>,
+    defaultValue: () => Types.NoInfer<Exclude<Type, undefined>>
+  ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, false, R>
 } = dual(2, <
   Type,
   Key extends PropertyKey,
   Encoded,
   R
 >(
-  self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
-  defaultValue: () => Types.NoInfer<Type>
-): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R> => {
+  self: PropertySignature<"?:", Type, Key, "?:", Encoded, false, R>,
+  defaultValue: () => Types.NoInfer<Exclude<Type, undefined>>
+): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, false, R> => {
   const ast = self.ast
   switch (ast._tag) {
-    case "PropertySignatureDeclaration":
+    case "PropertySignatureDeclaration": {
+      const to = AST.typeAST(ast.type)
       return makePropertySignature(
         new PropertySignatureTransformation(
           new FromPropertySignature(ast.type, ast.isOptional, ast.isReadonly, ast.annotations),
-          new ToPropertySignature(AST.typeAST(ast.type), false, true, {}, ast.defaultValue),
+          new ToPropertySignature(pruneUndefined(to) ?? to, false, true, {}, ast.defaultValue),
           (o) => applyDefaultValue(o, defaultValue),
           identity
         )
       )
-    case "PropertySignatureTransformation":
+    }
+    case "PropertySignatureTransformation": {
+      const to = ast.to.type
       return makePropertySignature(
         new PropertySignatureTransformation(
           ast.from,
-          new ToPropertySignature(ast.to.type, false, ast.to.isReadonly, ast.to.annotations, ast.to.defaultValue),
+          new ToPropertySignature(
+            pruneUndefined(to) ?? to,
+            false,
+            ast.to.isReadonly,
+            ast.to.annotations,
+            ast.to.defaultValue
+          ),
           (o) => applyDefaultValue(ast.decode(o), defaultValue),
           ast.encode
         )
       )
+    }
   }
 })
 
@@ -1967,7 +1983,7 @@ export const withDecodingDefault: {
 export const withDefaults: {
   <Type>(defaults: {
     constructor: () => Types.NoInfer<Exclude<Type, undefined>>
-    decoding: () => Types.NoInfer<Type>
+    decoding: () => Types.NoInfer<Exclude<Type, undefined>>
   }): <
     Key extends PropertyKey,
     Encoded,
@@ -1984,7 +2000,7 @@ export const withDefaults: {
     self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
     defaults: {
       constructor: () => Types.NoInfer<Exclude<Type, undefined>>
-      decoding: () => Types.NoInfer<Type>
+      decoding: () => Types.NoInfer<Exclude<Type, undefined>>
     }
   ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
 } = dual(2, <
@@ -1993,10 +2009,10 @@ export const withDefaults: {
   Encoded,
   R
 >(
-  self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
+  self: PropertySignature<"?:", Type, Key, "?:", Encoded, false, R>,
   defaults: {
     constructor: () => Types.NoInfer<Exclude<Type, undefined>>
-    decoding: () => Types.NoInfer<Type>
+    decoding: () => Types.NoInfer<Exclude<Type, undefined>>
   }
 ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R> =>
   self.pipe(withDecodingDefault(defaults.decoding), withConstructorDefault(defaults.constructor)))
