@@ -443,8 +443,8 @@ describe("makeWithOptions", () => {
             "nullable": true
           }, {
             "Int": {
+              "title": "int",
               "description": "an integer",
-              "title": "Int",
               "type": "integer"
             }
           })
@@ -850,8 +850,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       "$defs": {
         "JsonNumber": {
           "type": "number",
-          "description": "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
-          "title": "JSON-compatible number"
+          "title": "finite",
+          "description": "a finite number"
         }
       },
       "$ref": "#/$defs/JsonNumber"
@@ -1071,6 +1071,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("minLength", () => {
       expectJSONSchemaAnnotations(Schema.String.pipe(Schema.minLength(1)), {
         "type": "string",
+        "title": "minLength(1)",
         "description": "a string at least 1 character(s) long",
         "minLength": 1
       })
@@ -1079,6 +1080,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("maxLength", () => {
       expectJSONSchemaAnnotations(Schema.String.pipe(Schema.maxLength(1)), {
         "type": "string",
+        "title": "maxLength(1)",
         "description": "a string at most 1 character(s) long",
         "maxLength": 1
       })
@@ -1087,6 +1089,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("length: number", () => {
       expectJSONSchemaAnnotations(Schema.String.pipe(Schema.length(1)), {
         "type": "string",
+        "title": "length(1)",
         "description": "a single character",
         "maxLength": 1,
         "minLength": 1
@@ -1096,6 +1099,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("length: { min, max }", () => {
       expectJSONSchemaAnnotations(Schema.String.pipe(Schema.length({ min: 2, max: 4 })), {
         "type": "string",
+        "title": "length({ min: 2, max: 4)",
         "description": "a string at least 2 character(s) and at most 4 character(s) long",
         "maxLength": 4,
         "minLength": 2
@@ -1105,6 +1109,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("greaterThan", () => {
       expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.greaterThan(1)), {
         "type": "number",
+        "title": "greaterThan(1)",
         "description": "a number greater than 1",
         "exclusiveMinimum": 1
       })
@@ -1113,6 +1118,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("greaterThanOrEqualTo", () => {
       expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.greaterThanOrEqualTo(1)), {
         "type": "number",
+        "title": "greaterThanOrEqualTo(1)",
         "description": "a number greater than or equal to 1",
         "minimum": 1
       })
@@ -1121,6 +1127,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("lessThan", () => {
       expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.lessThan(1)), {
         "type": "number",
+        "title": "lessThan(1)",
         "description": "a number less than 1",
         "exclusiveMaximum": 1
       })
@@ -1129,6 +1136,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("lessThanOrEqualTo", () => {
       expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.lessThanOrEqualTo(1)), {
         "type": "number",
+        "title": "lessThanOrEqualTo(1)",
         "description": "a number less than or equal to 1",
         "maximum": 1
       })
@@ -1145,7 +1153,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     it("int", () => {
       expectJSONSchemaAnnotations(JsonNumber.pipe(Schema.int()), {
         "type": "integer",
-        "title": "integer",
+        "title": "int",
         "description": "an integer"
       })
     })
@@ -1155,9 +1163,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expectJSONSchemaProperty(schema, {
         "$defs": {
           "Trimmed": {
+            "title": "trimmed",
             "description": "a string with no leading or trailing whitespace",
             "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
-            "title": "Trimmed",
             "type": "string"
           }
         },
@@ -1170,9 +1178,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expectJSONSchemaProperty(schema, {
         "$defs": {
           "Lowercased": {
+            "title": "lowercased",
             "description": "a lowercase string",
             "pattern": "^[^A-Z]*$",
-            "title": "Lowercased",
             "type": "string"
           }
         },
@@ -1185,9 +1193,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expectJSONSchemaProperty(schema, {
         "$defs": {
           "Uppercased": {
+            "title": "uppercased",
             "description": "an uppercase string",
             "pattern": "^[^a-z]*$",
-            "title": "Uppercased",
             "type": "string"
           }
         },
@@ -1200,9 +1208,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expectJSONSchemaProperty(schema, {
         "$defs": {
           "Capitalized": {
+            "title": "capitalized",
             "description": "a capitalized string",
             "pattern": "^[^a-z]?.*$",
-            "title": "Capitalized",
             "type": "string"
           }
         },
@@ -1215,9 +1223,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       expectJSONSchemaProperty(schema, {
         "$defs": {
           "Uncapitalized": {
+            "title": "uncapitalized",
             "description": "a uncapitalized string",
             "pattern": "^[^A-Z]?.*$",
-            "title": "Uncapitalized",
             "type": "string"
           }
         },
@@ -1229,11 +1237,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it("minLength + minLength", () => {
         expectJSONSchemaProperty(Schema.String.pipe(Schema.minLength(1), Schema.minLength(2)), {
           "type": "string",
+          "title": "minLength(2)",
           "description": "a string at least 2 character(s) long",
           "minLength": 2
         })
         expectJSONSchemaProperty(Schema.String.pipe(Schema.minLength(2), Schema.minLength(1)), {
           "type": "string",
+          "title": "minLength(1)",
           "description": "a string at least 1 character(s) long",
           "minLength": 1,
           "allOf": [
@@ -1242,6 +1252,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         })
         expectJSONSchemaProperty(Schema.String.pipe(Schema.minLength(2), Schema.minLength(1), Schema.minLength(2)), {
           "type": "string",
+          "title": "minLength(2)",
           "description": "a string at least 2 character(s) long",
           "minLength": 2
         })
@@ -1250,6 +1261,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it("maxLength + maxLength", () => {
         expectJSONSchemaProperty(Schema.String.pipe(Schema.maxLength(1), Schema.maxLength(2)), {
           "type": "string",
+          "title": "maxLength(2)",
           "description": "a string at most 2 character(s) long",
           "maxLength": 2,
           "allOf": [
@@ -1258,11 +1270,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         })
         expectJSONSchemaProperty(Schema.String.pipe(Schema.maxLength(2), Schema.maxLength(1)), {
           "type": "string",
+          "title": "maxLength(1)",
           "description": "a string at most 1 character(s) long",
           "maxLength": 1
         })
         expectJSONSchemaProperty(Schema.String.pipe(Schema.maxLength(1), Schema.maxLength(2), Schema.maxLength(1)), {
           "type": "string",
+          "title": "maxLength(1)",
           "description": "a string at most 1 character(s) long",
           "maxLength": 1
         })
@@ -1271,6 +1285,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it("pattern + pattern", () => {
         expectJSONSchemaProperty(Schema.String.pipe(Schema.startsWith("a"), Schema.endsWith("c")), {
           "type": "string",
+          "title": "endsWith(\"c\")",
           "description": "a string ending with \"c\"",
           "pattern": "^.*c$",
           "allOf": [
@@ -1281,6 +1296,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           Schema.String.pipe(Schema.startsWith("a"), Schema.endsWith("c"), Schema.startsWith("a")),
           {
             "type": "string",
+            "title": "startsWith(\"a\")",
             "description": "a string starting with \"a\"",
             "pattern": "^a",
             "allOf": [
@@ -1292,6 +1308,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           Schema.String.pipe(Schema.endsWith("c"), Schema.startsWith("a"), Schema.endsWith("c")),
           {
             "type": "string",
+            "title": "endsWith(\"c\")",
             "description": "a string ending with \"c\"",
             "pattern": "^.*c$",
             "allOf": [
@@ -1308,6 +1325,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "type": "string"
           },
           "description": "an array of at least 2 item(s)",
+          "title": "minItems(2)",
           "minItems": 2
         })
         expectJSONSchemaProperty(Schema.Array(Schema.String).pipe(Schema.minItems(2), Schema.minItems(1)), {
@@ -1315,6 +1333,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "items": {
             "type": "string"
           },
+          "title": "minItems(1)",
           "description": "an array of at least 1 item(s)",
           "minItems": 1,
           "allOf": [
@@ -1329,6 +1348,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               "type": "string"
             },
             "description": "an array of at least 2 item(s)",
+            "title": "minItems(2)",
             "minItems": 2
           }
         )
@@ -1340,6 +1360,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "items": {
             "type": "string"
           },
+          "title": "maxItems(2)",
           "description": "an array of at most 2 item(s)",
           "maxItems": 2,
           "allOf": [
@@ -1351,6 +1372,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "items": {
             "type": "string"
           },
+          "title": "maxItems(1)",
           "description": "an array of at most 1 item(s)",
           "maxItems": 1
         })
@@ -1361,6 +1383,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "items": {
               "type": "string"
             },
+            "title": "maxItems(1)",
             "description": "an array of at most 1 item(s)",
             "maxItems": 1
           }
@@ -1370,12 +1393,14 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it("minimum + minimum", () => {
         expectJSONSchemaProperty(JsonNumber.pipe(Schema.greaterThanOrEqualTo(1), Schema.greaterThanOrEqualTo(2)), {
           "type": "number",
+          "title": "greaterThanOrEqualTo(2)",
           "description": "a number greater than or equal to 2",
           "minimum": 2
         })
         expectJSONSchemaProperty(JsonNumber.pipe(Schema.greaterThanOrEqualTo(2), Schema.greaterThanOrEqualTo(1)), {
           "type": "number",
           "minimum": 1,
+          "title": "greaterThanOrEqualTo(1)",
           "description": "a number greater than or equal to 1",
           "allOf": [
             { "minimum": 2 }
@@ -1389,6 +1414,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           ),
           {
             "type": "number",
+            "title": "greaterThanOrEqualTo(2)",
             "description": "a number greater than or equal to 2",
             "minimum": 2
           }
@@ -1398,6 +1424,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it("maximum + maximum", () => {
         expectJSONSchemaProperty(JsonNumber.pipe(Schema.lessThanOrEqualTo(1), Schema.lessThanOrEqualTo(2)), {
           "type": "number",
+          "title": "lessThanOrEqualTo(2)",
           "description": "a number less than or equal to 2",
           "maximum": 2,
           "allOf": [
@@ -1406,6 +1433,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         })
         expectJSONSchemaProperty(JsonNumber.pipe(Schema.lessThanOrEqualTo(2), Schema.lessThanOrEqualTo(1)), {
           "type": "number",
+          "title": "lessThanOrEqualTo(1)",
           "description": "a number less than or equal to 1",
           "maximum": 1
         })
@@ -1413,6 +1441,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           JsonNumber.pipe(Schema.lessThanOrEqualTo(1), Schema.lessThanOrEqualTo(2), Schema.lessThanOrEqualTo(1)),
           {
             "type": "number",
+            "title": "lessThanOrEqualTo(1)",
             "description": "a number less than or equal to 1",
             "maximum": 1
           }
@@ -1422,12 +1451,14 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it("exclusiveMinimum + exclusiveMinimum", () => {
         expectJSONSchemaProperty(JsonNumber.pipe(Schema.greaterThan(1), Schema.greaterThan(2)), {
           "type": "number",
+          "title": "greaterThan(2)",
           "description": "a number greater than 2",
           "exclusiveMinimum": 2
         })
         expectJSONSchemaProperty(JsonNumber.pipe(Schema.greaterThan(2), Schema.greaterThan(1)), {
           "type": "number",
           "exclusiveMinimum": 1,
+          "title": "greaterThan(1)",
           "description": "a number greater than 1",
           "allOf": [
             { "exclusiveMinimum": 2 }
@@ -1441,6 +1472,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           ),
           {
             "type": "number",
+            "title": "greaterThan(2)",
             "description": "a number greater than 2",
             "exclusiveMinimum": 2
           }
@@ -1450,6 +1482,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it("exclusiveMaximum + exclusiveMaximum", () => {
         expectJSONSchemaProperty(JsonNumber.pipe(Schema.lessThan(1), Schema.lessThan(2)), {
           "type": "number",
+          "title": "lessThan(2)",
           "description": "a number less than 2",
           "exclusiveMaximum": 2,
           "allOf": [
@@ -1458,6 +1491,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         })
         expectJSONSchemaProperty(JsonNumber.pipe(Schema.lessThan(2), Schema.lessThan(1)), {
           "type": "number",
+          "title": "lessThan(1)",
           "description": "a number less than 1",
           "exclusiveMaximum": 1
         })
@@ -1465,6 +1499,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           JsonNumber.pipe(Schema.lessThan(1), Schema.lessThan(2), Schema.lessThan(1)),
           {
             "type": "number",
+            "title": "lessThan(1)",
             "description": "a number less than 1",
             "exclusiveMaximum": 1
           }
@@ -1474,6 +1509,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       it("multipleOf + multipleOf", () => {
         expectJSONSchema(JsonNumber.pipe(Schema.multipleOf(2), Schema.multipleOf(3)), {
           "type": "number",
+          "title": "multipleOf(3)",
           "description": "a number divisible by 3",
           "multipleOf": 3,
           "allOf": [
@@ -1484,6 +1520,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           JsonNumber.pipe(Schema.multipleOf(2), Schema.multipleOf(3), Schema.multipleOf(3)),
           {
             "type": "number",
+            "title": "multipleOf(3)",
             "description": "a number divisible by 3",
             "multipleOf": 3,
             "allOf": [
@@ -1495,6 +1532,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           JsonNumber.pipe(Schema.multipleOf(3), Schema.multipleOf(2), Schema.multipleOf(3)),
           {
             "type": "number",
+            "title": "multipleOf(3)",
             "description": "a number divisible by 3",
             "multipleOf": 3,
             "allOf": [
@@ -1946,6 +1984,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           },
           "propertyNames": {
             "type": "string",
+            "title": "minLength(1)",
             "description": "a string at least 1 character(s) long",
             "minLength": 1
           }
@@ -2358,8 +2397,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "$defs": {
             "NonEmptyString": {
               "type": "string",
+              "title": "nonEmptyString",
               "description": "a non empty string",
-              "title": "NonEmptyString",
               "minLength": 1
             }
           },
@@ -2403,6 +2442,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             }
           },
           "propertyNames": {
+            "title": "minLength(2)",
             "description": "a string at least 2 character(s) long",
             "minLength": 2,
             "type": "string"
@@ -2434,6 +2474,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             }
           },
           "propertyNames": {
+            "title": "minLength(2)",
             "description": "a string at least 2 character(s) long",
             "minLength": 2,
             "type": "string"
@@ -2544,8 +2585,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 "$defs": {
                   "NonEmptyString": {
                     "type": "string",
+                    "title": "nonEmptyString",
                     "description": "a non empty string",
-                    "title": "NonEmptyString",
                     "minLength": 1
                   }
                 },
@@ -2575,8 +2616,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 "$defs": {
                   "NonEmptyString": {
                     "type": "string",
+                    "title": "nonEmptyString",
                     "description": "a non empty string",
-                    "title": "NonEmptyString",
                     "minLength": 1
                   },
                   "aa6f48cd-03e4-470a-beb7-5f7cc532c676": {
@@ -2608,8 +2649,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               "$defs": {
                 "NonEmptyString": {
                   "type": "string",
+                  "title": "nonEmptyString",
                   "description": "a non empty string",
-                  "title": "NonEmptyString",
                   "minLength": 1
                 }
               },
@@ -2641,8 +2682,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               "$defs": {
                 "NonEmptyString": {
                   "type": "string",
+                  "title": "nonEmptyString",
                   "description": "a non empty string",
-                  "title": "NonEmptyString",
                   "minLength": 1
                 },
                 "d5ff7bc8-1bd5-42a7-8186-e29fd4c217ea": {
@@ -2997,8 +3038,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$defs": {
           "NonEmptyString": {
             "type": "string",
+            "title": "nonEmptyString",
             "description": "a non empty string",
-            "title": "NonEmptyString",
             "minLength": 1
           }
         },
@@ -3068,6 +3109,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "$defs": {
             "cd6647a4-dc64-40a7-a031-61d35ed904ca": {
               "type": "string",
+              "title": "minLength(2)",
               "description": "a string at least 2 character(s) long",
               "minLength": 2
             }
@@ -3585,7 +3627,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "UUID": {
               "description": "a Universally Unique Identifier",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-              "title": "UUID",
               "type": "string",
               "format": "uuid"
             }
@@ -3633,8 +3674,8 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         expectJSONSchema(Schema.Int.annotations({ jsonSchema: { "type": "custom" } }), {
           "$defs": {
             "Int": {
+              "title": "int",
               "description": "an integer",
-              "title": "Int",
               "type": "custom"
             }
           },
@@ -4057,9 +4098,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "$defs": {
               "Trimmed": {
+                "title": "trimmed",
                 "description": "a string with no leading or trailing whitespace",
                 "pattern": "^\\S[\\s\\S]*\\S$|^\\S$|^$",
-                "title": "Trimmed",
                 "type": "string"
               }
             },
@@ -4099,6 +4140,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "$defs": {
               "7848c831-fa50-4e36-aee8-65d2648c0120": {
                 "description": "an array of at least 2 item(s)",
+                "title": "minItems(2)",
                 "items": {
                   "$ref": "#/$defs/NumberFromString"
                 },
@@ -4242,9 +4284,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "$defs": {
               "JsonNumber": {
-                "description": "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
-                "title": "JSON-compatible number",
-                "type": "number"
+                "type": "number",
+                "title": "finite",
+                "description": "a finite number"
               },
               "c0c853a6-9029-49d9-9a63-08aa542ec7da": {
                 "anyOf": [

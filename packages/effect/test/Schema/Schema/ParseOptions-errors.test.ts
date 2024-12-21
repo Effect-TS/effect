@@ -140,11 +140,11 @@ describe("`errors` option", () => {
         await Util.expectDecodeUnknownFailure(
           schema,
           { a: 1, b: 2 },
-          `{ readonly [x: a string at least 2 character(s) long]: number }
+          `{ readonly [x: minLength(2)]: number }
 ├─ ["a"]
-│  └─ is unexpected, expected: a string at least 2 character(s) long
+│  └─ is unexpected, expected: minLength(2)
 └─ ["b"]
-   └─ is unexpected, expected: a string at least 2 character(s) long`,
+   └─ is unexpected, expected: minLength(2)`,
           { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
@@ -192,13 +192,13 @@ describe("`errors` option", () => {
 │     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
-│              └─ Expected Char, actual "10"
+│              └─ Expected a single character, actual "10"
 └─ [1]
    └─ NumberFromChar
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char, actual "10"`,
+               └─ Expected a single character, actual "10"`,
           Util.allErrors
         )
       })
@@ -214,13 +214,13 @@ describe("`errors` option", () => {
 │     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
-│              └─ Expected Char, actual "10"
+│              └─ Expected a single character, actual "10"
 └─ [1]
    └─ NumberFromChar
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char, actual "10"`,
+               └─ Expected a single character, actual "10"`,
           Util.allErrors
         )
       })
@@ -236,13 +236,13 @@ describe("`errors` option", () => {
 │     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
-│              └─ Expected Char, actual "10"
+│              └─ Expected a single character, actual "10"
 └─ [1]
    └─ NumberFromChar
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char, actual "10"`,
+               └─ Expected a single character, actual "10"`,
           Util.allErrors
         )
       })
@@ -260,13 +260,13 @@ describe("`errors` option", () => {
 │     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
-│              └─ Expected Char, actual "10"
+│              └─ Expected a single character, actual "10"
 └─ ["b"]
    └─ NumberFromChar
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char, actual "10"`,
+               └─ Expected a single character, actual "10"`,
           Util.allErrors
         )
       })
@@ -296,11 +296,11 @@ describe("`errors` option", () => {
 ├─ ["a"]
 │  └─ Char
 │     └─ Predicate refinement failure
-│        └─ Expected Char, actual "aa"
+│        └─ Expected a single character, actual "aa"
 └─ ["b"]
    └─ Char
       └─ Predicate refinement failure
-         └─ Expected Char, actual "bb"`,
+         └─ Expected a single character, actual "bb"`,
           Util.allErrors
         )
       })

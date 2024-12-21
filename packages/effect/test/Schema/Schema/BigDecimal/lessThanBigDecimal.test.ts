@@ -11,14 +11,14 @@ describe("lessThanBigDecimal", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "5",
-      `a BigDecimal less than 5
+      `lessThanBigDecimal(5)
 └─ Predicate refinement failure
    └─ Expected a BigDecimal less than 5, actual BigDecimal(5)`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "6",
-      `a BigDecimal less than 5
+      `lessThanBigDecimal(5)
 └─ Predicate refinement failure
    └─ Expected a BigDecimal less than 5, actual BigDecimal(6)`
     )

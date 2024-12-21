@@ -15,7 +15,7 @@ describe("encodePromise", () => {
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char, actual "10"`
+               └─ Expected a single character, actual "10"`
     )
   })
 

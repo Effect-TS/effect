@@ -28,7 +28,7 @@ describe("Capitalize", () => {
 └─ Type side transformation failure
    └─ Capitalized
       └─ Predicate refinement failure
-         └─ Expected Capitalized, actual "aa"`
+         └─ Expected a capitalized string, actual "aa"`
     )
   })
 })

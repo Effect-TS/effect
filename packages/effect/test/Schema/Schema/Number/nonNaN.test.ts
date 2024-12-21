@@ -24,7 +24,7 @@ describe("NonNaN", () => {
       NaN,
       `NonNaN
 └─ Predicate refinement failure
-   └─ Expected NonNaN, actual NaN`
+   └─ Expected a number excluding NaN, actual NaN`
     )
   })
 

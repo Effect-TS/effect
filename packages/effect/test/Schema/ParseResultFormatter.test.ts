@@ -593,12 +593,12 @@ describe("ParseResultFormatter", () => {
 └─ Type side transformation failure
    └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmptyString, actual ""`
+         └─ Expected a non empty string, actual ""`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected NonEmptyString, actual ""`
+        message: `Expected a non empty string, actual ""`
       }])
     })
 
@@ -725,7 +725,7 @@ describe("ParseResultFormatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        `a string at least 1 character(s) long
+        `minLength(1)
 └─ From side refinement failure
    └─ Expected string, actual null`
       )
@@ -759,7 +759,7 @@ describe("ParseResultFormatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        `a string at least 1 character(s) long
+        `minLength(1)
 └─ Predicate refinement failure
    └─ Expected a string at least 1 character(s) long, actual ""`
       )
@@ -778,12 +778,12 @@ describe("ParseResultFormatter", () => {
         input,
         `identifier
 └─ Predicate refinement failure
-   └─ Expected identifier, actual ""`
+   └─ Expected a string at least 1 character(s) long, actual ""`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected identifier, actual ""`
+        message: `Expected a string at least 1 character(s) long, actual ""`
       }])
     })
 
@@ -793,7 +793,7 @@ describe("ParseResultFormatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        `a string at least 1 character(s) long
+        `minLength(1)
 └─ From side refinement failure
    └─ Expected string, actual null`
       )
@@ -1103,7 +1103,7 @@ describe("ParseResultFormatter", () => {
       └─ From side refinement failure
          └─ C
             └─ [0]
-               └─ { readonly b: a string at most 2 character(s) long }
+               └─ { readonly b: minLength(1) & maxLength(2) }
                   └─ ["b"]
                      └─ type`
       )
@@ -1123,7 +1123,7 @@ describe("ParseResultFormatter", () => {
       └─ From side refinement failure
          └─ C
             └─ [0]
-               └─ { readonly b: a string at most 2 character(s) long }
+               └─ { readonly b: minLength(1) & maxLength(2) }
                   └─ ["b"]
                      └─ minLength`
       )
@@ -1143,7 +1143,7 @@ describe("ParseResultFormatter", () => {
       └─ From side refinement failure
          └─ C
             └─ [0]
-               └─ { readonly b: a string at most 2 character(s) long }
+               └─ { readonly b: minLength(1) & maxLength(2) }
                   └─ ["b"]
                      └─ maxLength`
       )

@@ -211,7 +211,7 @@ describe("extend", () => {
       └─ ["b"]
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`
+               └─ Expected a non empty string, actual ""`
       )
     })
 
@@ -249,7 +249,7 @@ describe("extend", () => {
       └─ ["b"]
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`
+               └─ Expected a non empty string, actual ""`
       )
 
       const ctor = { make: B.make.bind(B) }
@@ -265,9 +265,9 @@ describe("extend", () => {
       expect(JSONSchema.make(S.typeSchema(B))).toStrictEqual({
         "$defs": {
           "NonEmptyString": {
+            "title": "nonEmptyString",
             "description": "a non empty string",
             "minLength": 1,
-            "title": "NonEmptyString",
             "type": "string"
           },
           "TypeID": {
@@ -293,9 +293,9 @@ describe("extend", () => {
         {
           "$defs": {
             "NonEmptyString": {
+              "title": "nonEmptyString",
               "description": "a non empty string",
               "minLength": 1,
-              "title": "NonEmptyString",
               "type": "string"
             },
             "TransformationID": {

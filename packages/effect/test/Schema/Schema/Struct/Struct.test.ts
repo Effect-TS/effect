@@ -197,22 +197,6 @@ describe("Struct", () => {
       })
       await Util.expectDecodeUnknownSuccess(schema, {})
     })
-
-    it.skip("should preserve the order of properties (sync)", () => {
-      const b = Symbol.for("effect/Schema/test/b")
-      const schema = S.Struct({
-        a: S.Literal("a"),
-        [b]: S.Array(S.String),
-        c: S.Record({ key: S.String, value: S.Number }),
-        d: S.NumberFromString,
-        e: S.Boolean
-      })
-      const input = { [b]: ["b"], c: { c: 1 }, d: "1", e: true, a: "a" }
-      const output = S.decodeUnknownSync(schema)(input)
-      const expectedOutput = { [b]: ["b"], c: { c: 1 }, d: 1, e: true, a: "a" }
-      expect(output).toStrictEqual(expectedOutput)
-      expect(Reflect.ownKeys(output)).toStrictEqual(Reflect.ownKeys(input))
-    })
   })
 
   describe("encoding", () => {

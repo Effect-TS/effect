@@ -14,14 +14,14 @@ describe("betweenBigInt", () => {
       -2n,
       `[-1n, 1n] interval
 └─ Predicate refinement failure
-   └─ Expected [-1n, 1n] interval, actual -2n`
+   └─ Expected a bigint between -1n and 1n, actual -2n`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       2n,
       `[-1n, 1n] interval
 └─ Predicate refinement failure
-   └─ Expected [-1n, 1n] interval, actual 2n`
+   └─ Expected a bigint between -1n and 1n, actual 2n`
     )
   })
 

@@ -28,7 +28,7 @@ describe("Uncapitalize", () => {
 └─ Type side transformation failure
    └─ Uncapitalized
       └─ Predicate refinement failure
-         └─ Expected Uncapitalized, actual "AA"`
+         └─ Expected a uncapitalized string, actual "AA"`
     )
   })
 })

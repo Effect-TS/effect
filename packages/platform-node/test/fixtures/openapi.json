@@ -415,6 +415,7 @@
                     "items": {
                       "$ref": "#/components/schemas/PersistedFile"
                     },
+                    "title": "itemsCount(1)",
                     "description": "an array of exactly 1 item(s)",
                     "minItems": 1,
                     "maxItems": 1
@@ -516,12 +517,11 @@
         "description": "a Universally Unique Identifier",
         "format": "uuid",
         "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-        "title": "UUID",
         "type": "string"
       },
       "Int": {
+        "title": "int",
         "description": "an integer",
-        "title": "Int",
         "type": "integer"
       },
       "HttpApiDecodeError": {

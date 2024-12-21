@@ -17,7 +17,7 @@ describe("NonPositiveBigDecimalFromSelf", () => {
       BigDecimal.make(2n, 0),
       `NonPositiveBigDecimalFromSelf
 └─ Predicate refinement failure
-   └─ Expected NonPositiveBigDecimalFromSelf, actual BigDecimal(2)`
+   └─ Expected a non-positive BigDecimal, actual BigDecimal(2)`
     )
     await Util.expectDecodeUnknownSuccess(
       schema,

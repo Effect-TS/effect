@@ -326,16 +326,16 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { "aa": "aa" },
-        `{ readonly [x: a string at least 2 character(s) long]: number }
+        `{ readonly [x: minLength(2)]: number }
 └─ ["aa"]
    └─ Expected number, actual "aa"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { "a": 1 },
-        `{ readonly [x: a string at least 2 character(s) long]: number }
+        `{ readonly [x: minLength(2)]: number }
 └─ ["a"]
-   └─ is unexpected, expected: a string at least 2 character(s) long`,
+   └─ is unexpected, expected: minLength(2)`,
         Util.onExcessPropertyError
       )
     })
@@ -408,7 +408,7 @@ describe("record", () => {
 └─ ["a"]
    └─ Char
       └─ Predicate refinement failure
-         └─ Expected Char, actual "aa"`
+         └─ Expected a single character, actual "aa"`
       )
     })
   })

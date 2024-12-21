@@ -40,13 +40,13 @@ describe("ParseOptionsAnnotation", () => {
 │           └─ Encoded side transformation failure
 │              └─ NonEmptyString
 │                 └─ Predicate refinement failure
-│                    └─ Expected NonEmptyString, actual ""
+│                    └─ Expected a non empty string, actual ""
 └─ ["d"]
    └─ string
       └─ Encoded side transformation failure
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`,
+               └─ Expected a non empty string, actual ""`,
       { errors: "first" }
     )
   })

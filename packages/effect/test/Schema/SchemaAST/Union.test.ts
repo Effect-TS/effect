@@ -24,32 +24,38 @@ describe("AST.Union", () => {
     ).toEqual(AST.Union.unify([AST.stringKeyword, AST.numberKeyword]))
   })
 
-  it("toString() should support suspended schemas", () => {
-    interface A {
-      readonly a?: null | A | undefined
-    }
-    // intended outer suspend
-    const schema: S.Schema<A> = S.partial(
-      S.suspend(
-        () =>
-          S.Struct({
-            a: S.Union(S.Null, schema)
-          })
+  describe("toString", () => {
+    it("string | number", () => {
+      expect(String(S.Union(S.String, S.Number))).toEqual("string | number")
+    })
+
+    it("should support suspended schemas", () => {
+      interface A {
+        readonly a?: null | A | undefined
+      }
+      // intended outer suspend
+      const schema: S.Schema<A> = S.partial(
+        S.suspend(
+          () =>
+            S.Struct({
+              a: S.Union(S.Null, schema)
+            })
+        )
       )
-    )
-    expect(String(schema)).toStrictEqual("<suspended schema>")
-  })
+      expect(String(schema)).toStrictEqual("<suspended schema>")
+    })
 
-  it("descriptions of nested unions should be preserved", () => {
-    const u = S.Union(S.String, S.Number)
-    const nested1 = u.annotations({ identifier: "nested1" })
-    const nested2 = u.annotations({ identifier: "nested2" })
+    it("descriptions of nested unions should be preserved", () => {
+      const u = S.Union(S.String, S.Number)
+      const nested1 = u.annotations({ identifier: "nested1" })
+      const nested2 = u.annotations({ identifier: "nested2" })
 
-    expect(String(u)).toStrictEqual("string | number")
-    expect(String(S.Union(nested1, nested1))).toStrictEqual("nested1 | nested1")
-    expect(String(S.Union(nested1, S.String))).toStrictEqual("nested1 | string")
-    expect(String(S.Union(nested1, u))).toStrictEqual("nested1 | string | number")
-    expect(String(S.Union(nested1, nested2))).toStrictEqual("nested1 | nested2")
-    expect(String(S.Union(nested1, nested2, S.String))).toStrictEqual("nested1 | nested2 | string")
+      expect(String(u)).toStrictEqual("string | number")
+      expect(String(S.Union(nested1, nested1))).toStrictEqual("nested1 | nested1")
+      expect(String(S.Union(nested1, S.String))).toStrictEqual("nested1 | string")
+      expect(String(S.Union(nested1, u))).toStrictEqual("nested1 | string | number")
+      expect(String(S.Union(nested1, nested2))).toStrictEqual("nested1 | nested2")
+      expect(String(S.Union(nested1, nested2, S.String))).toStrictEqual("nested1 | nested2 | string")
+    })
   })
 })

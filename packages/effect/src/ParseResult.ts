@@ -1845,12 +1845,28 @@ const getParseIssueTitleAnnotation = (issue: ParseIssue): Option.Option<string> 
     )
   )
 
+/** @internal */
+export function getRefinementExpected(ast: AST.Refinement): string {
+  return AST.getDescriptionAnnotation(ast).pipe(
+    Option.orElse(() => AST.getTitleAnnotation(ast)),
+    Option.orElse(() => AST.getAutoTitleAnnotation(ast)),
+    Option.orElse(() => AST.getIdentifierAnnotation(ast)),
+    Option.getOrElse(() => `{ ${ast.from} | filter }`)
+  )
+}
+
+function getDefaultTypeMessage(e: Type): string {
+  if (e.message !== undefined) {
+    return e.message
+  }
+  const expected = AST.isRefinement(e.ast) ? getRefinementExpected(e.ast) : String(e.ast)
+  return `Expected ${expected}, actual ${util_.formatUnknown(e.actual)}`
+}
+
 const formatTypeMessage = (e: Type): Effect.Effect<string> =>
   getMessage(e).pipe(
     Effect.orElse(() => getParseIssueTitleAnnotation(e)),
-    Effect.catchAll(() =>
-      Effect.succeed(e.message ?? `Expected ${String(e.ast)}, actual ${util_.formatUnknown(e.actual)}`)
-    )
+    Effect.catchAll(() => Effect.succeed(getDefaultTypeMessage(e)))
   )
 
 const getParseIssueTitle = (

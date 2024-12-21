@@ -351,7 +351,7 @@ describe("Tuple", () => {
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char, actual "10"`
+               └─ Expected a single character, actual "10"`
       )
       await Util.expectEncodeFailure(
         schema,
@@ -388,7 +388,7 @@ describe("Tuple", () => {
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char, actual "10"`
+               └─ Expected a single character, actual "10"`
       )
       await Util.expectEncodeFailure(
         schema,
@@ -448,7 +448,7 @@ describe("Tuple", () => {
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char, actual "10"`
+               └─ Expected a single character, actual "10"`
       )
     })
 
@@ -473,7 +473,7 @@ describe("Tuple", () => {
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char, actual "10"`
+               └─ Expected a single character, actual "10"`
       )
     })
 

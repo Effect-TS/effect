@@ -23,7 +23,7 @@ describe("lessThanOrEqualTo", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       1,
-      `a non-positive number
+      `lessThanOrEqualTo(0)
 └─ Predicate refinement failure
    └─ Expected a non-positive number, actual 1`
     )

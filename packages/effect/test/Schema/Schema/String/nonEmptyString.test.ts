@@ -12,7 +12,7 @@ describe("nonEmptyString", () => {
       "",
       `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmptyString, actual ""`
+   └─ Expected a non empty string, actual ""`
     )
   })
 
@@ -25,7 +25,7 @@ describe("nonEmptyString", () => {
       "",
       `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmptyString, actual ""`
+   └─ Expected a non empty string, actual ""`
     )
   })
 })

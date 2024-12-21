@@ -24,7 +24,7 @@ describe("greaterThanOrEqualTo", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       -1,
-      `a non-negative number
+      `greaterThanOrEqualTo(0)
 └─ Predicate refinement failure
    └─ Expected a non-negative number, actual -1`
     )

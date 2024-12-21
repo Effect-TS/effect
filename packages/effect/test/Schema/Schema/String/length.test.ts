@@ -13,14 +13,14 @@ describe("length", () => {
         "",
         `Char
 └─ Predicate refinement failure
-   └─ Expected Char, actual ""`
+   └─ Expected a single character, actual ""`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         "aa",
         `Char
 └─ Predicate refinement failure
-   └─ Expected Char, actual "aa"`
+   └─ Expected a single character, actual "aa"`
       )
     })
 
@@ -33,7 +33,7 @@ describe("length", () => {
         "",
         `Char2
 └─ Predicate refinement failure
-   └─ Expected Char2, actual ""`
+   └─ Expected a string 2 character(s) long, actual ""`
       )
     })
 
@@ -48,14 +48,14 @@ describe("length", () => {
         "",
         `Char(2-4)
 └─ Predicate refinement failure
-   └─ Expected Char(2-4), actual ""`
+   └─ Expected a string at least 2 character(s) and at most 4 character(s) long, actual ""`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         "aaaaa",
         `Char(2-4)
 └─ Predicate refinement failure
-   └─ Expected Char(2-4), actual "aaaaa"`
+   └─ Expected a string at least 2 character(s) and at most 4 character(s) long, actual "aaaaa"`
       )
     })
 
@@ -68,7 +68,7 @@ describe("length", () => {
         "",
         `Char2
 └─ Predicate refinement failure
-   └─ Expected Char2, actual ""`
+   └─ Expected a string 2 character(s) long, actual ""`
       )
     })
 
@@ -81,7 +81,7 @@ describe("length", () => {
         "",
         `Char2
 └─ Predicate refinement failure
-   └─ Expected Char2, actual ""`
+   └─ Expected a string 2 character(s) long, actual ""`
       )
     })
   })

@@ -1789,7 +1789,12 @@ export class Refinement<From extends AST = AST> implements Annotated {
    * @since 3.10.0
    */
   toString() {
-    return Option.getOrElse(getExpected(this), () => `{ ${this.from} | filter }`)
+    return getIdentifierAnnotation(this).pipe(Option.getOrElse(() =>
+      Option.match(getOrElseExpected(this), {
+        onNone: () => `{ ${this.from} | filter }`,
+        onSome: (expected) => isRefinement(this.from) ? String(this.from) + " & " + expected : expected
+      })
+    ))
   }
   /**
    * @since 3.10.0
@@ -2925,10 +2930,19 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
 
 const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), () => ast._tag)
 
-const getExpected = (ast: Annotated): Option.Option<string> => {
-  return getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() => getTitleAnnotation(ast)),
-    Option.orElse(() => getDescriptionAnnotation(ast)),
-    Option.orElse(() => getAutoTitleAnnotation(ast))
-  )
+function getBrands(ast: Annotated): string {
+  return Option.match(getBrandAnnotation(ast), {
+    onNone: () => "",
+    onSome: (brands) => brands.map((brand) => ` & Brand<${util_.formatUnknown(brand)}>`).join("")
+  })
 }
+
+const getOrElseExpected = (ast: Annotated): Option.Option<string> =>
+  getTitleAnnotation(ast).pipe(
+    Option.orElse(() => getDescriptionAnnotation(ast)),
+    Option.orElse(() => getAutoTitleAnnotation(ast)),
+    Option.map((s) => s + getBrands(ast))
+  )
+
+const getExpected = (ast: Annotated): Option.Option<string> =>
+  Option.orElse(getIdentifierAnnotation(ast), () => getOrElseExpected(ast))

@@ -11,7 +11,7 @@ describe("NonPositive", () => {
       1,
       `NonPositive
 └─ Predicate refinement failure
-   └─ Expected NonPositive, actual 1`
+   └─ Expected a non-positive number, actual 1`
     )
   })
 

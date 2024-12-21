@@ -19,7 +19,7 @@ describe("NonEmptyTrimmedString", () => {
 └─ From side refinement failure
    └─ Trimmed
       └─ Predicate refinement failure
-         └─ Expected Trimmed, actual " "`
+         └─ Expected a string with no leading or trailing whitespace, actual " "`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -28,7 +28,7 @@ describe("NonEmptyTrimmedString", () => {
 └─ From side refinement failure
    └─ Trimmed
       └─ Predicate refinement failure
-         └─ Expected Trimmed, actual " a "`
+         └─ Expected a string with no leading or trailing whitespace, actual " a "`
     )
   })
 
@@ -43,7 +43,7 @@ describe("NonEmptyTrimmedString", () => {
 └─ From side refinement failure
    └─ Trimmed
       └─ Predicate refinement failure
-         └─ Expected Trimmed, actual " "`
+         └─ Expected a string with no leading or trailing whitespace, actual " "`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -52,7 +52,7 @@ describe("NonEmptyTrimmedString", () => {
 └─ From side refinement failure
    └─ Trimmed
       └─ Predicate refinement failure
-         └─ Expected Trimmed, actual " a "`
+         └─ Expected a string with no leading or trailing whitespace, actual " a "`
     )
   })
 })

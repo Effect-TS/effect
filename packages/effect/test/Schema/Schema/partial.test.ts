@@ -73,7 +73,7 @@ schema (Declaration): Option<string>`)
     it("refinements should throw", () => {
       expect(() => S.partial(S.String.pipe(S.minLength(2)))).toThrow(
         new Error(`Unsupported schema
-schema (Refinement): a string at least 2 character(s) long`)
+schema (Refinement): minLength(2)`)
       )
     })
 

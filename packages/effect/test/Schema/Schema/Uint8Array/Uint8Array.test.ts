@@ -22,9 +22,9 @@ describe("Uint8Array > Uint8Array", () => {
 └─ Encoded side transformation failure
    └─ an array of 8-bit unsigned integers that will be parsed into a Uint8Array
       └─ [0]
-         └─ 8-bit unsigned integer
+         └─ Uint8
             └─ Predicate refinement failure
-               └─ Expected 8-bit unsigned integer, actual 12354`
+               └─ Expected a 8-bit unsigned integer, actual 12354`
     )
   })
 

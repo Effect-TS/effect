@@ -52,7 +52,7 @@ describe("Config", () => {
         ["A"],
         `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmptyString, actual ""`
+   └─ Expected a non empty string, actual ""`
       )
     )
   })

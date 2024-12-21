@@ -20,7 +20,7 @@ describe("Date", () => {
       "a",
       `Date
 └─ Predicate refinement failure
-   └─ Expected Date, actual Invalid Date`
+   └─ Expected a valid Date, actual Invalid Date`
     )
   })
 
@@ -31,7 +31,7 @@ describe("Date", () => {
       new Date("fail"),
       `Date
 └─ Predicate refinement failure
-   └─ Expected Date, actual Invalid Date`
+   └─ Expected a valid Date, actual Invalid Date`
     )
   })
 })

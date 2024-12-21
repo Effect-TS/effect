@@ -22,14 +22,14 @@ describe("startsWith", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "",
-      `a string starting with "a"
+      `startsWith("a")
 └─ Predicate refinement failure
    └─ Expected a string starting with "a", actual ""`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "b",
-      `a string starting with "a"
+      `startsWith("a")
 └─ Predicate refinement failure
    └─ Expected a string starting with "a", actual "b"`
     )

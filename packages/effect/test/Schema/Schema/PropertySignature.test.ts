@@ -16,6 +16,15 @@ describe("PropertySignature", () => {
     expect(schema.from).toStrictEqual(S.String)
   })
 
+  it("toString", () => {
+    expect(String(S.optional(S.String))).toStrictEqual(
+      `PropertySignature<"?:", string | undefined, never, "?:", string | undefined>`
+    )
+    expect(String(S.optional(S.String).pipe(S.fromKey("a")))).toStrictEqual(
+      `PropertySignature<"?:", string | undefined, "a", "?:", string | undefined>`
+    )
+  })
+
   describe("annotations", () => {
     it("propertySignature(S.string)", () => {
       const schema = S.Struct({

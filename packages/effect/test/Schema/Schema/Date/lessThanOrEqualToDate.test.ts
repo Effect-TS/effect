@@ -18,7 +18,7 @@ describe("lessThanOrEqualToDate", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       new Date(1),
-      `a date before or equal to 1970-01-01T00:00:00.000Z
+      `lessThanOrEqualToDate(1970-01-01T00:00:00.000Z)
 └─ Predicate refinement failure
    └─ Expected a date before or equal to 1970-01-01T00:00:00.000Z, actual 1970-01-01T00:00:00.001Z`
     )

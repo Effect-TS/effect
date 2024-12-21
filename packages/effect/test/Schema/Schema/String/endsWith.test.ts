@@ -22,14 +22,14 @@ describe("endsWith", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "",
-      `a string ending with "a"
+      `endsWith("a")
 └─ Predicate refinement failure
    └─ Expected a string ending with "a", actual ""`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "b",
-      `a string ending with "a"
+      `endsWith("a")
 └─ Predicate refinement failure
    └─ Expected a string ending with "a", actual "b"`
     )

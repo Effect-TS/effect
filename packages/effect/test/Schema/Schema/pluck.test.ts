@@ -73,7 +73,7 @@ describe("pluck", () => {
 └─ Type side transformation failure
    └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmptyString, actual ""`
+         └─ Expected a non empty string, actual ""`
       )
     })
 
@@ -89,7 +89,7 @@ describe("pluck", () => {
 └─ Type side transformation failure
    └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmptyString, actual ""`
+         └─ Expected a non empty string, actual ""`
       )
     })
   })

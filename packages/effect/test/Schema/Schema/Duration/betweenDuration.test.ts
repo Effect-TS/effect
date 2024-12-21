@@ -14,7 +14,7 @@ describe("betweenDuration", () => {
       Duration.decode("4 seconds"),
       `[5 seconds, 10 seconds] interval
 └─ Predicate refinement failure
-   └─ Expected [5 seconds, 10 seconds] interval, actual Duration(4s)`
+   └─ Expected a Duration between Duration(5s) and Duration(10s), actual Duration(4s)`
     )
 
     await Util.expectDecodeUnknownSuccess(
@@ -28,7 +28,7 @@ describe("betweenDuration", () => {
       Duration.decode("11 seconds"),
       `[5 seconds, 10 seconds] interval
 └─ Predicate refinement failure
-   └─ Expected [5 seconds, 10 seconds] interval, actual Duration(11s)`
+   └─ Expected a Duration between Duration(5s) and Duration(10s), actual Duration(11s)`
     )
   })
 

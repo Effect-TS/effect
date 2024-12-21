@@ -111,7 +111,7 @@ schema (Union): boolean | symbol`)
             └─ Type side transformation failure
                └─ Int
                   └─ Predicate refinement failure
-                     └─ Expected Int, actual 1.1`
+                     └─ Expected an integer, actual 1.1`
       )
 
       await Util.expectEncodeSuccess(schema, [1, "a"], "1a")
@@ -126,7 +126,7 @@ schema (Union): boolean | symbol`)
             └─ Type side transformation failure
                └─ Int
                   └─ Predicate refinement failure
-                     └─ Expected Int, actual 1.1`
+                     └─ Expected an integer, actual 1.1`
       )
     })
 
@@ -156,7 +156,7 @@ schema (Union): boolean | symbol`)
       └─ [2]
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`
+               └─ Expected a non empty string, actual ""`
       )
     })
 
@@ -313,7 +313,7 @@ schema (Union): boolean | symbol`)
             │        └─ [1]
             │           └─ NonEmptyString
             │              └─ Predicate refinement failure
-            │                 └─ Expected NonEmptyString, actual ""
+            │                 └─ Expected a non empty string, actual ""
             └─ Expected "e", actual "ab"`
       )
       await Util.expectDecodeUnknownFailure(
@@ -349,7 +349,7 @@ schema (Union): boolean | symbol`)
             │              └─ Type side transformation failure
             │                 └─ Int
             │                    └─ Predicate refinement failure
-            │                       └─ Expected Int, actual 1.1
+            │                       └─ Expected an integer, actual 1.1
             └─ Expected "e", actual "a1.1b"`
       )
       await Util.expectDecodeUnknownFailure(

@@ -12,14 +12,14 @@ describe("PositiveBigDecimalFromSelf", () => {
       BigDecimal.make(0n, 0),
       `PositiveBigDecimalFromSelf
 └─ Predicate refinement failure
-   └─ Expected PositiveBigDecimalFromSelf, actual BigDecimal(0)`
+   └─ Expected a positive BigDecimal, actual BigDecimal(0)`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       BigDecimal.make(-2n, 0),
       `PositiveBigDecimalFromSelf
 └─ Predicate refinement failure
-   └─ Expected PositiveBigDecimalFromSelf, actual BigDecimal(-2)`
+   └─ Expected a positive BigDecimal, actual BigDecimal(-2)`
     )
     await Util.expectDecodeUnknownSuccess(
       schema,

@@ -4,6 +4,10 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("brand", () => {
+  it("toString", () => {
+    expect(String(S.String.pipe(S.brand("my-brand")))).toStrictEqual(`string & Brand<"my-brand">`)
+  })
+
   it("the constructor should validate the input by default", () => {
     const schema = S.NonEmptyString.pipe(S.brand("A"))
     Util.expectConstructorSuccess(schema, "a")
@@ -12,7 +16,7 @@ describe("brand", () => {
       "",
       `NonEmptyString
 └─ Predicate refinement failure
-   └─ Expected NonEmptyString, actual ""`
+   └─ Expected a non empty string, actual ""`
     )
   })
 
@@ -23,12 +27,6 @@ describe("brand", () => {
   })
 
   describe("annotations", () => {
-    it("toString / format", () => {
-      const schema = S.Number.pipe(S.brand("A"))
-      expect(String(schema)).toBe(`number & Brand<"A">`)
-      expect(S.format(schema)).toBe(`number & Brand<"A">`)
-    })
-
     it("using .annotations() twice", () => {
       const schema = S.Number.pipe(S.brand("A"))
       const annotatedSchema = schema.annotations({
@@ -56,15 +54,16 @@ describe("brand", () => {
       const schema = S.Number.pipe(
         S.int(),
         S.brand("A", {
-          description: "an A brand"
+          description: "description"
         })
       )
+      expect(String(schema)).toBe(`int & Brand<"A">`)
 
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A"],
-        [AST.TitleAnnotationId]: `integer & Brand<"A">`,
-        [AST.DescriptionAnnotationId]: "an A brand",
+        [AST.TitleAnnotationId]: "int",
+        [AST.DescriptionAnnotationId]: "description",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
     })
@@ -74,15 +73,17 @@ describe("brand", () => {
         S.int(),
         S.brand("A"),
         S.brand("B", {
-          description: "a B brand"
+          description: "description"
         })
       )
+
+      expect(String(schema)).toBe(`int & Brand<"A"> & Brand<"B">`)
 
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: ["A", "B"],
-        [AST.TitleAnnotationId]: `integer & Brand<"A"> & Brand<"B">`,
-        [AST.DescriptionAnnotationId]: "a B brand",
+        [AST.TitleAnnotationId]: "int",
+        [AST.DescriptionAnnotationId]: "description",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
     })
@@ -94,14 +95,17 @@ describe("brand", () => {
         S.int(),
         S.brand(A),
         S.brand(B, {
-          description: "a B brand"
+          description: "description"
         })
       )
+
+      expect(String(schema)).toBe("int & Brand<Symbol(A)> & Brand<Symbol(B)>")
+
       expect(schema.ast.annotations).toEqual({
         [AST.SchemaIdAnnotationId]: S.IntSchemaId,
         [AST.BrandAnnotationId]: [A, B],
-        [AST.TitleAnnotationId]: "integer & Brand<Symbol(A)> & Brand<Symbol(B)>",
-        [AST.DescriptionAnnotationId]: "a B brand",
+        [AST.TitleAnnotationId]: "int",
+        [AST.DescriptionAnnotationId]: "description",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
     })

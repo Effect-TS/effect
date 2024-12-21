@@ -23,14 +23,14 @@ describe("greaterThan", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       0,
-      `a positive number
+      `greaterThan(0)
 └─ Predicate refinement failure
    └─ Expected a positive number, actual 0`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       -1,
-      `a positive number
+      `greaterThan(0)
 └─ Predicate refinement failure
    └─ Expected a positive number, actual -1`
     )

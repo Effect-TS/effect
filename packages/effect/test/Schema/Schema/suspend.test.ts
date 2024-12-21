@@ -1,8 +1,24 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("suspend", () => {
+  describe("toString", () => {
+    it("outer suspend", () => {
+      type A = readonly [number, A | null]
+      const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
+      )
+      expect(String(schema)).toEqual("<suspended schema>")
+    })
+
+    it("should handle before initialization error", () => {
+      const schema = S.suspend(() => string)
+      expect(String(schema)).toEqual("<suspended schema>")
+      const string = S.String
+    })
+  })
+
   describe("decoding", () => {
     it("baseline", async () => {
       interface A {

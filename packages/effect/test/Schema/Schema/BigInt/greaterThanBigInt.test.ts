@@ -9,14 +9,14 @@ describe("greaterThanBigInt", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       -1n,
-      `a positive bigint
+      `greaterThanBigInt(0)
 └─ Predicate refinement failure
    └─ Expected a positive bigint, actual -1n`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       0n,
-      `a positive bigint
+      `greaterThanBigInt(0)
 └─ Predicate refinement failure
    └─ Expected a positive bigint, actual 0n`
     )

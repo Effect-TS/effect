@@ -17,16 +17,16 @@ describe("required", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       {},
-      `{ readonly a: a positive number }
+      `{ readonly a: greaterThan(0) }
 └─ ["a"]
    └─ is missing`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "-1" },
-      `{ readonly a: a positive number }
+      `{ readonly a: greaterThan(0) }
 └─ ["a"]
-   └─ a positive number
+   └─ greaterThan(0)
       └─ Predicate refinement failure
          └─ Expected a positive number, actual -1`
     )
@@ -198,7 +198,7 @@ schema (Declaration): Option<string>`)
     it("refinements should throw", async () => {
       expect(() => S.required(S.String.pipe(S.minLength(2)))).toThrow(
         new Error(`Unsupported schema
-schema (Refinement): a string at least 2 character(s) long`)
+schema (Refinement): minLength(2)`)
       )
     })
 

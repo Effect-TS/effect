@@ -1,7 +1,12 @@
+import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import { describe, expect, it } from "vitest"
 
 describe("AST.Tuple", () => {
+  it("toString", () => {
+    expect(String(S.Tuple(S.String, S.optionalElement(S.Number)))).toStrictEqual("readonly [string, number?]")
+  })
+
   it("A required element cannot follow an optional element", () => {
     expect(() =>
       new AST.TupleType(

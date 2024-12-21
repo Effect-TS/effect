@@ -10,14 +10,14 @@ describe("Negative", () => {
       0,
       `Negative
 └─ Predicate refinement failure
-   └─ Expected Negative, actual 0`
+   └─ Expected a negative number, actual 0`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       1,
       `Negative
 └─ Predicate refinement failure
-   └─ Expected Negative, actual 1`
+   └─ Expected a negative number, actual 1`
     )
   })
 

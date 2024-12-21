@@ -99,7 +99,7 @@ details: Duplicate key "_tag"`)
       └─ ["a"]
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`
+               └─ Expected a non empty string, actual ""`
     )
   })
 
@@ -116,7 +116,7 @@ details: Duplicate key "_tag"`)
       └─ ["a"]
          └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmptyString, actual ""`
+               └─ Expected a non empty string, actual ""`
     )
   })
 
