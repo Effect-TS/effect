@@ -1,6 +1,6 @@
-import * as array_ from "effect/Array"
-import * as Predicate from "effect/Predicate"
+import * as array_ from "../../Array.js"
 import type * as ParseResult from "../../ParseResult.js"
+import * as Predicate from "../../Predicate.js"
 import type * as AST from "../../SchemaAST.js"
 
 /** @internal */

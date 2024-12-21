@@ -4,7 +4,7 @@
  * @since 3.4.0
  * @experimental
  */
-import * as Arr from "effect/Array"
+import * as Arr from "./Array.js"
 import type { Channel } from "./Channel.js"
 import * as Context from "./Context.js"
 import type { Effect, EffectUnify, EffectUnifyIgnore } from "./Effect.js"

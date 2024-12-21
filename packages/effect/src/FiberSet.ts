@@ -1,13 +1,12 @@
 /**
  * @since 2.0.0
  */
-import * as Effect from "effect/Effect"
-import * as FiberId from "effect/FiberId"
-import type * as Scope from "effect/Scope"
 import * as Cause from "./Cause.js"
 import * as Deferred from "./Deferred.js"
+import * as Effect from "./Effect.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
+import * as FiberId from "./FiberId.js"
 import { constFalse, dual } from "./Function.js"
 import * as HashSet from "./HashSet.js"
 import * as Inspectable from "./Inspectable.js"
@@ -15,6 +14,7 @@ import * as Iterable from "./Iterable.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import * as Runtime from "./Runtime.js"
+import type * as Scope from "./Scope.js"
 
 /**
  * @since 2.0.0

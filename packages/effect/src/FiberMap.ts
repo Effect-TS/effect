@@ -1,11 +1,10 @@
 /**
  * @since 2.0.0
  */
-import * as Effect from "effect/Effect"
-import type * as Scope from "effect/Scope"
 import type { NoSuchElementException } from "./Cause.js"
 import * as Cause from "./Cause.js"
 import * as Deferred from "./Deferred.js"
+import * as Effect from "./Effect.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberId from "./FiberId.js"
@@ -18,6 +17,7 @@ import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import * as Runtime from "./Runtime.js"
+import type * as Scope from "./Scope.js"
 
 /**
  * @since 2.0.0

@@ -1,4 +1,4 @@
-import type { Cause } from "effect/Cause"
+import type { Cause } from "../Cause.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type { Effect, Semaphore } from "../Effect.js"
