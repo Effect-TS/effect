@@ -150,14 +150,15 @@ export const getSchemaUnsupportedLiteralSpanErrorMessage = (ast: AST.AST) =>
 // ---------------------------------------------
 
 /** @internal */
-export const getASTUnsupportedSchema = (ast: AST.AST) => getUnsupportedSchemaErrorMessage(undefined, undefined, ast)
+export const getASTUnsupportedSchemaErrorMessage = (ast: AST.AST) =>
+  getUnsupportedSchemaErrorMessage(undefined, undefined, ast)
 
 /** @internal */
-export const getASTUnsupportedKeySchema = (ast: AST.AST) =>
+export const getASTUnsupportedKeySchemaErrorMessage = (ast: AST.AST) =>
   getErrorMessage("Unsupported key schema", undefined, undefined, ast)
 
 /** @internal */
-export const getASTUnsupportedLiteral = (literal: AST.LiteralValue) =>
+export const getASTUnsupportedLiteralErrorMessage = (literal: AST.LiteralValue) =>
   getErrorMessage("Unsupported literal", `literal value: ${util_.formatUnknown(literal)}`)
 
 /** @internal */
@@ -181,7 +182,7 @@ export const getASTDuplicatePropertySignatureTransformationErrorMessage = (key: 
   getErrorMessage("Duplicate property signature transformation", `Duplicate key ${util_.formatUnknown(key)}`)
 
 /** @internal */
-export const getASTUnsupportedRenameSchema = (ast: AST.AST): string =>
+export const getASTUnsupportedRenameSchemaErrorMessage = (ast: AST.AST): string =>
   getUnsupportedSchemaErrorMessage(undefined, undefined, ast)
 
 /** @internal */
