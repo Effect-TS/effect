@@ -1,5 +1,88 @@
 # effect
 
+## 3.11.10
+
+### Patch Changes
+
+- [#4176](https://github.com/Effect-TS/effect/pull/4176) [`39457d4`](https://github.com/Effect-TS/effect/commit/39457d4897d9bc7df8af5c05d352866bbeae82eb) Thanks @mikearnaldi! - Fix Stream.scoped example
+
+- [#4181](https://github.com/Effect-TS/effect/pull/4181) [`a475cc2`](https://github.com/Effect-TS/effect/commit/a475cc25fd7c9f26b27a8e98f8fbe43cc9e6ee3e) Thanks @gcanti! - Schema: Fix `withDecodingDefault` implementation to align with its signature (now removes `undefined` from the AST).
+
+  Additionally, a new constraint has been added to the signature to prevent calling `withDecodingDefault` after `withConstructorDefault`, which previously led to the following issue:
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Struct({
+    a: Schema.optional(Schema.String).pipe(
+      Schema.withConstructorDefault(() => undefined), // this is invalidated by the following call to `withDecodingDefault`
+      Schema.withDecodingDefault(() => "")
+    )
+  })
+  ```
+
+- [#4175](https://github.com/Effect-TS/effect/pull/4175) [`199214e`](https://github.com/Effect-TS/effect/commit/199214e21c616d8a0ccd7ed5f92e944e6c580193) Thanks @gcanti! - Schema: refactor annotations:
+
+  - Export internal `Uint8` schema
+  - Export internal `NonNegativeInt` schema
+  - Remove title annotations that are identical to identifiers
+  - Avoid setting a title annotation when applying branding
+  - Add more title annotations to refinements
+  - Improve `toString` output and provide more precise error messages for refinements:
+
+    Before
+
+    ```ts
+    import { Schema } from "effect"
+
+    const schema = Schema.Number.pipe(
+      Schema.int({ identifier: "MyInt" }),
+      Schema.positive()
+    )
+
+    console.log(String(schema))
+    // Output: a positive number
+
+    Schema.decodeUnknownSync(schema)(1.1)
+    /*
+    throws:
+    ParseError: a positive number
+    └─ From side refinement failure
+      └─ MyInt
+          └─ Predicate refinement failure
+            └─ Expected MyInt, actual 1.1
+    */
+    ```
+
+    After
+
+    - `toString` now combines all refinements with `" & "` instead of showing only the last one.
+    - The last message (`"Expected ..."`) now uses the extended description to make the error message clearer.
+
+    ```ts
+    import { Schema } from "effect"
+
+    const schema = Schema.Number.pipe(
+      Schema.int({ identifier: "MyInt" }),
+      Schema.positive()
+    )
+
+    console.log(String(schema))
+    // Output: MyInt & positive // <= all the refinements
+
+    Schema.decodeUnknownSync(schema)(1.1)
+    /*
+    throws:
+    ParseError: MyInt & positive
+    └─ From side refinement failure
+      └─ MyInt
+          └─ Predicate refinement failure
+            └─ Expected an integer, actual 1.1 // <= extended description
+    */
+    ```
+
+- [#4182](https://github.com/Effect-TS/effect/pull/4182) [`b3c160d`](https://github.com/Effect-TS/effect/commit/b3c160d7a1fdfc2d3fb2440530f1ab80efc65133) Thanks @mikearnaldi! - Replace absolute imports with relative ones
+
 ## 3.11.9
 
 ### Patch Changes
