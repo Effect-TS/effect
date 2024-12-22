@@ -1,11 +1,9 @@
 /**
  * @since 1.0.0
  */
-import { FiberRefs } from "effect"
-import * as FiberRef from "effect/FiberRef"
+import * as Context from "effect/Context"
 import { dual, identity } from "effect/Function"
-import { globalValue } from "effect/GlobalValue"
-import { type Redactable, symbolRedactable } from "effect/Inspectable"
+import * as Inspectable from "effect/Inspectable"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
@@ -13,7 +11,6 @@ import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as String from "effect/String"
 import type { Mutable } from "effect/Types"
-
 /**
  * @since 1.0.0
  * @category type ids
@@ -36,23 +33,32 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  * @since 1.0.0
  * @category models
  */
-export interface Headers extends Redactable {
+export interface Headers extends Inspectable.Redactable {
   readonly [HeadersTypeId]: HeadersTypeId
   readonly [key: string]: string
 }
 
 const Proto = Object.assign(Object.create(null), {
   [HeadersTypeId]: HeadersTypeId,
-  [symbolRedactable](
-    this: Headers,
-    fiberRefs: FiberRefs.FiberRefs
+  [Inspectable.symbolRedactable](
+    this: Headers
   ): Record<string, string | Redacted.Redacted<string>> {
-    return redact(this, FiberRefs.getOrDefault(fiberRefs, currentRedactedNames))
+    return redact(this, redactableContext.get(this))
+  },
+  [Inspectable.NodeInspectSymbol]() {
+    return Inspectable.redact(this)
   }
 })
 
-const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
-  Object.assign(Object.create(Proto), input) as Headers
+const redactableContext = Inspectable.makeRedactableContext((context) => Context.get(context, RedactedNames))
+
+const make = (input: Record.ReadonlyRecord<string, string>, options?: {
+  readonly redactableContext?: Context.Context<never> | undefined
+}): Mutable<Headers> => {
+  const self = Object.assign(Object.create(Proto), input) as Headers
+  redactableContext.register(self, options?.redactableContext, input)
+  return self
+}
 
 /**
  * @since 1.0.0
@@ -86,23 +92,29 @@ export type Input =
  * @since 1.0.0
  * @category constructors
  */
-export const empty: Headers = Object.create(Proto)
+export const empty = (options?: {
+  readonly redactableContext?: Context.Context<never> | undefined
+}): Headers => make({}, options)
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const fromInput: (input?: Input) => Headers = (input) => {
+export const fromInput = (input?: Input, options?: {
+  readonly redactableContext?: Context.Context<never> | undefined
+}): Headers => {
   if (input === undefined) {
-    return empty
+    return empty(options)
+  } else if (isHeaders(input)) {
+    return input
   } else if (Symbol.iterator in input) {
-    const out: Record<string, string> = Object.create(Proto)
+    const out: Record<string, string> = make({}, options)
     for (const [k, v] of input) {
       out[k.toLowerCase()] = v
     }
     return out as Headers
   }
-  const out: Record<string, string> = Object.create(Proto)
+  const out: Record<string, string> = make({}, options)
   for (const [k, v] of Object.entries(input)) {
     if (Array.isArray(v)) {
       out[k.toLowerCase()] = v.join(", ")
@@ -117,8 +129,13 @@ export const fromInput: (input?: Input) => Headers = (input) => {
  * @since 1.0.0
  * @category constructors
  */
-export const unsafeFromRecord = (input: Record.ReadonlyRecord<string, string>): Headers =>
-  Object.setPrototypeOf(input, Proto) as Headers
+export const unsafeFromRecord = (input: Record.ReadonlyRecord<string, string>, options?: {
+  readonly redactableContext?: Context.Context<never> | undefined
+}): Headers => {
+  const self = Object.setPrototypeOf(input, Proto)
+  redactableContext.register(self, options?.redactableContext, input)
+  return self as Headers
+}
 
 /**
  * @since 1.0.0
@@ -170,11 +187,14 @@ export const setAll: {
 } = dual<
   (headers: Input) => (self: Headers) => Headers,
   (self: Headers, headers: Input) => Headers
->(2, (self, headers) =>
-  make({
+>(2, (self, headers) => {
+  const out = make({
     ...self,
     ...fromInput(headers)
-  }))
+  })
+  redactableContext.register(out, undefined, self)
+  return out
+})
 
 /**
  * @since 1.0.0
@@ -189,6 +209,7 @@ export const merge: {
 >(2, (self, headers) => {
   const out = make(self)
   Object.assign(out, headers)
+  redactableContext.register(out, undefined, self)
   return out
 })
 
@@ -254,15 +275,16 @@ export const redact: {
 
 /**
  * @since 1.0.0
- * @category fiber refs
+ * @category references
  */
-export const currentRedactedNames: FiberRef.FiberRef<ReadonlyArray<string | RegExp>> = globalValue(
+export class RedactedNames extends Context.Reference<RedactedNames>()<
   "@effect/platform/Headers/currentRedactedNames",
-  () =>
-    FiberRef.unsafeMake<ReadonlyArray<string | RegExp>>([
-      "authorization",
-      "cookie",
-      "set-cookie",
-      "x-api-key"
-    ])
-)
+  ReadonlyArray<string | RegExp>
+>("@effect/platform/Headers/currentRedactedNames", {
+  defaultValue: () => [
+    "authorization",
+    "cookie",
+    "set-cookie",
+    "x-api-key"
+  ]
+}) {}

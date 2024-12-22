@@ -14,18 +14,17 @@ export abstract class HttpIncomingMessageImpl<E> extends Inspectable.Class
   implements IncomingMessage.HttpIncomingMessage<E>
 {
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
+  readonly headers: Headers.Headers
 
   constructor(
     readonly source: Http.IncomingMessage,
     readonly onError: (error: unknown) => E,
-    readonly remoteAddressOverride?: string
+    readonly remoteAddressOverride?: string,
+    readonly headersOverride?: Headers.Headers
   ) {
     super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
-  }
-
-  get headers() {
-    return Headers.fromInput(this.source.headers as any)
+    this.headers = headersOverride ?? Headers.fromInput(this.source.headers as any)
   }
 
   get remoteAddress() {

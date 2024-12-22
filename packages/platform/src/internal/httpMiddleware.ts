@@ -119,7 +119,7 @@ export const tracer = make((httpApp) =>
       url.username = "REDACTED"
       url.password = "REDACTED"
     }
-    const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
+    const redactedHeaderNames = Context.get(fiber.currentContext, Headers.RedactedNames)
     const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
     return Effect.useSpan(
       `http.server ${request.method}`,

@@ -169,7 +169,7 @@ export const make = (
               if (query !== "") {
                 span.attribute("url.query", query)
               }
-              const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
+              const redactedHeaderNames = Context.get(fiber.currentContext, Headers.RedactedNames)
               const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
               for (const name in redactedHeaders) {
                 span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))

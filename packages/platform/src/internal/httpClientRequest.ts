@@ -66,7 +66,7 @@ export const empty: ClientRequest.HttpClientRequest = makeInternal(
   "",
   UrlParams.empty,
   Option.none(),
-  Headers.empty,
+  Headers.empty(),
   internalBody.empty
 )
 
