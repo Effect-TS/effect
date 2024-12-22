@@ -120,8 +120,8 @@ export const setUsername: {
  * @category utils
  */
 export const setUrlParams: {
-  (searchParams: UrlParams.UrlParams): (url: URL) => URL
-  (url: URL, username: UrlParams.UrlParams): URL
+  (urlParams: UrlParams.UrlParams): (url: URL) => URL
+  (url: URL, urlParams: UrlParams.UrlParams): URL
 } = dual(2, (url: URL, searchParams: UrlParams.UrlParams) => {
   const result = new URL(url)
   result.search = UrlParams.toString(searchParams)
