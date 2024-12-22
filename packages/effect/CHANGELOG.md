@@ -1,5 +1,35 @@
 # effect
 
+## 3.12.0
+
+### Minor Changes
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`abb22a4`](https://github.com/Effect-TS/effect/commit/abb22a429b9c52c31e84856294f175d2064a9b4d) Thanks @titouancreach! - Added encodeUriComponent/decodeUriComponent for both Encoding and Schema
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`f369a89`](https://github.com/Effect-TS/effect/commit/f369a89e98bc682969803b9304adaf4557bb36c2) Thanks @vinassefranche! - Add Runtime.Runtime.Context type extractor
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`642376c`](https://github.com/Effect-TS/effect/commit/642376c63fd7d78754db991631a4d50a5dc79aa3) Thanks @tim-smart! - add non-traced overload to Effect.fn
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`3d2b7a7`](https://github.com/Effect-TS/effect/commit/3d2b7a7e942a7157afae5b1cdbc6f3fef116428e) Thanks @mikearnaldi! - Update fast-check to latest version
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`73f9c6f`](https://github.com/Effect-TS/effect/commit/73f9c6f2ff091512cf904cc54ab59965b86e87c8) Thanks @wewelll! - add DateTimeUtcFromDate schema
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`17cb451`](https://github.com/Effect-TS/effect/commit/17cb4514590e8a86263f7aed009f24da8a237342) Thanks @fubhy! - Added support for `second` granularity to `Cron`.
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`d801820`](https://github.com/Effect-TS/effect/commit/d80182060c2ee945d7e0e4728812abf9465a0d6a) Thanks @fubhy! - Added `Cron.unsafeParse` and allow passing the `Cron.parse` time zone parameter as `string`.
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`e1eeb2d`](https://github.com/Effect-TS/effect/commit/e1eeb2d7064b3870041dab142f3057970699bbf1) Thanks @mikearnaldi! - add Effect.fnUntraced - an untraced version of Effect.fn
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`c11f3a6`](https://github.com/Effect-TS/effect/commit/c11f3a60a05c3b5fc8e7ce90136728154dc505b0) Thanks @QuentinJanuel! - Add Context.mergeAll to combine multiple Contexts into one.
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`618f7e0`](https://github.com/Effect-TS/effect/commit/618f7e092a1011e5090dca1e69b5e9285689654b) Thanks @tim-smart! - add span annotation to disable propagation to the tracer
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`c0ba834`](https://github.com/Effect-TS/effect/commit/c0ba834d1995cf5a8b250e4780fd43f3e3881151) Thanks @titouancreach! - Add Schema.headNonEmpty for Schema.NonEmptyArray
+
+### Patch Changes
+
+- [#4068](https://github.com/Effect-TS/effect/pull/4068) [`e1eeb2d`](https://github.com/Effect-TS/effect/commit/e1eeb2d7064b3870041dab142f3057970699bbf1) Thanks @mikearnaldi! - Carry both call-site and definition site in Effect.fn, auto-trace to anon
+
 ## 3.11.10
 
 ### Patch Changes
