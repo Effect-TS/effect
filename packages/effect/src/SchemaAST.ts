@@ -2210,7 +2210,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
     case "Suspend":
       return getNumberIndexedAccess(ast.f())
   }
-  throw new Error(errors_.getASTUnsupportedSchema(ast))
+  throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
 }
 
 const getTypeLiteralPropertySignature = (ast: TypeLiteral, name: PropertyKey): PropertySignature | undefined => {
@@ -2279,7 +2279,7 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
     case "Refinement":
       return getPropertyKeyIndexedAccess(ast.from, name)
   }
-  throw new Error(errors_.getASTUnsupportedSchema(ast))
+  throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
 }
 
 const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
@@ -2324,7 +2324,7 @@ export const record = (key: AST, value: AST): {
         if (Predicate.isString(key.literal) || Predicate.isNumber(key.literal)) {
           propertySignatures.push(new PropertySignature(key.literal, value, false, true))
         } else {
-          throw new Error(errors_.getASTUnsupportedLiteral(key.literal))
+          throw new Error(errors_.getASTUnsupportedLiteralErrorMessage(key.literal))
         }
         break
       case "Enums": {
@@ -2340,7 +2340,7 @@ export const record = (key: AST, value: AST): {
         key.types.forEach(go)
         break
       default:
-        throw new Error(errors_.getASTUnsupportedKeySchema(key))
+        throw new Error(errors_.getASTUnsupportedKeySchemaErrorMessage(key))
     }
   }
   go(key)
@@ -2414,7 +2414,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
       }
     }
   }
-  throw new Error(errors_.getASTUnsupportedSchema(ast))
+  throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
 }
 
 /**
@@ -2457,9 +2457,8 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
     case "Suspend":
       return new Suspend(() => partial(ast.f(), options))
     case "Declaration":
-      throw new Error(errors_.getASTUnsupportedSchema(ast))
     case "Refinement":
-      throw new Error(errors_.getASTUnsupportedSchema(ast))
+      throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
     case "Transformation": {
       if (
         isTypeLiteralTransformation(ast.transformation) &&
@@ -2467,7 +2466,7 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
       ) {
         return new Transformation(partial(ast.from, options), partial(ast.to, options), ast.transformation)
       }
-      throw new Error(errors_.getASTUnsupportedSchema(ast))
+      throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
     }
   }
   return ast
@@ -2496,9 +2495,8 @@ export const required = (ast: AST): AST => {
     case "Suspend":
       return new Suspend(() => required(ast.f()))
     case "Declaration":
-      throw new Error(errors_.getASTUnsupportedSchema(ast))
     case "Refinement":
-      throw new Error(errors_.getASTUnsupportedSchema(ast))
+      throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
     case "Transformation": {
       if (
         isTypeLiteralTransformation(ast.transformation) &&
@@ -2506,7 +2504,7 @@ export const required = (ast: AST): AST => {
       ) {
         return new Transformation(required(ast.from), required(ast.to), ast.transformation)
       }
-      throw new Error(errors_.getASTUnsupportedSchema(ast))
+      throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
     }
   }
   return ast
@@ -2873,7 +2871,7 @@ const _keyof = (ast: AST): Array<AST> => {
     case "Transformation":
       return _keyof(ast.to)
   }
-  throw new Error(errors_.getASTUnsupportedSchema(ast))
+  throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
 }
 
 /** @internal */
@@ -2925,7 +2923,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
     case "Transformation":
       return compose(ast, rename(typeAST(ast), mapping))
   }
-  throw new Error(errors_.getASTUnsupportedRenameSchema(ast))
+  throw new Error(errors_.getASTUnsupportedRenameSchemaErrorMessage(ast))
 }
 
 const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), () => ast._tag)
