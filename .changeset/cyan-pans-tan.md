@@ -1,5 +1,5 @@
 ---
-"@effect/vitest": minor
+"@effect/vitest": patch
 ---
 
 Add fails method.
