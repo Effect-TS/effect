@@ -160,7 +160,7 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
   return V.it(
     name,
     // @ts-ignore
-    (ctx) => fc.assert(fc.property(arbs, (...as) => self(as[0], ctx)), check),
+    (ctx) => fc.assert(fc.property(arbs, (as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {}),
     timeout
   )
 }
