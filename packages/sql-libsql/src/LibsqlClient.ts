@@ -316,7 +316,7 @@ export const layerConfig = (
  */
 export const layer = (
   config: LibsqlClientConfig
-): Layer.Layer<LibsqlClient | Client.SqlClient, ConfigError> =>
+): Layer.Layer<LibsqlClient | Client.SqlClient> =>
   Layer.scopedContext(
     Effect.map(make(config), (client) =>
       Context.make(LibsqlClient, client).pipe(
