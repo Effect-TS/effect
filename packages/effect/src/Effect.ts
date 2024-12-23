@@ -3659,7 +3659,10 @@ export const catchSome: {
 } = core.catchSome
 
 /**
- * Recovers from some or all of the error cases with provided cause.
+ * Recovers from specific causes using a provided partial function.
+ *
+ * @see {@link catchSome} for a version that allows you to recover from errors.
+ * @see {@link catchSomeDefect} for a version that allows you to recover from defects.
  *
  * @since 2.0.0
  * @category Error handling
@@ -3923,9 +3926,15 @@ export const catchTags: {
 } = effect.catchTags
 
 /**
- * The `cause` function allows you to expose the detailed cause of an
- * effect, which includes a more precise representation of failures, such as
- * error messages and defects.
+ * Retrieves the cause of a failure in an effect.
+ *
+ * **Details**
+ *
+ * This function allows you to expose the detailed cause of an effect, which
+ * includes a more precise representation of failures, such as error messages
+ * and defects.
+ *
+ * **When to Use**
  *
  * This function is helpful when you need to inspect the cause of a failure in
  * an effect, giving you more information than just the error message. It can be
@@ -3955,8 +3964,50 @@ export const catchTags: {
 export const cause: <A, E, R>(self: Effect<A, E, R>) => Effect<Cause.Cause<E>, never, R> = effect.cause
 
 /**
- * Returns an effect that ignores errors and runs repeatedly until it
- * eventually succeeds.
+ * Runs an effect repeatedly until it succeeds, ignoring errors.
+ *
+ * **Details**
+ *
+ * This function takes an effect and runs it repeatedly until the effect
+ * successfully completes. If the effect fails, it will ignore the error and
+ * retry the operation. This is useful when you need to perform a task that may
+ * fail occasionally, but you want to keep trying until it eventually succeeds.
+ * It works by repeatedly executing the effect until it no longer throws an
+ * error.
+ *
+ * **When to Use**
+ *
+ * Use this function when you want to retry an operation multiple times until it
+ * succeeds. It is helpful in cases where the operation may fail temporarily
+ * (e.g., a network request), and you want to keep trying without handling or
+ * worrying about the errors.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * let counter = 0
+ *
+ * const effect = Effect.try(() => {
+ *   counter++
+ *   if (counter < 3) {
+ *     console.log("running effect")
+ *     throw new Error("error")
+ *   } else {
+ *     console.log("effect done")
+ *     return "some result"
+ *   }
+ * })
+ *
+ * const program = Effect.eventually(effect)
+ *
+ * Effect.runPromise(program).then(console.log)
+ * // Output:
+ * // running effect
+ * // running effect
+ * // effect done
+ * // some result
+ * ```
  *
  * @since 2.0.0
  * @category Error handling
@@ -3971,6 +4022,8 @@ export const eventually: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R>
  * `ignore` allows you to run an effect without caring about its result, whether
  * it succeeds or fails. This is useful when you only care about the side
  * effects of the effect and do not need to handle or process its outcome.
+ *
+ * @see {@link ignoreLogged} to log failures while ignoring them.
  *
  * @example
  * ```ts
@@ -3992,9 +4045,20 @@ export const eventually: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R>
 export const ignore: <A, E, R>(self: Effect<A, E, R>) => Effect<void, never, R> = effect.ignore
 
 /**
- * Returns a new effect that ignores the success or failure of this effect,
- * but which also logs failures at the Debug level, just in case the failure
- * turns out to be important.
+ * Ignores the result of an effect but logs any failures.
+ *
+ * **Details**
+ *
+ * This function takes an effect and returns a new effect that ignores whether
+ * the original effect succeeds or fails. However, if the effect fails, it will
+ * log the failure at the Debug level, so you can keep track of any issues that
+ * arise.
+ *
+ * **When to Use**
+ *
+ * This is useful in scenarios where you want to continue with your program
+ * regardless of the result of the effect, but you still want to be aware of
+ * potential failures that may need attention later.
  *
  * @since 2.0.0
  * @category Error handling
@@ -4002,14 +4066,21 @@ export const ignore: <A, E, R>(self: Effect<A, E, R>) => Effect<void, never, R> 
 export const ignoreLogged: <A, E, R>(self: Effect<A, E, R>) => Effect<void, never, R> = effect.ignoreLogged
 
 /**
- * The `parallelErrors` function captures all failure errors from
- * concurrent operations and combines them into a single error in the error
- * channel.
+ * Combines all errors from concurrent operations into a single error.
  *
- * This function is useful when you are running multiple operations concurrently
- * and you want to gather all the errors that occur. Instead of handling each
- * error separately, `parallelErrors` consolidates them into one, making
- * it easier to manage and respond to errors from multiple operations at once.
+ * **Details**
+ *
+ * This function is used when you have multiple operations running at the same
+ * time, and you want to capture all the errors that occur across those
+ * operations. Instead of handling each error separately, it combines all the
+ * errors into one unified error.
+ *
+ * **When to Use**
+ *
+ * When using this function, any errors that occur in the concurrently running
+ * operations will be grouped together into a single error. This helps simplify
+ * error handling in cases where you don't need to differentiate between each
+ * failure, but simply want to know that multiple failures occurred.
  *
  * @example
  * ```ts
@@ -4039,17 +4110,21 @@ export const ignoreLogged: <A, E, R>(self: Effect<A, E, R>) => Effect<void, neve
 export const parallelErrors: <A, E, R>(self: Effect<A, E, R>) => Effect<A, Array<E>, R> = effect.parallelErrors
 
 /**
- * The `sandbox` function transforms an effect by exposing the full cause
- * of any error, defect, or fiber interruption that might occur during its
- * execution. It changes the error channel of the effect to include detailed
- * information about the cause, which is wrapped in a `Cause<E>` type.
+ * Transforms an effect to expose detailed error causes.
  *
- * This function is useful when you need access to the complete underlying cause
- * of failures, defects, or interruptions, enabling more detailed error
- * handling. Once you apply `sandbox`, you can use operators like
- * {@link catchAll} and {@link catchTags} to handle specific error conditions.
- * If necessary, you can revert the sandboxing operation with {@link unsandbox}
- * to return to the original error handling behavior.
+ * **Details**
+ *
+ * This function enhances an effect by providing detailed information about any
+ * error, defect, or interruption that may occur during its execution. It
+ * modifies the error channel of the effect so that it includes a full cause of
+ * the failure, wrapped in a `Cause<E>` type.
+ *
+ * After applying this function, you can use operators like {@link catchAll} and
+ * {@link catchTags} to handle specific types of errors.
+ *
+ * If you no longer need the detailed cause information, you can revert the
+ * changes using {@link unsandbox} to return to the original error-handling
+ * behavior.
  *
  * @see {@link unsandbox} to restore the original error handling.
  *
@@ -4405,9 +4480,11 @@ export {
 }
 
 /**
- * Returns an effect whose success is mapped by the specified side effecting
- * `try` function, translating any promise rejections into typed failed effects
- * via the `catch` function.
+ * Returns an effect that maps its success using the specified side-effecting
+ * `try` function, converting any errors into typed failed effects using the
+ * `catch` function.
+ *
+ * @see {@link tryPromise} for a version that works with asynchronous computations.
  *
  * @since 2.0.0
  * @category Error handling
@@ -4423,12 +4500,14 @@ export const tryMap: {
 } = effect.tryMap
 
 /**
- * Returns an effect whose success is mapped by the specified side effecting
- * `try` function, translating any promise rejections into typed failed effects
- * via the `catch` function.
+ * Returns an effect that maps its success using the specified side-effecting
+ * `try` function, converting any promise rejections into typed failed effects
+ * using the `catch` function.
  *
  * An optional `AbortSignal` can be provided to allow for interruption of the
  * wrapped `Promise` API.
+ *
+ * @see {@link tryMap} for a version that works with synchronous computations.
  *
  * @since 2.0.0
  * @category Error handling
@@ -4536,10 +4615,18 @@ export const tryPromise: {
 export const unsandbox: <A, E, R>(self: Effect<A, Cause.Cause<E>, R>) => Effect<A, E, R> = effect.unsandbox
 
 /**
- * This function checks if any fibers are attempting to interrupt the current
- * fiber, and if so, performs self-interruption.
+ * Allows interruption of the current fiber, even in uninterruptible regions.
  *
- * Note that this allows for interruption to occur in uninterruptible regions.
+ * **Details**
+ *
+ * This effect checks whether any other fibers are attempting to interrupt the
+ * current fiber. If so, it allows the current fiber to perform a
+ * self-interruption.
+ *
+ * **When to Use**
+ *
+ * This is useful in situations where you want to allow interruption to happen
+ * even in regions of the code that are normally uninterruptible.
  *
  * @since 2.0.0
  * @category Interruption
@@ -4547,10 +4634,43 @@ export const unsandbox: <A, E, R>(self: Effect<A, Cause.Cause<E>, R>) => Effect<
 export const allowInterrupt: Effect<void> = effect.allowInterrupt
 
 /**
- * Checks the interrupt status, and produces the effect returned by the
- * specified callback.
+ * Checks if interruption is allowed and executes a callback accordingly.
  *
- * @since 2.0.0
+ * **Details**
+ *
+ * This function checks the current interrupt status of the running fiber. It
+ * then calls the provided callback, passing a boolean indicating whether
+ * interruption is allowed.
+ *
+ * **When to Use**
+ *
+ * This is useful for handling specific logic based on whether the current
+ * operation can be interrupted, such as when performing asynchronous operations
+ * or handling cancellation.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.checkInterruptible((isInterruptible) => {
+ *     if (isInterruptible) {
+ *       return Console.log("You can interrupt this operation.")
+ *     } else {
+ *       return Console.log("This operation cannot be interrupted.")
+ *     }
+ *   })
+ * })
+ *
+ * Effect.runPromise(program)
+ * // Output: You can interrupt this operation.
+ *
+ * Effect.runPromise(program.pipe(Effect.uninterruptible))
+ * // Output: This operation cannot be interrupted.
+ *
+ * ```
+ *
+ *  @since 2.0.0
  * @category Interruption
  */
 export const checkInterruptible: <A, E, R>(f: (isInterruptible: boolean) => Effect<A, E, R>) => Effect<A, E, R> =
@@ -4560,6 +4680,8 @@ export const checkInterruptible: <A, E, R>(f: (isInterruptible: boolean) => Effe
  * Provides a way to handle timeouts in uninterruptible effects, allowing them
  * to continue in the background while the main control flow proceeds with the
  * timeout error.
+ *
+ * **Details**
  *
  * The `disconnect` function allows an uninterruptible effect to continue
  * running in the background, while enabling the main control flow to
@@ -4619,6 +4741,38 @@ export const checkInterruptible: <A, E, R>(f: (isInterruptible: boolean) => Effe
 export const disconnect: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = fiberRuntime.disconnect
 
 /**
+ * Returns an effect that models the interruption of the fiber it is run in.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.gen(function* () {
+ *   yield* Effect.log("start")
+ *   yield* Effect.sleep("2 seconds")
+ *   yield* Effect.interrupt
+ *   yield* Effect.log("done")
+ * })
+ *
+ * Effect.runPromiseExit(program).then(console.log)
+ * // Output:
+ * // timestamp=... level=INFO fiber=#0 message=start
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: {
+ * //     _id: 'Cause',
+ * //     _tag: 'Interrupt',
+ * //     fiberId: {
+ * //       _id: 'FiberId',
+ * //       _tag: 'Runtime',
+ * //       id: 0,
+ * //       startTimeMillis: ...
+ * //     }
+ * //   }
+ * // }
+ * ```
+ *
  * @since 2.0.0
  * @category Interruption
  */
@@ -4631,12 +4785,18 @@ export const interrupt: Effect<never> = core.interrupt
 export const interruptWith: (fiberId: FiberId.FiberId) => Effect<never> = core.interruptWith
 
 /**
+ * Marks an effect as interruptible.
+ *
  * @since 2.0.0
  * @category Interruption
  */
 export const interruptible: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = core.interruptible
 
 /**
+ * This function behaves like {@link interruptible}, but it also provides a
+ * `restore` function. This function can be used to restore the interruptibility
+ * of any specific region of code.
+ *
  * @since 2.0.0
  * @category Interruption
  */
@@ -4645,6 +4805,26 @@ export const interruptibleMask: <A, E, R>(
 ) => Effect<A, E, R> = core.interruptibleMask
 
 /**
+ * Registers a cleanup effect to run when an effect is interrupted.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.log("start")
+ *   yield* Effect.sleep("2 seconds")
+ *   yield* Effect.interrupt
+ *   yield* Effect.log("done")
+ * }).pipe(Effect.onInterrupt(() => Effect.log("interrupted")))
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // timestamp=... level=INFO fiber=#0 message=start
+ * // timestamp=... level=INFO fiber=#0 message=interrupted
+ *
+ * ```
+ *
  * @since 2.0.0
  * @category Interruption
  */
@@ -4659,12 +4839,18 @@ export const onInterrupt: {
 } = core.onInterrupt
 
 /**
+ * Marks an effect as uninterruptible.
+ *
  * @since 2.0.0
  * @category Interruption
  */
 export const uninterruptible: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = core.uninterruptible
 
 /**
+ * This function behaves like {@link uninterruptible}, but it also provides a
+ * `restore` function. This function can be used to restore the interruptibility
+ * of any specific region of code.
+ *
  * @since 2.0.0
  * @category Interruption
  */
@@ -4705,8 +4891,17 @@ export const liftPredicate: {
 /**
  * Replaces the value inside an effect with a constant value.
  *
- * `as` allows you to ignore the original value inside an effect and
- * replace it with a new constant value.
+ * **Details**
+ *
+ * This function allows you to ignore the original value inside an effect and
+ * replace it with a constant value.
+ *
+ * **When to Use**
+ *
+ * It is useful when you no longer need the value produced by an effect but want
+ * to ensure that the effect completes successfully with a specific constant
+ * result instead. For instance, you can replace the value produced by a
+ * computation with a predefined value, ignoring what was calculated before.
  *
  * @example
  * ```ts
@@ -4760,13 +4955,13 @@ export const asSomeError: <A, E, R>(self: Effect<A, E, R>) => Effect<A, Option.O
 export const asVoid: <A, E, R>(self: Effect<A, E, R>) => Effect<void, E, R> = core.asVoid
 
 /**
- * The `flip` function swaps the success and error channels of an effect,
- * so that the success becomes the error, and the error becomes the success.
+ * Swaps the success and error channels of an effect.
  *
- * This function is useful when you need to reverse the flow of an effect,
- * treating the previously successful values as errors and vice versa. This can
- * be helpful in scenarios where you want to handle a success as a failure or
- * treat an error as a valid result.
+ * **Details**
+ *
+ * This function reverses the flow of an effect by swapping its success and
+ * error channels. The success value becomes an error, and the error value
+ * becomes a success.
  *
  * @example
  * ```ts
@@ -4911,8 +5106,9 @@ export const mapAccum: {
 } = effect.mapAccum
 
 /**
- * The `mapBoth` function allows you to apply transformations to both the
- * error and success channels of an effect.
+ * Applies transformations to both the success and error channels of an effect.
+ *
+ * **Details**
  *
  * This function takes two map functions as arguments: one for the error channel
  * and one for the success channel. You can use it when you want to modify both
@@ -4952,8 +5148,10 @@ export const mapBoth: {
 } = core.mapBoth
 
 /**
- * The `mapError` function is used to transform or modify the error
- * produced by an effect, without affecting its success value.
+ * Transforms or modifies the error produced by an effect without affecting its
+ * success value.
+ *
+ * **When to Use**
  *
  * This function is helpful when you want to enhance the error with additional
  * information, change the error type, or apply custom error handling while
@@ -4989,11 +5187,10 @@ export const mapError: {
 } = core.mapError
 
 /**
- * Returns an effect with its full cause of failure mapped using the specified
- * function. This can be used to transform errors while preserving the original
- * structure of `Cause`.
+ * Maps the cause of failure of an effect using a specified function.
  *
- * See `sandbox`, `catchAllCause` for other functions for dealing with defects.
+ * @see {@link sandbox} for a version that exposes the full cause of failures, defects, or interruptions.
+ * @see {@link catchAllCause} for a version that can recover from all types of defects.
  *
  * @since 2.0.0
  * @category Mapping
@@ -5004,14 +5201,19 @@ export const mapErrorCause: {
 } = effect.mapErrorCause
 
 /**
- * The `merge` function combines both the error and success channels of
- * an effect, creating a new effect that never fails.
+ * Combines both success and error channels of an effect into a single outcome.
+ *
+ * **Details**
  *
  * This function transforms an effect that may fail into one that always returns
  * a value, where both success and failure outcomes are handled as values in the
- * success channel. This can be useful when you want to continue execution
- * regardless of the error type and still capture both successful results and
- * errors as part of the outcome.
+ * success channel.
+ *
+ * **When to Use**
+ *
+ * This can be useful when you want to continue execution regardless of the
+ * error type and still capture both successful results and errors as part of
+ * the outcome.
  *
  * @example
  * ```ts
@@ -5032,7 +5234,7 @@ export const mapErrorCause: {
 export const merge: <A, E, R>(self: Effect<A, E, R>) => Effect<E | A, never, R> = effect.merge
 
 /**
- * Returns a new effect where boolean value of this effect is negated.
+ * Returns a new effect with the boolean value of this effect negated.
  *
  * @since 2.0.0
  * @category Mapping
