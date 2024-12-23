@@ -65,7 +65,7 @@ export declare namespace PlatformError {
   export interface Base {
     readonly [PlatformErrorTypeId]: typeof PlatformErrorTypeId
     readonly _tag: string
-    readonly module: "Clipboard" | "Command" | "FileSystem" | "KeyValueStore" | "Path" | "Stream" | "Terminal" | "Url"
+    readonly module: "Clipboard" | "Command" | "FileSystem" | "KeyValueStore" | "Path" | "Stream" | "Terminal"
     readonly method: string
     readonly message: string
   }
