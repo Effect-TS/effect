@@ -13,6 +13,7 @@ describe("Url", () => {
         assert.notStrictEqual(url, testURL)
       }))
   })
+
   describe("setters", () => {
     it("immutable", () => {
       const hashUrl = Url.setHash(testURL, "test")
@@ -20,8 +21,9 @@ describe("Url", () => {
       assert.strictEqual(hashUrl.toString(), "https://example.com/test#test")
     })
   })
+
   it("modifyUrlParams", () => {
-    const paramsUrl = Url.modifyUrlParams(testURL, (x) => UrlParams.append(x, "key", "value"))
+    const paramsUrl = Url.modifyUrlParams(testURL, UrlParams.append("key", "value"))
     assert.notStrictEqual(paramsUrl, testURL)
     assert.strictEqual(paramsUrl.toString(), "https://example.com/test?key=value")
   })
