@@ -5886,25 +5886,45 @@ export const fiberIdWith: <A, E, R>(f: (descriptor: FiberId.Runtime) => Effect<A
   core.fiberIdWith
 
 /**
- * Returns an effect that forks this effect into its own separate fiber,
- * returning the fiber immediately, without waiting for it to begin executing
- * the effect.
+ * Creates a new fiber to run an effect concurrently.
  *
- * You can use the `fork` method whenever you want to execute an effect in a
- * new fiber, concurrently and without "blocking" the fiber executing other
- * effects. Using fibers can be tricky, so instead of using this method
- * directly, consider other higher-level methods, such as `raceWith`,
- * `zipPar`, and so forth.
+ * **Details**
  *
- * The fiber returned by this method has methods to interrupt the fiber and to
- * wait for it to finish executing the effect. See `Fiber` for more
- * information.
+ * This function takes an effect and forks it into a separate fiber, allowing it
+ * to run concurrently without blocking the original effect. The new fiber
+ * starts execution immediately after being created, and the fiber object is
+ * returned immediately without waiting for the effect to begin. This is useful
+ * when you want to run tasks concurrently while continuing other tasks in the
+ * parent fiber.
  *
- * Whenever you use this method to launch a new fiber, the new fiber is
- * attached to the parent fiber's scope. This means when the parent fiber
- * terminates, the child fiber will be terminated as well, ensuring that no
- * fibers leak. This behavior is called "auto supervision", and if this
- * behavior is not desired, you may use the `forkDaemon` or `forkIn` methods.
+ * The forked fiber is attached to the parent fiber's scope. This means that
+ * when the parent fiber terminates, the child fiber will also be terminated
+ * automatically. This feature, known as "auto supervision," ensures that no
+ * fibers are left running unintentionally. If you prefer not to have this auto
+ * supervision behavior, you can use {@link forkDaemon} or {@link forkIn}.
+ *
+ * **When to Use**
+ *
+ * Use this function when you need to run an effect concurrently without
+ * blocking the current execution flow. For example, you might use it to launch
+ * background tasks or concurrent computations. However, working with fibers can
+ * be complex, so before using this function directly, you might want to explore
+ * higher-level functions like {@link raceWith}, {@link zip}, or others that can
+ * manage concurrency for you.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const fib = (n: number): Effect.Effect<number> =>
+ *   n < 2
+ *     ? Effect.succeed(n)
+ *     : Effect.zipWith(fib(n - 1), fib(n - 2), (a, b) => a + b)
+ *
+ * //      ┌─── Effect<RuntimeFiber<number, never>, never, never>
+ * //      ▼
+ * const fib10Fiber = Effect.fork(fib(10))
+ * ```
  *
  * @since 2.0.0
  * @category Supervision & Fibers
@@ -5912,9 +5932,50 @@ export const fiberIdWith: <A, E, R>(f: (descriptor: FiberId.Runtime) => Effect<A
 export const fork: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R> = fiberRuntime.fork
 
 /**
- * Forks the effect into a new fiber attached to the global scope. Because the
- * new fiber is attached to the global scope, when the fiber executing the
- * returned effect terminates, the forked fiber will continue running.
+ * Creates a long-running background fiber that is independent of its parent.
+ *
+ * **Details**
+ *
+ * This function creates a "daemon" fiber that runs in the background and is not
+ * tied to the lifecycle of its parent fiber. Unlike normal fibers that stop
+ * when the parent fiber terminates, a daemon fiber will continue running until
+ * the global scope closes or the fiber completes naturally. This makes it
+ * useful for tasks that need to run in the background independently, such as
+ * periodic logging, monitoring, or background data processing.
+ *
+ * @example
+ * ```ts
+ * // Title: Creating a Daemon Fibe
+ * import { Effect, Console, Schedule } from "effect"
+ *
+ * // Daemon fiber that logs a message repeatedly every second
+ * const daemon = Effect.repeat(
+ *   Console.log("daemon: still running!"),
+ *   Schedule.fixed("1 second")
+ * )
+ *
+ * const parent = Effect.gen(function* () {
+ *   console.log("parent: started!")
+ *   // Daemon fiber running independently
+ *   yield* Effect.forkDaemon(daemon)
+ *   yield* Effect.sleep("3 seconds")
+ *   console.log("parent: finished!")
+ * })
+ *
+ * Effect.runFork(parent)
+ * // Output:
+ * // parent: started!
+ * // daemon: still running!
+ * // daemon: still running!
+ * // daemon: still running!
+ * // parent: finished!
+ * // daemon: still running!
+ * // daemon: still running!
+ * // daemon: still running!
+ * // daemon: still running!
+ * // daemon: still running!
+ * // ...etc...
+ * ```
  *
  * @since 2.0.0
  * @category Supervision & Fibers
@@ -5949,8 +6010,73 @@ export const forkAll: {
 } = circular.forkAll
 
 /**
- * Forks the effect in the specified scope. The fiber will be interrupted
- * when the scope is closed.
+ * Forks an effect in a specific scope, allowing finer control over its
+ * execution.
+ *
+ * **Details**
+ *
+ * There are some cases where we need more fine-grained control, so we want to
+ * fork a fiber in a specific scope. We can use the `Effect.forkIn` operator
+ * which takes the target scope as an argument.
+ *
+ * The fiber will be interrupted when the scope is closed.
+ *
+ * @example
+ * ```ts
+ * // Title: Forking a Fiber in a Specific Scope
+ * //
+ * // In this example, the child fiber is forked into the outerScope,
+ * // allowing it to outlive the inner scope but still be terminated
+ * // when the outerScope is closed.
+ * //
+ *
+ * import { Console, Effect, Schedule } from "effect"
+ *
+ * // Child fiber that logs a message repeatedly every second
+ * const child = Effect.repeat(
+ *   Console.log("child: still running!"),
+ *   Schedule.fixed("1 second")
+ * )
+ *
+ * const program = Effect.scoped(
+ *   Effect.gen(function* () {
+ *     yield* Effect.addFinalizer(() =>
+ *       Console.log("The outer scope is about to be closed!")
+ *     )
+ *
+ *     // Capture the outer scope
+ *     const outerScope = yield* Effect.scope
+ *
+ *     // Create an inner scope
+ *     yield* Effect.scoped(
+ *       Effect.gen(function* () {
+ *         yield* Effect.addFinalizer(() =>
+ *           Console.log("The inner scope is about to be closed!")
+ *         )
+ *         // Fork the child fiber in the outer scope
+ *         yield* Effect.forkIn(child, outerScope)
+ *         yield* Effect.sleep("3 seconds")
+ *       })
+ *     )
+ *
+ *     yield* Effect.sleep("5 seconds")
+ *   })
+ * )
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // child: still running!
+ * // child: still running!
+ * // child: still running!
+ * // The inner scope is about to be closed!
+ * // child: still running!
+ * // child: still running!
+ * // child: still running!
+ * // child: still running!
+ * // child: still running!
+ * // child: still running!
+ * // The outer scope is about to be closed!
+ * ```
  *
  * @since 2.0.0
  * @category Supervision & Fibers
@@ -5961,7 +6087,71 @@ export const forkIn: {
 } = circular.forkIn
 
 /**
- * Forks the fiber in a `Scope`, interrupting it when the scope is closed.
+ * Forks a fiber in a local scope, ensuring it outlives its parent.
+ *
+ * **Details**
+ *
+ * This function is used to create fibers that are tied to a local scope,
+ * meaning they are not dependent on their parent fiber's lifecycle. Instead,
+ * they will continue running until the scope they were created in is closed.
+ * This is particularly useful when you need a fiber to run independently of the
+ * parent fiber, but still want it to be terminated when the scope ends.
+ *
+ * Fibers created with this function are isolated from the parent fiber’s
+ * termination, so they can run for a longer period. This behavior is different
+ * from fibers created with {@link fork}, which are terminated when the parent fiber
+ * terminates. With `forkScoped`, the child fiber will keep running until the
+ * local scope ends, regardless of the state of the parent fiber.
+ *
+ * @example
+ * ```ts
+ * // Title: Forking a Fiber in a Local Scope
+ * //
+ * // In this example, the child fiber continues to run beyond the lifetime of the parent fiber.
+ * // The child fiber is tied to the local scope and will be terminated only when the scope ends.
+ * //
+ *
+ * import { Effect, Console, Schedule } from "effect"
+ *
+ * // Child fiber that logs a message repeatedly every second
+ * const child = Effect.repeat(
+ *   Console.log("child: still running!"),
+ *   Schedule.fixed("1 second")
+ * )
+ *
+ * //      ┌─── Effect<void, never, Scope>
+ * //      ▼
+ * const parent = Effect.gen(function* () {
+ *   console.log("parent: started!")
+ *   // Child fiber attached to local scope
+ *   yield* Effect.forkScoped(child)
+ *   yield* Effect.sleep("3 seconds")
+ *   console.log("parent: finished!")
+ * })
+ *
+ * // Program runs within a local scope
+ * const program = Effect.scoped(
+ *   Effect.gen(function* () {
+ *     console.log("Local scope started!")
+ *     yield* Effect.fork(parent)
+ *     // Scope lasts for 5 seconds
+ *     yield* Effect.sleep("5 seconds")
+ *     console.log("Leaving the local scope!")
+ *   })
+ * )
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // Local scope started!
+ * // parent: started!
+ * // child: still running!
+ * // child: still running!
+ * // child: still running!
+ * // parent: finished!
+ * // child: still running!
+ * // child: still running!
+ * // Leaving the local scope!
+ * ```
  *
  * @since 2.0.0
  * @category Supervision & Fibers
@@ -6005,8 +6195,109 @@ export const fromFiberEffect: <A, E, R>(fiber: Effect<Fiber.Fiber<A, E>, E, R>) 
   circular.fromFiberEffect
 
 /**
- * Returns an effect with the behavior of this one, but where all child fibers
- * forked in the effect are reported to the specified supervisor.
+ * Supervises child fibers by reporting them to a specified supervisor.
+ *
+ * **Details**
+ *
+ * This function takes a supervisor as an argument and returns an effect where
+ * all child fibers forked within it are supervised by the provided supervisor.
+ * This enables you to capture detailed information about these child fibers,
+ * such as their status, through the supervisor.
+ *
+ * @example
+ * ```ts
+ * // Title: Monitoring Fiber Count
+ * import { Effect, Supervisor, Schedule, Fiber, FiberStatus } from "effect"
+ *
+ * // Main program that monitors fibers while calculating a Fibonacci number
+ * const program = Effect.gen(function* () {
+ *   // Create a supervisor to track child fibers
+ *   const supervisor = yield* Supervisor.track
+ *
+ *   // Start a Fibonacci calculation, supervised by the supervisor
+ *   const fibFiber = yield* fib(20).pipe(
+ *     Effect.supervised(supervisor),
+ *     // Fork the Fibonacci effect into a fiber
+ *     Effect.fork
+ *   )
+ *
+ *   // Define a schedule to periodically monitor the fiber count every 500ms
+ *   const policy = Schedule.spaced("500 millis").pipe(
+ *     Schedule.whileInputEffect((_) =>
+ *       Fiber.status(fibFiber).pipe(
+ *         // Continue while the Fibonacci fiber is not done
+ *         Effect.andThen((status) => status !== FiberStatus.done)
+ *       )
+ *     )
+ *   )
+ *
+ *   // Start monitoring the fibers, using the supervisor to track the count
+ *   const monitorFiber = yield* monitorFibers(supervisor).pipe(
+ *     // Repeat the monitoring according to the schedule
+ *     Effect.repeat(policy),
+ *     // Fork the monitoring into its own fiber
+ *     Effect.fork
+ *   )
+ *
+ *   // Join the monitor and Fibonacci fibers to ensure they complete
+ *   yield* Fiber.join(monitorFiber)
+ *   const result = yield* Fiber.join(fibFiber)
+ *
+ *   console.log(`fibonacci result: ${result}`)
+ * })
+ *
+ * // Function to monitor and log the number of active fibers
+ * const monitorFibers = (
+ *   supervisor: Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any, any>>>
+ * ): Effect.Effect<void> =>
+ *   Effect.gen(function* () {
+ *     const fibers = yield* supervisor.value // Get the current set of fibers
+ *     console.log(`number of fibers: ${fibers.length}`)
+ *   })
+ *
+ * // Recursive Fibonacci calculation, spawning fibers for each recursive step
+ * const fib = (n: number): Effect.Effect<number> =>
+ *   Effect.gen(function* () {
+ *     if (n <= 1) {
+ *       return 1
+ *     }
+ *     yield* Effect.sleep("500 millis") // Simulate work by delaying
+ *
+ *     // Fork two fibers for the recursive Fibonacci calls
+ *     const fiber1 = yield* Effect.fork(fib(n - 2))
+ *     const fiber2 = yield* Effect.fork(fib(n - 1))
+ *
+ *     // Join the fibers to retrieve their results
+ *     const v1 = yield* Fiber.join(fiber1)
+ *     const v2 = yield* Fiber.join(fiber2)
+ *
+ *     return v1 + v2 // Combine the results
+ *   })
+ *
+ * Effect.runPromise(program)
+ * // Output:
+ * // number of fibers: 0
+ * // number of fibers: 2
+ * // number of fibers: 6
+ * // number of fibers: 14
+ * // number of fibers: 30
+ * // number of fibers: 62
+ * // number of fibers: 126
+ * // number of fibers: 254
+ * // number of fibers: 510
+ * // number of fibers: 1022
+ * // number of fibers: 2034
+ * // number of fibers: 3795
+ * // number of fibers: 5810
+ * // number of fibers: 6474
+ * // number of fibers: 4942
+ * // number of fibers: 2515
+ * // number of fibers: 832
+ * // number of fibers: 170
+ * // number of fibers: 18
+ * // number of fibers: 0
+ * // fibonacci result: 10946
+ * ```
  *
  * @since 2.0.0
  * @category Supervision & Fibers
