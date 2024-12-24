@@ -106,7 +106,7 @@ export class GenKindImpl<F extends TypeLambda, R, O, E, A> implements GenKind<F,
  * @category constructors
  * @since 2.0.0
  */
-export class SingleShotGen<T, A> implements Generator<T, A> {
+export class SingleShotGen<T, A> implements IterableIterator<T, A> {
   private called = false
 
   constructor(readonly self: T) {}
