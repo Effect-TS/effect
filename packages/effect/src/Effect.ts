@@ -11726,43 +11726,71 @@ export namespace fn {
 }
 
 /**
- * Creates a function that returns an Effect which is automatically traced with a span pointing to the call site.
+ * Creates a function that returns an Effect, which includes a stack trace
+ * with relevant location information if an error occurs and is automatically
+ * traced with a span pointing to the call site.
  *
- * The function can be created both using a generator function that can yield effects or using a normal function.
+ * The name passed as the first argument is used as a span.
  *
- * `Effect.fn` also acts as a `pipe` function, allowing you to create a pipeline after the function definition.
+ * The name is optional; if not provided, the span won't be added, but the stack trace will still be present.
+ *
+ * The function can be created using either a generator function that can yield
+ * effects or a normal function that returns an effect.
+ *
+ * `Effect.fn` also acts as a `pipe` function, allowing you to create a pipeline
+ * after the function definition using the effect returned by the generator
+ * function as the starting value of the pipeline.
+ *
+ * @see {@link fnUntraced} for a version of this function that doesn't add a span.
  *
  * @example
  * ```ts
  * // Title: Creating a traced function with a generator function
  * import { Effect } from "effect"
  *
- * const logExample = Effect.fn("logExample")(
+ * const logExample = Effect.fn("logExample")( // Definition location: 4
  *   function*<N extends number>(n: N) {
  *     yield* Effect.annotateCurrentSpan("n", n)
- *     yield* Effect.logInfo(`got: ${n}`)
- *     yield* Effect.fail(new Error())
+ *     console.log(`got: ${n}`)
+ *     yield* Effect.fail(new Error()) // Raise location: 8
  *   }
  * )
  *
  * Effect.runFork(
- *   // This location is printed in the stack trace of the following `Effect.logError`
- *   logExample(100).pipe(
+ *   logExample(100).pipe( // Call location: 13
  *     Effect.catchAllCause(Effect.logError)
  *   )
+ * )
+ * // Output:
+ * // got: 100
+ * // timestamp=... level=ERROR fiber=#0 cause="Error: An error has occurred
+ * //     at <anonymous> (/.../index.ts:8:24) <= Raise location
+ * //     at logExample (/.../index.ts:4:27)  <= Definition location
+ * //     at logExample (/.../index.ts:13:3)" <= Call location
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: Creating a traced function with a function
+ * import { Effect } from "effect"
+ *
+ * const logExample = Effect.fn("logExample")(
+ *   function(n: number) {
+ *     console.log(`got: ${n}`)
+ *     return Effect.fail(new Error(`An error has occurred`))
+ *   }
  * )
  * ```
  *
  * @example
  * ```ts
- * // Title: Creating a traced function with a pipeline
+ * // Title: Creating a traced function and a pipeline
  * import { Effect } from "effect"
  *
- * const logExample = Effect.fn("example")(
- *   function* <N extends number>(n: N) {
- *     yield* Effect.annotateCurrentSpan("n", n)
- *     yield* Effect.logInfo(`got: ${n}`)
- *     yield* Effect.fail(new Error())
+ * const logExample = Effect.fn("logExample")(
+ *   function(n: number) {
+ *     console.log(`got: ${n}`)
+ *     return Effect.fail(new Error(`An error has occurred`))
  *   },
  *   // Add a delay to the effect
  *   Effect.delay("1 second")
@@ -11881,26 +11909,9 @@ function fnApply(options: {
 }
 
 /**
- * Creates a function that returns an Effect.
+ * Same as {@link fn}, but allows you to create a function that is not traced, for when performance is critical.
  *
- * The function can be created using a generator function that can yield
- * effects.
- *
- * `Effect.fnUntraced` also acts as a `pipe` function, allowing you to create a pipeline after the function definition.
- *
- * @example
- * ```ts
- * // Title: Creating a traced function with a generator function
- * import { Effect } from "effect"
- *
- * const logExample = Effect.fnUntraced(function*<N extends number>(n: N) {
- *   yield* Effect.annotateCurrentSpan("n", n)
- *   yield* Effect.logInfo(`got: ${n}`)
- *   yield* Effect.fail(new Error())
- * })
- *
- * Effect.runFork(logExample(100))
- * ```
+ * @see {@link fn} for a version that includes tracing.
  *
  * @since 3.12.0
  * @category function
