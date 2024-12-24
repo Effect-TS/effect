@@ -4809,20 +4809,28 @@ export const interruptibleMask: <A, E, R>(
  *
  * @example
  * ```ts
- * import { Effect } from "effect"
+ * import { Console, Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   yield* Effect.log("start")
- *   yield* Effect.sleep("2 seconds")
- *   yield* Effect.interrupt
- *   yield* Effect.log("done")
- * }).pipe(Effect.onInterrupt(() => Effect.log("interrupted")))
+ * const handler = Effect.onInterrupt((_fibers) => Console.log("Cleanup completed"))
  *
- * Effect.runFork(program)
+ * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
+ *
+ * Effect.runFork(success)
  * // Output:
- * // timestamp=... level=INFO fiber=#0 message=start
- * // timestamp=... level=INFO fiber=#0 message=interrupted
+ * // Task completed
  *
+ * const failure = Console.log("Task failed").pipe(Effect.andThen(Effect.fail("some error")), handler)
+ *
+ * Effect.runFork(failure)
+ * // Output:
+ * // Task failed
+ *
+ * const interruption = Console.log("Task interrupted").pipe(Effect.andThen(Effect.interrupt), handler)
+ *
+ * Effect.runFork(interruption)
+ * // Output:
+ * // Task interrupted
+ * // Cleanup completed
  * ```
  *
  * @since 2.0.0
@@ -5242,20 +5250,86 @@ export const merge: <A, E, R>(self: Effect<A, E, R>) => Effect<E | A, never, R> 
 export const negate: <E, R>(self: Effect<boolean, E, R>) => Effect<boolean, E, R> = effect.negate
 
 /**
- * This function constructs a scoped resource from an `acquire` and `release`
- * `Effect` value.
+ * Creates a scoped resource using an `acquire` and `release` effect.
  *
- * If the `acquire` `Effect` value successfully completes execution, then the
- * `release` `Effect` value will be added to the finalizers associated with the
- * scope of this `Effect` value, and it is guaranteed to be run when the scope
- * is closed.
+ * **Details**
  *
- * The `acquire` and `release` `Effect` values will be run uninterruptibly.
- * Additionally, the `release` `Effect` value may depend on the `Exit` value
- * specified when the scope is closed.
+ * This function helps manage resources by combining two `Effect` values: one
+ * for acquiring the resource and one for releasing it.
+ *
+ * `acquireRelease` does the following:
+ *
+ *   1. Ensures that the effect that acquires the resource will not be
+ *      interrupted. Note that acquisition may still fail due to internal
+ *      reasons (such as an uncaught exception).
+ *   2. Ensures that the `release` effect will not be interrupted, and will be
+ *      executed as long as the acquisition effect successfully acquires the
+ *      resource.
+ *
+ * If the `acquire` function succeeds, the `release` function is added to the
+ * list of finalizers for the scope. This ensures that the release will happen
+ * automatically when the scope is closed.
+ *
+ * Both `acquire` and `release` run uninterruptibly, meaning they cannot be
+ * interrupted while they are executing.
+ *
+ * Additionally, the `release` function can be influenced by the exit value when
+ * the scope closes, allowing for custom handling of how the resource is
+ * released based on the execution outcome.
+ *
+ * **When to Use**
+ *
+ * This function is used to ensure that an effect that represents the
+ * acquisition of a resource (for example, opening a file, launching a thread,
+ * etc.) will not be interrupted, and that the resource will always be released
+ * when the `Effect` completes execution.
+ *
+ * @see {@link acquireUseRelease} for a version that automatically handles the scoping of resources.
+ *
+ * @example
+ * ```ts
+ * // Title: Defining a Simple Resource
+ * import { Effect } from "effect"
+ *
+ * // Define an interface for a resource
+ * interface MyResource {
+ *   readonly contents: string
+ *   readonly close: () => Promise<void>
+ * }
+ *
+ * // Simulate resource acquisition
+ * const getMyResource = (): Promise<MyResource> =>
+ *   Promise.resolve({
+ *     contents: "lorem ipsum",
+ *     close: () =>
+ *       new Promise((resolve) => {
+ *         console.log("Resource released")
+ *         resolve()
+ *       })
+ *   })
+ *
+ * // Define how the resource is acquired
+ * const acquire = Effect.tryPromise({
+ *   try: () =>
+ *     getMyResource().then((res) => {
+ *       console.log("Resource acquired")
+ *       return res
+ *     }),
+ *   catch: () => new Error("getMyResourceError")
+ * })
+ *
+ * // Define how the resource is released
+ * const release = (res: MyResource) => Effect.promise(() => res.close())
+ *
+ * // Create the resource management workflow
+ * //
+ * //      ┌─── Effect<MyResource, Error, Scope>
+ * //      ▼
+ * const resource = Effect.acquireRelease(acquire, release)
+ * ```
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const acquireRelease: {
   <A, X, R2>(
@@ -5268,22 +5342,17 @@ export const acquireRelease: {
 } = fiberRuntime.acquireRelease
 
 /**
- * This function constructs a scoped resource from an `acquire` and `release`
- * `Effect` value.
+ * Creates a scoped resource with an interruptible acquire action.
  *
- * If the `acquire` `Effect` value successfully completes execution, then the
- * `release` `Effect` value will be added to the finalizers associated with the
- * scope of this `Effect` value, and it is guaranteed to be run when the scope
- * is closed.
+ * **Details**
  *
- * The `acquire` `Effect` values will be run interruptibly.
- * The `release` `Effect` values will be run uninterruptibly.
- *
- * Additionally, the `release` `Effect` value may depend on the `Exit` value
- * specified when the scope is closed.
+ * This function is similar to {@link acquireRelease}, but it allows the
+ * acquisition of the resource to be interrupted. The `acquire` effect, which
+ * represents the process of obtaining the resource, can be interrupted if
+ * necessary.
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const acquireReleaseInterruptible: {
   <X, R2>(
@@ -5296,30 +5365,70 @@ export const acquireReleaseInterruptible: {
 } = fiberRuntime.acquireReleaseInterruptible
 
 /**
- * This function is used to ensure that an `Effect` value that represents the
- * acquisition of a resource (for example, opening a file, launching a thread,
- * etc.) will not be interrupted, and that the resource will always be released
- * when the `Effect` value completes execution.
+ * Creates a scoped resource and automatically handles the use effect during the
+ * scope.
  *
- * `acquireUseRelease` does the following:
+ * **Details**
  *
- *   1. Ensures that the `Effect` value that acquires the resource will not be
- *      interrupted. Note that acquisition may still fail due to internal
- *      reasons (such as an uncaught exception).
- *   2. Ensures that the `release` `Effect` value will not be interrupted,
- *      and will be executed as long as the acquisition `Effect` value
- *      successfully acquires the resource.
+ * This function is similar to {@link acquireRelease}, but it introduces an
+ * additional `use` effect. This allows you to automatically execute the `use`
+ * effect while the resource is acquired, and it also ensures that the `release`
+ * effect is performed when the scope is closed.
  *
- * During the time period between the acquisition and release of the resource,
- * the `use` `Effect` value will be executed.
+ * The `acquire` effect is used to obtain the resource, the `use` effect
+ * operates while the resource is in use, and the `release` effect cleans up the
+ * resource when the scope ends.
  *
- * If the `release` `Effect` value fails, then the entire `Effect` value will
- * fail, even if the `use` `Effect` value succeeds. If this fail-fast behavior
- * is not desired, errors produced by the `release` `Effect` value can be caught
- * and ignored.
+ * @example
+ * ```ts
+ * // Title: Automatically Managing Resource Lifetime
+ * import { Effect, Console } from "effect"
+ *
+ * // Define an interface for a resource
+ * interface MyResource {
+ *   readonly contents: string
+ *   readonly close: () => Promise<void>
+ * }
+ *
+ * // Simulate resource acquisition
+ * const getMyResource = (): Promise<MyResource> =>
+ *   Promise.resolve({
+ *     contents: "lorem ipsum",
+ *     close: () =>
+ *       new Promise((resolve) => {
+ *         console.log("Resource released")
+ *         resolve()
+ *       })
+ *   })
+ *
+ * // Define how the resource is acquired
+ * const acquire = Effect.tryPromise({
+ *   try: () =>
+ *     getMyResource().then((res) => {
+ *       console.log("Resource acquired")
+ *       return res
+ *     }),
+ *   catch: () => new Error("getMyResourceError")
+ * })
+ *
+ * // Define how the resource is released
+ * const release = (res: MyResource) => Effect.promise(() => res.close())
+ *
+ * const use = (res: MyResource) => Console.log(`content is ${res.contents}`)
+ *
+ * //      ┌─── Effect<void, Error, never>
+ * //      ▼
+ * const program = Effect.acquireUseRelease(acquire, use, release)
+ *
+ * Effect.runPromise(program)
+ * // Output:
+ * // Resource acquired
+ * // content is lorem ipsum
+ * // Resource released
+ * ```
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const acquireUseRelease: {
   <A2, E2, R2, A, X, R3>(
@@ -5334,30 +5443,166 @@ export const acquireUseRelease: {
 } = core.acquireUseRelease
 
 /**
- * This function adds a finalizer to the scope of the calling `Effect` value.
- * The finalizer is guaranteed to be run when the scope is closed, and it may
- * depend on the `Exit` value that the scope is closed with.
+ * This function adds a finalizer to the scope of the calling effect. The
+ * finalizer is guaranteed to be run when the scope is closed, and it may depend
+ * on the `Exit` value that the scope is closed with.
+ *
+ * @example
+ * ```ts
+ * // Title: Adding a Finalizer on Success
+ * import { Effect, Console } from "effect"
+ *
+ * //      ┌─── Effect<string, never, Scope>
+ * //      ▼
+ * const program = Effect.gen(function* () {
+ *   yield* Effect.addFinalizer((exit) =>
+ *     Console.log(`Finalizer executed. Exit status: ${exit._tag}`)
+ *   )
+ *   return "some result"
+ * })
+ *
+ * // Wrapping the effect in a scope
+ * //
+ * //      ┌─── Effect<string, never, never>
+ * //      ▼
+ * const runnable = Effect.scoped(program)
+ *
+ * Effect.runPromiseExit(runnable).then(console.log)
+ * // Output:
+ * // Finalizer executed. Exit status: Success
+ * // { _id: 'Exit', _tag: 'Success', value: 'some result' }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: Adding a Finalizer on Failure
+ * import { Effect, Console } from "effect"
+ *
+ * //      ┌─── Effect<never, string, Scope>
+ * //      ▼
+ * const program = Effect.gen(function* () {
+ *   yield* Effect.addFinalizer((exit) =>
+ *     Console.log(`Finalizer executed. Exit status: ${exit._tag}`)
+ *   )
+ *   return yield* Effect.fail("Uh oh!")
+ * })
+ *
+ * // Wrapping the effect in a scope
+ * //
+ * //      ┌─── Effect<never, string, never>
+ * //      ▼
+ * const runnable = Effect.scoped(program)
+ *
+ * Effect.runPromiseExit(runnable).then(console.log)
+ * // Output:
+ * // Finalizer executed. Exit status: Failure
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'Uh oh!' }
+ * // }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Title: Adding a Finalizer on Interruption
+ * import { Effect, Console } from "effect"
+ *
+ * //      ┌─── Effect<never, never, Scope>
+ * //      ▼
+ * const program = Effect.gen(function* () {
+ *   yield* Effect.addFinalizer((exit) =>
+ *     Console.log(`Finalizer executed. Exit status: ${exit._tag}`)
+ *   )
+ *   return yield* Effect.interrupt
+ * })
+ *
+ * // Wrapping the effect in a scope
+ * //
+ * //      ┌─── Effect<never, never, never>
+ * //      ▼
+ * const runnable = Effect.scoped(program)
+ *
+ * Effect.runPromiseExit(runnable).then(console.log)
+ * // Output:
+ * // Finalizer executed. Exit status: Failure
+ * // {
+ * //   _id: 'Exit',
+ * //   _tag: 'Failure',
+ * //   cause: {
+ * //     _id: 'Cause',
+ * //     _tag: 'Interrupt',
+ * //     fiberId: {
+ * //       _id: 'FiberId',
+ * //       _tag: 'Runtime',
+ * //       id: 0,
+ * //       startTimeMillis: ...
+ * //     }
+ * //   }
+ * // }
+ * ```
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const addFinalizer: <X, R>(
   finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<X, never, R>
 ) => Effect<void, never, Scope.Scope | R> = fiberRuntime.addFinalizer
 
 /**
- * Returns an effect that, if this effect _starts_ execution, then the
- * specified `finalizer` is guaranteed to be executed, whether this effect
+ * Guarantees the execution of a finalizer when an effect starts execution.
+
+ * **Details**
+
+ * This function allows you to specify a `finalizer` effect that will always be
+ * run once the effect starts execution, regardless of whether the effect
  * succeeds, fails, or is interrupted.
  *
- * For use cases that need access to the effect's result, see `onExit`.
+ * **When to Use**
  *
- * Finalizers offer very powerful guarantees, but they are low-level, and
- * should generally not be used for releasing resources. For higher-level
- * logic built on `ensuring`, see the `acquireRelease` family of methods.
+ * This is useful when you need to ensure
+ * that certain cleanup or final steps are executed in all cases, such as
+ * releasing resources or performing necessary logging.
+
+ * While this function provides strong guarantees about executing the finalizer,
+ * it is considered a low-level tool, which may not be ideal for more complex
+ * resource management. For higher-level resource management with automatic
+ * acquisition and release, see the {@link acquireRelease} family of functions.
+ * For use cases where you need access to the result of an effect, consider
+ * using {@link onExit}.
+ *
+ *
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const handler = Effect.ensuring(Console.log("Cleanup completed"))
+ *
+ * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
+ *
+ * Effect.runFork(success)
+ * // Output:
+ * // Task completed
+ * // Cleanup completed
+ *
+ * const failure = Console.log("Task failed").pipe(Effect.andThen(Effect.fail("some error")), handler)
+ *
+ * Effect.runFork(failure)
+ * // Output:
+ * // Task failed
+ * // Cleanup completed
+ *
+ * const interruption = Console.log("Task interrupted").pipe(Effect.andThen(Effect.interrupt), handler)
+ *
+ * Effect.runFork(interruption)
+ * // Output:
+ * // Task interrupted
+ * // Cleanup completed
+ * ```
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const ensuring: {
   <X, R1>(finalizer: Effect<X, never, R1>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R1 | R>
@@ -5368,8 +5613,35 @@ export const ensuring: {
  * Runs the specified effect if this effect fails, providing the error to the
  * effect if it exists. The provided effect will not be interrupted.
  *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const handler = Effect.onError((cause) => Console.log(`Cleanup completed: ${cause}`))
+ *
+ * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
+ *
+ * Effect.runFork(success)
+ * // Output:
+ * // Task completed
+ *
+ * const failure = Console.log("Task failed").pipe(Effect.andThen(Effect.fail("some error")), handler)
+ *
+ * Effect.runFork(failure)
+ * // Output:
+ * // Task failed
+ * // Cleanup completed: Error: some error
+ *
+ * const interruption = Console.log("Task interrupted").pipe(Effect.andThen(Effect.interrupt), handler)
+ *
+ * Effect.runFork(interruption)
+ * // Output:
+ * // Task interrupted
+ * // Cleanup completed: All fibers interrupted without errors.
+ * ```
+ *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const onError: {
   <E, X, R2>(
@@ -5385,8 +5657,36 @@ export const onError: {
  * Ensures that a cleanup functions runs, whether this effect succeeds, fails,
  * or is interrupted.
  *
+ * @example
+ * ```ts
+ * import { Console, Effect, Exit } from "effect"
+ *
+ * const handler = Effect.onExit((exit) => Console.log(`Cleanup completed: ${Exit.getOrElse(exit, String)}`))
+ *
+ * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
+ *
+ * Effect.runFork(success)
+ * // Output:
+ * // Task completed
+ * // Cleanup completed: some result
+ *
+ * const failure = Console.log("Task failed").pipe(Effect.andThen(Effect.fail("some error")), handler)
+ *
+ * Effect.runFork(failure)
+ * // Output:
+ * // Task failed
+ * // Cleanup completed: Error: some error
+ *
+ * const interruption = Console.log("Task interrupted").pipe(Effect.andThen(Effect.interrupt), handler)
+ *
+ * Effect.runFork(interruption)
+ * // Output:
+ * // Task interrupted
+ * // Cleanup completed: All fibers interrupted without errors.
+ * ```
+ *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const onExit: {
   <A, E, X, R2>(
@@ -5400,13 +5700,13 @@ export const onExit: {
 
 /**
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const parallelFinalizers: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = fiberRuntime.parallelFinalizers
 
 /**
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const finalizersMask: (
   strategy: ExecutionStrategy
@@ -5415,21 +5715,20 @@ export const finalizersMask: (
 ) => Effect<A, E, R> = fiberRuntime.finalizersMask
 
 /**
- * Returns a new scoped workflow that runs finalizers added to the scope of
- * this workflow sequentially in the reverse of the order in which they were
- * added. Note that finalizers are run sequentially by default so this only
- * has meaning if used within a scope where finalizers are being run in
- * parallel.
+ * Returns a new scoped workflow that runs finalizers added to the scope of this
+ * workflow sequentially in the reverse of the order in which they were added.
+ * Note that finalizers are run sequentially by default so this only has meaning
+ * if used within a scope where finalizers are being run concurrently.
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const sequentialFinalizers: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> =
   fiberRuntime.sequentialFinalizers
 
 /**
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const scope: Effect<Scope.Scope, never, Scope.Scope> = fiberRuntime.scope
 
@@ -5437,7 +5736,7 @@ export const scope: Effect<Scope.Scope, never, Scope.Scope> = fiberRuntime.scope
  * Accesses the current scope and uses it to perform the specified effect.
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const scopeWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) => Effect<A, E, R | Scope.Scope> =
   fiberRuntime.scopeWith
@@ -5448,7 +5747,7 @@ export const scopeWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) =>
  * failure, or interruption).
  *
  * @since 3.11.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) => Effect<A, E, R> =
   fiberRuntime.scopedWith
@@ -5459,17 +5758,17 @@ export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) =
  * execution, whether by success, failure, or interruption.
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const scoped: <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, Exclude<R, Scope.Scope>> =
   fiberRuntime.scopedEffect
 
 /**
- * Scopes all resources acquired by `resource` to the lifetime of `use`
+ * Scopes all resources acquired by `self` to the lifetime of `use`
  * without effecting the scope of any resources acquired by `use`.
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const using: {
   <A, A2, E2, R2>(
@@ -5486,7 +5785,7 @@ export const using: {
  * well as a finalizer that can be run to close the scope of this workflow.
  *
  * @since 2.0.0
- * @category scoping, resources & finalization
+ * @category Scoping, Resources & Finalization
  */
 export const withEarlyRelease: <A, E, R>(
   self: Effect<A, E, R>
