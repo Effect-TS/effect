@@ -5796,7 +5796,7 @@ export const withEarlyRelease: <A, E, R>(
  * waiting for the end of all child fibers forked by the effect.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const awaitAllChildren: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = circular.awaitAllChildren
 
@@ -5805,7 +5805,7 @@ export const awaitAllChildren: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, 
  * workflow.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const daemonChildren: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = fiberRuntime.daemonChildren
 
@@ -5813,7 +5813,7 @@ export const daemonChildren: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
  * Constructs an effect with information about the current `Fiber`.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const descriptor: Effect<Fiber.Fiber.Descriptor> = effect.descriptor
 
@@ -5821,7 +5821,7 @@ export const descriptor: Effect<Fiber.Fiber.Descriptor> = effect.descriptor
  * Constructs an effect based on information about the current `Fiber`.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const descriptorWith: <A, E, R>(f: (descriptor: Fiber.Fiber.Descriptor) => Effect<A, E, R>) => Effect<A, E, R> =
   effect.descriptorWith
@@ -5831,7 +5831,7 @@ export const descriptorWith: <A, E, R>(f: (descriptor: Fiber.Fiber.Descriptor) =
  * `FiberRef` values.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const diffFiberRefs: <A, E, R>(
   self: Effect<A, E, R>
@@ -5843,7 +5843,7 @@ export const diffFiberRefs: <A, E, R>(
  * effect succeeds.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const ensuringChild: {
   <X, R2>(
@@ -5860,7 +5860,7 @@ export const ensuringChild: {
  * will be invoked, whether or not this effect succeeds.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const ensuringChildren: {
   <X, R2>(
@@ -5874,13 +5874,13 @@ export const ensuringChildren: {
 
 /**
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const fiberId: Effect<FiberId.FiberId> = core.fiberId
 
 /**
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const fiberIdWith: <A, E, R>(f: (descriptor: FiberId.Runtime) => Effect<A, E, R>) => Effect<A, E, R> =
   core.fiberIdWith
@@ -5907,7 +5907,7 @@ export const fiberIdWith: <A, E, R>(f: (descriptor: FiberId.Runtime) => Effect<A
  * behavior is not desired, you may use the `forkDaemon` or `forkIn` methods.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const fork: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R> = fiberRuntime.fork
 
@@ -5917,7 +5917,7 @@ export const fork: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber
  * returned effect terminates, the forked fiber will continue running.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const forkDaemon: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R> =
   fiberRuntime.forkDaemon
@@ -5927,7 +5927,7 @@ export const forkDaemon: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.Runtim
  * composite fiber that produces a list of their results, in order.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const forkAll: {
   (
@@ -5953,7 +5953,7 @@ export const forkAll: {
  * when the scope is closed.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const forkIn: {
   (scope: Scope.Scope): <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, R>
@@ -5964,7 +5964,7 @@ export const forkIn: {
  * Forks the fiber in a `Scope`, interrupting it when the scope is closed.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const forkScoped: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber<A, E>, never, Scope.Scope | R> =
   circular.forkScoped
@@ -5973,7 +5973,7 @@ export const forkScoped: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.Runtim
  * Like fork but handles an error with the provided handler.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const forkWithErrorHandler: {
   <E, X>(
@@ -5990,7 +5990,7 @@ export const forkWithErrorHandler: {
  * fiber.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const fromFiber: <A, E>(fiber: Fiber.Fiber<A, E>) => Effect<A, E> = circular.fromFiber
 
@@ -5999,7 +5999,7 @@ export const fromFiber: <A, E>(fiber: Fiber.Fiber<A, E>) => Effect<A, E> = circu
  * fiber.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const fromFiberEffect: <A, E, R>(fiber: Effect<Fiber.Fiber<A, E>, E, R>) => Effect<A, E, R> =
   circular.fromFiberEffect
@@ -6009,7 +6009,7 @@ export const fromFiberEffect: <A, E, R>(fiber: Effect<Fiber.Fiber<A, E>, E, R>) 
  * forked in the effect are reported to the specified supervisor.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const supervised: {
   <X>(supervisor: Supervisor.Supervisor<X>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
@@ -6025,7 +6025,7 @@ export const supervised: {
  * effectively extending their lifespans into the parent scope.
  *
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const transplant: <A, E, R>(
   f: (grafter: <A2, E2, R2>(effect: Effect<A2, E2, R2>) => Effect<A2, E2, R2>) => Effect<A, E, R>
@@ -6033,7 +6033,7 @@ export const transplant: <A, E, R>(
 
 /**
  * @since 2.0.0
- * @category supervision & fibers
+ * @category Supervision & Fibers
  */
 export const withConcurrency: {
   (concurrency: number | "unbounded"): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
