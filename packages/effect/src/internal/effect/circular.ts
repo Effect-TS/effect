@@ -583,58 +583,63 @@ export const timeoutTo = dual<
       readonly duration: Duration.DurationInput
     }
   ) => Effect.Effect<B | B1, E, R>
->(2, (self, { duration, onSuccess, onTimeout }) =>
-  core.fiberIdWith((parentFiberId) =>
-    fiberRuntime.raceFibersWith(
-      self,
-      core.interruptible(effect.sleep(duration)),
-      {
-        onSelfWin: (winner, loser) =>
-          core.flatMap(
-            winner.await,
-            (exit) => {
-              if (exit._tag === "Success") {
-                return core.flatMap(
-                  winner.inheritAll,
-                  () =>
-                    core.as(
-                      core.interruptAsFiber(loser, parentFiberId),
-                      onSuccess(exit.value)
+>(
+  2,
+  (self, { duration, onSuccess, onTimeout }) =>
+    core.fiberIdWith((parentFiberId) =>
+      core.uninterruptibleMask((restore) =>
+        fiberRuntime.raceFibersWith(
+          restore(self),
+          core.interruptible(effect.sleep(duration)),
+          {
+            onSelfWin: (winner, loser) =>
+              core.flatMap(
+                winner.await,
+                (exit) => {
+                  if (exit._tag === "Success") {
+                    return core.flatMap(
+                      winner.inheritAll,
+                      () =>
+                        core.as(
+                          core.interruptAsFiber(loser, parentFiberId),
+                          onSuccess(exit.value)
+                        )
                     )
-                )
-              } else {
-                return core.flatMap(
-                  core.interruptAsFiber(loser, parentFiberId),
-                  () => core.exitFailCause(exit.cause)
-                )
-              }
-            }
-          ),
-        onOtherWin: (winner, loser) =>
-          core.flatMap(
-            winner.await,
-            (exit) => {
-              if (exit._tag === "Success") {
-                return core.flatMap(
-                  winner.inheritAll,
-                  () =>
-                    core.as(
+                  } else {
+                    return core.flatMap(
                       core.interruptAsFiber(loser, parentFiberId),
-                      onTimeout()
+                      () => core.exitFailCause(exit.cause)
                     )
-                )
-              } else {
-                return core.flatMap(
-                  core.interruptAsFiber(loser, parentFiberId),
-                  () => core.exitFailCause(exit.cause)
-                )
-              }
-            }
-          ),
-        otherScope: globalScope
-      }
+                  }
+                }
+              ),
+            onOtherWin: (winner, loser) =>
+              core.flatMap(
+                winner.await,
+                (exit) => {
+                  if (exit._tag === "Success") {
+                    return core.flatMap(
+                      winner.inheritAll,
+                      () =>
+                        core.as(
+                          core.interruptAsFiber(loser, parentFiberId),
+                          onTimeout()
+                        )
+                    )
+                  } else {
+                    return core.flatMap(
+                      core.interruptAsFiber(loser, parentFiberId),
+                      () => core.exitFailCause(exit.cause)
+                    )
+                  }
+                }
+              ),
+            otherScope: globalScope
+          }
+        )
+      )
     )
-  ))
+)
 
 // circular with Synchronized
 
