@@ -40,7 +40,7 @@ export type GenKindTypeId = typeof GenKindTypeId
 export interface GenKind<F extends TypeLambda, R, O, E, A> extends Variance<F, R, O, E> {
   readonly value: Kind<F, R, O, E, A>
 
-  [Symbol.iterator](): Generator<GenKind<F, R, O, E, A>, A>
+  [Symbol.iterator](): IterableIterator<GenKind<F, R, O, E, A>, A>
 }
 
 /**
@@ -97,7 +97,7 @@ export class GenKindImpl<F extends TypeLambda, R, O, E, A> implements GenKind<F,
   /**
    * @since 2.0.0
    */
-  [Symbol.iterator](): Generator<GenKind<F, R, O, E, A>, A> {
+  [Symbol.iterator](): IterableIterator<GenKind<F, R, O, E, A>, A> {
     return new SingleShotGen<GenKind<F, R, O, E, A>, A>(this as any)
   }
 }
@@ -106,7 +106,7 @@ export class GenKindImpl<F extends TypeLambda, R, O, E, A> implements GenKind<F,
  * @category constructors
  * @since 2.0.0
  */
-export class SingleShotGen<T, A> implements Generator<T, A> {
+export class SingleShotGen<T, A> implements IterableIterator<T, A> {
   private called = false
 
   constructor(readonly self: T) {}
@@ -147,7 +147,7 @@ export class SingleShotGen<T, A> implements Generator<T, A> {
   /**
    * @since 2.0.0
    */
-  [Symbol.iterator](): Generator<T, A> {
+  [Symbol.iterator](): IterableIterator<T, A> {
     return new SingleShotGen<T, A>(this.self)
   }
 }
