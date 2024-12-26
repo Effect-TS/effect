@@ -2582,7 +2582,8 @@ export const validateAll = dual<
     core.flatMap(
       partition(elements, f, {
         concurrency: options?.concurrency,
-        batching: options?.batching
+        batching: options?.batching,
+        concurrentFinalizers: options?.concurrentFinalizers
       }),
       ([es, bs]) =>
         es.length === 0
