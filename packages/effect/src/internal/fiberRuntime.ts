@@ -1847,7 +1847,8 @@ const allValidate = (
   return core.flatMap(
     forEach(eitherEffects, identity, {
       concurrency: options?.concurrency,
-      batching: options?.batching
+      batching: options?.batching,
+      concurrentFinalizers: options?.concurrentFinalizers
     }),
     (eithers) => {
       const none = Option.none()
@@ -1899,14 +1900,16 @@ const allEither = (
     return forEach(eitherEffects, identity, {
       concurrency: options?.concurrency,
       batching: options?.batching,
-      discard: true
+      discard: true,
+      concurrentFinalizers: options?.concurrentFinalizers
     })
   }
 
   return core.map(
     forEach(eitherEffects, identity, {
       concurrency: options?.concurrency,
-      batching: options?.batching
+      batching: options?.batching,
+      concurrentFinalizers: options?.concurrentFinalizers
     }),
     (eithers) =>
       reconcile._tag === "Some" ?
