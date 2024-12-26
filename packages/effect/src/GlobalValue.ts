@@ -14,7 +14,7 @@
  */
 import * as version from "./internal/version.js"
 
-const globalStoreId = Symbol.for(`effect/GlobalValue/globalStoreId/${version.getCurrentVersion()}`)
+const globalStoreId = `effect/GlobalValue/globalStoreId/${version.getCurrentVersion()}`
 
 if (!(globalStoreId in globalThis)) {
   ;(globalThis as any)[globalStoreId] = new Map()
