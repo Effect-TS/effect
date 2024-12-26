@@ -42,11 +42,11 @@ let globalStore: Map<unknown, any>
  * @since 2.0.0
  */
 export const globalValue = <A>(id: unknown, compute: () => A): A => {
-  if (typeof globalStore === "undefined") {
-    if (!(globalStoreId in globalThis)) {
-      ;(globalThis as any)[globalStoreId] = new Map()
-    }
-    globalStore = (globalThis as any)[globalStoreId] as Map<unknown, any>
+  if (!globalStore) {
+    // @ts-expect-error
+    globalThis[globalStoreId] = new Map()
+    // @ts-expect-error
+    globalStore = globalThis[globalStoreId] as Map<unknown, any>
   }
   if (!globalStore.has(id)) {
     globalStore.set(id, compute())
