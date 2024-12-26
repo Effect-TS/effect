@@ -12,6 +12,11 @@
  *
  * @since 2.0.0
  */
+import * as version from "./internal/version.js"
+
+const globalStoreId = `effect/GlobalValue/globalStoreId/${version.getCurrentVersion()}`
+
+let globalStore: Map<unknown, any>
 
 /**
  * Retrieves or computes a global value associated with the given `id`. If the value for this `id`
@@ -37,5 +42,14 @@
  * @since 2.0.0
  */
 export const globalValue = <A>(id: unknown, compute: () => A): A => {
-  return compute()
+  if (typeof globalStore === "undefined") {
+    if (!(globalStoreId in globalThis)) {
+      ;(globalThis as any)[globalStoreId] = new Map()
+    }
+    globalStore = (globalThis as any)[globalStoreId] as Map<unknown, any>
+  }
+  if (!globalStore.has(id)) {
+    globalStore.set(id, compute())
+  }
+  return globalStore.get(id)!
 }
