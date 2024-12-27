@@ -44,7 +44,7 @@ let globalStore: Map<unknown, any>
 export const globalValue = <A>(id: unknown, compute: () => A): A => {
   if (!globalStore) {
     // @ts-expect-error
-    globalThis[globalStoreId] = new Map()
+    globalThis[globalStoreId] ??= new Map()
     // @ts-expect-error
     globalStore = globalThis[globalStoreId] as Map<unknown, any>
   }
