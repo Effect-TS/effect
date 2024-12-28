@@ -333,6 +333,7 @@ export const structuredLogger = makeLogger<unknown, {
   }
 )
 
+/** @internal */
 export const structuredMessage = (u: unknown): unknown => {
   switch (typeof u) {
     case "bigint":
