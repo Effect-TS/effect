@@ -315,7 +315,7 @@ export const isEffect: (u: unknown) => u is Effect<unknown, unknown, unknown> = 
  *   yield* cached.pipe(Effect.andThen(Console.log))
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // expensive task...
  * // result 1
@@ -389,7 +389,7 @@ export const cachedWithTTL: {
  *   yield* cached.pipe(Effect.andThen(Console.log))
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // expensive task...
  * // result 1
@@ -458,7 +458,7 @@ export const cachedInvalidateWithTTL: {
  *   yield* cached.pipe(Effect.andThen(Console.log))
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // non-cached version:
  * // expensive task...
@@ -518,7 +518,7 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  *   console.log(yield* memoized(10))
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Example Output:
  * // non-memoized version:
  * // 2
@@ -565,7 +565,7 @@ export const cachedFunction: <A, B, E, R>(
  *   yield* Effect.repeatN(task2, 2)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // task1
  * // task1
@@ -642,7 +642,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  * //      ▼
  * const resultsAsTuple = Effect.all(tupleOfEffects)
  *
- * Effect.runPromise(resultsAsTuple).then(console.log)
+ * // Effect.runPromise(resultsAsTuple).then(console.log)
  * // Output:
  * // 42
  * // Hello
@@ -661,7 +661,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  * //      ▼
  * const resultsAsArray = Effect.all(iterableOfEffects)
  *
- * Effect.runPromise(resultsAsArray).then(console.log)
+ * // Effect.runPromise(resultsAsArray).then(console.log)
  * // Output:
  * // 1
  * // 2
@@ -681,7 +681,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  * //      ▼
  * const resultsAsStruct = Effect.all(structOfEffects)
  *
- * Effect.runPromise(resultsAsStruct).then(console.log)
+ * // Effect.runPromise(resultsAsStruct).then(console.log)
  * // Output:
  * // 42
  * // Hello
@@ -700,7 +700,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  * //      ▼
  * const resultsAsRecord = Effect.all(recordOfEffects)
  *
- * Effect.runPromise(resultsAsRecord).then(console.log)
+ * // Effect.runPromise(resultsAsRecord).then(console.log)
  * // Output:
  * // 1
  * // 2
@@ -717,7 +717,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  *   Effect.succeed("Task3").pipe(Effect.tap(Console.log))
  * ])
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // Task1
  * // {
@@ -738,7 +738,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  *
  * const program = Effect.all(effects, { mode: "either" })
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // Task1
  * // Task3
@@ -764,7 +764,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  *
  * const program = Effect.all(effects, { mode: "validate" })
  *
- * Effect.runPromiseExit(program).then((result) => console.log("%o", result))
+ * // Effect.runPromiseExit(program).then((result) => console.log("%o", result))
  * // Output:
  * // Task1
  * // Task3
@@ -825,7 +825,7 @@ export const all: <
  *   Effect.allWith({ concurrency: 2 })
  * )
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // timestamp=... level=INFO fiber=#3 message="task2 done"
  * // timestamp=... level=INFO fiber=#2 message="task1 done"
@@ -982,7 +982,7 @@ export declare namespace All {
  *   console.log(successfulResults)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: [1, 2]
  *
  * ```
@@ -1039,7 +1039,7 @@ export const allSuccesses: <X extends Effect<any, any, any>>(
  *   console.log(result)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: [5, 6]
  * ```
  *
@@ -1090,7 +1090,7 @@ export const dropUntil: {
  *   console.log(result)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: [4, 5, 6]
  * ```
  *
@@ -1145,7 +1145,7 @@ export const dropWhile: {
  *   console.log(result)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: [ 1, 2, 3, 4 ]
  * ```
  *
@@ -1192,7 +1192,7 @@ export const takeUntil: {
  *   console.log(result)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: [1, 2, 3]
  * ```
  *
@@ -1245,7 +1245,7 @@ export const takeWhile: {
  *   console.log(allEven)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: true
  * ```
  *
@@ -1294,7 +1294,7 @@ export const every: {
  *   console.log(hasLargeNumber)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: true
  * ```
  *
@@ -1361,7 +1361,7 @@ export const exists: {
  *   console.log(result)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: [2, 4]
  * ```
  *
@@ -1413,7 +1413,7 @@ export const filter: {
  *   (n) => n % 2 === 0 ? Option.some(n) : Option.none()
  * )
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // task1 done
  * // task2 done
@@ -1469,7 +1469,7 @@ export const filterMap: {
  *   console.log(result)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: { _id: 'Option', _tag: 'Some', value: 4 }
  * ```
  *
@@ -1518,7 +1518,7 @@ export const findFirst: {
  *   Console.log(`Currently at index ${index}`).pipe(Effect.as(n * 2))
  * )
  *
- * Effect.runPromise(result).then(console.log)
+ * // Effect.runPromise(result).then(console.log)
  * // Output:
  * // Currently at index 0
  * // Currently at index 1
@@ -1540,7 +1540,7 @@ export const findFirst: {
  *   { discard: true }
  * )
  *
- * Effect.runPromise(result).then(console.log)
+ * // Effect.runPromise(result).then(console.log)
  * // Output:
  * // Currently at index 0
  * // Currently at index 1
@@ -1617,7 +1617,7 @@ export const forEach: {
  *   console.log(firstElement)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: 1
  * ```
  *
@@ -1660,7 +1660,7 @@ export const head: <A, E, R>(self: Effect<Iterable<A>, E, R>) => Effect<A, Cause
  *   console.log(total)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output: 6
  * ```
  *
@@ -1734,7 +1734,7 @@ export const mergeAll: {
  *   }
  * })
  *
- * Effect.runPromise(program).then(console.log, console.error)
+ * // Effect.runPromise(program).then(console.log, console.error)
  * // Output:
  * // [ [ '1 is not even', '3 is not even' ], [ 0, 2, 4 ] ]
  * ```
@@ -1804,7 +1804,7 @@ export const partition: {
  *       .pipe(Effect.map((order) => acc + order.price))
  * )
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // Order 1 processed
  * // Order 2 processed
@@ -1860,7 +1860,7 @@ export const reduce: {
  *   }
  * )
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // Order 1 processed
  * // Order 2 processed
@@ -1920,7 +1920,7 @@ export const reduceWhile: {
  *       .pipe(Effect.map((order) => acc + order.price))
  * )
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // Order 4 processed
  * // Order 3 processed
@@ -1967,7 +1967,7 @@ export const reduceRight: {
  *   (acc, order, i) => acc + order.price
  * )
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // Order 1 processed
  * // Order 2 processed
@@ -2031,7 +2031,7 @@ export const reduceEffect: {
  *   }
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // Hello, World!
  * // Hello, World!
@@ -2081,7 +2081,7 @@ export const replicate: {
  *   yield* Console.log(`Results: ${results.join(", ")}`)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // Task completed
  * // Task completed
@@ -2173,7 +2173,7 @@ export const replicateEffect: {
  *   }
  * })
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // item 1
  * // item 2
@@ -2265,7 +2265,7 @@ export const validateAll: {
  *   }
  * })
  *
- * Effect.runPromise(program).then(console.log, console.error)
+ * // Effect.runPromise(program).then(console.log, console.error)
  * // Output:
  * // item 4
  * // 4
@@ -2382,7 +2382,7 @@ export const validateFirst: {
  * })
  *
  * // Run the program
- * Effect.runPromise(program)
+ * // Effect.runPromise(program)
  * // Output:
  * // Cleaning up example.txt
  *
@@ -2413,7 +2413,7 @@ export const validateFirst: {
  * })
  *
  * // Run the program
- * Effect.runPromise(program)
+ * // Effect.runPromise(program)
  * // Output:
  * // Abort signal received
  *
@@ -2569,7 +2569,7 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Effect<nev
  * //      ▼
  * const program = divide(1, 0)
  *
- * Effect.runPromise(program).catch(console.error)
+ * // Effect.runPromise(program).catch(console.error)
  * // Output:
  * // (FiberFailure) Error: Cannot divide by zero
  * //   ...stack trace...
@@ -2616,7 +2616,7 @@ export const die: (defect: unknown) => Effect<never> = core.die
  * //      ▼
  * const program = divide(1, 0)
  *
- * Effect.runPromise(program).catch(console.error)
+ * // Effect.runPromise(program).catch(console.error)
  * // Output:
  * // (FiberFailure) RuntimeException: Cannot divide by zero
  * //   ...stack trace...
@@ -3332,7 +3332,7 @@ export {
    *   console.log(`Result: ${result}`)
    * })
    *
-   * Effect.runFork(program)
+   * // Effect.runFork(program)
    * // Output: Result: recovered from error: NetworkError
    * ```
    *
@@ -3436,7 +3436,7 @@ export const catchAll: {
  *   )
  * )
  *
- * Effect.runPromise(recovered).then(console.log)
+ * // Effect.runPromise(recovered).then(console.log)
  * // Output: "Recovered from a regular error"
  * ```
  *
@@ -3494,7 +3494,7 @@ export const catchAllCause: {
  * })
  *
  * // We get an Exit.Success because we caught all defects
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // RuntimeException defect caught: Boom!
  * // {
@@ -3724,7 +3724,7 @@ export const catchSomeCause: {
  *
  * // Since we are only catching IllegalArgumentException
  * // we will get an Exit.Failure because we simulated a runtime error.
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // {
  * //   _id: 'Exit',
@@ -4001,7 +4001,7 @@ export const cause: <A, E, R>(self: Effect<A, E, R>) => Effect<Cause.Cause<E>, n
  *
  * const program = Effect.eventually(effect)
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // running effect
  * // running effect
@@ -4095,7 +4095,7 @@ export const ignoreLogged: <A, E, R>(self: Effect<A, E, R>) => Effect<void, neve
  *   concurrency: "unbounded"
  * }).pipe(Effect.asVoid, Effect.parallelErrors)
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // {
  * //   _id: 'Exit',
@@ -4160,7 +4160,7 @@ export const parallelErrors: <A, E, R>(self: Effect<A, E, R>) => Effect<A, Array
  * // Restore the original error handling with unsandbox
  * const main = Effect.unsandbox(program)
  *
- * Effect.runPromise(main).then(console.log)
+ * // Effect.runPromise(main).then(console.log)
  * // Output:
  * // Caught a defect: Oh uh!
  * // fallback result on failure
@@ -4253,7 +4253,7 @@ export declare namespace Retry {
  *
  * const repeated = Effect.retry(task, policy)
  *
- * Effect.runPromise(repeated).then(console.log)
+ * // Effect.runPromise(repeated).then(console.log)
  * // Output:
  * // failure
  * // failure
@@ -4282,7 +4282,7 @@ export declare namespace Retry {
  * })
  *
  * // Retry the task up to 5 times
- * Effect.runPromise(Effect.retry(task, { times: 5 }))
+ * // Effect.runPromise(Effect.retry(task, { times: 5 }))
  * // Output:
  * // failure
  * // failure
@@ -4308,7 +4308,7 @@ export declare namespace Retry {
  *   until: (err) => err === "Error 3"
  * })
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // Action called 1 time(s)
  * // Action called 2 time(s)
@@ -4390,7 +4390,7 @@ export const retry: {
  *   () => Console.log("orElse").pipe(Effect.as("default value"))
  * )
  *
- * Effect.runPromise(repeated).then(console.log)
+ * // Effect.runPromise(repeated).then(console.log)
  * // Output:
  * // failure
  * // failure
@@ -4662,10 +4662,10 @@ export const allowInterrupt: Effect<void> = effect.allowInterrupt
  *   })
  * })
  *
- * Effect.runPromise(program)
+ * // Effect.runPromise(program)
  * // Output: You can interrupt this operation.
  *
- * Effect.runPromise(program.pipe(Effect.uninterruptible))
+ * // Effect.runPromise(program.pipe(Effect.uninterruptible))
  * // Output: This operation cannot be interrupted.
  *
  * ```
@@ -4720,7 +4720,7 @@ export const checkInterruptible: <A, E, R>(f: (isInterruptible: boolean) => Effe
  *   Effect.timeout("1 second")
  * )
  *
- * Effect.runPromiseExit(timedEffect).then(console.log)
+ * // Effect.runPromiseExit(timedEffect).then(console.log)
  * // Output:
  * // Start heavy processing...
  * // {
@@ -4754,7 +4754,7 @@ export const disconnect: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = f
  *   yield* Effect.log("done")
  * })
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // timestamp=... level=INFO fiber=#0 message=start
  * // {
@@ -4815,19 +4815,19 @@ export const interruptibleMask: <A, E, R>(
  *
  * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
  *
- * Effect.runFork(success)
+ * // Effect.runFork(success)
  * // Output:
  * // Task completed
  *
  * const failure = Console.log("Task failed").pipe(Effect.andThen(Effect.fail("some error")), handler)
  *
- * Effect.runFork(failure)
+ * // Effect.runFork(failure)
  * // Output:
  * // Task failed
  *
  * const interruption = Console.log("Task interrupted").pipe(Effect.andThen(Effect.interrupt), handler)
  *
- * Effect.runFork(interruption)
+ * // Effect.runFork(interruption)
  * // Output:
  * // Task interrupted
  * // Cleanup completed
@@ -4919,7 +4919,7 @@ export const liftPredicate: {
  * // Replaces the value 5 with the constant "new value"
  * const program = pipe(Effect.succeed(5), Effect.as("new value"))
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output: "new value"
  * ```
  *
@@ -5046,7 +5046,7 @@ export const flipWith: {
  *   Effect.map(addServiceCharge)
  * )
  *
- * Effect.runPromise(finalAmount).then(console.log)
+ * // Effect.runPromise(finalAmount).then(console.log)
  * // Output: 101
  * ```
  * @since 2.0.0
@@ -5089,10 +5089,10 @@ export const map: {
  * // Apply mapAccum to transform an array of strings
  * const program = Effect.mapAccum(["a", "bb", "ccc"], initialState, transformation)
  *
- * Effect.runPromise(program).then(([finalState, transformedCollection]) => {
- *   console.log(finalState)
- *   console.log(transformedCollection)
- * })
+ * // Effect.runPromise(program).then(([finalState, transformedCollection]) => {
+ * //   console.log(finalState)
+ * //   console.log(transformedCollection)
+ * // })
  * // Output:
  * // 6
  * // [ 'A', 'BB', 'CCC' ]
@@ -5420,7 +5420,7 @@ export const acquireReleaseInterruptible: {
  * //      ▼
  * const program = Effect.acquireUseRelease(acquire, use, release)
  *
- * Effect.runPromise(program)
+ * // Effect.runPromise(program)
  * // Output:
  * // Resource acquired
  * // content is lorem ipsum
@@ -5483,7 +5483,7 @@ export const acquireUseRelease: {
  * //      ▼
  * const runnable = Effect.scoped(program)
  *
- * Effect.runPromiseExit(runnable).then(console.log)
+ * // Effect.runPromiseExit(runnable).then(console.log)
  * // Output:
  * // Finalizer executed. Exit status: Success
  * // { _id: 'Exit', _tag: 'Success', value: 'some result' }
@@ -5509,7 +5509,7 @@ export const acquireUseRelease: {
  * //      ▼
  * const runnable = Effect.scoped(program)
  *
- * Effect.runPromiseExit(runnable).then(console.log)
+ * // Effect.runPromiseExit(runnable).then(console.log)
  * // Output:
  * // Finalizer executed. Exit status: Failure
  * // {
@@ -5539,7 +5539,7 @@ export const acquireUseRelease: {
  * //      ▼
  * const runnable = Effect.scoped(program)
  *
- * Effect.runPromiseExit(runnable).then(console.log)
+ * // Effect.runPromiseExit(runnable).then(console.log)
  * // Output:
  * // Finalizer executed. Exit status: Failure
  * // {
@@ -5597,21 +5597,21 @@ export const addFinalizer: <X, R>(
  *
  * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
  *
- * Effect.runFork(success)
+ * // Effect.runFork(success)
  * // Output:
  * // Task completed
  * // Cleanup completed
  *
  * const failure = Console.log("Task failed").pipe(Effect.andThen(Effect.fail("some error")), handler)
  *
- * Effect.runFork(failure)
+ * // Effect.runFork(failure)
  * // Output:
  * // Task failed
  * // Cleanup completed
  *
  * const interruption = Console.log("Task interrupted").pipe(Effect.andThen(Effect.interrupt), handler)
  *
- * Effect.runFork(interruption)
+ * // Effect.runFork(interruption)
  * // Output:
  * // Task interrupted
  * // Cleanup completed
@@ -5651,20 +5651,20 @@ export const ensuring: {
  *
  * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
  *
- * Effect.runFork(success)
+ * // Effect.runFork(success)
  * // Output:
  * // Task completed
  *
  * const failure = Console.log("Task failed").pipe(Effect.andThen(Effect.fail("some error")), handler)
  *
- * Effect.runFork(failure)
+ * // Effect.runFork(failure)
  * // Output:
  * // Task failed
  * // Cleanup completed: Error: some error
  *
  * const interruption = Console.log("Task interrupted").pipe(Effect.andThen(Effect.interrupt), handler)
  *
- * Effect.runFork(interruption)
+ * // Effect.runFork(interruption)
  * // Output:
  * // Task interrupted
  * // Cleanup completed: All fibers interrupted without errors.
@@ -5708,21 +5708,21 @@ export const onError: {
  *
  * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
  *
- * Effect.runFork(success)
+ * // Effect.runFork(success)
  * // Output:
  * // Task completed
  * // Cleanup completed: some result
  *
  * const failure = Console.log("Task failed").pipe(Effect.andThen(Effect.fail("some error")), handler)
  *
- * Effect.runFork(failure)
+ * // Effect.runFork(failure)
  * // Output:
  * // Task failed
  * // Cleanup completed: Error: some error
  *
  * const interruption = Console.log("Task interrupted").pipe(Effect.andThen(Effect.interrupt), handler)
  *
- * Effect.runFork(interruption)
+ * // Effect.runFork(interruption)
  * // Output:
  * // Task interrupted
  * // Cleanup completed: All fibers interrupted without errors.
@@ -5780,7 +5780,7 @@ export const onExit: {
  *
  * const runnable = Effect.scoped(modified)
  *
- * Effect.runFork(runnable)
+ * // Effect.runFork(runnable)
  * // Output:
  * // Finalizer 2 executed
  * // Finalizer 3 executed
@@ -6069,7 +6069,7 @@ export const fork: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.RuntimeFiber
  *   console.log("parent: finished!")
  * })
  *
- * Effect.runFork(parent)
+ * // Effect.runFork(parent)
  * // Output:
  * // parent: started!
  * // daemon: still running!
@@ -6170,7 +6170,7 @@ export const forkAll: {
  *   })
  * )
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // child: still running!
  * // child: still running!
@@ -6247,7 +6247,7 @@ export const forkIn: {
  *   })
  * )
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // Local scope started!
  * // parent: started!
@@ -6381,7 +6381,7 @@ export const fromFiberEffect: <A, E, R>(fiber: Effect<Fiber.Fiber<A, E>, E, R>) 
  *     return v1 + v2 // Combine the results
  *   })
  *
- * Effect.runPromise(program)
+ * // Effect.runPromise(program)
  * // Output:
  * // number of fibers: 0
  * // number of fibers: 2
@@ -6623,7 +6623,7 @@ export const timedWith: {
  * // than the specified timeout duration
  * const timedEffect = task.pipe(Effect.timeout("1 second"))
  *
- * Effect.runPromiseExit(timedEffect).then(console.log)
+ * // Effect.runPromiseExit(timedEffect).then(console.log)
  * // Output:
  * // Start processing...
  * // {
@@ -6680,7 +6680,7 @@ export const timeout: {
  *   task.pipe(Effect.timeoutOption("1 second"))
  * ])
  *
- * Effect.runPromise(timedOutEffect).then(console.log)
+ * // Effect.runPromise(timedOutEffect).then(console.log)
  * // Output:
  * // Start processing...
  * // Processing complete.
@@ -6739,7 +6739,7 @@ export const timeoutOption: {
  *   })
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // Start processing...
  * // {
@@ -6801,7 +6801,7 @@ export const timeoutFail: {
  *   })
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // Start processing...
  * // {
@@ -6866,7 +6866,7 @@ export const timeoutFailCause: {
  *   })
  * )
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // Start processing...
  * // {
@@ -7003,7 +7003,7 @@ export const mapInputContext: {
  * //      ▼
  * const runnable = Effect.provide(program, DatabaseLive)
  *
- * Effect.runPromise(runnable).then(console.log)
+ * // Effect.runPromise(runnable).then(console.log)
  * // Output:
  * // timestamp=... level=INFO fiber=#0 message="Executing query: SELECT * FROM users"
  * // []
@@ -7090,7 +7090,7 @@ export const provide: {
  * })
  *
  * // Run successfully
- * Effect.runPromise(runnable)
+ * // Effect.runPromise(runnable)
  * // Example Output:
  * // random number: 0.8241872233134417
  * ```
@@ -7472,7 +7472,7 @@ export {
  *
  * const maybe1 = Effect.option(Effect.succeed(1))
  *
- * Effect.runPromiseExit(maybe1).then(console.log)
+ * // Effect.runPromiseExit(maybe1).then(console.log)
  * // Output:
  * // {
  * //   _id: 'Exit',
@@ -7482,7 +7482,7 @@ export {
  *
  * const maybe2 = Effect.option(Effect.fail("Uh oh!"))
  *
- * Effect.runPromiseExit(maybe2).then(console.log)
+ * // Effect.runPromiseExit(maybe2).then(console.log)
  * // Output:
  * // {
  * //   _id: 'Exit',
@@ -7492,7 +7492,7 @@ export {
  *
  * const maybe3 = Effect.option(Effect.die("Boom!"))
  *
- * Effect.runPromiseExit(maybe3).then(console.log)
+ * // Effect.runPromiseExit(maybe3).then(console.log)
  * // Output:
  * // {
  * //   _id: 'Exit',
@@ -7609,7 +7609,7 @@ export const either: <A, E, R>(self: Effect<A, E, R>) => Effect<Either.Either<A,
  * })
  *
  * // We get an Exit.Success because we caught all failures
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // RuntimeException defect caught: Boom!
  * // {
@@ -7655,7 +7655,7 @@ export const exit: <A, E, R>(self: Effect<A, E, R>) => Effect<Exit.Exit<A, E>, n
  *   return isCompleted
  * })
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // 42
  * // true
@@ -7697,7 +7697,7 @@ export {
    *   onFalse: () => Console.log("Tail") // Runs if the predicate is false
    * })
    *
-   * Effect.runFork(flipTheCoin)
+   * // Effect.runFork(flipTheCoin)
    *
    * ```
    * @since 2.0.0
@@ -7897,7 +7897,7 @@ export const unlessEffect: {
  *   Effect.succeed(weight).pipe(Effect.when(() => weight >= 0))
  *
  * // Run with a valid weight
- * Effect.runPromise(validateWeightOption(100)).then(console.log)
+ * // Effect.runPromise(validateWeightOption(100)).then(console.log)
  * // Output:
  * // {
  * //   _id: "Option",
@@ -7906,7 +7906,7 @@ export const unlessEffect: {
  * // }
  *
  * // Run with an invalid weight
- * Effect.runPromise(validateWeightOption(-5)).then(console.log)
+ * // Effect.runPromise(validateWeightOption(-5)).then(console.log)
  * // Output:
  * // {
  * //   _id: "Option",
@@ -8044,7 +8044,7 @@ export const whenRef: {
  *   Effect.flatMap((amount) => applyDiscount(amount, 5))
  * )
  *
- * Effect.runPromise(finalAmount).then(console.log)
+ * // Effect.runPromise(finalAmount).then(console.log)
  * // Output: 95
  * ```
  *
@@ -8113,7 +8113,7 @@ export const flatMap: {
  *   Effect.flatMap((amount) => applyDiscount(amount, 5))
  * )
  *
- * Effect.runPromise(result1).then(console.log)
+ * // Effect.runPromise(result1).then(console.log)
  * // Output: 190
  *
  * // Using Effect.andThen
@@ -8123,7 +8123,7 @@ export const flatMap: {
  *   Effect.andThen((amount) => applyDiscount(amount, 5))
  * )
  *
- * Effect.runPromise(result2).then(console.log)
+ * // Effect.runPromise(result2).then(console.log)
  * // Output: 190
  * ```
  *
@@ -8213,7 +8213,7 @@ export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) =
  *
  * const program = Effect.race(task1, task2)
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // task1 done
  * // task2 interrupted
@@ -8237,7 +8237,7 @@ export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) =
  *
  * const program = Effect.race(task1, task2)
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // task2 done
  * ```
@@ -8260,7 +8260,7 @@ export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) =
  *
  * const program = Effect.race(task1, task2)
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // {
  * //   _id: 'Exit',
@@ -8294,7 +8294,7 @@ export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) =
  * // in Either to capture success or failure
  * const program = Effect.race(Effect.either(task1), Effect.either(task2))
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // task2 interrupted
  * // { _id: 'Either', _tag: 'Left', left: 'task1' }
@@ -8353,7 +8353,7 @@ export const race: {
  *
  * const program = Effect.raceAll([task1, task2, task3])
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // task1 done
  * // task2 interrupted
@@ -8384,7 +8384,7 @@ export const race: {
  *
  * const program = Effect.raceAll([task1, task2, task3])
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // task3 done
  * // task2 interrupted
@@ -8414,7 +8414,7 @@ export const race: {
  *
  * const program = Effect.raceAll([task1, task2, task3])
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // {
  * //   _id: 'Exit',
@@ -8487,7 +8487,7 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  *   Effect.tap(Console.log("more work..."))
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // task1 done
  * // task2 interrupted
@@ -8519,7 +8519,7 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  *   Effect.tap(Console.log("more work..."))
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // task2 interrupted
  * // {
@@ -8555,7 +8555,7 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  *   Effect.disconnect(task2)
  * ).pipe(Effect.tap(Console.log("more work...")))
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // task1 done
  * // more work...
@@ -8617,7 +8617,7 @@ export const raceFirst: {
  *   onOtherDone: (exit) => Console.log(`task2 exited with ${exit}`)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
  * // task1 done
  * // task1 exited with {
@@ -8711,7 +8711,7 @@ export const summarized: {
  *   Effect.flatMap((amount) => applyDiscount(amount, 5))
  * )
  *
- * Effect.runPromise(finalAmount).then(console.log)
+ * // Effect.runPromise(finalAmount).then(console.log)
  * // Output:
  * // Apply a discount to: 100
  * // 95
@@ -8800,7 +8800,7 @@ export const tap: {
  *     Console.log(`random number: ${randomNumber}`)
  * })
  *
- * Effect.runFork(tapping)
+ * // Effect.runFork(tapping)
  * // Example Output:
  * // failure: random number is negative
  * ```
@@ -8846,7 +8846,7 @@ export const tapBoth: {
  *   Console.log(`defect: ${cause}`)
  * )
  *
- * Effect.runFork(tapping1)
+ * // Effect.runFork(tapping1)
  * // No Output
  *
  * // Simulate a severe failure in the system
@@ -8859,7 +8859,7 @@ export const tapBoth: {
  *   Console.log(`defect: ${cause}`)
  * )
  *
- * Effect.runFork(tapping2)
+ * // Effect.runFork(tapping2)
  * // Output:
  * // defect: RuntimeException: Something went wrong
  * //   ... stack trace ...
@@ -8899,7 +8899,7 @@ export const tapDefect: {
  *   Console.log(`expected error: ${error}`)
  * )
  *
- * Effect.runFork(tapping)
+ * // Effect.runFork(tapping)
  * // Output:
  * // expected error: NetworkError
  * ```
@@ -8946,7 +8946,7 @@ export const tapError: {
  *   Console.log(`expected error: ${error.statusCode}`)
  * )
  *
- * Effect.runFork(tapping)
+ * // Effect.runFork(tapping)
  * // Output:
  * // expected error: 504
  * ```
@@ -8986,7 +8986,7 @@ export const tapErrorTag: {
  *   Console.log(`error cause: ${cause}`)
  * )
  *
- * Effect.runFork(tapping1)
+ * // Effect.runFork(tapping1)
  * // Output:
  * // error cause: Error: NetworkError
  *
@@ -8999,7 +8999,7 @@ export const tapErrorTag: {
  *   Console.log(`error cause: ${cause}`)
  * )
  *
- * Effect.runFork(tapping2)
+ * // Effect.runFork(tapping2)
  * // Output:
  * // error cause: RuntimeException: Something went wrong
  * //   ... stack trace ...
@@ -9060,7 +9060,7 @@ export const forever: <A, E, R>(self: Effect<A, E, R>) => Effect<never, E, R> = 
  *   }
  * )
  *
- * Effect.runPromise(result).then(console.log)
+ * // Effect.runPromise(result).then(console.log)
  * // Output: 6
  * ```
  *
@@ -9129,7 +9129,7 @@ export const iterate: {
  *   }
  * )
  *
- * Effect.runPromise(result).then(console.log)
+ * // Effect.runPromise(result).then(console.log)
  * // Output: [1, 2, 3, 4, 5]
  * ```
  *
@@ -9152,7 +9152,7 @@ export const iterate: {
  *   }
  * )
  *
- * Effect.runPromise(result).then(console.log)
+ * // Effect.runPromise(result).then(console.log)
  * // Output:
  * // Currently at state 1
  * // Currently at state 2
@@ -9253,7 +9253,7 @@ export declare namespace Repeat {
  * const policy = Schedule.addDelay(Schedule.recurs(2), () => "100 millis")
  * const program = Effect.repeat(action, policy)
  *
- * Effect.runPromise(program).then((n) => console.log(`repetitions: ${n}`))
+ * // Effect.runPromise(program).then((n) => console.log(`repetitions: ${n}`))
  * ```
  *
  * @example
@@ -9277,7 +9277,7 @@ export declare namespace Repeat {
  * const policy = Schedule.addDelay(Schedule.recurs(2), () => "100 millis")
  * const program = Effect.repeat(action, policy)
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  *
  * @since 2.0.0
  * @category repetition / recursion
@@ -9311,7 +9311,7 @@ export const repeat: {
  * const action = Console.log("success")
  * const program = Effect.repeatN(action, 2)
  *
- * Effect.runPromise(program)
+ * // Effect.runPromise(program)
  * ```
  *
  * @since 2.0.0
@@ -9360,7 +9360,7 @@ export const repeatN: {
  *   })
  * )
  *
- * Effect.runPromise(program).then((n) => console.log(`repetitions: ${n}`))
+ * // Effect.runPromise(program).then((n) => console.log(`repetitions: ${n}`))
  * ```
  *
  * @since 2.0.0
@@ -9569,7 +9569,7 @@ export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  * })
  *
  * // Run and log the result of the successful effect
- * Effect.runPromise(program1).then(console.log)
+ * // Effect.runPromise(program1).then(console.log)
  * // Output: "success: 42"
  *
  * const failure: Effect.Effect<number, Error> = Effect.fail(
@@ -9582,7 +9582,7 @@ export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  * })
  *
  * // Run and log the result of the failed effect
- * Effect.runPromise(program2).then(console.log)
+ * // Effect.runPromise(program2).then(console.log)
  * // Output: "failure: Uh oh!"
  * ```
  *
@@ -9651,7 +9651,7 @@ export const match: {
  *     `succeeded with ${value} value`
  * })
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output: "Die: Uh oh!"
  *
  * ```
@@ -9718,7 +9718,7 @@ export const matchCause: {
  *     Console.log(`succeeded with ${value} value`)
  * })
  *
- * Effect.runPromise(program)
+ * // Effect.runPromise(program)
  * // Output: "Die: Uh oh!"
  * ```
  *
@@ -10052,7 +10052,7 @@ export const withUnhandledErrorLogLevel: {
  * //      ▼
  * const program = Effect.orDie(divide(1, 0))
  *
- * Effect.runPromise(program).catch(console.error)
+ * // Effect.runPromise(program).catch(console.error)
  * // Output:
  * // (FiberFailure) Error: Cannot divide by zero
  * //   ...stack trace...
@@ -10097,7 +10097,7 @@ export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = co
  *   (error) => new Error(`defect: ${error.message}`)
  * )
  *
- * Effect.runPromise(program).catch(console.error)
+ * // Effect.runPromise(program).catch(console.error)
  * // Output:
  * // (FiberFailure) Error: defect: Cannot divide by zero
  * //   ...stack trace...
@@ -10636,7 +10636,7 @@ export const runCallback: <A, E>(
  * // Title: Running a Successful Effect as a Promise
  * import { Effect } from "effect"
  *
- * Effect.runPromise(Effect.succeed(1)).then(console.log)
+ * // Effect.runPromise(Effect.succeed(1)).then(console.log)
  * // Output: 1
  * ```
  *
@@ -10644,7 +10644,7 @@ export const runCallback: <A, E>(
  * //Example: Handling a Failing Effect as a Rejected Promise
  * import { Effect } from "effect"
  *
- * Effect.runPromise(Effect.fail("my error")).catch(console.error)
+ * // Effect.runPromise(Effect.fail("my error")).catch(console.error)
  * // Output:
  * // (FiberFailure) Error: my error
  *
@@ -10678,7 +10678,7 @@ export const runPromise: <A, E>(
  * import { Effect } from "effect"
  *
  * // Execute a successful effect and get the Exit result as a Promise
- * Effect.runPromiseExit(Effect.succeed(1)).then(console.log)
+ * // Effect.runPromiseExit(Effect.succeed(1)).then(console.log)
  * // Output:
  * // {
  * //   _id: "Exit",
@@ -10687,7 +10687,7 @@ export const runPromise: <A, E>(
  * // }
  *
  * // Execute a failing effect and get the Exit result as a Promise
- * Effect.runPromiseExit(Effect.fail("my error")).then(console.log)
+ * // Effect.runPromiseExit(Effect.fail("my error")).then(console.log)
  * // Output:
  * // {
  * //   _id: "Exit",
@@ -10867,7 +10867,7 @@ export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = _run
  *   Effect.validate(task4)
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
+ * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
  * // task1
  * // task2
@@ -10975,7 +10975,7 @@ export const validateWith: {
  * //      ▼
  * const program = Effect.zip(task1, task2)
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // timestamp=... level=INFO fiber=#0 message="task1 done"
  * // timestamp=... level=INFO fiber=#0 message="task2 done"
@@ -10998,7 +10998,7 @@ export const validateWith: {
  * // Run both effects concurrently using the concurrent option
  * const program = Effect.zip(task1, task2, { concurrent: true })
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // timestamp=... level=INFO fiber=#0 message="task2 done"
  * // timestamp=... level=INFO fiber=#0 message="task1 done"
@@ -11063,7 +11063,7 @@ export const zip: {
  *
  * const program = Effect.zipLeft(task1, task2)
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // timestamp=... level=INFO fiber=#0 message="task1 done"
  * // timestamp=... level=INFO fiber=#0 message="task2 done"
@@ -11129,7 +11129,7 @@ export const zipLeft: {
  *
  * const program = Effect.zipRight(task1, task2)
  *
- * Effect.runPromise(program).then(console.log)
+ * // Effect.runPromise(program).then(console.log)
  * // Output:
  * // timestamp=... level=INFO fiber=#0 message="task1 done"
  * // timestamp=... level=INFO fiber=#0 message="task2 done"
@@ -11195,7 +11195,7 @@ export const zipRight: {
  *   (number, string) => number + string.length
  * )
  *
- * Effect.runPromise(task3).then(console.log)
+ * // Effect.runPromise(task3).then(console.log)
  * // Output:
  * // timestamp=... level=INFO fiber=#3 message="task1 done"
  * // timestamp=... level=INFO fiber=#2 message="task2 done"
@@ -11601,7 +11601,7 @@ export const withParentSpan: {
  * //      ▼
  * const maybe1 = Effect.fromNullable(1)
  *
- * Effect.runPromiseExit(maybe1).then(console.log)
+ * // Effect.runPromiseExit(maybe1).then(console.log)
  * // Output:
  * // { _id: 'Exit', _tag: 'Success', value: 1 }
  *
@@ -11609,7 +11609,7 @@ export const withParentSpan: {
  * //      ▼
  * const maybe2 = Effect.fromNullable(null as number | null)
  *
- * Effect.runPromiseExit(maybe2).then(console.log)
+ * // Effect.runPromiseExit(maybe2).then(console.log)
  * // Output:
  * // {
  * //   _id: 'Exit',
@@ -11650,7 +11650,7 @@ export const fromNullable: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuchE
  * //      ▼
  * const option1 = Effect.optionFromOptional(maybe1)
  *
- * Effect.runPromise(option1).then(console.log)
+ * // Effect.runPromise(option1).then(console.log)
  * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
  *
  * //      ┌─── Effect<number, NoSuchElementException, never>
@@ -11661,7 +11661,7 @@ export const fromNullable: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuchE
  * //      ▼
  * const option2 = Effect.optionFromOptional(maybe2)
  *
- * Effect.runPromise(option2).then(console.log)
+ * // Effect.runPromise(option2).then(console.log)
  * // Output: { _tag: 'None' }
  * ```
  *
@@ -12453,11 +12453,11 @@ export namespace fn {
  *   }
  * )
  *
- * Effect.runFork(
- *   logExample(100).pipe( // Call location: 13
- *     Effect.catchAllCause(Effect.logError)
- *   )
- * )
+ * // Effect.runFork(
+ * //   logExample(100).pipe( // Call location: 13
+ * //     Effect.catchAllCause(Effect.logError)
+ * //   )
+ * // )
  * // Output:
  * // got: 100
  * // timestamp=... level=ERROR fiber=#0 cause="Error: An error has occurred
