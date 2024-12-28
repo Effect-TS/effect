@@ -5443,9 +5443,25 @@ export const acquireUseRelease: {
 } = core.acquireUseRelease
 
 /**
- * This function adds a finalizer to the scope of the calling effect. The
- * finalizer is guaranteed to be run when the scope is closed, and it may depend
- * on the `Exit` value that the scope is closed with.
+ * Ensures a finalizer is added to the scope of the calling effect, guaranteeing
+ * it runs when the scope is closed.
+ *
+ * **Details**
+ *
+ * This function adds a finalizer that will execute whenever the scope of the
+ * effect is closed, regardless of whether the effect succeeds, fails, or is
+ * interrupted. The finalizer receives the `Exit` value of the effect's scope,
+ * allowing it to react differently depending on how the effect concludes.
+ *
+ * Finalizers are a reliable way to manage resource cleanup, ensuring that
+ * resources such as file handles, network connections, or database transactions
+ * are properly closed even in the event of an unexpected interruption or error.
+ *
+ * Finalizers operate in conjunction with Effect's scoped resources. If an
+ * effect with a finalizer is wrapped in a scope, the finalizer will execute
+ * automatically when the scope ends.
+ *
+ * @see {@link onExit} for attaching a finalizer directly to an effect.
  *
  * @example
  * ```ts
@@ -5571,7 +5587,7 @@ export const addFinalizer: <X, R>(
  * For use cases where you need access to the result of an effect, consider
  * using {@link onExit}.
  *
- *
+ * @see {@link onExit} for a version that provides access to the result of an effect.
  *
  * @example
  * ```ts
@@ -5610,8 +5626,22 @@ export const ensuring: {
 } = fiberRuntime.ensuring
 
 /**
- * Runs the specified effect if this effect fails, providing the error to the
- * effect if it exists. The provided effect will not be interrupted.
+ * Ensures a cleanup effect runs whenever the calling effect fails, providing
+ * the failure cause to the cleanup effect.
+ *
+ * **Details**
+ *
+ * This function allows you to attach a cleanup effect that runs whenever the
+ * calling effect fails. The cleanup effect receives the cause of the failure,
+ * allowing you to perform actions such as logging, releasing resources, or
+ * executing additional recovery logic based on the error. The cleanup effect
+ * will execute even if the failure is due to interruption.
+ *
+ * Importantly, the cleanup effect itself is uninterruptible, ensuring that it
+ * completes regardless of external interruptions.
+ *
+ * @see {@link ensuring} for attaching a cleanup effect that runs on both success and failure.
+ * @see {@link onExit} for attaching a cleanup effect that runs on all possible exits.
  *
  * @example
  * ```ts
@@ -5654,8 +5684,21 @@ export const onError: {
 } = core.onError
 
 /**
- * Ensures that a cleanup functions runs, whether this effect succeeds, fails,
- * or is interrupted.
+ * Guarantees that a cleanup function runs regardless of whether the effect
+ * succeeds, fails, or is interrupted.
+ *
+ * **Details**
+ *
+ * This function ensures that a provided cleanup function is executed after the
+ * effect completes, regardless of the outcome. The cleanup function is given
+ * the `Exit` value of the effect, which provides detailed information about the
+ * result:
+ * - If the effect succeeds, the `Exit` contains the success value.
+ * - If the effect fails, the `Exit` contains the error or failure cause.
+ * - If the effect is interrupted, the `Exit` reflects the interruption.
+ *
+ * The cleanup function is guaranteed to run uninterruptibly, ensuring reliable
+ * resource management even in complex or high-concurrency scenarios.
  *
  * @example
  * ```ts
@@ -5699,12 +5742,88 @@ export const onExit: {
 } = core.onExit
 
 /**
+ * Ensures that finalizers are run concurrently when the scope of an effect is
+ * closed.
+ *
+ * **Details**
+ *
+ * This function modifies the behavior of finalizers within a scoped workflow to
+ * allow them to run concurrently when the scope is closed.
+ *
+ * By default, finalizers are executed sequentially in reverse order of their
+ * addition, but this function changes that behavior to execute all finalizers
+ * concurrently.
+ *
+ * **When to Use**
+ *
+ * Running finalizers concurrently can improve performance when multiple
+ * independent cleanup tasks need to be performed. However, it requires that
+ * these tasks do not depend on the order of execution or introduce race
+ * conditions.
+ *
+ * @see {@link sequentialFinalizers} for a version that ensures finalizers are run sequentially.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * // Define a program that adds multiple finalizers
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.addFinalizer(() => Console.log("Finalizer 1 executed").pipe(Effect.delay("300 millis")))
+ *   yield* Effect.addFinalizer(() => Console.log("Finalizer 2 executed").pipe(Effect.delay("100 millis")))
+ *   yield* Effect.addFinalizer(() => Console.log("Finalizer 3 executed").pipe(Effect.delay("200 millis")))
+ *   return "some result"
+ * })
+ *
+ * // Modify the program to ensure finalizers run in parallel
+ * const modified = program.pipe(Effect.parallelFinalizers)
+ *
+ * const runnable = Effect.scoped(modified)
+ *
+ * Effect.runFork(runnable)
+ * // Output:
+ * // Finalizer 2 executed
+ * // Finalizer 3 executed
+ * // Finalizer 1 executed
+ * ```
+ *
  * @since 2.0.0
  * @category Scoping, Resources & Finalization
  */
 export const parallelFinalizers: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = fiberRuntime.parallelFinalizers
 
 /**
+ * Ensures that finalizers are run sequentially in reverse order of their
+ * addition.
+ *
+ * **Details**
+ *
+ * This function modifies the behavior of finalizers within a scoped workflow to
+ * ensure they are run sequentially in reverse order when the scope is closed.
+ *
+ * By default, finalizers are executed sequentially, so this only changes the
+ * behavior if the scope is configured to run finalizers concurrently.
+ *
+ * @see {@link parallelFinalizers} for a version that ensures finalizers are run concurrently.
+ *
+ * @since 2.0.0
+ * @category Scoping, Resources & Finalization
+ */
+export const sequentialFinalizers: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> =
+  fiberRuntime.sequentialFinalizers
+
+/**
+ * Applies a custom execution strategy to finalizers within a scoped workflow.
+ *
+ * **Details**
+ *
+ * This function allows you to control how finalizers are executed in a scope by
+ * applying a specified `ExecutionStrategy`. The `strategy` can dictate whether
+ * finalizers run (e.g., sequentially or in parallel).
+ *
+ * Additionally, the function provides a `restore` operation, which ensures that
+ * the effect passed to it is executed under the default execution strategy.
+ *
  * @since 2.0.0
  * @category Scoping, Resources & Finalization
  */
@@ -5713,18 +5832,6 @@ export const finalizersMask: (
 ) => <A, E, R>(
   self: (restore: <A1, E1, R1>(self: Effect<A1, E1, R1>) => Effect<A1, E1, R1>) => Effect<A, E, R>
 ) => Effect<A, E, R> = fiberRuntime.finalizersMask
-
-/**
- * Returns a new scoped workflow that runs finalizers added to the scope of this
- * workflow sequentially in the reverse of the order in which they were added.
- * Note that finalizers are run sequentially by default so this only has meaning
- * if used within a scope where finalizers are being run concurrently.
- *
- * @since 2.0.0
- * @category Scoping, Resources & Finalization
- */
-export const sequentialFinalizers: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> =
-  fiberRuntime.sequentialFinalizers
 
 /**
  * @since 2.0.0
