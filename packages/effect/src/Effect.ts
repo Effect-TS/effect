@@ -7857,18 +7857,18 @@ export {
 }
 
 /**
- * Transforms an effect to encapsulate both failure and success using the
- * `Option` data type.
+ * Encapsulates the result of an effect in an `Option`.
  *
  * **Details**
  *
- * The `option` function wraps the success or failure of an effect within the
- * `Option` type, making both cases explicit. If the original effect succeeds,
- * its value is wrapped in `Option.some`. If it fails, the failure is mapped to
- * `Option.none`.
+ * This function wraps the outcome of an effect in an `Option` type. If the
+ * original effect succeeds, the success value is wrapped in `Option.some`. If
+ * the effect fails, the failure is converted to `Option.none`.
  *
- * The resulting effect cannot fail directly, as the error type is set to
- * `never`. However, fatal errors like defects are not encapsulated.
+ * This is useful for handling cases where you want to explicitly represent the
+ * absence of a value due to a failure, while preventing direct failure of the
+ * resulting effect (its error type is `never`). Note that fatal errors, such as
+ * defects, are not wrapped and will still result in failure.
  *
  * @see {@link either} for a version that uses `Either` instead.
  * @see {@link exit} for a version that uses `Exit` instead.
@@ -7915,19 +7915,21 @@ export {
 export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, never, R> = effect.option
 
 /**
- * Transforms an `Effect` into one that encapsulates both success and failure
- * using the `Either` data type.
+ * Encapsulates both success and failure of an `Effect` into an `Either` type.
  *
  * **Details**
  *
- * `either` takes an effect that could potentially fail and converts it
- * into an effect that always succeeds but with the result inside an `Either`.
- * The `Either` can either be a `Left` (representing failure) or a `Right`
- * (representing success). This allows you to handle both cases explicitly
- * without causing the effect to fail.
+ * This function converts an effect that may fail into an effect that always
+ * succeeds, wrapping the outcome in an `Either` type. The result will be
+ * `Either.Left` if the effect fails, containing the error, or `Either.Right` if
+ * it succeeds, containing the result.
  *
- * The resulting effect cannot fail because failure is now represented inside
- * the `Either` type.
+ * Using this function, you can handle errors explicitly without causing the
+ * effect to fail. This can be especially useful in scenarios where you want to
+ * chain effects and deal with success and failure in the same logical flow.
+ *
+ * The resulting effect cannot fail directly because failures are represented
+ * inside the `Either` type.
  *
  * @see {@link option} for a version that uses `Option` instead.
  * @see {@link exit} for a version that uses `Exit` instead.
@@ -7977,17 +7979,21 @@ export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>
 export const either: <A, E, R>(self: Effect<A, E, R>) => Effect<Either.Either<A, E>, never, R> = core.either
 
 /**
- * Transforms an effect to encapsulate both failure and success using the `Exit`
- * data type.
+ * Encapsulates both success and failure of an `Effect` using the `Exit` type.
  *
  * **Details**
  *
- * `exit` wraps an effect's success or failure inside an `Exit` type, allowing
- * you to handle both cases explicitly.
+ * This function converts an effect into one that always succeeds, wrapping its
+ * outcome in the `Exit` type. The `Exit` type allows explicit handling of both
+ * success (`Exit.Success`) and failure (`Exit.Failure`) cases.
  *
- * The resulting effect cannot fail because the failure is encapsulated within
- * the `Exit.Failure` type. The error type is set to `never`, indicating that
- * the effect is structured to never fail directly.
+ * The failure is no longer propagated directly but encapsulated inside the
+ * `Exit.Failure` type. This makes the resulting effect robust and incapable of
+ * direct failure (the error type is set to `never`).
+ *
+ * This function is useful for managing and reasoning about effects with complex
+ * outcomes, as it allows for detailed introspection of errors, including
+ * defects and unexpected failures.
  *
  * @see {@link option} for a version that uses `Option` instead.
  * @see {@link either} for a version that uses `Either` instead.
