@@ -278,6 +278,8 @@ export interface Snapshot {
   flags: RuntimeFlags.RuntimeFlags
 }
 
+const _version = version.getCurrentVersion()
+
 /** @internal */
 export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A, E>
   implements Fiber.RuntimeFiber<A, E>
@@ -1367,7 +1369,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         // @ts-expect-error
         cur = this.currentTracer.context(
           () => {
-            if (version.getCurrentVersion() !== (cur as core.Primitive)[core.EffectTypeId]._V) {
+            if (_version !== (cur as core.Primitive)[core.EffectTypeId]._V) {
               return core.dieMessage(
                 `Cannot execute an Effect versioned ${
                   (cur as core.Primitive)[core.EffectTypeId]._V
@@ -1400,8 +1402,6 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
       } catch (e) {
         if (cur !== YieldedOp && !Predicate.hasProperty(cur, "_op") || !((cur as core.Primitive)._op in this)) {
           cur = core.dieMessage(`Not a valid effect: ${Inspectable.toStringUnknown(cur)}`)
-        } else if (core.isEffectError(e)) {
-          cur = core.exitFailCause(e.cause)
         } else if (core.isInterruptedException(e)) {
           cur = core.exitFailCause(
             internalCause.sequential(internalCause.die(e), internalCause.interrupt(FiberId.none))

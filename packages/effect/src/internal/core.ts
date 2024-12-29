@@ -55,32 +55,6 @@ import { SingleShotGen } from "./singleShotGen.js"
 // Effect
 // -----------------------------------------------------------------------------
 
-/** @internal */
-const EffectErrorSymbolKey = "effect/EffectError"
-
-/** @internal */
-export const EffectErrorTypeId = Symbol.for(EffectErrorSymbolKey)
-
-/** @internal */
-export type EffectErrorTypeId = typeof EffectErrorTypeId
-
-/** @internal */
-export interface EffectError<out E> {
-  readonly [EffectErrorTypeId]: EffectErrorTypeId
-  readonly _tag: "EffectError"
-  readonly cause: Cause.Cause<E>
-}
-
-/** @internal */
-export const isEffectError = (u: unknown): u is EffectError<unknown> => hasProperty(u, EffectErrorTypeId)
-
-/** @internal */
-export const makeEffectError = <E>(cause: Cause.Cause<E>): EffectError<E> => ({
-  [EffectErrorTypeId]: EffectErrorTypeId,
-  _tag: "EffectError",
-  cause
-})
-
 /**
  * @internal
  */
