@@ -7128,35 +7128,75 @@ export const timeoutTo: {
 } = circular.timeoutTo
 
 /**
- * Retrieves the default config provider, and passes it to the specified
- * function, which may return an effect that uses the provider to perform some
- * work or compute some value.
+ * Allows working with the default configuration provider.
+ *
+ * **Details**
+ *
+ * This function retrieves the default configuration provider and passes it to
+ * the provided function, which can use it to perform computations or retrieve
+ * configuration values. The function can return an effect that leverages the
+ * configuration provider for its operations.
  *
  * @since 2.0.0
  * @category Config
  */
-export const configProviderWith: <A, E, R>(f: (configProvider: ConfigProvider) => Effect<A, E, R>) => Effect<A, E, R> =
+export const configProviderWith: <A, E, R>(f: (provider: ConfigProvider) => Effect<A, E, R>) => Effect<A, E, R> =
   defaultServices.configProviderWith
 
 /**
- * Executes the specified workflow with the specified configuration provider.
+ * Executes an effect using a specific configuration provider.
+ *
+ * **Details**
+ *
+ * This function lets you run an effect with a specified configuration provider.
+ * The custom provider will override the default configuration provider for the
+ * duration of the effect's execution.
+ *
+ * **When to Use**
+ *
+ * This is particularly useful when you need to use a different set of
+ * configuration values or sources for specific parts of your application.
+ *
+ * @example
+ * ```ts
+ * import { Config, ConfigProvider, Effect } from "effect"
+ *
+ * const customProvider: ConfigProvider.ConfigProvider = ConfigProvider.fromMap(
+ *   new Map([["custom-key", "custom-value"]])
+ * )
+ *
+ * const program = Effect.withConfigProvider(customProvider)(
+ *   Effect.gen(function*() {
+ *     const value = yield* Config.string("custom-key")
+ *     console.log(`Config value: ${value}`)
+ *   })
+ * )
+ *
+ * // Effect.runPromise(program)
+ * // Output:
+ * // Config value: custom-value
+ * ```
  *
  * @since 2.0.0
  * @category Config
  */
 export const withConfigProvider: {
-  (value: ConfigProvider): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
-  <A, E, R>(effect: Effect<A, E, R>, value: ConfigProvider): Effect<A, E, R>
+  (provider: ConfigProvider): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R>(self: Effect<A, E, R>, provider: ConfigProvider): Effect<A, E, R>
 } = defaultServices.withConfigProvider
 
 /**
- * Sets the configuration provider to the specified value and restores it to its original value
- * when the scope is closed.
+ * Sets a configuration provider within a scope.
+ *
+ * **Details**
+ *
+ * This function sets the configuration provider to a specified value and
+ * ensures that it is restored to its original value when the scope is closed.
  *
  * @since 2.0.0
  * @category Config
  */
-export const withConfigProviderScoped: (value: ConfigProvider) => Effect<void, never, Scope.Scope> =
+export const withConfigProviderScoped: (provider: ConfigProvider) => Effect<void, never, Scope.Scope> =
   fiberRuntime.withConfigProviderScoped
 
 /**
@@ -7179,20 +7219,20 @@ export const contextWith: <R, A>(f: (context: Context.Context<R>) => A) => Effec
  * @since 2.0.0
  * @category Context
  */
-export const contextWithEffect: <R0, A, E, R>(
-  f: (context: Context.Context<R0>) => Effect<A, E, R>
-) => Effect<A, E, R | R0> = core.contextWithEffect
+export const contextWithEffect: <R2, A, E, R>(
+  f: (context: Context.Context<R2>) => Effect<A, E, R>
+) => Effect<A, E, R | R2> = core.contextWithEffect
 
 /**
  * Provides some of the context required to run this effect,
- * leaving the remainder `R0`.
+ * leaving the remainder `R2`.
  *
  * @since 2.0.0
  * @category Context
  */
 export const mapInputContext: {
-  <R0, R>(f: (context: Context.Context<R0>) => Context.Context<R>): <A, E>(self: Effect<A, E, R>) => Effect<A, E, R0>
-  <A, E, R, R0>(self: Effect<A, E, R>, f: (context: Context.Context<R0>) => Context.Context<R>): Effect<A, E, R0>
+  <R2, R>(f: (context: Context.Context<R2>) => Context.Context<R>): <A, E>(self: Effect<A, E, R>) => Effect<A, E, R2>
+  <A, E, R, R2>(self: Effect<A, E, R>, f: (context: Context.Context<R2>) => Context.Context<R>): Effect<A, E, R2>
 } = core.mapInputContext
 
 /**

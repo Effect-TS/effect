@@ -76,17 +76,17 @@ export const withClock = dual<
 
 /** @internal */
 export const withConfigProvider = dual<
-  (value: ConfigProvider.ConfigProvider) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <A, E, R>(effect: Effect.Effect<A, E, R>, value: ConfigProvider.ConfigProvider) => Effect.Effect<A, E, R>
->(2, (effect, value) =>
+  (provider: ConfigProvider.ConfigProvider) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(self: Effect.Effect<A, E, R>, provider: ConfigProvider.ConfigProvider) => Effect.Effect<A, E, R>
+>(2, (self, provider) =>
   core.fiberRefLocallyWith(
     currentServices,
-    Context.add(configProvider.configProviderTag, value)
-  )(effect))
+    Context.add(configProvider.configProviderTag, provider)
+  )(self))
 
 /** @internal */
 export const configProviderWith = <A, E, R>(
-  f: (configProvider: ConfigProvider.ConfigProvider) => Effect.Effect<A, E, R>
+  f: (provider: ConfigProvider.ConfigProvider) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> =>
   defaultServicesWith((services) => f(services.unsafeMap.get(configProvider.configProviderTag.key)))
 

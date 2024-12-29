@@ -3020,8 +3020,8 @@ export const withRandomScoped = <A extends Random.Random>(value: A) =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(randomTag, value))
 
 /* @internal */
-export const withConfigProviderScoped = (value: ConfigProvider) =>
-  fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(configProviderTag, value))
+export const withConfigProviderScoped = (provider: ConfigProvider) =>
+  fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(configProviderTag, provider))
 
 /* @internal */
 export const withEarlyRelease = <A, E, R>(
