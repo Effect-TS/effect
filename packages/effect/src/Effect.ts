@@ -8493,6 +8493,8 @@ export const whenRef: {
  * step produces a new `Effect` while flattening any nested effects that may
  * occur.
  *
+ * @see {@link tap} for a version that ignores the result of the effect.
+ *
  * @example
  * ```ts
  * import { pipe, Effect } from "effect"
@@ -9144,18 +9146,21 @@ export const summarized: {
  * Runs a side effect with the result of an effect without changing the original
  * value.
  *
- * **When to Use**
- *
- * Use `tap` when you want to perform a side effect, like logging or tracking,
- * without modifying the main value. This is useful when you need to observe or
- * record an action but want the original value to be passed to the next step.
- *
  * **Details**
  *
- * `tap` works similarly to `flatMap`, but it ignores the result of the function
- * passed to it. The value from the previous effect remains available for the
- * next part of the chain. Note that if the side effect fails, the entire chain
- * will fail too.
+ * This function works similarly to `flatMap`, but it ignores the result of the
+ * function passed to it. The value from the previous effect remains available
+ * for the next part of the chain. Note that if the side effect fails, the
+ * entire chain will fail too.
+ *
+ * **When to Use**
+ *
+ * Use this function when you want to perform a side effect, like logging or
+ * tracking, without modifying the main value. This is useful when you need to
+ * observe or record an action but want the original value to be passed to the
+ * next step.
+ *
+ * @see {@link flatMap} for a version that allows you to change the value.
  *
  * @example
  * ```ts
@@ -9243,15 +9248,23 @@ export const tap: {
 } = core.tap
 
 /**
- * The `tapBoth` function allows you to inspect both the success and
- * failure outcomes of an effect, performing different actions based on the
- * result.
+ * Allows you to inspect both success and failure outcomes of an effect and
+ * perform side effects for each.
  *
- * This function is useful when you need to handle both successful results and
- * failures separately, allowing for side effects such as logging, metrics
- * collection, or conditional actions based on whether the effect succeeded or
- * failed. It provides a way to react to the outcome of an effect without
- * altering the result.
+ * **Details**
+ *
+ * This function enables you to handle both success and failure cases
+ * separately, without modifying the main effect's result. It is particularly
+ * useful for scenarios where you need to log, monitor, or perform additional
+ * actions depending on whether the effect succeeded or failed.
+ *
+ * When the effect succeeds, the `onSuccess` handler is executed with the
+ * success value. When the effect fails, the `onFailure` handler is executed
+ * with the failure value. Both handlers can include side effects such as
+ * logging or analytics, and neither modifies the original effect's output.
+ *
+ * If either the success or failure handler fails, the overall effect will also
+ * fail.
  *
  * @example
  * ```ts
@@ -9296,14 +9309,20 @@ export const tapBoth: {
 } = effect.tapBoth
 
 /**
- * The `tapDefect` function specifically inspects non-recoverable
- * failures or defects (i.e., one or more `Die` causes) in an effect.
+ * Inspect severe errors or defects (non-recoverable failures) in an effect.
  *
- * This function is designed to catch severe errors in your program that
- * represent critical issues, like system failures or unexpected errors
- * (defects). It helps you log or handle these defects without altering the main
- * result of the effect, allowing for efficient debugging or monitoring of
- * severe errors.
+ * **Details**
+ *
+ * This function is specifically designed to handle and inspect defects, which
+ * are critical failures in your program, such as unexpected runtime exceptions
+ * or system-level errors. Unlike normal recoverable errors, defects typically
+ * indicate serious issues that cannot be addressed through standard error
+ * handling.
+ *
+ * When a defect occurs in an effect, the function you provide to this function
+ * will be executed, allowing you to log, monitor, or handle the defect in some
+ * way. Importantly, this does not alter the main result of the effect. If no
+ * defect occurs, the effect behaves as if this function was not used.
  *
  * @example
  * ```ts
@@ -9350,13 +9369,19 @@ export const tapDefect: {
 } = effect.tapDefect
 
 /**
- * The `tapError` function executes an effectful operation to inspect the
- * failure of an effect without modifying it.
+ * Execute a side effect on failure without modifying the original effect.
  *
- * This function is useful when you want to perform some side effect (like
- * logging or tracking) on the failure of an effect, but without changing the
- * result of the effect itself. The error remains in the effect's error channel,
- * while the operation you provide can inspect or act on it.
+ * **Details**
+ *
+ * This function allows you to inspect and react to the failure of an effect by
+ * executing an additional effect. The failure value is passed to the provided
+ * function, enabling you to log it, track it, or perform any other operation.
+ * Importantly, the original failure remains intact and is re-propagated, so the
+ * effect's behavior is unchanged.
+ *
+ * The side effect you provide is only executed when the effect fails. If the
+ * effect succeeds, the function is ignored, and the success value is propagated
+ * as usual.
  *
  * @example
  * ```ts
@@ -9386,13 +9411,18 @@ export const tapError: {
 } = effect.tapError
 
 /**
- * The `tapErrorTag` function allows you to inspect errors that match a
- * specific tag, helping you handle different error types more precisely.
+ * Inspect errors matching a specific tag without altering the original effect.
  *
- * This function is useful when you want to target and act on specific error
- * types within an effect. You can use it to handle errors more granularly based
- * on their tags (e.g., inspecting only `NetworkError` or `ValidationError`),
- * without modifying the error or the overall result of the effect.
+ * **Details**
+ *
+ * This function allows you to inspect and handle specific error types based on
+ * their `_tag` property. It is particularly useful in applications where errors
+ * are modeled with tagged types (e.g., union types with discriminating tags).
+ * By targeting errors with a specific `_tag`, you can log or perform actions on
+ * them while leaving the error channel and overall effect unchanged.
+ *
+ * If the error doesn't match the specified tag, this function does nothing, and
+ * the effect proceeds as usual.
  *
  * @example
  * ```ts
@@ -9438,13 +9468,19 @@ export const tapErrorTag: {
 } = effect.tapErrorTag
 
 /**
- * The `tapErrorCause` function allows you to inspect the complete cause
- * of an error, including failures and defects.
+ * Inspect the complete cause of an error, including failures and defects.
  *
- * This function is helpful when you need to log, monitor, or handle specific
- * error causes in your effects. It gives you access to the full error cause,
- * whether it’s a failure, defect, or other exceptional conditions, without
- * altering the error or the overall result of the effect.
+ * **Details**
+ *
+ * This function provides access to the full cause of an error, including both
+ * recoverable failures and irrecoverable defects. It allows you to handle, log,
+ * or monitor specific error causes without modifying the result of the effect.
+ * The full `Cause` object encapsulates the error and its contextual
+ * information, making it useful for debugging and understanding failure
+ * scenarios in complex workflows.
+ *
+ * The effect itself is not modified, and any errors or defects remain in the
+ * error channel of the original effect.
  *
  * @example
  * ```ts
