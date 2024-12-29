@@ -1600,7 +1600,7 @@ export const tapErrorCause = dual<
 /* @internal */
 export const timed = <A, E, R>(
   self: Effect.Effect<A, E, R>
-): Effect.Effect<[Duration.Duration, A], E, R> => timedWith(self, Clock.currentTimeNanos)
+): Effect.Effect<[duration: Duration.Duration, result: A], E, R> => timedWith(self, Clock.currentTimeNanos)
 
 /* @internal */
 export const timedWith = dual<

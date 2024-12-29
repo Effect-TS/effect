@@ -6650,11 +6650,38 @@ export const withConsole: {
 } = _console.withConsole
 
 /**
- * Returns an effect that is delayed from this effect by the specified
- * `Duration`.
+ * Delays the execution of an effect by a specified `Duration`.
+ *
+ * **Details
+ *
+ * This function postpones the execution of the provided effect by the specified
+ * duration. The duration can be provided in various formats supported by the
+ * `Duration` module.
+ *
+ * Internally, this function does not block the thread; instead, it uses an
+ * efficient, non-blocking mechanism to introduce the delay.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const task = Console.log("Task executed")
+ *
+ * const program = Console.log("start").pipe(
+ *   Effect.andThen(
+ *     // Delays the log message by 2 seconds
+ *     task.pipe(Effect.delay("2 seconds"))
+ *   )
+ * )
+ *
+ * // Effect.runFork(program)
+ * // Output:
+ * // start
+ * // Task executed
+ * ```
  *
  * @since 2.0.0
- * @category delays & timeouts
+ * @category Delays & Timeouts
  */
 export const delay: {
   (duration: Duration.DurationInput): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
@@ -6662,27 +6689,95 @@ export const delay: {
 } = effect.delay
 
 /**
- * Returns an effect that suspends for the specified duration. This method is
- * asynchronous, and does not actually block the fiber executing the effect.
+ * Suspends the execution of an effect for a specified `Duration`.
+ *
+ * **Details**
+ *
+ * This function pauses the execution of an effect for a given duration. It is
+ * asynchronous, meaning that it does not block the fiber executing the effect.
+ * Instead, the fiber is suspended during the delay period and can resume once
+ * the specified time has passed.
+ *
+ * The duration can be specified using various formats supported by the
+ * `Duration` module, such as a string (`"2 seconds"`) or numeric value
+ * representing milliseconds.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   console.log("Starting task...")
+ *   yield* Effect.sleep("3 seconds") // Waits for 3 seconds
+ *   console.log("Task completed!")
+ * })
+ *
+ * // Effect.runFork(program)
+ * // Output:
+ * // Starting task...
+ * // Task completed!
+ * ```
  *
  * @since 2.0.0
- * @category delays & timeouts
+ * @category Delays & Timeouts
  */
 export const sleep: (duration: Duration.DurationInput) => Effect<void> = effect.sleep
 
 /**
- * Returns a new effect that executes this one and times the execution.
+ * Executes an effect and measures the time it takes to complete.
+ *
+ * **Details**
+ *
+ * This function wraps the provided effect and returns a new effect that, when
+ * executed, performs the original effect and calculates its execution duration.
+ *
+ * The result of the new effect includes both the execution time (as a
+ * `Duration`) and the original effect's result. This is useful for monitoring
+ * performance or gaining insights into the time taken by specific operations.
+ *
+ * The original effect's behavior (success, failure, or interruption) remains
+ * unchanged, and the timing information is provided alongside the result in a
+ * tuple.
+ *
+ * @example
+ * ```ts
+ * import { Duration, Effect } from "effect"
+ *
+ * const task = Effect.gen(function*() {
+ *   yield* Effect.sleep("2 seconds") // Simulates some work
+ *   return "some result"
+ * })
+ *
+ * const timedTask = task.pipe(Effect.timed)
+ *
+ * const program = Effect.gen(function*() {
+ *   const [duration, result] = yield* timedTask
+ *   console.log(`Task completed in ${Duration.toMillis(duration)} ms with result: ${result}`)
+ * })
+ *
+ * // Effect.runFork(program)
+ * // Output: Task completed in 2003.749125 ms with result: some result
+ * ```
  *
  * @since 2.0.0
- * @category delays & timeouts
+ * @category Delays & Timeouts
  */
-export const timed: <A, E, R>(self: Effect<A, E, R>) => Effect<[Duration.Duration, A], E, R> = effect.timed
+export const timed: <A, E, R>(self: Effect<A, E, R>) => Effect<[duration: Duration.Duration, result: A], E, R> =
+  effect.timed
 
 /**
- * A more powerful variation of `timed` that allows specifying the clock.
+ * Executes an effect and measures its execution time using a custom clock.
+ *
+ * **Details**
+ *
+ * This function extends the functionality of {@link timed} by allowing you to
+ * specify a custom clock for measuring the execution duration. The provided
+ * effect (`nanoseconds`) represents the clock and should return the current
+ * time in nanoseconds. The timing information is computed using this custom
+ * clock instead of the default system clock.
  *
  * @since 2.0.0
- * @category delays & timeouts
+ * @category Delays & Timeouts
  */
 export const timedWith: {
   <E1, R1>(
@@ -6698,15 +6793,23 @@ export const timedWith: {
  * Adds a time limit to an effect, triggering a timeout if the effect exceeds
  * the duration.
  *
- * The `timeout` function allows you to specify a time limit for an
- * effect's execution. If the effect does not complete within the given time, a
- * `TimeoutException` is raised. This can be useful for controlling how long
- * your program waits for a task to finish, ensuring that it doesn't hang
- * indefinitely if the task takes too long.
+ * **Details**
+ *
+ * This function allows you to enforce a time limit on the execution of an
+ * effect. If the effect does not complete within the given duration, it fails
+ * with a `TimeoutException`. This is useful for preventing tasks from hanging
+ * indefinitely, especially in scenarios where responsiveness or resource limits
+ * are critical.
+ *
+ * The returned effect will either:
+ * - Succeed with the original effect's result if it completes within the
+ *   specified duration.
+ * - Fail with a `TimeoutException` if the time limit is exceeded.
  *
  * @see {@link timeoutFail} for a version that raises a custom error.
  * @see {@link timeoutFailCause} for a version that raises a custom defect.
- * @see {@link timeoutTo} for a version that allows specifying both success and timeout handlers.
+ * @see {@link timeoutTo} for a version that allows specifying both success and
+ * timeout handlers.
  *
  * @example
  * ```ts
@@ -6738,7 +6841,7 @@ export const timedWith: {
  * ```
  *
  * @since 2.0.0
- * @category delays & timeouts
+ * @category Delays & Timeouts
  */
 export const timeout: {
   (duration: Duration.DurationInput): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | Cause.TimeoutException, R>
@@ -6746,14 +6849,19 @@ export const timeout: {
 } = circular.timeout
 
 /**
- * Handles timeouts by returning an `Option` that represents either the result
- * or a timeout.
+ * Gracefully handles timeouts by returning an `Option` that represents either
+ * the result or a timeout.
  *
- * The `timeoutOption` function provides a way to gracefully handle
- * timeouts by wrapping the outcome of an effect in an `Option` type. If the
- * effect completes within the specified time, it returns a `Some` containing
- * the result. If the effect times out, it returns a `None`, allowing you to
- * treat the timeout as a regular result instead of throwing an error.
+ * **Details**
+ *
+ * This function wraps the outcome of an effect in an `Option` type. If the
+ * effect completes within the specified duration, it returns a `Some`
+ * containing the result. If the effect times out, it returns a `None`. Unlike
+ * other timeout methods, this approach does not raise errors or exceptions;
+ * instead, it allows you to treat timeouts as a regular outcome, simplifying
+ * the logic for handling delays.
+ *
+ * **When to Use**
  *
  * This is useful when you want to handle timeouts without causing the program
  * to fail, making it easier to manage situations where you expect tasks might
@@ -6762,7 +6870,8 @@ export const timeout: {
  * @see {@link timeout} for a version that raises a `TimeoutException`.
  * @see {@link timeoutFail} for a version that raises a custom error.
  * @see {@link timeoutFailCause} for a version that raises a custom defect.
- * @see {@link timeoutTo} for a version that allows specifying both success and timeout handlers.
+ * @see {@link timeoutTo} for a version that allows specifying both success and
+ * timeout handlers.
  *
  * @example
  * ```ts
@@ -6792,7 +6901,7 @@ export const timeout: {
  * ```
  *
  * @since 3.1.0
- * @category delays & timeouts
+ * @category Delays & Timeouts
  */
 export const timeoutOption: {
   (duration: Duration.DurationInput): <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, E, R>
@@ -6800,22 +6909,29 @@ export const timeoutOption: {
 } = circular.timeoutOption
 
 /**
- * The `timeoutFail` function allows you to specify a custom error to be
- * produced when a timeout occurs during the execution of an effect.
+ * Specifies a custom error to be produced when a timeout occurs.
  *
- * This function enables you to handle timeouts by triggering a specific error,
- * providing more control over the behavior of your program when time limits are
- * exceeded. Instead of using a default timeout error, you can define your own
- * error type and use it to represent the timeout situation in a more meaningful
- * way.
+ * **Details**
  *
- * When you apply `timeoutFail`, you define a duration after which the
- * effect will timeout. If the effect does not complete in the specified time,
- * the `onTimeout` function will be executed to generate the custom error.
+ * This function allows you to handle timeouts in a customized way by defining a
+ * specific error to be raised when an effect exceeds the given duration. Unlike
+ * default timeout behaviors that use generic exceptions, this function gives
+ * you the flexibility to specify a meaningful error type that aligns with your
+ * application's needs.
+ *
+ * When you apply this function, you provide:
+ * - A `duration`: The time limit for the effect.
+ * - An `onTimeout` function: A lazy evaluation function that generates the
+ *   custom error if the timeout occurs.
+ *
+ * If the effect completes within the time limit, its result is returned
+ * normally. Otherwise, the `onTimeout` function is triggered, and its output is
+ * used as the error for the effect.
  *
  * @see {@link timeout} for a version that raises a `TimeoutException`.
  * @see {@link timeoutFailCause} for a version that raises a custom defect.
- * @see {@link timeoutTo} for a version that allows specifying both success and timeout handlers.
+ * @see {@link timeoutTo} for a version that allows specifying both success and
+ * timeout handlers.
  *
  * @example
  * ```ts
@@ -6854,7 +6970,7 @@ export const timeoutOption: {
  * ```
  *
  * @since 2.0.0
- * @category delays & timeouts
+ * @category Delays & Timeouts
  */
 export const timeoutFail: {
   <E1>(
@@ -6867,21 +6983,31 @@ export const timeoutFail: {
 } = circular.timeoutFail
 
 /**
- * The `timeoutFailCause` function allows you to specify a custom defect
- * to be thrown when a timeout occurs during the execution of an effect.
+ * Specifies a custom defect to be thrown when a timeout occurs.
  *
- * This function helps in handling timeouts as exceptional cases in your program
- * by generating a custom defect when the operation exceeds the specified time
- * limit. You can define a `duration` and a `onTimeout` function that produces a
- * defect (typically using `Cause.die`) which will be thrown instead of a
- * default timeout error.
+ * **Details**
  *
- * This is particularly useful when you need to treat timeouts as critical
- * failures in your application, allowing for more precise error handling.
+ * This function allows you to handle timeouts as exceptional cases by
+ * generating a custom defect when an effect exceeds the specified duration. You
+ * provide:
+ * - A `duration`: The time limit for the effect.
+ * - An `onTimeout` function: A lazy evaluation function that generates the
+ *   custom defect (typically created using `Cause.die`).
+ *
+ * If the effect completes within the time limit, its result is returned
+ * normally. Otherwise, the custom defect is triggered, and the effect fails
+ * with that defect.
+ *
+ * **When to Use**
+ *
+ * This is especially useful when you need to treat timeouts as critical
+ * failures in your application and wish to include meaningful information in
+ * the defect.
  *
  * @see {@link timeout} for a version that raises a `TimeoutException`.
  * @see {@link timeoutFail} for a version that raises a custom error.
- * @see {@link timeoutTo} for a version that allows specifying both success and timeout handlers.
+ * @see {@link timeoutTo} for a version that allows specifying both success and
+ * timeout handlers.
  *
  * @example
  * ```ts
@@ -6912,7 +7038,7 @@ export const timeoutFail: {
  * ```
  *
  * @since 2.0.0
- * @category delays & timeouts
+ * @category Delays & Timeouts
  */
 export const timeoutFailCause: {
   <E1>(
@@ -6925,21 +7051,25 @@ export const timeoutFailCause: {
 } = circular.timeoutFailCause
 
 /**
- * The `timeoutTo` function provides more flexibility than
- * `timeout` by allowing you to define different outcomes for both
- * successful and timed-out operations.
+ * Provides custom behavior for successful and timed-out operations.
  *
- * This function is useful when you want to handle the results of an effect
- * differently depending on whether the operation completes within the given
- * time frame or not. It lets you specify `onSuccess` and `onTimeout` handlers,
- * where the success handler processes the result if the effect completes on
- * time, and the timeout handler handles the scenario where the effect exceeds
- * the specified duration.
+ * **Details**
  *
- * `timeoutTo` can be used to customize the result of an effect,
- * particularly when you need to handle success and timeouts in distinct ways,
- * such as using the `Either` data type to distinguish between successful
- * results and timeouts.
+ * This function allows you to define distinct outcomes for an effect depending
+ * on whether it completes within a specified time frame or exceeds the timeout
+ * duration. You can provide:
+ * - `onSuccess`: A handler for processing the result of the effect if it
+ *   completes successfully within the time limit.
+ * - `onTimeout`: A handler for generating a result when the effect times out.
+ * - `duration`: The maximum allowed time for the effect to complete.
+ *
+ * **When to Use**
+ *
+ * Unlike {@link timeout}, which raises an exception for timeouts, this function
+ * gives you full control over the behavior for both success and timeout
+ * scenarios. It is particularly useful when you want to encapsulate timeouts
+ * and successes into a specific data structure, like an `Either` type, to
+ * represent these outcomes in a meaningful way.
  *
  * @see {@link timeout} for a version that raises a `TimeoutException`.
  * @see {@link timeoutFail} for a version that raises a custom error.
@@ -6977,7 +7107,7 @@ export const timeoutFailCause: {
  * ```
  *
  * @since 2.0.0
- * @category delays & timeouts
+ * @category Delays & Timeouts
  */
 export const timeoutTo: {
   <A, B, B1>(
