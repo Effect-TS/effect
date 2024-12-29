@@ -9526,20 +9526,34 @@ export const tapErrorCause: {
 } = effect.tapErrorCause
 
 /**
- * Repeats this effect forever (until the first error).
+ * Repeats an effect indefinitely until an error occurs.
+ *
+ * **Details**
+ *
+ * This function executes an effect repeatedly in an infinite loop. Each
+ * iteration is executed sequentially, and the loop continues until the first
+ * error occurs. If the effect succeeds, it starts over from the beginning. If
+ * the effect fails, the error is propagated, and the loop stops.
+ *
+ * Be cautious when using this function, as it will run indefinitely unless an
+ * error interrupts it. This makes it suitable for long-running processes or
+ * continuous polling tasks, but you should ensure proper error handling or
+ * combine it with other operators like `timeout` or `schedule` to prevent
+ * unintentional infinite loops.
  *
  * @since 2.0.0
- * @category repetition / recursion
+ * @category Repetition / Recursion
  */
 export const forever: <A, E, R>(self: Effect<A, E, R>) => Effect<never, E, R> = effect.forever
 
 /**
- * Repeatedly updates a state through an effectful operation, running the `body`
- * effect to update the state in each iteration. It continues iterating as long
- * as the `while` condition evaluates to `true`.
+ * Repeatedly updates a state through an effectful operation until a condition
+ * is no longer met.
  *
- * This function works like a `while` loop in JavaScript but with effectful
- * operations:
+ * **Details**
+ *
+ * This function provides a way to implement effectful loops, similar to a
+ * `while` loop in JavaScript.
  *
  * ```ts
  * let result = initial
@@ -9550,6 +9564,21 @@ export const forever: <A, E, R>(self: Effect<A, E, R>) => Effect<never, E, R> = 
  *
  * return result
  * ```
+ *
+ * It starts with an initial state, checks a
+ * condition (`while`), and executes a body operation to update the state if the
+ * condition evaluates to `true`. The process repeats until the condition
+ * returns `false`.
+ *
+ * The state is passed between iterations, allowing the body operation to modify
+ * it dynamically. The final state after the loop ends is returned as the result
+ * of the effect.
+ *
+ * **When to Use**
+ *
+ * This is particularly useful for scenarios where looping logic involves
+ * asynchronous or side-effectful operations, such as polling or iterative
+ * computations that depend on external factors.
  *
  * @example
  * ```ts
@@ -9592,13 +9621,14 @@ export const iterate: {
 } = effect.iterate
 
 /**
- * Repeatedly updates a state using a `step` function until a condition, defined
- * by the `while` function, becomes `false`. It collects the intermediate states
- * in an array and returns them as the final result. The loop executes effectful
- * operations at each iteration.
+ * Repeatedly executes a loop with a state, collecting results or discarding
+ * them based on configuration.
  *
- * This function is similar to a `while` loop in JavaScript, with the addition
- * of effectful computations:
+ * **Details**
+ *
+ * This function performs an effectful loop, starting with an initial state and
+ * iterating as long as the `while` condition evaluates to `true`, similar to a
+ * `while` loop in JavaScript.
  *
  * ```ts
  * let state = initial
@@ -9612,10 +9642,24 @@ export const iterate: {
  * return result
  * ```
  *
+ * During each iteration, the `step` function updates the state, and the `body`
+ * effect is executed.
+ *
+ * The results of the body effect can be collected in an array or discarded
+ * based on the `discard` option.
+ *
  * **Discarding Intermediate Results**
  *
- * If the `discard` option is set to `true`, the intermediate results are
- * discarded, and the final result will be `void`.
+ * - If `discard` is `false` or not provided, the intermediate results are
+ *   collected into an array and returned as the final result.
+ * - If `discard` is `true`, the intermediate results are ignored, and the
+ *   effect returns `void`.
+ *
+ * **When to Use**
+ *
+ * This is useful for implementing loops where you need to perform effectful
+ * computations repeatedly, such as processing items in a list, generating
+ * values, or performing iterative updates.
  *
  * @example
  * ```ts
@@ -9712,12 +9756,12 @@ export const loop: {
 
 /**
  * @since 2.0.0
- * @category repetition / recursion
+ * @category Repetition / Recursion
  */
 export declare namespace Repeat {
   /**
    * @since 2.0.0
-   * @category repetition / recursion
+   * @category Repetition / Recursion
    */
   export type Return<R, E, A, O extends Options<A>> = Effect<
     (O extends { schedule: Schedule.Schedule<infer Out, infer _I, infer _R> } ? Out
@@ -9734,7 +9778,7 @@ export declare namespace Repeat {
 
   /**
    * @since 2.0.0
-   * @category repetition / recursion
+   * @category Repetition / Recursion
    */
   export interface Options<A> {
     while?: ((_: A) => boolean | Effect<boolean, any, any>) | undefined
@@ -9745,11 +9789,26 @@ export declare namespace Repeat {
 }
 
 /**
- * The `repeat` function returns a new effect that repeats the given effect
- * according to a specified schedule or until the first failure. The scheduled
- * recurrences are in addition to the initial execution, so `repeat(action,
- * Schedule.once)` executes `action` once initially, and if it succeeds, repeats it
- * an additional time.
+ * Repeats an effect based on a specified schedule or until the first failure.
+ *
+ * **Details**
+ *
+ * This function executes an effect repeatedly according to the given schedule.
+ * Each repetition occurs after the initial execution of the effect, meaning
+ * that the schedule determines the number of additional repetitions. For
+ * example, using `Schedule.once` will result in the effect being executed twice
+ * (once initially and once as part of the repetition).
+ *
+ * If the effect succeeds, it is repeated according to the schedule. If it
+ * fails, the repetition stops immediately, and the failure is returned.
+ *
+ * The schedule can also specify delays between repetitions, making it useful
+ * for tasks like retrying operations with backoff, periodic execution, or
+ * performing a series of dependent actions.
+ *
+ * You can combine schedules for more advanced repetition logic, such as adding
+ * delays, limiting recursions, or dynamically adjusting based on the outcome of
+ * each execution.
  *
  * @example
  * ```ts
@@ -9787,7 +9846,7 @@ export declare namespace Repeat {
  * // Effect.runPromiseExit(program).then(console.log)
  *
  * @since 2.0.0
- * @category repetition / recursion
+ * @category Repetition / Recursion
  */
 export const repeat: {
   <O extends Repeat.Options<A>, A>(
@@ -9806,10 +9865,22 @@ export const repeat: {
 } = _schedule.repeat_combined
 
 /**
- * The `repeatN` function returns a new effect that repeats the specified effect a
- * given number of times or until the first failure. The repeats are in addition
- * to the initial execution, so `repeatN(action, 1)` executes `action` once
- * initially and then repeats it one additional time if it succeeds.
+ * Repeats an effect a specified number of times or until the first failure.
+ *
+ * **Details**
+ *
+ * This function executes an effect initially and then repeats it the specified
+ * number of times, as long as it succeeds. For example, calling
+ * `repeatN(action, 2)` will execute `action` once initially and then repeat it
+ * two additional times if there are no failures.
+ *
+ * If the effect fails during any repetition, the failure is returned, and no
+ * further repetitions are attempted.
+ *
+ * **When to Use**
+ *
+ * This function is useful for tasks that need to be retried a fixed number of
+ * times or for performing repeated actions without requiring a schedule.
  *
  * @example
  * ```ts
@@ -9822,7 +9893,7 @@ export const repeat: {
  * ```
  *
  * @since 2.0.0
- * @category repetition / recursion
+ * @category Repetition / Recursion
  */
 export const repeatN: {
   (n: number): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
@@ -9830,12 +9901,21 @@ export const repeatN: {
 } = effect.repeatN
 
 /**
- * The `repeatOrElse` function returns a new effect that repeats the specified
- * effect according to the given schedule or until the first failure. When a
- * failure occurs, the failure value and schedule output are passed to a
- * specified handler. Scheduled recurrences are in addition to the initial
- * execution, so `repeat(action, Schedule.once)` executes `action` once
- * initially and then repeats it an additional time if it succeeds.
+ * Repeats an effect with a schedule, handling failures using a custom handler.
+ *
+ * **Details**
+ *
+ * This function allows you to execute an effect repeatedly based on a specified
+ * schedule. If the effect fails at any point, a custom failure handler is
+ * invoked. The handler is provided with both the failure value and the output
+ * of the schedule at the time of failure. This enables advanced error recovery
+ * or alternative fallback logic while maintaining flexibility in how
+ * repetitions are handled.
+ *
+ * For example, using a schedule with `recurs(2)` will allow for two additional
+ * repetitions after the initial execution, provided the effect succeeds. If a
+ * failure occurs during any iteration, the failure handler is invoked to handle
+ * the situation.
  *
  * @example
  * ```ts
@@ -9871,7 +9951,7 @@ export const repeatN: {
  * ```
  *
  * @since 2.0.0
- * @category repetition / recursion
+ * @category Repetition / Recursion
  */
 export const repeatOrElse: {
   <R2, A, B, E, E2, R3>(
@@ -9886,13 +9966,26 @@ export const repeatOrElse: {
 } = _schedule.repeatOrElse_Effect
 
 /**
- * Runs this effect according to the specified schedule.
+ * Repeats an effect based on a specified schedule.
  *
- * See `scheduleFrom` for a variant that allows the schedule's decision to
- * depend on the result of this effect.
+ * **Details**
+ *
+ * This function allows you to execute an effect repeatedly according to a given
+ * schedule. The schedule determines the timing and number of repetitions. Each
+ * repetition can also depend on the decision of the schedule, providing
+ * flexibility for complex workflows. This function does not modify the effect's
+ * success or failure; it only controls its repetition.
+ *
+ * For example, you can use a schedule that recurs a specific number of times,
+ * adds delays between repetitions, or customizes repetition behavior based on
+ * external inputs. The effect runs initially and is repeated according to the
+ * schedule.
+ *
+ * @see {@link scheduleFrom} for a variant that allows the schedule's decision
+ * to depend on the result of this effect.
  *
  * @since 2.0.0
- * @category repetition / recursion
+ * @category Repetition / Recursion
  */
 export const schedule: {
   <R2, Out>(schedule: Schedule.Schedule<Out, unknown, R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<Out, E, R2 | R>
@@ -9900,11 +9993,27 @@ export const schedule: {
 } = _schedule.schedule_Effect
 
 /**
- * Runs this effect according to the specified schedule in a new fiber
- * attached to the current scope.
+ * Runs an effect repeatedly on a new fiber according to a given schedule.
+ *
+ * **Details**
+ *
+ * This function starts the provided effect on a new fiber and runs it
+ * repeatedly based on the specified schedule. The repetitions are managed by
+ * the schedule's rules, which define the timing and number of iterations. The
+ * fiber is attached to the current scope, meaning it is automatically managed
+ * and cleaned up when the scope is closed.
+ *
+ * The function returns a `RuntimeFiber` that allows you to monitor or interact
+ * with the running fiber.
+ *
+ * **When to Use**
+ *
+ * This is particularly useful for concurrent execution of scheduled tasks or
+ * when you want to continue processing without waiting for the repetitions to
+ * complete.
  *
  * @since 2.0.0
- * @category repetition / recursion
+ * @category Repetition / Recursion
  */
 export const scheduleForked: {
   <Out, R2>(
@@ -9917,11 +10026,22 @@ export const scheduleForked: {
 } = circular.scheduleForked
 
 /**
- * Runs this effect according to the specified schedule starting from the
- * specified input value.
+ * Runs an effect repeatedly according to a schedule, starting from a specified
+ * input value.
+ *
+ * **Details**
+ *
+ * This function allows you to repeatedly execute an effect based on a schedule.
+ * The schedule starts with the given `initial` input value, which is passed to
+ * the first execution. Subsequent executions of the effect are controlled by
+ * the schedule's rules, using the output of the previous iteration as the input
+ * for the next one.
+ *
+ * The returned effect will complete when the schedule ends or the effect fails,
+ * propagating the error.
  *
  * @since 2.0.0
- * @category repetition / recursion
+ * @category Repetition / Recursion
  */
 export const scheduleFrom: {
   <R2, In, Out>(
@@ -9937,7 +10057,7 @@ export const scheduleFrom: {
 
 /**
  * @since 2.0.0
- * @category repetition / recursion
+ * @category Repetition / Recursion
  */
 export const whileLoop: <A, E, R>(
   options: {
