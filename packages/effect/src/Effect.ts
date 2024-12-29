@@ -6082,6 +6082,8 @@ export const fiberIdWith: <A, E, R>(f: (descriptor: FiberId.Runtime) => Effect<A
  * higher-level functions like {@link raceWith}, {@link zip}, or others that can
  * manage concurrency for you.
  *
+ * @see {@link forkWithErrorHandler} for a version that allows you to handle errors.
+ *
  * @example
  * ```ts
  * import { Effect } from "effect"
@@ -6330,7 +6332,7 @@ export const forkScoped: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.Runtim
   circular.forkScoped
 
 /**
- * Like fork but handles an error with the provided handler.
+ * Like {@link fork} but handles an error with the provided handler.
  *
  * @since 2.0.0
  * @category Supervision & Fibers
@@ -6349,14 +6351,18 @@ export const forkWithErrorHandler: {
  * Creates an `Effect` value that represents the exit value of the specified
  * fiber.
  *
+ * @see {@link fromFiberEffect} for creating an effect from a fiber obtained from an effect.
+ *
  * @since 2.0.0
  * @category Supervision & Fibers
  */
 export const fromFiber: <A, E>(fiber: Fiber.Fiber<A, E>) => Effect<A, E> = circular.fromFiber
 
 /**
- * Creates an `Effect` value that represents the exit value of the specified
- * fiber.
+ * Creates an `Effect` value that represents the exit value of a fiber obtained
+ * from an effect.
+ *
+ * @see {@link fromFiber} for creating an effect from a fiber.
  *
  * @since 2.0.0
  * @category Supervision & Fibers
@@ -6535,42 +6541,73 @@ export const withMaxOpsBeforeYield: {
 } = core.withMaxOpsBeforeYield
 
 /**
- * Retreives the `Clock` service from the context
+ * Retrieves the `Clock` service from the context.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const clock = yield* Effect.clock
+ *   const currentTime = yield* clock.currentTimeMillis
+ *   console.log(`Current time in milliseconds: ${currentTime}`)
+ * })
+ *
+ * // Effect.runFork(program)
+ * // Example Output:
+ * // Current time in milliseconds: 1735484796134
+ * ```
  *
  * @since 2.0.0
- * @category clock
+ * @category Clock
  */
 export const clock: Effect<Clock.Clock> = effect.clock
 
 /**
- * Retreives the `Clock` service from the context and provides it to the
+ * Retrieves the `Clock` service from the context and provides it to the
  * specified effectful function.
  *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const program = Effect.clockWith((clock) =>
+ *   clock.currentTimeMillis.pipe(
+ *     Effect.map((currentTime) => `Current time is: ${currentTime}`),
+ *     Effect.tap(Console.log)
+ *   )
+ * )
+ *
+ * // Effect.runFork(program)
+ * // Example Output:
+ * // Current time is: 1735484929744
+ * ```
+ *
  * @since 2.0.0
- * @category clock
+ * @category Clock
  */
 export const clockWith: <A, E, R>(f: (clock: Clock.Clock) => Effect<A, E, R>) => Effect<A, E, R> = effect.clockWith
 
 /**
- * Sets the implementation of the clock service to the specified value and
+ * Sets the implementation of the `Clock` service to the specified value and
  * restores it to its original value when the scope is closed.
  *
  * @since 2.0.0
- * @category Creating Effects
+ * @category Clock
  */
-export const withClockScoped: <A extends Clock.Clock>(value: A) => Effect<void, never, Scope.Scope> =
+export const withClockScoped: <C extends Clock.Clock>(clock: C) => Effect<void, never, Scope.Scope> =
   fiberRuntime.withClockScoped
 
 /**
  * Executes the specified workflow with the specified implementation of the
- * clock service.
+ * `Clock` service.
  *
  * @since 2.0.0
- * @category clock
+ * @category Clock
  */
 export const withClock: {
-  <X extends Clock.Clock>(value: X): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
-  <X extends Clock.Clock, A, E, R>(effect: Effect<A, E, R>, value: X): Effect<A, E, R>
+  <C extends Clock.Clock>(clock: C): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <C extends Clock.Clock, A, E, R>(effect: Effect<A, E, R>, clock: C): Effect<A, E, R>
 } = defaultServices.withClock
 
 /**

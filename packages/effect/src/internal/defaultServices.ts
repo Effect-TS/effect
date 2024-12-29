@@ -64,12 +64,12 @@ export const currentTimeNanos: Effect.Effect<bigint> = clockWith((clock) => cloc
 
 /** @internal */
 export const withClock = dual<
-  <X extends Clock.Clock>(value: X) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <X extends Clock.Clock, A, E, R>(effect: Effect.Effect<A, E, R>, value: X) => Effect.Effect<A, E, R>
->(2, (effect, value) =>
+  <C extends Clock.Clock>(clock: C) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <C extends Clock.Clock, A, E, R>(effect: Effect.Effect<A, E, R>, clock: C) => Effect.Effect<A, E, R>
+>(2, (effect, c) =>
   core.fiberRefLocallyWith(
     currentServices,
-    Context.add(clock.clockTag, value)
+    Context.add(clock.clockTag, c)
   )(effect))
 
 // circular with ConfigProvider

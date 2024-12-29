@@ -3012,8 +3012,8 @@ export const validateFirst = dual<
 )
 
 /* @internal */
-export const withClockScoped = <A extends Clock.Clock>(value: A) =>
-  fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(clock.clockTag, value))
+export const withClockScoped = <C extends Clock.Clock>(c: C) =>
+  fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(clock.clockTag, c))
 
 /* @internal */
 export const withRandomScoped = <A extends Random.Random>(value: A) =>
