@@ -7200,13 +7200,30 @@ export const withConfigProviderScoped: (provider: ConfigProvider) => Effect<void
   fiberRuntime.withConfigProviderScoped
 
 /**
+ * Accesses the full context of the effect.
+ *
+ * **Details**
+ *
+ * This function provides the ability to access the entire context required by
+ * an effect. The context is a container that holds dependencies or environment
+ * values needed by an effect to run. By using this function, you can retrieve
+ * and work with the context directly within an effect.
+ *
  * @since 2.0.0
  * @category Context
  */
 export const context: <R>() => Effect<Context.Context<R>, never, R> = core.context
 
 /**
- * Accesses the context of the effect.
+ * Accesses the context and applies a transformation function.
+ *
+ * **Details**
+ *
+ * This function retrieves the context of the effect and applies a pure
+ * transformation function to it. The result of the transformation is then
+ * returned within the effect.
+ *
+ * @see {@link contextWithEffect} for a version that allows effectful transformations.
  *
  * @since 2.0.0
  * @category Context
@@ -7214,7 +7231,15 @@ export const context: <R>() => Effect<Context.Context<R>, never, R> = core.conte
 export const contextWith: <R, A>(f: (context: Context.Context<R>) => A) => Effect<A, never, R> = effect.contextWith
 
 /**
- * Effectually accesses the context of the effect.
+ * Accesses the context and performs an effectful transformation.
+ *
+ * **Details**
+ *
+ * This function retrieves the context and allows you to transform it
+ * effectually using another effect. It is useful when the transformation
+ * involves asynchronous or effectful operations.
+ *
+ * @see {@link contextWith} for a version that allows pure transformations.
  *
  * @since 2.0.0
  * @category Context
@@ -7224,8 +7249,45 @@ export const contextWithEffect: <R2, A, E, R>(
 ) => Effect<A, E, R | R2> = core.contextWithEffect
 
 /**
- * Provides some of the context required to run this effect,
- * leaving the remainder `R2`.
+ * Provides part of the required context while leaving the rest unchanged.
+ *
+ * **Details**
+ *
+ * This function allows you to transform the context required by an effect,
+ * providing part of the context and leaving the rest to be fulfilled later.
+ *
+ * @example
+ * ```ts
+ * import { Context, Effect } from "effect"
+ *
+ * class Service1 extends Context.Tag("Service1")<Service1, { readonly port: number }>() {}
+ * class Service2 extends Context.Tag("Service2")<Service2, { readonly connection: string }>() {}
+ *
+ * const program = Effect.gen(function*() {
+ *   const service1 = yield* Service1
+ *   console.log(service1.port)
+ *   const service2 = yield* Service2
+ *   console.log(service2.connection)
+ *   return "some result"
+ * })
+ *
+ * //      ┌─── Effect<string, never, Service2>
+ * //      ▼
+ * const programWithService1 = Effect.mapInputContext(
+ *   program,
+ *   (ctx: Context.Context<Service2>) => Context.add(ctx, Service1, { port: 3000 })
+ * )
+ *
+ * const runnable = programWithService1.pipe(
+ *   Effect.provideService(Service2, { connection: "localhost" }),
+ *   Effect.provideService(Service1, { port: 3001 })
+ * )
+ *
+ * Effect.runPromise(runnable)
+ * // Output:
+ * // 3000
+ * // localhost
+ * ```
  *
  * @since 2.0.0
  * @category Context
@@ -7236,11 +7298,19 @@ export const mapInputContext: {
 } = core.mapInputContext
 
 /**
- * Provides the necessary `Layer`s to an effect, removing its dependency on the
- * environment.
+ * Provides necessary dependencies to an effect, removing its environmental
+ * requirements.
  *
- * You can pass multiple layers, a `Context`, `Runtime`, or `ManagedRuntime` to
- * the effect.
+ * **Details**
+ *
+ * This function allows you to supply the required environment for an effect.
+ * The environment can be provided in the form of one or more `Layer`s, a
+ * `Context`, a `Runtime`, or a `ManagedRuntime`. Once the environment is
+ * provided, the effect can run without requiring external dependencies.
+ *
+ * You can compose layers to create a modular and reusable way of setting up the
+ * environment for effects. For example, layers can be used to configure
+ * databases, logging services, or any other required dependencies.
  *
  * @see {@link provideService} for providing a service to an effect.
  *
@@ -7323,14 +7393,20 @@ export const provide: {
 } = layer.effect_provide
 
 /**
- * The `provideService` function is used to provide an actual
- * implementation for a service in the context of an effect.
+ * Provides an implementation for a service in the context of an effect.
  *
- * This function allows you to associate a service with its implementation so
- * that it can be used in your program. You define the service (e.g., a random
- * number generator), and then you use `provideService` to link that
- * service to its implementation. Once the implementation is provided, the
- * effect can be run successfully without further requirements.
+ * **Details**
+ *
+ * This function allows you to supply a specific implementation for a service
+ * required by an effect. Services are typically defined using `Context.Tag`,
+ * which acts as a unique identifier for the service. By using this function,
+ * you link the service to its concrete implementation, enabling the effect to
+ * execute successfully without additional requirements.
+ *
+ * For example, you can use this function to provide a random number generator,
+ * a logger, or any other service your effect depends on. Once the service is
+ * provided, all parts of the effect that rely on the service will automatically
+ * use the implementation you supplied.
  *
  * @see {@link provide} for providing multiple layers to an effect.
  *
@@ -7381,8 +7457,19 @@ export const provideService: {
 } = effect.provideService
 
 /**
- * Provides the effect with the single service it requires. If the effect
- * requires more than one service use `provide` instead.
+ * Dynamically provides an implementation for a service using an effect.
+ *
+ * **Details**
+ *
+ * This function allows you to provide an implementation for a service
+ * dynamically by using another effect. The provided effect is executed to
+ * produce the service implementation, which is then made available to the
+ * consuming effect. This is particularly useful when the service implementation
+ * itself requires asynchronous or resource-intensive initialization.
+ *
+ * For example, you can use this function to lazily initialize a database
+ * connection or fetch configuration values from an external source before
+ * making the service available to your effect.
  *
  * @since 2.0.0
  * @category Context
@@ -7400,6 +7487,10 @@ export const provideServiceEffect: {
 } = effect.provideServiceEffect
 
 /**
+ * Creates a function that uses a service from the context to produce a value.
+ *
+ * @see {@link serviceFunctionEffect} for a version that returns an effect.
+ *
  * @since 2.0.0
  * @category Context
  */
@@ -7409,6 +7500,10 @@ export const serviceFunction: <T extends Effect<any, any, any>, Args extends Arr
 ) => (...args: Args) => Effect<A, Effect.Error<T>, Effect.Context<T>> = effect.serviceFunction
 
 /**
+ * Creates a function that uses a service from the context to produce an effect.
+ *
+ * @see {@link serviceFunction} for a version that returns a value.
+ *
  * @since 2.0.0
  * @category Context
  */
@@ -7459,12 +7554,43 @@ export const serviceMembers: <S, SE, SR>(
 } = effect.serviceMembers as any
 
 /**
+ * Retrieves an optional service from the context as an `Option`.
+ *
+ * **Details**
+ *
+ * This function retrieves a service from the context and wraps it in an
+ * `Option`. If the service is available, it returns a `Some` containing the
+ * service. If the service is not found, it returns a `None`. This approach is
+ * useful when you want to handle the absence of a service gracefully without
+ * causing an error.
+ *
+ * **When to Use**
+ *
+ * Use this function when:
+ * - You need to access a service that may or may not be present in the context.
+ * - You want to handle the absence of a service using the `Option` type instead
+ *   of throwing an error.
+ *
+ * @see {@link serviceOptional} for a version that throws an error if the service is missing.
+ *
  * @since 2.0.0
  * @category Context
  */
 export const serviceOption: <I, S>(tag: Context.Tag<I, S>) => Effect<Option.Option<S>> = effect.serviceOption
 
 /**
+ * Retrieves a service from the context, throwing an error if it is missing.
+ *
+ * **Details**
+ *
+ * This function retrieves a required service from the context. If the service
+ * is available, it returns the service. If the service is missing, it throws a
+ * `NoSuchElementException`, which can be handled using Effect's error-handling
+ * mechanisms. This is useful for services that are critical to the execution of
+ * your effect.
+ *
+ * @see {@link serviceOption} for a version that returns an `Option` instead of throwing an error.
+ *
  * @since 2.0.0
  * @category Context
  */
@@ -7472,7 +7598,19 @@ export const serviceOptional: <I, S>(tag: Context.Tag<I, S>) => Effect<S, Cause.
   effect.serviceOptional
 
 /**
- * Updates the service with the required service entry.
+ * Updates a service in the context with a new implementation.
+ *
+ * **Details**
+ *
+ * This function modifies the existing implementation of a service in the
+ * context. It retrieves the current service, applies the provided
+ * transformation function `f`, and replaces the old service with the
+ * transformed one.
+ *
+ * **When to Use**
+ *
+ * This is useful for adapting or extending a service's behavior during the
+ * execution of an effect.
  *
  * @since 2.0.0
  * @category Context
