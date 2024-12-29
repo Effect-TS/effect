@@ -8289,7 +8289,6 @@ export const filterOrFail: {
  * Executes an effect only if the condition is `false`.
  *
  * @see {@link unlessEffect} for a version that allows the condition to be an effect.
- *
  * @see {@link when} for a version that executes the effect when the condition is `true`.
  *
  * @since 2.0.0
@@ -8304,7 +8303,6 @@ export const unless: {
  * Conditionally execute an effect based on the result of another effect.
  *
  * @see {@link unless} for a version that allows the condition to be a boolean.
- *
  * @see {@link whenEffect} for a version that executes the effect when the condition is `true`.
  *
  * @since 2.0.0
@@ -8320,14 +8318,18 @@ export const unlessEffect: {
 /**
  * Conditionally executes an effect based on a boolean condition.
  *
- * `when` allows you to conditionally execute an effect, similar to using an `if
- * (condition)` expression, but with the added benefit of handling effects. If
- * the condition is `true`, the effect is executed; otherwise, it does nothing.
+ * **Details**
  *
- * The result of the effect is wrapped in an `Option<A>` to indicate whether the
- * effect was executed. If the condition is `true`, the result of the effect is
- * wrapped in a `Some`. If the condition is `false`, the result is `None`,
- * representing that the effect was skipped.
+ * This function allows you to run an effect only if a given condition evaluates
+ * to `true`. If the condition is `true`, the effect is executed, and its result
+ * is wrapped in an `Option.some`. If the condition is `false`, the effect is
+ * skipped, and the result is `Option.none`.
+ *
+ * **When to Use**
+ *
+ * This function is useful for scenarios where you need to dynamically decide
+ * whether to execute an effect based on runtime logic, while also representing
+ * the skipped case explicitly.
  *
  * @see {@link whenEffect} for a version that allows the condition to be an effect.
  * @see {@link unless} for a version that executes the effect when the condition is `false`.
@@ -8370,18 +8372,21 @@ export const when: {
 } = effect.when
 
 /**
- * Executes an effect conditionally, based on the result of another effect.
+ * Conditionally executes an effect based on the result of another effect.
  *
- * Use `whenEffect` when the condition to determine whether to execute the effect
- * depends on the outcome of another effect that produces a boolean value.
+ * **Details**
  *
- * If the condition effect evaluates to `true`, the specified effect is executed.
- * If it evaluates to `false`, no effect is executed.
+ * This function allows you to run an effect only if a conditional effect
+ * evaluating to a boolean resolves to `true`. If the conditional effect
+ * evaluates to `true`, the specified effect is executed, and its result is
+ * wrapped in `Option.some`. If the conditional effect evaluates to `false`, the
+ * effect is skipped, and the result is `Option.none`.
  *
- * The result of the effect is wrapped in an `Option<A>` to indicate whether the
- * effect was executed. If the condition is `true`, the result of the effect is
- * wrapped in a `Some`. If the condition is `false`, the result is `None`,
- * representing that the effect was skipped.
+ * **When to Use**
+ *
+ * This function is particularly useful when the decision to execute an effect
+ * depends on the result of another effect, such as a random value, a
+ * user-provided input, or a network request result.
  *
  * @see {@link when} for a version that allows the condition to be a boolean.
  * @see {@link unlessEffect} for a version that executes the effect when the condition is `false`.
@@ -8411,8 +8416,17 @@ export const whenEffect: {
 } = core.whenEffect
 
 /**
- * Executes this workflow when value of the specified `FiberRef` satisfies the
- * predicate.
+ * Executes an effect conditionally based on the value of a `FiberRef` that
+ * satisfies a predicate.
+ *
+ * **Details**
+ *
+ * This function enables you to execute an effect only when the value of a
+ * specified `FiberRef` meets a certain condition defined by a predicate. If the
+ * value satisfies the predicate, the effect is executed, and the result is
+ * wrapped in an `Option.some`. If the predicate is not satisfied, the effect is
+ * skipped, and the result is `Option.none`. In both cases, the current value of
+ * the `FiberRef` is included in the result.
  *
  * @since 2.0.0
  * @category Conditional Operators
@@ -8430,7 +8444,17 @@ export const whenFiberRef: {
 } = effect.whenFiberRef
 
 /**
- * Executes this workflow when the value of the `Ref` satisfies the predicate.
+ * Executes an effect conditionally based on the value of a `Ref` that satisfies
+ * a predicate.
+ *
+ * **Details**
+ *
+ * This function allows you to execute an effect only when the value of a
+ * specified `Ref` meets a condition defined by a predicate. If the value
+ * satisfies the predicate, the effect is executed, and the result is wrapped in
+ * an `Option.some`. If the predicate is not satisfied, the effect is skipped,
+ * and the result is `Option.none`. In both cases, the current value of the
+ * `Ref` is included in the result.
  *
  * @since 2.0.0
  * @category Conditional Operators
@@ -8453,12 +8477,6 @@ export const whenRef: {
  * const flatMappedEffect = myEffect.pipe(Effect.flatMap(transformation))
  * ```
  *
- * **When to Use**
- *
- * Use `flatMap` when you need to chain multiple effects, ensuring that each
- * step produces a new `Effect` while flattening any nested effects that may
- * occur.
- *
  * **Details**
  *
  * `flatMap` lets you sequence effects so that the result of one effect can be
@@ -8468,6 +8486,12 @@ export const whenRef: {
  *
  * Since effects are immutable, `flatMap` always returns a new effect instead of
  * changing the original one.
+ *
+ * **When to Use**
+ *
+ * Use `flatMap` when you need to chain multiple effects, ensuring that each
+ * step produces a new `Effect` while flattening any nested effects that may
+ * occur.
  *
  * @example
  * ```ts
@@ -8496,7 +8520,7 @@ export const whenRef: {
  * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const flatMap: {
   <A, B, E1, R1>(f: (a: A) => Effect<B, E1, R1>): <E, R>(self: Effect<A, E, R>) => Effect<B, E1 | E, R1 | R>
@@ -8575,7 +8599,7 @@ export const flatMap: {
  * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const andThen: {
   <A, X>(
@@ -8608,7 +8632,7 @@ export const andThen: {
 
 /**
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) => Effect<A, E | E1, R | R1> =
   core.flatten
@@ -9102,7 +9126,7 @@ export const raceWith: {
  * execution.
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const summarized: {
   <B, E2, R2, C>(
@@ -9165,7 +9189,7 @@ export const summarized: {
  * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const tap: {
   <A, X>(
@@ -9253,7 +9277,7 @@ export const tap: {
  * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const tapBoth: {
   <E, X, E2, R2, A, X1, E3, R3>(
@@ -9313,7 +9337,7 @@ export const tapBoth: {
  * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const tapDefect: {
   <X, E2, R2>(
@@ -9352,7 +9376,7 @@ export const tapDefect: {
  * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const tapError: {
   <E, X, E2, R2>(
@@ -9399,7 +9423,7 @@ export const tapError: {
  * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const tapErrorTag: {
   <K extends E extends { _tag: string } ? E["_tag"] : never, E, A1, E1, R1>(
@@ -9453,7 +9477,7 @@ export const tapErrorTag: {
  * ```
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const tapErrorCause: {
   <E, X, E2, R2>(
