@@ -5834,6 +5834,8 @@ export const finalizersMask: (
 ) => Effect<A, E, R> = fiberRuntime.finalizersMask
 
 /**
+ * Provides access to the current scope in a scoped workflow.
+ *
  * @since 2.0.0
  * @category Scoping, Resources & Finalization
  */
@@ -5849,9 +5851,9 @@ export const scopeWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) =>
   fiberRuntime.scopeWith
 
 /**
- * Creates a `Scope`, passes it to the specified effectful function, and then
- * closes the scope as soon as the effect is complete (whether through success,
- * failure, or interruption).
+ * Creates a `Scope`, passes it to the specified effectful function, and closes
+ * the scope when the effect completes (whether through success, failure, or
+ * interruption).
  *
  * @since 3.11.0
  * @category Scoping, Resources & Finalization
@@ -5860,9 +5862,14 @@ export const scopedWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) =
   fiberRuntime.scopedWith
 
 /**
- * Scopes all resources used in this workflow to the lifetime of the workflow,
- * ensuring that their finalizers are run as soon as this workflow completes
- * execution, whether by success, failure, or interruption.
+ * Scopes all resources used in an effect to the lifetime of the effect.
+ *
+ * **Details**
+ *
+ * This function ensures that all resources used within an effect are tied to
+ * its lifetime. Finalizers for these resources are executed automatically when
+ * the effect completes, whether through success, failure, or interruption. This
+ * guarantees proper resource cleanup without requiring explicit management.
  *
  * @since 2.0.0
  * @category Scoping, Resources & Finalization
@@ -5871,8 +5878,36 @@ export const scoped: <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, Exclude<
   fiberRuntime.scopedEffect
 
 /**
- * Scopes all resources acquired by `self` to the lifetime of `use`
- * without effecting the scope of any resources acquired by `use`.
+ * Scopes all resources acquired by one effect to the lifetime of another
+ * effect.
+ *
+ * **Details**
+ *
+ * This function allows you to scope the resources acquired by one effect
+ * (`self`) to the lifetime of another effect (`use`). This ensures that the
+ * resources are cleaned up as soon as the `use` effect completes, regardless of
+ * how the `use` effect ends (success, failure, or interruption).
+ *
+ * @see {@link scopedWith} Manage scoped operations with a temporary scope.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const acquire = Console.log("Acquiring resource").pipe(
+ *   Effect.as(1),
+ *   Effect.tap(Effect.addFinalizer(() => Console.log("Releasing resource")))
+ * )
+ * const use = (resource: number) => Console.log(`Using resource: ${resource}`)
+ *
+ * const program = acquire.pipe(Effect.using(use))
+ *
+ * // Effect.runFork(program)
+ * // Output:
+ * // Acquiring resource
+ * // Using resource: 1
+ * // Releasing resource
+ * ```
  *
  * @since 2.0.0
  * @category Scoping, Resources & Finalization
@@ -5888,15 +5923,43 @@ export const using: {
 } = fiberRuntime.using
 
 /**
- * Returns a new scoped workflow that returns the result of this workflow as
- * well as a finalizer that can be run to close the scope of this workflow.
+ * Returns the result of the effect and a finalizer to close its scope.
+ *
+ * **Details**
+ *
+ * This function allows you to retrieve both the result of an effect and a
+ * finalizer that can be used to manually close its scope. This is useful for
+ * workflows where you need early access to the result while retaining control
+ * over the resource cleanup process.
+ *
+ * @example
+ * ```ts
+ * import { Console, Effect } from "effect"
+ *
+ * const acquire = Console.log("Acquiring resource").pipe(
+ *   Effect.as(1),
+ *   Effect.tap(Effect.addFinalizer(() => Console.log("Releasing resource")))
+ * )
+ * const program = Effect.gen(function*() {
+ *   const [finalizer, resource] = yield* Effect.withEarlyRelease(acquire)
+ *   console.log(`Using resource: ${resource}`)
+ *   yield* Effect.sleep("1 second")
+ *   yield* finalizer
+ * })
+ *
+ * Effect.runFork(program.pipe(Effect.scoped))
+ * // Output:
+ * // Acquiring resource
+ * // Using resource: 1
+ * // Releasing resource
+ * ```
  *
  * @since 2.0.0
  * @category Scoping, Resources & Finalization
  */
 export const withEarlyRelease: <A, E, R>(
   self: Effect<A, E, R>
-) => Effect<[Effect<void>, A], E, R | Scope.Scope> = fiberRuntime.withEarlyRelease
+) => Effect<[finalizer: Effect<void>, result: A], E, R | Scope.Scope> = fiberRuntime.withEarlyRelease
 
 /**
  * Returns a new effect that will not succeed with its value before first
