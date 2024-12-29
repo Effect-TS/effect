@@ -10072,7 +10072,7 @@ export const whileLoop: <A, E, R>(
  * effect.
  *
  * @since 2.0.0
- * @category fiber refs
+ * @category Fiber Refs
  */
 export const getFiberRefs: Effect<FiberRefs.FiberRefs> = effect.fiberRefs
 
@@ -10080,13 +10080,13 @@ export const getFiberRefs: Effect<FiberRefs.FiberRefs> = effect.fiberRefs
  * Inherits values from all `FiberRef` instances into current fiber.
  *
  * @since 2.0.0
- * @category fiber refs
+ * @category Fiber Refs
  */
 export const inheritFiberRefs: (childFiberRefs: FiberRefs.FiberRefs) => Effect<void> = effect.inheritFiberRefs
 
 /**
  * @since 2.0.0
- * @category fiber refs
+ * @category Fiber Refs
  */
 export const locally: {
   <A>(self: FiberRef.FiberRef<A>, value: A): <B, E, R>(use: Effect<B, E, R>) => Effect<B, E, R>
@@ -10095,7 +10095,7 @@ export const locally: {
 
 /**
  * @since 2.0.0
- * @category fiber refs
+ * @category Fiber Refs
  */
 export const locallyWith: {
   <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A): <B, E, R>(use: Effect<B, E, R>) => Effect<B, E, R>
@@ -10104,7 +10104,7 @@ export const locallyWith: {
 
 /**
  * @since 2.0.0
- * @category fiber refs
+ * @category Fiber Refs
  */
 export const locallyScoped: {
   <A>(value: A): (self: FiberRef.FiberRef<A>) => Effect<void, never, Scope.Scope>
@@ -10113,7 +10113,7 @@ export const locallyScoped: {
 
 /**
  * @since 2.0.0
- * @category fiber refs
+ * @category Fiber Refs
  */
 export const locallyScopedWith: {
   <A>(f: (a: A) => A): (self: FiberRef.FiberRef<A>) => Effect<void, never, Scope.Scope>
@@ -10125,7 +10125,7 @@ export const locallyScopedWith: {
  * running this workflow.
  *
  * @since 2.0.0
- * @category fiber refs
+ * @category Fiber Refs
  */
 export const patchFiberRefs: (patch: FiberRefsPatch.FiberRefsPatch) => Effect<void> = effect.patchFiberRefs
 
@@ -10134,7 +10134,7 @@ export const patchFiberRefs: (patch: FiberRefsPatch.FiberRefsPatch) => Effect<vo
  * in the specified collection of `FiberRef` values.
  *
  * @since 2.0.0
- * @category fiber refs
+ * @category Fiber Refs
  */
 export const setFiberRefs: (fiberRefs: FiberRefs.FiberRefs) => Effect<void> = effect.setFiberRefs
 
@@ -10143,14 +10143,38 @@ export const setFiberRefs: (fiberRefs: FiberRefs.FiberRefs) => Effect<void> = ef
  * specified function.
  *
  * @since 2.0.0
- * @category fiber refs
+ * @category Fiber Refs
  */
 export const updateFiberRefs: (
   f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
 ) => Effect<void> = effect.updateFiberRefs
 
 /**
- * Returns `true` if this effect is a failure, `false` otherwise.
+ * Checks if an effect has failed.
+ *
+ * **Details**
+ *
+ * This function evaluates whether an effect has resulted in a failure. It
+ * returns a boolean value wrapped in an effect, with `true` indicating the
+ * effect failed and `false` otherwise.
+ *
+ * The resulting effect cannot fail (`never` in the error channel) but retains
+ * the context of the original effect.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * const failure = Effect.fail("Uh oh!")
+ *
+ * // console.log(Effect.runSync(Effect.isFailure(failure)))
+ * // Output: true
+ *
+ * const defect = Effect.dieMessage("BOOM!")
+ *
+ * // Effect.runSync(Effect.isFailure(defect))
+ * // throws: BOOM!
+ * ```
  *
  * @since 2.0.0
  * @category Condition Checking
@@ -10158,7 +10182,16 @@ export const updateFiberRefs: (
 export const isFailure: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, never, R> = effect.isFailure
 
 /**
- * Returns `true` if this effect is a success, `false` otherwise.
+ * Checks if an effect has succeeded.
+ *
+ * **Details**
+ *
+ * This function evaluates whether an effect has resulted in a success. It
+ * returns a boolean value wrapped in an effect, with `true` indicating the
+ * effect succeeded and `false` otherwise.
+ *
+ * The resulting effect cannot fail (`never` in the error channel) but retains
+ * the context of the original effect.
  *
  * @since 2.0.0
  * @category Condition Checking
@@ -10214,7 +10247,7 @@ export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  * ```
  *
  * @since 2.0.0
- * @category getters & folding
+ * @category Matching
  */
 export const match: {
   <E, A2, A, A3>(
@@ -10284,7 +10317,7 @@ export const match: {
  * ```
  *
  * @since 2.0.0
- * @category getters & folding
+ * @category Matching
  */
 export const matchCause: {
   <E, A2, A, A3>(
@@ -10350,7 +10383,7 @@ export const matchCause: {
  * ```
  *
  * @since 2.0.0
- * @category getters & folding
+ * @category Matching
  */
 export const matchCauseEffect: {
   <E, A2, E2, R2, A, A3, E3, R3>(
@@ -10425,7 +10458,7 @@ export const matchCauseEffect: {
  * ```
  *
  * @since 2.0.0
- * @category getters & folding
+ * @category Matching
  */
 export const matchEffect: {
   <E, A2, E2, R2, A, A3, E3, R3>(
