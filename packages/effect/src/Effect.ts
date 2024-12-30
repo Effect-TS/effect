@@ -12920,16 +12920,32 @@ const makeTagProxy = (TagClass: Context.Tag<any, any> & Record<PropertyKey, any>
 }
 
 /**
+ * Creates a unique tag for a dependency, embedding the service's methods as
+ * static properties.
+ *
+ * **Details**
+ *
+ * This function allows you to define a `Tag` for a service or dependency in
+ * your application. The `Tag` not only acts as an identifier but also provides
+ * direct access to the service's methods via static properties. This makes it
+ * easier to access and use the service in your code without manually managing
+ * contexts.
+ *
+ * In the example below, the fields of the service (in this case, the `notify`
+ * method) are turned into static properties of the Notifications class, making
+ * it easier to access them.
+ *
  * @example
  * ```ts
- * import { Effect, Layer } from "effect"
+ * import { Effect } from "effect"
  *
- * class MapTag extends Effect.Tag("MapTag")<MapTag, Map<string, string>>() {
- *  static Live = Layer.effect(
- *    this,
- *    Effect.sync(() => new Map())
- *  )
- * }
+ * class Notifications extends Effect.Tag("Notifications")<
+ *   Notifications,
+ *   { readonly notify: (message: string) => Effect.Effect<void> }
+ * >() {}
+ *
+ * // Create an effect that depends on the Notifications service
+ * const action = Notifications.notify("Hello, world!")
  * ```
  *
  * @since 2.0.0
@@ -12969,6 +12985,22 @@ export const Tag: <const Id extends string>(id: Id) => <
   }
 
 /**
+ * Simplifies the creation and management of services in Effect by defining both
+ * a `Tag` and a `Layer`.
+ *
+ * **Details**
+ *
+ * This function allows you to streamline the creation of services by combining
+ * the definition of a `Context.Tag` and a `Layer` in a single step. It supports
+ * various ways of providing the service implementation:
+ * - Using an `effect` to define the service dynamically.
+ * - Using `sync` or `succeed` to define the service statically.
+ * - Using `scoped` to create services with lifecycle management.
+ *
+ * It also allows you to specify dependencies for the service, which will be
+ * provided automatically when the service is used. Accessors can be optionally
+ * generated for the service, making it more convenient to use.
+ *
  * @example
  * ```ts
  * import { Effect } from 'effect';
