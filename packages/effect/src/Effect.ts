@@ -11347,24 +11347,65 @@ export interface Permit {
 }
 
 /**
+ * A semaphore is a synchronization mechanism used to manage access to a shared
+ * resource. In Effect, semaphores help control resource access or coordinate
+ * tasks within asynchronous, concurrent operations.
+ *
+ * A semaphore acts as a generalized mutex, allowing a set number of permits to
+ * be held and released concurrently. Permits act like tickets, giving tasks or
+ * fibers controlled access to a shared resource. When no permits are available,
+ * tasks trying to acquire one will wait until a permit is released.
+ *
  * @category Semaphore
  * @since 2.0.0
  */
 export interface Semaphore {
-  /** when the given amount of permits are available, run the effect and release the permits when finished */
+  /**
+   * Runs an effect with the given number of permits and releases the permits
+   * when the effect completes.
+   *
+   * **Details**
+   *
+   * This function acquires the specified number of permits before executing
+   * the provided effect. Once the effect finishes, the permits are released.
+   * If insufficient permits are available, the function will wait until they
+   * are released by other tasks.
+   */
   withPermits(permits: number): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
-  /** only if the given permits are available, run the effect and release the permits when finished */
+
+  /**
+   * Runs an effect only if the specified number of permits are immediately
+   * available.
+   *
+   * **Details**
+   *
+   * This function attempts to acquire the specified number of permits. If they
+   * are available, it runs the effect and releases the permits after the effect
+   * completes. If permits are not available, the effect does not execute, and
+   * the result is `Option.none`.
+   */
   withPermitsIfAvailable(permits: number): <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, E, R>
-  /** take the given amount of permits, suspending if they are not yet available */
+
+  /**
+   * Acquires the specified number of permits and returns the resulting
+   * available permits, suspending the task if they are not yet available.
+   */
   take(permits: number): Effect<number>
-  /** release the given amount of permits, and return the resulting available permits */
+
+  /**
+   * Releases the specified number of permits and returns the resulting
+   * available permits.
+   */
   release(permits: number): Effect<number>
-  /** release all the taken permits, and return the resulting available permits */
+
+  /**
+   * Releases all permits held by this semaphore and returns the resulting available permits.
+   */
   releaseAll: Effect<number>
 }
 
 /**
- * Unsafely creates a new Semaphore
+ * Unsafely creates a new Semaphore.
  *
  * @since 2.0.0
  * @category Semaphore
@@ -11372,7 +11413,21 @@ export interface Semaphore {
 export const unsafeMakeSemaphore: (permits: number) => Semaphore = circular.unsafeMakeSemaphore
 
 /**
- * Creates a new Semaphore
+ * Creates a new semaphore with the specified number of permits.
+ *
+ * **Details**
+ *
+ * This function initializes a semaphore that controls concurrent access to a
+ * shared resource. The number of permits determines how many tasks can access
+ * the resource concurrently.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * // Create a semaphore with 3 permits
+ * const mutex = Effect.makeSemaphore(3)
+ * ```
  *
  * @since 2.0.0
  * @category Semaphore
@@ -11425,8 +11480,8 @@ export interface LatchUnifyIgnore extends EffectUnifyIgnore {
 export const unsafeMakeLatch: (open?: boolean | undefined) => Latch = circular.unsafeMakeLatch
 
 /**
- * @category Latch
- * @since 3.8.0
+ * Returns a new Latch, starting in the closed state by default.
+ *
  * @example
  * ```ts
  * import { Effect } from "effect"
@@ -11446,6 +11501,9 @@ export const unsafeMakeLatch: (open?: boolean | undefined) => Latch = circular.u
  *   yield* fiber.await
  * })
  * ```
+ *
+ * @category Latch
+ * @since 3.8.0
  */
 export const makeLatch: (open?: boolean | undefined) => Effect<Latch, never, never> = circular.makeLatch
 
