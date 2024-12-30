@@ -11435,21 +11435,83 @@ export const unsafeMakeSemaphore: (permits: number) => Semaphore = circular.unsa
 export const makeSemaphore: (permits: number) => Effect<Semaphore> = circular.makeSemaphore
 
 /**
+ * A `Latch` is a synchronization primitive that allows you to control the
+ * execution of fibers based on an open or closed state. It acts as a gate,
+ * where fibers can wait for the latch to open before proceeding.
+ *
+ * **Details**
+ *
+ * A `Latch` can be in one of two states: open or closed. Fibers can:
+ * - Wait for the latch to open using `await`.
+ * - Proceed only when the latch is open using `whenOpen`.
+ * - Open the latch to release all waiting fibers using `open`.
+ * - Close the latch to block fibers using `close`.
+ *
+ * Additionally, fibers can be released without changing the state of the latch
+ * using `release`.
+ *
  * @category Latch
  * @since 3.8.0
  */
 export interface Latch extends Effect<void> {
-  /** open the latch, releasing all fibers waiting on it */
+  /**
+   * Opens the latch, releasing all fibers waiting on it.
+   *
+   * **Details**
+   *
+   * Once the latch is opened, it remains open. Any fibers waiting on `await`
+   * will be released and can continue execution.
+   */
   readonly open: Effect<void>
-  /** release all fibers waiting on the latch, without opening it */
+
+  /**
+   * Releases all fibers waiting on the latch without opening it.
+   *
+   * **Details**
+   *
+   * This function lets waiting fibers proceed without permanently changing the
+   * state of the latch.
+   */
   readonly release: Effect<void>
-  /** wait for the latch to be opened */
+
+  /**
+   * Waits for the latch to be opened.
+   *
+   * **Details**
+   *
+   * If the latch is already open, this effect completes immediately. Otherwise,
+   * it suspends the fiber until the latch is opened.
+   */
   readonly await: Effect<void>
-  /** close the latch */
+
+  /**
+   * Closes the latch, blocking fibers from proceeding.
+   *
+   * **Details**
+   *
+   * This operation puts the latch into a closed state, requiring it to be
+   * reopened before waiting fibers can proceed.
+   */
   readonly close: Effect<void>
-  /** close the latch */
+
+  /**
+   * Unsafely closes the latch, blocking fibers without effect guarantees.
+   *
+   * **Details**
+   *
+   * Use this operation cautiously, as it does not run within an effect context
+   * and bypasses runtime guarantees.
+   */
   readonly unsafeClose: () => void
-  /** only run the given effect when the latch is open */
+
+  /**
+   * Runs the given effect only when the latch is open.
+   *
+   * **Details**
+   *
+   * This function ensures that the provided effect executes only if the latch
+   * is open. If the latch is closed, the fiber will wait until it opens.
+   */
   readonly whenOpen: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
 
   readonly [Unify.typeSymbol]?: unknown
@@ -11480,26 +11542,36 @@ export interface LatchUnifyIgnore extends EffectUnifyIgnore {
 export const unsafeMakeLatch: (open?: boolean | undefined) => Latch = circular.unsafeMakeLatch
 
 /**
- * Returns a new Latch, starting in the closed state by default.
+ * Creates a new `Latch`, starting in the specified state.
+ *
+ * **Details**
+ *
+ * This function initializes a `Latch` safely, ensuring proper runtime
+ * guarantees. By default, the latch starts in the closed state.
  *
  * @example
  * ```ts
- * import { Effect } from "effect"
+ * import { Console, Effect } from "effect"
  *
- * Effect.gen(function*() {
+ * const program = Effect.gen(function*() {
  *   // Create a latch, starting in the closed state
  *   const latch = yield* Effect.makeLatch(false)
  *
  *   // Fork a fiber that logs "open sesame" when the latch is opened
- *   const fiber = yield* Effect.log("open sesame").pipe(
+ *   const fiber = yield* Console.log("open sesame").pipe(
  *     latch.whenOpen,
  *     Effect.fork
  *   )
+ *
+ *   yield* Effect.sleep("1 second")
  *
  *   // Open the latch
  *   yield* latch.open
  *   yield* fiber.await
  * })
+ *
+ * // Effect.runFork(program)
+ * // Output: open sesame (after 1 second)
  * ```
  *
  * @category Latch
