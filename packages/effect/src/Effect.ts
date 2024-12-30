@@ -10934,12 +10934,18 @@ export const orDieWith: {
 } = core.orDieWith
 
 /**
- * Tries one effect, and if it fails, attempts another effect as a fallback.
+ * Attempts one effect, and if it fails, falls back to another effect.
  *
- * `orElse` allows you to attempt to run an effect, and if it fails, you
- * can provide a fallback effect to run instead. This is useful for handling
- * failures gracefully by defining an alternative effect to execute if the first
- * one encounters an error.
+ * **Details**
+ *
+ * This function allows you to try executing an effect, and if it fails
+ * (produces an error), a fallback effect is executed instead. The fallback
+ * effect is defined as a lazy argument, meaning it will only be evaluated if
+ * the first effect fails. This provides a way to recover from errors by
+ * specifying an alternative path of execution.
+ *
+ * The error type of the resulting effect will be that of the fallback effect,
+ * as the first effect's error is replaced when the fallback is executed.
  *
  * @see {@link catchAll} if you need to access the error in the fallback effect.
  *
@@ -10971,14 +10977,22 @@ export const orElse: {
 } = core.orElse
 
 /**
- * Replaces the original failure with a new failure value.
+ * Replaces the failure of an effect with a custom failure value.
  *
- * `orElseFail` allows you to replace the failure from one effect with a
- * custom failure value. If the effect fails, you can provide a new failure to
- * be returned instead of the original one.
+ * **Details**
  *
- * **Important**: This function only applies to failed effects. If the effect
- * succeeds, it will remain unaffected.
+ * This function allows you to handle the failure of an effect by replacing it
+ * with a predefined failure value. If the effect fails, the new failure value
+ * provided by the `evaluate` function will be returned instead of the original
+ * failure. If the effect succeeds, the original success value is returned
+ * unchanged.
+ *
+ * **When to Use**
+ *
+ * This is particularly useful when you want to standardize error handling or
+ * provide a consistent failure value for specific operations. It simplifies
+ * error management by ensuring that all failures are replaced with a controlled
+ * alternative.
  *
  * @see {@link mapError} if you need to access the error to transform it.
  *
@@ -11016,21 +11030,23 @@ export const orElseFail: {
 } = effect.orElseFail
 
 /**
- * Replaces the original failure with a success value, ensuring the effect
- * cannot fail.
+ * Ensures the effect always succeeds by replacing failures with a default
+ * success value.
  *
- * `orElseSucceed` allows you to replace the failure of an effect with a
- * success value. If the effect fails, it will instead succeed with the provided
- * value, ensuring the effect always completes successfully. This is useful when
- * you want to guarantee a successful result regardless of whether the original
- * effect failed.
+ * **Details**
  *
- * The function ensures that any failure is effectively "swallowed" and replaced
- * by a successful value, which can be helpful for providing default values in
- * case of failure.
+ * This function transforms an effect that may fail into one that cannot fail by
+ * replacing any failure with a provided success value. If the original effect
+ * fails, the failure is "swallowed," and the specified success value is
+ * returned instead. If the original effect succeeds, its value remains
+ * unchanged.
  *
- * **Important**: This function only applies to failed effects. If the effect
- * already succeeds, it will remain unchanged.
+ * **When to Use**
+ *
+ * This is especially useful for providing default values in case of failure,
+ * ensuring that an effect always completes successfully. By using this
+ * function, you can avoid the need for complex error handling and guarantee a
+ * fallback result.
  *
  * @example
  * ```ts
@@ -11062,21 +11078,29 @@ export const orElseSucceed: {
 } = effect.orElseSucceed
 
 /**
- * Runs a series of effects and returns the result of the first successful one.
- * If none of the effects succeed, it fails with the error from the last effect.
+ * Runs a sequence of effects and returns the result of the first successful
+ * one.
  *
- * `firstSuccessOf` allows you to try multiple effects in sequence, and
- * as soon as one of them succeeds, it returns that result. If all effects fail,
- * it returns the error of the last effect in the list. This is useful when you
- * have several potential alternatives and want to use the first one that works.
+ * **Details**
  *
- * This function is sequential, meaning that the `Effect` values in the iterable
- * will be executed in sequence, and the first one that succeeds will determine
- * the outcome of the resulting `Effect` value.
+ * This function allows you to execute a collection of effects in sequence,
+ * stopping at the first success. If an effect succeeds, its result is
+ * immediately returned, and no further effects in the sequence are executed.
+ * However, if all the effects fail, the function will return the error of the
+ * last effect.
  *
- * **Important**: If the collection of effects provided to
- * `firstSuccessOf` is empty, it will throw an `IllegalArgumentException`
- * error.
+ * The execution is sequential, meaning that effects are evaluated one at a time
+ * in the order they are provided. This ensures predictable behavior and avoids
+ * unnecessary computations.
+ *
+ * If the collection of effects is empty, an `IllegalArgumentException` is
+ * thrown, indicating that the operation is invalid without any effects to try.
+ *
+ * **When to Use**
+ *
+ * This is particularly useful when you have multiple fallback strategies or
+ * alternative sources to obtain a result, such as attempting multiple APIs,
+ * retrieving configurations, or accessing resources in a prioritized manner.
  *
  * @example
  * ```ts
