@@ -12343,7 +12343,16 @@ export const zipWith: {
 } = fiberRuntime.zipWithOptions
 
 /**
- * @category Combining
+ * Applies the function produced by one effect to the value produced by another effect.
+ *
+ * **Details**
+ *
+ * This function combines two effects:
+ * - The first effect produces a function of type `(a: A) => B`.
+ * - The second effect produces a value of type `A`.
+ *
+ * Once both effects complete successfully, the function is applied to the value, resulting in an effect that produces a value of type `B`.
+ *
  * @since 2.0.0
  */
 export const ap: {
@@ -12496,7 +12505,18 @@ export const withTracerTiming: {
 } = core.withTracerTiming
 
 /**
- * Adds an annotation to each span in this effect.
+ * Adds annotations to each span in the effect for enhanced traceability.
+ *
+ * **Details**
+ *
+ * This function lets you attach key-value annotations to all spans generated
+ * during the execution of an effect. Annotations provide additional context,
+ * such as metadata or labels, which can help you understand and debug
+ * asynchronous workflows more effectively.
+ *
+ * You can either pass a single key-value pair or a record of key-value pairs to
+ * annotate the spans. These annotations can then be visualized in tracing tools
+ * that support span annotations.
  *
  * @since 2.0.0
  * @category Tracing
@@ -12509,7 +12529,19 @@ export const annotateSpans: {
 } = effect.annotateSpans
 
 /**
- * Adds an annotation to the current span if available
+ * Adds annotations to the currently active span for traceability.
+ *
+ * **Details**
+ *
+ * This function adds key-value annotations to the currently active span in the
+ * effect's trace. These annotations help provide more context about the
+ * operation being executed at a specific point in time. Unlike
+ * {@link annotateSpans}, which applies to all spans in an effect, this function
+ * focuses solely on the active span.
+ *
+ * You can either pass a single key-value pair or a record of key-value pairs to
+ * annotate the span. These annotations are useful for adding metadata to
+ * operations, especially in systems with detailed observability requirements.
  *
  * @since 2.0.0
  * @category Tracing
@@ -12698,15 +12730,27 @@ export const withParentSpan: {
 } = effect.withParentSpan
 
 /**
- * Creates an effect that fails with a `NoSuchElementException` if the input
- * value is `null` or `undefined`. If the value is non-null, the effect succeeds
- * with the value.
+ * Safely handles nullable values by creating an effect that fails for `null` or
+ * `undefined`.
+ *
+ * **Details**
+ *
+ * This function ensures that an input value is non-null and non-undefined
+ * before processing it. If the value is valid, the effect succeeds with the
+ * value. If the value is `null` or `undefined`, the effect fails with a
+ * `NoSuchElementException`. This is particularly useful for avoiding
+ * null-related errors by clearly separating valid values from invalid ones in
+ * effectful computations.
+ *
+ * The failure with `NoSuchElementException` allows you to explicitly handle
+ * cases where a value is expected but not provided, leading to safer and more
+ * predictable code.
  *
  * **When to Use**
  *
- * Use `fromNullable` to safely handle potentially nullable values and ensure
- * that the effect either fails with a clear error or succeeds with the valid
- * value.
+ * Use this function when working with values that may be `null` or `undefined`
+ * and you want to ensure that only non-null values are processed. It helps
+ * enforce null-safety and makes error handling more explicit.
  *
  * @example
  * ```ts
@@ -12748,10 +12792,22 @@ export const fromNullable: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuchE
  *
  * **Details**
  *
- * If the original effect succeeds, its value is wrapped in `Option.some`. If
- * the effect fails with `Cause.NoSuchElementException`, the failure is mapped
- * to `Option.none` in the success channel. Other types of failures are left
- * unchanged.
+ * This function transforms an effect that might fail with
+ * `Cause.NoSuchElementException` into an effect that succeeds with an `Option`
+ * type. If the original effect succeeds, its value is wrapped in `Option.some`.
+ * If it fails specifically due to a `NoSuchElementException`, the failure is
+ * mapped to `Option.none`. Other types of failures remain unchanged and are
+ * passed through as they are.
+ *
+ * This is useful when working with effects where you want to gracefully handle
+ * the absence of a value while preserving other potential failures.
+ *
+ * **When to Use**
+ *
+ * Use this function when you need to handle missing values as `Option.none`
+ * rather than throwing or propagating errors like `NoSuchElementException`.
+ * It’s ideal for scenarios where you want to explicitly represent optionality
+ * in a type-safe way while retaining other failure information.
  *
  * @example
  * ```ts
