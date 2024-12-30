@@ -11339,7 +11339,7 @@ export const withMetric: {
 } = effect.withMetric
 
 /**
- * @category semaphore
+ * @category Semaphore
  * @since 2.0.0
  */
 export interface Permit {
@@ -11347,7 +11347,7 @@ export interface Permit {
 }
 
 /**
- * @category semaphore
+ * @category Semaphore
  * @since 2.0.0
  */
 export interface Semaphore {
@@ -11367,7 +11367,7 @@ export interface Semaphore {
  * Unsafely creates a new Semaphore
  *
  * @since 2.0.0
- * @category semaphore
+ * @category Semaphore
  */
 export const unsafeMakeSemaphore: (permits: number) => Semaphore = circular.unsafeMakeSemaphore
 
@@ -11375,12 +11375,12 @@ export const unsafeMakeSemaphore: (permits: number) => Semaphore = circular.unsa
  * Creates a new Semaphore
  *
  * @since 2.0.0
- * @category semaphore
+ * @category Semaphore
  */
 export const makeSemaphore: (permits: number) => Effect<Semaphore> = circular.makeSemaphore
 
 /**
- * @category latch
+ * @category Latch
  * @since 3.8.0
  */
 export interface Latch extends Effect<void> {
@@ -11419,13 +11419,13 @@ export interface LatchUnifyIgnore extends EffectUnifyIgnore {
 }
 
 /**
- * @category latch
+ * @category Latch
  * @since 3.8.0
  */
 export const unsafeMakeLatch: (open?: boolean | undefined) => Latch = circular.unsafeMakeLatch
 
 /**
- * @category latch
+ * @category Latch
  * @since 3.8.0
  * @example
  * ```ts
@@ -12111,7 +12111,7 @@ export const zipWith: {
 } = fiberRuntime.zipWithOptions
 
 /**
- * @category combining
+ * @category Combining
  * @since 2.0.0
  */
 export const ap: {
@@ -12124,26 +12124,26 @@ export const ap: {
 )
 
 /**
- * @category requests & batching
+ * @category Requests & Batching
  * @since 2.0.0
  */
 export const blocked: <A, E>(blockedRequests: RequestBlock, _continue: Effect<A, E>) => Blocked<A, E> = core.blocked
 
 /**
- * @category requests & batching
+ * @category Requests & Batching
  * @since 2.0.0
  */
 export const runRequestBlock: (blockedRequests: RequestBlock) => Effect<void> = core.runRequestBlock
 
 /**
- * @category requests & batching
+ * @category Requests & Batching
  * @since 2.0.0
  */
 export const step: <A, E, R>(self: Effect<A, E, R>) => Effect<Exit.Exit<A, E> | Blocked<A, E>, never, R> = core.step
 
 /**
  * @since 2.0.0
- * @category requests & batching
+ * @category Requests & Batching
  */
 export const request: {
   <A extends Request.Request<any, any>, Ds extends RequestResolver<A> | Effect<RequestResolver<A>, any, any>>(
@@ -12170,7 +12170,7 @@ export const request: {
 
 /**
  * @since 2.0.0
- * @category requests & batching
+ * @category Requests & Batching
  */
 export const cacheRequestResult: <A extends Request.Request<any, any>>(
   request: A,
@@ -12179,7 +12179,7 @@ export const cacheRequestResult: <A extends Request.Request<any, any>>(
 
 /**
  * @since 2.0.0
- * @category requests & batching
+ * @category Requests & Batching
  */
 export const withRequestBatching: {
   (requestBatching: boolean): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
@@ -12188,7 +12188,7 @@ export const withRequestBatching: {
 
 /**
  * @since 2.0.0
- * @category requests & batching
+ * @category Requests & Batching
  */
 export const withRequestCaching: {
   (strategy: boolean): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
@@ -12197,7 +12197,7 @@ export const withRequestCaching: {
 
 /**
  * @since 2.0.0
- * @category requests & batching
+ * @category Requests & Batching
  */
 export const withRequestCache: {
   (cache: Request.Cache): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
@@ -13009,12 +13009,12 @@ export declare namespace Service {
 
 /**
  * @since 3.11.0
- * @category models
+ * @category Models
  */
 export namespace fn {
   /**
    * @since 3.11.0
-   * @category models
+   * @category Models
    */
   export type Gen = {
     <Eff extends YieldWrap<Effect<any, any, any>>, AEff, Args extends Array<any>>(
@@ -13224,7 +13224,7 @@ export namespace fn {
 
   /**
    * @since 3.11.0
-   * @category models
+   * @category Models
    */
   export type NonGen = {
     <Eff extends Effect<any, any, any>, Args extends Array<any>>(
@@ -13378,7 +13378,7 @@ export namespace fn {
  * ```
  *
  * @since 3.11.0
- * @category function
+ * @category Tracing
  */
 export const fn:
   & fn.Gen
@@ -13494,7 +13494,7 @@ function fnApply(options: {
  * @see {@link fn} for a version that includes tracing.
  *
  * @since 3.12.0
- * @category function
+ * @category Tracing
  */
 export const fnUntraced: fn.Gen = (body: Function, ...pipeables: Array<any>) =>
   pipeables.length === 0
