@@ -11200,12 +11200,16 @@ export const withRandomScoped: <A extends Random.Random>(value: A) => Effect<voi
   fiberRuntime.withRandomScoped
 
 /**
- * Returns an effect that accesses the runtime, which can be used to
- * (unsafely) execute tasks. This is useful for integration with legacy code
- * that must call back into Effect code.
+ * Returns an effect that accesses the runtime, which can be used to (unsafely)
+ * execute tasks.
+ *
+ * **When to Use**
+ *
+ * This is useful for integration with legacy code that must call back into
+ * Effect code.
  *
  * @since 2.0.0
- * @category runtime
+ * @category Runtime
  */
 export const runtime: <R = never>() => Effect<Runtime.Runtime<R>, never, R> = _runtime.runtime
 
@@ -11214,19 +11218,19 @@ export const runtime: <R = never>() => Effect<Runtime.Runtime<R>, never, R> = _r
  * govern behavior and features of the runtime system.
  *
  * @since 2.0.0
- * @category runtime
+ * @category Runtime
  */
 export const getRuntimeFlags: Effect<RuntimeFlags.RuntimeFlags> = core.runtimeFlags
 
 /**
  * @since 2.0.0
- * @category runtime
+ * @category Runtime
  */
 export const patchRuntimeFlags: (patch: RuntimeFlagsPatch.RuntimeFlagsPatch) => Effect<void> = core.updateRuntimeFlags
 
 /**
  * @since 2.0.0
- * @category runtime
+ * @category Runtime
  */
 export const withRuntimeFlagsPatch: {
   (update: RuntimeFlagsPatch.RuntimeFlagsPatch): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
@@ -11235,17 +11239,25 @@ export const withRuntimeFlagsPatch: {
 
 /**
  * @since 2.0.0
- * @category runtime
+ * @category Runtime
  */
 export const withRuntimeFlagsPatchScoped: (
   update: RuntimeFlagsPatch.RuntimeFlagsPatch
 ) => Effect<void, never, Scope.Scope> = fiberRuntime.withRuntimeFlagsScoped
 
 /**
- * Tags each metric in this effect with the specific tag.
+ * Tags each metric in an effect with specific key-value pairs.
+ *
+ * **Details**
+ *
+ * This function allows you to tag all metrics in an effect with a set of
+ * key-value pairs or a single key-value pair. Tags help you add metadata to
+ * metrics, making it easier to filter and categorize them in monitoring
+ * systems. The provided tags will apply to all metrics generated within the
+ * effect's scope.
  *
  * @since 2.0.0
- * @category metrics
+ * @category Metrics
  */
 export const tagMetrics: {
   (key: string, value: string): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
@@ -11255,10 +11267,17 @@ export const tagMetrics: {
 } = effect.tagMetrics
 
 /**
- * Tags each metric in this effect with the specific tag.
+ * Adds labels to metrics within an effect using `MetricLabel` objects.
+ *
+ * **Details**
+ *
+ * This function allows you to label metrics using `MetricLabel` objects. Labels
+ * help add structured metadata to metrics for categorization and filtering in
+ * monitoring systems. The provided labels will apply to all metrics within the
+ * effect's execution.
  *
  * @since 2.0.0
- * @category metrics
+ * @category Metrics
  */
 export const labelMetrics: {
   (labels: Iterable<MetricLabel.MetricLabel>): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
@@ -11266,19 +11285,35 @@ export const labelMetrics: {
 } = effect.labelMetrics
 
 /**
- * Tags each metric in a scope with a the specific tag.
+ * Tags metrics within a scope with a specific key-value pair.
+ *
+ * **Details**
+ *
+ * This function tags all metrics within a scope with the provided key-value
+ * pair. Once the scope is closed, the tag is automatically removed. This is
+ * useful for applying temporary context-specific tags to metrics during scoped
+ * operations.
  *
  * @since 2.0.0
- * @category metrics
+ * @category Metrics
  */
 export const tagMetricsScoped: (key: string, value: string) => Effect<void, never, Scope.Scope> =
   fiberRuntime.tagMetricsScoped
 
 /**
- * Tags each metric in a scope with a the specific tag.
+ * Adds labels to metrics within a scope using `MetricLabel` objects.
+ *
+ * **Details**
+ *
+ * This function allows you to apply labels to all metrics generated within a
+ * specific scope using an array of `MetricLabel` objects. These labels provide
+ * additional metadata to metrics, which can be used for categorization,
+ * filtering, or monitoring purposes. The labels are scoped and will be removed
+ * automatically once the scope is closed, ensuring they are only applied
+ * temporarily within the defined context.
  *
  * @since 2.0.0
- * @category metrics
+ * @category Metrics
  */
 export const labelMetricsScoped: (
   labels: ReadonlyArray<MetricLabel.MetricLabel>
@@ -11288,13 +11323,15 @@ export const labelMetricsScoped: (
  * Retrieves the metric labels associated with the current scope.
  *
  * @since 2.0.0
- * @category metrics
+ * @category Metrics
  */
 export const metricLabels: Effect<ReadonlyArray<MetricLabel.MetricLabel>> = core.metricLabels
 
 /**
+ * Associates a metric with the current effect, updating it as the effect progresses.
+ *
  * @since 2.0.0
- * @category metrics
+ * @category Metrics
  */
 export const withMetric: {
   <Type, In, Out>(metric: Metric.Metric<Type, In, Out>): <A extends In, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
