@@ -11580,17 +11580,34 @@ export const unsafeMakeLatch: (open?: boolean | undefined) => Latch = circular.u
 export const makeLatch: (open?: boolean | undefined) => Effect<Latch, never, never> = circular.makeLatch
 
 /**
- * The foundational function for running effects, returning a "fiber" that can
- * be observed or interrupted.
+ * Runs an effect in the background, returning a fiber that can be observed or
+ * interrupted.
+ *
+ * Unless you specifically need a `Promise` or synchronous operation, `runFork`
+ * is a good default choice.
+ *
+ * **Details**
+ *
+ * This function is the foundational way to execute an effect in the background.
+ * It creates a "fiber," a lightweight, cooperative thread of execution that can
+ * be observed (to access its result), interrupted, or joined. Fibers are useful
+ * for concurrent programming and allow effects to run independently of the main
+ * program flow.
+ *
+ * Once the effect is running in a fiber, you can monitor its progress, cancel
+ * it if necessary, or retrieve its result when it completes. If the effect
+ * fails, the fiber will propagate the failure, which you can observe and
+ * handle.
  *
  * **When to Use**
  *
- * `runFork` is used to run an effect in the background by creating a
- * fiber. It is the base function for all other run functions. It starts a fiber
- * that can be observed or interrupted.
+ * Use this function when you need to run an effect in the background,
+ * especially if the effect is long-running or performs periodic tasks. It's
+ * suitable for tasks that need to run independently but might still need
+ * observation or management, like logging, monitoring, or scheduled tasks.
  *
- * Unless you specifically need a `Promise` or synchronous operation,
- * `runFork` is a good default choice.
+ * This function is ideal if you don't need the result immediately or if the
+ * effect is part of a larger concurrent workflow.
  *
  * @example
  * ```ts
@@ -11622,6 +11639,20 @@ export const runFork: <A, E>(
 ) => Fiber.RuntimeFiber<A, E> = _runtime.unsafeForkEffect
 
 /**
+ * Executes an effect asynchronously and handles the result using a callback.
+ *
+ * **Details**
+ *
+ * This function runs an effect asynchronously and passes the result (`Exit`) to
+ * a specified callback. The callback is invoked with the outcome of the effect:
+ * - On success, the callback receives the successful result.
+ * - On failure, the callback receives the failure information.
+ *
+ * **When to Use**
+ *
+ * This function is effectful and should only be invoked at the edges of your
+ * program.
+ *
  * @since 2.0.0
  * @category Running Effects
  */
@@ -11633,16 +11664,24 @@ export const runCallback: <A, E>(
 /**
  * Executes an effect and returns the result as a `Promise`.
  *
+ * **Details**
+ *
+ * This function runs an effect and converts its result into a `Promise`. If the
+ * effect succeeds, the `Promise` will resolve with the successful result. If
+ * the effect fails, the `Promise` will reject with an error, which includes the
+ * failure details of the effect.
+ *
+ * The optional `options` parameter allows you to pass an `AbortSignal` for
+ * cancellation, enabling more fine-grained control over asynchronous tasks.
+ *
  * **When to Use**
  *
- * Use `runPromise` when you need to execute an effect and work with the
- * result using `Promise` syntax, typically for compatibility with other
- * promise-based code.
+ * Use this function when you need to execute an effect and work with its result
+ * in a promise-based system, such as when integrating with third-party
+ * libraries that expect `Promise` results.
  *
- * If the effect succeeds, the promise will resolve with the result. If the
- * effect fails, the promise will reject with an error.
- *
- * @see {@link runPromiseExit} for a version that returns an `Exit` type instead of rejecting.
+ * @see {@link runPromiseExit} for a version that returns an `Exit` type instead
+ * of rejecting.
  *
  * @example
  * ```ts
@@ -11670,20 +11709,29 @@ export const runPromise: <A, E>(
 ) => Promise<A> = _runtime.unsafeRunPromiseEffect
 
 /**
- * Runs an effect and returns a `Promise` that resolves to an `Exit`, which
- * represents the outcome (success or failure) of the effect.
- *
- * **When to Use**
- *
- * Use `runPromiseExit` when you need to determine if an effect succeeded
- * or failed, including any defects, and you want to work with a `Promise`.
+ * Runs an effect and returns a `Promise` that resolves to an `Exit`,
+ * representing the outcome.
  *
  * **Details**
  *
- * The `Exit` type represents the result of the effect:
- * - If the effect succeeds, the result is wrapped in a `Success`.
- * - If it fails, the failure information is provided as a `Failure` containing
- *   a `Cause` type.
+ * This function executes an effect and resolves to an `Exit` object. The `Exit`
+ * type provides detailed information about the result of the effect:
+ * - If the effect succeeds, the `Exit` will be of type `Success` and include
+ *   the value produced by the effect.
+ * - If the effect fails, the `Exit` will be of type `Failure` and contain a
+ *   `Cause` object, detailing the failure.
+ *
+ * Using this function allows you to examine both successful results and failure
+ * cases in a unified way, while still leveraging `Promise` for handling the
+ * asynchronous behavior of the effect.
+ *
+ * **When to Use**
+ *
+ * Use this function when you need to understand the outcome of an effect,
+ * whether it succeeded or failed, and want to work with this result using
+ * `Promise` syntax. This is particularly useful when integrating with systems
+ * that rely on promises but need more detailed error handling than a simple
+ * rejection.
  *
  * @example
  * ```ts
@@ -11725,13 +11773,31 @@ export const runPromiseExit: <A, E>(
  * Executes an effect synchronously, running it immediately and returning the
  * result.
  *
+ * **Details**
+ *
+ * This function evaluates the provided effect synchronously, returning its
+ * result directly. It is ideal for effects that do not fail or include
+ * asynchronous operations. If the effect does fail or involves async tasks, it
+ * will throw an error. Execution stops at the point of failure or asynchronous
+ * operation, making it unsuitable for effects that require asynchronous
+ * handling.
+ *
+ * **Important**: Attempting to run effects that involve asynchronous operations
+ * or failures will result in exceptions being thrown, so use this function with
+ * care for purely synchronous and error-free effects.
+ *
  * **When to Use**
  *
- * Use `runSync` to run an effect that does not fail and does not include
- * any asynchronous operations.
+ * Use this function when:
+ * - You are sure that the effect will not fail or involve asynchronous
+ *   operations.
+ * - You need a direct, synchronous result from the effect.
+ * - You are working within a context where asynchronous effects are not
+ *   allowed.
  *
- * If the effect fails or involves asynchronous work, it will throw an error,
- * and execution will stop where the failure or async operation occurs.
+ * Avoid using this function for effects that can fail or require asynchronous
+ * handling. For such cases, consider using {@link runPromise} or
+ * {@link runSyncExit}.
  *
  * @see {@link runSyncExit} for a version that returns an `Exit` type instead of
  * throwing an error.
@@ -11781,24 +11847,29 @@ export const runPromiseExit: <A, E>(
 export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSyncEffect
 
 /**
- * Runs an effect synchronously and returns the result as an `Exit` type, which
- * represents the outcome (success or failure) of the effect.
- *
- * **When to Use**
- *
- * Use `runSyncExit` to find out whether an effect succeeded or failed,
- * including any defects, without dealing with asynchronous operations.
+ * Runs an effect synchronously and returns the result as an `Exit` type.
  *
  * **Details**
  *
- * The `Exit` type represents the result of the effect:
+ * This function executes the provided effect synchronously and returns an `Exit`
+ * type that encapsulates the outcome of the effect:
  * - If the effect succeeds, the result is wrapped in a `Success`.
- * - If it fails, the failure information is provided as a `Failure` containing
- *   a `Cause` type.
+ * - If the effect fails, it returns a `Failure` containing a `Cause` that explains
+ *   the failure.
  *
- * If the effect contains asynchronous operations, `runSyncExit` will
- * return an `Failure` with a `Die` cause, indicating that the effect cannot be
- * resolved synchronously.
+ * If the effect involves asynchronous operations, this function will return a `Failure`
+ * with a `Die` cause, indicating that it cannot resolve the effect synchronously.
+ * This makes the function suitable for use only with effects that are synchronous
+ * in nature.
+ *
+ * **When to Use**
+ *
+ * Use this function when:
+ * - You want to handle both success and failure outcomes in a structured way using the `Exit` type.
+ * - You are working with effects that are purely synchronous and do not involve asynchronous operations.
+ * - You need to debug or inspect failures, including their causes, in a detailed manner.
+ *
+ * Avoid using this function for effects that involve asynchronous operations, as it will fail with a `Die` cause.
  *
  * @example
  * ```ts
