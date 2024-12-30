@@ -10477,10 +10477,20 @@ export const matchEffect: {
 } = core.matchEffect
 
 /**
- * Logs one or more messages or error causes at the current log level, which is INFO by default.
- * This function allows logging multiple items at once and can include detailed error information using `Cause` instances.
+ * Logs one or more messages or error causes at the current log level.
  *
- * To adjust the log level, use the `Logger.withMinimumLogLevel` function.
+ * **Details**
+ *
+ * This function provides a simple way to log messages or error causes during
+ * the execution of your effects. By default, logs are recorded at the `INFO`
+ * level, but this can be adjusted using other logging utilities
+ * (`Logger.withMinimumLogLevel`). Multiple items, including `Cause` instances,
+ * can be logged in a single call. When logging `Cause` instances, detailed
+ * error information is included in the log output.
+ *
+ * The log output includes useful metadata like the current timestamp, log
+ * level, and fiber ID, making it suitable for debugging and tracking purposes.
+ * This function does not interrupt or alter the effect's execution flow.
  *
  * @example
  * ```ts
@@ -10505,7 +10515,29 @@ export const matchEffect: {
 export const log: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.log
 
 /**
- * Logs the specified message or cause at the specified log level.
+ * Logs messages or error causes at a specified log level.
+ *
+ * **Details**
+ *
+ * This function allows you to log one or more messages or error causes while
+ * specifying the desired log level (e.g., DEBUG, INFO, ERROR). It provides
+ * flexibility in categorizing logs based on their importance or severity,
+ * making it easier to filter logs during debugging or production monitoring.
+ *
+ * @example
+ * ```ts
+ * import { Cause, Effect, LogLevel } from "effect"
+ *
+ * const program = Effect.logWithLevel(
+ *   LogLevel.Error,
+ *   "Critical error encountered",
+ *   Cause.die("System failure!")
+ * )
+ *
+ * // Effect.runFork(program)
+ * // Output:
+ * // timestamp=... level=ERROR fiber=#0 message=Critical error encountered cause="Error: System failure!"
+ * ```
  *
  * @since 2.0.0
  * @category Logging
@@ -10516,7 +10548,25 @@ export const logWithLevel = (
 ): Effect<void> => effect.logWithLevel(level)(...message)
 
 /**
- * Logs the specified message or cause at the Trace log level.
+ * Logs messages at the TRACE log level.
+ *
+ * **Details**
+ *
+ * This function logs the specified messages at the TRACE level. TRACE logs are
+ * typically used for very detailed diagnostic information. These messages are
+ * not displayed by default. To view them, you must adjust the logging
+ * configuration by setting the minimum log level to `LogLevel.Trace` using
+ * `Logger.withMinimumLogLevel`.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Logger, LogLevel } from "effect"
+ *
+ * const program = Effect.logTrace("message1").pipe(Logger.withMinimumLogLevel(LogLevel.Trace))
+ *
+ * // Effect.runFork(program)
+ * // timestamp=... level=TRACE fiber=#0 message=message1
+ * ```
  *
  * @since 2.0.0
  * @category Logging
@@ -10524,11 +10574,14 @@ export const logWithLevel = (
 export const logTrace: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logTrace
 
 /**
- * Logs the specified messages at the DEBUG log level.
- * DEBUG messages are not shown by default.
+ * Logs messages at the DEBUG log level.
  *
- * To view DEBUG messages, adjust the logging settings using
- * `Logger.withMinimumLogLevel` and set the log level to `LogLevel.Debug`.
+ * **Details**
+ *
+ * This function logs messages at the DEBUG level, which is typically used for
+ * diagnosing application behavior during development. DEBUG messages provide
+ * less detailed information than TRACE logs but are still not shown by default.
+ * To view these logs, adjust the log level using `Logger.withMinimumLogLevel`.
  *
  * @example
  * ```ts
@@ -10546,7 +10599,13 @@ export const logTrace: (...message: ReadonlyArray<any>) => Effect<void, never, n
 export const logDebug: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logDebug
 
 /**
- * Logs the specified message or cause at the Info log level.
+ * Logs messages at the INFO log level.
+ *
+ * **Details**
+ *
+ * This function logs messages at the INFO level, suitable for general
+ * application events or operational messages. INFO logs are shown by default
+ * and are commonly used for highlighting normal, non-error operations.
  *
  * @since 2.0.0
  * @category Logging
@@ -10554,7 +10613,14 @@ export const logDebug: (...message: ReadonlyArray<any>) => Effect<void, never, n
 export const logInfo: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logInfo
 
 /**
- * Logs the specified message or cause at the Warning log level.
+ * Logs messages at the WARNING log level.
+ *
+ * **Details**
+ *
+ * This function logs messages at the WARNING level, suitable for highlighting
+ * potential issues that are not errors but may require attention. These
+ * messages indicate that something unexpected occurred or might lead to errors
+ * in the future.
  *
  * @since 2.0.0
  * @category Logging
@@ -10562,7 +10628,13 @@ export const logInfo: (...message: ReadonlyArray<any>) => Effect<void, never, ne
 export const logWarning: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logWarning
 
 /**
- * Logs the specified message or cause at the Error log level.
+ * Logs messages at the ERROR log level.
+ *
+ * **Details**
+ *
+ * This function logs messages at the ERROR level, suitable for reporting
+ * application errors or failures. These logs are typically used for unexpected
+ * issues that need immediate attention.
  *
  * @since 2.0.0
  * @category Logging
@@ -10570,7 +10642,14 @@ export const logWarning: (...message: ReadonlyArray<any>) => Effect<void, never,
 export const logError: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logError
 
 /**
- * Logs the specified message or cause at the Fatal log level.
+ * Logs messages at the FATAL log level.
+ *
+ * **Details**
+ *
+ * This function logs messages at the FATAL level, suitable for reporting
+ * critical errors that cause the application to terminate or stop functioning.
+ * These logs are typically used for unrecoverable errors that require immediate
+ * attention.
  *
  * @since 2.0.0
  * @category Logging
@@ -10578,9 +10657,19 @@ export const logError: (...message: ReadonlyArray<any>) => Effect<void, never, n
 export const logFatal: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logFatal
 
 /**
- * Adds a log span to your effects, which tracks and logs the duration of
- * operations or tasks. This is useful for performance monitoring and debugging
- * time-sensitive processes.
+ * Adds a log span to an effect for tracking and logging its execution duration.
+ *
+ * **Details**
+ *
+ * This function wraps an effect with a log span, providing performance
+ * monitoring and debugging capabilities. The log span tracks the duration of
+ * the wrapped effect and logs it with the specified label. This is particularly
+ * useful when analyzing time-sensitive operations or understanding the
+ * execution time of specific tasks in your application.
+ *
+ * The logged output will include the label and the total time taken for the
+ * operation. The span information is included in the log metadata, making it
+ * easy to trace performance metrics in logs.
  *
  * @example
  * ```ts
@@ -10604,9 +10693,24 @@ export const withLogSpan: {
 } = effect.withLogSpan
 
 /**
- * Augments log outputs by appending custom annotations to log entries generated
- * within an effect. This function provides a way to add more context and detail
- * to log messages, making them more informative and easier to trace.
+ * Adds custom annotations to log entries generated within an effect.
+ *
+ * **Details**
+ *
+ * This function allows you to enhance log messages by appending additional
+ * context in the form of key-value pairs. These annotations are included in
+ * every log message created during the execution of the effect, making the logs
+ * more informative and easier to trace.
+ *
+ * The annotations can be specified as a single key-value pair or as a record of
+ * multiple key-value pairs. This is particularly useful for tracking
+ * operations, debugging, or associating specific metadata with logs for better
+ * observability.
+ *
+ * The annotated key-value pairs will appear alongside the log message in the
+ * output.
+ *
+ * @see {@link annotateLogsScoped} to add log annotations with a limited scope.
  *
  * @example
  * ```ts
@@ -10615,11 +10719,11 @@ export const withLogSpan: {
  * const program = Effect.gen(function*() {
  *   yield* Effect.log("message1")
  *   yield* Effect.log("message2")
- * }).pipe(Effect.annotateLogs("key", "value")) // Annotation as key/value pair
+ * }).pipe(Effect.annotateLogs("taskId", "1234")) // Annotation as key/value pair
  *
  * // Effect.runFork(program)
- * // timestamp=... level=INFO fiber=#0 message=message1 key=value
- * // timestamp=... level=INFO fiber=#0 message=message2 key=value
+ * // timestamp=... level=INFO fiber=#0 message=message1 taskId=1234
+ * // timestamp=... level=INFO fiber=#0 message=message2 taskId=1234
  * ```
  *
  * @since 2.0.0
@@ -10633,10 +10737,22 @@ export const annotateLogs: {
 } = effect.annotateLogs
 
 /**
- * Applies log annotations with a limited scope, restricting their appearance to
- * specific sections of your effect computations. Use
- * `annotateLogsScoped` to add metadata to logs that only appear within a
- * defined `Scope`, making it easier to manage context-specific logging.
+ * Adds log annotations with a limited scope to enhance contextual logging.
+ *
+ * **Details**
+ *
+ * This function allows you to apply key-value annotations to log entries
+ * generated within a specific scope of your effect computations. The
+ * annotations are restricted to the defined `Scope`, ensuring that they are
+ * only applied to logs produced during that scope. Once the scope ends, the
+ * annotations are automatically removed, making it easier to manage
+ * context-specific logging without affecting other parts of your application.
+ *
+ * The annotations can be provided as a single key-value pair or as a record of
+ * multiple key-value pairs. This flexibility enables fine-grained control over
+ * the additional metadata included in logs for specific tasks or operations.
+ *
+ * @see {@link annotateLogs} to add custom annotations to log entries generated within an effect.
  *
  * @example
  * ```ts
@@ -10665,7 +10781,21 @@ export const annotateLogsScoped: {
 } = fiberRuntime.annotateLogsScoped
 
 /**
- * Retrieves the log annotations associated with the current scope.
+ * Retrieves the current log annotations for the current scope.
+ *
+ * **Details**
+ *
+ * This function provides access to the log annotations associated with the
+ * current scope. Log annotations are key-value pairs that provide additional
+ * context to log entries. They are often used to add metadata such as tags,
+ * identifiers, or extra debugging information to logs.
+ *
+ * By using this function, you can inspect or utilize the annotations applied to
+ * the current scope, making it easier to trace and debug specific sections of
+ * your application.
+ *
+ * @see {@link annotateLogs} to add custom annotations to log entries generated within an effect.
+ * @see {@link annotateLogsScoped} to add log annotations with a limited scope.
  *
  * @since 2.0.0
  * @category Logging
@@ -10673,7 +10803,35 @@ export const annotateLogsScoped: {
 export const logAnnotations: Effect<HashMap.HashMap<string, unknown>> = effect.logAnnotations
 
 /**
- * Decides wether child fibers will report or not unhandled errors via the logger
+ * Configures whether child fibers will log unhandled errors and at what log
+ * level.
+ *
+ * **Details**
+ *
+ * This function allows you to control whether unhandled errors from child
+ * fibers are logged and to specify the log level for these errors. By default,
+ * unhandled errors are reported via the logger. However, using this function,
+ * you can choose to suppress these logs by passing `Option.none` or adjust the
+ * log level to a specific severity, such as `Error`, `Warning`, or `Info`.
+ *
+ * This configuration is scoped to the effect it is applied to, meaning the
+ * changes only apply to the child fibers created within that effect's context.
+ * It is especially useful when you want to reduce noise in logs or prioritize
+ * certain types of errors.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Fiber, LogLevel, Option } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const fiber = yield* Effect.fork(Effect.fail("Unhandled error!"))
+ *   yield* Fiber.join(fiber)
+ * })
+ *
+ * // Effect.runFork(program.pipe(Effect.withUnhandledErrorLogLevel(Option.some(LogLevel.Error))))
+ * // Output:
+ * // timestamp=... level=ERROR fiber=#1 message="Fiber terminated with an unhandled error" cause="Error: Unhandled error!"
+ * ```
  *
  * @since 2.0.0
  * @category Logging
@@ -10684,17 +10842,21 @@ export const withUnhandledErrorLogLevel: {
 } = core.withUnhandledErrorLogLevel
 
 /**
- * Converts an effect's failure into a fiber termination, removing the error from the effect's type.
- *
- * **When to Use*
- *
- * Use `orDie` when failures should be treated as unrecoverable defects and no error handling is required.
+ * Converts an effect's failure into a fiber termination, removing the error
+ * from the effect's type.
  *
  * **Details**
  *
- * The `orDie` function is used when you encounter errors that you do not want to handle or recover from.
- * It removes the error type from the effect and ensures that any failure will terminate the fiber.
- * This is useful for propagating failures as defects, signaling that they should not be handled within the effect.
+ * The `orDie` function is used when you encounter errors that you do not want
+ * to handle or recover from. It removes the error type from the effect and
+ * ensures that any failure will terminate the fiber. This is useful for
+ * propagating failures as defects, signaling that they should not be handled
+ * within the effect.
+ *
+ * **When to Use*
+ *
+ * Use `orDie` when failures should be treated as unrecoverable defects and no
+ * error handling is required.
  *
  * @see {@link orDieWith} if you need to customize the error.
  *
@@ -10726,17 +10888,17 @@ export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = co
 /**
  * Converts an effect's failure into a fiber termination with a custom error.
  *
- * **When to Use**
- *
- * Use `orDieWith` when failures should terminate the fiber as defects, and you want to customize
- * the error for clarity or debugging purposes.
- *
  * **Details**
  *
  * The `orDieWith` function behaves like {@link orDie}, but it allows you to provide a mapping
  * function to transform the error before terminating the fiber. This is useful for cases where
  * you want to include a more detailed or user-friendly error when the failure is propagated
  * as a defect.
+ *
+ * **When to Use**
+ *
+ * Use `orDieWith` when failures should terminate the fiber as defects, and you want to customize
+ * the error for clarity or debugging purposes.
  *
  * @see {@link orDie} if you don't need to customize the error.
  *
