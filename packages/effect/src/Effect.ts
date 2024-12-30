@@ -11923,16 +11923,19 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSync
 export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = _runtime.unsafeRunSyncExitEffect
 
 /**
- * The `validate` function allows you to combine multiple effects,
- * continuing the combination even if some of the effects fail. It accumulates
- * both successes and failures, allowing you to proceed through all effects
- * regardless of individual failures.
+ * Combines multiple effects and accumulates both successes and failures.
  *
- * This function is similar to {@link zip}, but with `validate`, errors
- * do not stop the execution of subsequent effects. Instead, errors are
- * accumulated in a `Cause` and reported in the final result. This is useful
- * when you want to collect all results, including failures, instead of stopping
- * at the first error.
+ * **Details**
+ *
+ * This function allows you to combine multiple effects, continuing through all
+ * effects even if some of them fail. Unlike other functions that stop execution
+ * upon encountering an error, this function collects all errors into a `Cause`.
+ * The final result includes all successes and the accumulated failures.
+ *
+ * By default, effects are executed sequentially, but you can control
+ * concurrency and batching behavior using the `options` parameter. This
+ * provides flexibility in scenarios where you want to maximize performance or
+ * ensure specific ordering.
  *
  * @see {@link zip} for a version that stops at the first error.
  *
@@ -11993,8 +11996,20 @@ export const validate: {
 } = fiberRuntime.validate
 
 /**
- * Sequentially zips this effect with the specified effect using the specified
- * combiner function. Combines the causes in case both effect fail.
+ * Sequentially combines two effects using a specified combiner function while
+ * accumulating errors.
+ *
+ * **Details**
+ *
+ * This function combines two effects, `self` and `that`, into a single effect
+ * by applying the provided combiner function to their results. If both effects
+ * succeed, the combiner function is applied to their results to produce the
+ * final value. If either effect fails, the failures are accumulated into a
+ * combined `Cause`.
+ *
+ * By default, effects are executed sequentially. However, the execution mode
+ * can be controlled using the `options` parameter to enable concurrency,
+ * batching, or customized finalizer behavior.
  *
  * @since 2.0.0
  * @category Error Accumulation
@@ -12026,17 +12041,22 @@ export const validateWith: {
 } = fiberRuntime.validateWith
 
 /**
- * Combines two effects into a single effect, producing a tuple with the results of both effects.
+ * Combines two effects into a single effect, producing a tuple of their
+ * results.
  *
- * The `zip` function executes the first effect (left) and then the second effect (right).
- * Once both effects succeed, their results are combined into a tuple.
+ * **Details**
  *
- * **Concurrency**
+ * This function combines two effects, `self` and `that`, into one. It executes
+ * the first effect (`self`) and then the second effect (`that`), collecting
+ * their results into a tuple. Both effects must succeed for the resulting
+ * effect to succeed. If either effect fails, the entire operation fails.
  *
- * By default, `zip` processes the effects sequentially. To execute the effects concurrently,
- * use the `{ concurrent: true }` option.
+ * By default, the effects are executed sequentially. If the `concurrent` option
+ * is set to `true`, the effects will run concurrently, potentially improving
+ * performance for independent operations.
  *
- * @see {@link zipWith} for a version that combines the results with a custom function.
+ * @see {@link zipWith} for a version that combines the results with a custom
+ * function.
  * @see {@link validate} for a version that accumulates errors.
  *
  * @example
@@ -12116,21 +12136,28 @@ export const zip: {
 } = fiberRuntime.zipOptions
 
 /**
- * Runs two effects sequentially, returning the result of the first effect and
- * discarding the result of the second.
+ * Executes two effects sequentially, returning the result of the first effect
+ * and ignoring the result of the second.
+ *
+ * **Details**
+ *
+ * This function allows you to run two effects in sequence, where the result of
+ * the first effect is preserved, and the result of the second effect is
+ * discarded. By default, the two effects are executed sequentially. If you need
+ * them to run concurrently, you can pass the `{ concurrent: true }` option.
+ *
+ * The second effect will always be executed, even though its result is ignored.
+ * This makes it useful for cases where you want to execute an effect for its
+ * side effects while keeping the result of another effect.
  *
  * **When to Use**
  *
- * Use `zipLeft` when you need to execute two effects in order but are only
- * interested in the result of the first one. The second effect will still
- * execute, but its result is ignored.
+ * Use this function when you are only interested in the result of the first
+ * effect but still need to run the second effect for its side effects, such as
+ * logging or performing a cleanup action.
  *
- * **Concurrency**
- *
- * By default, the effects are run sequentially. To run them concurrently, use
- * the `{ concurrent: true }` option.
- *
- * @see {@link zipRight} for a version that returns the result of the second effect.
+ * @see {@link zipRight} for a version that returns the result of the second
+ * effect.
  *
  * @example
  * ```ts
@@ -12182,21 +12209,28 @@ export const zipLeft: {
 } = fiberRuntime.zipLeftOptions
 
 /**
- * Runs two effects sequentially, returning the result of the second effect
- * while discarding the result of the first.
+ * Executes two effects sequentially, returning the result of the second effect
+ * while ignoring the result of the first.
+ *
+ * **Details**
+ *
+ * This function allows you to run two effects in sequence, keeping the result
+ * of the second effect and discarding the result of the first. By default, the
+ * two effects are executed sequentially. If you need them to run concurrently,
+ * you can pass the `{ concurrent: true }` option.
+ *
+ * The first effect will always be executed, even though its result is ignored.
+ * This makes it useful for scenarios where the first effect is needed for its
+ * side effects, but only the result of the second effect is important.
  *
  * **When to Use**
  *
- * Use `zipRight` when you need to execute two effects in sequence and only care
- * about the result of the second effect. The first effect will still execute
- * but its result will be ignored.
+ * Use this function when you are only interested in the result of the second
+ * effect but still need to run the first effect for its side effects, such as
+ * initialization or setup tasks.
  *
- * **Concurrency**
- *
- * By default, the effects are run sequentially. To execute them concurrently,
- * use the `{ concurrent: true }` option.
- *
- * @see {@link zipLeft} for a version that returns the result of the first effect.
+ * @see {@link zipLeft} for a version that returns the result of the first
+ * effect.
  *
  * @example
  * ```ts
@@ -12247,16 +12281,13 @@ export const zipRight: {
  * Combines two effects sequentially and applies a function to their results to
  * produce a single value.
  *
- * **When to Use**
+ * **Details**
  *
- * The `zipWith` function is similar to {@link zip}, but instead of returning a
- * tuple of results, it applies a provided function to the results of the two
- * effects, combining them into a single value.
- *
- * **Concurrency**
- *
- * By default, the effects are run sequentially. To execute them concurrently,
- * use the `{ concurrent: true }` option.
+ * This function runs two effects in sequence (or concurrently, if the `{
+ * concurrent: true }` option is provided) and combines their results using a
+ * provided function. Unlike {@link zip}, which returns a tuple of the results,
+ * this function processes the results with a custom function to produce a
+ * single output.
  *
  * @example
  * ```ts
