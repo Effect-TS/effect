@@ -59,8 +59,10 @@
 
         const lines = withoutMultilineComments
           .split("\n")
-          .map((line) => "* " + line)
-        return "*\n* @example\n* ```ts\n" + lines.join("\n") + "\n* ```\n*\n"
+          .map((line) => " * " + line)
+        return (
+          " *\n * @example\n * ```ts\n" + lines.join("\n") + "\n * ```\n *\n"
+        )
       }
     </script>
   </body>

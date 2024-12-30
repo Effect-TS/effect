@@ -2998,9 +2998,9 @@ export const contextWith = <R0, A>(
 ): Effect.Effect<A, never, R0> => map(context<R0>(), f)
 
 /* @internal */
-export const contextWithEffect = <R0, A, E, R>(
-  f: (context: Context.Context<R0>) => Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R | R0> => flatMap(context<R0>(), f)
+export const contextWithEffect = <R2, A, E, R>(
+  f: (context: Context.Context<R2>) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R | R2> => flatMap(context<R2>(), f)
 
 /* @internal */
 export const provideContext = dual<
@@ -3024,17 +3024,17 @@ export const provideSomeContext = dual<
 
 /* @internal */
 export const mapInputContext = dual<
-  <R0, R>(
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ) => <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R0>,
-  <A, E, R, R0>(
+  <R2, R>(
+    f: (context: Context.Context<R2>) => Context.Context<R>
+  ) => <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R2>,
+  <A, E, R, R2>(
     self: Effect.Effect<A, E, R>,
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ) => Effect.Effect<A, E, R0>
->(2, <A, E, R, R0>(
+    f: (context: Context.Context<R2>) => Context.Context<R>
+  ) => Effect.Effect<A, E, R2>
+>(2, <A, E, R, R2>(
   self: Effect.Effect<A, E, R>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
-) => contextWithEffect((context: Context.Context<R0>) => provideContext(self, f(context))))
+  f: (context: Context.Context<R2>) => Context.Context<R>
+) => contextWithEffect((context: Context.Context<R2>) => provideContext(self, f(context))))
 
 // -----------------------------------------------------------------------------
 // Tracing

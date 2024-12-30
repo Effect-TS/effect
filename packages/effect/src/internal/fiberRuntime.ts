@@ -3016,16 +3016,16 @@ export const validateFirst = dual<
 )
 
 /* @internal */
-export const withClockScoped = <A extends Clock.Clock>(value: A) =>
-  fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(clock.clockTag, value))
+export const withClockScoped = <C extends Clock.Clock>(c: C) =>
+  fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(clock.clockTag, c))
 
 /* @internal */
 export const withRandomScoped = <A extends Random.Random>(value: A) =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(randomTag, value))
 
 /* @internal */
-export const withConfigProviderScoped = (value: ConfigProvider) =>
-  fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(configProviderTag, value))
+export const withConfigProviderScoped = (provider: ConfigProvider) =>
+  fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(configProviderTag, provider))
 
 /* @internal */
 export const withEarlyRelease = <A, E, R>(
