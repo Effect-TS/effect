@@ -4,7 +4,7 @@ import type * as FiberId from "../../FiberId.js"
 import type * as FiberRefs from "../../FiberRefs.js"
 import type * as FiberRefsPatch from "../../FiberRefsPatch.js"
 import { dual } from "../../Function.js"
-import * as _fiberRefs from "../fiberRefs.js"
+import * as fiberRefs_ from "../fiberRefs.js"
 
 /** @internal */
 export const OP_EMPTY = "Empty" as const
@@ -111,7 +111,7 @@ export const patch = dual<
         break
       }
       case OP_ADD: {
-        fiberRefs = _fiberRefs.updateAs(fiberRefs, {
+        fiberRefs = fiberRefs_.updateAs(fiberRefs, {
           fiberId,
           fiberRef: head.fiberRef,
           value: head.value
@@ -120,13 +120,13 @@ export const patch = dual<
         break
       }
       case OP_REMOVE: {
-        fiberRefs = _fiberRefs.delete_(fiberRefs, head.fiberRef)
+        fiberRefs = fiberRefs_.delete_(fiberRefs, head.fiberRef)
         patches = tail
         break
       }
       case OP_UPDATE: {
-        const value = _fiberRefs.getOrDefault(fiberRefs, head.fiberRef)
-        fiberRefs = _fiberRefs.updateAs(fiberRefs, {
+        const value = fiberRefs_.getOrDefault(fiberRefs, head.fiberRef)
+        fiberRefs = fiberRefs_.updateAs(fiberRefs, {
           fiberId,
           fiberRef: head.fiberRef,
           value: head.fiberRef.patch(head.patch)(value)

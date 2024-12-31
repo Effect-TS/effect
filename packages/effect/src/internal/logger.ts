@@ -15,7 +15,7 @@ import { pipeArguments } from "../Pipeable.js"
 import * as Cause from "./cause.js"
 import * as defaultServices from "./defaultServices.js"
 import { consoleTag } from "./defaultServices/console.js"
-import * as _fiberId from "./fiberId.js"
+import * as fiberId_ from "./fiberId.js"
 
 /** @internal */
 const LoggerSymbolKey = "effect/Logger"
@@ -170,7 +170,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
     const outputArray = [
       `timestamp=${date.toISOString()}`,
       `level=${logLevel.label}`,
-      `fiber=${_fiberId.threadName(fiberId)}`
+      `fiber=${fiberId_.threadName(fiberId)}`
     ]
 
     let output = outputArray.join(" ")
@@ -240,7 +240,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
     const outputArray = [
       `timestamp=${date.toISOString()}`,
       `level=${logLevel.label}`,
-      `fiber=${_fiberId.threadName(fiberId)}`
+      `fiber=${fiberId_.threadName(fiberId)}`
     ]
 
     let output = outputArray.join(" ")
@@ -328,7 +328,7 @@ export const structuredLogger = makeLogger<unknown, {
       cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause, { renderErrorCause: true }),
       annotations: annotationsObj,
       spans: spansObj,
-      fiberId: _fiberId.threadName(fiberId)
+      fiberId: fiberId_.threadName(fiberId)
     }
   }
 )
@@ -460,7 +460,7 @@ const prettyLoggerTty = (options: {
 
       let firstLine = color(`[${options.formatDate(date)}]`, colors.white)
         + ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])}`
-        + ` (${_fiberId.threadName(fiberId)})`
+        + ` (${fiberId_.threadName(fiberId)})`
 
       if (List.isCons(spans)) {
         const now = date.getTime()
@@ -520,7 +520,7 @@ const prettyLoggerBrowser = (options: {
       if (options.colors) {
         firstParams.push("color:gray")
       }
-      firstLine += ` ${color}${logLevel.label}${color} (${_fiberId.threadName(fiberId)})`
+      firstLine += ` ${color}${logLevel.label}${color} (${fiberId_.threadName(fiberId)})`
       if (options.colors) {
         firstParams.push(logLevelStyle[logLevel._tag], "")
       }

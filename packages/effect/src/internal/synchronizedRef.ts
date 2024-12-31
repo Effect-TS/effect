@@ -3,7 +3,6 @@ import { dual, pipe } from "../Function.js"
 import * as Option from "../Option.js"
 import type * as Synchronized from "../SynchronizedRef.js"
 import * as core from "./core.js"
-import * as _ref from "./ref.js"
 
 /** @internal */
 export const getAndUpdateEffect = dual<

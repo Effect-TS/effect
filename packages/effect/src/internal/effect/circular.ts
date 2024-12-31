@@ -32,7 +32,7 @@ import * as internalFiber from "../fiber.js"
 import * as fiberRuntime from "../fiberRuntime.js"
 import { globalScope } from "../fiberScope.js"
 import * as internalRef from "../ref.js"
-import * as _schedule from "../schedule.js"
+import * as schedule_ from "../schedule.js"
 import * as supervisor from "../supervisor.js"
 
 /** @internal */
@@ -480,7 +480,7 @@ export const scheduleForked = dual<
     self: Effect.Effect<A, E, R>,
     schedule: Schedule.Schedule<Out, unknown, R2>
   ) => Effect.Effect<Fiber.RuntimeFiber<Out, E>, never, R | R2 | Scope.Scope>
->(2, (self, schedule) => pipe(self, _schedule.schedule_Effect(schedule), forkScoped))
+>(2, (self, schedule) => pipe(self, schedule_.schedule_Effect(schedule), forkScoped))
 
 /** @internal */
 export const supervised = dual<

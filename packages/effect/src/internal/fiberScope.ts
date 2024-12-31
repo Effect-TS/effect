@@ -3,7 +3,6 @@ import { globalValue } from "../GlobalValue.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as FiberMessage from "./fiberMessage.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
-import * as _runtimeFlags from "./runtimeFlags.js"
 
 /** @internal */
 const FiberScopeSymbolKey = "effect/FiberScope"

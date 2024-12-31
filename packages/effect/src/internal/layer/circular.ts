@@ -15,7 +15,7 @@ import * as fiberRuntime from "../fiberRuntime.js"
 import * as layer from "../layer.js"
 import * as runtimeFlags from "../runtimeFlags.js"
 import * as runtimeFlagsPatch from "../runtimeFlagsPatch.js"
-import * as _supervisor from "../supervisor.js"
+import * as supervisor_ from "../supervisor.js"
 import * as tracer from "../tracer.js"
 
 // circular with Logger
@@ -106,7 +106,7 @@ export const addSupervisor = <A>(supervisor: Supervisor.Supervisor<A>): Layer.La
   layer.scopedDiscard(
     fiberRuntime.fiberRefLocallyScopedWith(
       fiberRuntime.currentSupervisor,
-      (current) => new _supervisor.Zip(current, supervisor)
+      (current) => new supervisor_.Zip(current, supervisor)
     )
   )
 

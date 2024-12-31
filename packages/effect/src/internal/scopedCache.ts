@@ -15,7 +15,7 @@ import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Scope from "../Scope.js"
 import type * as ScopedCache from "../ScopedCache.js"
-import * as _cache from "./cache.js"
+import * as cache_ from "./cache.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
@@ -27,8 +27,8 @@ import * as fiberRuntime from "./fiberRuntime.js"
  */
 export interface CacheState<in out Key, out Value, out Error = never> {
   map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Value, Error>> // mutable by design
-  keys: _cache.KeySet<Key> // mutable by design
-  accesses: MutableQueue.MutableQueue<_cache.MapKey<Key>> // mutable by design
+  keys: cache_.KeySet<Key> // mutable by design
+  accesses: MutableQueue.MutableQueue<cache_.MapKey<Key>> // mutable by design
   updating: MutableRef.MutableRef<boolean> // mutable by design
   hits: number // mutable by design
   misses: number // mutable by design
@@ -37,8 +37,8 @@ export interface CacheState<in out Key, out Value, out Error = never> {
 /** @internal */
 export const makeCacheState = <Key, Value, Error = never>(
   map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Value, Error>>,
-  keys: _cache.KeySet<Key>,
-  accesses: MutableQueue.MutableQueue<_cache.MapKey<Key>>,
+  keys: cache_.KeySet<Key>,
+  accesses: MutableQueue.MutableQueue<cache_.MapKey<Key>>,
   updating: MutableRef.MutableRef<boolean>,
   hits: number,
   misses: number
@@ -59,7 +59,7 @@ export const makeCacheState = <Key, Value, Error = never>(
 export const initialCacheState = <Key, Value, Error = never>(): CacheState<Key, Value, Error> =>
   makeCacheState(
     MutableHashMap.empty(),
-    _cache.makeKeySet(),
+    cache_.makeKeySet(),
     MutableQueue.unbounded(),
     MutableRef.make(false),
     0,
@@ -82,7 +82,7 @@ export type MapValue<Key, Value, Error> =
 /** @internal */
 export interface Complete<out Key, out Value, out Error> {
   readonly _tag: "Complete"
-  readonly key: _cache.MapKey<Key>
+  readonly key: cache_.MapKey<Key>
   readonly exit: Exit.Exit<readonly [Value, Scope.Scope.Finalizer], Error>
   readonly ownerCount: MutableRef.MutableRef<number>
   readonly entryStats: Cache.EntryStats
@@ -92,7 +92,7 @@ export interface Complete<out Key, out Value, out Error> {
 /** @internal */
 export interface Pending<out Key, out Value, out Error> {
   readonly _tag: "Pending"
-  readonly key: _cache.MapKey<Key>
+  readonly key: cache_.MapKey<Key>
   readonly scoped: Effect.Effect<Effect.Effect<Value, Error, Scope.Scope>>
 }
 
@@ -105,7 +105,7 @@ export interface Refreshing<out Key, out Value, out Error> {
 
 /** @internal */
 export const complete = <Key, Value, Error = never>(
-  key: _cache.MapKey<Key>,
+  key: cache_.MapKey<Key>,
   exit: Exit.Exit<readonly [Value, Scope.Scope.Finalizer], Error>,
   ownerCount: MutableRef.MutableRef<number>,
   entryStats: Cache.EntryStats,
@@ -122,7 +122,7 @@ export const complete = <Key, Value, Error = never>(
 
 /** @internal */
 export const pending = <Key, Value, Error = never>(
-  key: _cache.MapKey<Key>,
+  key: cache_.MapKey<Key>,
   scoped: Effect.Effect<Effect.Effect<Value, Error, Scope.Scope>>
 ): Pending<Key, Value, Error> =>
   Data.struct({
@@ -206,7 +206,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
 
   get cacheStats(): Effect.Effect<Cache.CacheStats> {
     return core.sync(() =>
-      _cache.makeCacheStats({
+      cache_.makeCacheStats({
         hits: this.cacheState.hits,
         misses: this.cacheState.misses,
         size: MutableHashMap.size(this.cacheState.map)
@@ -245,13 +245,13 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
       }
       switch (value._tag) {
         case "Complete": {
-          return Option.some(_cache.makeEntryStats(value.entryStats.loadedMillis))
+          return Option.some(cache_.makeEntryStats(value.entryStats.loadedMillis))
         }
         case "Pending": {
           return Option.none()
         }
         case "Refreshing": {
-          return Option.some(_cache.makeEntryStats(value.complete.entryStats.loadedMillis))
+          return Option.some(cache_.makeEntryStats(value.complete.entryStats.loadedMillis))
         }
       }
     })
@@ -263,10 +263,10 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
       effect.memoize,
       core.flatMap((lookupValue) =>
         core.suspend(() => {
-          let k: _cache.MapKey<Key> | undefined = undefined
+          let k: cache_.MapKey<Key> | undefined = undefined
           let value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, key))
           if (value === undefined) {
-            k = _cache.makeMapKey(key)
+            k = cache_.makeMapKey(key)
             if (MutableHashMap.has(this.cacheState.map, key)) {
               value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, key))
             } else {
@@ -341,9 +341,9 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
       effect.memoize,
       core.flatMap((scoped) => {
         let value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, key))
-        let newKey: _cache.MapKey<Key> | undefined = undefined
+        let newKey: cache_.MapKey<Key> | undefined = undefined
         if (value === undefined) {
-          newKey = _cache.makeMapKey(key)
+          newKey = cache_.makeMapKey(key)
           if (MutableHashMap.has(this.cacheState.map, key)) {
             value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, key))
           } else {
@@ -460,10 +460,10 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
               release
             ])
             const completedResult = complete<Key, Value, Error>(
-              _cache.makeMapKey(key),
+              cache_.makeMapKey(key),
               exitWithFinalizer,
               MutableRef.make(1),
-              _cache.makeEntryStats(now),
+              cache_.makeEntryStats(now),
               expiredAt
             )
             let previousValue: MapValue<Key, Value, Error> | undefined = undefined
@@ -482,10 +482,10 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
           }
           case "Failure": {
             const completedResult = complete<Key, Value, Error>(
-              _cache.makeMapKey(key),
+              cache_.makeMapKey(key),
               exit as Exit.Exit<readonly [Value, Scope.Scope.Finalizer], Error>,
               MutableRef.make(0),
-              _cache.makeEntryStats(now),
+              cache_.makeEntryStats(now),
               expiredAt
             )
             let previousValue: MapValue<Key, Value, Error> | undefined = undefined
@@ -524,7 +524,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
     this.cacheState.misses = this.cacheState.misses + 1
   }
 
-  trackAccess(key: _cache.MapKey<Key>): Array<MapValue<Key, Value, Error>> {
+  trackAccess(key: cache_.MapKey<Key>): Array<MapValue<Key, Value, Error>> {
     const cleanedKeys: Array<MapValue<Key, Value, Error>> = []
     MutableQueue.offer(this.cacheState.accesses, key)
     if (MutableRef.compareAndSet(this.cacheState.updating, false, true)) {
@@ -575,7 +575,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
     }
   }
 
-  ensureMapSizeNotExceeded(key: _cache.MapKey<Key>): Effect.Effect<void> {
+  ensureMapSizeNotExceeded(key: cache_.MapKey<Key>): Effect.Effect<void> {
     return fiberRuntime.forEachConcurrentDiscard(
       this.trackAccess(key),
       (cleanedMapValue) => this.cleanMapValue(cleanedMapValue),
