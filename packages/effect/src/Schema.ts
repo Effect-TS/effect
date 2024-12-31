@@ -6917,10 +6917,7 @@ export const OptionFromUndefinedOr = <Value extends Schema.Any>(
  */
 export const OptionFromNonEmptyTrimmedString = transform(String$, OptionFromSelf(NonEmptyTrimmedString), {
   strict: true,
-  decode: (s) => {
-    const out = s.trim()
-    return out.length === 0 ? option_.none() : option_.some(out)
-  },
+  decode: (s) => option_.filter(option_.some(s.trim()), string_.isNonEmpty),
   encode: option_.getOrElse(() => "")
 })
 
