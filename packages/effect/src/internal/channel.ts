@@ -27,7 +27,7 @@ import * as executor from "./channel/channelExecutor.js"
 import type * as ChannelState from "./channel/channelState.js"
 import * as mergeDecision from "./channel/mergeDecision.js"
 import * as mergeState from "./channel/mergeState.js"
-import * as _mergeStrategy from "./channel/mergeStrategy.js"
+import * as mergeStrategy_ from "./channel/mergeStrategy.js"
 import * as singleProducerAsyncInput from "./channel/singleProducerAsyncInput.js"
 import * as coreEffect from "./core-effect.js"
 import * as core from "./core-stream.js"
@@ -1086,7 +1086,7 @@ export const mergeAllWith = (
   {
     bufferSize = 16,
     concurrency,
-    mergeStrategy = _mergeStrategy.BackPressure()
+    mergeStrategy = mergeStrategy_.BackPressure()
   }: {
     readonly concurrency: number | "unbounded"
     readonly bufferSize?: number | undefined
@@ -1198,7 +1198,7 @@ export const mergeAllWith = (
                   }
                 ),
               onRight: (channel) =>
-                _mergeStrategy.match(mergeStrategy, {
+                mergeStrategy_.match(mergeStrategy, {
                   onBackPressure: () =>
                     Effect.gen(function*() {
                       const latch = yield* Deferred.make<void>()

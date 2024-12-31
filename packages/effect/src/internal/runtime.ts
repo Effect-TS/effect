@@ -15,8 +15,8 @@ import { pipeArguments } from "../Pipeable.js"
 import * as Predicate from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
-import * as _scheduler from "../Scheduler.js"
-import * as _scope from "../Scope.js"
+import * as scheduler_ from "../Scheduler.js"
+import * as scope_ from "../Scope.js"
 import * as InternalCause from "./cause.js"
 import * as core from "./core.js"
 import * as executionStrategy from "./executionStrategy.js"
@@ -24,7 +24,7 @@ import * as FiberRuntime from "./fiberRuntime.js"
 import * as fiberScope from "./fiberScope.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
-import * as _supervisor from "./supervisor.js"
+import * as supervisor_ from "./supervisor.js"
 
 /** @internal */
 export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
@@ -38,7 +38,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
   > = [[core.currentContext, [[fiberId, runtime.context]]]]
 
   if (options?.scheduler) {
-    fiberRefUpdates.push([_scheduler.currentScheduler, [[fiberId, options.scheduler]]])
+    fiberRefUpdates.push([scheduler_.currentScheduler, [[fiberId, options.scheduler]]])
   }
 
   let fiberRefs = FiberRefs.updateManyAs(runtime.fiberRefs, {
@@ -60,7 +60,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 
   if (options?.scope) {
     effect = core.flatMap(
-      _scope.fork(options.scope, executionStrategy.sequential),
+      scope_.fork(options.scope, executionStrategy.sequential),
       (closeableScope) =>
         core.zipRight(
           core.scopeAddFinalizer(
@@ -69,7 +69,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
               equals(id, fiberRuntime.id()) ? core.void : core.interruptAsFiber(fiberRuntime, id)
             )
           ),
-          core.onExit(self, (exit) => _scope.close(closeableScope, exit))
+          core.onExit(self, (exit) => scope_.close(closeableScope, exit))
         )
     )
   }
@@ -77,7 +77,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
   const supervisor = fiberRuntime.currentSupervisor
 
   // we can compare by reference here as _supervisor.none is wrapped with globalValue
-  if (supervisor !== _supervisor.none) {
+  if (supervisor !== supervisor_.none) {
     supervisor.onStart(runtime.context, effect, Option.none(), fiberRuntime)
 
     fiberRuntime.addObserver((exit) => supervisor.onEnd(exit, fiberRuntime))
@@ -243,7 +243,7 @@ export const unsafeRunSyncExit =
     if (op) {
       return op
     }
-    const scheduler = new _scheduler.SyncScheduler()
+    const scheduler = new scheduler_.SyncScheduler()
     const fiberRuntime = unsafeFork(runtime)(effect, { scheduler })
     scheduler.flush()
     const result = fiberRuntime.unsafePoll()

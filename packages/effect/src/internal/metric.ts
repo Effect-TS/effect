@@ -16,7 +16,7 @@ import type * as MetricRegistry from "../MetricRegistry.js"
 import type * as MetricState from "../MetricState.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Cause from "./cause.js"
-import * as _effect from "./core-effect.js"
+import * as effect_ from "./core-effect.js"
 import * as core from "./core.js"
 import * as metricBoundaries from "./metric/boundaries.js"
 import * as metricKey from "./metric/key.js"
@@ -411,7 +411,7 @@ export const trackDefectWith = dual<
   ) => Effect.Effect<A, E, R>
 >(3, (self, metric, f) => {
   const updater = (defect: unknown) => update(metric, f(defect))
-  return _effect.tapDefect(self, (cause) => core.forEachSequentialDiscard(Cause.defects(cause), updater))
+  return effect_.tapDefect(self, (cause) => core.forEachSequentialDiscard(Cause.defects(cause), updater))
 })
 
 /* @internal */
@@ -477,7 +477,7 @@ export const trackErrorWith = dual<
   f: (error: In2) => In
 ) => {
   const updater = (error: E): Effect.Effect<void> => update(metric, f(error))
-  return _effect.tapError(self, updater)
+  return effect_.tapError(self, updater)
 })
 
 /* @internal */

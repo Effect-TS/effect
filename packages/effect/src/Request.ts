@@ -8,7 +8,7 @@ import type { DurationInput } from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import type { FiberId } from "./FiberId.js"
-import * as _RequestBlock from "./internal/blockedRequests.js"
+import * as RequestBlock_ from "./internal/blockedRequests.js"
 import * as cache from "./internal/cache.js"
 import * as core from "./internal/core.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
@@ -338,10 +338,10 @@ export declare namespace Entry {
  * @since 2.0.0
  * @category guards
  */
-export const isEntry = _RequestBlock.isEntry
+export const isEntry = RequestBlock_.isEntry
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const makeEntry = _RequestBlock.makeEntry
+export const makeEntry = RequestBlock_.makeEntry

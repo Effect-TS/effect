@@ -7,8 +7,8 @@ import type * as Schedule from "../Schedule.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
-import * as _layer from "./layer.js"
-import * as _schedule from "./schedule.js"
+import * as layer_ from "./layer.js"
+import * as schedule_ from "./schedule.js"
 import * as scopedRef from "./scopedRef.js"
 
 /** @internal */
@@ -32,17 +32,17 @@ export const auto = <Out extends Context.Tag<any, any>, E, In, R>(
     readonly schedule: Schedule.Schedule<unknown, unknown, R>
   }
 ): Layer.Layer<Reloadable.Reloadable<Context.Tag.Identifier<Out>>, E, R | In> =>
-  _layer.scoped(
+  layer_.scoped(
     reloadableTag(tag),
     pipe(
-      _layer.build(manual(tag, { layer: options.layer })),
+      layer_.build(manual(tag, { layer: options.layer })),
       core.map(Context.unsafeGet(reloadableTag(tag))),
       core.tap((reloadable) =>
         fiberRuntime.acquireRelease(
           pipe(
             reloadable.reload,
             effect.ignoreLogged,
-            _schedule.schedule_Effect(options.schedule),
+            schedule_.schedule_Effect(options.schedule),
             fiberRuntime.forkDaemon
           ),
           core.interruptFiber
@@ -59,13 +59,13 @@ export const autoFromConfig = <Out extends Context.Tag<any, any>, E, In, R>(
     readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<unknown, unknown, R>
   }
 ): Layer.Layer<Reloadable.Reloadable<Context.Tag.Identifier<Out>>, E, R | In> =>
-  _layer.scoped(
+  layer_.scoped(
     reloadableTag(tag),
     pipe(
       core.context<In>(),
       core.flatMap((env) =>
         pipe(
-          _layer.build(auto(tag, {
+          layer_.build(auto(tag, {
             layer: options.layer,
             schedule: options.scheduleFromConfig(env)
           })),
@@ -91,18 +91,18 @@ export const manual = <Out extends Context.Tag<any, any>, In, E>(
     readonly layer: Layer.Layer<Context.Tag.Identifier<Out>, E, In>
   }
 ): Layer.Layer<Reloadable.Reloadable<Context.Tag.Identifier<Out>>, E, In> =>
-  _layer.scoped(
+  layer_.scoped(
     reloadableTag(tag),
     pipe(
       core.context<In>(),
       core.flatMap((env) =>
         pipe(
-          scopedRef.fromAcquire(pipe(_layer.build(options.layer), core.map(Context.unsafeGet(tag)))),
+          scopedRef.fromAcquire(pipe(layer_.build(options.layer), core.map(Context.unsafeGet(tag)))),
           core.map((ref) => ({
             [ReloadableTypeId]: reloadableVariance,
             scopedRef: ref,
             reload: pipe(
-              scopedRef.set(ref, pipe(_layer.build(options.layer), core.map(Context.unsafeGet(tag)))),
+              scopedRef.set(ref, pipe(layer_.build(options.layer), core.map(Context.unsafeGet(tag)))),
               core.provideContext(env)
             )
           }))

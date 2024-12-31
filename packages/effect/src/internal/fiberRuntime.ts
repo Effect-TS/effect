@@ -45,7 +45,7 @@ import type * as Supervisor from "../Supervisor.js"
 import type * as Tracer from "../Tracer.js"
 import type { Concurrency, NoInfer } from "../Types.js"
 import { internalCall, yieldWrapGet } from "../Utils.js"
-import * as _RequestBlock from "./blockedRequests.js"
+import * as RequestBlock_ from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as clock from "./clock.js"
 import { currentRequestMap } from "./completedRequestMap.js"
@@ -67,7 +67,7 @@ import * as metricLabel from "./metric/label.js"
 import * as OpCodes from "./opCodes/effect.js"
 import { randomTag } from "./random.js"
 import { complete } from "./request.js"
-import * as _runtimeFlags from "./runtimeFlags.js"
+import * as runtimeFlags_ from "./runtimeFlags.js"
 import { OpSupervision } from "./runtimeFlags.js"
 import * as supervisor from "./supervisor.js"
 import * as SupervisorPatch from "./supervisor/patch.js"
@@ -171,7 +171,7 @@ const contOpSuccess = {
     value: unknown
   ) => {
     self.patchRuntimeFlags(self.currentRuntimeFlags, cont.patch)
-    if (_runtimeFlags.interruptible(self.currentRuntimeFlags) && self.isInterrupted()) {
+    if (runtimeFlags_.interruptible(self.currentRuntimeFlags) && self.isInterrupted()) {
       return core.exitFailCause(self.getInterruptedCause())
     } else {
       return core.exitSucceed(value)
@@ -210,7 +210,7 @@ const drainQueueWhileRunningTable = {
     message: FiberMessage.FiberMessage & { _tag: FiberMessage.OP_INTERRUPT_SIGNAL }
   ) => {
     self.processNewInterruptSignal(message.cause)
-    return _runtimeFlags.interruptible(runtimeFlags) ? core.exitFailCause(message.cause) : cur
+    return runtimeFlags_.interruptible(runtimeFlags) ? core.exitFailCause(message.cause) : cur
   },
   [FiberMessage.OP_RESUME]: (
     _self: FiberRuntime<any, any>,
@@ -244,10 +244,10 @@ const drainQueueWhileRunningTable = {
  */
 const runBlockedRequests = (self: RequestBlock.RequestBlock) =>
   core.forEachSequentialDiscard(
-    _RequestBlock.flatten(self),
+    RequestBlock_.flatten(self),
     (requestsByRequestResolver) =>
       forEachConcurrentDiscard(
-        _RequestBlock.sequentialCollectionToChunk(requestsByRequestResolver),
+        RequestBlock_.sequentialCollectionToChunk(requestsByRequestResolver),
         ([dataSource, sequential]) => {
           const map = new Map<Request<any, any>, Entry<any>>()
           const arr: Array<Array<Entry<any>>> = []
@@ -317,7 +317,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
     this.currentRuntimeFlags = runtimeFlags0
     this._fiberId = fiberId
     this._fiberRefs = fiberRefs0
-    if (_runtimeFlags.runtimeMetrics(runtimeFlags0)) {
+    if (runtimeFlags_.runtimeMetrics(runtimeFlags0)) {
       const tags = this.getFiberRef(core.currentMetricLabels)
       fiberStarted.unsafeUpdate(1, tags)
       fiberActive.unsafeUpdate(1, tags)
@@ -474,10 +474,10 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
       const updatedRuntimeFlags = parentFiber.getFiberRef(currentRuntimeFlags)
 
       const patch = pipe(
-        _runtimeFlags.diff(parentRuntimeFlags, updatedRuntimeFlags),
+        runtimeFlags_.diff(parentRuntimeFlags, updatedRuntimeFlags),
         // Do not inherit WindDown or Interruption!
-        RuntimeFlagsPatch.exclude(_runtimeFlags.Interruption),
-        RuntimeFlagsPatch.exclude(_runtimeFlags.WindDown)
+        RuntimeFlagsPatch.exclude(runtimeFlags_.Interruption),
+        RuntimeFlagsPatch.exclude(runtimeFlags_.WindDown)
       )
 
       return core.updateRuntimeFlags(patch)
@@ -804,7 +804,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   }
 
   reportExitValue(exit: Exit.Exit<A, E>) {
-    if (_runtimeFlags.runtimeMetrics(this.currentRuntimeFlags)) {
+    if (runtimeFlags_.runtimeMetrics(this.currentRuntimeFlags)) {
       const tags = this.getFiberRef(core.currentMetricLabels)
       const startTimeMillis = this.id().startTimeMillis
       const endTimeMillis = Date.now()
@@ -928,7 +928,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
     this.currentSupervisor.onResume(this)
     try {
       let effect: Effect.Effect<any, any, any> | null =
-        _runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted() ?
+        runtimeFlags_.interruptible(this.currentRuntimeFlags) && this.isInterrupted() ?
           core.exitFailCause(this.getInterruptedCause()) :
           effect0
       while (effect !== null) {
@@ -938,7 +938,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
           const op = yieldedOpChannel.currentOp!
           yieldedOpChannel.currentOp = null
           if (op._op === OpCodes.OP_YIELD) {
-            if (_runtimeFlags.cooperativeYielding(this.currentRuntimeFlags)) {
+            if (runtimeFlags_.cooperativeYielding(this.currentRuntimeFlags)) {
               this.tell(FiberMessage.yieldNow())
               this.tell(FiberMessage.resume(core.exitVoid))
               effect = null
@@ -950,7 +950,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
             effect = null
           }
         } else {
-          this.currentRuntimeFlags = pipe(this.currentRuntimeFlags, _runtimeFlags.enable(_runtimeFlags.WindDown))
+          this.currentRuntimeFlags = pipe(this.currentRuntimeFlags, runtimeFlags_.enable(runtimeFlags_.WindDown))
           const interruption = this.interruptAllChildren()
           if (interruption !== null) {
             effect = core.flatMap(interruption, () => exit)
@@ -1022,7 +1022,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
    * **NOTE**: This method must be invoked by the fiber itself.
    */
   patchRuntimeFlags(oldRuntimeFlags: RuntimeFlags.RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch) {
-    const newRuntimeFlags = _runtimeFlags.patch(oldRuntimeFlags, patch)
+    const newRuntimeFlags = runtimeFlags_.patch(oldRuntimeFlags, patch)
     ;(globalThis as any)[internalFiber.currentFiberURI] = this
     this.currentRuntimeFlags = newRuntimeFlags
     return newRuntimeFlags
@@ -1046,7 +1046,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         this.tell(FiberMessage.resume(effect))
       }
     }
-    if (_runtimeFlags.interruptible(runtimeFlags)) {
+    if (runtimeFlags_.interruptible(runtimeFlags)) {
       this._asyncInterruptor = callback
     }
     try {
@@ -1182,14 +1182,14 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
       switch (cont._op) {
         case OpCodes.OP_ON_FAILURE:
         case OpCodes.OP_ON_SUCCESS_AND_FAILURE: {
-          if (!(_runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted())) {
+          if (!(runtimeFlags_.interruptible(this.currentRuntimeFlags) && this.isInterrupted())) {
             return internalCall(() => cont.effect_instruction_i1(cause))
           } else {
             return core.exitFailCause(internalCause.stripFailures(cause))
           }
         }
         case "OnStep": {
-          if (!(_runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted())) {
+          if (!(runtimeFlags_.interruptible(this.currentRuntimeFlags) && this.isInterrupted())) {
             return core.exitSucceed(core.exitFailCause(cause))
           } else {
             return core.exitFailCause(internalCause.stripFailures(cause))
@@ -1197,7 +1197,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         }
         case OpCodes.OP_REVERT_FLAGS: {
           this.patchRuntimeFlags(this.currentRuntimeFlags, cont.patch)
-          if (_runtimeFlags.interruptible(this.currentRuntimeFlags) && this.isInterrupted()) {
+          if (runtimeFlags_.interruptible(this.currentRuntimeFlags) && this.isInterrupted()) {
             return core.exitFailCause(internalCause.sequential(cause, this.getInterruptedCause()))
           } else {
             return core.exitFailCause(cause)
@@ -1236,7 +1236,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
       this.setFiberRefs(snap.refs)
       this.currentRuntimeFlags = snap.flags
       const patchRefs = FiberRefsPatch.diff(snap.refs, refs)
-      const patchFlags = _runtimeFlags.diff(snap.flags, flags)
+      const patchFlags = runtimeFlags_.diff(snap.flags, flags)
       return core.exitSucceed(core.blocked(
         op.effect_instruction_i0,
         core.withFiberRuntime<unknown, unknown>((newFiber) => {
@@ -1246,7 +1246,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
           newFiber.setFiberRefs(
             FiberRefsPatch.patch(newFiber.id(), newFiber.getFiberRefs())(patchRefs)
           )
-          newFiber.currentRuntimeFlags = _runtimeFlags.patch(patchFlags)(newFiber.currentRuntimeFlags)
+          newFiber.currentRuntimeFlags = runtimeFlags_.patch(patchFlags)(newFiber.currentRuntimeFlags)
           return op.effect_instruction_i1
         })
       ))
@@ -1266,19 +1266,19 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   [OpCodes.OP_UPDATE_RUNTIME_FLAGS](op: core.Primitive & { _op: OpCodes.OP_UPDATE_RUNTIME_FLAGS }) {
     const updateFlags = op.effect_instruction_i0
     const oldRuntimeFlags = this.currentRuntimeFlags
-    const newRuntimeFlags = _runtimeFlags.patch(oldRuntimeFlags, updateFlags)
+    const newRuntimeFlags = runtimeFlags_.patch(oldRuntimeFlags, updateFlags)
     // One more chance to short circuit: if we're immediately going
     // to interrupt. Interruption will cause immediate reversion of
     // the flag, so as long as we "peek ahead", there's no need to
     // set them to begin with.
-    if (_runtimeFlags.interruptible(newRuntimeFlags) && this.isInterrupted()) {
+    if (runtimeFlags_.interruptible(newRuntimeFlags) && this.isInterrupted()) {
       return core.exitFailCause(this.getInterruptedCause())
     } else {
       // Impossible to short circuit, so record the changes
       this.patchRuntimeFlags(this.currentRuntimeFlags, updateFlags)
       if (op.effect_instruction_i1) {
         // Since we updated the flags, we need to revert them
-        const revertFlags = _runtimeFlags.diff(newRuntimeFlags, oldRuntimeFlags)
+        const revertFlags = runtimeFlags_.diff(newRuntimeFlags, oldRuntimeFlags)
         this.pushStack(new core.RevertFlags(revertFlags, op))
         return internalCall(() => op.effect_instruction_i1!(oldRuntimeFlags))
       } else {
@@ -1676,7 +1676,7 @@ export const addFinalizer = <X, R>(
             const preRefs = runtimeFinalizer.getFiberRefs()
             const preFlags = runtimeFinalizer.currentRuntimeFlags
             const patchRefs = FiberRefsPatch.diff(preRefs, acquireRefs)
-            const patchFlags = _runtimeFlags.diff(preFlags, acquireFlags)
+            const patchFlags = runtimeFlags_.diff(preFlags, acquireFlags)
             const inverseRefs = FiberRefsPatch.diff(acquireRefs, preRefs)
             runtimeFinalizer.setFiberRefs(
               FiberRefsPatch.patch(patchRefs, runtimeFinalizer.id(), acquireRefs)
@@ -2274,7 +2274,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
                       () => core.exitVoid
                     )))
                   } else if (residual.length + results.length === target) {
-                    const requests = residual.map((blocked) => blocked.effect_instruction_i0).reduce(_RequestBlock.par)
+                    const requests = residual.map((blocked) => blocked.effect_instruction_i0).reduce(RequestBlock_.par)
                     resume(core.succeed(core.blocked(
                       requests,
                       forEachConcurrentDiscard(
@@ -3185,8 +3185,8 @@ export const withRuntimeFlagsScoped = (
   return pipe(
     core.runtimeFlags,
     core.flatMap((runtimeFlags) => {
-      const updatedRuntimeFlags = _runtimeFlags.patch(runtimeFlags, update)
-      const revertRuntimeFlags = _runtimeFlags.diff(updatedRuntimeFlags, runtimeFlags)
+      const updatedRuntimeFlags = runtimeFlags_.patch(runtimeFlags, update)
+      const revertRuntimeFlags = runtimeFlags_.diff(updatedRuntimeFlags, runtimeFlags)
       return pipe(
         core.updateRuntimeFlags(update),
         core.zipRight(addFinalizer(() => core.updateRuntimeFlags(revertRuntimeFlags))),
@@ -3411,7 +3411,7 @@ export const fiberRefMakeRuntimeFlags = (
 
 /** @internal */
 export const currentRuntimeFlags: FiberRef.FiberRef<RuntimeFlags.RuntimeFlags> = core.fiberRefUnsafeMakeRuntimeFlags(
-  _runtimeFlags.none
+  runtimeFlags_.none
 )
 
 /** @internal */

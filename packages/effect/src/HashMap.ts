@@ -6,7 +6,7 @@ import type { Equal } from "./Equal.js"
 import type { HashSet } from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as HM from "./internal/hashMap.js"
-import * as _keySet from "./internal/hashMap/keySet.js"
+import * as keySet_ from "./internal/hashMap/keySet.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { NoInfer } from "./Types.js"
@@ -219,7 +219,7 @@ export const keys: <K, V>(self: HashMap<K, V>) => IterableIterator<K> = HM.keys
  * @since 2.0.0
  * @category getter
  */
-export const keySet: <K, V>(self: HashMap<K, V>) => HashSet<K> = _keySet.keySet
+export const keySet: <K, V>(self: HashMap<K, V>) => HashSet<K> = keySet_.keySet
 
 /**
  * Returns an `IterableIterator` of the values within the `HashMap`.

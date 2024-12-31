@@ -4,7 +4,7 @@ import * as HashMap from "../HashMap.js"
 import * as List from "../List.js"
 import type * as Logger from "../Logger.js"
 import * as core from "./core.js"
-import * as _fiberId from "./fiberId.js"
+import * as fiberId_ from "./fiberId.js"
 import * as fiberRefs from "./fiberRefs.js"
 
 /** @internal */
@@ -13,7 +13,7 @@ export const test = dual<
   <Message, Output>(self: Logger.Logger<Message, Output>, input: Message) => Output
 >(2, (self, input) =>
   self.log({
-    fiberId: _fiberId.none,
+    fiberId: fiberId_.none,
     logLevel: core.logLevelInfo,
     message: input,
     cause: Cause.empty,

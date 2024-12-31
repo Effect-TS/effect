@@ -13,7 +13,7 @@ import type * as Exit from "./Exit.js"
 import type { LazyArg } from "./Function.js"
 import type * as GroupBy from "./GroupBy.js"
 import type { TypeLambda } from "./HKT.js"
-import * as _groupBy from "./internal/groupBy.js"
+import * as groupBy_ from "./internal/groupBy.js"
 import * as internal from "./internal/stream.js"
 import type * as Layer from "./Layer.js"
 import type * as Option from "./Option.js"
@@ -2287,7 +2287,7 @@ export const groupBy: {
     f: (a: A) => Effect.Effect<readonly [K, V], E2, R2>,
     options?: { readonly bufferSize?: number | undefined } | undefined
   ): GroupBy.GroupBy<K, V, E | E2, R | R2>
-} = _groupBy.groupBy
+} = groupBy_.groupBy
 
 /**
  * Partition a stream using a function and process each stream individually.
@@ -2340,7 +2340,7 @@ export const groupByKey: {
       readonly bufferSize?: number | undefined
     }
   ): GroupBy.GroupBy<K, A, E, R>
-} = _groupBy.groupByKey
+} = groupBy_.groupByKey
 
 /**
  * Partitions the stream with specified `chunkSize`.
@@ -2919,7 +2919,7 @@ export const mapEffect: {
     f: (a: A) => Effect.Effect<A2, E2, R2>,
     options: { readonly key: (a: A) => K; readonly bufferSize?: number | undefined }
   ): Stream<A2, E | E2, R | R2>
-} = _groupBy.mapEffectOptions
+} = groupBy_.mapEffectOptions
 
 /**
  * Transforms the errors emitted by this stream using `f`.
@@ -6263,7 +6263,7 @@ export const bindEffect: {
     f: (_: NoInfer<A>) => Effect.Effect<B, E2, R2>,
     options?: { readonly concurrency?: number | "unbounded" | undefined; readonly unordered?: boolean | undefined }
   ): Stream<{ [K in keyof A | N]: K extends keyof A ? A[K] : B }, E | E2, R | R2>
-} = _groupBy.bindEffect
+} = groupBy_.bindEffect
 
 /**
  * The "do simulation" in Effect allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.

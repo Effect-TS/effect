@@ -26,7 +26,7 @@ import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import type { TypeLambda } from "./HKT.js"
 import * as internalCause from "./internal/cause.js"
-import * as _console from "./internal/console.js"
+import * as console_ from "./internal/console.js"
 import { TagProto } from "./internal/context.js"
 import * as effect from "./internal/core-effect.js"
 import * as core from "./internal/core.js"
@@ -35,8 +35,8 @@ import * as circular from "./internal/effect/circular.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as layer from "./internal/layer.js"
 import * as query from "./internal/query.js"
-import * as _runtime from "./internal/runtime.js"
-import * as _schedule from "./internal/schedule.js"
+import * as runtime_ from "./internal/runtime.js"
+import * as schedule_ from "./internal/schedule.js"
 import * as internalTracer from "./internal/tracer.js"
 import type * as Layer from "./Layer.js"
 import type { LogLevel } from "./LogLevel.js"
@@ -2433,7 +2433,7 @@ export const async: <A, E = never, R = never>(
  */
 export const asyncEffect: <A, E, R, R3, E2, R2>(
   register: (callback: (_: Effect<A, E, R>) => void) => Effect<Effect<void, never, R3> | void, E2, R2>
-) => Effect<A, E | E2, R | R2 | R3> = _runtime.asyncEffect
+) => Effect<A, E | E2, R | R2 | R3> = runtime_.asyncEffect
 
 /**
  * Low level constructor that enables for custom stack tracing cutpoints.
@@ -4340,7 +4340,7 @@ export const retry: {
     self: Effect<A, E, R>,
     policy: Schedule.Schedule<B, E, R1>
   ): Effect<A, E, R1 | R>
-} = _schedule.retry_combined
+} = schedule_.retry_combined
 
 /**
  * Retries a failing effect and runs a fallback effect if retries are exhausted.
@@ -4412,7 +4412,7 @@ export const retryOrElse: {
     policy: Schedule.Schedule<A1, NoInfer<E>, R1>,
     orElse: (e: NoInfer<E>, out: A1) => Effect<A2, E2, R2>
   ): Effect<A | A2, E2, R | R1 | R2>
-} = _schedule.retryOrElse_Effect
+} = schedule_.retryOrElse_Effect
 
 const try_: {
   <A, E>(options: { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E }): Effect<A, E>
@@ -6616,7 +6616,7 @@ export const withClock: {
  * @since 2.0.0
  * @category Console
  */
-export const console: Effect<Console> = _console.console
+export const console: Effect<Console> = console_.console
 
 /**
  * Retreives the `Console` service from the context and provides it to the
@@ -6625,7 +6625,7 @@ export const console: Effect<Console> = _console.console
  * @since 2.0.0
  * @category Console
  */
-export const consoleWith: <A, E, R>(f: (console: Console) => Effect<A, E, R>) => Effect<A, E, R> = _console.consoleWith
+export const consoleWith: <A, E, R>(f: (console: Console) => Effect<A, E, R>) => Effect<A, E, R> = console_.consoleWith
 
 /**
  * Sets the implementation of the console service to the specified value and
@@ -6635,7 +6635,7 @@ export const consoleWith: <A, E, R>(f: (console: Console) => Effect<A, E, R>) =>
  * @category Creating Effects
  */
 export const withConsoleScoped: <A extends Console>(console: A) => Effect<void, never, Scope.Scope> =
-  _console.withConsoleScoped
+  console_.withConsoleScoped
 
 /**
  * Executes the specified workflow with the specified implementation of the
@@ -6647,7 +6647,7 @@ export const withConsoleScoped: <A extends Console>(console: A) => Effect<void, 
 export const withConsole: {
   <C extends Console>(console: C): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
   <A, E, R, C extends Console>(effect: Effect<A, E, R>, console: C): Effect<A, E, R>
-} = _console.withConsole
+} = console_.withConsole
 
 /**
  * Delays the execution of an effect by a specified `Duration`.
@@ -9862,7 +9862,7 @@ export const repeat: {
     options: O
   ): Repeat.Return<R, E, A, O>
   <A, E, R, B, R1>(self: Effect<A, E, R>, schedule: Schedule.Schedule<B, A, R1>): Effect<B, E, R | R1>
-} = _schedule.repeat_combined
+} = schedule_.repeat_combined
 
 /**
  * Repeats an effect a specified number of times or until the first failure.
@@ -9963,7 +9963,7 @@ export const repeatOrElse: {
     schedule: Schedule.Schedule<B, A, R2>,
     orElse: (error: E, option: Option.Option<B>) => Effect<B, E2, R3>
   ): Effect<B, E2, R | R2 | R3>
-} = _schedule.repeatOrElse_Effect
+} = schedule_.repeatOrElse_Effect
 
 /**
  * Repeats an effect based on a specified schedule.
@@ -9990,7 +9990,7 @@ export const repeatOrElse: {
 export const schedule: {
   <R2, Out>(schedule: Schedule.Schedule<Out, unknown, R2>): <A, E, R>(self: Effect<A, E, R>) => Effect<Out, E, R2 | R>
   <A, E, R, R2, Out>(self: Effect<A, E, R>, schedule: Schedule.Schedule<Out, unknown, R2>): Effect<Out, E, R | R2>
-} = _schedule.schedule_Effect
+} = schedule_.schedule_Effect
 
 /**
  * Runs an effect repeatedly on a new fiber according to a given schedule.
@@ -10053,7 +10053,7 @@ export const scheduleFrom: {
     initial: In,
     schedule: Schedule.Schedule<Out, In, R2>
   ): Effect<Out, E, R | R2>
-} = _schedule.scheduleFrom_Effect
+} = schedule_.scheduleFrom_Effect
 
 /**
  * @since 2.0.0
@@ -11211,7 +11211,7 @@ export const withRandomScoped: <A extends Random.Random>(value: A) => Effect<voi
  * @since 2.0.0
  * @category Runtime
  */
-export const runtime: <R = never>() => Effect<Runtime.Runtime<R>, never, R> = _runtime.runtime
+export const runtime: <R = never>() => Effect<Runtime.Runtime<R>, never, R> = runtime_.runtime
 
 /**
  * Retrieves an effect that succeeds with the current runtime flags, which
@@ -11636,7 +11636,7 @@ export const makeLatch: (open?: boolean | undefined) => Effect<Latch, never, nev
 export const runFork: <A, E>(
   effect: Effect<A, E>,
   options?: Runtime.RunForkOptions
-) => Fiber.RuntimeFiber<A, E> = _runtime.unsafeForkEffect
+) => Fiber.RuntimeFiber<A, E> = runtime_.unsafeForkEffect
 
 /**
  * Executes an effect asynchronously and handles the result using a callback.
@@ -11659,7 +11659,7 @@ export const runFork: <A, E>(
 export const runCallback: <A, E>(
   effect: Effect<A, E>,
   options?: Runtime.RunCallbackOptions<A, E> | undefined
-) => Runtime.Cancel<A, E> = _runtime.unsafeRunEffect
+) => Runtime.Cancel<A, E> = runtime_.unsafeRunEffect
 
 /**
  * Executes an effect and returns the result as a `Promise`.
@@ -11706,7 +11706,7 @@ export const runCallback: <A, E>(
 export const runPromise: <A, E>(
   effect: Effect<A, E, never>,
   options?: { readonly signal?: AbortSignal } | undefined
-) => Promise<A> = _runtime.unsafeRunPromiseEffect
+) => Promise<A> = runtime_.unsafeRunPromiseEffect
 
 /**
  * Runs an effect and returns a `Promise` that resolves to an `Exit`,
@@ -11767,7 +11767,7 @@ export const runPromise: <A, E>(
 export const runPromiseExit: <A, E>(
   effect: Effect<A, E, never>,
   options?: { readonly signal?: AbortSignal } | undefined
-) => Promise<Exit.Exit<A, E>> = _runtime.unsafeRunPromiseExitEffect
+) => Promise<Exit.Exit<A, E>> = runtime_.unsafeRunPromiseExitEffect
 
 /**
  * Executes an effect synchronously, running it immediately and returning the
@@ -11844,7 +11844,7 @@ export const runPromiseExit: <A, E>(
  * @since 2.0.0
  * @category Running Effects
  */
-export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSyncEffect
+export const runSync: <A, E>(effect: Effect<A, E>) => A = runtime_.unsafeRunSyncEffect
 
 /**
  * Runs an effect synchronously and returns the result as an `Exit` type.
@@ -11920,7 +11920,7 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = _runtime.unsafeRunSync
  * @since 2.0.0
  * @category Running Effects
  */
-export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = _runtime.unsafeRunSyncExitEffect
+export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = runtime_.unsafeRunSyncExitEffect
 
 /**
  * Combines multiple effects and accumulates both successes and failures.
