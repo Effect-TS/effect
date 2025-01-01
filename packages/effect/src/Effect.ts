@@ -4741,22 +4741,31 @@ export const checkInterruptible: <A, E, R>(f: (isInterruptible: boolean) => Effe
 export const disconnect: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = fiberRuntime.disconnect
 
 /**
- * Returns an effect that models the interruption of the fiber it is run in.
+ * Represents an effect that interrupts the current fiber.
+ *
+ * **Details**
+ *
+ * This effect models the explicit interruption of the fiber in which it runs.
+ * When executed, it causes the fiber to stop its operation immediately,
+ * capturing the interruption details such as the fiber's ID and its start time.
+ * The resulting interruption can be observed in the `Exit` type if the effect
+ * is run with functions like {@link runPromiseExit}.
  *
  * @example
  * ```ts
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function* () {
- *   yield* Effect.log("start")
+ *   console.log("start")
  *   yield* Effect.sleep("2 seconds")
  *   yield* Effect.interrupt
- *   yield* Effect.log("done")
+ *   console.log("done")
+ *   return "some result"
  * })
  *
  * // Effect.runPromiseExit(program).then(console.log)
  * // Output:
- * // timestamp=... level=INFO fiber=#0 message=start
+ * // start
  * // {
  * //   _id: 'Exit',
  * //   _tag: 'Failure',
@@ -4807,10 +4816,18 @@ export const interruptibleMask: <A, E, R>(
 /**
  * Registers a cleanup effect to run when an effect is interrupted.
  *
+ * **Details**
+ *
+ * This function allows you to specify an effect to run when the fiber is
+ * interrupted. This effect will be executed when the fiber is interrupted,
+ * allowing you to perform cleanup or other actions.
+ *
  * @example
  * ```ts
+ * // Title: Running a Cleanup Action on Interruption
  * import { Console, Effect } from "effect"
  *
+ * // This handler is executed when the fiber is interrupted
  * const handler = Effect.onInterrupt((_fibers) => Console.log("Cleanup completed"))
  *
  * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
@@ -5567,19 +5584,19 @@ export const addFinalizer: <X, R>(
 
 /**
  * Guarantees the execution of a finalizer when an effect starts execution.
-
+ *
  * **Details**
-
+ *
  * This function allows you to specify a `finalizer` effect that will always be
  * run once the effect starts execution, regardless of whether the effect
  * succeeds, fails, or is interrupted.
  *
  * **When to Use**
  *
- * This is useful when you need to ensure
- * that certain cleanup or final steps are executed in all cases, such as
- * releasing resources or performing necessary logging.
-
+ * This is useful when you need to ensure that certain cleanup or final steps
+ * are executed in all cases, such as releasing resources or performing
+ * necessary logging.
+ *
  * While this function provides strong guarantees about executing the finalizer,
  * it is considered a low-level tool, which may not be ideal for more complex
  * resource management. For higher-level resource management with automatic
@@ -5587,7 +5604,8 @@ export const addFinalizer: <X, R>(
  * For use cases where you need access to the result of an effect, consider
  * using {@link onExit}.
  *
- * @see {@link onExit} for a version that provides access to the result of an effect.
+ * @see {@link onExit} for a version that provides access to the result of an
+ * effect.
  *
  * @example
  * ```ts
@@ -5647,6 +5665,7 @@ export const ensuring: {
  * ```ts
  * import { Console, Effect } from "effect"
  *
+ * // This handler logs the failure cause when the effect fails
  * const handler = Effect.onError((cause) => Console.log(`Cleanup completed: ${cause}`))
  *
  * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
@@ -5704,6 +5723,7 @@ export const onError: {
  * ```ts
  * import { Console, Effect, Exit } from "effect"
  *
+ * // Define a cleanup function that logs the outcome of the effect
  * const handler = Effect.onExit((exit) => Console.log(`Cleanup completed: ${Exit.getOrElse(exit, String)}`))
  *
  * const success = Console.log("Task completed").pipe(Effect.as("some result"), handler)
