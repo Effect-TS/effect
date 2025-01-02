@@ -24,7 +24,7 @@ describe("Logger", () => {
 })
 
 describe("withLeveledConsole", () => {
-  it.effect("calls the respsective Console functions on a given level", () =>
+  it.effect("calls the respective Console functions on a given level", () =>
     Effect.gen(function*() {
       const c = yield* Effect.console
       const logs: Array<{ level: string; value: unknown }> = []
