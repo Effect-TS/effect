@@ -489,6 +489,8 @@ const color = Options.choice("color", ["red", "green", "blue"]).pipe(
   Options.optional
 )
 
+type ColorOption = typeof color extends Options.Options<infer U> ? U : never;
+
 // Color codes for ANSI escape sequences
 const colorCodes = {
   red: "\x1b[31m",
@@ -498,7 +500,7 @@ const colorCodes = {
 const resetCode = "\x1b[0m"
 
 // Function to apply ANSI color codes based on user input
-const applyColor = (text: string, color: Option.Option<string>): string =>
+const applyColor = (text: string, color: ColorOption): string =>
   Option.match(color, {
     onNone: () => text,
     onSome: (color) => `${colorCodes[color]}${text}${resetCode}`
