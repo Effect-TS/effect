@@ -483,25 +483,31 @@ const text = Args.text({ name: "text" })
 // Define the 'bold' option with an alias '-b'
 const bold = Options.boolean("bold").pipe(Options.withAlias("b"))
 
+// Color codes for ANSI escape sequences
+const colorToAnsiSequence = {
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  blue: "\x1b[34m"
+} as const
+const resetCode = "\x1b[0m"
+
+type SupportedColor = keyof typeof colorToAnsiSequence
+const supportedColors = Object.keys(colorToAnsiSequence) as SupportedColor[]
+
 // Define the 'color' option with choices and an alias '-c'
-const color = Options.choice("color", ["red", "green", "blue"]).pipe(
+const color = Options.choice("color", supportedColors).pipe(
   Options.withAlias("c"),
   Options.optional
 )
 
-// Color codes for ANSI escape sequences
-const colorCodes = {
-  red: "\x1b[31m",
-  green: "\x1b[32m",
-  blue: "\x1b[34m"
-}
-const resetCode = "\x1b[0m"
-
 // Function to apply ANSI color codes based on user input
-const applyColor = (text: string, color: Option.Option<string>): string =>
+const applyColor = (
+  text: string,
+  color: Option.Option<SupportedColor>
+): string =>
   Option.match(color, {
     onNone: () => text,
-    onSome: (color) => `${colorCodes[color]}${text}${resetCode}`
+    onSome: (color) => `${colorToAnsiSequence[color]}${text}${resetCode}`
   })
 
 // Create the command that outputs formatted text
@@ -565,22 +571,28 @@ const text = Args.text({ name: "text" })
 
 const bold = Options.boolean("bold").pipe(Options.withAlias("b"))
 
-const color = Options.choice("color", ["red", "green", "blue"]).pipe(
+const colorToAnsiSequence = {
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  blue: "\x1b[34m"
+} as const
+const resetCode = "\x1b[0m"
+
+type SupportedColor = keyof typeof colorToAnsiSequence
+const supportedColors = Object.keys(colorToAnsiSequence) as SupportedColor[]
+
+const color = Options.choice("color", supportedColors).pipe(
   Options.withAlias("c"),
   Options.optional
 )
 
-const colorCodes: { [key: string]: string } = {
-  red: "\x1b[31m",
-  green: "\x1b[32m",
-  blue: "\x1b[34m"
-}
-const resetCode = "\x1b[0m"
-
-const applyColor = (text: string, color: Option.Option<string>): string =>
+const applyColor = (
+  text: string,
+  color: Option.Option<SupportedColor>
+): string =>
   Option.match(color, {
     onNone: () => text,
-    onSome: (color) => `${colorCodes[color]}${text}${resetCode}`
+    onSome: (color) => `${colorToAnsiSequence[color]}${text}${resetCode}`
   })
 
 // Argument for the number of repetitions
@@ -737,9 +749,10 @@ const minigit = Command.make(
     Option.match(configs, {
       onNone: () => Console.log("Running 'minigit'"),
       onSome: (configs) => {
-        const keyValuePairs = Array.from(configs)
-          .map(([key, value]) => `${key}=${value}`)
-          .join(", ")
+        const keyValuePairs = Array.from(
+          configs,
+          ([key, value]) => `${key}=${value}`
+        ).join(", ")
         return Console.log(
           `Running 'minigit' with the following configs: ${keyValuePairs}`
         )
