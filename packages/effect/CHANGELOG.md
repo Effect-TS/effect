@@ -1,5 +1,23 @@
 # effect
 
+## 3.12.1
+
+### Patch Changes
+
+- [#4194](https://github.com/Effect-TS/effect/pull/4194) [`302b57d`](https://github.com/Effect-TS/effect/commit/302b57d2cbf9b9ccc17450945aeebfb33cfe8d43) Thanks @KhraksMamtsov! - take concurrentFinalizers option in account in `Effect.all` combinator
+
+- [#4202](https://github.com/Effect-TS/effect/pull/4202) [`0988083`](https://github.com/Effect-TS/effect/commit/0988083d4594938590df5a287e5b27d38526dd07) Thanks @mikearnaldi! - Remove internal EffectError make sure errors are raised with Effect.fail in Effect.try
+
+- [#4185](https://github.com/Effect-TS/effect/pull/4185) [`8b46be6`](https://github.com/Effect-TS/effect/commit/8b46be6a3b8160362ab5ea9171c5e6932505125c) Thanks @jessekelly881! - fixed incorrect type declaration in LibsqlClient.layer
+
+- [#4189](https://github.com/Effect-TS/effect/pull/4189) [`bfe8027`](https://github.com/Effect-TS/effect/commit/bfe802734b450a4b4ee069d1125dd37995db2bff) Thanks @tim-smart! - ensure Effect.timeoutTo sleep is interrupted
+
+- [#4190](https://github.com/Effect-TS/effect/pull/4190) [`16dd657`](https://github.com/Effect-TS/effect/commit/16dd657033d8afac2ffea567b3c8bb27c9b249b6) Thanks @IMax153! - extend `IterableIterator` instead of `Generator` in `SingleShotGen`
+
+- [#4196](https://github.com/Effect-TS/effect/pull/4196) [`39db211`](https://github.com/Effect-TS/effect/commit/39db211414e90c8db8fdad7dc8ce5b4661bcfaef) Thanks @mikearnaldi! - Avoid putting symbols in global to fix incompatibility with Temporal Sandbox.
+
+  After speaking with James Watkins-Harvey we realized current Effect escapes the Temporal Worker sandbox that doesn't look for symbols when restoring global context in the isolate they create leading to memory leaks.
+
 ## 3.12.0
 
 ### Minor Changes
