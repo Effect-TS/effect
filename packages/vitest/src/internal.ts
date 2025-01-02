@@ -99,6 +99,9 @@ const makeTester = <R>(
       (args, ctx) => run(ctx, [args], self) as any
     )
 
+  const fails: Vitest.Vitest.Tester<R>["fails"] = (name, self, timeout) =>
+    V.it.fails(name, (ctx) => run(ctx, [ctx], self), timeout)
+
   const prop: Vitest.Vitest.Tester<R>["prop"] = (name, arbitraries, self, timeout) => {
     if (Array.isArray(arbitraries)) {
       const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
@@ -136,7 +139,7 @@ const makeTester = <R>(
     )
   }
 
-  return Object.assign(f, { skip, skipIf, runIf, only, each, prop })
+  return Object.assign(f, { skip, skipIf, runIf, only, each, fails, prop })
 }
 
 export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, timeout) => {
