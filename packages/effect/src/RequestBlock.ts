@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as _RequestBlock from "./internal/blockedRequests.js"
+import * as RequestBlock_ from "./internal/blockedRequests.js"
 import type * as Request from "./Request.js"
 import type * as RequestResolver from "./RequestResolver.js"
 
@@ -82,13 +82,13 @@ export interface Single {
 export const single: <A>(
   dataSource: RequestResolver.RequestResolver<A>,
   blockedRequest: Request.Entry<A>
-) => RequestBlock = _RequestBlock.single
+) => RequestBlock = RequestBlock_.single
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const empty: RequestBlock = _RequestBlock.empty
+export const empty: RequestBlock = RequestBlock_.empty
 
 /**
  * @since 2.0.0
@@ -97,22 +97,22 @@ export const empty: RequestBlock = _RequestBlock.empty
 export const mapRequestResolvers: <A>(
   self: RequestBlock,
   f: (dataSource: RequestResolver.RequestResolver<A>) => RequestResolver.RequestResolver<A>
-) => RequestBlock = _RequestBlock.mapRequestResolvers
+) => RequestBlock = RequestBlock_.mapRequestResolvers
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const parallel: (self: RequestBlock, that: RequestBlock) => RequestBlock = _RequestBlock.par
+export const parallel: (self: RequestBlock, that: RequestBlock) => RequestBlock = RequestBlock_.par
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const reduce: <Z>(self: RequestBlock, reducer: RequestBlock.Reducer<Z>) => Z = _RequestBlock.reduce
+export const reduce: <Z>(self: RequestBlock, reducer: RequestBlock.Reducer<Z>) => Z = RequestBlock_.reduce
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const sequential: (self: RequestBlock, that: RequestBlock) => RequestBlock = _RequestBlock.seq
+export const sequential: (self: RequestBlock, that: RequestBlock) => RequestBlock = RequestBlock_.seq

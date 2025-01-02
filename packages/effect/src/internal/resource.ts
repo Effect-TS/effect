@@ -6,7 +6,7 @@ import type * as Scope from "../Scope.js"
 import * as core from "./core.js"
 import * as effectable from "./effectable.js"
 import * as fiberRuntime from "./fiberRuntime.js"
-import * as _schedule from "./schedule.js"
+import * as schedule_ from "./schedule.js"
 import * as scopedRef from "./scopedRef.js"
 
 /** @internal */
@@ -42,7 +42,7 @@ export const auto = <A, E, R, Out, R2>(
     fiberRuntime.acquireRelease(
       pipe(
         refresh(manual),
-        _schedule.schedule_Effect(policy),
+        schedule_.schedule_Effect(policy),
         core.interruptible,
         fiberRuntime.forkDaemon
       ),

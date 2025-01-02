@@ -38,7 +38,7 @@ import type * as Scope from "../Scope.js"
 import type * as Tracer from "../Tracer.js"
 import type { NoInfer, NotFunction } from "../Types.js"
 import { internalCall, YieldWrap } from "../Utils.js"
-import * as _blockedRequests from "./blockedRequests.js"
+import * as blockedRequests_ from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
 import * as internalDiffer from "./differ.js"
@@ -48,38 +48,12 @@ import type * as FiberRuntime from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
 import * as DeferredOpCodes from "./opCodes/deferred.js"
 import * as OpCodes from "./opCodes/effect.js"
-import * as _runtimeFlags from "./runtimeFlags.js"
+import * as runtimeFlags_ from "./runtimeFlags.js"
 import { SingleShotGen } from "./singleShotGen.js"
 
 // -----------------------------------------------------------------------------
 // Effect
 // -----------------------------------------------------------------------------
-
-/** @internal */
-const EffectErrorSymbolKey = "effect/EffectError"
-
-/** @internal */
-export const EffectErrorTypeId = Symbol.for(EffectErrorSymbolKey)
-
-/** @internal */
-export type EffectErrorTypeId = typeof EffectErrorTypeId
-
-/** @internal */
-export interface EffectError<out E> {
-  readonly [EffectErrorTypeId]: EffectErrorTypeId
-  readonly _tag: "EffectError"
-  readonly cause: Cause.Cause<E>
-}
-
-/** @internal */
-export const isEffectError = (u: unknown): u is EffectError<unknown> => hasProperty(u, EffectErrorTypeId)
-
-/** @internal */
-export const makeEffectError = <E>(cause: Cause.Cause<E>): EffectError<E> => ({
-  [EffectErrorTypeId]: EffectErrorTypeId,
-  _tag: "EffectError",
-  cause
-})
 
 /**
  * @internal
@@ -677,7 +651,7 @@ export const catchSome = dual<
 /* @internal */
 export const checkInterruptible = <A, E, R>(
   f: (isInterruptible: boolean) => Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R> => withFiberRuntime((_, status) => f(_runtimeFlags.interruption(status.runtimeFlags)))
+): Effect.Effect<A, E, R> => withFiberRuntime((_, status) => f(runtimeFlags_.interruption(status.runtimeFlags)))
 
 const spanSymbol = Symbol.for("effect/SpanAnnotation")
 const originalSymbol = Symbol.for("effect/OriginalAnnotation")
@@ -1027,7 +1001,7 @@ export const interruptWith = (fiberId: FiberId.FiberId): Effect.Effect<never> =>
 /* @internal */
 export const interruptible = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.effect_instruction_i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
+  effect.effect_instruction_i0 = RuntimeFlagsPatch.enable(runtimeFlags_.Interruption)
   effect.effect_instruction_i1 = () => self
   return effect
 }
@@ -1038,9 +1012,9 @@ export const interruptibleMask = <A, E, R>(
 ): Effect.Effect<A, E, R> =>
   custom(f, function() {
     const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-    effect.effect_instruction_i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
+    effect.effect_instruction_i0 = RuntimeFlagsPatch.enable(runtimeFlags_.Interruption)
     effect.effect_instruction_i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
-      _runtimeFlags.interruption(oldFlags)
+      runtimeFlags_.interruption(oldFlags)
         ? internalCall(() => this.effect_instruction_i0(interruptible))
         : internalCall(() => this.effect_instruction_i0(uninterruptible))
     return effect
@@ -1356,7 +1330,7 @@ export const uninterruptible: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.
   self: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.effect_instruction_i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
+  effect.effect_instruction_i0 = RuntimeFlagsPatch.disable(runtimeFlags_.Interruption)
   effect.effect_instruction_i1 = () => self
   return effect
 }
@@ -1367,9 +1341,9 @@ export const uninterruptibleMask = <A, E, R>(
 ): Effect.Effect<A, E, R> =>
   custom(f, function() {
     const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-    effect.effect_instruction_i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
+    effect.effect_instruction_i0 = RuntimeFlagsPatch.disable(runtimeFlags_.Interruption)
     effect.effect_instruction_i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
-      _runtimeFlags.interruption(oldFlags)
+      runtimeFlags_.interruption(oldFlags)
         ? internalCall(() => this.effect_instruction_i0(interruptible))
         : internalCall(() => this.effect_instruction_i0(uninterruptible))
     return effect
@@ -1904,17 +1878,17 @@ export const requestBlockLocally = <A>(
   self: BlockedRequests.RequestBlock,
   ref: FiberRef.FiberRef<A>,
   value: A
-): BlockedRequests.RequestBlock => _blockedRequests.reduce(self, LocallyReducer(ref, value))
+): BlockedRequests.RequestBlock => blockedRequests_.reduce(self, LocallyReducer(ref, value))
 
 const LocallyReducer = <A>(
   ref: FiberRef.FiberRef<A>,
   value: A
 ): BlockedRequests.RequestBlock.Reducer<BlockedRequests.RequestBlock> => ({
-  emptyCase: () => _blockedRequests.empty,
-  parCase: (left, right) => _blockedRequests.par(left, right),
-  seqCase: (left, right) => _blockedRequests.seq(left, right),
+  emptyCase: () => blockedRequests_.empty,
+  parCase: (left, right) => blockedRequests_.par(left, right),
+  seqCase: (left, right) => blockedRequests_.seq(left, right),
   singleCase: (dataSource, blockedRequest) =>
-    _blockedRequests.single(
+    blockedRequests_.single(
       resolverLocally(dataSource, ref, value),
       blockedRequest as any
     )
@@ -2017,8 +1991,8 @@ export const fiberRefUnsafeMakeRuntimeFlags = (
   initial: RuntimeFlags.RuntimeFlags
 ): FiberRef.FiberRef<RuntimeFlags.RuntimeFlags> =>
   fiberRefUnsafeMakePatch(initial, {
-    differ: _runtimeFlags.differ,
-    fork: _runtimeFlags.differ.empty
+    differ: runtimeFlags_.differ,
+    fork: runtimeFlags_.differ.empty
   })
 
 /** @internal */
@@ -3024,9 +2998,9 @@ export const contextWith = <R0, A>(
 ): Effect.Effect<A, never, R0> => map(context<R0>(), f)
 
 /* @internal */
-export const contextWithEffect = <R0, A, E, R>(
-  f: (context: Context.Context<R0>) => Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R | R0> => flatMap(context<R0>(), f)
+export const contextWithEffect = <R2, A, E, R>(
+  f: (context: Context.Context<R2>) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R | R2> => flatMap(context<R2>(), f)
 
 /* @internal */
 export const provideContext = dual<
@@ -3050,17 +3024,17 @@ export const provideSomeContext = dual<
 
 /* @internal */
 export const mapInputContext = dual<
-  <R0, R>(
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ) => <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R0>,
-  <A, E, R, R0>(
+  <R2, R>(
+    f: (context: Context.Context<R2>) => Context.Context<R>
+  ) => <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R2>,
+  <A, E, R, R2>(
     self: Effect.Effect<A, E, R>,
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ) => Effect.Effect<A, E, R0>
->(2, <A, E, R, R0>(
+    f: (context: Context.Context<R2>) => Context.Context<R>
+  ) => Effect.Effect<A, E, R2>
+>(2, <A, E, R, R2>(
   self: Effect.Effect<A, E, R>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
-) => contextWithEffect((context: Context.Context<R0>) => provideContext(self, f(context))))
+  f: (context: Context.Context<R2>) => Context.Context<R>
+) => contextWithEffect((context: Context.Context<R2>) => provideContext(self, f(context))))
 
 // -----------------------------------------------------------------------------
 // Tracing

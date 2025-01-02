@@ -8,8 +8,8 @@ import type { Stream } from "../Stream.js"
 import * as Subscribable from "../Subscribable.js"
 import type * as SubscriptionRef from "../SubscriptionRef.js"
 import * as Synchronized from "../SynchronizedRef.js"
-import * as _circular from "./effect/circular.js"
-import * as _ref from "./ref.js"
+import * as circular_ from "./effect/circular.js"
+import * as ref_ from "./ref.js"
 import * as stream from "./stream.js"
 
 /** @internal */
@@ -29,8 +29,8 @@ const subscriptionRefVariance = {
 class SubscriptionRefImpl<in out A> extends Effectable.Class<A> implements SubscriptionRef.SubscriptionRef<A> {
   readonly [Readable.TypeId]: Readable.TypeId = Readable.TypeId
   readonly [Subscribable.TypeId]: Subscribable.TypeId = Subscribable.TypeId
-  readonly [Ref.RefTypeId] = _ref.refVariance
-  readonly [Synchronized.SynchronizedRefTypeId] = _circular.synchronizedVariance
+  readonly [Ref.RefTypeId] = ref_.refVariance
+  readonly [Synchronized.SynchronizedRefTypeId] = circular_.synchronizedVariance
   readonly [SubscriptionRefTypeId] = subscriptionRefVariance
   constructor(
     readonly ref: Ref.Ref<A>,

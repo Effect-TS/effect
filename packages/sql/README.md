@@ -105,7 +105,7 @@ In `sqlfx` you could pass an array to the `sql(array)` function to pass an list 
 
 ```ts
 import { Effect, Schema, pipe } from "effect"
-import { SqlClient } from "@effect/sql"
+import { SqlResolver, SqlClient } from "@effect/sql"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,

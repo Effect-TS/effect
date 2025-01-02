@@ -56,8 +56,8 @@ importers:
         specifier: ^0.7.7
         version: 0.7.7
       '@effect/docgen':
-        specifier: ^0.5.1
-        version: 0.5.1(tsx@4.17.0)(typescript@5.7.2)
+        specifier: ^0.5.2
+        version: 0.5.2(tsx@4.17.0)(typescript@5.7.2)
       '@effect/dtslint':
         specifier: ^0.1.2
         version: 0.1.2(typescript@5.7.2)
@@ -2060,8 +2060,8 @@ packages:
     engines: {node: '>=16.17.1'}
     hasBin: true
 
-  '@effect/docgen@0.5.1':
-    resolution: {integrity: sha512-5TW9X7xomC553EkYI7/m5krxqmh064zjcTNDTKXOWQqodcyb546DvtqSsoGmpNHzXkPjn70tqiM9/hWuoeDNHQ==}
+  '@effect/docgen@0.5.2':
+    resolution: {integrity: sha512-gqBxAhp58R18vT5+ORobWRQ/2MaF5vH0k1zggSct54J41k8TKF5mYIW1qG5tkOVCejet+8K5MKsWK3gzIkaoMw==}
     engines: {node: '>=18.0.0'}
     hasBin: true
     peerDependencies:
@@ -3322,9 +3322,6 @@ packages:
 
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
-
-  '@types/node@18.19.66':
-    resolution: {integrity: sha512-14HmtUdGxFUalGRfLLn9Gc1oNWvWh5zNbsyOLo5JV6WARSeN1QcEBKRnZm9QqNfrutgsl/hY4eJW63aZ44aBCg==}
 
   '@types/node@20.12.14':
     resolution: {integrity: sha512-scnD59RpYD91xngrQQLGkE+6UrHUPzeKZWhhjBSa3HSkwjbQc38+q3RoIVEwxQGRw3M+j5hpNAM+lgV3cVormg==}
@@ -5523,6 +5520,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.6:
@@ -9730,7 +9728,7 @@ snapshots:
 
   '@effect/build-utils@0.7.7': {}
 
-  '@effect/docgen@0.5.1(tsx@4.17.0)(typescript@5.7.2)':
+  '@effect/docgen@0.5.2(tsx@4.17.0)(typescript@5.7.2)':
     dependencies:
       '@effect/markdown-toc': 0.1.0
       doctrine: 3.0.0
@@ -10940,10 +10938,6 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@18.19.66':
-    dependencies:
-      undici-types: 5.26.5
-
   '@types/node@20.12.14':
     dependencies:
       undici-types: 5.26.5
@@ -10976,7 +10970,7 @@ snapshots:
 
   '@types/ssh2@1.15.1':
     dependencies:
-      '@types/node': 18.19.66
+      '@types/node': 22.9.3
 
   '@types/stack-utils@2.0.3': {}
 
@@ -11682,7 +11676,7 @@ snapshots:
 
   bun-types@1.1.36:
     dependencies:
-      '@types/node': 20.12.14
+      '@types/node': 22.9.3
       '@types/ws': 8.5.12
     optional: true
 
