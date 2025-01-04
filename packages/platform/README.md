@@ -1017,40 +1017,43 @@ Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 
 ![Swagger Documentation](./images/swagger-myapi.png)
 
-### Adding OpenApi annotations
+### Adding OpenAPI Annotations
 
-You can add OpenApi annotations to your API by using the `OpenApi` module.
+You can enhance your API documentation by adding OpenAPI annotations using the `OpenApi` module. These annotations allow you to include metadata such as titles, descriptions, and other details, making your API documentation more informative and easier to use.
 
-Let's add a title to our `UsersApi` group:
+**Example** (Adding OpenAPI Annotations to a Group)
+
+In this example:
+
+- A title ("Users API") and description ("API for managing users") are added to the `UsersApi` group.
+- These annotations will appear in the generated OpenAPI documentation.
 
 ```ts
 import { OpenApi } from "@effect/platform"
 
-class UsersApi extends HttpApiGroup.make("users")
-  .add(
-    HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
-    // ... same as above
-  )
-  // add an OpenApi title & description
-  // You can set one attribute at a time
-  .annotate(OpenApi.Title, "Users API")
-  // or multiple at once
-  .annotateContext(
-    OpenApi.annotations({
-      title: "Users API",
-      description: "API for managing users"
-    })
-  ) {}
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
+    .addSuccess(User)
+    // You can set one attribute at a time
+    .annotate(OpenApi.Title, "Users API")
+    // or multiple at once
+    .annotateContext(
+      OpenApi.annotations({
+        title: "Users API",
+        description: "API for managing users"
+      })
+    )
+) {}
 ```
 
-Now when you generate OpenApi documentation, the title and description will be
-included.
+Annotations can also be applied to the entire API. In this example, a title ("My API") is added to the top-level `HttpApi`.
 
-You can also add OpenApi annotations to the top-level `HttpApi`:
+**Example** (Adding OpenAPI Annotations to the Top-Level API)
 
 ```ts
 class MyApi extends HttpApi.make("myApi")
   .add(UsersApi)
+  // Add a title for the top-level API
   .annotate(OpenApi.Title, "My API") {}
 ```
 
