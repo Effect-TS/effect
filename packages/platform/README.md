@@ -608,7 +608,7 @@ const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
 
 You can serve your API using the `HttpApiBuilder.serve` API. This function builds an `HttpApp` from an `HttpApi` instance and serves it using an `HttpServer`.
 
-Optionally, you can provide middlewares to enhance the `HttpApp` before serving it.
+Optionally, you can provide middleware to enhance the `HttpApp` before serving it.
 
 **Example**
 
@@ -672,22 +672,20 @@ Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 
 ## Middlewares
 
-### Defining middleware
+### Defining Middleware
 
-The `HttpApiMiddleware` module provides a way to add middleware to your API.
+The `HttpApiMiddleware` module allows you to add middleware to your API. Middleware can enhance your API by introducing features like logging, authentication, or additional error handling.
 
-You can create a `HttpApiMiddleware.Tag` that represents your middleware, which
-allows you to set:
+You can define middleware using the `HttpApiMiddleware.Tag` class, which lets you specify:
 
-- `failure` - a Schema for any errors that the middleware can return
-- `provides` - a `Context.Tag` that the middleware will provide
-- `security` - `HttpApiSecurity` definitions that the middleware will
-  implement
-- `optional` - a boolean that indicates that if the middleware fails with an
-  expected error, the request should continue. When using optional middleware,
-  `provides` & `failure` options will not affect the handlers or final error type.
+| Option     | Description                                                                                                                                                                                                                     |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `failure`  | A schema that describes any errors the middleware might return.                                                                                                                                                                 |
+| `provides` | A `Context.Tag` representing the resource or data the middleware will provide to subsequent handlers.                                                                                                                           |
+| `security` | Definitions from `HttpApiSecurity` that the middleware will implement, such as authentication mechanisms.                                                                                                                       |
+| `optional` | A boolean indicating whether the request should continue if the middleware fails with an expected error. When `optional` is set to `true`, the `provides` and `failure` options do not affect the final error type or handlers. |
 
-Here is an example of defining a simple logger middleware:
+**Example** (Defining a Logger Middleware)
 
 ```ts
 import {
@@ -697,101 +695,33 @@ import {
 } from "@effect/platform"
 import { Schema } from "effect"
 
+// Define a schema for errors returned by the logger middleware
 class LoggerError extends Schema.TaggedError<LoggerError>()(
   "LoggerError",
   {}
 ) {}
 
-// first extend the HttpApiMiddleware.Tag class
+// Extend the HttpApiMiddleware.Tag class to define the logger middleware tag
 class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger", {
-  // optionally define any errors that the middleware can return
+  // Optionally define the error schema for the middleware
   failure: LoggerError
 }) {}
 
-// apply the middleware to an `HttpApiGroup`
 class UsersApi extends HttpApiGroup.make("users")
   .add(
     HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`
-      // apply the middleware to a single endpoint
+      // Apply the middleware to a single endpoint
       .middleware(Logger)
   )
-  // or apply the middleware to the group
+  // Or apply the middleware to the entire group
   .middleware(Logger) {}
 ```
 
-### Defining security middleware
+### Implementing HttpApiMiddleware
 
-The `HttpApiSecurity` module provides a way to add security annotations to your
-API.
+Once you have defined your `HttpApiMiddleware`, you can implement it as a `Layer`. This allows the middleware to be applied to specific API groups or endpoints, enabling modular and reusable behavior.
 
-It offers the following authorization types:
-
-- `HttpApiSecurity.apiKey` - API key authorization through headers, query
-  parameters, or cookies.
-- `HttpApiSecurity.basicAuth` - HTTP Basic authentication.
-- `HttpApiSecurity.bearerAuth` - Bearer token authentication.
-
-You can then use these security annotations in combination with `HttpApiMiddleware`
-to define middleware that will protect your endpoints.
-
-```ts
-import {
-  HttpApiGroup,
-  HttpApiEndpoint,
-  HttpApiMiddleware,
-  HttpApiSchema,
-  HttpApiSecurity
-} from "@effect/platform"
-import { Context, Schema } from "effect"
-
-class User extends Schema.Class<User>("User")({ id: Schema.Number }) {}
-
-class Unauthorized extends Schema.TaggedError<Unauthorized>()(
-  "Unauthorized",
-  {},
-  HttpApiSchema.annotations({ status: 401 })
-) {}
-
-class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
-
-// first extend the HttpApiMiddleware.Tag class
-class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
-  "Authorization",
-  {
-    // add your error schema
-    failure: Unauthorized,
-    // add the Context.Tag that the middleware will provide
-    provides: CurrentUser,
-    // add the security definitions
-    security: {
-      // the object key is a custom name for the security definition
-      myBearer: HttpApiSecurity.bearer
-      // You can add more security definitions here.
-      // They will attempt to be resolved in the order they are defined
-    }
-  }
-) {}
-
-// apply the middleware to an `HttpApiGroup`
-class UsersApi extends HttpApiGroup.make("users")
-  .add(
-    HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`
-      // apply the middleware to a single endpoint
-      .middleware(Authorization)
-  )
-  // or apply the middleware to the group
-  .middleware(Authorization) {}
-```
-
-### Implementing `HttpApiMiddleware`
-
-Once your `HttpApiMiddleware` is defined, you can use the
-`HttpApiMiddleware.Tag` definition to implement your middleware.
-
-By using the `Layer` apis, you can create a Layer that implements your
-middleware.
-
-Here is an example:
+**Example** (Implementing and Using Logger Middleware)
 
 ```ts
 import { HttpApiMiddleware, HttpServerRequest } from "@effect/platform"
@@ -804,24 +734,138 @@ const LoggerLive = Layer.effect(
   Effect.gen(function* () {
     yield* Effect.log("creating Logger middleware")
 
-    // standard middleware is just an Effect, that can access the `HttpRouter`
-    // context.
-    return Logger.of(
-      Effect.gen(function* () {
-        const request = yield* HttpServerRequest.HttpServerRequest
-        yield* Effect.log(`Request: ${request.method} ${request.url}`)
-      })
-    )
+    // Middleware implementation as an Effect
+    // that can access the `HttpServerRequest` context.
+    return Effect.gen(function* () {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      yield* Effect.log(`Request: ${request.method} ${request.url}`)
+    })
   })
 )
 ```
 
-When the `Layer` is created, you can then provide it to your group layers:
+After implementing the middleware, you can attach it to your API groups or specific endpoints using the `Layer` APIs.
 
 ```ts
-const UsersApiLive = HttpApiBuilder.group(...).pipe(
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiMiddleware,
+  HttpServerRequest
+} from "@effect/platform"
+import { DateTime, Effect, Layer, Schema } from "effect"
+
+class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger") {}
+
+const LoggerLive = Layer.effect(
+  Logger,
+  Effect.gen(function* () {
+    yield* Effect.log("creating Logger middleware")
+    return Effect.gen(function* () {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      yield* Effect.log(`Request: ${request.method} ${request.url}`)
+    })
+  })
+)
+
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`.middleware(
+    Logger
+  )
+) {}
+
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+
+class User extends Schema.Class<User>("User")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+}) {}
+
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  handlers.handle("findById", (req) =>
+    Effect.succeed(
+      new User({
+        id: req.path[0],
+        name: "John Doe",
+        createdAt: DateTime.unsafeNow()
+      })
+    )
+  )
+).pipe(
+  // Provide the Logger middleware to the group
   Layer.provide(LoggerLive)
 )
+```
+
+### Defining security middleware
+
+The `HttpApiSecurity` module enables you to add security annotations to your API. These annotations specify the type of authorization required to access specific endpoints.
+
+Supported authorization types include:
+
+| Authorization Type       | Description                                                      |
+| ------------------------ | ---------------------------------------------------------------- |
+| `HttpApiSecurity.apiKey` | API key authorization via headers, query parameters, or cookies. |
+| `HttpApiSecurity.basic`  | HTTP Basic authentication.                                       |
+| `HttpApiSecurity.bearer` | Bearer token authentication.                                     |
+
+These security annotations can be used alongside `HttpApiMiddleware` to create middleware that protects your API endpoints.
+
+**Example** (Defining Security Middleware)
+
+```ts
+import {
+  HttpApiGroup,
+  HttpApiEndpoint,
+  HttpApiMiddleware,
+  HttpApiSchema,
+  HttpApiSecurity
+} from "@effect/platform"
+import { Context, Schema } from "effect"
+
+// Define a schema for the "User"
+class User extends Schema.Class<User>("User")({ id: Schema.Number }) {}
+
+// Define a schema for the "Unauthorized" error
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+  "Unauthorized",
+  {},
+  HttpApiSchema.annotations({ status: 401 })
+) {}
+
+// Define a Context.Tag for the authenticated user
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
+
+// Create the Authorization middleware
+class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
+  "Authorization",
+  {
+    // Define the error schema for unauthorized access
+    failure: Unauthorized,
+    // Specify the resource this middleware will provide
+    provides: CurrentUser,
+    // Add security definitions
+    security: {
+      // ┌─── Custom name for the security definition
+      // ▼
+      myBearer: HttpApiSecurity.bearer
+      // Additional security definitions can be added here.
+      // They will attempt to be resolved in the order they are defined.
+    }
+  }
+) {}
+
+class UsersApi extends HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`
+      // Apply the middleware to a single endpoint
+      .middleware(Authorization)
+  )
+  // Or apply the middleware to the entire group
+  .middleware(Authorization) {}
 ```
 
 ### Implementing `HttpApiSecurity` middleware
