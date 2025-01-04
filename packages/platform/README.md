@@ -833,6 +833,7 @@ class User extends Schema.Class<User>("User")({ id: Schema.Number }) {}
 class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
   {},
+  // Specify the HTTP status code for unauthorized errors
   HttpApiSchema.annotations({ status: 401 })
 ) {}
 
@@ -868,12 +869,11 @@ class UsersApi extends HttpApiGroup.make("users")
   .middleware(Authorization) {}
 ```
 
-### Implementing `HttpApiSecurity` middleware
+### Implementing HttpApiSecurity middleware
 
-If you are using `HttpApiSecurity` in your middleware, implementing the `Layer`
-looks a bit different.
+When using `HttpApiSecurity` in your middleware, the implementation involves creating a `Layer` with security handlers tailored to your requirements. Below is an example demonstrating how to implement middleware for `HttpApiSecurity.bearer` authentication.
 
-Here is an example of implementing a `HttpApiSecurity.bearer` middleware:
+**Example** (Implementing Bearer Token Authentication Middleware)
 
 ```ts
 import {
@@ -907,38 +907,42 @@ const AuthorizationLive = Layer.effect(
   Effect.gen(function* () {
     yield* Effect.log("creating Authorization middleware")
 
-    // return the security handlers
-    return Authorization.of({
+    // Return the security handlers for the middleware
+    return {
+      // Define the handler for the Bearer token
+      // The Bearer token is redacted for security
       myBearer: (bearerToken) =>
         Effect.gen(function* () {
           yield* Effect.log(
             "checking bearer token",
             Redacted.value(bearerToken)
           )
-          // return the `User` that will be provided as the `CurrentUser`
+          // Return a mock User object as the CurrentUser
           return new User({ id: 1 })
         })
-    })
+    }
   })
 )
 ```
 
-### Setting `HttpApiSecurity` cookies
+### Setting HttpApiSecurity cookies
 
-If you need to set the security cookie from within a handler, you can use the
-`HttpApiBuilder.securitySetCookie` api.
+To set a security cookie from within a handler, you can use the `HttpApiBuilder.securitySetCookie` API. This method sets a cookie with default properties, including the `HttpOnly` and `Secure` flags, ensuring the cookie is not accessible via JavaScript and is transmitted over secure connections.
 
-By default, the cookie will be set with the `HttpOnly` and `Secure` flags.
+**Example** (Setting a Security Cookie in a Login Handler)
 
 ```ts
+// Define the security configuration for an API key stored in a cookie
 const security = HttpApiSecurity.apiKey({
-  in: "cookie",
+   // Specify that the API key is stored in a cookie
+  in: "cookie"
+   // Define the cookie name,
   key: "token"
 })
 
 const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
   handlers.handle("login", () =>
-    // set the security cookie
+    // Set the security cookie with a redacted value
     HttpApiBuilder.securitySetCookie(security, Redacted.make("keep me secret"))
   )
 )
