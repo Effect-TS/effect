@@ -103,7 +103,7 @@ Layer.launch(ServerLive).pipe(NodeRuntime.runMain)
 
 Navigate to `http://localhost:3000/docs` in your browser to see the Swagger documentation:
 
-![Swagger Documentation](./images/swagger.png)
+![Swagger Documentation](./images/swagger-hello-world.png)
 
 ### Deriving a Client
 
@@ -610,7 +610,7 @@ You can serve your API using the `HttpApiBuilder.serve` API. This function build
 
 Optionally, you can provide middleware to enhance the `HttpApp` before serving it.
 
-**Example**
+**Example** (Serving an API with Middleware)
 
 ```ts
 import {
@@ -950,27 +950,72 @@ const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
 
 ## Serving Swagger documentation
 
-You can add Swagger documentation to your API using the `HttpApiSwagger` module.
+You can add Swagger documentation to your API using the `HttpApiSwagger` module. This integration provides an interactive interface for developers to explore and test your API. To enable Swagger, you simply provide the `HttpApiSwagger.layer` to your server implementation.
 
-You just need to provide the `HttpApiSwagger.layer` to your server
-implementation:
+**Example** (Adding Swagger Documentation to an API)
 
 ```ts
-import { HttpApiSwagger } from "@effect/platform"
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiSchema,
+  HttpApiSwagger,
+  HttpMiddleware,
+  HttpServer
+} from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { DateTime, Effect, Layer, Schema } from "effect"
+import { createServer } from "node:http"
+
+class User extends Schema.Class<User>("User")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+}) {}
+
+const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
+) {}
+
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  handlers.handle("findById", ({ path: { userId } }) =>
+    Effect.succeed(
+      new User({
+        id: userId,
+        name: "John Doe",
+        createdAt: DateTime.unsafeNow()
+      })
+    )
+  )
+)
+
+const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
 
 const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
-  // add the swagger documentation layer
+  // Add the Swagger documentation layer
   Layer.provide(
     HttpApiSwagger.layer({
-      // "/docs" is the default path for the swagger documentation
+      // Specify the Swagger documentation path.
+      // "/docs" is the default path.
       path: "/docs"
     })
   ),
   Layer.provide(HttpApiBuilder.middlewareCors()),
   Layer.provide(MyApiLive),
+  HttpServer.withLogAddress,
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
 )
+
+Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 ```
+
+![Swagger Documentation](./images/swagger-myapi.png)
 
 ### Adding OpenApi annotations
 
