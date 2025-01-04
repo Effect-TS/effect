@@ -606,24 +606,61 @@ const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
 
 ### Serving the API
 
-Finally, you can serve the API using the `HttpApiBuilder.serve` api.
+You can serve your API using the `HttpApiBuilder.serve` API. This function builds an `HttpApp` from an `HttpApi` instance and serves it using an `HttpServer`.
 
-You can also add middleware to the server using the `HttpMiddleware` module, or
-use some of the middleware Layer's from the `HttpApiBuilder` module.
+Optionally, you can provide middlewares to enhance the `HttpApp` before serving it.
+
+**Example**
 
 ```ts
-import { HttpMiddleware, HttpServer } from "@effect/platform"
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiSchema,
+  HttpMiddleware,
+  HttpServer
+} from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { DateTime, Effect, Layer, Schema } from "effect"
 import { createServer } from "node:http"
 
-// use the `HttpApiBuilder.serve` function to register our API with the HTTP
-// server
+class User extends Schema.Class<User>("User")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+}) {}
+
+const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
+) {}
+
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  handlers.handle("findById", ({ path: { userId } }) =>
+    Effect.succeed(
+      new User({
+        id: userId,
+        name: "John Doe",
+        createdAt: DateTime.unsafeNow()
+      })
+    )
+  )
+)
+
+const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
+
+// Use the `HttpApiBuilder.serve` function to serve the API
 const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
-  // Add CORS middleware
+  // Add middleware for Cross-Origin Resource Sharing (CORS)
   Layer.provide(HttpApiBuilder.middlewareCors()),
   // Provide the API implementation
   Layer.provide(MyApiLive),
-  // Log the address the server is listening on
+  // Log the server's listening address
   HttpServer.withLogAddress,
   // Provide the HTTP server implementation
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
