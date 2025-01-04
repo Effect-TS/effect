@@ -147,6 +147,7 @@ Layer.launch(ServerLive).pipe(NodeRuntime.runMain)
 
 // Create a program that derives and uses the client
 const program = Effect.gen(function* () {
+  // Derive the client
   const client = yield* HttpApiClient.make(MyApi, {
     baseUrl: "http://localhost:3000"
   })
@@ -1059,23 +1060,88 @@ class MyApi extends HttpApi.make("myApi")
 
 ## Deriving a Client
 
-Once you have defined your API, you can derive a client that can interact with
-the server.
+After defining your API, you can derive a client that interacts with the server. The `HttpApiClient` module simplifies the process by providing tools to generate a client based on your API definition.
 
-The `HttpApiClient` module provides all the apis you need to derive a client.
+**Example** (Deriving and Using a Client)
+
+This example demonstrates how to create a client for an API and use it to call an endpoint.
 
 ```ts
-import { HttpApiClient } from "@effect/platform"
+import {
+  FetchHttpClient,
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiClient,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiSchema,
+  HttpApiSwagger,
+  HttpMiddleware,
+  HttpServer
+} from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { DateTime, Effect, Layer, Schema } from "effect"
+import { createServer } from "node:http"
 
-Effect.gen(function* () {
+class User extends Schema.Class<User>("User")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+}) {}
+
+const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
+) {}
+
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  handlers.handle("findById", ({ path: { userId } }) =>
+    Effect.succeed(
+      new User({
+        id: userId,
+        name: "John Doe",
+        createdAt: DateTime.unsafeNow()
+      })
+    )
+  )
+)
+
+const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
+
+const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
+  Layer.provide(HttpApiSwagger.layer()),
+  Layer.provide(HttpApiBuilder.middlewareCors()),
+  Layer.provide(MyApiLive),
+  HttpServer.withLogAddress,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
+
+// Create a program that derives and uses the client
+const program = Effect.gen(function* () {
+  // Derive the client
   const client = yield* HttpApiClient.make(MyApi, {
     baseUrl: "http://localhost:3000"
-    // You can transform the HttpClient to add things like authentication
-    // transformClient: ....
   })
+  // Call the `findById` endpoint
   const user = yield* client.users.findById({ path: { userId: 1 } })
-  yield* Effect.log(user)
+  console.log(user)
 })
+
+// Provide a Fetch-based HTTP client and run the program
+Effect.runFork(program.pipe(Effect.provide(FetchHttpClient.layer)))
+/*
+Example Output:
+User {
+  id: 1,
+  name: 'John Doe',
+  createdAt: DateTime.Utc(2025-01-04T15:14:49.562Z)
+}
+*/
 ```
 
 # HTTP Client
