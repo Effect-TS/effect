@@ -429,15 +429,132 @@ class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
 
 ### Implementing a HttpApiGroup
 
-The `HttpApiBuilder.group` API is used to implement a specific group of endpoints within an `HttpApi` definition. It requires three inputs:
+The `HttpApiBuilder.group` API is used to implement a specific group of endpoints within an `HttpApi` definition. It requires the following inputs:
 
-1. The complete `HttpApi` definition.
-2. The name of the group you are implementing.
-3. A function to add the endpoint handlers for the group.
+| Input                             | Description                                                             |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| The complete `HttpApi` definition | The overall API structure that includes the group you are implementing. |
+| The name of the group             | The specific group you are focusing on within the API.                  |
+| A function to add handlers        | A function that defines how each endpoint in the group is handled.      |
 
-Each endpoint within the group is implemented using the `HttpApiBuilder.handle` method, which connects the endpoint's definition to its logic.
+Each endpoint in the group is connected to its logic using the `HttpApiBuilder.handle` method, which maps the endpoint's definition to its corresponding implementation.
+
+The `HttpApiBuilder.group` API produces a `Layer` that can later be provided to the server implementation.
 
 **Example** (Implementing an API Group)
+
+```ts
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiSchema
+} from "@effect/platform"
+import { DateTime, Effect, Schema } from "effect"
+
+class User extends Schema.Class<User>("User")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+}) {}
+
+const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
+) {}
+
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+
+// --------------------------------------------
+// Implementation
+// --------------------------------------------
+
+//      ┌─── Layer<HttpApiGroup.ApiGroup<"myApi", "users">>
+//      ▼
+const UsersApiLive =
+  //                       ┌─── The Whole API
+  //                       │       ┌─── The Group you are implementing
+  //                       ▼       ▼
+  HttpApiBuilder.group(MyApi, "users", (handlers) =>
+    handlers.handle(
+      //  ┌─── The Endpoint you are implementing
+      //  ▼
+      "findById",
+      // Provide the handler logic for the endpoint.
+      // The parameters & payload are passed to the handler function.
+      ({ path: { userId } }) =>
+        Effect.succeed(
+          // Return a mock user object with the provided ID
+          new User({
+            id: userId,
+            name: "John Doe",
+            createdAt: DateTime.unsafeNow()
+          })
+        )
+    )
+  )
+```
+
+Using `HttpApiBuilder.group`, you connect the structure of your API to its logic, enabling you to focus on each endpoint's functionality in isolation. Each handler receives the parameters and payload for the request, making it easy to process input and generate a response.
+
+### Using Services Inside a HttpApiGroup
+
+If your handlers need to use services, you can easily integrate them because the `HttpApiBuilder.group` API allows you to return an `Effect`. This ensures that external services can be accessed and utilized directly within your handlers.
+
+**Example** (Using Services in a Group Implementation)
+
+```ts
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiSchema
+} from "@effect/platform"
+import { Context, Effect, Schema } from "effect"
+
+class User extends Schema.Class<User>("User")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+}) {}
+
+const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+
+class UsersApi extends HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
+) {}
+
+class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+
+// Define the UsersRepository service
+class UsersRepository extends Context.Tag("UsersRepository")<
+  UsersRepository,
+  {
+    readonly findById: (id: number) => Effect.Effect<User>
+  }
+>() {}
+
+//      ┌─── Layer<HttpApiGroup.ApiGroup<"myApi", "users">, never, UsersRepository>
+//      ▼
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  Effect.gen(function* () {
+    // Access the UsersRepository service
+    const repository = yield* UsersRepository
+    return handlers.handle("findById", ({ path: { userId } }) =>
+      repository.findById(userId)
+    )
+  })
+)
+```
+
+### Implementing a HttpApi
+
+Once all your groups are implemented, you can create a top-level implementation to combine them into a unified API. This is done using the `HttpApiBuilder.api` API, which generates a `Layer`. You then use `Layer.provide` to include the implementations of all the groups into the top-level `HttpApi`.
+
+**Example** (Combining Group Implementations into a Top-Level API)
 
 ```ts
 import {
@@ -467,73 +584,24 @@ class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
 // Implementation
 // --------------------------------------------
 
-// Implement the UsersApi group (a Layer)
-const UsersApiLive: Layer.Layer<HttpApiGroup.ApiGroup<"myApi", "users">> =
-  //                       ┌─── The Whole API
-  //                       │       ┌─── The Group you are implementing
-  //                       ▼       ▼
-  HttpApiBuilder.group(MyApi, "users", (handlers) =>
-    handlers.handle(
-      //  ┌─── The Endpoint you are implementing
-      //  ▼
-      "findById",
-      // Provide the handler logic for the endpoint.
-      // The parameters & payload are passed to the handler function.
-      ({ path: { userId } }) =>
-        Effect.succeed(
-          // Return a mock user object with the provided ID
-          new User({
-            id: userId,
-            name: "John Doe",
-            createdAt: DateTime.unsafeNow()
-          })
-        )
+const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+  handlers.handle("findById", ({ path: { userId } }) =>
+    Effect.succeed(
+      // Return a mock user object with the provided ID
+      new User({
+        id: userId,
+        name: "John Doe",
+        createdAt: DateTime.unsafeNow()
+      })
     )
   )
-```
-
-Using `HttpApiBuilder.group`, you connect the structure of your API to its logic, enabling you to focus on each endpoint's functionality in isolation. Each handler receives the parameters and payload for the request, making it easy to process input and generate a response.
-
-### Using services inside a HttpApiGroup
-
-If you need to use services inside your handlers, you can return an
-`Effect` from the `HttpApiBuilder.group` api.
-
-```ts
-class UsersRepository extends Context.Tag("UsersRepository")<
-  UsersRepository,
-  {
-    readonly findById: (id: number) => Effect.Effect<User>
-  }
->() {}
-
-// the dependencies will show up in the resulting `Layer`
-const UsersApiLive: Layer.Layer<
-  HttpApiGroup.ApiGroup<"users">,
-  never,
-  UsersRepository
-> = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  // we can return an Effect that creates our handlers
-  Effect.gen(function* () {
-    const repository = yield* UsersRepository
-    return handlers.handle("findById", ({ path: { userId } }) =>
-      repository.findById(userId)
-    )
-  })
 )
-```
 
-### Implementing a `HttpApi`
-
-Once all your groups are implemented, you can implement the top-level `HttpApi`.
-
-This is done using the `HttpApiBuilder.api` api, and then using `Layer.provide`
-to add all the group implementations.
-
-```ts
-const MyApiLive: Layer.Layer<HttpApi.Api> = HttpApiBuilder.api(MyApi).pipe(
-  Layer.provide(UsersApiLive)
-)
+// Combine all group implementations into the top-level API
+//
+//      ┌─── Layer<HttpApi.Api, never, never>
+//      ▼
+const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
 ```
 
 ### Serving the API
