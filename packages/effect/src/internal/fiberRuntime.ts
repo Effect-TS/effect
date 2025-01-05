@@ -2538,7 +2538,7 @@ export const validateAll = dual<
         readonly discard?: false | undefined
         readonly concurrentFinalizers?: boolean | undefined
       }
-    ): (elements: Iterable<A>) => Effect.Effect<Array<B>, Array<E>, R>
+    ): (elements: Iterable<A>) => Effect.Effect<Array<B>, RA.NonEmptyArray<E>, R>
     <A, B, E, R>(
       f: (a: A, i: number) => Effect.Effect<B, E, R>,
       options: {
@@ -2547,7 +2547,7 @@ export const validateAll = dual<
         readonly discard: true
         readonly concurrentFinalizers?: boolean | undefined
       }
-    ): (elements: Iterable<A>) => Effect.Effect<void, Array<E>, R>
+    ): (elements: Iterable<A>) => Effect.Effect<void, RA.NonEmptyArray<E>, R>
   },
   {
     <A, B, E, R>(
@@ -2559,7 +2559,7 @@ export const validateAll = dual<
         readonly discard?: false | undefined
         readonly concurrentFinalizers?: boolean | undefined
       }
-    ): Effect.Effect<Array<B>, Array<E>, R>
+    ): Effect.Effect<Array<B>, RA.NonEmptyArray<E>, R>
     <A, B, E, R>(
       elements: Iterable<A>,
       f: (a: A, i: number) => Effect.Effect<B, E, R>,
@@ -2569,7 +2569,7 @@ export const validateAll = dual<
         readonly discard: true
         readonly concurrentFinalizers?: boolean | undefined
       }
-    ): Effect.Effect<void, Array<E>, R>
+    ): Effect.Effect<void, RA.NonEmptyArray<E>, R>
   }
 >(
   (args) => Predicate.isIterable(args[0]),
@@ -2578,7 +2578,7 @@ export const validateAll = dual<
     readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
     readonly concurrentFinalizers?: boolean | undefined
-  }): Effect.Effect<any, Array<E>, R> =>
+  }): Effect.Effect<any, RA.NonEmptyArray<E>, R> =>
     core.flatMap(
       partition(elements, f, {
         concurrency: options?.concurrency,
@@ -2586,9 +2586,11 @@ export const validateAll = dual<
         concurrentFinalizers: options?.concurrentFinalizers
       }),
       ([es, bs]) =>
-        es.length === 0
-          ? options?.discard ? core.void : core.succeed(bs)
-          : core.fail(es)
+        RA.isNonEmptyArray(es)
+          ? core.fail(es)
+          : options?.discard
+          ? core.void
+          : core.succeed(bs)
     )
 )
 
