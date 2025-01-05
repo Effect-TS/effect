@@ -2163,7 +2163,7 @@ export const replicateEffect: {
  * ```ts
  * import { Effect, Console } from "effect"
  *
- * //      ┌─── Effect<number[], string[], never>
+ * //      ┌─── Effect<number[], [string, ...string[]], never>
  * //      ▼
  * const program = Effect.validateAll([1, 2, 3, 4, 5], (n) => {
  *   if (n < 4) {
@@ -2201,7 +2201,7 @@ export const validateAll: {
       readonly discard?: false | undefined
       readonly concurrentFinalizers?: boolean | undefined
     } | undefined
-  ): (elements: Iterable<A>) => Effect<Array<B>, Array<E>, R>
+  ): (elements: Iterable<A>) => Effect<Array<B>, RA.NonEmptyArray<E>, R>
   <A, B, E, R>(
     f: (a: A, i: number) => Effect<B, E, R>,
     options: {
@@ -2210,7 +2210,7 @@ export const validateAll: {
       readonly discard: true
       readonly concurrentFinalizers?: boolean | undefined
     }
-  ): (elements: Iterable<A>) => Effect<void, Array<E>, R>
+  ): (elements: Iterable<A>) => Effect<void, RA.NonEmptyArray<E>, R>
   <A, B, E, R>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<B, E, R>,
@@ -2220,7 +2220,7 @@ export const validateAll: {
       readonly discard?: false | undefined
       readonly concurrentFinalizers?: boolean | undefined
     } | undefined
-  ): Effect<Array<B>, Array<E>, R>
+  ): Effect<Array<B>, RA.NonEmptyArray<E>, R>
   <A, B, E, R>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<B, E, R>,
@@ -2230,7 +2230,7 @@ export const validateAll: {
       readonly discard: true
       readonly concurrentFinalizers?: boolean | undefined
     }
-  ): Effect<void, Array<E>, R>
+  ): Effect<void, RA.NonEmptyArray<E>, R>
 } = fiberRuntime.validateAll
 
 /**
