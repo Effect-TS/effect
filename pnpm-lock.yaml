@@ -23,9 +23,6 @@ patchedDependencies:
   '@changesets/get-github-info@0.6.0':
     hash: 4nwpuevfciovsbhi25hd4g5r7y
     path: patches/@changesets__get-github-info@0.6.0.patch
-  babel-plugin-annotate-pure-calls@0.4.0:
-    hash: lz2aochwly4t7pzapzh4fqay4m
-    path: patches/babel-plugin-annotate-pure-calls@0.4.0.patch
 
 importers:
 
@@ -104,8 +101,8 @@ importers:
         specifier: ^0.14.2
         version: 0.14.2
       babel-plugin-annotate-pure-calls:
-        specifier: ^0.4.0
-        version: 0.4.0(patch_hash=lz2aochwly4t7pzapzh4fqay4m)(@babel/core@7.25.2)
+        specifier: ^0.5.0
+        version: 0.5.0(@babel/core@7.25.2)
       eslint:
         specifier: ^9.9.1
         version: 9.9.1
@@ -3323,6 +3320,9 @@ packages:
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
+  '@types/node@18.19.70':
+    resolution: {integrity: sha512-RE+K0+KZoEpDUbGGctnGdkrLFwi1eYKTlIHNl2Um98mUkGsm1u2Ff6Ltd0e8DktTtC98uy7rSj+hO8t/QuLoVQ==}
+
   '@types/node@20.12.14':
     resolution: {integrity: sha512-scnD59RpYD91xngrQQLGkE+6UrHUPzeKZWhhjBSa3HSkwjbQc38+q3RoIVEwxQGRw3M+j5hpNAM+lgV3cVormg==}
 
@@ -3707,10 +3707,11 @@ packages:
     peerDependencies:
       '@babel/core': ^7.8.0
 
-  babel-plugin-annotate-pure-calls@0.4.0:
-    resolution: {integrity: sha512-oi4M/PWUJOU9ZyRGoPTfPMqdyMp06jbJAomd3RcyYuzUtBOddv98BqLm96Lucpi2QFoQHkdGQt0ACvw7VzVEQA==}
+  babel-plugin-annotate-pure-calls@0.5.0:
+    resolution: {integrity: sha512-bWlaZl2qsJKHv9BJgF1g6bQ04wK/7Topq9g59I795W9jpx9lNs9N5LK5NjlEBCDhHncrO0vcoAMuHJR3oWnTeQ==}
+    engines: {node: '>=18'}
     peerDependencies:
-      '@babel/core': ^6.0.0-0 || 7.x
+      '@babel/core': ^7.0.0
 
   babel-plugin-istanbul@6.1.1:
     resolution: {integrity: sha512-Y1IQok9821cC9onCx5otgFfRm7Lm+I+wwxOx738M/WLPZ9Q42m4IG5W0FNX8WLL2gYMZo3JkuXIH2DOpWM+qwA==}
@@ -5520,7 +5521,6 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.6:
@@ -10938,6 +10938,10 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
+  '@types/node@18.19.70':
+    dependencies:
+      undici-types: 5.26.5
+
   '@types/node@20.12.14':
     dependencies:
       undici-types: 5.26.5
@@ -10970,7 +10974,7 @@ snapshots:
 
   '@types/ssh2@1.15.1':
     dependencies:
-      '@types/node': 22.9.3
+      '@types/node': 18.19.70
 
   '@types/stack-utils@2.0.3': {}
 
@@ -11444,7 +11448,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  babel-plugin-annotate-pure-calls@0.4.0(patch_hash=lz2aochwly4t7pzapzh4fqay4m)(@babel/core@7.25.2):
+  babel-plugin-annotate-pure-calls@0.5.0(@babel/core@7.25.2):
     dependencies:
       '@babel/core': 7.25.2
 
@@ -11676,7 +11680,7 @@ snapshots:
 
   bun-types@1.1.36:
     dependencies:
-      '@types/node': 22.9.3
+      '@types/node': 20.12.14
       '@types/ws': 8.5.12
     optional: true
 
