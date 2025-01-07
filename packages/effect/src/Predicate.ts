@@ -43,7 +43,7 @@ export declare namespace Predicate {
    * @since 3.6.0
    * @category type-level
    */
-  export type Any = Predicate<any>
+  export type Any = Predicate<never>
 }
 
 /**
@@ -842,7 +842,7 @@ export const struct: {
   const keys = Object.keys(fields)
   return (a: Record<string, unknown>) => {
     for (const key of keys) {
-      if (!fields[key](a[key])) {
+      if (!fields[key](a[key] as never)) {
         return false
       }
     }
