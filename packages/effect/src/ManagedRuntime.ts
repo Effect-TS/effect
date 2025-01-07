@@ -40,7 +40,8 @@ export declare namespace ManagedRuntime {
    * @category type-level
    * @since 3.4.0
    */
-  export type Context<T extends ManagedRuntime<any, any>> = [T] extends [ManagedRuntime<infer R, infer _E>] ? R : never
+  export type Context<T extends ManagedRuntime<never, any>> = [T] extends [ManagedRuntime<infer R, infer _E>] ? R
+    : never
   /**
    * @category type-level
    * @since 3.4.0
