@@ -102,10 +102,6 @@ export interface SchemaClass<A, I = A, R = never> extends AnnotableClass<SchemaC
  */
 export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> => (class SchemaClass {
   [TypeId] = variance
-  static Type: A
-  static Encoded: I
-  static Context: R
-  static [TypeId] = variance
   static ast = ast
   static annotations(annotations: Annotations.GenericSchema<A>) {
     return make<A, I, R>(mergeSchemaAnnotations(this.ast, annotations))
@@ -116,6 +112,10 @@ export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
   static toString() {
     return String(ast)
   }
+  static Type: A
+  static Encoded: I
+  static Context: R
+  static [TypeId] = variance
 })
 
 const variance = {
