@@ -61,7 +61,7 @@
     "@vitest/expect": "^2.1.4",
     "@vitest/web-worker": "^2.1.4",
     "ast-types": "^0.14.2",
-    "babel-plugin-annotate-pure-calls": "^0.4.0",
+    "babel-plugin-annotate-pure-calls": "^0.5.0",
     "eslint": "^9.9.1",
     "eslint-import-resolver-typescript": "^3.6.3",
     "eslint-plugin-codegen": "^0.28.0",
@@ -83,8 +83,7 @@
   "pnpm": {
     "patchedDependencies": {
       "@changesets/get-github-info@0.6.0": "patches/@changesets__get-github-info@0.6.0.patch",
-      "@changesets/assemble-release-plan@6.0.3": "patches/@changesets__assemble-release-plan@6.0.3.patch",
-      "babel-plugin-annotate-pure-calls@0.4.0": "patches/babel-plugin-annotate-pure-calls@0.4.0.patch"
+      "@changesets/assemble-release-plan@6.0.3": "patches/@changesets__assemble-release-plan@6.0.3.patch"
     }
   }
 }
