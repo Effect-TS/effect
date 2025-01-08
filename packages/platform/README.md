@@ -819,8 +819,9 @@ These security annotations can be used alongside `HttpApiMiddleware` to create m
 
 ```ts
 import {
-  HttpApiGroup,
+  HttpApi,
   HttpApiEndpoint,
+  HttpApiGroup,
   HttpApiMiddleware,
   HttpApiSchema,
   HttpApiSecurity
@@ -860,14 +861,20 @@ class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
   }
 ) {}
 
-class UsersApi extends HttpApiGroup.make("users")
+const api = HttpApi.make("api")
   .add(
-    HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`
-      // Apply the middleware to a single endpoint
+    HttpApiGroup.make("group")
+      .add(
+        HttpApiEndpoint.get("get", "/")
+          .addSuccess(Schema.String)
+          // Apply the middleware to a single endpoint
+          .middleware(Authorization)
+      )
+      // Or apply the middleware to the entire group
       .middleware(Authorization)
   )
-  // Or apply the middleware to the entire group
-  .middleware(Authorization) {}
+  // Or apply the middleware to the entire API
+  .middleware(Authorization)
 ```
 
 ### Implementing HttpApiSecurity middleware
@@ -1020,42 +1027,287 @@ Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 
 ### Adding OpenAPI Annotations
 
-You can enhance your API documentation by adding OpenAPI annotations using the `OpenApi` module. These annotations allow you to include metadata such as titles, descriptions, and other details, making your API documentation more informative and easier to use.
+You can add OpenAPI annotations to your API to include metadata such as titles, descriptions, and more. These annotations help generate richer API documentation.
 
-**Example** (Adding OpenAPI Annotations to a Group)
+#### HttpApi
 
-In this example:
+Below is a list of available annotations for a top-level `HttpApi`. They can be added using the `.annotate` method:
 
-- A title ("Users API") and description ("API for managing users") are added to the `UsersApi` group.
-- These annotations will appear in the generated OpenAPI documentation.
+| Annotation                  | Description                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `HttpApi.AdditionalSchemas` | Adds custom schemas to the final OpenAPI specification. Only schemas with an `identifier` annotation are included. |
+| `OpenApi.Description`       | Sets a general description for the API.                                                                            |
+| `OpenApi.License`           | Defines the license used by the API.                                                                               |
+| `OpenApi.Summary`           | Provides a brief summary of the API.                                                                               |
+| `OpenApi.Servers`           | Lists server URLs and optional metadata such as variables.                                                         |
+| `OpenApi.Override`          | Merges the supplied fields into the resulting specification.                                                       |
+| `OpenApi.Transform`         | Allows you to modify the final specification with a custom function.                                               |
+
+**Example** (Annotating the Top-Level API)
 
 ```ts
-import { OpenApi } from "@effect/platform"
+import { HttpApi, OpenApi } from "@effect/platform"
+import { Schema } from "effect"
 
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
-    .addSuccess(User)
-    // You can set one attribute at a time
-    .annotate(OpenApi.Title, "Users API")
-    // or multiple at once
-    .annotateContext(
-      OpenApi.annotations({
-        title: "Users API",
-        description: "API for managing users"
-      })
-    )
-) {}
+const api = HttpApi.make("api")
+  // Provide additional schemas
+  .annotate(HttpApi.AdditionalSchemas, [
+    Schema.String.annotations({ identifier: "MyString" })
+  ])
+  // Add a description
+  .annotate(OpenApi.Description, "my description")
+  // Set license information
+  .annotate(OpenApi.License, { name: "MIT", url: "http://example.com" })
+  // Provide a summary
+  .annotate(OpenApi.Summary, "my summary")
+  // Define servers
+  .annotate(OpenApi.Servers, [
+    {
+      url: "http://example.com",
+      description: "example",
+      variables: { a: { default: "b", enum: ["c"], description: "d" } }
+    }
+  ])
+  // Override parts of the generated specification
+  .annotate(OpenApi.Override, {
+    tags: [{ name: "a", description: "a-description" }]
+  })
+  // Apply a transform function to the final specification
+  .annotate(OpenApi.Transform, (spec) => ({
+    ...spec,
+    tags: [...spec.tags, { name: "b", description: "b-description" }]
+  }))
+
+// Generate the OpenAPI specification from the annotated API
+const spec = OpenApi.fromApi(api)
+
+console.log(JSON.stringify(spec, null, 2))
+/*
+Output:
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Api",
+    "version": "0.0.1",
+    "description": "my description",
+    "license": {
+      "name": "MIT",
+      "url": "http://example.com"
+    },
+    "summary": "my summary"
+  },
+  "paths": {},
+  "tags": [
+    { "name": "a", "description": "a-description" },
+    { "name": "b", "description": "b-description" }
+  ],
+  "components": {
+    "schemas": {
+      "MyString": {
+        "type": "string"
+      }
+    },
+    "securitySchemes": {}
+  },
+  "security": [],
+  "servers": [
+    {
+      "url": "http://example.com",
+      "description": "example",
+      "variables": {
+        "a": {
+          "default": "b",
+          "enum": [
+            "c"
+          ],
+          "description": "d"
+        }
+      }
+    }
+  ]
+}
+*/
 ```
 
-Annotations can also be applied to the entire API. In this example, a title ("My API") is added to the top-level `HttpApi`.
+#### HttpApiGroup
 
-**Example** (Adding OpenAPI Annotations to the Top-Level API)
+The following annotations can be added to an `HttpApiGroup`:
+
+| Annotation             | Description                                                           |
+| ---------------------- | --------------------------------------------------------------------- |
+| `OpenApi.Description`  | Sets a description for this group.                                    |
+| `OpenApi.ExternalDocs` | Provides external documentation links for the group.                  |
+| `OpenApi.Override`     | Merges specified fields into the resulting specification.             |
+| `OpenApi.Transform`    | Lets you modify the final group specification with a custom function. |
+| `OpenApi.Exclude`      | Excludes the group from the final OpenAPI specification.              |
+
+**Example** (Annotating a Group)
 
 ```ts
-class MyApi extends HttpApi.make("myApi")
-  .add(UsersApi)
-  // Add a title for the top-level API
-  .annotate(OpenApi.Title, "My API") {}
+import { HttpApi, HttpApiGroup, OpenApi } from "@effect/platform"
+
+const api = HttpApi.make("api")
+  .add(
+    HttpApiGroup.make("group")
+      // Add a description for the group
+      .annotate(OpenApi.Description, "my description")
+      // Provide external documentation links
+      .annotate(OpenApi.ExternalDocs, {
+        url: "http://example.com",
+        description: "example"
+      })
+      // Override parts of the final output
+      .annotate(OpenApi.Override, { name: "my name" })
+      // Transform the final specification for this group
+      .annotate(OpenApi.Transform, (spec) => ({
+        ...spec,
+        name: spec.name + "-transformed"
+      }))
+  )
+  .add(
+    HttpApiGroup.make("excluded")
+      // Exclude the group from the final specification
+      .annotate(OpenApi.Exclude, true)
+  )
+
+// Generate the OpenAPI spec
+const spec = OpenApi.fromApi(api)
+
+console.log(JSON.stringify(spec, null, 2))
+/*
+Output:
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Api",
+    "version": "0.0.1"
+  },
+  "paths": {},
+  "tags": [
+    {
+      "name": "my name-transformed",
+      "description": "my description",
+      "externalDocs": {
+        "url": "http://example.com",
+        "description": "example"
+      }
+    }
+  ],
+  "components": {
+    "schemas": {},
+    "securitySchemes": {}
+  },
+  "security": []
+}
+*/
+```
+
+#### HttpApiEndpoint
+
+For an `HttpApiEndpoint`, you can use the following annotations:
+
+| Annotation             | Description                                                                 |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `OpenApi.Description`  | Adds a description for this endpoint.                                       |
+| `OpenApi.Summary`      | Provides a short summary of the endpoint's purpose.                         |
+| `OpenApi.Deprecated`   | Marks the endpoint as deprecated.                                           |
+| `OpenApi.ExternalDocs` | Supplies external documentation links for the endpoint.                     |
+| `OpenApi.Override`     | Merges specified fields into the resulting specification for this endpoint. |
+| `OpenApi.Transform`    | Lets you modify the final endpoint specification with a custom function.    |
+| `OpenApi.Exclude`      | Excludes the endpoint from the final OpenAPI specification.                 |
+
+**Example** (Annotating an Endpoint)
+
+```ts
+import {
+  HttpApi,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  OpenApi
+} from "@effect/platform"
+import { Schema } from "effect"
+
+const api = HttpApi.make("api").add(
+  HttpApiGroup.make("group")
+    .add(
+      HttpApiEndpoint.get("get", "/")
+        .addSuccess(Schema.String)
+        // Add a description
+        .annotate(OpenApi.Description, "my description")
+        // Provide a summary
+        .annotate(OpenApi.Summary, "my summary")
+        // Mark the endpoint as deprecated
+        .annotate(OpenApi.Deprecated, true)
+        // Provide external documentation
+        .annotate(OpenApi.ExternalDocs, {
+          url: "http://example.com",
+          description: "example"
+        })
+    )
+    .add(
+      HttpApiEndpoint.get("excluded", "/excluded")
+        .addSuccess(Schema.String)
+        // Exclude this endpoint from the final specification
+        .annotate(OpenApi.Exclude, true)
+    )
+)
+
+// Generate the OpenAPI spec
+const spec = OpenApi.fromApi(api)
+
+console.log(JSON.stringify(spec, null, 2))
+/*
+Output:
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Api",
+    "version": "0.0.1"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "operationId": "my operationId-transformed",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          }
+        },
+        "description": "my description",
+        "summary": "my summary",
+        "deprecated": true,
+        "externalDocs": {
+          "url": "http://example.com",
+          "description": "example"
+        }
+      }
+    }
+  },
+  ...
+}
+*/
 ```
 
 ## Deriving a Client
