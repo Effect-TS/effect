@@ -1,16 +1,24 @@
 import * as Url from "@effect/platform/Url"
 import * as UrlParams from "@effect/platform/UrlParams"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Cause, Effect } from "effect"
 
 describe("Url", () => {
   const testURL = new URL("https://example.com/test")
 
-  describe("make", () => {
+  describe("copy", () => {
     it.effect("immutable", () =>
       Effect.gen(function*() {
-        const url = yield* Url.make(testURL)
+        const url = Url.copy(testURL)
         assert.notStrictEqual(url, testURL)
+      }))
+  })
+
+  describe("fromString", () => {
+    it.effect("fails on incorrect url", () =>
+      Effect.gen(function*() {
+        const error = yield* Url.fromString("??").pipe(Effect.flip)
+        assert.instanceOf(error, Cause.IllegalArgumentException)
       }))
   })
 

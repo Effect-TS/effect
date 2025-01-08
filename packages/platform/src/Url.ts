@@ -33,8 +33,8 @@ export const copy: {
  * @since 1.0.0
  * @category constructors
  */
-export const make: {
-  (url: string | URL, base?: string | URL | undefined): Either.Either<URL, Cause.IllegalArgumentException>
+export const fromString: {
+  (url: string, base?: string | URL | undefined): Either.Either<URL, Cause.IllegalArgumentException>
 } = (url, base) =>
   Either.try({
     try: () => new URL(url, base),
