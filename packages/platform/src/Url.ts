@@ -25,6 +25,14 @@ const immutableURLSetter = immutableSetter<URL>((url) => new URL(url))
  * @since 1.0.0
  * @category constructors
  */
+export const copy: {
+  (url: URL): URL
+} = (url) => new URL(url)
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
 export const make: {
   (url: string | URL, base?: string | URL | undefined): Either.Either<URL, Cause.IllegalArgumentException>
 } = (url, base) =>
@@ -131,7 +139,7 @@ export const setUrlParams: {
   (urlParams: UrlParams.UrlParams): (url: URL) => URL
   (url: URL, urlParams: UrlParams.UrlParams): URL
 } = dual(2, (url: URL, searchParams: UrlParams.UrlParams) => {
-  const result = new URL(url)
+  const result = copy(url)
   result.search = UrlParams.toString(searchParams)
   return result
 })
@@ -154,7 +162,7 @@ export const modifyUrlParams: {
 } = dual(2, (url: URL, f: (urlParams: UrlParams.UrlParams) => UrlParams.UrlParams) => {
   const urlParams = UrlParams.fromInput(url.searchParams)
   const newUrlParams = f(urlParams)
-  const result = new URL(url)
+  const result = copy(url)
   result.search = UrlParams.toString(newUrlParams)
   return result
 })
