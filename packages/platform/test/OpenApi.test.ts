@@ -244,6 +244,39 @@ describe("OpenApi", () => {
         expectPaths(api, expected)
       })
 
+      describe("withEncoding", () => {
+        it.only("HttpApiSchema.Text()", () => {
+          const api = HttpApi.make("api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.get("get", "/")
+                .addSuccess(HttpApiSchema.Text())
+            )
+          )
+          const expected: OpenApi.OpenAPISpec["paths"] = {
+            "/": {
+              "get": {
+                "tags": ["group"],
+                "operationId": "group.get",
+                "parameters": [],
+                "security": [],
+                "responses": {
+                  "200": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": { // TODO: shouldn't be text/plain?
+                        "schema": { "type": "string" }
+                      }
+                    }
+                  },
+                  "400": HttpApiDecodeError
+                }
+              }
+            }
+          }
+          expectPaths(api, expected)
+        })
+      })
+
       it("setPayload", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
