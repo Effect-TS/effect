@@ -5,7 +5,7 @@ const config: UserConfigExport = {
   test: {
     coverage: {
       reporter: ["html"],
-      include: ["src/OpenApi.ts"]
+      include: ["src/OpenApi.ts", "src/Multipart.ts", "src/HttpApi*.ts"]
     }
   }
 }

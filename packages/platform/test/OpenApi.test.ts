@@ -826,6 +826,75 @@ describe("OpenApi", () => {
           }
         })
       })
+
+      it("setPayload + Multipart", () => {
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.post("post", "/")
+              .addSuccess(Schema.String)
+              .setPayload(
+                // Mark the payload as a multipart request
+                HttpApiSchema.Multipart(
+                  Schema.Struct({
+                    // Define a "files" field for the uploaded files
+                    files: Multipart.FilesSchema
+                  })
+                )
+              )
+          )
+        )
+        expectOptions(api, {
+          schemas: {
+            "PersistedFile": {
+              "type": "string",
+              "format": "binary"
+            }
+          },
+          paths: {
+            "/": {
+              "post": {
+                "tags": ["group"],
+                "operationId": "group.post",
+                "parameters": [],
+                "security": [],
+                "requestBody": {
+                  "content": {
+                    "multipart/form-data": {
+                      "schema": {
+                        "type": "object",
+                        "required": [
+                          "files"
+                        ],
+                        "properties": {
+                          "files": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/PersistedFile"
+                            }
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": true
+                },
+                "responses": {
+                  "200": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": {
+                        "schema": { "type": "string" }
+                      }
+                    }
+                  },
+                  "400": HttpApiDecodeError
+                }
+              }
+            }
+          }
+        })
+      })
     })
 
     describe("HttpApiEndpoint.del", () => {

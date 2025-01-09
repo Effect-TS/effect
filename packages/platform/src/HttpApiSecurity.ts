@@ -113,6 +113,8 @@ export const bearer: Bearer = Object.assign(Object.create(Proto), {
  * To set the correct cookie in a handler, you can use
  * `HttpApiBuilder.securitySetCookie`.
  *
+ * The default value for `in` is "header".
+ *
  * @since 1.0.0
  * @category constructors
  */
