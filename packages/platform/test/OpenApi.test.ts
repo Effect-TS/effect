@@ -599,7 +599,14 @@ describe("OpenApi", () => {
             failure: Unauthorized,
             provides: Resource,
             security: {
-              myBearer: HttpApiSecurity.bearer
+              myBearer: HttpApiSecurity.bearer,
+              myApiKey: HttpApiSecurity.apiKey({ in: "cookie", key: "mykey" }),
+              myBasic: HttpApiSecurity.basic,
+              myAnnotatedBearer: HttpApiSecurity.annotate(
+                HttpApiSecurity.bearer,
+                OpenApi.Description,
+                "myAnnotatedBearer description"
+              )
             }
           }
         ) {}
@@ -617,11 +624,33 @@ describe("OpenApi", () => {
           // Or apply the middleware to the entire API
           .middleware(Authorization)
         expectOptions(api, {
-          security: [{ "myBearer": [] }],
+          security: [{
+            "myBearer": []
+          }, {
+            "myApiKey": []
+          }, {
+            "myBasic": []
+          }, {
+            "myAnnotatedBearer": []
+          }],
           securitySchemes: {
             "myBearer": {
               "type": "http",
               "scheme": "bearer"
+            },
+            "myApiKey": {
+              "in": "cookie",
+              "name": "mykey",
+              "type": "apiKey"
+            },
+            "myBasic": {
+              "scheme": "basic",
+              "type": "http"
+            },
+            "myAnnotatedBearer": {
+              "type": "http",
+              "scheme": "bearer",
+              "description": "myAnnotatedBearer description"
             }
           },
           schemas: {
@@ -652,6 +681,15 @@ describe("OpenApi", () => {
                 "security": [
                   {
                     "myBearer": []
+                  },
+                  {
+                    "myApiKey": []
+                  },
+                  {
+                    "myBasic": []
+                  },
+                  {
+                    "myAnnotatedBearer": []
                   }
                 ],
                 "responses": {

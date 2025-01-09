@@ -906,7 +906,9 @@ class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
   {
     failure: Unauthorized,
     provides: CurrentUser,
-    security: { myBearer: HttpApiSecurity.bearer }
+    security: {
+      myBearer: HttpApiSecurity.bearer
+    }
   }
 ) {}
 
@@ -931,6 +933,29 @@ const AuthorizationLive = Layer.effect(
     }
   })
 )
+```
+
+### Adding Descriptions to Security Definitions
+
+The `HttpApiSecurity.annotate` function allows you to add metadata, such as a description, to your security definitions. This metadata is displayed in the Swagger documentation, making it easier for developers to understand your API's security requirements.
+
+**Example** (Adding a Description to a Bearer Token Security Definition)
+
+```ts
+class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
+  "Authorization",
+  {
+    failure: Unauthorized,
+    provides: Resource,
+    security: {
+      myBearer: HttpApiSecurity.annotate(
+        HttpApiSecurity.bearer,
+        OpenApi.Description,
+        "my description"
+      )
+    }
+  }
+) {}
 ```
 
 ### Setting HttpApiSecurity cookies
