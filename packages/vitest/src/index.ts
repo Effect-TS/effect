@@ -108,7 +108,7 @@ export namespace Vitest {
       name: string,
       arbitraries: Arbs,
       self: (
-        properties: { [K in keyof Arbs]: K extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
+        properties: { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
         ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
       ) => void,
       timeout?:
@@ -206,21 +206,7 @@ export const flakyTest: <A, E, R>(
 /**
  * @since 1.0.0
  */
-export const prop: <const Arbs extends Vitest.Arbitraries>(
-  name: string,
-  arbitraries: Arbs,
-  self: (
-    properties: { [K in keyof Arbs]: K extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
-    ctx: V.TaskContext<V.RunnerTestCase<{}>> & V.TestContext
-  ) => void,
-  timeout?:
-    | number
-    | V.TestOptions & {
-      fastCheck?: FC.Parameters<
-        { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> }
-      >
-    }
-) => void = internal.prop
+export const prop: Vitest.Methods["prop"] = internal.prop
 
 /**
  * @since 1.0.0
