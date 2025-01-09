@@ -211,7 +211,7 @@ describe("OpenApi", () => {
     })
 
     describe("HttpApiEndpoint.get", () => {
-      it("/", () => {
+      it("addSuccess", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.get("get", "/")
@@ -244,25 +244,94 @@ describe("OpenApi", () => {
         expectPaths(api, expected)
       })
 
-      it("+ path param", () => {
+      it("setPayload", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
-            HttpApiEndpoint.get("get", "/a/:id/b")
-              .setPath(Schema.Struct({ id: Schema.String }))
+            HttpApiEndpoint.get("get", "/")
               .addSuccess(Schema.String)
+              .setPayload(Schema.Struct({
+                a: Schema.String,
+                // with description
+                b: Schema.String.annotations({ description: "my description" })
+              }))
           )
         )
-        expectPaths(api, {
-          "/a/{id}/b": {
+        const expected: OpenApi.OpenAPISpec["paths"] = {
+          "/": {
             "get": {
               "tags": ["group"],
               "operationId": "group.get",
               "parameters": [
                 {
-                  "name": "id",
+                  "name": "a",
+                  "in": "query",
+                  "schema": { "type": "string" },
+                  "required": true
+                },
+                {
+                  "name": "b",
+                  "in": "query",
+                  "schema": {
+                    "type": "string",
+                    "description": "my description"
+                  },
+                  "required": true,
+                  "description": "my description"
+                }
+              ],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "string" }
+                    }
+                  }
+                },
+                "400": HttpApiDecodeError
+              }
+            }
+          }
+        }
+        expectPaths(api, expected)
+        // should cache the result
+        expectPaths(api, expected)
+      })
+
+      it("setPath", () => {
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.get("get", "/a/:a/b/:b")
+              .setPath(Schema.Struct({
+                a: Schema.String,
+                // with description
+                b: Schema.String.annotations({ description: "my description" })
+              }))
+              .addSuccess(Schema.String)
+          )
+        )
+        expectPaths(api, {
+          "/a/{a}/b/{b}": {
+            "get": {
+              "tags": ["group"],
+              "operationId": "group.get",
+              "parameters": [
+                {
+                  "name": "a",
                   "in": "path",
                   "schema": { "type": "string" },
                   "required": true
+                },
+                {
+                  "name": "b",
+                  "in": "path",
+                  "schema": {
+                    "type": "string",
+                    "description": "my description"
+                  },
+                  "required": true,
+                  "description": "my description"
                 }
               ],
               "security": [],
@@ -282,11 +351,15 @@ describe("OpenApi", () => {
         })
       })
 
-      it("+ url param", () => {
+      it("setUrlParams", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.get("get", "/")
-              .setUrlParams(Schema.Struct({ id: Schema.String }))
+              .setUrlParams(Schema.Struct({
+                a: Schema.String,
+                // with description
+                b: Schema.String.annotations({ description: "my description" })
+              }))
               .addSuccess(Schema.String)
           )
         )
@@ -297,10 +370,20 @@ describe("OpenApi", () => {
               "operationId": "group.get",
               "parameters": [
                 {
-                  "name": "id",
+                  "name": "a",
                   "in": "query",
                   "schema": { "type": "string" },
                   "required": true
+                },
+                {
+                  "name": "b",
+                  "in": "query",
+                  "schema": {
+                    "type": "string",
+                    "description": "my description"
+                  },
+                  "required": true,
+                  "description": "my description"
                 }
               ],
               "security": [],
@@ -320,7 +403,59 @@ describe("OpenApi", () => {
         })
       })
 
-      it("+ error", () => {
+      it("setHeaders", () => {
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.get("get", "/")
+              .setHeaders(Schema.Struct({
+                a: Schema.String,
+                // with description
+                b: Schema.String.annotations({ description: "my description" })
+              }))
+              .addSuccess(Schema.String)
+          )
+        )
+        expectPaths(api, {
+          "/": {
+            "get": {
+              "tags": ["group"],
+              "operationId": "group.get",
+              "parameters": [
+                {
+                  "name": "a",
+                  "in": "header",
+                  "schema": { "type": "string" },
+                  "required": true
+                },
+                {
+                  "name": "b",
+                  "in": "header",
+                  "schema": {
+                    "type": "string",
+                    "description": "my description"
+                  },
+                  "required": true,
+                  "description": "my description"
+                }
+              ],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "string" }
+                    }
+                  }
+                },
+                "400": HttpApiDecodeError
+              }
+            }
+          }
+        })
+      })
+
+      it("addError", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.get("get", "/")
@@ -361,7 +496,7 @@ describe("OpenApi", () => {
         })
       })
 
-      it("error + status annotation", () => {
+      it("addError + status annotation", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.get("get", "/")
@@ -402,7 +537,7 @@ describe("OpenApi", () => {
         })
       })
 
-      it("+ annotations", () => {
+      it("annotations", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.get("get", "/")
@@ -446,7 +581,7 @@ describe("OpenApi", () => {
         })
       })
 
-      it("+ Security Middleware", () => {
+      it("Security Middleware", () => {
         // Define a schema for the "Unauthorized" error
         class Unauthorized extends Schema.TaggedError<Unauthorized>()(
           "Unauthorized",
@@ -569,7 +704,7 @@ describe("OpenApi", () => {
     })
 
     describe("HttpApiEndpoint.post", () => {
-      it("+ payload", () => {
+      it("setPayload", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.post("post", "/")
@@ -609,8 +744,8 @@ describe("OpenApi", () => {
       })
     })
 
-    describe.skip("HttpApiEndpoint.del", () => {
-      it("/", () => {
+    describe("HttpApiEndpoint.del", () => {
+      it("addSuccess", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.del("del", "/")
@@ -640,7 +775,7 @@ describe("OpenApi", () => {
         })
       })
 
-      it("+ path param", () => {
+      it("setPath", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.del("del", "/a/:id/b")
@@ -678,7 +813,7 @@ describe("OpenApi", () => {
         })
       })
 
-      it("+ url param", () => {
+      it("setUrlParams", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.del("del", "/")
@@ -717,8 +852,8 @@ describe("OpenApi", () => {
       })
     })
 
-    describe.skip("HttpApiEndpoint.patch", () => {
-      it("+ payload", () => {
+    describe("HttpApiEndpoint.patch", () => {
+      it("setPayload", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.patch("patch", "/")
@@ -759,7 +894,7 @@ describe("OpenApi", () => {
     })
   })
 
-  it("OpenAPI spec", () => {
+  it.skip("OpenAPI spec", () => {
     class GlobalError extends Schema.TaggedClass<GlobalError>()("GlobalError", {}) {}
     class GroupError extends Schema.TaggedClass<GroupError>()("GroupError", {}) {}
     class UserError

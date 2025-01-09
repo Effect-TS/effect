@@ -282,7 +282,8 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
           op.security!.push({ [name]: [] })
         }
       })
-      if (payloads.size > 0) {
+      const hasBody = HttpMethod.hasBody(endpoint.method)
+      if (hasBody && payloads.size > 0) {
         const content: Mutable<OpenApiSpecContent> = {}
         payloads.forEach(({ ast }, contentType) => {
           content[contentType as OpenApiSpecContentType] = {
@@ -321,7 +322,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
           })
         }
       }
-      if (!HttpMethod.hasBody(endpoint.method) && Option.isSome(endpoint.payloadSchema)) {
+      if (!hasBody && Option.isSome(endpoint.payloadSchema)) {
         const schema = makeJsonSchemaOrRef(endpoint.payloadSchema.value) as JsonSchema.Object
         if ("properties" in schema) {
           Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
