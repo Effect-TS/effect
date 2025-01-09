@@ -6,29 +6,6 @@ import * as Either from "effect/Either"
 import { dual } from "effect/Function"
 import * as UrlParams from "./UrlParams.js"
 
-/** @internal */
-const immutableSetter = <M>(clone: (mutable: M) => M) =>
-<P extends keyof M>(property: P): {
-  (value: M[P]): (mutable: M) => M
-  (mutable: M, value: M[P]): M
-} =>
-  dual(2, (mutable: M, value: M[P]) => {
-    const result = clone(mutable)
-    result[property] = value
-    return result
-  })
-
-/** @internal */
-const immutableURLSetter = immutableSetter<URL>((url) => new URL(url))
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const copy: {
-  (url: URL): URL
-} = (url) => new URL(url)
-
 /**
  * @since 1.0.0
  * @category constructors
@@ -40,6 +17,25 @@ export const fromString: {
     try: () => new URL(url, base),
     catch: (cause) =>
       new Cause.IllegalArgumentException(cause instanceof globalThis.Error ? cause.message : "Invalid input")
+  })
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const copy: {
+  (url: URL): URL
+} = (url) => new URL(url)
+
+/** @internal */
+const immutableURLSetter = <P extends keyof URL>(property: P): {
+  (value: URL[P]): (url: URL) => URL
+  (url: URL, value: URL[P]): URL
+} =>
+  dual(2, (url: URL, value: URL[P]) => {
+    const result = copy(url)
+    result[property] = value
+    return result
   })
 
 /**
