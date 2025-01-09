@@ -132,6 +132,7 @@ export const annotations: (
     readonly description?: string | undefined
     readonly license?: OpenAPISpecLicense | undefined
     readonly summary?: string | undefined
+    readonly deprecated?: boolean | undefined
     readonly externalDocs?: OpenAPISpecExternalDocs | undefined
     readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined
     readonly format?: string | undefined
@@ -146,6 +147,7 @@ export const annotations: (
   description: Description,
   license: License,
   summary: Summary,
+  deprecated: Deprecated,
   externalDocs: ExternalDocs,
   servers: Servers,
   format: Format,

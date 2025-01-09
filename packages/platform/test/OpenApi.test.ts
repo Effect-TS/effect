@@ -581,6 +581,52 @@ describe("OpenApi", () => {
         })
       })
 
+      it("annotateContext", () => {
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.get("get", "/")
+              .addSuccess(Schema.String)
+              .annotateContext(OpenApi.annotations({
+                description: "my description",
+                summary: "my summary",
+                deprecated: true,
+                externalDocs: { url: "http://example.com", description: "example" },
+                override: { operationId: "my operationId" },
+                transform: (spec) => ({ ...spec, operationId: spec.operationId + "-transformed" })
+              }))
+          ).add(
+            HttpApiEndpoint.get("excluded", "/excluded")
+              .addSuccess(Schema.String)
+              .annotate(OpenApi.Exclude, true)
+          )
+        )
+        expectPaths(api, {
+          "/": {
+            "get": {
+              "description": "my description",
+              "summary": "my summary",
+              "deprecated": true,
+              "externalDocs": { "url": "http://example.com", "description": "example" },
+              "tags": ["group"],
+              "operationId": "my operationId-transformed",
+              "parameters": [],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "string" }
+                    }
+                  }
+                },
+                "400": HttpApiDecodeError
+              }
+            }
+          }
+        })
+      })
+
       it("Security Middleware", () => {
         // Define a schema for the "Unauthorized" error
         class Unauthorized extends Schema.TaggedError<Unauthorized>()(
