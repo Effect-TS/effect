@@ -82,9 +82,9 @@ export declare namespace Layer {
    */
   export interface Any {
     readonly [LayerTypeId]: {
-      readonly _ROut: any
-      readonly _E: any
-      readonly _RIn: any
+      readonly _ROut: Types.Contravariant<never>
+      readonly _E: Types.Covariant<any>
+      readonly _RIn: Types.Covariant<any>
     }
   }
   /**

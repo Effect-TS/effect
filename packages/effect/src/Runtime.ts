@@ -60,7 +60,7 @@ export declare namespace Runtime {
    * @since 3.12.0
    * @category Type Extractors
    */
-  export type Context<T extends Runtime<any>> = [T] extends [Runtime<infer R>] ? R : never
+  export type Context<T extends Runtime<never>> = [T] extends [Runtime<infer R>] ? R : never
 }
 
 /**

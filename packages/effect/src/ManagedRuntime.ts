@@ -46,7 +46,7 @@ export declare namespace ManagedRuntime {
    * @category type-level
    * @since 3.4.0
    */
-  export type Error<T extends ManagedRuntime<any, any>> = [T] extends [ManagedRuntime<infer _R, infer E>] ? E : never
+  export type Error<T extends ManagedRuntime<never, any>> = [T] extends [ManagedRuntime<infer _R, infer E>] ? E : never
 }
 
 /**
