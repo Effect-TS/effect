@@ -245,7 +245,7 @@ describe("OpenApi", () => {
       })
 
       describe("withEncoding", () => {
-        it.only("HttpApiSchema.Text()", () => {
+        it("HttpApiSchema.Text()", () => {
           const api = HttpApi.make("api").add(
             HttpApiGroup.make("group").add(
               HttpApiEndpoint.get("get", "/")
@@ -263,7 +263,7 @@ describe("OpenApi", () => {
                   "200": {
                     "description": "a string",
                     "content": {
-                      "application/json": { // TODO: shouldn't be text/plain?
+                      "text/plain": {
                         "schema": { "type": "string" }
                       }
                     }

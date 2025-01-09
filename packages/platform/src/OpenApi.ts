@@ -302,8 +302,9 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
         ast.pipe(
           Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
           Option.map((ast) => {
+            const encoding = HttpApiSchema.getEncoding(ast)
             op.responses![status].content = {
-              "application/json": {
+              [encoding.contentType]: {
                 schema: makeJsonSchemaOrRef(Schema.make(ast))
               }
             }
