@@ -576,7 +576,12 @@ export type OpenAPISpecResponses = Record<number, OpenApiSpecResponse>
  * @category models
  * @since 1.0.0
  */
-export type OpenApiSpecContentType = "application/json" | "application/xml" | "multipart/form-data" | "text/plain"
+export type OpenApiSpecContentType =
+  | "application/json"
+  | "application/xml"
+  | "application/x-www-form-urlencoded"
+  | "multipart/form-data"
+  | "text/plain"
 
 /**
  * @category models

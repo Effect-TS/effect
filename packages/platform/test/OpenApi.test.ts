@@ -827,7 +827,7 @@ describe("OpenApi", () => {
         })
       })
 
-      it("setPayload + Multipart", () => {
+      it("Multipart", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.post("post", "/")
@@ -893,6 +893,112 @@ describe("OpenApi", () => {
               }
             }
           }
+        })
+      })
+
+      describe("withEncoding", () => {
+        it(`kind: "Text"`, () => {
+          const api = HttpApi.make("api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.post("post", "/")
+                .addSuccess(Schema.String)
+                .setPayload(Schema.String.pipe(
+                  HttpApiSchema.withEncoding({
+                    kind: "Text",
+                    contentType: "application/xml"
+                  })
+                ))
+            )
+          )
+          const expected: OpenApi.OpenAPISpec["paths"] = {
+            "/": {
+              "post": {
+                "tags": ["group"],
+                "operationId": "group.post",
+                "parameters": [],
+                "requestBody": {
+                  "content": {
+                    "application/xml": {
+                      "schema": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": true
+                },
+                "security": [],
+                "responses": {
+                  "200": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": {
+                        "schema": { "type": "string" }
+                      }
+                    }
+                  },
+                  "400": HttpApiDecodeError
+                }
+              }
+            }
+          }
+          expectPaths(api, expected)
+        })
+
+        it(`kind: "UrlParams"`, () => {
+          const api = HttpApi.make("api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.post("post", "/")
+                .addSuccess(Schema.String)
+                .setPayload(
+                  Schema.Struct({ foo: Schema.String }).pipe(
+                    HttpApiSchema.withEncoding({ kind: "UrlParams" })
+                  )
+                )
+            )
+          )
+          const expected: OpenApi.OpenAPISpec["paths"] = {
+            "/": {
+              "post": {
+                "tags": ["group"],
+                "operationId": "group.post",
+                "parameters": [],
+                "security": [],
+                "requestBody": {
+                  "content": {
+                    "application/x-www-form-urlencoded": {
+                      "schema": {
+                        "type": "object",
+                        "required": [
+                          "foo"
+                        ],
+                        "properties": {
+                          "foo": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": true
+                },
+                "responses": {
+                  "200": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "400": HttpApiDecodeError
+                }
+              }
+            }
+          }
+          expectPaths(api, expected)
         })
       })
     })
