@@ -9,9 +9,8 @@ import {
   Multipart,
   OpenApi
 } from "@effect/platform"
-import { Context, Schema, Struct } from "effect"
-import { assert, describe, expect, it } from "vitest"
-import OpenApiFixture from "./fixtures/openapi.json" with { type: "json" }
+import { Context, Schema } from "effect"
+import { describe, expect, it } from "vitest"
 
 const HttpApiDecodeError = {
   "description": "The request did not match the expected schema",
@@ -468,6 +467,36 @@ describe("OpenApi", () => {
     })
 
     describe("HttpGroup", () => {
+      it("topLevel: true", () => {
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group", { topLevel: true }).add(
+            HttpApiEndpoint.get("get", "/")
+              .addSuccess(Schema.String)
+          )
+        )
+        expectSpecPaths(api, {
+          "/": {
+            "get": {
+              "tags": ["group"],
+              "operationId": "get",
+              "parameters": [],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "string" }
+                    }
+                  }
+                },
+                "400": HttpApiDecodeError
+              }
+            }
+          }
+        })
+      })
+
       it("prefix", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
@@ -697,75 +726,127 @@ describe("OpenApi", () => {
     })
 
     describe("HttpApiEndpoint.get", () => {
-      it("addSuccess", () => {
-        const api = HttpApi.make("api").add(
-          HttpApiGroup.make("group").add(
-            HttpApiEndpoint.get("get", "/")
-              .addSuccess(Schema.String)
+      describe("addSuccess", () => {
+        it("String", () => {
+          const api = HttpApi.make("api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.get("get", "/")
+                .addSuccess(Schema.String)
+            )
           )
-        )
-        expectSpecPaths(api, {
-          "/": {
-            "get": {
-              "tags": ["group"],
-              "operationId": "group.get",
-              "parameters": [],
-              "security": [],
-              "responses": {
-                "200": {
-                  "description": "a string",
-                  "content": {
-                    "application/json": {
-                      "schema": { "type": "string" }
+          expectSpecPaths(api, {
+            "/": {
+              "get": {
+                "tags": ["group"],
+                "operationId": "group.get",
+                "parameters": [],
+                "security": [],
+                "responses": {
+                  "200": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": {
+                        "schema": { "type": "string" }
+                      }
                     }
+                  },
+                  "400": HttpApiDecodeError
+                }
+              }
+            }
+          })
+        })
+
+        it("Class API", () => {
+          class User extends Schema.Class<User>("User")({
+            id: Schema.Number
+          }) {}
+
+          const api = HttpApi.make("api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.get("get", "/")
+                .addSuccess(User)
+            )
+          )
+          expectOptions(api, {
+            schemas: {
+              "User": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "number"
                   }
                 },
-                "400": HttpApiDecodeError
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              }
+            },
+            paths: {
+              "/": {
+                "get": {
+                  "tags": ["group"],
+                  "operationId": "group.get",
+                  "parameters": [],
+                  "security": [],
+                  "responses": {
+                    "200": {
+                      "description": "User",
+                      "content": {
+                        "application/json": {
+                          "schema": { "$ref": "#/components/schemas/User" }
+                        }
+                      }
+                    },
+                    "400": HttpApiDecodeError
+                  }
+                }
               }
             }
-          }
+          })
         })
-      })
 
-      it("NoContent", () => {
-        const api = HttpApi.make("api").add(
-          HttpApiGroup.make("group").add(
-            HttpApiEndpoint.get("getRoot", "/")
-              .addSuccess(HttpApiSchema.NoContent)
-          ).add(
-            HttpApiEndpoint.get("getA", "/a")
-              .addSuccess(HttpApiSchema.NoContent.annotations({ description: "my description" }))
+        it("NoContent", () => {
+          const api = HttpApi.make("api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.get("getRoot", "/")
+                .addSuccess(HttpApiSchema.NoContent)
+            ).add(
+              HttpApiEndpoint.get("getA", "/a")
+                .addSuccess(HttpApiSchema.NoContent.annotations({ description: "my description" }))
+            )
           )
-        )
-        expectSpecPaths(api, {
-          "/": {
-            "get": {
-              "tags": ["group"],
-              "operationId": "group.getRoot",
-              "parameters": [],
-              "security": [],
-              "responses": {
-                "204": {
-                  "description": "Success"
-                },
-                "400": HttpApiDecodeError
+          expectSpecPaths(api, {
+            "/": {
+              "get": {
+                "tags": ["group"],
+                "operationId": "group.getRoot",
+                "parameters": [],
+                "security": [],
+                "responses": {
+                  "204": {
+                    "description": "Success"
+                  },
+                  "400": HttpApiDecodeError
+                }
+              }
+            },
+            "/a": {
+              "get": {
+                "tags": ["group"],
+                "operationId": "group.getA",
+                "parameters": [],
+                "security": [],
+                "responses": {
+                  "204": {
+                    "description": "my description"
+                  },
+                  "400": HttpApiDecodeError
+                }
               }
             }
-          },
-          "/a": {
-            "get": {
-              "tags": ["group"],
-              "operationId": "group.getA",
-              "parameters": [],
-              "security": [],
-              "responses": {
-                "204": {
-                  "description": "my description"
-                },
-                "400": HttpApiDecodeError
-              }
-            }
-          }
+          })
         })
       })
 
@@ -1893,151 +1974,5 @@ describe("OpenApi", () => {
         })
       })
     })
-  })
-
-  it.skip("OpenAPI spec", () => {
-    class GlobalError extends Schema.TaggedClass<GlobalError>()("GlobalError", {}) {}
-    class GroupError extends Schema.TaggedClass<GroupError>()("GroupError", {}) {}
-    class UserError
-      extends Schema.TaggedClass<UserError>()("UserError", {}, HttpApiSchema.annotations({ status: 400 }))
-    {}
-    class NoStatusError extends Schema.TaggedClass<NoStatusError>()("NoStatusError", {}) {}
-
-    class User extends Schema.Class<User>("User")({
-      id: Schema.Int,
-      uuid: Schema.optional(Schema.UUID),
-      name: Schema.String,
-      createdAt: Schema.DateTimeUtc
-    }) {}
-
-    class Group extends Schema.Class<Group>("Group")({
-      id: Schema.Int,
-      name: Schema.String
-    }) {}
-
-    class GroupsApi extends HttpApiGroup.make("groups")
-      .add(
-        HttpApiEndpoint.get("findById")`/${HttpApiSchema.param("id", Schema.NumberFromString)}`
-          .addSuccess(Group)
-      )
-      .add(
-        HttpApiEndpoint.post("create")`/`
-          .setPayload(Schema.Union(
-            Schema.Struct(Struct.pick(Group.fields, "name")),
-            Schema.Struct({ foo: Schema.String }).pipe(
-              HttpApiSchema.withEncoding({ kind: "UrlParams" })
-            ),
-            HttpApiSchema.Multipart(
-              Schema.Struct(Struct.pick(Group.fields, "name"))
-            )
-          ))
-          .addSuccess(Group)
-      )
-      .addError(GroupError.pipe(
-        HttpApiSchema.asEmpty({ status: 418, decode: () => new GroupError() })
-      ))
-      .prefix("/groups")
-    {}
-
-    class AnotherApi extends HttpApi.make("another").add(GroupsApi) {}
-
-    class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
-
-    class Authorization extends HttpApiMiddleware.Tag<Authorization>()("Authorization", {
-      security: {
-        cookie: HttpApiSecurity.apiKey({
-          in: "cookie",
-          key: "token"
-        })
-      },
-      provides: CurrentUser
-    }) {}
-
-    class UsersApi extends HttpApiGroup.make("users")
-      .add(
-        HttpApiEndpoint.get("findById")`/${HttpApiSchema.param("id", Schema.NumberFromString)}`
-          .addSuccess(User)
-      )
-      .add(
-        HttpApiEndpoint.post("create")`/`
-          .setPayload(Schema.Struct(Struct.omit(
-            User.fields,
-            "id",
-            "createdAt"
-          )))
-          .setUrlParams(Schema.Struct({
-            id: Schema.NumberFromString
-          }))
-          .addSuccess(User)
-          .addError(UserError)
-          .addError(UserError) // ensure errors are deduplicated
-      )
-      .add(
-        HttpApiEndpoint.get("list")`/`
-          .setHeaders(Schema.Struct({
-            page: Schema.NumberFromString.pipe(
-              Schema.optionalWith({ default: () => 1 })
-            )
-          }))
-          .setUrlParams(Schema.Struct({
-            query: Schema.optional(Schema.String).annotations({ description: "search query" })
-          }))
-          .addSuccess(Schema.Array(User))
-          .addError(NoStatusError)
-          .annotate(OpenApi.Deprecated, true)
-          .annotate(OpenApi.Summary, "test summary")
-          .annotateContext(OpenApi.annotations({ identifier: "listUsers" }))
-      )
-      .add(
-        HttpApiEndpoint.post("upload")`/upload`
-          .setPayload(HttpApiSchema.Multipart(Schema.Struct({
-            file: Multipart.SingleFileSchema
-          })))
-          .addSuccess(Schema.Struct({
-            contentType: Schema.String,
-            length: Schema.Int
-          }))
-      )
-      .middleware(Authorization)
-      .annotateContext(OpenApi.annotations({ title: "Users API" }))
-    {}
-
-    class TopLevelApi extends HttpApiGroup.make("root", { topLevel: true })
-      .add(
-        HttpApiEndpoint.get("healthz")`/healthz`
-          .addSuccess(HttpApiSchema.NoContent.annotations({ description: "Empty" }))
-      )
-    {}
-
-    class Api extends HttpApi.make("api")
-      .addHttpApi(AnotherApi)
-      .add(UsersApi.prefix("/users"))
-      .add(TopLevelApi)
-      .addError(GlobalError, { status: 413 })
-      .annotateContext(OpenApi.annotations({
-        title: "API",
-        summary: "test api summary",
-        transform: (openApiSpec) => ({
-          ...openApiSpec,
-          tags: [...openApiSpec.tags ?? [], {
-            name: "Tag from OpenApi.Transform annotation"
-          }]
-        })
-      }))
-      .annotate(
-        HttpApi.AdditionalSchemas,
-        [
-          Schema.Struct({
-            contentType: Schema.String,
-            length: Schema.Int
-          }).annotations({
-            identifier: "ComponentsSchema"
-          })
-        ]
-      )
-    {}
-
-    const spec = OpenApi.fromApi(Api)
-    assert.deepStrictEqual(spec, OpenApiFixture as any)
   })
 })
