@@ -9,7 +9,24 @@ Welcome to the documentation for `@effect/platform`, a library designed for crea
 
 ## Overview
 
-The `HttpApi` modules offer a flexible and declarative way to define HTTP APIs. You build an API by combining endpoints, each describing its path and the request/response schemas. Once defined, the same API definition can be used to:
+The `HttpApi*` modules offer a flexible and declarative way to define HTTP APIs.
+
+To define an API, create a set of `HttpEndpoint`s. Each endpoint is described by a path, a method, and schemas for the request and response.
+
+Collections of endpoints are grouped in an `HttpApiGroup`, and multiple groups can be merged into a complete `HttpApi`.
+
+```
+HttpApi
+├── HttpGroup
+│   ├── HttpEndpoint
+│   └── HttpEndpoint
+└── HttpGroup
+    ├── HttpEndpoint
+    ├── HttpEndpoint
+    └── HttpEndpoint
+```
+
+Once defined, the same API definition can be used to:
 
 - Spin up a server
 - Provide a Swagger documentation page
@@ -19,9 +36,17 @@ This separation helps avoid duplication, keeps everything up to date, and simpli
 
 ## Hello World
 
+### Defining and Implementing an API
+
 Here is a simple example of defining an API with a single endpoint that returns a string:
 
-**Example** (Defining an API)
+```
+HttpApi ("MyApi)
+└── HttpGroup ("Greetings")
+    └── HttpEndpoint ("hello-world")
+```
+
+**Example** (Hello World)
 
 ```ts
 import {
@@ -161,96 +186,273 @@ Effect.runFork(program.pipe(Effect.provide(FetchHttpClient.layer)))
 // Output: Hello, World!
 ```
 
-## Basic Usage
+## Defining a HttpApiEndpoint
 
-To define an API, create a set of endpoints. Each endpoint is described by a path, a method, and schemas for the request and response.
+An `HttpApiEndpoint` represents a single endpoint in your API, including a name, path, method, and optional request and response schemas. Below is an example of a simple CRUD API for user management, illustrating various approaches for defining endpoints:
 
-Collections of endpoints are grouped in an `HttpApiGroup`, and multiple groups can be merged into a complete API.
-
-```
-API
-├── Group
-│   ├── Endpoint
-│   └── Endpoint
-└── Group
-    ├── Endpoint
-    ├── Endpoint
-    └── Endpoint
-```
-
-### Defining a HttpApiGroup
-
-Below is a simple CRUD API for user management. We have an `HttpApiGroup` with the following endpoints:
-
+- `GET /users` - Get all users
 - `GET /users/:userId` - Find a user by id
 - `POST /users` - Create a new user
 - `DELETE /users/:userId` - Delete a user by id
 - `PATCH /users/:userId` - Update a user by id
 
-**Example** (Defining a Group)
+### GET Endpoint
+
+When you need to define a GET endpoint, you can use the `HttpApiEndpoint.get` method. You can name the endpoint, set its path, and optionally specify a response schema. If no schema is provided, the default response status is `204 No Content`.
+
+**Example** (Defining a GET Endpoint without Parameters)
+
+```ts
+import { HttpApiEndpoint } from "@effect/platform"
+import { Schema } from "effect"
+
+// Domain schema: represents a User
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+// An endpoint that returns an array of users
+const getUsers = HttpApiEndpoint.get("getUsers", "/users")
+  // If no response schema is added, the default is 204 No Content
+  .addSuccess(Schema.Array(User))
+```
+
+By default, the success status code is `200 OK`. You can change it by annotating the schema with a custom status.
+
+**Example** (Defining a GET Endpoint with a custom status code)
+
+```ts
+import { HttpApiEndpoint } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const getUsers = HttpApiEndpoint.get("getUsers", "/users")
+  // Override the default success status
+  .addSuccess(Schema.Array(User), { status: 206 })
+```
+
+By default, the endpoint's description is empty. You can annotate the endpoint to set a custom description.
+
+**Example** (Defining a GET Endpoint with a custom description)
+
+```ts
+import { HttpApiEndpoint } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const getUsers = HttpApiEndpoint.get("getUsers", "/users")
+  .addSuccess(Schema.Array(User))
+  .annotate(OpenApi.Description, "Returns an array of users")
+```
+
+The default response description is "Success." You can override this by annotating the schema.
+
+**Example** (Defining a custom response description)
+
+```ts
+const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
+  Schema.Array(User).annotations({ description: "Returns an array of users" })
+)
+```
+
+Parameters can be included in your endpoint's path. For example, you can define `:id` in the path with `setPath`.
+
+**Example** (Defining a GET Endpoint with parameters with setPath)
+
+```ts
+import { HttpApiEndpoint } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
+  Schema.Array(User)
+)
+
+// Use :id to define a path parameter
+const getUser = HttpApiEndpoint.get("getUser", "/user/:id")
+  .setPath(
+    Schema.Struct({
+      // Define a schema for each path parameter
+      id: Schema.NumberFromString
+    })
+  )
+  .addSuccess(User)
+```
+
+You can alternatively use template strings and define path parameters with `HttpApiSchema.param`.
+
+**Example** (Defining a GET Endpoint with parameters using a template string)
+
+```ts
+import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
+const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(
+  User
+)
+```
+
+### POST Endpoint
+
+Use `HttpApiEndpoint.post` for creating a resource. You can set a payload schema for the request body and add a success schema for the response.
+
+```ts
+import { HttpApiEndpoint } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const createUser = HttpApiEndpoint.post("createUser", "/users")
+  // Define a payload schema for the request body
+  .setPayload(
+    Schema.Struct({
+      name: Schema.String
+    })
+  )
+  // Define the success schema for the response
+  .addSuccess(User)
+```
+
+### DELETE Endpoint
+
+Use `HttpApiEndpoint.del` for deleting a resource.
+
+**Example** (Defining a DELETE Endpoint)
+
+```ts
+import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
+const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
+```
+
+### PATCH Endpoint
+
+Use `HttpApiEndpoint.patch` for partially updating a resource.
+
+**Example** (Defining a PATCH Endpoint)
+
+```ts
+import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
+const updateUser = HttpApiEndpoint.patch("updateUser")`/users/${idParam}`
+  // Set the partial payload schema
+  .setPayload(
+    Schema.Struct({
+      name: Schema.String
+    })
+  )
+  // Define the success schema for the response
+  .addSuccess(User)
+```
+
+## Defining a HttpApiGroup
+
+You can group related endpoints under a single entity by using `HttpApiGroup.make`. This can help organize your code and provide a clearer structure for your API.
+
+**Example** (Creating a Group for User-Related Endpoints)
 
 ```ts
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 
-// Our domain "User" Schema
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-// Our user id path parameter schema
-const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-const usersApi = HttpApiGroup.make("users")
-  .add(
-    // Each endpoint has a name and a path.
-    // You can use a template string to define path parameters...
-    HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
-      // Add a Schema for a successful response.
-      .addSuccess(User)
+const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
+  Schema.Array(User)
+)
+
+const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(
+  User
+)
+
+const createUser = HttpApiEndpoint.post("createUser", "/users")
+  .setPayload(
+    Schema.Struct({
+      name: Schema.String
+    })
   )
-  .add(
-    // ..or you can pass the path as a string and use `.setPath` to define path parameters.
-    HttpApiEndpoint.post("create", "/users")
-      .addSuccess(User)
-      // Define a Schema for the request body.
-      // Since this is a POST, data is in the body.
-      // For GET requests, data could be in the URL search parameters.
-      .setPayload(
-        Schema.Struct({
-          name: Schema.String
-        })
-      )
+  .addSuccess(User)
+
+const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
+
+const updateUser = HttpApiEndpoint.patch("updateUser")`/users/${idParam}`
+  .setPayload(
+    Schema.Struct({
+      name: Schema.String
+    })
   )
-  // By default, this endpoint responds with 204 No Content.
-  .add(HttpApiEndpoint.del("delete")`/users/${UserIdParam}`)
-  .add(
-    HttpApiEndpoint.patch("update")`/users/${UserIdParam}`
-      .addSuccess(User)
-      .setPayload(
-        Schema.Struct({
-          name: Schema.String
-        })
-      )
-  )
+  .addSuccess(User)
+
+// Group all user-related endpoints
+const usersGroup = HttpApiGroup.make("users")
+  .add(getUsers)
+  .add(getUser)
+  .add(createUser)
+  .add(deleteUser)
+  .add(updateUser)
 ```
 
-You can also extend `HttpApiGroup` with a class to create an opaque type:
+If you would like to create a more opaque type for the group, you can extend `HttpApiGroup` with a class.
 
-**Example** (Defining a Group with an Opaque Type)
+**Example** (Creating a Group with an Opaque Type)
 
 ```ts
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
-  // ... etc
-) {}
+// Create an opaque class extending HttpApiGroup
+class UsersGroup extends HttpApiGroup.make("users").add(getUsers).add(getUser) {
+  // Additional endpoints or methods can be added here
+}
 ```
 
-### Creating the Top-Level HttpApi
+## Creating the Top-Level HttpApi
 
-After defining your groups, you can combine them into a single `HttpApi` to represent the full set of endpoints for your application.
+After defining your groups, you can combine them into one `HttpApi` representing your entire set of endpoints.
 
 **Example** (Combining Groups into a Top-Level API)
 
@@ -263,56 +465,70 @@ import {
 } from "@effect/platform"
 import { Schema } from "effect"
 
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-class UsersApi extends HttpApiGroup.make("users")
-  .add(HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User))
-  .add(
-    HttpApiEndpoint.post("create", "/users")
-      .addSuccess(User)
-      .setPayload(
-        Schema.Struct({
-          name: Schema.String
-        })
-      )
+const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
+  Schema.Array(User)
+)
+
+const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(
+  User
+)
+
+const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
+
+const updateUser = HttpApiEndpoint.patch("updateUser")`/users/${idParam}`
+  .setPayload(
+    Schema.Struct({
+      name: Schema.String
+    })
   )
-  .add(HttpApiEndpoint.del("delete")`/users/${UserIdParam}`)
-  .add(
-    HttpApiEndpoint.patch("update")`/users/${UserIdParam}`
-      .addSuccess(User)
-      .setPayload(
-        Schema.Struct({
-          name: Schema.String
-        })
-      )
-  ) {}
+  .addSuccess(User)
 
-// Combine the groups into a top-level API with an opaque style
-class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+const usersGroup = HttpApiGroup.make("users")
+  .add(getUsers)
+  .add(getUser)
+  .add(createUser)
+  .add(deleteUser)
+  .add(updateUser)
 
-// Alternatively, use a non-opaque style
-const api = HttpApi.make("myApi").add(UsersApi)
+// Combine the groups into one API
+const api = HttpApi.make("myApi").add(usersGroup)
+
+// Alternatively, create an opaque class for your API
+class MyApi extends HttpApi.make("myApi").add(usersGroup) {}
 ```
 
-### Adding errors
+## Adding errors
 
-Error responses can be added to your endpoints to handle various scenarios. These responses can be specific to an endpoint, a group of endpoints, or the entire API.
+Error responses allow your API to handle different failure scenarios. These responses can be defined at various levels:
 
-- Use `HttpApiEndpoint.addError` to add an error response to a specific endpoint.
-- Use `HttpApiGroup.addError` to add an error response to all endpoints in a group.
-- Use `HttpApi.addError` to add an error response to all endpoints in the API.
+- **Endpoint-level errors**: Use `HttpApiEndpoint.addError` to add errors specific to an endpoint.
+- **Group-level errors**: Use `HttpApiGroup.addError` to add errors applicable to all endpoints in a group.
+- **API-level errors**: Use `HttpApi.addError` to define errors that apply to every endpoint in the API.
 
-Group-level and API-level errors are particularly useful for handling common error scenarios, such as authentication failures, that might be managed through middleware.
+Group-level and API-level errors are useful for handling shared issues like authentication failures, especially when managed through middleware.
 
-**Example** (Adding Errors to Endpoints and Groups)
+**Example** (Defining Error Responses for Endpoints and Groups)
 
 ```ts
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
 // Define error schemas
 class UserNotFound extends Schema.TaggedError<UserNotFound>()(
   "UserNotFound",
@@ -324,26 +540,42 @@ class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   {}
 ) {}
 
-class UsersApi extends HttpApiGroup.make("users")
-  .add(
-    HttpApiEndpoint.get("findById")`/users/${UserIdParam}`
-      .addSuccess(User)
-      // Add a 404 error response for this endpoint
-      .addError(UserNotFound, { status: 404 })
-  )
-  // Add a 401 error response to the entire group
-  .addError(Unauthorized, { status: 401 }) {
-  // ...etc
-}
+const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
+  Schema.Array(User)
+)
+
+const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`
+  .addSuccess(User)
+  // Add a 404 error response for this endpoint
+  .addError(UserNotFound, { status: 404 })
+
+const usersGroup = HttpApiGroup.make("users")
+  .add(getUsers)
+  .add(getUser)
+  // ...etc...
+  // Add a 401 error response for the entire group
+  .addError(Unauthorized, { status: 401 })
 ```
 
-You can add multiple error responses to a single endpoint by calling `HttpApiEndpoint.addError` multiple times. This allows you to handle different types of errors with specific status codes and descriptions, ensuring that the API behaves as expected in various scenarios.
+You can assign multiple error responses to a single endpoint by calling `HttpApiEndpoint.addError` multiple times. This is useful when different types of errors might occur for a single operation.
 
-### Multipart Requests
+**Example** (Adding Multiple Errors to an Endpoint)
 
-To handle file uploads, you can use the `HttpApiSchema.Multipart` API to designate an endpoint's payload schema as a multipart request. This allows you to specify the structure of the expected multipart data, including file uploads, using the `Multipart` module.
+```ts
+const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
+  // Add a 404 error response for when the user is not found
+  .addError(UserNotFound, { status: 404 })
+  // Add a 401 error response for unauthorized access
+  .addError(Unauthorized, { status: 401 })
+```
 
-**Example** (Handling File Uploads)
+## Handling Multipart Requests
+
+To support file uploads, you can use the `HttpApiSchema.Multipart` API. This allows you to define an endpoint's payload schema as a multipart request, specifying the structure of the data, including file uploads, with the `Multipart` module.
+
+**Example** (Defining an Endpoint for File Uploads)
+
+In this example, the `HttpApiSchema.Multipart` function marks the payload as a multipart request. The `files` field uses `Multipart.FilesSchema` to handle uploaded file data automatically.
 
 ```ts
 import {
@@ -354,55 +586,53 @@ import {
 } from "@effect/platform"
 import { Schema } from "effect"
 
-class UsersApi extends HttpApiGroup.make("users").add(
+const usersGroup = HttpApiGroup.make("users").add(
+  // Define the POST /users/upload endpoint
   HttpApiEndpoint.post("upload")`/users/upload`.setPayload(
-    // Mark the payload as a multipart request
+    // Specify that the payload is a multipart request
     HttpApiSchema.Multipart(
       Schema.Struct({
-        // Define a "files" field for the uploaded files
+        // Define a "files" field to handle file uploads
         files: Multipart.FilesSchema
       })
     )
   )
-) {}
+)
 ```
 
-This setup makes it clear that the endpoint expects a multipart request with a `files` field. The `Multipart.FilesSchema` automatically handles file data, making it easier to work with uploads in your application.
+## Changing the response encoding
 
-### Changing the response encoding
+By default, API responses are encoded as JSON. If your application requires a different format, you can customize the encoding using the `HttpApiSchema.withEncoding` API. This method lets you define the type and content type of the response.
 
-By default, responses are encoded as JSON. If you need a different format, you can modify the encoding using the `HttpApiSchema.withEncoding` API. This allows you to specify both the type and content of the response.
-
-**Example** (Changing Response Encoding to `text/csv`)
+**Example** (Returning Data as `text/csv`)
 
 ```ts
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 
-// Define the UsersApi group with an endpoint that returns CSV data
-class UsersApi extends HttpApiGroup.make("users").add(
+const usersGroup = HttpApiGroup.make("users").add(
   HttpApiEndpoint.get("csv")`/users/csv`
-    // Define the success response as a string and set the encoding to CSV
+    // Set the success response as a string with CSV encoding
     .addSuccess(
       Schema.String.pipe(
         HttpApiSchema.withEncoding({
+          // Specify the type of the response
           kind: "Text",
+          // Define the content type as text/csv
           contentType: "text/csv"
         })
       )
     )
-) {}
+)
 ```
 
 ## Implementing a Server
 
-Now that you have defined your API, you can implement a server that serves the
-endpoints.
+After defining your API, you can implement a server to handle its endpoints. The `HttpApiBuilder` module provides tools to help you connect your API's structure to the logic that serves requests.
 
-The `HttpApiBuilder` module provides all the apis you need to implement your
-server.
+Here, we will create a simple example with a `getUser` endpoint organized within a `users` group.
 
-For semplicity we will use a `UsersApi` group with a single `findById` endpoint.
+**Example** (Defining the `users` Group and API)
 
 ```ts
 import {
@@ -413,19 +643,19 @@ import {
 } from "@effect/platform"
 import { Schema } from "effect"
 
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
-) {}
+const usersGroup = HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+)
 
-class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+const api = HttpApi.make("myApi").add(usersGroup)
 ```
 
 ### Implementing a HttpApiGroup
@@ -442,7 +672,7 @@ Each endpoint in the group is connected to its logic using the `HttpApiBuilder.h
 
 The `HttpApiBuilder.group` API produces a `Layer` that can later be provided to the server implementation.
 
-**Example** (Implementing an API Group)
+**Example** (Implementing a Group with Endpoint Logic)
 
 ```ts
 import {
@@ -454,19 +684,19 @@ import {
 } from "@effect/platform"
 import { DateTime, Effect, Schema } from "effect"
 
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
-) {}
+const usersGroup = HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+)
 
-class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+const api = HttpApi.make("myApi").add(usersGroup)
 
 // --------------------------------------------
 // Implementation
@@ -474,25 +704,25 @@ class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
 
 //      ┌─── Layer<HttpApiGroup.ApiGroup<"myApi", "users">>
 //      ▼
-const UsersApiLive =
-  //                       ┌─── The Whole API
-  //                       │       ┌─── The Group you are implementing
-  //                       ▼       ▼
-  HttpApiBuilder.group(MyApi, "users", (handlers) =>
+const usersGroupLive =
+  //                    ┌─── The Whole API
+  //                    │      ┌─── The Group you are implementing
+  //                    ▼      ▼
+  HttpApiBuilder.group(api, "users", (handlers) =>
     handlers.handle(
       //  ┌─── The Endpoint you are implementing
       //  ▼
-      "findById",
+      "getUser",
       // Provide the handler logic for the endpoint.
       // The parameters & payload are passed to the handler function.
-      ({ path: { userId } }) =>
+      ({ path: { id } }) =>
         Effect.succeed(
           // Return a mock user object with the provided ID
-          new User({
-            id: userId,
+          {
+            id,
             name: "John Doe",
             createdAt: DateTime.unsafeNow()
-          })
+          }
         )
     )
   )
@@ -516,19 +746,25 @@ import {
 } from "@effect/platform"
 import { Context, Effect, Schema } from "effect"
 
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
-) {}
+const usersGroup = HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+)
 
-class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+const api = HttpApi.make("myApi").add(usersGroup)
+
+// --------------------------------------------
+// Implementation
+// --------------------------------------------
+
+type User = typeof User.Type
 
 // Define the UsersRepository service
 class UsersRepository extends Context.Tag("UsersRepository")<
@@ -538,14 +774,16 @@ class UsersRepository extends Context.Tag("UsersRepository")<
   }
 >() {}
 
+// Implement the `users` group with access to the UsersRepository service
+//
 //      ┌─── Layer<HttpApiGroup.ApiGroup<"myApi", "users">, never, UsersRepository>
 //      ▼
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
+const usersGroupLive = HttpApiBuilder.group(api, "users", (handlers) =>
   Effect.gen(function* () {
     // Access the UsersRepository service
     const repository = yield* UsersRepository
-    return handlers.handle("findById", ({ path: { userId } }) =>
-      repository.findById(userId)
+    return handlers.handle("getUser", ({ path: { id } }) =>
+      repository.findById(id)
     )
   })
 )
@@ -567,34 +805,27 @@ import {
 } from "@effect/platform"
 import { DateTime, Effect, Layer, Schema } from "effect"
 
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
-) {}
+const usersGroup = HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+)
 
-class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+const api = HttpApi.make("myApi").add(usersGroup)
 
-// --------------------------------------------
-// Implementation
-// --------------------------------------------
-
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  handlers.handle("findById", ({ path: { userId } }) =>
-    Effect.succeed(
-      // Return a mock user object with the provided ID
-      new User({
-        id: userId,
-        name: "John Doe",
-        createdAt: DateTime.unsafeNow()
-      })
-    )
+const usersGroupLive = HttpApiBuilder.group(api, "users", (handlers) =>
+  handlers.handle("getUser", ({ path: { id } }) =>
+    Effect.succeed({
+      id,
+      name: "John Doe",
+      createdAt: DateTime.unsafeNow()
+    })
   )
 )
 
@@ -602,16 +833,14 @@ const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
 //
 //      ┌─── Layer<HttpApi.Api, never, never>
 //      ▼
-const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
+const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(usersGroupLive))
 ```
 
 ### Serving the API
 
-You can serve your API using the `HttpApiBuilder.serve` API. This function builds an `HttpApp` from an `HttpApi` instance and serves it using an `HttpServer`.
+You can serve your API using the `HttpApiBuilder.serve` function. This utility builds an `HttpApp` from an `HttpApi` instance and uses an `HttpServer` to handle requests. Middleware can be added to customize or enhance the server's behavior.
 
-Optionally, you can provide middleware to enhance the `HttpApp` before serving it.
-
-**Example** (Serving an API with Middleware)
+**Example** (Setting Up and Serving an API with Middleware)
 
 ```ts
 import {
@@ -627,47 +856,45 @@ import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { DateTime, Effect, Layer, Schema } from "effect"
 import { createServer } from "node:http"
 
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
-) {}
+const usersGroup = HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+)
 
-class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+const api = HttpApi.make("myApi").add(usersGroup)
 
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  handlers.handle("findById", ({ path: { userId } }) =>
-    Effect.succeed(
-      new User({
-        id: userId,
-        name: "John Doe",
-        createdAt: DateTime.unsafeNow()
-      })
-    )
+const usersGroupLive = HttpApiBuilder.group(api, "users", (handlers) =>
+  handlers.handle("getUser", ({ path: { id } }) =>
+    Effect.succeed({
+      id,
+      name: "John Doe",
+      createdAt: DateTime.unsafeNow()
+    })
   )
 )
 
-const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
+const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(usersGroupLive))
 
-// Use the `HttpApiBuilder.serve` function to serve the API
+// Configure and serve the API
 const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
-  // Add middleware for Cross-Origin Resource Sharing (CORS)
+  // Add CORS middleware to handle cross-origin requests
   Layer.provide(HttpApiBuilder.middlewareCors()),
   // Provide the API implementation
   Layer.provide(MyApiLive),
   // Log the server's listening address
   HttpServer.withLogAddress,
-  // Provide the HTTP server implementation
+  // Set up the Node.js HTTP server
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
 )
 
-// run the server
+// Launch the server
 Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 ```
 
@@ -692,7 +919,8 @@ You can define middleware using the `HttpApiMiddleware.Tag` class, which lets yo
 import {
   HttpApiEndpoint,
   HttpApiGroup,
-  HttpApiMiddleware
+  HttpApiMiddleware,
+  HttpApiSchema
 } from "@effect/platform"
 import { Schema } from "effect"
 
@@ -708,14 +936,23 @@ class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger", {
   failure: LoggerError
 }) {}
 
-class UsersApi extends HttpApiGroup.make("users")
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
+const usersGroup = HttpApiGroup.make("users")
   .add(
-    HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`
+    HttpApiEndpoint.get("getUser")`/user/${idParam}`
+      .addSuccess(User)
       // Apply the middleware to a single endpoint
       .middleware(Logger)
   )
   // Or apply the middleware to the entire group
-  .middleware(Logger) {}
+  .middleware(Logger)
 ```
 
 ### Implementing HttpApiMiddleware
@@ -754,16 +991,30 @@ import {
   HttpApiEndpoint,
   HttpApiGroup,
   HttpApiMiddleware,
+  HttpApiSchema,
   HttpServerRequest
 } from "@effect/platform"
 import { DateTime, Effect, Layer, Schema } from "effect"
 
-class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger") {}
+// Define a schema for errors returned by the logger middleware
+class LoggerError extends Schema.TaggedError<LoggerError>()(
+  "LoggerError",
+  {}
+) {}
+
+// Extend the HttpApiMiddleware.Tag class to define the logger middleware tag
+class Logger extends HttpApiMiddleware.Tag<Logger>()("Http/Logger", {
+  // Optionally define the error schema for the middleware
+  failure: LoggerError
+}) {}
 
 const LoggerLive = Layer.effect(
   Logger,
   Effect.gen(function* () {
     yield* Effect.log("creating Logger middleware")
+
+    // Middleware implementation as an Effect
+    // that can access the `HttpServerRequest` context.
     return Effect.gen(function* () {
       const request = yield* HttpServerRequest.HttpServerRequest
       yield* Effect.log(`Request: ${request.method} ${request.url}`)
@@ -771,29 +1022,33 @@ const LoggerLive = Layer.effect(
   })
 )
 
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/${Schema.NumberFromString}`.middleware(
-    Logger
-  )
-) {}
-
-class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
-
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  handlers.handle("findById", (req) =>
-    Effect.succeed(
-      new User({
-        id: req.path[0],
-        name: "John Doe",
-        createdAt: DateTime.unsafeNow()
-      })
-    )
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
+const usersGroup = HttpApiGroup.make("users")
+  .add(
+    HttpApiEndpoint.get("getUser")`/user/${idParam}`
+      .addSuccess(User)
+      // Apply the middleware to a single endpoint
+      .middleware(Logger)
+  )
+  // Or apply the middleware to the entire group
+  .middleware(Logger)
+
+const api = HttpApi.make("myApi").add(usersGroup)
+
+const usersGroupLive = HttpApiBuilder.group(api, "users", (handlers) =>
+  handlers.handle("getUser", (req) =>
+    Effect.succeed({
+      id: req.path.id,
+      name: "John Doe",
+      createdAt: DateTime.unsafeNow()
+    })
   )
 ).pipe(
   // Provide the Logger middleware to the group
@@ -942,16 +1197,33 @@ The `HttpApiSecurity.annotate` function allows you to add metadata, such as a de
 **Example** (Adding a Description to a Bearer Token Security Definition)
 
 ```ts
+import {
+  HttpApiMiddleware,
+  HttpApiSchema,
+  HttpApiSecurity,
+  OpenApi
+} from "@effect/platform"
+import { Context, Schema } from "effect"
+
+class User extends Schema.Class<User>("User")({ id: Schema.Number }) {}
+
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+  "Unauthorized",
+  {},
+  HttpApiSchema.annotations({ status: 401 })
+) {}
+
+class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
+
 class Authorization extends HttpApiMiddleware.Tag<Authorization>()(
   "Authorization",
   {
     failure: Unauthorized,
-    provides: Resource,
+    provides: CurrentUser,
     security: {
-      myBearer: HttpApiSecurity.annotate(
-        HttpApiSecurity.bearer,
-        OpenApi.Description,
-        "my description"
+      myBearer: HttpApiSecurity.bearer.pipe(
+        // Add a description to the security definition
+        HttpApiSecurity.annotate(OpenApi.Description, "my description")
       )
     }
   }
@@ -1002,33 +1274,31 @@ import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { DateTime, Effect, Layer, Schema } from "effect"
 import { createServer } from "node:http"
 
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
-) {}
+const usersGroup = HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+)
 
-class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+const api = HttpApi.make("myApi").add(usersGroup)
 
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  handlers.handle("findById", ({ path: { userId } }) =>
-    Effect.succeed(
-      new User({
-        id: userId,
-        name: "John Doe",
-        createdAt: DateTime.unsafeNow()
-      })
-    )
+const usersGroupLive = HttpApiBuilder.group(api, "users", (handlers) =>
+  handlers.handle("getUser", ({ path: { id } }) =>
+    Effect.succeed({
+      id,
+      name: "John Doe",
+      createdAt: DateTime.unsafeNow()
+    })
   )
 )
 
-const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
+const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(usersGroupLive))
 
 const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
   // Add the Swagger documentation layer
@@ -1360,33 +1630,31 @@ import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { DateTime, Effect, Layer, Schema } from "effect"
 import { createServer } from "node:http"
 
-class User extends Schema.Class<User>("User")({
+const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
-}) {}
+})
 
-const UserIdParam = HttpApiSchema.param("userId", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
-class UsersApi extends HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("findById")`/users/${UserIdParam}`.addSuccess(User)
-) {}
+const usersGroup = HttpApiGroup.make("users").add(
+  HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User)
+)
 
-class MyApi extends HttpApi.make("myApi").add(UsersApi) {}
+const api = HttpApi.make("myApi").add(usersGroup)
 
-const UsersApiLive = HttpApiBuilder.group(MyApi, "users", (handlers) =>
-  handlers.handle("findById", ({ path: { userId } }) =>
-    Effect.succeed(
-      new User({
-        id: userId,
-        name: "John Doe",
-        createdAt: DateTime.unsafeNow()
-      })
-    )
+const usersGroupLive = HttpApiBuilder.group(api, "users", (handlers) =>
+  handlers.handle("getUser", ({ path: { id } }) =>
+    Effect.succeed({
+      id,
+      name: "John Doe",
+      createdAt: DateTime.unsafeNow()
+    })
   )
 )
 
-const MyApiLive = HttpApiBuilder.api(MyApi).pipe(Layer.provide(UsersApiLive))
+const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(usersGroupLive))
 
 const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
   Layer.provide(HttpApiSwagger.layer()),
@@ -1401,11 +1669,11 @@ Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 // Create a program that derives and uses the client
 const program = Effect.gen(function* () {
   // Derive the client
-  const client = yield* HttpApiClient.make(MyApi, {
+  const client = yield* HttpApiClient.make(api, {
     baseUrl: "http://localhost:3000"
   })
   // Call the `findById` endpoint
-  const user = yield* client.users.findById({ path: { userId: 1 } })
+  const user = yield* client.users.getUser({ path: { id: 1 } })
   console.log(user)
 })
 
