@@ -109,7 +109,7 @@ export const pollAndUpdate: <Type, In, R, E, Out>(
  */
 export const retry: {
   <X, E, R2>(
-    policy: Schedule.Schedule<X, E, R2>
+    policy: Schedule.Schedule<X, NoInfer<E>, R2>
   ): <Type, In, R, Out>(self: MetricPolling<Type, In, R, E, Out>) => MetricPolling<Type, In, R2 | R, E, Out>
   <Type, In, R, E, Out, X, R2>(
     self: MetricPolling<Type, In, R, E, Out>,
