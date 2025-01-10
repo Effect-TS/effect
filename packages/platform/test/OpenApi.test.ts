@@ -121,8 +121,12 @@ describe("OpenApi", () => {
             HttpApiEndpoint.get("get", "/")
               .addSuccess(Schema.String)
           )
-        )
-        const api = HttpApi.make("api").addHttpApi(anotherApi)
+        ).addError(Schema.String) // should dedupe the errors
+
+        const api = HttpApi.make("api")
+          .addError(Schema.String)
+          .addHttpApi(anotherApi)
+
         expectSpecPaths(api, {
           "/": {
             "get": {
@@ -139,7 +143,15 @@ describe("OpenApi", () => {
                     }
                   }
                 },
-                "400": HttpApiDecodeError
+                "400": HttpApiDecodeError,
+                "500": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "string" }
+                    }
+                  }
+                }
               }
             }
           }
@@ -174,7 +186,9 @@ describe("OpenApi", () => {
               HttpApiEndpoint.get("getA", "/a")
                 .addSuccess(Schema.String)
             )
-          ).addError(Schema.String)
+          )
+            .addError(Schema.String)
+            .addError(Schema.String) // should dedupe the errors
           expectSpecPaths(api, {
             "/": {
               "get": {
@@ -477,6 +491,7 @@ describe("OpenApi", () => {
               HttpApiEndpoint.get("getA", "/a")
                 .addSuccess(Schema.String)
             ).addError(Schema.String)
+              .addError(Schema.String) // should dedupe the errors
           )
           expectSpecPaths(api, {
             "/": {
@@ -943,6 +958,55 @@ describe("OpenApi", () => {
         })
       })
 
+      it("setPath as template string with HttpApiSchema.param", () => {
+        const a = Schema.String
+        const b = Schema.String.annotations({ description: "my description" })
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.get("get")`/a/${HttpApiSchema.param("a", a)}/b/${HttpApiSchema.param("b", b)}`
+              .addSuccess(Schema.String)
+          )
+        )
+        expectSpecPaths(api, {
+          "/a/{a}/b/{b}": {
+            "get": {
+              "tags": ["group"],
+              "operationId": "group.get",
+              "parameters": [
+                {
+                  "name": "a",
+                  "in": "path",
+                  "schema": { "type": "string" },
+                  "required": true
+                },
+                {
+                  "name": "b",
+                  "in": "path",
+                  "schema": {
+                    "type": "string",
+                    "description": "my description"
+                  },
+                  "required": true,
+                  "description": "my description"
+                }
+              ],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "string" }
+                    }
+                  }
+                },
+                "400": HttpApiDecodeError
+              }
+            }
+          }
+        })
+      })
+
       it("setUrlParams", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
@@ -1047,121 +1111,124 @@ describe("OpenApi", () => {
         })
       })
 
-      it("addError", () => {
-        const api = HttpApi.make("api").add(
-          HttpApiGroup.make("group").add(
-            HttpApiEndpoint.get("get", "/")
-              .addSuccess(Schema.String)
-              .addError(Schema.String)
+      describe("addError", () => {
+        it("no status annotation", () => {
+          const api = HttpApi.make("api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.get("get", "/")
+                .addSuccess(Schema.String)
+                .addError(Schema.String)
+                .addError(Schema.String) // should dedupe the errors
+            )
           )
-        )
-        expectSpecPaths(api, {
-          "/": {
-            "get": {
-              "tags": ["group"],
-              "operationId": "group.get",
-              "parameters": [],
-              "security": [],
-              "responses": {
-                "200": {
-                  "description": "a string",
-                  "content": {
-                    "application/json": {
-                      "schema": { "type": "string" }
+          expectSpecPaths(api, {
+            "/": {
+              "get": {
+                "tags": ["group"],
+                "operationId": "group.get",
+                "parameters": [],
+                "security": [],
+                "responses": {
+                  "200": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": {
+                        "schema": { "type": "string" }
+                      }
                     }
-                  }
-                },
-                "400": HttpApiDecodeError,
-                "500": {
-                  "description": "a string",
-                  "content": {
-                    "application/json": {
-                      "schema": {
-                        "type": "string"
+                  },
+                  "400": HttpApiDecodeError,
+                  "500": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "string"
+                        }
                       }
                     }
                   }
                 }
               }
             }
-          }
+          })
         })
-      })
 
-      it("addError + status annotation", () => {
-        const api = HttpApi.make("api").add(
-          HttpApiGroup.make("group").add(
-            HttpApiEndpoint.get("get", "/")
-              .addSuccess(Schema.String)
-              .addError(Schema.String, { status: 404 })
+        it("status annotation", () => {
+          const api = HttpApi.make("api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.get("get", "/")
+                .addSuccess(Schema.String)
+                .addError(Schema.String, { status: 404 })
+            )
           )
-        )
-        expectSpecPaths(api, {
-          "/": {
-            "get": {
-              "tags": ["group"],
-              "operationId": "group.get",
-              "parameters": [],
-              "security": [],
-              "responses": {
-                "200": {
-                  "description": "a string",
-                  "content": {
-                    "application/json": {
-                      "schema": { "type": "string" }
+          expectSpecPaths(api, {
+            "/": {
+              "get": {
+                "tags": ["group"],
+                "operationId": "group.get",
+                "parameters": [],
+                "security": [],
+                "responses": {
+                  "200": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": {
+                        "schema": { "type": "string" }
+                      }
                     }
-                  }
-                },
-                "400": HttpApiDecodeError,
-                "404": {
-                  "description": "a string",
-                  "content": {
-                    "application/json": {
-                      "schema": {
-                        "type": "string"
+                  },
+                  "400": HttpApiDecodeError,
+                  "404": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "string"
+                        }
                       }
                     }
                   }
                 }
               }
             }
-          }
+          })
         })
-      })
 
-      it("addError + asEmpty", () => {
-        const api = HttpApi.make("api").add(
-          HttpApiGroup.make("group").add(
-            HttpApiEndpoint.get("get", "/")
-              .addSuccess(Schema.String)
-              .addError(Schema.String.pipe(
-                HttpApiSchema.asEmpty({ status: 418, decode: () => "I'm a teapot" })
-              ))
+        it("asEmpty", () => {
+          const api = HttpApi.make("api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.get("get", "/")
+                .addSuccess(Schema.String)
+                .addError(Schema.String.pipe(
+                  HttpApiSchema.asEmpty({ status: 418, decode: () => "I'm a teapot" })
+                ))
+            )
           )
-        )
-        expectSpecPaths(api, {
-          "/": {
-            "get": {
-              "tags": ["group"],
-              "operationId": "group.get",
-              "parameters": [],
-              "security": [],
-              "responses": {
-                "200": {
-                  "description": "a string",
-                  "content": {
-                    "application/json": {
-                      "schema": { "type": "string" }
+          expectSpecPaths(api, {
+            "/": {
+              "get": {
+                "tags": ["group"],
+                "operationId": "group.get",
+                "parameters": [],
+                "security": [],
+                "responses": {
+                  "200": {
+                    "description": "a string",
+                    "content": {
+                      "application/json": {
+                        "schema": { "type": "string" }
+                      }
                     }
+                  },
+                  "400": HttpApiDecodeError,
+                  "418": {
+                    "description": "a string"
                   }
-                },
-                "400": HttpApiDecodeError,
-                "418": {
-                  "description": "a string"
                 }
               }
             }
-          }
+          })
         })
       })
 
@@ -1421,7 +1488,15 @@ describe("OpenApi", () => {
           HttpApiGroup.make("group").add(
             HttpApiEndpoint.post("post", "/")
               .addSuccess(Schema.String)
-              .setPayload(Schema.Number)
+              .setPayload(Schema.Union(
+                Schema.Struct({ a: Schema.String }),
+                Schema.Struct({ b: Schema.String }).pipe(
+                  HttpApiSchema.withEncoding({ kind: "UrlParams" })
+                ),
+                HttpApiSchema.Multipart(
+                  Schema.Struct({ c: Schema.String })
+                )
+              ))
           )
         )
         expectSpecPaths(api, {
@@ -1434,7 +1509,46 @@ describe("OpenApi", () => {
               "requestBody": {
                 "content": {
                   "application/json": {
-                    "schema": { "type": "number" }
+                    "schema": {
+                      "type": "object",
+                      "required": [
+                        "a"
+                      ],
+                      "properties": {
+                        "a": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "application/x-www-form-urlencoded": {
+                    "schema": {
+                      "type": "object",
+                      "required": [
+                        "b"
+                      ],
+                      "properties": {
+                        "b": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "multipart/form-data": {
+                    "schema": {
+                      "type": "object",
+                      "required": [
+                        "c"
+                      ],
+                      "properties": {
+                        "c": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": true
