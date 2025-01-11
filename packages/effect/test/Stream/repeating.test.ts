@@ -12,7 +12,7 @@ import * as Stream from "effect/Stream"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as TestEnvironment from "effect/TestContext"
-import fc from "fast-check"
+import * as fc from "effect/FastCheck"
 import { assert, describe } from "vitest"
 
 describe("Stream", () => {

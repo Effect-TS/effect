@@ -901,9 +901,6 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-      fast-check:
-        specifier: ^3.23.1
-        version: 3.23.1
       vitest:
         specifier: ^2.1.4
         version: 2.1.4(@edge-runtime/vm@4.0.3)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0)

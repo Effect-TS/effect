@@ -19,7 +19,7 @@ import * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
 import * as Utils from "effect/Utils"
-import fc from "fast-check"
+import * as fc from "effect/FastCheck"
 import * as V from "vitest"
 import type * as Vitest from "./index.js"
 

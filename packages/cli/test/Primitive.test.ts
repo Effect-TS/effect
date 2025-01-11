@@ -3,7 +3,7 @@ import * as Primitive from "@effect/cli/Primitive"
 import type { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
 import { Array, Effect, Equal, Function, Option } from "effect"
-import fc from "fast-check"
+import * as fc from "effect/FastCheck"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(self: Effect.Effect<A, E, FileSystem.FileSystem>): Promise<A> =>
