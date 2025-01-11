@@ -482,15 +482,21 @@ In this example, the `HttpApiSchema.Multipart` function marks the payload as a m
 import { HttpApiEndpoint, HttpApiSchema, Multipart } from "@effect/platform"
 import { Schema } from "effect"
 
-const upload = HttpApiEndpoint.post("upload")`/users/upload`.setPayload(
+const upload = HttpApiEndpoint.post("upload", "/users/upload").setPayload(
   // Specify that the payload is a multipart request
   HttpApiSchema.Multipart(
     Schema.Struct({
       // Define a "files" field to handle file uploads
       files: Multipart.FilesSchema
     })
-  )
+  ).addSuccess(Schema.String)
 )
+```
+
+You can test this endpoint by sending a multipart request with a file upload. For example:
+
+```sh
+echo "Sample file content" | curl -X POST -F "files=@-" http://localhost:3000/users/upload
 ```
 
 ### Changing the Request Encoding
