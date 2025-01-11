@@ -445,6 +445,9 @@ const getDescriptionOrIdentifier = (ast: AST.PropertySignature | AST.AST): Optio
 }
 
 /**
+ * Adds additional schemas to components/schemas.
+ * The provided schemas must have a `identifier` annotation.
+ *
  * @since 1.0.0
  * @category tags
  */

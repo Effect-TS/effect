@@ -132,6 +132,7 @@ export const annotations: (
     readonly description?: string | undefined
     readonly license?: OpenAPISpecLicense | undefined
     readonly summary?: string | undefined
+    readonly deprecated?: boolean | undefined
     readonly externalDocs?: OpenAPISpecExternalDocs | undefined
     readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined
     readonly format?: string | undefined
@@ -146,6 +147,7 @@ export const annotations: (
   description: Description,
   license: License,
   summary: Summary,
+  deprecated: Deprecated,
   externalDocs: ExternalDocs,
   servers: Servers,
   format: Format,
@@ -282,7 +284,8 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
           op.security!.push({ [name]: [] })
         }
       })
-      if (payloads.size > 0) {
+      const hasBody = HttpMethod.hasBody(endpoint.method)
+      if (hasBody && payloads.size > 0) {
         const content: Mutable<OpenApiSpecContent> = {}
         payloads.forEach(({ ast }, contentType) => {
           content[contentType as OpenApiSpecContentType] = {
@@ -299,8 +302,9 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
         ast.pipe(
           Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
           Option.map((ast) => {
+            const encoding = HttpApiSchema.getEncoding(ast)
             op.responses![status].content = {
-              "application/json": {
+              [encoding.contentType]: {
                 schema: makeJsonSchemaOrRef(Schema.make(ast))
               }
             }
@@ -321,7 +325,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
           })
         }
       }
-      if (!HttpMethod.hasBody(endpoint.method) && Option.isSome(endpoint.payloadSchema)) {
+      if (!hasBody && Option.isSome(endpoint.payloadSchema)) {
         const schema = makeJsonSchemaOrRef(endpoint.payloadSchema.value) as JsonSchema.Object
         if ("properties" in schema) {
           Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
@@ -573,7 +577,12 @@ export type OpenAPISpecResponses = Record<number, OpenApiSpecResponse>
  * @category models
  * @since 1.0.0
  */
-export type OpenApiSpecContentType = "application/json" | "application/xml" | "multipart/form-data" | "text/plain"
+export type OpenApiSpecContentType =
+  | "application/json"
+  | "application/xml"
+  | "application/x-www-form-urlencoded"
+  | "multipart/form-data"
+  | "text/plain"
 
 /**
  * @category models
