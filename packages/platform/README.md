@@ -1055,7 +1055,7 @@ const api = HttpApi.make("myApi").add(
 
 const groupLive = HttpApiBuilder.group(api, "group", (handlers) =>
   handlers.handle("get", () =>
-    Effect.gen(function* (_) {
+    Effect.gen(function* () {
       // Access the incoming request
       const req = yield* HttpServerRequest.HttpServerRequest
 
