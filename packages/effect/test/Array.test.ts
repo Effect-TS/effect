@@ -1,5 +1,6 @@
 import * as RA from "effect/Array"
 import * as E from "effect/Either"
+import * as fc from "effect/FastCheck"
 import { identity, pipe } from "effect/Function"
 import * as Number from "effect/Number"
 import * as O from "effect/Option"
@@ -8,7 +9,6 @@ import type { Predicate } from "effect/Predicate"
 import * as String from "effect/String"
 import { deepStrictEqual, double, strictEqual } from "effect/test/util"
 import * as Util from "effect/test/util"
-import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
 const symA = Symbol.for("a")

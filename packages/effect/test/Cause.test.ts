@@ -1,12 +1,12 @@
 import * as Cause from "effect/Cause"
 import * as Equal from "effect/Equal"
+import * as fc from "effect/FastCheck"
 import * as FiberId from "effect/FiberId"
 import * as Hash from "effect/Hash"
 import * as internal from "effect/internal/cause"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/utils/cause"
-import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
 describe("Cause", () => {

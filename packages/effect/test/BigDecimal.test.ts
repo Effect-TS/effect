@@ -1,7 +1,7 @@
 import * as BigDecimal from "effect/BigDecimal"
 import * as Equal from "effect/Equal"
+import * as fc from "effect/FastCheck"
 import * as Option from "effect/Option"
-import fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
 const _ = BigDecimal.unsafeFromString
