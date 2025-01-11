@@ -2117,6 +2117,69 @@ const program = Effect.gen(function* () {
 })
 ```
 
+## Converting to a Web Handler
+
+You can convert your `HttpApi` implementation into a web handler using the `HttpApiBuilder.toWebHandler` API. This approach enables you to serve your API through a custom server setup.
+
+**Example** (Creating and Serving a Web Handler)
+
+```ts
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiSwagger
+} from "@effect/platform"
+import { NodeHttpServer } from "@effect/platform-node"
+import { Effect, Layer, Schema } from "effect"
+import * as http from "node:http"
+
+const api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.get("get", "/").addSuccess(Schema.String)
+  )
+)
+
+const usersGroupLive = HttpApiBuilder.group(api, "group", (handlers) =>
+  handlers.handle("get", () => Effect.succeed("Hello, world!"))
+)
+
+const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(usersGroupLive))
+
+const SwaggerLayer = HttpApiSwagger.layer().pipe(Layer.provide(MyApiLive))
+
+// Convert the API to a web handler
+const { dispose, handler } = HttpApiBuilder.toWebHandler(
+  Layer.mergeAll(MyApiLive, SwaggerLayer, NodeHttpServer.layerContext)
+)
+
+// Serving the handler using a custom HTTP server
+http
+  .createServer(async (req, res) => {
+    const url = `http://${req.headers.host}${req.url}`
+    const init: RequestInit = {
+      method: req.method!
+    }
+
+    const response = await handler(new Request(url, init))
+
+    res.writeHead(
+      response.status,
+      response.statusText,
+      Object.fromEntries(response.headers.entries())
+    )
+    const responseBody = await response.arrayBuffer()
+    res.end(Buffer.from(responseBody))
+  })
+  .listen(3000, () => {
+    console.log("Server running at http://localhost:3000/")
+  })
+  .on("close", () => {
+    dispose()
+  })
+```
+
 # HTTP Client
 
 ## Overview
