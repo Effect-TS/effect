@@ -417,6 +417,38 @@ const getUsers = HttpApiEndpoint.get("getUsers", "/users")
   .addSuccess(Schema.Array(User))
 ```
 
+#### Defining an Array of Values for a URL Parameter
+
+When defining a URL parameter that accepts multiple values, you can use the `Schema.Array` combinator. This allows the parameter to handle an array of items, with each item adhering to a specified schema.
+
+**Example** (Defining an Array of String Values for a URL Parameter)
+
+```ts
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
+import { Schema } from "effect"
+
+const api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.get("get", "/")
+      .setUrlParams(
+        Schema.Struct({
+          // Define "a" as an array of strings
+          a: Schema.Array(Schema.String)
+        })
+      )
+      .addSuccess(Schema.String)
+  )
+)
+```
+
+You can test this endpoint by passing an array of values in the query string. For example:
+
+```sh
+curl "http://localhost:3000/?a=1&a=2"
+```
+
+The query string sends two values (`1` and `2`) for the `a` parameter. The server will process and validate these values according to the schema.
+
 ### Status Codes
 
 By default, the success status code is `200 OK`. You can change it by annotating the schema with a custom status.
