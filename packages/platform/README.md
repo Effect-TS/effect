@@ -1027,6 +1027,68 @@ const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 ```
 
+### Streaming Requests
+
+Streaming requests allow you to send large or continuous data streams to the server. In this example, we define an API that accepts a stream of binary data and decodes it into a string.
+
+**Example** (Handling Streaming Requests)
+
+```ts
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiSchema,
+  HttpMiddleware,
+  HttpServer
+} from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Schema } from "effect"
+import { createServer } from "node:http"
+
+const api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.post("acceptStream")`/stream`
+      // Define the payload as a Uint8Array with a specific encoding
+      .setPayload(
+        Schema.Uint8ArrayFromSelf.pipe(
+          HttpApiSchema.withEncoding({
+            kind: "Uint8Array",
+            contentType: "application/octet-stream"
+          })
+        )
+      )
+      .addSuccess(Schema.String)
+  )
+)
+
+const groupLive = HttpApiBuilder.group(api, "group", (handlers) =>
+  handlers.handle("acceptStream", (req) =>
+    // Decode the incoming binary data into a string
+    Effect.succeed(new TextDecoder().decode(req.payload))
+  )
+)
+
+const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(groupLive))
+
+const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
+  Layer.provide(HttpApiBuilder.middlewareCors()),
+  Layer.provide(MyApiLive),
+  HttpServer.withLogAddress,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
+```
+
+You can test the streaming request using `curl` or any tool that supports sending binary data. For example:
+
+```sh
+echo "abc" | curl -X POST 'http://localhost:3000/stream' --data-binary @- -H "Content-Type: application/octet-stream"
+# Output: abc
+```
+
 ### Streaming Responses
 
 To handle streaming responses in your API, you can use `handleRaw`. The `HttpServerResponse.stream` function is designed to return a continuous stream of data as the response.
@@ -1040,7 +1102,6 @@ import {
   HttpApiEndpoint,
   HttpApiGroup,
   HttpApiSchema,
-  HttpApiSwagger,
   HttpMiddleware,
   HttpServer,
   HttpServerResponse
@@ -1076,7 +1137,6 @@ const groupLive = HttpApiBuilder.group(api, "group", (handlers) =>
 const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(groupLive))
 
 const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
-  Layer.provide(HttpApiSwagger.layer()),
   Layer.provide(HttpApiBuilder.middlewareCors()),
   Layer.provide(MyApiLive),
   HttpServer.withLogAddress,
