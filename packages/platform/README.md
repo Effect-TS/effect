@@ -1102,7 +1102,7 @@ import { createServer } from "node:http"
 
 const api = HttpApi.make("myApi").add(
   HttpApiGroup.make("group").add(
-    HttpApiEndpoint.post("acceptStream")`/stream`
+    HttpApiEndpoint.post("acceptStream", "/stream")
       // Define the payload as a Uint8Array with a specific encoding
       .setPayload(
         Schema.Uint8ArrayFromSelf.pipe(
@@ -1166,7 +1166,7 @@ import { createServer } from "node:http"
 // Define the API with a single streaming endpoint
 const api = HttpApi.make("myApi").add(
   HttpApiGroup.make("group").add(
-    HttpApiEndpoint.get("getStream")`/stream`.addSuccess(
+    HttpApiEndpoint.get("getStream", "/stream").addSuccess(
       Schema.String.pipe(
         HttpApiSchema.withEncoding({
           kind: "Text",
