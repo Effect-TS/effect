@@ -2220,9 +2220,9 @@ import {
   HttpApiBuilder,
   HttpApiEndpoint,
   HttpApiGroup,
-  HttpApiSwagger
+  HttpApiSwagger,
+  HttpServer
 } from "@effect/platform"
-import { NodeHttpServer } from "@effect/platform-node"
 import { Effect, Layer, Schema } from "effect"
 import * as http from "node:http"
 
@@ -2242,7 +2242,7 @@ const SwaggerLayer = HttpApiSwagger.layer().pipe(Layer.provide(MyApiLive))
 
 // Convert the API to a web handler
 const { dispose, handler } = HttpApiBuilder.toWebHandler(
-  Layer.mergeAll(MyApiLive, SwaggerLayer, NodeHttpServer.layerContext)
+  Layer.mergeAll(MyApiLive, SwaggerLayer, HttpServer.layerContext)
 )
 
 // Serving the handler using a custom HTTP server
