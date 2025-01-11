@@ -1809,6 +1809,71 @@ Output:
 */
 ```
 
+### Top Level Groups
+
+When a group is marked as `topLevel`, the operation IDs of its endpoints do not include the group name as a prefix. This is helpful when you want to group endpoints under a shared tag without adding a redundant prefix to their operation IDs.
+
+**Example** (Using a Top-Level Group)
+
+```ts
+import {
+  HttpApi,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  OpenApi
+} from "@effect/platform"
+import { Schema } from "effect"
+
+const api = HttpApi.make("api").add(
+  // Mark the group as top-level
+  HttpApiGroup.make("group", { topLevel: true }).add(
+    HttpApiEndpoint.get("get", "/").addSuccess(Schema.String)
+  )
+)
+
+// Generate the OpenAPI spec
+const spec = OpenApi.fromApi(api)
+
+console.log(JSON.stringify(spec.paths, null, 2))
+/*
+Output:
+{
+  "/": {
+    "get": {
+      "tags": [
+        "group"
+      ],
+      "operationId": "get", // The operation ID is not prefixed with "group"
+      "parameters": [],
+      "security": [],
+      "responses": {
+        "200": {
+          "description": "a string",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "The request did not match the expected schema",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HttpApiDecodeError"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+*/
+```
+
 ## Deriving a Client
 
 After defining your API, you can derive a client that interacts with the server. The `HttpApiClient` module simplifies the process by providing tools to generate a client based on your API definition.
@@ -1876,7 +1941,7 @@ const program = Effect.gen(function* () {
   const client = yield* HttpApiClient.make(api, {
     baseUrl: "http://localhost:3000"
   })
-  // Call the `findById` endpoint
+  // Call the `getUser` endpoint
   const user = yield* client.users.getUser({ path: { id: 1 } })
   console.log(user)
 })
@@ -1891,6 +1956,38 @@ User {
   createdAt: DateTime.Utc(2025-01-04T15:14:49.562Z)
 }
 */
+```
+
+### Top Level Groups
+
+When a group is marked as `topLevel`, the methods on the client are not nested under the group name. This can simplify client usage by providing direct access to the endpoint methods.
+
+**Example** (Using a Top-Level Group in the Client)
+
+```ts
+import {
+  HttpApi,
+  HttpApiClient,
+  HttpApiEndpoint,
+  HttpApiGroup
+} from "@effect/platform"
+import { Effect, Schema } from "effect"
+
+const api = HttpApi.make("api").add(
+  // Mark the group as top-level
+  HttpApiGroup.make("group", { topLevel: true }).add(
+    HttpApiEndpoint.get("get", "/").addSuccess(Schema.String)
+  )
+)
+
+const program = Effect.gen(function* () {
+  const client = yield* HttpApiClient.make(api, {
+    baseUrl: "http://localhost:3000"
+  })
+  // The `get` method is not nested under the "group" name
+  const user = yield* client.get()
+  console.log(user)
+})
 ```
 
 # HTTP Client
