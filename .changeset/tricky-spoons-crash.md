@@ -2,4 +2,4 @@
 "@effect/vitest": patch
 ---
 
-add missing fast-check dep
+Import `fast-check` from `effect` re-export
