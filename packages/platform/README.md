@@ -1027,6 +1027,59 @@ const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 ```
 
+### Accessing the HttpServerRequest
+
+In some cases, you may need to access details about the incoming `HttpServerRequest` within an endpoint handler. The HttpServerRequest module provides access to the request object, allowing you to inspect properties such as the HTTP method or headers.
+
+**Example** (Accessing the Request Object in a GET Endpoint)
+
+```ts
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpMiddleware,
+  HttpServer,
+  HttpServerRequest
+} from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Schema } from "effect"
+import { createServer } from "node:http"
+
+const api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.get("get", "/").addSuccess(Schema.String)
+  )
+)
+
+const groupLive = HttpApiBuilder.group(api, "group", (handlers) =>
+  handlers.handle("get", () =>
+    Effect.gen(function* (_) {
+      // Access the incoming request
+      const req = yield* HttpServerRequest.HttpServerRequest
+
+      // Log the HTTP method for demonstration purposes
+      console.log(req.method)
+
+      // Return a response
+      return "Hello, World!"
+    })
+  )
+)
+
+const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(groupLive))
+
+const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
+  Layer.provide(HttpApiBuilder.middlewareCors()),
+  Layer.provide(MyApiLive),
+  HttpServer.withLogAddress,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
+```
+
 ### Streaming Requests
 
 Streaming requests allow you to send large or continuous data streams to the server. In this example, we define an API that accepts a stream of binary data and decodes it into a string.
@@ -2141,11 +2194,11 @@ const api = HttpApi.make("myApi").add(
   )
 )
 
-const usersGroupLive = HttpApiBuilder.group(api, "group", (handlers) =>
+const groupLive = HttpApiBuilder.group(api, "group", (handlers) =>
   handlers.handle("get", () => Effect.succeed("Hello, world!"))
 )
 
-const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(usersGroupLive))
+const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(groupLive))
 
 const SwaggerLayer = HttpApiSwagger.layer().pipe(Layer.provide(MyApiLive))
 
