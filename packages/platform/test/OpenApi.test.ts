@@ -723,6 +723,37 @@ describe("OpenApi", () => {
         )
         expectPaths(api, ["/prefix1", "/prefix2/a"])
       })
+
+      it("wildcard: *", () => {
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.get("get", "*")
+              .addSuccess(Schema.String)
+          )
+        )
+        // TODO: better handle wildcard paths
+        expectSpecPaths(api, {
+          "*": {
+            "get": {
+              "tags": ["group"],
+              "operationId": "group.get",
+              "parameters": [],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "string" }
+                    }
+                  }
+                },
+                "400": HttpApiDecodeError
+              }
+            }
+          }
+        })
+      })
     })
 
     describe("HttpApiEndpoint.get", () => {

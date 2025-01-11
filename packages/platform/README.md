@@ -26,19 +26,23 @@ HttpApi
     └── HttpEndpoint
 ```
 
-Once defined, the same API definition can be used to:
+Once your API is defined, the same definition can be reused for multiple purposes:
 
-- Spin up a server
-- Provide a Swagger documentation page
-- Derive a fully-typed client
+- **Starting a Server**: Use the API definition to implement and serve endpoints.
+- **Generating Documentation**: Create a Swagger page to document the API.
+- **Deriving a Client**: Generate a fully-typed client for your API.
 
-This separation helps avoid duplication, keeps everything up to date, and simplifies maintenance when your API evolves. It also makes it straightforward to add new functionality or reconfigure existing endpoints without changing the entire stack.
+Benefits of a Single API Definition:
+
+- **Consistency**: A single definition ensures the server, documentation, and client remain aligned.
+- **Reduced Maintenance**: Changes to the API are reflected across all related components.
+- **Simplified Workflow**: Avoids duplication by consolidating API details in one place.
 
 ## Hello World
 
 ### Defining and Implementing an API
 
-Here is a simple example of defining an API with a single endpoint that returns a string:
+This example demonstrates how to define and implement a simple API with a single endpoint that returns a string response. The structure of the API is as follows:
 
 ```
 HttpApi ("MyApi)
@@ -46,7 +50,7 @@ HttpApi ("MyApi)
     └── HttpEndpoint ("hello-world")
 ```
 
-**Example** (Hello World)
+**Example** (Hello World Definition)
 
 ```ts
 import {
@@ -80,15 +84,21 @@ const ServerLive = HttpApiBuilder.serve().pipe(
   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
 )
 
-// Run the server
+// Launch the server
 Layer.launch(ServerLive).pipe(NodeRuntime.runMain)
 ```
 
-Navigate to `http://localhost:3000` in your browser to see the response "Hello, World!".
+After running the code, open a browser and navigate to http://localhost:3000. The server will respond with:
+
+```
+Hello, World!
+```
 
 ### Serving The Auto Generated Swagger Documentation
 
-You can add Swagger documentation to your API by including the `HttpApiSwagger` module. Provide the `HttpApiSwagger.layer` in your server setup, as shown here:
+You can enhance your API by adding auto-generated Swagger documentation using the `HttpApiSwagger` module. This makes it easier for developers to explore and interact with your API.
+
+To include Swagger in your server setup, provide the `HttpApiSwagger.layer` when configuring the server.
 
 **Example** (Serving Swagger Documentation)
 
@@ -126,15 +136,17 @@ const ServerLive = HttpApiBuilder.serve().pipe(
 Layer.launch(ServerLive).pipe(NodeRuntime.runMain)
 ```
 
-Navigate to `http://localhost:3000/docs` in your browser to see the Swagger documentation:
+After running the server, open your browser and navigate to http://localhost:3000/docs.
+
+This URL will display the Swagger documentation, allowing you to explore the API's endpoints, request parameters, and response structures interactively.
 
 ![Swagger Documentation](./images/swagger-hello-world.png)
 
 ### Deriving a Client
 
-After you define your API, you can generate a client to interact with the server. The `HttpApiClient` module provides the needed tools:
+Once you have defined your API, you can generate a client to interact with it using the `HttpApiClient` module. This allows you to call your API endpoints without manually handling HTTP requests.
 
-**Example** (Deriving a Client)
+**Example** (Deriving and Using a Client)
 
 ```ts
 import {
@@ -188,36 +200,224 @@ Effect.runFork(program.pipe(Effect.provide(FetchHttpClient.layer)))
 
 ## Defining a HttpApiEndpoint
 
-An `HttpApiEndpoint` represents a single endpoint in your API, including a name, path, method, and optional request and response schemas. Below is an example of a simple CRUD API for user management, illustrating various approaches for defining endpoints:
+An `HttpApiEndpoint` represents a single endpoint in your API. Each endpoint is defined with a name, path, HTTP method, and optional schemas for requests and responses. This allows you to describe the structure and behavior of your API.
 
-- `GET /users` - Get all users
-- `GET /users/:userId` - Find a user by id
-- `POST /users` - Create a new user
-- `DELETE /users/:userId` - Delete a user by id
-- `PATCH /users/:userId` - Update a user by id
+Below is an example of a simple CRUD API for managing users, which includes the following endpoints:
 
-### GET Endpoint
+- `GET /users` - Retrieve all users.
+- `GET /users/:userId` - Retrieve a specific user by ID.
+- `POST /users` - Create a new user.
+- `DELETE /users/:userId` - Delete a user by ID.
+- `PATCH /users/:userId` - Update a user by ID.
 
-When you need to define a GET endpoint, you can use the `HttpApiEndpoint.get` method. You can name the endpoint, set its path, and optionally specify a response schema. If no schema is provided, the default response status is `204 No Content`.
+### GET
 
-**Example** (Defining a GET Endpoint without Parameters)
+The `HttpApiEndpoint.get` method allows you to define a GET endpoint by specifying its name, path, and optionally, a schema for the response.
+
+To define the structure of successful responses, use the `.addSuccess` method. If no schema is provided, the default response status is `204 No Content`.
+
+**Example** (Defining a GET Endpoint to Retrieve All Users)
 
 ```ts
 import { HttpApiEndpoint } from "@effect/platform"
 import { Schema } from "effect"
 
-// Domain schema: represents a User
+// Define a schema representing a User entity
 const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.DateTimeUtc
 })
 
-// An endpoint that returns an array of users
-const getUsers = HttpApiEndpoint.get("getUsers", "/users")
-  // If no response schema is added, the default is 204 No Content
+// Define the "getUsers" endpoint, returning a list of users
+const getUsers = HttpApiEndpoint
+  //      ┌─── Endpoint name
+  //      │            ┌─── Endpoint path
+  //      ▼            ▼
+  .get("getUsers", "/users")
+  // Define the success schema for the response (optional).
+  // If no response schema is specified, the default response is `204 No Content`.
   .addSuccess(Schema.Array(User))
 ```
+
+### Path Parameters
+
+Path parameters allow you to include dynamic segments in your endpoint's path. There are two ways to define path parameters in your API.
+
+#### Using setPath
+
+The `setPath` method allows you to explicitly define path parameters by associating them with a schema.
+
+**Example** (Defining Parameters with setPath)
+
+```ts
+import { HttpApiEndpoint } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+// Define a GET endpoint with a path parameter ":id"
+const getUser = HttpApiEndpoint.get("getUser", "/user/:id")
+  .setPath(
+    Schema.Struct({
+      // Define a schema for the "id" path parameter
+      id: Schema.NumberFromString
+    })
+  )
+  .addSuccess(User)
+```
+
+#### Using Template Strings
+
+You can also define path parameters by embedding them in a template string with the help of `HttpApiSchema.param`.
+
+**Example** (Defining Parameters using a Template String)
+
+```ts
+import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+// Create a path parameter using HttpApiSchema.param
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
+// Define the GET endpoint using a template string
+const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(
+  User
+)
+```
+
+### POST
+
+The `HttpApiEndpoint.post` method is used to define an endpoint for creating resources. You can specify a schema for the request body (payload) and a schema for the successful response.
+
+**Example** (Defining a POST Endpoint with Payload and Success Schemas)
+
+```ts
+import { HttpApiEndpoint } from "@effect/platform"
+import { Schema } from "effect"
+
+// Define a schema for the user object
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+// Define a POST endpoint for creating a new user
+const createUser = HttpApiEndpoint.post("createUser", "/users")
+  // Define the request body schema (payload)
+  .setPayload(
+    Schema.Struct({
+      name: Schema.String
+    })
+  )
+  // Define the schema for a successful response
+  .addSuccess(User)
+```
+
+### DELETE
+
+The `HttpApiEndpoint.del` method is used to define an endpoint for deleting a resource.
+
+**Example** (Defining a DELETE Endpoint with Path Parameters)
+
+```ts
+import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+// Define a path parameter for the user ID
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
+// Define a DELETE endpoint to delete a user by ID
+const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
+```
+
+### PATCH
+
+The `HttpApiEndpoint.patch` method is used to define an endpoint for partially updating a resource. This method allows you to specify a schema for the request payload and a schema for the successful response.
+
+**Example** (Defining a PATCH Endpoint for Updating a User)
+
+```ts
+import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+// Define a schema for the user object
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+// Define a path parameter for the user ID
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
+// Define a PATCH endpoint to update a user's name by ID
+const updateUser = HttpApiEndpoint.patch("updateUser")`/users/${idParam}`
+  // Specify the schema for the request payload
+  .setPayload(
+    Schema.Struct({
+      name: Schema.String // Only the name can be updated
+    })
+  )
+  // Specify the schema for a successful response
+  .addSuccess(User)
+```
+
+### Catch-All Endpoints
+
+The path can also be `"*"` to match any incoming path. This is useful for defining a catch-all endpoint to handle unmatched routes or provide a fallback response.
+
+**Example** (Defining a Catch-All Endpoint)
+
+```ts
+import { HttpApiEndpoint } from "@effect/platform"
+
+const catchAll = HttpApiEndpoint.get("catchAll", "*")
+```
+
+### Setting URL Parameters
+
+The `setUrlParams` method allows you to define the structure of URL parameters for an endpoint. You can specify the schema for each parameter and include metadata such as descriptions to provide additional context.
+
+**Example** (Defining URL Parameters with Metadata)
+
+```ts
+import { HttpApiEndpoint } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const getUsers = HttpApiEndpoint.get("getUsers", "/users")
+  // Specify the URL parameters schema
+  .setUrlParams(
+    Schema.Struct({
+      // Parameter "page" for pagination
+      page: Schema.NumberFromString,
+      // Parameter "sort" for sorting options with an added description
+      sort: Schema.String.annotations({
+        description: "Sorting criteria (e.g., 'name', 'date')"
+      })
+    })
+  )
+  .addSuccess(Schema.Array(User))
+```
+
+### Status Codes
 
 By default, the success status code is `200 OK`. You can change it by annotating the schema with a custom status.
 
@@ -238,9 +438,58 @@ const getUsers = HttpApiEndpoint.get("getUsers", "/users")
   .addSuccess(Schema.Array(User), { status: 206 })
 ```
 
-By default, the endpoint's description is empty. You can annotate the endpoint to set a custom description.
+### Handling Multipart Requests
 
-**Example** (Defining a GET Endpoint with a custom description)
+To support file uploads, you can use the `HttpApiSchema.Multipart` API. This allows you to define an endpoint's payload schema as a multipart request, specifying the structure of the data, including file uploads, with the `Multipart` module.
+
+**Example** (Defining an Endpoint for File Uploads)
+
+In this example, the `HttpApiSchema.Multipart` function marks the payload as a multipart request. The `files` field uses `Multipart.FilesSchema` to handle uploaded file data automatically.
+
+```ts
+import { HttpApiEndpoint, HttpApiSchema, Multipart } from "@effect/platform"
+import { Schema } from "effect"
+
+const upload = HttpApiEndpoint.post("upload")`/users/upload`.setPayload(
+  // Specify that the payload is a multipart request
+  HttpApiSchema.Multipart(
+    Schema.Struct({
+      // Define a "files" field to handle file uploads
+      files: Multipart.FilesSchema
+    })
+  )
+)
+```
+
+### Changing the Response Encoding
+
+By default, API responses are encoded as JSON. If your application requires a different format, you can customize the encoding using the `HttpApiSchema.withEncoding` API. This method lets you define the type and content type of the response.
+
+**Example** (Returning Data as `text/csv`)
+
+```ts
+import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+const csv = HttpApiEndpoint.get("csv")`/users/csv`
+  // Set the success response as a string with CSV encoding
+  .addSuccess(
+    Schema.String.pipe(
+      HttpApiSchema.withEncoding({
+        // Specify the type of the response
+        kind: "Text",
+        // Define the content type as text/csv
+        contentType: "text/csv"
+      })
+    )
+  )
+```
+
+### Setting Request Headers
+
+The `HttpApiEndpoint.setHeaders` method allows you to define the expected structure of request headers. You can specify the schema for each header and include additional metadata, such as descriptions.
+
+**Example** (Defining Request Headers with Metadata)
 
 ```ts
 import { HttpApiEndpoint } from "@effect/platform"
@@ -253,137 +502,18 @@ const User = Schema.Struct({
 })
 
 const getUsers = HttpApiEndpoint.get("getUsers", "/users")
+  // Specify the headers schema
+  .setHeaders(
+    Schema.Struct({
+      // Header must be a string
+      "X-API-Key": Schema.String,
+      // Header must be a string with an added description
+      "X-Request-ID": Schema.String.annotations({
+        description: "Unique identifier for the request"
+      })
+    })
+  )
   .addSuccess(Schema.Array(User))
-  .annotate(OpenApi.Description, "Returns an array of users")
-```
-
-The default response description is "Success." You can override this by annotating the schema.
-
-**Example** (Defining a custom response description)
-
-```ts
-const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
-  Schema.Array(User).annotations({ description: "Returns an array of users" })
-)
-```
-
-Parameters can be included in your endpoint's path. For example, you can define `:id` in the path with `setPath`.
-
-**Example** (Defining a GET Endpoint with parameters with setPath)
-
-```ts
-import { HttpApiEndpoint } from "@effect/platform"
-import { Schema } from "effect"
-
-const User = Schema.Struct({
-  id: Schema.Number,
-  name: Schema.String,
-  createdAt: Schema.DateTimeUtc
-})
-
-const getUsers = HttpApiEndpoint.get("getUsers", "/users").addSuccess(
-  Schema.Array(User)
-)
-
-// Use :id to define a path parameter
-const getUser = HttpApiEndpoint.get("getUser", "/user/:id")
-  .setPath(
-    Schema.Struct({
-      // Define a schema for each path parameter
-      id: Schema.NumberFromString
-    })
-  )
-  .addSuccess(User)
-```
-
-You can alternatively use template strings and define path parameters with `HttpApiSchema.param`.
-
-**Example** (Defining a GET Endpoint with parameters using a template string)
-
-```ts
-import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
-import { Schema } from "effect"
-
-const User = Schema.Struct({
-  id: Schema.Number,
-  name: Schema.String,
-  createdAt: Schema.DateTimeUtc
-})
-
-const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
-
-const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(
-  User
-)
-```
-
-### POST Endpoint
-
-Use `HttpApiEndpoint.post` for creating a resource. You can set a payload schema for the request body and add a success schema for the response.
-
-```ts
-import { HttpApiEndpoint } from "@effect/platform"
-import { Schema } from "effect"
-
-const User = Schema.Struct({
-  id: Schema.Number,
-  name: Schema.String,
-  createdAt: Schema.DateTimeUtc
-})
-
-const createUser = HttpApiEndpoint.post("createUser", "/users")
-  // Define a payload schema for the request body
-  .setPayload(
-    Schema.Struct({
-      name: Schema.String
-    })
-  )
-  // Define the success schema for the response
-  .addSuccess(User)
-```
-
-### DELETE Endpoint
-
-Use `HttpApiEndpoint.del` for deleting a resource.
-
-**Example** (Defining a DELETE Endpoint)
-
-```ts
-import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
-import { Schema } from "effect"
-
-const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
-
-const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
-```
-
-### PATCH Endpoint
-
-Use `HttpApiEndpoint.patch` for partially updating a resource.
-
-**Example** (Defining a PATCH Endpoint)
-
-```ts
-import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
-import { Schema } from "effect"
-
-const User = Schema.Struct({
-  id: Schema.Number,
-  name: Schema.String,
-  createdAt: Schema.DateTimeUtc
-})
-
-const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
-
-const updateUser = HttpApiEndpoint.patch("updateUser")`/users/${idParam}`
-  // Set the partial payload schema
-  .setPayload(
-    Schema.Struct({
-      name: Schema.String
-    })
-  )
-  // Define the success schema for the response
-  .addSuccess(User)
 ```
 
 ## Defining a HttpApiGroup
@@ -481,6 +611,14 @@ const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(
   User
 )
 
+const createUser = HttpApiEndpoint.post("createUser", "/users")
+  .setPayload(
+    Schema.Struct({
+      name: Schema.String
+    })
+  )
+  .addSuccess(User)
+
 const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
 
 const updateUser = HttpApiEndpoint.patch("updateUser")`/users/${idParam}`
@@ -569,61 +707,31 @@ const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
   .addError(Unauthorized, { status: 401 })
 ```
 
-## Handling Multipart Requests
+## Prefixing
 
-To support file uploads, you can use the `HttpApiSchema.Multipart` API. This allows you to define an endpoint's payload schema as a multipart request, specifying the structure of the data, including file uploads, with the `Multipart` module.
+Prefixes can be added to endpoints, groups, or an entire API to simplify the management of common paths. This is especially useful when defining multiple related endpoints that share a common base URL.
 
-**Example** (Defining an Endpoint for File Uploads)
-
-In this example, the `HttpApiSchema.Multipart` function marks the payload as a multipart request. The `files` field uses `Multipart.FilesSchema` to handle uploaded file data automatically.
+**Example** (Using Prefixes for Common Path Management)
 
 ```ts
-import {
-  HttpApiEndpoint,
-  HttpApiGroup,
-  HttpApiSchema,
-  Multipart
-} from "@effect/platform"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
 import { Schema } from "effect"
 
-const usersGroup = HttpApiGroup.make("users").add(
-  // Define the POST /users/upload endpoint
-  HttpApiEndpoint.post("upload")`/users/upload`.setPayload(
-    // Specify that the payload is a multipart request
-    HttpApiSchema.Multipart(
-      Schema.Struct({
-        // Define a "files" field to handle file uploads
-        files: Multipart.FilesSchema
-      })
-    )
-  )
-)
-```
-
-## Changing the response encoding
-
-By default, API responses are encoded as JSON. If your application requires a different format, you can customize the encoding using the `HttpApiSchema.withEncoding` API. This method lets you define the type and content type of the response.
-
-**Example** (Returning Data as `text/csv`)
-
-```ts
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
-import { Schema } from "effect"
-
-const usersGroup = HttpApiGroup.make("users").add(
-  HttpApiEndpoint.get("csv")`/users/csv`
-    // Set the success response as a string with CSV encoding
-    .addSuccess(
-      Schema.String.pipe(
-        HttpApiSchema.withEncoding({
-          // Specify the type of the response
-          kind: "Text",
-          // Define the content type as text/csv
-          contentType: "text/csv"
-        })
+const api = HttpApi.make("api")
+  .add(
+    HttpApiGroup.make("group")
+      .add(
+        HttpApiEndpoint.get("getRoot", "/")
+          .addSuccess(Schema.String)
+          // Prefix for this endpoint
+          .prefix("/endpointPrefix")
       )
-    )
-)
+      .add(HttpApiEndpoint.get("getA", "/a").addSuccess(Schema.String))
+      // Prefix for all endpoints in the group
+      .prefix("/groupPrefix")
+  )
+  // Prefix for the entire API
+  .prefix("/apiPrefix")
 ```
 
 ## Implementing a Server
@@ -1601,6 +1709,81 @@ Output:
     }
   },
   ...
+}
+*/
+```
+
+The default response description is "Success". You can override this by annotating the schema.
+
+**Example** (Defining a custom response description)
+
+```ts
+import {
+  HttpApi,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  OpenApi
+} from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+}).annotations({ identifier: "User" })
+
+const api = HttpApi.make("api").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.get("getUsers", "/users").addSuccess(
+      Schema.Array(User).annotations({
+        description: "Returns an array of users"
+      })
+    )
+  )
+)
+
+const spec = OpenApi.fromApi(api)
+
+console.log(JSON.stringify(spec.paths, null, 2))
+/*
+Output:
+{
+  "/users": {
+    "get": {
+      "tags": [
+        "group"
+      ],
+      "operationId": "group.getUsers",
+      "parameters": [],
+      "security": [],
+      "responses": {
+        "200": {
+          "description": "Returns an array of users",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/User"
+                },
+                "description": "Returns an array of users"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "The request did not match the expected schema",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HttpApiDecodeError"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 */
 ```
