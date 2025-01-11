@@ -461,6 +461,27 @@ const upload = HttpApiEndpoint.post("upload")`/users/upload`.setPayload(
 )
 ```
 
+### Changing the Request Encoding
+
+By default, API requests are encoded as JSON. If your application requires a different format, you can customize the request encoding using the `HttpApiSchema.withEncoding` method. This allows you to define the encoding type and content type of the request.
+
+**Example** (Customizing Request Encoding)
+
+```ts
+import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+const createUser = HttpApiEndpoint.post("createUser", "/users")
+  // Set the request payload as a string encoded with URL parameters
+  .setPayload(
+    Schema.Struct({
+      a: Schema.String // Parameter "a" must be a string
+    })
+      // Specify the encoding as URL parameters
+      .pipe(HttpApiSchema.withEncoding({ kind: "UrlParams" }))
+  )
+```
+
 ### Changing the Response Encoding
 
 By default, API responses are encoded as JSON. If your application requires a different format, you can customize the encoding using the `HttpApiSchema.withEncoding` API. This method lets you define the type and content type of the response.
