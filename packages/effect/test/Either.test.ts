@@ -22,7 +22,7 @@ describe("Either", () => {
       const y = yield* Either.right(2)
       return x + y
     })
-    // eslint-disable-next-line require-yield
+
     const b = Either.gen(function*() {
       return 10
     })
