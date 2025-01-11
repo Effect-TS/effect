@@ -766,6 +766,45 @@ const deleteUser = HttpApiEndpoint.del("deleteUser")`/users/${idParam}`
   .addError(Unauthorized, { status: 401 })
 ```
 
+### Predefined Empty Error Types
+
+The `HttpApiError` module provides a set of predefined empty error types that you can use in your endpoints. These error types help standardize common HTTP error responses, such as `404 Not Found` or `401 Unauthorized`. Using these predefined types simplifies error handling and ensures consistency across your API.
+
+**Example** (Adding a Predefined Error to an Endpoint)
+
+```ts
+import { HttpApiEndpoint, HttpApiError, HttpApiSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+const User = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.DateTimeUtc
+})
+
+const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+
+const getUser = HttpApiEndpoint.get("getUser")`/user/${idParam}`
+  .addSuccess(User)
+  .addError(HttpApiError.NotFound)
+```
+
+| Name                  | Status | Description                                                                                        |
+| --------------------- | ------ | -------------------------------------------------------------------------------------------------- |
+| `HttpApiDecodeError`  | 400    | Represents an error where the request did not match the expected schema. Includes detailed issues. |
+| `BadRequest`          | 400    | Indicates that the request was malformed or invalid.                                               |
+| `Unauthorized`        | 401    | Indicates that authentication is required but missing or invalid.                                  |
+| `Forbidden`           | 403    | Indicates that the client does not have permission to access the requested resource.               |
+| `NotFound`            | 404    | Indicates that the requested resource could not be found.                                          |
+| `MethodNotAllowed`    | 405    | Indicates that the HTTP method used is not allowed for the requested resource.                     |
+| `NotAcceptable`       | 406    | Indicates that the requested resource cannot be delivered in a format acceptable to the client.    |
+| `RequestTimeout`      | 408    | Indicates that the server timed out waiting for the client request.                                |
+| `Conflict`            | 409    | Indicates a conflict in the request, such as conflicting data.                                     |
+| `Gone`                | 410    | Indicates that the requested resource is no longer available and will not return.                  |
+| `InternalServerError` | 500    | Indicates an unexpected server error occurred.                                                     |
+| `NotImplemented`      | 501    | Indicates that the requested functionality is not implemented on the server.                       |
+| `ServiceUnavailable`  | 503    | Indicates that the server is temporarily unavailable, often due to maintenance or overload.        |
+
 ## Prefixing
 
 Prefixes can be added to endpoints, groups, or an entire API to simplify the management of common paths. This is especially useful when defining multiple related endpoints that share a common base URL.
