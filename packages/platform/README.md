@@ -1027,6 +1027,73 @@ const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
 ```
 
+### Streaming Responses
+
+To handle streaming responses in your API, you can use `handleRaw`. The `HttpServerResponse.stream` function is designed to return a continuous stream of data as the response.
+
+**Example** (Implementing a Streaming Endpoint)
+
+```ts
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiGroup,
+  HttpApiSchema,
+  HttpApiSwagger,
+  HttpMiddleware,
+  HttpServer,
+  HttpServerResponse
+} from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Layer, Schedule, Schema, Stream } from "effect"
+import { createServer } from "node:http"
+
+// Define the API with a single streaming endpoint
+const api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.get("getStream")`/stream`.addSuccess(
+      Schema.String.pipe(
+        HttpApiSchema.withEncoding({
+          kind: "Text",
+          contentType: "application/octet-stream"
+        })
+      )
+    )
+  )
+)
+
+// Simulate a stream of data
+const stream = Stream.make("a", "b", "c").pipe(
+  Stream.schedule(Schedule.spaced("500 millis")),
+  Stream.map((s) => new TextEncoder().encode(s))
+)
+
+const groupLive = HttpApiBuilder.group(api, "group", (handlers) =>
+  handlers.handleRaw("getStream", () => HttpServerResponse.stream(stream))
+)
+
+const MyApiLive = HttpApiBuilder.api(api).pipe(Layer.provide(groupLive))
+
+const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
+  Layer.provide(HttpApiSwagger.layer()),
+  Layer.provide(HttpApiBuilder.middlewareCors()),
+  Layer.provide(MyApiLive),
+  HttpServer.withLogAddress,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(HttpLive).pipe(NodeRuntime.runMain)
+```
+
+You can test the streaming response using `curl` or any similar HTTP client that supports streaming:
+
+```sh
+curl 'http://localhost:3000/stream' --no-buffer
+```
+
+The response will stream data (`a`, `b`, `c`) with a 500ms interval between each item.
+
 ## Middlewares
 
 ### Defining Middleware
