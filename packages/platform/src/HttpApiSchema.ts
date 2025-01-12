@@ -181,20 +181,45 @@ export const getStatusErrorAST = (ast: AST.AST): number => getStatus(ast, 500)
 export const getStatusError = <A extends Schema.Schema.All>(self: A): number => getStatusErrorAST(self.ast)
 
 /**
+ * Extracts all individual types from a union type recursively.
+ *
+ * **Details**
+ *
+ * This function traverses an AST and collects all the types within a union,
+ * even if they are nested. It ensures that every type in a union (including
+ * deeply nested unions) is included in the resulting array. The returned array
+ * contains each type as an individual AST node, preserving the order in which
+ * they appear.
+ *
+ * @internal
+ */
+export const extractUnionTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => {
+  function process(ast: AST.AST): void {
+    if (AST.isUnion(ast)) {
+      for (const type of ast.types) {
+        process(type)
+      }
+    } else {
+      out.push(ast)
+    }
+  }
+  const out: Array<AST.AST> = []
+  process(ast)
+  return out
+}
+
+/** @internal */
+export const UnionUnifyAST = (self: AST.AST, that: AST.AST): AST.AST =>
+  AST.Union.make(Array.from(new Set<AST.AST>([...extractUnionTypes(self), ...extractUnionTypes(that)])))
+
+/**
  * @since 1.0.0
  */
 export const UnionUnify = <A extends Schema.Schema.All, B extends Schema.Schema.All>(self: A, that: B): Schema.Schema<
   A["Type"] | B["Type"],
   A["Encoded"] | B["Encoded"],
   A["Context"] | B["Context"]
-> => {
-  return Schema.make(AST.Union.make(Array.from(
-    new Set<AST.AST>([
-      ...(self.ast._tag === "Union" ? self.ast.types : [self.ast]),
-      ...(that.ast._tag === "Union" ? that.ast.types : [that.ast])
-    ])
-  )))
-}
+> => Schema.make(UnionUnifyAST(self.ast, that.ast))
 
 type Void$ = typeof Schema.Void
 

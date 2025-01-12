@@ -336,254 +336,6 @@ describe("OpenApi", () => {
             }
           })
         })
-
-        // TODO
-        it("should dedupe the errors", () => {
-          const err = Schema.String.annotations({ identifier: "err" })
-          const api = HttpApi.make("api")
-            .add(
-              HttpApiGroup.make("group1")
-                .add(
-                  HttpApiEndpoint.get("get1", "/1")
-                    .addSuccess(Schema.String)
-                    .addError(err).addError(err)
-                ).add(
-                  HttpApiEndpoint.get("get2", "/2")
-                    .addSuccess(Schema.String)
-                    .addError(err).addError(err)
-                ).addError(err).addError(err)
-            ).addError(err).addError(err)
-            .add(
-              HttpApiGroup.make("group2")
-                .add(
-                  HttpApiEndpoint.get("get3", "/3")
-                    .addSuccess(Schema.String)
-                    .addError(err).addError(err)
-                ).add(
-                  HttpApiEndpoint.get("get4", "/4")
-                    .addSuccess(Schema.String)
-                    .addError(err).addError(err)
-                ).addError(err).addError(err)
-            ).addError(err).addError(err)
-          expectOptions(api, {
-            tags: [{ name: "group1" }, { name: "group2" }],
-            schemas: {
-              "err": {
-                "type": "string"
-              }
-            },
-            paths: {
-              "/1": {
-                "get": {
-                  "tags": [
-                    "group1"
-                  ],
-                  "operationId": "group1.get1",
-                  "parameters": [],
-                  "security": [],
-                  "responses": {
-                    "200": {
-                      "description": "a string",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    },
-                    "400": {
-                      "description": "The request did not match the expected schema",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "$ref": "#/components/schemas/HttpApiDecodeError"
-                          }
-                        }
-                      }
-                    },
-                    "500": {
-                      "description": "a string",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "anyOf": [
-                              {
-                                "$ref": "#/components/schemas/err"
-                              },
-                              {
-                                "$ref": "#/components/schemas/err"
-                              },
-                              {
-                                "$ref": "#/components/schemas/err"
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "/2": {
-                "get": {
-                  "tags": [
-                    "group1"
-                  ],
-                  "operationId": "group1.get2",
-                  "parameters": [],
-                  "security": [],
-                  "responses": {
-                    "200": {
-                      "description": "a string",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    },
-                    "400": {
-                      "description": "The request did not match the expected schema",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "$ref": "#/components/schemas/HttpApiDecodeError"
-                          }
-                        }
-                      }
-                    },
-                    "500": {
-                      "description": "a string",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "anyOf": [
-                              {
-                                "$ref": "#/components/schemas/err"
-                              },
-                              {
-                                "$ref": "#/components/schemas/err"
-                              },
-                              {
-                                "$ref": "#/components/schemas/err"
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "/3": {
-                "get": {
-                  "tags": [
-                    "group2"
-                  ],
-                  "operationId": "group2.get3",
-                  "parameters": [],
-                  "security": [],
-                  "responses": {
-                    "200": {
-                      "description": "a string",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    },
-                    "400": {
-                      "description": "The request did not match the expected schema",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "$ref": "#/components/schemas/HttpApiDecodeError"
-                          }
-                        }
-                      }
-                    },
-                    "500": {
-                      "description": "a string",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "anyOf": [
-                              {
-                                "$ref": "#/components/schemas/err"
-                              },
-                              {
-                                "$ref": "#/components/schemas/err"
-                              },
-                              {
-                                "$ref": "#/components/schemas/err"
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "/4": {
-                "get": {
-                  "tags": [
-                    "group2"
-                  ],
-                  "operationId": "group2.get4",
-                  "parameters": [],
-                  "security": [],
-                  "responses": {
-                    "200": {
-                      "description": "a string",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    },
-                    "400": {
-                      "description": "The request did not match the expected schema",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "$ref": "#/components/schemas/HttpApiDecodeError"
-                          }
-                        }
-                      }
-                    },
-                    "500": {
-                      "description": "a string",
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "anyOf": [
-                              {
-                                "$ref": "#/components/schemas/err"
-                              },
-                              {
-                                "$ref": "#/components/schemas/err"
-                              },
-                              {
-                                "$ref": "#/components/schemas/err"
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          })
-        })
       })
 
       it("annotate", () => {
@@ -1865,17 +1617,7 @@ describe("OpenApi", () => {
                     "content": {
                       "application/json": {
                         "schema": {
-                          "anyOf": [
-                            {
-                              "$ref": "#/components/schemas/Unauthorized"
-                            },
-                            {
-                              "$ref": "#/components/schemas/Unauthorized"
-                            },
-                            {
-                              "$ref": "#/components/schemas/Unauthorized"
-                            }
-                          ]
+                          "$ref": "#/components/schemas/Unauthorized"
                         }
                       }
                     }
@@ -2297,6 +2039,213 @@ describe("OpenApi", () => {
             }
           }
         })
+      })
+    })
+
+    it("should dedupe the errors", () => {
+      const err = Schema.String.annotations({ identifier: "err" })
+      const api = HttpApi.make("api")
+        .add(
+          HttpApiGroup.make("group1")
+            .add(
+              HttpApiEndpoint.get("get1", "/1")
+                .addSuccess(Schema.String)
+                .addError(err).addError(err)
+            ).add(
+              HttpApiEndpoint.get("get2", "/2")
+                .addSuccess(Schema.String)
+                .addError(err).addError(err)
+            ).addError(err).addError(err)
+        ).addError(err).addError(err)
+        .add(
+          HttpApiGroup.make("group2")
+            .add(
+              HttpApiEndpoint.get("get3", "/3")
+                .addSuccess(Schema.String)
+                .addError(err).addError(err)
+            ).add(
+              HttpApiEndpoint.get("get4", "/4")
+                .addSuccess(Schema.String)
+                .addError(err).addError(err)
+            ).addError(err).addError(err)
+        ).addError(err).addError(err)
+      expectOptions(api, {
+        tags: [{ name: "group1" }, { name: "group2" }],
+        schemas: {
+          "err": {
+            "type": "string"
+          }
+        },
+        paths: {
+          "/1": {
+            "get": {
+              "tags": [
+                "group1"
+              ],
+              "operationId": "group1.get1",
+              "parameters": [],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "400": {
+                  "description": "The request did not match the expected schema",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/HttpApiDecodeError"
+                      }
+                    }
+                  }
+                },
+                "500": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/err"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/2": {
+            "get": {
+              "tags": [
+                "group1"
+              ],
+              "operationId": "group1.get2",
+              "parameters": [],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "400": {
+                  "description": "The request did not match the expected schema",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/HttpApiDecodeError"
+                      }
+                    }
+                  }
+                },
+                "500": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/err"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/3": {
+            "get": {
+              "tags": [
+                "group2"
+              ],
+              "operationId": "group2.get3",
+              "parameters": [],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "400": {
+                  "description": "The request did not match the expected schema",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/HttpApiDecodeError"
+                      }
+                    }
+                  }
+                },
+                "500": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/err"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/4": {
+            "get": {
+              "tags": [
+                "group2"
+              ],
+              "operationId": "group2.get4",
+              "parameters": [],
+              "security": [],
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "400": {
+                  "description": "The request did not match the expected schema",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/HttpApiDecodeError"
+                      }
+                    }
+                  }
+                },
+                "500": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/err"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       })
     })
   })

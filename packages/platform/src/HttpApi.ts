@@ -345,7 +345,7 @@ export const reflect = <Id extends string, Groups extends HttpApiGroup.HttpApiGr
 const emptyMap = new Map<never, never>()
 
 const extractMembers = (
-  topAst: AST.AST,
+  ast: AST.AST,
   inherited: ReadonlyMap<number, {
     readonly ast: Option.Option<AST.AST>
     readonly description: Option.Option<string>
@@ -356,43 +356,40 @@ const extractMembers = (
   readonly description: Option.Option<string>
 }> => {
   const members = new Map(inherited)
-  function process(ast: AST.AST) {
-    if (ast._tag === "NeverKeyword") {
+  function process(type: AST.AST) {
+    if (AST.isNeverKeyword(type)) {
       return
     }
-    ast = AST.annotations(ast, {
-      ...HttpApiSchema.extractAnnotations(topAst.annotations),
-      ...ast.annotations
-    })
-    const status = getStatus(ast)
-    const emptyDecodeable = HttpApiSchema.getEmptyDecodeable(ast)
+    const annotations = HttpApiSchema.extractAnnotations(ast.annotations)
+    // Avoid changing the reference unless necessary
+    // Otherwise, deduplication of the ASTs below will not be possible
+    if (!Record.isEmptyRecord(annotations)) {
+      type = AST.annotations(type, {
+        ...annotations,
+        ...type.annotations
+      })
+    }
+    const status = getStatus(type)
+    const emptyDecodeable = HttpApiSchema.getEmptyDecodeable(type)
     const current = members.get(status)
     members.set(
       status,
       {
         description: (current ? current.description : Option.none()).pipe(
-          Option.orElse(() => getDescriptionOrIdentifier(ast))
+          Option.orElse(() => getDescriptionOrIdentifier(type))
         ),
         ast: (current ? current.ast : Option.none()).pipe(
-          Option.map((current) =>
-            AST.Union.make(
-              current._tag === "Union" ? [...current.types, ast] : [current, ast]
-            )
-          ),
+          // Deduplicate the ASTs
+          Option.map((current) => HttpApiSchema.UnionUnifyAST(current, type)),
           Option.orElse(() =>
-            !emptyDecodeable && AST.encodedAST(ast)._tag === "VoidKeyword" ? Option.none() : Option.some(ast)
+            !emptyDecodeable && AST.isVoidKeyword(AST.encodedAST(type)) ? Option.none() : Option.some(type)
           )
         )
       }
     )
   }
-  if (topAst._tag === "Union") {
-    for (const type of topAst.types) {
-      process(type)
-    }
-  } else {
-    process(topAst)
-  }
+
+  HttpApiSchema.extractUnionTypes(ast).forEach(process)
   return members
 }
 
