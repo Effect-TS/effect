@@ -4,6 +4,7 @@
 import * as JSONSchema from "effect/JSONSchema"
 import * as Record from "effect/Record"
 import type * as Schema from "effect/Schema"
+import type * as AST from "effect/SchemaAST"
 
 /**
  * @category model
@@ -270,8 +271,15 @@ export const makeWithDefs = <A, I, R>(schema: Schema.Schema<A, I, R>, options: {
   readonly defs: Record<string, any>
   readonly defsPath?: string
   readonly topLevelReferenceStrategy?: "skip" | "keep"
+}): JsonSchema => fromAST(schema.ast, options)
+
+/** @internal */
+export const fromAST = (ast: AST.AST, options: {
+  readonly defs: Record<string, any>
+  readonly defsPath?: string
+  readonly topLevelReferenceStrategy?: "skip" | "keep"
 }): JsonSchema => {
-  const jsonSchema = JSONSchema.fromAST(schema.ast, {
+  const jsonSchema = JSONSchema.fromAST(ast, {
     definitions: options.defs,
     definitionPath: options.defsPath ?? "#/components/schemas/",
     target: "openApi3.1",
