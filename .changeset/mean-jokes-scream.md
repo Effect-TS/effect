@@ -2,11 +2,11 @@
 "@effect/platform": patch
 ---
 
-Ensure the encoding kind of success responses is respected in the OpenAPI spec.
+Ensure the encoding kind of error responses is respected in the OpenAPI spec.
 
 Before
 
-When generating an OpenAPI spec for a request with a success schema of type `HttpApiSchema.Text()``, the response content type was incorrectly set to "application/json" instead of "text/plain".
+When generating an OpenAPI spec for a request with an error schema of type `HttpApiSchema.Text()``, the response content type was incorrectly set to "application/json" instead of "text/plain".
 
 ```ts
 import {
@@ -19,7 +19,7 @@ import {
 
 const api = HttpApi.make("api").add(
   HttpApiGroup.make("group").add(
-    HttpApiEndpoint.get("get", "/").addSuccess(HttpApiSchema.Text())
+    HttpApiEndpoint.get("get", "/").addError(HttpApiSchema.Text())
   )
 )
 
@@ -38,15 +38,8 @@ Output:
       "parameters": [],
       "security": [],
       "responses": {
-        "200": {
-          "description": "a string",
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "string"
-              }
-            }
-          }
+        "204": {
+          "description": "Success"
         },
         "400": {
           "description": "The request did not match the expected schema",
@@ -54,6 +47,16 @@ Output:
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/HttpApiDecodeError"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "a string",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
               }
             }
           }
@@ -68,17 +71,11 @@ Output:
 After
 
 ```diff
-import {
-  HttpApi,
-  HttpApiEndpoint,
-  HttpApiGroup,
-  HttpApiSchema,
-  OpenApi
-} from "@effect/platform"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
 
 const api = HttpApi.make("api").add(
   HttpApiGroup.make("group").add(
-    HttpApiEndpoint.get("get", "/").addSuccess(HttpApiSchema.Text())
+    HttpApiEndpoint.get("get", "/").addError(HttpApiSchema.Text())
   )
 )
 
@@ -97,16 +94,8 @@ Output:
       "parameters": [],
       "security": [],
       "responses": {
-        "200": {
-          "description": "a string",
-          "content": {
--            "application/json": {
-+            "text/plain": {
-              "schema": {
-                "type": "string"
-              }
-            }
-          }
+        "204": {
+          "description": "Success"
         },
         "400": {
           "description": "The request did not match the expected schema",
@@ -114,6 +103,17 @@ Output:
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/HttpApiDecodeError"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "a string",
+          "content": {
++            "text/plain": {
+-            "application/json": {
+              "schema": {
+                "type": "string"
               }
             }
           }
