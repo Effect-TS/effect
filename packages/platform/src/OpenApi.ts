@@ -6,7 +6,8 @@ import { constFalse } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
-import * as Schema from "effect/Schema"
+import type * as Schema from "effect/Schema"
+import type * as AST from "effect/SchemaAST"
 import type { DeepMutable, Mutable } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
 import * as HttpApiMiddleware from "./HttpApiMiddleware.js"
@@ -175,18 +176,20 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       version: Context.getOrElse(api.annotations, Version, () => "0.0.1")
     },
     paths: {},
-    tags: [],
     components: {
       schemas: jsonSchemaDefs,
       securitySchemes: {}
     },
-    security: []
+    security: [],
+    tags: []
   }
-  function makeJsonSchemaOrRef(schema: Schema.Schema.All): JsonSchema.JsonSchema {
-    return JsonSchema.makeWithDefs(schema as any, {
+
+  function makeJsonSchemaOrRef(ast: AST.AST): JsonSchema.JsonSchema {
+    return JsonSchema.fromAST(ast, {
       defs: jsonSchemaDefs
     })
   }
+
   function registerSecurity(
     name: string,
     security: HttpApiSecurity
@@ -197,8 +200,9 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
     const scheme = makeSecurityScheme(security)
     spec.components!.securitySchemes![name] = scheme
   }
+
   Option.map(Context.getOption(api.annotations, HttpApi.AdditionalSchemas), (componentSchemas) => {
-    componentSchemas.forEach((componentSchema) => makeJsonSchemaOrRef(componentSchema))
+    componentSchemas.forEach((componentSchema) => makeJsonSchemaOrRef(componentSchema.ast))
   })
   Option.map(Context.getOption(api.annotations, Description), (description) => {
     spec.info.description = description
@@ -207,10 +211,10 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
     spec.info.license = license
   })
   Option.map(Context.getOption(api.annotations, Summary), (summary) => {
-    spec.info.summary = summary as any
+    spec.info.summary = summary
   })
   Option.map(Context.getOption(api.annotations, Servers), (servers) => {
-    spec.servers = servers as any
+    spec.servers = servers as Array<OpenAPISpecServer>
   })
   Option.map(Context.getOption(api.annotations, Override), (override) => {
     Object.assign(spec, override)
@@ -224,7 +228,7 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       spec.security!.push({ [name]: [] })
     }
   })
-  HttpApi.reflect(api as any, {
+  HttpApi.reflect(api, {
     onGroup({ group }) {
       if (Context.get(group.annotations, Exclude)) {
         return
@@ -250,8 +254,6 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
       if (Context.get(mergedAnnotations, Exclude)) {
         return
       }
-      const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
-      const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       let op: DeepMutable<OpenAPISpecOperation> = {
         tags: [Context.getOrElse(group.annotations, Title, () => group.identifier)],
         operationId: Context.getOrElse(
@@ -263,6 +265,50 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
         security: [],
         responses: {}
       }
+
+      function processResponseMap(
+        map: ReadonlyMap<number, {
+          readonly ast: Option.Option<AST.AST>
+          readonly description: Option.Option<string>
+        }>,
+        defaultDescription: () => string
+      ) {
+        for (const [status, { ast, description }] of map) {
+          if (op.responses![status]) continue
+          op.responses![status] = {
+            description: Option.getOrElse(description, defaultDescription)
+          }
+          ast.pipe(
+            Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
+            Option.map((ast) => {
+              const encoding = HttpApiSchema.getEncoding(ast)
+              op.responses![status].content = {
+                [encoding.contentType]: {
+                  schema: makeJsonSchemaOrRef(ast)
+                }
+              }
+            })
+          )
+        }
+      }
+
+      function processParameters(schema: Option.Option<Schema.Schema.All>, i: OpenAPISpecParameter["in"]) {
+        if (Option.isSome(schema)) {
+          const jsonSchema = makeJsonSchemaOrRef(schema.value.ast)
+          if ("properties" in jsonSchema) {
+            Object.entries(jsonSchema.properties).forEach(([name, psJsonSchema]) => {
+              op.parameters!.push({
+                name,
+                in: i,
+                schema: psJsonSchema,
+                required: jsonSchema.required.includes(name),
+                ...(psJsonSchema.description !== undefined ? { description: psJsonSchema.description } : undefined)
+              })
+            })
+          }
+        }
+      }
+
       Option.map(Context.getOption(endpoint.annotations, Description), (description) => {
         op.description = description
       })
@@ -289,101 +335,24 @@ export const fromApi = <A extends HttpApi.HttpApi.Any>(self: A): OpenAPISpec => 
         const content: Mutable<OpenApiSpecContent> = {}
         payloads.forEach(({ ast }, contentType) => {
           content[contentType as OpenApiSpecContentType] = {
-            schema: makeJsonSchemaOrRef(Schema.make(ast))
+            schema: makeJsonSchemaOrRef(ast)
           }
         })
         op.requestBody = { content, required: true }
       }
-      for (const [status, { ast, description }] of successes) {
-        if (op.responses![status]) continue
-        op.responses![status] = {
-          description: Option.getOrElse(description, () => "Success")
-        }
-        ast.pipe(
-          Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
-          Option.map((ast) => {
-            const encoding = HttpApiSchema.getEncoding(ast)
-            op.responses![status].content = {
-              [encoding.contentType]: {
-                schema: makeJsonSchemaOrRef(Schema.make(ast))
-              }
-            }
-          })
-        )
+
+      processParameters(endpoint.pathSchema, "path")
+      if (!hasBody) {
+        processParameters(endpoint.payloadSchema, "query")
       }
-      if (Option.isSome(endpoint.pathSchema)) {
-        const schema = makeJsonSchemaOrRef(endpoint.pathSchema.value) as JsonSchema.Object
-        if ("properties" in schema) {
-          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
-            op.parameters!.push({
-              name,
-              in: "path",
-              schema: jsonSchema,
-              required: schema.required.includes(name),
-              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
-            })
-          })
-        }
-      }
-      if (!hasBody && Option.isSome(endpoint.payloadSchema)) {
-        const schema = makeJsonSchemaOrRef(endpoint.payloadSchema.value) as JsonSchema.Object
-        if ("properties" in schema) {
-          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
-            op.parameters!.push({
-              name,
-              in: "query",
-              schema: jsonSchema,
-              required: schema.required.includes(name),
-              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
-            })
-          })
-        }
-      }
-      if (Option.isSome(endpoint.headersSchema)) {
-        const schema = makeJsonSchemaOrRef(endpoint.headersSchema.value) as JsonSchema.Object
-        if ("properties" in schema) {
-          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
-            op.parameters!.push({
-              name,
-              in: "header",
-              schema: jsonSchema,
-              required: schema.required.includes(name),
-              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
-            })
-          })
-        }
-      }
-      if (Option.isSome(endpoint.urlParamsSchema)) {
-        const schema = makeJsonSchemaOrRef(endpoint.urlParamsSchema.value) as JsonSchema.Object
-        if ("properties" in schema) {
-          Object.entries(schema.properties).forEach(([name, jsonSchema]) => {
-            op.parameters!.push({
-              name,
-              in: "query",
-              schema: jsonSchema,
-              required: schema.required.includes(name),
-              ...(jsonSchema.description ? { description: jsonSchema.description } : {})
-            })
-          })
-        }
-      }
-      for (const [status, { ast, description }] of errors) {
-        if (op.responses![status]) continue
-        op.responses![status] = {
-          description: Option.getOrElse(description, () => "Error")
-        }
-        ast.pipe(
-          Option.filter((ast) => !HttpApiSchema.getEmptyDecodeable(ast)),
-          Option.map((ast) => {
-            const encoding = HttpApiSchema.getEncoding(ast)
-            op.responses![status].content = {
-              [encoding.contentType]: {
-                schema: makeJsonSchemaOrRef(Schema.make(ast))
-              }
-            }
-          })
-        )
-      }
+      processParameters(endpoint.headersSchema, "header")
+      processParameters(endpoint.urlParamsSchema, "query")
+
+      processResponseMap(successes, () => "Success")
+      processResponseMap(errors, () => "Error")
+
+      const path = endpoint.path.replace(/:(\w+)[^/]*/g, "{$1}")
+      const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
       if (!spec.paths[path]) {
         spec.paths[path] = {}
       }
