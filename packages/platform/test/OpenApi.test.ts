@@ -92,22 +92,34 @@ const getSpec = (options: Options): OpenApi.OpenAPISpec => {
   }
 }
 
-const expectOptions = (api: HttpApi.HttpApi.Any, options: Options) => {
+const expectOptions = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
+  api: HttpApi.HttpApi<Id, Groups, E, R>,
+  options: Options
+) => {
   expectSpec(api, getSpec(options))
 }
 
-const expectSpecPaths = (api: HttpApi.HttpApi.Any, paths: OpenApi.OpenAPISpec["paths"]) => {
+const expectSpecPaths = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
+  api: HttpApi.HttpApi<Id, Groups, E, R>,
+  paths: OpenApi.OpenAPISpec["paths"]
+) => {
   expectSpec(api, getSpec({ paths }))
 }
 
-const expectSpec = (api: HttpApi.HttpApi.Any, expected: OpenApi.OpenAPISpec) => {
+const expectSpec = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
+  api: HttpApi.HttpApi<Id, Groups, E, R>,
+  expected: OpenApi.OpenAPISpec
+) => {
   const spec = OpenApi.fromApi(api)
   // console.log(JSON.stringify(spec.paths, null, 2))
   // console.log(JSON.stringify(spec, null, 2))
   expect(spec).toStrictEqual(expected)
 }
 
-const expectPaths = (api: HttpApi.HttpApi.Any, paths: ReadonlyArray<string>) => {
+const expectPaths = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, E, R>(
+  api: HttpApi.HttpApi<Id, Groups, E, R>,
+  paths: ReadonlyArray<string>
+) => {
   const spec = OpenApi.fromApi(api)
   expect(Object.keys(spec.paths)).toStrictEqual(paths)
 }
