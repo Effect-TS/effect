@@ -53,5 +53,13 @@
     "@types/tar": "^6.1.12",
     "effect": "workspace:^",
     "tar": "^6"
+  },
+  "effect": {
+    "generateExports": {
+      "include": [
+        "*.ts",
+        "NodeFileSystem/*.ts"
+      ]
+    }
   }
 }
