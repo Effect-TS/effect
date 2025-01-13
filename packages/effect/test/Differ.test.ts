@@ -128,7 +128,10 @@ describe("Differ", () => {
 
   describe("tuple", () => {
     diffLaws(
-      pipe(Differ.update<number>(), Differ.zip(Differ.update<number>())),
+      Differ.update<number>()
+        .pipe(
+          Differ.zip(Differ.update<number>())
+        ),
       randomPair,
       (a, b) => Equal.equals(a[0], b[0]) && Equal.equals(a[1], b[1])
     )
