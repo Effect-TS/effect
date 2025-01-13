@@ -68,7 +68,7 @@ it.effect.runIf(false)("effect runIf (false)", () => Effect.die("not run anyway"
 
 // The following test is expected to fail because it simulates a test timeout.
 // Be aware that eventual "failure" of the test is only logged out.
-it.scopedLive("interrupts on timeout", (ctx) =>
+it.scopedLive.fails("interrupts on timeout", (ctx) =>
   Effect.gen(function*() {
     let acquired = false
 
@@ -84,7 +84,7 @@ it.scopedLive("interrupts on timeout", (ctx) =>
       () => Effect.sync(() => acquired = false)
     )
     yield* Effect.sleep(1000)
-  }), { timeout: 100, fails: true })
+  }), 1)
 
 class Foo extends Context.Tag("Foo")<Foo, "foo">() {
   static Live = Layer.succeed(Foo, "foo")

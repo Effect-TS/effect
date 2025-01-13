@@ -212,6 +212,30 @@ it.effect.only("test failure as Exit", () =>
 )
 ```
 
+## Expecting Tests to Fail
+
+When adding new failing tests, you might not be able to fix them right away. Instead of skipping them, you may want to assert it fails, so that when you fix them, you'll know and can re-enable them before it regresses.
+
+**Example** (Asserting one test fails)
+
+```ts
+import { it } from "@effect/vitest"
+import { Effect, Exit } from "effect"
+
+function divide(a: number, b: number): number {
+  if (b === 0) return Effect.fail("Cannot divide by zero")
+  return Effect.succeed(a / b)
+}
+
+// Temporarily assert that the test for dividing by zero fails.
+it.effect.fails("dividing by zero special cases", ({ expect }) =>
+  Effect.gen(function* () {
+    const result = yield* Effect.exit(divide(4, 0))
+    expect(result).toStrictEqual(0)
+  })
+)
+```
+
 ## Logging
 
 By default, `it.effect` suppresses log output, which can be useful for keeping test results clean. However, if you want to enable logging during tests, you can use `it.live` or provide a custom logger to control the output.
