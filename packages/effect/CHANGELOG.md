@@ -1,5 +1,19 @@
 # effect
 
+## 3.12.2
+
+### Patch Changes
+
+- [#4220](https://github.com/Effect-TS/effect/pull/4220) [`734af82`](https://github.com/Effect-TS/effect/commit/734af82138e78b9c57a8355b1c6b80e80d38b222) Thanks @KhraksMamtsov! - fix inference for contravariant type-parameters
+
+- [#4212](https://github.com/Effect-TS/effect/pull/4212) [`b63c780`](https://github.com/Effect-TS/effect/commit/b63c78010893101520448ddda7019c487cf7eedd) Thanks @KhraksMamtsov! - Refine `Effect.validateAll` return type to use `NonEmptyArray` for errors.
+
+  This refinement is possible because `Effect.validateAll` guarantees that when the input iterable is non-empty, any validation failure will produce at least one error. In such cases, the errors are inherently non-empty, making it safe and accurate to represent them using a `NonEmptyArray` type. This change aligns the return type with the function's actual behavior, improving type safety and making the API more predictable for developers.
+
+- [#4219](https://github.com/Effect-TS/effect/pull/4219) [`c640d77`](https://github.com/Effect-TS/effect/commit/c640d77b33ad417876f4e8ffe8574ee6cbe5607f) Thanks @whoisandy! - fix: ManagedRuntime.Context to work when Context is of type never
+
+- [#4236](https://github.com/Effect-TS/effect/pull/4236) [`0def088`](https://github.com/Effect-TS/effect/commit/0def0887cfdb6755729a64dfd52b3b9f46b0576c) Thanks @tim-smart! - fix color option for Logger.prettyLogger
+
 ## 3.12.1
 
 ### Patch Changes

@@ -1,5 +1,692 @@
 # @effect/platform
 
+## 0.72.2
+
+### Patch Changes
+
+- [#4226](https://github.com/Effect-TS/effect/pull/4226) [`212e784`](https://github.com/Effect-TS/effect/commit/212e78475f527147ec27c090bd13f789f55add7a) Thanks @gcanti! - Ensure the encoding kind of success responses is respected in the OpenAPI spec.
+
+  Before
+
+  When generating an OpenAPI spec for a request with a success schema of type `HttpApiSchema.Text()``, the response content type was incorrectly set to "application/json" instead of "text/plain".
+
+  ```ts
+  import {
+    HttpApi,
+    HttpApiEndpoint,
+    HttpApiGroup,
+    HttpApiSchema,
+    OpenApi
+  } from "@effect/platform"
+
+  const api = HttpApi.make("api").add(
+    HttpApiGroup.make("group").add(
+      HttpApiEndpoint.get("get", "/").addSuccess(HttpApiSchema.Text())
+    )
+  )
+
+  const spec = OpenApi.fromApi(api)
+
+  console.log(JSON.stringify(spec.paths, null, 2))
+  /*
+  Output:
+  {
+    "/": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "operationId": "group.get",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  */
+  ```
+
+  After
+
+  ```diff
+  import {
+    HttpApi,
+    HttpApiEndpoint,
+    HttpApiGroup,
+    HttpApiSchema,
+    OpenApi
+  } from "@effect/platform"
+
+  const api = HttpApi.make("api").add(
+    HttpApiGroup.make("group").add(
+      HttpApiEndpoint.get("get", "/").addSuccess(HttpApiSchema.Text())
+    )
+  )
+
+  const spec = OpenApi.fromApi(api)
+
+  console.log(JSON.stringify(spec.paths, null, 2))
+  /*
+  Output:
+  {
+    "/": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "operationId": "group.get",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "a string",
+            "content": {
+  -            "application/json": {
+  +            "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  */
+  ```
+
+- [#4234](https://github.com/Effect-TS/effect/pull/4234) [`f852cb0`](https://github.com/Effect-TS/effect/commit/f852cb02040ea2f165e9b449615b8b1366add5d5) Thanks @gcanti! - Deduplicate errors in `OpenApi.fromApi`.
+
+  When multiple identical errors were added to the same endpoint, group, or API, they were all included in the generated OpenAPI specification, leading to redundant entries in the `anyOf` array for error schemas.
+
+  Identical errors are now deduplicated in the OpenAPI specification. This ensures that each error schema is included only once, simplifying the generated spec and improving readability.
+
+  **Before**
+
+  ```ts
+  import {
+    HttpApi,
+    HttpApiEndpoint,
+    HttpApiGroup,
+    OpenApi
+  } from "@effect/platform"
+  import { Schema } from "effect"
+
+  const err = Schema.String.annotations({ identifier: "err" })
+  const api = HttpApi.make("api")
+    .add(
+      HttpApiGroup.make("group1")
+        .add(
+          HttpApiEndpoint.get("get1", "/1")
+            .addSuccess(Schema.String)
+            .addError(err)
+            .addError(err)
+        )
+        .addError(err)
+        .addError(err)
+    )
+    .addError(err)
+    .addError(err)
+
+  const spec = OpenApi.fromApi(api)
+
+  console.log(JSON.stringify(spec.paths, null, 2))
+  /*
+  Output:
+  {
+    "/1": {
+      "get": {
+        "tags": [
+          "group1"
+        ],
+        "operationId": "group1.get1",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/err"
+                    },
+                    {
+                      "$ref": "#/components/schemas/err"
+                    },
+                    {
+                      "$ref": "#/components/schemas/err"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  */
+  ```
+
+  **After**
+
+  ```ts
+  import {
+    HttpApi,
+    HttpApiEndpoint,
+    HttpApiGroup,
+    OpenApi
+  } from "@effect/platform"
+  import { Schema } from "effect"
+
+  const err = Schema.String.annotations({ identifier: "err" })
+  const api = HttpApi.make("api")
+    .add(
+      HttpApiGroup.make("group1")
+        .add(
+          HttpApiEndpoint.get("get1", "/1")
+            .addSuccess(Schema.String)
+            .addError(err)
+            .addError(err)
+        )
+        .addError(err)
+        .addError(err)
+    )
+    .addError(err)
+    .addError(err)
+
+  const spec = OpenApi.fromApi(api)
+
+  console.log(JSON.stringify(spec.paths, null, 2))
+  /*
+  Output:
+  {
+    "/1": {
+      "get": {
+        "tags": [
+          "group1"
+        ],
+        "operationId": "group1.get1",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/err"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  */
+  ```
+
+- [#4233](https://github.com/Effect-TS/effect/pull/4233) [`7276ae2`](https://github.com/Effect-TS/effect/commit/7276ae21062896adbb7508ac5b2dece95316322f) Thanks @gcanti! - Ensure the encoding kind of error responses is respected in the OpenAPI spec.
+
+  Before
+
+  When generating an OpenAPI spec for a request with an error schema of type `HttpApiSchema.Text()``, the response content type was incorrectly set to "application/json" instead of "text/plain".
+
+  ```ts
+  import {
+    HttpApi,
+    HttpApiEndpoint,
+    HttpApiGroup,
+    HttpApiSchema,
+    OpenApi
+  } from "@effect/platform"
+
+  const api = HttpApi.make("api").add(
+    HttpApiGroup.make("group").add(
+      HttpApiEndpoint.get("get", "/").addError(HttpApiSchema.Text())
+    )
+  )
+
+  const spec = OpenApi.fromApi(api)
+
+  console.log(JSON.stringify(spec.paths, null, 2))
+  /*
+  Output:
+  {
+    "/": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "operationId": "group.get",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  */
+  ```
+
+  After
+
+  ```diff
+  import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
+
+  const api = HttpApi.make("api").add(
+    HttpApiGroup.make("group").add(
+      HttpApiEndpoint.get("get", "/").addError(HttpApiSchema.Text())
+    )
+  )
+
+  const spec = OpenApi.fromApi(api)
+
+  console.log(JSON.stringify(spec.paths, null, 2))
+  /*
+  Output:
+  {
+    "/": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "operationId": "group.get",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "a string",
+            "content": {
+  +            "text/plain": {
+  -            "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  */
+  ```
+
+- [#4226](https://github.com/Effect-TS/effect/pull/4226) [`212e784`](https://github.com/Effect-TS/effect/commit/212e78475f527147ec27c090bd13f789f55add7a) Thanks @gcanti! - Add missing `deprecated` key to `OpenApi.annotations` API.
+
+- [#4226](https://github.com/Effect-TS/effect/pull/4226) [`212e784`](https://github.com/Effect-TS/effect/commit/212e78475f527147ec27c090bd13f789f55add7a) Thanks @gcanti! - Fix: Prevent request body from being added to the OpenAPI spec for GET methods in `OpenApi.fromApi`.
+
+  When creating a `GET` endpoint with a request payload, the `requestBody` was incorrectly added to the OpenAPI specification, which is invalid for `GET` methods.
+
+  Before
+
+  ```ts
+  import {
+    HttpApi,
+    HttpApiEndpoint,
+    HttpApiGroup,
+    OpenApi
+  } from "@effect/platform"
+  import { Schema } from "effect"
+
+  const api = HttpApi.make("api").add(
+    HttpApiGroup.make("group").add(
+      HttpApiEndpoint.get("get", "/")
+        .addSuccess(Schema.String)
+        .setPayload(
+          Schema.Struct({
+            a: Schema.String
+          })
+        )
+    )
+  )
+
+  const spec = OpenApi.fromApi(api)
+
+  console.log(JSON.stringify(spec.paths, null, 2))
+  /*
+  Output:
+  {
+    "/": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "operationId": "group.get",
+        "parameters": [
+          {
+            "name": "a",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "a"
+                ],
+                "properties": {
+                  "a": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    }
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import {
+    HttpApi,
+    HttpApiEndpoint,
+    HttpApiGroup,
+    OpenApi
+  } from "@effect/platform"
+  import { Schema } from "effect"
+
+  const api = HttpApi.make("api").add(
+    HttpApiGroup.make("group").add(
+      HttpApiEndpoint.get("get", "/")
+        .addSuccess(Schema.String)
+        .setPayload(
+          Schema.Struct({
+            a: Schema.String
+          })
+        )
+    )
+  )
+
+  const spec = OpenApi.fromApi(api)
+
+  console.log(JSON.stringify(spec.paths, null, 2))
+  /*
+  Output:
+  {
+    "/": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "operationId": "group.get",
+        "parameters": [
+          {
+            "name": "a",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  */
+  ```
+
+- [#4226](https://github.com/Effect-TS/effect/pull/4226) [`212e784`](https://github.com/Effect-TS/effect/commit/212e78475f527147ec27c090bd13f789f55add7a) Thanks @gcanti! - Add `"application/x-www-form-urlencoded"` to `OpenApiSpecContentType` type as it is generated by the system when using `HttpApiSchema.withEncoding({ kind: "UrlParams" })`
+
+  **Example**
+
+  ```ts
+  import {
+    HttpApi,
+    HttpApiEndpoint,
+    HttpApiGroup,
+    HttpApiSchema,
+    OpenApi
+  } from "@effect/platform"
+  import { Schema } from "effect"
+
+  const api = HttpApi.make("api").add(
+    HttpApiGroup.make("group").add(
+      HttpApiEndpoint.post("post", "/")
+        .addSuccess(Schema.String)
+        .setPayload(
+          Schema.Struct({ foo: Schema.String }).pipe(
+            HttpApiSchema.withEncoding({ kind: "UrlParams" })
+          )
+        )
+    )
+  )
+
+  const spec = OpenApi.fromApi(api)
+
+  console.log(JSON.stringify(spec.paths, null, 2))
+  /*
+  Output:
+  {
+    "/": {
+      "post": {
+        "tags": [
+          "group"
+        ],
+        "operationId": "group.post",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "a string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request did not match the expected schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpApiDecodeError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "foo"
+                ],
+                "properties": {
+                  "foo": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    }
+  }
+  */
+  ```
+
+- Updated dependencies [[`734af82`](https://github.com/Effect-TS/effect/commit/734af82138e78b9c57a8355b1c6b80e80d38b222), [`b63c780`](https://github.com/Effect-TS/effect/commit/b63c78010893101520448ddda7019c487cf7eedd), [`c640d77`](https://github.com/Effect-TS/effect/commit/c640d77b33ad417876f4e8ffe8574ee6cbe5607f), [`0def088`](https://github.com/Effect-TS/effect/commit/0def0887cfdb6755729a64dfd52b3b9f46b0576c)]:
+  - effect@3.12.2
+
 ## 0.72.1
 
 ### Patch Changes
