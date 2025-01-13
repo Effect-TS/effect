@@ -2,14 +2,15 @@ import * as Url from "@effect/platform/Url"
 import * as UrlParams from "@effect/platform/UrlParams"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect } from "effect"
+import { constVoid } from "effect/Function"
 
 describe("Url", () => {
   const testURL = new URL("https://example.com/test")
 
-  describe("copy", () => {
+  describe("mutate", () => {
     it.effect("immutable", () =>
       Effect.gen(function*() {
-        const url = Url.copy(testURL)
+        const url = Url.mutate(testURL, constVoid)
         assert.notStrictEqual(url, testURL)
       }))
   })

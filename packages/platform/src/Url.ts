@@ -21,22 +21,26 @@ export const fromString: {
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category utils
  */
-export const copy: {
-  (url: URL): URL
-} = (url) => new URL(url)
+export const mutate: {
+  (f: (url: URL) => void): (self: URL) => URL
+  (self: URL, f: (url: URL) => void): URL
+} = dual(2, (self: URL, f: (url: URL) => void) => {
+  const copy = new URL(self)
+  f(copy)
+  return copy
+})
 
 /** @internal */
 const immutableURLSetter = <P extends keyof URL>(property: P): {
   (value: URL[P]): (url: URL) => URL
   (url: URL, value: URL[P]): URL
 } =>
-  dual(2, (url: URL, value: URL[P]) => {
-    const result = copy(url)
-    result[property] = value
-    return result
-  })
+  dual(2, (url: URL, value: URL[P]) =>
+    mutate(url, (url) => {
+      url[property] = value
+    }))
 
 /**
  * @since 1.0.0
@@ -134,11 +138,10 @@ export const setUsername: {
 export const setUrlParams: {
   (urlParams: UrlParams.UrlParams): (url: URL) => URL
   (url: URL, urlParams: UrlParams.UrlParams): URL
-} = dual(2, (url: URL, searchParams: UrlParams.UrlParams) => {
-  const result = copy(url)
-  result.search = UrlParams.toString(searchParams)
-  return result
-})
+} = dual(2, (url: URL, searchParams: UrlParams.UrlParams) =>
+  mutate(url, (url) => {
+    url.search = UrlParams.toString(searchParams)
+  }))
 
 /**
  * @since 1.0.0
@@ -155,10 +158,8 @@ export const urlParams: {
 export const modifyUrlParams: {
   (f: (urlParams: UrlParams.UrlParams) => UrlParams.UrlParams): (url: URL) => URL
   (url: URL, f: (urlParams: UrlParams.UrlParams) => UrlParams.UrlParams): URL
-} = dual(2, (url: URL, f: (urlParams: UrlParams.UrlParams) => UrlParams.UrlParams) => {
-  const urlParams = UrlParams.fromInput(url.searchParams)
-  const newUrlParams = f(urlParams)
-  const result = copy(url)
-  result.search = UrlParams.toString(newUrlParams)
-  return result
-})
+} = dual(2, (url: URL, f: (urlParams: UrlParams.UrlParams) => UrlParams.UrlParams) =>
+  mutate(url, (url) => {
+    const params = f(UrlParams.fromInput(url.searchParams))
+    url.search = UrlParams.toString(params)
+  }))
