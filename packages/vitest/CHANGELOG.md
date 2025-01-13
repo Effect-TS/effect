@@ -1,5 +1,14 @@
 # @effect/vitest
 
+## 0.16.2
+
+### Patch Changes
+
+- [#4232](https://github.com/Effect-TS/effect/pull/4232) [`ea77cca`](https://github.com/Effect-TS/effect/commit/ea77cca4cce047e79b1a420fc180a4f4839a7733) Thanks @fubhy! - Import `fast-check` from `effect` re-export
+
+- Updated dependencies [[`734af82`](https://github.com/Effect-TS/effect/commit/734af82138e78b9c57a8355b1c6b80e80d38b222), [`b63c780`](https://github.com/Effect-TS/effect/commit/b63c78010893101520448ddda7019c487cf7eedd), [`c640d77`](https://github.com/Effect-TS/effect/commit/c640d77b33ad417876f4e8ffe8574ee6cbe5607f), [`0def088`](https://github.com/Effect-TS/effect/commit/0def0887cfdb6755729a64dfd52b3b9f46b0576c)]:
+  - effect@3.12.2
+
 ## 0.16.1
 
 ### Patch Changes
