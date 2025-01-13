@@ -147,9 +147,7 @@ export const setUrlParams: {
  * @since 1.0.0
  * @category getters
  */
-export const urlParams: {
-  (url: URL): UrlParams.UrlParams
-} = (url) => UrlParams.fromInput(url.searchParams)
+export const urlParams = (url: URL): UrlParams.UrlParams => UrlParams.fromInput(url.searchParams)
 
 /**
  * @since 1.0.0
