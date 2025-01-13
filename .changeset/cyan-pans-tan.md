@@ -2,4 +2,4 @@
 "@effect/vitest": patch
 ---
 
-Add fails method.
+Add it.*.fails method to @effect/vitest
