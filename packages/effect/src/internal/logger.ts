@@ -357,7 +357,7 @@ const prettyLoggerTty = (options: {
   readonly formatDate: (date: Date) => string
 }) => {
   const processIsBun = typeof process === "object" && "isBun" in process && process.isBun === true
-  const color = options.colors && processStdoutIsTTY ? withColor : withColorNoop
+  const color = options.colors ? withColor : withColorNoop
   return makeLogger<unknown, void>(
     ({ annotations, cause, context, date, fiberId, logLevel, message: message_, spans }) => {
       const services = FiberRefs.getOrDefault(context, defaultServices.currentServices)
