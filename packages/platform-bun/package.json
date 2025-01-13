@@ -52,5 +52,13 @@
     "@effect/platform": "workspace:^",
     "@types/bun": "^1.1.13",
     "effect": "workspace:^"
+  },
+  "effect": {
+    "generateExports": {
+      "include": [
+        "*.ts",
+        "BunFileSystem/*.ts"
+      ]
+    }
   }
 }
