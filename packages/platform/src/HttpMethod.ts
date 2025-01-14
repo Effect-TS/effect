@@ -56,4 +56,4 @@ export const all: ReadonlySet<HttpMethod> = new Set(["GET", "POST", "PUT", "DELE
  * @since 1.0.0
  * @category refinements
  */
-export const isHttpMethod = (u: unknown): u is HttpMethod => typeof u === "string" && all.has(u as HttpMethod)
+export const isHttpMethod = (u: unknown): u is HttpMethod => all.has(u as HttpMethod)
