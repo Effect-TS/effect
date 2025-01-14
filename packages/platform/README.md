@@ -4310,3 +4310,160 @@ const handler = HttpApp.toWebHandler(router)
 const response = await handler(new Request("http://localhost:3000/foo"))
 console.log(await response.text()) // Output: content 2
 ```
+
+# Url
+
+The `Url` module provides utilities for constructing and working with `URL` objects in a functional style. It includes:
+
+- A safe constructor for parsing URLs from strings.
+- Functions for immutably updating `URL` properties like `host`, `href`, and `search`.
+- Tools for reading and modifying URL parameters using the `UrlParams` module.
+- A focus on immutability, creating new `URL` instances for every change.
+
+## Creating a URL
+
+### fromString
+
+This function takes a string and attempts to parse it into a `URL` object. If the string is invalid, it returns an `Either.Left` containing an `IllegalArgumentException` with the error details. Otherwise, it returns an `Either.Right` containing the parsed `URL`.
+
+You can optionally provide a `base` parameter to resolve relative URLs. When supplied, the function treats the input `url` as relative to the `base`.
+
+**Example** (Parsing a URL with Optional Base)
+
+```ts
+import { Url } from "@effect/platform"
+import { Either } from "effect"
+
+// Parse an absolute URL
+//
+//      ┌─── Either<URL, IllegalArgumentException>
+//      ▼
+const parsed = Url.fromString("https://example.com/path")
+
+if (Either.isRight(parsed)) {
+  console.log("Parsed URL:", parsed.right.toString())
+} else {
+  console.log("Error:", parsed.left.message)
+}
+// Output: Parsed URL: https://example.com/path
+
+// Parse a relative URL with a base
+const relativeParsed = Url.fromString("/relative-path", "https://example.com")
+
+if (Either.isRight(relativeParsed)) {
+  console.log("Parsed relative URL:", relativeParsed.right.toString())
+} else {
+  console.log("Error:", relativeParsed.left.message)
+}
+// Output: Parsed relative URL: https://example.com/relative-path
+```
+
+## Immutably Changing URL Properties
+
+The `Url` module offers a set of functions for updating properties of a `URL` object without modifying the original instance. These functions create and return a new `URL` with the specified updates, preserving the immutability of the original.
+
+### Available Setters
+
+| Setter        | Description                                               |
+| ------------- | --------------------------------------------------------- |
+| `setHash`     | Updates the hash fragment of the URL.                     |
+| `setHost`     | Updates the host (domain and port) of the URL.            |
+| `setHostname` | Updates the domain of the URL without modifying the port. |
+| `setHref`     | Replaces the entire URL string.                           |
+| `setPassword` | Updates the password used for authentication.             |
+| `setPathname` | Updates the path of the URL.                              |
+| `setPort`     | Updates the port of the URL.                              |
+| `setProtocol` | Updates the protocol (e.g., `http`, `https`).             |
+| `setSearch`   | Updates the query string of the URL.                      |
+| `setUsername` | Updates the username used for authentication.             |
+
+**Example** (Using Setters to Modify URL Properties)
+
+```ts
+import { Url } from "@effect/platform"
+import { pipe } from "effect"
+
+const myUrl = new URL("https://example.com")
+
+// Changing protocol, host, and port
+const newUrl = pipe(
+  myUrl,
+  Url.setProtocol("http:"),
+  Url.setHost("google.com"),
+  Url.setPort("8080")
+)
+
+console.log("Original:", myUrl.toString())
+// Output: Original: https://example.com/
+
+console.log("New:", newUrl.toString())
+// Output: New: http://google.com:8080/
+```
+
+### mutate
+
+For more advanced modifications, use the `mutate` function. It clones the original `URL` object and applies a callback to the clone, allowing multiple updates at once.
+
+**Example** (Applying Multiple Changes with `mutate`)
+
+```ts
+import { Url } from "@effect/platform"
+
+const myUrl = new URL("https://example.com")
+
+const mutatedUrl = Url.mutate(myUrl, (url) => {
+  url.username = "user"
+  url.password = "pass"
+})
+
+console.log("Mutated:", mutatedUrl.toString())
+// Output: Mutated: https://user:pass@example.com/
+```
+
+## Reading and Writing URL Parameters
+
+The `Url` module provides utilities for working with URL query parameters. These utilities allow you to read existing parameters and write new ones, all while maintaining immutability. This functionality is supported by the `UrlParams` module.
+
+You can extract the query parameters from a `URL` object using the `urlParams` function.
+
+To modify or add query parameters, use the `setUrlParams` function. This function creates a new `URL` with the updated query string.
+
+**Example** (Reading and Writing Parameters)
+
+```ts
+import { Url, UrlParams } from "@effect/platform"
+
+const myUrl = new URL("https://example.com?foo=bar")
+
+// Read parameters
+const params = Url.urlParams(myUrl)
+
+console.log(params)
+// Output: [ [ 'foo', 'bar' ] ]
+
+// Write parameters
+const updatedUrl = Url.setUrlParams(
+  myUrl,
+  UrlParams.fromInput([["key", "value"]])
+)
+
+console.log(updatedUrl.toString())
+// Output: https://example.com/?key=value
+```
+
+### Modifying URL Parameters
+
+The `modifyUrlParams` function allows you to read, modify, and overwrite URL parameters in a single operation.
+
+**Example** (Appending a Parameter to a URL)
+
+```ts
+import { Url, UrlParams } from "@effect/platform"
+
+const myUrl = new URL("https://example.com?foo=bar")
+
+const changedUrl = Url.modifyUrlParams(myUrl, UrlParams.append("key", "value"))
+
+console.log(changedUrl.toString())
+// Output: https://example.com/?foo=bar&key=value
+```

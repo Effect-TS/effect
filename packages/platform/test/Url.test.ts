@@ -1,39 +1,92 @@
 import * as Url from "@effect/platform/Url"
 import * as UrlParams from "@effect/platform/UrlParams"
-import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect } from "effect"
-import { constVoid } from "effect/Function"
+import { Cause, Either } from "effect"
+import { assert, describe, it } from "vitest"
 
 describe("Url", () => {
   const testURL = new URL("https://example.com/test")
 
-  describe("mutate", () => {
-    it.effect("immutable", () =>
-      Effect.gen(function*() {
-        const url = Url.mutate(testURL, constVoid)
-        assert.notStrictEqual(url, testURL)
-      }))
-  })
+  const expectUrl = (updatedUrl: URL, expected: string) => {
+    assert.ok(updatedUrl !== testURL)
+    assert.notStrictEqual(updatedUrl.toString(), testURL.toString())
+    assert.deepStrictEqual(updatedUrl.toString(), expected)
+  }
 
   describe("fromString", () => {
-    it.effect("fails on incorrect url", () =>
-      Effect.gen(function*() {
-        const error = yield* Url.fromString("??").pipe(Effect.flip)
-        assert.instanceOf(error, Cause.IllegalArgumentException)
-      }))
-  })
+    it("success", () => {
+      const url = Url.fromString(testURL.toString())
+      assert.deepStrictEqual(url, Either.right(testURL))
+    })
 
-  describe("setters", () => {
-    it("immutable", () => {
-      const hashUrl = Url.setHash(testURL, "test")
-      assert.notStrictEqual(hashUrl, testURL)
-      assert.strictEqual(hashUrl.toString(), "https://example.com/test#test")
+    it("failure", () => {
+      const error = Url.fromString("??")
+      assert.deepStrictEqual(error, Either.left(new Cause.IllegalArgumentException("Invalid URL")))
     })
   })
 
+  it("mutate", () => {
+    expectUrl(
+      Url.mutate(testURL, (url) => {
+        url.username = "user"
+        url.password = "pass"
+      }),
+      "https://user:pass@example.com/test"
+    )
+  })
+
+  it("setHash", () => {
+    expectUrl(Url.setHash(testURL, "test"), "https://example.com/test#test")
+  })
+
+  it("setHost", () => {
+    expectUrl(Url.setHost(testURL, "newhost.com"), "https://newhost.com/test")
+  })
+
+  it("setHostname", () => {
+    expectUrl(Url.setHostname(testURL, "newhostname.com"), "https://newhostname.com/test")
+  })
+
+  it("setHref", () => {
+    expectUrl(Url.setHref(testURL, "https://newhref.com"), "https://newhref.com/")
+  })
+
+  it("setPassword", () => {
+    expectUrl(Url.setPassword(testURL, "newpassword"), "https://:newpassword@example.com/test")
+  })
+
+  it("setPathname", () => {
+    expectUrl(Url.setPathname(testURL, "/newpath"), "https://example.com/newpath")
+  })
+
+  it("setPort", () => {
+    expectUrl(Url.setPort(testURL, "8080"), "https://example.com:8080/test")
+  })
+
+  it("setProtocol", () => {
+    expectUrl(Url.setProtocol(testURL, "http"), "http://example.com/test")
+  })
+
+  it("setSearch", () => {
+    expectUrl(Url.setSearch(testURL, "?key=value"), "https://example.com/test?key=value")
+  })
+
+  it("setUsername", () => {
+    expectUrl(Url.setUsername(testURL, "newuser"), "https://newuser@example.com/test")
+  })
+
   it("modifyUrlParams", () => {
-    const paramsUrl = Url.modifyUrlParams(testURL, UrlParams.append("key", "value"))
-    assert.notStrictEqual(paramsUrl, testURL)
-    assert.strictEqual(paramsUrl.toString(), "https://example.com/test?key=value")
+    expectUrl(Url.modifyUrlParams(testURL, UrlParams.append("key", "value")), "https://example.com/test?key=value")
+  })
+
+  it("urlParams", () => {
+    const params = Url.urlParams(new URL("https://example.com?foo=bar&baz=qux"))
+    assert.deepStrictEqual(params, UrlParams.fromInput([["foo", "bar"], ["baz", "qux"]]))
+  })
+
+  it("setUrlParams", () => {
+    const url = new URL("https://example.com/?foo=bar&a=b")
+    const newParams = UrlParams.fromInput([["foo", "bar2"], ["baz", "qux"]])
+    const updatedUrl = Url.setUrlParams(url, newParams)
+    expectUrl(updatedUrl, "https://example.com/?foo=bar2&baz=qux")
   })
 })
