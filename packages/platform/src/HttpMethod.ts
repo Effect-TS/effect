@@ -33,3 +33,27 @@ export declare namespace HttpMethod {
  * @since 1.0.0
  */
 export const hasBody = (method: HttpMethod): boolean => method !== "GET" && method !== "HEAD" && method !== "OPTIONS"
+
+/**
+ * @since 1.0.0
+ */
+export const all: ReadonlySet<HttpMethod> = new Set(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+
+/**
+ * Tests if a value is a `HttpMethod`.
+ *
+ * @param input - The value to test.
+ *
+ * @example
+ * ```ts
+ * import { HttpMethod } from "@effect/platform"
+ *
+ * assert.deepStrictEqual(HttpMethod.isHttpMethod("GET"), true)
+ * assert.deepStrictEqual(HttpMethod.isHttpMethod("get"), false)
+ * assert.deepStrictEqual(HttpMethod.isHttpMethod(1), false)
+ * ```
+ *
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isHttpMethod = (u: unknown): u is HttpMethod => all.has(u as HttpMethod)
