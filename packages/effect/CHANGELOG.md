@@ -1,5 +1,115 @@
 # effect
 
+## 3.12.3
+
+### Patch Changes
+
+- [#4244](https://github.com/Effect-TS/effect/pull/4244) [`d7dac48`](https://github.com/Effect-TS/effect/commit/d7dac48a477cdfeec509dbe9f33fce6a1b02b63d) Thanks @gcanti! - Improve pattern handling by merging multiple patterns into a union, closes #4243.
+
+  Previously, the algorithm always prioritized the first pattern when multiple patterns were encountered.
+
+  This fix introduces a merging strategy that combines patterns into a union (e.g., `(?:${pattern1})|(?:${pattern2})`). By doing so, all patterns have an equal chance to generate values when using `FastCheck.stringMatching`.
+
+  **Example**
+
+  ```ts
+  import { Arbitrary, FastCheck, Schema } from "effect"
+
+  // /^[^A-Z]*$/ (given by Lowercase) + /^0x[0-9a-f]{40}$/
+  const schema = Schema.Lowercase.pipe(Schema.pattern(/^0x[0-9a-f]{40}$/))
+
+  const arb = Arbitrary.make(schema)
+
+  // Before this fix, the first pattern would always dominate,
+  // making it impossible to generate values
+  const sample = FastCheck.sample(arb, { numRuns: 100 })
+
+  console.log(sample)
+  ```
+
+- [#4252](https://github.com/Effect-TS/effect/pull/4252) [`1d7fd2b`](https://github.com/Effect-TS/effect/commit/1d7fd2b7ee8eeecc912d27adf76ed897db236dc5) Thanks @gcanti! - Fix: Correct `Arbitrary.make` to support nested `TemplateLiteral`s.
+
+  Previously, `Arbitrary.make` did not properly handle nested `TemplateLiteral` schemas, resulting in incorrect or empty outputs. This fix ensures that nested template literals are processed correctly, producing valid arbitrary values.
+
+  **Before**
+
+  ```ts
+  import { Arbitrary, FastCheck, Schema as S } from "effect"
+
+  const schema = S.TemplateLiteral(
+    "<",
+    S.TemplateLiteral("h", S.Literal(1, 2)),
+    ">"
+  )
+
+  const arb = Arbitrary.make(schema)
+
+  console.log(FastCheck.sample(arb, { numRuns: 10 }))
+  /*
+  Output:
+  [
+    '<>', '<>', '<>',
+    '<>', '<>', '<>',
+    '<>', '<>', '<>',
+    '<>'
+  ]
+  */
+  ```
+
+  **After**
+
+  ```ts
+  import { Arbitrary, FastCheck, Schema as S } from "effect"
+
+  const schema = S.TemplateLiteral(
+    "<",
+    S.TemplateLiteral("h", S.Literal(1, 2)),
+    ">"
+  )
+
+  const arb = Arbitrary.make(schema)
+
+  console.log(FastCheck.sample(arb, { numRuns: 10 }))
+  /*
+  Output:
+  [
+    '<h2>', '<h2>',
+    '<h2>', '<h2>',
+    '<h2>', '<h1>',
+    '<h2>', '<h1>',
+    '<h1>', '<h1>'
+  ]
+  */
+  ```
+
+- [#4252](https://github.com/Effect-TS/effect/pull/4252) [`1d7fd2b`](https://github.com/Effect-TS/effect/commit/1d7fd2b7ee8eeecc912d27adf76ed897db236dc5) Thanks @gcanti! - Fix: Allow `Schema.TemplateLiteral` to handle strings with linebreaks, closes #4251.
+
+  **Before**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteral("a: ", Schema.String)
+
+  console.log(Schema.decodeSync(schema)("a: b \n c"))
+  // throws: ParseError: Expected `a: ${string}`, actual "a: b \n c"
+  ```
+
+  **After**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.TemplateLiteral("a: ", Schema.String)
+
+  console.log(Schema.decodeSync(schema)("a: b \n c"))
+  /*
+  Output:
+  a: b
+   c
+  */
+  ```
+
 ## 3.12.2
 
 ### Patch Changes
