@@ -550,6 +550,22 @@ export const tap: {
 } = internal.tap
 
 /**
+ * Performs an additional effect after an unsuccessful request.
+ *
+ * @since 1.0.0
+ * @category mapping & sequencing
+ */
+export const tapError: {
+  <_, E, E2, R2>(
+    f: (e: NoInfer<E>) => Effect.Effect<_, E2, R2>
+  ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E | E2, R | R2>
+  <E, R, _, E2, R2>(
+    self: HttpClient.With<E, R>,
+    f: (e: NoInfer<E>) => Effect.Effect<_, E2, R2>
+  ): HttpClient.With<E | E2, R | R2>
+} = internal.tapError
+
+/**
  * Performs an additional effect on the request before sending it.
  *
  * @since 1.0.0

@@ -622,6 +622,17 @@ export const tap = dual<
 >(2, (self, f) => transformResponse(self, Effect.tap(f)))
 
 /** @internal */
+export const tapError = dual<
+  <_, E, E2, R2>(
+    f: (e: NoInfer<E>) => Effect.Effect<_, E2, R2>
+  ) => <R>(self: Client.HttpClient.With<E, R>) => Client.HttpClient.With<E | E2, R | R2>,
+  <E, R, _, E2, R2>(
+    self: Client.HttpClient.With<E, R>,
+    f: (e: NoInfer<E>) => Effect.Effect<_, E2, R2>
+  ) => Client.HttpClient.With<E | E2, R | R2>
+>(2, (self, f) => transformResponse(self, Effect.tapError(f)))
+
+/** @internal */
 export const tapRequest = dual<
   <_, E2, R2>(
     f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<_, E2, R2>
