@@ -171,11 +171,13 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
   readonly memoMap?: Layer.MemoMap
   readonly timeout?: Duration.DurationInput
 }): {
-  (f: (it: Vitest.Vitest.Methods<R>) => void): void
-  (name: string, f: (it: Vitest.Vitest.Methods<R>) => void): void
+  (f: (it: Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive">) => void): void
+  (name: string, f: (it: Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive">) => void): void
 } =>
 (
-  ...args: [name: string, f: (it: Vitest.Vitest.Methods<R>) => void] | [f: (it: Vitest.Vitest.Methods<R>) => void]
+  ...args: [name: string, f: (it: Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive">) => void] | [
+    f: (it: Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive">) => void
+  ]
 ) => {
   const withTestEnv = Layer.provideMerge(layer_, TestEnv)
   const memoMap = options?.memoMap ?? Effect.runSync(Layer.makeMemoMap)
@@ -187,7 +189,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
     Effect.runSync
   )
 
-  const makeIt = (it: V.TestAPI): Vitest.Vitest.Methods<R> =>
+  const makeIt = (it: V.TestAPI): Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive"> =>
     Object.assign(it, {
       effect: makeTester<TestServices.TestServices | R>(
         (effect) => Effect.flatMap(runtimeEffect, (runtime) => effect.pipe(Effect.provide(runtime))),
@@ -197,18 +199,6 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
       prop,
 
       scoped: makeTester<TestServices.TestServices | Scope.Scope | R>((effect) =>
-        Effect.flatMap(runtimeEffect, (runtime) =>
-          effect.pipe(
-            Effect.scoped,
-            Effect.provide(runtime)
-          )), it),
-      live: makeTester<R>((effect) =>
-        Effect.flatMap(
-          runtimeEffect,
-          (runtime) =>
-            Effect.provide(effect, runtime)
-        ), it),
-      scopedLive: makeTester<Scope.Scope | R>((effect) =>
         Effect.flatMap(runtimeEffect, (runtime) =>
           effect.pipe(
             Effect.scoped,
