@@ -171,12 +171,12 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
   readonly memoMap?: Layer.MemoMap
   readonly timeout?: Duration.DurationInput
 }): {
-  (f: (it: Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive">) => void): void
-  (name: string, f: (it: Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive">) => void): void
+  (f: (it: Vitest.Vitest.MethodsNonLive<R>) => void): void
+  (name: string, f: (it: Vitest.Vitest.MethodsNonLive<R>) => void): void
 } =>
 (
-  ...args: [name: string, f: (it: Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive">) => void] | [
-    f: (it: Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive">) => void
+  ...args: [name: string, f: (it: Vitest.Vitest.MethodsNonLive<R>) => void] | [
+    f: (it: Vitest.Vitest.MethodsNonLive<R>) => void
   ]
 ) => {
   const withTestEnv = Layer.provideMerge(layer_, TestEnv)
@@ -189,7 +189,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
     Effect.runSync
   )
 
-  const makeIt = (it: V.TestAPI): Omit<Vitest.Vitest.Methods<R>, "live" | "scopedLive"> =>
+  const makeIt = (it: V.TestAPI): Vitest.Vitest.MethodsNonLive<R> =>
     Object.assign(it, {
       effect: makeTester<TestServices.TestServices | R>(
         (effect) => Effect.flatMap(runtimeEffect, (runtime) => effect.pipe(Effect.provide(runtime))),

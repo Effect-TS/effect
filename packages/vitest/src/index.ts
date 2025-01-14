@@ -85,20 +85,18 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
-  export interface Methods<R = never> extends API {
+  export interface MethodsNonLive<R = never> extends API {
     readonly effect: Vitest.Tester<TestServices.TestServices | R>
-    readonly live: Vitest.Tester<R>
     readonly flakyTest: <A, E, R2>(
       self: Effect.Effect<A, E, R2>,
       timeout?: Duration.DurationInput
     ) => Effect.Effect<A, never, R2>
     readonly scoped: Vitest.Tester<TestServices.TestServices | Scope.Scope | R>
-    readonly scopedLive: Vitest.Tester<Scope.Scope | R>
     readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>, options?: {
       readonly timeout?: Duration.DurationInput
     }) => {
-      (f: (it: Omit<Vitest.Methods<R | R2>, "live" | "scopedLive">) => void): void
-      (name: string, f: (it: Omit<Vitest.Methods<R | R2>, "live" | "scopedLive">) => void): void
+      (f: (it: Vitest.MethodsNonLive<R | R2>) => void): void
+      (name: string, f: (it: Vitest.MethodsNonLive<R | R2>) => void): void
     }
 
     /**
@@ -119,6 +117,14 @@ export namespace Vitest {
           >
         }
     ) => void
+  }
+
+  /**
+   * @since 1.0.0
+   */
+  export interface Methods<R = never> extends MethodsNonLive<R> {
+    readonly live: Vitest.Tester<R>
+    readonly scopedLive: Vitest.Tester<Scope.Scope | R>
   }
 }
 
@@ -193,8 +199,8 @@ export const layer: <R, E>(
   layer_: Layer.Layer<R, E>,
   options?: { readonly memoMap?: Layer.MemoMap; readonly timeout?: Duration.DurationInput }
 ) => {
-  (f: (it: Omit<Vitest.Methods<R>, "live" | "scopedLive">) => void): void
-  (name: string, f: (it: Omit<Vitest.Methods<R>, "live" | "scopedLive">) => void): void
+  (f: (it: Vitest.MethodsNonLive<R>) => void): void
+  (name: string, f: (it: Vitest.MethodsNonLive<R>) => void): void
 } = internal.layer
 
 /**
