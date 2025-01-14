@@ -634,6 +634,17 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 1, pattern: regex.source }))
         expectValidArbitrary(schema)
       })
+
+      it("pattern + pattern", () => {
+        const regexp1 = /^[^A-Z]*$/
+        const regexp2 = /^0x[0-9a-f]{40}$/
+        const schema = S.String.pipe(S.pattern(regexp1), S.pattern(regexp2))
+        expectConstraints(
+          schema,
+          Arbitrary.makeStringConstraints({ pattern: `(?:${regexp1.source})|(?:${regexp2.source})` })
+        )
+        expectValidArbitrary(schema)
+      })
     })
 
     describe("number filters", () => {
