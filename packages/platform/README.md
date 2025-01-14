@@ -4467,3 +4467,378 @@ const changedUrl = Url.modifyUrlParams(myUrl, UrlParams.append("key", "value"))
 console.log(changedUrl.toString())
 // Output: https://example.com/?foo=bar&key=value
 ```
+
+# OpenApiJsonSchema
+
+The `OpenApiJsonSchema` module provides utilities to transform `Schema` objects into JSON schemas that comply with the OpenAPI Specification. These utilities are especially helpful for generating OpenAPI documentation or working with tools that require OpenAPI-compliant schemas.
+
+## Creating a JSON Schema from a Schema
+
+This module enables you to convert `Schema` objects into OpenAPI-compatible JSON schemas, making it easy to integrate with tools like Swagger or other OpenAPI-based frameworks.
+
+**Example** (Generating a JSON Schema from a String Schema)
+
+```ts
+import { OpenApiJsonSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+const schema = Schema.String
+
+// Convert the schema to OpenAPI JSON Schema
+const openApiSchema = OpenApiJsonSchema.make(schema)
+
+console.log(JSON.stringify(openApiSchema, null, 2))
+/*
+Output:
+{
+  "type": "string"
+}
+*/
+```
+
+## Differences from JSONSchema
+
+The `OpenApiJsonSchema` module differs from the `JSONSchema` module in several ways. These differences are tailored to align with the OpenAPI Specification.
+
+### `$schema` Property Omission
+
+OpenAPI schemas do not include the `$schema` property, while JSON schemas do.
+
+**Example** (Comparison of `$schema` Property)
+
+```ts
+import { OpenApiJsonSchema } from "@effect/platform"
+import { JSONSchema, Schema } from "effect"
+
+const schema = Schema.String
+
+const openApiSchema = OpenApiJsonSchema.make(schema)
+const jsonSchema = JSONSchema.make(schema)
+
+console.log(JSON.stringify(openApiSchema, null, 2))
+/*
+Output:
+{
+  "type": "string"
+}
+*/
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "string"
+}
+*/
+```
+
+### Handling of `null` Values
+
+OpenAPI does not support `{ "type": "null" }`. Instead, it uses an `enum` containing `null` to represent nullable values.
+
+**Example** (Representation of `null` Values)
+
+```ts
+import { OpenApiJsonSchema } from "@effect/platform"
+import { JSONSchema, Schema } from "effect"
+
+const schema = Schema.Null
+
+const openApiSchema = OpenApiJsonSchema.make(schema)
+const jsonSchema = JSONSchema.make(schema)
+
+console.log(JSON.stringify(openApiSchema, null, 2))
+/*
+Output:
+{
+  "enum": [
+    null
+  ]
+}
+*/
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "null"
+}
+*/
+```
+
+### Nullable Values
+
+OpenAPI uses the `nullable` property to indicate that a value can be `null`, whereas JSON schemas use an `anyOf` structure.
+
+**Example** (Nullable Property Representation)
+
+```ts
+import { OpenApiJsonSchema } from "@effect/platform"
+import { JSONSchema, Schema } from "effect"
+
+const schema = Schema.NullOr(Schema.String)
+
+const openApiSchema = OpenApiJsonSchema.make(schema)
+const jsonSchema = JSONSchema.make(schema)
+
+console.log(JSON.stringify(openApiSchema, null, 2))
+/*
+Output:
+{
+  "type": "string",
+  "nullable": true
+}
+*/
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "type": "string"
+    },
+    {
+      "type": "null"
+    }
+  ]
+}
+*/
+```
+
+### `contentSchema` Support
+
+OpenAPI schemas include a `contentSchema` property, which allows you to describe the structure of the content for a media type (e.g., `application/json`). This feature is not available in JSON schemas (Draft 7), making `contentSchema` particularly useful for defining structured payloads in OpenAPI documentation.
+
+**Note**: Use `contentSchema` to define the internal structure of media types like `application/json` in OpenAPI specifications. This property provides clarity and detail for tools and users interacting with the API, especially when handling structured payloads.
+
+**Example** (Defining a Schema with `contentSchema` for JSON Content)
+
+```ts
+import { OpenApiJsonSchema } from "@effect/platform"
+import { JSONSchema, Schema } from "effect"
+
+// Define a schema for parsing JSON content
+const schema = Schema.parseJson(Schema.Struct({ a: Schema.String }))
+
+const openApiSchema = OpenApiJsonSchema.make(schema)
+const jsonSchema = JSONSchema.make(schema)
+
+console.log(JSON.stringify(openApiSchema, null, 2))
+/*
+Output:
+{
+  "type": "string",
+  "contentMediaType": "application/json",
+  "contentSchema": {
+    "type": "object",
+    "required": [
+      "a"
+    ],
+    "properties": {
+      "a": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  }
+}
+*/
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "a"
+  ],
+  "properties": {
+    "a": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+*/
+```
+
+### makeWithDefs
+
+The `makeWithDefs` function generates OpenAPI-compatible JSON schemas and collects schema definitions in a shared object. This is especially useful for consolidating multiple schemas into a single OpenAPI specification, enabling schema reuse across your API.
+
+**Example** (Generating OpenAPI Schema with Definitions)
+
+```ts
+import { OpenApiJsonSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+// Define a schema with an identifier annotation
+const schema = Schema.Struct({ a: Schema.String }).annotations({
+  identifier: "MyStruct"
+})
+
+// Create a definitions object
+const defs = {}
+
+// Generate the OpenAPI schema while collecting definitions
+const openApiSchema = OpenApiJsonSchema.makeWithDefs(schema, { defs })
+
+console.log(JSON.stringify(openApiSchema, null, 2))
+/*
+Output:
+{
+  "$ref": "#/components/schemas/MyStruct"
+}
+*/
+
+console.log(JSON.stringify(defs, null, 2))
+/*
+Output:
+{
+  "MyStruct": {
+    "type": "object",
+    "required": [
+      "a"
+    ],
+    "properties": {
+      "a": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  }
+}
+*/
+```
+
+**Example** (Combining Multiple Schemas into One OpenAPI Specification)
+
+```ts
+import { OpenApiJsonSchema } from "@effect/platform"
+import { Schema } from "effect"
+
+// Define multiple schemas with unique identifiers
+const schema1 = Schema.Struct({ a: Schema.String }).annotations({
+  identifier: "MyStruct1"
+})
+const schema2 = Schema.Struct({ b: Schema.Number }).annotations({
+  identifier: "MyStruct2"
+})
+
+// Create a shared definitions object
+const defs = {}
+
+// Use `makeWithDefs` to generate schemas for API paths
+const paths = {
+  paths: {
+    "/path1": {
+      get: {
+        responses: {
+          "200": {
+            content: {
+              "application/json": {
+                schema: OpenApiJsonSchema.makeWithDefs(schema1, { defs })
+              }
+            }
+          }
+        }
+      }
+    },
+    "/path2": {
+      get: {
+        responses: {
+          "200": {
+            content: {
+              "application/json": {
+                schema: OpenApiJsonSchema.makeWithDefs(schema2, { defs })
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Combine paths and definitions into a single OpenAPI schema
+const openApiSchema = {
+  components: {
+    schemas: defs
+  },
+  paths
+}
+
+console.log(JSON.stringify(openApiSchema, null, 2))
+/*
+Output:
+{
+  "components": {
+    "schemas": {
+      "MyStruct1": {
+        "type": "object",
+        "required": [
+          "a"
+        ],
+        "properties": {
+          "a": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MyStruct2": {
+        "type": "object",
+        "required": [
+          "b"
+        ],
+        "properties": {
+          "b": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "paths": {
+    "paths": {
+      "/path1": {
+        "get": {
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MyStruct1"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/path2": {
+        "get": {
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MyStruct2"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+*/
+```
