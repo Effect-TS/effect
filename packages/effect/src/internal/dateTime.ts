@@ -129,7 +129,21 @@ export const makeZonedProto = (
   const self = Object.create(ProtoZoned)
   self.epochMillis = epochMillis
   self.zone = zone
-  self.partsUtc = partsUtc
+  Object.defineProperty(self, "partsUtc", {
+    value: partsUtc,
+    enumerable: false,
+    writable: true
+  })
+  Object.defineProperty(self, "adjustedEpochMillis", {
+    value: undefined,
+    enumerable: false,
+    writable: true
+  })
+  Object.defineProperty(self, "partsAdjusted", {
+    value: undefined,
+    enumerable: false,
+    writable: true
+  })
   return self
 }
 
@@ -189,6 +203,11 @@ export const clamp: {
 const makeUtc = (epochMillis: number): DateTime.Utc => {
   const self = Object.create(ProtoUtc)
   self.epochMillis = epochMillis
+  Object.defineProperty(self, "partsUtc", {
+    value: undefined,
+    enumerable: false,
+    writable: true
+  })
   return self
 }
 
