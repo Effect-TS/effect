@@ -43,6 +43,7 @@ export type DateTime = Utc | Zoned
 export interface Utc extends DateTime.Proto {
   readonly _tag: "Utc"
   readonly epochMillis: number
+  partsUtc: DateTime.PartsWithWeekday | undefined
 }
 
 /**
@@ -53,6 +54,9 @@ export interface Zoned extends DateTime.Proto {
   readonly _tag: "Zoned"
   readonly epochMillis: number
   readonly zone: TimeZone
+  adjustedEpochMillis: number | undefined
+  partsAdjusted: DateTime.PartsWithWeekday | undefined
+  partsUtc: DateTime.PartsWithWeekday | undefined
 }
 
 /**

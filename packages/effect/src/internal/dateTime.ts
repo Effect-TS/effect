@@ -121,12 +121,6 @@ const ProtoTimeZoneOffset = {
 }
 
 /** @internal */
-const partsUtcCache = globalValue(
-  "effect/DateTime/partsUtcCache",
-  () => new WeakMap<object, DateTime.DateTime.PartsWithWeekday>()
-)
-
-/** @internal */
 export const makeZonedProto = (
   epochMillis: number,
   zone: DateTime.TimeZone,
@@ -135,7 +129,21 @@ export const makeZonedProto = (
   const self = Object.create(ProtoZoned)
   self.epochMillis = epochMillis
   self.zone = zone
-  if (partsUtc) partsUtcCache.set(self, partsUtc)
+  Object.defineProperty(self, "partsUtc", {
+    value: partsUtc,
+    enumerable: false,
+    writable: true
+  })
+  Object.defineProperty(self, "adjustedEpochMillis", {
+    value: undefined,
+    enumerable: false,
+    writable: true
+  })
+  Object.defineProperty(self, "partsAdjusted", {
+    value: undefined,
+    enumerable: false,
+    writable: true
+  })
   return self
 }
 
@@ -190,6 +198,11 @@ export const clamp: {
 const makeUtc = (epochMillis: number): DateTime.Utc => {
   const self = Object.create(ProtoUtc)
   self.epochMillis = epochMillis
+  Object.defineProperty(self, "partsUtc", {
+    value: undefined,
+    enumerable: false,
+    writable: true
+  })
   return self
 }
 
@@ -241,7 +254,7 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
     zone = parsedZone.value
   }
   if (options?.adjustForTimeZone !== true) {
-    return makeZonedProto(self.epochMillis, zone, partsUtcCache.get(self))
+    return makeZonedProto(self.epochMillis, zone, self.partsUtc)
   }
   return makeZonedFromAdjusted(self.epochMillis, zone)
 }
@@ -295,7 +308,7 @@ export const setZone: {
 }): DateTime.Zoned =>
   options?.adjustForTimeZone === true
     ? makeZonedFromAdjusted(self.epochMillis, zone)
-    : makeZonedProto(self.epochMillis, zone, partsUtcCache.get(self)))
+    : makeZonedProto(self.epochMillis, zone, self.partsUtc))
 
 /** @internal */
 export const setZoneOffset: {
@@ -517,24 +530,14 @@ export const unsafeIsPast = (self: DateTime.DateTime): boolean => greaterThan(un
 export const toDateUtc = (self: DateTime.DateTime): Date => new Date(self.epochMillis)
 
 /** @internal */
-const adjustedEpochMillisCache = globalValue(
-  "effect/DateTime/adjustedEpochMillisCache",
-  () => new WeakMap<object, number>()
-)
-
-/** @internal */
 export const toDate = (self: DateTime.DateTime): Date => {
   if (self._tag === "Utc") {
     return new Date(self.epochMillis)
   } else if (self.zone._tag === "Offset") {
     return new Date(self.epochMillis + self.zone.offset)
+  } else if (self.adjustedEpochMillis !== undefined) {
+    return new Date(self.adjustedEpochMillis)
   }
-
-  const adjustedEpochMillis = adjustedEpochMillisCache.get(self)
-  if (adjustedEpochMillis !== undefined) {
-    return new Date(adjustedEpochMillis)
-  }
-
   const parts = self.zone.format.formatToParts(self.epochMillis).filter((_) => _.type !== "literal")
   const date = new Date(0)
   date.setUTCFullYear(
@@ -548,7 +551,7 @@ export const toDate = (self: DateTime.DateTime): Date => {
     Number(parts[5].value),
     Number(parts[6].value)
   )
-  adjustedEpochMillisCache.set(self, date.getTime())
+  self.adjustedEpochMillis = date.getTime()
   return date
 }
 
@@ -594,32 +597,23 @@ const dateToParts = (date: Date): DateTime.DateTime.PartsWithWeekday => ({
 })
 
 /** @internal */
-const partsAdjustedCache = globalValue(
-  "effect/DateTime/partsAdjustedCache",
-  () => new WeakMap<object, DateTime.DateTime.PartsWithWeekday>()
-)
-
-/** @internal */
 export const toParts = (self: DateTime.DateTime): DateTime.DateTime.PartsWithWeekday => {
   if (self._tag === "Utc") {
     return toPartsUtc(self)
+  } else if (self.partsAdjusted !== undefined) {
+    return self.partsAdjusted
   }
-  let partsAdjusted = partsAdjustedCache.get(self)
-  if (partsAdjusted === undefined) {
-    partsAdjusted = withDate(self, dateToParts)
-    partsAdjustedCache.set(self, partsAdjusted)
-  }
-  return partsAdjusted
+  self.partsAdjusted = withDate(self, dateToParts)
+  return self.partsAdjusted
 }
 
 /** @internal */
 export const toPartsUtc = (self: DateTime.DateTime): DateTime.DateTime.PartsWithWeekday => {
-  let partsUtc = partsUtcCache.get(self)
-  if (partsUtc === undefined) {
-    partsUtc = withDateUtc(self, dateToParts)
-    partsUtcCache.set(self, partsUtc)
+  if (self.partsUtc !== undefined) {
+    return self.partsUtc
   }
-  return partsUtc
+  self.partsUtc = withDateUtc(self, dateToParts)
+  return self.partsUtc
 }
 
 /** @internal */

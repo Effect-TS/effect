@@ -405,6 +405,14 @@ describe("DateTime", () => {
       }))
   })
 
+  it("parts equality", () => {
+    const d1 = DateTime.unsafeMake("2025-01-01")
+    const d2 = DateTime.unsafeMake("2025-01-01")
+    assert.deepStrictEqual(d1, d2)
+    DateTime.toPartsUtc(d2)
+    assert.deepStrictEqual(d1, d2)
+  })
+
   // doesnt work in CI
   it.skip("unsafeMakeZoned no options", () => {
     const date = new Date("2024-07-21T20:12:34.112Z")

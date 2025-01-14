@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Use cache instead of mutable fields for `DateTime` objects.
+Use non-enumerable properties for mutable fields of `DateTime` objects.
