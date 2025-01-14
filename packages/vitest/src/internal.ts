@@ -74,7 +74,8 @@ export const addEqualityTesters = () => {
 
 /** @internal */
 const makeTester = <R>(
-  mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>
+  mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>,
+  it: V.TestAPI = V.it
 ): Vitest.Vitest.Tester<R> => {
   const run = <A, E, TestArgs extends Array<unknown>>(
     ctx: V.TaskContext<V.RunnerTestCase<object>> & V.TestContext & object,
@@ -82,18 +83,18 @@ const makeTester = <R>(
     self: Vitest.Vitest.TestFunction<A, E, R, TestArgs>
   ) => pipe(Effect.suspend(() => self(...args)), mapEffect, runTest(ctx))
 
-  const f: Vitest.Vitest.Test<R> = (name, self, timeout) => V.it(name, (ctx) => run(ctx, [ctx], self), timeout)
+  const f: Vitest.Vitest.Test<R> = (name, self, timeout) => it(name, (ctx) => run(ctx, [ctx], self), timeout)
 
   const skip: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
-    V.it.skip(name, (ctx) => run(ctx, [ctx], self), timeout)
+    it.skip(name, (ctx) => run(ctx, [ctx], self), timeout)
   const skipIf: Vitest.Vitest.Tester<R>["skipIf"] = (condition) => (name, self, timeout) =>
-    V.it.skipIf(condition)(name, (ctx) => run(ctx, [ctx], self), timeout)
+    it.skipIf(condition)(name, (ctx) => run(ctx, [ctx], self), timeout)
   const runIf: Vitest.Vitest.Tester<R>["runIf"] = (condition) => (name, self, timeout) =>
-    V.it.runIf(condition)(name, (ctx) => run(ctx, [ctx], self), timeout)
+    it.runIf(condition)(name, (ctx) => run(ctx, [ctx], self), timeout)
   const only: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
-    V.it.only(name, (ctx) => run(ctx, [ctx], self), timeout)
+    it.only(name, (ctx) => run(ctx, [ctx], self), timeout)
   const each: Vitest.Vitest.Tester<R>["each"] = (cases) => (name, self, timeout) =>
-    V.it.for(cases)(
+    it.for(cases)(
       name,
       typeof timeout === "number" ? { timeout } : timeout ?? {},
       (args, ctx) => run(ctx, [args], self) as any
@@ -102,7 +103,7 @@ const makeTester = <R>(
   const prop: Vitest.Vitest.Tester<R>["prop"] = (name, arbitraries, self, timeout) => {
     if (Array.isArray(arbitraries)) {
       const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
-      return V.it(
+      return it(
         name,
         (ctx) =>
           // @ts-ignore
@@ -122,7 +123,7 @@ const makeTester = <R>(
       }, {} as Record<string, fc.Arbitrary<any>>)
     )
 
-    return V.it(
+    return it(
       name,
       (ctx) =>
         // @ts-ignore
@@ -169,6 +170,7 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
 export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
   readonly memoMap?: Layer.MemoMap
   readonly timeout?: Duration.DurationInput
+  readonly it?: V.TestAPI
 }): {
   (f: (it: Vitest.Vitest.Methods<R>) => void): void
   (name: string, f: (it: Vitest.Vitest.Methods<R>) => void): void
@@ -176,52 +178,50 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
 (
   ...args: [name: string, f: (it: Vitest.Vitest.Methods<R>) => void] | [f: (it: Vitest.Vitest.Methods<R>) => void]
 ) => {
+  const withTestEnv = Layer.provideMerge(layer_, TestEnv)
   const memoMap = options?.memoMap ?? Effect.runSync(Layer.makeMemoMap)
   const scope = Effect.runSync(Scope.make())
-  const runtimeEffect = Layer.toRuntimeWithMemoMap(Layer.provideMerge(layer_, TestEnv), memoMap).pipe(
+  const runtimeEffect = Layer.toRuntimeWithMemoMap(withTestEnv, memoMap).pipe(
     Scope.extend(scope),
     Effect.orDie,
     Effect.cached,
     Effect.runSync
   )
 
-  const it: Vitest.Vitest.Methods<R> = Object.assign(V.it, {
-    effect: makeTester<TestServices.TestServices | R>((effect) =>
-      Effect.flatMap(runtimeEffect, (runtime) =>
-        effect.pipe(
-          Effect.provide(runtime)
-        ))
-    ),
+  const makeIt = (it: V.TestAPI): Vitest.Vitest.Methods<R> =>
+    Object.assign(it, {
+      effect: makeTester<TestServices.TestServices | R>(
+        (effect) => Effect.flatMap(runtimeEffect, (runtime) => effect.pipe(Effect.provide(runtime))),
+        it
+      ),
 
-    prop,
+      prop,
 
-    scoped: makeTester<TestServices.TestServices | Scope.Scope | R>((effect) =>
-      Effect.flatMap(runtimeEffect, (runtime) =>
-        effect.pipe(
-          Effect.scoped,
-          Effect.provide(runtime)
-        ))
-    ),
-    live: makeTester<R>((effect) =>
-      Effect.flatMap(
-        runtimeEffect,
-        (runtime) => Effect.provide(effect, runtime)
-      )
-    ),
-    scopedLive: makeTester<Scope.Scope | R>((effect) =>
-      Effect.flatMap(runtimeEffect, (runtime) =>
-        effect.pipe(
-          Effect.scoped,
-          Effect.provide(runtime)
-        ))
-    ),
-    flakyTest,
-    layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
-      readonly timeout?: Duration.DurationInput
-    }) {
-      return layer(Layer.provideMerge(Layer.provideMerge(nestedLayer, TestEnv), layer_), { ...options, memoMap })
-    }
-  })
+      scoped: makeTester<TestServices.TestServices | Scope.Scope | R>((effect) =>
+        Effect.flatMap(runtimeEffect, (runtime) =>
+          effect.pipe(
+            Effect.scoped,
+            Effect.provide(runtime)
+          )), it),
+      live: makeTester<R>((effect) =>
+        Effect.flatMap(
+          runtimeEffect,
+          (runtime) =>
+            Effect.provide(effect, runtime)
+        ), it),
+      scopedLive: makeTester<Scope.Scope | R>((effect) =>
+        Effect.flatMap(runtimeEffect, (runtime) =>
+          effect.pipe(
+            Effect.scoped,
+            Effect.provide(runtime)
+          )), it),
+      flakyTest,
+      layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
+        readonly timeout?: Duration.DurationInput
+      }) {
+        return layer(Layer.provideMerge(nestedLayer, withTestEnv), { ...options, memoMap, it })
+      }
+    })
 
   if (args.length === 1) {
     V.beforeAll(
@@ -232,10 +232,10 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
       () => runPromise()(Scope.close(scope, Exit.void)),
       options?.timeout ? Duration.toMillis(options.timeout) : undefined
     )
-    return args[0](it)
+    return args[0](makeIt(options?.it ?? V.it))
   }
 
-  return V.describe(args[0], () => {
+  return V.describe(args[0], (it) => {
     V.beforeAll(
       () => runPromise()(Effect.asVoid(runtimeEffect)),
       options?.timeout ? Duration.toMillis(options.timeout) : undefined
@@ -244,7 +244,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
       () => runPromise()(Scope.close(scope, Exit.void)),
       options?.timeout ? Duration.toMillis(options.timeout) : undefined
     )
-    return args[1](it)
+    return args[1](makeIt(it))
   })
 }
 

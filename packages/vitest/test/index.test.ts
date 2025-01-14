@@ -104,82 +104,84 @@ class Sleeper extends Effect.Service<Sleeper>()("Sleeper", {
   })
 }) {}
 
-layer(Foo.Live)("layer", (it) => {
-  it.effect("adds context", () =>
-    Effect.gen(function*() {
-      const foo = yield* Foo
-      expect(foo).toEqual("foo")
-    }))
-
-  it.layer(Bar.Live)("nested", (it) => {
+describe("layer", () => {
+  layer(Foo.Live)((it) => {
     it.effect("adds context", () =>
       Effect.gen(function*() {
         const foo = yield* Foo
-        const bar = yield* Bar
         expect(foo).toEqual("foo")
-        expect(bar).toEqual("bar")
       }))
-  })
 
-  it.layer(Bar.Live)((it) => {
-    it.effect("without name", () =>
-      Effect.gen(function*() {
-        const foo = yield* Foo
-        const bar = yield* Bar
-        expect(foo).toEqual("foo")
-        expect(bar).toEqual("bar")
-      }))
-  })
-
-  describe("release", () => {
-    let released = false
-    afterAll(() => {
-      expect(released).toEqual(true)
-    })
-
-    class Scoped extends Context.Tag("Scoped")<Scoped, "scoped">() {
-      static Live = Layer.scoped(
-        Scoped,
-        Effect.acquireRelease(
-          Effect.succeed("scoped" as const),
-          () => Effect.sync(() => released = true)
-        )
-      )
-    }
-
-    it.layer(Scoped.Live)((it) => {
+    it.layer(Bar.Live)("nested", (it) => {
       it.effect("adds context", () =>
         Effect.gen(function*() {
           const foo = yield* Foo
-          const scoped = yield* Scoped
+          const bar = yield* Bar
           expect(foo).toEqual("foo")
-          expect(scoped).toEqual("scoped")
+          expect(bar).toEqual("bar")
         }))
     })
 
-    it.effect.prop(
-      "adds context",
-      [realNumber],
-      ([num]) =>
+    it.layer(Bar.Live)((it) => {
+      it.effect("without name", () =>
         Effect.gen(function*() {
           const foo = yield* Foo
+          const bar = yield* Bar
           expect(foo).toEqual("foo")
-          return num === num
-        }),
-      { fastCheck: { numRuns: 200 } }
-    )
-  })
-})
+          expect(bar).toEqual("bar")
+        }))
+    })
 
-layer(Sleeper.Default)("layer - test services", (it) => {
-  it.effect("TestClock", () =>
-    Effect.gen(function*() {
-      const sleeper = yield* Sleeper
-      const fiber = yield* Effect.fork(sleeper.sleep(100_000))
-      yield* Effect.yieldNow()
-      yield* TestClock.adjust(100_000)
-      yield* Fiber.join(fiber)
-    }))
+    describe("release", () => {
+      let released = false
+      afterAll(() => {
+        expect(released).toEqual(true)
+      })
+
+      class Scoped extends Context.Tag("Scoped")<Scoped, "scoped">() {
+        static Live = Layer.scoped(
+          Scoped,
+          Effect.acquireRelease(
+            Effect.succeed("scoped" as const),
+            () => Effect.sync(() => released = true)
+          )
+        )
+      }
+
+      it.layer(Scoped.Live)((it) => {
+        it.effect("adds context", () =>
+          Effect.gen(function*() {
+            const foo = yield* Foo
+            const scoped = yield* Scoped
+            expect(foo).toEqual("foo")
+            expect(scoped).toEqual("scoped")
+          }))
+      })
+
+      it.effect.prop(
+        "adds context",
+        [realNumber],
+        ([num]) =>
+          Effect.gen(function*() {
+            const foo = yield* Foo
+            expect(foo).toEqual("foo")
+            return num === num
+          }),
+        { fastCheck: { numRuns: 200 } }
+      )
+    })
+  })
+
+  layer(Sleeper.Default)("test services", (it) => {
+    it.effect("TestClock", () =>
+      Effect.gen(function*() {
+        const sleeper = yield* Sleeper
+        const fiber = yield* Effect.fork(sleeper.sleep(100_000))
+        yield* Effect.yieldNow()
+        yield* TestClock.adjust(100_000)
+        yield* Fiber.join(fiber)
+      }))
+  })
 })
 
 // property testing
