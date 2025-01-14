@@ -557,7 +557,7 @@ export const tap: {
  */
 export const tapError: {
   <_, E, E2, R2>(
-    f: (e: E) => Effect.Effect<_, E2, R2>
+    f: (e: NoInfer<E>) => Effect.Effect<_, E2, R2>
   ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | E2, R | R2>
   <E, R, _, E2, R2>(
     self: HttpClient.With<E, R>,
