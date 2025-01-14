@@ -704,8 +704,8 @@ export const distanceDuration: {
  * @category comparisons
  */
 export const min: {
-  (that: DateTime): (self: DateTime) => DateTime
-  (self: DateTime, that: DateTime): DateTime
+  <That extends DateTime>(that: That): <Self extends DateTime>(self: Self) => Self | That
+  <Self extends DateTime, That extends DateTime>(self: Self, that: That): Self | That
 } = Internal.min
 
 /**
@@ -713,8 +713,8 @@ export const min: {
  * @category comparisons
  */
 export const max: {
-  (that: DateTime): (self: DateTime) => DateTime
-  (self: DateTime, that: DateTime): DateTime
+  <That extends DateTime>(that: That): <Self extends DateTime>(self: Self) => Self | That
+  <Self extends DateTime, That extends DateTime>(self: Self, that: That): Self | That
 } = Internal.max
 
 /**
