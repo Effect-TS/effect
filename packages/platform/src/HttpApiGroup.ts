@@ -10,7 +10,6 @@ import type * as HttpApiEndpoint from "./HttpApiEndpoint.js"
 import type { HttpApiDecodeError } from "./HttpApiError.js"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
-import type { PathInput } from "./HttpRouter.js"
 
 /**
  * @since 1.0.0
@@ -77,7 +76,7 @@ export interface HttpApiGroup<
    * Add a path prefix to all endpoints in an `HttpApiGroup`. Note that this will only
    * add the prefix to the endpoints before this api is called.
    */
-  prefix(prefix: PathInput): HttpApiGroup<Id, Endpoints, Error, R, TopLevel>
+  prefix(prefix: HttpApiEndpoint.PathSegment): HttpApiGroup<Id, Endpoints, Error, R, TopLevel>
 
   /**
    * Add an `HttpApiMiddleware` to the `HttpApiGroup`.
@@ -315,7 +314,7 @@ const Proto = {
       middlewares: this.middlewares
     })
   },
-  prefix(this: HttpApiGroup.AnyWithProps, prefix: PathInput) {
+  prefix(this: HttpApiGroup.AnyWithProps, prefix: HttpApiEndpoint.PathSegment) {
     return makeProto({
       identifier: this.identifier,
       topLevel: this.topLevel,

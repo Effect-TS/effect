@@ -15,7 +15,6 @@ import type * as HttpApiGroup from "./HttpApiGroup.js"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.js"
 import * as HttpApiSchema from "./HttpApiSchema.js"
 import type { HttpMethod } from "./HttpMethod.js"
-import type { PathInput } from "./HttpRouter.js"
 
 /**
  * @since 1.0.0
@@ -85,7 +84,7 @@ export interface HttpApi<
   /**
    * Prefix all endpoints in the `HttpApi`.
    */
-  prefix(prefix: PathInput): HttpApi<Id, Groups, E, R>
+  prefix(prefix: HttpApiEndpoint.PathSegment): HttpApi<Id, Groups, E, R>
   /**
    * Add a middleware to a `HttpApi`. It will be applied to all endpoints in the
    * `HttpApi`.
@@ -194,7 +193,7 @@ const Proto = {
       middlewares: this.middlewares
     })
   },
-  prefix(this: HttpApi.AnyWithProps, prefix: PathInput) {
+  prefix(this: HttpApi.AnyWithProps, prefix: HttpApiEndpoint.PathSegment) {
     return makeProto({
       identifier: this.identifier,
       groups: Record.map(this.groups, (group) => group.prefix(prefix)),
