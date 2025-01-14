@@ -170,7 +170,6 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
 export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
   readonly memoMap?: Layer.MemoMap
   readonly timeout?: Duration.DurationInput
-  readonly it?: V.TestAPI
 }): {
   (f: (it: Vitest.Vitest.Methods<R>) => void): void
   (name: string, f: (it: Vitest.Vitest.Methods<R>) => void): void
@@ -219,7 +218,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
       layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
         readonly timeout?: Duration.DurationInput
       }) {
-        return layer(Layer.provideMerge(nestedLayer, withTestEnv), { ...options, memoMap, it })
+        return layer(Layer.provideMerge(nestedLayer, withTestEnv), { ...options, memoMap })
       }
     })
 
@@ -232,7 +231,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
       () => runPromise()(Scope.close(scope, Exit.void)),
       options?.timeout ? Duration.toMillis(options.timeout) : undefined
     )
-    return args[0](makeIt(options?.it ?? V.it))
+    return args[0](makeIt(V.it))
   }
 
   return V.describe(args[0], (it) => {
@@ -249,16 +248,31 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
 }
 
 /** @internal */
-export const effect = makeTester<TestServices.TestServices>(Effect.provide(TestEnv))
+export const makeMethods = (it: V.TestAPI): Vitest.Vitest.Methods =>
+  Object.assign(it, {
+    effect: makeTester<TestServices.TestServices>(Effect.provide(TestEnv), it),
+    scoped: makeTester<TestServices.TestServices | Scope.Scope>(flow(Effect.scoped, Effect.provide(TestEnv)), it),
+    live: makeTester<never>(identity, it),
+    scopedLive: makeTester<Scope.Scope>(Effect.scoped, it),
+    flakyTest,
+    layer,
+    prop
+  })
+
+export const {
+  /** @internal */
+  effect,
+  /** @internal */
+  live,
+  /** @internal */
+  scoped,
+  /** @internal */
+  scopedLive
+} = makeMethods(V.it)
 
 /** @internal */
-export const scoped = makeTester<TestServices.TestServices | Scope.Scope>(flow(Effect.scoped, Effect.provide(TestEnv)))
-
-/** @internal */
-export const live = makeTester<never>(identity)
-
-/** @internal */
-export const scopedLive = makeTester<Scope.Scope>(Effect.scoped)
+export const describeWrapped = (name: string, f: (it: Vitest.Vitest.Methods) => void): V.SuiteCollector =>
+  V.describe(name, (it) => f(makeMethods(it)))
 
 /** @internal */
 export const flakyTest = <A, E, R>(

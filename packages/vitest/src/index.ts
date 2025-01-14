@@ -237,4 +237,15 @@ export const it: Vitest.Methods = Object.assign(V.it, methods)
 /**
  * @since 1.0.0
  */
+export const makeMethods: (it: V.TestAPI) => Vitest.Methods = internal.makeMethods
+
+/**
+ * @since 1.0.0
+ */
+export const describeWrapped: (name: string, f: (it: Vitest.Methods) => void) => V.SuiteCollector =
+  internal.describeWrapped
+
+/**
+ * @since 1.0.0
+ */
 export * from "vitest"
