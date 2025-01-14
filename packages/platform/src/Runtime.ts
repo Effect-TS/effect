@@ -36,6 +36,30 @@ export const defaultTeardown: Teardown = <E, A>(
  * @since 1.0.0
  */
 export interface RunMain {
+  /**
+   * Helps you run a main effect with built-in error handling, logging, and signal management.
+   *
+   * **Details**
+   *
+   * This function launches an Effect as the main entry point, setting exit codes
+   * based on success or failure, handling interrupts (e.g., Ctrl+C), and optionally
+   * logging errors. By default, it logs errors and uses a "pretty" format, but both
+   * behaviors can be turned off. You can also provide custom teardown logic to
+   * finalize resources or produce different exit codes.
+   *
+   * **Options**
+   *
+   * An optional object that can include:
+   * - `disableErrorReporting`: Turn off automatic error logging.
+   * - `disablePrettyLogger`: Avoid adding the pretty logger.
+   * - `teardown`: Provide custom finalization logic.
+   *
+   * **When to Use**
+   *
+   * Use this function to run an Effect as your application’s main program, especially
+   * when you need structured error handling, log management, interrupt support,
+   * or advanced teardown capabilities.
+   */
   (
     options?: {
       readonly disableErrorReporting?: boolean | undefined
@@ -43,6 +67,30 @@ export interface RunMain {
       readonly teardown?: Teardown | undefined
     }
   ): <E, A>(effect: Effect.Effect<A, E>) => void
+  /**
+   * Helps you run a main effect with built-in error handling, logging, and signal management.
+   *
+   * **Details**
+   *
+   * This function launches an Effect as the main entry point, setting exit codes
+   * based on success or failure, handling interrupts (e.g., Ctrl+C), and optionally
+   * logging errors. By default, it logs errors and uses a "pretty" format, but both
+   * behaviors can be turned off. You can also provide custom teardown logic to
+   * finalize resources or produce different exit codes.
+   *
+   * **Options**
+   *
+   * An optional object that can include:
+   * - `disableErrorReporting`: Turn off automatic error logging.
+   * - `disablePrettyLogger`: Avoid adding the pretty logger.
+   * - `teardown`: Provide custom finalization logic.
+   *
+   * **When to Use**
+   *
+   * Use this function to run an Effect as your application’s main program, especially
+   * when you need structured error handling, log management, interrupt support,
+   * or advanced teardown capabilities.
+   */
   <E, A>(
     effect: Effect.Effect<A, E>,
     options?: {

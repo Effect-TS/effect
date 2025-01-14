@@ -5,6 +5,111 @@ Welcome to the documentation for `@effect/platform`, a library designed for crea
 > [!WARNING]
 > This documentation focuses on **unstable modules**. For stable modules, refer to the [official website documentation](https://effect.website/docs/guides/platform/introduction).
 
+# Running Your Main Program with runMain
+
+`runMain` helps you execute a main effect with built-in error handling, logging, and signal management. You can concentrate on your effect while `runMain` looks after finalizing resources, logging errors, and setting exit codes.
+
+- **Exit Codes**
+  If your effect fails or is interrupted, `runMain` assigns a suitable exit code (for example, `1` for errors and `0` for success).
+- **Logs**
+  By default, it records errors. This can be turned off if needed.
+- **Pretty Logging**
+  By default, error messages are recorded using a "pretty" format. You can switch this off when required.
+- **Interrupt Handling**
+  If the application receives `SIGINT` (Ctrl+C) or a similar signal, `runMain` will interrupt the effect and still run any necessary teardown steps.
+- **Teardown Logic**
+  You can rely on the default teardown or define your own. The default sets an exit code of `1` for a non-interrupted failure.
+
+## Usage Options
+
+When calling `runMain`, pass in a configuration object with these fields (all optional):
+
+- `disableErrorReporting`: If `true`, errors are not automatically logged.
+- `disablePrettyLogger`: If `true`, it avoids adding the "pretty" logger.
+- `teardown`: Provide a custom function for finalizing the program. If missing, the default sets exit code `1` for a non-interrupted failure.
+
+**Example** (Running a Successful Program)
+
+```ts
+import { NodeRuntime } from "@effect/platform-node"
+import { Effect } from "effect"
+
+const success = Effect.succeed("Hello, World!")
+
+NodeRuntime.runMain(success)
+// No Output
+```
+
+**Example** (Running a Failing Program)
+
+```ts
+import { NodeRuntime } from "@effect/platform-node"
+import { Effect } from "effect"
+
+const failure = Effect.fail("Uh oh!")
+
+NodeRuntime.runMain(failure)
+/*
+Output:
+[12:43:07.186] ERROR (#0):
+  Error: Uh oh!
+*/
+```
+
+**Example** (Running a Failing Program Without Pretty Logger)
+
+```ts
+import { NodeRuntime } from "@effect/platform-node"
+import { Effect } from "effect"
+
+const failure = Effect.fail("Uh oh!")
+
+NodeRuntime.runMain(failure, { disablePrettyLogger: true })
+/*
+Output:
+timestamp=2025-01-14T11:43:46.276Z level=ERROR fiber=#0 cause="Error: Uh oh!"
+*/
+```
+
+**Example** (Running a Failing Program Without Error Reporting)
+
+```ts
+import { NodeRuntime } from "@effect/platform-node"
+import { Effect } from "effect"
+
+const failure = Effect.fail("Uh oh!")
+
+NodeRuntime.runMain(failure, { disableErrorReporting: true })
+// No Output
+```
+
+**Example** (Running a Failing Program With Custom Teardown)
+
+```ts
+import { NodeRuntime } from "@effect/platform-node"
+import { Effect } from "effect"
+
+const failure = Effect.fail("Uh oh!")
+
+NodeRuntime.runMain(failure, {
+  teardown: function customTeardown(exit, onExit) {
+    if (exit._tag === "Failure") {
+      console.error("Program ended with an error.")
+      onExit(1)
+    } else {
+      console.log("Program finished successfully.")
+      onExit(0)
+    }
+  }
+})
+/*
+Output:
+[12:46:39.871] ERROR (#0):
+  Error: Uh oh!
+Program ended with an error.
+*/
+```
+
 # HTTP API
 
 ## Overview
