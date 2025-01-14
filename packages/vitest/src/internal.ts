@@ -178,7 +178,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
 ) => {
   const memoMap = options?.memoMap ?? Effect.runSync(Layer.makeMemoMap)
   const scope = Effect.runSync(Scope.make())
-  const runtimeEffect = Layer.toRuntimeWithMemoMap(layer_, memoMap).pipe(
+  const runtimeEffect = Layer.toRuntimeWithMemoMap(Layer.provideMerge(layer_, TestEnv), memoMap).pipe(
     Scope.extend(scope),
     Effect.orDie,
     Effect.cached,
@@ -189,8 +189,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
     effect: makeTester<TestServices.TestServices | R>((effect) =>
       Effect.flatMap(runtimeEffect, (runtime) =>
         effect.pipe(
-          Effect.provide(runtime),
-          Effect.provide(TestEnv)
+          Effect.provide(runtime)
         ))
     ),
 
@@ -200,8 +199,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
       Effect.flatMap(runtimeEffect, (runtime) =>
         effect.pipe(
           Effect.scoped,
-          Effect.provide(runtime),
-          Effect.provide(TestEnv)
+          Effect.provide(runtime)
         ))
     ),
     live: makeTester<R>((effect) =>
@@ -221,7 +219,7 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
     layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
       readonly timeout?: Duration.DurationInput
     }) {
-      return layer(Layer.provideMerge(nestedLayer, layer_), { ...options, memoMap })
+      return layer(Layer.provideMerge(Layer.provideMerge(nestedLayer, TestEnv), layer_), { ...options, memoMap })
     }
   })
 

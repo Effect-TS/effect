@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it, layer } from "@effect/vitest"
-import { Context, Effect, FastCheck, Layer, Schema } from "effect"
+import { Context, Duration, Effect, FastCheck, Fiber, Layer, Schema, TestClock } from "effect"
 
 it.live(
   "live %s",
@@ -94,6 +94,16 @@ class Bar extends Context.Tag("Bar")<Bar, "bar">() {
   static Live = Layer.effect(Bar, Effect.map(Foo, () => "bar" as const))
 }
 
+class Sleeper extends Effect.Service<Sleeper>()("Sleeper", {
+  effect: Effect.gen(function*() {
+    const clock = yield* Effect.clock
+
+    return {
+      sleep: (ms: number) => clock.sleep(Duration.millis(ms))
+    } as const
+  })
+}) {}
+
 layer(Foo.Live)("layer", (it) => {
   it.effect("adds context", () =>
     Effect.gen(function*() {
@@ -159,6 +169,17 @@ layer(Foo.Live)("layer", (it) => {
       { fastCheck: { numRuns: 200 } }
     )
   })
+})
+
+layer(Sleeper.Default)("layer - test services", (it) => {
+  it.effect("TestClock", () =>
+    Effect.gen(function*() {
+      const sleeper = yield* Sleeper
+      const fiber = yield* Effect.fork(sleeper.sleep(100_000))
+      yield* Effect.yieldNow()
+      yield* TestClock.adjust(100_000)
+      yield* Fiber.join(fiber)
+    }))
 })
 
 // property testing
