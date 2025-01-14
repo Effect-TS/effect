@@ -248,6 +248,23 @@ export const layer = <R, E>(layer_: Layer.Layer<R, E>, options?: {
 }
 
 /** @internal */
+export const flakyTest = <A, E, R>(
+  self: Effect.Effect<A, E, R>,
+  timeout: Duration.DurationInput = Duration.seconds(30)
+) =>
+  pipe(
+    Effect.catchAllDefect(self, Effect.fail),
+    Effect.retry(
+      pipe(
+        Schedule.recurs(10),
+        Schedule.compose(Schedule.elapsed),
+        Schedule.whileOutput(Duration.lessThanOrEqualTo(timeout))
+      )
+    ),
+    Effect.orDie
+  )
+
+/** @internal */
 export const makeMethods = (it: V.TestAPI): Vitest.Vitest.Methods =>
   Object.assign(it, {
     effect: makeTester<TestServices.TestServices>(Effect.provide(TestEnv), it),
@@ -273,20 +290,3 @@ export const {
 /** @internal */
 export const describeWrapped = (name: string, f: (it: Vitest.Vitest.Methods) => void): V.SuiteCollector =>
   V.describe(name, (it) => f(makeMethods(it)))
-
-/** @internal */
-export const flakyTest = <A, E, R>(
-  self: Effect.Effect<A, E, R>,
-  timeout: Duration.DurationInput = Duration.seconds(30)
-) =>
-  pipe(
-    Effect.catchAllDefect(self, Effect.fail),
-    Effect.retry(
-      pipe(
-        Schedule.recurs(10),
-        Schedule.compose(Schedule.elapsed),
-        Schedule.whileOutput(Duration.lessThanOrEqualTo(timeout))
-      )
-    ),
-    Effect.orDie
-  )
