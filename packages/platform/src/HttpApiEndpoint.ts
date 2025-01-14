@@ -34,6 +34,15 @@ export type TypeId = typeof TypeId
 export const isHttpApiEndpoint = (u: unknown): u is HttpApiEndpoint<any, any, any> => Predicate.hasProperty(u, TypeId)
 
 /**
+ * Represents a path segment. A path segment is a string that represents a
+ * segment of a URL path.
+ *
+ * @since 1.0.0
+ * @category models
+ */
+export type PathSegment = `/${string}`
+
+/**
  * Represents an API endpoint. An API endpoint is mapped to a single route on
  * the underlying `HttpRouter`.
  *
@@ -54,7 +63,7 @@ export interface HttpApiEndpoint<
 > extends Pipeable {
   readonly [TypeId]: TypeId
   readonly name: Name
-  readonly path: HttpRouter.PathInput
+  readonly path: PathSegment
   readonly method: Method
   readonly pathSchema: Option.Option<Schema.Schema<Path, unknown, R>>
   readonly urlParamsSchema: Option.Option<Schema.Schema<UrlParams, unknown, R>>
@@ -194,7 +203,7 @@ export interface HttpApiEndpoint<
    * Add a prefix to the path of the endpoint.
    */
   prefix(
-    prefix: HttpRouter.PathInput
+    prefix: PathSegment
   ): HttpApiEndpoint<Name, Method, Path, UrlParams, Payload, Headers, Success, Error, R, RE>
 
   /**
@@ -743,10 +752,10 @@ const Proto = {
       headersSchema: Option.some(schema)
     })
   },
-  prefix(this: HttpApiEndpoint.AnyWithProps, prefix: HttpRouter.PathInput) {
+  prefix(this: HttpApiEndpoint.AnyWithProps, prefix: PathSegment) {
     return makeProto({
       ...this,
-      path: HttpRouter.prefixPath(this.path, prefix) as HttpRouter.PathInput
+      path: HttpRouter.prefixPath(this.path, prefix) as PathSegment
     })
   },
   middleware(this: HttpApiEndpoint.AnyWithProps, middleware: HttpApiMiddleware.TagClassAny) {
@@ -783,7 +792,7 @@ const makeProto = <
   RE
 >(options: {
   readonly name: Name
-  readonly path: HttpRouter.PathInput
+  readonly path: PathSegment
   readonly method: Method
   readonly pathSchema: Option.Option<Schema.Schema<Path, unknown, R>>
   readonly urlParamsSchema: Option.Option<Schema.Schema<UrlParams, unknown, R>>
@@ -802,9 +811,9 @@ const makeProto = <
  */
 export const make = <Method extends HttpMethod>(method: Method): {
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, Method>
-  <const Name extends string>(name: Name, path: HttpRouter.PathInput): HttpApiEndpoint<Name, Method>
+  <const Name extends string>(name: Name, path: PathSegment): HttpApiEndpoint<Name, Method>
 } =>
-  ((name: string, ...args: [HttpRouter.PathInput]) => {
+  ((name: string, ...args: [PathSegment]) => {
     if (args.length === 1) {
       return makeProto({
         name,
@@ -821,7 +830,7 @@ export const make = <Method extends HttpMethod>(method: Method): {
       })
     }
     return (segments: TemplateStringsArray, ...schemas: ReadonlyArray<HttpApiSchema.AnyString>) => {
-      let path = segments[0] as HttpRouter.PathInput
+      let path = segments[0] as PathSegment
       let pathSchema = Option.none<Schema.Schema.Any>()
       if (schemas.length > 0) {
         const obj: Record<string, Schema.Schema.Any> = {}
@@ -857,7 +866,7 @@ export const get: {
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "GET">
   <const Name extends string>(
     name: Name,
-    path: HttpRouter.PathInput
+    path: PathSegment
   ): HttpApiEndpoint<Name, "GET">
 } = make("GET")
 
@@ -869,7 +878,7 @@ export const post: {
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "POST">
   <const Name extends string>(
     name: Name,
-    path: HttpRouter.PathInput
+    path: PathSegment
   ): HttpApiEndpoint<Name, "POST">
 } = make("POST")
 
@@ -881,7 +890,7 @@ export const put: {
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "PUT">
   <const Name extends string>(
     name: Name,
-    path: HttpRouter.PathInput
+    path: PathSegment
   ): HttpApiEndpoint<Name, "PUT">
 } = make("PUT")
 
@@ -893,7 +902,7 @@ export const patch: {
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "PATCH">
   <const Name extends string>(
     name: Name,
-    path: HttpRouter.PathInput
+    path: PathSegment
   ): HttpApiEndpoint<Name, "PATCH">
 } = make(
   "PATCH"
@@ -907,7 +916,7 @@ export const del: {
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "DELETE">
   <const Name extends string>(
     name: Name,
-    path: HttpRouter.PathInput
+    path: PathSegment
   ): HttpApiEndpoint<Name, "DELETE">
 } = make(
   "DELETE"
