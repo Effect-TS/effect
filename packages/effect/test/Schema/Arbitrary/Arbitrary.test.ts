@@ -193,6 +193,18 @@ schema (NeverKeyword): never`)
       const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b"))
       expectValidArbitrary(schema)
     })
+
+    it("https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html", async () => {
+      const EmailLocaleIDs = S.Literal("welcome_email", "email_heading")
+      const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
+      const schema = S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), "_id")
+      expectValidArbitrary(schema)
+    })
+
+    it("< + h + (1|2) + >", async () => {
+      const schema = S.TemplateLiteral("<", S.TemplateLiteral("h", S.Literal(1, 2)), ">")
+      expectValidArbitrary(schema)
+    })
   })
 
   describe("Enums", () => {

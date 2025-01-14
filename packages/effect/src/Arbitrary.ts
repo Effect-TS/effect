@@ -360,31 +360,39 @@ export const toOp = (
     case "TemplateLiteral":
       return new Succeed((fc) => {
         const string = fc.string({ maxLength: 5 })
-        const number = fc.float({ noDefaultInfinity: true }).filter((n) => !Number.isNaN(n))
+        const number = fc.float({ noDefaultInfinity: true, noNaN: true })
 
-        const components: Array<FastCheck.Arbitrary<string | number>> = ast.head !== "" ? [fc.constant(ast.head)] : []
+        const getTemplateLiteralArb = (ast: AST.TemplateLiteral) => {
+          const components: Array<FastCheck.Arbitrary<string | number>> = ast.head !== "" ? [fc.constant(ast.head)] : []
 
-        const addArb = (ast: AST.TemplateLiteralSpan["type"]) => {
-          switch (ast._tag) {
-            case "StringKeyword":
-              return components.push(string)
-            case "NumberKeyword":
-              return components.push(number)
-            case "Literal":
-              return components.push(fc.constant(String(ast.literal)))
-            case "Union":
-              return ast.types.forEach(addArb)
+          const getTemplateLiteralSpanTypeArb = (
+            ast: AST.TemplateLiteralSpan["type"]
+          ): FastCheck.Arbitrary<string | number> => {
+            switch (ast._tag) {
+              case "StringKeyword":
+                return string
+              case "NumberKeyword":
+                return number
+              case "Literal":
+                return fc.constant(String(ast.literal))
+              case "Union":
+                return fc.oneof(...ast.types.map(getTemplateLiteralSpanTypeArb))
+              case "TemplateLiteral":
+                return getTemplateLiteralArb(ast)
+            }
           }
+
+          ast.spans.forEach((span) => {
+            components.push(getTemplateLiteralSpanTypeArb(span.type))
+            if (span.literal !== "") {
+              components.push(fc.constant(span.literal))
+            }
+          })
+
+          return fc.tuple(...components).map((spans) => spans.join(""))
         }
 
-        ast.spans.forEach((span) => {
-          addArb(span.type)
-          if (span.literal !== "") {
-            components.push(fc.constant(span.literal))
-          }
-        })
-
-        return fc.tuple(...components).map((spans) => spans.join(""))
+        return getTemplateLiteralArb(ast)
       })
     case "Refinement": {
       const from = toOp(ast.from, ctx, path)
