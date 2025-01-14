@@ -452,7 +452,7 @@ export const toOp = (
       return new Succeed((fc) => fc.constant(null).chain(() => get()(fc)))
     }
     case "Transformation":
-      return new Succeed(go(ast.to, ctx, path))
+      return toOp(ast.to, ctx, path)
   }
 }
 
@@ -577,6 +577,16 @@ const getOr = (a: boolean | undefined, b: boolean | undefined): boolean | undefi
   return a === undefined ? b : b === undefined ? a : a || b
 }
 
+function mergePattern(pattern1: string | undefined, pattern2: string | undefined): string | undefined {
+  if (pattern1 === undefined) {
+    return pattern2
+  }
+  if (pattern2 === undefined) {
+    return pattern1
+  }
+  return `(?:${pattern1})|(?:${pattern2})`
+}
+
 const merge = (c1: Config, c2: Constraints | undefined): Config => {
   if (c2) {
     switch (c1._tag) {
@@ -585,7 +595,7 @@ const merge = (c1: Config, c2: Constraints | undefined): Config => {
           return makeStringConstraints({
             minLength: getMax(c1.constraints.minLength, c2.constraints.minLength),
             maxLength: getMin(c1.constraints.maxLength, c2.constraints.maxLength),
-            pattern: c1.pattern ?? c2.pattern
+            pattern: mergePattern(c1.pattern, c2.pattern)
           })
         }
         break
