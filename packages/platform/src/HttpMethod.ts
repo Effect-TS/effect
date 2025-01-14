@@ -35,6 +35,11 @@ export declare namespace HttpMethod {
 export const hasBody = (method: HttpMethod): boolean => method !== "GET" && method !== "HEAD" && method !== "OPTIONS"
 
 /**
+ * @since 1.0.0
+ */
+export const all: ReadonlySet<HttpMethod> = new Set(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+
+/**
  * Tests if a value is a `HttpMethod`.
  *
  * @param input - The value to test.
@@ -51,5 +56,4 @@ export const hasBody = (method: HttpMethod): boolean => method !== "GET" && meth
  * @since 1.0.0
  * @category refinements
  */
-export const isHttpMethod = (u: unknown): u is HttpMethod =>
-  typeof u === "string" && ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"].includes(u)
+export const isHttpMethod = (u: unknown): u is HttpMethod => typeof u === "string" && all.has(u as HttpMethod)
