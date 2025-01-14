@@ -1,5 +1,39 @@
 # @effect/platform
 
+## 0.73.0
+
+### Minor Changes
+
+- [#4245](https://github.com/Effect-TS/effect/pull/4245) [`c110032`](https://github.com/Effect-TS/effect/commit/c110032322450a8824ba38ae24335a538cd2ce9a) Thanks @gcanti! - Update `HttpApi` to remove wildcard support for better OpenAPI compatibility.
+
+  The `HttpApi*` modules previously reused the following type from `HttpRouter`:
+
+  ```ts
+  type PathInput = `/${string}` | "*"
+  ```
+
+  However, the `"*"` wildcard value was not handled correctly, as OpenAPI does not support wildcards.
+
+  This has been updated to use a more specific type:
+
+  ```ts
+  type PathSegment = `/${string}`
+  ```
+
+  This change ensures better alignment with OpenAPI specifications and eliminates potential issues related to unsupported wildcard paths.
+
+- [#4237](https://github.com/Effect-TS/effect/pull/4237) [`23ac740`](https://github.com/Effect-TS/effect/commit/23ac740c7dd4610b7d265c2071b88b0968419e9a) Thanks @gcanti! - Make `OpenApiSpec` mutable to make handling it more convenient.
+
+### Patch Changes
+
+- [#4177](https://github.com/Effect-TS/effect/pull/4177) [`8cd7319`](https://github.com/Effect-TS/effect/commit/8cd7319b6568bfc7a30ca16c104d189e37eac3a0) Thanks @KhraksMamtsov! - `Url` module has been introduced:
+
+  - immutable setters with dual-function api
+  - integration with `UrlParams`
+
+- Updated dependencies [[`d7dac48`](https://github.com/Effect-TS/effect/commit/d7dac48a477cdfeec509dbe9f33fce6a1b02b63d), [`1d7fd2b`](https://github.com/Effect-TS/effect/commit/1d7fd2b7ee8eeecc912d27adf76ed897db236dc5), [`1d7fd2b`](https://github.com/Effect-TS/effect/commit/1d7fd2b7ee8eeecc912d27adf76ed897db236dc5)]:
+  - effect@3.12.3
+
 ## 0.72.2
 
 ### Patch Changes

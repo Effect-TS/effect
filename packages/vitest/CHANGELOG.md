@@ -1,5 +1,16 @@
 # @effect/vitest
 
+## 0.16.3
+
+### Patch Changes
+
+- [#3973](https://github.com/Effect-TS/effect/pull/3973) [`d05d663`](https://github.com/Effect-TS/effect/commit/d05d663e6f293f40c6935f0474d0867ab04604c3) Thanks @lishaduck! - Add it.\*.fails method to @effect/vitest
+
+- [#4227](https://github.com/Effect-TS/effect/pull/4227) [`b514200`](https://github.com/Effect-TS/effect/commit/b51420099892e8d10fde53c58e34d100eb1985ed) Thanks @sukovanej! - Fix `it.prop` type signature.
+
+- Updated dependencies [[`d7dac48`](https://github.com/Effect-TS/effect/commit/d7dac48a477cdfeec509dbe9f33fce6a1b02b63d), [`1d7fd2b`](https://github.com/Effect-TS/effect/commit/1d7fd2b7ee8eeecc912d27adf76ed897db236dc5), [`1d7fd2b`](https://github.com/Effect-TS/effect/commit/1d7fd2b7ee8eeecc912d27adf76ed897db236dc5)]:
+  - effect@3.12.3
+
 ## 0.16.2
 
 ### Patch Changes
