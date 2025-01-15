@@ -17,51 +17,51 @@ describe("BigInt", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "",
-      `bigint
+      `BigInt
 └─ Transformation process failure
-   └─ Expected bigint, actual ""`
+   └─ Expected BigInt, actual ""`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       " ",
-      `bigint
+      `BigInt
 └─ Transformation process failure
-   └─ Expected bigint, actual " "`
+   └─ Expected BigInt, actual " "`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "1.2",
-      `bigint
+      `BigInt
 └─ Transformation process failure
-   └─ Expected bigint, actual "1.2"`
+   └─ Expected BigInt, actual "1.2"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "1AB",
-      `bigint
+      `BigInt
 └─ Transformation process failure
-   └─ Expected bigint, actual "1AB"`
+   └─ Expected BigInt, actual "1AB"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "AB1",
-      `bigint
+      `BigInt
 └─ Transformation process failure
-   └─ Expected bigint, actual "AB1"`
+   └─ Expected BigInt, actual "AB1"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "a",
-      `bigint
+      `BigInt
 └─ Transformation process failure
-   └─ Expected bigint, actual "a"`
+   └─ Expected BigInt, actual "a"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "a1",
-      `bigint
+      `BigInt
 └─ Transformation process failure
-   └─ Expected bigint, actual "a1"`
+   └─ Expected BigInt, actual "a1"`
     )
   })
 
