@@ -53,7 +53,7 @@ describe("EitherFromSelf", () => {
       `Either<("true" | "false" <-> boolean), NumberFromString>
 └─ NumberFromString
    └─ Transformation process failure
-      └─ Expected NumberFromString, actual "a"`
+      └─ Unable to decode "a" into a number`
     )
   })
 

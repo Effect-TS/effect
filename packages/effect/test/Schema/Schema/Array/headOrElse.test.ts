@@ -11,7 +11,7 @@ describe("headOrElse", () => {
       [],
       `(ReadonlyArray<NumberFromString> <-> number)
 └─ Transformation process failure
-   └─ Expected (ReadonlyArray<NumberFromString> <-> number), actual []`
+   └─ Unable to retrieve the first element of an empty array`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -22,7 +22,7 @@ describe("headOrElse", () => {
       └─ [0]
          └─ NumberFromString
             └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+               └─ Unable to decode "a" into a number`
     )
   })
 
@@ -39,7 +39,7 @@ describe("headOrElse", () => {
       └─ [0]
          └─ NumberFromString
             └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+               └─ Unable to decode "a" into a number`
     )
 
     const schema2 = S.Array(S.NumberFromString).pipe(S.headOrElse(() => 0))

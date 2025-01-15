@@ -507,7 +507,7 @@
       },
       "NumberFromString": {
         "type": "string",
-        "description": "a string that will be parsed into a number"
+        "description": "a string to be decoded into a number"
       },
       "PersistedFile": {
         "format": "binary",
@@ -609,7 +609,7 @@
         "additionalProperties": false
       },
       "DateTimeUtc": {
-        "description": "a string that will be parsed into a DateTime.Utc",
+        "description": "a string to be decoded into a DateTime.Utc",
         "type": "string"
       },
       "UserError": {

@@ -27,7 +27,7 @@ describe("BigDecimal", () => {
       "abc",
       `BigDecimal
 └─ Transformation process failure
-   └─ Expected BigDecimal, actual "abc"`
+   └─ Unable to decode "abc" into a BigDecimal`
     )
   })
 

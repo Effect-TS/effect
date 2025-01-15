@@ -32,7 +32,7 @@ describe("ListFromSelf", () => {
    └─ [1]
       └─ NumberFromString
          └─ Transformation process failure
-            └─ Expected NumberFromString, actual "a"`
+            └─ Unable to decode "a" into a number`
     )
   })
 

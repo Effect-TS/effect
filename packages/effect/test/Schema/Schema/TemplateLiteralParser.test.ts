@@ -143,7 +143,7 @@ schema (Union): boolean | symbol`)
       └─ [0]
          └─ NumberFromString
             └─ Transformation process failure
-               └─ Expected NumberFromString, actual "-"`
+               └─ Unable to decode "-" into a number`
       )
 
       await Util.expectEncodeSuccess(schema, [100, "a", "b"], "100ab")

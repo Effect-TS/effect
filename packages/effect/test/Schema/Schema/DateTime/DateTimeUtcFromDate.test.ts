@@ -24,7 +24,7 @@ describe("DateTimeUtcFromDate", () => {
       new Date(NaN),
       `DateTimeUtcFromDate
 └─ Transformation process failure
-   └─ Expected DateTimeUtcFromDate, actual Invalid Date`
+   └─ Unable to decode Invalid Date into a DateTime.Utc`
     )
   })
 

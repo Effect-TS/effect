@@ -124,7 +124,7 @@ describe("PropertySignature", () => {
       └─ ["a"]
          └─ NumberFromString
             └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+               └─ Unable to decode "a" into a number`
     )
 
     await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
@@ -153,7 +153,7 @@ describe("PropertySignature", () => {
       └─ ["a"]
          └─ NumberFromString
             └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+               └─ Unable to decode "a" into a number`
     )
 
     await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })

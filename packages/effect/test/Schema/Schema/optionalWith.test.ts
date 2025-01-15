@@ -40,7 +40,7 @@ describe("optionalWith", () => {
 └─ ["a"]
    └─ NumberFromString
       └─ Transformation process failure
-         └─ Expected NumberFromString, actual "a"`
+         └─ Unable to decode "a" into a number`
       )
 
       await Util.expectEncodeSuccess(schema, {}, {})
@@ -80,7 +80,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | null | undefined
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             ├─ Expected null, actual "a"
             └─ Expected undefined, actual "a"`
       )
@@ -122,7 +122,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | null
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             └─ Expected null, actual "a"`
       )
 
@@ -149,7 +149,7 @@ describe("optionalWith", () => {
       └─ ["a"]
          └─ NumberFromString
             └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+               └─ Unable to decode "a" into a number`
       )
 
       await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
@@ -177,7 +177,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | null
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             └─ Expected null, actual "a"`
       )
 
@@ -211,7 +211,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | null
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             └─ Expected null, actual "a"`
       )
 
@@ -238,7 +238,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | undefined
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             └─ Expected undefined, actual "a"`
       )
 
@@ -268,7 +268,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | null | undefined
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             ├─ Expected null, actual "a"
             └─ Expected undefined, actual "a"`
       )
@@ -311,7 +311,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | undefined
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             └─ Expected undefined, actual "a"`
       )
 
@@ -341,7 +341,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | null | undefined
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             ├─ Expected null, actual "a"
             └─ Expected undefined, actual "a"`
       )
@@ -372,7 +372,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | null | undefined
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             ├─ Expected null, actual "a"
             └─ Expected undefined, actual "a"`
       )
@@ -398,7 +398,7 @@ describe("optionalWith", () => {
       └─ ["a"]
          └─ NumberFromString
             └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+               └─ Unable to decode "a" into a number`
       )
 
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
@@ -431,7 +431,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | undefined
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             └─ Expected undefined, actual "a"`
       )
 
@@ -466,7 +466,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | null | undefined
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             ├─ Expected null, actual "a"
             └─ Expected undefined, actual "a"`
       )
@@ -501,7 +501,7 @@ describe("optionalWith", () => {
          └─ NumberFromString | null
             ├─ NumberFromString
             │  └─ Transformation process failure
-            │     └─ Expected NumberFromString, actual "a"
+            │     └─ Unable to decode "a" into a number
             └─ Expected null, actual "a"`
       )
 
