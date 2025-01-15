@@ -2598,6 +2598,25 @@ export const filterMapEffect = dual<
 )
 
 /** @internal */
+export const filterMapEffectOption = dual<
+  <A, A2, E2, R2>(
+    f: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E | E2, R | R2>,
+  <A, E, R, A2, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    f: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+  ) => Stream.Stream<A2, E | E2, R | R2>
+>(2, <A, E, R, A2, E2, R2>(
+  self: Stream.Stream<A, E, R>,
+  f: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+): Stream.Stream<A2, E | E2, R | R2> =>
+  pipe(
+    self,
+    mapEffectSequential(f),
+    filterMap(identity)
+  ))
+
+/** @internal */
 export const filterMapWhile = dual<
   <A, A2>(
     pf: (a: A) => Option.Option<A2>
