@@ -926,4 +926,22 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       expectHook(S.NumberFromString)
     })
   })
+
+  describe("DateTime", () => {
+    it("DateTimeUtcFromSelf", () => {
+      expectValidArbitrary(S.DateTimeUtcFromSelf)
+    })
+
+    it("TimeZoneOffsetFromSelf", () => {
+      expectValidArbitrary(S.TimeZoneOffsetFromSelf)
+    })
+
+    it("TimeZoneNamedFromSelf", () => {
+      expectValidArbitrary(S.TimeZoneNamedFromSelf)
+    })
+
+    it("DateTimeZonedFromSelf", () => {
+      expectValidArbitrary(S.DateTimeZonedFromSelf)
+    })
+  })
 })

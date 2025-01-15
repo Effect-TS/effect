@@ -221,10 +221,8 @@ export const X3 = S.transform(
   { strict: true, decode: (s) => s + s + s, encode: (s) => s.substring(0, s.length / 3) }
 )
 
-const doProperty = true
-
 export const expectValidArbitrary = <A, I>(schema: S.Schema<A, I, never>, params?: fc.Parameters<[A]>) => {
-  if (!doProperty) {
+  if (false as boolean) {
     return
   }
   const arb = A.makeLazy(schema)(fc)

@@ -6516,7 +6516,8 @@ export class DateTimeUtcFromSelf extends declare(
     identifier: "DateTimeUtcFromSelf",
     description: "a DateTime.Utc instance",
     pretty: (): pretty_.Pretty<dateTime.Utc> => (dateTime) => dateTime.toString(),
-    arbitrary: (): LazyArbitrary<dateTime.Utc> => (fc) => fc.date().map((date) => dateTime.unsafeFromDate(date)),
+    arbitrary: (): LazyArbitrary<dateTime.Utc> => (fc) =>
+      fc.date({ noInvalidDate: true }).map((date) => dateTime.unsafeFromDate(date)),
     equivalence: () => dateTime.Equivalence
   }
 ) {}
@@ -6646,18 +6647,10 @@ export class TimeZoneNamed extends transformOrFail(
 ).annotations({ identifier: "TimeZoneNamed" }) {}
 
 /**
- * @category api interface
- * @since 3.10.0
- */
-export interface TimeZoneFromSelf extends Union<[typeof TimeZoneOffsetFromSelf, typeof TimeZoneNamedFromSelf]> {
-  annotations(annotations: Annotations.Schema<dateTime.TimeZone>): TimeZoneFromSelf
-}
-
-/**
  * @category TimeZone constructors
  * @since 3.10.0
  */
-export const TimeZoneFromSelf: TimeZoneFromSelf = Union(TimeZoneOffsetFromSelf, TimeZoneNamedFromSelf)
+export class TimeZoneFromSelf extends Union(TimeZoneOffsetFromSelf, TimeZoneNamedFromSelf) {}
 
 /**
  * Defines a schema that attempts to convert a `string` to a `TimeZone` using the `DateTime.zoneFromString` constructor.
@@ -6699,7 +6692,9 @@ export class DateTimeZonedFromSelf extends declare(
     description: "a DateTime.Zoned instance",
     pretty: (): pretty_.Pretty<dateTime.Zoned> => (dateTime) => dateTime.toString(),
     arbitrary: (): LazyArbitrary<dateTime.Zoned> => (fc) =>
-      fc.date().chain((date) => timeZoneArbitrary(fc).map((timeZone) => dateTime.unsafeMakeZoned(date, { timeZone }))),
+      fc.date({ noInvalidDate: true }).chain((date) =>
+        timeZoneArbitrary(fc).map((timeZone) => dateTime.unsafeMakeZoned(date, { timeZone }))
+      ),
     equivalence: () => dateTime.Equivalence
   }
 ) {}
