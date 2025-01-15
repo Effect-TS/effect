@@ -14,7 +14,7 @@ describe("Symbol", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      `symbol
+      `Symbol
 └─ Encoded side transformation failure
    └─ Expected string, actual null`
     )
@@ -25,7 +25,7 @@ describe("Symbol", () => {
     await Util.expectEncodeFailure(
       schema,
       Symbol(),
-      `symbol
+      `Symbol
 └─ Encoded side transformation failure
    └─ Expected string, actual undefined`
     )
