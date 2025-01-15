@@ -5193,7 +5193,7 @@ export class Not extends transform(Boolean$.annotations({ description: "a boolea
 class Symbol$ extends transform(
   String$.annotations({ description: "a string to be decoded into a symbol" }),
   SymbolFromSelf,
-  { strict: false, decode: (s) => Symbol.for(s), encode: (sym) => sym.description }
+  { strict: false, decode: Symbol.for, encode: Symbol.keyFor }
 ).annotations({ identifier: "Symbol" }) {}
 
 export {
