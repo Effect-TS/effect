@@ -5194,7 +5194,7 @@ class Symbol$ extends transform(
   String$.annotations({ description: "a string to be decoded into a symbol" }),
   SymbolFromSelf,
   { strict: false, decode: (s) => Symbol.for(s), encode: (sym) => sym.description }
-).annotations({ identifier: "symbol" }) {}
+).annotations({ identifier: "Symbol" }) {}
 
 export {
   /**
