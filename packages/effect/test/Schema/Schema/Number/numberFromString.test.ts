@@ -24,42 +24,42 @@ describe("NumberFromString", () => {
       "",
       `NumberFromString
 └─ Transformation process failure
-   └─ Expected NumberFromString, actual ""`
+   └─ Unable to decode "" into a number`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       " ",
       `NumberFromString
 └─ Transformation process failure
-   └─ Expected NumberFromString, actual " "`
+   └─ Unable to decode " " into a number`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "1AB",
       `NumberFromString
 └─ Transformation process failure
-   └─ Expected NumberFromString, actual "1AB"`
+   └─ Unable to decode "1AB" into a number`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "AB1",
       `NumberFromString
 └─ Transformation process failure
-   └─ Expected NumberFromString, actual "AB1"`
+   └─ Unable to decode "AB1" into a number`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "a",
       `NumberFromString
 └─ Transformation process failure
-   └─ Expected NumberFromString, actual "a"`
+   └─ Unable to decode "a" into a number`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "a1",
       `NumberFromString
 └─ Transformation process failure
-   └─ Expected NumberFromString, actual "a1"`
+   └─ Unable to decode "a1" into a number`
     )
   })
 

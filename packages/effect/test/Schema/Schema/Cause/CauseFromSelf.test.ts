@@ -33,7 +33,7 @@ describe("CauseFromSelf", () => {
       └─ ["error"]
          └─ NumberFromString
             └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+               └─ Unable to decode "a" into a number`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -47,7 +47,7 @@ describe("CauseFromSelf", () => {
                └─ ["error"]
                   └─ NumberFromString
                      └─ Transformation process failure
-                        └─ Expected NumberFromString, actual "a"`
+                        └─ Unable to decode "a" into a number`
     )
   })
 

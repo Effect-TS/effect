@@ -47,7 +47,7 @@ describe("OpenApiJsonSchema", () => {
         "type": "integer"
       },
       "NumberFromString": {
-        "description": "a string that will be parsed into a number",
+        "description": "a string to be decoded into a number",
         "type": "string"
       }
     })

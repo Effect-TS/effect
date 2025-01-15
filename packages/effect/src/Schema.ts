@@ -4564,8 +4564,10 @@ export type ParseJsonOptions = {
 const JsonString = String$.annotations({
   [AST.IdentifierAnnotationId]: "JsonString",
   [AST.TitleAnnotationId]: "JsonString",
-  [AST.DescriptionAnnotationId]: "a string that will be parsed as JSON"
+  [AST.DescriptionAnnotationId]: "a string to be decoded as JSON"
 })
+
+const getErrorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e)
 
 const getParseJsonTransformation = (options?: ParseJsonOptions) =>
   transformOrFail(
@@ -4576,12 +4578,12 @@ const getParseJsonTransformation = (options?: ParseJsonOptions) =>
       decode: (s, _, ast) =>
         ParseResult.try({
           try: () => JSON.parse(s, options?.reviver),
-          catch: (e: any) => new ParseResult.Type(ast, s, e.message)
+          catch: (e) => new ParseResult.Type(ast, s, getErrorMessage(e))
         }),
       encode: (u, _, ast) =>
         ParseResult.try({
           try: () => JSON.stringify(u, options?.replacer, options?.space),
-          catch: (e: any) => new ParseResult.Type(ast, u, e.message)
+          catch: (e) => new ParseResult.Type(ast, u, getErrorMessage(e))
         })
     }
   ).annotations({ schemaId: AST.ParseJsonSchemaId })
@@ -4690,14 +4692,19 @@ export class URLFromSelf extends instanceOf(URL, {
 
 /** @ignore */
 class URL$ extends transformOrFail(
-  String$.annotations({ description: "a string that will be parsed into a URL" }),
+  String$.annotations({ description: "a string to be decoded into a URL" }),
   URLFromSelf,
   {
     strict: true,
-    decode: (str, _, ast) =>
+    decode: (s, _, ast) =>
       ParseResult.try({
-        try: () => new URL(str),
-        catch: () => new ParseResult.Type(ast, str)
+        try: () => new URL(s),
+        catch: (e) =>
+          new ParseResult.Type(
+            ast,
+            s,
+            `Unable to decode ${JSON.stringify(s)} into a URL. ${getErrorMessage(e)}`
+          )
       }),
     encode: (url) => ParseResult.succeed(url.toString())
   }
@@ -5062,8 +5069,11 @@ export const parseNumber = <A extends string, I, R>(
     Number$,
     {
       strict: false,
-      decode: (s, _, ast) => ParseResult.fromOption(number_.parse(s), () => new ParseResult.Type(ast, s)),
-      encode: (n) => ParseResult.succeed(String(n))
+      decode: (s, _, ast) =>
+        ParseResult.fromOption(number_.parse(s), () =>
+          new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a number`)),
+      encode: (n) =>
+        ParseResult.succeed(String(n))
     }
   )
 
@@ -5078,7 +5088,7 @@ export const parseNumber = <A extends string, I, R>(
  * @since 3.10.0
  */
 export class NumberFromString extends parseNumber(String$.annotations({
-  description: "a string that will be parsed into a number"
+  description: "a string to be decoded into a number"
 })).annotations({ identifier: "NumberFromString" }) {}
 
 /**
@@ -5408,11 +5418,15 @@ export const clampBigInt =
 
 /** @ignore */
 class BigInt$ extends transformOrFail(
-  String$.annotations({ description: "a string that will be parsed into a bigint" }),
+  String$.annotations({ description: "a string to be decoded into a bigint" }),
   BigIntFromSelf,
   {
     strict: true,
-    decode: (s, _, ast) => ParseResult.fromOption(bigInt_.fromString(s), () => new ParseResult.Type(ast, s)),
+    decode: (s, _, ast) =>
+      ParseResult.fromOption(
+        bigInt_.fromString(s),
+        () => new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a bigint`)
+      ),
     encode: (n) => ParseResult.succeed(String(n))
   }
 ).annotations({ identifier: "BigInt" }) {}
@@ -5502,16 +5516,20 @@ export const NonNegativeBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
  * @since 3.10.0
  */
 export class BigIntFromNumber extends transformOrFail(
-  Number$.annotations({ description: "a number that will be parsed into a bigint" }),
+  Number$.annotations({ description: "a number to be decoded into a bigint" }),
   BigIntFromSelf,
   {
     strict: true,
     decode: (n, _, ast) =>
       ParseResult.fromOption(
         bigInt_.fromNumber(n),
-        () => new ParseResult.Type(ast, n)
+        () => new ParseResult.Type(ast, n, `Unable to decode ${n} into a bigint`)
       ),
-    encode: (b, _, ast) => ParseResult.fromOption(bigInt_.toNumber(b), () => new ParseResult.Type(ast, b))
+    encode: (b, _, ast) =>
+      ParseResult.fromOption(
+        bigInt_.toNumber(b),
+        () => new ParseResult.Type(ast, b, `Unable to encode ${b}n into a number`)
+      )
   }
 ).annotations({ identifier: "BigIntFromNumber" }) {}
 
@@ -5637,14 +5655,15 @@ export class DurationFromSelf extends declare(
  * @since 3.10.0
  */
 export class DurationFromNanos extends transformOrFail(
-  BigIntFromSelf.annotations({ description: "a bigint that will be parsed into a Duration" }),
+  BigIntFromSelf.annotations({ description: "a bigint to be decoded into a Duration" }),
   DurationFromSelf,
   {
     strict: true,
     decode: (nanos) => ParseResult.succeed(duration_.nanos(nanos)),
     encode: (duration, _, ast) =>
       option_.match(duration_.toNanos(duration), {
-        onNone: () => ParseResult.fail(new ParseResult.Type(ast, duration)),
+        onNone: () =>
+          ParseResult.fail(new ParseResult.Type(ast, duration, `Unable to encode ${duration} into a bigint`)),
         onSome: (val) => ParseResult.succeed(val)
       })
   }
@@ -5658,7 +5677,7 @@ export class DurationFromNanos extends transformOrFail(
  * @since 3.10.0
  */
 export class DurationFromMillis extends transform(
-  Number$.annotations({ description: "a number that will be parsed into a Duration" }),
+  Number$.annotations({ description: "a number to be decoded into a Duration" }),
   DurationFromSelf,
   { strict: true, decode: (ms) => duration_.millis(ms), encode: (n) => duration_.toMillis(n) }
 ).annotations({ identifier: "DurationFromMillis" }) {}
@@ -5681,7 +5700,7 @@ const HRTime: Schema<readonly [seconds: number, nanos: number]> = Tuple(
  * @since 3.10.0
  */
 export class Duration extends transform(
-  HRTime.annotations({ description: "a tuple of seconds and nanos that will be parsed into a Duration" }),
+  HRTime.annotations({ description: "a tuple of seconds and nanos to be decoded into a Duration" }),
   DurationFromSelf,
   {
     strict: true,
@@ -5862,7 +5881,7 @@ export const Uint8 = Number$.pipe(
 
 const Uint8Array$: Schema<Uint8Array, ReadonlyArray<number>> = transform(
   Array$(Uint8).annotations({
-    description: "an array of 8-bit unsigned integers that will be parsed into a Uint8Array"
+    description: "an array of 8-bit unsigned integers to be decoded into a Uint8Array"
   }),
   Uint8ArrayFromSelf,
   { strict: true, decode: (numbers) => Uint8Array.from(numbers), encode: (uint8Array) => Array.from(uint8Array) }
@@ -5884,7 +5903,7 @@ const makeUint8ArrayTransformation = (
   encode: (u: Uint8Array) => string
 ) =>
   transformOrFail(
-    String$.annotations({ description: "a string that will be parsed into a Uint8Array" }),
+    String$.annotations({ description: "a string to be decoded into a Uint8Array" }),
     Uint8ArrayFromSelf,
     {
       strict: true,
@@ -6196,7 +6215,7 @@ export const headOrElse: {
             ? ParseResult.succeed(as[0])
             : fallback
             ? ParseResult.succeed(fallback())
-            : ParseResult.fail(new ParseResult.Type(ast, as)),
+            : ParseResult.fail(new ParseResult.Type(ast, as, "Unable to retrieve the first element of an empty array")),
         encode: (a) => ParseResult.succeed(array_.of(a))
       }
     )
@@ -6418,7 +6437,7 @@ export class ValidDateFromSelf extends DateFromSelf.pipe(
  * @since 3.10.0
  */
 export class DateFromString extends transform(
-  String$.annotations({ description: "a string that will be parsed into a Date" }),
+  String$.annotations({ description: "a string to be decoded into a Date" }),
   DateFromSelf,
   { strict: true, decode: (s) => new Date(s), encode: (d) => util_.formatDate(d) }
 ).annotations({ identifier: "DateFromString" }) {}
@@ -6452,7 +6471,7 @@ export {
  * @since 3.10.0
  */
 export class DateFromNumber extends transform(
-  Number$.annotations({ description: "a number that will be parsed into a Date" }),
+  Number$.annotations({ description: "a number to be decoded into a Date" }),
   DateFromSelf,
   { strict: true, decode: (n) => new Date(n), encode: (d) => d.getTime() }
 ).annotations({ identifier: "DateFromNumber" }) {}
@@ -6474,10 +6493,10 @@ export class DateTimeUtcFromSelf extends declare(
   }
 ) {}
 
-const decodeDateTime = <A extends dateTime.DateTime.Input>(input: A, _: ParseOptions, ast: AST.AST) =>
+const decodeDateTimeUtc = <A extends dateTime.DateTime.Input>(input: A, _: ParseOptions, ast: AST.AST) =>
   ParseResult.try({
     try: () => dateTime.unsafeMake(input),
-    catch: () => new ParseResult.Type(ast, input)
+    catch: () => new ParseResult.Type(ast, input, `Unable to decode ${util_.formatUnknown(input)} into a DateTime.Utc`)
   })
 
 /**
@@ -6487,11 +6506,11 @@ const decodeDateTime = <A extends dateTime.DateTime.Input>(input: A, _: ParseOpt
  * @since 3.10.0
  */
 export class DateTimeUtcFromNumber extends transformOrFail(
-  Number$.annotations({ description: "a number that will be parsed into a DateTime.Utc" }),
+  Number$.annotations({ description: "a number to be decoded into a DateTime.Utc" }),
   DateTimeUtcFromSelf,
   {
     strict: true,
-    decode: decodeDateTime,
+    decode: decodeDateTimeUtc,
     encode: (dt) => ParseResult.succeed(dateTime.toEpochMillis(dt))
   }
 ).annotations({ identifier: "DateTimeUtcFromNumber" }) {}
@@ -6503,11 +6522,11 @@ export class DateTimeUtcFromNumber extends transformOrFail(
  * @since 3.12.0
  */
 export class DateTimeUtcFromDate extends transformOrFail(
-  DateFromSelf.annotations({ description: "a Date that will be parsed into a DateTime.Utc" }),
+  DateFromSelf.annotations({ description: "a Date to be decoded into a DateTime.Utc" }),
   DateTimeUtcFromSelf,
   {
     strict: true,
-    decode: decodeDateTime,
+    decode: decodeDateTimeUtc,
     encode: (dt) => ParseResult.succeed(dateTime.toDateUtc(dt))
   }
 ).annotations({ identifier: "DateTimeUtcFromDate" }) {}
@@ -6519,11 +6538,11 @@ export class DateTimeUtcFromDate extends transformOrFail(
  * @since 3.10.0
  */
 export class DateTimeUtc extends transformOrFail(
-  String$.annotations({ description: "a string that will be parsed into a DateTime.Utc" }),
+  String$.annotations({ description: "a string to be decoded into a DateTime.Utc" }),
   DateTimeUtcFromSelf,
   {
     strict: true,
-    decode: decodeDateTime,
+    decode: decodeDateTimeUtc,
     encode: (dt) => ParseResult.succeed(dateTime.formatIso(dt))
   }
 ).annotations({ identifier: "DateTimeUtc" }) {}
@@ -6554,7 +6573,7 @@ export class TimeZoneOffsetFromSelf extends declare(
  * @since 3.10.0
  */
 export class TimeZoneOffset extends transform(
-  Number$.annotations({ description: "a number that will be parsed into a TimeZone.Offset" }),
+  Number$.annotations({ description: "a number to be decoded into a TimeZone.Offset" }),
   TimeZoneOffsetFromSelf,
   { strict: true, decode: dateTime.zoneMakeOffset, encode: (tz) => tz.offset }
 ).annotations({ identifier: "TimeZoneOffset" }) {}
@@ -6585,14 +6604,14 @@ export class TimeZoneNamedFromSelf extends declare(
  * @since 3.10.0
  */
 export class TimeZoneNamed extends transformOrFail(
-  String$.annotations({ description: "a string that will be parsed into a TimeZone.Named" }),
+  String$.annotations({ description: "a string to be decoded into a TimeZone.Named" }),
   TimeZoneNamedFromSelf,
   {
     strict: true,
     decode: (s, _, ast) =>
       ParseResult.try({
         try: () => dateTime.zoneUnsafeMakeNamed(s),
-        catch: () => new ParseResult.Type(ast, s)
+        catch: () => new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a TimeZone.Named`)
       }),
     encode: (tz) => ParseResult.succeed(tz.id)
   }
@@ -6619,13 +6638,14 @@ export const TimeZoneFromSelf: TimeZoneFromSelf = Union(TimeZoneOffsetFromSelf, 
  * @since 3.10.0
  */
 export class TimeZone extends transformOrFail(
-  String$.annotations({ description: "a string that will be parsed into a TimeZone" }),
+  String$.annotations({ description: "a string to be decoded into a TimeZone" }),
   TimeZoneFromSelf,
   {
     strict: true,
     decode: (s, _, ast) =>
       option_.match(dateTime.zoneFromString(s), {
-        onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+        onNone: () =>
+          ParseResult.fail(new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a TimeZone`)),
         onSome: ParseResult.succeed
       }),
     encode: (tz) => ParseResult.succeed(dateTime.zoneToString(tz))
@@ -6663,13 +6683,14 @@ export class DateTimeZonedFromSelf extends declare(
  * @since 3.10.0
  */
 export class DateTimeZoned extends transformOrFail(
-  String$.annotations({ description: "a string that will be parsed into a DateTime.Zoned" }),
+  String$.annotations({ description: "a string to be decoded into a DateTime.Zoned" }),
   DateTimeZonedFromSelf,
   {
     strict: true,
     decode: (s, _, ast) =>
       option_.match(dateTime.makeZonedFromString(s), {
-        onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
+        onNone: () =>
+          ParseResult.fail(new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a DateTime.Zoned`)),
         onSome: ParseResult.succeed
       }),
     encode: (dt) => ParseResult.succeed(dateTime.formatIsoZoned(dt))
@@ -7309,7 +7330,7 @@ export const ReadonlyMapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
 }): Schema<ReadonlyMap<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
   transform(
     Record({ key: encodedBoundSchema(key), value }).annotations({
-      description: "a record that will be parsed into a ReadonlyMap"
+      description: "a record to be decoded into a ReadonlyMap"
     }),
     ReadonlyMapFromSelf({ key, value: typeSchema(value) }),
     {
@@ -7329,7 +7350,7 @@ export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
 }): Schema<Map<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
   transform(
     Record({ key: encodedBoundSchema(key), value }).annotations({
-      description: "a record that will be parsed into a Map"
+      description: "a record to be decoded into a Map"
     }),
     MapFromSelf({ key, value: typeSchema(value) }),
     {
@@ -7500,13 +7521,14 @@ export class BigDecimalFromSelf extends declare(
  * @since 3.10.0
  */
 export class BigDecimal extends transformOrFail(
-  String$.annotations({ description: "a string that will be parsed into a BigDecimal" }),
+  String$.annotations({ description: "a string to be decoded into a BigDecimal" }),
   BigDecimalFromSelf,
   {
     strict: true,
-    decode: (num, _, ast) =>
-      bigDecimal_.fromString(num).pipe(option_.match({
-        onNone: () => ParseResult.fail(new ParseResult.Type(ast, num)),
+    decode: (s, _, ast) =>
+      bigDecimal_.fromString(s).pipe(option_.match({
+        onNone: () =>
+          ParseResult.fail(new ParseResult.Type(ast, s, `Unable to decode ${JSON.stringify(s)} into a BigDecimal`)),
         onSome: (val) => ParseResult.succeed(bigDecimal_.normalize(val))
       })),
     encode: (val) => ParseResult.succeed(bigDecimal_.format(bigDecimal_.normalize(val)))
@@ -7520,13 +7542,13 @@ export class BigDecimal extends transformOrFail(
  * @category BigDecimal transformations
  * @since 3.10.0
  */
-export class BigDecimalFromNumber extends transformOrFail(
-  Number$.annotations({ description: "a number that will be parsed into a BigDecimal" }),
+export class BigDecimalFromNumber extends transform(
+  Number$.annotations({ description: "a number to be decoded into a BigDecimal" }),
   BigDecimalFromSelf,
   {
     strict: true,
-    decode: (num) => ParseResult.succeed(bigDecimal_.unsafeFromNumber(num)),
-    encode: (val) => ParseResult.succeed(bigDecimal_.unsafeToNumber(val))
+    decode: bigDecimal_.unsafeFromNumber,
+    encode: bigDecimal_.unsafeToNumber
   }
 ).annotations({ identifier: "BigDecimalFromNumber" }) {}
 

@@ -19,28 +19,28 @@ describe("BigIntFromNumber", () => {
       1.2,
       `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigIntFromNumber, actual 1.2`
+   └─ Unable to decode 1.2 into a bigint`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       NaN,
       `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigIntFromNumber, actual NaN`
+   └─ Unable to decode NaN into a bigint`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       Infinity,
       `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigIntFromNumber, actual Infinity`
+   └─ Unable to decode Infinity into a bigint`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       -Infinity,
       `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigIntFromNumber, actual -Infinity`
+   └─ Unable to decode -Infinity into a bigint`
     )
   })
 
@@ -52,14 +52,14 @@ describe("BigIntFromNumber", () => {
       BigInt(Number.MAX_SAFE_INTEGER) + 1n,
       `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigIntFromNumber, actual 9007199254740992n`
+   └─ Unable to encode 9007199254740992n into a number`
     )
     await Util.expectEncodeFailure(
       schema,
       BigInt(Number.MIN_SAFE_INTEGER) - 1n,
       `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigIntFromNumber, actual -9007199254740992n`
+   └─ Unable to encode -9007199254740992n into a number`
     )
   })
 })

@@ -574,7 +574,7 @@ describe("Options", () => {
         ValidationError.invalidValue(HelpDoc.p(
           "BigDecimal\n" +
             "└─ Transformation process failure\n" +
-            "   └─ Expected BigDecimal, actual \"abc\""
+            "   └─ Unable to decode \"abc\" into a BigDecimal"
         ))
       )
     }).pipe(runEffect))

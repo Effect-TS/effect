@@ -38,7 +38,7 @@ describe("optional", () => {
    └─ NumberFromString | undefined
       ├─ NumberFromString
       │  └─ Transformation process failure
-      │     └─ Expected NumberFromString, actual "a"
+      │     └─ Unable to decode "a" into a number
       └─ Expected undefined, actual "a"`
     )
 

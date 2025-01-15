@@ -34,7 +34,7 @@ describe("HashMapFromSelf", () => {
          └─ [0]
             └─ NumberFromString
                └─ Transformation process failure
-                  └─ Expected NumberFromString, actual "a"`
+                  └─ Unable to decode "a" into a number`
     )
   })
 

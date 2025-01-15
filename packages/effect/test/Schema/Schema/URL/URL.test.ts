@@ -25,7 +25,7 @@ describe("URL", () => {
       "123",
       `URL
 └─ Transformation process failure
-   └─ Expected URL, actual "123"`
+   └─ Unable to decode "123" into a URL. Invalid URL`
     )
   })
 

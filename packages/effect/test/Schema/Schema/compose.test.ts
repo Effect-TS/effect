@@ -20,7 +20,7 @@ describe("compose", async () => {
 └─ Type side transformation failure
    └─ NumberFromString
       └─ Transformation process failure
-         └─ Expected NumberFromString, actual "a"`
+         └─ Unable to decode "a" into a number`
     )
     await Util.expectDecodeUnknownFailure(
       schema1,
@@ -42,7 +42,7 @@ describe("compose", async () => {
 └─ Type side transformation failure
    └─ NumberFromString
       └─ Transformation process failure
-         └─ Expected NumberFromString, actual "a"`
+         └─ Unable to decode "a" into a number`
     )
     await Util.expectDecodeUnknownFailure(
       schema2,

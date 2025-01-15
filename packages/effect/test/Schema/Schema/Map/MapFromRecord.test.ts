@@ -15,14 +15,14 @@ describe("MapFromRecord", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      `(a record that will be parsed into a Map <-> Map<NumberFromString, number>)
+      `(a record to be decoded into a Map <-> Map<NumberFromString, number>)
 └─ Encoded side transformation failure
-   └─ Expected a record that will be parsed into a Map, actual null`
+   └─ Expected a record to be decoded into a Map, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "1" },
-      `(a record that will be parsed into a Map <-> Map<NumberFromString, number>)
+      `(a record to be decoded into a Map <-> Map<NumberFromString, number>)
 └─ Type side transformation failure
    └─ Map<NumberFromString, number>
       └─ ReadonlyArray<readonly [NumberFromString, number]>
@@ -31,18 +31,18 @@ describe("MapFromRecord", () => {
                └─ [0]
                   └─ NumberFromString
                      └─ Transformation process failure
-                        └─ Expected NumberFromString, actual "a"`
+                        └─ Unable to decode "a" into a number`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { 1: "a" },
-      `(a record that will be parsed into a Map <-> Map<NumberFromString, number>)
+      `(a record to be decoded into a Map <-> Map<NumberFromString, number>)
 └─ Encoded side transformation failure
-   └─ a record that will be parsed into a Map
+   └─ a record to be decoded into a Map
       └─ ["1"]
          └─ NumberFromString
             └─ Transformation process failure
-               └─ Expected NumberFromString, actual "a"`
+               └─ Unable to decode "a" into a number`
     )
   })
 

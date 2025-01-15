@@ -342,7 +342,7 @@ describe("makeWithOptions", () => {
           }
         }, {
           "NumberFromString": {
-            "description": "a string that will be parsed into a number",
+            "description": "a string to be decoded into a number",
             "type": "string"
           }
         })
@@ -578,7 +578,7 @@ describe("makeWithOptions", () => {
           }
         }, {
           "NumberFromString": {
-            "description": "a string that will be parsed into a number",
+            "description": "a string to be decoded into a number",
             "type": "string"
           }
         })
@@ -2351,7 +2351,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         "$defs": {
           "NumberFromString": {
             "type": "string",
-            "description": "a string that will be parsed into a number"
+            "description": "a string to be decoded into a number"
           }
         },
         "$ref": "#/$defs/NumberFromString"
@@ -2365,7 +2365,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "$defs": {
             "DateFromString": {
               "type": "string",
-              "description": "a string that will be parsed into a Date"
+              "description": "a string to be decoded into a Date"
             }
           },
           "$ref": "#/$defs/DateFromString"
@@ -2380,7 +2380,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "$defs": {
             "Date": {
               "type": "string",
-              "description": "a string that will be parsed into a Date"
+              "description": "a string to be decoded into a Date"
             }
           },
           "$ref": "#/$defs/Date"
@@ -2429,11 +2429,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "$defs": {
             "NumberFromString": {
               "type": "string",
-              "description": "a string that will be parsed into a number"
+              "description": "a string to be decoded into a number"
             }
           },
           "type": "object",
-          "description": "a record that will be parsed into a ReadonlyMap",
+          "description": "a record to be decoded into a ReadonlyMap",
           "required": [],
           "properties": {},
           "patternProperties": {
@@ -2461,11 +2461,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "$defs": {
             "NumberFromString": {
               "type": "string",
-              "description": "a string that will be parsed into a number"
+              "description": "a string to be decoded into a number"
             }
           },
           "type": "object",
-          "description": "a record that will be parsed into a Map",
+          "description": "a record to be decoded into a Map",
           "required": [],
           "properties": {},
           "patternProperties": {
@@ -4075,7 +4075,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           const expected = {
             "$defs": {
               "NumberFromString": {
-                "description": "a string that will be parsed into a number",
+                "description": "a string to be decoded into a number",
                 "type": "string"
               },
               "e4be2cb9-227a-4160-b4a6-d2e3db09eb24": {
@@ -4148,7 +4148,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 "type": "array"
               },
               "NumberFromString": {
-                "description": "a string that will be parsed into a number",
+                "description": "a string to be decoded into a number",
                 "type": "string"
               }
             },
@@ -4163,7 +4163,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 "type": "array"
               },
               "NumberFromString": {
-                "description": "a string that will be parsed into a number",
+                "description": "a string to be decoded into a number",
                 "type": "string"
               }
             },
@@ -4209,7 +4209,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           const expected = {
             "$defs": {
               "NumberFromString": {
-                "description": "a string that will be parsed into a number",
+                "description": "a string to be decoded into a number",
                 "type": "string"
               },
               "5f699d98-b193-4436-9ac5-145a532a2b4d": {
@@ -4255,7 +4255,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           const expected = {
             "$defs": {
               "NumberFromString": {
-                "description": "a string that will be parsed into a number",
+                "description": "a string to be decoded into a number",
                 "type": "string"
               },
               "bc516245-69d0-4671-82e1-8629a656e99a": {
@@ -4320,7 +4320,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           const expected = {
             "$defs": {
               "NumberFromString": {
-                "description": "a string that will be parsed into a number",
+                "description": "a string to be decoded into a number",
                 "type": "string"
               },
               "a9c6e11c-e1a2-482e-9748-e0ce161b926a": {
@@ -4432,7 +4432,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "additionalProperties": false,
             "$defs": {
               "NumberFromString": {
-                "description": "a string that will be parsed into a number",
+                "description": "a string to be decoded into a number",
                 "type": "string"
               },
               "1e7880a8-555c-46e9-8b58-500e441134bf": {
@@ -4466,7 +4466,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "$defs": {
             "NumberFromString": {
               "type": "string",
-              "description": "a string that will be parsed into a number"
+              "description": "a string to be decoded into a number"
             }
           },
           "$ref": "#/$defs/NumberFromString"
