@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.73.1
+
+### Patch Changes
+
+- [#4250](https://github.com/Effect-TS/effect/pull/4250) [`c9e5e1b`](https://github.com/Effect-TS/effect/commit/c9e5e1be17c0c84d3d4e2abc3c60215cdb56bbbe) Thanks @thewilkybarkid! - Add isHttpMethod refinement
+
+- [#4225](https://github.com/Effect-TS/effect/pull/4225) [`7b3d58d`](https://github.com/Effect-TS/effect/commit/7b3d58d7aec2152ec282460871d3e9de45ed254d) Thanks @thewilkybarkid! - Add HttpClient.tapError
+
+- Updated dependencies [[`5b50ea4`](https://github.com/Effect-TS/effect/commit/5b50ea4a10cf9acd51f9624b2474d9d5ded74019), [`c170a68`](https://github.com/Effect-TS/effect/commit/c170a68b6266100774461fcd6c0e0fabb60112f2), [`a66c2eb`](https://github.com/Effect-TS/effect/commit/a66c2eb473245092cd41f04c2eb2b7b02cf53718)]:
+  - effect@3.12.4
+
 ## 0.73.0
 
 ### Minor Changes

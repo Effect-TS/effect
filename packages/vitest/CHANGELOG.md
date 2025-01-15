@@ -1,5 +1,18 @@
 # @effect/vitest
 
+## 0.17.0
+
+### Minor Changes
+
+- [#4254](https://github.com/Effect-TS/effect/pull/4254) [`bcc600b`](https://github.com/Effect-TS/effect/commit/bcc600b5e3c9f4a243cbeecd364a62933a23e272) Thanks @tim-smart! - prevent use of .live with .layer api
+
+### Patch Changes
+
+- [#4254](https://github.com/Effect-TS/effect/pull/4254) [`bcc600b`](https://github.com/Effect-TS/effect/commit/bcc600b5e3c9f4a243cbeecd364a62933a23e272) Thanks @tim-smart! - ensure vitest .layer api uses TestServices for provided layer
+
+- Updated dependencies [[`5b50ea4`](https://github.com/Effect-TS/effect/commit/5b50ea4a10cf9acd51f9624b2474d9d5ded74019), [`c170a68`](https://github.com/Effect-TS/effect/commit/c170a68b6266100774461fcd6c0e0fabb60112f2), [`a66c2eb`](https://github.com/Effect-TS/effect/commit/a66c2eb473245092cd41f04c2eb2b7b02cf53718)]:
+  - effect@3.12.4
+
 ## 0.16.3
 
 ### Patch Changes

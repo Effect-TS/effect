@@ -1,5 +1,15 @@
 # effect
 
+## 3.12.4
+
+### Patch Changes
+
+- [#4231](https://github.com/Effect-TS/effect/pull/4231) [`5b50ea4`](https://github.com/Effect-TS/effect/commit/5b50ea4a10cf9acd51f9624b2474d9d5ded74019) Thanks @KhraksMamtsov! - fix `Layer.retry` and `MetricPolling.retry` signatures
+
+- [#4253](https://github.com/Effect-TS/effect/pull/4253) [`c170a68`](https://github.com/Effect-TS/effect/commit/c170a68b6266100774461fcd6c0e0fabb60112f2) Thanks @sukovanej! - Use non-enumerable properties for mutable fields of `DateTime` objects.
+
+- [#4255](https://github.com/Effect-TS/effect/pull/4255) [`a66c2eb`](https://github.com/Effect-TS/effect/commit/a66c2eb473245092cd41f04c2eb2b7b02cf53718) Thanks @sukovanej! - Improve DateTime type preservation
+
 ## 3.12.3
 
 ### Patch Changes
