@@ -5415,7 +5415,7 @@ class BigInt$ extends transformOrFail(
     decode: (s, _, ast) => ParseResult.fromOption(bigInt_.fromString(s), () => new ParseResult.Type(ast, s)),
     encode: (n) => ParseResult.succeed(String(n))
   }
-).annotations({ identifier: "bigint" }) {}
+).annotations({ identifier: "BigInt" }) {}
 
 export {
   /**
@@ -5513,7 +5513,7 @@ export class BigIntFromNumber extends transformOrFail(
       ),
     encode: (b, _, ast) => ParseResult.fromOption(bigInt_.toNumber(b), () => new ParseResult.Type(ast, b))
   }
-).annotations({ identifier: "BigintFromNumber" }) {}
+).annotations({ identifier: "BigIntFromNumber" }) {}
 
 const redactedArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<redacted_.Redacted<A>> => (fc) =>
   value(fc).map(redacted_.make)
