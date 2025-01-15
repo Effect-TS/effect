@@ -5191,14 +5191,14 @@ export class Not extends transform(Boolean$.annotations({ description: "a boolea
 
 /** @ignore */
 class Symbol$ extends transform(
-  String$.annotations({ description: "a string to be decoded into a symbol" }),
+  String$.annotations({ description: "a string to be decoded into a globally shared symbol" }),
   SymbolFromSelf,
   { strict: false, decode: Symbol.for, encode: Symbol.keyFor }
 ).annotations({ identifier: "Symbol" }) {}
 
 export {
   /**
-   * This schema transforms a `string` into a `symbol`.
+   * Converts a string key into a globally shared symbol.
    *
    * @category symbol transformations
    * @since 3.10.0
