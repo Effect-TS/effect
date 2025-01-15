@@ -4561,17 +4561,13 @@ export type ParseJsonOptions = {
   readonly space?: Parameters<typeof JSON.stringify>[2]
 }
 
-const JsonString = String$.annotations({
-  [AST.IdentifierAnnotationId]: "JsonString",
-  [AST.TitleAnnotationId]: "JsonString",
-  [AST.DescriptionAnnotationId]: "a string to be decoded as JSON"
-})
-
 const getErrorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e)
 
 const getParseJsonTransformation = (options?: ParseJsonOptions) =>
   transformOrFail(
-    JsonString,
+    String$.annotations({
+      [AST.DescriptionAnnotationId]: "a string to be decoded into JSON"
+    }),
     Unknown,
     {
       strict: true,
@@ -4586,7 +4582,10 @@ const getParseJsonTransformation = (options?: ParseJsonOptions) =>
           catch: (e) => new ParseResult.Type(ast, u, getErrorMessage(e))
         })
     }
-  ).annotations({ schemaId: AST.ParseJsonSchemaId })
+  ).annotations({
+    title: "parseJson",
+    schemaId: AST.ParseJsonSchemaId
+  })
 
 /**
  * The `ParseJson` combinator provides a method to convert JSON strings into the `unknown` type using the underlying
@@ -5192,7 +5191,7 @@ export class Not extends transform(Boolean$.annotations({ description: "a boolea
 
 /** @ignore */
 class Symbol$ extends transform(
-  String$.annotations({ description: "a string that will be converted to a symbol" }),
+  String$.annotations({ description: "a string to be decoded into a symbol" }),
   SymbolFromSelf,
   { strict: false, decode: (s) => Symbol.for(s), encode: (sym) => sym.description }
 ).annotations({ identifier: "symbol" }) {}
