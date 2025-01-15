@@ -26,8 +26,8 @@ describe("Symbol", () => {
       schema,
       Symbol(),
       `Symbol
-└─ Encoded side transformation failure
-   └─ Expected string, actual undefined`
+└─ Transformation process failure
+   └─ Unable to encode a unique symbol Symbol() into a string`
     )
   })
 })

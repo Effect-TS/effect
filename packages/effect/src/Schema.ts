@@ -5190,10 +5190,21 @@ export class Not extends transform(Boolean$.annotations({ description: "a boolea
 }) {}
 
 /** @ignore */
-class Symbol$ extends transform(
+class Symbol$ extends transformOrFail(
   String$.annotations({ description: "a string to be decoded into a globally shared symbol" }),
   SymbolFromSelf,
-  { strict: false, decode: Symbol.for, encode: Symbol.keyFor }
+  {
+    strict: false,
+    decode: (s) => ParseResult.succeed(Symbol.for(s)),
+    encode: (sym, _, ast) => {
+      const key = Symbol.keyFor(sym)
+      return key === undefined
+        ? ParseResult.fail(
+          new ParseResult.Type(ast, sym, `Unable to encode a unique symbol ${String(sym)} into a string`)
+        )
+        : ParseResult.succeed(key)
+    }
+  }
 ).annotations({ identifier: "Symbol" }) {}
 
 export {
