@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Effect from "effect/Effect"
-import { identity } from "effect/Function"
 import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import * as HttpApiSchema from "./HttpApiSchema.js"
@@ -23,60 +22,10 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category schemas
  */
-export interface Issue extends
-  Schema.Struct<
-    {
-      _tag: Schema.Literal<
-        ["Pointer", "Unexpected", "Missing", "Composite", "Refinement", "Transformation", "Type", "Forbidden"]
-      >
-      path: PropertyKeysNoSymbol
-      message: typeof Schema.String
-    }
-  >
-{}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export interface PropertyKeysNoSymbol extends
-  Schema.transform<
-    Schema.Array$<Schema.Union<[typeof Schema.String, typeof Schema.Number]>>,
-    Schema.Array$<Schema.Union<[typeof Schema.SymbolFromSelf, typeof Schema.String, typeof Schema.Number]>>
-  >
-{}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const PropertyKeysNoSymbol: PropertyKeysNoSymbol = Schema.transform(
-  Schema.Array(Schema.Union(Schema.String, Schema.Number)),
-  Schema.Array(Schema.Union(Schema.SymbolFromSelf, Schema.String, Schema.Number)),
-  {
-    decode: identity,
-    encode: (items) => items.filter((item) => typeof item !== "symbol")
-  }
-)
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const Issue: Issue = Schema.Struct({
-  _tag: Schema.Literal(
-    "Pointer",
-    "Unexpected",
-    "Missing",
-    "Composite",
-    "Refinement",
-    "Transformation",
-    "Type",
-    "Forbidden"
-  ),
-  path: PropertyKeysNoSymbol,
-  message: Schema.String
-})
+export class Issue extends Schema.ArrayFormatterIssue.annotations({
+  identifier: "Issue",
+  description: "Represents an error encountered while parsing a value to match the schema"
+}) {}
 
 /**
  * @since 1.0.0

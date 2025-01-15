@@ -5189,21 +5189,25 @@ export class Not extends transform(Boolean$.annotations({ description: "a boolea
   encode: boolean_.not
 }) {}
 
+const encodeSymbol = (sym: symbol, _: AST.ParseOptions, ast: AST.AST) => {
+  const key = Symbol.keyFor(sym)
+  return key === undefined
+    ? ParseResult.fail(
+      new ParseResult.Type(ast, sym, `Unable to encode a unique symbol ${String(sym)} into a string`)
+    )
+    : ParseResult.succeed(key)
+}
+
+const decodeSymbol = (s: string) => ParseResult.succeed(Symbol.for(s))
+
 /** @ignore */
 class Symbol$ extends transformOrFail(
   String$.annotations({ description: "a string to be decoded into a globally shared symbol" }),
   SymbolFromSelf,
   {
     strict: false,
-    decode: (s) => ParseResult.succeed(Symbol.for(s)),
-    encode: (sym, _, ast) => {
-      const key = Symbol.keyFor(sym)
-      return key === undefined
-        ? ParseResult.fail(
-          new ParseResult.Type(ast, sym, `Unable to encode a unique symbol ${String(sym)} into a string`)
-        )
-        : ParseResult.succeed(key)
-    }
+    decode: decodeSymbol,
+    encode: encodeSymbol
   }
 ).annotations({ identifier: "Symbol" }) {}
 
@@ -5216,6 +5220,20 @@ export {
    */
   Symbol$ as Symbol
 }
+
+const SymbolStruct = TaggedStruct("symbol", {
+  key: String$
+}).annotations({ description: "an object to be decoded into a globally shared symbol" })
+
+const SymbolFromStruct = transformOrFail(
+  SymbolStruct,
+  SymbolFromSelf,
+  {
+    strict: true,
+    decode: ({ key }) => decodeSymbol(key),
+    encode: (sym, _, ast) => ParseResult.map(encodeSymbol(sym, _, ast), (key) => SymbolStruct.make({ key }))
+  }
+)
 
 /**
  * @category schema id
@@ -10390,3 +10408,37 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
     }
   }
 }
+
+/** @ignore */
+class PropertyKey$ extends Union(String$, Number$, SymbolFromStruct).annotations({ identifier: "PropertyKey" }) {}
+
+export {
+  /**
+   * @since 3.12.5
+   */
+  PropertyKey$ as PropertyKey
+}
+
+/**
+ * @category ArrayFormatter
+ * @since 3.12.5
+ */
+export class ArrayFormatterIssue extends Struct({
+  _tag: propertySignature(Literal(
+    "Pointer",
+    "Unexpected",
+    "Missing",
+    "Composite",
+    "Refinement",
+    "Transformation",
+    "Type",
+    "Forbidden"
+  )).annotations({ description: "The tag identifying the type of parse issue" }),
+  path: propertySignature(Array$(PropertyKey$)).annotations({
+    description: "The path to the property where the issue occurred"
+  }),
+  message: propertySignature(String$).annotations({ description: "A descriptive message explaining the issue" })
+}).annotations({
+  identifier: "ArrayFormatterIssue",
+  description: "Represents an issue returned by the ArrayFormatter formatter"
+}) {}

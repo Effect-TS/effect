@@ -1935,12 +1935,25 @@ const formatTree = (
 }
 
 /**
+ * Represents an issue returned by the {@link ArrayFormatter} formatter.
+ *
  * @category model
  * @since 3.10.0
  */
 export interface ArrayFormatterIssue {
+  /**
+   * The tag identifying the type of parse issue.
+   */
   readonly _tag: ParseIssue["_tag"]
+
+  /**
+   * The path to the property where the issue occurred.
+   */
   readonly path: ReadonlyArray<PropertyKey>
+
+  /**
+   * A descriptive message explaining the issue.
+   */
   readonly message: string
 }
 
