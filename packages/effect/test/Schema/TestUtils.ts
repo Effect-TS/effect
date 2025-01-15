@@ -13,9 +13,6 @@ import * as AST from "effect/SchemaAST"
 import * as fc from "fast-check"
 import { assert, expect } from "vitest"
 
-const doEffectify = true
-const doRoundtrip = false
-
 export const sleep = Effect.sleep(Duration.millis(10))
 
 const effectifyDecode = <R>(
@@ -124,7 +121,7 @@ export const expectArbitrary = <A, I>(schema: S.Schema<A, I, never>, n: number =
 }
 
 export const roundtrip = <A, I>(schema: S.Schema<A, I, never>, params?: Parameters<typeof fc.assert>[1]) => {
-  if (!doRoundtrip) {
+  if (true as boolean) {
     return
   }
   const arb = A.makeLazy(schema)
@@ -146,7 +143,7 @@ export const roundtrip = <A, I>(schema: S.Schema<A, I, never>, params?: Paramete
     }),
     params
   )
-  if (doEffectify) {
+  if (true as boolean) {
     const effectSchema = effectify(schema)
     const encode = S.encode(effectSchema)
     const decode = S.decode(effectSchema)

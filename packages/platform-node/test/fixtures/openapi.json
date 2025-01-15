@@ -531,52 +531,73 @@
           "issues": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": ["_tag", "path", "message"],
-              "properties": {
-                "_tag": {
-                  "type": "string",
-                  "enum": [
-                    "Pointer",
-                    "Unexpected",
-                    "Missing",
-                    "Composite",
-                    "Refinement",
-                    "Transformation",
-                    "Type",
-                    "Forbidden"
-                  ]
-                },
-                "path": {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "number"
-                      }
-                    ]
-                  }
-                },
-                "message": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "#/components/schemas/Issue"
             }
           },
-          "message": {
-            "type": "string"
-          },
+          "message": { "type": "string" },
           "_tag": {
             "type": "string",
-            "enum": ["HttpApiDecodeError"]
+            "enum": [
+              "HttpApiDecodeError"
+            ]
           }
         },
         "additionalProperties": false,
         "description": "The request did not match the expected schema"
+      },
+      "Issue": {
+        "type": "object",
+        "description": "Represents an error encountered while parsing a value to match the schema",
+        "required": ["_tag", "path", "message"],
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "description": "The tag identifying the type of parse issue",
+            "enum": [
+              "Pointer",
+              "Unexpected",
+              "Missing",
+              "Composite",
+              "Refinement",
+              "Transformation",
+              "Type",
+              "Forbidden"
+            ]
+          },
+          "path": {
+            "type": "array",
+            "description": "The path to the property where the issue occurred",
+            "items": {
+              "$ref": "#/components/schemas/PropertyKey"
+            }
+          },
+          "message": {
+            "type": "string",
+            "description": "A descriptive message explaining the issue"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PropertyKey": {
+        "anyOf": [
+          { "type": "string" },
+          { "type": "number" },
+          {
+            "additionalProperties": false,
+            "description": "an object to be decoded into a globally shared symbol",
+            "properties": {
+              "_tag": {
+                "enum": [
+                  "symbol"
+                ],
+                "type": "string"
+              },
+              "key": { "type": "string" }
+            },
+            "required": ["_tag", "key"],
+            "type": "object"
+          }
+        ]
       },
       "GlobalError": {
         "type": "object",
