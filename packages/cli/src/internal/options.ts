@@ -3,6 +3,7 @@ import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
+import * as ConfigError from "effect/ConfigError"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -1352,7 +1353,10 @@ const parseInternal = (
             if (Predicate.isTagged(e2, "QuitException")) {
               return Effect.die(e2)
             }
-            if (Predicate.isTagged(e2, "ConfigError")) {
+            if (
+              Predicate.isTagged(e2, "ConfigError") &&
+              !ConfigError.isMissingDataOnly(e2 as ConfigError.ConfigError)
+            ) {
               const help = InternalHelpDoc.p(String(e2))
               const error = InternalValidationError.invalidValue(help)
               return Effect.fail(error)
