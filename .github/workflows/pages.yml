@@ -30,7 +30,7 @@ jobs:
           destination: ./_site
       - name: Upload pages artifact
         if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
 
   deploy:
     if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -47,4 +47,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
