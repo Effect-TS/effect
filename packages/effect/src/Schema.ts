@@ -6577,7 +6577,7 @@ export class DateTimeUtc extends transformOrFail(
 ).annotations({ identifier: "DateTimeUtc" }) {}
 
 const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (fc) =>
-  fc.integer({ min: -12 * 60 * 60 * 1000, max: 12 * 60 * 60 * 1000 }).map(dateTime.zoneMakeOffset)
+  fc.integer({ min: -12 * 60 * 60 * 1000, max: 14 * 60 * 60 * 1000 }).map(dateTime.zoneMakeOffset)
 
 /**
  * Describes a schema that represents a `TimeZone.Offset` instance.
@@ -6692,9 +6692,13 @@ export class DateTimeZonedFromSelf extends declare(
     description: "a DateTime.Zoned instance",
     pretty: (): pretty_.Pretty<dateTime.Zoned> => (dateTime) => dateTime.toString(),
     arbitrary: (): LazyArbitrary<dateTime.Zoned> => (fc) =>
-      fc.date({ noInvalidDate: true }).chain((date) =>
-        timeZoneArbitrary(fc).map((timeZone) => dateTime.unsafeMakeZoned(date, { timeZone }))
-      ),
+      fc.tuple(
+        fc.integer({
+          min: -8640000000000000 + (12 * 60 * 60 * 1000),
+          max: 8640000000000000 - (14 * 60 * 60 * 1000)
+        }),
+        timeZoneArbitrary(fc)
+      ).map(([millis, timeZone]) => dateTime.unsafeMakeZoned(millis, { timeZone })),
     equivalence: () => dateTime.Equivalence
   }
 ) {}
