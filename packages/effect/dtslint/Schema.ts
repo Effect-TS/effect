@@ -1549,6 +1549,9 @@ S.mutable(S.Union(S.Struct({ a: S.Number }), S.Array(S.String)))
 // $ExpectType mutable<filter<Schema<readonly string[], readonly string[], never>>>
 S.mutable(S.Array(S.String).pipe(S.maxItems(2)))
 
+// $ExpectType mutable<filter<Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>>>
+S.mutable(S.NonEmptyArray(S.String).pipe(S.maxItems(2)))
+
 // $ExpectType Schema<string[], string[], never>
 S.asSchema(S.mutable(S.suspend(() => S.Array(S.String))))
 
@@ -2801,10 +2804,81 @@ S.Array(S.String).pipe(S.minItems(2))
 S.Array(S.String).pipe(S.minItems(2)).from
 
 // $ExpectType Schema<readonly string[], readonly string[], never>
-S.asSchema(S.Array(S.String).pipe(S.minItems(2), S.maxItems(3)))
+S.asSchema(S.Array(S.String).pipe(S.minItems(1), S.maxItems(2)))
 
 // $ExpectType filter<Schema<readonly string[], readonly string[], never>>
 S.Array(S.String).pipe(S.minItems(1), S.maxItems(2))
+
+// ---------------------------------------------
+// minItems (NonEmptyArray)
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>
+S.asSchema(S.NonEmptyArray(S.String).pipe(S.minItems(2)))
+
+// $ExpectType filter<Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>>
+S.NonEmptyArray(S.String).pipe(S.minItems(2))
+
+// $ExpectType Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>
+S.NonEmptyArray(S.String).pipe(S.minItems(2)).from
+
+// ---------------------------------------------
+// maxItems (Array)
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly string[], readonly string[], never>
+S.asSchema(S.Array(S.String).pipe(S.maxItems(2)))
+
+// $ExpectType filter<Schema<readonly string[], readonly string[], never>>
+S.Array(S.String).pipe(S.maxItems(2))
+
+// $ExpectType Schema<readonly string[], readonly string[], never>
+S.Array(S.String).pipe(S.maxItems(2)).from
+
+// $ExpectType Schema<readonly string[], readonly string[], never>
+S.asSchema(S.Array(S.String).pipe(S.maxItems(2), S.minItems(1)))
+
+// $ExpectType filter<Schema<readonly string[], readonly string[], never>>
+S.Array(S.String).pipe(S.maxItems(2), S.minItems(1))
+
+// ---------------------------------------------
+// maxItems (NonEmptyArray)
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>
+S.asSchema(S.NonEmptyArray(S.String).pipe(S.maxItems(2)))
+
+// $ExpectType filter<Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>>
+S.NonEmptyArray(S.String).pipe(S.maxItems(2))
+
+// $ExpectType Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>
+S.NonEmptyArray(S.String).pipe(S.maxItems(2)).from
+
+// ---------------------------------------------
+// itemsCount (Array)
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly string[], readonly string[], never>
+S.asSchema(S.Array(S.String).pipe(S.itemsCount(2)))
+
+// $ExpectType filter<Schema<readonly string[], readonly string[], never>>
+S.Array(S.String).pipe(S.itemsCount(2))
+
+// $ExpectType Schema<readonly string[], readonly string[], never>
+S.Array(S.String).pipe(S.itemsCount(2)).from
+
+// ---------------------------------------------
+// itemsCount (NonEmptyArray)
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>
+S.asSchema(S.NonEmptyArray(S.String).pipe(S.itemsCount(2)))
+
+// $ExpectType filter<Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>>
+S.NonEmptyArray(S.String).pipe(S.itemsCount(2))
+
+// $ExpectType Schema<readonly [string, ...string[]], readonly [string, ...string[]], never>
+S.NonEmptyArray(S.String).pipe(S.itemsCount(2)).from
 
 // ---------------------------------------------
 // TemplateLiteralParser

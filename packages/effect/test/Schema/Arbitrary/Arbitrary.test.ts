@@ -553,21 +553,39 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     })
 
     describe("array filters", () => {
-      it("minItems", () => {
+      it("minItems (Array)", () => {
         const schema = S.Array(S.String).pipe(S.minItems(2))
         expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 2 }))
         expectValidArbitrary(schema)
       })
 
-      it("maxItems", () => {
+      it("minItems (NonEmptyArray)", () => {
+        const schema = S.NonEmptyArray(S.String).pipe(S.minItems(2))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 2 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("maxItems (Array)", () => {
         const schema = S.Array(S.String).pipe(S.maxItems(5))
         expectConstraints(schema, Arbitrary.makeArrayConstraints({ maxLength: 5 }))
         expectValidArbitrary(schema)
       })
 
-      it("itemsCount", () => {
-        const schema = S.Array(S.String).pipe(S.itemsCount(10))
-        expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 10, maxLength: 10 }))
+      it("maxItems (NonEmptyArray)", () => {
+        const schema = S.NonEmptyArray(S.String).pipe(S.maxItems(5))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ maxLength: 5 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("itemsCount (Array)", () => {
+        const schema = S.Array(S.String).pipe(S.itemsCount(3))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 3, maxLength: 3 }))
+        expectValidArbitrary(schema)
+      })
+
+      it("itemsCount (NonEmptyArray)", () => {
+        const schema = S.NonEmptyArray(S.String).pipe(S.itemsCount(3))
+        expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 3, maxLength: 3 }))
         expectValidArbitrary(schema)
       })
     })

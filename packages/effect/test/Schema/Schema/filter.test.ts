@@ -290,15 +290,16 @@ describe("filter", () => {
     })
   })
 
-  describe("Stable Filters (such as `minItems`, `maxItems`, and `itemsCount`)", () => {
-    it("when the 'errors' option is set to 'all', stable filters should generate multiple errors", async () => {
-      const schema = S.Struct({
-        tags: S.Array(S.String.pipe(S.minLength(2))).pipe(S.minItems(3))
-      })
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        { tags: ["AB", "B"] },
-        `{ readonly tags: minItems(3) }
+  describe("Stable Filters", () => {
+    describe("Array", () => {
+      it("when the 'errors' option is set to 'all', stable filters should generate multiple errors", async () => {
+        const schema = S.Struct({
+          tags: S.Array(S.String.pipe(S.minLength(2))).pipe(S.minItems(3))
+        })
+        await Util.expectDecodeUnknownFailure(
+          schema,
+          { tags: ["AB", "B"] },
+          `{ readonly tags: minItems(3) }
 └─ ["tags"]
    └─ minItems(3)
       ├─ minItems(3)
@@ -311,12 +312,12 @@ describe("filter", () => {
       └─ minItems(3)
          └─ Predicate refinement failure
             └─ Expected an array of at least 3 item(s), actual ["AB","B"]`,
-        Util.allErrors
-      )
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        { tags: ["AB", "B"] },
-        `{ readonly tags: minItems(3) }
+          Util.allErrors
+        )
+        await Util.expectDecodeUnknownFailure(
+          schema,
+          { tags: ["AB", "B"] },
+          `{ readonly tags: minItems(3) }
 └─ ["tags"]
    └─ minItems(3)
       └─ From side refinement failure
@@ -325,30 +326,93 @@ describe("filter", () => {
                └─ minLength(2)
                   └─ Predicate refinement failure
                      └─ Expected a string at least 2 character(s) long, actual "B"`
-      )
+        )
+      })
+
+      it("when the 'errors' option is set to 'all', stable filters should be applied only if the from part fails with a `Composite` issue", async () => {
+        await Util.expectDecodeUnknownFailure(
+          S.Struct({
+            tags: S.Array(S.String).pipe(S.minItems(1))
+          }),
+          {},
+          `{ readonly tags: minItems(1) }
+└─ ["tags"]
+   └─ is missing`,
+          Util.allErrors
+        )
+        await Util.expectDecodeUnknownFailure(
+          S.Struct({
+            tags: S.Array(S.String).pipe(S.minItems(1), S.maxItems(3))
+          }),
+          {},
+          `{ readonly tags: minItems(1) & maxItems(3) }
+└─ ["tags"]
+   └─ is missing`,
+          Util.allErrors
+        )
+      })
     })
 
-    it("when the 'errors' option is set to 'all', stable filters should be applied only if the from part fails with a `Composite` issue", async () => {
-      await Util.expectDecodeUnknownFailure(
-        S.Struct({
-          tags: S.Array(S.String).pipe(S.minItems(1))
-        }),
-        {},
-        `{ readonly tags: minItems(1) }
+    describe("NonEmptyArray", () => {
+      it("when the 'errors' option is set to 'all', stable filters should generate multiple errors", async () => {
+        const schema = S.Struct({
+          tags: S.NonEmptyArray(S.String.pipe(S.minLength(2))).pipe(S.minItems(3))
+        })
+        await Util.expectDecodeUnknownFailure(
+          schema,
+          { tags: ["AB", "B"] },
+          `{ readonly tags: minItems(3) }
+└─ ["tags"]
+   └─ minItems(3)
+      ├─ minItems(3)
+      │  └─ From side refinement failure
+      │     └─ readonly [minLength(2), ...minLength(2)[]]
+      │        └─ [1]
+      │           └─ minLength(2)
+      │              └─ Predicate refinement failure
+      │                 └─ Expected a string at least 2 character(s) long, actual "B"
+      └─ minItems(3)
+         └─ Predicate refinement failure
+            └─ Expected an array of at least 3 item(s), actual ["AB","B"]`,
+          Util.allErrors
+        )
+        await Util.expectDecodeUnknownFailure(
+          schema,
+          { tags: ["AB", "B"] },
+          `{ readonly tags: minItems(3) }
+└─ ["tags"]
+   └─ minItems(3)
+      └─ From side refinement failure
+         └─ readonly [minLength(2), ...minLength(2)[]]
+            └─ [1]
+               └─ minLength(2)
+                  └─ Predicate refinement failure
+                     └─ Expected a string at least 2 character(s) long, actual "B"`
+        )
+      })
+
+      it("when the 'errors' option is set to 'all', stable filters should be applied only if the from part fails with a `Composite` issue", async () => {
+        await Util.expectDecodeUnknownFailure(
+          S.Struct({
+            tags: S.NonEmptyArray(S.String).pipe(S.minItems(1))
+          }),
+          {},
+          `{ readonly tags: minItems(1) }
 └─ ["tags"]
    └─ is missing`,
-        Util.allErrors
-      )
-      await Util.expectDecodeUnknownFailure(
-        S.Struct({
-          tags: S.Array(S.String).pipe(S.minItems(1), S.maxItems(3))
-        }),
-        {},
-        `{ readonly tags: minItems(1) & maxItems(3) }
+          Util.allErrors
+        )
+        await Util.expectDecodeUnknownFailure(
+          S.Struct({
+            tags: S.NonEmptyArray(S.String).pipe(S.minItems(1), S.maxItems(3))
+          }),
+          {},
+          `{ readonly tags: minItems(1) & maxItems(3) }
 └─ ["tags"]
    └─ is missing`,
-        Util.allErrors
-      )
+          Util.allErrors
+        )
+      })
     })
   })
 })

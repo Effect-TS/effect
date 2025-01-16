@@ -6095,11 +6095,11 @@ export type MinItemsSchemaId = typeof MinItemsSchemaId
  * @category ReadonlyArray filters
  * @since 3.10.0
  */
-export const minItems = <A>(
+export const minItems = <A extends ReadonlyArray<any>>(
   n: number,
-  annotations?: Annotations.Filter<ReadonlyArray<A>>
+  annotations?: Annotations.Filter<A>
 ) =>
-<I, R>(self: Schema<ReadonlyArray<A>, I, R>): filter<Schema<ReadonlyArray<A>, I, R>> => {
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
   const minItems = Math.floor(n)
   if (minItems < 1) {
     throw new Error(
@@ -6137,21 +6137,28 @@ export type MaxItemsSchemaId = typeof MaxItemsSchemaId
  * @category ReadonlyArray filters
  * @since 3.10.0
  */
-export const maxItems = <A>(
+export const maxItems = <A extends ReadonlyArray<any>>(
   n: number,
-  annotations?: Annotations.Filter<ReadonlyArray<A>>
+  annotations?: Annotations.Filter<A>
 ) =>
-<I, R>(self: Schema<ReadonlyArray<A>, I, R>): filter<Schema<ReadonlyArray<A>, I, R>> =>
-  self.pipe(
-    filter((a) => a.length <= n, {
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+  const maxItems = Math.floor(n)
+  if (maxItems < 1) {
+    throw new Error(
+      errors_.getInvalidArgumentErrorMessage(`Expected an integer greater than or equal to 1, actual ${n}`)
+    )
+  }
+  return self.pipe(
+    filter((a) => a.length <= maxItems, {
       schemaId: MaxItemsSchemaId,
-      title: `maxItems(${n})`,
-      description: `an array of at most ${n} item(s)`,
-      jsonSchema: { maxItems: n },
+      title: `maxItems(${maxItems})`,
+      description: `an array of at most ${maxItems} item(s)`,
+      jsonSchema: { maxItems },
       [AST.StableFilterAnnotationId]: true,
       ...annotations
     })
   )
+}
 
 /**
  * @category schema id
@@ -6169,21 +6176,28 @@ export type ItemsCountSchemaId = typeof ItemsCountSchemaId
  * @category ReadonlyArray filters
  * @since 3.10.0
  */
-export const itemsCount = <A>(
+export const itemsCount = <A extends ReadonlyArray<any>>(
   n: number,
-  annotations?: Annotations.Filter<ReadonlyArray<A>>
+  annotations?: Annotations.Filter<A>
 ) =>
-<I, R>(self: Schema<ReadonlyArray<A>, I, R>): filter<Schema<ReadonlyArray<A>, I, R>> =>
-  self.pipe(
-    filter((a) => a.length === n, {
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+  const itemsCount = Math.floor(n)
+  if (itemsCount < 1) {
+    throw new Error(
+      errors_.getInvalidArgumentErrorMessage(`Expected an integer greater than or equal to 1, actual ${n}`)
+    )
+  }
+  return self.pipe(
+    filter((a) => a.length === itemsCount, {
       schemaId: ItemsCountSchemaId,
-      title: `itemsCount(${n})`,
-      description: `an array of exactly ${n} item(s)`,
-      jsonSchema: { minItems: n, maxItems: n },
+      title: `itemsCount(${itemsCount})`,
+      description: `an array of exactly ${itemsCount} item(s)`,
+      jsonSchema: { minItems: itemsCount, maxItems: itemsCount },
       [AST.StableFilterAnnotationId]: true,
       ...annotations
     })
   )
+}
 
 /**
  * @category ReadonlyArray transformations
