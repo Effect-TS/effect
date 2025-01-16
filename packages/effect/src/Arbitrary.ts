@@ -317,6 +317,7 @@ const go = (
 const constStringConstraints = makeStringConstraints({})
 const constNumberConstraints = makeNumberConstraints({})
 const constBigIntConstraints = makeBigIntConstraints({})
+const defaultSuspendedArrayConstraints: FastCheck.ArrayConstraints = { maxLength: 2 }
 
 /** @internal */
 export const toOp = (
@@ -445,8 +446,22 @@ export const toOp = (
           const value = indexSignatures[i][1](fc)
           output = output.chain((o) => {
             const item = fc.tuple(key, value)
+            /*
+
+              `getSuspendedArray` is used to generate less key/value pairs in
+              the context of a recursive schema. Without it, the following schema
+              would generate an big amount of values possibly leading to a stack
+              overflow:
+
+              ```ts
+              type A = { [_: string]: A }
+
+              const schema = S.Record({ key: S.String, value: S.suspend((): S.Schema<A> => schema) })
+              ```
+
+            */
             const arr = ctx.depthIdentifier !== undefined ?
-              getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, { maxLength: 2 }) :
+              getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, defaultSuspendedArrayConstraints) :
               fc.array(item)
             return arr.map((tuples) => ({ ...Object.fromEntries(tuples), ...o }))
           })
@@ -544,6 +559,22 @@ const goTupleType = (
         if (restArrayConstraints.maxLength === 0) {
           return fc.constant(as)
         }
+        /*
+
+          `getSuspendedArray` is used to generate less values in
+          the context of a recursive schema. Without it, the following schema
+          would generate an big amount of values possibly leading to a stack
+          overflow:
+
+          ```ts
+          type A = ReadonlyArray<A | null>
+
+          const schema = S.Array(
+            S.NullOr(S.suspend((): S.Schema<A> => schema))
+          )
+          ```
+
+        */
         const arr = ctx.depthIdentifier !== undefined
           ? getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, restArrayConstraints)
           : fc.array(item, restArrayConstraints)
@@ -702,6 +733,9 @@ const getSuspendedArray = (
   item: FastCheck.Arbitrary<any>,
   constraints: FastCheck.ArrayConstraints
 ) => {
+  // In the context of a recursive schema, we don't want a `maxLength` greater than 2.
+  // The only exception is when `minLength` is also set, in which case we set
+  // `maxLength` to the minimum value, which is `minLength`.
   const maxLengthLimit = Math.max(2, constraints.minLength ?? 0)
   if (constraints.maxLength !== undefined && constraints.maxLength > maxLengthLimit) {
     constraints = { ...constraints, maxLength: maxLengthLimit }
