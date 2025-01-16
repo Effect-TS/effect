@@ -1353,10 +1353,7 @@ const parseInternal = (
             if (Predicate.isTagged(e2, "QuitException")) {
               return Effect.die(e2)
             }
-            if (
-              Predicate.isTagged(e2, "ConfigError") &&
-              !ConfigError.isMissingDataOnly(e2 as ConfigError.ConfigError)
-            ) {
+            if (ConfigError.isConfigError(e2) && !ConfigError.isMissingDataOnly(e2)) {
               const help = InternalHelpDoc.p(String(e2))
               const error = InternalValidationError.invalidValue(help)
               return Effect.fail(error)
