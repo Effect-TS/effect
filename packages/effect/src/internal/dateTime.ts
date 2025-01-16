@@ -234,6 +234,9 @@ export const unsafeMake = <A extends DateTime.DateTime.Input>(input: A): DateTim
   return unsafeFromDate(new Date(input)) as DateTime.DateTime.PreserveZone<A>
 }
 
+const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
+const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
+
 /** @internal */
 export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
   readonly timeZone?: number | string | DateTime.TimeZone | undefined
@@ -243,6 +246,9 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
     return input
   }
   const self = unsafeMake(input)
+  if (self.epochMillis < minEpochMillis || self.epochMillis > maxEpochMillis) {
+    throw new IllegalArgumentException(`Epoch millis out of range: ${self.epochMillis}`)
+  }
   let zone: DateTime.TimeZone
   if (options?.timeZone === undefined) {
     const offset = new Date(self.epochMillis).getTimezoneOffset() * -60 * 1000
