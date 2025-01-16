@@ -1068,6 +1068,81 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("Refinement", () => {
+    it("itemsCount (Array)", () => {
+      expectJSONSchemaAnnotations(Schema.Array(Schema.String).pipe(Schema.itemsCount(2)), {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "an array of exactly 2 item(s)",
+        "title": "itemsCount(2)",
+        "minItems": 2,
+        "maxItems": 2
+      })
+    })
+
+    it("itemsCount (NonEmptyArray)", () => {
+      expectJSONSchemaAnnotations(Schema.NonEmptyArray(Schema.String).pipe(Schema.itemsCount(2)), {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "an array of exactly 2 item(s)",
+        "title": "itemsCount(2)",
+        "minItems": 2,
+        "maxItems": 2
+      })
+    })
+
+    it("minItems (Array)", () => {
+      expectJSONSchemaAnnotations(Schema.Array(Schema.String).pipe(Schema.minItems(2)), {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "an array of at least 2 item(s)",
+        "title": "minItems(2)",
+        "minItems": 2
+      })
+    })
+
+    it("minItems (NonEmptyArray)", () => {
+      expectJSONSchemaAnnotations(Schema.NonEmptyArray(Schema.String).pipe(Schema.minItems(2)), {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "an array of at least 2 item(s)",
+        "title": "minItems(2)",
+        "minItems": 2
+      })
+    })
+
+    it("maxItems (Array)", () => {
+      expectJSONSchemaAnnotations(Schema.Array(Schema.String).pipe(Schema.maxItems(2)), {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "an array of at most 2 item(s)",
+        "title": "maxItems(2)",
+        "maxItems": 2
+      })
+    })
+
+    it("maxItems (NonEmptyArray)", () => {
+      expectJSONSchemaAnnotations(Schema.NonEmptyArray(Schema.String).pipe(Schema.maxItems(2)), {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "an array of at most 2 item(s)",
+        "title": "maxItems(2)",
+        "minItems": 1,
+        "maxItems": 2
+      })
+    })
+
     it("minLength", () => {
       expectJSONSchemaAnnotations(Schema.String.pipe(Schema.minLength(1)), {
         "type": "string",

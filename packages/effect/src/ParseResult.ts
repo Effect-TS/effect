@@ -761,11 +761,11 @@ interface Parser {
 }
 
 const decodeMemoMap = globalValue(
-  Symbol.for("effect/Schema/Parser/decodeMemoMap"),
+  Symbol.for("effect/ParseResult/decodeMemoMap"),
   () => new WeakMap<AST.AST, Parser>()
 )
 const encodeMemoMap = globalValue(
-  Symbol.for("effect/Schema/Parser/encodeMemoMap"),
+  Symbol.for("effect/ParseResult/encodeMemoMap"),
   () => new WeakMap<AST.AST, Parser>()
 )
 

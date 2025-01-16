@@ -57,87 +57,173 @@ describe("encodedBoundSchema", () => {
     )
   })
 
-  describe("array stable filters", () => {
-    it("minItems", async () => {
-      const schema = S.Array(StringTransformation).pipe(S.minItems(2))
-      const bound = S.encodedBoundSchema(schema)
+  describe("Stable filters", () => {
+    describe("Array", () => {
+      it("minItems", async () => {
+        const schema = S.Array(StringTransformation).pipe(S.minItems(2))
+        const bound = S.encodedBoundSchema(schema)
 
-      await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
-      await Util.expectDecodeUnknownFailure(
-        bound,
-        ["a"],
-        `minItems(2)
+        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["a"],
+          `minItems(2)
 └─ From side refinement failure
    └─ ReadonlyArray<String2>
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
                └─ Expected a string at least 2 character(s) long, actual "a"`
-      )
-      await Util.expectDecodeUnknownFailure(
-        bound,
-        ["ab"],
-        `minItems(2)
+        )
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["ab"],
+          `minItems(2)
 └─ Predicate refinement failure
    └─ Expected an array of at least 2 item(s), actual ["ab"]`
-      )
-    })
+        )
+      })
 
-    it("maxItems", async () => {
-      const schema = S.Array(StringTransformation).pipe(S.maxItems(2))
-      const bound = S.encodedBoundSchema(schema)
+      it("maxItems", async () => {
+        const schema = S.Array(StringTransformation).pipe(S.maxItems(2))
+        const bound = S.encodedBoundSchema(schema)
 
-      await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
-      await Util.expectDecodeUnknownFailure(
-        bound,
-        ["a"],
-        `maxItems(2)
+        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["a"],
+          `maxItems(2)
 └─ From side refinement failure
    └─ ReadonlyArray<String2>
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
                └─ Expected a string at least 2 character(s) long, actual "a"`
-      )
-      await Util.expectDecodeUnknownFailure(
-        bound,
-        ["ab", "cd", "ef"],
-        `maxItems(2)
+        )
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["ab", "cd", "ef"],
+          `maxItems(2)
 └─ Predicate refinement failure
    └─ Expected an array of at most 2 item(s), actual ["ab","cd","ef"]`
-      )
-    })
+        )
+      })
 
-    it("itemsCount", async () => {
-      const schema = S.Array(StringTransformation).pipe(S.itemsCount(2))
-      const bound = S.encodedBoundSchema(schema)
+      it("itemsCount", async () => {
+        const schema = S.Array(StringTransformation).pipe(S.itemsCount(2))
+        const bound = S.encodedBoundSchema(schema)
 
-      await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
-      await Util.expectDecodeUnknownFailure(
-        bound,
-        ["a"],
-        `itemsCount(2)
+        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["a"],
+          `itemsCount(2)
 └─ From side refinement failure
    └─ ReadonlyArray<String2>
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
                └─ Expected a string at least 2 character(s) long, actual "a"`
-      )
-      await Util.expectDecodeUnknownFailure(
-        bound,
-        ["ab"],
-        `itemsCount(2)
+        )
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["ab"],
+          `itemsCount(2)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual ["ab"]`
-      )
-      await Util.expectDecodeUnknownFailure(
-        bound,
-        ["ab", "cd", "ef"],
-        `itemsCount(2)
+        )
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["ab", "cd", "ef"],
+          `itemsCount(2)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual ["ab","cd","ef"]`
-      )
+        )
+      })
+    })
+
+    describe("NonEmptyArray", () => {
+      it("minItems", async () => {
+        const schema = S.NonEmptyArray(StringTransformation).pipe(S.minItems(2))
+        const bound = S.encodedBoundSchema(schema)
+
+        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["a"],
+          `minItems(2)
+└─ From side refinement failure
+   └─ readonly [String2, ...String2[]]
+      └─ [0]
+         └─ String2
+            └─ Predicate refinement failure
+               └─ Expected a string at least 2 character(s) long, actual "a"`
+        )
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["ab"],
+          `minItems(2)
+└─ Predicate refinement failure
+   └─ Expected an array of at least 2 item(s), actual ["ab"]`
+        )
+      })
+
+      it("maxItems", async () => {
+        const schema = S.NonEmptyArray(StringTransformation).pipe(S.maxItems(2))
+        const bound = S.encodedBoundSchema(schema)
+
+        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["a"],
+          `maxItems(2)
+└─ From side refinement failure
+   └─ readonly [String2, ...String2[]]
+      └─ [0]
+         └─ String2
+            └─ Predicate refinement failure
+               └─ Expected a string at least 2 character(s) long, actual "a"`
+        )
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["ab", "cd", "ef"],
+          `maxItems(2)
+└─ Predicate refinement failure
+   └─ Expected an array of at most 2 item(s), actual ["ab","cd","ef"]`
+        )
+      })
+
+      it("itemsCount", async () => {
+        const schema = S.NonEmptyArray(StringTransformation).pipe(S.itemsCount(2))
+        const bound = S.encodedBoundSchema(schema)
+
+        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["a"],
+          `itemsCount(2)
+└─ From side refinement failure
+   └─ readonly [String2, ...String2[]]
+      └─ [0]
+         └─ String2
+            └─ Predicate refinement failure
+               └─ Expected a string at least 2 character(s) long, actual "a"`
+        )
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["ab"],
+          `itemsCount(2)
+└─ Predicate refinement failure
+   └─ Expected an array of exactly 2 item(s), actual ["ab"]`
+        )
+        await Util.expectDecodeUnknownFailure(
+          bound,
+          ["ab", "cd", "ef"],
+          `itemsCount(2)
+└─ Predicate refinement failure
+   └─ Expected an array of exactly 2 item(s), actual ["ab","cd","ef"]`
+        )
+      })
     })
   })
 })

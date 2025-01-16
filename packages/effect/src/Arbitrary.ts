@@ -4,6 +4,7 @@
 
 import * as Arr from "./Array.js"
 import * as FastCheck from "./FastCheck.js"
+import { globalValue } from "./GlobalValue.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as schemaId_ from "./internal/schema/schemaId.js"
 import * as util_ from "./internal/schema/util.js"
@@ -276,6 +277,11 @@ const makeArrayConfig = (options: {
 
 type Config = StringConstraints | NumberConstraints | BigIntConstraints | DateConstraints | ArrayConfig
 
+const arbitraryMemoMap = globalValue(
+  Symbol.for("effect/Arbitrary/arbitraryMemoMap"),
+  () => new WeakMap<AST.AST, LazyArbitrary<any>>()
+)
+
 const go = (
   ast: AST.AST,
   ctx: ArbitraryGenerationContext,
@@ -440,7 +446,7 @@ export const toOp = (
           output = output.chain((o) => {
             const item = fc.tuple(key, value)
             const arr = ctx.depthIdentifier !== undefined ?
-              getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item) :
+              getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, { maxLength: 2 }) :
               fc.array(item)
             return arr.map((tuples) => ({ ...Object.fromEntries(tuples), ...o }))
           })
@@ -454,14 +460,37 @@ export const toOp = (
       return new Succeed((fc) => fc.oneof(...types.map((arb) => arb(fc))))
     }
     case "Suspend": {
+      const memo = arbitraryMemoMap.get(ast)
+      if (memo) {
+        return new Succeed(memo)
+      }
       const get = util_.memoizeThunk(() => {
         return go(ast.f(), getSuspendedContext(ctx, ast), path)
       })
-      return new Succeed((fc) => fc.constant(null).chain(() => get()(fc)))
+      const out: LazyArbitrary<any> = (fc) => fc.constant(null).chain(() => get()(fc))
+      arbitraryMemoMap.set(ast, out)
+      return new Succeed(out)
     }
     case "Transformation":
       return toOp(ast.to, ctx, path)
   }
+}
+
+function subtractElementsLength(
+  constraints: FastCheck.ArrayConstraints,
+  elementsLength: number
+): FastCheck.ArrayConstraints {
+  if (elementsLength === 0 || (constraints.minLength === undefined && constraints.maxLength === undefined)) {
+    return constraints
+  }
+  const out = { ...constraints }
+  if (out.minLength !== undefined) {
+    out.minLength = Math.max(out.minLength - elementsLength, 0)
+  }
+  if (out.maxLength !== undefined) {
+    out.maxLength = Math.max(out.maxLength - elementsLength, 0)
+  }
+  return out
 }
 
 const goTupleType = (
@@ -508,9 +537,20 @@ const goTupleType = (
       const [head, ...tail] = rest
       const item = head(fc)
       output = output.chain((as) => {
-        return (ctx.depthIdentifier !== undefined
-          ? getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, constraints)
-          : fc.array(item, constraints)).map((rest) => [...as, ...rest])
+        const len = as.length
+        // We must adjust the constraints for the rest element
+        // because the elements might have generated some values
+        const restArrayConstraints = subtractElementsLength(constraints, len)
+        if (restArrayConstraints.maxLength === 0) {
+          return fc.constant(as)
+        }
+        const arr = ctx.depthIdentifier !== undefined
+          ? getSuspendedArray(fc, ctx.depthIdentifier, ctx.maxDepth, item, restArrayConstraints)
+          : fc.array(item, restArrayConstraints)
+        if (len === 0) {
+          return arr
+        }
+        return arr.map((rest) => [...as, ...rest])
       })
       // ---------------------------------------------
       // handle post rest elements
@@ -660,20 +700,16 @@ const getSuspendedArray = (
   depthIdentifier: string,
   maxDepth: number,
   item: FastCheck.Arbitrary<any>,
-  constraints?: FastCheck.ArrayConstraints
+  constraints: FastCheck.ArrayConstraints
 ) => {
-  let minLength = 1
-  let maxLength = 2
-  if (constraints && constraints.minLength !== undefined && constraints.minLength > minLength) {
-    minLength = constraints.minLength
-    if (minLength > maxLength) {
-      maxLength = minLength
-    }
+  const maxLengthLimit = Math.max(2, constraints.minLength ?? 0)
+  if (constraints.maxLength !== undefined && constraints.maxLength > maxLengthLimit) {
+    constraints = { ...constraints, maxLength: maxLengthLimit }
   }
   return fc.oneof(
     { maxDepth, depthIdentifier },
     fc.constant([]),
-    fc.array(item, { minLength, maxLength })
+    fc.array(item, constraints)
   )
 }
 
