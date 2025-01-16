@@ -3,6 +3,7 @@ import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Arr from "effect/Array"
 import type * as Config from "effect/Config"
+import * as ConfigError from "effect/ConfigError"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -839,7 +840,14 @@ const validateInternal = (
       return validateInternal(self.args as Instruction, args, config).pipe(
         Effect.catchTag("MissingValue", (e) =>
           Effect.map(
-            Effect.mapError(self.config, () => e),
+            Effect.catchAll(self.config, (e2) => {
+              if (ConfigError.isMissingDataOnly(e2)) {
+                const help = InternalHelpDoc.p(String(e2))
+                const error = InternalValidationError.invalidValue(help)
+                return Effect.fail(error)
+              }
+              return Effect.fail(e)
+            }),
             (value) => [args, value] as [Array<string>, any]
           ))
       )

@@ -3,6 +3,7 @@ import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
+import * as ConfigError from "effect/ConfigError"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -1347,15 +1348,18 @@ const parseInternal = (
     }
     case "WithFallback": {
       return parseInternal(self.options as Instruction, args, config).pipe(
-        Effect.catchTag(
-          "MissingValue",
-          (e) =>
-            self.effect.pipe(Effect.catchAll((e2) =>
-              Predicate.isTagged(e2, "QuitException")
-                ? Effect.die(e2)
-                : Effect.fail(e)
-            ))
-        )
+        Effect.catchTag("MissingValue", (e) =>
+          self.effect.pipe(Effect.catchAll((e2) => {
+            if (Predicate.isTagged(e2, "QuitException")) {
+              return Effect.die(e2)
+            }
+            if (ConfigError.isConfigError(e2) && !ConfigError.isMissingDataOnly(e2)) {
+              const help = InternalHelpDoc.p(String(e2))
+              const error = InternalValidationError.invalidValue(help)
+              return Effect.fail(error)
+            }
+            return Effect.fail(e)
+          })))
       )
     }
   }
