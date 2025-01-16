@@ -11,6 +11,7 @@ import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
+import * as Uuid from "uuid"
 import { SqlClient } from "./SqlClient.js"
 import * as SqlResolver from "./SqlResolver.js"
 import * as SqlSchema from "./SqlSchema.js"
@@ -377,7 +378,8 @@ export const DateTimeWithNow = VariantSchema.Overrideable(Schema.String, Schema.
   generate: Option.match({
     onNone: () => Effect.map(DateTime.now, DateTime.formatIso),
     onSome: (dt) => Effect.succeed(DateTime.formatIso(dt))
-  })
+  }),
+  decode: Schema.DateTimeUtc
 })
 
 /**
@@ -388,7 +390,8 @@ export const DateTimeFromDateWithNow = VariantSchema.Overrideable(Schema.DateFro
   generate: Option.match({
     onNone: () => Effect.map(DateTime.now, DateTime.toDateUtc),
     onSome: (dt) => Effect.succeed(DateTime.toDateUtc(dt))
-  })
+  }),
+  decode: DateTimeFromDate
 })
 
 /**
@@ -399,7 +402,8 @@ export const DateTimeFromNumberWithNow = VariantSchema.Overrideable(Schema.Numbe
   generate: Option.match({
     onNone: () => Effect.map(DateTime.now, DateTime.toEpochMillis),
     onSome: (dt) => Effect.succeed(DateTime.toEpochMillis(dt))
-  })
+  }),
+  decode: Schema.DateTimeUtcFromNumber
 })
 
 /**
@@ -610,6 +614,66 @@ export const JsonFromString = <S extends Schema.Schema.All | Schema.PropertySign
     jsonUpdate: schema
   }) as any
 }
+
+/**
+ * @since 1.0.0
+ * @category uuid
+ */
+export interface UuidV4Insert<B extends string | symbol> extends
+  VariantSchema.Field<{
+    readonly select: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+    readonly insert: VariantSchema.Overrideable<Uint8Array & Brand<B>, Uint8Array>
+    readonly update: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+    readonly json: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+  }>
+{}
+
+/**
+ * @since 1.0.0
+ * @category uuid
+ */
+export const UuidV4WithGenerate = <B extends string | symbol>(
+  schema: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+): VariantSchema.Overrideable<Uint8Array & Brand<B>, Uint8Array> =>
+  VariantSchema.Overrideable(Schema.Uint8ArrayFromSelf, schema, {
+    generate: Option.match({
+      onNone: () => Effect.sync(() => Uuid.v4({}, new Uint8Array(16))),
+      onSome: (id) => Effect.succeed(id as any)
+    }),
+    decode: Schema.Uint8ArrayFromSelf,
+    constructorDefault: () => Uuid.v4({}, new Uint8Array(16)) as any
+  })
+
+/**
+ * A field that represents a binary UUID v4 that is generated on inserts.
+ *
+ * @since 1.0.0
+ * @category uuid
+ */
+export const UuidV4Insert = <const B extends string | symbol>(
+  schema: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+): UuidV4Insert<B> =>
+  Field({
+    select: schema,
+    insert: UuidV4WithGenerate(schema),
+    update: schema,
+    json: schema
+  })
+
+/**
+ * A boolean parsed from 0 or 1
+ *
+ * @since 1.0.0
+ * @category uuid
+ */
+export class BooleanFromNumber extends Schema.transform(
+  Schema.Literal(0, 1),
+  Schema.Boolean,
+  {
+    decode: (n) => n === 1,
+    encode: (b) => b ? 1 : 0
+  }
+) {}
 
 /**
  * Create a simple CRUD repository from a model.
