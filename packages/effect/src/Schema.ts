@@ -6708,8 +6708,9 @@ export class DateTimeZonedFromSelf extends declare(
     arbitrary: (): LazyArbitrary<dateTime.Zoned> => (fc) =>
       fc.tuple(
         fc.integer({
-          min: -8640000000000000 + (12 * 60 * 60 * 1000),
-          max: 8640000000000000 - (14 * 60 * 60 * 1000)
+          // time zone db supports +/- 1000 years or so
+          min: -31536000000000,
+          max: 31536000000000
         }),
         timeZoneArbitrary(fc)
       ).map(([millis, timeZone]) => dateTime.unsafeMakeZoned(millis, { timeZone })),

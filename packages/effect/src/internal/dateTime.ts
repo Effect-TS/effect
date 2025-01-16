@@ -574,8 +574,12 @@ export const zonedOffset = (self: DateTime.Zoned): number => {
 
 const offsetToString = (offset: number): string => {
   const abs = Math.abs(offset)
-  const hours = Math.floor(abs / (60 * 60 * 1000))
-  const minutes = Math.round((abs % (60 * 60 * 1000)) / (60 * 1000))
+  let hours = Math.floor(abs / (60 * 60 * 1000))
+  let minutes = Math.round((abs % (60 * 60 * 1000)) / (60 * 1000))
+  if (minutes === 60) {
+    hours += 1
+    minutes = 0
+  }
   return `${offset < 0 ? "-" : "+"}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
 }
 
