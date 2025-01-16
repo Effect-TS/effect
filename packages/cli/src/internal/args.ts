@@ -837,9 +837,13 @@ const validateInternal = (
     }
     case "WithFallbackConfig": {
       return validateInternal(self.args as Instruction, args, config).pipe(
-        Effect.catchTag("MissingValue", (e) =>
+        Effect.catchTag("MissingValue", () =>
           Effect.map(
-            Effect.mapError(self.config, () => e),
+            Effect.catchAll(self.config, (e) => {
+              const help = InternalHelpDoc.p(String(e))
+              const error = InternalValidationError.invalidValue(help)
+              return Effect.fail(error)
+            }),
             (value) => [args, value] as [Array<string>, any]
           ))
       )

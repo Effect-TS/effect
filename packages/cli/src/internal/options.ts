@@ -1347,15 +1347,18 @@ const parseInternal = (
     }
     case "WithFallback": {
       return parseInternal(self.options as Instruction, args, config).pipe(
-        Effect.catchTag(
-          "MissingValue",
-          (e) =>
-            self.effect.pipe(Effect.catchAll((e2) =>
-              Predicate.isTagged(e2, "QuitException")
-                ? Effect.die(e2)
-                : Effect.fail(e)
-            ))
-        )
+        Effect.catchTag("MissingValue", (e) =>
+          self.effect.pipe(Effect.catchAll((e2) => {
+            if (Predicate.isTagged(e2, "QuitException")) {
+              return Effect.die(e2)
+            }
+            if (Predicate.isTagged(e2, "ConfigError")) {
+              const help = InternalHelpDoc.p(String(e2))
+              const error = InternalValidationError.invalidValue(help)
+              return Effect.fail(error)
+            }
+            return Effect.fail(e)
+          })))
       )
     }
   }
