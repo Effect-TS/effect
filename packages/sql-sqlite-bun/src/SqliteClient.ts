@@ -77,7 +77,7 @@ interface SqliteConnection extends Connection {
 export const make = (
   options: SqliteClientConfig
 ): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
       Statement.defaultTransforms(
@@ -85,13 +85,13 @@ export const make = (
       ).array :
       undefined
 
-    const makeConnection = Effect.gen(function*(_) {
+    const makeConnection = Effect.gen(function*() {
       const db = new Database(options.filename, {
         readonly: options.readonly,
         readwrite: options.readwrite ?? true,
         create: options.create ?? true
       } as any)
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
+      yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
 
       if (options.disableWAL !== true) {
         db.run("PRAGMA journal_mode = WAL;")
@@ -145,8 +145,8 @@ export const make = (
       })
     })
 
-    const semaphore = yield* _(Effect.makeSemaphore(1))
-    const connection = yield* _(makeConnection)
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const connection = yield* makeConnection
 
     const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
     const transactionAcquirer = Effect.uninterruptibleMask((restore) =>

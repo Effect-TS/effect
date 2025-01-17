@@ -23,8 +23,8 @@ export function shardManagerClientRpc(
 ) {
   return Layer.effect(
     ShardManagerClient.ShardManagerClient,
-    Effect.gen(function*(_) {
-      const config = yield* _(ShardingConfig.ShardingConfig)
+    Effect.gen(function*() {
+      const config = yield* ShardingConfig.ShardingConfig
       const client = makeClient(config.shardManagerUri)
 
       return ShardManagerClient.make({

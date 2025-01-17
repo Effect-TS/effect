@@ -19,7 +19,7 @@ import * as Layer from "effect/Layer"
 export const fromDotEnv = (
   path: string
 ): Effect.Effect<ConfigProvider.ConfigProvider, PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const content = yield* fs.readFileString(path)
     const obj = parseDotEnv(content)
@@ -35,7 +35,7 @@ export const layerDotEnv = (path: string): Layer.Layer<never, PlatformError, Fil
 
 /** @internal */
 export const layerDotEnvAdd = (path: string): Layer.Layer<never, never, FileSystem.FileSystem> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const dotEnvConfigProvider = yield* Effect.orElseSucceed(fromDotEnv(path), () => null)
 
     if (dotEnvConfigProvider === null) {

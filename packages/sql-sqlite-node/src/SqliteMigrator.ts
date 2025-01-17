@@ -9,6 +9,7 @@ import * as Migrator from "@effect/sql/Migrator"
 import type * as Client from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import { SqliteClient } from "./SqliteClient.js"
 
@@ -35,9 +36,9 @@ export const run: <R2 = never>(
 > = Migrator.make({
   dumpSchema(path, table) {
     const dump = (args: Array<string>) =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const sql = yield* SqliteClient
-        const dump = yield* _(
+        const dump = yield* pipe(
           Command.make("sqlite3", sql.config.filename, ...args),
           Command.string
         )
@@ -62,12 +63,12 @@ export const run: <R2 = never>(
     )
 
     const dumpFile = (file: string) =>
-      Effect.gen(function*(_) {
-        const fs = yield* _(FileSystem)
-        const path = yield* _(Path)
-        const dump = yield* _(dumpAll)
-        yield* _(fs.makeDirectory(path.dirname(file), { recursive: true }))
-        yield* _(fs.writeFileString(file, dump))
+      Effect.gen(function*() {
+        const fs = yield* FileSystem
+        const path = yield* Path
+        const dump = yield* dumpAll
+        yield* fs.makeDirectory(path.dirname(file), { recursive: true })
+        yield* fs.writeFileString(file, dump)
       }).pipe(
         Effect.mapError((error) => new Migrator.MigrationError({ reason: "failed", message: error.message }))
       )

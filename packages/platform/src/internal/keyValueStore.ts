@@ -194,13 +194,13 @@ export const layerMemory = Layer.sync(keyValueStoreTag, () => {
 export const layerFileSystem = (directory: string) =>
   Layer.effect(
     keyValueStoreTag,
-    Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const path = yield* _(Path.Path)
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
       const keyPath = (key: string) => path.join(directory, encodeURIComponent(key))
 
-      if (!(yield* _(fs.exists(directory)))) {
-        yield* _(fs.makeDirectory(directory, { recursive: true }))
+      if (!(yield* fs.exists(directory))) {
+        yield* fs.makeDirectory(directory, { recursive: true })
       }
 
       return make({

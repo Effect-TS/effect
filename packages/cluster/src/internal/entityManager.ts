@@ -68,17 +68,15 @@ export function make<Msg extends Message.Message.Any, R>(
   serialization: Serialization.Serialization,
   options: RecipientBehaviour.EntityBehaviourOptions = {}
 ) {
-  return Effect.gen(function*(_) {
+  return Effect.gen(function*() {
     const entityMaxIdle = options.entityMaxIdleTime || Option.none()
-    const env = yield* _(Effect.context<Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>>())
-    const entityStates = yield* _(
-      RefSynchronized.make<
-        HashMap.HashMap<
-          RecipientAddress.RecipientAddress,
-          EntityState.EntityState
-        >
-      >(HashMap.empty())
-    )
+    const env = yield* Effect.context<Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>>()
+    const entityStates = yield* RefSynchronized.make<
+      HashMap.HashMap<
+        RecipientAddress.RecipientAddress,
+        EntityState.EntityState
+      >
+    >(HashMap.empty())
 
     function startExpirationFiber(recipientAddress: RecipientAddress.RecipientAddress) {
       const maxIdleMillis = pipe(
@@ -225,14 +223,14 @@ export function make<Msg extends Message.Message.Any, R>(
                   return Effect.fail(new ShardingException.EntityNotManagedByThisPodException({ recipientAddress }))
                 } else {
                   // offer doesn't exist, create a new one
-                  return Effect.gen(function*(_) {
-                    const executionScope = yield* _(Scope.make())
-                    const expirationFiber = yield* _(startExpirationFiber(recipientAddress))
-                    const cdt = yield* _(Clock.currentTimeMillis)
+                  return Effect.gen(function*() {
+                    const executionScope = yield* Scope.make()
+                    const expirationFiber = yield* startExpirationFiber(recipientAddress)
+                    const cdt = yield* Clock.currentTimeMillis
                     const forkShutdown = pipe(forkEntityTermination(recipientAddress), Effect.asVoid)
                     const shardId = sharding.getShardId(recipientAddress)
 
-                    const sendAndGetState = yield* _(pipe(
+                    const sendAndGetState = yield* pipe(
                       recipientBehaviour,
                       Effect.map((offer) => (envelope: SerializedEnvelope.SerializedEnvelope) =>
                         pipe(
@@ -261,7 +259,7 @@ export function make<Msg extends Message.Message.Any, R>(
                         })
                       ),
                       Effect.provide(env)
-                    ))
+                    )
 
                     const entityState = EntityState.make({
                       sendAndGetState,

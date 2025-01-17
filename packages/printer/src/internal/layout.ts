@@ -50,7 +50,7 @@ const wadlerLeijenSafe = <A>(
     nl: number,
     cc: number
   ): Effect.Effect<DocStream.DocStream<A>> =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       switch (self._tag) {
         case "Nil": {
           return InternalDocStream.empty
@@ -61,19 +61,19 @@ const wadlerLeijenSafe = <A>(
               return InternalDocStream.failed
             }
             case "Empty": {
-              return yield* _(best(self.pipeline, nl, cc))
+              return yield* best(self.pipeline, nl, cc)
             }
             case "Char": {
-              const stream = yield* _(best(self.pipeline, nl, cc + 1))
+              const stream = yield* best(self.pipeline, nl, cc + 1)
               return InternalDocStream.char(stream, self.document.char)
             }
             case "Text": {
               const length = self.document.text.length
-              const stream = yield* _(best(self.pipeline, nl, cc + length))
+              const stream = yield* best(self.pipeline, nl, cc + length)
               return InternalDocStream.text(stream, self.document.text)
             }
             case "Line": {
-              const stream = yield* _(best(self.pipeline, self.indent, self.indent))
+              const stream = yield* best(self.pipeline, self.indent, self.indent)
               // Do not produce indentation if there is no subsequent text on
               // the same line (prevents trailing whitespace)
               const nextIndent = InternalDocStream.isEmptyStream(stream) || InternalDocStream.isLineStream(stream)
@@ -83,17 +83,17 @@ const wadlerLeijenSafe = <A>(
             }
             case "FlatAlt": {
               const next = InternalPipeline.cons(self.indent, self.document.left, self.pipeline)
-              return yield* _(best(next, nl, cc))
+              return yield* best(next, nl, cc)
             }
             case "Cat": {
               const inner = InternalPipeline.cons(self.indent, self.document.right, self.pipeline)
               const outer = InternalPipeline.cons(self.indent, self.document.left, inner)
-              return yield* _(best(outer, nl, cc))
+              return yield* best(outer, nl, cc)
             }
             case "Nest": {
               const indent = self.indent + self.document.indent
               const next = InternalPipeline.cons(indent, self.document.doc, self.pipeline)
-              return yield* _(best(next, nl, cc))
+              return yield* best(next, nl, cc)
             }
             case "Union": {
               const leftPipeline = InternalPipeline.cons(self.indent, self.document.left, self.pipeline)
@@ -105,28 +105,28 @@ const wadlerLeijenSafe = <A>(
             case "Column": {
               const doc = self.document.react(cc)
               const next = InternalPipeline.cons(self.indent, doc, self.pipeline)
-              return yield* _(best(next, nl, cc))
+              return yield* best(next, nl, cc)
             }
             case "WithPageWidth": {
               const doc = self.document.react(options.pageWidth)
               const next = InternalPipeline.cons(self.indent, doc, self.pipeline)
-              return yield* _(best(next, nl, cc))
+              return yield* best(next, nl, cc)
             }
             case "Nesting": {
               const doc = self.document.react(self.indent)
               const next = InternalPipeline.cons(self.indent, doc, self.pipeline)
-              return yield* _(best(next, nl, cc))
+              return yield* best(next, nl, cc)
             }
             case "Annotated": {
               const undo = InternalPipeline.undoAnnotation(self.pipeline)
               const next = InternalPipeline.cons(self.indent, self.document.doc, undo)
-              const stream = yield* _(best(next, nl, cc))
+              const stream = yield* best(next, nl, cc)
               return InternalDocStream.pushAnnotation(stream, self.document.annotation)
             }
           }
         }
         case "UndoAnnotation": {
-          const stream = yield* _(best(self.pipeline, nestingLevel, currentColumn))
+          const stream = yield* best(self.pipeline, nestingLevel, currentColumn)
           return InternalDocStream.popAnnotation(stream)
         }
       }
@@ -164,7 +164,7 @@ const compactSafe = <A>(
   docs: List.List<Doc.Doc<A>>,
   i: number
 ): Effect.Effect<DocStream.DocStream<A>> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     if (List.isNil(docs)) {
       return InternalDocStream.empty
     }
@@ -175,44 +175,44 @@ const compactSafe = <A>(
         return InternalDocStream.failed
       }
       case "Empty": {
-        return yield* _(compactSafe(tail, i))
+        return yield* compactSafe(tail, i)
       }
       case "Char": {
-        const stream = yield* _(compactSafe(tail, i + 1))
+        const stream = yield* compactSafe(tail, i + 1)
         return InternalDocStream.char(stream, head.char)
       }
       case "Text": {
-        const stream = yield* _(compactSafe(tail, i + head.text.length))
+        const stream = yield* compactSafe(tail, i + head.text.length)
         return InternalDocStream.text(stream, head.text)
       }
       case "Line": {
-        const stream = yield* _(compactSafe(tail, 0))
+        const stream = yield* compactSafe(tail, 0)
         return InternalDocStream.line(stream, 0)
       }
       case "FlatAlt": {
-        return yield* _(compactSafe(List.cons(head.left, tail), i))
+        return yield* compactSafe(List.cons(head.left, tail), i)
       }
       case "Cat": {
         const list = List.cons(head.left, List.cons(head.right, tail))
-        return yield* _(compactSafe(list, i))
+        return yield* compactSafe(list, i)
       }
       case "Nest": {
-        return yield* _(compactSafe(List.cons(head.doc, tail), i))
+        return yield* compactSafe(List.cons(head.doc, tail), i)
       }
       case "Union": {
-        return yield* _(compactSafe(List.cons(head.right, tail), i))
+        return yield* compactSafe(List.cons(head.right, tail), i)
       }
       case "Column": {
-        return yield* _(compactSafe(List.cons(head.react(i), tail), i))
+        return yield* compactSafe(List.cons(head.react(i), tail), i)
       }
       case "WithPageWidth": {
-        return yield* _(compactSafe(List.cons(head.react(InternalPageWidth.unbounded), tail), i))
+        return yield* compactSafe(List.cons(head.react(InternalPageWidth.unbounded), tail), i)
       }
       case "Nesting": {
-        return yield* _(compactSafe(List.cons(head.react(0), tail), i))
+        return yield* compactSafe(List.cons(head.react(0), tail), i)
       }
       case "Annotated": {
-        return yield* _(compactSafe(List.cons(head.doc, tail), i))
+        return yield* compactSafe(List.cons(head.doc, tail), i)
       }
     }
   })

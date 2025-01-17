@@ -22,13 +22,13 @@ export function make<A, IA, E, IE>(
   return <R>(
     execute: Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, Exclude<R, ActivityContext.ActivityContext> | WorkflowContext.WorkflowContext> => {
-    return Effect.gen(function*($) {
-      const context = yield* $(WorkflowContext.WorkflowContext)
+    return Effect.gen(function*() {
+      const context = yield* WorkflowContext.WorkflowContext
       const persistenceId = context.makePersistenceId(activityId)
       const journal = context.durableExecutionJournal.read(persistenceId, successSchema, failureSchema, 0, false)
       const initialState = { attempt: 0, lastSequence: 0, exit: Option.none<Exit.Exit<A, E>>() }
 
-      return yield* $(context.forkAndJoin(
+      return yield* context.forkAndJoin(
         persistenceId,
         pipe(
           journal,
@@ -74,7 +74,7 @@ export function make<A, IA, E, IE>(
             )
           )
         )
-      ))
+      )
     })
   }
 }

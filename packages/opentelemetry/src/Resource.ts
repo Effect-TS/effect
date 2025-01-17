@@ -14,6 +14,7 @@ import { Config } from "effect"
 import * as Arr from "effect/Array"
 import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 
 /**
@@ -67,9 +68,9 @@ export const layerFromEnv = (
 ): Layer.Layer<Resource> =>
   Layer.effect(
     Resource,
-    Effect.gen(function*(_) {
-      const serviceName = yield* _(Config.string("OTEL_SERVICE_NAME"), Config.option, Effect.orDie)
-      const attributes = yield* _(
+    Effect.gen(function*() {
+      const serviceName = yield* pipe(Config.string("OTEL_SERVICE_NAME"), Config.option, Effect.orDie)
+      const attributes = yield* pipe(
         Config.string("OTEL_RESOURCE_ATTRIBUTES"),
         Config.withDefault(""),
         Config.map((s) => {

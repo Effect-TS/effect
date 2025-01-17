@@ -85,7 +85,7 @@ interface SqliteConnection extends Connection {}
 export const make = (
   options: SqliteClientConfig
 ): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const clientOptions: Parameters<typeof Sqlite.open>[0] = {
       name: options.filename
     }
@@ -101,9 +101,9 @@ export const make = (
       Statement.defaultTransforms(options.transformResultNames).array :
       undefined
 
-    const makeConnection = Effect.gen(function*(_) {
+    const makeConnection = Effect.gen(function*() {
       const db = Sqlite.open(clientOptions)
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
+      yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
 
       const run = (
         sql: string,
@@ -152,8 +152,8 @@ export const make = (
       })
     })
 
-    const semaphore = yield* _(Effect.makeSemaphore(1))
-    const connection = yield* _(makeConnection)
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const connection = yield* makeConnection
 
     const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
     const transactionAcquirer = Effect.uninterruptibleMask((restore) =>

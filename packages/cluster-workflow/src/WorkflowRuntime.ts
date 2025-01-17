@@ -127,11 +127,11 @@ function handleReplayPhase<A, E>(
                   })
                 ),
               onNone: () =>
-                Effect.gen(function*($) {
+                Effect.gen(function*() {
                   let delayedMessages = state.delayedMessages
                   while (true) {
-                    const message = yield* $(Queue.take(mailbox))
-                    if (yield* $(processMessageWaitingForFork(message))) {
+                    const message = yield* Queue.take(mailbox)
+                    if (yield* processMessageWaitingForFork(message)) {
                       return new WorkflowRuntimeState.Replay({ ...state, delayedMessages })
                     }
                     delayedMessages = delayedMessages.concat([message])
@@ -171,11 +171,11 @@ function handleReplayPhase<A, E>(
                   })
                 ),
               onNone: () =>
-                Effect.gen(function*($) {
+                Effect.gen(function*() {
                   let delayedMessages = state.delayedMessages
                   while (true) {
-                    const message = yield* $(Queue.take(mailbox))
-                    if (yield* $(processMessageWaitingForJoin(message))) {
+                    const message = yield* Queue.take(mailbox)
+                    if (yield* processMessageWaitingForJoin(message)) {
                       return new WorkflowRuntimeState.Replay({ ...state, delayedMessages })
                     }
                     delayedMessages = delayedMessages.concat([message])
@@ -349,12 +349,12 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
     Message.Message.Error<A>,
     R | DurableExecutionJournal.DurableExecutionJournal
   > => {
-    return Effect.gen(function*($) {
+    return Effect.gen(function*() {
       const persistenceId = PrimaryKey.value(request)
       const successSchema = Message.successSchema(request)
       const failureSchema = Message.failureSchema(request)
-      const durableExecutionJournal = yield* $(DurableExecutionJournal.DurableExecutionJournal)
-      const context = yield* $(Effect.context<R>())
+      const durableExecutionJournal = yield* DurableExecutionJournal.DurableExecutionJournal
+      const context = yield* Effect.context<R>()
       const executionVersion = workflow.version(request)
 
       const appendToJournal = (
@@ -365,11 +365,9 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
           (journal) => journal.append(persistenceId, successSchema, failureSchema, event)
         )
 
-      const mailbox = yield* $(
-        Queue.unbounded<
-          WorkflowRuntimeMessage.WorkflowRuntimeMessage<Message.Message.Success<A>, Message.Message.Error<A>>
-        >()
-      )
+      const mailbox = yield* Queue.unbounded<
+        WorkflowRuntimeMessage.WorkflowRuntimeMessage<Message.Message.Success<A>, Message.Message.Error<A>>
+      >()
 
       const isYielding = pipe(
         Deferred.make<
@@ -415,7 +413,7 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
 
       const makePersistenceId = (localId: string) => persistenceId + "__" + localId
 
-      const executionScope = yield* $(Scope.make())
+      const executionScope = yield* Scope.make()
 
       const executionEffect = (version: string) =>
         pipe(
@@ -440,7 +438,7 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
           Effect.provide(context)
         )
 
-      const coordinatorFiber = yield* $(
+      const coordinatorFiber = yield* pipe(
         durableExecutionJournal.read(persistenceId, successSchema, failureSchema, 0, false),
         Stream.runFoldEffect(
           WorkflowRuntimeState.initialState<A>(),
@@ -479,7 +477,7 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
         Effect.forkIn(executionScope)
       )
 
-      return yield* $(
+      return yield* pipe(
         Fiber.await(coordinatorFiber),
         Effect.flatten,
         Effect.onInterrupt(() =>

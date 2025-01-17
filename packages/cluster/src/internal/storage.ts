@@ -31,11 +31,11 @@ export function make(args: Omit<Storage.Storage, Storage.StorageTypeId>): Storag
 /** @internal */
 export const memory: Layer.Layer<Storage.Storage> = Layer.effect(
   storageTag,
-  Effect.gen(function*($) {
-    const assignmentsRef = yield* $(
-      SubscriptionRef.make(HashMap.empty<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>())
+  Effect.gen(function*() {
+    const assignmentsRef = yield* SubscriptionRef.make(
+      HashMap.empty<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>()
     )
-    const podsRef = yield* $(Ref.make(HashMap.empty<PodAddress.PodAddress, Pod.Pod>()))
+    const podsRef = yield* Ref.make(HashMap.empty<PodAddress.PodAddress, Pod.Pod>())
 
     return make({
       getAssignments: SubscriptionRef.get(assignmentsRef),

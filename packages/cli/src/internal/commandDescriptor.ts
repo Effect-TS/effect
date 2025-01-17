@@ -854,7 +854,7 @@ const wizardInternal = (
     switch (self._tag) {
       case "GetUserInput":
       case "Standard": {
-        return Effect.gen(function*(_) {
+        return Effect.gen(function*() {
           const logCurrentCommand = Ref.get(commandLineRef).pipe(Effect.flatMap((commandLine) => {
             const currentCommand = InternalHelpDoc.p(pipe(
               InternalSpan.strong(InternalSpan.highlight("COMMAND:", Color.cyan)),
@@ -868,30 +868,30 @@ const wizardInternal = (
           }))
           if (isStandard(self)) {
             // Log the current command line arguments
-            yield* _(logCurrentCommand)
+            yield* logCurrentCommand
             const commandName = InternalSpan.highlight(self.name, Color.magenta)
             // If the command has options, run the wizard for them
             if (!InternalOptions.isEmpty(self.options as InternalOptions.Instruction)) {
               const message = InternalHelpDoc.p(
                 InternalSpan.concat(optionsWizardHeader, commandName)
               )
-              yield* _(Console.log(InternalHelpDoc.toAnsiText(message)))
-              const options = yield* _(InternalOptions.wizard(self.options, config))
-              yield* _(Ref.updateAndGet(commandLineRef, Arr.appendAll(options)))
-              yield* _(logCurrentCommand)
+              yield* Console.log(InternalHelpDoc.toAnsiText(message))
+              const options = yield* InternalOptions.wizard(self.options, config)
+              yield* Ref.updateAndGet(commandLineRef, Arr.appendAll(options))
+              yield* logCurrentCommand
             }
             // If the command has args, run the wizard for them
             if (!InternalArgs.isEmpty(self.args as InternalArgs.Instruction)) {
               const message = InternalHelpDoc.p(
                 InternalSpan.concat(argsWizardHeader, commandName)
               )
-              yield* _(Console.log(InternalHelpDoc.toAnsiText(message)))
-              const options = yield* _(InternalArgs.wizard(self.args, config))
-              yield* _(Ref.updateAndGet(commandLineRef, Arr.appendAll(options)))
-              yield* _(logCurrentCommand)
+              yield* Console.log(InternalHelpDoc.toAnsiText(message))
+              const options = yield* InternalArgs.wizard(self.args, config)
+              yield* Ref.updateAndGet(commandLineRef, Arr.appendAll(options))
+              yield* logCurrentCommand
             }
           }
-          return yield* _(Ref.get(commandLineRef))
+          return yield* Ref.get(commandLineRef)
         })
       }
       case "Map": {

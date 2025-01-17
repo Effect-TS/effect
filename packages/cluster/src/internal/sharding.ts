@@ -698,21 +698,17 @@ function make(
     behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
   ) {
-    return Effect.gen(function*($) {
-      const entityManager = yield* $(
-        EntityManager.make(
-          recipientType,
-          behavior,
-          self,
-          config,
-          serialization,
-          options
-        )
+    return Effect.gen(function*() {
+      const entityManager = yield* EntityManager.make(
+        recipientType,
+        behavior,
+        self,
+        config,
+        serialization,
+        options
       )
 
-      yield* $(
-        Ref.update(entityManagers, HashMap.set(recipientType.name, entityManager as any))
-      )
+      yield* Ref.update(entityManagers, HashMap.set(recipientType.name, entityManager as any))
     })
   }
 
@@ -747,28 +743,28 @@ function make(
  */
 export const live = Layer.scoped(
   shardingTag,
-  Effect.gen(function*(_) {
-    const config = yield* _(ShardingConfig.ShardingConfig)
-    const pods = yield* _(Pods.Pods)
-    const shardManager = yield* _(ShardManagerClient.ShardManagerClient)
-    const storage = yield* _(Storage.Storage)
-    const serialization = yield* _(Serialization.Serialization)
-    const shardsCache = yield* _(Ref.make(HashMap.empty<ShardId.ShardId, PodAddress.PodAddress>()))
-    const entityManagers = yield* _(Ref.make(HashMap.empty<string, EntityManager.EntityManager>()))
-    const shuttingDown = yield* _(Ref.make(false))
-    const eventsHub = yield* _(PubSub.unbounded<ShardingRegistrationEvent.ShardingRegistrationEvent>())
-    const singletons = yield* _(Synchronized.make<List.List<SingletonEntry>>(List.nil()))
-    const layerScope = yield* _(Effect.scope)
-    const cdt = yield* _(Clock.currentTimeMillis)
-    const lastUnhealthyNodeReported = yield* _(Ref.make(cdt))
-    yield* _(Effect.addFinalizer(() =>
+  Effect.gen(function*() {
+    const config = yield* ShardingConfig.ShardingConfig
+    const pods = yield* Pods.Pods
+    const shardManager = yield* ShardManagerClient.ShardManagerClient
+    const storage = yield* Storage.Storage
+    const serialization = yield* Serialization.Serialization
+    const shardsCache = yield* Ref.make(HashMap.empty<ShardId.ShardId, PodAddress.PodAddress>())
+    const entityManagers = yield* Ref.make(HashMap.empty<string, EntityManager.EntityManager>())
+    const shuttingDown = yield* Ref.make(false)
+    const eventsHub = yield* PubSub.unbounded<ShardingRegistrationEvent.ShardingRegistrationEvent>()
+    const singletons = yield* Synchronized.make<List.List<SingletonEntry>>(List.nil())
+    const layerScope = yield* Effect.scope
+    const cdt = yield* Clock.currentTimeMillis
+    const lastUnhealthyNodeReported = yield* Ref.make(cdt)
+    yield* Effect.addFinalizer(() =>
       pipe(
         Synchronized.get(singletons),
         Effect.flatMap(
           Effect.forEach(([_, __, fa]) => Option.isSome(fa) ? Fiber.interrupt(fa.value) : Effect.void)
         )
       )
-    ))
+    )
 
     const sharding = make(
       layerScope,
@@ -786,7 +782,7 @@ export const live = Layer.scoped(
       eventsHub
     )
 
-    yield* _(sharding.refreshAssignments)
+    yield* sharding.refreshAssignments
 
     return sharding
   })
