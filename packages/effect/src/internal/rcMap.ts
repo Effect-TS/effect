@@ -1,5 +1,4 @@
 import type * as Cause from "../Cause.js"
-import type { Clock } from "../Clock.js"
 import * as Context from "../Context.js"
 import type * as Deferred from "../Deferred.js"
 import * as Duration from "../Duration.js"
@@ -139,7 +138,6 @@ const getImpl = core.fnUntraced(function*<K, A, E>(self: RcMapImpl<K, A, E>, key
   if (o._tag === "Some") {
     entry = o.value
     entry.refCount++
-    if (entry.fiber) yield* core.interruptFiber(entry.fiber)
   } else if (Number.isFinite(self.capacity) && MutableHashMap.size(self.state.map) >= self.capacity) {
     return yield* core.fail(
       new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`)
@@ -197,17 +195,18 @@ const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A
     }
 
     entry.expiresAt = clock.unsafeCurrentTimeMillis() + Duration.toMillis(self.idleTimeToLive)
+    if (entry.fiber) return core.void
 
-    return clock.sleep(self.idleTimeToLive).pipe(
-      core.zipRight(waitUntilExpired(entry, clock)),
-      core.interruptible,
-      core.zipRight(core.suspend(() => {
-        if (self.state._tag === "Open" && entry.refCount === 0) {
-          MutableHashMap.remove(self.state.map, key)
-          return core.scopeClose(entry.scope, core.exitVoid)
-        }
-        return core.void
-      })),
+    return core.interruptibleMask(function loop(restore): Effect<void> {
+      const now = clock.unsafeCurrentTimeMillis()
+      const remaining = entry.expiresAt - now
+      if (remaining <= 0) {
+        if (self.state._tag === "Closed" || entry.refCount > 0) return core.void
+        MutableHashMap.remove(self.state.map, key)
+        return restore(core.scopeClose(entry.scope, core.exitVoid))
+      }
+      return core.flatMap(clock.sleep(Duration.millis(remaining)), () => loop(restore))
+    }).pipe(
       fiberRuntime.ensuring(core.sync(() => {
         entry.fiber = undefined
       })),
@@ -217,16 +216,6 @@ const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A
       }),
       self.semaphore.withPermits(1)
     )
-  })
-
-const waitUntilExpired = <A, E>(entry: State.Entry<A, E>, clock: Clock) =>
-  core.suspend(function loop(): Effect<void> {
-    const now = clock.unsafeCurrentTimeMillis()
-    const remaining = entry.expiresAt - now
-    if (remaining <= 0) {
-      return core.void
-    }
-    return core.flatMap(clock.sleep(Duration.millis(remaining)), loop)
   })
 
 /** @internal */
