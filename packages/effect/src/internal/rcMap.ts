@@ -1,4 +1,5 @@
 import type * as Cause from "../Cause.js"
+import type { Clock } from "../Clock.js"
 import * as Context from "../Context.js"
 import type * as Deferred from "../Deferred.js"
 import * as Duration from "../Duration.js"
@@ -34,6 +35,7 @@ declare namespace State {
     readonly scope: Scope.CloseableScope
     readonly finalizer: Effect<void>
     fiber: RuntimeFiber<void, never> | undefined
+    expiresAt: number
     refCount: number
   }
 }
@@ -168,6 +170,7 @@ const acquire = core.fnUntraced(function*<K, A, E>(self: RcMapImpl<K, A, E>, key
     scope,
     finalizer: undefined as any,
     fiber: undefined,
+    expiresAt: 0,
     refCount: 1
   }
   ;(entry as any).finalizer = release(self, key, entry)
@@ -178,7 +181,7 @@ const acquire = core.fnUntraced(function*<K, A, E>(self: RcMapImpl<K, A, E>, key
 })
 
 const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A, E>) =>
-  core.suspend(() => {
+  coreEffect.clockWith((clock) => {
     entry.refCount--
     if (entry.refCount > 0) {
       return core.void
@@ -193,7 +196,10 @@ const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A
       return core.scopeClose(entry.scope, core.exitVoid)
     }
 
-    return coreEffect.sleep(self.idleTimeToLive).pipe(
+    entry.expiresAt = clock.unsafeCurrentTimeMillis() + Duration.toMillis(self.idleTimeToLive)
+
+    return clock.sleep(self.idleTimeToLive).pipe(
+      core.zipRight(waitUntilExpired(entry, clock)),
       core.interruptible,
       core.zipRight(core.suspend(() => {
         if (self.state._tag === "Open" && entry.refCount === 0) {
@@ -211,6 +217,16 @@ const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A
       }),
       self.semaphore.withPermits(1)
     )
+  })
+
+const waitUntilExpired = <A, E>(entry: State.Entry<A, E>, clock: Clock) =>
+  core.suspend(function loop(): Effect<void> {
+    const now = clock.unsafeCurrentTimeMillis()
+    const remaining = entry.expiresAt - now
+    if (remaining <= 0) {
+      return core.void
+    }
+    return core.flatMap(clock.sleep(Duration.millis(remaining)), loop)
   })
 
 /** @internal */
@@ -238,4 +254,21 @@ export const invalidate: {
     yield* core.scopeClose(entry.scope, core.exitVoid)
     if (entry.fiber) yield* core.interruptFiber(entry.fiber)
   })
+)
+
+/** @internal */
+export const touch: {
+  <K>(key: K): <A, E>(self: RcMap.RcMap<K, A, E>) => Effect<void>
+  <K, A, E>(self: RcMap.RcMap<K, A, E>, key: K): Effect<void>
+} = dual(
+  2,
+  <K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K) =>
+    coreEffect.clockWith((clock) => {
+      const self = self_ as RcMapImpl<K, A, E>
+      if (!self.idleTimeToLive || self.state._tag === "Closed") return core.void
+      const o = MutableHashMap.get(self.state.map, key)
+      if (o._tag === "None") return core.void
+      o.value.expiresAt = clock.unsafeCurrentTimeMillis() + Duration.toMillis(self.idleTimeToLive)
+      return core.void
+    })
 )
