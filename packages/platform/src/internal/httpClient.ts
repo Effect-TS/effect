@@ -711,7 +711,7 @@ export const followRedirects = dual<
               ? loop(
                 internalRequest.setUrl(
                   request,
-                  response.headers.location
+                  new URL(response.headers.location, response.request.url)
                 ),
                 redirects + 1
               )

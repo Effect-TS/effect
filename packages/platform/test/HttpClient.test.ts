@@ -221,4 +221,20 @@ describe("HttpClient", () => {
       body: { _id: "@effect/platform/HttpBody", _tag: "Empty" }
     })
   })
+
+  it("followRedirects", () =>
+    Effect.gen(function*(_) {
+      const defaultClient = yield* HttpClient.HttpClient
+      const client = defaultClient.pipe(HttpClient.followRedirects())
+
+      const response = yield* _(
+        client.get("https://google.com/"),
+        Effect.scoped
+      )
+      expect(response.request.url).toBe("https://www.google.com/")
+    }).pipe(
+      Effect.provide(FetchHttpClient.layer),
+      Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" }),
+      Effect.runPromise
+    ))
 })
