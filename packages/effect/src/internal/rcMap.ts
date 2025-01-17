@@ -32,6 +32,7 @@ declare namespace State {
   interface Entry<A, E> {
     readonly deferred: Deferred.Deferred<A, E>
     readonly scope: Scope.CloseableScope
+    readonly finalizer: Effect<void>
     fiber: RuntimeFiber<void, never> | undefined
     refCount: number
   }
@@ -121,96 +122,96 @@ export const make: {
 export const get: {
   <K>(key: K): <A, E>(self: RcMap.RcMap<K, A, E>) => Effect<A, E, Scope.Scope>
   <K, A, E>(self: RcMap.RcMap<K, A, E>, key: K): Effect<A, E, Scope.Scope>
-} = dual(
-  2,
-  <K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K): Effect<A, E, Scope.Scope> => {
-    const self = self_ as RcMapImpl<K, A, E>
-    return core.uninterruptibleMask((restore) =>
-      core.suspend(() => {
-        if (self.state._tag === "Closed") {
-          return core.interrupt
-        }
-        const state = self.state
-        const o = MutableHashMap.get(state.map, key)
-        if (o._tag === "Some") {
-          const entry = o.value
-          entry.refCount++
-          return entry.fiber
-            ? core.as(core.interruptFiber(entry.fiber), entry)
-            : core.succeed(entry)
-        } else if (Number.isFinite(self.capacity) && MutableHashMap.size(self.state.map) >= self.capacity) {
-          return core.fail(
-            new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`)
-          ) as Effect<never>
-        }
-        const acquire = self.lookup(key)
-        return fiberRuntime.scopeMake().pipe(
-          coreEffect.bindTo("scope"),
-          coreEffect.bind("deferred", () => core.deferredMake<A, E>()),
-          core.tap(({ deferred, scope }) =>
-            restore(core.fiberRefLocally(
-              acquire as Effect<A, E>,
-              core.currentContext,
-              Context.add(self.context, fiberRuntime.scopeTag, scope)
-            )).pipe(
-              core.exit,
-              core.flatMap((exit) => core.deferredDone(deferred, exit)),
-              circular.forkIn(scope)
-            )
-          ),
-          core.map(({ deferred, scope }) => {
-            const entry: State.Entry<A, E> = {
-              deferred,
-              scope,
-              fiber: undefined,
-              refCount: 1
-            }
-            MutableHashMap.set(state.map, key, entry)
-            return entry
-          })
-        )
-      }).pipe(
-        self.semaphore.withPermits(1),
-        coreEffect.bindTo("entry"),
-        coreEffect.bind("scope", () => fiberRuntime.scopeTag),
-        core.tap(({ entry, scope }) =>
-          scope.addFinalizer(() =>
-            core.suspend(() => {
-              entry.refCount--
-              if (entry.refCount > 0) {
-                return core.void
-              } else if (self.idleTimeToLive === undefined) {
-                if (self.state._tag === "Open") {
-                  MutableHashMap.remove(self.state.map, key)
-                }
-                return core.scopeClose(entry.scope, core.exitVoid)
-              }
-              return coreEffect.sleep(self.idleTimeToLive).pipe(
-                core.interruptible,
-                core.zipRight(core.suspend(() => {
-                  if (self.state._tag === "Open" && entry.refCount === 0) {
-                    MutableHashMap.remove(self.state.map, key)
-                    return core.scopeClose(entry.scope, core.exitVoid)
-                  }
-                  return core.void
-                })),
-                fiberRuntime.ensuring(core.sync(() => {
-                  entry.fiber = undefined
-                })),
-                circular.forkIn(self.scope),
-                core.tap((fiber) => {
-                  entry.fiber = fiber
-                }),
-                self.semaphore.withPermits(1)
-              )
-            })
-          )
-        ),
-        core.flatMap(({ entry }) => restore(core.deferredAwait(entry.deferred)))
-      )
-    )
+} = dual(2, <K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K): Effect<A, E, Scope.Scope> => {
+  const self = self_ as RcMapImpl<K, A, E>
+  return core.uninterruptibleMask((restore) => getImpl(self, key, restore as any))
+})
+
+const getImpl = core.fnUntraced(function*<K, A, E>(self: RcMapImpl<K, A, E>, key: K, restore: <A>(a: A) => A) {
+  if (self.state._tag === "Closed") {
+    return yield* core.interrupt
   }
-)
+  const state = self.state
+  const o = MutableHashMap.get(state.map, key)
+  let entry: State.Entry<A, E>
+  if (o._tag === "Some") {
+    entry = o.value
+    entry.refCount++
+    if (entry.fiber) yield* core.interruptFiber(entry.fiber)
+  } else if (Number.isFinite(self.capacity) && MutableHashMap.size(self.state.map) >= self.capacity) {
+    return yield* core.fail(
+      new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`)
+    ) as Effect<never>
+  } else {
+    entry = yield* self.semaphore.withPermits(1)(acquire(self, key, restore))
+  }
+  const scope = yield* fiberRuntime.scopeTag
+  yield* scope.addFinalizer(() => entry.finalizer)
+  return yield* restore(core.deferredAwait(entry.deferred))
+})
+
+const acquire = core.fnUntraced(function*<K, A, E>(self: RcMapImpl<K, A, E>, key: K, restore: <A>(a: A) => A) {
+  const scope = yield* fiberRuntime.scopeMake()
+  const deferred = yield* core.deferredMake<A, E>()
+  const acquire = self.lookup(key)
+  yield* restore(core.fiberRefLocally(
+    acquire as Effect<A, E>,
+    core.currentContext,
+    Context.add(self.context, fiberRuntime.scopeTag, scope)
+  )).pipe(
+    core.exit,
+    core.flatMap((exit) => core.deferredDone(deferred, exit)),
+    circular.forkIn(scope)
+  )
+  const entry: State.Entry<A, E> = {
+    deferred,
+    scope,
+    finalizer: undefined as any,
+    fiber: undefined,
+    refCount: 1
+  }
+  ;(entry as any).finalizer = release(self, key, entry)
+  if (self.state._tag === "Open") {
+    MutableHashMap.set(self.state.map, key, entry)
+  }
+  return entry
+})
+
+const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A, E>) =>
+  core.suspend(() => {
+    entry.refCount--
+    if (entry.refCount > 0) {
+      return core.void
+    } else if (
+      self.state._tag === "Closed"
+      || !MutableHashMap.has(self.state.map, key)
+      || self.idleTimeToLive === undefined
+    ) {
+      if (self.state._tag === "Open") {
+        MutableHashMap.remove(self.state.map, key)
+      }
+      return core.scopeClose(entry.scope, core.exitVoid)
+    }
+
+    return coreEffect.sleep(self.idleTimeToLive).pipe(
+      core.interruptible,
+      core.zipRight(core.suspend(() => {
+        if (self.state._tag === "Open" && entry.refCount === 0) {
+          MutableHashMap.remove(self.state.map, key)
+          return core.scopeClose(entry.scope, core.exitVoid)
+        }
+        return core.void
+      })),
+      fiberRuntime.ensuring(core.sync(() => {
+        entry.fiber = undefined
+      })),
+      circular.forkIn(self.scope),
+      core.tap((fiber) => {
+        entry.fiber = fiber
+      }),
+      self.semaphore.withPermits(1)
+    )
+  })
 
 /** @internal */
 export const keys = <K, A, E>(self: RcMap.RcMap<K, A, E>): Effect<Array<K>> => {
@@ -219,3 +220,22 @@ export const keys = <K, A, E>(self: RcMap.RcMap<K, A, E>): Effect<Array<K>> => {
     impl.state._tag === "Closed" ? core.interrupt : core.succeed(MutableHashMap.keys(impl.state.map))
   )
 }
+
+/** @internal */
+export const invalidate: {
+  <K>(key: K): <A, E>(self: RcMap.RcMap<K, A, E>) => Effect<void>
+  <K, A, E>(self: RcMap.RcMap<K, A, E>, key: K): Effect<void>
+} = dual(
+  2,
+  core.fnUntraced(function*<K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K) {
+    const self = self_ as RcMapImpl<K, A, E>
+    if (self.state._tag === "Closed") return
+    const o = MutableHashMap.get(self.state.map, key)
+    if (o._tag === "None") return
+    const entry = o.value
+    MutableHashMap.remove(self.state.map, key)
+    if (entry.refCount > 0) return
+    yield* core.scopeClose(entry.scope, core.exitVoid)
+    if (entry.fiber) yield* core.interruptFiber(entry.fiber)
+  })
+)
