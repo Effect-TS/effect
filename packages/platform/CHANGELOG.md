@@ -1,5 +1,25 @@
 # @effect/platform
 
+## 0.74.0
+
+### Minor Changes
+
+- [#4264](https://github.com/Effect-TS/effect/pull/4264) [`6cb9b76`](https://github.com/Effect-TS/effect/commit/6cb9b766396d0b2ed995cf26957359713efd202e) Thanks @gcanti! - Add support for symbols in the `Issue` definition within `platform/HttpApiError`.
+
+### Patch Changes
+
+- [#4277](https://github.com/Effect-TS/effect/pull/4277) [`8653072`](https://github.com/Effect-TS/effect/commit/86530720d7a03e118d2c5a8bf5a997cee7e7f3d6) Thanks @tim-smart! - simplify HttpApi path regex for parameters
+
+  HttpApi path parameters now only support the following syntax:
+
+  `:parameterName`
+
+  Conditional parameters are no longer supported (i.e. using `?` etc after the
+  parameter name).
+
+- Updated dependencies [[`a8b0ddb`](https://github.com/Effect-TS/effect/commit/a8b0ddb84710054799fc8f57485b95d00093ada1), [`507d546`](https://github.com/Effect-TS/effect/commit/507d546bd49db31000425fb5da88c434e4291bea), [`a8b0ddb`](https://github.com/Effect-TS/effect/commit/a8b0ddb84710054799fc8f57485b95d00093ada1), [`8db239b`](https://github.com/Effect-TS/effect/commit/8db239b9c869a3707f6566b9d9dbdf53c4df03fc), [`84a0911`](https://github.com/Effect-TS/effect/commit/84a091181634c3a022c94234cec7764a3aeef1be), [`84a0911`](https://github.com/Effect-TS/effect/commit/84a091181634c3a022c94234cec7764a3aeef1be), [`3179a9f`](https://github.com/Effect-TS/effect/commit/3179a9f65d23369a6a9a1f80f7750566dd28df22), [`6cb9b76`](https://github.com/Effect-TS/effect/commit/6cb9b766396d0b2ed995cf26957359713efd202e), [`1fcbe55`](https://github.com/Effect-TS/effect/commit/1fcbe55345042d8468f6a98c84081bd00b6bcf5a), [`d9a63d9`](https://github.com/Effect-TS/effect/commit/d9a63d9d385653865954cac895065360d54cc56b)]:
+  - effect@3.12.5
+
 ## 0.73.1
 
 ### Patch Changes
