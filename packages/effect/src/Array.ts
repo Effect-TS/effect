@@ -4,7 +4,7 @@
  * @since 2.0.0
  */
 
-import type { Either as array_ } from "./Either.js"
+import type { Either } from "./Either.js"
 import * as E from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
@@ -2457,11 +2457,11 @@ export const filterMapWhile: {
  * @since 2.0.0
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A, i: number) => array_<C, B>): (self: Iterable<A>) => [left: Array<B>, right: Array<C>]
-  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => array_<C, B>): [left: Array<B>, right: Array<C>]
+  <A, B, C>(f: (a: A, i: number) => Either<C, B>): (self: Iterable<A>) => [left: Array<B>, right: Array<C>]
+  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<C, B>): [left: Array<B>, right: Array<C>]
 } = dual(
   2,
-  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => array_<C, B>): [left: Array<B>, right: Array<C>] => {
+  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<C, B>): [left: Array<B>, right: Array<C>] => {
     const left: Array<B> = []
     const right: Array<C> = []
     const as = fromIterable(self)
@@ -2514,7 +2514,7 @@ export const getSomes: <T extends Iterable<Option<X>>, X = any>(
  * @category filtering
  * @since 2.0.0
  */
-export const getLefts = <T extends Iterable<array_<any, any>>>(self: T): Array<array_.Left<ReadonlyArray.Infer<T>>> => {
+export const getLefts = <T extends Iterable<Either<any, any>>>(self: T): Array<Either.Left<ReadonlyArray.Infer<T>>> => {
   const out: Array<any> = []
   for (const a of self) {
     if (E.isLeft(a)) {
@@ -2541,9 +2541,9 @@ export const getLefts = <T extends Iterable<array_<any, any>>>(self: T): Array<a
  * @category filtering
  * @since 2.0.0
  */
-export const getRights = <T extends Iterable<array_<any, any>>>(
+export const getRights = <T extends Iterable<Either<any, any>>>(
   self: T
-): Array<array_.Right<ReadonlyArray.Infer<T>>> => {
+): Array<Either.Right<ReadonlyArray.Infer<T>>> => {
   const out: Array<any> = []
   for (const a of self) {
     if (E.isRight(a)) {
@@ -2580,6 +2580,17 @@ export const filter: {
 /**
  * Separate elements based on a predicate that also exposes the index of the element.
  *
+ * @example
+ * ```ts
+ * import { Array } from "effect"
+ *
+ * const numbers = [1, 2, 3, 4]
+ *
+ * const result = Array.partition(numbers, n => n % 2 === 0)
+ *
+ * assert.deepStrictEqual(result, [[1, 3], [2, 4]])
+ * ```
+ *
  * @category filtering
  * @since 2.0.0
  */
@@ -2615,21 +2626,12 @@ export const partition: {
 /**
  * Separates an `Iterable` into two arrays based on a predicate.
  *
- * @example
- * ```ts
- * import { Array } from "effect"
- *
- * const numbers = [1, 2, 3, 4]
- * const result = Array.partition(numbers, n => n % 2 === 0)
- * assert.deepStrictEqual(result, [[1, 3], [2, 4]])
- * ```
- *
  * @category filtering
  * @since 2.0.0
  */
-export const separate: <T extends Iterable<array_<any, any>>>(
+export const separate: <T extends Iterable<Either<any, any>>>(
   self: T
-) => [Array<array_.Left<ReadonlyArray.Infer<T>>>, Array<array_.Right<ReadonlyArray.Infer<T>>>] = partitionMap(
+) => [Array<Either.Left<ReadonlyArray.Infer<T>>>, Array<Either.Right<ReadonlyArray.Infer<T>>>] = partitionMap(
   identity
 )
 
@@ -2785,7 +2787,7 @@ export const flatMapNullable: {
  * @since 2.0.0
  */
 export const liftEither = <A extends Array<unknown>, E, B>(
-  f: (...a: A) => array_<B, E>
+  f: (...a: A) => Either<B, E>
 ) =>
 (...a: A): Array<B> => {
   const e = f(...a)
