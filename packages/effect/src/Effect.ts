@@ -13853,15 +13853,4 @@ function fnApply(options: {
  * @since 3.12.0
  * @category Tracing
  */
-export const fnUntraced: fn.Gen = (body: Function, ...pipeables: Array<any>) =>
-  pipeables.length === 0
-    ? function(this: any, ...args: Array<any>) {
-      return core.fromIterator(() => body.apply(this, args))
-    }
-    : function(this: any, ...args: Array<any>) {
-      let effect = core.fromIterator(() => body.apply(this, args))
-      for (const x of pipeables) {
-        effect = x(effect)
-      }
-      return effect
-    }
+export const fnUntraced: fn.Gen = core.fnUntraced
