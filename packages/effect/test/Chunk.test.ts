@@ -134,9 +134,23 @@ describe("Chunk", () => {
     expect(Chunk.empty().pipe(Chunk.append(1))).toEqual(Chunk.make(1))
   })
 
-  it("toArray", () => {
-    expect(Chunk.toArray(Chunk.empty())).toStrictEqual([])
-    expect(Chunk.toArray(Chunk.make(1, 2, 3))).toStrictEqual([1, 2, 3])
+  describe("toArray", () => {
+    it("should return an empty array for an empty chunk", () => {
+      expect(Chunk.toArray(Chunk.empty())).toEqual([])
+    })
+
+    it("should return an array with the elements of the chunk", () => {
+      expect(Chunk.toArray(Chunk.make(1, 2, 3))).toEqual([1, 2, 3])
+    })
+
+    it("should not affect the original chunk when the array is mutated", () => {
+      const chunk = Chunk.make(1, 2, 3)
+      const arr = Chunk.toArray(chunk)
+      // mutate the array
+      arr[1] = 4
+      // the chunk should not be affected
+      expect(Chunk.toArray(chunk)).toStrictEqual([1, 2, 3])
+    })
   })
 
   describe("toReadonlyArray", () => {
