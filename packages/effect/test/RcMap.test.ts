@@ -88,6 +88,12 @@ describe("RcMap", () => {
 
       yield* TestClock.adjust(1000)
       assert.deepStrictEqual(released, ["foo", "bar"])
+
+      yield* Effect.scoped(RcMap.get(map, "baz"))
+      assert.deepStrictEqual(acquired, ["foo", "bar", "baz"])
+      yield* RcMap.invalidate(map, "baz")
+      assert.deepStrictEqual(acquired, ["foo", "bar", "baz"])
+      assert.deepStrictEqual(released, ["foo", "bar", "baz"])
     }))
 
   it.scoped("capacity", () =>

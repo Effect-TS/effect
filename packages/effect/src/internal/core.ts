@@ -1420,6 +1420,20 @@ export const gen: typeof Effect.gen = function() {
   return fromIterator(() => f(pipe))
 }
 
+/** @internal */
+export const fnUntraced: Effect.fn.Gen = (body: Function, ...pipeables: Array<any>) =>
+  pipeables.length === 0
+    ? function(this: any, ...args: Array<any>) {
+      return fromIterator(() => body.apply(this, args))
+    }
+    : function(this: any, ...args: Array<any>) {
+      let effect = fromIterator(() => body.apply(this, args))
+      for (const x of pipeables) {
+        effect = x(effect)
+      }
+      return effect
+    }
+
 /* @internal */
 export const withConcurrency = dual<
   (concurrency: number | "unbounded") => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
