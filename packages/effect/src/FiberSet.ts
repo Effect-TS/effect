@@ -98,14 +98,14 @@ const unsafeMake = <A, E>(
  * ```ts
  * import { Effect, FiberSet } from "effect"
  *
- * Effect.gen(function*(_) {
- *   const set = yield* _(FiberSet.make())
+ * Effect.gen(function*() {
+ *   const set = yield* FiberSet.make()
  *
  *   // run some effects and add the fibers to the set
- *   yield* _(FiberSet.run(set, Effect.never))
- *   yield* _(FiberSet.run(set, Effect.never))
+ *   yield* FiberSet.run(set, Effect.never)
+ *   yield* FiberSet.run(set, Effect.never)
  *
- *   yield* _(Effect.sleep(1000))
+ *   yield* Effect.sleep(1000)
  * }).pipe(
  *   Effect.scoped // The fibers will be interrupted when the scope is closed
  * )
@@ -334,9 +334,9 @@ export const run: {
  *    getAll: Effect.Effect<Array<unknown>>
  * }>("Users")
  *
- * Effect.gen(function*(_) {
- *   const set = yield* _(FiberSet.make())
- *   const run = yield* _(FiberSet.runtime(set)<Users>())
+ * Effect.gen(function*() {
+ *   const set = yield* FiberSet.make()
+ *   const run = yield* FiberSet.runtime(set)<Users>()
  *
  *   // run some effects and add the fibers to the set
  *   run(Effect.andThen(Users, _ => _.getAll))

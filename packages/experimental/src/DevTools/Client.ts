@@ -169,9 +169,9 @@ export const layer: Layer.Layer<Client, never, Socket.Socket> = Layer.scoped(Cli
  * @since 1.0.0
  * @category constructors
  */
-export const makeTracer: Effect.Effect<Tracer.Tracer, never, Client> = Effect.gen(function*(_) {
-  const client = yield* _(Client)
-  const currentTracer = yield* _(Effect.tracer)
+export const makeTracer: Effect.Effect<Tracer.Tracer, never, Client> = Effect.gen(function*() {
+  const client = yield* Client
+  const currentTracer = yield* Effect.tracer
 
   return Tracer.make({
     span(name, parent, context, links, startTime, kind) {

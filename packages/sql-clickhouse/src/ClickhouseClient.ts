@@ -89,7 +89,7 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
 export const make = (
   options: ClickhouseClientConfig
 ): Effect.Effect<ClickhouseClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const compiler = makeCompiler(options.transformQueryNames)
     const transformRows = options.transformResultNames
       ? Statement.defaultTransforms(options.transformResultNames).array

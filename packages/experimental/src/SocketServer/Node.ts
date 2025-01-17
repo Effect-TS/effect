@@ -131,7 +131,7 @@ export const layer = (
 export const makeWebSocket = (
   options: WS.ServerOptions
 ): Effect.Effect<SocketServer.SocketServer, SocketServer.SocketServerError, Scope.Scope> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const server = yield* Effect.acquireRelease(
       Effect.sync(() => new WS.WebSocketServer(options)),
       (server) =>

@@ -163,12 +163,12 @@ export const makeSerialized = <
   | Scope.Scope
   | WorkerRunner.SerializedRunner.HandlersContext<Handlers>
 > =>
-  Effect.gen(function*(_) {
-    const scope = yield* _(Effect.scope)
+  Effect.gen(function*() {
+    const scope = yield* Effect.scope
     let context = Context.empty() as Context.Context<any>
     const parseRequest = Schema.decodeUnknown(schema) as (_: unknown) => Effect.Effect<A>
 
-    return yield* _(make((request: A) => {
+    return yield* make((request: A) => {
       const result = (handlers as any)[request._tag](request)
       if (Layer.isLayer(result)) {
         return Effect.flatMap(Layer.buildWithScope(result, scope), (_) =>
@@ -198,7 +198,7 @@ export const makeSerialized = <
           (cause) => new WorkerError({ reason: "encode", cause })
         )
       }
-    }))
+    })
   }) as any
 
 /** @internal */

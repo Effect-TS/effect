@@ -152,18 +152,16 @@ export const groupBy = dual<
   ): GroupBy.GroupBy<K, V, E | E2, R | R2> =>
     make(
       stream.unwrapScoped(
-        Effect.gen(function*($) {
-          const decider = yield* $(
-            Deferred.make<(key: K, value: V) => Effect.Effect<Predicate<number>>>()
-          )
-          const output = yield* $(Effect.acquireRelease(
+        Effect.gen(function*() {
+          const decider = yield* Deferred.make<(key: K, value: V) => Effect.Effect<Predicate<number>>>()
+          const output = yield* Effect.acquireRelease(
             Queue.bounded<Exit.Exit<readonly [K, Queue.Dequeue<Take.Take<V, E | E2>>], Option.Option<E | E2>>>(
               options?.bufferSize ?? 16
             ),
             (queue) => Queue.shutdown(queue)
-          ))
-          const ref = yield* $(Ref.make<Map<K, number>>(new Map()))
-          const add = yield* $(
+          )
+          const ref = yield* Ref.make<Map<K, number>>(new Map())
+          const add = yield* pipe(
             stream.mapEffectSequential(self, f),
             stream.distributedWithDynamicCallback(
               options?.bufferSize ?? 16,
@@ -171,37 +169,35 @@ export const groupBy = dual<
               (exit) => Queue.offer(output, exit)
             )
           )
-          yield* $(
-            Deferred.succeed(decider, (key, _) =>
-              pipe(
-                Ref.get(ref),
-                Effect.map((map) => Option.fromNullable(map.get(key))),
-                Effect.flatMap(Option.match({
-                  onNone: () =>
-                    Effect.flatMap(add, ([index, queue]) =>
-                      Effect.zipRight(
-                        Ref.update(ref, (map) => map.set(key, index)),
-                        pipe(
-                          Queue.offer(
-                            output,
-                            Exit.succeed(
-                              [
-                                key,
-                                mapDequeue(queue, (exit) =>
-                                  new take.TakeImpl(pipe(
-                                    exit,
-                                    Exit.map((tuple) => Chunk.of(tuple[1]))
-                                  )))
-                              ] as const
-                            )
-                          ),
-                          Effect.as<Predicate<number>>((n: number) => n === index)
-                        )
-                      )),
-                  onSome: (index) => Effect.succeed<Predicate<number>>((n: number) => n === index)
-                }))
-              ))
-          )
+          yield* Deferred.succeed(decider, (key, _) =>
+            pipe(
+              Ref.get(ref),
+              Effect.map((map) => Option.fromNullable(map.get(key))),
+              Effect.flatMap(Option.match({
+                onNone: () =>
+                  Effect.flatMap(add, ([index, queue]) =>
+                    Effect.zipRight(
+                      Ref.update(ref, (map) => map.set(key, index)),
+                      pipe(
+                        Queue.offer(
+                          output,
+                          Exit.succeed(
+                            [
+                              key,
+                              mapDequeue(queue, (exit) =>
+                                new take.TakeImpl(pipe(
+                                  exit,
+                                  Exit.map((tuple) => Chunk.of(tuple[1]))
+                                )))
+                            ] as const
+                          )
+                        ),
+                        Effect.as<Predicate<number>>((n: number) => n === index)
+                      )
+                    )),
+                onSome: (index) => Effect.succeed<Predicate<number>>((n: number) => n === index)
+              }))
+            ))
           return stream.flattenExitOption(stream.fromQueue(output, { shutdown: true }))
         })
       )

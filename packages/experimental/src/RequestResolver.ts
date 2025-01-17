@@ -45,7 +45,7 @@ export const dataLoader = dual<
   readonly window: Duration.DurationInput
   readonly maxBatchSize?: number
 }) =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const scope = yield* Effect.scope
     const handle = yield* FiberHandle.make<void, never>()
     const maxSize = options.maxBatchSize ?? Infinity
@@ -161,7 +161,7 @@ export const persisted: {
   never,
   Persistence.ResultPersistence | Scope.Scope
 > =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const storage = yield* (yield* Persistence.ResultPersistence).make({
       storeId: options.storeId,
       timeToLive: options.timeToLive as any

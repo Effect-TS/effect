@@ -15,7 +15,7 @@ const optimizeSafe = <A>(
   depth: Optimize.Optimize.Depth
 ): Effect.Effect<Doc.Doc<A>> => {
   const optimize = (self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       switch (self._tag) {
         case "Fail":
         case "Empty":
@@ -25,17 +25,17 @@ const optimizeSafe = <A>(
           return self
         }
         case "FlatAlt": {
-          const left = yield* _(optimize(self.left))
-          const right = yield* _(optimize(self.right))
+          const left = yield* optimize(self.left)
+          const right = yield* optimize(self.right)
           return InternalDoc.flatAlt(left, right)
         }
         case "Cat": {
           // Empty Documents
           if (InternalDoc.isEmpty(self.left)) {
-            return yield* _(optimize(self.right))
+            return yield* optimize(self.right)
           }
           if (InternalDoc.isEmpty(self.right)) {
-            return yield* _(optimize(self.left))
+            return yield* optimize(self.left)
           }
           // Text Documents
           if (InternalDoc.isChar(self.left) && InternalDoc.isChar(self.right)) {
@@ -73,8 +73,8 @@ const optimizeSafe = <A>(
               InternalDoc.isText(self.right.left)
             )
           ) {
-            const inner = yield* _(optimize(InternalDoc.cat(self.left, self.right.left)))
-            return yield* _(optimize(InternalDoc.cat(inner, self.right.right)))
+            const inner = yield* optimize(InternalDoc.cat(self.left, self.right.left))
+            return yield* optimize(InternalDoc.cat(inner, self.right.right))
           }
           // Nested Documents
           if (
@@ -87,17 +87,17 @@ const optimizeSafe = <A>(
               InternalDoc.isText(self.left.right)
             )
           ) {
-            const inner = yield* _(optimize(InternalDoc.cat(self.left.right, self.right)))
-            return yield* _(optimize(InternalDoc.cat(self.left.left, inner)))
+            const inner = yield* optimize(InternalDoc.cat(self.left.right, self.right))
+            return yield* optimize(InternalDoc.cat(self.left.left, inner))
           }
           // Otherwise
-          const left = yield* _(optimize(self.left))
-          const right = yield* _(optimize(self.right))
+          const left = yield* optimize(self.left)
+          const right = yield* optimize(self.right)
           return InternalDoc.cat(left, right)
         }
         case "Nest": {
           if (self.indent === 0) {
-            return yield* _(optimize(self.doc))
+            return yield* optimize(self.doc)
           }
           if (
             InternalDoc.isEmpty(self.doc) ||
@@ -108,13 +108,13 @@ const optimizeSafe = <A>(
           }
           if (InternalDoc.isNest(self.doc)) {
             const indent = self.indent + self.doc.indent
-            return yield* _(optimize(InternalDoc.nest(self.doc.doc, indent)))
+            return yield* optimize(InternalDoc.nest(self.doc.doc, indent))
           }
-          return InternalDoc.nest(yield* _(optimize(self.doc)), self.indent)
+          return InternalDoc.nest(yield* optimize(self.doc), self.indent)
         }
         case "Union": {
-          const left = yield* _(optimize(self.left))
-          const right = yield* _(optimize(self.right))
+          const left = yield* optimize(self.left)
+          const right = yield* optimize(self.right)
           return InternalDoc.union(left, right)
         }
         case "Column": {
@@ -133,7 +133,7 @@ const optimizeSafe = <A>(
             : InternalDoc.nesting((level) => Effect.runSync(optimizeSafe(self.react(level), depth)))
         }
         case "Annotated": {
-          return InternalDoc.annotate(yield* _(optimize(self.doc)), self.annotation)
+          return InternalDoc.annotate(yield* optimize(self.doc), self.annotation)
         }
       }
     })

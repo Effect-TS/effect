@@ -55,7 +55,7 @@ export const makeManager = Effect.gen(function*() {
       encode,
       initialMessage
     }: Worker.Worker.Options<I>) {
-      return Effect.gen(function*(_) {
+      return Effect.gen(function*() {
         const id = idCounter++
         let requestIdCounter = 0
         const requestMap = new Map<
@@ -414,7 +414,7 @@ export const makePlatform = <W>() =>
   PlatformWorker.of({
     [PlatformWorkerTypeId]: PlatformWorkerTypeId,
     spawn<I, O>(id: number) {
-      return Effect.gen(function*(_) {
+      return Effect.gen(function*() {
         const spawn = (yield* Spawner) as Worker.SpawnerFn<W>
         let currentPort: P | undefined
         const buffer: Array<[I, ReadonlyArray<unknown> | undefined]> = []

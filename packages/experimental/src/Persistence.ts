@@ -211,8 +211,8 @@ export const ResultPersistence: Context.Tag<ResultPersistence, ResultPersistence
  */
 export const layerResult = Layer.effect(
   ResultPersistence,
-  Effect.gen(function*(_) {
-    const backing = yield* _(BackingPersistence)
+  Effect.gen(function*() {
+    const backing = yield* BackingPersistence
     return ResultPersistence.of({
       [ResultPersistenceTypeId]: ResultPersistenceTypeId,
       make: (options) =>
@@ -333,8 +333,8 @@ export const layerMemory: Layer.Layer<BackingPersistence> = Layer.sync(
  */
 export const layerKeyValueStore: Layer.Layer<BackingPersistence, never, KeyValueStore.KeyValueStore> = Layer.effect(
   BackingPersistence,
-  Effect.gen(function*(_) {
-    const backing = yield* _(KeyValueStore.KeyValueStore)
+  Effect.gen(function*() {
+    const backing = yield* KeyValueStore.KeyValueStore
     return BackingPersistence.of({
       [BackingPersistenceTypeId]: BackingPersistenceTypeId,
       make: (storeId) =>

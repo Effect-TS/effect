@@ -195,8 +195,8 @@ function make(
   }
 
   function rebalance(rebalanceImmediately: boolean): Effect.Effect<void> {
-    const algo = Effect.gen(function*(_) {
-      const state = yield* _(RefSynchronized.get(stateRef))
+    const algo = Effect.gen(function*() {
+      const state = yield* RefSynchronized.get(stateRef)
 
       const [assignments, unassignments] = rebalanceImmediately || HashSet.size(state.unassignedShards) > 0
         ? decideAssignmentsForUnassignedShards(state)
@@ -205,12 +205,12 @@ function make(
       const areChanges = HashMap.size(assignments) > 0 || HashMap.size(unassignments) > 0
 
       if (areChanges) {
-        yield* _(Effect.logDebug(
+        yield* Effect.logDebug(
           "Rebalance (rebalanceImmidiately=" + JSON.stringify(rebalanceImmediately) + ")"
-        ))
+        )
       }
 
-      const failedPingedPods = yield* _(
+      const failedPingedPods = yield* pipe(
         HashSet.union(HashMap.keySet(assignments), HashMap.keySet(unassignments)),
         Effect.forEach(
           (pod) =>
@@ -250,7 +250,7 @@ function make(
         HashMap.filter((__) => HashSet.size(__) > 0)
       )
 
-      const [failedUnassignedPods, failedUnassignedShards] = yield* _(
+      const [failedUnassignedPods, failedUnassignedShards] = yield* pipe(
         Effect.forEach(readyUnassignments, ([pod, shards]) =>
           pipe(
             podApi.unassignShards(pod, shards),
@@ -290,7 +290,7 @@ function make(
       )
 
       // then do the assignments
-      const failedAssignedPods = yield* _(
+      const failedAssignedPods = yield* pipe(
         Effect.forEach(filteredAssignments, ([pod, shards]) =>
           pipe(
             podApi.assignShards(pod, shards),
@@ -315,23 +315,21 @@ function make(
       )
 
       // check if failing pods are still up
-      yield* _(Effect.forkIn(layerScope)(Effect.forEach(failedPods, (_) => notifyUnhealthyPod(_), { discard: true })))
+      yield* Effect.forkIn(layerScope)(Effect.forEach(failedPods, (_) => notifyUnhealthyPod(_), { discard: true }))
 
       if (HashSet.size(failedPods) > 0) {
-        yield* _(
-          Effect.logDebug(
-            "Failed to rebalance pods: " +
-              failedPods +
-              " failed pinged: " + failedPingedPods +
-              " failed assigned: " + failedAssignedPods +
-              " failed unassigned: " + failedUnassignedPods
-          )
+        yield* Effect.logDebug(
+          "Failed to rebalance pods: " +
+            failedPods +
+            " failed pinged: " + failedPingedPods +
+            " failed assigned: " + failedAssignedPods +
+            " failed unassigned: " + failedUnassignedPods
         )
       }
 
       // retry rebalancing later if there was any failure
       if (HashSet.size(failedPods) > 0 && rebalanceImmediately) {
-        yield* _(
+        yield* pipe(
           Effect.sleep(config.rebalanceRetryInterval),
           Effect.zipRight(rebalance(rebalanceImmediately)),
           Effect.forkIn(layerScope)
@@ -340,7 +338,7 @@ function make(
 
       // persist state changes to Redis
       if (areChanges) {
-        yield* _(Effect.forkIn(layerScope)(persistAssignments))
+        yield* Effect.forkIn(layerScope)(persistAssignments)
       }
     })
 
@@ -529,17 +527,17 @@ function pickNewPods(
  * @since 1.0.0
  * @category layers
  */
-export const live = Effect.gen(function*(_) {
-  const config = yield* _(ManagerConfig.ManagerConfig)
-  const stateRepository = yield* _(Storage.Storage)
-  const healthApi = yield* _(PodsHealth.PodsHealth)
-  const podsApi = yield* _(Pods.Pods)
-  const layerScope = yield* _(Effect.scope)
+export const live = Effect.gen(function*() {
+  const config = yield* ManagerConfig.ManagerConfig
+  const stateRepository = yield* Storage.Storage
+  const healthApi = yield* PodsHealth.PodsHealth
+  const podsApi = yield* Pods.Pods
+  const layerScope = yield* Effect.scope
 
-  const pods = yield* _(stateRepository.getPods)
-  const assignments = yield* _(stateRepository.getAssignments)
+  const pods = yield* stateRepository.getPods
+  const assignments = yield* stateRepository.getAssignments
 
-  const filteredPods = yield* _(
+  const filteredPods = yield* pipe(
     Effect.filter(pods, ([podAddress]) => healthApi.isAlive(podAddress), { concurrency: "inherit" }),
     Effect.map(HashMap.fromIterable)
   )
@@ -547,7 +545,7 @@ export const live = Effect.gen(function*(_) {
     assignments,
     (pod) => Option.isSome(pod) && HashMap.has(filteredPods, pod.value)
   )
-  const cdt = yield* _(Clock.currentTimeMillis)
+  const cdt = yield* Clock.currentTimeMillis
   const initialState = ShardManagerState.make(
     HashMap.map(filteredPods, (pod) => PodWithMetadata.make(pod, cdt)),
     HashMap.union(
@@ -559,9 +557,9 @@ export const live = Effect.gen(function*(_) {
       )
     )
   )
-  const state = yield* _(RefSynchronized.make(initialState))
-  const rebalanceSemaphore = yield* _(Effect.makeSemaphore(1))
-  const eventsHub = yield* _(PubSub.unbounded<ShardingEvent.ShardingEvent>())
+  const state = yield* RefSynchronized.make(initialState)
+  const rebalanceSemaphore = yield* Effect.makeSemaphore(1)
+  const eventsHub = yield* PubSub.unbounded<ShardingEvent.ShardingEvent>()
   const shardManager = make(
     layerScope,
     state,
@@ -572,22 +570,22 @@ export const live = Effect.gen(function*(_) {
     stateRepository,
     config
   )
-  yield* _(Effect.forkIn(layerScope)(shardManager.persistPods))
+  yield* Effect.forkIn(layerScope)(shardManager.persistPods)
   // rebalance immediately if there are unassigned shards
-  yield* _(shardManager.rebalance(HashSet.size(initialState.unassignedShards) > 0))
+  yield* shardManager.rebalance(HashSet.size(initialState.unassignedShards) > 0)
   // start a regular rebalance at the given interval
-  yield* _(
+  yield* pipe(
     shardManager.rebalance(false),
     Effect.repeat(Schedule.spaced(config.rebalanceInterval)),
     Effect.forkIn(layerScope)
   )
   // log info events
-  yield* _(
+  yield* pipe(
     shardManager.getShardingEvents,
     Stream.mapEffect((_) => Effect.logDebug(JSON.stringify(_))),
     Stream.runDrain,
     Effect.forkIn(layerScope)
   )
-  yield* _(Effect.logDebug("Shard Manager loaded"))
+  yield* Effect.logDebug("Shard Manager loaded")
   return shardManager
 }).pipe(Layer.scoped(shardManagerTag))

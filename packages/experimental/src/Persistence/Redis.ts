@@ -17,11 +17,11 @@ import * as Persistence from "../Persistence.js"
  * @category constructors
  */
 export const make = (options: RedisOptions) =>
-  Effect.gen(function*(_) {
-    const redis = yield* _(Effect.acquireRelease(
+  Effect.gen(function*() {
+    const redis = yield* Effect.acquireRelease(
       Effect.sync(() => new Redis(options)),
       (redis) => Effect.promise(() => redis.quit())
-    ))
+    )
     return Persistence.BackingPersistence.of({
       [Persistence.BackingPersistenceTypeId]: Persistence.BackingPersistenceTypeId,
       make: (prefix) =>

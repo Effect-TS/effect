@@ -24,20 +24,20 @@ export const makeProvider = (fileName: string, options?: {
   readonly formats?: ReadonlyArray<ConfigFile.Kind>
   readonly searchPaths?: ReadonlyArray<string>
 }): Effect.Effect<ConfigProvider.ConfigProvider, ConfigFile.ConfigFileError, Path.Path | FileSystem.FileSystem> =>
-  Effect.gen(function*(_) {
-    const path = yield* _(Path.Path)
-    const fs = yield* _(FileSystem.FileSystem)
+  Effect.gen(function*() {
+    const path = yield* Path.Path
+    const fs = yield* FileSystem.FileSystem
     const searchPaths = options?.searchPaths && options.searchPaths.length ? options.searchPaths : ["."]
     const extensions = options?.formats && options.formats.length
       ? options.formats.flatMap((_) => fileExtensions[_])
       : allFileExtensions
-    const filePaths = yield* _(Effect.filter(
+    const filePaths = yield* Effect.filter(
       searchPaths.flatMap(
         (searchPath) => extensions.map((ext) => path.join(searchPath, `${fileName}.${ext}`))
       ),
       (path) => Effect.orElseSucceed(fs.exists(path), () => false)
-    ))
-    const providers = yield* _(Effect.forEach(filePaths, (path) =>
+    )
+    const providers = yield* Effect.forEach(filePaths, (path) =>
       pipe(
         fs.readFileString(path),
         Effect.mapError((_) => ConfigFileError(`Could not read file (${path})`)),
@@ -48,7 +48,7 @@ export const makeProvider = (fileName: string, options?: {
           )
         ),
         Effect.map((data) => ConfigProvider.fromJson(data))
-      )))
+      ))
 
     if (providers.length === 0) {
       return ConfigProvider.fromMap(new Map())

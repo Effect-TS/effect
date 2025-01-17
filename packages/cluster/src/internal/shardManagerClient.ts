@@ -31,8 +31,8 @@ export function make(
 export const local = pipe(
   Layer.effect(
     shardManagerClientTag,
-    Effect.gen(function*($) {
-      const config = yield* $(ShardingConfig.ShardingConfig)
+    Effect.gen(function*() {
+      const config = yield* ShardingConfig.ShardingConfig
       const pod = PodAddress.make(config.selfHost, config.shardingPort)
       let shards = HashMap.empty<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>()
       for (let i = 1; i <= config.numberOfShards; i++) {

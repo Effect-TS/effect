@@ -137,7 +137,7 @@ interface PostgresOptions extends postgres.Options<{}> {
 export const make = (
   options: PgClientConfig
 ): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const compiler = makeCompiler(
       options.transformQueryNames,
       options.transformJson

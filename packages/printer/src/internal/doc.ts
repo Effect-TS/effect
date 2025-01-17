@@ -556,7 +556,7 @@ export const fillBreak = dual<
 export const flatten = <A>(self: Doc.Doc<A>): Doc.Doc<A> => Effect.runSync(flattenSafe(self))
 
 const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     switch (self._tag) {
       case "Fail": {
         return self
@@ -574,19 +574,19 @@ const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> =>
         return fail
       }
       case "FlatAlt": {
-        return yield* _(flattenSafe(self.right))
+        return yield* flattenSafe(self.right)
       }
       case "Cat": {
-        const left = yield* _(flattenSafe(self.left))
-        const right = yield* _(flattenSafe(self.right))
+        const left = yield* flattenSafe(self.left)
+        const right = yield* flattenSafe(self.right)
         return cat(left, right)
       }
       case "Nest": {
-        const doc = yield* _(flattenSafe(self.doc))
+        const doc = yield* flattenSafe(self.doc)
         return nest(doc, self.indent)
       }
       case "Union": {
-        return yield* _(flattenSafe(self.left))
+        return yield* flattenSafe(self.left)
       }
       case "Column": {
         return column((position) => flatten(self.react(position)))
@@ -598,7 +598,7 @@ const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> =>
         return nesting((level) => flatten(self.react(level)))
       }
       case "Annotated": {
-        const doc = yield* _(flattenSafe(self.doc))
+        const doc = yield* flattenSafe(self.doc)
         return annotate(doc, self.annotation)
       }
     }
@@ -609,7 +609,7 @@ export const changesUponFlattening = <A>(self: Doc.Doc<A>): Flatten.Flatten<Doc.
   Effect.runSync(changesUponFlatteningSafe(self))
 
 const changesUponFlatteningSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Flatten.Flatten<Doc.Doc<A>>> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     switch (self._tag) {
       case "Fail":
       case "Line": {
@@ -621,12 +621,12 @@ const changesUponFlatteningSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Flatten.F
         return InternalFlatten.alreadyFlat
       }
       case "FlatAlt": {
-        const doc = yield* _(flattenSafe(self.right))
+        const doc = yield* flattenSafe(self.right)
         return InternalFlatten.flattened(doc)
       }
       case "Cat": {
-        const left = yield* _(changesUponFlatteningSafe(self.left))
-        const right = yield* _(changesUponFlatteningSafe(self.right))
+        const left = yield* changesUponFlatteningSafe(self.left)
+        const right = yield* changesUponFlatteningSafe(self.right)
         if (InternalFlatten.isNeverFlat(left) || InternalFlatten.isNeverFlat(right)) {
           return InternalFlatten.neverFlat
         }
@@ -648,7 +648,7 @@ const changesUponFlatteningSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Flatten.F
         )
       }
       case "Nest": {
-        return yield* _(
+        return yield* pipe(
           changesUponFlatteningSafe(self.doc),
           Effect.map(InternalFlatten.map((doc) => nest(doc, self.indent)))
         )
@@ -669,7 +669,7 @@ const changesUponFlatteningSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Flatten.F
         return InternalFlatten.flattened(doc)
       }
       case "Annotated": {
-        return yield* _(
+        return yield* pipe(
           changesUponFlatteningSafe(self.doc),
           Effect.map(InternalFlatten.map((doc) => annotate(doc, self.annotation)))
         )

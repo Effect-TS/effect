@@ -484,21 +484,21 @@ export const boot = <
   never,
   Machine.Context<M> | Scope.Scope
 > =>
-  Effect.gen(function*(_) {
-    const context = yield* _(Effect.context<Machine.Context<M>>())
-    const requests = yield* _(Queue.unbounded<
+  Effect.gen(function*() {
+    const context = yield* Effect.context<Machine.Context<M>>()
+    const requests = yield* Queue.unbounded<
       readonly [
         Procedure.TaggedRequest.Any,
         Deferred.Deferred<any, any>,
         Tracer.AnySpan | undefined,
         addSpans: boolean
       ]
-    >())
-    const pubsub = yield* _(Effect.acquireRelease(
+    >()
+    const pubsub = yield* Effect.acquireRelease(
       PubSub.unbounded<Machine.State<M>>(),
       PubSub.shutdown
-    ))
-    const latch = yield* _(Deferred.make<void>())
+    )
+    const latch = yield* Deferred.make<void>()
 
     let currentState: Machine.State<M> = undefined as any
     let runState: {
@@ -599,9 +599,9 @@ export const boot = <
       return Effect.void
     }
 
-    const run = Effect.gen(function*(_) {
-      const fiberSet = yield* _(FiberSet.make<any, MachineDefect>())
-      const fiberMap = yield* _(FiberMap.make<string, any, MachineDefect>())
+    const run = Effect.gen(function*() {
+      const fiberSet = yield* FiberSet.make<any, MachineDefect>()
+      const fiberMap = yield* FiberMap.make<string, any, MachineDefect>()
 
       const fork = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         Effect.asVoid(FiberSet.run(fiberSet, MachineDefect.wrap(effect)))
@@ -683,7 +683,7 @@ export const boot = <
         forkReplaceWith
       }
 
-      const procedures = yield* _(
+      const procedures = yield* pipe(
         self.initialize(input, currentState ?? options?.previousState) as Effect.Effect<
           SerializableProcedureList<Machine.State<M>, Machine.Public<M>, Machine.Private<M>, never>,
           Machine.InitError<M>
@@ -713,8 +713,8 @@ export const boot = <
           )
         )
       }
-      yield* _(publishState(procedures.initialState))
-      yield* _(Deferred.succeed(latch, void 0))
+      yield* publishState(procedures.initialState)
+      yield* Deferred.succeed(latch, void 0)
 
       const process = pipe(
         Queue.take(requests),
@@ -777,7 +777,7 @@ export const boot = <
         Effect.provideService(MachineContext, contextProto)
       )
 
-      yield* _(
+      yield* pipe(
         Effect.all([
           process,
           FiberSet.join(fiberSet),
@@ -809,7 +809,7 @@ export const boot = <
       MachineDefect | Machine.InitError<M>
     >
 
-    const fiber = yield* _(
+    const fiber = yield* pipe(
       run,
       self.retryPolicy ?
         Effect.retry(self.retryPolicy) :
@@ -818,7 +818,7 @@ export const boot = <
       Effect.interruptible
     )
 
-    yield* _(Deferred.await(latch))
+    yield* Deferred.await(latch)
 
     return identity<SerializableActor<M>>(Object.assign(Object.create(ActorProto), {
       machine: self,

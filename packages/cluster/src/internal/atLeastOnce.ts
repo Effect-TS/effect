@@ -36,12 +36,12 @@ export function runPendingMessageSweeperScoped(
 export function atLeastOnceRecipientBehaviour<Msg extends Message.Message.Any, R>(
   fa: RecipientBehaviour.RecipientBehaviour<Msg, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R | AtLeastOnceStorage.AtLeastOnceStorage> {
-  return Effect.gen(function*(_) {
-    const storage = yield* _(AtLeastOnceStorage.AtLeastOnceStorage)
-    const entityId = yield* _(RecipientBehaviourContext.entityId)
-    const shardId = yield* _(RecipientBehaviourContext.shardId)
-    const recipientType = yield* _(RecipientBehaviourContext.recipientType)
-    const offer = yield* _(fa)
+  return Effect.gen(function*() {
+    const storage = yield* AtLeastOnceStorage.AtLeastOnceStorage
+    const entityId = yield* RecipientBehaviourContext.entityId
+    const shardId = yield* RecipientBehaviourContext.shardId
+    const recipientType = yield* RecipientBehaviourContext.recipientType
+    const offer = yield* fa
     return <A extends Msg>(message: A) =>
       pipe(
         storage.upsert(recipientType, shardId, entityId, message),

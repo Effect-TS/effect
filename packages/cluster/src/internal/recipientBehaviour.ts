@@ -69,9 +69,9 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
     ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R> {
-  return Effect.gen(function*(_) {
-    const entityId = yield* _(RecipientBehaviourContext.entityId)
-    const messageStates = yield* _(Ref.make(HashMap.empty<string, MessageState.MessageState<any>>()))
+  return Effect.gen(function*() {
+    const entityId = yield* RecipientBehaviourContext.entityId
+    const messageStates = yield* Ref.make(HashMap.empty<string, MessageState.MessageState<any>>())
 
     function updateMessageState(message: Msg, state: MessageState.MessageState<any>) {
       return pipe(Ref.update(messageStates, HashMap.set(PrimaryKey.value(message), state)), Effect.as(state))
@@ -88,7 +88,7 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
       return updateMessageState(message, MessageState.Processed(reply))
     }
 
-    return yield* _(pipe(
+    return yield* pipe(
       Deferred.make<boolean>(),
       Effect.flatMap((shutdownCompleted) =>
         pipe(
@@ -128,6 +128,6 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
           Effect.annotateLogs("entityId", entityId)
         )
       )
-    ))
+    )
   })
 }

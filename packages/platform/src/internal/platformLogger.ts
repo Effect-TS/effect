@@ -33,14 +33,14 @@ export const toFile = dual<
 >(
   (args) => Logger.isLogger(args[0]),
   (self, path, options) =>
-    Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const logFile = yield* _(fs.open(path, { flag: "a+", ...options }))
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const logFile = yield* fs.open(path, { flag: "a+", ...options })
       const encoder = new TextEncoder()
-      return yield* _(Logger.batched(
+      return yield* Logger.batched(
         self,
         options?.batchWindow ?? 1000,
         (output) => Effect.ignore(logFile.write(encoder.encode(output.join("\n") + "\n")))
-      ))
+      )
     })
 )
