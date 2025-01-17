@@ -3207,7 +3207,8 @@ export const scopeTag = Context.GenericTag<Scope.Scope>("effect/Scope")
 /* @internal */
 export const scope: Effect.Effect<Scope.Scope, never, Scope.Scope> = scopeTag
 
-interface ScopeImpl extends Scope.CloseableScope {
+/** @internal */
+export interface ScopeImpl extends Scope.CloseableScope {
   state: {
     readonly _tag: "Open"
     readonly finalizers: Set<Scope.Scope.Finalizer>

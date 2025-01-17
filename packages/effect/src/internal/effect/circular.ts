@@ -27,7 +27,6 @@ import type * as Types from "../../Types.js"
 import * as internalCause from "../cause.js"
 import * as effect from "../core-effect.js"
 import * as core from "../core.js"
-import * as executionStrategy from "../executionStrategy.js"
 import * as internalFiber from "../fiber.js"
 import * as fiberRuntime from "../fiberRuntime.js"
 import { globalScope } from "../fiberScope.js"
@@ -362,23 +361,26 @@ export const forkIn = dual<
 >(
   2,
   (self, scope) =>
-    core.uninterruptibleMask((restore) =>
-      core.flatMap(scope.fork(executionStrategy.sequential), (child) =>
-        pipe(
-          restore(self),
-          core.onExit((exit) => child.close(exit)),
-          fiberRuntime.forkDaemon,
-          core.tap((fiber) =>
-            child.addFinalizer(() =>
-              core.fiberIdWith((fiberId) =>
-                Equal.equals(fiberId, fiber.id()) ?
-                  core.void :
-                  core.asVoid(core.interruptFiber(fiber))
-              )
-            )
+    core.withFiberRuntime((parent, parentStatus) => {
+      const scopeImpl = scope as fiberRuntime.ScopeImpl
+      const fiber = fiberRuntime.unsafeFork(self, parent, parentStatus.runtimeFlags, globalScope)
+      if (scopeImpl.state._tag === "Open") {
+        const finalizer = () =>
+          core.fiberIdWith((fiberId) =>
+            Equal.equals(fiberId, fiber.id()) ?
+              core.void :
+              core.asVoid(core.interruptFiber(fiber))
           )
-        ))
-    )
+        scopeImpl.state.finalizers.add(finalizer)
+        fiber.addObserver(() => {
+          if (scopeImpl.state._tag === "Closed") return
+          scopeImpl.state.finalizers.delete(finalizer)
+        })
+      } else {
+        fiber.unsafeInterruptAsFork(parent.id())
+      }
+      return core.succeed(fiber)
+    })
 )
 
 /** @internal */
