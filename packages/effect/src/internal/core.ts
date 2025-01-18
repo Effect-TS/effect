@@ -28,7 +28,7 @@ import type * as MetricLabel from "../MetricLabel.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isObject, isPromiseLike, type Predicate, type Refinement } from "../Predicate.js"
+import { hasProperty, isObject, isPromiseLike, isString, type Predicate, type Refinement } from "../Predicate.js"
 import type * as Request from "../Request.js"
 import type * as BlockedRequests from "../RequestBlock.js"
 import type * as RequestResolver from "../RequestResolver.js"
@@ -2346,7 +2346,11 @@ export const UnknownException: new(cause: unknown, message?: string | undefined)
       readonly _tag = "UnknownException"
       readonly error: unknown
       constructor(readonly cause: unknown, message?: string) {
-        super(message ?? "An unknown error occurred", { cause })
+        super(
+          message ??
+            (hasProperty(cause, "message") && isString(cause.message) ? cause.message : "An unknown error occurred"),
+          { cause }
+        )
         this.error = cause
       }
     }

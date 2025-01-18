@@ -381,4 +381,37 @@ describe("Cause", () => {
       assert.isTrue(Equal.equals(stripped, Option.none()))
     })
   })
+
+  describe("UnknownException", () => {
+    it("should have an `error` property", () => {
+      const err1 = new Cause.UnknownException("my message")
+      expect(err1.error).toEqual("my message")
+      const err2 = new Cause.UnknownException(new Error("my error"))
+      expect(err2.error).toBeInstanceOf(Error)
+      expect((err2.error as Error).message).toEqual("my error")
+    })
+
+    it("should have a `cause` property", () => {
+      const err1 = new Cause.UnknownException("my message")
+      expect(err1.cause).toEqual("my message")
+      const err2 = new Cause.UnknownException(new Error("my error"))
+      expect(err2.cause).toBeInstanceOf(Error)
+      expect((err2.cause as Error).message).toEqual("my error")
+    })
+
+    it("should set a default message", () => {
+      const err1 = new Cause.UnknownException("my message")
+      expect(err1.message).toEqual("An unknown error occurred")
+    })
+
+    it("should inherit the message from the cause", () => {
+      const err1 = new Cause.UnknownException(new Error("my error"))
+      expect(err1.message).toEqual("my error")
+    })
+
+    it("should accept an override message", () => {
+      const err1 = new Cause.UnknownException(new Error("my error"), "my message")
+      expect(err1.message).toEqual("my message")
+    })
+  })
 })
