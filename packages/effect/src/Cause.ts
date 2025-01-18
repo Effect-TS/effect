@@ -913,8 +913,33 @@ export const isRuntimeException: (u: unknown) => u is RuntimeException = core.is
 export const TimeoutException: new(message?: string | undefined) => TimeoutException = core.TimeoutException
 
 /**
- * Represents a checked exception which occurs when an unknown error is thrown, such as
- * from a rejected promise.
+ * Creates an instance of `UnknownException`, an error object used to handle
+ * unknown errors such as those from rejected promises.
+ *
+ * **Details**
+ *
+ * This function constructs an `UnknownException` with flexible behavior for
+ * managing the error message:
+ *
+ * 1. If no `message` is provided, it defaults to `"An unknown error occurred"`.
+ * 2. If the `error` (cause) has a `message` property and the value is a string,
+ *    the message from the cause is used as the error's message.
+ * 3. If a `message` argument is explicitly provided, it takes precedence over
+ *    the inherited message or the default.
+ *
+ * Additionally, the `error` argument is passed as the `cause` to the `super`
+ * constructor, ensuring that the original cause is preserved in the error chain
+ * for debugging purposes.
+ *
+ * The `error` argument is always stored in the `error` property of the
+ * `UnknownException` instance for reference, regardless of its type.
+ *
+ * **When to Use**
+ *
+ * Use this function when you need to handle unexpected or unknown errors in
+ * your application, particularly when the source of the error might not provide
+ * a clear message. This is useful for wrapping generic errors thrown from
+ * promises or external APIs.
  *
  * @since 2.0.0
  * @category errors
