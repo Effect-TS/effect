@@ -1,27 +1,54 @@
-/packages/effect/                  @mikearnaldi
-/packages/cli/                     @IMax153
-/packages/cluster/                 @IMax153 @mattiamanzati
-/packages/cluster-browser/         @IMax153 @mattiamanzati
-/packages/cluster-node/            @IMax153 @mattiamanzati
-/packages/cluster-workflow/        @IMax153 @mattiamanzati
-/packages/experimental/            @tim-smart
-/packages/opentelemetry/           @tim-smart
-/packages/platform/                @tim-smart
-/packages/platform-browser/        @tim-smart
-/packages/platform-bun/            @tim-smart
-/packages/platform-node/           @tim-smart
-/packages/platform-node-shared/    @tim-smart
-/packages/printer/                 @IMax153
-/packages/printer-ansi/            @IMax153
-/packages/rpc/                     @tim-smart
-/packages/rpc-http/                @tim-smart
-/packages/sql/                     @tim-smart
-/packages/sql-mssql/               @tim-smart
-/packages/sql-mysql2/              @tim-smart
-/packages/sql-pg/                  @tim-smart
-/packages/sql-sqlite-bun/          @tim-smart
-/packages/sql-sqlite-node/         @tim-smart
+/packages/effect/ @mikearnaldi
+
+/packages/effect/src/Arbitrary.ts @gcanti
+/packages/effect/src/JSONSchema.ts @gcanti
+/packages/effect/src/ParseResult.ts @gcanti
+/packages/effect/src/Pretty.ts @gcanti
+/packages/effect/src/Schema.ts @gcanti
+/packages/effect/src/SchemaAST.ts @gcanti
+/packages/effect/src/internal/schema/ @gcanti
+/packages/effect/test/Schema/ @gcanti
+
+/packages/ai/ @tim-smart
+
+/packages/cli/ @IMax153
+
+/packages/cluster/ @IMax153 @mattiamanzati
+/packages/cluster-browser/ @IMax153 @mattiamanzati
+/packages/cluster-node/ @IMax153 @mattiamanzati
+/packages/cluster-workflow/ @IMax153 @mattiamanzati
+
+/packages/experimental/ @tim-smart
+
+/packages/opentelemetry/ @tim-smart
+
+/packages/platform/ @tim-smart
+/packages/platform-browser/ @tim-smart
+/packages/platform-bun/ @tim-smart
+/packages/platform-node/ @tim-smart
+/packages/platform-node-shared/ @tim-smart
+
+/packages/printer/ @IMax153
+/packages/printer-ansi/ @IMax153
+
+/packages/rpc/ @tim-smart
+/packages/rpc-http/ @tim-smart
+
+/packages/sql/ @tim-smart
+/packages/sql-clickhouse/ @tim-smart
+/packages/sql-d1/ @tim-smart
+/packages/sql-drizzle/ @tim-smart
+/packages/sql-kysely/ @tim-smart
+/packages/sql-libsql/ @tim-smart
+/packages/sql-mssql/ @tim-smart
+/packages/sql-mysql2/ @tim-smart
+/packages/sql-pg/ @tim-smart
+/packages/sql-sqlite-bun/ @tim-smart
+/packages/sql-sqlite-do/ @tim-smart
+/packages/sql-sqlite-node/ @tim-smart
 /packages/sql-sqlite-react-native/ @tim-smart
-/packages/sql-sqlite-wasm/         @tim-smart
-/packages/typeclass/               @gcanti
-/packages/vitest/                  @mikearnaldi
+/packages/sql-sqlite-wasm/ @tim-smart
+
+/packages/typeclass/ @gcanti
+
+/packages/vitest/ @mikearnaldi
