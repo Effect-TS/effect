@@ -8,7 +8,7 @@ describe("omit", () => {
     const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(
       S.omit("c")
     )
-    await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
+    await Util.assertions.decoding.succeed(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
 
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -40,8 +40,8 @@ describe("omit", () => {
       .pipe(
         S.omit("c")
       )
-    await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
-    await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { b: 1 })
+    await Util.assertions.decoding.succeed(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
+    await Util.assertions.decoding.succeed(schema, { b: "1" }, { b: 1 })
 
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -70,8 +70,8 @@ describe("omit", () => {
         })
     )
     const schema = A.pipe(S.omit("a"))
-    await Util.expectDecodeUnknownSuccess(schema, { as: [] })
-    await Util.expectDecodeUnknownSuccess(schema, { as: [{ a: "a", as: [] }] })
+    await Util.assertions.decoding.succeed(schema, { as: [] })
+    await Util.assertions.decoding.succeed(schema, { as: [{ a: "a", as: [] }] })
 
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -94,8 +94,8 @@ describe("omit", () => {
     }).pipe(
       S.omit("c")
     )
-    await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
-    await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { a: "", b: 1 })
+    await Util.assertions.decoding.succeed(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
+    await Util.assertions.decoding.succeed(schema, { b: "1" }, { a: "", b: 1 })
   })
 
   it("typeSchema(Class)", () => {
@@ -115,7 +115,7 @@ describe("omit", () => {
       a: S.String,
       b: S.propertySignature(S.Number).pipe(S.fromKey("c"))
     }).pipe(S.omit("a"))
-    await Util.expectDecodeUnknownSuccess(schema, { c: 1 }, { b: 1 })
+    await Util.assertions.decoding.succeed(schema, { c: 1 }, { b: 1 })
   })
 
   it("rename", async () => {
@@ -123,6 +123,6 @@ describe("omit", () => {
       a: S.String,
       c: S.Number
     }).pipe(S.rename({ c: "b" }), S.omit("a"))
-    await Util.expectDecodeUnknownSuccess(schema, { c: 1 }, { b: 1 })
+    await Util.assertions.decoding.succeed(schema, { c: 1 }, { b: 1 })
   })
 })

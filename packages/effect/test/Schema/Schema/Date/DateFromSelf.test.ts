@@ -9,8 +9,8 @@ describe("DateFromSelf", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(S.DateFromSelf, new Date(0), new Date(0))
-    await Util.expectDecodeUnknownSuccess(S.DateFromSelf, new Date("invalid"))
+    await Util.assertions.decoding.succeed(S.DateFromSelf, new Date(0), new Date(0))
+    await Util.assertions.decoding.succeed(S.DateFromSelf, new Date("invalid"))
 
     await Util.expectDecodeUnknownFailure(
       S.DateFromSelf,

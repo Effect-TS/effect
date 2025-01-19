@@ -10,9 +10,9 @@ describe("BigIntFromNumber", () => {
   })
 
   it("Decoder", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, 0, 0n)
-    await Util.expectDecodeUnknownSuccess(schema, -0, -0n)
-    await Util.expectDecodeUnknownSuccess(schema, 1, 1n)
+    await Util.assertions.decoding.succeed(schema, 0, 0n)
+    await Util.assertions.decoding.succeed(schema, -0, -0n)
+    await Util.assertions.decoding.succeed(schema, 1, 1n)
 
     await Util.expectDecodeUnknownFailure(
       schema,

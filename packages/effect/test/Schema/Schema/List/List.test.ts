@@ -10,8 +10,8 @@ describe("List", () => {
 
   it("decoding", async () => {
     const schema = S.List(S.Number)
-    await Util.expectDecodeUnknownSuccess(schema, [], List.empty())
-    await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], List.fromIterable([1, 2, 3]))
+    await Util.assertions.decoding.succeed(schema, [], List.empty())
+    await Util.assertions.decoding.succeed(schema, [1, 2, 3], List.fromIterable([1, 2, 3]))
 
     await Util.expectDecodeUnknownFailure(
       schema,

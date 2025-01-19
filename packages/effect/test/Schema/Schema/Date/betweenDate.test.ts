@@ -6,15 +6,15 @@ describe("betweenDate", () => {
   const schema = S.DateFromSelf.pipe(S.betweenDate(new Date(-1), new Date(1)))
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       new Date(-1)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       new Date(0)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       new Date(1)
     )

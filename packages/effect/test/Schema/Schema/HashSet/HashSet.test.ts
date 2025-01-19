@@ -10,8 +10,8 @@ describe("HashSet", () => {
 
   it("decoding", async () => {
     const schema = S.HashSet(S.Number)
-    await Util.expectDecodeUnknownSuccess(schema, [], HashSet.fromIterable([]))
-    await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], HashSet.fromIterable([1, 2, 3]))
+    await Util.assertions.decoding.succeed(schema, [], HashSet.fromIterable([]))
+    await Util.assertions.decoding.succeed(schema, [1, 2, 3], HashSet.fromIterable([1, 2, 3]))
 
     await Util.expectDecodeUnknownFailure(
       schema,

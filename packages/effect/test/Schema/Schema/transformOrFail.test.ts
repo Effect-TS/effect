@@ -20,7 +20,7 @@ describe("transformOrFail", () => {
       encode: (i, _options, _ast, a) => ParseResult.succeed({ ...i, b: a.a * 2 })
     })
 
-    await Util.expectDecodeUnknownSuccess(AB, { a: "1", b: "2" }, { a: 12 })
+    await Util.assertions.decoding.succeed(AB, { a: "1", b: "2" }, { a: 12 })
     await Util.expectEncodeSuccess(AB, { a: 2 }, { a: "2", b: "4" })
   })
 })

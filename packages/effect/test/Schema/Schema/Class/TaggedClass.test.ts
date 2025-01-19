@@ -61,7 +61,7 @@ details: Duplicate key "_tag"`)
       S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(A.fields, { _tag: S.getClassTag("A"), ...fields })
-    await Util.expectDecodeUnknownSuccess(A, new A({ a: 1, b: 1 }))
+    await Util.assertions.decoding.succeed(A, new A({ a: 1, b: 1 }))
     await Util.expectDecodeUnknownFailure(
       A,
       { _tag: "A", a: 1, b: 2 },
@@ -80,7 +80,7 @@ details: Duplicate key "_tag"`)
 
   it("decoding", async () => {
     class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmptyString }) {}
-    await Util.expectDecodeUnknownSuccess(TA, { _tag: "TA", a: "a" }, new TA({ a: "a" }))
+    await Util.assertions.decoding.succeed(TA, { _tag: "TA", a: "a" }, new TA({ a: "a" }))
     await Util.expectDecodeUnknownFailure(
       TA,
       { a: "a" },

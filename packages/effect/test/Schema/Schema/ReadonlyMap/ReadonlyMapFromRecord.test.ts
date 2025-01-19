@@ -5,8 +5,8 @@ import { describe, it } from "vitest"
 describe("ReadonlyMapFromRecord", () => {
   it("decoding", async () => {
     const schema = S.ReadonlyMapFromRecord({ key: S.NumberFromString, value: S.NumberFromString })
-    await Util.expectDecodeUnknownSuccess(schema, {}, new Map())
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, {}, new Map())
+    await Util.assertions.decoding.succeed(
       schema,
       { 1: "2", 3: "4", 5: "6" },
       new Map([[1, 2], [3, 4], [5, 6]])

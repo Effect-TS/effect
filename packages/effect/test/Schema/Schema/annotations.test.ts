@@ -127,7 +127,7 @@ describe(".annotations()", () => {
     expect(S.isSchema(schema)).toEqual(true)
     await Util.expectDecodeUnknownFailure(schema, null, "not a string")
     await Util.expectDecodeUnknownFailure(schema, "", "required")
-    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
+    await Util.assertions.decoding.succeed(schema, "a", "a")
     await Util.expectDecodeUnknownFailure(schema, "aaaaaaaaaaaaaa", "aaaaaaaaaaaaaa is too long")
   })
 

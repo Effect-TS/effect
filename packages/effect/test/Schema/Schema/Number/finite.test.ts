@@ -10,7 +10,7 @@ describe("Finite", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, 1)
+    await Util.assertions.decoding.succeed(schema, 1)
     await Util.expectDecodeUnknownFailure(
       schema,
       NaN,

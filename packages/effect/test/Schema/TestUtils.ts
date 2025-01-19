@@ -118,13 +118,6 @@ export const allErrors: ParseOptions = {
   errors: "all"
 }
 
-export const expectDecodeUnknownSuccess = async <A, I>(
-  schema: S.Schema<A, I, never>,
-  input: unknown,
-  expected: A = input as any,
-  options?: ParseOptions
-) => expectSuccess(S.decodeUnknown(schema)(input, options), expected)
-
 export const expectDecodeUnknownFailure = async <A, I>(
   schema: S.Schema<A, I, never>,
   input: unknown,

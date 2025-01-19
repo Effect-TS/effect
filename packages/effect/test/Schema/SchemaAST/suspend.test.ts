@@ -17,8 +17,8 @@ describe("AST.Suspend", () => {
         return schema
       }))
     })
-    await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [] })
-    await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
+    await Util.assertions.decoding.succeed(schema, { a: "a1", as: [] })
+    await Util.assertions.decoding.succeed(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
     expect(log).toEqual(1)
   })
 

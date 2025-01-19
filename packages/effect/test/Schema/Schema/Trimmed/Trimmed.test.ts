@@ -50,8 +50,8 @@ describe("Trimmed", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownSuccess(schema, "")
+    await Util.assertions.decoding.succeed(schema, "a")
+    await Util.assertions.decoding.succeed(schema, "")
     await Util.expectDecodeUnknownFailure(
       schema,
       "a ",

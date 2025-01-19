@@ -9,8 +9,8 @@ describe("ReadonlySet", () => {
 
   it("decoding", async () => {
     const schema = S.ReadonlySet(S.Number)
-    await Util.expectDecodeUnknownSuccess(schema, [], new Set([]))
-    await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], new Set([1, 2, 3]))
+    await Util.assertions.decoding.succeed(schema, [], new Set([]))
+    await Util.assertions.decoding.succeed(schema, [1, 2, 3], new Set([1, 2, 3]))
 
     await Util.expectDecodeUnknownFailure(
       schema,

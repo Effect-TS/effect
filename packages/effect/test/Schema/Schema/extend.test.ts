@@ -210,7 +210,7 @@ describe("extend", () => {
       expect(String(schema)).toBe(
         `{ readonly nested: { readonly same: startsWith("start:") & endsWith(":end"); readonly different1: string; readonly different2: string } }`
       )
-      await Util.expectDecodeUnknownSuccess(
+      await Util.assertions.decoding.succeed(
         schema,
         {
           nested: {
@@ -581,9 +581,9 @@ describe("extend", () => {
       expect(String(List)).toStrictEqual(
         `{ readonly type: "nil" } | { readonly type: "cons"; readonly tail: <suspended schema> }`
       )
-      await Util.expectDecodeUnknownSuccess(List, { type: "nil" })
-      await Util.expectDecodeUnknownSuccess(List, { type: "cons", tail: { value: 1, type: "nil" } })
-      await Util.expectDecodeUnknownSuccess(List, {
+      await Util.assertions.decoding.succeed(List, { type: "nil" })
+      await Util.assertions.decoding.succeed(List, { type: "cons", tail: { value: 1, type: "nil" } })
+      await Util.assertions.decoding.succeed(List, {
         type: "cons",
         tail: { value: 1, type: "cons", tail: { value: 2, type: "nil" } }
       })

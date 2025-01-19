@@ -17,7 +17,7 @@ describe("CauseFromSelf", () => {
   it("decoding", async () => {
     const schema = S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown })
 
-    await Util.expectDecodeUnknownSuccess(schema, Cause.fail("1"), Cause.fail(1))
+    await Util.assertions.decoding.succeed(schema, Cause.fail("1"), Cause.fail(1))
 
     await Util.expectDecodeUnknownFailure(
       schema,

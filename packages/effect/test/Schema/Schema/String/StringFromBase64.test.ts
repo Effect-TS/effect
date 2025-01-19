@@ -10,7 +10,7 @@ describe("StringFromBase64", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "Zm9vYmFy",
       "foobar"

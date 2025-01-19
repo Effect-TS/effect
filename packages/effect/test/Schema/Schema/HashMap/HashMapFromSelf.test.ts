@@ -12,8 +12,8 @@ describe("HashMapFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.HashMapFromSelf({ key: S.NumberFromString, value: S.String })
-    await Util.expectDecodeUnknownSuccess(schema, HashMap.fromIterable([]))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, HashMap.fromIterable([]))
+    await Util.assertions.decoding.succeed(
       schema,
       HashMap.fromIterable([["1", "a"], ["2", "b"], ["3", "c"]]),
       HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]])

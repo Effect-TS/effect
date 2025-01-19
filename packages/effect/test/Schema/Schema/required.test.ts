@@ -13,7 +13,7 @@ describe("required", () => {
       a: S.optionalWith(S.NumberFromString.pipe(S.greaterThan(0)), { exact: true })
     }))
 
-    await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
+    await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
     await Util.expectDecodeUnknownFailure(
       schema,
       {},
@@ -40,7 +40,7 @@ describe("required", () => {
       const A = S.Tuple(S.optionalElement(S.NumberFromString))
       const B = S.required(A)
 
-      await Util.expectDecodeUnknownSuccess(B, ["1"], [1])
+      await Util.assertions.decoding.succeed(B, ["1"], [1])
       await Util.expectDecodeUnknownFailure(
         B,
         [],
@@ -57,7 +57,7 @@ describe("required", () => {
       const A = S.Tuple(S.NumberFromString, S.optionalElement(S.String))
       const B = S.required(A)
 
-      await Util.expectDecodeUnknownSuccess(B, ["0", ""], [0, ""])
+      await Util.assertions.decoding.succeed(B, ["0", ""], [0, ""])
       await Util.expectDecodeUnknownFailure(
         B,
         ["0"],
@@ -74,9 +74,9 @@ describe("required", () => {
       const A = S.Tuple([S.String], S.Number, S.Boolean)
       const B = S.required(A)
 
-      await Util.expectDecodeUnknownSuccess(B, ["", true], ["", true])
-      await Util.expectDecodeUnknownSuccess(B, ["", 0, true])
-      await Util.expectDecodeUnknownSuccess(B, ["", 0, 1, true])
+      await Util.assertions.decoding.succeed(B, ["", true], ["", true])
+      await Util.assertions.decoding.succeed(B, ["", 0, true])
+      await Util.assertions.decoding.succeed(B, ["", 0, 1, true])
 
       await Util.expectDecodeUnknownFailure(
         B,
@@ -101,8 +101,8 @@ describe("required", () => {
       const A = S.Tuple([S.String], S.Number, S.Boolean, S.Boolean)
       const B = S.required(A)
 
-      await Util.expectDecodeUnknownSuccess(B, ["", 0, true, false])
-      await Util.expectDecodeUnknownSuccess(B, ["", 0, 1, 2, 3, true, false])
+      await Util.assertions.decoding.succeed(B, ["", 0, true, false])
+      await Util.assertions.decoding.succeed(B, ["", 0, 1, 2, 3, true, false])
 
       await Util.expectDecodeUnknownFailure(
         B,
@@ -140,8 +140,8 @@ describe("required", () => {
       S.Struct({ a: S.optionalWith(S.String, { exact: true }) }),
       S.Struct({ b: S.optionalWith(S.Number, { exact: true }) })
     ))
-    await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
-    await Util.expectDecodeUnknownSuccess(schema, { b: 1 })
+    await Util.assertions.decoding.succeed(schema, { a: "a" })
+    await Util.assertions.decoding.succeed(schema, { b: 1 })
     await Util.expectDecodeUnknownFailure(
       schema,
       {},
@@ -165,8 +165,8 @@ describe("required", () => {
           a: S.optionalWith(S.Union(schema, S.Null), { exact: true })
         })
     ))
-    await Util.expectDecodeUnknownSuccess(schema, { a: null })
-    await Util.expectDecodeUnknownSuccess(schema, { a: { a: null } })
+    await Util.assertions.decoding.succeed(schema, { a: null })
+    await Util.assertions.decoding.succeed(schema, { a: { a: null } })
     await Util.expectDecodeUnknownFailure(
       schema,
       {},

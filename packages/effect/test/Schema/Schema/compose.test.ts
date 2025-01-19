@@ -5,14 +5,14 @@ import { describe, it } from "vitest"
 describe("compose", async () => {
   it("B = C", async () => {
     const schema1 = S.compose(S.split(","), S.Array(S.NumberFromString))
-    await Util.expectDecodeUnknownSuccess(schema1, "1,2,3", [1, 2, 3])
+    await Util.assertions.decoding.succeed(schema1, "1,2,3", [1, 2, 3])
     const schema2 = S.split(",").pipe(S.compose(S.Array(S.NumberFromString)))
-    await Util.expectDecodeUnknownSuccess(schema2, "1,2,3", [1, 2, 3])
+    await Util.assertions.decoding.succeed(schema2, "1,2,3", [1, 2, 3])
   })
 
   it("force decoding: (A U B) compose (B -> C)", async () => {
     const schema1 = S.compose(S.Union(S.String, S.Null), S.NumberFromString, { strict: false })
-    await Util.expectDecodeUnknownSuccess(schema1, "1", 1)
+    await Util.assertions.decoding.succeed(schema1, "1", 1)
     await Util.expectDecodeUnknownFailure(
       schema1,
       "a",
@@ -34,7 +34,7 @@ describe("compose", async () => {
     const schema2 = S.Union(S.String, S.Null).pipe(
       S.compose(S.NumberFromString, { strict: false })
     )
-    await Util.expectDecodeUnknownSuccess(schema2, "1", 1)
+    await Util.assertions.decoding.succeed(schema2, "1", 1)
     await Util.expectDecodeUnknownFailure(
       schema2,
       "a",

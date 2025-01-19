@@ -28,8 +28,8 @@ describe("betweenBigDecimal", () => {
 └─ Predicate refinement failure
    └─ Expected a BigDecimal between -1 and 1, actual BigDecimal(2)`
     )
-    await Util.expectDecodeUnknownSuccess(schema, "0", BigDecimal.normalize(BigDecimal.make(0n, 0)))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, "0", BigDecimal.normalize(BigDecimal.make(0n, 0)))
+    await Util.assertions.decoding.succeed(
       schema,
       "0.2",
       BigDecimal.normalize(BigDecimal.make(2n, 1))

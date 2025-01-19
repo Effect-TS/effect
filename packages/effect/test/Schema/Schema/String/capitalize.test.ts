@@ -10,10 +10,10 @@ describe("Capitalize", () => {
 
   it("decoding", async () => {
     const schema = S.Capitalize
-    await Util.expectDecodeUnknownSuccess(schema, "aa", "Aa")
-    await Util.expectDecodeUnknownSuccess(schema, "aa ", "Aa ")
-    await Util.expectDecodeUnknownSuccess(schema, " aa ", " aa ")
-    await Util.expectDecodeUnknownSuccess(schema, "", "")
+    await Util.assertions.decoding.succeed(schema, "aa", "Aa")
+    await Util.assertions.decoding.succeed(schema, "aa ", "Aa ")
+    await Util.assertions.decoding.succeed(schema, " aa ", " aa ")
+    await Util.assertions.decoding.succeed(schema, "", "")
   })
 
   it("encoding", async () => {

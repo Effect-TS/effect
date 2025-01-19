@@ -6,7 +6,7 @@ describe("length", () => {
   describe("decoding", () => {
     it("length: 1", async () => {
       const schema = S.String.pipe(S.length(1, { identifier: "Char" }))
-      await Util.expectDecodeUnknownSuccess(schema, "a")
+      await Util.assertions.decoding.succeed(schema, "a")
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -26,7 +26,7 @@ describe("length", () => {
 
     it("length > 1", async () => {
       const schema = S.String.pipe(S.length(2, { identifier: "Char2" }))
-      await Util.expectDecodeUnknownSuccess(schema, "aa")
+      await Util.assertions.decoding.succeed(schema, "aa")
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -39,9 +39,9 @@ describe("length", () => {
 
     it("length : { min > max }", async () => {
       const schema = S.String.pipe(S.length({ min: 2, max: 4 }, { identifier: "Char(2-4)" }))
-      await Util.expectDecodeUnknownSuccess(schema, "aa")
-      await Util.expectDecodeUnknownSuccess(schema, "aaa")
-      await Util.expectDecodeUnknownSuccess(schema, "aaaa")
+      await Util.assertions.decoding.succeed(schema, "aa")
+      await Util.assertions.decoding.succeed(schema, "aaa")
+      await Util.assertions.decoding.succeed(schema, "aaaa")
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -61,7 +61,7 @@ describe("length", () => {
 
     it("length : { min = max }", async () => {
       const schema = S.String.pipe(S.length({ min: 2, max: 2 }, { identifier: "Char2" }))
-      await Util.expectDecodeUnknownSuccess(schema, "aa")
+      await Util.assertions.decoding.succeed(schema, "aa")
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -74,7 +74,7 @@ describe("length", () => {
 
     it("length : { min < max }", async () => {
       const schema = S.String.pipe(S.length({ min: 2, max: 1 }, { identifier: "Char2" }))
-      await Util.expectDecodeUnknownSuccess(schema, "aa")
+      await Util.assertions.decoding.succeed(schema, "aa")
 
       await Util.expectDecodeUnknownFailure(
         schema,

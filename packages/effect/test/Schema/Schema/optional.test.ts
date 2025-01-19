@@ -27,9 +27,9 @@ describe("optional", () => {
     const schema = S.Struct({
       a: S.optional(S.NumberFromString)
     })
-    await Util.expectDecodeUnknownSuccess(schema, {}, {})
-    await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: undefined })
-    await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
+    await Util.assertions.decoding.succeed(schema, {}, {})
+    await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: undefined })
+    await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a" },
@@ -51,8 +51,8 @@ describe("optional", () => {
     const schema = S.Struct({
       a: S.optional(S.Never)
     })
-    await Util.expectDecodeUnknownSuccess(schema, {}, {})
-    await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: undefined })
+    await Util.assertions.decoding.succeed(schema, {}, {})
+    await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: undefined })
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a" },

@@ -6,7 +6,7 @@ describe("`exact` option", () => {
   describe("decoding", () => {
     it("false (default)", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      await Util.expectDecodeUnknownSuccess(schema, {}, { a: undefined })
+      await Util.assertions.decoding.succeed(schema, {}, { a: undefined })
     })
 
     it("true", async () => {

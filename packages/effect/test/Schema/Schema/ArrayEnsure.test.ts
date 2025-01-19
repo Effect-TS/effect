@@ -1,7 +1,7 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
+import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
-import { expectDecodeUnknownFailure, expectDecodeUnknownSuccess, expectEncodeSuccess } from "../TestUtils.js"
 
 describe("ArrayEnsure", () => {
   it("annotations()", () => {
@@ -12,10 +12,10 @@ describe("ArrayEnsure", () => {
     })
   })
 
-  it("decode non-array", () => {
+  it("decode non-array", async () => {
     const schema = S.ArrayEnsure(S.NumberFromString)
-    expectDecodeUnknownSuccess(schema, "123", [123])
-    expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, "123", [123])
+    await Util.expectDecodeUnknownFailure(
       schema,
       null,
       `(NumberFromString | ReadonlyArray<NumberFromString> <-> ReadonlyArray<number>)
@@ -28,15 +28,15 @@ describe("ArrayEnsure", () => {
     )
   })
 
-  it("decode empty array", () => {
+  it("decode empty array", async () => {
     const schema = S.ArrayEnsure(S.NumberFromString)
-    expectDecodeUnknownSuccess(schema, [], [])
+    await Util.assertions.decoding.succeed(schema, [], [])
   })
 
-  it("decode array", () => {
+  it("decode array", async () => {
     const schema = S.ArrayEnsure(S.NumberFromString)
-    expectDecodeUnknownSuccess(schema, ["123"], [123])
-    expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, ["123"], [123])
+    await Util.expectDecodeUnknownFailure(
       schema,
       [null],
       `(NumberFromString | ReadonlyArray<NumberFromString> <-> ReadonlyArray<number>)
@@ -53,10 +53,10 @@ describe("ArrayEnsure", () => {
     )
   })
 
-  it("encode", () => {
+  it("encode", async () => {
     const schema = S.ArrayEnsure(S.NumberFromString)
-    expectEncodeSuccess(schema, [], [])
-    expectEncodeSuccess(schema, [123], "123")
-    expectEncodeSuccess(schema, [1, 2, 3], ["1", "2", "3"])
+    await Util.expectEncodeSuccess(schema, [], [])
+    await Util.expectEncodeSuccess(schema, [123], "123")
+    await Util.expectEncodeSuccess(schema, [1, 2, 3], ["1", "2", "3"])
   })
 })

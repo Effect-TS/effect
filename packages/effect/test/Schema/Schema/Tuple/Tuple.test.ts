@@ -29,7 +29,7 @@ describe("Tuple", () => {
 
     it("empty", async () => {
       const schema = S.Tuple()
-      await Util.expectDecodeUnknownSuccess(schema, [])
+      await Util.assertions.decoding.succeed(schema, [])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -59,7 +59,7 @@ describe("Tuple", () => {
 
     it("element", async () => {
       const schema = S.Tuple(S.Number)
-      await Util.expectDecodeUnknownSuccess(schema, [1])
+      await Util.assertions.decoding.succeed(schema, [1])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -98,8 +98,8 @@ describe("Tuple", () => {
 
     it("element with undefined", async () => {
       const schema = S.Tuple(S.Union(S.Number, S.Undefined))
-      await Util.expectDecodeUnknownSuccess(schema, [1])
-      await Util.expectDecodeUnknownSuccess(schema, [undefined])
+      await Util.assertions.decoding.succeed(schema, [1])
+      await Util.assertions.decoding.succeed(schema, [undefined])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -133,8 +133,8 @@ describe("Tuple", () => {
 
     it("optional element", async () => {
       const schema = S.Tuple(S.optionalElement(S.Number))
-      await Util.expectDecodeUnknownSuccess(schema, [])
-      await Util.expectDecodeUnknownSuccess(schema, [1])
+      await Util.assertions.decoding.succeed(schema, [])
+      await Util.assertions.decoding.succeed(schema, [1])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -159,9 +159,9 @@ describe("Tuple", () => {
 
     it("optional element with undefined", async () => {
       const schema = S.Tuple(S.optionalElement(S.Union(S.Number, S.Undefined)))
-      await Util.expectDecodeUnknownSuccess(schema, [])
-      await Util.expectDecodeUnknownSuccess(schema, [1])
-      await Util.expectDecodeUnknownSuccess(schema, [undefined])
+      await Util.assertions.decoding.succeed(schema, [])
+      await Util.assertions.decoding.succeed(schema, [1])
+      await Util.assertions.decoding.succeed(schema, [undefined])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -188,8 +188,8 @@ describe("Tuple", () => {
 
     it("element / optional element", async () => {
       const schema = S.Tuple(S.String, S.optionalElement(S.Number))
-      await Util.expectDecodeUnknownSuccess(schema, ["a"])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
+      await Util.assertions.decoding.succeed(schema, ["a"])
+      await Util.assertions.decoding.succeed(schema, ["a", 1])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -209,9 +209,9 @@ describe("Tuple", () => {
 
     it("e + r", async () => {
       const schema = S.Tuple([S.String], S.Number)
-      await Util.expectDecodeUnknownSuccess(schema, ["a"])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", 1, 2])
+      await Util.assertions.decoding.succeed(schema, ["a"])
+      await Util.assertions.decoding.succeed(schema, ["a", 1])
+      await Util.assertions.decoding.succeed(schema, ["a", 1, 2])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -224,10 +224,10 @@ describe("Tuple", () => {
 
     it("e? + r", async () => {
       const schema = S.Tuple([S.optionalElement(S.String)], S.Number)
-      await Util.expectDecodeUnknownSuccess(schema, [])
-      await Util.expectDecodeUnknownSuccess(schema, ["a"])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", 1, 2])
+      await Util.assertions.decoding.succeed(schema, [])
+      await Util.assertions.decoding.succeed(schema, ["a"])
+      await Util.assertions.decoding.succeed(schema, ["a", 1])
+      await Util.assertions.decoding.succeed(schema, ["a", 1, 2])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -240,9 +240,9 @@ describe("Tuple", () => {
 
     it("rest", async () => {
       const schema = S.Array(S.Number)
-      await Util.expectDecodeUnknownSuccess(schema, [])
-      await Util.expectDecodeUnknownSuccess(schema, [1])
-      await Util.expectDecodeUnknownSuccess(schema, [1, 2])
+      await Util.assertions.decoding.succeed(schema, [])
+      await Util.assertions.decoding.succeed(schema, [1])
+      await Util.assertions.decoding.succeed(schema, [1, 2])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -262,9 +262,9 @@ describe("Tuple", () => {
 
     it("rest / element", async () => {
       const schema = S.Tuple([], S.String, S.Number)
-      await Util.expectDecodeUnknownSuccess(schema, [1])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", "b", 1])
+      await Util.assertions.decoding.succeed(schema, [1])
+      await Util.assertions.decoding.succeed(schema, ["a", 1])
+      await Util.assertions.decoding.succeed(schema, ["a", "b", 1])
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -291,9 +291,9 @@ describe("Tuple", () => {
 
     it("element / rest / element", async () => {
       const schema = S.Tuple([S.String], S.Number, S.Boolean)
-      await Util.expectDecodeUnknownSuccess(schema, ["a", true])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", 1, true])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", 1, 2, true])
+      await Util.assertions.decoding.succeed(schema, ["a", true])
+      await Util.assertions.decoding.succeed(schema, ["a", 1, true])
+      await Util.assertions.decoding.succeed(schema, ["a", 1, 2, true])
 
       await Util.expectDecodeUnknownFailure(
         schema,

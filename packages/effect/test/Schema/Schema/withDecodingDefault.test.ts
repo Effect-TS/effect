@@ -7,16 +7,16 @@ describe("withDecodingDefault", () => {
     it("optional", async () => {
       const prop = S.optional(S.String).pipe(S.withDecodingDefault(() => ""))
       const schema = S.Struct({ a: prop })
-      await Util.expectDecodeUnknownSuccess(schema, {}, { a: "" })
-      await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: "" })
-      await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
+      await Util.assertions.decoding.succeed(schema, {}, { a: "" })
+      await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: "" })
+      await Util.assertions.decoding.succeed(schema, { a: "a" })
     })
 
     it("optionalWith { exact: true }", async () => {
       const prop = S.optionalWith(S.String, { exact: true }).pipe(S.withDecodingDefault(() => ""))
       const schema = S.Struct({ a: prop })
-      await Util.expectDecodeUnknownSuccess(schema, {}, { a: "" })
-      await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
+      await Util.assertions.decoding.succeed(schema, {}, { a: "" })
+      await Util.assertions.decoding.succeed(schema, { a: "a" })
     })
 
     it("should prune undefined from the type", () => {
@@ -32,9 +32,9 @@ describe("withDecodingDefault", () => {
     it("optional", async () => {
       const prop = S.optional(S.String).pipe(S.fromKey("b"), S.withDecodingDefault(() => ""))
       const schema = S.Struct({ a: prop })
-      await Util.expectDecodeUnknownSuccess(schema, {}, { a: "" })
-      await Util.expectDecodeUnknownSuccess(schema, { b: undefined }, { a: "" })
-      await Util.expectDecodeUnknownSuccess(schema, { b: "a" }, { a: "a" })
+      await Util.assertions.decoding.succeed(schema, {}, { a: "" })
+      await Util.assertions.decoding.succeed(schema, { b: undefined }, { a: "" })
+      await Util.assertions.decoding.succeed(schema, { b: "a" }, { a: "a" })
     })
 
     it("optionalWith { exact: true }", async () => {
@@ -43,8 +43,8 @@ describe("withDecodingDefault", () => {
         S.withDecodingDefault(() => "")
       )
       const schema = S.Struct({ a: prop })
-      await Util.expectDecodeUnknownSuccess(schema, {}, { a: "" })
-      await Util.expectDecodeUnknownSuccess(schema, { b: "a" }, { a: "a" })
+      await Util.assertions.decoding.succeed(schema, {}, { a: "" })
+      await Util.assertions.decoding.succeed(schema, { b: "a" }, { a: "a" })
     })
 
     it("should prune undefined from the type", () => {

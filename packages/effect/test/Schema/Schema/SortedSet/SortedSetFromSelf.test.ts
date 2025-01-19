@@ -14,12 +14,12 @@ describe("SortedSetFromSelf", () => {
 
   it("decoding", async () => {
     const schema = Schema.SortedSetFromSelf(Schema.NumberFromString, N.Order, S.Order)
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       SortedSet.fromIterable([], S.Order),
       SortedSet.fromIterable([] as Array<number>, N.Order)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       SortedSet.fromIterable(["1", "2", "3"], S.Order),
       SortedSet.fromIterable([1, 2, 3], N.Order)

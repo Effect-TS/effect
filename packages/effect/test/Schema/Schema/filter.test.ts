@@ -123,7 +123,7 @@ describe("filter", () => {
         })
       )
 
-      await Util.expectDecodeUnknownSuccess(schema, { a: "x", b: "x" })
+      await Util.assertions.decoding.succeed(schema, { a: "x", b: "x" })
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: "b" },

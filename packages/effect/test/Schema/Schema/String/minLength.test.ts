@@ -18,8 +18,8 @@ describe("minLength", () => {
 
   it("decoding", async () => {
     const schema = S.minLength(1)(S.String)
-    await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownSuccess(schema, "aa")
+    await Util.assertions.decoding.succeed(schema, "a")
+    await Util.assertions.decoding.succeed(schema, "aa")
     await Util.expectDecodeUnknownFailure(
       schema,
       "",

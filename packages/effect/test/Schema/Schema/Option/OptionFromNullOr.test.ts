@@ -10,8 +10,8 @@ describe("OptionFromNullOr", () => {
 
   it("decoding", async () => {
     const schema = S.OptionFromNullOr(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, null, O.none())
-    await Util.expectDecodeUnknownSuccess(schema, "1", O.some(1))
+    await Util.assertions.decoding.succeed(schema, null, O.none())
+    await Util.assertions.decoding.succeed(schema, "1", O.some(1))
 
     expect(O.isOption(S.decodeSync(schema)(null))).toEqual(true)
     expect(O.isOption(S.decodeSync(schema)("1"))).toEqual(true)

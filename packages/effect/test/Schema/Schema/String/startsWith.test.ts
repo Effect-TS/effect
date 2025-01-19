@@ -16,8 +16,8 @@ describe("startsWith", () => {
 
   it("decoding", async () => {
     const schema = S.String.pipe(S.startsWith("a"))
-    await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownSuccess(schema, "ab")
+    await Util.assertions.decoding.succeed(schema, "a")
+    await Util.assertions.decoding.succeed(schema, "ab")
 
     await Util.expectDecodeUnknownFailure(
       schema,

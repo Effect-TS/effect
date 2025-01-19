@@ -12,9 +12,9 @@ describe("BigDecimalFromSelf", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
-    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
+    await Util.assertions.decoding.succeed(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
+    await Util.assertions.decoding.succeed(
       schema,
       BigDecimal.make(-20000000n, 0),
       BigDecimal.make(-20000000n, 0)

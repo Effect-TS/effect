@@ -68,7 +68,7 @@ describe("fromBrand", () => {
 └─ Predicate refinement failure
    └─ Expected 0 to be positive`
     )
-    await Util.expectDecodeUnknownSuccess(schema, 1, 1 as PositiveInt)
+    await Util.assertions.decoding.succeed(schema, 1, 1 as PositiveInt)
     await Util.expectDecodeUnknownFailure(
       schema,
       1.5,
@@ -76,6 +76,6 @@ describe("fromBrand", () => {
 └─ Predicate refinement failure
    └─ Expected 1.5 to be an integer`
     )
-    await Util.expectDecodeUnknownSuccess(schema, 2, 2 as PositiveInt)
+    await Util.assertions.decoding.succeed(schema, 2, 2 as PositiveInt)
   })
 })

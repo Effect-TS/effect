@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest"
 describe("partial", () => {
   it("Struct", async () => {
     const schema = S.partial(S.Struct({ a: S.Number }))
-    await Util.expectDecodeUnknownSuccess(schema, {})
-    await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
-    await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
+    await Util.assertions.decoding.succeed(schema, {})
+    await Util.assertions.decoding.succeed(schema, { a: 1 })
+    await Util.assertions.decoding.succeed(schema, { a: undefined })
 
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -22,34 +22,34 @@ describe("partial", () => {
 
   it("Record", async () => {
     const schema = S.partial(S.Record({ key: S.String, value: S.NumberFromString }))
-    await Util.expectDecodeUnknownSuccess(schema, {}, {})
-    await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
-    await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
+    await Util.assertions.decoding.succeed(schema, {}, {})
+    await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
+    await Util.assertions.decoding.succeed(schema, { a: undefined })
   })
 
   describe("Tuple", () => {
     it("e", async () => {
       const schema = S.partial(S.Tuple(S.NumberFromString))
-      await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
-      await Util.expectDecodeUnknownSuccess(schema, [], [])
-      await Util.expectDecodeUnknownSuccess(schema, [undefined])
+      await Util.assertions.decoding.succeed(schema, ["1"], [1])
+      await Util.assertions.decoding.succeed(schema, [], [])
+      await Util.assertions.decoding.succeed(schema, [undefined])
     })
 
     it("e r", async () => {
       const schema = S.partial(S.Tuple([S.NumberFromString], S.NumberFromString))
-      await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
-      await Util.expectDecodeUnknownSuccess(schema, [], [])
-      await Util.expectDecodeUnknownSuccess(schema, ["1", "2"], [1, 2])
-      await Util.expectDecodeUnknownSuccess(schema, ["1", undefined], [1, undefined])
-      await Util.expectDecodeUnknownSuccess(schema, [undefined])
+      await Util.assertions.decoding.succeed(schema, ["1"], [1])
+      await Util.assertions.decoding.succeed(schema, [], [])
+      await Util.assertions.decoding.succeed(schema, ["1", "2"], [1, 2])
+      await Util.assertions.decoding.succeed(schema, ["1", undefined], [1, undefined])
+      await Util.assertions.decoding.succeed(schema, [undefined])
     })
   })
 
   it("Array", async () => {
     const schema = S.partial(S.Array(S.Number))
-    await Util.expectDecodeUnknownSuccess(schema, [])
-    await Util.expectDecodeUnknownSuccess(schema, [1])
-    await Util.expectDecodeUnknownSuccess(schema, [undefined])
+    await Util.assertions.decoding.succeed(schema, [])
+    await Util.assertions.decoding.succeed(schema, [1])
+    await Util.assertions.decoding.succeed(schema, [undefined])
 
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -87,15 +87,15 @@ schema (Refinement): minLength(2)`)
         expect(S.format(schema)).toBe(
           "({ readonly a?: string | undefined; readonly c?: string | undefined } <-> { readonly a?: string | undefined; readonly b?: string | undefined })"
         )
-        await Util.expectDecodeUnknownSuccess(schema, {})
-        await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
-        await Util.expectDecodeUnknownSuccess(schema, { c: undefined }, { b: undefined })
-        await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
-        await Util.expectDecodeUnknownSuccess(schema, { c: "b" }, { b: "b" })
-        await Util.expectDecodeUnknownSuccess(schema, { a: undefined, c: undefined }, { a: undefined, b: undefined })
-        await Util.expectDecodeUnknownSuccess(schema, { a: "a", c: undefined }, { a: "a", b: undefined })
-        await Util.expectDecodeUnknownSuccess(schema, { a: undefined, c: "b" }, { a: undefined, b: "b" })
-        await Util.expectDecodeUnknownSuccess(schema, { a: "a", c: "b" }, { a: "a", b: "b" })
+        await Util.assertions.decoding.succeed(schema, {})
+        await Util.assertions.decoding.succeed(schema, { a: undefined })
+        await Util.assertions.decoding.succeed(schema, { c: undefined }, { b: undefined })
+        await Util.assertions.decoding.succeed(schema, { a: "a" })
+        await Util.assertions.decoding.succeed(schema, { c: "b" }, { b: "b" })
+        await Util.assertions.decoding.succeed(schema, { a: undefined, c: undefined }, { a: undefined, b: undefined })
+        await Util.assertions.decoding.succeed(schema, { a: "a", c: undefined }, { a: "a", b: undefined })
+        await Util.assertions.decoding.succeed(schema, { a: undefined, c: "b" }, { a: undefined, b: "b" })
+        await Util.assertions.decoding.succeed(schema, { a: "a", c: "b" }, { a: "a", b: "b" })
       })
     })
   })

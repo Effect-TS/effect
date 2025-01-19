@@ -5,12 +5,12 @@ import { describe, it } from "vitest"
 describe("Void", () => {
   const schema = S.Void
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, undefined as any)
-    await Util.expectDecodeUnknownSuccess(schema, null as any)
-    await Util.expectDecodeUnknownSuccess(schema, "a" as any)
-    await Util.expectDecodeUnknownSuccess(schema, 1 as any)
-    await Util.expectDecodeUnknownSuccess(schema, true as any)
-    await Util.expectDecodeUnknownSuccess(schema, [] as any)
-    await Util.expectDecodeUnknownSuccess(schema, {} as any)
+    await Util.assertions.decoding.succeed(schema, undefined as any)
+    await Util.assertions.decoding.succeed(schema, null as any)
+    await Util.assertions.decoding.succeed(schema, "a" as any)
+    await Util.assertions.decoding.succeed(schema, 1 as any)
+    await Util.assertions.decoding.succeed(schema, true as any)
+    await Util.assertions.decoding.succeed(schema, [] as any)
+    await Util.assertions.decoding.succeed(schema, {} as any)
   })
 })

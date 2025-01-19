@@ -10,14 +10,14 @@ describe("NumberFromString", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "0", 0)
-    await Util.expectDecodeUnknownSuccess(schema, "-0", -0)
-    await Util.expectDecodeUnknownSuccess(schema, "1", 1)
-    await Util.expectDecodeUnknownSuccess(schema, "1.2", 1.2)
+    await Util.assertions.decoding.succeed(schema, "0", 0)
+    await Util.assertions.decoding.succeed(schema, "-0", -0)
+    await Util.assertions.decoding.succeed(schema, "1", 1)
+    await Util.assertions.decoding.succeed(schema, "1.2", 1.2)
 
-    await Util.expectDecodeUnknownSuccess(schema, "NaN", NaN)
-    await Util.expectDecodeUnknownSuccess(schema, "Infinity", Infinity)
-    await Util.expectDecodeUnknownSuccess(schema, "-Infinity", -Infinity)
+    await Util.assertions.decoding.succeed(schema, "NaN", NaN)
+    await Util.assertions.decoding.succeed(schema, "Infinity", Infinity)
+    await Util.assertions.decoding.succeed(schema, "-Infinity", -Infinity)
 
     await Util.expectDecodeUnknownFailure(
       schema,

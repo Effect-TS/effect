@@ -11,17 +11,17 @@ describe("StringFromHex", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "0001020304050607",
       decoder.decode(Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7]))
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "f0f1f2f3f4f5f6f7",
       decoder.decode(Uint8Array.from([0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7]))
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "67",
       "g"

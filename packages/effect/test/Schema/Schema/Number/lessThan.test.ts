@@ -18,7 +18,7 @@ describe("lessThan", () => {
 
   it("decoding", async () => {
     const schema = S.lessThan(0)(S.Number)
-    await Util.expectDecodeUnknownSuccess(schema, -1)
+    await Util.assertions.decoding.succeed(schema, -1)
     await Util.expectDecodeUnknownFailure(
       schema,
       0,

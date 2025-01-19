@@ -18,8 +18,8 @@ describe("maxLength", () => {
 
   it("decoding", async () => {
     const schema = S.maxLength(1)(S.String)
-    await Util.expectDecodeUnknownSuccess(schema, "")
-    await Util.expectDecodeUnknownSuccess(schema, "a")
+    await Util.assertions.decoding.succeed(schema, "")
+    await Util.assertions.decoding.succeed(schema, "a")
     await Util.expectDecodeUnknownFailure(
       schema,
       "aa",

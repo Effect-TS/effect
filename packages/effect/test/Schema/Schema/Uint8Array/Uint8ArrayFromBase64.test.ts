@@ -11,7 +11,7 @@ describe("Uint8ArrayFromBase64", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "Zm9vYmFy",
       encoder.encode("foobar")

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 describe("DecodingFallbackAnnotation", () => {
   it("using Either", async () => {
     const schema = S.String.annotations({ decodingFallback: () => Either.right("<fallback value>") })
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       null,
       "<fallback value>"
@@ -22,7 +22,7 @@ describe("DecodingFallbackAnnotation", () => {
           return yield* Effect.succeed("<fallback value>")
         })
     })
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       null,
       "<fallback value>"
@@ -40,7 +40,7 @@ describe("DecodingFallbackAnnotation", () => {
           return yield* Effect.succeed("<fallback value>")
         })
     })
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       null,
       "<fallback value>"
@@ -57,7 +57,7 @@ describe("DecodingFallbackAnnotation", () => {
       name: S.String.annotations({ decodingFallback: () => Either.right("John") }),
       age: S.Number.annotations({ decodingFallback: () => Either.right(18) })
     })
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       {},
       { name: "John", age: 18 }

@@ -221,7 +221,7 @@ schema (Union): boolean | symbol`)
     it(`"a"`, async () => {
       const schema = S.TemplateLiteral("a")
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "a")
+      await Util.assertions.decoding.succeed(schema, "a")
 
       await Util.expectDecodeUnknownFailure(schema, "ab", `Expected \`a\`, actual "ab"`)
       await Util.expectDecodeUnknownFailure(schema, "", `Expected \`a\`, actual ""`)
@@ -231,7 +231,7 @@ schema (Union): boolean | symbol`)
     it(`"a b"`, async () => {
       const schema = S.TemplateLiteral("a", " ", "b")
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "a b")
+      await Util.assertions.decoding.succeed(schema, "a b")
 
       await Util.expectDecodeUnknownFailure(schema, "a  b", `Expected \`a b\`, actual "a  b"`)
     })
@@ -239,7 +239,7 @@ schema (Union): boolean | symbol`)
     it(`"[" + string + "]"`, async () => {
       const schema = S.TemplateLiteral("[", S.String, "]")
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "[a]")
+      await Util.assertions.decoding.succeed(schema, "[a]")
 
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `[${string}]`, actual \"a\"")
     })
@@ -247,8 +247,8 @@ schema (Union): boolean | symbol`)
     it(`"a" + string`, async () => {
       const schema = S.TemplateLiteral("a", S.String)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "a")
-      await Util.expectDecodeUnknownSuccess(schema, "ab")
+      await Util.assertions.decoding.succeed(schema, "a")
+      await Util.assertions.decoding.succeed(schema, "ab")
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -265,22 +265,22 @@ schema (Union): boolean | symbol`)
     it(`"a" + number`, async () => {
       const schema = S.TemplateLiteral("a", S.Number)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "a1")
-      await Util.expectDecodeUnknownSuccess(schema, "a1.2")
+      await Util.assertions.decoding.succeed(schema, "a1")
+      await Util.assertions.decoding.succeed(schema, "a1.2")
 
-      await Util.expectDecodeUnknownSuccess(schema, "a-1.401298464324817e-45")
-      await Util.expectDecodeUnknownSuccess(schema, "a1.401298464324817e-45")
-      await Util.expectDecodeUnknownSuccess(schema, "a+1.401298464324817e-45")
-      await Util.expectDecodeUnknownSuccess(schema, "a-1.401298464324817e+45")
-      await Util.expectDecodeUnknownSuccess(schema, "a1.401298464324817e+45")
-      await Util.expectDecodeUnknownSuccess(schema, "a+1.401298464324817e+45")
+      await Util.assertions.decoding.succeed(schema, "a-1.401298464324817e-45")
+      await Util.assertions.decoding.succeed(schema, "a1.401298464324817e-45")
+      await Util.assertions.decoding.succeed(schema, "a+1.401298464324817e-45")
+      await Util.assertions.decoding.succeed(schema, "a-1.401298464324817e+45")
+      await Util.assertions.decoding.succeed(schema, "a1.401298464324817e+45")
+      await Util.assertions.decoding.succeed(schema, "a+1.401298464324817e+45")
 
-      await Util.expectDecodeUnknownSuccess(schema, "a-1.401298464324817E-45")
-      await Util.expectDecodeUnknownSuccess(schema, "a1.401298464324817E-45")
-      await Util.expectDecodeUnknownSuccess(schema, "a+1.401298464324817E-45")
-      await Util.expectDecodeUnknownSuccess(schema, "a-1.401298464324817E+45")
-      await Util.expectDecodeUnknownSuccess(schema, "a1.401298464324817E+45")
-      await Util.expectDecodeUnknownSuccess(schema, "a+1.401298464324817E+45")
+      await Util.assertions.decoding.succeed(schema, "a-1.401298464324817E-45")
+      await Util.assertions.decoding.succeed(schema, "a1.401298464324817E-45")
+      await Util.assertions.decoding.succeed(schema, "a+1.401298464324817E-45")
+      await Util.assertions.decoding.succeed(schema, "a-1.401298464324817E+45")
+      await Util.assertions.decoding.succeed(schema, "a1.401298464324817E+45")
+      await Util.assertions.decoding.succeed(schema, "a+1.401298464324817E+45")
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -302,20 +302,20 @@ schema (Union): boolean | symbol`)
     it(`string`, async () => {
       const schema = S.TemplateLiteral(S.String)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "a")
-      await Util.expectDecodeUnknownSuccess(schema, "ab")
-      await Util.expectDecodeUnknownSuccess(schema, "")
-      await Util.expectDecodeUnknownSuccess(schema, "\n")
-      await Util.expectDecodeUnknownSuccess(schema, "\r")
-      await Util.expectDecodeUnknownSuccess(schema, "\r\n")
-      await Util.expectDecodeUnknownSuccess(schema, "\t")
+      await Util.assertions.decoding.succeed(schema, "a")
+      await Util.assertions.decoding.succeed(schema, "ab")
+      await Util.assertions.decoding.succeed(schema, "")
+      await Util.assertions.decoding.succeed(schema, "\n")
+      await Util.assertions.decoding.succeed(schema, "\r")
+      await Util.assertions.decoding.succeed(schema, "\r\n")
+      await Util.assertions.decoding.succeed(schema, "\t")
     })
 
     it(`\\n + string`, async () => {
       const schema = S.TemplateLiteral("\n", S.String)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "\n")
-      await Util.expectDecodeUnknownSuccess(schema, "\na")
+      await Util.assertions.decoding.succeed(schema, "\n")
+      await Util.assertions.decoding.succeed(schema, "\na")
       await Util.expectDecodeUnknownFailure(
         schema,
         "a",
@@ -326,16 +326,16 @@ schema (Union): boolean | symbol`)
     it(`a\\nb  + string`, async () => {
       const schema = S.TemplateLiteral("a\nb ", S.String)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "a\nb ")
-      await Util.expectDecodeUnknownSuccess(schema, "a\nb c")
+      await Util.assertions.decoding.succeed(schema, "a\nb ")
+      await Util.assertions.decoding.succeed(schema, "a\nb c")
     })
 
     it(`"a" + string + "b"`, async () => {
       const schema = S.TemplateLiteral("a", S.String, "b")
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "ab")
-      await Util.expectDecodeUnknownSuccess(schema, "acb")
-      await Util.expectDecodeUnknownSuccess(schema, "abb")
+      await Util.assertions.decoding.succeed(schema, "ab")
+      await Util.assertions.decoding.succeed(schema, "acb")
+      await Util.assertions.decoding.succeed(schema, "abb")
       await Util.expectDecodeUnknownFailure(
         schema,
         "",
@@ -357,9 +357,9 @@ schema (Union): boolean | symbol`)
     it(`"a" + string + "b" + string`, async () => {
       const schema = S.TemplateLiteral("a", S.String, "b", S.String)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "ab")
-      await Util.expectDecodeUnknownSuccess(schema, "acb")
-      await Util.expectDecodeUnknownSuccess(schema, "acbd")
+      await Util.assertions.decoding.succeed(schema, "ab")
+      await Util.assertions.decoding.succeed(schema, "acb")
+      await Util.assertions.decoding.succeed(schema, "acbd")
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -378,10 +378,10 @@ schema (Union): boolean | symbol`)
       const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
       const schema = S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), "_id")
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "welcome_email_id")
-      await Util.expectDecodeUnknownSuccess(schema, "email_heading_id")
-      await Util.expectDecodeUnknownSuccess(schema, "footer_title_id")
-      await Util.expectDecodeUnknownSuccess(schema, "footer_sendoff_id")
+      await Util.assertions.decoding.succeed(schema, "welcome_email_id")
+      await Util.assertions.decoding.succeed(schema, "email_heading_id")
+      await Util.assertions.decoding.succeed(schema, "footer_title_id")
+      await Util.assertions.decoding.succeed(schema, "footer_sendoff_id")
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -393,36 +393,36 @@ schema (Union): boolean | symbol`)
     it(`string + 0`, async () => {
       const schema = S.TemplateLiteral(S.String, 0)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "a0")
+      await Util.assertions.decoding.succeed(schema, "a0")
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}0`, actual \"a\"")
     })
 
     it(`string + true`, async () => {
       const schema = S.TemplateLiteral(S.String, true)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "atrue")
+      await Util.assertions.decoding.succeed(schema, "atrue")
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}true`, actual \"a\"")
     })
 
     it(`string + null`, async () => {
       const schema = S.TemplateLiteral(S.String, null)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "anull")
+      await Util.assertions.decoding.succeed(schema, "anull")
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}null`, actual \"a\"")
     })
 
     it(`string + 1n`, async () => {
       const schema = S.TemplateLiteral(S.String, 1n)
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "a1")
+      await Util.assertions.decoding.succeed(schema, "a1")
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}1`, actual \"a\"")
     })
 
     it(`string + ("a" | 0)`, async () => {
       const schema = S.TemplateLiteral(S.String, S.Literal("a", 0))
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "a0")
-      await Util.expectDecodeUnknownSuccess(schema, "aa")
+      await Util.assertions.decoding.succeed(schema, "a0")
+      await Util.assertions.decoding.succeed(schema, "aa")
       await Util.expectDecodeUnknownFailure(
         schema,
         "b",
@@ -433,9 +433,9 @@ schema (Union): boolean | symbol`)
     it(`(string | 1) + (number | true)`, async () => {
       const schema = S.TemplateLiteral(S.Union(S.String, S.Literal(1)), S.Union(S.Number, S.Literal(true)))
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "atrue")
-      await Util.expectDecodeUnknownSuccess(schema, "-2")
-      await Util.expectDecodeUnknownSuccess(schema, "10.1")
+      await Util.assertions.decoding.succeed(schema, "atrue")
+      await Util.assertions.decoding.succeed(schema, "-2")
+      await Util.assertions.decoding.succeed(schema, "10.1")
       await Util.expectDecodeUnknownFailure(
         schema,
         "",
@@ -450,10 +450,10 @@ schema (Union): boolean | symbol`)
         "d"
       )
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "ced")
-      await Util.expectDecodeUnknownSuccess(schema, "cabd")
-      await Util.expectDecodeUnknownSuccess(schema, "casbd")
-      await Util.expectDecodeUnknownSuccess(schema, "ca  bd")
+      await Util.assertions.decoding.succeed(schema, "ced")
+      await Util.assertions.decoding.succeed(schema, "cabd")
+      await Util.assertions.decoding.succeed(schema, "casbd")
+      await Util.assertions.decoding.succeed(schema, "ca  bd")
       await Util.expectDecodeUnknownFailure(
         schema,
         "",
@@ -464,8 +464,8 @@ schema (Union): boolean | symbol`)
     it("< + h + (1|2) + >", async () => {
       const schema = S.TemplateLiteral("<", S.TemplateLiteral("h", S.Literal(1, 2)), ">")
       expectProperty(schema)
-      await Util.expectDecodeUnknownSuccess(schema, "<h1>")
-      await Util.expectDecodeUnknownSuccess(schema, "<h2>")
+      await Util.assertions.decoding.succeed(schema, "<h1>")
+      await Util.assertions.decoding.succeed(schema, "<h2>")
       await Util.expectDecodeUnknownFailure(schema, "<h3>", "Expected `<${`h${\"1\" | \"2\"}`}>`, actual \"<h3>\"")
     })
   })

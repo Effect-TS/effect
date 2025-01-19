@@ -54,7 +54,7 @@ describe("Class", () => {
     const schema = S.suspend(() => string)
     class A extends S.Class<A>("A")({ a: S.optional(schema) }) {}
     const string = S.String
-    await Util.expectDecodeUnknownSuccess(A, new A({ a: "a" }))
+    await Util.assertions.decoding.succeed(A, new A({ a: "a" }))
   })
 
   it("should be a Schema", () => {
@@ -233,7 +233,7 @@ describe("Class", () => {
 
   it("decoding", async () => {
     class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
-    await Util.expectDecodeUnknownSuccess(A, { a: "a" }, new A({ a: "a" }))
+    await Util.assertions.decoding.succeed(A, { a: "a" }, new A({ a: "a" }))
     await Util.expectDecodeUnknownFailure(
       A,
       { a: "" },
@@ -315,7 +315,7 @@ details: Duplicate key "a"`)
 
   it("S.typeSchema(Class)", async () => {
     const PersonFromSelf = S.typeSchema(Person)
-    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.assertions.decoding.succeed(PersonFromSelf, new Person({ id: 1, name: "John" }))
     await Util.expectDecodeUnknownFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
@@ -342,7 +342,7 @@ details: Duplicate key "a"`)
     expect(person.name).toEqual("John")
 
     const PersonFromSelf = S.typeSchema(Person)
-    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.assertions.decoding.succeed(PersonFromSelf, new Person({ id: 1, name: "John" }))
     await Util.expectDecodeUnknownFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
@@ -362,7 +362,7 @@ details: Duplicate key "a"`)
       S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(A.fields, fields)
-    await Util.expectDecodeUnknownSuccess(A, new A({ a: 1, b: 1 }))
+    await Util.assertions.decoding.succeed(A, new A({ a: 1, b: 1 }))
     await Util.expectDecodeUnknownFailure(
       A,
       { a: 1, b: 2 },

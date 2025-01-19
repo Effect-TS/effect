@@ -11,8 +11,8 @@ describe("ReadonlySetFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.ReadonlySetFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, new Set(), new Set())
-    await Util.expectDecodeUnknownSuccess(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
+    await Util.assertions.decoding.succeed(schema, new Set(), new Set())
+    await Util.assertions.decoding.succeed(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
 
     await Util.expectDecodeUnknownFailure(
       schema,

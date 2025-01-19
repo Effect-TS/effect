@@ -10,8 +10,8 @@ describe("Option", () => {
 
   it("decoding", async () => {
     const schema = S.Option(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, JSON.parse(JSON.stringify(O.none())), O.none())
-    await Util.expectDecodeUnknownSuccess(schema, JSON.parse(JSON.stringify(O.some("1"))), O.some(1))
+    await Util.assertions.decoding.succeed(schema, JSON.parse(JSON.stringify(O.none())), O.none())
+    await Util.assertions.decoding.succeed(schema, JSON.parse(JSON.stringify(O.some("1"))), O.some(1))
   })
 
   it("encoding", async () => {

@@ -30,8 +30,8 @@ describe("suspend", () => {
         as: S.Array(S.suspend((): S.Schema<A> => schema))
       })
 
-      await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [] })
-      await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
+      await Util.assertions.decoding.succeed(schema, { a: "a1", as: [] })
+      await Util.assertions.decoding.succeed(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -109,7 +109,7 @@ describe("suspend", () => {
         }
       }
 
-      await Util.expectDecodeUnknownSuccess(Operation, input)
+      await Util.assertions.decoding.succeed(Operation, input)
     })
   })
 
