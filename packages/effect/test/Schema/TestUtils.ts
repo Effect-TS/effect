@@ -17,7 +17,8 @@ export const assertions = Effect.runSync(
   SchemaTest.assertions.pipe(
     Effect.provideService(SchemaTest.Assert, {
       deepStrictEqual: (actual, expected) => expect(actual).toStrictEqual(expected),
-      throws: (fn, message) => expect(fn).toThrow(new Error(message))
+      throws: (fn, message) => expect(fn).toThrow(new Error(message)),
+      fail: (message) => assert.fail(message)
     }),
     Effect.provideService(SchemaTest.AssertConfig, {
       arbitrary: {

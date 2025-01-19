@@ -1,4 +1,5 @@
-import { Arbitrary, Context, Effect, Either, FastCheck, Option, ParseResult, Predicate, Schema } from "effect"
+import type { SchemaAST } from "effect"
+import { Arbitrary, Context, Effect, Either, FastCheck, ParseResult, Predicate, Schema } from "effect"
 
 // Defines parameters for FastCheck that exclude typed properties
 export type UntypedParameters = Omit<FastCheck.Parameters<any>, "examples" | "reporter" | "asyncReporter">
@@ -21,12 +22,24 @@ export class AssertConfig extends Context.Tag("AssertConfig")<AssertConfig, {
 export class Assert extends Context.Tag("Assert")<Assert, {
   readonly deepStrictEqual: (actual: unknown, expected: unknown) => void
   readonly throws: (fn: () => unknown, message: string) => void
+  readonly fail: (fmessage: string) => void
 }>() {}
 
 // Provides various assertions for Schema testing
 export const assertions = Effect.gen(function*() {
-  const { deepStrictEqual, throws } = yield* Assert
+  const { deepStrictEqual, fail, throws } = yield* Assert
   const config = yield* AssertConfig
+
+  const expectRight = <E, A>(e: Either.Either<A, E>, a: A) => {
+    if (Either.isRight(e)) {
+      deepStrictEqual(e.right, a)
+    } else {
+      // eslint-disable-next-line no-console
+      console.log(e.left)
+      fail(`expected a Right, got a Left: ${e.left}`)
+    }
+  }
+
   return {
     make: {
       /**
@@ -36,9 +49,9 @@ export const assertions = Effect.gen(function*() {
         // Destructure to verify that "this" type is bound
         { make }: { readonly make: (a: A) => B },
         input: A,
-        expected: Option.Option<B> = Option.none()
+        expected?: B
       ) {
-        deepStrictEqual(make(input), Option.getOrElse(expected, () => input))
+        deepStrictEqual(make(input), expected ?? input)
       },
 
       /**
@@ -110,6 +123,29 @@ export const assertions = Effect.gen(function*() {
         }),
         params
       )
+    },
+
+    decoding: {
+      async succeed<A, I>(
+        schema: Schema.Schema<A, I>,
+        input: unknown,
+        expected?: A,
+        options?: {
+          readonly parseOptions?: SchemaAST.ParseOptions
+        }
+      ) {
+        const decoding = ParseResult.decodeUnknown(schema)(input, options?.parseOptions)
+        const result = await Effect.runPromise(Effect.either(decoding))
+        expectRight(
+          result,
+          arguments.length >= 3 ? // Account for `expected` being `undefined`
+            expected :
+            expected ?? input
+        )
+      },
+
+      fail() {
+      }
     }
   }
 })

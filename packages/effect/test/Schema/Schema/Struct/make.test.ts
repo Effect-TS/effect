@@ -1,4 +1,3 @@
-import * as Option from "effect/Option"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
@@ -88,9 +87,9 @@ describe("make", () => {
       [b]: S.Number.pipe(S.propertySignature, S.withConstructorDefault(() => 0))
     })
     Util.assertions.make.succeed(schema, { a: "a", [b]: 2 })
-    Util.assertions.make.succeed(schema, { a: "a" }, Option.some({ a: "a", [b]: 0 }))
-    Util.assertions.make.succeed(schema, { [b]: 2 }, Option.some({ a: "", [b]: 2 }))
-    Util.assertions.make.succeed(schema, {}, Option.some({ a: "", [b]: 0 }))
+    Util.assertions.make.succeed(schema, { a: "a" }, { a: "a", [b]: 0 })
+    Util.assertions.make.succeed(schema, { [b]: 2 }, { a: "", [b]: 2 })
+    Util.assertions.make.succeed(schema, {}, { a: "", [b]: 0 })
   })
 
   it("props declarations with defaults (data first)", () => {
@@ -100,9 +99,9 @@ describe("make", () => {
       [b]: S.withConstructorDefault(S.propertySignature(S.Number), () => 0)
     })
     Util.assertions.make.succeed(schema, { a: "a", [b]: 2 })
-    Util.assertions.make.succeed(schema, { a: "a" }, Option.some({ a: "a", [b]: 0 }))
-    Util.assertions.make.succeed(schema, { [b]: 2 }, Option.some({ a: "", [b]: 2 }))
-    Util.assertions.make.succeed(schema, {}, Option.some({ a: "", [b]: 0 }))
+    Util.assertions.make.succeed(schema, { a: "a" }, { a: "a", [b]: 0 })
+    Util.assertions.make.succeed(schema, { [b]: 2 }, { a: "", [b]: 2 })
+    Util.assertions.make.succeed(schema, {}, { a: "", [b]: 0 })
   })
 
   it("props transformations with defaults (data last)", () => {
@@ -112,15 +111,15 @@ describe("make", () => {
       [b]: S.Number.pipe(S.optionalWith({ default: () => -1 }), S.withConstructorDefault(() => 0))
     })
     Util.assertions.make.succeed(schema, { a: "a", [b]: 2 })
-    Util.assertions.make.succeed(schema, { a: "a" }, Option.some({ a: "a", [b]: 0 }))
-    Util.assertions.make.succeed(schema, { [b]: 2 }, Option.some({ a: "", [b]: 2 }))
-    Util.assertions.make.succeed(schema, {}, Option.some({ a: "", [b]: 0 }))
+    Util.assertions.make.succeed(schema, { a: "a" }, { a: "a", [b]: 0 })
+    Util.assertions.make.succeed(schema, { [b]: 2 }, { a: "", [b]: 2 })
+    Util.assertions.make.succeed(schema, {}, { a: "", [b]: 0 })
   })
 
   it("withConstructorDefault + withDecodingDefault", () => {
     const schema = S.Struct({
       a: S.optional(S.Number).pipe(S.withDecodingDefault(() => 1), S.withConstructorDefault(() => 0))
     })
-    Util.assertions.make.succeed(schema, {}, Option.some({ a: 0 }))
+    Util.assertions.make.succeed(schema, {}, { a: 0 })
   })
 })
