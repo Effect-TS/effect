@@ -83,7 +83,7 @@ export const assertions = Effect.gen(function*() {
        * the schema.
        */
       validateGeneratedValues<A, I, R>(schema: Schema.Schema<A, I, R>, options?: {
-        readonly params?: FastCheck.Parameters<[A]>
+        readonly params?: FastCheck.Parameters<[A]> | undefined
       }) {
         if (config.arbitrary?.validateGeneratedValues?.skip === true) {
           return
@@ -103,7 +103,7 @@ export const assertions = Effect.gen(function*() {
      */
     testRoundtripConsistency<A, I>(schema: Schema.Schema<A, I, never>, options?: {
       readonly ignoreEncodingErrors?: ((issue: ParseResult.ParseIssue) => boolean) | undefined
-      readonly params?: FastCheck.Parameters<[A]>
+      readonly params?: FastCheck.Parameters<[A]> | undefined
     }) {
       if (config.testRoundtripConsistency?.skip === true) {
         return
@@ -141,8 +141,8 @@ export const assertions = Effect.gen(function*() {
         input: unknown,
         expected?: A,
         options?: {
-          readonly parseOptions?: SchemaAST.ParseOptions
-        }
+          readonly parseOptions?: SchemaAST.ParseOptions | undefined
+        } | undefined
       ) {
         const decoding = Effect.gen(function*() {
           const decoded = yield* Effect.either(ParseResult.decodeUnknown(schema)(input, options?.parseOptions))
@@ -166,8 +166,8 @@ export const assertions = Effect.gen(function*() {
         input: unknown,
         message: string,
         options?: {
-          readonly parseOptions?: SchemaAST.ParseOptions
-        }
+          readonly parseOptions?: SchemaAST.ParseOptions | undefined
+        } | undefined
       ) {
         const decoding = Effect.gen(function*() {
           const decoded = yield* Effect.either(ParseResult.decodeUnknown(schema)(input, options?.parseOptions))
@@ -188,8 +188,8 @@ export const assertions = Effect.gen(function*() {
         input: A,
         expected?: I,
         options?: {
-          readonly parseOptions?: SchemaAST.ParseOptions
-        }
+          readonly parseOptions?: SchemaAST.ParseOptions | undefined
+        } | undefined
       ) {
         const encoding = Effect.gen(function*() {
           const encoded = yield* Effect.either(ParseResult.encodeUnknown(schema)(input, options?.parseOptions))
@@ -213,8 +213,8 @@ export const assertions = Effect.gen(function*() {
         input: A,
         message: string,
         options?: {
-          readonly parseOptions?: SchemaAST.ParseOptions
-        }
+          readonly parseOptions?: SchemaAST.ParseOptions | undefined
+        } | undefined
       ) {
         const encoding = Effect.gen(function*() {
           const encoded = yield* Effect.either(ParseResult.encodeUnknown(schema)(input, options?.parseOptions))

@@ -22,11 +22,11 @@ const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Arra
 describe("ParseResultFormatter", () => {
   describe("Forbidden", () => {
     it("default message", () => {
-      const schema = Util.effectify(S.String)
+      const schema = Util.AsyncString
       const input = ""
       expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
         new Error(
-          `(string <-> string)
+          `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
         )
       )
@@ -39,11 +39,11 @@ describe("ParseResultFormatter", () => {
     })
 
     it("default message with identifier", () => {
-      const schema = Util.effectify(S.String).annotations({ identifier: "identifier" })
+      const schema = Util.AsyncString
       const input = ""
       expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
         new Error(
-          `identifier
+          `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
         )
       )
@@ -56,10 +56,10 @@ describe("ParseResultFormatter", () => {
     })
 
     it("custom message (override=false)", () => {
-      const schema = Util.effectify(S.String).annotations({ message: () => "custom message" })
+      const schema = Util.AsyncString.annotations({ message: () => "custom message" })
       const input = ""
       expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
-        new Error(`(string <-> string)
+        new Error(`AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`)
       )
       expectIssues(schema, input, [{
@@ -71,12 +71,12 @@ describe("ParseResultFormatter", () => {
     })
 
     it("custom message (override=true)", () => {
-      const schema = Util.effectify(S.String).annotations({
+      const schema = Util.AsyncString.annotations({
         message: () => ({ message: "custom message", override: true })
       })
       const input = ""
       expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
-        new Error(`(string <-> string)
+        new Error(`AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`)
       )
       expectIssues(schema, input, [{

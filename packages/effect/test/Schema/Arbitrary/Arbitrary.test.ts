@@ -3,7 +3,7 @@ import * as Arbitrary from "effect/Arbitrary"
 import * as fc from "effect/FastCheck"
 import * as Order from "effect/Order"
 import { isUnknown } from "effect/Predicate"
-import { expectValidArbitrary } from "effect/test/Schema/TestUtils"
+import * as Util from "effect/test/Schema/TestUtils"
 import { assert, describe, expect, it } from "vitest"
 
 const expectConstraints = <A, I>(
@@ -79,7 +79,7 @@ schema (NeverKeyword): never`)
 
   it("make(S.typeSchema(schema))", () => {
     const schema = S.NumberFromString
-    expectValidArbitrary(S.typeSchema(schema))
+    Util.assertions.arbitrary.validateGeneratedValues(S.typeSchema(schema))
   })
 
   it("make(S.encodedSchema(schema))", () => {
@@ -90,120 +90,120 @@ schema (NeverKeyword): never`)
       d: S.NumberFromString.pipe(S.positive()),
       e: S.OptionFromSelf(S.NumberFromString)
     })
-    expectValidArbitrary(S.encodedSchema(schema))
+    Util.assertions.arbitrary.validateGeneratedValues(S.encodedSchema(schema))
   })
 
   it("String", () => {
     const schema = S.String
-    expectValidArbitrary(schema)
+    Util.assertions.arbitrary.validateGeneratedValues(schema)
   })
 
   it("Void", () => {
-    expectValidArbitrary(S.Void)
+    Util.assertions.arbitrary.validateGeneratedValues(S.Void)
   })
 
   it("Boolean", () => {
-    expectValidArbitrary(S.Number)
+    Util.assertions.arbitrary.validateGeneratedValues(S.Number)
   })
 
   it("boolean", () => {
-    expectValidArbitrary(S.Boolean)
+    Util.assertions.arbitrary.validateGeneratedValues(S.Boolean)
   })
 
   it("BigIntFromSelf", () => {
-    expectValidArbitrary(S.BigIntFromSelf)
+    Util.assertions.arbitrary.validateGeneratedValues(S.BigIntFromSelf)
   })
 
   it("SymbolFromSelf", () => {
-    expectValidArbitrary(S.SymbolFromSelf)
+    Util.assertions.arbitrary.validateGeneratedValues(S.SymbolFromSelf)
   })
 
   it("Object", () => {
-    expectValidArbitrary(S.Object)
+    Util.assertions.arbitrary.validateGeneratedValues(S.Object)
   })
 
   it("Any", () => {
-    expectValidArbitrary(S.Any)
+    Util.assertions.arbitrary.validateGeneratedValues(S.Any)
   })
 
   it("Unknown", () => {
-    expectValidArbitrary(S.Unknown)
+    Util.assertions.arbitrary.validateGeneratedValues(S.Unknown)
   })
 
   describe("Literal", () => {
     it("1", () => {
       const schema = S.Literal(1)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it(`1 + "a"`, () => {
       const schema = S.Literal(1, "a")
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
   })
 
   it("UniqueSymbolFromSelf", () => {
     const a = Symbol.for("effect/Schema/test/a")
     const schema = S.UniqueSymbolFromSelf(a)
-    expectValidArbitrary(schema)
+    Util.assertions.arbitrary.validateGeneratedValues(schema)
   })
 
   it("DateFromSelf", () => {
     const schema = S.DateFromSelf
-    expectValidArbitrary(schema)
+    Util.assertions.arbitrary.validateGeneratedValues(schema)
   })
 
   it("DurationFromSelf", () => {
     const schema = S.DurationFromSelf
-    expectValidArbitrary(schema)
+    Util.assertions.arbitrary.validateGeneratedValues(schema)
   })
 
   describe("TemplateLiteral", () => {
     it("a", () => {
       const schema = S.TemplateLiteral(S.Literal("a"))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("a b", () => {
       const schema = S.TemplateLiteral(S.Literal("a"), S.Literal(" "), S.Literal("b"))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("a${string}", () => {
       const schema = S.TemplateLiteral(S.Literal("a"), S.String)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("a${number}", () => {
       const schema = S.TemplateLiteral(S.Literal("a"), S.Number)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("a", () => {
       const schema = S.TemplateLiteral(S.Literal("a"))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("${string}", () => {
       const schema = S.TemplateLiteral(S.String)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("a${string}b", () => {
       const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b"))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html", async () => {
       const EmailLocaleIDs = S.Literal("welcome_email", "email_heading")
       const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
       const schema = S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), "_id")
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("< + h + (1|2) + >", async () => {
       const schema = S.TemplateLiteral("<", S.TemplateLiteral("h", S.Literal(1, 2)), ">")
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
   })
 
@@ -223,7 +223,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         Banana
       }
       const schema = S.Enums(Fruits)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("String enums", () => {
@@ -233,7 +233,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         Cantaloupe = 0
       }
       const schema = S.Enums(Fruits)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("Const enums", () => {
@@ -243,115 +243,115 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         Cantaloupe: 3
       } as const
       const schema = S.Enums(Fruits)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
   })
 
   describe("Struct", () => {
     it("fields", () => {
       const schema = S.Struct({ a: S.String, b: S.Number })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("fields + record", () => {
       const schema = S.Struct({ a: S.String }, S.Record({ key: S.String, value: S.Union(S.String, S.Number) }))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("required property signature", () => {
       const schema = S.Struct({ a: S.Number })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("required property signature with undefined", () => {
       const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("optional property signature", () => {
       const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("optional property signature with undefined", () => {
       const schema = S.Struct({
         a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true })
       })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
   })
 
   describe("Record", () => {
     it("Record(string, string)", () => {
       const schema = S.Record({ key: S.String, value: S.String })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("Record(symbol, string)", () => {
       const schema = S.Record({ key: S.SymbolFromSelf, value: S.String })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
   })
 
   it("union", () => {
     const schema = S.Union(S.String, S.Number)
-    expectValidArbitrary(schema)
+    Util.assertions.arbitrary.validateGeneratedValues(schema)
   })
 
   describe("Tuple", () => {
     it("empty", () => {
       const schema = S.Tuple()
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("required element", () => {
       const schema = S.Tuple(S.Number)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("required element with undefined", () => {
       const schema = S.Tuple(S.Union(S.Number, S.Undefined))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("optional element", () => {
       const schema = S.Tuple(S.optionalElement(S.Number))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("optional element with undefined", () => {
       const schema = S.Tuple(S.optionalElement(S.Union(S.Number, S.Undefined)))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("e e?", () => {
       const schema = S.Tuple(S.String, S.optionalElement(S.Number))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("e r", () => {
       const schema = S.Tuple([S.String], S.Number)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("e? r", () => {
       const schema = S.Tuple([S.optionalElement(S.String)], S.Number)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("r", () => {
       const schema = S.Array(S.Number)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("r e", () => {
       const schema = S.Tuple([], S.String, S.Number)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("e r e", () => {
       const schema = S.Tuple([S.String], S.Number, S.Boolean)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
   })
 
@@ -377,7 +377,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
           S.suspend((): S.Schema<A> => schema).annotations({ arbitrary: () => () => arb })
         )
       })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("make(S.encodedSchema(schema))", () => {
@@ -392,7 +392,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         a: S.Union(NumberFromString, S.suspend((): S.Schema<A, I> => schema))
       })
 
-      expectValidArbitrary(S.encodedSchema(schema))
+      Util.assertions.arbitrary.validateGeneratedValues(S.encodedSchema(schema))
     })
 
     it("Tuple", () => {
@@ -401,13 +401,13 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         S.Number,
         S.NullOr(S.suspend((): S.Schema<A> => schema))
       )
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("Array", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.Array(S.Union(S.String, Rec))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("Struct", () => {
@@ -419,7 +419,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         a: S.String,
         as: S.Array(S.suspend((): S.Schema<A> => schema))
       })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("Record", () => {
@@ -427,7 +427,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         [_: string]: A
       }
       const schema = S.Record({ key: S.String, value: S.suspend((): S.Schema<A> => schema) })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("optional", () => {
@@ -435,7 +435,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       const schema: any = S.Struct({
         a: S.optional(Rec)
       })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("Array + Array", () => {
@@ -444,7 +444,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         a: S.Array(Rec),
         b: S.Array(Rec)
       })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("optional + Array", () => {
@@ -453,7 +453,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         a: S.optional(Rec),
         b: S.Array(Rec)
       })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("mutually suspended schemas", () => {
@@ -480,67 +480,69 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         left: Expression,
         right: Expression
       })
-      expectValidArbitrary(Operation, { numRuns: 5 })
+      Util.assertions.arbitrary.validateGeneratedValues(Operation, {
+        params: { numRuns: 5 }
+      })
     })
 
     it("RedactedFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.RedactedFromSelf(S.NullOr(Rec))
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("OptionFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.OptionFromSelf(Rec)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("EitherFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.EitherFromSelf({ left: S.String, right: Rec })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("MapFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.MapFromSelf({ key: S.String, value: Rec })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("SetFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.SetFromSelf(Rec)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("ChunkFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.ChunkFromSelf(Rec)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("HashSetFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.HashSetFromSelf(Rec)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("HashMapFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.HashMapFromSelf({ key: S.String, value: Rec })
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("ListFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.ListFromSelf(Rec)
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
     it("SortedSetFromSelf", () => {
       const Rec = S.suspend((): any => schema)
       const schema: any = S.SortedSetFromSelf(Rec, Order.empty(), Order.empty())
-      expectValidArbitrary(schema)
+      Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
   })
 
@@ -548,7 +550,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     describe("declaration filters", () => {
       it("ValidDateFromSelf", () => {
         const schema = S.ValidDateFromSelf
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
     })
 
@@ -556,37 +558,37 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       it("minItems (Array)", () => {
         const schema = S.Array(S.String).pipe(S.minItems(2))
         expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 2 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("minItems (NonEmptyArray)", () => {
         const schema = S.NonEmptyArray(S.String).pipe(S.minItems(2))
         expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 2 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("maxItems (Array)", () => {
         const schema = S.Array(S.String).pipe(S.maxItems(5))
         expectConstraints(schema, Arbitrary.makeArrayConstraints({ maxLength: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("maxItems (NonEmptyArray)", () => {
         const schema = S.NonEmptyArray(S.String).pipe(S.maxItems(5))
         expectConstraints(schema, Arbitrary.makeArrayConstraints({ maxLength: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("itemsCount (Array)", () => {
         const schema = S.Array(S.String).pipe(S.itemsCount(3))
         expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 3, maxLength: 3 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("itemsCount (NonEmptyArray)", () => {
         const schema = S.NonEmptyArray(S.String).pipe(S.itemsCount(3))
         expectConstraints(schema, Arbitrary.makeArrayConstraints({ minLength: 3, maxLength: 3 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
     })
 
@@ -594,31 +596,31 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       it("minLength", () => {
         const schema = S.String.pipe(S.minLength(2))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("maxLength", () => {
         const schema = S.String.pipe(S.maxLength(5))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ maxLength: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("length: number", () => {
         const schema = S.String.pipe(S.length(10))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 10, maxLength: 10 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("length: { min, max }", () => {
         const schema = S.String.pipe(S.length({ min: 2, max: 5 }))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("minLength + maxLength", () => {
         const schema = S.String.pipe(S.minLength(2), S.maxLength(5))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("arb + minLength + maxLength", () => {
@@ -627,7 +629,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
           S.maxLength(5)
         )
         expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("minLength + maxLength + arb", () => {
@@ -636,33 +638,33 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
           S.maxLength(5)
         ).annotations({ arbitrary: () => (fc) => fc.string() })
         expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 2, maxLength: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("startsWith", () => {
         const schema = S.String.pipe(S.startsWith("a"))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ pattern: "^a" }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("endsWith", () => {
         const schema = S.String.pipe(S.endsWith("a"))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ pattern: "^.*a$" }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("pattern", () => {
         const regex = /^[A-Z]{3}[0-9]{3}$/
         const schema = S.String.pipe(S.pattern(regex))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ pattern: regex.source }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("nonEmptyString + pattern", () => {
         const regex = /^[-]*$/
         const schema = S.String.pipe(S.nonEmptyString(), S.pattern(regex))
         expectConstraints(schema, Arbitrary.makeStringConstraints({ minLength: 1, pattern: regex.source }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("pattern + pattern", () => {
@@ -673,7 +675,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
           schema,
           Arbitrary.makeStringConstraints({ pattern: `(?:${regexp1.source})|(?:${regexp2.source})` })
         )
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
     })
 
@@ -681,67 +683,67 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       it("nonNaN", () => {
         const schema = S.Number.pipe(S.nonNaN())
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ noNaN: true }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("finite", () => {
         const schema = S.Number.pipe(S.finite())
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ noNaN: true, noDefaultInfinity: true }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("JsonNumber", () => {
         const schema = S.JsonNumber
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ noDefaultInfinity: true, noNaN: true }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("int", () => {
         const schema = S.Number.pipe(S.int())
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ isInteger: true }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("between int", () => {
         const schema = S.Number.pipe(S.between(2, 5), S.int())
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ isInteger: true, min: 2, max: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("int between", () => {
         const schema = S.Number.pipe(S.int(), S.between(2, 5))
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ isInteger: true, min: 2, max: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("lessThanOrEqualTo", () => {
         const schema = S.Number.pipe(S.lessThanOrEqualTo(5))
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ max: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("greaterThanOrEqualTo", () => {
         const schema = S.Number.pipe(S.greaterThanOrEqualTo(2))
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ min: 2 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("lessThan", () => {
         const schema = S.Number.pipe(S.lessThan(5))
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ max: 5, maxExcluded: true }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("greaterThan", () => {
         const schema = S.Number.pipe(S.greaterThan(2))
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ min: 2, minExcluded: true }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("between", () => {
         const schema = S.Number.pipe(S.between(2, 5))
         expectConstraints(schema, Arbitrary.makeNumberConstraints({ min: 2, max: 5 }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
     })
 
@@ -749,31 +751,31 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       it("lessThanOrEqualTo", () => {
         const schema = S.BigIntFromSelf.pipe(S.lessThanOrEqualToBigInt(BigInt(5)))
         expectConstraints(schema, Arbitrary.makeBigIntConstraints({ max: BigInt(5) }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("greaterThanOrEqualTo", () => {
         const schema = S.BigIntFromSelf.pipe(S.greaterThanOrEqualToBigInt(BigInt(2)))
         expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2) }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("lessThan", () => {
         const schema = S.BigIntFromSelf.pipe(S.lessThanBigInt(BigInt(5)))
         expectConstraints(schema, Arbitrary.makeBigIntConstraints({ max: BigInt(5) }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("greaterThan", () => {
         const schema = S.BigIntFromSelf.pipe(S.greaterThanBigInt(BigInt(2)))
         expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2) }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("between", () => {
         const schema = S.BigIntFromSelf.pipe(S.betweenBigInt(BigInt(2), BigInt(5)))
         expectConstraints(schema, Arbitrary.makeBigIntConstraints({ min: BigInt(2), max: BigInt(5) }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
     })
 
@@ -781,31 +783,31 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       it("ValidDateFromSelf", () => {
         const schema = S.ValidDateFromSelf
         expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: true }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("lessThanOrEqualTo", () => {
         const schema = S.DateFromSelf.pipe(S.lessThanOrEqualToDate(new Date(5)))
         expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: false, max: new Date(5) }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("greaterThanOrEqualTo", () => {
         const schema = S.DateFromSelf.pipe(S.greaterThanOrEqualToDate(new Date(2)))
         expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: false, min: new Date(2) }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("lessThan", () => {
         const schema = S.DateFromSelf.pipe(S.lessThanDate(new Date(5)))
         expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: false, max: new Date(5) }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("greaterThan", () => {
         const schema = S.DateFromSelf.pipe(S.greaterThanDate(new Date(2)))
         expectConstraints(schema, Arbitrary.makeDateConstraints({ noInvalidDate: false, min: new Date(2) }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
 
       it("between", () => {
@@ -814,7 +816,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
           schema,
           Arbitrary.makeDateConstraints({ noInvalidDate: false, min: new Date(2), max: new Date(5) })
         )
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
     })
   })
@@ -823,7 +825,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     describe("number transformations", () => {
       it("clamp with numbers with decimals", () => {
         const schema = S.Number.pipe(S.clamp(1.3, 3.1))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
     })
   })
@@ -936,7 +938,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
             return from(fc).filter((s) => s.length > 2)
           }
         }))
-        expectValidArbitrary(schema)
+        Util.assertions.arbitrary.validateGeneratedValues(schema)
       })
     })
 
@@ -947,19 +949,19 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
 
   describe("DateTime", () => {
     it("DateTimeUtcFromSelf", () => {
-      expectValidArbitrary(S.DateTimeUtcFromSelf)
+      Util.assertions.arbitrary.validateGeneratedValues(S.DateTimeUtcFromSelf)
     })
 
     it("TimeZoneOffsetFromSelf", () => {
-      expectValidArbitrary(S.TimeZoneOffsetFromSelf)
+      Util.assertions.arbitrary.validateGeneratedValues(S.TimeZoneOffsetFromSelf)
     })
 
     it("TimeZoneNamedFromSelf", () => {
-      expectValidArbitrary(S.TimeZoneNamedFromSelf)
+      Util.assertions.arbitrary.validateGeneratedValues(S.TimeZoneNamedFromSelf)
     })
 
     it("DateTimeZonedFromSelf", () => {
-      expectValidArbitrary(S.DateTimeZonedFromSelf)
+      Util.assertions.arbitrary.validateGeneratedValues(S.DateTimeZonedFromSelf)
     })
   })
 })
