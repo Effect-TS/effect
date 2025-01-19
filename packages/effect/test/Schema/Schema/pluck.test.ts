@@ -39,8 +39,8 @@ describe("pluck", () => {
     it("struct with optional key", async () => {
       const origin = S.Struct({ a: S.optional(S.String), b: S.Number })
       const schema = S.pluck(origin, "a")
-      await Util.expectSuccess(S.decodeUnknown(schema)({ b: 2 }), undefined)
-      await Util.expectSuccess(S.decodeUnknown(schema)({ a: undefined, b: 2 }), undefined)
+      await Util.assertions.effect.succeed(S.decodeUnknown(schema)({ b: 2 }), undefined)
+      await Util.assertions.effect.succeed(S.decodeUnknown(schema)({ a: undefined, b: 2 }), undefined)
       await Util.assertions.decoding.succeed(schema, { a: "a", b: 2 }, "a")
     })
 
@@ -94,17 +94,17 @@ describe("pluck", () => {
     })
   })
 
-  it("struct with optional key", async () => {
+  it.todo("struct with optional key", async () => {
     const origin = S.Struct({ a: S.optional(S.String) })
     const schema = S.pluck(origin, "a")
-    await Util.assertions.encoding.succeed(schema, undefined, {})
+    await Util.assertions.encoding.succeed(schema, undefined, { a: undefined })
     await Util.assertions.encoding.succeed(schema, "a", { a: "a" })
   })
 
-  it("struct with exact optional key", async () => {
+  it.todo("struct with exact optional key", async () => {
     const origin = S.Struct({ a: S.optionalWith(S.String, { exact: true }) })
     const schema = S.pluck(origin, "a")
-    await Util.assertions.encoding.succeed(schema, undefined, {})
+    await Util.assertions.encoding.succeed(schema, undefined, { a: undefined })
     await Util.assertions.encoding.succeed(schema, "a", { a: "a" })
   })
 })

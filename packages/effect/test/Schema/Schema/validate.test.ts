@@ -6,20 +6,20 @@ const expectValidateSuccess = async <A, I>(
   schema: S.Schema<A, I, never>,
   input: unknown,
   expected: A = input as any
-) => Util.expectSuccess(S.validate(schema)(input), expected)
+) => Util.assertions.effect.succeed(S.validate(schema)(input), expected)
 
 const expectValidateFailure = async <A, I>(
   schema: S.Schema<A, I, never>,
   input: unknown,
   message: string
-) => Util.expectFailure(S.validate(schema)(input), message)
+) => Util.assertions.effect.fail(S.validate(schema)(input), message)
 
 describe("validate", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return Left on invalid values", async () => {
-    await Util.expectEffectSuccess(S.validate(schema)({ a: 1 }), { a: 1 })
-    await Util.expectEffectFailure(
+    await Util.assertions.effect.succeed(S.validate(schema)({ a: 1 }), { a: 1 })
+    await Util.assertions.effect.fail(
       S.validate(schema)({ a: null }),
       `{ readonly a: number }
 └─ ["a"]
@@ -29,19 +29,19 @@ describe("validate", () => {
 
   it("should respect outer/inner options", async () => {
     const input = { a: 1, b: "b" }
-    await Util.expectEffectFailure(
+    await Util.assertions.effect.fail(
       S.validate(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    await Util.expectEffectFailure(
+    await Util.assertions.effect.fail(
       S.validate(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    await Util.expectEffectSuccess(
+    await Util.assertions.effect.succeed(
       S.validate(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),
       {
         a: 1

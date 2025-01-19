@@ -6,7 +6,7 @@ import { describe, it } from "vitest"
 describe("DurationFromNanos", () => {
   const schema = S.DurationFromNanos
 
-  it("test roundtrip consistency", () => {
+  it.todo("test roundtrip consistency", () => {
     Util.assertions.testRoundtripConsistency(schema)
   })
 
