@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import * as Arr from "./Array.js"
+import * as Data from "./Data.js"
 import type * as DateTime from "./DateTime.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
@@ -202,25 +203,14 @@ export type ParseErrorTypeId = typeof ParseErrorTypeId
  * @since 2.0.0
  * @category models
  */
-export interface ParseError {
-  readonly _tag: "ParseError"
-  readonly [ParseErrorTypeId]: ParseErrorTypeId
+export class ParseError extends Data.TaggedError("CronParseError")<{
   readonly message: string
   readonly input?: string
-}
-
-const ParseErrorProto = {
-  _tag: "ParseError",
-  [ParseErrorTypeId]: ParseErrorTypeId
-}
-
-const ParseError = (message: string, input?: string): ParseError => {
-  const o: Mutable<ParseError> = Object.create(ParseErrorProto)
-  o.message = message
-  if (input !== undefined) {
-    o.input = input
-  }
-  return o
+}> {
+  /**
+   * @since 2.0.0
+   */
+  readonly [ParseErrorTypeId] = ParseErrorTypeId
 }
 
 /**
@@ -259,7 +249,12 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
 export const parse = (cron: string, tz?: DateTime.TimeZone | string): Either.Either<Cron, ParseError> => {
   const segments = cron.split(" ").filter(String.isNonEmpty)
   if (segments.length !== 5 && segments.length !== 6) {
-    return Either.left(ParseError(`Invalid number of segments in cron expression`, cron))
+    return Either.left(
+      new ParseError({
+        message: `Invalid number of segments in cron expression`,
+        input: cron
+      })
+    )
   }
 
   if (segments.length === 5) {
@@ -269,7 +264,11 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string): Either.Eit
   const [seconds, minutes, hours, days, months, weekdays] = segments
   const zone = tz === undefined || dateTime.isTimeZone(tz) ?
     Either.right(tz) :
-    Either.fromOption(dateTime.zoneFromString(tz), () => ParseError(`Invalid time zone in cron expression`, tz))
+    Either.fromOption(dateTime.zoneFromString(tz), () =>
+      new ParseError({
+        message: `Invalid time zone in cron expression`,
+        input: tz
+      }))
 
   return Either.all({
     tz: zone,
@@ -627,13 +626,13 @@ const parseSegment = (
 
     if (step !== undefined) {
       if (!Number.isInteger(step)) {
-        return Either.left(ParseError(`Expected step value to be a positive integer`, input))
+        return Either.left(new ParseError({ message: `Expected step value to be a positive integer`, input }))
       }
       if (step < 1) {
-        return Either.left(ParseError(`Expected step value to be greater than 0`, input))
+        return Either.left(new ParseError({ message: `Expected step value to be greater than 0`, input }))
       }
       if (step > options.max) {
-        return Either.left(ParseError(`Expected step value to be less than ${options.max}`, input))
+        return Either.left(new ParseError({ message: `Expected step value to be less than ${options.max}`, input }))
       }
     }
 
@@ -644,23 +643,27 @@ const parseSegment = (
     } else {
       const [left, right] = splitRange(raw, options.aliases)
       if (!Number.isInteger(left)) {
-        return Either.left(ParseError(`Expected a positive integer`, input))
+        return Either.left(new ParseError({ message: `Expected a positive integer`, input }))
       }
       if (left < options.min || left > options.max) {
-        return Either.left(ParseError(`Expected a value between ${options.min} and ${options.max}`, input))
+        return Either.left(
+          new ParseError({ message: `Expected a value between ${options.min} and ${options.max}`, input })
+        )
       }
 
       if (right === undefined) {
         values.add(left)
       } else {
         if (!Number.isInteger(right)) {
-          return Either.left(ParseError(`Expected a positive integer`, input))
+          return Either.left(new ParseError({ message: `Expected a positive integer`, input }))
         }
         if (right < options.min || right > options.max) {
-          return Either.left(ParseError(`Expected a value between ${options.min} and ${options.max}`, input))
+          return Either.left(
+            new ParseError({ message: `Expected a value between ${options.min} and ${options.max}`, input })
+          )
         }
         if (left > right) {
-          return Either.left(ParseError(`Invalid value range`, input))
+          return Either.left(new ParseError({ message: `Invalid value range`, input }))
         }
 
         for (let i = left; i <= right; i += step ?? 1) {
