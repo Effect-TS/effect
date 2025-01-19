@@ -20,7 +20,7 @@ describe("nonEmptyString", () => {
     await Util.assertions.decoding.succeed(schema, "a")
     await Util.assertions.decoding.succeed(schema, "aa")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `NonEmptyString

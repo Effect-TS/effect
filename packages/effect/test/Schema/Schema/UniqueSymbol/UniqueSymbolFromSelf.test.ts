@@ -8,7 +8,7 @@ describe("UniqueSymbolFromSelf", () => {
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, a)
     await Util.assertions.decoding.succeed(schema, Symbol.for("effect/Schema/test/a"))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Symbol(effect/Schema/test/a)",
       `Expected Symbol(effect/Schema/test/a), actual "Symbol(effect/Schema/test/a)"`

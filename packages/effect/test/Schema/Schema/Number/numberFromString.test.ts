@@ -19,42 +19,42 @@ describe("NumberFromString", () => {
     await Util.assertions.decoding.succeed(schema, "Infinity", Infinity)
     await Util.assertions.decoding.succeed(schema, "-Infinity", -Infinity)
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `NumberFromString
 └─ Transformation process failure
    └─ Unable to decode "" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " ",
       `NumberFromString
 └─ Transformation process failure
    └─ Unable to decode " " into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "1AB",
       `NumberFromString
 └─ Transformation process failure
    └─ Unable to decode "1AB" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "AB1",
       `NumberFromString
 └─ Transformation process failure
    └─ Unable to decode "AB1" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "a",
       `NumberFromString
 └─ Transformation process failure
    └─ Unable to decode "a" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "a1",
       `NumberFromString

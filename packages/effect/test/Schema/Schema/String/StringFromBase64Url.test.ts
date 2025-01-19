@@ -20,14 +20,14 @@ describe("StringFromBase64Url", () => {
       "Pj8-ZD_Dnw",
       ">?>d?ß"
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Zm9vY",
       `StringFromBase64Url
 └─ Transformation process failure
    └─ Length should be a multiple of 4, but is 5`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Pj8/ZD+Dnw",
       `StringFromBase64Url

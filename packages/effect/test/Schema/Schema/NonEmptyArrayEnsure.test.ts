@@ -15,7 +15,7 @@ describe("NonEmptyArrayEnsure", () => {
   it("decode non-array", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
     await Util.assertions.decoding.succeed(schema, "123", [123])
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(NumberFromString | readonly [NumberFromString, ...NumberFromString[]] <-> readonly [number, ...number[]])
@@ -30,7 +30,7 @@ describe("NonEmptyArrayEnsure", () => {
 
   it("decode empty array", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [],
       `(NumberFromString | readonly [NumberFromString, ...NumberFromString[]] <-> readonly [number, ...number[]])
@@ -48,7 +48,7 @@ describe("NonEmptyArrayEnsure", () => {
   it("decode array", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
     await Util.assertions.decoding.succeed(schema, ["123"], [123])
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [null],
       `(NumberFromString | readonly [NumberFromString, ...NumberFromString[]] <-> readonly [number, ...number[]])

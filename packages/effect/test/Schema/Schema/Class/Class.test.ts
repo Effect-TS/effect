@@ -234,7 +234,7 @@ describe("Class", () => {
   it("decoding", async () => {
     class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
     await Util.assertions.decoding.succeed(A, { a: "a" }, new A({ a: "a" }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       A,
       { a: "" },
       `(A (Encoded side) <-> A)
@@ -316,7 +316,7 @@ details: Duplicate key "a"`)
   it("S.typeSchema(Class)", async () => {
     const PersonFromSelf = S.typeSchema(Person)
     await Util.assertions.decoding.succeed(PersonFromSelf, new Person({ id: 1, name: "John" }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       PersonFromSelf,
       { id: 1, name: "John" },
       `Expected Person, actual {"id":1,"name":"John"}`
@@ -343,7 +343,7 @@ details: Duplicate key "a"`)
 
     const PersonFromSelf = S.typeSchema(Person)
     await Util.assertions.decoding.succeed(PersonFromSelf, new Person({ id: 1, name: "John" }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       PersonFromSelf,
       { id: 1, name: "John" },
       `Expected Person, actual {"id":1,"name":"John"}`
@@ -363,7 +363,7 @@ details: Duplicate key "a"`)
     ) {}
     Util.expectFields(A.fields, fields)
     await Util.assertions.decoding.succeed(A, new A({ a: 1, b: 1 }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       A,
       { a: 1, b: 2 },
       `(A (Encoded side) <-> A)
@@ -527,7 +527,7 @@ details: Duplicate key "a"`)
       expect(AST.getIdentifierAnnotation(A.ast)).toEqual(Option.some("TransformationID"))
       expect(AST.getIdentifierAnnotation(A.ast.from)).toEqual(Option.some("EncodedID"))
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         A,
         {},
         `TransformationID

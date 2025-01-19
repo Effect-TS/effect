@@ -21,7 +21,7 @@ describe("betweenBigDecimal", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "2",
       `betweenBigDecimal(-1, 1)

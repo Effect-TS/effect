@@ -31,7 +31,7 @@ describe("OptionFromSelf", () => {
     await Util.assertions.decoding.succeed(schema, O.none(), O.none())
     await Util.assertions.decoding.succeed(schema, O.some("1"), O.some(1))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected Option<NumberFromString>, actual null`

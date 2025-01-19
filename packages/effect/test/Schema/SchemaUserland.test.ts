@@ -59,7 +59,7 @@ describe("SchemaUserland", () => {
       { a: "a", c: [{ d: "d", ignored: null }] },
       new A({ a: "a", b: [{ d: "d" }] })
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       A,
       { a: "a", c: [{ d: "d" }], not_allowed: null },
       `(A (Encoded side) <-> A)

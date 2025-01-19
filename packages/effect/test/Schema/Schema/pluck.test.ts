@@ -8,7 +8,7 @@ describe("pluck", () => {
       const origin = S.Struct({ a: S.String, b: S.NumberFromString })
       const schema = S.pluck(origin, "a")
       await Util.assertions.decoding.succeed(schema, { a: "a", b: "2" }, "a")
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1, b: "2" },
         `({ readonly a: string } <-> string)
@@ -25,7 +25,7 @@ describe("pluck", () => {
       const origin = S.Struct({ [a]: S.String, [b]: S.NumberFromString })
       const schema = S.pluck(origin, a)
       await Util.assertions.decoding.succeed(schema, { [a]: "a", [b]: "2" }, "a")
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { [a]: 1, [b]: "2" },
         `({ readonly Symbol(effect/schema/test/a): string } <-> string)
@@ -49,7 +49,7 @@ describe("pluck", () => {
       const schema = S.pluck(origin, "_tag")
       await Util.assertions.decoding.succeed(schema, { _tag: "A" }, "A")
       await Util.assertions.decoding.succeed(schema, { _tag: "B" }, "B")
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `({ readonly _tag: "A" | "B" } <-> "A" | "B")

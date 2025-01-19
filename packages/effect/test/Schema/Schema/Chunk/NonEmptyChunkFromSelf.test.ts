@@ -19,12 +19,12 @@ describe("NonEmptyChunkFromSelf", () => {
       C.make(1, 2, 3)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected NonEmptyChunk<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       C.empty(),
       `Expected NonEmptyChunk<NumberFromString>, actual {
@@ -32,7 +32,7 @@ describe("NonEmptyChunkFromSelf", () => {
   "values": []
 }`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       C.make("1", "a", "3"),
       `NonEmptyChunk<NumberFromString>

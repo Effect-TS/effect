@@ -15,12 +15,12 @@ describe("ExitFromSelf", () => {
     await Util.assertions.decoding.succeed(schema, Exit.fail("1"), Exit.fail(1))
     await Util.assertions.decoding.succeed(schema, Exit.succeed("true"), Exit.succeed(true))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected Exit<("true" | "false" <-> boolean), NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Exit.succeed(""),
       `Exit<("true" | "false" <-> boolean), NumberFromString>
@@ -30,7 +30,7 @@ describe("ExitFromSelf", () => {
          ├─ Expected "true", actual ""
          └─ Expected "false", actual ""`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Exit.fail("a"),
       `Exit<("true" | "false" <-> boolean), NumberFromString>

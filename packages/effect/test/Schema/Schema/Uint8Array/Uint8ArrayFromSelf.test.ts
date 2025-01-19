@@ -10,7 +10,7 @@ describe("Uint8Array > Uint8ArrayFromSelf", () => {
 
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(S.Uint8ArrayFromSelf, new Uint8Array(), new Uint8Array())
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.Uint8ArrayFromSelf,
       null,
       `Expected Uint8ArrayFromSelf, actual null`

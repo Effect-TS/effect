@@ -19,12 +19,12 @@ describe("HashMapFromSelf", () => {
       HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected HashMap<NumberFromString, string>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       HashMap.fromIterable([["1", "a"], ["a", "b"]]),
       `HashMap<NumberFromString, string>

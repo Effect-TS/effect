@@ -18,12 +18,12 @@ describe("DataFromSelf", () => {
       Data.struct({ a: "ok", b: 0 }),
       Data.struct({ a: "ok", b: 0 })
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "ok", b: 0 },
       `Expected Data<{ readonly a: string; readonly b: number }>, actual {"a":"ok","b":0}`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Data.struct({ a: "ok", b: "0" }),
       `Data<{ readonly a: string; readonly b: number }>

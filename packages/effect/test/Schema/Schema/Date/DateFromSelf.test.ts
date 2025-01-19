@@ -12,7 +12,7 @@ describe("DateFromSelf", () => {
     await Util.assertions.decoding.succeed(S.DateFromSelf, new Date(0), new Date(0))
     await Util.assertions.decoding.succeed(S.DateFromSelf, new Date("invalid"))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.DateFromSelf,
       null,
       `Expected DateFromSelf, actual null`

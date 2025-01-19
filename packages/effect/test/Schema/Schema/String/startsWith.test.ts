@@ -19,14 +19,14 @@ describe("startsWith", () => {
     await Util.assertions.decoding.succeed(schema, "a")
     await Util.assertions.decoding.succeed(schema, "ab")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `startsWith("a")
 └─ Predicate refinement failure
    └─ Expected a string starting with "a", actual ""`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "b",
       `startsWith("a")

@@ -52,21 +52,21 @@ describe("Trimmed", () => {
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, "a")
     await Util.assertions.decoding.succeed(schema, "")
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "a ",
       `Trimmed
 └─ Predicate refinement failure
    └─ Expected a string with no leading or trailing whitespace, actual "a "`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " a",
       `Trimmed
 └─ Predicate refinement failure
    └─ Expected a string with no leading or trailing whitespace, actual " a"`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " a ",
       `Trimmed

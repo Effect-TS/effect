@@ -7,7 +7,7 @@ describe("NonPositiveBigIntFromSelf", () => {
 
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, 0n)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       1n,
       `NonPositiveBigintFromSelf

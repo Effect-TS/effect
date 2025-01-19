@@ -25,14 +25,14 @@ describe("pattern", () => {
     await Util.assertions.decoding.succeed(schema, "abb")
     await Util.assertions.decoding.succeed(schema, "abbb")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "ab",
       `a string matching the pattern ^abb+$
 └─ Predicate refinement failure
    └─ Expected a string matching the pattern ^abb+$, actual "ab"`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "a",
       `a string matching the pattern ^abb+$

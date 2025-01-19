@@ -7,14 +7,14 @@ describe("PositiveBigDecimalFromSelf", () => {
   const schema = S.PositiveBigDecimalFromSelf
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       BigDecimal.make(0n, 0),
       `PositiveBigDecimalFromSelf
 └─ Predicate refinement failure
    └─ Expected a positive BigDecimal, actual BigDecimal(0)`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       BigDecimal.make(-2n, 0),
       `PositiveBigDecimalFromSelf

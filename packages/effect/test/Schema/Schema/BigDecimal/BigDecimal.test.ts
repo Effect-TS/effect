@@ -22,7 +22,7 @@ describe("BigDecimal", () => {
       "",
       BigDecimal.normalize(BigDecimal.make(0n, 0))
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "abc",
       `BigDecimal

@@ -65,14 +65,14 @@ describe("Cause", () => {
       Cause.interrupt(FiberId.composite(FiberId.runtime(1, 1000), FiberId.none))
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(CauseEncoded<NumberFromString> <-> Cause<number>)
 └─ Encoded side transformation failure
    └─ Expected CauseEncoded<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       {},
       `(CauseEncoded<NumberFromString> <-> Cause<number>)
@@ -82,7 +82,7 @@ describe("Cause", () => {
          └─ ["_tag"]
             └─ is missing`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { _tag: "Parallel", left: { _tag: "Fail" }, right: { _tag: "Interrupt" } },
       `(CauseEncoded<NumberFromString> <-> Cause<number>)

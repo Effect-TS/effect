@@ -18,14 +18,14 @@ describe("SortedSet", () => {
       SortedSet.fromIterable([1, 2, 3] as Array<number>, N.Order)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(ReadonlyArray<number> <-> SortedSet<number>)
 └─ Encoded side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> SortedSet<number>)

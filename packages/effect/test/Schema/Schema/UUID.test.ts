@@ -10,7 +10,7 @@ describe("string/UUID", () => {
   it("Decoder", async () => {
     const schema = S.UUID
     await Util.assertions.decoding.succeed(schema, "123e4567-e89b-12d3-a456-426614174000")
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `UUID

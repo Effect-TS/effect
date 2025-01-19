@@ -70,7 +70,7 @@ describe("extend", () => {
     ) {}
     Util.expectFields(A.fields, { ...baseFields, ...fields })
     await Util.assertions.decoding.succeed(A, new A({ base: "base", a: 1, b: 1 }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       A,
       { base: "base", a: 1, b: 2 },
       `(A (Encoded side) <-> A)
@@ -87,7 +87,7 @@ describe("extend", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       PersonWithAge,
       { id: 1, name: "John" },
       `(PersonWithAge (Encoded side) <-> PersonWithAge)
@@ -230,7 +230,7 @@ describe("extend", () => {
       expect(AST.getIdentifierAnnotation(B.ast)).toEqual(Option.some("TransformationID"))
       expect(AST.getIdentifierAnnotation(B.ast.from)).toEqual(Option.some("EncodedID"))
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         {},
         `TransformationID

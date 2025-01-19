@@ -7,7 +7,7 @@ describe("BooleanFromString", () => {
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, "true", true)
     await Util.assertions.decoding.succeed(schema, "false", false)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "a",
       `BooleanFromString

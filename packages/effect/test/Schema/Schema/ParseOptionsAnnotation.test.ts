@@ -16,7 +16,7 @@ describe("ParseOptionsAnnotation", () => {
       }).annotations({ parseOptions: { errors: "first" } }),
       d: String
     }).annotations({ parseOptions: { errors: "all" } })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: {} },
       `{ readonly a: { readonly b: string; readonly c: string }; readonly d: string }

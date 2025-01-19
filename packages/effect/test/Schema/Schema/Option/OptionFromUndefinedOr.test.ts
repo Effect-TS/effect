@@ -16,7 +16,7 @@ describe("OptionFromUndefinedOr", () => {
     expect(O.isOption(S.decodeSync(schema)(undefined))).toEqual(true)
     expect(O.isOption(S.decodeSync(schema)("1"))).toEqual(true)
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(NumberFromString | undefined <-> Option<number>)
@@ -27,7 +27,7 @@ describe("OptionFromUndefinedOr", () => {
       │     └─ Expected string, actual null
       └─ Expected undefined, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       {},
       `(NumberFromString | undefined <-> Option<number>)

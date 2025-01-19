@@ -14,28 +14,28 @@ describe("BigIntFromNumber", () => {
     await Util.assertions.decoding.succeed(schema, -0, -0n)
     await Util.assertions.decoding.succeed(schema, 1, 1n)
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       1.2,
       `BigIntFromNumber
 └─ Transformation process failure
    └─ Unable to decode 1.2 into a bigint`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       NaN,
       `BigIntFromNumber
 └─ Transformation process failure
    └─ Unable to decode NaN into a bigint`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Infinity,
       `BigIntFromNumber
 └─ Transformation process failure
    └─ Unable to decode Infinity into a bigint`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -Infinity,
       `BigIntFromNumber

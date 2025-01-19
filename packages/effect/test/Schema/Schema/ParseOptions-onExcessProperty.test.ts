@@ -8,7 +8,7 @@ describe("`onExcessProperty` option", () => {
   describe("`ignore` option", () => {
     it("should not change tuple behaviour", async () => {
       const schema = S.Tuple(S.Number)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, "b"],
         `readonly [number]
@@ -120,7 +120,7 @@ describe("`onExcessProperty` option", () => {
       })
       const b = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       const schema = S.Union(a, b)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1, b: "b", c: true },
         `{ readonly a?: number; readonly b?: string } | { readonly a?: number }
@@ -130,7 +130,7 @@ describe("`onExcessProperty` option", () => {
 └─ { readonly a?: number }
    └─ ["b"]
       └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
@@ -138,7 +138,7 @@ describe("`onExcessProperty` option", () => {
       const a = S.Tuple(S.Number, S.optionalElement(S.String))
       const b = S.Tuple(S.Number)
       const schema = S.Union(a, b)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, "b", true],
         `readonly [number, string?] | readonly [number]
@@ -149,7 +149,7 @@ describe("`onExcessProperty` option", () => {
    └─ [1]
       └─ is unexpected, expected: 0`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, "b", true],
         `readonly [number, string?] | readonly [number]
@@ -159,7 +159,7 @@ describe("`onExcessProperty` option", () => {
 └─ readonly [number]
    └─ [1]
       └─ is unexpected, expected: 0`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
   })
@@ -167,13 +167,13 @@ describe("`onExcessProperty` option", () => {
   describe("`preserve` option", () => {
     it("should not change tuple behaviour", async () => {
       const schema = S.Tuple(S.Number)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, "b"],
         `readonly [number]
 └─ [1]
    └─ is unexpected, expected: 0`,
-        Util.onExcessPropertyPreserve
+        { parseOptions: Util.onExcessPropertyPreserve }
       )
       await Util.expectEncodeFailure(
         schema,

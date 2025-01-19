@@ -10,19 +10,19 @@ describe("omit", () => {
     )
     await Util.assertions.decoding.succeed(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       "Expected { readonly b: NumberFromString; readonly Symbol(effect/Schema/test/a): string }, actual null"
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { [a]: "a" },
       `{ readonly b: NumberFromString; readonly Symbol(effect/Schema/test/a): string }
 └─ ["b"]
    └─ is missing`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { b: "1" },
       `{ readonly b: NumberFromString; readonly Symbol(effect/Schema/test/a): string }
@@ -43,12 +43,12 @@ describe("omit", () => {
     await Util.assertions.decoding.succeed(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.assertions.decoding.succeed(schema, { b: "1" }, { b: 1 })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       "Expected { readonly a?: string; readonly b: NumberFromString }, actual null"
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "a" },
       `{ readonly a?: string; readonly b: NumberFromString }
@@ -73,7 +73,7 @@ describe("omit", () => {
     await Util.assertions.decoding.succeed(schema, { as: [] })
     await Util.assertions.decoding.succeed(schema, { as: [{ a: "a", as: [] }] })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { as: [{ as: [] }] },
       `{ readonly as: ReadonlyArray<<suspended schema>> }

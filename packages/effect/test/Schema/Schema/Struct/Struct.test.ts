@@ -43,7 +43,7 @@ describe("Struct", () => {
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
       const schema = S.Struct({}).annotations({ identifier: "MyDataType" })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected MyDataType, actual null`
@@ -56,7 +56,7 @@ describe("Struct", () => {
       await Util.assertions.decoding.succeed(schema, { a: 1 })
       await Util.assertions.decoding.succeed(schema, [])
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected {}, actual null`
@@ -67,32 +67,32 @@ describe("Struct", () => {
       const schema = S.Struct({ a: S.Number })
       await Util.assertions.decoding.succeed(schema, { a: 1 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected { readonly a: number }, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `{ readonly a: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: undefined },
         `{ readonly a: number }
 └─ ["a"]
    └─ Expected number, actual undefined`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1, b: "b" },
         `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
@@ -102,12 +102,12 @@ describe("Struct", () => {
       await Util.assertions.decoding.succeed(schema, { a: undefined })
       await Util.assertions.decoding.succeed(schema, {}, { a: undefined })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected { readonly a: number | undefined }, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `{ readonly a: number | undefined }
@@ -116,13 +116,13 @@ describe("Struct", () => {
       ├─ Expected number, actual "a"
       └─ Expected undefined, actual "a"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1, b: "b" },
         `{ readonly a: number | undefined }
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
@@ -131,32 +131,32 @@ describe("Struct", () => {
       await Util.assertions.decoding.succeed(schema, {})
       await Util.assertions.decoding.succeed(schema, { a: 1 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected { readonly a?: number }, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `{ readonly a?: number }
 └─ ["a"]
    └─ Expected number, actual "a"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: undefined },
         `{ readonly a?: number }
 └─ ["a"]
    └─ Expected number, actual undefined`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1, b: "b" },
         `{ readonly a?: number }
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
@@ -166,12 +166,12 @@ describe("Struct", () => {
       await Util.assertions.decoding.succeed(schema, { a: 1 })
       await Util.assertions.decoding.succeed(schema, { a: undefined })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected { readonly a?: number | undefined }, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `{ readonly a?: number | undefined }
@@ -180,13 +180,13 @@ describe("Struct", () => {
       ├─ Expected number, actual "a"
       └─ Expected undefined, actual "a"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1, b: "b" },
         `{ readonly a?: number | undefined }
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 

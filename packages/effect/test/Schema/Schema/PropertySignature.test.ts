@@ -115,7 +115,7 @@ describe("PropertySignature", () => {
     const schema = S.asSchema(transform)
     await Util.assertions.decoding.succeed(schema, {}, { a: 0 })
     await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "a" },
       `(Struct (Encoded side) <-> Struct (Type side))
@@ -144,7 +144,7 @@ describe("PropertySignature", () => {
     const schema = S.asSchema(transform)
     await Util.assertions.decoding.succeed(schema, {}, { a: 0 })
     await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "a" },
       `(Struct (Encoded side) <-> Struct (Type side))

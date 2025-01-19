@@ -33,7 +33,7 @@ describe("optionalWith", () => {
       })
       await Util.assertions.decoding.succeed(schema, {}, {})
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `{ readonly a?: NumberFromString }
@@ -51,7 +51,7 @@ describe("optionalWith", () => {
       expect(S.optionalWith(S.Never, { exact: true }).from.ast).toStrictEqual(AST.neverKeyword)
       const schema = S.Struct({ a: S.optionalWith(S.Never, { exact: true }), b: S.Number })
       await Util.assertions.decoding.succeed(schema, { b: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: 1 },
         `{ readonly a?: never; readonly b: number }
@@ -70,7 +70,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: undefined })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
       await Util.assertions.decoding.succeed(schema, { a: null }, {})
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `(Struct (Encoded side) <-> Struct (Type side))
@@ -99,7 +99,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, {}, {})
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
       await Util.assertions.decoding.succeed(schema, { a: null }, {})
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: undefined },
         `(Struct (Encoded side) <-> Struct (Type side))
@@ -112,7 +112,7 @@ describe("optionalWith", () => {
             │     └─ Expected string, actual undefined
             └─ Expected null, actual undefined`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `(Struct (Encoded side) <-> Struct (Type side))
@@ -138,7 +138,7 @@ describe("optionalWith", () => {
       })
       await Util.assertions.decoding.succeed(schema, {}, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: O.some(1) })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           a: "a"
@@ -165,7 +165,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, {}, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: null }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: O.some(1) })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           a: "a"
@@ -199,7 +199,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, {}, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: null }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: O.some(1) })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           a: "a"
@@ -226,7 +226,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, {}, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: O.some(1) })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           a: "a"
@@ -256,7 +256,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: null }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: O.some(1) })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           a: "a"
@@ -286,7 +286,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, {}, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: O.some(1) })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: null },
         `(Struct (Encoded side) <-> Struct (Type side))
@@ -299,7 +299,7 @@ describe("optionalWith", () => {
             │     └─ Expected string, actual null
             └─ Expected undefined, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           a: "a"
@@ -329,7 +329,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: null }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: O.some(1) })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           a: "a"
@@ -360,7 +360,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: null }, { a: O.none() })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: O.some(1) })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           a: "a"
@@ -389,7 +389,7 @@ describe("optionalWith", () => {
       })
       await Util.assertions.decoding.succeed(schema, {}, { a: 0 })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `(Struct (Encoded side) <-> Struct (Type side))
@@ -421,7 +421,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, {}, { a: 0 })
       await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: 0 })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `(Struct (Encoded side) <-> Struct (Type side))
@@ -456,7 +456,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, { a: null }, { a: 0 })
       await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: 0 })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `(Struct (Encoded side) <-> Struct (Type side))
@@ -491,7 +491,7 @@ describe("optionalWith", () => {
       await Util.assertions.decoding.succeed(schema, {}, { a: 0 })
       await Util.assertions.decoding.succeed(schema, { a: null }, { a: 0 })
       await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `(Struct (Encoded side) <-> Struct (Type side))

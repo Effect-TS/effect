@@ -30,7 +30,7 @@ describe("optional", () => {
     await Util.assertions.decoding.succeed(schema, {}, {})
     await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: undefined })
     await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "a" },
       `{ readonly a?: NumberFromString | undefined }
@@ -53,7 +53,7 @@ describe("optional", () => {
     })
     await Util.assertions.decoding.succeed(schema, {}, {})
     await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: undefined })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "a" },
       `{ readonly a?: undefined }

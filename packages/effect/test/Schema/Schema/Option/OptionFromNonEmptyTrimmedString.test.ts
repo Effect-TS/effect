@@ -15,7 +15,7 @@ describe("OptionFromNonEmptyTrimmedString", () => {
     await Util.assertions.decoding.succeed(schema, " ", O.none())
     await Util.assertions.decoding.succeed(schema, " a ", O.some("a"))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(string <-> Option<NonEmptyTrimmedString>)

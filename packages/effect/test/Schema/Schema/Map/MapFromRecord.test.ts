@@ -12,14 +12,14 @@ describe("MapFromRecord", () => {
       new Map([[1, 2], [3, 4], [5, 6]])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(a record to be decoded into a Map <-> Map<NumberFromString, number>)
 └─ Encoded side transformation failure
    └─ Expected a record to be decoded into a Map, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "1" },
       `(a record to be decoded into a Map <-> Map<NumberFromString, number>)
@@ -33,7 +33,7 @@ describe("MapFromRecord", () => {
                      └─ Transformation process failure
                         └─ Unable to decode "a" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { 1: "a" },
       `(a record to be decoded into a Map <-> Map<NumberFromString, number>)

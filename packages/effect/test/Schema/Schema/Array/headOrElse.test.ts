@@ -6,14 +6,14 @@ describe("headOrElse", () => {
   it("decoding (without fallback)", async () => {
     const schema = S.headOrElse(S.Array(S.NumberFromString))
     await Util.assertions.decoding.succeed(schema, ["1"], 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [],
       `(ReadonlyArray<NumberFromString> <-> number)
 └─ Transformation process failure
    └─ Unable to retrieve the first element of an empty array`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       ["a"],
       `(ReadonlyArray<NumberFromString> <-> number)
@@ -30,7 +30,7 @@ describe("headOrElse", () => {
     const schema = S.headOrElse(S.Array(S.NumberFromString), () => 0)
     await Util.assertions.decoding.succeed(schema, ["1"], 1)
     await Util.assertions.decoding.succeed(schema, [], 0)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       ["a"],
       `(ReadonlyArray<NumberFromString> <-> number)

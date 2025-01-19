@@ -62,7 +62,7 @@ details: Duplicate key "_tag"`)
     ) {}
     Util.expectFields(A.fields, { _tag: S.getClassTag("A"), ...fields })
     await Util.assertions.decoding.succeed(A, new A({ a: 1, b: 1 }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       A,
       { _tag: "A", a: 1, b: 2 },
       `(A (Encoded side) <-> A)
@@ -81,7 +81,7 @@ details: Duplicate key "_tag"`)
   it("decoding", async () => {
     class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmptyString }) {}
     await Util.assertions.decoding.succeed(TA, { _tag: "TA", a: "a" }, new TA({ a: "a" }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       TA,
       { a: "a" },
       `(TA (Encoded side) <-> TA)
@@ -90,7 +90,7 @@ details: Duplicate key "_tag"`)
       └─ ["_tag"]
          └─ is missing`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       TA,
       { _tag: "TA", a: "" },
       `(TA (Encoded side) <-> TA)

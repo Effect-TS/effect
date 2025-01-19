@@ -19,7 +19,7 @@ describe("EitherFromUnion", () => {
 
   it("decoding error (Encoded side transformation failure)", async () => {
     const schema = S.EitherFromUnion({ left: S.Number, right: S.String })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       undefined,
       `((string <-> RightEncoded<string>) | (number <-> LeftEncoded<number>) <-> Either<string, number>)
@@ -36,7 +36,7 @@ describe("EitherFromUnion", () => {
 
   it("decoding error (Transformation process failure)", async () => {
     const schema = S.EitherFromUnion({ left: S.Number, right: S.compose(S.Boolean, S.String, { strict: false }) })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       true,
       `(((boolean <-> string) <-> RightEncoded<string>) | (number <-> LeftEncoded<number>) <-> Either<string, number>)
