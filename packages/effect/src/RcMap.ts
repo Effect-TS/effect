@@ -109,3 +109,21 @@ export const get: {
  * @category combinators
  */
 export const keys: <K, A, E>(self: RcMap<K, A, E>) => Effect.Effect<Array<K>, E> = internal.keys
+
+/**
+ * @since 3.13.0
+ * @category combinators
+ */
+export const invalidate: {
+  <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<void>
+  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<void>
+} = internal.invalidate
+
+/**
+ * @since 3.13.0
+ * @category combinators
+ */
+export const touch: {
+  <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<void>
+  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<void>
+} = internal.touch
