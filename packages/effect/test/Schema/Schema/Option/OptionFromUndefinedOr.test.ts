@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("OptionFromUndefinedOr", () => {
   it("property tests", () => {
-    Util.roundtrip(S.OptionFromUndefinedOr(S.Number))
+    Util.assertions.roundtrip(S.OptionFromUndefinedOr(S.Number))
   })
 
   it("decoding", async () => {

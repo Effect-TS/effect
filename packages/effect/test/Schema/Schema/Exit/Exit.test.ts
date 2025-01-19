@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("Exit", () => {
   it("property tests", () => {
-    Util.roundtrip(S.Exit({ failure: S.String, success: S.Number, defect: S.Defect }))
+    Util.assertions.roundtrip(S.Exit({ failure: S.String, success: S.Number, defect: S.Defect }))
   })
 
   it("decoding", async () => {

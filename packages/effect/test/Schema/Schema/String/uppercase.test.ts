@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("Uppercase", () => {
   it("property tests", () => {
     const schema = S.Uppercase
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

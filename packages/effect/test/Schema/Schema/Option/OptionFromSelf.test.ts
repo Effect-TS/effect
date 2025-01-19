@@ -11,7 +11,7 @@ describe("OptionFromSelf", () => {
   })
 
   it("property tests", () => {
-    Util.roundtrip(S.OptionFromSelf(S.NumberFromString))
+    Util.assertions.roundtrip(S.OptionFromSelf(S.NumberFromString))
   })
 
   it("is", () => {

@@ -8,7 +8,7 @@ describe("Redacted", () => {
   const schema = S.Redacted(S.String)
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("arbitrary", () => {

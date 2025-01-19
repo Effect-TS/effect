@@ -7,7 +7,7 @@ describe("URL", () => {
   const schema = S.URL
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("arbitrary", () => {

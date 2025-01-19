@@ -10,7 +10,7 @@ describe("FiberIdFromSelf", () => {
   })
 
   it("property tests", () => {
-    Util.roundtrip(S.FiberIdFromSelf)
+    Util.assertions.roundtrip(S.FiberIdFromSelf)
   })
 
   it("decoding", async () => {

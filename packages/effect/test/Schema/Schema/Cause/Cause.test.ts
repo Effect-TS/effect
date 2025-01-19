@@ -5,7 +5,7 @@ import { assert, describe, it } from "vitest"
 
 describe("Cause", () => {
   it("property tests", () => {
-    Util.roundtrip(S.Cause({ error: S.NumberFromString, defect: S.Defect }))
+    Util.assertions.roundtrip(S.Cause({ error: S.NumberFromString, defect: S.Defect }))
   })
 
   it("decoding", async () => {

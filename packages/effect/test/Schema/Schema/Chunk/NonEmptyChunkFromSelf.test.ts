@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest"
 
 describe("NonEmptyChunkFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.NonEmptyChunkFromSelf(S.Number))
+    Util.assertions.roundtrip(S.NonEmptyChunkFromSelf(S.Number))
   })
 
   it("decoding", async () => {

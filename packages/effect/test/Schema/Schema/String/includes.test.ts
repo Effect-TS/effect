@@ -8,7 +8,7 @@ describe("includes", () => {
   const schema = S.includes("a")(S.String)
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("is", () => {

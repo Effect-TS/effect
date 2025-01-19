@@ -6,6 +6,6 @@ describe("TimeZoneNamed", () => {
   const schema = S.TimeZoneNamed
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 })

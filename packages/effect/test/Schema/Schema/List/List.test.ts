@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("List", () => {
   it("property tests", () => {
-    Util.roundtrip(S.List(S.Number))
+    Util.assertions.roundtrip(S.List(S.Number))
   })
 
   it("decoding", async () => {

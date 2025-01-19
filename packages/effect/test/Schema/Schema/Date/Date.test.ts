@@ -6,7 +6,7 @@ describe("Date", () => {
   const schema = S.Date
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

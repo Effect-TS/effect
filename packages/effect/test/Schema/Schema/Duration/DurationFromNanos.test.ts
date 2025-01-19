@@ -7,7 +7,7 @@ describe("DurationFromNanos", () => {
   const schema = S.DurationFromNanos
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

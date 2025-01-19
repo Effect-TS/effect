@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("NonEmptyTrimmedString", () => {
   it("property tests", () => {
     const schema = S.NonEmptyTrimmedString
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

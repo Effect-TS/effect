@@ -22,6 +22,9 @@ export const assertions = Effect.runSync(
     Effect.provideService(SchemaTest.AssertConfig, {
       arbitrary: {
         // is: false
+      },
+      roundtrip: {
+        skip: true
       }
     })
   )
@@ -99,48 +102,6 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
 
 export const effectify = <A, I>(schema: S.Schema<A, I, never>): S.Schema<A, I, never> =>
   S.make(effectifyAST(schema.ast))
-
-export const roundtrip = <A, I>(schema: S.Schema<A, I, never>, params?: Parameters<typeof fc.assert>[1]) => {
-  if (true as boolean) {
-    return
-  }
-  const arb = A.makeLazy(schema)
-  const is = S.is(schema)
-  const encode = S.encode(schema)
-  const decode = S.decode(schema)
-  fc.assert(
-    fc.property(arb(fc), (a) => {
-      const roundtrip = encode(a).pipe(
-        Effect.mapError(() => "encoding" as const),
-        Effect.flatMap((i) => decode(i).pipe(Effect.mapError(() => "decoding" as const))),
-        Effect.either,
-        Effect.runSync
-      )
-      if (Either.isLeft(roundtrip)) {
-        return roundtrip.left === "encoding"
-      }
-      return is(roundtrip.right)
-    }),
-    params
-  )
-  if (true as boolean) {
-    const effectSchema = effectify(schema)
-    const encode = S.encode(effectSchema)
-    const decode = S.decode(effectSchema)
-    fc.assert(fc.asyncProperty(arb(fc), async (a) => {
-      const roundtrip = await encode(a).pipe(
-        Effect.mapError(() => "encoding" as const),
-        Effect.flatMap((i) => decode(i).pipe(Effect.mapError(() => "decoding" as const))),
-        Effect.either,
-        Effect.runPromise
-      )
-      if (Either.isLeft(roundtrip)) {
-        return roundtrip.left === "encoding"
-      }
-      return is(roundtrip.right)
-    }))
-  }
-}
 
 export const onExcessPropertyError: ParseOptions = {
   onExcessProperty: "error"

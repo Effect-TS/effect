@@ -6,7 +6,7 @@ describe("StringFromBase64", () => {
   const schema = S.StringFromBase64
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

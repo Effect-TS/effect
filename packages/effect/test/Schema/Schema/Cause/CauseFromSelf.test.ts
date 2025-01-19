@@ -11,7 +11,7 @@ describe("CauseFromSelf", () => {
   })
 
   it("property tests", () => {
-    Util.roundtrip(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
+    Util.assertions.roundtrip(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
   })
 
   it("decoding", async () => {

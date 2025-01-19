@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 
 describe("lessThan", () => {
   it("property tests", () => {
-    Util.roundtrip(S.lessThan(0)(S.Number))
+    Util.assertions.roundtrip(S.lessThan(0)(S.Number))
   })
 
   it("is", () => {

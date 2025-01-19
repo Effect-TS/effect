@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("multipleOf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.multipleOf(2)(S.Number))
+    Util.assertions.roundtrip(S.multipleOf(2)(S.Number))
   })
 
   it("is", () => {

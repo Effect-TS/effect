@@ -8,7 +8,7 @@ describe("DateTimeZoned", () => {
   const dt = DateTime.unsafeMakeZoned(0, { timeZone: "Europe/London" })
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

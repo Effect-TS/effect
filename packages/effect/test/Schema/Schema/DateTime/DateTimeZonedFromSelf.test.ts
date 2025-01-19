@@ -6,6 +6,6 @@ describe("DateTimeZonedFromSelf", () => {
   const schema = S.DateTimeZonedFromSelf
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 })

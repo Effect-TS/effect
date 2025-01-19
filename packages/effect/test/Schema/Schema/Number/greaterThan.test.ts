@@ -8,7 +8,7 @@ describe("greaterThan", () => {
   const schema = S.greaterThan(0)(S.Number)
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("is", () => {

@@ -8,7 +8,7 @@ describe("greaterThanOrEqualTo", () => {
   const schema = S.greaterThanOrEqualTo(0)(S.Number)
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("is", () => {

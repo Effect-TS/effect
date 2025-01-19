@@ -7,7 +7,7 @@ describe("Uint8ArrayFromBase64Url", () => {
   const encoder = new TextEncoder()
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

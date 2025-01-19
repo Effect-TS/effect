@@ -6,7 +6,7 @@ describe("NumberFromString", () => {
   const schema = S.NumberFromString
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

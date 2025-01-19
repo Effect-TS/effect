@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("Option", () => {
   it("property tests", () => {
-    Util.roundtrip(S.Option(S.Number))
+    Util.assertions.roundtrip(S.Option(S.Number))
   })
 
   it("decoding", async () => {

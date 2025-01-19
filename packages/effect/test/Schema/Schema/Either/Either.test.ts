@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("Either", () => {
   it("property tests", () => {
-    Util.roundtrip(S.Either({ left: S.String, right: S.Number }))
+    Util.assertions.roundtrip(S.Either({ left: S.String, right: S.Number }))
   })
 
   it("decoding", async () => {
