@@ -551,7 +551,7 @@ details: Duplicate key "a"`)
 
       const ctor = { make: A.make.bind(A) }
 
-      Util.expectConstructorFailure(
+      Util.assertions.make.fail(
         ctor,
         null,
         `TypeID

@@ -10,8 +10,8 @@ describe("brand", () => {
 
   it("the constructor should validate the input by default", () => {
     const schema = S.NonEmptyString.pipe(S.brand("A"))
-    Util.expectConstructorSuccess(schema, "a")
-    Util.expectConstructorFailure(
+    Util.assertions.make.succeed(schema, "a")
+    Util.assertions.make.fail(
       schema,
       "",
       `NonEmptyString

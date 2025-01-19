@@ -3388,7 +3388,8 @@ export type RefineSchemaId = typeof RefineSchemaId
 export interface refine<A, From extends Schema.Any>
   extends AnnotableClass<refine<A, From>, A, Schema.Encoded<From>, Schema.Context<From>>
 {
-  readonly [RefineSchemaId]: From // required for `type HasFields = ...`
+  /** The following is required for {@link HasFields} to work */
+  readonly [RefineSchemaId]: From
   readonly from: From
   readonly filter: (
     a: Schema.Type<From>,

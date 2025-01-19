@@ -254,7 +254,7 @@ describe("extend", () => {
 
       const ctor = { make: B.make.bind(B) }
 
-      Util.expectConstructorFailure(
+      Util.assertions.make.fail(
         ctor,
         null,
         `TypeID
