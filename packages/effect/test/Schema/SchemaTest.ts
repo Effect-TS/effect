@@ -144,15 +144,8 @@ export const assertions = Effect.gen(function*() {
           readonly parseOptions?: SchemaAST.ParseOptions | undefined
         } | undefined
       ) {
-        const decoding = Effect.gen(function*() {
-          const decoded = yield* Effect.either(ParseResult.decodeUnknown(schema)(input, options?.parseOptions))
-          if (Either.isLeft(decoded)) {
-            const message = yield* ParseResult.TreeFormatter.formatIssue(decoded.left)
-            return yield* Effect.fail(message)
-          }
-          return decoded.right
-        })
-        const result = await Effect.runPromise(Effect.either(decoding))
+        const decoded = ParseResult.decodeUnknown(schema)(input, options?.parseOptions)
+        const result = await Effect.runPromise(Effect.either(decoded))
         expectRight(
           result,
           arguments.length >= 3 ? // Account for `expected` being `undefined`
@@ -191,15 +184,8 @@ export const assertions = Effect.gen(function*() {
           readonly parseOptions?: SchemaAST.ParseOptions | undefined
         } | undefined
       ) {
-        const encoding = Effect.gen(function*() {
-          const encoded = yield* Effect.either(ParseResult.encodeUnknown(schema)(input, options?.parseOptions))
-          if (Either.isLeft(encoded)) {
-            const message = yield* ParseResult.TreeFormatter.formatIssue(encoded.left)
-            return yield* Effect.fail(message)
-          }
-          return encoded.right
-        })
-        const result = await Effect.runPromise(Effect.either(encoding))
+        const encoded = ParseResult.encodeUnknown(schema)(input, options?.parseOptions)
+        const result = await Effect.runPromise(Effect.either(encoded))
         expectRight(
           result,
           arguments.length >= 3 ? // Account for `expected` being `undefined`
@@ -256,10 +242,32 @@ export const assertions = Effect.gen(function*() {
         effect: Effect.Effect<A, ParseResult.ParseError>,
         message: string
       ) {
+        const todo = Effect.runPromise(
+          Effect.either(Effect.mapError(effect, ParseResult.TreeFormatter.formatErrorSync))
+        )
         deepStrictEqual(
-          await Effect.runPromise(Effect.either(Effect.mapError(effect, ParseResult.TreeFormatter.formatErrorSync))),
+          await todo,
           Either.left(message)
         )
+      }
+    },
+
+    either: {
+      succeed<R, L>(either: Either.Either<R, L>, right: R) {
+        expectRight(either, right)
+      },
+
+      async fail<R>(either: Either.Either<R, ParseResult.ParseError>, message: string) {
+        const eitherWithMessage = Effect.gen(function*() {
+          const encoded = yield* Effect.either(either)
+          if (Either.isLeft(encoded)) {
+            const message = yield* ParseResult.TreeFormatter.formatError(encoded.left)
+            return yield* Effect.fail(message)
+          }
+          return encoded.right
+        })
+        const result = await Effect.runPromise(Effect.either(eitherWithMessage))
+        expectLeft(result, message)
       }
     }
   }
