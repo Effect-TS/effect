@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest"
 
 describe("OptionFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.OptionFromSelf(S.Number))
+    Util.assertions.arbitrary.is(S.OptionFromSelf(S.Number))
   })
 
   it("property tests", () => {

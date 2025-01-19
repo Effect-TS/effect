@@ -11,7 +11,7 @@ describe("URL", () => {
   })
 
   it("arbitrary", () => {
-    Util.expectArbitrary(S.URL)
+    Util.assertions.arbitrary.is(S.URL)
   })
 
   it("decoding", async () => {
