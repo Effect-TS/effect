@@ -1,5 +1,5 @@
 import type { SchemaAST } from "effect"
-import { Arbitrary, Context, Effect, Either, FastCheck, ParseResult, Predicate, Schema } from "effect"
+import { Arbitrary, Context, Effect, Either, FastCheck, ParseResult, Predicate, Runtime, Schema } from "effect"
 
 // Defines parameters for FastCheck that exclude typed properties
 export type UntypedParameters = Omit<FastCheck.Parameters<any>, "examples" | "reporter" | "asyncReporter">
@@ -226,6 +226,21 @@ export const assertions = Effect.gen(function*() {
         })
         const result = await Effect.runPromise(Effect.either(encoding))
         expectLeft(result, message)
+      }
+    },
+
+    promise: {
+      async fail<A>(promise: Promise<A>, message: string) {
+        try {
+          const a = await promise
+          throw new Error(`Promise didn't reject, got: ${a}`)
+        } catch (e: unknown) {
+          if (Runtime.isFiberFailure(e)) {
+            deepStrictEqual((e.toJSON() as any).cause?.failure?.message, message)
+          } else {
+            throw new Error(`Expected a FiberFailure, got: ${e}`)
+          }
+        }
       }
     }
   }

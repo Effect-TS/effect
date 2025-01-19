@@ -5,7 +5,6 @@ import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import { getFinalTransformation } from "effect/ParseResult"
 import * as ParseResult from "effect/ParseResult"
-import * as Runtime from "effect/Runtime"
 import * as S from "effect/Schema"
 import type { ParseOptions } from "effect/SchemaAST"
 import * as AST from "effect/SchemaAST"
@@ -46,28 +45,6 @@ export const allErrors: ParseOptions = {
 }
 
 export const isBun = "Bun" in globalThis
-
-export const expectPromiseSuccess = async <A>(promise: Promise<A>, a: A) => {
-  try {
-    const actual = await promise
-    expect(actual).toStrictEqual(a)
-  } catch (_e) {
-    throw new Error(`Promise didn't resolve`)
-  }
-}
-
-export const expectPromiseFailure = async <A>(promise: Promise<A>, message: string) => {
-  try {
-    await promise
-    throw new Error(`Promise didn't reject`)
-  } catch (e: any) {
-    if (Runtime.isFiberFailure(e)) {
-      expect((e.toJSON() as any).cause.failure.message).toStrictEqual(message)
-    } else {
-      throw new Error(`Promise didn't reject`)
-    }
-  }
-}
 
 export const sample = <A, I>(schema: S.Schema<A, I>, n: number) => {
   const arbitrary = A.makeLazy(schema)
