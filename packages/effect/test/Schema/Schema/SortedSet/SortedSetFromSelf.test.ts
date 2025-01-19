@@ -8,8 +8,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("SortedSetFromSelf", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(Schema.SortedSetFromSelf(Schema.Number, N.Order, N.Order))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(Schema.SortedSetFromSelf(Schema.Number, N.Order, N.Order))
   })
 
   it("decoding", async () => {

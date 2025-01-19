@@ -5,8 +5,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("ReadonlySetFromSelf", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.ReadonlySetFromSelf(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.ReadonlySetFromSelf(S.Number))
   })
 
   it("decoding", async () => {

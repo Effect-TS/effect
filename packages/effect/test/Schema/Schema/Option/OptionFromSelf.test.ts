@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("OptionFromSelf", () => {
   it("arbitrary", () => {
-    Util.assertions.arbitrary.is(S.OptionFromSelf(S.Number))
+    Util.assertions.arbitrary.validateGeneratedValues(S.OptionFromSelf(S.Number))
   })
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.OptionFromSelf(S.NumberFromString))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.OptionFromSelf(S.NumberFromString))
   })
 
   it("is", () => {

@@ -4,8 +4,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("Uint8Array > Uint8ArrayFromSelf", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.Uint8ArrayFromSelf)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.Uint8ArrayFromSelf)
   })
 
   it("decoding", async () => {

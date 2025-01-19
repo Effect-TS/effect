@@ -6,12 +6,12 @@ import { describe, expect, it } from "vitest"
 describe("URL", () => {
   const schema = S.URL
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("arbitrary", () => {
-    Util.assertions.arbitrary.is(S.URL)
+    Util.assertions.arbitrary.validateGeneratedValues(S.URL)
   })
 
   it("decoding", async () => {

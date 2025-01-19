@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest"
 describe("Int", () => {
   const schema = S.Int
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("is", () => {

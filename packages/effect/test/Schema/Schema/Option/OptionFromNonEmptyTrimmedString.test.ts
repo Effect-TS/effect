@@ -4,8 +4,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("OptionFromNonEmptyTrimmedString", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.OptionFromNonEmptyTrimmedString)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.OptionFromNonEmptyTrimmedString)
   })
 
   it("decoding", async () => {

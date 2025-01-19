@@ -6,8 +6,8 @@ import { describe, it } from "vitest"
 describe("DurationFromMillis", () => {
   const schema = S.DurationFromMillis
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {

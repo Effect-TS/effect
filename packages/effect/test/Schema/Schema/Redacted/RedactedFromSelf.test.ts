@@ -7,12 +7,12 @@ import { describe, expect, it } from "vitest"
 describe("RedactedFromSelf", () => {
   const schema = S.RedactedFromSelf(S.String)
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("arbitrary", () => {
-    Util.assertions.arbitrary.is(S.RedactedFromSelf(S.Number))
+    Util.assertions.arbitrary.validateGeneratedValues(S.RedactedFromSelf(S.Number))
   })
 
   it("decoding", async () => {

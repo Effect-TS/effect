@@ -6,8 +6,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("HashMapFromSelf", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.HashMapFromSelf({ key: S.Number, value: S.String }))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.HashMapFromSelf({ key: S.Number, value: S.String }))
   })
 
   it("decoding", async () => {

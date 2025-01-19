@@ -5,8 +5,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("lessThanOrEqualTo", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.lessThanOrEqualTo(0)(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.lessThanOrEqualTo(0)(S.Number))
   })
 
   it("is", () => {

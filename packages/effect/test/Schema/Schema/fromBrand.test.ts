@@ -34,9 +34,9 @@ describe("fromBrand", () => {
     )
   })
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.Number.pipe(S.fromBrand(Int))) // refined
-    Util.assertions.roundtrip(S.Number.pipe(S.fromBrand(Eur))) // nominal
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.Number.pipe(S.fromBrand(Int))) // refined
+    Util.assertions.testRoundtripConsistency(S.Number.pipe(S.fromBrand(Eur))) // nominal
   })
 
   it("refined", async () => {

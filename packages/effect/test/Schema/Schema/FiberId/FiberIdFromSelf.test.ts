@@ -6,11 +6,11 @@ import { describe, expect, it } from "vitest"
 
 describe("FiberIdFromSelf", () => {
   it("arbitrary", () => {
-    Util.assertions.arbitrary.is(S.FiberIdFromSelf)
+    Util.assertions.arbitrary.validateGeneratedValues(S.FiberIdFromSelf)
   })
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.FiberIdFromSelf)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.FiberIdFromSelf)
   })
 
   it("decoding", async () => {

@@ -6,8 +6,8 @@ describe("Uint8ArrayFromHex", () => {
   const schema = S.Uint8ArrayFromHex
   const encoder = new TextEncoder()
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {

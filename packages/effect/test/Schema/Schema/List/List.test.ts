@@ -4,8 +4,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("List", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.List(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.List(S.Number))
   })
 
   it("decoding", async () => {

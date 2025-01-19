@@ -4,8 +4,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("multipleOf", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.multipleOf(2)(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.multipleOf(2)(S.Number))
   })
 
   it("is", () => {

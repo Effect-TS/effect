@@ -3,9 +3,9 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("NonEmptyTrimmedString", () => {
-  it("property tests", () => {
+  it("test roundtrip consistency", () => {
     const schema = S.NonEmptyTrimmedString
-    Util.assertions.roundtrip(schema)
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {

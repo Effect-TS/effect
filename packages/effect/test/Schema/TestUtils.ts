@@ -21,9 +21,11 @@ export const assertions = Effect.runSync(
     }),
     Effect.provideService(SchemaTest.AssertConfig, {
       arbitrary: {
-        // is: false
+        validateGeneratedValues: {
+          skip: true
+        }
       },
-      roundtrip: {
+      testRoundtripConsistency: {
         skip: true
       }
     })

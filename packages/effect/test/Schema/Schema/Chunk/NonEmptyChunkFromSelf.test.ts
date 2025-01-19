@@ -7,8 +7,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("NonEmptyChunkFromSelf", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.NonEmptyChunkFromSelf(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.NonEmptyChunkFromSelf(S.Number))
   })
 
   it("decoding", async () => {

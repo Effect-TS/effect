@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("TimeZone", () => {
   const schema = S.TimeZone
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 })

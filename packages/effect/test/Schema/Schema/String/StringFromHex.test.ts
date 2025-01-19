@@ -6,8 +6,8 @@ describe("StringFromHex", () => {
   const schema = S.StringFromHex
   const decoder = new TextDecoder("utf-8")
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {

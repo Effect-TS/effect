@@ -5,8 +5,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("SortedSet", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.SortedSet(S.Number, N.Order))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.SortedSet(S.Number, N.Order))
   })
 
   it("decoding", async () => {
