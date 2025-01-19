@@ -6,8 +6,8 @@ import { describe, it } from "vitest"
 describe("DurationFromNanos", () => {
   const schema = S.DurationFromNanos
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
@@ -18,5 +18,12 @@ describe("DurationFromNanos", () => {
   it("encoding", async () => {
     await Util.expectEncodeSuccess(schema, Duration.millis(5), 5000000n)
     await Util.expectEncodeSuccess(schema, Duration.nanos(5000n), 5000n)
+    await Util.expectEncodeFailure(
+      schema,
+      Duration.infinity,
+      `DurationFromNanos
+└─ Transformation process failure
+   └─ Unable to encode Duration(Infinity) into a bigint`
+    )
   })
 })

@@ -3,8 +3,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("ReadonlyMap", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.ReadonlyMap({ key: S.Number, value: S.String }))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.ReadonlyMap({ key: S.Number, value: S.String }))
   })
 
   it("decoding", async () => {

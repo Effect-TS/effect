@@ -5,8 +5,8 @@ import { describe, it } from "vitest"
 describe("Date", () => {
   const schema = S.Date
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {

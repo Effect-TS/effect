@@ -4,8 +4,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("OptionFromUndefinedOr", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.OptionFromUndefinedOr(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.OptionFromUndefinedOr(S.Number))
   })
 
   it("decoding", async () => {

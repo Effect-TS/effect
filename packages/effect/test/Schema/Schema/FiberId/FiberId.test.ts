@@ -4,8 +4,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("FiberId", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.FiberId)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.FiberId)
   })
 
   it("decoding", async () => {

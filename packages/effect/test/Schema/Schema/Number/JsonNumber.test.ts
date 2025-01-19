@@ -3,8 +3,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("JsonNumber", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.JsonNumber)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.JsonNumber)
   })
 
   it("should exclude NaN from decoding", async () => {

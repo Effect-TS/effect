@@ -3,8 +3,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("string/UUID", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.UUID)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.UUID)
   })
 
   it("Decoder", async () => {

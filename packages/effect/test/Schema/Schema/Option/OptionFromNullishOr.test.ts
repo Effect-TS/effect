@@ -4,9 +4,9 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("OptionFromNullishOr", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.OptionFromNullishOr(S.Number, null))
-    Util.assertions.roundtrip(S.OptionFromNullishOr(S.Number, undefined))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.OptionFromNullishOr(S.Number, null))
+    Util.assertions.testRoundtripConsistency(S.OptionFromNullishOr(S.Number, undefined))
   })
 
   it("decoding", async () => {

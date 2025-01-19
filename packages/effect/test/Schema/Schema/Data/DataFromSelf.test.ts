@@ -6,9 +6,9 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("DataFromSelf", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.DataFromSelf(S.Struct({ a: S.String, b: S.Number })))
-    Util.assertions.roundtrip(S.DataFromSelf(S.Array(S.Number)))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.DataFromSelf(S.Struct({ a: S.String, b: S.Number })))
+    Util.assertions.testRoundtripConsistency(S.DataFromSelf(S.Array(S.Number)))
   })
 
   it("decoding", async () => {

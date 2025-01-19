@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest"
 describe("DateTimeUtcFromDate", () => {
   const schema = S.DateTimeUtcFromDate
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {

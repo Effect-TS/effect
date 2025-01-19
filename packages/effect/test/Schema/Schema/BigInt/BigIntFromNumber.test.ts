@@ -5,8 +5,8 @@ import { describe, it } from "vitest"
 describe("BigIntFromNumber", () => {
   const schema = S.BigIntFromNumber
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("Decoder", async () => {

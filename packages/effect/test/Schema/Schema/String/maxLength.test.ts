@@ -5,8 +5,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("maxLength", () => {
-  it("property tests", () => {
-    Util.assertions.roundtrip(S.maxLength(0)(S.String))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.maxLength(0)(S.String))
   })
 
   it("is", () => {

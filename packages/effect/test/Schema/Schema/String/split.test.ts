@@ -6,7 +6,7 @@ describe("string/split", () => {
   it("split (data-last)", async () => {
     const schema = S.split(",")
 
-    Util.assertions.roundtrip(schema)
+    Util.assertions.testRoundtripConsistency(schema)
 
     // Decoding
     await Util.expectDecodeUnknownSuccess(schema, "", [""])

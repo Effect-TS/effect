@@ -3,9 +3,9 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("Uppercase", () => {
-  it("property tests", () => {
+  it("test roundtrip consistency", () => {
     const schema = S.Uppercase
-    Util.assertions.roundtrip(schema)
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {

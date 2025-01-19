@@ -475,7 +475,7 @@ details: Duplicate key "a"`)
 
   it("arbitrary", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
-    Util.assertions.arbitrary.is(A)
+    Util.assertions.arbitrary.validateGeneratedValues(A)
   })
 
   it("should expose a make constructor", () => {

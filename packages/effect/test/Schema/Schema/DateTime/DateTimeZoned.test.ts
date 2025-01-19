@@ -7,8 +7,8 @@ describe("DateTimeZoned", () => {
   const schema = S.DateTimeZoned
   const dt = DateTime.unsafeMakeZoned(0, { timeZone: "Europe/London" })
 
-  it("property tests", () => {
-    Util.assertions.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
