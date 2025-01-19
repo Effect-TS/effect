@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("encodeEither", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
-  it("should return Left on invalid values", async () => {
+  it("should return an error on invalid values", async () => {
     Util.assertions.either.succeed(S.encodeEither(schema)({ a: 1 }), { a: "1" })
     await Util.assertions.either.fail(
       S.encodeEither(schema)({ a: 10 }),
@@ -19,7 +19,7 @@ describe("encodeEither", () => {
     )
   })
 
-  it("should return Left on async", async () => {
+  it("should return an error on async", async () => {
     await Util.assertions.either.fail(
       S.encodeEither(Util.AsyncString)("a"),
       `AsyncString
