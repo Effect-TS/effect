@@ -60,8 +60,8 @@ describe("EitherFromUnion", () => {
 
   it("encoding success", async () => {
     const schema = S.EitherFromUnion({ left: S.DateFromString, right: S.NumberFromString })
-    await Util.expectEncodeSuccess(schema, E.left(new Date(0)), "1970-01-01T00:00:00.000Z")
-    await Util.expectEncodeSuccess(schema, E.right(1), "1")
+    await Util.assertions.encoding.succeed(schema, E.left(new Date(0)), "1970-01-01T00:00:00.000Z")
+    await Util.assertions.encoding.succeed(schema, E.right(1), "1")
   })
 
   it("encoding error", async () => {
@@ -69,7 +69,7 @@ describe("EitherFromUnion", () => {
       left: S.compose(S.DateFromString, S.Unknown, { strict: false }),
       right: S.compose(S.NumberFromString, S.Unknown, { strict: false })
     })
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       E.left(undefined),
       `(((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>) <-> Either<unknown, unknown>)
@@ -83,7 +83,7 @@ describe("EitherFromUnion", () => {
                      └─ Type side transformation failure
                         └─ Expected DateFromSelf, actual undefined`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       E.right(undefined),
       `(((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>) <-> Either<unknown, unknown>)
@@ -104,7 +104,7 @@ describe("EitherFromUnion", () => {
       left: S.compose(S.DateFromString, S.Unknown, { strict: false }),
       right: S.compose(S.NumberFromString, S.Unknown, { strict: false })
     })
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       E.left(1),
       `(((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>) <-> Either<unknown, unknown>)
@@ -118,7 +118,7 @@ describe("EitherFromUnion", () => {
                      └─ Type side transformation failure
                         └─ Expected DateFromSelf, actual 1`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       E.right(new Date(0)),
       `(((NumberFromString <-> unknown) <-> RightEncoded<unknown>) | ((DateFromString <-> unknown) <-> LeftEncoded<unknown>) <-> Either<unknown, unknown>)

@@ -249,9 +249,9 @@ describe("Class", () => {
 
   it("encoding", async () => {
     class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
-    await Util.expectEncodeSuccess(A, new A({ a: "a" }), { a: "a" })
-    await Util.expectEncodeSuccess(A, { a: "a" }, { a: "a" })
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(A, new A({ a: "a" }), { a: "a" })
+    await Util.assertions.encoding.succeed(A, { a: "a" }, { a: "a" })
+    await Util.assertions.encoding.fail(
       A,
       new A({ a: "" }, true),
       `(A (Encoded side) <-> A)
@@ -408,7 +408,7 @@ details: Duplicate key "a"`)
       class A extends S.Class<A>("A")({
         n: S.NumberFromString
       }) {}
-      await Util.expectEncodeSuccess(A, { n: 1 }, { n: "1" })
+      await Util.assertions.encoding.succeed(A, { n: 1 }, { n: "1" })
     })
 
     it("struct a class with a getter", async () => {
@@ -419,7 +419,7 @@ details: Duplicate key "a"`)
           return "s"
         }
       }
-      await Util.expectEncodeSuccess(A, { n: 1 } as any, { n: "1" })
+      await Util.assertions.encoding.succeed(A, { n: 1 } as any, { n: "1" })
     })
 
     it("struct nested classes", async () => {
@@ -429,8 +429,8 @@ details: Duplicate key "a"`)
       class B extends S.Class<B>("B")({
         a: A
       }) {}
-      await Util.expectEncodeSuccess(S.Union(B, S.NumberFromString), 1, "1")
-      await Util.expectEncodeSuccess(B, { a: { n: 1 } }, { a: { n: "1" } })
+      await Util.assertions.encoding.succeed(S.Union(B, S.NumberFromString), 1, "1")
+      await Util.assertions.encoding.succeed(B, { a: { n: 1 } }, { a: { n: "1" } })
     })
 
     it("class a class with a getter", async () => {
@@ -446,7 +446,7 @@ details: Duplicate key "a"`)
         s: S.String
       }) {}
 
-      await Util.expectEncodeSuccess(B, new A({ n: 1 }), { n: "1", s: "s" })
+      await Util.assertions.encoding.succeed(B, new A({ n: 1 }), { n: "1", s: "s" })
     })
 
     describe("encode(S.typeSchema(Class))", () => {
@@ -455,8 +455,8 @@ details: Duplicate key "a"`)
           n: S.NumberFromString
         }) {}
         const schema = S.typeSchema(A)
-        await Util.expectEncodeSuccess(schema, new A({ n: 1 }), new A({ n: 1 }))
-        await Util.expectEncodeSuccess(schema, { n: 1 }, new A({ n: 1 }))
+        await Util.assertions.encoding.succeed(schema, new A({ n: 1 }), new A({ n: 1 }))
+        await Util.assertions.encoding.succeed(schema, { n: 1 }, new A({ n: 1 }))
       })
 
       it("should fail on bad values", async () => {
@@ -464,7 +464,7 @@ details: Duplicate key "a"`)
           n: S.NumberFromString
         }) {}
         const schema = S.typeSchema(A)
-        await Util.expectEncodeFailure(
+        await Util.assertions.encoding.fail(
           schema,
           null as any,
           `Expected A (Type side), actual null`
@@ -499,7 +499,7 @@ details: Duplicate key "a"`)
 
       expect(A.ast.to.annotations[AST.TitleAnnotationId]).toEqual("mytitle")
 
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         A,
         { a: "" },
         `(A (Encoded side) <-> A)
@@ -537,7 +537,7 @@ details: Duplicate key "a"`)
          └─ is missing`
       )
 
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         A,
         { a: "" },
         `TransformationID

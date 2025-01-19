@@ -26,10 +26,10 @@ describe("OptionFromNonEmptyTrimmedString", () => {
 
   it("encoding", async () => {
     const schema = S.OptionFromNonEmptyTrimmedString
-    await Util.expectEncodeSuccess(schema, O.none(), "")
-    await Util.expectEncodeSuccess(schema, O.some("a"), "a")
+    await Util.assertions.encoding.succeed(schema, O.none(), "")
+    await Util.assertions.encoding.succeed(schema, O.some("a"), "a")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       O.some(""),
       `(string <-> Option<NonEmptyTrimmedString>)

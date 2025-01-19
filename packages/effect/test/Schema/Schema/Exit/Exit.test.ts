@@ -44,10 +44,10 @@ describe("Exit", () => {
 
   it("encoding", async () => {
     const schema = S.Exit({ failure: S.String, success: S.Number, defect: S.Defect })
-    await Util.expectEncodeSuccess(schema, Exit.fail("error"), {
+    await Util.assertions.encoding.succeed(schema, Exit.fail("error"), {
       _tag: "Failure",
       cause: { _tag: "Fail", error: "error" }
     })
-    await Util.expectEncodeSuccess(schema, Exit.succeed(123), { _tag: "Success", value: 123 })
+    await Util.assertions.encoding.succeed(schema, Exit.succeed(123), { _tag: "Success", value: 123 })
   })
 })

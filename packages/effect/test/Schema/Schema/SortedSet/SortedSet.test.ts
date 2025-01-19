@@ -38,7 +38,11 @@ describe("SortedSet", () => {
 
   it("encoding", async () => {
     const schema = S.SortedSet(S.Number, N.Order)
-    await Util.expectEncodeSuccess(schema, SortedSet.fromIterable([] as Array<number>, N.Order), [])
-    await Util.expectEncodeSuccess(schema, SortedSet.fromIterable([1, 2, 3] as Array<number>, N.Order), [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, SortedSet.fromIterable([] as Array<number>, N.Order), [])
+    await Util.assertions.encoding.succeed(schema, SortedSet.fromIterable([1, 2, 3] as Array<number>, N.Order), [
+      1,
+      2,
+      3
+    ])
   })
 })

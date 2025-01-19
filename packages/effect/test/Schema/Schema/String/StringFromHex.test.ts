@@ -50,7 +50,7 @@ describe("StringFromHex", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       decoder.decode(Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7])),
       "0001020304050607"

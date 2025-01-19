@@ -48,7 +48,7 @@ describe("MapFromRecord", () => {
 
   it("encoding", async () => {
     const schema = S.MapFromRecord({ key: S.NumberFromString, value: S.NumberFromString })
-    await Util.expectEncodeSuccess(schema, new Map(), {})
-    await Util.expectEncodeSuccess(schema, new Map([[1, 2], [3, 4], [5, 6]]), { 1: "2", 3: "4", 5: "6" })
+    await Util.assertions.encoding.succeed(schema, new Map(), {})
+    await Util.assertions.encoding.succeed(schema, new Map([[1, 2], [3, 4], [5, 6]]), { 1: "2", 3: "4", 5: "6" })
   })
 })

@@ -180,6 +180,53 @@ export const assertions = Effect.gen(function*() {
         const result = await Effect.runPromise(Effect.either(decoding))
         expectLeft(result, message)
       }
+    },
+
+    encoding: {
+      async succeed<A, I>(
+        schema: Schema.Schema<A, I>,
+        input: A,
+        expected?: I,
+        options?: {
+          readonly parseOptions?: SchemaAST.ParseOptions
+        }
+      ) {
+        const encoding = Effect.gen(function*() {
+          const encoded = yield* Effect.either(ParseResult.encodeUnknown(schema)(input, options?.parseOptions))
+          if (Either.isLeft(encoded)) {
+            const message = yield* ParseResult.TreeFormatter.formatIssue(encoded.left)
+            return yield* Effect.fail(message)
+          }
+          return encoded.right
+        })
+        const result = await Effect.runPromise(Effect.either(encoding))
+        expectRight(
+          result,
+          arguments.length >= 3 ? // Account for `expected` being `undefined`
+            expected :
+            expected ?? input
+        )
+      },
+
+      async fail<A, I>(
+        schema: Schema.Schema<A, I>,
+        input: A,
+        message: string,
+        options?: {
+          readonly parseOptions?: SchemaAST.ParseOptions
+        }
+      ) {
+        const encoding = Effect.gen(function*() {
+          const encoded = yield* Effect.either(ParseResult.encodeUnknown(schema)(input, options?.parseOptions))
+          if (Either.isLeft(encoded)) {
+            const message = yield* ParseResult.TreeFormatter.formatIssue(encoded.left)
+            return yield* Effect.fail(message)
+          }
+          return encoded.right
+        })
+        const result = await Effect.runPromise(Effect.either(encoding))
+        expectLeft(result, message)
+      }
     }
   }
 })

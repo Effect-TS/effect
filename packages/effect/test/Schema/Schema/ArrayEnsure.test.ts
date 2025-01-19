@@ -55,8 +55,8 @@ describe("ArrayEnsure", () => {
 
   it("encode", async () => {
     const schema = S.ArrayEnsure(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, [], [])
-    await Util.expectEncodeSuccess(schema, [123], "123")
-    await Util.expectEncodeSuccess(schema, [1, 2, 3], ["1", "2", "3"])
+    await Util.assertions.encoding.succeed(schema, [], [])
+    await Util.assertions.encoding.succeed(schema, [123], "123")
+    await Util.assertions.encoding.succeed(schema, [1, 2, 3], ["1", "2", "3"])
   })
 })

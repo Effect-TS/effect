@@ -27,7 +27,7 @@ describe("DurationFromSelf", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, Duration.seconds(5), Duration.seconds(5))
+    await Util.assertions.encoding.succeed(schema, Duration.seconds(5), Duration.seconds(5))
   })
 
   it("pretty", () => {

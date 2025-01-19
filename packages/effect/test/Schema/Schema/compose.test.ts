@@ -57,8 +57,8 @@ describe("compose", async () => {
 
   it("force encoding: (A -> B) compose (C U B)", async () => {
     const schema1 = S.compose(S.NumberFromString, S.Union(S.Number, S.Null), { strict: false })
-    await Util.expectEncodeSuccess(schema1, 1, "1")
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(schema1, 1, "1")
+    await Util.assertions.encoding.fail(
       schema1,
       null,
       `(NumberFromString <-> number | null)
@@ -70,8 +70,8 @@ describe("compose", async () => {
     const schema2 = S.NumberFromString.pipe(
       S.compose(S.Union(S.Number, S.Null), { strict: false })
     )
-    await Util.expectEncodeSuccess(schema2, 1, "1")
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(schema2, 1, "1")
+    await Util.assertions.encoding.fail(
       schema2,
       null,
       `(NumberFromString <-> number | null)

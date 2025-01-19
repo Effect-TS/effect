@@ -42,9 +42,9 @@ describe("optional", () => {
       └─ Expected undefined, actual "a"`
     )
 
-    await Util.expectEncodeSuccess(schema, {}, {})
-    await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
-    await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
+    await Util.assertions.encoding.succeed(schema, {}, {})
+    await Util.assertions.encoding.succeed(schema, { a: undefined }, { a: undefined })
+    await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
   })
 
   it("Schema.Never as input", async () => {
@@ -61,7 +61,7 @@ describe("optional", () => {
    └─ Expected undefined, actual "a"`
     )
 
-    await Util.expectEncodeSuccess(schema, {}, {})
-    await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
+    await Util.assertions.encoding.succeed(schema, {}, {})
+    await Util.assertions.encoding.succeed(schema, { a: undefined }, { a: undefined })
   })
 })

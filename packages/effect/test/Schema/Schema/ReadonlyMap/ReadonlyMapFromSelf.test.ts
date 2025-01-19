@@ -39,8 +39,8 @@ describe("ReadonlyMapFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.ReadonlyMapFromSelf({ key: S.NumberFromString, value: S.String })
-    await Util.expectEncodeSuccess(schema, new Map(), new Map())
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, new Map(), new Map())
+    await Util.assertions.encoding.succeed(
       schema,
       new Map([[1, "a"], [2, "b"], [3, "c"]]),
       new Map([["1", "a"], ["2", "b"], ["3", "c"]])

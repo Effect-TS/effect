@@ -27,6 +27,6 @@ describe("NonNegativeBigDecimalFromSelf", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, BigDecimal.make(1n, 0), BigDecimal.make(1n, 0))
+    await Util.assertions.encoding.succeed(schema, BigDecimal.make(1n, 0), BigDecimal.make(1n, 0))
   })
 })

@@ -38,8 +38,8 @@ describe("ChunkFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.ChunkFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, C.empty(), C.empty())
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, C.empty(), C.empty())
+    await Util.assertions.encoding.succeed(
       schema,
       C.fromIterable([1, 2, 3]),
       C.fromIterable(["1", "2", "3"])

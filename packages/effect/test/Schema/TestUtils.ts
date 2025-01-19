@@ -118,20 +118,6 @@ export const allErrors: ParseOptions = {
   errors: "all"
 }
 
-export const expectEncodeSuccess = async <A, I>(
-  schema: S.Schema<A, I, never>,
-  a: A,
-  expected: unknown,
-  options?: ParseOptions
-) => expectSuccess(S.encode(schema)(a, options), expected)
-
-export const expectEncodeFailure = async <A, I>(
-  schema: S.Schema<A, I, never>,
-  a: A,
-  message: string,
-  options?: ParseOptions
-) => expectFailure(S.encode(schema)(a, options), message)
-
 export const printAST = <A, I, R>(schema: S.Schema<A, I, R>) => {
   // eslint-disable-next-line no-console
   console.log("%o", schema.ast)

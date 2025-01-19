@@ -32,7 +32,7 @@ describe("ReadonlySet", () => {
 
   it("encoding", async () => {
     const schema = S.ReadonlySet(S.Number)
-    await Util.expectEncodeSuccess(schema, new Set(), [])
-    await Util.expectEncodeSuccess(schema, new Set([1, 2, 3]), [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, new Set(), [])
+    await Util.assertions.encoding.succeed(schema, new Set([1, 2, 3]), [1, 2, 3])
   })
 })

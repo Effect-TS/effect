@@ -19,7 +19,7 @@ describe("Uint8Array > Uint8ArrayFromSelf", () => {
 
   it("encoding", async () => {
     const u8arr = Uint8Array.from([0, 1, 2, 3])
-    await Util.expectEncodeSuccess(S.Uint8ArrayFromSelf, u8arr, u8arr)
+    await Util.assertions.encoding.succeed(S.Uint8ArrayFromSelf, u8arr, u8arr)
   })
 
   it("pretty", () => {

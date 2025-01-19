@@ -127,8 +127,8 @@ describe("suspend", () => {
         a: Util.NumberFromChar,
         as: S.Array(S.suspend((): S.Schema<A, FromA> => schema))
       })
-      await Util.expectEncodeSuccess(schema, { a: 1, as: [] }, { a: "1", as: [] })
-      await Util.expectEncodeSuccess(schema, { a: 1, as: [{ a: 2, as: [] }] }, {
+      await Util.assertions.encoding.succeed(schema, { a: 1, as: [] }, { a: "1", as: [] })
+      await Util.assertions.encoding.succeed(schema, { a: 1, as: [{ a: 2, as: [] }] }, {
         a: "1",
         as: [{ a: "2", as: [] }]
       })

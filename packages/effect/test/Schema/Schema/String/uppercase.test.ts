@@ -17,10 +17,10 @@ describe("Uppercase", () => {
 
   it("encoding", async () => {
     const schema = S.Uppercase
-    await Util.expectEncodeSuccess(schema, "", "")
-    await Util.expectEncodeSuccess(schema, "A", "A")
+    await Util.assertions.encoding.succeed(schema, "", "")
+    await Util.assertions.encoding.succeed(schema, "A", "A")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       "a",
       `Uppercase

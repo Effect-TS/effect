@@ -15,7 +15,7 @@ describe("`onExcessProperty` option", () => {
 └─ [1]
    └─ is unexpected, expected: 0`
       )
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         [1, "b"] as any,
         `readonly [number]
@@ -175,13 +175,13 @@ describe("`onExcessProperty` option", () => {
    └─ is unexpected, expected: 0`,
         { parseOptions: Util.onExcessPropertyPreserve }
       )
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         [1, "b"] as any,
         `readonly [number]
 └─ [1]
    └─ is unexpected, expected: 0`,
-        Util.onExcessPropertyPreserve
+        { parseOptions: Util.onExcessPropertyPreserve }
       )
     })
 

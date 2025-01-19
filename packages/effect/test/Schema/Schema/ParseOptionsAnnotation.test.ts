@@ -29,7 +29,7 @@ describe("ParseOptionsAnnotation", () => {
       { errors: "first" }
     )
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       { a: { b: "", c: "" }, d: "" },
       `{ readonly a: { readonly b: string; readonly c: string }; readonly d: string }

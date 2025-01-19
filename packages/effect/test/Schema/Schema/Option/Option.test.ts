@@ -16,7 +16,7 @@ describe("Option", () => {
 
   it("encoding", async () => {
     const schema = S.Option(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, O.none(), { _tag: "None" })
-    await Util.expectEncodeSuccess(schema, O.some(1), { _tag: "Some", value: "1" })
+    await Util.assertions.encoding.succeed(schema, O.none(), { _tag: "None" })
+    await Util.assertions.encoding.succeed(schema, O.some(1), { _tag: "Some", value: "1" })
   })
 })

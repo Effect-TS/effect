@@ -25,6 +25,6 @@ describe("greaterThanBigDecimal", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, BigDecimal.fromNumber(11), "11")
+    await Util.assertions.encoding.succeed(schema, BigDecimal.fromNumber(11), "11")
   })
 })

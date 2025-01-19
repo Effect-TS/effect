@@ -51,7 +51,7 @@ describe("ExitFromSelf", () => {
         failure: S.String,
         defect: Util.Defect
       })
-      await Util.expectEncodeSuccess(schema, Exit.die({ a: 1 }), Exit.die(`{"a":1}`))
+      await Util.assertions.encoding.succeed(schema, Exit.die({ a: 1 }), Exit.die(`{"a":1}`))
     })
   })
 })

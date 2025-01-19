@@ -351,7 +351,7 @@ schema (Union): boolean | symbol`)
         "b",
         "Expected `a${string}b`, actual \"b\""
       )
-      await Util.expectEncodeSuccess(schema, "acb", "acb")
+      await Util.assertions.encoding.succeed(schema, "acb", "acb")
     })
 
     it(`"a" + string + "b" + string`, async () => {

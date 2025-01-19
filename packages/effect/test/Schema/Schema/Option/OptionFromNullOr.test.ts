@@ -42,7 +42,7 @@ describe("OptionFromNullOr", () => {
 
   it("encoding", async () => {
     const schema = S.OptionFromNullOr(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, O.none(), null)
-    await Util.expectEncodeSuccess(schema, O.some(1), "1")
+    await Util.assertions.encoding.succeed(schema, O.none(), null)
+    await Util.assertions.encoding.succeed(schema, O.some(1), "1")
   })
 })

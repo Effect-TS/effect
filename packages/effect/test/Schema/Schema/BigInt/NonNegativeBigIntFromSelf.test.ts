@@ -11,7 +11,7 @@ describe("NonNegativeBigIntFromSelf", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       -1n,
       `NonNegativeBigintFromSelf

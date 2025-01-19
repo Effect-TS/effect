@@ -33,7 +33,7 @@ describe("HashSet", () => {
 
   it("encoding", async () => {
     const schema = S.HashSet(S.Number)
-    await Util.expectEncodeSuccess(schema, HashSet.empty(), [])
-    await Util.expectEncodeSuccess(schema, HashSet.fromIterable([1, 2, 3]), [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, HashSet.empty(), [])
+    await Util.assertions.encoding.succeed(schema, HashSet.fromIterable([1, 2, 3]), [1, 2, 3])
   })
 })

@@ -23,6 +23,6 @@ describe("greaterThanBigInt", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, 1n, 1n)
+    await Util.assertions.encoding.succeed(schema, 1n, 1n)
   })
 })

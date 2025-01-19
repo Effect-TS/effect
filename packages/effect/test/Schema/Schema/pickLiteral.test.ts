@@ -41,6 +41,6 @@ describe("pickLiteral", () => {
 
   it("encoding", async () => {
     const schema = S.Literal(null).pipe(S.pickLiteral(null))
-    await Util.expectEncodeSuccess(schema, null, null)
+    await Util.assertions.encoding.succeed(schema, null, null)
   })
 })

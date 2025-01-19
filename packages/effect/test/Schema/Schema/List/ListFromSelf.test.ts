@@ -38,8 +38,8 @@ describe("ListFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.ListFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, List.empty(), List.empty())
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, List.empty(), List.empty())
+    await Util.assertions.encoding.succeed(
       schema,
       List.fromIterable([1, 2, 3]),
       List.fromIterable(["1", "2", "3"])

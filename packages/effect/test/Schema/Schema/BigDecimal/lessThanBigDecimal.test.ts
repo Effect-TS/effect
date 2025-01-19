@@ -25,6 +25,6 @@ describe("lessThanBigDecimal", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, BigDecimal.fromNumber(4.5), "4.5")
+    await Util.assertions.encoding.succeed(schema, BigDecimal.fromNumber(4.5), "4.5")
   })
 })

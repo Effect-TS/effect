@@ -54,7 +54,7 @@ describe("CauseFromSelf", () => {
   it("encoding", async () => {
     const schema = S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown })
 
-    await Util.expectEncodeSuccess(schema, Cause.fail(1), Cause.fail("1"))
+    await Util.assertions.encoding.succeed(schema, Cause.fail(1), Cause.fail("1"))
   })
 
   it("pretty", () => {

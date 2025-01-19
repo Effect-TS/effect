@@ -21,8 +21,8 @@ describe("Symbol", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, Symbol.for("a"), "a")
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(schema, Symbol.for("a"), "a")
+    await Util.assertions.encoding.fail(
       schema,
       Symbol(),
       `Symbol

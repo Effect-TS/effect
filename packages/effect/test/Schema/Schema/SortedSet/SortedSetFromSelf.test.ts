@@ -44,12 +44,12 @@ describe("SortedSetFromSelf", () => {
 
   it("encoding", async () => {
     const schema = Schema.SortedSetFromSelf(Schema.NumberFromString, N.Order, S.Order)
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       SortedSet.fromIterable([] as Array<number>, N.Order),
       SortedSet.fromIterable([], S.Order)
     )
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       SortedSet.fromIterable([1, 2, 3], N.Order),
       SortedSet.fromIterable(["1", "2", "3"], S.Order)

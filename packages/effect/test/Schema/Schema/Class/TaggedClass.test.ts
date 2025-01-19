@@ -105,9 +105,9 @@ details: Duplicate key "_tag"`)
 
   it("encoding", async () => {
     class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmptyString }) {}
-    await Util.expectEncodeSuccess(TA, new TA({ a: "a" }), { _tag: "TA", a: "a" })
-    await Util.expectEncodeSuccess(TA, { _tag: "TA", a: "a" } as any, { _tag: "TA", a: "a" })
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(TA, new TA({ a: "a" }), { _tag: "TA", a: "a" })
+    await Util.assertions.encoding.succeed(TA, { _tag: "TA", a: "a" } as any, { _tag: "TA", a: "a" })
+    await Util.assertions.encoding.fail(
       TA,
       new TA({ a: "" }, true),
       `(TA (Encoded side) <-> TA)

@@ -68,7 +68,7 @@ describe("", () => {
       └─ Transformation process failure
          └─ Expected PersonWithTransformFrom (Encoded side), actual {"id":2,"name":"John"}`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       PersonWithTransformFrom,
       new PersonWithTransformFrom({ id: 2, name: "John", thing: Option.some({ id: 1 }) }),
       `(PersonWithTransformFrom (Encoded side) <-> PersonWithTransformFrom)

@@ -8,7 +8,7 @@ describe("transformLiteral", () => {
       const schema = S.transformLiteral(0, "a")
 
       await Util.assertions.decoding.succeed(schema, 0, "a")
-      await Util.expectEncodeSuccess(schema, "a", 0)
+      await Util.assertions.encoding.succeed(schema, "a", 0)
     })
   })
 })
@@ -23,7 +23,7 @@ describe("transformLiterals", () => {
       )
 
       await Util.assertions.decoding.succeed(schema, 1, "b")
-      await Util.expectEncodeSuccess(schema, "b", 1)
+      await Util.assertions.encoding.succeed(schema, "b", 1)
     })
 
     it("mixed types", async () => {
@@ -34,11 +34,11 @@ describe("transformLiterals", () => {
       )
 
       await Util.assertions.decoding.succeed(schema, 0, BigInt(0))
-      await Util.expectEncodeSuccess(schema, BigInt(0), 0)
+      await Util.assertions.encoding.succeed(schema, BigInt(0), 0)
       await Util.assertions.decoding.succeed(schema, "a", true)
-      await Util.expectEncodeSuccess(schema, true, "a")
+      await Util.assertions.encoding.succeed(schema, true, "a")
       await Util.assertions.decoding.succeed(schema, null, false)
-      await Util.expectEncodeSuccess(schema, false, null)
+      await Util.assertions.encoding.succeed(schema, false, null)
     })
   })
 })

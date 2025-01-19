@@ -66,6 +66,6 @@ describe("headOrElse", () => {
 
   it("encoding", async () => {
     const schema = S.headOrElse(S.Array(S.Number))
-    await Util.expectEncodeSuccess(schema, 1, [1])
+    await Util.assertions.encoding.succeed(schema, 1, [1])
   })
 })

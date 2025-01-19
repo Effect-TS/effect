@@ -14,7 +14,7 @@ describe("requiredToOptional", () => {
     await Util.assertions.decoding.succeed(schema, { a: "0" }, {})
     await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1n })
 
-    await Util.expectEncodeSuccess(schema, {}, { a: "0" })
-    await Util.expectEncodeSuccess(schema, { a: 1n }, { a: "1" })
+    await Util.assertions.encoding.succeed(schema, {}, { a: "0" })
+    await Util.assertions.encoding.succeed(schema, { a: 1n }, { a: "1" })
   })
 })

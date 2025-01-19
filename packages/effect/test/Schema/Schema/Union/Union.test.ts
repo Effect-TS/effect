@@ -255,24 +255,24 @@ describe("Union", () => {
   describe("encoding", () => {
     it("union", async () => {
       const schema = S.Union(S.String, Util.NumberFromChar)
-      await Util.expectEncodeSuccess(schema, "a", "a")
-      await Util.expectEncodeSuccess(schema, 1, "1")
+      await Util.assertions.encoding.succeed(schema, "a", "a")
+      await Util.assertions.encoding.succeed(schema, 1, "1")
     })
 
     it("union/ exact optional property signatures", async () => {
       const ab = S.Struct({ a: S.String, b: S.optionalWith(S.Number, { exact: true }) })
       const ac = S.Struct({ a: S.String, c: S.optionalWith(S.Number, { exact: true }) })
       const schema = S.Union(ab, ac)
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         schema,
         { a: "a", c: 1 },
         { a: "a" }
       )
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         schema,
         { a: "a", c: 1 },
         { a: "a", c: 1 },
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
   })

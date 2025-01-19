@@ -13,9 +13,9 @@ describe("attachPropertySignature", () => {
     )
 
     await Util.assertions.decoding.succeed(schema, { radius: 10 }, { kind: "circle", radius: 10 })
-    await Util.expectEncodeSuccess(schema, { kind: "circle", radius: 10 }, { radius: 10 })
+    await Util.assertions.encoding.succeed(schema, { kind: "circle", radius: 10 }, { radius: 10 })
     await Util.assertions.decoding.succeed(schema, { sideLength: 10 }, { kind: "square", sideLength: 10 })
-    await Util.expectEncodeSuccess(schema, { kind: "square", sideLength: 10 }, { sideLength: 10 })
+    await Util.assertions.encoding.succeed(schema, { kind: "square", sideLength: 10 }, { sideLength: 10 })
   })
 
   it("symbol keys literal values", async () => {
@@ -28,9 +28,9 @@ describe("attachPropertySignature", () => {
     )
 
     await Util.assertions.decoding.succeed(schema, { radius: 10 }, { [kind]: "circle", radius: 10 })
-    await Util.expectEncodeSuccess(schema, { [kind]: "circle", radius: 10 }, { radius: 10 })
+    await Util.assertions.encoding.succeed(schema, { [kind]: "circle", radius: 10 }, { radius: 10 })
     await Util.assertions.decoding.succeed(schema, { sideLength: 10 }, { [kind]: "square", sideLength: 10 })
-    await Util.expectEncodeSuccess(schema, { [kind]: "square", sideLength: 10 }, { sideLength: 10 })
+    await Util.assertions.encoding.succeed(schema, { [kind]: "square", sideLength: 10 }, { sideLength: 10 })
   })
 
   it("string keys unique symbols", async () => {
@@ -45,9 +45,9 @@ describe("attachPropertySignature", () => {
     )
 
     await Util.assertions.decoding.succeed(schema, { radius: 10 }, { [kind]: circle, radius: 10 })
-    await Util.expectEncodeSuccess(schema, { [kind]: circle, radius: 10 }, { radius: 10 })
+    await Util.assertions.encoding.succeed(schema, { [kind]: circle, radius: 10 }, { radius: 10 })
     await Util.assertions.decoding.succeed(schema, { sideLength: 10 }, { [kind]: square, sideLength: 10 })
-    await Util.expectEncodeSuccess(schema, { [kind]: square, sideLength: 10 }, { sideLength: 10 })
+    await Util.assertions.encoding.succeed(schema, { [kind]: square, sideLength: 10 }, { sideLength: 10 })
   })
 
   it("symbol keys unique symbols", async () => {
@@ -61,9 +61,9 @@ describe("attachPropertySignature", () => {
     )
 
     await Util.assertions.decoding.succeed(schema, { radius: 10 }, { kind: circle, radius: 10 })
-    await Util.expectEncodeSuccess(schema, { kind: circle, radius: 10 }, { radius: 10 })
+    await Util.assertions.encoding.succeed(schema, { kind: circle, radius: 10 }, { radius: 10 })
     await Util.assertions.decoding.succeed(schema, { sideLength: 10 }, { kind: square, sideLength: 10 })
-    await Util.expectEncodeSuccess(schema, { kind: square, sideLength: 10 }, { sideLength: 10 })
+    await Util.assertions.encoding.succeed(schema, { kind: square, sideLength: 10 }, { sideLength: 10 })
   })
 
   it("should be compatible with extend", async () => {
@@ -72,7 +72,7 @@ describe("attachPropertySignature", () => {
       S.extend(S.Struct({ c: S.Number }))
     )
     await Util.assertions.decoding.succeed(schema, { a: "a", c: 1 }, { a: "a", c: 1, _tag: "b" as const })
-    await Util.expectEncodeSuccess(schema, { a: "a", c: 1, _tag: "b" as const }, { a: "a", c: 1 })
+    await Util.assertions.encoding.succeed(schema, { a: "a", c: 1, _tag: "b" as const }, { a: "a", c: 1 })
   })
 
   it("with a transformation", async () => {
@@ -96,7 +96,7 @@ describe("attachPropertySignature", () => {
       _isVisible: true,
       radius: 10
     })
-    await Util.expectEncodeSuccess(schema, {
+    await Util.assertions.encoding.succeed(schema, {
       _tag: "Circle" as const,
       radius: 10,
       _isVisible: true
@@ -111,7 +111,7 @@ describe("attachPropertySignature", () => {
     }).pipe(
       S.attachPropertySignature("_tag", "a", { identifier: "AttachedProperty" })
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema1,
       null as any,
       `({ readonly a: string } <-> AttachedProperty)
@@ -126,7 +126,7 @@ describe("attachPropertySignature", () => {
       "a",
       { identifier: "AttachedProperty" }
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema2,
       null as any,
       `({ readonly a: string } <-> AttachedProperty)

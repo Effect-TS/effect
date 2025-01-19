@@ -45,16 +45,16 @@ describe("BigIntFromNumber", () => {
   })
 
   it("Encoder", async () => {
-    await Util.expectEncodeSuccess(schema, 1n, 1)
+    await Util.assertions.encoding.succeed(schema, 1n, 1)
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       BigInt(Number.MAX_SAFE_INTEGER) + 1n,
       `BigIntFromNumber
 └─ Transformation process failure
    └─ Unable to encode 9007199254740992n into a number`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       BigInt(Number.MIN_SAFE_INTEGER) - 1n,
       `BigIntFromNumber

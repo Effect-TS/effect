@@ -28,9 +28,9 @@ describe("trim", () => {
 
   it("encoding", async () => {
     const schema = S.String.pipe(S.minLength(1), S.compose(S.Trim)).annotations({ identifier: "MySchema" })
-    await Util.expectEncodeSuccess(schema, "a", "a")
+    await Util.assertions.encoding.succeed(schema, "a", "a")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       "",
       `MySchema
@@ -39,7 +39,7 @@ describe("trim", () => {
       └─ Predicate refinement failure
          └─ Expected a string at least 1 character(s) long, actual ""`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       " a",
       `MySchema
@@ -50,7 +50,7 @@ describe("trim", () => {
             └─ Predicate refinement failure
                └─ Expected a string with no leading or trailing whitespace, actual " a"`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       "a ",
       `MySchema
@@ -61,7 +61,7 @@ describe("trim", () => {
             └─ Predicate refinement failure
                └─ Expected a string with no leading or trailing whitespace, actual "a "`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       " a ",
       `MySchema
@@ -72,7 +72,7 @@ describe("trim", () => {
             └─ Predicate refinement failure
                └─ Expected a string with no leading or trailing whitespace, actual " a "`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       " ",
       `MySchema

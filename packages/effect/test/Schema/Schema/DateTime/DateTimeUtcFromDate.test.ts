@@ -35,7 +35,7 @@ describe("DateTimeUtcFromDate", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, DateTime.unsafeMake(0), new Date(0))
+    await Util.assertions.encoding.succeed(schema, DateTime.unsafeMake(0), new Date(0))
     expect(
       S.encodeSync(schema)(
         DateTime.unsafeMake({ day: 6, month: 12, year: 2024, hour: 0, minute: 0, second: 0, millisecond: 0 })

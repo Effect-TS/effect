@@ -31,7 +31,7 @@ describe("greaterThanDuration", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       Duration.decode("6 seconds"),
       Duration.decode("6 seconds")

@@ -37,12 +37,12 @@ describe("StringFromBase64Url", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       "foobar",
       "Zm9vYmFy"
     )
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       ">?>d?ß",
       "Pj8-ZD_Dnw"

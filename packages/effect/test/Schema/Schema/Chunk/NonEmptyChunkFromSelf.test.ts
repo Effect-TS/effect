@@ -46,7 +46,7 @@ describe("NonEmptyChunkFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.NonEmptyChunkFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       C.make(1, 2, 3),
       C.make("1", "2", "3")

@@ -10,7 +10,7 @@ describe("Not", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, true, false)
-    await Util.expectEncodeSuccess(schema, false, true)
+    await Util.assertions.encoding.succeed(schema, true, false)
+    await Util.assertions.encoding.succeed(schema, false, true)
   })
 })

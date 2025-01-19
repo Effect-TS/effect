@@ -29,6 +29,6 @@ describe("Data", () => {
 
   it("encoding", async () => {
     const schema = S.Data(S.Struct({ a: S.String, b: S.Number }))
-    await Util.expectEncodeSuccess(schema, Data.struct({ a: "ok", b: 0 }), { a: "ok", b: 0 })
+    await Util.assertions.encoding.succeed(schema, Data.struct({ a: "ok", b: 0 }), { a: "ok", b: 0 })
   })
 })

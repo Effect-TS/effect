@@ -38,8 +38,8 @@ describe("HashSetFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.HashSetFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, HashSet.empty(), HashSet.fromIterable([]))
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, HashSet.empty(), HashSet.fromIterable([]))
+    await Util.assertions.encoding.succeed(
       schema,
       HashSet.fromIterable([1, 2, 3]),
       HashSet.fromIterable(["1", "2", "3"])

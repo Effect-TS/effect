@@ -25,8 +25,8 @@ describe("Date", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, new Date(0), "1970-01-01T00:00:00.000Z")
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(schema, new Date(0), "1970-01-01T00:00:00.000Z")
+    await Util.assertions.encoding.fail(
       schema,
       new Date("fail"),
       `Date

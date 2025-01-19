@@ -32,17 +32,17 @@ describe("BigDecimalFromNumber", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       BigDecimal.make(2n, 0),
       2
     )
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       BigDecimal.make(123n, 3),
       0.123
     )
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       BigDecimal.make(0n, 0),
       0

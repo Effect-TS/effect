@@ -18,10 +18,10 @@ describe("Uncapitalize", () => {
 
   it("encoding", async () => {
     const schema = S.Uncapitalize
-    await Util.expectEncodeSuccess(schema, "", "")
-    await Util.expectEncodeSuccess(schema, "aA", "aA")
+    await Util.assertions.encoding.succeed(schema, "", "")
+    await Util.assertions.encoding.succeed(schema, "aA", "aA")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       "AA",
       `Uncapitalize

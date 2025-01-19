@@ -40,7 +40,7 @@ describe("Uint8ArrayFromBase64", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       encoder.encode("foobar"),
       "Zm9vYmFy"

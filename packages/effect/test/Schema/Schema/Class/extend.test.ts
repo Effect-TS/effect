@@ -202,7 +202,7 @@ describe("extend", () => {
 
       expect(B.ast.to.annotations[AST.TitleAnnotationId]).toEqual("mytitle")
 
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         B,
         { a: "a", b: "" },
         `(B (Encoded side) <-> B)
@@ -240,7 +240,7 @@ describe("extend", () => {
          └─ is missing`
       )
 
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         B,
         { a: "a", b: "" },
         `TransformationID

@@ -169,7 +169,7 @@ describe("`errors` option", () => {
     describe("tuple", () => {
       it("unexpected indexes", async () => {
         const schema = S.Tuple()
-        await Util.expectEncodeFailure(
+        await Util.assertions.encoding.fail(
           schema,
           [1, 1] as any,
           `readonly []
@@ -177,13 +177,13 @@ describe("`errors` option", () => {
 │  └─ is unexpected, expected: never
 └─ [1]
    └─ is unexpected, expected: never`,
-          Util.allErrors
+          { parseOptions: Util.allErrors }
         )
       })
 
       it("wrong type for elements", async () => {
         const schema = S.Tuple(Util.NumberFromChar, Util.NumberFromChar)
-        await Util.expectEncodeFailure(
+        await Util.assertions.encoding.fail(
           schema,
           [10, 10],
           `readonly [NumberFromChar, NumberFromChar]
@@ -199,13 +199,13 @@ describe("`errors` option", () => {
          └─ Char
             └─ Predicate refinement failure
                └─ Expected a single character, actual "10"`,
-          Util.allErrors
+          { parseOptions: Util.allErrors }
         )
       })
 
       it("wrong type for rest", async () => {
         const schema = S.Array(Util.NumberFromChar)
-        await Util.expectEncodeFailure(
+        await Util.assertions.encoding.fail(
           schema,
           [10, 10],
           `ReadonlyArray<NumberFromChar>
@@ -221,13 +221,13 @@ describe("`errors` option", () => {
          └─ Char
             └─ Predicate refinement failure
                └─ Expected a single character, actual "10"`,
-          Util.allErrors
+          { parseOptions: Util.allErrors }
         )
       })
 
       it("wrong type for values post rest elements", async () => {
         const schema = S.Tuple([], S.String, Util.NumberFromChar, Util.NumberFromChar)
-        await Util.expectEncodeFailure(
+        await Util.assertions.encoding.fail(
           schema,
           [10, 10],
           `readonly [...string[], NumberFromChar, NumberFromChar]
@@ -243,7 +243,7 @@ describe("`errors` option", () => {
          └─ Char
             └─ Predicate refinement failure
                └─ Expected a single character, actual "10"`,
-          Util.allErrors
+          { parseOptions: Util.allErrors }
         )
       })
     })
@@ -251,7 +251,7 @@ describe("`errors` option", () => {
     describe("struct", () => {
       it("wrong type for values", async () => {
         const schema = S.Struct({ a: Util.NumberFromChar, b: Util.NumberFromChar })
-        await Util.expectEncodeFailure(
+        await Util.assertions.encoding.fail(
           schema,
           { a: 10, b: 10 },
           `{ readonly a: NumberFromChar; readonly b: NumberFromChar }
@@ -267,7 +267,7 @@ describe("`errors` option", () => {
          └─ Char
             └─ Predicate refinement failure
                └─ Expected a single character, actual "10"`,
-          Util.allErrors
+          { parseOptions: Util.allErrors }
         )
       })
     })
@@ -275,7 +275,7 @@ describe("`errors` option", () => {
     describe("record", () => {
       it("all key errors", async () => {
         const schema = S.Record({ key: S.Char, value: S.String })
-        await Util.expectEncodeFailure(
+        await Util.assertions.encoding.fail(
           schema,
           { aa: "a", bb: "bb" },
           `{ readonly [x: Char]: string }
@@ -283,13 +283,13 @@ describe("`errors` option", () => {
 │  └─ is unexpected, expected: Char
 └─ ["bb"]
    └─ is unexpected, expected: Char`,
-          { ...Util.allErrors, ...Util.onExcessPropertyError }
+          { parseOptions: { ...Util.allErrors, ...Util.onExcessPropertyError } }
         )
       })
 
       it("all value errors", async () => {
         const schema = S.Record({ key: S.String, value: S.Char })
-        await Util.expectEncodeFailure(
+        await Util.assertions.encoding.fail(
           schema,
           { a: "aa", b: "bb" },
           `{ readonly [x: string]: Char }
@@ -301,7 +301,7 @@ describe("`errors` option", () => {
    └─ Char
       └─ Predicate refinement failure
          └─ Expected a single character, actual "bb"`,
-          Util.allErrors
+          { parseOptions: Util.allErrors }
         )
       })
     })
