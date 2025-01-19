@@ -6,7 +6,7 @@ describe("NonPositive", () => {
   const schema = S.NonPositive
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, 0, 0)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       1,
       `NonPositive

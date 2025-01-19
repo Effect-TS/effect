@@ -26,7 +26,7 @@ describe("Enums", () => {
       await Util.assertions.decoding.succeed(schema, 0)
       await Util.assertions.decoding.succeed(schema, 1)
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         3,
         `Expected <enum 2 value(s): 0 | 1>, actual 3`
@@ -54,7 +54,7 @@ describe("Enums", () => {
       await Util.assertions.decoding.succeed(schema, "banana")
       await Util.assertions.decoding.succeed(schema, 0)
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "Cantaloupe",
         `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`
@@ -81,7 +81,7 @@ describe("Enums", () => {
       await Util.assertions.decoding.succeed(schema, "banana")
       await Util.assertions.decoding.succeed(schema, 3)
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "Cantaloupe",
         `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`

@@ -25,12 +25,12 @@ describe("SortedSetFromSelf", () => {
       SortedSet.fromIterable([1, 2, 3], N.Order)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected SortedSet<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       SortedSet.fromIterable(["1", "a", "3"], S.Order),
       `SortedSet<NumberFromString>

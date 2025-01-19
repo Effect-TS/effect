@@ -220,7 +220,7 @@ describe("extend", () => {
           }
         }
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           nested: {
@@ -239,7 +239,7 @@ describe("extend", () => {
                   └─ Predicate refinement failure
                      └─ Expected a string starting with "start:", actual ""`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {
           nested: {
@@ -407,7 +407,7 @@ describe("extend", () => {
       )
       const schema = Schema.extend(S, R)
       expect(String(schema)).toBe(`{ { readonly a: string; readonly b: number } | filter }`)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: -1 },
         `R filter`
@@ -422,12 +422,12 @@ describe("extend", () => {
       )
       const schema = Schema.extend(S, RR)
       expect(String(schema)).toBe(`{ { { readonly a: string; readonly b: number } | filter } | filter }`)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: -1 },
         `filter1`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: 11 },
         `filter2`
@@ -443,12 +443,12 @@ describe("extend", () => {
       )
       const schema = Schema.extend(R1, R2)
       expect(String(schema)).toBe(`{ { { readonly a: string; readonly b: number } | filter } | filter }`)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "", b: 1 },
         `R1 filter`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: -1 },
         `R2 filter`
@@ -465,7 +465,7 @@ describe("extend", () => {
       expect(String(schema)).toBe(
         `{ { readonly a: string; readonly c: boolean } | filter } | { { readonly b: number; readonly c: boolean } | filter }`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a", c: false },
         `{ { readonly a: string; readonly c: boolean } | filter } | { { readonly b: number; readonly c: boolean } | filter }
@@ -476,7 +476,7 @@ describe("extend", () => {
          └─ ["b"]
             └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { b: 1, c: false },
         `{ { readonly a: string; readonly c: boolean } | filter } | { { readonly b: number; readonly c: boolean } | filter }
@@ -503,7 +503,7 @@ describe("extend", () => {
       expect(String(schema)).toBe(
         `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "", c: true },
         `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }
@@ -516,7 +516,7 @@ describe("extend", () => {
                └─ ["b"]
                   └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { b: -1, c: true },
         `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }
@@ -529,7 +529,7 @@ describe("extend", () => {
 │                 └─ is missing
 └─ R2 filter`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a", c: false },
         `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }
@@ -542,7 +542,7 @@ describe("extend", () => {
                └─ ["b"]
                   └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { b: 1, c: false },
         `{ { { readonly a: string; readonly c: boolean } | filter } | filter } | { { { readonly b: number; readonly c: boolean } | filter } | filter }

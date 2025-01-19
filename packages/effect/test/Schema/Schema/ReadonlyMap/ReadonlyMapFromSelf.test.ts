@@ -18,12 +18,12 @@ describe("ReadonlyMapFromSelf", () => {
       new Map([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected ReadonlyMap<NumberFromString, string>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       new Map([["1", "a"], ["a", "b"]]),
       `ReadonlyMap<NumberFromString, string>

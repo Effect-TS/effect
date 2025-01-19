@@ -12,14 +12,14 @@ describe("ReadonlySet", () => {
     await Util.assertions.decoding.succeed(schema, [], new Set([]))
     await Util.assertions.decoding.succeed(schema, [1, 2, 3], new Set([1, 2, 3]))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(ReadonlyArray<number> <-> ReadonlySet<number>)
 └─ Encoded side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> ReadonlySet<number>)

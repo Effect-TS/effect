@@ -10,14 +10,14 @@ describe("parseJson", () => {
       await Util.assertions.decoding.succeed(schema, "{}", {})
       await Util.assertions.decoding.succeed(schema, `{"a":"b"}`, { "a": "b" })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `parseJson
 └─ Encoded side transformation failure
    └─ Expected string, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "",
         Util.isBun ?
@@ -28,7 +28,7 @@ describe("parseJson", () => {
 └─ Transformation process failure
    └─ Unexpected end of JSON input`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "a",
         Util.isBun
@@ -39,7 +39,7 @@ describe("parseJson", () => {
 └─ Transformation process failure
    └─ Unexpected token 'a', "a" is not valid JSON`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "{",
         Util.isBun
@@ -79,7 +79,7 @@ describe("parseJson", () => {
     it("decoding", async () => {
       const schema = S.parseJson(S.Struct({ a: S.Number }))
       await Util.assertions.decoding.succeed(schema, `{"a":1}`, { a: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         `{"a"}`,
         Util.isBun
@@ -94,7 +94,7 @@ describe("parseJson", () => {
       └─ Transformation process failure
          └─ Expected ':' after property name in JSON at position 4`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         `{"a":"b"}`,
         `(parseJson <-> { readonly a: number })

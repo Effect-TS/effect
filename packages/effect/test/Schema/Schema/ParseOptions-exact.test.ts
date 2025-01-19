@@ -11,13 +11,13 @@ describe("`exact` option", () => {
 
     it("true", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `{ readonly a: unknown }
 └─ ["a"]
    └─ is missing`,
-        { exact: true }
+        { parseOptions: { exact: true } }
       )
     })
   })

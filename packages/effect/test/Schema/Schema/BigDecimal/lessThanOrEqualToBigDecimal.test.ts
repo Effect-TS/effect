@@ -13,7 +13,7 @@ describe("lessThanOrEqualToBigDecimal", () => {
       "5",
       BigDecimal.normalize(BigDecimal.unsafeFromNumber(5))
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "6",
       `lessThanOrEqualToBigDecimal(5)

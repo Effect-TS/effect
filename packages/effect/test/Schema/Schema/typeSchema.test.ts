@@ -47,7 +47,7 @@ describe("typeSchema", () => {
   it("decoding", async () => {
     const schema = S.typeSchema(S.NumberFromString)
     await Util.assertions.decoding.succeed(schema, 1)
-    await Util.expectDecodeUnknownFailure(schema, null, "Expected number, actual null")
-    await Util.expectDecodeUnknownFailure(schema, "a", `Expected number, actual "a"`)
+    await Util.assertions.decoding.fail(schema, null, "Expected number, actual null")
+    await Util.assertions.decoding.fail(schema, "a", `Expected number, actual "a"`)
   })
 })

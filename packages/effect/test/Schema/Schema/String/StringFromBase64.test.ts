@@ -15,21 +15,21 @@ describe("StringFromBase64", () => {
       "Zm9vYmFy",
       "foobar"
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Zm9vY",
       `StringFromBase64
 └─ Transformation process failure
    └─ Length must be a multiple of 4, but is 5`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Zm9vYmF-",
       `StringFromBase64
 └─ Transformation process failure
    └─ Invalid character -`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "=Zm9vYmF",
       `StringFromBase64

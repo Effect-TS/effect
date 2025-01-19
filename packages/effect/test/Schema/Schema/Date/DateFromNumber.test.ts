@@ -9,7 +9,7 @@ describe("DateFromNumber", () => {
     expect(S.decodeSync(S.DateFromNumber)(Infinity) instanceof Date).toBe(true)
     expect(S.decodeSync(S.DateFromNumber)(-Infinity) instanceof Date).toBe(true)
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.DateFromNumber,
       null,
       `DateFromNumber

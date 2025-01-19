@@ -15,7 +15,7 @@ describe("ArrayEnsure", () => {
   it("decode non-array", async () => {
     const schema = S.ArrayEnsure(S.NumberFromString)
     await Util.assertions.decoding.succeed(schema, "123", [123])
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(NumberFromString | ReadonlyArray<NumberFromString> <-> ReadonlyArray<number>)
@@ -36,7 +36,7 @@ describe("ArrayEnsure", () => {
   it("decode array", async () => {
     const schema = S.ArrayEnsure(S.NumberFromString)
     await Util.assertions.decoding.succeed(schema, ["123"], [123])
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [null],
       `(NumberFromString | ReadonlyArray<NumberFromString> <-> ReadonlyArray<number>)

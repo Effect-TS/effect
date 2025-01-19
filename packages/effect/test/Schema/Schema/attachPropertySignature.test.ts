@@ -141,7 +141,7 @@ describe("attachPropertySignature", () => {
     }).pipe(
       S.attachPropertySignature("_tag", "a")
     ).annotations({ identifier: "AttachedProperty" })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `AttachedProperty

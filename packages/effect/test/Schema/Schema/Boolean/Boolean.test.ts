@@ -7,7 +7,7 @@ describe("Boolean", () => {
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, true, true)
     await Util.assertions.decoding.succeed(schema, false, false)
-    await Util.expectDecodeUnknownFailure(schema, 1, `Expected boolean, actual 1`)
+    await Util.assertions.decoding.fail(schema, 1, `Expected boolean, actual 1`)
   })
 
   it("encoding", async () => {

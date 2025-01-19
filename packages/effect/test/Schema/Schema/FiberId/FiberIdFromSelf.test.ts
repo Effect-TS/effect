@@ -20,7 +20,7 @@ describe("FiberIdFromSelf", () => {
     await Util.assertions.decoding.succeed(schema, FiberId.runtime(1, 100))
     await Util.assertions.decoding.succeed(schema, FiberId.composite(FiberId.none, FiberId.none))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected FiberIdFromSelf, actual null`

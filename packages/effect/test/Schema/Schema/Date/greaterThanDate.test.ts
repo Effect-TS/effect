@@ -11,14 +11,14 @@ describe("greaterThanDate", () => {
       new Date(1)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       new Date(0),
       `greaterThanDate(1970-01-01T00:00:00.000Z)
 └─ Predicate refinement failure
    └─ Expected a date after 1970-01-01T00:00:00.000Z, actual 1970-01-01T00:00:00.000Z`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       new Date(-1),
       `greaterThanDate(1970-01-01T00:00:00.000Z)

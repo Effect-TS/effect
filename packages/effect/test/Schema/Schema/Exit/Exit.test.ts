@@ -20,7 +20,7 @@ describe("Exit", () => {
       { _tag: "Success", value: 123 },
       Exit.succeed(123)
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { _tag: "Success", value: null },
       `(ExitEncoded<number, string, Defect> <-> Exit<number, string>)
@@ -30,7 +30,7 @@ describe("Exit", () => {
          └─ ["value"]
             └─ Expected number, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { _tag: "Failure", cause: null },
       `(ExitEncoded<number, string, Defect> <-> Exit<number, string>)

@@ -6,7 +6,7 @@ describe("headNonEmpty", () => {
   it("decoding", async () => {
     const schema = S.headNonEmpty(S.NonEmptyArray(S.NumberFromString))
     await Util.assertions.decoding.succeed(schema, ["1"], 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       ["a"],
       `(readonly [NumberFromString, ...NumberFromString[]] <-> number | number)

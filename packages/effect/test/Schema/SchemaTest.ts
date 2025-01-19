@@ -30,13 +30,23 @@ export const assertions = Effect.gen(function*() {
   const { deepStrictEqual, fail, throws } = yield* Assert
   const config = yield* AssertConfig
 
-  const expectRight = <E, A>(e: Either.Either<A, E>, a: A) => {
+  const expectRight = <R, L>(e: Either.Either<R, L>, right: R) => {
     if (Either.isRight(e)) {
-      deepStrictEqual(e.right, a)
+      deepStrictEqual(e.right, right)
     } else {
       // eslint-disable-next-line no-console
       console.log(e.left)
       fail(`expected a Right, got a Left: ${e.left}`)
+    }
+  }
+
+  const expectLeft = <R, L>(e: Either.Either<R, L>, left: L) => {
+    if (Either.isLeft(e)) {
+      deepStrictEqual(e.left, left)
+    } else {
+      // eslint-disable-next-line no-console
+      console.log(e.right)
+      fail(`expected a Left, got a Right: ${e.right}`)
     }
   }
 
@@ -134,7 +144,14 @@ export const assertions = Effect.gen(function*() {
           readonly parseOptions?: SchemaAST.ParseOptions
         }
       ) {
-        const decoding = ParseResult.decodeUnknown(schema)(input, options?.parseOptions)
+        const decoding = Effect.gen(function*() {
+          const decoded = yield* Effect.either(ParseResult.decodeUnknown(schema)(input, options?.parseOptions))
+          if (Either.isLeft(decoded)) {
+            const message = yield* ParseResult.TreeFormatter.formatIssue(decoded.left)
+            return yield* Effect.fail(message)
+          }
+          return decoded.right
+        })
         const result = await Effect.runPromise(Effect.either(decoding))
         expectRight(
           result,
@@ -144,7 +161,24 @@ export const assertions = Effect.gen(function*() {
         )
       },
 
-      fail() {
+      async fail<A, I>(
+        schema: Schema.Schema<A, I>,
+        input: unknown,
+        message: string,
+        options?: {
+          readonly parseOptions?: SchemaAST.ParseOptions
+        }
+      ) {
+        const decoding = Effect.gen(function*() {
+          const decoded = yield* Effect.either(ParseResult.decodeUnknown(schema)(input, options?.parseOptions))
+          if (Either.isLeft(decoded)) {
+            const message = yield* ParseResult.TreeFormatter.formatIssue(decoded.left)
+            return yield* Effect.fail(message)
+          }
+          return decoded.right
+        })
+        const result = await Effect.runPromise(Effect.either(decoding))
+        expectLeft(result, message)
       }
     }
   }

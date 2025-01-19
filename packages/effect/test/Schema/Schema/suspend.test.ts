@@ -33,19 +33,19 @@ describe("suspend", () => {
       await Util.assertions.decoding.succeed(schema, { a: "a1", as: [] })
       await Util.assertions.decoding.succeed(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected { readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a1" },
         `{ readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }
 └─ ["as"]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
         `{ readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }

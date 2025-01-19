@@ -23,7 +23,7 @@ describe("FiberId", () => {
       FiberId.composite(FiberId.none, FiberId.none)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { _tag: "Composite", left: { _tag: "None" }, right: { _tag: "-" } },
       `FiberId

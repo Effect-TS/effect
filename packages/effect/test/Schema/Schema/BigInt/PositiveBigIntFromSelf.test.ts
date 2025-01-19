@@ -6,14 +6,14 @@ describe("PositiveBigIntFromSelf", () => {
   const schema = S.PositiveBigIntFromSelf
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -1n,
       `PositiveBigintFromSelf
 └─ Predicate refinement failure
    └─ Expected a positive bigint, actual -1n`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       0n,
       `PositiveBigintFromSelf

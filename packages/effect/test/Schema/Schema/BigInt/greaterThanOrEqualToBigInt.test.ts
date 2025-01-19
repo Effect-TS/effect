@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("greaterThanOrEqualToBigInt", () => {
   const schema = S.BigIntFromSelf.pipe(S.greaterThanOrEqualToBigInt(0n))
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -1n,
       `greaterThanOrEqualToBigInt(0)

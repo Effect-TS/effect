@@ -17,14 +17,14 @@ describe("HashMap", () => {
       HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(ReadonlyArray<readonly [number, string]> <-> HashMap<number, string>)
 └─ Encoded side transformation failure
    └─ Expected ReadonlyArray<readonly [number, string]>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [[1, "a"], [2, 1]],
       `(ReadonlyArray<readonly [number, string]> <-> HashMap<number, string>)

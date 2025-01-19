@@ -20,14 +20,14 @@ describe("greaterThan", () => {
 
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       0,
       `greaterThan(0)
 └─ Predicate refinement failure
    └─ Expected a positive number, actual 0`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -1,
       `greaterThan(0)

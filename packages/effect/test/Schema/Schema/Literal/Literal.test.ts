@@ -38,8 +38,8 @@ describe("Literal", () => {
       const schema = S.Literal(1)
       await Util.assertions.decoding.succeed(schema, 1)
 
-      await Util.expectDecodeUnknownFailure(schema, "a", `Expected 1, actual "a"`)
-      await Util.expectDecodeUnknownFailure(schema, null, `Expected 1, actual null`)
+      await Util.assertions.decoding.fail(schema, "a", `Expected 1, actual "a"`)
+      await Util.assertions.decoding.fail(schema, null, `Expected 1, actual null`)
     })
 
     it("2 members", async () => {
@@ -47,7 +47,7 @@ describe("Literal", () => {
       await Util.assertions.decoding.succeed(schema, 1)
       await Util.assertions.decoding.succeed(schema, "a")
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `1 | "a"

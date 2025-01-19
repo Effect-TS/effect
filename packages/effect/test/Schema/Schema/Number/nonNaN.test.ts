@@ -19,7 +19,7 @@ describe("NonNaN", () => {
 
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       NaN,
       `NonNaN

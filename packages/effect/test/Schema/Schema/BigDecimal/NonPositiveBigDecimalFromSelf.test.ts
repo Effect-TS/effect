@@ -12,7 +12,7 @@ describe("NonPositiveBigDecimalFromSelf", () => {
       BigDecimal.make(0n, 0),
       BigDecimal.make(0n, 0)
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       BigDecimal.make(2n, 0),
       `NonPositiveBigDecimalFromSelf

@@ -26,21 +26,21 @@ describe("StringFromHex", () => {
       "67",
       "g"
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "0",
       `StringFromHex
 └─ Transformation process failure
    └─ Length must be a multiple of 2, but is 1`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "zd4aa",
       `StringFromHex
 └─ Transformation process failure
    └─ Length must be a multiple of 2, but is 5`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "0\x01",
       `StringFromHex

@@ -12,7 +12,7 @@ describe("Duration", () => {
 
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, [555, 123456789], Duration.nanos(555123456789n))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [-500, 0],
       `Duration
@@ -25,7 +25,7 @@ describe("Duration", () => {
                   └─ Predicate refinement failure
                      └─ Expected a non-negative number, actual -500`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [0, -123],
       `Duration
@@ -38,14 +38,14 @@ describe("Duration", () => {
                   └─ Predicate refinement failure
                      └─ Expected a non-negative number, actual -123`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       123,
       `Duration
 └─ Encoded side transformation failure
    └─ Expected HRTime, actual 123`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       123n,
       `Duration

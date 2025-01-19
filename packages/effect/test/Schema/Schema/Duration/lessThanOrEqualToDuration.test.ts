@@ -19,7 +19,7 @@ describe("lessThanOrEqualToDuration", () => {
       Duration.decode("5 seconds")
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Duration.decode("6 seconds"),
       `lessThanOrEqualToDuration(5 seconds)

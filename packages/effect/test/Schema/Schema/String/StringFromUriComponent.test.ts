@@ -21,7 +21,7 @@ describe("StringFromUriComponent", () => {
     await Util.assertions.decoding.succeed(schema, "hello", "hello")
     await Util.assertions.decoding.succeed(schema, "hello%20world", "hello world")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Hello%2world",
       `StringFromUriComponent

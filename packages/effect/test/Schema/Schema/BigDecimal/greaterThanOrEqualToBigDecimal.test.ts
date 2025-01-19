@@ -8,7 +8,7 @@ describe("greaterThanOrEqualToBigDecimal", () => {
   const schema = S.BigDecimal.pipe(S.greaterThanOrEqualToBigDecimal(min))
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "0",
       `greaterThanOrEqualToBigDecimal(10)

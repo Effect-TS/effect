@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("Never", () => {
   const schema = S.Never
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(schema, 1, "Expected never, actual 1")
+    await Util.assertions.decoding.fail(schema, 1, "Expected never, actual 1")
   })
 
   it("encoding", async () => {

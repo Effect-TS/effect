@@ -9,7 +9,7 @@ describe("partial", () => {
     await Util.assertions.decoding.succeed(schema, { a: 1 })
     await Util.assertions.decoding.succeed(schema, { a: undefined })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: null },
       `{ readonly a?: number | undefined }
@@ -51,7 +51,7 @@ describe("partial", () => {
     await Util.assertions.decoding.succeed(schema, [1])
     await Util.assertions.decoding.succeed(schema, [undefined])
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       ["a"],
       `ReadonlyArray<number | undefined>

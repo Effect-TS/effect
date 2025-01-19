@@ -19,12 +19,12 @@ describe("ChunkFromSelf", () => {
       C.fromIterable([1, 2, 3])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected Chunk<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       C.fromIterable(["1", "a", "3"]),
       `Chunk<NumberFromString>

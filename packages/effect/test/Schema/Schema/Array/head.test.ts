@@ -8,7 +8,7 @@ describe("head", () => {
     const schema = S.head(S.Array(S.NumberFromString))
     await Util.assertions.decoding.succeed(schema, [], Option.none())
     await Util.assertions.decoding.succeed(schema, ["1"], Option.some(1))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       ["a"],
       `(ReadonlyArray<NumberFromString> <-> Option<number>)

@@ -21,7 +21,7 @@ describe("greaterThanOrEqualTo", () => {
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, 0)
     await Util.assertions.decoding.succeed(schema, 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -1,
       `greaterThanOrEqualTo(0)

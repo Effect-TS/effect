@@ -18,14 +18,14 @@ describe("DateTimeUtcFromDate", () => {
       DateTime.unsafeMake({ day: 6, month: 12, year: 2024, hour: 0, minute: 0, second: 0, millisecond: 0 })
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `DateTimeUtcFromDate
 └─ Encoded side transformation failure
    └─ Expected DateFromSelf, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       new Date(NaN),
       `DateTimeUtcFromDate

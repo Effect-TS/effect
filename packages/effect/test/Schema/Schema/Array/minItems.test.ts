@@ -16,14 +16,14 @@ details: Expected an integer greater than or equal to 1, actual -1`)
 
       await Util.assertions.decoding.succeed(schema, [1, 2])
       await Util.assertions.decoding.succeed(schema, [1, 2, 3])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [],
         `minItems(2)
 └─ Predicate refinement failure
    └─ Expected an array of at least 2 item(s), actual []`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1],
         `minItems(2)
@@ -37,7 +37,7 @@ details: Expected an integer greater than or equal to 1, actual -1`)
 
       await Util.assertions.decoding.succeed(schema, [1, 2])
       await Util.assertions.decoding.succeed(schema, [1, 2, 3])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [],
         `minItems(2)
@@ -46,7 +46,7 @@ details: Expected an integer greater than or equal to 1, actual -1`)
       └─ [0]
          └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1],
         `minItems(2)

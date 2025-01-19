@@ -21,7 +21,7 @@ describe("RedactedFromSelf", () => {
       Redacted.make("keep me safe"),
       Redacted.make("keep me safe")
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Redacted.make(123),
       `Redacted(<redacted>)

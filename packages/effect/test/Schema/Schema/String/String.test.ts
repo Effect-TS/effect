@@ -6,7 +6,7 @@ describe("String", () => {
   const schema = S.String
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, "a", "a")
-    await Util.expectDecodeUnknownFailure(schema, 1, "Expected string, actual 1")
+    await Util.assertions.decoding.fail(schema, 1, "Expected string, actual 1")
   })
 
   it("encoding", async () => {

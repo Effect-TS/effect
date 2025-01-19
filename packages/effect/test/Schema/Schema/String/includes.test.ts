@@ -25,7 +25,7 @@ describe("includes", () => {
     await Util.assertions.decoding.succeed(schema, "aa")
     await Util.assertions.decoding.succeed(schema, "bac")
     await Util.assertions.decoding.succeed(schema, "ba")
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `includes("a")

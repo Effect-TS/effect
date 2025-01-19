@@ -13,7 +13,7 @@ describe("compose", async () => {
   it("force decoding: (A U B) compose (B -> C)", async () => {
     const schema1 = S.compose(S.Union(S.String, S.Null), S.NumberFromString, { strict: false })
     await Util.assertions.decoding.succeed(schema1, "1", 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema1,
       "a",
       `(string | null <-> NumberFromString)
@@ -22,7 +22,7 @@ describe("compose", async () => {
       └─ Transformation process failure
          └─ Unable to decode "a" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema1,
       null,
       `(string | null <-> NumberFromString)
@@ -35,7 +35,7 @@ describe("compose", async () => {
       S.compose(S.NumberFromString, { strict: false })
     )
     await Util.assertions.decoding.succeed(schema2, "1", 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema2,
       "a",
       `(string | null <-> NumberFromString)
@@ -44,7 +44,7 @@ describe("compose", async () => {
       └─ Transformation process failure
          └─ Unable to decode "a" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema2,
       null,
       `(string | null <-> NumberFromString)

@@ -15,21 +15,21 @@ details: Expected an integer greater than or equal to 1, actual -1`)
       const schema = S.Array(S.Number).pipe(S.itemsCount(2))
 
       await Util.assertions.decoding.succeed(schema, [1, 2])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [],
         `itemsCount(2)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual []`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1],
         `itemsCount(2)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual [1]`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, 2, 3],
         `itemsCount(2)
@@ -42,7 +42,7 @@ details: Expected an integer greater than or equal to 1, actual -1`)
       const schema = S.NonEmptyArray(S.Number).pipe(S.itemsCount(2))
 
       await Util.assertions.decoding.succeed(schema, [1, 2])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [],
         `itemsCount(2)
@@ -51,14 +51,14 @@ details: Expected an integer greater than or equal to 1, actual -1`)
       └─ [0]
          └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1],
         `itemsCount(2)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual [1]`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, 2, 3],
         `itemsCount(2)

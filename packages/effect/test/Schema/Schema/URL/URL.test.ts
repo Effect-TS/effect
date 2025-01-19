@@ -20,7 +20,7 @@ describe("URL", () => {
       "http://effect.website",
       new URL("http://effect.website")
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "123",
       `URL

@@ -56,7 +56,7 @@ describe("transformOrFail", () => {
     expect(person.upperName).toEqual("JOHN")
     expect(typeof person.upperName).toEqual("string")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       PersonWithTransform,
       {
         id: 2,

@@ -12,7 +12,7 @@ describe("NonEmptyTrimmedString", () => {
     const schema = S.NonEmptyTrimmedString
     await Util.assertions.decoding.succeed(schema, "a", "a")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " ",
       `NonEmptyTrimmedString
@@ -21,7 +21,7 @@ describe("NonEmptyTrimmedString", () => {
       └─ Predicate refinement failure
          └─ Expected a string with no leading or trailing whitespace, actual " "`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " a ",
       `NonEmptyTrimmedString

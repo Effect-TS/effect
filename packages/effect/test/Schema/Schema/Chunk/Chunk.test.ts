@@ -13,14 +13,14 @@ describe("Chunk", () => {
     await Util.assertions.decoding.succeed(schema, [], C.empty())
     await Util.assertions.decoding.succeed(schema, [1, 2, 3], C.fromIterable([1, 2, 3]))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(ReadonlyArray<number> <-> Chunk<number>)
 └─ Encoded side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> Chunk<number>)

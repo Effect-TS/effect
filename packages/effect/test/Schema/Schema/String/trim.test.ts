@@ -15,7 +15,7 @@ describe("trim", () => {
     await Util.assertions.decoding.succeed(schema, " a ", "a")
     await Util.assertions.decoding.succeed(schema, " ", "")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `MySchema

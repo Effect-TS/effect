@@ -11,21 +11,21 @@ describe("Finite", () => {
 
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       NaN,
       `Finite
 └─ Predicate refinement failure
    └─ Expected a finite number, actual NaN`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Infinity,
       `Finite
 └─ Predicate refinement failure
    └─ Expected a finite number, actual Infinity`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -Infinity,
       `Finite

@@ -42,7 +42,7 @@ describe("fromBrand", () => {
   it("refined", async () => {
     const schema = S.Number.pipe(S.fromBrand(Brand.all(Positive, Int)))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -0.5,
       `{ number | filter }
@@ -54,14 +54,14 @@ describe("fromBrand", () => {
 └─ Predicate refinement failure
    └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`)
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -1,
       `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected -1 to be positive`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       0,
       `{ number | filter }
@@ -69,7 +69,7 @@ describe("fromBrand", () => {
    └─ Expected 0 to be positive`
     )
     await Util.assertions.decoding.succeed(schema, 1, 1 as PositiveInt)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       1.5,
       `{ number | filter }

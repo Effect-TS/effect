@@ -19,12 +19,12 @@ describe("CauseFromSelf", () => {
 
     await Util.assertions.decoding.succeed(schema, Cause.fail("1"), Cause.fail(1))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected Cause<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Cause.fail("a"),
       `Cause<NumberFromString>
@@ -35,7 +35,7 @@ describe("CauseFromSelf", () => {
             └─ Transformation process failure
                └─ Unable to decode "a" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
       `Cause<NumberFromString>

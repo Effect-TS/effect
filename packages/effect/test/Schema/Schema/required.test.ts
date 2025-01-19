@@ -14,14 +14,14 @@ describe("required", () => {
     }))
 
     await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       {},
       `{ readonly a: greaterThan(0) }
 └─ ["a"]
    └─ is missing`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "-1" },
       `{ readonly a: greaterThan(0) }
@@ -41,7 +41,7 @@ describe("required", () => {
       const B = S.required(A)
 
       await Util.assertions.decoding.succeed(B, ["1"], [1])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         [],
         `readonly [NumberFromString]
@@ -58,7 +58,7 @@ describe("required", () => {
       const B = S.required(A)
 
       await Util.assertions.decoding.succeed(B, ["0", ""], [0, ""])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         ["0"],
         `readonly [NumberFromString, string]
@@ -78,14 +78,14 @@ describe("required", () => {
       await Util.assertions.decoding.succeed(B, ["", 0, true])
       await Util.assertions.decoding.succeed(B, ["", 0, 1, true])
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         [],
         `readonly [string, ...number[], boolean]
 └─ [0]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         [""],
         `readonly [string, ...number[], boolean]
@@ -104,28 +104,28 @@ describe("required", () => {
       await Util.assertions.decoding.succeed(B, ["", 0, true, false])
       await Util.assertions.decoding.succeed(B, ["", 0, 1, 2, 3, true, false])
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         [],
         `readonly [string, ...number[], boolean, boolean]
 └─ [0]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         [""],
         `readonly [string, ...number[], boolean, boolean]
 └─ [1]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         ["", true],
         `readonly [string, ...number[], boolean, boolean]
 └─ [2]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         ["", 0, true],
         `readonly [string, ...number[], boolean, boolean]
@@ -142,7 +142,7 @@ describe("required", () => {
     ))
     await Util.assertions.decoding.succeed(schema, { a: "a" })
     await Util.assertions.decoding.succeed(schema, { b: 1 })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       {},
       `{ readonly a: string } | { readonly b: number }
@@ -167,14 +167,14 @@ describe("required", () => {
     ))
     await Util.assertions.decoding.succeed(schema, { a: null })
     await Util.assertions.decoding.succeed(schema, { a: { a: null } })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       {},
       `{ readonly a: <suspended schema> | null }
 └─ ["a"]
    └─ is missing`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: {} },
       `{ readonly a: <suspended schema> | null }

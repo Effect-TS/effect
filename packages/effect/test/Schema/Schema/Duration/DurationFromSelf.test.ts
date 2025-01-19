@@ -14,12 +14,12 @@ describe("DurationFromSelf", () => {
   it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, Duration.nanos(123n), Duration.nanos(123n))
     await Util.assertions.decoding.succeed(schema, Duration.millis(0), Duration.millis(0))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       123,
       `Expected DurationFromSelf, actual 123`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       123n,
       `Expected DurationFromSelf, actual 123n`

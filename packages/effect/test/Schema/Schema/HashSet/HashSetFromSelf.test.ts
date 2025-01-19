@@ -19,12 +19,12 @@ describe("HashSetFromSelf", () => {
       HashSet.fromIterable([1, 2, 3])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected HashSet<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       HashSet.fromIterable(["1", "a", "3"]),
       `HashSet<NumberFromString>

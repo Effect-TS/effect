@@ -13,7 +13,7 @@ describe("greaterThanDuration", () => {
       Duration.decode("6 seconds")
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Duration.decode("5 seconds"),
       `greaterThanDuration(5 seconds)
@@ -21,7 +21,7 @@ describe("greaterThanDuration", () => {
    └─ Expected a Duration greater than Duration(5s), actual Duration(5s)`
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Duration.decode("4 seconds"),
       `greaterThanDuration(5 seconds)

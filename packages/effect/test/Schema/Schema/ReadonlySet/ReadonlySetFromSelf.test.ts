@@ -14,12 +14,12 @@ describe("ReadonlySetFromSelf", () => {
     await Util.assertions.decoding.succeed(schema, new Set(), new Set())
     await Util.assertions.decoding.succeed(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected ReadonlySet<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       new Set(["1", "a", "3"]),
       `ReadonlySet<NumberFromString>

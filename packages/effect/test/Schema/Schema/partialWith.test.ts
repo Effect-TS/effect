@@ -10,7 +10,7 @@ describe("partialWith", () => {
       await Util.assertions.decoding.succeed(schema, {})
       await Util.assertions.decoding.succeed(schema, { a: 1 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: undefined },
         `{ readonly a?: number }
@@ -32,7 +32,7 @@ describe("partialWith", () => {
         await Util.assertions.decoding.succeed(schema, ["1"], [1])
         await Util.assertions.decoding.succeed(schema, [], [])
 
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           schema,
           [undefined],
           `readonly [NumberFromString?]
@@ -50,7 +50,7 @@ describe("partialWith", () => {
         await Util.assertions.decoding.succeed(schema, ["1", "2"], [1, 2])
         await Util.assertions.decoding.succeed(schema, ["1", undefined], [1, undefined])
 
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           schema,
           [undefined],
           `readonly [NumberFromString?, ...(NumberFromString | undefined)[]]
@@ -68,7 +68,7 @@ describe("partialWith", () => {
       await Util.assertions.decoding.succeed(schema, [1])
       await Util.assertions.decoding.succeed(schema, [undefined])
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         ["a"],
         `ReadonlyArray<number | undefined>
@@ -86,7 +86,7 @@ describe("partialWith", () => {
       await Util.assertions.decoding.succeed(schema, [1])
       await Util.assertions.decoding.succeed(schema, [undefined])
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         ["a"],
         `ReadonlyArray<number | undefined> | string
@@ -116,7 +116,7 @@ describe("partialWith", () => {
       await Util.assertions.decoding.succeed(schema, { a: null })
       await Util.assertions.decoding.succeed(schema, { a: {} })
       await Util.assertions.decoding.succeed(schema, { a: { a: null } })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1 },
         `{ readonly a?: <suspended schema> | null }

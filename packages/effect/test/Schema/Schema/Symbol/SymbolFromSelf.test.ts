@@ -7,7 +7,7 @@ describe("SymbolFromSelf", () => {
   it("decoding", async () => {
     const a = Symbol.for("effect/Schema/test/a")
     await Util.assertions.decoding.succeed(schema, a)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected symbol, actual null`
