@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("ExitFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.ExitFromSelf({ failure: S.String, success: S.Number, defect: S.Unknown }))
+    Util.assertions.arbitrary.is(S.ExitFromSelf({ failure: S.String, success: S.Number, defect: S.Unknown }))
   })
 
   it("decoding", async () => {

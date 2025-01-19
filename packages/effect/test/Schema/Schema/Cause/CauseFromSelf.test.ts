@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest"
 
 describe("CauseFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
+    Util.assertions.arbitrary.is(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
   })
 
   it("property tests", () => {

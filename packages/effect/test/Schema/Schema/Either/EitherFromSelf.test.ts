@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest"
 
 describe("EitherFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.EitherFromSelf({ left: S.String, right: S.Number }))
+    Util.assertions.arbitrary.is(S.EitherFromSelf({ left: S.String, right: S.Number }))
   })
 
   it("property tests", () => {

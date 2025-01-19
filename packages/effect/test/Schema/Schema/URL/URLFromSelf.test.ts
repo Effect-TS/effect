@@ -11,7 +11,7 @@ describe("URLFromSelf", () => {
   })
 
   it("arbitrary", () => {
-    Util.expectArbitrary(S.URLFromSelf)
+    Util.assertions.arbitrary.is(S.URLFromSelf)
   })
 
   it("decoding", async () => {

@@ -12,7 +12,7 @@ describe("Redacted", () => {
   })
 
   it("arbitrary", () => {
-    Util.expectArbitrary(S.RedactedFromSelf(S.Number))
+    Util.assertions.arbitrary.is(S.RedactedFromSelf(S.Number))
   })
 
   it("decoding", async () => {

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 
 describe("FiberIdFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.FiberIdFromSelf)
+    Util.assertions.arbitrary.is(S.FiberIdFromSelf)
   })
 
   it("property tests", () => {
