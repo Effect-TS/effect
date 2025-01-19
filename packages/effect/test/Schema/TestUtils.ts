@@ -33,79 +33,6 @@ export const assertions = Effect.runSync(
   )
 )
 
-const sleep = Effect.sleep("10 millis")
-
-const effectifyDecode = <R>(
-  decode: (
-    fromA: any,
-    options: ParseOptions,
-    self: AST.Transformation,
-    fromI: any
-  ) => Effect.Effect<any, ParseResult.ParseIssue, R>
-): (
-  fromA: any,
-  options: ParseOptions,
-  self: AST.Transformation,
-  fromI: any
-) => Effect.Effect<any, ParseResult.ParseIssue, R> =>
-(fromA, options, ast, fromI) => ParseResult.flatMap(sleep, () => decode(fromA, options, ast, fromI))
-
-const effectifyAST = (ast: AST.AST): AST.AST => {
-  switch (ast._tag) {
-    case "TupleType":
-      return new AST.TupleType(
-        ast.elements.map((e) => new AST.OptionalType(effectifyAST(e.type), e.isOptional, e.annotations)),
-        ast.rest.map((annotatedAST) => new AST.Type(effectifyAST(annotatedAST.type), annotatedAST.annotations)),
-        ast.isReadonly,
-        ast.annotations
-      )
-    case "TypeLiteral":
-      return new AST.TypeLiteral(
-        ast.propertySignatures.map((p) =>
-          new AST.PropertySignature(p.name, effectifyAST(p.type), p.isOptional, p.isReadonly, p.annotations)
-        ),
-        ast.indexSignatures.map((is) => {
-          return new AST.IndexSignature(is.parameter, effectifyAST(is.type), is.isReadonly)
-        }),
-        ast.annotations
-      )
-    case "Union":
-      return AST.Union.make(ast.types.map((ast) => effectifyAST(ast)), ast.annotations)
-    case "Suspend":
-      return new AST.Suspend(() => effectifyAST(ast.f()), ast.annotations)
-    case "Refinement":
-      return new AST.Refinement(
-        effectifyAST(ast.from),
-        ast.filter,
-        ast.annotations
-      )
-    case "Transformation":
-      return new AST.Transformation(
-        effectifyAST(ast.from),
-        effectifyAST(ast.to),
-        new AST.FinalTransformation(
-          effectifyDecode(getFinalTransformation(ast.transformation, true)),
-          effectifyDecode(getFinalTransformation(ast.transformation, false))
-        ),
-        ast.annotations
-      )
-  }
-  const schema = S.make(ast)
-  const decode = S.decode(schema)
-  const encode = S.encode(schema)
-  return new AST.Transformation(
-    AST.encodedAST(ast),
-    AST.typeAST(ast),
-    new AST.FinalTransformation(
-      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(decode(a, options), (e) => e.issue)),
-      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(encode(a, options), (e) => e.issue))
-    )
-  )
-}
-
-export const effectify = <A, I>(schema: S.Schema<A, I, never>): S.Schema<A, I, never> =>
-  S.make(effectifyAST(schema.ast))
-
 export const onExcessPropertyError: ParseOptions = {
   onExcessProperty: "error"
 }
@@ -116,35 +43,6 @@ export const onExcessPropertyPreserve: ParseOptions = {
 
 export const allErrors: ParseOptions = {
   errors: "all"
-}
-
-export const printAST = <A, I, R>(schema: S.Schema<A, I, R>) => {
-  // eslint-disable-next-line no-console
-  console.log("%o", schema.ast)
-}
-
-export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A> => schema.pipe(S.compose(schema))
-
-export const X2 = S.transform(
-  S.String,
-  S.String,
-  { strict: true, decode: (s) => s + s, encode: (s) => s.substring(0, s.length / 2) }
-)
-
-export const X3 = S.transform(
-  S.String,
-  S.String,
-  { strict: true, decode: (s) => s + s + s, encode: (s) => s.substring(0, s.length / 3) }
-)
-
-export const expectValidArbitrary = <A, I>(schema: S.Schema<A, I, never>, params?: fc.Parameters<[A]>) => {
-  if (false as boolean) {
-    return
-  }
-  const arb = A.makeLazy(schema)(fc)
-  // console.log(fc.sample(arb, 10))
-  const is = S.is(schema)
-  fc.assert(fc.property(arb, (a) => is(a)), params)
 }
 
 export const isBun = "Bun" in globalThis
@@ -299,3 +197,79 @@ export const Defect = S.transform(S.String, S.Object, {
   decode: (s) => ({ input: s }),
   encode: (u) => JSON.stringify(u)
 })
+
+function effectifyDecode<R>(
+  decode: (
+    fromA: any,
+    options: ParseOptions,
+    self: AST.Transformation,
+    fromI: any
+  ) => Effect.Effect<any, ParseResult.ParseIssue, R>
+): (
+  fromA: any,
+  options: ParseOptions,
+  self: AST.Transformation,
+  fromI: any
+) => Effect.Effect<any, ParseResult.ParseIssue, R> {
+  return (fromA, options, ast, fromI) =>
+    ParseResult.flatMap(Effect.sleep("10 millis"), () => decode(fromA, options, ast, fromI))
+}
+
+function effectifyAST(ast: AST.AST): AST.AST {
+  switch (ast._tag) {
+    case "TupleType":
+      return new AST.TupleType(
+        ast.elements.map((e) => new AST.OptionalType(effectifyAST(e.type), e.isOptional, e.annotations)),
+        ast.rest.map((annotatedAST) => new AST.Type(effectifyAST(annotatedAST.type), annotatedAST.annotations)),
+        ast.isReadonly,
+        ast.annotations
+      )
+    case "TypeLiteral":
+      return new AST.TypeLiteral(
+        ast.propertySignatures.map((p) =>
+          new AST.PropertySignature(p.name, effectifyAST(p.type), p.isOptional, p.isReadonly, p.annotations)
+        ),
+        ast.indexSignatures.map((is) => {
+          return new AST.IndexSignature(is.parameter, effectifyAST(is.type), is.isReadonly)
+        }),
+        ast.annotations
+      )
+    case "Union":
+      return AST.Union.make(ast.types.map((ast) => effectifyAST(ast)), ast.annotations)
+    case "Suspend":
+      return new AST.Suspend(() => effectifyAST(ast.f()), ast.annotations)
+    case "Refinement":
+      return new AST.Refinement(
+        effectifyAST(ast.from),
+        ast.filter,
+        ast.annotations
+      )
+    case "Transformation":
+      return new AST.Transformation(
+        effectifyAST(ast.from),
+        effectifyAST(ast.to),
+        new AST.FinalTransformation(
+          effectifyDecode(getFinalTransformation(ast.transformation, true)),
+          effectifyDecode(getFinalTransformation(ast.transformation, false))
+        ),
+        ast.annotations
+      )
+  }
+  const schema = S.make(ast)
+  const decode = S.decode(schema)
+  const encode = S.encode(schema)
+  return new AST.Transformation(
+    AST.encodedAST(ast),
+    AST.typeAST(ast),
+    new AST.FinalTransformation(
+      (a, options) =>
+        Effect.flatMap(Effect.sleep("10 millis"), () => ParseResult.mapError(decode(a, options), (e) => e.issue)),
+      (a, options) =>
+        Effect.flatMap(Effect.sleep("10 millis"), () => ParseResult.mapError(encode(a, options), (e) => e.issue))
+    )
+  )
+}
+
+function effectify<A, I>(schema: S.Schema<A, I, never>): S.Schema<A, I, never> {
+  return S.make(effectifyAST(schema.ast))
+}
