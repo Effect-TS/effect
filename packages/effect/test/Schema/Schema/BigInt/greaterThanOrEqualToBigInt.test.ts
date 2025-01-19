@@ -12,7 +12,7 @@ describe("greaterThanOrEqualToBigInt", () => {
 └─ Predicate refinement failure
    └─ Expected a non-negative bigint, actual -1n`
     )
-    await Util.expectDecodeUnknownSuccess(schema, 0n, 0n)
+    await Util.assertions.decoding.succeed(schema, 0n, 0n)
   })
 
   it("encoding", async () => {

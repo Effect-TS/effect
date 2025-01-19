@@ -21,10 +21,10 @@ describe("Enums", () => {
     const schema = S.Enums(Fruits)
 
     it("decoding", async () => {
-      await Util.expectDecodeUnknownSuccess(schema, Fruits.Apple)
-      await Util.expectDecodeUnknownSuccess(schema, Fruits.Banana)
-      await Util.expectDecodeUnknownSuccess(schema, 0)
-      await Util.expectDecodeUnknownSuccess(schema, 1)
+      await Util.assertions.decoding.succeed(schema, Fruits.Apple)
+      await Util.assertions.decoding.succeed(schema, Fruits.Banana)
+      await Util.assertions.decoding.succeed(schema, 0)
+      await Util.assertions.decoding.succeed(schema, 1)
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -48,11 +48,11 @@ describe("Enums", () => {
     const schema = S.Enums(Fruits)
 
     it("decoding", async () => {
-      await Util.expectDecodeUnknownSuccess(schema, Fruits.Apple)
-      await Util.expectDecodeUnknownSuccess(schema, Fruits.Cantaloupe)
-      await Util.expectDecodeUnknownSuccess(schema, "apple")
-      await Util.expectDecodeUnknownSuccess(schema, "banana")
-      await Util.expectDecodeUnknownSuccess(schema, 0)
+      await Util.assertions.decoding.succeed(schema, Fruits.Apple)
+      await Util.assertions.decoding.succeed(schema, Fruits.Cantaloupe)
+      await Util.assertions.decoding.succeed(schema, "apple")
+      await Util.assertions.decoding.succeed(schema, "banana")
+      await Util.assertions.decoding.succeed(schema, 0)
 
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -77,9 +77,9 @@ describe("Enums", () => {
     const schema = S.Enums(Fruits)
 
     it("decoding", async () => {
-      await Util.expectDecodeUnknownSuccess(schema, "apple")
-      await Util.expectDecodeUnknownSuccess(schema, "banana")
-      await Util.expectDecodeUnknownSuccess(schema, 3)
+      await Util.assertions.decoding.succeed(schema, "apple")
+      await Util.assertions.decoding.succeed(schema, "banana")
+      await Util.assertions.decoding.succeed(schema, 3)
 
       await Util.expectDecodeUnknownFailure(
         schema,

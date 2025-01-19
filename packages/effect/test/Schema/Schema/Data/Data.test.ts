@@ -11,7 +11,7 @@ describe("Data", () => {
 
   it("decoding", async () => {
     const schema = S.Data(S.Struct({ a: S.String, b: S.Number }))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       { a: "ok", b: 0 },
       Data.struct({ a: "ok", b: 0 })

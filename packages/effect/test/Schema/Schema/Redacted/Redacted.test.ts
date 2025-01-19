@@ -16,7 +16,7 @@ describe("Redacted", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "keep me safe",
       Redacted.make("keep me safe")

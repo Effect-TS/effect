@@ -21,7 +21,7 @@ describe("PositiveBigDecimalFromSelf", () => {
 └─ Predicate refinement failure
    └─ Expected a positive BigDecimal, actual BigDecimal(-2)`
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       BigDecimal.make(2n, 0),
       BigDecimal.make(2n, 0)

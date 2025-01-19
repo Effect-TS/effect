@@ -11,8 +11,8 @@ describe("SortedSet", () => {
 
   it("decoding", async () => {
     const schema = S.SortedSet(S.Number, N.Order)
-    await Util.expectDecodeUnknownSuccess(schema, [], SortedSet.fromIterable([] as Array<number>, N.Order))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, [], SortedSet.fromIterable([] as Array<number>, N.Order))
+    await Util.assertions.decoding.succeed(
       schema,
       [1, 2, 3],
       SortedSet.fromIterable([1, 2, 3] as Array<number>, N.Order)

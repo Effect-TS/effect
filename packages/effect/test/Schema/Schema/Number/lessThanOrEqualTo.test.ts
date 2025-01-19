@@ -18,8 +18,8 @@ describe("lessThanOrEqualTo", () => {
 
   it("decoding", async () => {
     const schema = S.lessThanOrEqualTo(0)(S.Number)
-    await Util.expectDecodeUnknownSuccess(schema, 0)
-    await Util.expectDecodeUnknownSuccess(schema, -1)
+    await Util.assertions.decoding.succeed(schema, 0)
+    await Util.assertions.decoding.succeed(schema, -1)
     await Util.expectDecodeUnknownFailure(
       schema,
       1,

@@ -12,8 +12,8 @@ describe("ExitFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.ExitFromSelf({ failure: S.NumberFromString, success: Util.BooleanFromLiteral, defect: S.Unknown })
-    await Util.expectDecodeUnknownSuccess(schema, Exit.fail("1"), Exit.fail(1))
-    await Util.expectDecodeUnknownSuccess(schema, Exit.succeed("true"), Exit.succeed(true))
+    await Util.assertions.decoding.succeed(schema, Exit.fail("1"), Exit.fail(1))
+    await Util.assertions.decoding.succeed(schema, Exit.succeed("true"), Exit.succeed(true))
 
     await Util.expectDecodeUnknownFailure(
       schema,

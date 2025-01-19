@@ -23,7 +23,7 @@ describe("encodedBoundSchema", () => {
 
     const bound = S.encodedBoundSchema(schema)
 
-    await Util.expectDecodeUnknownSuccess(bound, {
+    await Util.assertions.decoding.succeed(bound, {
       a: ["ab"],
       b: "abc"
     })
@@ -63,7 +63,7 @@ describe("encodedBoundSchema", () => {
         const schema = S.Array(StringTransformation).pipe(S.minItems(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
         await Util.expectDecodeUnknownFailure(
           bound,
           ["a"],
@@ -88,7 +88,7 @@ describe("encodedBoundSchema", () => {
         const schema = S.Array(StringTransformation).pipe(S.maxItems(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
         await Util.expectDecodeUnknownFailure(
           bound,
           ["a"],
@@ -113,7 +113,7 @@ describe("encodedBoundSchema", () => {
         const schema = S.Array(StringTransformation).pipe(S.itemsCount(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
         await Util.expectDecodeUnknownFailure(
           bound,
           ["a"],
@@ -147,7 +147,7 @@ describe("encodedBoundSchema", () => {
         const schema = S.NonEmptyArray(StringTransformation).pipe(S.minItems(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
         await Util.expectDecodeUnknownFailure(
           bound,
           ["a"],
@@ -172,7 +172,7 @@ describe("encodedBoundSchema", () => {
         const schema = S.NonEmptyArray(StringTransformation).pipe(S.maxItems(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
         await Util.expectDecodeUnknownFailure(
           bound,
           ["a"],
@@ -197,7 +197,7 @@ describe("encodedBoundSchema", () => {
         const schema = S.NonEmptyArray(StringTransformation).pipe(S.itemsCount(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
         await Util.expectDecodeUnknownFailure(
           bound,
           ["a"],

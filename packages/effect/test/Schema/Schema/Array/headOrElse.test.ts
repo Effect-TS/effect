@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("headOrElse", () => {
   it("decoding (without fallback)", async () => {
     const schema = S.headOrElse(S.Array(S.NumberFromString))
-    await Util.expectDecodeUnknownSuccess(schema, ["1"], 1)
+    await Util.assertions.decoding.succeed(schema, ["1"], 1)
     await Util.expectDecodeUnknownFailure(
       schema,
       [],
@@ -28,8 +28,8 @@ describe("headOrElse", () => {
 
   it("decoding (with fallback)", async () => {
     const schema = S.headOrElse(S.Array(S.NumberFromString), () => 0)
-    await Util.expectDecodeUnknownSuccess(schema, ["1"], 1)
-    await Util.expectDecodeUnknownSuccess(schema, [], 0)
+    await Util.assertions.decoding.succeed(schema, ["1"], 1)
+    await Util.assertions.decoding.succeed(schema, [], 0)
     await Util.expectDecodeUnknownFailure(
       schema,
       ["a"],
@@ -43,8 +43,8 @@ describe("headOrElse", () => {
     )
 
     const schema2 = S.Array(S.NumberFromString).pipe(S.headOrElse(() => 0))
-    await Util.expectDecodeUnknownSuccess(schema2, ["1"], 1)
-    await Util.expectDecodeUnknownSuccess(schema2, [], 0)
+    await Util.assertions.decoding.succeed(schema2, ["1"], 1)
+    await Util.assertions.decoding.succeed(schema2, [], 0)
   })
 
   it("decoding (struct)", async () => {
@@ -56,7 +56,7 @@ describe("headOrElse", () => {
         })
       )
     )
-    await Util.expectDecodeUnknownSuccess(schema, [
+    await Util.assertions.decoding.succeed(schema, [
       {
         id: "1",
         data: "{\"a\":\"a\"}"

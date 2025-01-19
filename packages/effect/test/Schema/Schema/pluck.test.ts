@@ -7,7 +7,7 @@ describe("pluck", () => {
     it("struct (string keys)", async () => {
       const origin = S.Struct({ a: S.String, b: S.NumberFromString })
       const schema = S.pluck(origin, "a")
-      await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "2" }, "a")
+      await Util.assertions.decoding.succeed(schema, { a: "a", b: "2" }, "a")
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "2" },
@@ -24,7 +24,7 @@ describe("pluck", () => {
       const b = Symbol.for("effect/schema/test/b")
       const origin = S.Struct({ [a]: S.String, [b]: S.NumberFromString })
       const schema = S.pluck(origin, a)
-      await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", [b]: "2" }, "a")
+      await Util.assertions.decoding.succeed(schema, { [a]: "a", [b]: "2" }, "a")
       await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: 1, [b]: "2" },
@@ -41,14 +41,14 @@ describe("pluck", () => {
       const schema = S.pluck(origin, "a")
       await Util.expectSuccess(S.decodeUnknown(schema)({ b: 2 }), undefined)
       await Util.expectSuccess(S.decodeUnknown(schema)({ a: undefined, b: 2 }), undefined)
-      await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: 2 }, "a")
+      await Util.assertions.decoding.succeed(schema, { a: "a", b: 2 }, "a")
     })
 
     it("union", async () => {
       const origin = S.Union(S.Struct({ _tag: S.Literal("A") }), S.Struct({ _tag: S.Literal("B") }))
       const schema = S.pluck(origin, "_tag")
-      await Util.expectDecodeUnknownSuccess(schema, { _tag: "A" }, "A")
-      await Util.expectDecodeUnknownSuccess(schema, { _tag: "B" }, "B")
+      await Util.assertions.decoding.succeed(schema, { _tag: "A" }, "A")
+      await Util.assertions.decoding.succeed(schema, { _tag: "B" }, "B")
       await Util.expectDecodeUnknownFailure(
         schema,
         {},

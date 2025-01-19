@@ -10,8 +10,8 @@ describe("Chunk", () => {
 
   it("decoding", async () => {
     const schema = S.Chunk(S.Number)
-    await Util.expectDecodeUnknownSuccess(schema, [], C.empty())
-    await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], C.fromIterable([1, 2, 3]))
+    await Util.assertions.decoding.succeed(schema, [], C.empty())
+    await Util.assertions.decoding.succeed(schema, [1, 2, 3], C.fromIterable([1, 2, 3]))
 
     await Util.expectDecodeUnknownFailure(
       schema,

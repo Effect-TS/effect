@@ -10,10 +10,10 @@ describe("trim", () => {
 
   it("decoding", async () => {
     const schema = S.String.pipe(S.minLength(1), S.compose(S.Trim)).annotations({ identifier: "MySchema" })
-    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
-    await Util.expectDecodeUnknownSuccess(schema, "a ", "a")
-    await Util.expectDecodeUnknownSuccess(schema, " a ", "a")
-    await Util.expectDecodeUnknownSuccess(schema, " ", "")
+    await Util.assertions.decoding.succeed(schema, "a", "a")
+    await Util.assertions.decoding.succeed(schema, "a ", "a")
+    await Util.assertions.decoding.succeed(schema, " a ", "a")
+    await Util.assertions.decoding.succeed(schema, " ", "")
 
     await Util.expectDecodeUnknownFailure(
       schema,

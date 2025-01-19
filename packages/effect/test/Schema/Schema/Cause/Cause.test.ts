@@ -10,17 +10,17 @@ describe("Cause", () => {
 
   it("decoding", async () => {
     const schema = S.Cause({ error: S.NumberFromString, defect: S.Defect })
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       { _tag: "Fail", error: "1" },
       Cause.fail(1)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       { _tag: "Empty" },
       Cause.empty
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       {
         _tag: "Parallel",
@@ -29,7 +29,7 @@ describe("Cause", () => {
       },
       Cause.parallel(Cause.fail(1), Cause.empty)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       {
         _tag: "Sequential",
@@ -38,7 +38,7 @@ describe("Cause", () => {
       },
       Cause.sequential(Cause.fail(1), Cause.empty)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       {
         _tag: "Die",
@@ -46,7 +46,7 @@ describe("Cause", () => {
       },
       Cause.die(new Error("error"))
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       {
         _tag: "Interrupt",

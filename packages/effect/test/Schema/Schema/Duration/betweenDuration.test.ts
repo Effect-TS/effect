@@ -17,7 +17,7 @@ describe("betweenDuration", () => {
    └─ Expected a Duration between Duration(5s) and Duration(10s), actual Duration(4s)`
     )
 
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       Duration.decode("7 seconds"),
       Duration.decode("7 seconds")

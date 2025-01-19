@@ -22,7 +22,7 @@ describe("instanceOf", () => {
 
   it("decoding", async () => {
     const schema = S.instanceOf(Set)
-    await Util.expectDecodeUnknownSuccess(schema, new Set())
+    await Util.assertions.decoding.succeed(schema, new Set())
     await Util.expectDecodeUnknownFailure(
       schema,
       1,

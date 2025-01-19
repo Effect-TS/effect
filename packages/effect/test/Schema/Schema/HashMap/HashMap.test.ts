@@ -10,8 +10,8 @@ describe("HashMap", () => {
 
   it("decoding", async () => {
     const schema = S.HashMap({ key: S.Number, value: S.String })
-    await Util.expectDecodeUnknownSuccess(schema, [], HashMap.fromIterable([]))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, [], HashMap.fromIterable([]))
+    await Util.assertions.decoding.succeed(
       schema,
       [[1, "a"], [2, "b"], [3, "c"]],
       HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]])

@@ -11,12 +11,12 @@ describe("Uint8ArrayFromBase64Url", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "Zm9vYmFy",
       encoder.encode("foobar")
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "Pj8-ZD_Dnw",
       encoder.encode(">?>d?ß")

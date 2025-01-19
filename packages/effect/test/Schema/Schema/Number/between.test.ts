@@ -14,7 +14,7 @@ describe("between", () => {
 └─ Predicate refinement failure
    └─ Expected a number between -1 and 1, actual -2`
     )
-    await Util.expectDecodeUnknownSuccess(schema, 0, 0)
+    await Util.assertions.decoding.succeed(schema, 0, 0)
     await Util.expectDecodeUnknownFailure(
       schema,
       2,

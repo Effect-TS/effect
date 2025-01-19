@@ -6,8 +6,8 @@ import { describe, it } from "vitest"
 describe("head", () => {
   it("decoding", async () => {
     const schema = S.head(S.Array(S.NumberFromString))
-    await Util.expectDecodeUnknownSuccess(schema, [], Option.none())
-    await Util.expectDecodeUnknownSuccess(schema, ["1"], Option.some(1))
+    await Util.assertions.decoding.succeed(schema, [], Option.none())
+    await Util.assertions.decoding.succeed(schema, ["1"], Option.some(1))
     await Util.expectDecodeUnknownFailure(
       schema,
       ["a"],

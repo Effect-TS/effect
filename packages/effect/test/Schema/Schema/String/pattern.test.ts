@@ -22,8 +22,8 @@ describe("pattern", () => {
 
   it("decoding", async () => {
     const schema = S.String.pipe(S.pattern(/^abb+$/))
-    await Util.expectDecodeUnknownSuccess(schema, "abb")
-    await Util.expectDecodeUnknownSuccess(schema, "abbb")
+    await Util.assertions.decoding.succeed(schema, "abb")
+    await Util.assertions.decoding.succeed(schema, "abbb")
 
     await Util.expectDecodeUnknownFailure(
       schema,

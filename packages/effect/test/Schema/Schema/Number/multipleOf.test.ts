@@ -22,7 +22,7 @@ describe("multipleOf", () => {
 
   it("decoding", async () => {
     const schema = S.Number.pipe(S.multipleOf(2)).annotations({ identifier: "Even" })
-    await Util.expectDecodeUnknownSuccess(schema, -4)
+    await Util.assertions.decoding.succeed(schema, -4)
     await Util.expectDecodeUnknownFailure(
       schema,
       -3,
@@ -30,8 +30,8 @@ describe("multipleOf", () => {
 └─ Predicate refinement failure
    └─ Expected a number divisible by 2, actual -3`
     )
-    await Util.expectDecodeUnknownSuccess(schema, 0)
-    await Util.expectDecodeUnknownSuccess(schema, 2)
+    await Util.assertions.decoding.succeed(schema, 0)
+    await Util.assertions.decoding.succeed(schema, 2)
     await Util.expectDecodeUnknownFailure(
       schema,
       2.5,

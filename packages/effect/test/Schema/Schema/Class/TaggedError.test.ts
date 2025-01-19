@@ -24,7 +24,7 @@ describe("TaggedError", () => {
       S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(A.fields, { _tag: S.getClassTag("A"), ...fields })
-    await Util.expectDecodeUnknownSuccess(A, new A({ a: 1, b: 1 }))
+    await Util.assertions.decoding.succeed(A, new A({ a: 1, b: 1 }))
     await Util.expectDecodeUnknownFailure(
       A,
       { _tag: "A", a: 1, b: 2 },

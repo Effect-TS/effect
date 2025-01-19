@@ -12,9 +12,9 @@ describe("attachPropertySignature", () => {
       Square.pipe(S.attachPropertySignature("kind", "square"))
     )
 
-    await Util.expectDecodeUnknownSuccess(schema, { radius: 10 }, { kind: "circle", radius: 10 })
+    await Util.assertions.decoding.succeed(schema, { radius: 10 }, { kind: "circle", radius: 10 })
     await Util.expectEncodeSuccess(schema, { kind: "circle", radius: 10 }, { radius: 10 })
-    await Util.expectDecodeUnknownSuccess(schema, { sideLength: 10 }, { kind: "square", sideLength: 10 })
+    await Util.assertions.decoding.succeed(schema, { sideLength: 10 }, { kind: "square", sideLength: 10 })
     await Util.expectEncodeSuccess(schema, { kind: "square", sideLength: 10 }, { sideLength: 10 })
   })
 
@@ -27,9 +27,9 @@ describe("attachPropertySignature", () => {
       Square.pipe(S.attachPropertySignature(kind, "square"))
     )
 
-    await Util.expectDecodeUnknownSuccess(schema, { radius: 10 }, { [kind]: "circle", radius: 10 })
+    await Util.assertions.decoding.succeed(schema, { radius: 10 }, { [kind]: "circle", radius: 10 })
     await Util.expectEncodeSuccess(schema, { [kind]: "circle", radius: 10 }, { radius: 10 })
-    await Util.expectDecodeUnknownSuccess(schema, { sideLength: 10 }, { [kind]: "square", sideLength: 10 })
+    await Util.assertions.decoding.succeed(schema, { sideLength: 10 }, { [kind]: "square", sideLength: 10 })
     await Util.expectEncodeSuccess(schema, { [kind]: "square", sideLength: 10 }, { sideLength: 10 })
   })
 
@@ -44,9 +44,9 @@ describe("attachPropertySignature", () => {
       Square.pipe(S.attachPropertySignature(kind, square))
     )
 
-    await Util.expectDecodeUnknownSuccess(schema, { radius: 10 }, { [kind]: circle, radius: 10 })
+    await Util.assertions.decoding.succeed(schema, { radius: 10 }, { [kind]: circle, radius: 10 })
     await Util.expectEncodeSuccess(schema, { [kind]: circle, radius: 10 }, { radius: 10 })
-    await Util.expectDecodeUnknownSuccess(schema, { sideLength: 10 }, { [kind]: square, sideLength: 10 })
+    await Util.assertions.decoding.succeed(schema, { sideLength: 10 }, { [kind]: square, sideLength: 10 })
     await Util.expectEncodeSuccess(schema, { [kind]: square, sideLength: 10 }, { sideLength: 10 })
   })
 
@@ -60,9 +60,9 @@ describe("attachPropertySignature", () => {
       Square.pipe(S.attachPropertySignature("kind", square))
     )
 
-    await Util.expectDecodeUnknownSuccess(schema, { radius: 10 }, { kind: circle, radius: 10 })
+    await Util.assertions.decoding.succeed(schema, { radius: 10 }, { kind: circle, radius: 10 })
     await Util.expectEncodeSuccess(schema, { kind: circle, radius: 10 }, { radius: 10 })
-    await Util.expectDecodeUnknownSuccess(schema, { sideLength: 10 }, { kind: square, sideLength: 10 })
+    await Util.assertions.decoding.succeed(schema, { sideLength: 10 }, { kind: square, sideLength: 10 })
     await Util.expectEncodeSuccess(schema, { kind: square, sideLength: 10 }, { sideLength: 10 })
   })
 
@@ -71,7 +71,7 @@ describe("attachPropertySignature", () => {
       S.attachPropertySignature("_tag", "b"),
       S.extend(S.Struct({ c: S.Number }))
     )
-    await Util.expectDecodeUnknownSuccess(schema, { a: "a", c: 1 }, { a: "a", c: 1, _tag: "b" as const })
+    await Util.assertions.decoding.succeed(schema, { a: "a", c: 1 }, { a: "a", c: 1, _tag: "b" as const })
     await Util.expectEncodeSuccess(schema, { a: "a", c: 1, _tag: "b" as const }, { a: "a", c: 1 })
   })
 
@@ -91,7 +91,7 @@ describe("attachPropertySignature", () => {
       S.attachPropertySignature("_tag", "Circle")
     )
 
-    await Util.expectDecodeUnknownSuccess(schema, { radius: 10, _isVisible: true }, {
+    await Util.assertions.decoding.succeed(schema, { radius: 10, _isVisible: true }, {
       _tag: "Circle" as const,
       _isVisible: true,
       radius: 10

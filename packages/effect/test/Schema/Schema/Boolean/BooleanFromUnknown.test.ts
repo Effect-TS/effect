@@ -5,16 +5,16 @@ import { describe, it } from "vitest"
 describe("BooleanFromUnknown", () => {
   const schema = S.BooleanFromUnknown
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, true, true)
-    await Util.expectDecodeUnknownSuccess(schema, 1, true)
-    await Util.expectDecodeUnknownSuccess(schema, 1n, true)
-    await Util.expectDecodeUnknownSuccess(schema, "a", true)
+    await Util.assertions.decoding.succeed(schema, true, true)
+    await Util.assertions.decoding.succeed(schema, 1, true)
+    await Util.assertions.decoding.succeed(schema, 1n, true)
+    await Util.assertions.decoding.succeed(schema, "a", true)
 
-    await Util.expectDecodeUnknownSuccess(schema, false, false)
-    await Util.expectDecodeUnknownSuccess(schema, 0, false)
-    await Util.expectDecodeUnknownSuccess(schema, 0n, false)
-    await Util.expectDecodeUnknownSuccess(schema, null, false)
-    await Util.expectDecodeUnknownSuccess(schema, "", false)
+    await Util.assertions.decoding.succeed(schema, false, false)
+    await Util.assertions.decoding.succeed(schema, 0, false)
+    await Util.assertions.decoding.succeed(schema, 0n, false)
+    await Util.assertions.decoding.succeed(schema, null, false)
+    await Util.assertions.decoding.succeed(schema, "", false)
   })
 
   it("encoding", async () => {

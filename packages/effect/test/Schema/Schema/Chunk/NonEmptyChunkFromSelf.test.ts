@@ -13,7 +13,7 @@ describe("NonEmptyChunkFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.NonEmptyChunkFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       C.make("1", "2", "3"),
       C.make(1, 2, 3)

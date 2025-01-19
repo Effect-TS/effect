@@ -12,8 +12,8 @@ describe("ListFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.ListFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, List.empty(), List.empty())
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, List.empty(), List.empty())
+    await Util.assertions.decoding.succeed(
       schema,
       List.fromIterable(["1", "2", "3"]),
       List.fromIterable([1, 2, 3])

@@ -136,10 +136,10 @@ describe("Union", () => {
       const ab = S.Union(a, b).annotations({ identifier: "ab" })
       const AB = S.Union(A, B).annotations({ identifier: "AB" })
       const schema = S.Union(ab, AB)
-      await Util.expectDecodeUnknownSuccess(schema, { _tag: "a" })
-      await Util.expectDecodeUnknownSuccess(schema, { _tag: "b" })
-      await Util.expectDecodeUnknownSuccess(schema, { a: "A", c: "c" })
-      await Util.expectDecodeUnknownSuccess(schema, { b: "B", d: 1 })
+      await Util.assertions.decoding.succeed(schema, { _tag: "a" })
+      await Util.assertions.decoding.succeed(schema, { _tag: "b" })
+      await Util.assertions.decoding.succeed(schema, { a: "A", c: "c" })
+      await Util.assertions.decoding.succeed(schema, { b: "B", d: 1 })
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
@@ -164,8 +164,8 @@ describe("Union", () => {
         S.Tuple(S.Literal("b"), S.Number)
       ).annotations({ identifier: "MyUnion" })
 
-      await Util.expectDecodeUnknownSuccess(schema, ["a", "s"])
-      await Util.expectDecodeUnknownSuccess(schema, ["b", 1])
+      await Util.assertions.decoding.succeed(schema, ["a", "s"])
+      await Util.assertions.decoding.succeed(schema, ["b", 1])
 
       await Util.expectDecodeUnknownFailure(schema, null, `Expected MyUnion, actual null`)
       await Util.expectDecodeUnknownFailure(
@@ -201,8 +201,8 @@ describe("Union", () => {
         S.Tuple(S.Literal("a"), S.Literal("d"), S.Boolean)
       ).annotations({ identifier: "MyUnion" })
 
-      await Util.expectDecodeUnknownSuccess(schema, ["a", "b", "s"])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", "c", 1])
+      await Util.assertions.decoding.succeed(schema, ["a", "b", "s"])
+      await Util.assertions.decoding.succeed(schema, ["a", "c", 1])
 
       await Util.expectDecodeUnknownFailure(schema, null, `Expected MyUnion, actual null`)
       await Util.expectDecodeUnknownFailure(

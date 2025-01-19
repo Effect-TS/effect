@@ -130,7 +130,7 @@ describe("brand", () => {
         S.int(),
         S.brand("Int")
       ).annotations({ identifier: "IntegerFromString" })
-      await Util.expectDecodeUnknownSuccess(schema, "1", 1 as any)
+      await Util.assertions.decoding.succeed(schema, "1", 1 as any)
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
@@ -148,7 +148,7 @@ describe("brand", () => {
         S.int(),
         S.brand(Int)
       ).annotations({ identifier: "IntegerFromString" })
-      await Util.expectDecodeUnknownSuccess(schema, "1", 1 as any)
+      await Util.assertions.decoding.succeed(schema, "1", 1 as any)
       await Util.expectDecodeUnknownFailure(
         schema,
         null,

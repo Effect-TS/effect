@@ -69,7 +69,7 @@ describe("extend", () => {
       S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(A.fields, { ...baseFields, ...fields })
-    await Util.expectDecodeUnknownSuccess(A, new A({ base: "base", a: 1, b: 1 }))
+    await Util.assertions.decoding.succeed(A, new A({ base: "base", a: 1, b: 1 }))
     await Util.expectDecodeUnknownFailure(
       A,
       { base: "base", a: 1, b: 2 },

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 describe("DateFromNumber", () => {
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(S.DateFromNumber, 0, new Date(0))
+    await Util.assertions.decoding.succeed(S.DateFromNumber, 0, new Date(0))
     expect(S.decodeSync(S.DateFromNumber)(NaN) instanceof Date).toBe(true)
     expect(S.decodeSync(S.DateFromNumber)(Infinity) instanceof Date).toBe(true)
     expect(S.decodeSync(S.DateFromNumber)(-Infinity) instanceof Date).toBe(true)

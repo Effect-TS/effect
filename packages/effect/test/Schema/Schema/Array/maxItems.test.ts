@@ -14,9 +14,9 @@ details: Expected an integer greater than or equal to 1, actual -1`)
     it("Array", async () => {
       const schema = S.Array(S.Number).pipe(S.maxItems(2))
 
-      await Util.expectDecodeUnknownSuccess(schema, [])
-      await Util.expectDecodeUnknownSuccess(schema, [1])
-      await Util.expectDecodeUnknownSuccess(schema, [1, 2])
+      await Util.assertions.decoding.succeed(schema, [])
+      await Util.assertions.decoding.succeed(schema, [1])
+      await Util.assertions.decoding.succeed(schema, [1, 2])
       await Util.expectDecodeUnknownFailure(
         schema,
         [1, 2, 3],
@@ -29,8 +29,8 @@ details: Expected an integer greater than or equal to 1, actual -1`)
     it("NonEmptyArray", async () => {
       const schema = S.NonEmptyArray(S.Number).pipe(S.maxItems(2))
 
-      await Util.expectDecodeUnknownSuccess(schema, [1])
-      await Util.expectDecodeUnknownSuccess(schema, [1, 2])
+      await Util.assertions.decoding.succeed(schema, [1])
+      await Util.assertions.decoding.succeed(schema, [1, 2])
       await Util.expectDecodeUnknownFailure(
         schema,
         [],

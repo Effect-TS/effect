@@ -10,8 +10,8 @@ describe("EitherFromUnion", () => {
 
   it("decoding success", async () => {
     const schema = S.EitherFromUnion({ left: S.DateFromString, right: S.NumberFromString })
-    await Util.expectDecodeUnknownSuccess(schema, "1970-01-01T00:00:00.000Z", E.left(new Date(0)))
-    await Util.expectDecodeUnknownSuccess(schema, "1", E.right(1))
+    await Util.assertions.decoding.succeed(schema, "1970-01-01T00:00:00.000Z", E.left(new Date(0)))
+    await Util.assertions.decoding.succeed(schema, "1", E.right(1))
 
     expect(E.isEither(S.decodeSync(schema)("1970-01-01T00:00:00.000Z"))).toEqual(true)
     expect(E.isEither(S.decodeSync(schema)("1"))).toEqual(true)
@@ -55,7 +55,7 @@ describe("EitherFromUnion", () => {
 
   it("decoding prefer right", async () => {
     const schema = S.EitherFromUnion({ left: S.NumberFromString, right: S.NumberFromString })
-    await Util.expectDecodeUnknownSuccess(schema, "1", E.right(1))
+    await Util.assertions.decoding.succeed(schema, "1", E.right(1))
   })
 
   it("encoding success", async () => {

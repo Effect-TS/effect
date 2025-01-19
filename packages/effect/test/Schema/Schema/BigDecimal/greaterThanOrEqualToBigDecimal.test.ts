@@ -15,7 +15,7 @@ describe("greaterThanOrEqualToBigDecimal", () => {
 └─ Predicate refinement failure
    └─ Expected a BigDecimal greater than or equal to 10, actual BigDecimal(0)`
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "10",
       BigDecimal.normalize(BigDecimal.fromNumber(10))

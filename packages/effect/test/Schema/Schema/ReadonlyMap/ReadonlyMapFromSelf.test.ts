@@ -11,8 +11,8 @@ describe("ReadonlyMapFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.ReadonlyMapFromSelf({ key: S.NumberFromString, value: S.String })
-    await Util.expectDecodeUnknownSuccess(schema, new Map(), new Map())
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, new Map(), new Map())
+    await Util.assertions.decoding.succeed(
       schema,
       new Map([["1", "a"], ["2", "b"], ["3", "c"]]),
       new Map([[1, "a"], [2, "b"], [3, "c"]])

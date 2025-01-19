@@ -10,9 +10,9 @@ describe("Lowercase", () => {
 
   it("decoding", async () => {
     const schema = S.Lowercase
-    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
-    await Util.expectDecodeUnknownSuccess(schema, "A ", "a ")
-    await Util.expectDecodeUnknownSuccess(schema, " A ", " a ")
+    await Util.assertions.decoding.succeed(schema, "a", "a")
+    await Util.assertions.decoding.succeed(schema, "A ", "a ")
+    await Util.assertions.decoding.succeed(schema, " A ", " a ")
   })
 
   it("encoding", async () => {

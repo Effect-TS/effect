@@ -12,8 +12,8 @@ describe("ChunkFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.ChunkFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, C.empty(), C.empty())
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, C.empty(), C.empty())
+    await Util.assertions.decoding.succeed(
       schema,
       C.fromIterable(["1", "2", "3"]),
       C.fromIterable([1, 2, 3])

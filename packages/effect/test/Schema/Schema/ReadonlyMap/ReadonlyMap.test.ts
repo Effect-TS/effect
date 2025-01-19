@@ -9,8 +9,8 @@ describe("ReadonlyMap", () => {
 
   it("decoding", async () => {
     const schema = S.ReadonlyMap({ key: S.Number, value: S.String })
-    await Util.expectDecodeUnknownSuccess(schema, [], new Map())
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, [], new Map())
+    await Util.assertions.decoding.succeed(
       schema,
       [[1, "a"], [2, "b"], [3, "c"]],
       new Map([[1, "a"], [2, "b"], [3, "c"]])

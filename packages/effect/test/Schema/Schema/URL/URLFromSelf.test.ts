@@ -15,7 +15,7 @@ describe("URLFromSelf", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       new URL("https://effect.website"),
       new URL("https://effect.website")

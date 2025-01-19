@@ -10,10 +10,10 @@ describe("OptionFromNonEmptyTrimmedString", () => {
 
   it("decoding", async () => {
     const schema = S.OptionFromNonEmptyTrimmedString
-    await Util.expectDecodeUnknownSuccess(schema, "", O.none())
-    await Util.expectDecodeUnknownSuccess(schema, "a", O.some("a"))
-    await Util.expectDecodeUnknownSuccess(schema, " ", O.none())
-    await Util.expectDecodeUnknownSuccess(schema, " a ", O.some("a"))
+    await Util.assertions.decoding.succeed(schema, "", O.none())
+    await Util.assertions.decoding.succeed(schema, "a", O.some("a"))
+    await Util.assertions.decoding.succeed(schema, " ", O.none())
+    await Util.assertions.decoding.succeed(schema, " a ", O.some("a"))
 
     await Util.expectDecodeUnknownFailure(
       schema,

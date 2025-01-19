@@ -28,8 +28,8 @@ describe("OptionFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.OptionFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, O.none(), O.none())
-    await Util.expectDecodeUnknownSuccess(schema, O.some("1"), O.some(1))
+    await Util.assertions.decoding.succeed(schema, O.none(), O.none())
+    await Util.assertions.decoding.succeed(schema, O.some("1"), O.some(1))
 
     await Util.expectDecodeUnknownFailure(
       schema,

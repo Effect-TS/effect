@@ -10,7 +10,7 @@ describe("NonEmptyTrimmedString", () => {
 
   it("decoding", async () => {
     const schema = S.NonEmptyTrimmedString
-    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
+    await Util.assertions.decoding.succeed(schema, "a", "a")
 
     await Util.expectDecodeUnknownFailure(
       schema,

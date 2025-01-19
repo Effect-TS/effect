@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 describe("Defect", () => {
   describe("decoding", () => {
     it("a string", async () => {
-      await Util.expectDecodeUnknownSuccess(
+      await Util.assertions.decoding.succeed(
         S.Defect,
         "error",
         "error"

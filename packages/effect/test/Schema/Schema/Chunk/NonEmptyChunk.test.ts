@@ -10,7 +10,7 @@ describe("NonEmptyChunk", () => {
 
   it("decoding", async () => {
     const schema = S.NonEmptyChunk(S.Number)
-    await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], C.make(1, 2, 3))
+    await Util.assertions.decoding.succeed(schema, [1, 2, 3], C.make(1, 2, 3))
 
     await Util.expectDecodeUnknownFailure(
       schema,

@@ -29,8 +29,8 @@ describe("EitherFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.EitherFromSelf({ left: S.NumberFromString, right: Util.BooleanFromLiteral })
-    await Util.expectDecodeUnknownSuccess(schema, E.left("1"), E.left(1))
-    await Util.expectDecodeUnknownSuccess(schema, E.right("true"), E.right(true))
+    await Util.assertions.decoding.succeed(schema, E.left("1"), E.left(1))
+    await Util.assertions.decoding.succeed(schema, E.right("true"), E.right(true))
 
     await Util.expectDecodeUnknownFailure(
       schema,

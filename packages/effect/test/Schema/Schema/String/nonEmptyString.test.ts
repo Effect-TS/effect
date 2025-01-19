@@ -17,8 +17,8 @@ describe("nonEmptyString", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownSuccess(schema, "aa")
+    await Util.assertions.decoding.succeed(schema, "a")
+    await Util.assertions.decoding.succeed(schema, "aa")
 
     await Util.expectDecodeUnknownFailure(
       schema,

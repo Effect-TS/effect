@@ -14,7 +14,7 @@ describe("Uint8Array > Uint8Array", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, [0, 1, 2, 3], Uint8Array.from([0, 1, 2, 3]))
+    await Util.assertions.decoding.succeed(schema, [0, 1, 2, 3], Uint8Array.from([0, 1, 2, 3]))
     await Util.expectDecodeUnknownFailure(
       schema,
       [12354],

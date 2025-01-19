@@ -10,10 +10,10 @@ describe("Uncapitalize", () => {
 
   it("decoding", async () => {
     const schema = S.Uncapitalize
-    await Util.expectDecodeUnknownSuccess(schema, "AA", "aA")
-    await Util.expectDecodeUnknownSuccess(schema, "AA ", "aA ")
-    await Util.expectDecodeUnknownSuccess(schema, " aa ", " aa ")
-    await Util.expectDecodeUnknownSuccess(schema, "", "")
+    await Util.assertions.decoding.succeed(schema, "AA", "aA")
+    await Util.assertions.decoding.succeed(schema, "AA ", "aA ")
+    await Util.assertions.decoding.succeed(schema, " aa ", " aa ")
+    await Util.assertions.decoding.succeed(schema, "", "")
   })
 
   it("encoding", async () => {

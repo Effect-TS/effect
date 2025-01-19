@@ -10,7 +10,7 @@ describe("Symbol", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "a", Symbol.for("a"))
+    await Util.assertions.decoding.succeed(schema, "a", Symbol.for("a"))
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
