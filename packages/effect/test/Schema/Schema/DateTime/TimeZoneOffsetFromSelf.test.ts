@@ -6,6 +6,6 @@ describe("TimeZoneOffsetFromSelf", () => {
   const schema = S.TimeZoneOffsetFromSelf
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 })

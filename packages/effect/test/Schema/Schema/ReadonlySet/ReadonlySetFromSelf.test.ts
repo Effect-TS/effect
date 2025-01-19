@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 
 describe("ReadonlySetFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.ReadonlySetFromSelf(S.Number))
+    Util.assertions.roundtrip(S.ReadonlySetFromSelf(S.Number))
   })
 
   it("decoding", async () => {

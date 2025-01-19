@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("HashSet", () => {
   it("property tests", () => {
-    Util.roundtrip(S.HashSet(S.Number))
+    Util.assertions.roundtrip(S.HashSet(S.Number))
   })
 
   it("decoding", async () => {

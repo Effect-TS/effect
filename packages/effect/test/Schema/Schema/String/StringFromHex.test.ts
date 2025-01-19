@@ -7,7 +7,7 @@ describe("StringFromHex", () => {
   const decoder = new TextDecoder("utf-8")
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

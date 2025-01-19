@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 
 describe("minLength", () => {
   it("property tests", () => {
-    Util.roundtrip(S.minLength(0)(S.String))
+    Util.assertions.roundtrip(S.minLength(0)(S.String))
   })
 
   it("is", () => {

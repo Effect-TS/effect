@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("Uint8Array > Uint8ArrayFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.Uint8ArrayFromSelf)
+    Util.assertions.roundtrip(S.Uint8ArrayFromSelf)
   })
 
   it("decoding", async () => {

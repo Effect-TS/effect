@@ -11,7 +11,7 @@ describe("EitherFromSelf", () => {
   })
 
   it("property tests", () => {
-    Util.roundtrip(S.EitherFromSelf({ left: S.String, right: S.Number }))
+    Util.assertions.roundtrip(S.EitherFromSelf({ left: S.String, right: S.Number }))
   })
 
   it("is", () => {

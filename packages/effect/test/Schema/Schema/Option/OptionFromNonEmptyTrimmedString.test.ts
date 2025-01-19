@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("OptionFromNonEmptyTrimmedString", () => {
   it("property tests", () => {
-    Util.roundtrip(S.OptionFromNonEmptyTrimmedString)
+    Util.assertions.roundtrip(S.OptionFromNonEmptyTrimmedString)
   })
 
   it("decoding", async () => {

@@ -5,8 +5,8 @@ import { describe, it } from "vitest"
 
 describe("Data", () => {
   it("property tests", () => {
-    Util.roundtrip(S.Data(S.Struct({ a: S.String, b: S.Number })))
-    Util.roundtrip(S.Data(S.Array(S.Number)))
+    Util.assertions.roundtrip(S.Data(S.Struct({ a: S.String, b: S.Number })))
+    Util.assertions.roundtrip(S.Data(S.Array(S.Number)))
   })
 
   it("decoding", async () => {

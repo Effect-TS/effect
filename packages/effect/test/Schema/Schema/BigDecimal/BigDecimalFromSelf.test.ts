@@ -8,7 +8,7 @@ describe("BigDecimalFromSelf", () => {
   const schema = S.BigDecimalFromSelf
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

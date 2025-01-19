@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("Chunk", () => {
   it("property tests", () => {
-    Util.roundtrip(S.Chunk(S.Number))
+    Util.assertions.roundtrip(S.Chunk(S.Number))
   })
 
   it("decoding", async () => {

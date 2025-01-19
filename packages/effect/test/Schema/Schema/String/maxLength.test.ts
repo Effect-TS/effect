@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 
 describe("maxLength", () => {
   it("property tests", () => {
-    Util.roundtrip(S.maxLength(0)(S.String))
+    Util.assertions.roundtrip(S.maxLength(0)(S.String))
   })
 
   it("is", () => {

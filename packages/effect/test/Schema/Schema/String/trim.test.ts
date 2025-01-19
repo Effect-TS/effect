@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("trim", () => {
   it("property tests", () => {
     const schema = S.Trim
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

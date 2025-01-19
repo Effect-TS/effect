@@ -8,7 +8,7 @@ describe("Int", () => {
   const schema = S.Int
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("is", () => {

@@ -32,7 +32,7 @@ describe("Trimmed", () => {
   })
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("is", () => {

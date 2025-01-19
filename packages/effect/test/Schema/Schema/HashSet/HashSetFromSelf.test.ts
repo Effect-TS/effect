@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest"
 
 describe("HashSetFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.HashSetFromSelf(S.Number))
+    Util.assertions.roundtrip(S.HashSetFromSelf(S.Number))
   })
 
   it("decoding", async () => {

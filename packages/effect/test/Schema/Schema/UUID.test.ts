@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("string/UUID", () => {
   it("property tests", () => {
-    Util.roundtrip(S.UUID)
+    Util.assertions.roundtrip(S.UUID)
   })
 
   it("Decoder", async () => {

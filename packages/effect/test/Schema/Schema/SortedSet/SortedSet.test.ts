@@ -6,7 +6,7 @@ import { describe, it } from "vitest"
 
 describe("SortedSet", () => {
   it("property tests", () => {
-    Util.roundtrip(S.SortedSet(S.Number, N.Order))
+    Util.assertions.roundtrip(S.SortedSet(S.Number, N.Order))
   })
 
   it("decoding", async () => {

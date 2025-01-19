@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("ReadonlySet", () => {
   it("property tests", () => {
-    Util.roundtrip(S.ReadonlySet(S.Number))
+    Util.assertions.roundtrip(S.ReadonlySet(S.Number))
   })
 
   it("decoding", async () => {

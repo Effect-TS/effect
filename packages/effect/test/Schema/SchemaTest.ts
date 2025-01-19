@@ -1,10 +1,17 @@
-import { Arbitrary, Context, Effect, FastCheck, Option, Predicate, Schema } from "effect"
+import { Arbitrary, Context, Effect, Either, FastCheck, Option, Predicate, Schema } from "effect"
 
 export type UntypedParameters = Omit<FastCheck.Parameters<any>, "examples" | "reporter" | "asyncReporter">
 
 export class AssertConfig extends Context.Tag("AssertConfig")<AssertConfig, {
   readonly arbitrary?: {
-    readonly is?: boolean | UntypedParameters | undefined
+    readonly is?: {
+      readonly skip?: true | undefined
+      readonly params?: UntypedParameters | undefined
+    }
+  }
+  readonly roundtrip?: {
+    readonly skip?: true | undefined
+    readonly params?: UntypedParameters | undefined
   }
 }>() {}
 
@@ -42,21 +49,57 @@ export const assertions = Effect.gen(function*() {
         throws(() => make(input), message)
       }
     },
+
     arbitrary: {
       /**
        * Assert that the given schema generates arbitrary values that satisfy the schema
        */
       is<A, I, R>(schema: Schema.Schema<A, I, R>, params?: FastCheck.Parameters<[A]>) {
-        if (config.arbitrary?.is === false) {
+        if (config.arbitrary?.is?.skip === true) {
           return
         }
         if (Predicate.isObject(config.arbitrary?.is)) {
-          params = { ...config.arbitrary?.is, ...params }
+          params = { ...config.arbitrary?.is?.params, ...params }
         }
         const is = Schema.is(schema)
         const arb = Arbitrary.make(schema)
         FastCheck.assert(FastCheck.property(arb, (a) => is(a)), params)
       }
+    },
+
+    /**
+     * Assert that the given schema abides to the soft schema law.
+     *
+     * This means that for all values `a` that satisfy the schema:
+     *
+     * `decode(encode(a))` is equal to `a`
+     */
+    roundtrip<A, I>(schema: Schema.Schema<A, I, never>, params?: FastCheck.Parameters<[A]>) {
+      if (config.roundtrip?.skip === true) {
+        return
+      }
+      if (Predicate.isObject(config.roundtrip?.params)) {
+        params = { ...config.roundtrip?.params, ...params }
+      }
+      const arb = Arbitrary.make(schema)
+      const is = Schema.is(schema)
+      const encode = Schema.encode(schema)
+      const decode = Schema.decode(schema)
+      FastCheck.assert(
+        FastCheck.property(arb, (a) => {
+          const roundtrip = encode(a).pipe(
+            Effect.mapError(() => "encoding" as const),
+            Effect.flatMap((i) => decode(i).pipe(Effect.mapError(() => "decoding" as const))),
+            Effect.either,
+            Effect.runSync
+          )
+          if (Either.isLeft(roundtrip)) {
+            return roundtrip.left === "encoding"
+          }
+          return is(roundtrip.right)
+        }),
+        params
+      )
     }
   }
 })

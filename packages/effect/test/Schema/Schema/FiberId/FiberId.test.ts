@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("FiberId", () => {
   it("property tests", () => {
-    Util.roundtrip(S.FiberId)
+    Util.assertions.roundtrip(S.FiberId)
   })
 
   it("decoding", async () => {

@@ -8,7 +8,7 @@ describe("NonNaN", () => {
   const schema = S.NonNaN
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("is", () => {

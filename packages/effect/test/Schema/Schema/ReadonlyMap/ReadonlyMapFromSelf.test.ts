@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 
 describe("ReadonlyMapFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.ReadonlyMapFromSelf({ key: S.Number, value: S.String }))
+    Util.assertions.roundtrip(S.ReadonlyMapFromSelf({ key: S.Number, value: S.String }))
   })
 
   it("decoding", async () => {

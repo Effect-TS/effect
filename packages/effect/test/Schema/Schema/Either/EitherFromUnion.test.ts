@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("EitherFromUnion", () => {
   it("property tests", () => {
-    Util.roundtrip(S.EitherFromUnion({ left: S.String, right: S.Number }))
+    Util.assertions.roundtrip(S.EitherFromUnion({ left: S.String, right: S.Number }))
   })
 
   it("decoding success", async () => {

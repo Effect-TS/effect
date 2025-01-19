@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest"
 
 describe("SortedSetFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(Schema.SortedSetFromSelf(Schema.Number, N.Order, N.Order))
+    Util.assertions.roundtrip(Schema.SortedSetFromSelf(Schema.Number, N.Order, N.Order))
   })
 
   it("decoding", async () => {

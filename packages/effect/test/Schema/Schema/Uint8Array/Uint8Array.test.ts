@@ -6,7 +6,7 @@ describe("Uint8Array > Uint8Array", () => {
   const schema = S.Uint8Array
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("isSchema", () => {

@@ -7,7 +7,7 @@ describe("DateTimeUtc", () => {
   const schema = S.DateTimeUtc
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {

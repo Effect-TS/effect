@@ -6,6 +6,6 @@ describe("ArrayFormatterIssue", () => {
   const schema = S.ArrayFormatterIssue
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 })

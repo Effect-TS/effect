@@ -6,6 +6,6 @@ describe("DateTimeUtcFromSelf", () => {
   const schema = S.DateTimeUtcFromSelf
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 })

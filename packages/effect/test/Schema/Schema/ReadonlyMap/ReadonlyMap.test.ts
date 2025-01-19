@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("ReadonlyMap", () => {
   it("property tests", () => {
-    Util.roundtrip(S.ReadonlyMap({ key: S.Number, value: S.String }))
+    Util.assertions.roundtrip(S.ReadonlyMap({ key: S.Number, value: S.String }))
   })
 
   it("decoding", async () => {

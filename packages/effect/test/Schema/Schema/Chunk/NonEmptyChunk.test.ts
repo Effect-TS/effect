@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 
 describe("NonEmptyChunk", () => {
   it("property tests", () => {
-    Util.roundtrip(S.NonEmptyChunk(S.Number))
+    Util.assertions.roundtrip(S.NonEmptyChunk(S.Number))
   })
 
   it("decoding", async () => {

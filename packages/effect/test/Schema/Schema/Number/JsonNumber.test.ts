@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("JsonNumber", () => {
   it("property tests", () => {
-    Util.roundtrip(S.JsonNumber)
+    Util.assertions.roundtrip(S.JsonNumber)
   })
 
   it("should exclude NaN from decoding", async () => {

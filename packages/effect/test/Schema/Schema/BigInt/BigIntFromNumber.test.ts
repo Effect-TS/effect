@@ -6,7 +6,7 @@ describe("BigIntFromNumber", () => {
   const schema = S.BigIntFromNumber
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("Decoder", async () => {

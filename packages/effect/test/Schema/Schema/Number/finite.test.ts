@@ -6,7 +6,7 @@ describe("Finite", () => {
   const schema = S.Finite
 
   it("property tests", () => {
-    Util.roundtrip(schema)
+    Util.assertions.roundtrip(schema)
   })
 
   it("decoding", async () => {
