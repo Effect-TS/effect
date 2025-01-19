@@ -162,14 +162,13 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
     }, middleware)
     return (request: Request, context?: Context.Context<never> | undefined): Promise<Response> =>
       new Promise((resolve) => {
-        const contextMap = new Map<string, any>(
-          context ?
-            [
-              ...runtime.context.unsafeMap,
-              ...context.unsafeMap
-            ] :
-            runtime.context.unsafeMap
-        )
+        const contextMap = new Map<string, any>()
+        runtime.context.unsafeMap.forEach((value, key) => {
+          contextMap.set(key, value)
+        })
+        context?.unsafeMap.forEach((value, key) => {
+          contextMap.set(key, value)
+        })
         const httpServerRequest = ServerRequest.fromWeb(request)
         contextMap.set(ServerRequest.HttpServerRequest.key, httpServerRequest)
         ;(httpServerRequest as any)[resolveSymbol] = resolve
