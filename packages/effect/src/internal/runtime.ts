@@ -165,23 +165,15 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
   readonly [FiberFailureId]: Runtime.FiberFailureId
   readonly [FiberFailureCauseId]: Cause.Cause<unknown>
   constructor(cause: Cause.Cause<unknown>) {
-    super()
+    const head = InternalCause.prettyErrors(cause)[0]
 
+    super(head?.message || "An error has occurred")
     this[FiberFailureId] = FiberFailureId
     this[FiberFailureCauseId] = cause
 
-    const prettyErrors = InternalCause.prettyErrors(cause)
-    if (prettyErrors.length > 0) {
-      const head = prettyErrors[0]
-      this.name = head.name
-      this.message = head.message
-      this.stack = head.stack!
-    }
-
-    this.name = `(FiberFailure) ${this.name}`
-
-    if (this.message === undefined || this.message.length === 0) {
-      this.message = "An error has occurred"
+    this.name = head ? `(FiberFailure) ${head.name}` : "FiberFailure"
+    if (head?.stack) {
+      this.stack = head.stack
     }
   }
 
@@ -193,7 +185,7 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
   }
 
   toString(): string {
-    return "(FiberFailure) " + (this.stack ?? this.message)
+    return "(FiberFailure) " + InternalCause.pretty(this[FiberFailureCauseId], { renderErrorCause: true })
   }
   [Inspectable.NodeInspectSymbol](): unknown {
     return this.toString()
