@@ -1,6 +1,5 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import { getFinalTransformation } from "effect/ParseResult"
 import * as ParseResult from "effect/ParseResult"
@@ -47,26 +46,6 @@ export const isBun = "Bun" in globalThis
 export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).annotations({
   identifier: "NumberFromChar"
 })
-
-export const expectEitherLeft = <A>(e: Either.Either<A, ParseResult.ParseError>, message: string) => {
-  if (Either.isLeft(e)) {
-    expect(ParseResult.TreeFormatter.formatErrorSync(e.left)).toStrictEqual(message)
-  } else {
-    // eslint-disable-next-line no-console
-    console.log(e.right)
-    assert.fail(`expected a Left`)
-  }
-}
-
-export const expectEitherRight = <E, A>(e: Either.Either<A, E>, a: A) => {
-  if (Either.isRight(e)) {
-    expect(e.right).toStrictEqual(a)
-  } else {
-    // eslint-disable-next-line no-console
-    console.log(e.left)
-    assert.fail(`expected a Right`)
-  }
-}
 
 export const expectNone = <A>(o: Option.Option<A>) => {
   expect(o).toStrictEqual(Option.none())
