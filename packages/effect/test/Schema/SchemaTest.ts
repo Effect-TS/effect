@@ -242,6 +242,25 @@ export const assertions = Effect.gen(function*() {
           }
         }
       }
+    },
+
+    effect: {
+      async succeed<E, A>(
+        effect: Effect.Effect<A, E>,
+        a: A
+      ) {
+        deepStrictEqual(await Effect.runPromise(Effect.either(effect)), Either.right(a))
+      },
+
+      async fail<A>(
+        effect: Effect.Effect<A, ParseResult.ParseError>,
+        message: string
+      ) {
+        deepStrictEqual(
+          await Effect.runPromise(Effect.either(Effect.mapError(effect, ParseResult.TreeFormatter.formatErrorSync))),
+          Either.left(message)
+        )
+      }
     }
   }
 })

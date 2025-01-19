@@ -6,8 +6,8 @@ describe("encode", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return Left on invalid values", async () => {
-    await Util.expectEffectSuccess(S.encode(schema)({ a: 1 }), { a: "1" })
-    await Util.expectEffectFailure(
+    await Util.assertions.effect.succeed(S.encode(schema)({ a: 1 }), { a: "1" })
+    await Util.assertions.effect.fail(
       S.encode(schema)({ a: 10 }),
       `{ readonly a: NumberFromChar }
 └─ ["a"]
@@ -21,19 +21,19 @@ describe("encode", () => {
 
   it("should respect outer/inner options", async () => {
     const input = { a: 1, b: "b" }
-    await Util.expectEffectFailure(
+    await Util.assertions.effect.fail(
       S.encode(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    await Util.expectEffectFailure(
+    await Util.assertions.effect.fail(
       S.encode(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    await Util.expectEffectSuccess(
+    await Util.assertions.effect.succeed(
       S.encode(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),
       {
         a: "1"
