@@ -6,8 +6,8 @@ describe("nonEmptyString", () => {
   const schema = S.NonEmptyString
 
   it("make", () => {
-    Util.expectConstructorSuccess(S.NonEmptyString, "a")
-    Util.expectConstructorFailure(
+    Util.assertions.make.succeed(S.NonEmptyString, "a")
+    Util.assertions.make.fail(
       S.NonEmptyString,
       "",
       `NonEmptyString

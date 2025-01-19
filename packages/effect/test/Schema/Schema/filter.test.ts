@@ -97,8 +97,8 @@ describe("filter", () => {
 
   it("the constructor should validate the input by default", () => {
     const schema = S.NonEmptyString
-    Util.expectConstructorSuccess(schema, "a")
-    Util.expectConstructorFailure(
+    Util.assertions.make.succeed(schema, "a")
+    Util.assertions.make.fail(
       schema,
       "",
       `NonEmptyString
