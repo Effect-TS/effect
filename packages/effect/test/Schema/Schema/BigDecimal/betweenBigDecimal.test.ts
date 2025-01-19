@@ -37,6 +37,6 @@ describe("betweenBigDecimal", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, BigDecimal.make(0n, 0), "0")
+    await Util.assertions.encoding.succeed(schema, BigDecimal.make(0n, 0), "0")
   })
 })

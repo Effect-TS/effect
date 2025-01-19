@@ -18,10 +18,10 @@ describe("Capitalize", () => {
 
   it("encoding", async () => {
     const schema = S.Capitalize
-    await Util.expectEncodeSuccess(schema, "", "")
-    await Util.expectEncodeSuccess(schema, "Aa", "Aa")
+    await Util.assertions.encoding.succeed(schema, "", "")
+    await Util.assertions.encoding.succeed(schema, "Aa", "Aa")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       "aa",
       `Capitalize

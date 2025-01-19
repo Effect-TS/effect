@@ -29,6 +29,6 @@ describe("Uint8Array > Uint8Array", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, Uint8Array.from([0, 1, 2, 3]), [0, 1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, Uint8Array.from([0, 1, 2, 3]), [0, 1, 2, 3])
   })
 })

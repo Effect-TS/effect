@@ -33,7 +33,7 @@ describe("Chunk", () => {
 
   it("encoding", async () => {
     const schema = S.Chunk(S.Number)
-    await Util.expectEncodeSuccess(schema, C.empty(), [])
-    await Util.expectEncodeSuccess(schema, C.fromIterable([1, 2, 3]), [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, C.empty(), [])
+    await Util.assertions.encoding.succeed(schema, C.fromIterable([1, 2, 3]), [1, 2, 3])
   })
 })

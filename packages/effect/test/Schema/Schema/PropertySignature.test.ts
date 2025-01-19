@@ -127,8 +127,8 @@ describe("PropertySignature", () => {
                └─ Unable to decode "a" into a number`
     )
 
-    await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
-    await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
+    await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
+    await Util.assertions.encoding.succeed(schema, { a: 0 }, { a: "0" })
   })
 
   it("add a bidirectional (decoding/encoding) default to an optional field", async () => {
@@ -156,8 +156,8 @@ describe("PropertySignature", () => {
                └─ Unable to decode "a" into a number`
     )
 
-    await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
-    await Util.expectEncodeSuccess(schema, { a: 0 }, {})
+    await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
+    await Util.assertions.encoding.succeed(schema, { a: 0 }, {})
   })
 
   it("empty string as optional", async () => {
@@ -174,7 +174,7 @@ describe("PropertySignature", () => {
     await Util.assertions.decoding.succeed(schema, { a: "" }, {})
     await Util.assertions.decoding.succeed(schema, { a: "a" }, { a: "a" })
 
-    await Util.expectEncodeSuccess(schema, { a: "a" }, { a: "a" })
+    await Util.assertions.encoding.succeed(schema, { a: "a" }, { a: "a" })
   })
 
   it("encoding default", async () => {
@@ -191,8 +191,8 @@ describe("PropertySignature", () => {
     await Util.assertions.decoding.succeed(schema, { a: 1 }, { a: 1 })
     await Util.assertions.decoding.succeed(schema, { a: 0 }, { a: 0 })
 
-    await Util.expectEncodeSuccess(schema, {}, { a: 0 })
-    await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
+    await Util.assertions.encoding.succeed(schema, {}, { a: 0 })
+    await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: 1 })
   })
 
   describe("fromKey", () => {
@@ -202,7 +202,7 @@ describe("PropertySignature", () => {
       const schema = S.asSchema(transform)
       await Util.assertions.decoding.succeed(schema, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
 
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
     })
 
     it("symbol key", async () => {
@@ -213,7 +213,7 @@ describe("PropertySignature", () => {
       const schema = S.Struct({ b: S.Number }).pipe(S.extend(rename))
 
       await Util.assertions.decoding.succeed(schema, { [a]: "effect/Schema/test/a", b: 1 }, { a, b: 1 })
-      await Util.expectEncodeSuccess(schema, { a, b: 1 }, { [a]: "effect/Schema/test/a", b: 1 })
+      await Util.assertions.encoding.succeed(schema, { a, b: 1 }, { [a]: "effect/Schema/test/a", b: 1 })
     })
   })
 })

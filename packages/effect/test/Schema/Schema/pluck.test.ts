@@ -65,8 +65,8 @@ describe("pluck", () => {
     it("struct (string keys)", async () => {
       const origin = S.Struct({ a: S.NonEmptyString })
       const schema = S.pluck(origin, "a")
-      await Util.expectEncodeSuccess(schema, "a", { a: "a" })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, "a", { a: "a" })
+      await Util.assertions.encoding.fail(
         schema,
         "",
         `({ readonly a: NonEmptyString } <-> NonEmptyString)
@@ -81,8 +81,8 @@ describe("pluck", () => {
       const a = Symbol.for("effect/schema/test/a")
       const origin = S.Struct({ [a]: S.NonEmptyString })
       const schema = S.pluck(origin, a)
-      await Util.expectEncodeSuccess(schema, "a", { [a]: "a" })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, "a", { [a]: "a" })
+      await Util.assertions.encoding.fail(
         schema,
         "",
         `({ readonly Symbol(effect/schema/test/a): NonEmptyString } <-> NonEmptyString)
@@ -97,14 +97,14 @@ describe("pluck", () => {
   it("struct with optional key", async () => {
     const origin = S.Struct({ a: S.optional(S.String) })
     const schema = S.pluck(origin, "a")
-    await Util.expectEncodeSuccess(schema, undefined, {})
-    await Util.expectEncodeSuccess(schema, "a", { a: "a" })
+    await Util.assertions.encoding.succeed(schema, undefined, {})
+    await Util.assertions.encoding.succeed(schema, "a", { a: "a" })
   })
 
   it("struct with exact optional key", async () => {
     const origin = S.Struct({ a: S.optionalWith(S.String, { exact: true }) })
     const schema = S.pluck(origin, "a")
-    await Util.expectEncodeSuccess(schema, undefined, {})
-    await Util.expectEncodeSuccess(schema, "a", { a: "a" })
+    await Util.assertions.encoding.succeed(schema, undefined, {})
+    await Util.assertions.encoding.succeed(schema, "a", { a: "a" })
   })
 })

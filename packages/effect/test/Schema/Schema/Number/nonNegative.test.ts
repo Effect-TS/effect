@@ -10,7 +10,7 @@ describe("NonNegative", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       -1,
       `NonNegative

@@ -29,8 +29,8 @@ describe("RedactedFromSelf", () => {
     )
   })
 
-  it("encoding", () => {
-    Util.expectEncodeSuccess(
+  it("encoding", async () => {
+    await Util.assertions.encoding.succeed(
       schema,
       Redacted.make("keep me safe"),
       Redacted.make("keep me safe")

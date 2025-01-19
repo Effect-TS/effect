@@ -21,9 +21,9 @@ describe("DateFromSelf", () => {
 
   it("encoding", async () => {
     const now = new Date()
-    await Util.expectEncodeSuccess(S.DateFromSelf, now, now)
+    await Util.assertions.encoding.succeed(S.DateFromSelf, now, now)
     const invalid = new Date("invalid")
-    await Util.expectEncodeSuccess(S.DateFromSelf, invalid, invalid)
+    await Util.assertions.encoding.succeed(S.DateFromSelf, invalid, invalid)
   })
 
   it("pretty", () => {

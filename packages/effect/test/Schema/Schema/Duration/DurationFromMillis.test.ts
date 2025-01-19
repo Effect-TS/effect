@@ -17,8 +17,8 @@ describe("DurationFromMillis", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, Duration.seconds(5), 5000)
-    await Util.expectEncodeSuccess(schema, Duration.millis(5000), 5000)
-    await Util.expectEncodeSuccess(schema, Duration.nanos(5000n), 0.005)
+    await Util.assertions.encoding.succeed(schema, Duration.seconds(5), 5000)
+    await Util.assertions.encoding.succeed(schema, Duration.millis(5000), 5000)
+    await Util.assertions.encoding.succeed(schema, Duration.nanos(5000n), 0.005)
   })
 })

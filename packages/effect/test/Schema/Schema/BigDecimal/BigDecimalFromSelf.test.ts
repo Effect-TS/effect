@@ -22,9 +22,9 @@ describe("BigDecimalFromSelf", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
-    await Util.expectEncodeSuccess(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
+    await Util.assertions.encoding.succeed(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
+    await Util.assertions.encoding.succeed(
       schema,
       BigDecimal.make(-20000000n, 0),
       BigDecimal.make(-20000000n, 0)

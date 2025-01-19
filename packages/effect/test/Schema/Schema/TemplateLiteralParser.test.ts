@@ -78,7 +78,7 @@ schema (Union): boolean | symbol`)
    └─ Expected \`a\`, actual ""`
       )
 
-      await Util.expectEncodeSuccess(schema, ["a"], "a")
+      await Util.assertions.encoding.succeed(schema, ["a"], "a")
     })
 
     it(`"a" + "b"`, async () => {
@@ -93,7 +93,7 @@ schema (Union): boolean | symbol`)
    └─ Expected \`ab\`, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, ["a", "b"], "ab")
+      await Util.assertions.encoding.succeed(schema, ["a", "b"], "ab")
     })
 
     it(`Int + "a"`, async () => {
@@ -114,8 +114,8 @@ schema (Union): boolean | symbol`)
                      └─ Expected an integer, actual 1.1`
       )
 
-      await Util.expectEncodeSuccess(schema, [1, "a"], "1a")
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, [1, "a"], "1a")
+      await Util.assertions.encoding.fail(
         schema,
         [1.1, "a"],
         `(\`\${number}a\` <-> readonly [Int, "a"])
@@ -146,8 +146,8 @@ schema (Union): boolean | symbol`)
                └─ Unable to decode "-" into a number`
       )
 
-      await Util.expectEncodeSuccess(schema, [100, "a", "b"], "100ab")
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, [100, "a", "b"], "100ab")
+      await Util.assertions.encoding.fail(
         schema,
         [100, "a", ""],
         `(\`\${string}a\${string}\` <-> readonly [NumberFromString, "a", NonEmptyString])

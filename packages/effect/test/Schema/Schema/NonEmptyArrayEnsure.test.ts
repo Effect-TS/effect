@@ -67,7 +67,7 @@ describe("NonEmptyArrayEnsure", () => {
 
   it("encode", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, [123], "123")
-    await Util.expectEncodeSuccess(schema, [1, 2, 3], ["1", "2", "3"])
+    await Util.assertions.encoding.succeed(schema, [123], "123")
+    await Util.assertions.encoding.succeed(schema, [1, 2, 3], ["1", "2", "3"])
   })
 })

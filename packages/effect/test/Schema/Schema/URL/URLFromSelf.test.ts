@@ -22,8 +22,8 @@ describe("URLFromSelf", () => {
     )
   })
 
-  it("encoding", () => {
-    Util.expectEncodeSuccess(
+  it("encoding", async () => {
+    await Util.assertions.encoding.succeed(
       schema,
       new URL("https://effect.website"),
       new URL("https://effect.website")

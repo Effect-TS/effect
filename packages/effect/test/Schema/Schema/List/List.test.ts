@@ -33,7 +33,7 @@ describe("List", () => {
 
   it("encoding", async () => {
     const schema = S.List(S.Number)
-    await Util.expectEncodeSuccess(schema, List.empty(), [])
-    await Util.expectEncodeSuccess(schema, List.fromIterable([1, 2, 3]), [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, List.empty(), [])
+    await Util.assertions.encoding.succeed(schema, List.fromIterable([1, 2, 3]), [1, 2, 3])
   })
 })

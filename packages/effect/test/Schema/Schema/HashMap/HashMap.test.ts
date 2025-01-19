@@ -39,8 +39,8 @@ describe("HashMap", () => {
 
   it("encoding", async () => {
     const schema = S.HashMap({ key: S.Number, value: S.String })
-    await Util.expectEncodeSuccess(schema, HashMap.fromIterable([]), [])
-    await Util.expectEncodeSuccess(schema, HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
+    await Util.assertions.encoding.succeed(schema, HashMap.fromIterable([]), [])
+    await Util.assertions.encoding.succeed(schema, HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
       2,
       "b"
     ], [3, "c"]])

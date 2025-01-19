@@ -10,6 +10,6 @@ describe("String", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, "a", "a")
+    await Util.assertions.encoding.succeed(schema, "a", "a")
   })
 })

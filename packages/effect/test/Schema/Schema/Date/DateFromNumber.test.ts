@@ -19,7 +19,7 @@ describe("DateFromNumber", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(S.DateFromNumber, new Date(0), 0)
+    await Util.assertions.encoding.succeed(S.DateFromNumber, new Date(0), 0)
     expect(S.encodeSync(S.DateFromNumber)(new Date("invalid"))).toBe(NaN)
     expect(S.encodeSync(S.DateFromNumber)(new Date(NaN))).toBe(NaN)
     expect(S.encodeSync(S.DateFromNumber)(new Date(Infinity))).toBe(NaN)

@@ -43,8 +43,8 @@ describe("optionalWith", () => {
          └─ Unable to decode "a" into a number`
       )
 
-      await Util.expectEncodeSuccess(schema, {}, {})
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, {}, {})
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
     })
 
     it("never", async () => {
@@ -85,9 +85,9 @@ describe("optionalWith", () => {
             └─ Expected undefined, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, {}, {})
-      await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, {}, {})
+      await Util.assertions.encoding.succeed(schema, { a: undefined }, { a: undefined })
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
     })
   })
 
@@ -126,8 +126,8 @@ describe("optionalWith", () => {
             └─ Expected null, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, {}, {})
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, {}, {})
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
     })
   })
 
@@ -152,8 +152,8 @@ describe("optionalWith", () => {
                └─ Unable to decode "a" into a number`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: O.none() }, {})
+      await Util.assertions.encoding.succeed(schema, { a: O.some(1) }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: O.none() }, {})
     })
   })
 
@@ -181,8 +181,8 @@ describe("optionalWith", () => {
             └─ Expected null, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: O.none() }, {})
+      await Util.assertions.encoding.succeed(schema, { a: O.some(1) }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: O.none() }, {})
     })
   })
 
@@ -215,8 +215,8 @@ describe("optionalWith", () => {
             └─ Expected null, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: O.none() }, { a: null })
+      await Util.assertions.encoding.succeed(schema, { a: O.some(1) }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: O.none() }, { a: null })
     })
   })
 
@@ -242,8 +242,8 @@ describe("optionalWith", () => {
             └─ Expected undefined, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: O.none() }, {})
+      await Util.assertions.encoding.succeed(schema, { a: O.some(1) }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: O.none() }, {})
     })
   })
 
@@ -273,8 +273,8 @@ describe("optionalWith", () => {
             └─ Expected undefined, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: O.none() }, {})
+      await Util.assertions.encoding.succeed(schema, { a: O.some(1) }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: O.none() }, {})
     })
   })
 
@@ -315,8 +315,8 @@ describe("optionalWith", () => {
             └─ Expected undefined, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: O.none() }, { a: undefined })
+      await Util.assertions.encoding.succeed(schema, { a: O.some(1) }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: O.none() }, { a: undefined })
     })
   })
 
@@ -346,8 +346,8 @@ describe("optionalWith", () => {
             └─ Expected undefined, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: O.none() }, { a: undefined })
+      await Util.assertions.encoding.succeed(schema, { a: O.some(1) }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: O.none() }, { a: undefined })
     })
   })
 
@@ -377,8 +377,8 @@ describe("optionalWith", () => {
             └─ Expected undefined, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: O.none() }, { a: null })
+      await Util.assertions.encoding.succeed(schema, { a: O.some(1) }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: O.none() }, { a: null })
     })
   })
 
@@ -401,8 +401,8 @@ describe("optionalWith", () => {
                └─ Unable to decode "a" into a number`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: 0 }, { a: "0" })
     })
 
     it("should apply the default to the default constructor", () => {
@@ -435,8 +435,8 @@ describe("optionalWith", () => {
             └─ Expected undefined, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: 0 }, { a: "0" })
     })
 
     it("should apply the default to the default constructor", () => {
@@ -471,8 +471,8 @@ describe("optionalWith", () => {
             └─ Expected undefined, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: 0 }, { a: "0" })
     })
 
     it("should apply the default to the default constructor", () => {
@@ -505,8 +505,8 @@ describe("optionalWith", () => {
             └─ Expected null, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
-      await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
+      await Util.assertions.encoding.succeed(schema, { a: 0 }, { a: "0" })
     })
 
     it("should apply the default to the default constructor", () => {

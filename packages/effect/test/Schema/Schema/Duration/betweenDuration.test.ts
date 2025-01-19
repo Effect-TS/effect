@@ -33,7 +33,7 @@ describe("betweenDuration", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       Duration.decode("7 seconds"),
       Duration.decode("7 seconds")

@@ -6,8 +6,8 @@ describe("StringFromUriComponent", () => {
   const schema = S.StringFromUriComponent
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, "шеллы", "%D1%88%D0%B5%D0%BB%D0%BB%D1%8B")
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(schema, "шеллы", "%D1%88%D0%B5%D0%BB%D0%BB%D1%8B")
+    await Util.assertions.encoding.fail(
       schema,
       "Hello\uD800",
       `StringFromUriComponent

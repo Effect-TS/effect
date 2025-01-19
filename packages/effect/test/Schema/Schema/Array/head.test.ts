@@ -23,7 +23,7 @@ describe("head", () => {
 
   it("encoding", async () => {
     const schema = S.head(S.Array(S.NumberFromString))
-    await Util.expectEncodeSuccess(schema, Option.none(), [])
-    await Util.expectEncodeSuccess(schema, Option.some(1), ["1"])
+    await Util.assertions.encoding.succeed(schema, Option.none(), [])
+    await Util.assertions.encoding.succeed(schema, Option.some(1), ["1"])
   })
 })

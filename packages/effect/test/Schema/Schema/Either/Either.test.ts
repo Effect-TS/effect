@@ -24,7 +24,7 @@ describe("Either", () => {
 
   it("encoding", async () => {
     const schema = S.Either({ left: S.String, right: S.NumberFromString })
-    await Util.expectEncodeSuccess(schema, E.left("a"), { _tag: "Left", left: "a" })
-    await Util.expectEncodeSuccess(schema, E.right(1), { _tag: "Right", right: "1" })
+    await Util.assertions.encoding.succeed(schema, E.left("a"), { _tag: "Left", left: "a" })
+    await Util.assertions.encoding.succeed(schema, E.right(1), { _tag: "Right", right: "1" })
   })
 })

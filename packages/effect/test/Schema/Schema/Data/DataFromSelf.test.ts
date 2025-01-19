@@ -35,7 +35,7 @@ describe("DataFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.DataFromSelf(S.Struct({ a: S.String, b: S.Number }))
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       Data.struct({ a: "ok", b: 0 }),
       Data.struct({ a: "ok", b: 0 })

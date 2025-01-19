@@ -26,6 +26,6 @@ describe("DateTimeUtc", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, DateTime.unsafeMake(0), "1970-01-01T00:00:00.000Z")
+    await Util.assertions.encoding.succeed(schema, DateTime.unsafeMake(0), "1970-01-01T00:00:00.000Z")
   })
 })

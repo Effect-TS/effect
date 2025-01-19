@@ -32,6 +32,6 @@ describe("NonEmptyChunk", () => {
 
   it("encoding", async () => {
     const schema = S.NonEmptyChunk(S.Number)
-    await Util.expectEncodeSuccess(schema, C.make(1, 2, 3), [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, C.make(1, 2, 3), [1, 2, 3])
   })
 })

@@ -100,7 +100,7 @@ describe("Cause", () => {
   describe("encoding", () => {
     it("should raise an error when a non-encodable Cause is passed", async () => {
       const schema = S.Cause({ error: S.String, defect: Util.Defect })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         Cause.die(null),
         `(CauseEncoded<string> <-> Cause<string>)
@@ -118,23 +118,23 @@ describe("Cause", () => {
       const schema = S.Cause({ error: S.NumberFromString, defect: S.Defect })
       const schemaUnknown = S.Cause({ error: S.NumberFromString, defect: S.Unknown })
 
-      await Util.expectEncodeSuccess(schema, Cause.fail(1), { _tag: "Fail", error: "1" })
-      await Util.expectEncodeSuccess(schema, Cause.empty, { _tag: "Empty" })
-      await Util.expectEncodeSuccess(schema, Cause.parallel(Cause.fail(1), Cause.empty), {
+      await Util.assertions.encoding.succeed(schema, Cause.fail(1), { _tag: "Fail", error: "1" })
+      await Util.assertions.encoding.succeed(schema, Cause.empty, { _tag: "Empty" })
+      await Util.assertions.encoding.succeed(schema, Cause.parallel(Cause.fail(1), Cause.empty), {
         _tag: "Parallel",
         left: { _tag: "Fail", error: "1" },
         right: { _tag: "Empty" }
       })
-      await Util.expectEncodeSuccess(schema, Cause.sequential(Cause.fail(1), Cause.empty), {
+      await Util.assertions.encoding.succeed(schema, Cause.sequential(Cause.fail(1), Cause.empty), {
         _tag: "Sequential",
         left: { _tag: "Fail", error: "1" },
         right: { _tag: "Empty" }
       })
-      await Util.expectEncodeSuccess(schema, Cause.die("fail"), {
+      await Util.assertions.encoding.succeed(schema, Cause.die("fail"), {
         _tag: "Die",
         defect: "fail"
       })
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         schema,
         Cause.interrupt(FiberId.composite(FiberId.runtime(1, 1000), FiberId.none)),
         {

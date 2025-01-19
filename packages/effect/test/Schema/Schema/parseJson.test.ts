@@ -54,12 +54,12 @@ describe("parseJson", () => {
 
     it("encoding", async () => {
       const schema = S.parseJson()
-      await Util.expectEncodeSuccess(schema, "a", `"a"`)
-      await Util.expectEncodeSuccess(schema, { a: "b" }, `{"a":"b"}`)
+      await Util.assertions.encoding.succeed(schema, "a", `"a"`)
+      await Util.assertions.encoding.succeed(schema, { a: "b" }, `{"a":"b"}`)
 
       const bad: any = { a: 0 }
       bad["a"] = bad
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         bad,
         Util.isBun ?
@@ -107,7 +107,7 @@ describe("parseJson", () => {
 
     it("encoding", async () => {
       const schema = S.parseJson(S.Struct({ a: S.Number }))
-      await Util.expectEncodeSuccess(schema, { a: 1 }, `{"a":1}`)
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, `{"a":1}`)
     })
 
     describe("roundtrip", () => {
@@ -129,7 +129,7 @@ describe("parseJson", () => {
 
     it("replacer", async () => {
       const schema = S.parseJson(S.Struct({ a: S.Number, b: S.String }), { replacer: ["b"] })
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         schema,
         { a: 1, b: "b" },
         `{"b":"b"}`
@@ -138,7 +138,7 @@ describe("parseJson", () => {
 
     it("space", async () => {
       const schema = S.parseJson(S.Struct({ a: S.Number }), { space: 2 })
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         schema,
         { a: 1 },
         `{

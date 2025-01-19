@@ -389,19 +389,19 @@ describe("record", () => {
   describe("encoding", () => {
     it("key error", async () => {
       const schema = S.Record({ key: S.Char, value: S.String })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         { aa: "a" },
         `{ readonly [x: Char]: string }
 └─ ["aa"]
    └─ is unexpected, expected: Char`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
     it("value error", async () => {
       const schema = S.Record({ key: S.String, value: S.Char })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         { a: "aa" },
         `{ readonly [x: string]: Char }

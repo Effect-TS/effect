@@ -34,7 +34,7 @@ describe("Defect", () => {
 
   describe("encoding", () => {
     it("a string", async () => {
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         S.Defect,
         "error",
         "error"
@@ -42,7 +42,7 @@ describe("Defect", () => {
     })
 
     it("an object", async () => {
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         S.Defect,
         { a: 1 },
         "[object Object]"
@@ -50,7 +50,7 @@ describe("Defect", () => {
     })
 
     it("an Error", async () => {
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         S.Defect,
         new Error("message"),
         {

@@ -39,7 +39,7 @@ describe("StringFromBase64", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       "foobar",
       "Zm9vYmFy"

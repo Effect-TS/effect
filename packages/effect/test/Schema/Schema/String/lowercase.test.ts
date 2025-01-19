@@ -17,10 +17,10 @@ describe("Lowercase", () => {
 
   it("encoding", async () => {
     const schema = S.Lowercase
-    await Util.expectEncodeSuccess(schema, "", "")
-    await Util.expectEncodeSuccess(schema, "a", "a")
+    await Util.assertions.encoding.succeed(schema, "", "")
+    await Util.assertions.encoding.succeed(schema, "a", "a")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       "A",
       `Lowercase

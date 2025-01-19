@@ -202,11 +202,11 @@ describe("Struct", () => {
   describe("encoding", () => {
     it("empty", async () => {
       const schema = S.Struct({})
-      await Util.expectEncodeSuccess(schema, {}, {})
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
-      await Util.expectEncodeSuccess(schema, [], [])
+      await Util.assertions.encoding.succeed(schema, {}, {})
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: 1 })
+      await Util.assertions.encoding.succeed(schema, [], [])
 
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         null as any,
         `Expected {}, actual null`
@@ -215,64 +215,64 @@ describe("Struct", () => {
 
     it("required property signature", async () => {
       const schema = S.Struct({ a: S.Number })
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: 1 })
+      await Util.assertions.encoding.fail(
         schema,
         { a: 1, b: "b" } as any,
         `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
     it("required property signature with undefined", async () => {
       const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
-      await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: 1 })
+      await Util.assertions.encoding.succeed(schema, { a: undefined }, { a: undefined })
+      await Util.assertions.encoding.fail(
         schema,
         { a: 1, b: "b" } as any,
         `{ readonly a: number | undefined }
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
     it("exact optional property signature", async () => {
       const schema = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
-      await Util.expectEncodeSuccess(schema, {}, {})
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, {}, {})
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: 1 })
+      await Util.assertions.encoding.fail(
         schema,
         { a: 1, b: "b" } as any,
         `{ readonly a?: number }
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
     it("exact optional property signature with undefined", async () => {
       const schema = S.Struct({ a: S.optionalWith(S.Union(S.Number, S.Undefined), { exact: true }) })
-      await Util.expectEncodeSuccess(schema, {}, {})
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
-      await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, {}, {})
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: 1 })
+      await Util.assertions.encoding.succeed(schema, { a: undefined }, { a: undefined })
+      await Util.assertions.encoding.fail(
         schema,
         { a: 1, b: "b" } as any,
         `{ readonly a?: number | undefined }
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
     it("should handle symbols as keys", async () => {
       const a = Symbol.for("effect/Schema/test/a")
       const schema = S.Struct({ [a]: S.String })
-      await Util.expectEncodeSuccess(schema, { [a]: "a" }, { [a]: "a" })
+      await Util.assertions.encoding.succeed(schema, { [a]: "a" }, { [a]: "a" })
     })
   })
 })

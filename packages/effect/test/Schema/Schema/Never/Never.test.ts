@@ -9,6 +9,6 @@ describe("Never", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeFailure(schema, 1 as any as never, "Expected never, actual 1")
+    await Util.assertions.encoding.fail(schema, 1 as any as never, "Expected never, actual 1")
   })
 })

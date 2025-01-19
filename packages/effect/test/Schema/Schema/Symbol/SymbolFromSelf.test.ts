@@ -16,6 +16,6 @@ describe("SymbolFromSelf", () => {
 
   it("encoding", async () => {
     const a = Symbol.for("effect/Schema/test/a")
-    await Util.expectEncodeSuccess(schema, a, a)
+    await Util.assertions.encoding.succeed(schema, a, a)
   })
 })

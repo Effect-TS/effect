@@ -42,7 +42,7 @@ describe("OptionFromUndefinedOr", () => {
 
   it("encoding", async () => {
     const schema = S.OptionFromUndefinedOr(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, O.none(), undefined)
-    await Util.expectEncodeSuccess(schema, O.some(1), "1")
+    await Util.assertions.encoding.succeed(schema, O.none(), undefined)
+    await Util.assertions.encoding.succeed(schema, O.some(1), "1")
   })
 })

@@ -30,8 +30,8 @@ describe("object", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, {}, {})
-    await Util.expectEncodeSuccess(schema, [], [])
-    await Util.expectEncodeSuccess(schema, [1, 2, 3], [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, {}, {})
+    await Util.assertions.encoding.succeed(schema, [], [])
+    await Util.assertions.encoding.succeed(schema, [1, 2, 3], [1, 2, 3])
   })
 })

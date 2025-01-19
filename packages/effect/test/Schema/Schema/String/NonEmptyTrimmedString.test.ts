@@ -34,9 +34,9 @@ describe("NonEmptyTrimmedString", () => {
 
   it("encoding", async () => {
     const schema = S.NonEmptyTrimmedString
-    await Util.expectEncodeSuccess(schema, "a", "a")
+    await Util.assertions.encoding.succeed(schema, "a", "a")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       " ",
       `NonEmptyTrimmedString
@@ -45,7 +45,7 @@ describe("NonEmptyTrimmedString", () => {
       └─ Predicate refinement failure
          └─ Expected a string with no leading or trailing whitespace, actual " "`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       " a ",
       `NonEmptyTrimmedString

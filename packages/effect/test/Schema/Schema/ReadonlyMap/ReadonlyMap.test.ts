@@ -38,8 +38,8 @@ describe("ReadonlyMap", () => {
 
   it("encoding", async () => {
     const schema = S.ReadonlyMap({ key: S.Number, value: S.String })
-    await Util.expectEncodeSuccess(schema, new Map(), [])
-    await Util.expectEncodeSuccess(schema, new Map([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
+    await Util.assertions.encoding.succeed(schema, new Map(), [])
+    await Util.assertions.encoding.succeed(schema, new Map([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
       2,
       "b"
     ], [3, "c"]])

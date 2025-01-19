@@ -18,7 +18,7 @@ describe("BooleanFromUnknown", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, true, true)
-    await Util.expectEncodeSuccess(schema, false, false)
+    await Util.assertions.encoding.succeed(schema, true, true)
+    await Util.assertions.encoding.succeed(schema, false, false)
   })
 })

@@ -13,6 +13,6 @@ describe("Number", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, 1, 1)
+    await Util.assertions.encoding.succeed(schema, 1, 1)
   })
 })

@@ -34,8 +34,8 @@ describe("Enums", () => {
     })
 
     it("encoding", async () => {
-      await Util.expectEncodeSuccess(schema, Fruits.Apple, 0)
-      await Util.expectEncodeSuccess(schema, Fruits.Banana, 1)
+      await Util.assertions.encoding.succeed(schema, Fruits.Apple, 0)
+      await Util.assertions.encoding.succeed(schema, Fruits.Banana, 1)
     })
   })
 
@@ -62,9 +62,9 @@ describe("Enums", () => {
     })
 
     it("encoding", async () => {
-      await Util.expectEncodeSuccess(schema, Fruits.Apple, "apple")
-      await Util.expectEncodeSuccess(schema, Fruits.Banana, "banana")
-      await Util.expectEncodeSuccess(schema, Fruits.Cantaloupe, 0)
+      await Util.assertions.encoding.succeed(schema, Fruits.Apple, "apple")
+      await Util.assertions.encoding.succeed(schema, Fruits.Banana, "banana")
+      await Util.assertions.encoding.succeed(schema, Fruits.Cantaloupe, 0)
     })
   })
 
@@ -89,9 +89,9 @@ describe("Enums", () => {
     })
 
     it("encoding", async () => {
-      await Util.expectEncodeSuccess(schema, Fruits.Apple, "apple")
-      await Util.expectEncodeSuccess(schema, Fruits.Banana, "banana")
-      await Util.expectEncodeSuccess(schema, Fruits.Cantaloupe, 3)
+      await Util.assertions.encoding.succeed(schema, Fruits.Apple, "apple")
+      await Util.assertions.encoding.succeed(schema, Fruits.Banana, "banana")
+      await Util.assertions.encoding.succeed(schema, Fruits.Cantaloupe, 3)
     })
   })
 })

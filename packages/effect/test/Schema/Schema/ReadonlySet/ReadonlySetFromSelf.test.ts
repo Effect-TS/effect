@@ -33,8 +33,8 @@ describe("ReadonlySetFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.ReadonlySetFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, new Set(), new Set())
-    await Util.expectEncodeSuccess(schema, new Set([1, 2, 3]), new Set(["1", "2", "3"]))
+    await Util.assertions.encoding.succeed(schema, new Set(), new Set())
+    await Util.assertions.encoding.succeed(schema, new Set([1, 2, 3]), new Set(["1", "2", "3"]))
   })
 
   it("is", () => {

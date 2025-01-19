@@ -40,8 +40,8 @@ describe("HashMapFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.HashMapFromSelf({ key: S.NumberFromString, value: S.String })
-    await Util.expectEncodeSuccess(schema, HashMap.fromIterable([]), HashMap.fromIterable([]))
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, HashMap.fromIterable([]), HashMap.fromIterable([]))
+    await Util.assertions.encoding.succeed(
       schema,
       HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]]),
       HashMap.fromIterable([["1", "a"], ["2", "b"], ["3", "c"]])
