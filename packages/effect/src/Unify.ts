@@ -58,14 +58,10 @@ type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : nev
 /**
  * @since 2.0.0
  */
-export type Unify<A> = Values<
-  ExtractTypes<
-    (
-      & FilterIn<A>
-      & { [typeSymbol]: A }
-    )
-  >
-> extends infer Z ? Z | Exclude<A, Z> | FilterOut<A> : never
+export type Unify<
+  A,
+  Z = Values<ExtractTypes<FilterIn<A> & { [typeSymbol]: A }>>
+> = (Z | Exclude<A, Z> | FilterOut<A>) & unknown
 
 /**
  * @since 2.0.0
