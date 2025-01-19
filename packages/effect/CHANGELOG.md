@@ -1,5 +1,13 @@
 # effect
 
+## 3.12.6
+
+### Patch Changes
+
+- [#4287](https://github.com/Effect-TS/effect/pull/4287) [`5514d05`](https://github.com/Effect-TS/effect/commit/5514d05b5cd586ff5868b8bd41c959e95e6c33cd) Thanks @gcanti! - Array: Fix `Either` import and correct `partition` example.
+
+- [#4294](https://github.com/Effect-TS/effect/pull/4294) [`b064b3b`](https://github.com/Effect-TS/effect/commit/b064b3b293615fd268cc5a5647d0981eb67750b8) Thanks @tim-smart! - ensure cause is rendered in FiberFailure
+
 ## 3.12.5
 
 ### Patch Changes
