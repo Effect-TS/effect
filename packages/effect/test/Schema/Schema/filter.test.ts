@@ -312,7 +312,7 @@ describe("filter", () => {
       └─ minItems(3)
          └─ Predicate refinement failure
             └─ Expected an array of at least 3 item(s), actual ["AB","B"]`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
         await Util.assertions.decoding.fail(
           schema,
@@ -338,7 +338,7 @@ describe("filter", () => {
           `{ readonly tags: minItems(1) }
 └─ ["tags"]
    └─ is missing`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
         await Util.assertions.decoding.fail(
           S.Struct({
@@ -348,7 +348,7 @@ describe("filter", () => {
           `{ readonly tags: minItems(1) & maxItems(3) }
 └─ ["tags"]
    └─ is missing`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
     })
@@ -374,7 +374,7 @@ describe("filter", () => {
       └─ minItems(3)
          └─ Predicate refinement failure
             └─ Expected an array of at least 3 item(s), actual ["AB","B"]`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
         await Util.assertions.decoding.fail(
           schema,
@@ -400,7 +400,7 @@ describe("filter", () => {
           `{ readonly tags: minItems(1) }
 └─ ["tags"]
    └─ is missing`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
         await Util.assertions.decoding.fail(
           S.Struct({
@@ -410,7 +410,7 @@ describe("filter", () => {
           `{ readonly tags: minItems(1) & maxItems(3) }
 └─ ["tags"]
    └─ is missing`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
     })

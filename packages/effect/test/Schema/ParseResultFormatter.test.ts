@@ -183,7 +183,7 @@ describe("ParseResultFormatter", () => {
       │  └─ 1ff9f37a-1f50-4ee2-906d-e824067d4cf7
       └─ ["c"]
          └─ 132f0e48-ae12-4bbb-8473-3dd433de2eb0`,
-            { parseOptions: Util.allErrors }
+            { parseOptions: Util.ErrorsAll }
           )
           expectIssues(schema, input, [{
             _tag: "Missing",
@@ -1210,7 +1210,7 @@ describe("handle identifiers", () => {
 │  └─ Expected MyString1, actual 1
 └─ ["b"]
    └─ Expected MyString2, actual 2`,
-      { parseOptions: Util.allErrors }
+      { parseOptions: Util.ErrorsAll }
     )
   })
 

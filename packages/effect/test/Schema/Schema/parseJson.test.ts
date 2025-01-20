@@ -3,6 +3,8 @@ import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
+const isBun = "Bun" in globalThis
+
 describe("parseJson", () => {
   describe("parseJson()", () => {
     it("decoding", async () => {
@@ -20,7 +22,7 @@ describe("parseJson", () => {
       await Util.assertions.decoding.fail(
         schema,
         "",
-        Util.isBun ?
+        isBun ?
           `parseJson
 └─ Transformation process failure
     └─ JSON Parse error: Unexpected EOF` :
@@ -31,7 +33,7 @@ describe("parseJson", () => {
       await Util.assertions.decoding.fail(
         schema,
         "a",
-        Util.isBun
+        isBun
           ? `parseJson
 └─ Transformation process failure
     └─ JSON Parse error: Unexpected identifier "a"`
@@ -42,7 +44,7 @@ describe("parseJson", () => {
       await Util.assertions.decoding.fail(
         schema,
         "{",
-        Util.isBun
+        isBun
           ? `parseJson
 └─ Transformation process failure
     └─ JSON Parse error: Expected '}'`
@@ -62,7 +64,7 @@ describe("parseJson", () => {
       await Util.assertions.encoding.fail(
         schema,
         bad,
-        Util.isBun ?
+        isBun ?
           `parseJson
 └─ Transformation process failure
     └─ JSON.stringify cannot serialize cyclic structures.` :
@@ -82,7 +84,7 @@ describe("parseJson", () => {
       await Util.assertions.decoding.fail(
         schema,
         `{"a"}`,
-        Util.isBun
+        isBun
           ? `(parseJson <-> { readonly a: number })
 └─ Encoded side transformation failure
     └─ parseJson

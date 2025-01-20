@@ -36,11 +36,9 @@ export const onExcessPropertyPreserve: ParseOptions = {
   onExcessProperty: "preserve"
 }
 
-export const allErrors: ParseOptions = {
+export const ErrorsAll: ParseOptions = {
   errors: "all"
 }
-
-export const isBun = "Bun" in globalThis
 
 export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).annotations({
   identifier: "NumberFromChar"

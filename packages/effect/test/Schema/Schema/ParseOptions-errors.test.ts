@@ -15,7 +15,7 @@ describe("`errors` option", () => {
 │  └─ is missing
 └─ [0]
    └─ Expected string, actual true`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -29,7 +29,7 @@ describe("`errors` option", () => {
 │  └─ is missing
 └─ [1]
    └─ is missing`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -43,7 +43,7 @@ describe("`errors` option", () => {
 │  └─ is unexpected, expected: never
 └─ [1]
    └─ is unexpected, expected: never`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -57,7 +57,7 @@ describe("`errors` option", () => {
 │  └─ Expected string, actual 1
 └─ [1]
    └─ Expected number, actual "b"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -71,7 +71,7 @@ describe("`errors` option", () => {
 │  └─ Expected number, actual "b"
 └─ [2]
    └─ Expected number, actual "c"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -85,7 +85,7 @@ describe("`errors` option", () => {
 │  └─ Expected number, actual "a"
 └─ [1]
    └─ Expected number, actual "b"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
     })
@@ -101,7 +101,7 @@ describe("`errors` option", () => {
 │  └─ is missing
 └─ ["b"]
    └─ is missing`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -115,7 +115,7 @@ describe("`errors` option", () => {
 │  └─ Expected string, actual 1
 └─ ["b"]
    └─ Expected number, actual "b"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -129,7 +129,7 @@ describe("`errors` option", () => {
 │  └─ is unexpected, expected: "a"
 └─ ["c"]
    └─ is unexpected, expected: "a"`,
-          { parseOptions: { ...Util.allErrors, ...Util.onExcessPropertyError } }
+          { parseOptions: { ...Util.ErrorsAll, ...Util.onExcessPropertyError } }
         )
       })
     })
@@ -145,7 +145,7 @@ describe("`errors` option", () => {
 │  └─ is unexpected, expected: minLength(2)
 └─ ["b"]
    └─ is unexpected, expected: minLength(2)`,
-          { parseOptions: { ...Util.allErrors, ...Util.onExcessPropertyError } }
+          { parseOptions: { ...Util.ErrorsAll, ...Util.onExcessPropertyError } }
         )
       })
 
@@ -159,7 +159,7 @@ describe("`errors` option", () => {
 │  └─ Expected number, actual "a"
 └─ ["b"]
    └─ Expected number, actual "b"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
     })
@@ -177,7 +177,7 @@ describe("`errors` option", () => {
 │  └─ is unexpected, expected: never
 └─ [1]
    └─ is unexpected, expected: never`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -199,7 +199,7 @@ describe("`errors` option", () => {
          └─ Char
             └─ Predicate refinement failure
                └─ Expected a single character, actual "10"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -221,7 +221,7 @@ describe("`errors` option", () => {
          └─ Char
             └─ Predicate refinement failure
                └─ Expected a single character, actual "10"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
 
@@ -243,7 +243,7 @@ describe("`errors` option", () => {
          └─ Char
             └─ Predicate refinement failure
                └─ Expected a single character, actual "10"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
     })
@@ -267,7 +267,7 @@ describe("`errors` option", () => {
          └─ Char
             └─ Predicate refinement failure
                └─ Expected a single character, actual "10"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
     })
@@ -283,7 +283,7 @@ describe("`errors` option", () => {
 │  └─ is unexpected, expected: Char
 └─ ["bb"]
    └─ is unexpected, expected: Char`,
-          { parseOptions: { ...Util.allErrors, ...Util.onExcessPropertyError } }
+          { parseOptions: { ...Util.ErrorsAll, ...Util.onExcessPropertyError } }
         )
       })
 
@@ -301,7 +301,7 @@ describe("`errors` option", () => {
    └─ Char
       └─ Predicate refinement failure
          └─ Expected a single character, actual "bb"`,
-          { parseOptions: Util.allErrors }
+          { parseOptions: Util.ErrorsAll }
         )
       })
     })
