@@ -1,9 +1,9 @@
-import * as S from "effect/Schema"
+import { Option, Schema as S } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("encodeUnknownOption", () => {
   it("should return none on async", () => {
-    Util.expectNone(S.encodeUnknownOption(Util.AsyncString)("a"))
+    expect(S.encodeUnknownOption(Util.AsyncString)("a")).toStrictEqual(Option.none())
   })
 })

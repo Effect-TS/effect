@@ -1,6 +1,5 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
 import { getFinalTransformation } from "effect/ParseResult"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
@@ -46,14 +45,6 @@ export const isBun = "Bun" in globalThis
 export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).annotations({
   identifier: "NumberFromChar"
 })
-
-export const expectNone = <A>(o: Option.Option<A>) => {
-  expect(o).toStrictEqual(Option.none())
-}
-
-export const expectSome = <A>(o: Option.Option<A>, a: A) => {
-  expect(o).toStrictEqual(Option.some(a))
-}
 
 export const AsyncDeclaration = S.declare(
   [],

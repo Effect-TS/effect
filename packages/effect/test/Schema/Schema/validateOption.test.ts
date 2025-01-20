@@ -1,25 +1,24 @@
-import * as S from "effect/Schema"
+import { Option, Schema as S } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("validateOption", () => {
   it("should return none on async", () => {
-    Util.expectNone(S.validateOption(Util.AsyncDeclaration)("a"))
+    expect(S.validateOption(Util.AsyncDeclaration)("a")).toStrictEqual(Option.none())
   })
 
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", () => {
-    Util.expectSome(S.validateOption(schema)({ a: 1 }), { a: 1 })
-    Util.expectNone(S.validateOption(schema)({ a: null }))
+    expect(S.validateOption(schema)({ a: 1 })).toStrictEqual(Option.some({ a: 1 }))
+    expect(S.validateOption(schema)({ a: null })).toStrictEqual(Option.none())
   })
 
   it("should respect outer/inner options", () => {
     const input = { a: 1, b: "b" }
-    Util.expectNone(S.validateOption(schema)(input, { onExcessProperty: "error" }))
-    Util.expectNone(S.validateOption(schema, { onExcessProperty: "error" })(input))
-    Util.expectSome(S.validateOption(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }), {
-      a: 1
-    })
+    expect(S.validateOption(schema)(input, { onExcessProperty: "error" })).toStrictEqual(Option.none())
+    expect(S.validateOption(schema, { onExcessProperty: "error" })(input)).toStrictEqual(Option.none())
+    expect(S.validateOption(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
+      .toStrictEqual(Option.some({ a: 1 }))
   })
 })
