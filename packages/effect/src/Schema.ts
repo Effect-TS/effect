@@ -5546,7 +5546,7 @@ export const NonNegativeBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
  */
 export class BigIntFromNumber extends transformOrFail(
   Number$.annotations({ description: "a number to be decoded into a bigint" }),
-  BigIntFromSelf,
+  BigIntFromSelf.pipe(betweenBigInt(BigInt(Number.MIN_SAFE_INTEGER), BigInt(Number.MAX_SAFE_INTEGER))),
   {
     strict: true,
     decode: (n, _, ast) =>
