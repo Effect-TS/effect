@@ -174,7 +174,7 @@ const makeImpl = <K, A, E, R>(
           }
         })
       const activePools: Effect.Effect<Array<Pool.Pool<A, E>>> = core.suspend(() =>
-        core.forEachSequential(Array.from(HashMap.values(MutableRef.get(map))), (value) => {
+        core.forEachSequential(HashMap.toValues(MutableRef.get(map)), (value) => {
           switch (value._tag) {
             case "Complete": {
               return core.succeed(value.pool)
