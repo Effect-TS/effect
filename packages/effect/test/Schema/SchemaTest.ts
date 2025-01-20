@@ -292,6 +292,25 @@ export const assertions = Effect.gen(function*() {
         const result = await Effect.runPromise(Effect.either(eitherWithMessage))
         return out.either.left(result, message)
       }
+    },
+
+    asserts: {
+      succeed<A, I, R>(schema: Schema.Schema<A, I, R>, input: unknown, options?: {
+        readonly parseOptions?: SchemaAST.ParseOptions | undefined
+      }) {
+        deepStrictEqual(Schema.asserts(schema, options?.parseOptions)(input), undefined)
+      },
+
+      fail<A, I, R>(
+        schema: Schema.Schema<A, I, R>,
+        input: unknown,
+        message: string,
+        options?: {
+          readonly parseOptions?: SchemaAST.ParseOptions | undefined
+        }
+      ) {
+        throws(() => Schema.asserts(schema, options?.parseOptions)(input), message)
+      }
     }
   }
 

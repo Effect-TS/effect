@@ -37,7 +37,7 @@ describe("`exact` option", () => {
   describe("asserts", () => {
     it("true (default)", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      Util.expectAssertsFailure(
+      Util.assertions.asserts.fail(
         schema,
         {},
         `{ readonly a: unknown }
@@ -48,7 +48,7 @@ describe("`exact` option", () => {
 
     it("false", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      Util.expectAssertsSuccess(schema, {}, { exact: false })
+      Util.assertions.asserts.succeed(schema, {}, { parseOptions: { exact: false } })
     })
   })
 })

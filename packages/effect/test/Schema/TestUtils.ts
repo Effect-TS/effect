@@ -71,19 +71,7 @@ export const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
   expect(ks1).toStrictEqual(ks2)
 }
 
-export const expectAssertsSuccess = <A, I>(schema: S.Schema<A, I>, input: unknown, options?: ParseOptions) => {
-  expect(S.asserts(schema, options)(input)).toEqual(undefined)
-}
-
-export const expectAssertsFailure = <A, I>(
-  schema: S.Schema<A, I>,
-  input: unknown,
-  message: string,
-  options?: ParseOptions
-) => {
-  expect(() => S.asserts(schema, options)(input)).toThrow(new Error(message))
-}
-
+// TODO: replace with S.BooleanFromString
 export const BooleanFromLiteral = S.transform(S.Literal("true", "false"), S.Boolean, {
   strict: true,
   decode: (l) => l === "true",
