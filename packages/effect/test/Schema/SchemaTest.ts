@@ -35,7 +35,7 @@ export const assertions = Effect.gen(function*() {
       /**
        * Ensures that the given constructor produces the expected value.
        */
-      succeed<A, B>(
+      succeed<const A, const B>(
         // Destructure to verify that "this" type is bound
         { make }: { readonly make: (a: A) => B },
         input: A,
@@ -47,7 +47,7 @@ export const assertions = Effect.gen(function*() {
       /**
        * Ensures that the given constructor throws the expected error.
        */
-      fail<A, B>(
+      fail<const A, const B>(
         // Destructure to verify that "this" type is bound
         { make }: { readonly make: (a: A) => B },
         input: A,
@@ -121,7 +121,7 @@ export const assertions = Effect.gen(function*() {
        * decoding is successful, the decoded value is compared to the expected
        * value. Otherwise the test fails.
        */
-      async succeed<A, I>(
+      async succeed<const A, I>(
         schema: Schema.Schema<A, I>,
         input: unknown,
         expected?: A,
@@ -162,7 +162,7 @@ export const assertions = Effect.gen(function*() {
        * decoding is successful, the decoded value is compared to the expected
        * value. Otherwise the test fails.
        */
-      async succeed<A, I>(
+      async succeed<const A, const I>(
         schema: Schema.Schema<A, I>,
         input: A,
         expected?: I,
@@ -184,7 +184,7 @@ export const assertions = Effect.gen(function*() {
        * decoding fails, the error message is compared to the expected message.
        * Otherwise the test fails.
        */
-      async fail<A, I>(
+      async fail<const A, I>(
         schema: Schema.Schema<A, I>,
         input: A,
         message: string,
@@ -223,7 +223,7 @@ export const assertions = Effect.gen(function*() {
       /**
        * Verifies that the effect succeeds with the expected value.
        */
-      async succeed<E, A>(
+      async succeed<const A, E>(
         effect: Effect.Effect<A, E>,
         a: A
       ) {
@@ -254,7 +254,7 @@ export const assertions = Effect.gen(function*() {
       /**
        * Verifies that the either is a `Right` with the expected value.
        */
-      right<R, L>(either: Either.Either<R, L>, right: R) {
+      right<const R, L>(either: Either.Either<R, L>, right: R) {
         if (Either.isRight(either)) {
           deepStrictEqual(either.right, right)
         } else {
@@ -267,7 +267,7 @@ export const assertions = Effect.gen(function*() {
       /**
        * Verifies that the either is a `Left` with the expected value.
        */
-      left<R, L>(either: Either.Either<R, L>, left: L) {
+      left<R, const L>(either: Either.Either<R, L>, left: L) {
         if (Either.isLeft(either)) {
           deepStrictEqual(either.left, left)
         } else {
