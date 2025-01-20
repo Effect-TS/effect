@@ -132,7 +132,7 @@ export const sequential = <E, E2>(left: Cause.Cause<E>, right: Cause.Cause<E2>):
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const isCause = (u: unknown): u is Cause.Cause<never> => hasProperty(u, CauseTypeId)
+export const isCause = (u: unknown): u is Cause.Cause<unknown> => hasProperty(u, CauseTypeId)
 
 /** @internal */
 export const isEmptyType = <E>(self: Cause.Cause<E>): self is Cause.Empty => self._tag === OpCodes.OP_EMPTY

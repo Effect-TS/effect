@@ -453,7 +453,7 @@ export const sequential: <E, E2>(left: Cause<E>, right: Cause<E2>) => Cause<E | 
  * @since 2.0.0
  * @category refinements
  */
-export const isCause: (u: unknown) => u is Cause<never> = internal.isCause
+export const isCause: (u: unknown) => u is Cause<unknown> = internal.isCause
 
 /**
  * Returns `true` if the specified `Cause` is an `Empty` type, `false`
