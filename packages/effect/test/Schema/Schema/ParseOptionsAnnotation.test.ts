@@ -26,7 +26,7 @@ describe("ParseOptionsAnnotation", () => {
 │        └─ is missing
 └─ ["d"]
    └─ is missing`,
-      { errors: "first" }
+      { parseOptions: { errors: "first" } }
     )
 
     await Util.assertions.encoding.fail(
@@ -47,7 +47,7 @@ describe("ParseOptionsAnnotation", () => {
          └─ NonEmptyString
             └─ Predicate refinement failure
                └─ Expected a non empty string, actual ""`,
-      { errors: "first" }
+      { parseOptions: { errors: "first" } }
     )
   })
 })
