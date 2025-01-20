@@ -21,7 +21,7 @@ import { EntityId } from "../EntityId.js"
 import type { EntityType } from "../EntityType.js"
 import * as Envelope from "../Envelope.js"
 import type { MailboxStorage } from "../MailboxStorage.js"
-import type { Messenger } from "../Messenger.js"
+import * as Messenger from "../Messenger.js"
 import { PodAddress } from "../PodAddress.js"
 import { ShardId } from "../ShardId.js"
 import type * as Sharding from "../Sharding.js"
@@ -124,27 +124,34 @@ const make = Effect.gen(function*() {
   }
 
   function makeMessenger<Msg extends Envelope.Envelope.AnyMessage>(entity: Entity<Msg>): Effect.Effect<
-    Messenger<Msg>,
+    Messenger.Messenger<Msg>,
     never,
     Schema.Serializable.Context<Msg>
   > {
     return Effect.contextWith((context) => {
-      const sendVoid = Effect.fnUntraced(function*(entityIdentifier: string, message: Msg) {
-        const entityId = EntityId.make(entityIdentifier)
-        const shardId = getShardId(entityId)
-        const address = new EntityAddress({ shardId, entityId, entityType: entity.type })
-        const maybePod = MutableHashMap.get(shardAssignments, shardId)
-        if (Option.isNone(maybePod)) {
-          return yield* new EntityNotManagedByPod({ address })
-        }
-        const envelope = yield* Effect.mapError(
-          Envelope.serialize(Envelope.make(address, message)),
-          (cause) => new MalformedMessage({ cause })
-        )
-        yield* sendEnvelope(maybePod.value, envelope)
-      }, Effect.provide(context))
+      const sendDiscard: (entityIdentifier: string, message: Msg) => Effect.Effect<void> = Effect.fnUntraced(
+        function*(entityIdentifier, message) {
+          const entityId = EntityId.make(entityIdentifier)
+          const shardId = getShardId(entityId)
+          const address = new EntityAddress({ shardId, entityId, entityType: entity.type })
+          const maybePod = MutableHashMap.get(shardAssignments, shardId)
+          if (Option.isNone(maybePod)) {
+            return yield* new EntityNotManagedByPod({ address })
+          }
+          const envelope = yield* Effect.mapError(
+            Envelope.serialize(Envelope.make(address, message)),
+            (cause) => new MalformedMessage({ cause })
+          )
+          yield* sendEnvelope(maybePod.value, envelope)
+        },
+        Effect.provide(context),
+        Effect.orDie
+      )
 
-      return identity<Messenger<Msg>>({ sendVoid })
+      return identity<Messenger.Messenger<Msg>>({
+        [Messenger.TypeId]: Messenger.TypeId,
+        sendDiscard
+      })
     })
   }
 
