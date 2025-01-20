@@ -47,7 +47,7 @@ describe("SortedSetFromSelf", () => {
     await Util.assertions.encoding.succeed(
       schema,
       SortedSet.fromIterable([] as Array<number>, N.Order),
-      SortedSet.fromIterable([], S.Order)
+      SortedSet.fromIterable([] as Array<string>, S.Order)
     )
     await Util.assertions.encoding.succeed(
       schema,
