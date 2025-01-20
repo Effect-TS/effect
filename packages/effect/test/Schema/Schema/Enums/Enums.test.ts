@@ -62,9 +62,9 @@ describe("Enums", () => {
     })
 
     it("encoding", async () => {
-      await Util.assertions.encoding.succeed(schema, Fruits.Apple, "apple")
-      await Util.assertions.encoding.succeed(schema, Fruits.Banana, "banana")
-      await Util.assertions.encoding.succeed(schema, Fruits.Cantaloupe, 0)
+      await Util.assertions.encoding.succeed(schema, Fruits.Apple)
+      await Util.assertions.encoding.succeed(schema, Fruits.Banana)
+      await Util.assertions.encoding.succeed(schema, Fruits.Cantaloupe)
     })
   })
 
