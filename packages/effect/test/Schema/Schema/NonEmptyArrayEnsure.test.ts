@@ -1,7 +1,7 @@
 import * as S from "effect/Schema"
 import * as AST from "effect/SchemaAST"
+import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
-import { expectDecodeUnknownFailure, expectDecodeUnknownSuccess, expectEncodeSuccess } from "../TestUtils.js"
 
 describe("NonEmptyArrayEnsure", () => {
   it("annotations()", () => {
@@ -12,10 +12,10 @@ describe("NonEmptyArrayEnsure", () => {
     })
   })
 
-  it("decode non-array", () => {
+  it("decode non-array", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
-    expectDecodeUnknownSuccess(schema, "123", [123])
-    expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, "123", [123])
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(NumberFromString | readonly [NumberFromString, ...NumberFromString[]] <-> readonly [number, ...number[]])
@@ -28,9 +28,9 @@ describe("NonEmptyArrayEnsure", () => {
     )
   })
 
-  it("decode empty array", () => {
+  it("decode empty array", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
-    expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [],
       `(NumberFromString | readonly [NumberFromString, ...NumberFromString[]] <-> readonly [number, ...number[]])
@@ -45,10 +45,10 @@ describe("NonEmptyArrayEnsure", () => {
     )
   })
 
-  it("decode array", () => {
+  it("decode array", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
-    expectDecodeUnknownSuccess(schema, ["123"], [123])
-    expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, ["123"], [123])
+    await Util.assertions.decoding.fail(
       schema,
       [null],
       `(NumberFromString | readonly [NumberFromString, ...NumberFromString[]] <-> readonly [number, ...number[]])
@@ -65,9 +65,9 @@ describe("NonEmptyArrayEnsure", () => {
     )
   })
 
-  it("encode", () => {
+  it("encode", async () => {
     const schema = S.NonEmptyArrayEnsure(S.NumberFromString)
-    expectEncodeSuccess(schema, [123], "123")
-    expectEncodeSuccess(schema, [1, 2, 3], ["1", "2", "3"])
+    await Util.assertions.encoding.succeed(schema, [123], "123")
+    await Util.assertions.encoding.succeed(schema, [1, 2, 3], ["1", "2", "3"])
   })
 })

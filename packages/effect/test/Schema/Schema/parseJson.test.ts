@@ -3,24 +3,26 @@ import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
+const isBun = "Bun" in globalThis
+
 describe("parseJson", () => {
   describe("parseJson()", () => {
     it("decoding", async () => {
       const schema = S.parseJson()
-      await Util.expectDecodeUnknownSuccess(schema, "{}", {})
-      await Util.expectDecodeUnknownSuccess(schema, `{"a":"b"}`, { "a": "b" })
+      await Util.assertions.decoding.succeed(schema, "{}", {})
+      await Util.assertions.decoding.succeed(schema, `{"a":"b"}`, { "a": "b" })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `parseJson
 └─ Encoded side transformation failure
    └─ Expected string, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "",
-        Util.isBun ?
+        isBun ?
           `parseJson
 └─ Transformation process failure
     └─ JSON Parse error: Unexpected EOF` :
@@ -28,10 +30,10 @@ describe("parseJson", () => {
 └─ Transformation process failure
    └─ Unexpected end of JSON input`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "a",
-        Util.isBun
+        isBun
           ? `parseJson
 └─ Transformation process failure
     └─ JSON Parse error: Unexpected identifier "a"`
@@ -39,10 +41,10 @@ describe("parseJson", () => {
 └─ Transformation process failure
    └─ Unexpected token 'a', "a" is not valid JSON`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "{",
-        Util.isBun
+        isBun
           ? `parseJson
 └─ Transformation process failure
     └─ JSON Parse error: Expected '}'`
@@ -54,15 +56,15 @@ describe("parseJson", () => {
 
     it("encoding", async () => {
       const schema = S.parseJson()
-      await Util.expectEncodeSuccess(schema, "a", `"a"`)
-      await Util.expectEncodeSuccess(schema, { a: "b" }, `{"a":"b"}`)
+      await Util.assertions.encoding.succeed(schema, "a", `"a"`)
+      await Util.assertions.encoding.succeed(schema, { a: "b" }, `{"a":"b"}`)
 
       const bad: any = { a: 0 }
       bad["a"] = bad
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         bad,
-        Util.isBun ?
+        isBun ?
           `parseJson
 └─ Transformation process failure
     └─ JSON.stringify cannot serialize cyclic structures.` :
@@ -78,11 +80,11 @@ describe("parseJson", () => {
   describe("parseJson(schema)", () => {
     it("decoding", async () => {
       const schema = S.parseJson(S.Struct({ a: S.Number }))
-      await Util.expectDecodeUnknownSuccess(schema, `{"a":1}`, { a: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, `{"a":1}`, { a: 1 })
+      await Util.assertions.decoding.fail(
         schema,
         `{"a"}`,
-        Util.isBun
+        isBun
           ? `(parseJson <-> { readonly a: number })
 └─ Encoded side transformation failure
     └─ parseJson
@@ -94,7 +96,7 @@ describe("parseJson", () => {
       └─ Transformation process failure
          └─ Expected ':' after property name in JSON at position 4`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         `{"a":"b"}`,
         `(parseJson <-> { readonly a: number })
@@ -107,14 +109,14 @@ describe("parseJson", () => {
 
     it("encoding", async () => {
       const schema = S.parseJson(S.Struct({ a: S.Number }))
-      await Util.expectEncodeSuccess(schema, { a: 1 }, `{"a":1}`)
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, `{"a":1}`)
     })
 
     describe("roundtrip", () => {
       it("Exit", async () => {
         const schema = S.parseJson(S.Exit({ failure: S.Never, success: S.Void, defect: S.Defect }))
         const encoding = S.encodeSync(schema)(Exit.void)
-        await Util.expectDecodeUnknownSuccess(schema, encoding, Exit.void)
+        await Util.assertions.decoding.succeed(schema, encoding, Exit.void)
       })
     })
   })
@@ -124,12 +126,12 @@ describe("parseJson", () => {
       const schema = S.parseJson(S.Struct({ a: S.Number, b: S.String }), {
         reviver: (key, value) => key === "a" ? value + 1 : value
       })
-      await Util.expectDecodeUnknownSuccess(schema, `{"a":1,"b":"b"}`, { a: 2, b: "b" })
+      await Util.assertions.decoding.succeed(schema, `{"a":1,"b":"b"}`, { a: 2, b: "b" })
     })
 
     it("replacer", async () => {
       const schema = S.parseJson(S.Struct({ a: S.Number, b: S.String }), { replacer: ["b"] })
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         schema,
         { a: 1, b: "b" },
         `{"b":"b"}`
@@ -138,7 +140,7 @@ describe("parseJson", () => {
 
     it("space", async () => {
       const schema = S.parseJson(S.Struct({ a: S.Number }), { space: 2 })
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         schema,
         { a: 1 },
         `{

@@ -5,58 +5,58 @@ import { describe, it } from "vitest"
 describe("BigInt", () => {
   const schema = S.BigInt
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "0", 0n)
-    await Util.expectDecodeUnknownSuccess(schema, "-0", -0n)
-    await Util.expectDecodeUnknownSuccess(schema, "1", 1n)
+    await Util.assertions.decoding.succeed(schema, "0", 0n)
+    await Util.assertions.decoding.succeed(schema, "-0", -0n)
+    await Util.assertions.decoding.succeed(schema, "1", 1n)
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `BigInt
 └─ Transformation process failure
    └─ Unable to decode "" into a bigint`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " ",
       `BigInt
 └─ Transformation process failure
    └─ Unable to decode " " into a bigint`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "1.2",
       `BigInt
 └─ Transformation process failure
    └─ Unable to decode "1.2" into a bigint`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "1AB",
       `BigInt
 └─ Transformation process failure
    └─ Unable to decode "1AB" into a bigint`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "AB1",
       `BigInt
 └─ Transformation process failure
    └─ Unable to decode "AB1" into a bigint`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "a",
       `BigInt
 └─ Transformation process failure
    └─ Unable to decode "a" into a bigint`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "a1",
       `BigInt
@@ -66,6 +66,6 @@ describe("BigInt", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, 1n, "1")
+    await Util.assertions.encoding.succeed(schema, 1n, "1")
   })
 })

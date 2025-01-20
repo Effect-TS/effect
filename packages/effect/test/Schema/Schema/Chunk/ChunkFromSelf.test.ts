@@ -6,25 +6,25 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("ChunkFromSelf", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.ChunkFromSelf(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.ChunkFromSelf(S.Number))
   })
 
   it("decoding", async () => {
     const schema = S.ChunkFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, C.empty(), C.empty())
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, C.empty(), C.empty())
+    await Util.assertions.decoding.succeed(
       schema,
       C.fromIterable(["1", "2", "3"]),
       C.fromIterable([1, 2, 3])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected Chunk<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       C.fromIterable(["1", "a", "3"]),
       `Chunk<NumberFromString>
@@ -38,8 +38,8 @@ describe("ChunkFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.ChunkFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, C.empty(), C.empty())
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, C.empty(), C.empty())
+    await Util.assertions.encoding.succeed(
       schema,
       C.fromIterable([1, 2, 3]),
       C.fromIterable(["1", "2", "3"])

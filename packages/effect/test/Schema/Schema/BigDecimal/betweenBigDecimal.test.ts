@@ -10,8 +10,8 @@ describe("betweenBigDecimal", () => {
   const schema = S.BigDecimal.pipe(S.betweenBigDecimal(min, max))
 
   it("make", () => {
-    Util.expectConstructorSuccess(schema, BigDecimal.make(0n, 0))
-    Util.expectConstructorFailure(
+    Util.assertions.make.succeed(schema, BigDecimal.make(0n, 0))
+    Util.assertions.make.fail(
       schema,
       BigDecimal.make(-2n, 0),
       `betweenBigDecimal(-1, 1)
@@ -21,15 +21,15 @@ describe("betweenBigDecimal", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "2",
       `betweenBigDecimal(-1, 1)
 └─ Predicate refinement failure
    └─ Expected a BigDecimal between -1 and 1, actual BigDecimal(2)`
     )
-    await Util.expectDecodeUnknownSuccess(schema, "0", BigDecimal.normalize(BigDecimal.make(0n, 0)))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, "0", BigDecimal.normalize(BigDecimal.make(0n, 0)))
+    await Util.assertions.decoding.succeed(
       schema,
       "0.2",
       BigDecimal.normalize(BigDecimal.make(2n, 1))
@@ -37,6 +37,6 @@ describe("betweenBigDecimal", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, BigDecimal.make(0n, 0), "0")
+    await Util.assertions.encoding.succeed(schema, BigDecimal.make(0n, 0), "0")
   })
 })

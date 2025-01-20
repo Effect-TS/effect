@@ -10,8 +10,8 @@ describe("brand", () => {
 
   it("the constructor should validate the input by default", () => {
     const schema = S.NonEmptyString.pipe(S.brand("A"))
-    Util.expectConstructorSuccess(schema, "a")
-    Util.expectConstructorFailure(
+    Util.assertions.make.succeed(schema, "a")
+    Util.assertions.make.fail(
       schema,
       "",
       `NonEmptyString
@@ -130,8 +130,8 @@ describe("brand", () => {
         S.int(),
         S.brand("Int")
       ).annotations({ identifier: "IntegerFromString" })
-      await Util.expectDecodeUnknownSuccess(schema, "1", 1 as any)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "1", 1 as any)
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `IntegerFromString
@@ -148,8 +148,8 @@ describe("brand", () => {
         S.int(),
         S.brand(Int)
       ).annotations({ identifier: "IntegerFromString" })
-      await Util.expectDecodeUnknownSuccess(schema, "1", 1 as any)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "1", 1 as any)
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `IntegerFromString

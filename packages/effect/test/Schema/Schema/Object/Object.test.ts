@@ -5,24 +5,24 @@ import { describe, it } from "vitest"
 describe("object", () => {
   const schema = S.Object
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, {})
-    await Util.expectDecodeUnknownSuccess(schema, [])
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, {})
+    await Util.assertions.decoding.succeed(schema, [])
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected object, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "a",
       `Expected object, actual "a"`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       1,
       `Expected object, actual 1`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       true,
       `Expected object, actual true`
@@ -30,8 +30,8 @@ describe("object", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, {}, {})
-    await Util.expectEncodeSuccess(schema, [], [])
-    await Util.expectEncodeSuccess(schema, [1, 2, 3], [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, {}, {})
+    await Util.assertions.encoding.succeed(schema, [], [])
+    await Util.assertions.encoding.succeed(schema, [1, 2, 3], [1, 2, 3])
   })
 })

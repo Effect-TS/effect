@@ -4,19 +4,19 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("OptionFromUndefinedOr", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.OptionFromUndefinedOr(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.OptionFromUndefinedOr(S.Number))
   })
 
   it("decoding", async () => {
     const schema = S.OptionFromUndefinedOr(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, undefined, O.none())
-    await Util.expectDecodeUnknownSuccess(schema, "1", O.some(1))
+    await Util.assertions.decoding.succeed(schema, undefined, O.none())
+    await Util.assertions.decoding.succeed(schema, "1", O.some(1))
 
     expect(O.isOption(S.decodeSync(schema)(undefined))).toEqual(true)
     expect(O.isOption(S.decodeSync(schema)("1"))).toEqual(true)
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(NumberFromString | undefined <-> Option<number>)
@@ -27,7 +27,7 @@ describe("OptionFromUndefinedOr", () => {
       │     └─ Expected string, actual null
       └─ Expected undefined, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       {},
       `(NumberFromString | undefined <-> Option<number>)
@@ -42,7 +42,7 @@ describe("OptionFromUndefinedOr", () => {
 
   it("encoding", async () => {
     const schema = S.OptionFromUndefinedOr(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, O.none(), undefined)
-    await Util.expectEncodeSuccess(schema, O.some(1), "1")
+    await Util.assertions.encoding.succeed(schema, O.none(), undefined)
+    await Util.assertions.encoding.succeed(schema, O.some(1), "1")
   })
 })

@@ -17,19 +17,19 @@ describe("pickLiteral", () => {
   describe("decoding", () => {
     it("1 member", async () => {
       const schema = S.Literal("a").pipe(S.pickLiteral("a"))
-      await Util.expectDecodeUnknownSuccess(schema, "a")
+      await Util.assertions.decoding.succeed(schema, "a")
 
-      await Util.expectDecodeUnknownFailure(schema, 1, `Expected "a", actual 1`)
-      await Util.expectDecodeUnknownFailure(schema, null, `Expected "a", actual null`)
+      await Util.assertions.decoding.fail(schema, 1, `Expected "a", actual 1`)
+      await Util.assertions.decoding.fail(schema, null, `Expected "a", actual null`)
     })
 
     it("2 members", async () => {
       const schema = S.Literal("a", "b", "c").pipe(S.pickLiteral("a", "b"))
 
-      await Util.expectDecodeUnknownSuccess(schema, "a")
-      await Util.expectDecodeUnknownSuccess(schema, "b")
+      await Util.assertions.decoding.succeed(schema, "a")
+      await Util.assertions.decoding.succeed(schema, "b")
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `"a" | "b"
@@ -41,6 +41,6 @@ describe("pickLiteral", () => {
 
   it("encoding", async () => {
     const schema = S.Literal(null).pipe(S.pickLiteral(null))
-    await Util.expectEncodeSuccess(schema, null, null)
+    await Util.assertions.encoding.succeed(schema, null, null)
   })
 })

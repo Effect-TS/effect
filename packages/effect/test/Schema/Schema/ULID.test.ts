@@ -3,14 +3,14 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("ULID", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.ULID)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.ULID)
   })
 
   it("Decoder", async () => {
     const schema = S.ULID
-    await Util.expectDecodeUnknownSuccess(schema, "01H4PGGGJVN2DKP2K1H7EH996V")
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, "01H4PGGGJVN2DKP2K1H7EH996V")
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `ULID

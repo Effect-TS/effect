@@ -16,7 +16,7 @@ describe("ParseOptionsAnnotation", () => {
       }).annotations({ parseOptions: { errors: "first" } }),
       d: String
     }).annotations({ parseOptions: { errors: "all" } })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: {} },
       `{ readonly a: { readonly b: string; readonly c: string }; readonly d: string }
@@ -26,10 +26,10 @@ describe("ParseOptionsAnnotation", () => {
 │        └─ is missing
 └─ ["d"]
    └─ is missing`,
-      { errors: "first" }
+      { parseOptions: { errors: "first" } }
     )
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       { a: { b: "", c: "" }, d: "" },
       `{ readonly a: { readonly b: string; readonly c: string }; readonly d: string }
@@ -47,7 +47,7 @@ describe("ParseOptionsAnnotation", () => {
          └─ NonEmptyString
             └─ Predicate refinement failure
                └─ Expected a non empty string, actual ""`,
-      { errors: "first" }
+      { parseOptions: { errors: "first" } }
     )
   })
 })

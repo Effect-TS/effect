@@ -23,7 +23,7 @@ describe("Union", () => {
         S.Struct({ a: S.String }).annotations({ identifier: "MyDataType1" }),
         S.Struct({ a: S.String }).annotations({ identifier: "MyDataType2" })
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `MyDataType1 | MyDataType2
@@ -34,7 +34,7 @@ describe("Union", () => {
 
     it("empty union", async () => {
       const schema = S.Union()
-      await Util.expectDecodeUnknownFailure(schema, 1, "Expected never, actual 1")
+      await Util.assertions.decoding.fail(schema, 1, "Expected never, actual 1")
     })
 
     it("discriminated structs", async () => {
@@ -42,12 +42,12 @@ describe("Union", () => {
         S.Struct({ a: S.Literal(1), c: S.String }),
         S.Struct({ b: S.Literal(2), d: S.Number })
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected { readonly a: 1; readonly c: string } | { readonly b: 2; readonly d: number }, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `{ readonly a: 1; readonly c: string } | { readonly b: 2; readonly d: number }
@@ -58,7 +58,7 @@ describe("Union", () => {
    └─ ["b"]
       └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: null },
         `{ readonly a: 1; readonly c: string } | { readonly b: 2; readonly d: number }
@@ -69,7 +69,7 @@ describe("Union", () => {
    └─ ["b"]
       └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { b: 3 },
         `{ readonly a: 1; readonly c: string } | { readonly b: 2; readonly d: number }
@@ -88,12 +88,12 @@ describe("Union", () => {
         S.Struct({ category: S.Literal("catA"), tag: S.Literal("b") }),
         S.Struct({ category: S.Literal("catA"), tag: S.Literal("c") })
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected { readonly category: "catA"; readonly tag: "a" } | { readonly category: "catA"; readonly tag: "b" } | { readonly category: "catA"; readonly tag: "c" }, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `{ readonly category: "catA"; readonly tag: "a" } | { readonly category: "catA"; readonly tag: "b" } | { readonly category: "catA"; readonly tag: "c" }
@@ -104,7 +104,7 @@ describe("Union", () => {
    └─ ["tag"]
       └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { category: null },
         `{ readonly category: "catA"; readonly tag: "a" } | { readonly category: "catA"; readonly tag: "b" } | { readonly category: "catA"; readonly tag: "c" }
@@ -115,7 +115,7 @@ describe("Union", () => {
    └─ ["tag"]
       └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { tag: "d" },
         `{ readonly category: "catA"; readonly tag: "a" } | { readonly category: "catA"; readonly tag: "b" } | { readonly category: "catA"; readonly tag: "c" }
@@ -136,11 +136,11 @@ describe("Union", () => {
       const ab = S.Union(a, b).annotations({ identifier: "ab" })
       const AB = S.Union(A, B).annotations({ identifier: "AB" })
       const schema = S.Union(ab, AB)
-      await Util.expectDecodeUnknownSuccess(schema, { _tag: "a" })
-      await Util.expectDecodeUnknownSuccess(schema, { _tag: "b" })
-      await Util.expectDecodeUnknownSuccess(schema, { a: "A", c: "c" })
-      await Util.expectDecodeUnknownSuccess(schema, { b: "B", d: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, { _tag: "a" })
+      await Util.assertions.decoding.succeed(schema, { _tag: "b" })
+      await Util.assertions.decoding.succeed(schema, { a: "A", c: "c" })
+      await Util.assertions.decoding.succeed(schema, { b: "B", d: 1 })
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `ab | AB
@@ -164,11 +164,11 @@ describe("Union", () => {
         S.Tuple(S.Literal("b"), S.Number)
       ).annotations({ identifier: "MyUnion" })
 
-      await Util.expectDecodeUnknownSuccess(schema, ["a", "s"])
-      await Util.expectDecodeUnknownSuccess(schema, ["b", 1])
+      await Util.assertions.decoding.succeed(schema, ["a", "s"])
+      await Util.assertions.decoding.succeed(schema, ["b", 1])
 
-      await Util.expectDecodeUnknownFailure(schema, null, `Expected MyUnion, actual null`)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(schema, null, `Expected MyUnion, actual null`)
+      await Util.assertions.decoding.fail(
         schema,
         [],
         `MyUnion
@@ -176,7 +176,7 @@ describe("Union", () => {
    └─ ["0"]
       └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         ["c"],
         `MyUnion
@@ -184,7 +184,7 @@ describe("Union", () => {
    └─ ["0"]
       └─ Expected "a" | "b", actual "c"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         ["a", 0],
         `MyUnion
@@ -201,11 +201,11 @@ describe("Union", () => {
         S.Tuple(S.Literal("a"), S.Literal("d"), S.Boolean)
       ).annotations({ identifier: "MyUnion" })
 
-      await Util.expectDecodeUnknownSuccess(schema, ["a", "b", "s"])
-      await Util.expectDecodeUnknownSuccess(schema, ["a", "c", 1])
+      await Util.assertions.decoding.succeed(schema, ["a", "b", "s"])
+      await Util.assertions.decoding.succeed(schema, ["a", "c", 1])
 
-      await Util.expectDecodeUnknownFailure(schema, null, `Expected MyUnion, actual null`)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(schema, null, `Expected MyUnion, actual null`)
+      await Util.assertions.decoding.fail(
         schema,
         [],
         `MyUnion
@@ -216,7 +216,7 @@ describe("Union", () => {
    └─ ["1"]
       └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         ["c"],
         `MyUnion
@@ -227,7 +227,7 @@ describe("Union", () => {
    └─ ["1"]
       └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         ["a", "c"],
         `MyUnion
@@ -238,7 +238,7 @@ describe("Union", () => {
    └─ [2]
       └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         ["a", "b", 0],
         `MyUnion
@@ -255,24 +255,24 @@ describe("Union", () => {
   describe("encoding", () => {
     it("union", async () => {
       const schema = S.Union(S.String, Util.NumberFromChar)
-      await Util.expectEncodeSuccess(schema, "a", "a")
-      await Util.expectEncodeSuccess(schema, 1, "1")
+      await Util.assertions.encoding.succeed(schema, "a", "a")
+      await Util.assertions.encoding.succeed(schema, 1, "1")
     })
 
     it("union/ exact optional property signatures", async () => {
       const ab = S.Struct({ a: S.String, b: S.optionalWith(S.Number, { exact: true }) })
       const ac = S.Struct({ a: S.String, c: S.optionalWith(S.Number, { exact: true }) })
       const schema = S.Union(ab, ac)
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         schema,
         { a: "a", c: 1 },
         { a: "a" }
       )
-      await Util.expectEncodeSuccess(
+      await Util.assertions.encoding.succeed(
         schema,
         { a: "a", c: 1 },
         { a: "a", c: 1 },
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
   })

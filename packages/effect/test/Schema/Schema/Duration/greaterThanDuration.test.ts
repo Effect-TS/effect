@@ -7,13 +7,13 @@ describe("greaterThanDuration", () => {
   const schema = S.DurationFromSelf.pipe(S.greaterThanDuration("5 seconds"))
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       Duration.decode("6 seconds"),
       Duration.decode("6 seconds")
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Duration.decode("5 seconds"),
       `greaterThanDuration(5 seconds)
@@ -21,7 +21,7 @@ describe("greaterThanDuration", () => {
    └─ Expected a Duration greater than Duration(5s), actual Duration(5s)`
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Duration.decode("4 seconds"),
       `greaterThanDuration(5 seconds)
@@ -31,7 +31,7 @@ describe("greaterThanDuration", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       Duration.decode("6 seconds"),
       Duration.decode("6 seconds")

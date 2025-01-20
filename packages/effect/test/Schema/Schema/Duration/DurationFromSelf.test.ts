@@ -7,19 +7,19 @@ import { describe, expect, it } from "vitest"
 describe("DurationFromSelf", () => {
   const schema = S.DurationFromSelf
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, Duration.nanos(123n), Duration.nanos(123n))
-    await Util.expectDecodeUnknownSuccess(schema, Duration.millis(0), Duration.millis(0))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, Duration.nanos(123n), Duration.nanos(123n))
+    await Util.assertions.decoding.succeed(schema, Duration.millis(0), Duration.millis(0))
+    await Util.assertions.decoding.fail(
       schema,
       123,
       `Expected DurationFromSelf, actual 123`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       123n,
       `Expected DurationFromSelf, actual 123n`
@@ -27,7 +27,7 @@ describe("DurationFromSelf", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, Duration.seconds(5), Duration.seconds(5))
+    await Util.assertions.encoding.succeed(schema, Duration.seconds(5), Duration.seconds(5))
   })
 
   it("pretty", () => {

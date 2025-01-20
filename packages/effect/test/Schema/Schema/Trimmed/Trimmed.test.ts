@@ -31,8 +31,8 @@ describe("Trimmed", () => {
     }
   })
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("is", () => {
@@ -50,23 +50,23 @@ describe("Trimmed", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownSuccess(schema, "")
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, "a")
+    await Util.assertions.decoding.succeed(schema, "")
+    await Util.assertions.decoding.fail(
       schema,
       "a ",
       `Trimmed
 └─ Predicate refinement failure
    └─ Expected a string with no leading or trailing whitespace, actual "a "`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " a",
       `Trimmed
 └─ Predicate refinement failure
    └─ Expected a string with no leading or trailing whitespace, actual " a"`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " a ",
       `Trimmed
@@ -76,23 +76,23 @@ describe("Trimmed", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, "a", "a")
-    await Util.expectEncodeSuccess(schema, "", "")
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(schema, "a", "a")
+    await Util.assertions.encoding.succeed(schema, "", "")
+    await Util.assertions.encoding.fail(
       schema,
       "a ",
       `Trimmed
 └─ Predicate refinement failure
    └─ Expected a string with no leading or trailing whitespace, actual "a "`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       " a",
       `Trimmed
 └─ Predicate refinement failure
    └─ Expected a string with no leading or trailing whitespace, actual " a"`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       " a ",
       `Trimmed

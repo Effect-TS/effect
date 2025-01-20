@@ -4,22 +4,22 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("OptionFromNullishOr", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.OptionFromNullishOr(S.Number, null))
-    Util.roundtrip(S.OptionFromNullishOr(S.Number, undefined))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.OptionFromNullishOr(S.Number, null))
+    Util.assertions.testRoundtripConsistency(S.OptionFromNullishOr(S.Number, undefined))
   })
 
   it("decoding", async () => {
     const schema = S.OptionFromNullishOr(S.NumberFromString, undefined)
-    await Util.expectDecodeUnknownSuccess(schema, null, O.none())
-    await Util.expectDecodeUnknownSuccess(schema, undefined, O.none())
-    await Util.expectDecodeUnknownSuccess(schema, "1", O.some(1))
+    await Util.assertions.decoding.succeed(schema, null, O.none())
+    await Util.assertions.decoding.succeed(schema, undefined, O.none())
+    await Util.assertions.decoding.succeed(schema, "1", O.some(1))
 
     expect(O.isOption(S.decodeSync(schema)(null))).toEqual(true)
     expect(O.isOption(S.decodeSync(schema)(undefined))).toEqual(true)
     expect(O.isOption(S.decodeSync(schema)("1"))).toEqual(true)
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       {},
       `(NumberFromString | null | undefined <-> Option<number>)
@@ -35,13 +35,13 @@ describe("OptionFromNullishOr", () => {
 
   it("encoding null", async () => {
     const schema = S.OptionFromNullishOr(S.NumberFromString, null)
-    await Util.expectEncodeSuccess(schema, O.none(), null)
-    await Util.expectEncodeSuccess(schema, O.some(1), "1")
+    await Util.assertions.encoding.succeed(schema, O.none(), null)
+    await Util.assertions.encoding.succeed(schema, O.some(1), "1")
   })
 
   it("encoding undefined", async () => {
     const schema = S.OptionFromNullishOr(S.NumberFromString, undefined)
-    await Util.expectEncodeSuccess(schema, O.none(), undefined)
-    await Util.expectEncodeSuccess(schema, O.some(1), "1")
+    await Util.assertions.encoding.succeed(schema, O.none(), undefined)
+    await Util.assertions.encoding.succeed(schema, O.some(1), "1")
   })
 })

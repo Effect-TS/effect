@@ -6,21 +6,21 @@ import { describe, expect, it } from "vitest"
 describe("URL", () => {
   const schema = S.URL
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("arbitrary", () => {
-    Util.expectArbitrary(S.URL)
+    Util.assertions.arbitrary.validateGeneratedValues(S.URL)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "http://effect.website",
       new URL("http://effect.website")
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "123",
       `URL
@@ -29,8 +29,8 @@ describe("URL", () => {
     )
   })
 
-  it("encoding", () => {
-    Util.expectEncodeSuccess(
+  it("encoding", async () => {
+    await Util.assertions.encoding.succeed(
       schema,
       new URL("https://effecty.website"),
       "https://effecty.website/"

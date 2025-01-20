@@ -5,33 +5,35 @@ import { describe, it } from "vitest"
 
 describe("ExitFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.ExitFromSelf({ failure: S.String, success: S.Number, defect: S.Unknown }))
+    Util.assertions.arbitrary.validateGeneratedValues(
+      S.ExitFromSelf({ failure: S.String, success: S.Number, defect: S.Unknown })
+    )
   })
 
   it("decoding", async () => {
-    const schema = S.ExitFromSelf({ failure: S.NumberFromString, success: Util.BooleanFromLiteral, defect: S.Unknown })
-    await Util.expectDecodeUnknownSuccess(schema, Exit.fail("1"), Exit.fail(1))
-    await Util.expectDecodeUnknownSuccess(schema, Exit.succeed("true"), Exit.succeed(true))
+    const schema = S.ExitFromSelf({ failure: S.NumberFromString, success: S.BooleanFromString, defect: S.Unknown })
+    await Util.assertions.decoding.succeed(schema, Exit.fail("1"), Exit.fail(1))
+    await Util.assertions.decoding.succeed(schema, Exit.succeed("true"), Exit.succeed(true))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
-      `Expected Exit<("true" | "false" <-> boolean), NumberFromString>, actual null`
+      `Expected Exit<BooleanFromString, NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Exit.succeed(""),
-      `Exit<("true" | "false" <-> boolean), NumberFromString>
-└─ ("true" | "false" <-> boolean)
+      `Exit<BooleanFromString, NumberFromString>
+└─ BooleanFromString
    └─ Encoded side transformation failure
       └─ "true" | "false"
          ├─ Expected "true", actual ""
          └─ Expected "false", actual ""`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Exit.fail("a"),
-      `Exit<("true" | "false" <-> boolean), NumberFromString>
+      `Exit<BooleanFromString, NumberFromString>
 └─ Cause<NumberFromString>
    └─ CauseEncoded<NumberFromString>
       └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
@@ -49,7 +51,7 @@ describe("ExitFromSelf", () => {
         failure: S.String,
         defect: Util.Defect
       })
-      await Util.expectEncodeSuccess(schema, Exit.die({ a: 1 }), Exit.die(`{"a":1}`))
+      await Util.assertions.encoding.succeed(schema, Exit.die({ a: 1 }), Exit.die(`{"a":1}`))
     })
   })
 })

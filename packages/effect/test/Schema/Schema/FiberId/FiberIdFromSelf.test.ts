@@ -6,21 +6,21 @@ import { describe, expect, it } from "vitest"
 
 describe("FiberIdFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.FiberIdFromSelf)
+    Util.assertions.arbitrary.validateGeneratedValues(S.FiberIdFromSelf)
   })
 
-  it("property tests", () => {
-    Util.roundtrip(S.FiberIdFromSelf)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.FiberIdFromSelf)
   })
 
   it("decoding", async () => {
     const schema = S.FiberIdFromSelf
 
-    await Util.expectDecodeUnknownSuccess(schema, FiberId.none)
-    await Util.expectDecodeUnknownSuccess(schema, FiberId.runtime(1, 100))
-    await Util.expectDecodeUnknownSuccess(schema, FiberId.composite(FiberId.none, FiberId.none))
+    await Util.assertions.decoding.succeed(schema, FiberId.none)
+    await Util.assertions.decoding.succeed(schema, FiberId.runtime(1, 100))
+    await Util.assertions.decoding.succeed(schema, FiberId.composite(FiberId.none, FiberId.none))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected FiberIdFromSelf, actual null`

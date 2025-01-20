@@ -96,14 +96,14 @@ describe(".annotations()", () => {
       parseIssueTitle: getOrderId
     })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       Order,
       {},
       `Order
 └─ ["id"]
    └─ is missing`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       Order,
       { id: 1 },
       `Order with ID 1
@@ -125,10 +125,10 @@ describe(".annotations()", () => {
         )
 
     expect(S.isSchema(schema)).toEqual(true)
-    await Util.expectDecodeUnknownFailure(schema, null, "not a string")
-    await Util.expectDecodeUnknownFailure(schema, "", "required")
-    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
-    await Util.expectDecodeUnknownFailure(schema, "aaaaaaaaaaaaaa", "aaaaaaaaaaaaaa is too long")
+    await Util.assertions.decoding.fail(schema, null, "not a string")
+    await Util.assertions.decoding.fail(schema, "", "required")
+    await Util.assertions.decoding.succeed(schema, "a", "a")
+    await Util.assertions.decoding.fail(schema, "aaaaaaaaaaaaaa", "aaaaaaaaaaaaaa is too long")
   })
 
   it("pretty", () => {

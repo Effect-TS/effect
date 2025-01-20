@@ -5,8 +5,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("lessThanOrEqualTo", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.lessThanOrEqualTo(0)(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.lessThanOrEqualTo(0)(S.Number))
   })
 
   it("is", () => {
@@ -18,9 +18,9 @@ describe("lessThanOrEqualTo", () => {
 
   it("decoding", async () => {
     const schema = S.lessThanOrEqualTo(0)(S.Number)
-    await Util.expectDecodeUnknownSuccess(schema, 0)
-    await Util.expectDecodeUnknownSuccess(schema, -1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, 0)
+    await Util.assertions.decoding.succeed(schema, -1)
+    await Util.assertions.decoding.fail(
       schema,
       1,
       `lessThanOrEqualTo(0)

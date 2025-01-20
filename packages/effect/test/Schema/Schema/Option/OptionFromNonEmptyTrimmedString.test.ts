@@ -4,18 +4,18 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("OptionFromNonEmptyTrimmedString", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.OptionFromNonEmptyTrimmedString)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.OptionFromNonEmptyTrimmedString)
   })
 
   it("decoding", async () => {
     const schema = S.OptionFromNonEmptyTrimmedString
-    await Util.expectDecodeUnknownSuccess(schema, "", O.none())
-    await Util.expectDecodeUnknownSuccess(schema, "a", O.some("a"))
-    await Util.expectDecodeUnknownSuccess(schema, " ", O.none())
-    await Util.expectDecodeUnknownSuccess(schema, " a ", O.some("a"))
+    await Util.assertions.decoding.succeed(schema, "", O.none())
+    await Util.assertions.decoding.succeed(schema, "a", O.some("a"))
+    await Util.assertions.decoding.succeed(schema, " ", O.none())
+    await Util.assertions.decoding.succeed(schema, " a ", O.some("a"))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(string <-> Option<NonEmptyTrimmedString>)
@@ -26,10 +26,10 @@ describe("OptionFromNonEmptyTrimmedString", () => {
 
   it("encoding", async () => {
     const schema = S.OptionFromNonEmptyTrimmedString
-    await Util.expectEncodeSuccess(schema, O.none(), "")
-    await Util.expectEncodeSuccess(schema, O.some("a"), "a")
+    await Util.assertions.encoding.succeed(schema, O.none(), "")
+    await Util.assertions.encoding.succeed(schema, O.some("a"), "a")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       O.some(""),
       `(string <-> Option<NonEmptyTrimmedString>)

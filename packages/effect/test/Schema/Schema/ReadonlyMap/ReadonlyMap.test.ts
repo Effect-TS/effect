@@ -3,27 +3,27 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("ReadonlyMap", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.ReadonlyMap({ key: S.Number, value: S.String }))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.ReadonlyMap({ key: S.Number, value: S.String }))
   })
 
   it("decoding", async () => {
     const schema = S.ReadonlyMap({ key: S.Number, value: S.String })
-    await Util.expectDecodeUnknownSuccess(schema, [], new Map())
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, [], new Map())
+    await Util.assertions.decoding.succeed(
       schema,
       [[1, "a"], [2, "b"], [3, "c"]],
       new Map([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)
 └─ Encoded side transformation failure
    └─ Expected ReadonlyArray<readonly [number, string]>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [[1, "a"], [2, 1]],
       `(ReadonlyArray<readonly [number, string]> <-> ReadonlyMap<number, string>)
@@ -38,8 +38,8 @@ describe("ReadonlyMap", () => {
 
   it("encoding", async () => {
     const schema = S.ReadonlyMap({ key: S.Number, value: S.String })
-    await Util.expectEncodeSuccess(schema, new Map(), [])
-    await Util.expectEncodeSuccess(schema, new Map([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
+    await Util.assertions.encoding.succeed(schema, new Map(), [])
+    await Util.assertions.encoding.succeed(schema, new Map([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
       2,
       "b"
     ], [3, "c"]])

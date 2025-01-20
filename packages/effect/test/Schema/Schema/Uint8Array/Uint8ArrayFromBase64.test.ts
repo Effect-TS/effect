@@ -6,31 +6,31 @@ describe("Uint8ArrayFromBase64", () => {
   const schema = S.Uint8ArrayFromBase64
   const encoder = new TextEncoder()
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "Zm9vYmFy",
       encoder.encode("foobar")
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Zm9vY",
       `Uint8ArrayFromBase64
 └─ Transformation process failure
    └─ Length must be a multiple of 4, but is 5`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Zm9vYmF-",
       `Uint8ArrayFromBase64
 └─ Transformation process failure
    └─ Invalid character -`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "=Zm9vYmF",
       `Uint8ArrayFromBase64
@@ -40,7 +40,7 @@ describe("Uint8ArrayFromBase64", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       encoder.encode("foobar"),
       "Zm9vYmFy"

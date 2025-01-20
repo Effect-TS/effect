@@ -5,8 +5,8 @@ import { describe, it } from "vitest"
 describe("headNonEmpty", () => {
   it("decoding", async () => {
     const schema = S.headNonEmpty(S.NonEmptyArray(S.NumberFromString))
-    await Util.expectDecodeUnknownSuccess(schema, ["1"], 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, ["1"], 1)
+    await Util.assertions.decoding.fail(
       schema,
       ["a"],
       `(readonly [NumberFromString, ...NumberFromString[]] <-> number | number)
@@ -21,6 +21,6 @@ describe("headNonEmpty", () => {
 
   it("encoding", async () => {
     const schema = S.headNonEmpty(S.NonEmptyArray(S.NumberFromString))
-    await Util.expectEncodeSuccess(schema, 1, ["1"])
+    await Util.assertions.encoding.succeed(schema, 1, ["1"])
   })
 })

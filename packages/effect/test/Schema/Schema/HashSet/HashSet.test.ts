@@ -4,23 +4,23 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("HashSet", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.HashSet(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.HashSet(S.Number))
   })
 
   it("decoding", async () => {
     const schema = S.HashSet(S.Number)
-    await Util.expectDecodeUnknownSuccess(schema, [], HashSet.fromIterable([]))
-    await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], HashSet.fromIterable([1, 2, 3]))
+    await Util.assertions.decoding.succeed(schema, [], HashSet.fromIterable([]))
+    await Util.assertions.decoding.succeed(schema, [1, 2, 3], HashSet.fromIterable([1, 2, 3]))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(ReadonlyArray<number> <-> HashSet<number>)
 └─ Encoded side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> HashSet<number>)
@@ -33,7 +33,7 @@ describe("HashSet", () => {
 
   it("encoding", async () => {
     const schema = S.HashSet(S.Number)
-    await Util.expectEncodeSuccess(schema, HashSet.empty(), [])
-    await Util.expectEncodeSuccess(schema, HashSet.fromIterable([1, 2, 3]), [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, HashSet.empty(), [])
+    await Util.assertions.encoding.succeed(schema, HashSet.fromIterable([1, 2, 3]), [1, 2, 3])
   })
 })

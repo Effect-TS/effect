@@ -7,24 +7,24 @@ import { describe, expect, it } from "vitest"
 
 describe("CauseFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
+    Util.assertions.arbitrary.validateGeneratedValues(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
   })
 
-  it("property tests", () => {
-    Util.roundtrip(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown }))
   })
 
   it("decoding", async () => {
     const schema = S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown })
 
-    await Util.expectDecodeUnknownSuccess(schema, Cause.fail("1"), Cause.fail(1))
+    await Util.assertions.decoding.succeed(schema, Cause.fail("1"), Cause.fail(1))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected Cause<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Cause.fail("a"),
       `Cause<NumberFromString>
@@ -35,7 +35,7 @@ describe("CauseFromSelf", () => {
             └─ Transformation process failure
                └─ Unable to decode "a" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
       `Cause<NumberFromString>
@@ -54,7 +54,7 @@ describe("CauseFromSelf", () => {
   it("encoding", async () => {
     const schema = S.CauseFromSelf({ error: S.NumberFromString, defect: S.Unknown })
 
-    await Util.expectEncodeSuccess(schema, Cause.fail(1), Cause.fail("1"))
+    await Util.assertions.encoding.succeed(schema, Cause.fail(1), Cause.fail("1"))
   })
 
   it("pretty", () => {

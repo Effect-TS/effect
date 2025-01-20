@@ -9,7 +9,7 @@ describe("betweenDuration", () => {
   ).annotations({ title: "[5 seconds, 10 seconds] interval" })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Duration.decode("4 seconds"),
       `[5 seconds, 10 seconds] interval
@@ -17,13 +17,13 @@ describe("betweenDuration", () => {
    └─ Expected a Duration between Duration(5s) and Duration(10s), actual Duration(4s)`
     )
 
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       Duration.decode("7 seconds"),
       Duration.decode("7 seconds")
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Duration.decode("11 seconds"),
       `[5 seconds, 10 seconds] interval
@@ -33,7 +33,7 @@ describe("betweenDuration", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       Duration.decode("7 seconds"),
       Duration.decode("7 seconds")

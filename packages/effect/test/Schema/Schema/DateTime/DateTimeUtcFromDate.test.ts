@@ -6,26 +6,26 @@ import { describe, expect, it } from "vitest"
 describe("DateTimeUtcFromDate", () => {
   const schema = S.DateTimeUtcFromDate
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, new Date(0), DateTime.unsafeMake(0))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, new Date(0), DateTime.unsafeMake(0))
+    await Util.assertions.decoding.succeed(
       schema,
       new Date("2024-12-06T00:00:00Z"),
       DateTime.unsafeMake({ day: 6, month: 12, year: 2024, hour: 0, minute: 0, second: 0, millisecond: 0 })
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `DateTimeUtcFromDate
 └─ Encoded side transformation failure
    └─ Expected DateFromSelf, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       new Date(NaN),
       `DateTimeUtcFromDate
@@ -35,7 +35,7 @@ describe("DateTimeUtcFromDate", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, DateTime.unsafeMake(0), new Date(0))
+    await Util.assertions.encoding.succeed(schema, DateTime.unsafeMake(0), new Date(0))
     expect(
       S.encodeSync(schema)(
         DateTime.unsafeMake({ day: 6, month: 12, year: 2024, hour: 0, minute: 0, second: 0, millisecond: 0 })

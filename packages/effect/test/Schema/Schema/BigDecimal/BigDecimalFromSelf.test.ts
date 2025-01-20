@@ -7,14 +7,14 @@ import { describe, expect, it } from "vitest"
 describe("BigDecimalFromSelf", () => {
   const schema = S.BigDecimalFromSelf
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
-    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
+    await Util.assertions.decoding.succeed(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
+    await Util.assertions.decoding.succeed(
       schema,
       BigDecimal.make(-20000000n, 0),
       BigDecimal.make(-20000000n, 0)
@@ -22,9 +22,9 @@ describe("BigDecimalFromSelf", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
-    await Util.expectEncodeSuccess(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
+    await Util.assertions.encoding.succeed(schema, BigDecimal.make(123n, 5), BigDecimal.make(123n, 5))
+    await Util.assertions.encoding.succeed(
       schema,
       BigDecimal.make(-20000000n, 0),
       BigDecimal.make(-20000000n, 0)

@@ -3,25 +3,25 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("Uncapitalize", () => {
-  it("property tests", () => {
+  it("test roundtrip consistency", () => {
     const schema = S.Uncapitalize
-    Util.roundtrip(schema)
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
     const schema = S.Uncapitalize
-    await Util.expectDecodeUnknownSuccess(schema, "AA", "aA")
-    await Util.expectDecodeUnknownSuccess(schema, "AA ", "aA ")
-    await Util.expectDecodeUnknownSuccess(schema, " aa ", " aa ")
-    await Util.expectDecodeUnknownSuccess(schema, "", "")
+    await Util.assertions.decoding.succeed(schema, "AA", "aA")
+    await Util.assertions.decoding.succeed(schema, "AA ", "aA ")
+    await Util.assertions.decoding.succeed(schema, " aa ", " aa ")
+    await Util.assertions.decoding.succeed(schema, "", "")
   })
 
   it("encoding", async () => {
     const schema = S.Uncapitalize
-    await Util.expectEncodeSuccess(schema, "", "")
-    await Util.expectEncodeSuccess(schema, "aA", "aA")
+    await Util.assertions.encoding.succeed(schema, "", "")
+    await Util.assertions.encoding.succeed(schema, "aA", "aA")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       "AA",
       `Uncapitalize

@@ -5,21 +5,21 @@ import { describe, it } from "vitest"
 describe("MapFromRecord", () => {
   it("decoding", async () => {
     const schema = S.MapFromRecord({ key: S.NumberFromString, value: S.NumberFromString })
-    await Util.expectDecodeUnknownSuccess(schema, {}, new Map())
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, {}, new Map())
+    await Util.assertions.decoding.succeed(
       schema,
       { 1: "2", 3: "4", 5: "6" },
       new Map([[1, 2], [3, 4], [5, 6]])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(a record to be decoded into a Map <-> Map<NumberFromString, number>)
 └─ Encoded side transformation failure
    └─ Expected a record to be decoded into a Map, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "1" },
       `(a record to be decoded into a Map <-> Map<NumberFromString, number>)
@@ -33,7 +33,7 @@ describe("MapFromRecord", () => {
                      └─ Transformation process failure
                         └─ Unable to decode "a" into a number`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { 1: "a" },
       `(a record to be decoded into a Map <-> Map<NumberFromString, number>)
@@ -48,7 +48,7 @@ describe("MapFromRecord", () => {
 
   it("encoding", async () => {
     const schema = S.MapFromRecord({ key: S.NumberFromString, value: S.NumberFromString })
-    await Util.expectEncodeSuccess(schema, new Map(), {})
-    await Util.expectEncodeSuccess(schema, new Map([[1, 2], [3, 4], [5, 6]]), { 1: "2", 3: "4", 5: "6" })
+    await Util.assertions.encoding.succeed(schema, new Map(), {})
+    await Util.assertions.encoding.succeed(schema, new Map([[1, 2], [3, 4], [5, 6]]), { 1: "2", 3: "4", 5: "6" })
   })
 })

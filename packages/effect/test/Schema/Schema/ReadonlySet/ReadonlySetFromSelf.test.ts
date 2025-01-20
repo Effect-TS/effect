@@ -5,21 +5,21 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("ReadonlySetFromSelf", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.ReadonlySetFromSelf(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.ReadonlySetFromSelf(S.Number))
   })
 
   it("decoding", async () => {
     const schema = S.ReadonlySetFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, new Set(), new Set())
-    await Util.expectDecodeUnknownSuccess(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
+    await Util.assertions.decoding.succeed(schema, new Set(), new Set())
+    await Util.assertions.decoding.succeed(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected ReadonlySet<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       new Set(["1", "a", "3"]),
       `ReadonlySet<NumberFromString>
@@ -33,8 +33,8 @@ describe("ReadonlySetFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.ReadonlySetFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, new Set(), new Set())
-    await Util.expectEncodeSuccess(schema, new Set([1, 2, 3]), new Set(["1", "2", "3"]))
+    await Util.assertions.encoding.succeed(schema, new Set(), new Set())
+    await Util.assertions.encoding.succeed(schema, new Set([1, 2, 3]), new Set(["1", "2", "3"]))
   })
 
   it("is", () => {

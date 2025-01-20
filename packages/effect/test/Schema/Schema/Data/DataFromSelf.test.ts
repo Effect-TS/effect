@@ -6,24 +6,24 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("DataFromSelf", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.DataFromSelf(S.Struct({ a: S.String, b: S.Number })))
-    Util.roundtrip(S.DataFromSelf(S.Array(S.Number)))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.DataFromSelf(S.Struct({ a: S.String, b: S.Number })))
+    Util.assertions.testRoundtripConsistency(S.DataFromSelf(S.Array(S.Number)))
   })
 
   it("decoding", async () => {
     const schema = S.DataFromSelf(S.Struct({ a: S.String, b: S.Number }))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       Data.struct({ a: "ok", b: 0 }),
       Data.struct({ a: "ok", b: 0 })
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "ok", b: 0 },
       `Expected Data<{ readonly a: string; readonly b: number }>, actual {"a":"ok","b":0}`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Data.struct({ a: "ok", b: "0" }),
       `Data<{ readonly a: string; readonly b: number }>
@@ -35,7 +35,7 @@ describe("DataFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.DataFromSelf(S.Struct({ a: S.String, b: S.Number }))
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       Data.struct({ a: "ok", b: 0 }),
       Data.struct({ a: "ok", b: 0 })

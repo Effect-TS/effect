@@ -69,8 +69,8 @@ describe("extend", () => {
       S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(A.fields, { ...baseFields, ...fields })
-    await Util.expectDecodeUnknownSuccess(A, new A({ base: "base", a: 1, b: 1 }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(A, new A({ base: "base", a: 1, b: 1 }))
+    await Util.assertions.decoding.fail(
       A,
       { base: "base", a: 1, b: 2 },
       `(A (Encoded side) <-> A)
@@ -87,7 +87,7 @@ describe("extend", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       PersonWithAge,
       { id: 1, name: "John" },
       `(PersonWithAge (Encoded side) <-> PersonWithAge)
@@ -202,7 +202,7 @@ describe("extend", () => {
 
       expect(B.ast.to.annotations[AST.TitleAnnotationId]).toEqual("mytitle")
 
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         B,
         { a: "a", b: "" },
         `(B (Encoded side) <-> B)
@@ -230,7 +230,7 @@ describe("extend", () => {
       expect(AST.getIdentifierAnnotation(B.ast)).toEqual(Option.some("TransformationID"))
       expect(AST.getIdentifierAnnotation(B.ast.from)).toEqual(Option.some("EncodedID"))
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         B,
         {},
         `TransformationID
@@ -240,7 +240,7 @@ describe("extend", () => {
          └─ is missing`
       )
 
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         B,
         { a: "a", b: "" },
         `TransformationID
@@ -254,7 +254,7 @@ describe("extend", () => {
 
       const ctor = { make: B.make.bind(B) }
 
-      Util.expectConstructorFailure(
+      Util.assertions.make.fail(
         ctor,
         null,
         `TypeID

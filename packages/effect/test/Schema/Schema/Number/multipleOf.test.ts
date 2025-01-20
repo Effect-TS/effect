@@ -4,8 +4,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("multipleOf", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.multipleOf(2)(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.multipleOf(2)(S.Number))
   })
 
   it("is", () => {
@@ -22,24 +22,24 @@ describe("multipleOf", () => {
 
   it("decoding", async () => {
     const schema = S.Number.pipe(S.multipleOf(2)).annotations({ identifier: "Even" })
-    await Util.expectDecodeUnknownSuccess(schema, -4)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, -4)
+    await Util.assertions.decoding.fail(
       schema,
       -3,
       `Even
 └─ Predicate refinement failure
    └─ Expected a number divisible by 2, actual -3`
     )
-    await Util.expectDecodeUnknownSuccess(schema, 0)
-    await Util.expectDecodeUnknownSuccess(schema, 2)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, 0)
+    await Util.assertions.decoding.succeed(schema, 2)
+    await Util.assertions.decoding.fail(
       schema,
       2.5,
       `Even
 └─ Predicate refinement failure
    └─ Expected a number divisible by 2, actual 2.5`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `Even

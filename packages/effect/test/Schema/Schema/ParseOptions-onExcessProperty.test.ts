@@ -8,14 +8,14 @@ describe("`onExcessProperty` option", () => {
   describe("`ignore` option", () => {
     it("should not change tuple behaviour", async () => {
       const schema = S.Tuple(S.Number)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, "b"],
         `readonly [number]
 └─ [1]
    └─ is unexpected, expected: 0`
       )
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         [1, "b"] as any,
         `readonly [number]
@@ -26,7 +26,7 @@ describe("`onExcessProperty` option", () => {
 
     it("tuple of a struct", async () => {
       const schema = S.Tuple(S.Struct({ b: S.Number }))
-      await Util.expectDecodeUnknownSuccess(
+      await Util.assertions.decoding.succeed(
         schema,
         [{ b: 1, c: "c" }],
         [{ b: 1 }]
@@ -35,7 +35,7 @@ describe("`onExcessProperty` option", () => {
 
     it("tuple rest element of a struct", async () => {
       const schema = S.Array(S.Struct({ b: S.Number }))
-      await Util.expectDecodeUnknownSuccess(
+      await Util.assertions.decoding.succeed(
         schema,
         [{ b: 1, c: "c" }],
         [{ b: 1 }]
@@ -44,8 +44,8 @@ describe("`onExcessProperty` option", () => {
 
     it("tuple. post rest elements of a struct", async () => {
       const schema = S.Tuple([], S.String, S.Struct({ b: S.Number }))
-      await Util.expectDecodeUnknownSuccess(schema, [{ b: 1 }])
-      await Util.expectDecodeUnknownSuccess(
+      await Util.assertions.decoding.succeed(schema, [{ b: 1 }])
+      await Util.assertions.decoding.succeed(
         schema,
         [{ b: 1, c: "c" }],
         [{ b: 1 }]
@@ -54,7 +54,7 @@ describe("`onExcessProperty` option", () => {
 
     it("struct excess property signatures", async () => {
       const schema = S.Struct({ a: S.Number })
-      await Util.expectDecodeUnknownSuccess(
+      await Util.assertions.decoding.succeed(
         schema,
         { a: 1, b: "b" },
         { a: 1 }
@@ -63,7 +63,7 @@ describe("`onExcessProperty` option", () => {
 
     it("struct nested struct", async () => {
       const schema = S.Struct({ a: S.Struct({ b: S.Number }) })
-      await Util.expectDecodeUnknownSuccess(
+      await Util.assertions.decoding.succeed(
         schema,
         { a: { b: 1, c: "c" } },
         {
@@ -74,7 +74,7 @@ describe("`onExcessProperty` option", () => {
 
     it("record of struct", async () => {
       const schema = S.Record({ key: S.String, value: S.Struct({ b: S.Number }) })
-      await Util.expectDecodeUnknownSuccess(
+      await Util.assertions.decoding.succeed(
         schema,
         { a: { b: 1, c: "c" } },
         { a: { b: 1 } }
@@ -120,7 +120,7 @@ describe("`onExcessProperty` option", () => {
       })
       const b = S.Struct({ a: S.optionalWith(S.Number, { exact: true }) })
       const schema = S.Union(a, b)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1, b: "b", c: true },
         `{ readonly a?: number; readonly b?: string } | { readonly a?: number }
@@ -130,7 +130,7 @@ describe("`onExcessProperty` option", () => {
 └─ { readonly a?: number }
    └─ ["b"]
       └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
@@ -138,7 +138,7 @@ describe("`onExcessProperty` option", () => {
       const a = S.Tuple(S.Number, S.optionalElement(S.String))
       const b = S.Tuple(S.Number)
       const schema = S.Union(a, b)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, "b", true],
         `readonly [number, string?] | readonly [number]
@@ -149,7 +149,7 @@ describe("`onExcessProperty` option", () => {
    └─ [1]
       └─ is unexpected, expected: 0`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, "b", true],
         `readonly [number, string?] | readonly [number]
@@ -159,7 +159,7 @@ describe("`onExcessProperty` option", () => {
 └─ readonly [number]
    └─ [1]
       └─ is unexpected, expected: 0`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
   })
@@ -167,21 +167,21 @@ describe("`onExcessProperty` option", () => {
   describe("`preserve` option", () => {
     it("should not change tuple behaviour", async () => {
       const schema = S.Tuple(S.Number)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, "b"],
         `readonly [number]
 └─ [1]
    └─ is unexpected, expected: 0`,
-        Util.onExcessPropertyPreserve
+        { parseOptions: Util.onExcessPropertyPreserve }
       )
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         [1, "b"] as any,
         `readonly [number]
 └─ [1]
    └─ is unexpected, expected: 0`,
-        Util.onExcessPropertyPreserve
+        { parseOptions: Util.onExcessPropertyPreserve }
       )
     })
 
@@ -189,35 +189,45 @@ describe("`onExcessProperty` option", () => {
       const c = Symbol.for("effect/Schema/test/c")
       const schema = S.Struct({ a: S.String })
       const input = { a: "a", b: 1, [c]: true }
-      await Util.expectDecodeUnknownSuccess(schema, input, input, Util.onExcessPropertyPreserve)
+      await Util.assertions.decoding.succeed(schema, input, input, {
+        parseOptions: Util.onExcessPropertyPreserve
+      })
     })
 
     it("struct with symbol excess keys", async () => {
       const c = Symbol.for("effect/Schema/test/c")
       const schema = S.Struct({ [c]: S.Boolean })
       const input = { a: "a", b: 1, [c]: true }
-      await Util.expectDecodeUnknownSuccess(schema, input, input, Util.onExcessPropertyPreserve)
+      await Util.assertions.decoding.succeed(schema, input, input, {
+        parseOptions: Util.onExcessPropertyPreserve
+      })
     })
 
     it("struct with both string and symbol excess keys", async () => {
       const c = Symbol.for("effect/Schema/test/c")
       const schema = S.Struct({ a: S.String, [c]: S.Boolean })
       const input = { a: "a", b: 1, [c]: true }
-      await Util.expectDecodeUnknownSuccess(schema, input, input, Util.onExcessPropertyPreserve)
+      await Util.assertions.decoding.succeed(schema, input, input, {
+        parseOptions: Util.onExcessPropertyPreserve
+      })
     })
 
     it("record(string, string)", async () => {
       const c = Symbol.for("effect/Schema/test/c")
       const schema = S.Struct({ a: S.String })
       const input = { a: "a", [c]: true }
-      await Util.expectDecodeUnknownSuccess(schema, input, input, Util.onExcessPropertyPreserve)
+      await Util.assertions.decoding.succeed(schema, input, input, {
+        parseOptions: Util.onExcessPropertyPreserve
+      })
     })
 
     it("record(symbol, boolean)", async () => {
       const c = Symbol.for("effect/Schema/test/c")
       const schema = S.Struct({ [c]: S.Boolean })
       const input = { a: "a", [c]: true }
-      await Util.expectDecodeUnknownSuccess(schema, input, input, Util.onExcessPropertyPreserve)
+      await Util.assertions.decoding.succeed(schema, input, input, {
+        parseOptions: Util.onExcessPropertyPreserve
+      })
     })
   })
 })

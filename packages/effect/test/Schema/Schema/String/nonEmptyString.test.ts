@@ -6,8 +6,8 @@ describe("nonEmptyString", () => {
   const schema = S.NonEmptyString
 
   it("make", () => {
-    Util.expectConstructorSuccess(S.NonEmptyString, "a")
-    Util.expectConstructorFailure(
+    Util.assertions.make.succeed(S.NonEmptyString, "a")
+    Util.assertions.make.fail(
       S.NonEmptyString,
       "",
       `NonEmptyString
@@ -17,10 +17,10 @@ describe("nonEmptyString", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownSuccess(schema, "aa")
+    await Util.assertions.decoding.succeed(schema, "a")
+    await Util.assertions.decoding.succeed(schema, "aa")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `NonEmptyString

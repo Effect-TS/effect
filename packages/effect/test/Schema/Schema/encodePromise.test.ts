@@ -1,13 +1,14 @@
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("encodePromise", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", async () => {
-    await Util.expectPromiseSuccess(S.encodePromise(schema)({ a: 1 }), { a: "1" })
-    await Util.expectPromiseFailure(
+    expect(await S.encodePromise(schema)({ a: 1 })).toStrictEqual({ a: "1" })
+
+    await Util.assertions.promise.fail(
       S.encodePromise(schema)({ a: 10 }),
       `{ readonly a: NumberFromChar }
 └─ ["a"]
@@ -21,23 +22,21 @@ describe("encodePromise", () => {
 
   it("should respect outer/inner options", async () => {
     const input = { a: 1, b: "b" }
-    await Util.expectPromiseFailure(
+
+    expect(await S.encodePromise(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
+      .toStrictEqual({ a: "1" })
+
+    await Util.assertions.promise.fail(
       S.encodePromise(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    await Util.expectPromiseFailure(
+    await Util.assertions.promise.fail(
       S.encodePromise(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
-    )
-    await Util.expectPromiseSuccess(
-      S.encodePromise(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),
-      {
-        a: "1"
-      }
     )
   })
 })

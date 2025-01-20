@@ -5,18 +5,18 @@ import { describe, expect, it } from "vitest"
 describe("make", () => {
   it("required fields", () => {
     const schema = S.Struct({ a: S.String })
-    Util.expectConstructorSuccess(schema, { a: "a" })
+    Util.assertions.make.succeed(schema, { a: "a" })
   })
 
   it("optional fields", () => {
     const schema = S.Struct({ a: S.optional(S.String) })
-    Util.expectConstructorSuccess(schema, { a: "a" })
-    Util.expectConstructorSuccess(schema, {})
+    Util.assertions.make.succeed(schema, { a: "a" })
+    Util.assertions.make.succeed(schema, {})
   })
 
   it("should validate the input by default", () => {
     const schema = S.Struct({ a: S.NonEmptyString })
-    Util.expectConstructorFailure(
+    Util.assertions.make.fail(
       schema,
       { a: "" },
       `{ readonly a: NonEmptyString }
@@ -86,10 +86,10 @@ describe("make", () => {
       a: S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "")),
       [b]: S.Number.pipe(S.propertySignature, S.withConstructorDefault(() => 0))
     })
-    Util.expectConstructorSuccess(schema, { a: "a", [b]: 2 })
-    Util.expectConstructorSuccess(schema, { a: "a" }, { a: "a", [b]: 0 })
-    Util.expectConstructorSuccess(schema, { [b]: 2 }, { a: "", [b]: 2 })
-    Util.expectConstructorSuccess(schema, {}, { a: "", [b]: 0 })
+    Util.assertions.make.succeed(schema, { a: "a", [b]: 2 })
+    Util.assertions.make.succeed(schema, { a: "a" }, { a: "a", [b]: 0 })
+    Util.assertions.make.succeed(schema, { [b]: 2 }, { a: "", [b]: 2 })
+    Util.assertions.make.succeed(schema, {}, { a: "", [b]: 0 })
   })
 
   it("props declarations with defaults (data first)", () => {
@@ -98,10 +98,10 @@ describe("make", () => {
       a: S.withConstructorDefault(S.propertySignature(S.String), () => ""),
       [b]: S.withConstructorDefault(S.propertySignature(S.Number), () => 0)
     })
-    Util.expectConstructorSuccess(schema, { a: "a", [b]: 2 })
-    Util.expectConstructorSuccess(schema, { a: "a" }, { a: "a", [b]: 0 })
-    Util.expectConstructorSuccess(schema, { [b]: 2 }, { a: "", [b]: 2 })
-    Util.expectConstructorSuccess(schema, {}, { a: "", [b]: 0 })
+    Util.assertions.make.succeed(schema, { a: "a", [b]: 2 })
+    Util.assertions.make.succeed(schema, { a: "a" }, { a: "a", [b]: 0 })
+    Util.assertions.make.succeed(schema, { [b]: 2 }, { a: "", [b]: 2 })
+    Util.assertions.make.succeed(schema, {}, { a: "", [b]: 0 })
   })
 
   it("props transformations with defaults (data last)", () => {
@@ -110,16 +110,16 @@ describe("make", () => {
       a: S.String.pipe(S.optionalWith({ default: () => "-" }), S.withConstructorDefault(() => "")),
       [b]: S.Number.pipe(S.optionalWith({ default: () => -1 }), S.withConstructorDefault(() => 0))
     })
-    Util.expectConstructorSuccess(schema, { a: "a", [b]: 2 })
-    Util.expectConstructorSuccess(schema, { a: "a" }, { a: "a", [b]: 0 })
-    Util.expectConstructorSuccess(schema, { [b]: 2 }, { a: "", [b]: 2 })
-    Util.expectConstructorSuccess(schema, {}, { a: "", [b]: 0 })
+    Util.assertions.make.succeed(schema, { a: "a", [b]: 2 })
+    Util.assertions.make.succeed(schema, { a: "a" }, { a: "a", [b]: 0 })
+    Util.assertions.make.succeed(schema, { [b]: 2 }, { a: "", [b]: 2 })
+    Util.assertions.make.succeed(schema, {}, { a: "", [b]: 0 })
   })
 
   it("withConstructorDefault + withDecodingDefault", () => {
     const schema = S.Struct({
       a: S.optional(S.Number).pipe(S.withDecodingDefault(() => 1), S.withConstructorDefault(() => 0))
     })
-    Util.expectConstructorSuccess(schema, {}, { a: 0 })
+    Util.assertions.make.succeed(schema, {}, { a: 0 })
   })
 })

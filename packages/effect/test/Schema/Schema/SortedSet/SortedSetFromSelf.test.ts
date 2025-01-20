@@ -8,29 +8,29 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("SortedSetFromSelf", () => {
-  it("property tests", () => {
-    Util.roundtrip(Schema.SortedSetFromSelf(Schema.Number, N.Order, N.Order))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(Schema.SortedSetFromSelf(Schema.Number, N.Order, N.Order))
   })
 
   it("decoding", async () => {
     const schema = Schema.SortedSetFromSelf(Schema.NumberFromString, N.Order, S.Order)
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       SortedSet.fromIterable([], S.Order),
       SortedSet.fromIterable([] as Array<number>, N.Order)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       SortedSet.fromIterable(["1", "2", "3"], S.Order),
       SortedSet.fromIterable([1, 2, 3], N.Order)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected SortedSet<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       SortedSet.fromIterable(["1", "a", "3"], S.Order),
       `SortedSet<NumberFromString>
@@ -44,12 +44,12 @@ describe("SortedSetFromSelf", () => {
 
   it("encoding", async () => {
     const schema = Schema.SortedSetFromSelf(Schema.NumberFromString, N.Order, S.Order)
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       SortedSet.fromIterable([] as Array<number>, N.Order),
-      SortedSet.fromIterable([], S.Order)
+      SortedSet.fromIterable([] as Array<string>, S.Order)
     )
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       SortedSet.fromIterable([1, 2, 3], N.Order),
       SortedSet.fromIterable(["1", "2", "3"], S.Order)

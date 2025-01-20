@@ -8,15 +8,15 @@ describe("betweenBigInt", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, 0n, 0n)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, 0n, 0n)
+    await Util.assertions.decoding.fail(
       schema,
       -2n,
       `[-1n, 1n] interval
 └─ Predicate refinement failure
    └─ Expected a bigint between -1n and 1n, actual -2n`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       2n,
       `[-1n, 1n] interval
@@ -26,6 +26,6 @@ describe("betweenBigInt", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, 1n, 1n)
+    await Util.assertions.encoding.succeed(schema, 1n, 1n)
   })
 })

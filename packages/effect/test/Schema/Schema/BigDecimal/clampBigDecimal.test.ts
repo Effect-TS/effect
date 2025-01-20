@@ -9,8 +9,8 @@ describe("clampBigDecimal", () => {
     const max = BigDecimal.make(1n, 0)
     const schema = S.BigDecimalFromSelf.pipe(S.clampBigDecimal(min, max)) // [-1, 1]
 
-    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(3n, 0), BigDecimal.make(1n, 0))
-    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
-    await Util.expectDecodeUnknownSuccess(schema, BigDecimal.make(-3n, 0), BigDecimal.make(-1n, 0))
+    await Util.assertions.decoding.succeed(schema, BigDecimal.make(3n, 0), BigDecimal.make(1n, 0))
+    await Util.assertions.decoding.succeed(schema, BigDecimal.make(0n, 0), BigDecimal.make(0n, 0))
+    await Util.assertions.decoding.succeed(schema, BigDecimal.make(-3n, 0), BigDecimal.make(-1n, 0))
   })
 })

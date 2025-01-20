@@ -6,16 +6,16 @@ describe("greaterThanOrEqualToDate", () => {
   const schema = S.DateFromSelf.pipe(S.greaterThanOrEqualToDate(new Date(0)))
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       new Date(1)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       new Date(0)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       new Date(-1),
       `greaterThanOrEqualToDate(1970-01-01T00:00:00.000Z)

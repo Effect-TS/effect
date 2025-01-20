@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("OptionFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.OptionFromSelf(S.Number))
+    Util.assertions.arbitrary.validateGeneratedValues(S.OptionFromSelf(S.Number))
   })
 
-  it("property tests", () => {
-    Util.roundtrip(S.OptionFromSelf(S.NumberFromString))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.OptionFromSelf(S.NumberFromString))
   })
 
   it("is", () => {
@@ -28,10 +28,10 @@ describe("OptionFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.OptionFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, O.none(), O.none())
-    await Util.expectDecodeUnknownSuccess(schema, O.some("1"), O.some(1))
+    await Util.assertions.decoding.succeed(schema, O.none(), O.none())
+    await Util.assertions.decoding.succeed(schema, O.some("1"), O.some(1))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected Option<NumberFromString>, actual null`

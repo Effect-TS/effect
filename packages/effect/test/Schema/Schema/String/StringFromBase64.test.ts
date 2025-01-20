@@ -5,31 +5,31 @@ import { describe, it } from "vitest"
 describe("StringFromBase64", () => {
   const schema = S.StringFromBase64
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "Zm9vYmFy",
       "foobar"
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Zm9vY",
       `StringFromBase64
 └─ Transformation process failure
    └─ Length must be a multiple of 4, but is 5`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Zm9vYmF-",
       `StringFromBase64
 └─ Transformation process failure
    └─ Invalid character -`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "=Zm9vYmF",
       `StringFromBase64
@@ -39,7 +39,7 @@ describe("StringFromBase64", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       "foobar",
       "Zm9vYmFy"

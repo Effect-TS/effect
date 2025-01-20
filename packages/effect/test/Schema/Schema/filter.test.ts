@@ -8,14 +8,14 @@ describe("filter", () => {
   describe("error messages", () => {
     it("single refinement", async () => {
       const schema = S.Number.pipe(S.int())
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `int
 └─ From side refinement failure
    └─ Expected number, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         1.1,
         `int
@@ -26,7 +26,7 @@ describe("filter", () => {
 
     it("double refinement", async () => {
       const schema = S.Number.pipe(S.int(), S.positive())
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `int & positive
@@ -35,7 +35,7 @@ describe("filter", () => {
       └─ From side refinement failure
          └─ Expected number, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         1.1,
         `int & positive
@@ -44,7 +44,7 @@ describe("filter", () => {
       └─ Predicate refinement failure
          └─ Expected an integer, actual 1.1`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         -1,
         `int & positive
@@ -55,7 +55,7 @@ describe("filter", () => {
 
     it("with an anonymous refinement", async () => {
       const schema = S.Number.pipe(S.filter(() => false), S.positive())
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         1,
         `{ number | filter } & positive
@@ -97,8 +97,8 @@ describe("filter", () => {
 
   it("the constructor should validate the input by default", () => {
     const schema = S.NonEmptyString
-    Util.expectConstructorSuccess(schema, "a")
-    Util.expectConstructorFailure(
+    Util.assertions.make.succeed(schema, "a")
+    Util.assertions.make.fail(
       schema,
       "",
       `NonEmptyString
@@ -123,8 +123,8 @@ describe("filter", () => {
         })
       )
 
-      await Util.expectDecodeUnknownSuccess(schema, { a: "x", b: "x" })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, { a: "x", b: "x" })
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: "b" },
         `{ { readonly a: string; readonly b: string } | filter }
@@ -159,7 +159,7 @@ describe("filter", () => {
           )
         }
       }))
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: " " }, d: ["-", "-"] },
         `{ Test | filter }
@@ -170,7 +170,7 @@ describe("filter", () => {
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: "c" }, d: ["-", "-"] },
         `{ Test | filter }
@@ -178,7 +178,7 @@ describe("filter", () => {
    └─ ["a"]["c"]
       └─ Expected "b", actual "c"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
         `{ Test | filter }
@@ -203,7 +203,7 @@ describe("filter", () => {
           }
         }
       }))
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: " " }, d: ["-", "-"] },
         `{ Test | filter }
@@ -214,7 +214,7 @@ describe("filter", () => {
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: "c" }, d: ["-", "-"] },
         `{ Test | filter }
@@ -222,7 +222,7 @@ describe("filter", () => {
    └─ ["a"]["c"]
       └─ FILTER1`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
         `{ Test | filter }
@@ -249,7 +249,7 @@ describe("filter", () => {
         }
         return issues
       }))
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: " " }, d: ["-", "-"] },
         `{ Test | filter }
@@ -260,7 +260,7 @@ describe("filter", () => {
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: "c" }, d: ["-", "-"] },
         `{ Test | filter }
@@ -268,7 +268,7 @@ describe("filter", () => {
    └─ ["a"]["c"]
       └─ FILTER1`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
         `{ Test | filter }
@@ -276,7 +276,7 @@ describe("filter", () => {
    └─ ["d"][1]
       └─ FILTER2`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: "c" }, d: ["item0", "item1"] },
         `{ Test | filter }
@@ -296,7 +296,7 @@ describe("filter", () => {
         const schema = S.Struct({
           tags: S.Array(S.String.pipe(S.minLength(2))).pipe(S.minItems(3))
         })
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           schema,
           { tags: ["AB", "B"] },
           `{ readonly tags: minItems(3) }
@@ -312,9 +312,9 @@ describe("filter", () => {
       └─ minItems(3)
          └─ Predicate refinement failure
             └─ Expected an array of at least 3 item(s), actual ["AB","B"]`,
-          Util.allErrors
+          { parseOptions: Util.ErrorsAll }
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           schema,
           { tags: ["AB", "B"] },
           `{ readonly tags: minItems(3) }
@@ -330,7 +330,7 @@ describe("filter", () => {
       })
 
       it("when the 'errors' option is set to 'all', stable filters should be applied only if the from part fails with a `Composite` issue", async () => {
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           S.Struct({
             tags: S.Array(S.String).pipe(S.minItems(1))
           }),
@@ -338,9 +338,9 @@ describe("filter", () => {
           `{ readonly tags: minItems(1) }
 └─ ["tags"]
    └─ is missing`,
-          Util.allErrors
+          { parseOptions: Util.ErrorsAll }
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           S.Struct({
             tags: S.Array(S.String).pipe(S.minItems(1), S.maxItems(3))
           }),
@@ -348,7 +348,7 @@ describe("filter", () => {
           `{ readonly tags: minItems(1) & maxItems(3) }
 └─ ["tags"]
    └─ is missing`,
-          Util.allErrors
+          { parseOptions: Util.ErrorsAll }
         )
       })
     })
@@ -358,7 +358,7 @@ describe("filter", () => {
         const schema = S.Struct({
           tags: S.NonEmptyArray(S.String.pipe(S.minLength(2))).pipe(S.minItems(3))
         })
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           schema,
           { tags: ["AB", "B"] },
           `{ readonly tags: minItems(3) }
@@ -374,9 +374,9 @@ describe("filter", () => {
       └─ minItems(3)
          └─ Predicate refinement failure
             └─ Expected an array of at least 3 item(s), actual ["AB","B"]`,
-          Util.allErrors
+          { parseOptions: Util.ErrorsAll }
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           schema,
           { tags: ["AB", "B"] },
           `{ readonly tags: minItems(3) }
@@ -392,7 +392,7 @@ describe("filter", () => {
       })
 
       it("when the 'errors' option is set to 'all', stable filters should be applied only if the from part fails with a `Composite` issue", async () => {
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           S.Struct({
             tags: S.NonEmptyArray(S.String).pipe(S.minItems(1))
           }),
@@ -400,9 +400,9 @@ describe("filter", () => {
           `{ readonly tags: minItems(1) }
 └─ ["tags"]
    └─ is missing`,
-          Util.allErrors
+          { parseOptions: Util.ErrorsAll }
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           S.Struct({
             tags: S.NonEmptyArray(S.String).pipe(S.minItems(1), S.maxItems(3))
           }),
@@ -410,7 +410,7 @@ describe("filter", () => {
           `{ readonly tags: minItems(1) & maxItems(3) }
 └─ ["tags"]
    └─ is missing`,
-          Util.allErrors
+          { parseOptions: Util.ErrorsAll }
         )
       })
     })

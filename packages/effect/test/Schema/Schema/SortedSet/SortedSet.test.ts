@@ -5,27 +5,27 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("SortedSet", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.SortedSet(S.Number, N.Order))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.SortedSet(S.Number, N.Order))
   })
 
   it("decoding", async () => {
     const schema = S.SortedSet(S.Number, N.Order)
-    await Util.expectDecodeUnknownSuccess(schema, [], SortedSet.fromIterable([] as Array<number>, N.Order))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, [], SortedSet.fromIterable([] as Array<number>, N.Order))
+    await Util.assertions.decoding.succeed(
       schema,
       [1, 2, 3],
       SortedSet.fromIterable([1, 2, 3] as Array<number>, N.Order)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `(ReadonlyArray<number> <-> SortedSet<number>)
 └─ Encoded side transformation failure
    └─ Expected ReadonlyArray<number>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [1, "a"],
       `(ReadonlyArray<number> <-> SortedSet<number>)
@@ -38,7 +38,11 @@ describe("SortedSet", () => {
 
   it("encoding", async () => {
     const schema = S.SortedSet(S.Number, N.Order)
-    await Util.expectEncodeSuccess(schema, SortedSet.fromIterable([] as Array<number>, N.Order), [])
-    await Util.expectEncodeSuccess(schema, SortedSet.fromIterable([1, 2, 3] as Array<number>, N.Order), [1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, SortedSet.fromIterable([] as Array<number>, N.Order), [])
+    await Util.assertions.encoding.succeed(schema, SortedSet.fromIterable([1, 2, 3] as Array<number>, N.Order), [
+      1,
+      2,
+      3
+    ])
   })
 })

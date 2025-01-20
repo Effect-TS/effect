@@ -5,27 +5,27 @@ import { describe, it } from "vitest"
 describe("Finite", () => {
   const schema = S.Finite
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, 1)
+    await Util.assertions.decoding.fail(
       schema,
       NaN,
       `Finite
 └─ Predicate refinement failure
    └─ Expected a finite number, actual NaN`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Infinity,
       `Finite
 └─ Predicate refinement failure
    └─ Expected a finite number, actual Infinity`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -Infinity,
       `Finite

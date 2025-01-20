@@ -6,24 +6,24 @@ import { describe, expect, it } from "vitest"
 describe("URLFromSelf", () => {
   const schema = S.URLFromSelf
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("arbitrary", () => {
-    Util.expectArbitrary(S.URLFromSelf)
+    Util.assertions.arbitrary.validateGeneratedValues(S.URLFromSelf)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       new URL("https://effect.website"),
       new URL("https://effect.website")
     )
   })
 
-  it("encoding", () => {
-    Util.expectEncodeSuccess(
+  it("encoding", async () => {
+    await Util.assertions.encoding.succeed(
       schema,
       new URL("https://effect.website"),
       new URL("https://effect.website")

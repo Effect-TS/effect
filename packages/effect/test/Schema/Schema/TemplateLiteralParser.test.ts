@@ -69,8 +69,8 @@ schema (Union): boolean | symbol`)
     it(`"a"`, async () => {
       const schema = S.TemplateLiteralParser("a")
 
-      await Util.expectDecodeUnknownSuccess(schema, "a", ["a"])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "a", ["a"])
+      await Util.assertions.decoding.fail(
         schema,
         "",
         `(\`a\` <-> readonly ["a"])
@@ -78,14 +78,14 @@ schema (Union): boolean | symbol`)
    └─ Expected \`a\`, actual ""`
       )
 
-      await Util.expectEncodeSuccess(schema, ["a"], "a")
+      await Util.assertions.encoding.succeed(schema, ["a"], "a")
     })
 
     it(`"a" + "b"`, async () => {
       const schema = S.TemplateLiteralParser("a", "b")
 
-      await Util.expectDecodeUnknownSuccess(schema, "ab", ["a", "b"])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "ab", ["a", "b"])
+      await Util.assertions.decoding.fail(
         schema,
         "a",
         `(\`ab\` <-> readonly ["a", "b"])
@@ -93,14 +93,14 @@ schema (Union): boolean | symbol`)
    └─ Expected \`ab\`, actual "a"`
       )
 
-      await Util.expectEncodeSuccess(schema, ["a", "b"], "ab")
+      await Util.assertions.encoding.succeed(schema, ["a", "b"], "ab")
     })
 
     it(`Int + "a"`, async () => {
       const schema = S.TemplateLiteralParser(S.Int, "a")
 
-      await Util.expectDecodeUnknownSuccess(schema, "1a", [1, "a"])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "1a", [1, "a"])
+      await Util.assertions.decoding.fail(
         schema,
         "1.1a",
         `(\`\${number}a\` <-> readonly [Int, "a"])
@@ -114,8 +114,8 @@ schema (Union): boolean | symbol`)
                      └─ Expected an integer, actual 1.1`
       )
 
-      await Util.expectEncodeSuccess(schema, [1, "a"], "1a")
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, [1, "a"], "1a")
+      await Util.assertions.encoding.fail(
         schema,
         [1.1, "a"],
         `(\`\${number}a\` <-> readonly [Int, "a"])
@@ -133,8 +133,8 @@ schema (Union): boolean | symbol`)
     it(`NumberFromString + "a" + NonEmptyString`, async () => {
       const schema = S.TemplateLiteralParser(S.NumberFromString, "a", S.NonEmptyString)
 
-      await Util.expectDecodeUnknownSuccess(schema, "100ab", [100, "a", "b"])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "100ab", [100, "a", "b"])
+      await Util.assertions.decoding.fail(
         schema,
         "-ab",
         `(\`\${string}a\${string}\` <-> readonly [NumberFromString, "a", NonEmptyString])
@@ -146,8 +146,8 @@ schema (Union): boolean | symbol`)
                └─ Unable to decode "-" into a number`
       )
 
-      await Util.expectEncodeSuccess(schema, [100, "a", "b"], "100ab")
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.succeed(schema, [100, "a", "b"], "100ab")
+      await Util.assertions.encoding.fail(
         schema,
         [100, "a", ""],
         `(\`\${string}a\${string}\` <-> readonly [NumberFromString, "a", NonEmptyString])
@@ -162,8 +162,8 @@ schema (Union): boolean | symbol`)
 
     it("1", async () => {
       const schema = S.TemplateLiteralParser(1)
-      await Util.expectDecodeUnknownSuccess(schema, "1", [1])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "1", [1])
+      await Util.assertions.decoding.fail(
         schema,
         "1a",
         `(\`1\` <-> readonly [1])
@@ -174,8 +174,8 @@ schema (Union): boolean | symbol`)
 
     it("Literal(1)", async () => {
       const schema = S.TemplateLiteralParser(S.Literal(1))
-      await Util.expectDecodeUnknownSuccess(schema, "1", [1])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "1", [1])
+      await Util.assertions.decoding.fail(
         schema,
         "1a",
         `(\`1\` <-> readonly [1])
@@ -186,8 +186,8 @@ schema (Union): boolean | symbol`)
 
     it("1n", async () => {
       const schema = S.TemplateLiteralParser(1n)
-      await Util.expectDecodeUnknownSuccess(schema, "1", [1n])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "1", [1n])
+      await Util.assertions.decoding.fail(
         schema,
         "1a",
         `(\`1\` <-> readonly [1n])
@@ -198,8 +198,8 @@ schema (Union): boolean | symbol`)
 
     it("Literal(1n)", async () => {
       const schema = S.TemplateLiteralParser(S.Literal(1n))
-      await Util.expectDecodeUnknownSuccess(schema, "1", [1n])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "1", [1n])
+      await Util.assertions.decoding.fail(
         schema,
         "1a",
         `(\`1\` <-> readonly [1n])
@@ -210,8 +210,8 @@ schema (Union): boolean | symbol`)
 
     it("true", async () => {
       const schema = S.TemplateLiteralParser(true)
-      await Util.expectDecodeUnknownSuccess(schema, "true", [true])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "true", [true])
+      await Util.assertions.decoding.fail(
         schema,
         "truea",
         `(\`true\` <-> readonly [true])
@@ -222,8 +222,8 @@ schema (Union): boolean | symbol`)
 
     it("Literal(true)", async () => {
       const schema = S.TemplateLiteralParser(S.Literal(true))
-      await Util.expectDecodeUnknownSuccess(schema, "true", [true])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "true", [true])
+      await Util.assertions.decoding.fail(
         schema,
         "truea",
         `(\`true\` <-> readonly [true])
@@ -234,8 +234,8 @@ schema (Union): boolean | symbol`)
 
     it("false", async () => {
       const schema = S.TemplateLiteralParser(false)
-      await Util.expectDecodeUnknownSuccess(schema, "false", [false])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "false", [false])
+      await Util.assertions.decoding.fail(
         schema,
         "falsea",
         `(\`false\` <-> readonly [false])
@@ -246,8 +246,8 @@ schema (Union): boolean | symbol`)
 
     it("Literal(false)", async () => {
       const schema = S.TemplateLiteralParser(S.Literal(false))
-      await Util.expectDecodeUnknownSuccess(schema, "false", [false])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "false", [false])
+      await Util.assertions.decoding.fail(
         schema,
         "falsea",
         `(\`false\` <-> readonly [false])
@@ -258,8 +258,8 @@ schema (Union): boolean | symbol`)
 
     it("null", async () => {
       const schema = S.TemplateLiteralParser(null)
-      await Util.expectDecodeUnknownSuccess(schema, "null", [null])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "null", [null])
+      await Util.assertions.decoding.fail(
         schema,
         "nulla",
         `(\`null\` <-> readonly [null])
@@ -270,8 +270,8 @@ schema (Union): boolean | symbol`)
 
     it("Literal(null)", async () => {
       const schema = S.TemplateLiteralParser(S.Literal(null))
-      await Util.expectDecodeUnknownSuccess(schema, "null", [null])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "null", [null])
+      await Util.assertions.decoding.fail(
         schema,
         "nulla",
         `(\`null\` <-> readonly [null])
@@ -282,13 +282,13 @@ schema (Union): boolean | symbol`)
 
     it("1 | 2", async () => {
       const schema = S.TemplateLiteralParser(S.Literal(1, 2))
-      await Util.expectDecodeUnknownSuccess(schema, "1", [1])
-      await Util.expectDecodeUnknownSuccess(schema, "2", [2])
+      await Util.assertions.decoding.succeed(schema, "1", [1])
+      await Util.assertions.decoding.succeed(schema, "2", [2])
     })
 
     it(`"h" + (1 | 2 | 3)`, async () => {
       const schema = S.TemplateLiteralParser("h", S.Literal(1, 2, 3))
-      await Util.expectDecodeUnknownSuccess(schema, "h1", ["h", 1])
+      await Util.assertions.decoding.succeed(schema, "h1", ["h", 1])
     })
 
     it(`"c" + (\`a\${string}b\`|"e") + "d"`, async () => {
@@ -297,9 +297,9 @@ schema (Union): boolean | symbol`)
         S.Union(S.TemplateLiteralParser("a", S.NonEmptyString, "b"), S.Literal("e")),
         "d"
       )
-      await Util.expectDecodeUnknownSuccess(schema, "ca bd", ["c", ["a", " ", "b"], "d"])
-      await Util.expectDecodeUnknownSuccess(schema, "ced", ["c", "e", "d"])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "ca bd", ["c", ["a", " ", "b"], "d"])
+      await Util.assertions.decoding.succeed(schema, "ced", ["c", "e", "d"])
+      await Util.assertions.decoding.fail(
         schema,
         "cabd",
         `(\`c\${\`a\${string}b\` | "e"}d\` <-> readonly ["c", (\`a\${string}b\` <-> readonly ["a", NonEmptyString, "b"]) | "e", "d"])
@@ -316,7 +316,7 @@ schema (Union): boolean | symbol`)
             │                 └─ Expected a non empty string, actual ""
             └─ Expected "e", actual "ab"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "ed",
         `(\`c\${\`a\${string}b\` | "e"}d\` <-> readonly ["c", (\`a\${string}b\` <-> readonly ["a", NonEmptyString, "b"]) | "e", "d"])
@@ -331,9 +331,9 @@ schema (Union): boolean | symbol`)
         S.Union(S.TemplateLiteralParser("a", S.Int, "b"), S.Literal("e")),
         "d"
       )
-      await Util.expectDecodeUnknownSuccess(schema, "ced", ["c", "e", "d"])
-      await Util.expectDecodeUnknownSuccess(schema, "ca1bd", ["c", ["a", 1, "b"], "d"])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "ced", ["c", "e", "d"])
+      await Util.assertions.decoding.succeed(schema, "ca1bd", ["c", ["a", 1, "b"], "d"])
+      await Util.assertions.decoding.fail(
         schema,
         "ca1.1bd",
         `(\`c\${\`a\${number}b\` | "e"}d\` <-> readonly ["c", (\`a\${number}b\` <-> readonly ["a", Int, "b"]) | "e", "d"])
@@ -352,7 +352,7 @@ schema (Union): boolean | symbol`)
             │                       └─ Expected an integer, actual 1.1
             └─ Expected "e", actual "a1.1b"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "ca-bd",
         `(\`c\${\`a\${number}b\` | "e"}d\` <-> readonly ["c", (\`a\${number}b\` <-> readonly ["a", Int, "b"]) | "e", "d"])
@@ -363,9 +363,9 @@ schema (Union): boolean | symbol`)
 
     it("(`<${`h${\"1\" | \"2\"}`}>` <-> readonly [\"<\", `h${\"1\" | \"2\"}`, \">\"])", async () => {
       const schema = S.TemplateLiteralParser("<", S.TemplateLiteral("h", S.Literal(1, 2)), ">")
-      await Util.expectDecodeUnknownSuccess(schema, "<h1>", ["<", "h1", ">"])
-      await Util.expectDecodeUnknownSuccess(schema, "<h2>", ["<", "h2", ">"])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "<h1>", ["<", "h1", ">"])
+      await Util.assertions.decoding.succeed(schema, "<h2>", ["<", "h2", ">"])
+      await Util.assertions.decoding.fail(
         schema,
         "<h3>",
         `(\`<\${\`h\${"1" | "2"}\`}>\` <-> readonly ["<", \`h\${"1" | "2"}\`, ">"])
@@ -376,9 +376,9 @@ schema (Union): boolean | symbol`)
 
     it("(`<${`h${\"1\" | \"2\"}`}>` <-> readonly [\"<\", `h${\"1\" | \"2\"}`, \">\"])", async () => {
       const schema = S.TemplateLiteralParser("<", S.TemplateLiteralParser("h", S.Literal(1, 2)), ">")
-      await Util.expectDecodeUnknownSuccess(schema, "<h1>", ["<", ["h", 1], ">"])
-      await Util.expectDecodeUnknownSuccess(schema, "<h2>", ["<", ["h", 2], ">"])
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, "<h1>", ["<", ["h", 1], ">"])
+      await Util.assertions.decoding.succeed(schema, "<h2>", ["<", ["h", 2], ">"])
+      await Util.assertions.decoding.fail(
         schema,
         "<h3>",
         `(\`<\${\`h\${"1" | "2"}\`}>\` <-> readonly ["<", (\`h\${"1" | "2"}\` <-> readonly ["h", 1 | 2]), ">"])

@@ -5,9 +5,9 @@ import { describe, it } from "vitest"
 describe("BooleanFromString", () => {
   const schema = S.BooleanFromString
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "true", true)
-    await Util.expectDecodeUnknownSuccess(schema, "false", false)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, "true", true)
+    await Util.assertions.decoding.succeed(schema, "false", false)
+    await Util.assertions.decoding.fail(
       schema,
       "a",
       `BooleanFromString
@@ -19,7 +19,7 @@ describe("BooleanFromString", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, true, "true")
-    await Util.expectEncodeSuccess(schema, false, "false")
+    await Util.assertions.encoding.succeed(schema, true, "true")
+    await Util.assertions.encoding.succeed(schema, false, "false")
   })
 })

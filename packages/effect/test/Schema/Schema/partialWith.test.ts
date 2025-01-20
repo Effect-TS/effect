@@ -7,10 +7,10 @@ describe("partialWith", () => {
   describe("{ exact: true }", () => {
     it("Struct", async () => {
       const schema = S.partialWith(S.Struct({ a: S.Number }), { exact: true })
-      await Util.expectDecodeUnknownSuccess(schema, {})
-      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
+      await Util.assertions.decoding.succeed(schema, {})
+      await Util.assertions.decoding.succeed(schema, { a: 1 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: undefined },
         `{ readonly a?: number }
@@ -21,18 +21,18 @@ describe("partialWith", () => {
 
     it("Record", async () => {
       const schema = S.partialWith(S.Record({ key: S.String, value: S.NumberFromString }), { exact: true })
-      await Util.expectDecodeUnknownSuccess(schema, {}, {})
-      await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
-      await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
+      await Util.assertions.decoding.succeed(schema, {}, {})
+      await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
+      await Util.assertions.decoding.succeed(schema, { a: undefined })
     })
 
     describe("Tuple", () => {
       it("e", async () => {
         const schema = S.partialWith(S.Tuple(S.NumberFromString), { exact: true })
-        await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
-        await Util.expectDecodeUnknownSuccess(schema, [], [])
+        await Util.assertions.decoding.succeed(schema, ["1"], [1])
+        await Util.assertions.decoding.succeed(schema, [], [])
 
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           schema,
           [undefined],
           `readonly [NumberFromString?]
@@ -45,12 +45,12 @@ describe("partialWith", () => {
 
       it("e + r", async () => {
         const schema = S.partialWith(S.Tuple([S.NumberFromString], S.NumberFromString), { exact: true })
-        await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
-        await Util.expectDecodeUnknownSuccess(schema, [], [])
-        await Util.expectDecodeUnknownSuccess(schema, ["1", "2"], [1, 2])
-        await Util.expectDecodeUnknownSuccess(schema, ["1", undefined], [1, undefined])
+        await Util.assertions.decoding.succeed(schema, ["1"], [1])
+        await Util.assertions.decoding.succeed(schema, [], [])
+        await Util.assertions.decoding.succeed(schema, ["1", "2"], [1, 2])
+        await Util.assertions.decoding.succeed(schema, ["1", undefined], [1, undefined])
 
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           schema,
           [undefined],
           `readonly [NumberFromString?, ...(NumberFromString | undefined)[]]
@@ -64,11 +64,11 @@ describe("partialWith", () => {
 
     it("Array", async () => {
       const schema = S.partialWith(S.Array(S.Number), { exact: true })
-      await Util.expectDecodeUnknownSuccess(schema, [])
-      await Util.expectDecodeUnknownSuccess(schema, [1])
-      await Util.expectDecodeUnknownSuccess(schema, [undefined])
+      await Util.assertions.decoding.succeed(schema, [])
+      await Util.assertions.decoding.succeed(schema, [1])
+      await Util.assertions.decoding.succeed(schema, [undefined])
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         ["a"],
         `ReadonlyArray<number | undefined>
@@ -81,12 +81,12 @@ describe("partialWith", () => {
 
     it("Union", async () => {
       const schema = S.partialWith(S.Union(S.Array(S.Number), S.String), { exact: true })
-      await Util.expectDecodeUnknownSuccess(schema, "a")
-      await Util.expectDecodeUnknownSuccess(schema, [])
-      await Util.expectDecodeUnknownSuccess(schema, [1])
-      await Util.expectDecodeUnknownSuccess(schema, [undefined])
+      await Util.assertions.decoding.succeed(schema, "a")
+      await Util.assertions.decoding.succeed(schema, [])
+      await Util.assertions.decoding.succeed(schema, [1])
+      await Util.assertions.decoding.succeed(schema, [undefined])
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         ["a"],
         `ReadonlyArray<number | undefined> | string
@@ -112,11 +112,11 @@ describe("partialWith", () => {
         ),
         { exact: true }
       )
-      await Util.expectDecodeUnknownSuccess(schema, {})
-      await Util.expectDecodeUnknownSuccess(schema, { a: null })
-      await Util.expectDecodeUnknownSuccess(schema, { a: {} })
-      await Util.expectDecodeUnknownSuccess(schema, { a: { a: null } })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, {})
+      await Util.assertions.decoding.succeed(schema, { a: null })
+      await Util.assertions.decoding.succeed(schema, { a: {} })
+      await Util.assertions.decoding.succeed(schema, { a: { a: null } })
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1 },
         `{ readonly a?: <suspended schema> | null }
@@ -153,10 +153,10 @@ schema (Refinement): minLength(2)`)
         expect(S.format(schema)).toBe(
           "({ readonly a?: string; readonly c?: string } <-> { readonly a?: string; readonly b?: string })"
         )
-        await Util.expectDecodeUnknownSuccess(schema, {})
-        await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
-        await Util.expectDecodeUnknownSuccess(schema, { c: "b" }, { b: "b" })
-        await Util.expectDecodeUnknownSuccess(schema, { a: "a", c: "b" }, { a: "a", b: "b" })
+        await Util.assertions.decoding.succeed(schema, {})
+        await Util.assertions.decoding.succeed(schema, { a: "a" })
+        await Util.assertions.decoding.succeed(schema, { c: "b" }, { b: "b" })
+        await Util.assertions.decoding.succeed(schema, { a: "a", c: "b" }, { a: "a", b: "b" })
       })
 
       it("transformations should throw", () => {

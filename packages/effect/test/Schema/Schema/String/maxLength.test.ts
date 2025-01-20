@@ -5,8 +5,8 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("maxLength", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.maxLength(0)(S.String))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.maxLength(0)(S.String))
   })
 
   it("is", () => {
@@ -18,9 +18,9 @@ describe("maxLength", () => {
 
   it("decoding", async () => {
     const schema = S.maxLength(1)(S.String)
-    await Util.expectDecodeUnknownSuccess(schema, "")
-    await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, "")
+    await Util.assertions.decoding.succeed(schema, "a")
+    await Util.assertions.decoding.fail(
       schema,
       "aa",
       `maxLength(1)

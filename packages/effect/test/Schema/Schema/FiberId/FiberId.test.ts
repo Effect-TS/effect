@@ -4,26 +4,26 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("FiberId", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.FiberId)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.FiberId)
   })
 
   it("decoding", async () => {
     const schema = S.FiberId
 
-    await Util.expectDecodeUnknownSuccess(schema, { _tag: "None" }, FiberId.none)
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, { _tag: "None" }, FiberId.none)
+    await Util.assertions.decoding.succeed(
       schema,
       { _tag: "Runtime", id: 1, startTimeMillis: 100 },
       FiberId.runtime(1, 100)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       { _tag: "Composite", left: { _tag: "None" }, right: { _tag: "None" } },
       FiberId.composite(FiberId.none, FiberId.none)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { _tag: "Composite", left: { _tag: "None" }, right: { _tag: "-" } },
       `FiberId

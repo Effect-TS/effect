@@ -3,19 +3,19 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("JsonNumber", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.JsonNumber)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.JsonNumber)
   })
 
   it("should exclude NaN from decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.JsonNumber,
       NaN,
       `JsonNumber
 └─ Predicate refinement failure
    └─ Expected a finite number, actual NaN`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.JsonNumber,
       Number.NaN,
       `JsonNumber
@@ -25,28 +25,28 @@ describe("JsonNumber", () => {
   })
 
   it("should exclude +/- Infinity from decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.JsonNumber,
       Infinity,
       `JsonNumber
 └─ Predicate refinement failure
    └─ Expected a finite number, actual Infinity`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.JsonNumber,
       -Infinity,
       `JsonNumber
 └─ Predicate refinement failure
    └─ Expected a finite number, actual -Infinity`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.JsonNumber,
       Number.POSITIVE_INFINITY,
       `JsonNumber
 └─ Predicate refinement failure
    └─ Expected a finite number, actual Infinity`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.JsonNumber,
       Number.NEGATIVE_INFINITY,
       `JsonNumber

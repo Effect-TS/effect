@@ -3,25 +3,25 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("Capitalize", () => {
-  it("property tests", () => {
+  it("test roundtrip consistency", () => {
     const schema = S.Capitalize
-    Util.roundtrip(schema)
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
     const schema = S.Capitalize
-    await Util.expectDecodeUnknownSuccess(schema, "aa", "Aa")
-    await Util.expectDecodeUnknownSuccess(schema, "aa ", "Aa ")
-    await Util.expectDecodeUnknownSuccess(schema, " aa ", " aa ")
-    await Util.expectDecodeUnknownSuccess(schema, "", "")
+    await Util.assertions.decoding.succeed(schema, "aa", "Aa")
+    await Util.assertions.decoding.succeed(schema, "aa ", "Aa ")
+    await Util.assertions.decoding.succeed(schema, " aa ", " aa ")
+    await Util.assertions.decoding.succeed(schema, "", "")
   })
 
   it("encoding", async () => {
     const schema = S.Capitalize
-    await Util.expectEncodeSuccess(schema, "", "")
-    await Util.expectEncodeSuccess(schema, "Aa", "Aa")
+    await Util.assertions.encoding.succeed(schema, "", "")
+    await Util.assertions.encoding.succeed(schema, "Aa", "Aa")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       "aa",
       `Capitalize

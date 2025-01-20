@@ -5,29 +5,29 @@ import { describe, it } from "vitest"
 describe("StringFromBase64Url", () => {
   const schema = S.StringFromBase64Url
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "Zm9vYmFy",
       "foobar"
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       "Pj8-ZD_Dnw",
       ">?>d?ß"
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Zm9vY",
       `StringFromBase64Url
 └─ Transformation process failure
    └─ Length should be a multiple of 4, but is 5`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "Pj8/ZD+Dnw",
       `StringFromBase64Url
@@ -37,12 +37,12 @@ describe("StringFromBase64Url", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       "foobar",
       "Zm9vYmFy"
     )
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       ">?>d?ß",
       "Pj8-ZD_Dnw"

@@ -4,15 +4,15 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("DateFromSelf", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.DateFromSelf)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.DateFromSelf)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(S.DateFromSelf, new Date(0), new Date(0))
-    await Util.expectDecodeUnknownSuccess(S.DateFromSelf, new Date("invalid"))
+    await Util.assertions.decoding.succeed(S.DateFromSelf, new Date(0), new Date(0))
+    await Util.assertions.decoding.succeed(S.DateFromSelf, new Date("invalid"))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       S.DateFromSelf,
       null,
       `Expected DateFromSelf, actual null`
@@ -21,9 +21,9 @@ describe("DateFromSelf", () => {
 
   it("encoding", async () => {
     const now = new Date()
-    await Util.expectEncodeSuccess(S.DateFromSelf, now, now)
+    await Util.assertions.encoding.succeed(S.DateFromSelf, now, now)
     const invalid = new Date("invalid")
-    await Util.expectEncodeSuccess(S.DateFromSelf, invalid, invalid)
+    await Util.assertions.encoding.succeed(S.DateFromSelf, invalid, invalid)
   })
 
   it("pretty", () => {

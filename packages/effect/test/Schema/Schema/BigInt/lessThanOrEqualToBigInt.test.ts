@@ -6,8 +6,8 @@ describe("lessThanOrEqualToBigInt", () => {
   const schema = S.BigIntFromSelf.pipe(S.lessThanOrEqualToBigInt(0n))
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, 0n, 0n)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, 0n, 0n)
+    await Util.assertions.decoding.fail(
       schema,
       1n,
       `lessThanOrEqualToBigInt(0)
@@ -17,6 +17,6 @@ describe("lessThanOrEqualToBigInt", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, -1n, -1n)
+    await Util.assertions.encoding.succeed(schema, -1n, -1n)
   })
 })

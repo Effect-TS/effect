@@ -7,22 +7,22 @@ describe("BigDecimalFromNumber", () => {
   const schema = S.BigDecimalFromNumber
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       2,
       BigDecimal.make(2n, 0)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       0.123,
       BigDecimal.make(123n, 3)
     )
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       0,
       BigDecimal.make(0n, 0)
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "abc",
       `BigDecimalFromNumber
@@ -32,17 +32,17 @@ describe("BigDecimalFromNumber", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       BigDecimal.make(2n, 0),
       2
     )
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       BigDecimal.make(123n, 3),
       0.123
     )
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       BigDecimal.make(0n, 0),
       0

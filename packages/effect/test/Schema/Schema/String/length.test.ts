@@ -6,16 +6,16 @@ describe("length", () => {
   describe("decoding", () => {
     it("length: 1", async () => {
       const schema = S.String.pipe(S.length(1, { identifier: "Char" }))
-      await Util.expectDecodeUnknownSuccess(schema, "a")
+      await Util.assertions.decoding.succeed(schema, "a")
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "",
         `Char
 └─ Predicate refinement failure
    └─ Expected a single character, actual ""`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "aa",
         `Char
@@ -26,9 +26,9 @@ describe("length", () => {
 
     it("length > 1", async () => {
       const schema = S.String.pipe(S.length(2, { identifier: "Char2" }))
-      await Util.expectDecodeUnknownSuccess(schema, "aa")
+      await Util.assertions.decoding.succeed(schema, "aa")
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "",
         `Char2
@@ -39,18 +39,18 @@ describe("length", () => {
 
     it("length : { min > max }", async () => {
       const schema = S.String.pipe(S.length({ min: 2, max: 4 }, { identifier: "Char(2-4)" }))
-      await Util.expectDecodeUnknownSuccess(schema, "aa")
-      await Util.expectDecodeUnknownSuccess(schema, "aaa")
-      await Util.expectDecodeUnknownSuccess(schema, "aaaa")
+      await Util.assertions.decoding.succeed(schema, "aa")
+      await Util.assertions.decoding.succeed(schema, "aaa")
+      await Util.assertions.decoding.succeed(schema, "aaaa")
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "",
         `Char(2-4)
 └─ Predicate refinement failure
    └─ Expected a string at least 2 character(s) and at most 4 character(s) long, actual ""`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "aaaaa",
         `Char(2-4)
@@ -61,9 +61,9 @@ describe("length", () => {
 
     it("length : { min = max }", async () => {
       const schema = S.String.pipe(S.length({ min: 2, max: 2 }, { identifier: "Char2" }))
-      await Util.expectDecodeUnknownSuccess(schema, "aa")
+      await Util.assertions.decoding.succeed(schema, "aa")
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "",
         `Char2
@@ -74,9 +74,9 @@ describe("length", () => {
 
     it("length : { min < max }", async () => {
       const schema = S.String.pipe(S.length({ min: 2, max: 1 }, { identifier: "Char2" }))
-      await Util.expectDecodeUnknownSuccess(schema, "aa")
+      await Util.assertions.decoding.succeed(schema, "aa")
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "",
         `Char2

@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest"
 describe("Uint8Array > Uint8Array", () => {
   const schema = S.Uint8Array
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("isSchema", () => {
@@ -14,8 +14,8 @@ describe("Uint8Array > Uint8Array", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, [0, 1, 2, 3], Uint8Array.from([0, 1, 2, 3]))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, [0, 1, 2, 3], Uint8Array.from([0, 1, 2, 3]))
+    await Util.assertions.decoding.fail(
       schema,
       [12354],
       `Uint8Array
@@ -29,6 +29,6 @@ describe("Uint8Array > Uint8Array", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, Uint8Array.from([0, 1, 2, 3]), [0, 1, 2, 3])
+    await Util.assertions.encoding.succeed(schema, Uint8Array.from([0, 1, 2, 3]), [0, 1, 2, 3])
   })
 })

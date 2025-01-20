@@ -61,8 +61,8 @@ details: Duplicate key "_tag"`)
       S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(A.fields, { _tag: S.getClassTag("A"), ...fields })
-    await Util.expectDecodeUnknownSuccess(A, new A({ a: 1, b: 1 }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(A, new A({ a: 1, b: 1 }))
+    await Util.assertions.decoding.fail(
       A,
       { _tag: "A", a: 1, b: 2 },
       `(A (Encoded side) <-> A)
@@ -80,8 +80,8 @@ details: Duplicate key "_tag"`)
 
   it("decoding", async () => {
     class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmptyString }) {}
-    await Util.expectDecodeUnknownSuccess(TA, { _tag: "TA", a: "a" }, new TA({ a: "a" }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(TA, { _tag: "TA", a: "a" }, new TA({ a: "a" }))
+    await Util.assertions.decoding.fail(
       TA,
       { a: "a" },
       `(TA (Encoded side) <-> TA)
@@ -90,7 +90,7 @@ details: Duplicate key "_tag"`)
       └─ ["_tag"]
          └─ is missing`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       TA,
       { _tag: "TA", a: "" },
       `(TA (Encoded side) <-> TA)
@@ -105,9 +105,9 @@ details: Duplicate key "_tag"`)
 
   it("encoding", async () => {
     class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmptyString }) {}
-    await Util.expectEncodeSuccess(TA, new TA({ a: "a" }), { _tag: "TA", a: "a" })
-    await Util.expectEncodeSuccess(TA, { _tag: "TA", a: "a" } as any, { _tag: "TA", a: "a" })
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(TA, new TA({ a: "a" }), { _tag: "TA", a: "a" })
+    await Util.assertions.encoding.succeed(TA, { _tag: "TA", a: "a" } as any, { _tag: "TA", a: "a" })
+    await Util.assertions.encoding.fail(
       TA,
       new TA({ a: "" }, true),
       `(TA (Encoded side) <-> TA)

@@ -23,12 +23,12 @@ describe("encodedBoundSchema", () => {
 
     const bound = S.encodedBoundSchema(schema)
 
-    await Util.expectDecodeUnknownSuccess(bound, {
+    await Util.assertions.decoding.succeed(bound, {
       a: ["ab"],
       b: "abc"
     })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       bound,
       {
         a: ["a"],
@@ -43,7 +43,7 @@ describe("encodedBoundSchema", () => {
                └─ Expected a string at least 2 character(s) long, actual "a"`
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       bound,
       {
         a: ["ab"],
@@ -63,8 +63,8 @@ describe("encodedBoundSchema", () => {
         const schema = S.Array(StringTransformation).pipe(S.minItems(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
+        await Util.assertions.decoding.fail(
           bound,
           ["a"],
           `minItems(2)
@@ -75,7 +75,7 @@ describe("encodedBoundSchema", () => {
             └─ Predicate refinement failure
                └─ Expected a string at least 2 character(s) long, actual "a"`
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           bound,
           ["ab"],
           `minItems(2)
@@ -88,8 +88,8 @@ describe("encodedBoundSchema", () => {
         const schema = S.Array(StringTransformation).pipe(S.maxItems(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
+        await Util.assertions.decoding.fail(
           bound,
           ["a"],
           `maxItems(2)
@@ -100,7 +100,7 @@ describe("encodedBoundSchema", () => {
             └─ Predicate refinement failure
                └─ Expected a string at least 2 character(s) long, actual "a"`
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           bound,
           ["ab", "cd", "ef"],
           `maxItems(2)
@@ -113,8 +113,8 @@ describe("encodedBoundSchema", () => {
         const schema = S.Array(StringTransformation).pipe(S.itemsCount(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
+        await Util.assertions.decoding.fail(
           bound,
           ["a"],
           `itemsCount(2)
@@ -125,14 +125,14 @@ describe("encodedBoundSchema", () => {
             └─ Predicate refinement failure
                └─ Expected a string at least 2 character(s) long, actual "a"`
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           bound,
           ["ab"],
           `itemsCount(2)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual ["ab"]`
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           bound,
           ["ab", "cd", "ef"],
           `itemsCount(2)
@@ -147,8 +147,8 @@ describe("encodedBoundSchema", () => {
         const schema = S.NonEmptyArray(StringTransformation).pipe(S.minItems(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
+        await Util.assertions.decoding.fail(
           bound,
           ["a"],
           `minItems(2)
@@ -159,7 +159,7 @@ describe("encodedBoundSchema", () => {
             └─ Predicate refinement failure
                └─ Expected a string at least 2 character(s) long, actual "a"`
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           bound,
           ["ab"],
           `minItems(2)
@@ -172,8 +172,8 @@ describe("encodedBoundSchema", () => {
         const schema = S.NonEmptyArray(StringTransformation).pipe(S.maxItems(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
+        await Util.assertions.decoding.fail(
           bound,
           ["a"],
           `maxItems(2)
@@ -184,7 +184,7 @@ describe("encodedBoundSchema", () => {
             └─ Predicate refinement failure
                └─ Expected a string at least 2 character(s) long, actual "a"`
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           bound,
           ["ab", "cd", "ef"],
           `maxItems(2)
@@ -197,8 +197,8 @@ describe("encodedBoundSchema", () => {
         const schema = S.NonEmptyArray(StringTransformation).pipe(S.itemsCount(2))
         const bound = S.encodedBoundSchema(schema)
 
-        await Util.expectDecodeUnknownSuccess(bound, ["ab", "cd"])
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.succeed(bound, ["ab", "cd"])
+        await Util.assertions.decoding.fail(
           bound,
           ["a"],
           `itemsCount(2)
@@ -209,14 +209,14 @@ describe("encodedBoundSchema", () => {
             └─ Predicate refinement failure
                └─ Expected a string at least 2 character(s) long, actual "a"`
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           bound,
           ["ab"],
           `itemsCount(2)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual ["ab"]`
         )
-        await Util.expectDecodeUnknownFailure(
+        await Util.assertions.decoding.fail(
           bound,
           ["ab", "cd", "ef"],
           `itemsCount(2)

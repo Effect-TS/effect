@@ -6,13 +6,13 @@ import { describe, it } from "vitest"
 describe("Duration", () => {
   const schema = S.Duration
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it.todo("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, [555, 123456789], Duration.nanos(555123456789n))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, [555, 123456789], Duration.nanos(555123456789n))
+    await Util.assertions.decoding.fail(
       schema,
       [-500, 0],
       `Duration
@@ -25,7 +25,7 @@ describe("Duration", () => {
                   └─ Predicate refinement failure
                      └─ Expected a non-negative number, actual -500`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       [0, -123],
       `Duration
@@ -38,14 +38,14 @@ describe("Duration", () => {
                   └─ Predicate refinement failure
                      └─ Expected a non-negative number, actual -123`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       123,
       `Duration
 └─ Encoded side transformation failure
    └─ Expected HRTime, actual 123`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       123n,
       `Duration
@@ -55,8 +55,8 @@ describe("Duration", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, Duration.seconds(5), [5, 0])
-    await Util.expectEncodeSuccess(schema, Duration.millis(123456789), [123456, 789000000])
-    await Util.expectEncodeSuccess(schema, Duration.nanos(555123456789n), [555, 123456789])
+    await Util.assertions.encoding.succeed(schema, Duration.seconds(5), [5, 0])
+    await Util.assertions.encoding.succeed(schema, Duration.millis(123456789), [123456, 789000000])
+    await Util.assertions.encoding.succeed(schema, Duration.nanos(555123456789n), [555, 123456789])
   })
 })

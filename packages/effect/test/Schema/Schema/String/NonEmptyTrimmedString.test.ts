@@ -3,16 +3,16 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("NonEmptyTrimmedString", () => {
-  it("property tests", () => {
+  it("test roundtrip consistency", () => {
     const schema = S.NonEmptyTrimmedString
-    Util.roundtrip(schema)
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
     const schema = S.NonEmptyTrimmedString
-    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
+    await Util.assertions.decoding.succeed(schema, "a", "a")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " ",
       `NonEmptyTrimmedString
@@ -21,7 +21,7 @@ describe("NonEmptyTrimmedString", () => {
       └─ Predicate refinement failure
          └─ Expected a string with no leading or trailing whitespace, actual " "`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       " a ",
       `NonEmptyTrimmedString
@@ -34,9 +34,9 @@ describe("NonEmptyTrimmedString", () => {
 
   it("encoding", async () => {
     const schema = S.NonEmptyTrimmedString
-    await Util.expectEncodeSuccess(schema, "a", "a")
+    await Util.assertions.encoding.succeed(schema, "a", "a")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       " ",
       `NonEmptyTrimmedString
@@ -45,7 +45,7 @@ describe("NonEmptyTrimmedString", () => {
       └─ Predicate refinement failure
          └─ Expected a string with no leading or trailing whitespace, actual " "`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       " a ",
       `NonEmptyTrimmedString

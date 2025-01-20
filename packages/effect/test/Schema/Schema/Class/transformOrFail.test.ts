@@ -56,7 +56,7 @@ describe("transformOrFail", () => {
     expect(person.upperName).toEqual("JOHN")
     expect(typeof person.upperName).toEqual("string")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       PersonWithTransform,
       {
         id: 2,
@@ -68,7 +68,7 @@ describe("transformOrFail", () => {
       └─ Transformation process failure
          └─ Expected PersonWithTransform (Encoded side), actual {"id":2,"name":"John"}`
     )
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       PersonWithTransform,
       new PersonWithTransform({ id: 2, name: "John", thing: Option.some({ id: 1 }) }),
       `(PersonWithTransform (Encoded side) <-> PersonWithTransform)

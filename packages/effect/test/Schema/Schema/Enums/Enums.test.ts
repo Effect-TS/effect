@@ -21,12 +21,12 @@ describe("Enums", () => {
     const schema = S.Enums(Fruits)
 
     it("decoding", async () => {
-      await Util.expectDecodeUnknownSuccess(schema, Fruits.Apple)
-      await Util.expectDecodeUnknownSuccess(schema, Fruits.Banana)
-      await Util.expectDecodeUnknownSuccess(schema, 0)
-      await Util.expectDecodeUnknownSuccess(schema, 1)
+      await Util.assertions.decoding.succeed(schema, Fruits.Apple)
+      await Util.assertions.decoding.succeed(schema, Fruits.Banana)
+      await Util.assertions.decoding.succeed(schema, 0)
+      await Util.assertions.decoding.succeed(schema, 1)
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         3,
         `Expected <enum 2 value(s): 0 | 1>, actual 3`
@@ -34,8 +34,8 @@ describe("Enums", () => {
     })
 
     it("encoding", async () => {
-      await Util.expectEncodeSuccess(schema, Fruits.Apple, 0)
-      await Util.expectEncodeSuccess(schema, Fruits.Banana, 1)
+      await Util.assertions.encoding.succeed(schema, Fruits.Apple, 0)
+      await Util.assertions.encoding.succeed(schema, Fruits.Banana, 1)
     })
   })
 
@@ -48,13 +48,13 @@ describe("Enums", () => {
     const schema = S.Enums(Fruits)
 
     it("decoding", async () => {
-      await Util.expectDecodeUnknownSuccess(schema, Fruits.Apple)
-      await Util.expectDecodeUnknownSuccess(schema, Fruits.Cantaloupe)
-      await Util.expectDecodeUnknownSuccess(schema, "apple")
-      await Util.expectDecodeUnknownSuccess(schema, "banana")
-      await Util.expectDecodeUnknownSuccess(schema, 0)
+      await Util.assertions.decoding.succeed(schema, Fruits.Apple)
+      await Util.assertions.decoding.succeed(schema, Fruits.Cantaloupe)
+      await Util.assertions.decoding.succeed(schema, "apple")
+      await Util.assertions.decoding.succeed(schema, "banana")
+      await Util.assertions.decoding.succeed(schema, 0)
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "Cantaloupe",
         `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`
@@ -62,9 +62,9 @@ describe("Enums", () => {
     })
 
     it("encoding", async () => {
-      await Util.expectEncodeSuccess(schema, Fruits.Apple, "apple")
-      await Util.expectEncodeSuccess(schema, Fruits.Banana, "banana")
-      await Util.expectEncodeSuccess(schema, Fruits.Cantaloupe, 0)
+      await Util.assertions.encoding.succeed(schema, Fruits.Apple)
+      await Util.assertions.encoding.succeed(schema, Fruits.Banana)
+      await Util.assertions.encoding.succeed(schema, Fruits.Cantaloupe)
     })
   })
 
@@ -77,11 +77,11 @@ describe("Enums", () => {
     const schema = S.Enums(Fruits)
 
     it("decoding", async () => {
-      await Util.expectDecodeUnknownSuccess(schema, "apple")
-      await Util.expectDecodeUnknownSuccess(schema, "banana")
-      await Util.expectDecodeUnknownSuccess(schema, 3)
+      await Util.assertions.decoding.succeed(schema, "apple")
+      await Util.assertions.decoding.succeed(schema, "banana")
+      await Util.assertions.decoding.succeed(schema, 3)
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         "Cantaloupe",
         `Expected <enum 3 value(s): 0 | 1 | 2>, actual "Cantaloupe"`
@@ -89,9 +89,9 @@ describe("Enums", () => {
     })
 
     it("encoding", async () => {
-      await Util.expectEncodeSuccess(schema, Fruits.Apple, "apple")
-      await Util.expectEncodeSuccess(schema, Fruits.Banana, "banana")
-      await Util.expectEncodeSuccess(schema, Fruits.Cantaloupe, 3)
+      await Util.assertions.encoding.succeed(schema, Fruits.Apple, "apple")
+      await Util.assertions.encoding.succeed(schema, Fruits.Banana, "banana")
+      await Util.assertions.encoding.succeed(schema, Fruits.Cantaloupe, 3)
     })
   })
 })

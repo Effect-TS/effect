@@ -27,10 +27,10 @@ describe("optional", () => {
     const schema = S.Struct({
       a: S.optional(S.NumberFromString)
     })
-    await Util.expectDecodeUnknownSuccess(schema, {}, {})
-    await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: undefined })
-    await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, {}, {})
+    await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: undefined })
+    await Util.assertions.decoding.succeed(schema, { a: "1" }, { a: 1 })
+    await Util.assertions.decoding.fail(
       schema,
       { a: "a" },
       `{ readonly a?: NumberFromString | undefined }
@@ -42,18 +42,18 @@ describe("optional", () => {
       └─ Expected undefined, actual "a"`
     )
 
-    await Util.expectEncodeSuccess(schema, {}, {})
-    await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
-    await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
+    await Util.assertions.encoding.succeed(schema, {}, {})
+    await Util.assertions.encoding.succeed(schema, { a: undefined }, { a: undefined })
+    await Util.assertions.encoding.succeed(schema, { a: 1 }, { a: "1" })
   })
 
   it("Schema.Never as input", async () => {
     const schema = S.Struct({
       a: S.optional(S.Never)
     })
-    await Util.expectDecodeUnknownSuccess(schema, {}, {})
-    await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: undefined })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, {}, {})
+    await Util.assertions.decoding.succeed(schema, { a: undefined }, { a: undefined })
+    await Util.assertions.decoding.fail(
       schema,
       { a: "a" },
       `{ readonly a?: undefined }
@@ -61,7 +61,7 @@ describe("optional", () => {
    └─ Expected undefined, actual "a"`
     )
 
-    await Util.expectEncodeSuccess(schema, {}, {})
-    await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
+    await Util.assertions.encoding.succeed(schema, {}, {})
+    await Util.assertions.encoding.succeed(schema, { a: undefined }, { a: undefined })
   })
 })

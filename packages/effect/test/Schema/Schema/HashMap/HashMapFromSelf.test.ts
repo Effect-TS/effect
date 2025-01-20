@@ -6,25 +6,25 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("HashMapFromSelf", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.HashMapFromSelf({ key: S.Number, value: S.String }))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.HashMapFromSelf({ key: S.Number, value: S.String }))
   })
 
   it("decoding", async () => {
     const schema = S.HashMapFromSelf({ key: S.NumberFromString, value: S.String })
-    await Util.expectDecodeUnknownSuccess(schema, HashMap.fromIterable([]))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, HashMap.fromIterable([]))
+    await Util.assertions.decoding.succeed(
       schema,
       HashMap.fromIterable([["1", "a"], ["2", "b"], ["3", "c"]]),
       HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected HashMap<NumberFromString, string>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       HashMap.fromIterable([["1", "a"], ["a", "b"]]),
       `HashMap<NumberFromString, string>
@@ -40,8 +40,8 @@ describe("HashMapFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.HashMapFromSelf({ key: S.NumberFromString, value: S.String })
-    await Util.expectEncodeSuccess(schema, HashMap.fromIterable([]), HashMap.fromIterable([]))
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, HashMap.fromIterable([]), HashMap.fromIterable([]))
+    await Util.assertions.encoding.succeed(
       schema,
       HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]]),
       HashMap.fromIterable([["1", "a"], ["2", "b"], ["3", "c"]])

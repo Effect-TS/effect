@@ -6,25 +6,25 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("HashSetFromSelf", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.HashSetFromSelf(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.HashSetFromSelf(S.Number))
   })
 
   it("decoding", async () => {
     const schema = S.HashSetFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, HashSet.empty(), HashSet.fromIterable([]))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, HashSet.empty(), HashSet.fromIterable([]))
+    await Util.assertions.decoding.succeed(
       schema,
       HashSet.fromIterable(["1", "2", "3"]),
       HashSet.fromIterable([1, 2, 3])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected HashSet<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       HashSet.fromIterable(["1", "a", "3"]),
       `HashSet<NumberFromString>
@@ -38,8 +38,8 @@ describe("HashSetFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.HashSetFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, HashSet.empty(), HashSet.fromIterable([]))
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, HashSet.empty(), HashSet.fromIterable([]))
+    await Util.assertions.encoding.succeed(
       schema,
       HashSet.fromIterable([1, 2, 3]),
       HashSet.fromIterable(["1", "2", "3"])

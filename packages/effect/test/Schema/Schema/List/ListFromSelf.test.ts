@@ -6,25 +6,25 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("ListFromSelf", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.ListFromSelf(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.ListFromSelf(S.Number))
   })
 
   it("decoding", async () => {
     const schema = S.ListFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, List.empty(), List.empty())
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(schema, List.empty(), List.empty())
+    await Util.assertions.decoding.succeed(
       schema,
       List.fromIterable(["1", "2", "3"]),
       List.fromIterable([1, 2, 3])
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected List<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       List.fromIterable(["1", "a", "3"]),
       `List<NumberFromString>
@@ -38,8 +38,8 @@ describe("ListFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.ListFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, List.empty(), List.empty())
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(schema, List.empty(), List.empty())
+    await Util.assertions.encoding.succeed(
       schema,
       List.fromIterable([1, 2, 3]),
       List.fromIterable(["1", "2", "3"])

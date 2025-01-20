@@ -24,8 +24,8 @@ const Eur = Brand.nominal<Eur>()
 describe("fromBrand", () => {
   it("make", () => {
     const schema = S.NumberFromString.pipe(S.fromBrand(PositiveInt)).annotations({ identifier: "PositiveInt" })
-    Util.expectConstructorSuccess(schema, 1)
-    Util.expectConstructorFailure(
+    Util.assertions.make.succeed(schema, 1)
+    Util.assertions.make.fail(
       schema,
       -1,
       `PositiveInt
@@ -34,15 +34,15 @@ describe("fromBrand", () => {
     )
   })
 
-  it("property tests", () => {
-    Util.roundtrip(S.Number.pipe(S.fromBrand(Int))) // refined
-    Util.roundtrip(S.Number.pipe(S.fromBrand(Eur))) // nominal
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.Number.pipe(S.fromBrand(Int))) // refined
+    Util.assertions.testRoundtripConsistency(S.Number.pipe(S.fromBrand(Eur))) // nominal
   })
 
   it("refined", async () => {
     const schema = S.Number.pipe(S.fromBrand(Brand.all(Positive, Int)))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -0.5,
       `{ number | filter }
@@ -54,28 +54,28 @@ describe("fromBrand", () => {
 └─ Predicate refinement failure
    └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`)
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -1,
       `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected -1 to be positive`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       0,
       `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected 0 to be positive`
     )
-    await Util.expectDecodeUnknownSuccess(schema, 1, 1 as PositiveInt)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, 1, 1 as PositiveInt)
+    await Util.assertions.decoding.fail(
       schema,
       1.5,
       `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected 1.5 to be an integer`
     )
-    await Util.expectDecodeUnknownSuccess(schema, 2, 2 as PositiveInt)
+    await Util.assertions.decoding.succeed(schema, 2, 2 as PositiveInt)
   })
 })

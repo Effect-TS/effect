@@ -3,24 +3,24 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
 
 describe("Lowercase", () => {
-  it("property tests", () => {
+  it("test roundtrip consistency", () => {
     const schema = S.Lowercase
-    Util.roundtrip(schema)
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
     const schema = S.Lowercase
-    await Util.expectDecodeUnknownSuccess(schema, "a", "a")
-    await Util.expectDecodeUnknownSuccess(schema, "A ", "a ")
-    await Util.expectDecodeUnknownSuccess(schema, " A ", " a ")
+    await Util.assertions.decoding.succeed(schema, "a", "a")
+    await Util.assertions.decoding.succeed(schema, "A ", "a ")
+    await Util.assertions.decoding.succeed(schema, " A ", " a ")
   })
 
   it("encoding", async () => {
     const schema = S.Lowercase
-    await Util.expectEncodeSuccess(schema, "", "")
-    await Util.expectEncodeSuccess(schema, "a", "a")
+    await Util.assertions.encoding.succeed(schema, "", "")
+    await Util.assertions.encoding.succeed(schema, "a", "a")
 
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.fail(
       schema,
       "A",
       `Lowercase

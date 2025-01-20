@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest"
 describe("includes", () => {
   const schema = S.includes("a")(S.String)
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("is", () => {
@@ -21,11 +21,11 @@ describe("includes", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownSuccess(schema, "aa")
-    await Util.expectDecodeUnknownSuccess(schema, "bac")
-    await Util.expectDecodeUnknownSuccess(schema, "ba")
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, "a")
+    await Util.assertions.decoding.succeed(schema, "aa")
+    await Util.assertions.decoding.succeed(schema, "bac")
+    await Util.assertions.decoding.succeed(schema, "ba")
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `includes("a")

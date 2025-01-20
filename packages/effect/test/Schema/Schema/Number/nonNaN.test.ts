@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest"
 describe("NonNaN", () => {
   const schema = S.NonNaN
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("is", () => {
@@ -18,8 +18,8 @@ describe("NonNaN", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, 1)
+    await Util.assertions.decoding.fail(
       schema,
       NaN,
       `NonNaN

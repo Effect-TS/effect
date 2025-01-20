@@ -33,8 +33,8 @@ describe("asserts", () => {
   describe("struct", () => {
     it("required property signature", () => {
       const schema = S.Struct({ a: Util.NumberFromChar })
-      Util.expectAssertsSuccess(schema, { a: 1 })
-      Util.expectAssertsFailure(
+      Util.assertions.asserts.succeed(schema, { a: 1 })
+      Util.assertions.asserts.fail(
         schema,
         { a: null },
         `{ readonly a: number }
@@ -45,19 +45,19 @@ describe("asserts", () => {
 
     it("required property signature with undefined", () => {
       const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
-      Util.expectAssertsSuccess(schema, { a: 1 })
-      Util.expectAssertsSuccess(schema, { a: undefined })
-      Util.expectAssertsSuccess(schema, { a: 1, b: "b" })
+      Util.assertions.asserts.succeed(schema, { a: 1 })
+      Util.assertions.asserts.succeed(schema, { a: undefined })
+      Util.assertions.asserts.succeed(schema, { a: 1, b: "b" })
 
-      Util.expectAssertsFailure(
+      Util.assertions.asserts.fail(
         schema,
         {},
         `{ readonly a: number | undefined }
 └─ ["a"]
    └─ is missing`
       )
-      Util.expectAssertsFailure(schema, null, `Expected { readonly a: number | undefined }, actual null`)
-      Util.expectAssertsFailure(
+      Util.assertions.asserts.fail(schema, null, `Expected { readonly a: number | undefined }, actual null`)
+      Util.assertions.asserts.fail(
         schema,
         { a: "a" },
         `{ readonly a: number | undefined }

@@ -22,11 +22,11 @@ const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Arra
 describe("ParseResultFormatter", () => {
   describe("Forbidden", () => {
     it("default message", () => {
-      const schema = Util.effectify(S.String)
+      const schema = Util.AsyncString
       const input = ""
       expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
         new Error(
-          `(string <-> string)
+          `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
         )
       )
@@ -39,11 +39,11 @@ describe("ParseResultFormatter", () => {
     })
 
     it("default message with identifier", () => {
-      const schema = Util.effectify(S.String).annotations({ identifier: "identifier" })
+      const schema = Util.AsyncString
       const input = ""
       expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
         new Error(
-          `identifier
+          `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
         )
       )
@@ -56,10 +56,10 @@ describe("ParseResultFormatter", () => {
     })
 
     it("custom message (override=false)", () => {
-      const schema = Util.effectify(S.String).annotations({ message: () => "custom message" })
+      const schema = Util.AsyncString.annotations({ message: () => "custom message" })
       const input = ""
       expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
-        new Error(`(string <-> string)
+        new Error(`AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`)
       )
       expectIssues(schema, input, [{
@@ -71,12 +71,12 @@ describe("ParseResultFormatter", () => {
     })
 
     it("custom message (override=true)", () => {
-      const schema = Util.effectify(S.String).annotations({
+      const schema = Util.AsyncString.annotations({
         message: () => ({ message: "custom message", override: true })
       })
       const input = ""
       expect(() => S.decodeUnknownSync(schema)(input)).toThrow(
-        new Error(`(string <-> string)
+        new Error(`AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`)
       )
       expectIssues(schema, input, [{
@@ -92,7 +92,7 @@ describe("ParseResultFormatter", () => {
     it("default message", async () => {
       const schema = S.Struct({ a: S.String })
       const input = {}
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `{ readonly a: string }
@@ -109,7 +109,7 @@ describe("ParseResultFormatter", () => {
     it("default message with parent identifier", async () => {
       const schema = S.Struct({ a: S.String }).annotations({ identifier: "identifier" })
       const input = {}
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `identifier
@@ -128,7 +128,7 @@ describe("ParseResultFormatter", () => {
         message: () => ({ message: "custom message", override: true })
       })
       const input = {}
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -149,7 +149,7 @@ describe("ParseResultFormatter", () => {
             })
           })
           const input = {}
-          await Util.expectDecodeUnknownFailure(
+          await Util.assertions.decoding.fail(
             schema,
             input,
             `{ readonly a: string }
@@ -173,7 +173,7 @@ describe("ParseResultFormatter", () => {
             }).pipe(S.fromKey("c"))
           })
           const input = {}
-          await Util.expectDecodeUnknownFailure(
+          await Util.assertions.decoding.fail(
             schema,
             input,
             `(Struct (Encoded side) <-> Struct (Type side))
@@ -183,7 +183,7 @@ describe("ParseResultFormatter", () => {
       │  └─ 1ff9f37a-1f50-4ee2-906d-e824067d4cf7
       └─ ["c"]
          └─ 132f0e48-ae12-4bbb-8473-3dd433de2eb0`,
-            Util.allErrors
+            { parseOptions: Util.ErrorsAll }
           )
           expectIssues(schema, input, [{
             _tag: "Missing",
@@ -211,7 +211,7 @@ describe("ParseResultFormatter", () => {
             )
           )
           const input: Array<string> = []
-          await Util.expectDecodeUnknownFailure(
+          await Util.assertions.decoding.fail(
             schema,
             input,
             `readonly [string]
@@ -232,7 +232,7 @@ describe("ParseResultFormatter", () => {
             S.element(S.String).annotations({ [AST.MissingMessageAnnotationId]: () => "my missing message" })
           )
           const input: Array<string> = []
-          await Util.expectDecodeUnknownFailure(
+          await Util.assertions.decoding.fail(
             schema,
             input,
             `readonly [...string[], string]
@@ -253,13 +253,13 @@ describe("ParseResultFormatter", () => {
     it("default message", async () => {
       const schema = S.Struct({ a: S.String })
       const input = { a: "a", b: 1 }
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `{ readonly a: string }
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
       expectIssues(schema, input, [{
         _tag: "Unexpected",
@@ -271,13 +271,13 @@ describe("ParseResultFormatter", () => {
     it("default message with parent identifier", async () => {
       const schema = S.Struct({ a: S.String }).annotations({ identifier: "identifier" })
       const input = { a: "a", b: 1 }
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `identifier
 └─ ["b"]
    └─ is unexpected, expected: "a"`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
       expectIssues(schema, input, [{
         _tag: "Unexpected",
@@ -291,11 +291,11 @@ describe("ParseResultFormatter", () => {
         message: () => ({ message: "custom message", override: true })
       })
       const input = { a: "a", b: 1 }
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message",
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
       expectIssues(schema, input, [{
         _tag: "Composite",
@@ -309,7 +309,7 @@ describe("ParseResultFormatter", () => {
     it("default message", async () => {
       const schema = S.OptionFromSelf(S.String)
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "Expected Option<string>, actual null"
@@ -324,7 +324,7 @@ describe("ParseResultFormatter", () => {
     it("default message with identifier", async () => {
       const schema = S.OptionFromSelf(S.String).annotations({ identifier: "identifier" })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "Expected identifier, actual null"
@@ -339,7 +339,7 @@ describe("ParseResultFormatter", () => {
     it("custom message (override=false)", async () => {
       const schema = S.OptionFromSelf(S.String).annotations({ message: () => "custom message" })
       const input = Option.some(1)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `Option<string>
@@ -357,7 +357,7 @@ describe("ParseResultFormatter", () => {
         message: () => ({ message: "custom message", override: true })
       })
       const input = Option.some(1)
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -374,7 +374,7 @@ describe("ParseResultFormatter", () => {
     it("default message", async () => {
       const schema = S.String
       const input = null
-      await Util.expectDecodeUnknownFailure(schema, input, "Expected string, actual null")
+      await Util.assertions.decoding.fail(schema, input, "Expected string, actual null")
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
@@ -385,7 +385,7 @@ describe("ParseResultFormatter", () => {
     it("default message with identifier", async () => {
       const schema = S.String.annotations({ identifier: "ID" })
       const input = null
-      await Util.expectDecodeUnknownFailure(schema, input, "Expected ID, actual null")
+      await Util.assertions.decoding.fail(schema, input, "Expected ID, actual null")
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
@@ -396,7 +396,7 @@ describe("ParseResultFormatter", () => {
     it("custom message", async () => {
       const schema = S.String.annotations({ message: () => "custom message" })
       const input = null
-      await Util.expectDecodeUnknownFailure(schema, input, "custom message")
+      await Util.assertions.decoding.fail(schema, input, "custom message")
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
@@ -417,7 +417,7 @@ describe("ParseResultFormatter", () => {
         }
       )
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `(string <-> string)
@@ -442,7 +442,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ identifier: "identifier" })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `identifier
@@ -467,7 +467,7 @@ describe("ParseResultFormatter", () => {
         }
       )
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `(string <-> string)
@@ -492,7 +492,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => "custom message" })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `(string <-> string)
@@ -517,7 +517,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => ({ message: "custom message", override: true }) })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -540,7 +540,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => "custom message" })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "inner custom message"
@@ -563,7 +563,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => ({ message: "custom message", override: true }) })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -586,7 +586,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => "custom message" })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `(string <-> NonEmptyString)
@@ -613,7 +613,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => ({ message: "custom message", override: true }) })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -636,7 +636,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => "custom message" })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "inner custom message"
@@ -659,7 +659,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => ({ message: "custom message", override: true }) })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -682,7 +682,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => "custom message" })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -705,7 +705,7 @@ describe("ParseResultFormatter", () => {
         }
       ).annotations({ message: () => ({ message: "custom message", override: true }) })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -722,7 +722,7 @@ describe("ParseResultFormatter", () => {
     it("default message (kind=From)", async () => {
       const schema = S.String.pipe(S.minLength(1))
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `minLength(1)
@@ -739,7 +739,7 @@ describe("ParseResultFormatter", () => {
     it("default message with identifier (kind=From)", async () => {
       const schema = S.String.pipe(S.minLength(1)).annotations({ identifier: "identifier" })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `identifier
@@ -756,7 +756,7 @@ describe("ParseResultFormatter", () => {
     it("default message (kind=Predicate)", async () => {
       const schema = S.String.pipe(S.minLength(1))
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `minLength(1)
@@ -773,7 +773,7 @@ describe("ParseResultFormatter", () => {
     it("default message with identifier (kind=Predicate)", async () => {
       const schema = S.String.pipe(S.minLength(1)).annotations({ identifier: "identifier" })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `identifier
@@ -790,7 +790,7 @@ describe("ParseResultFormatter", () => {
     it("custom message (kind=From, override=false)", async () => {
       const schema = S.String.pipe(S.minLength(1)).annotations({ message: () => "custom message" })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `minLength(1)
@@ -809,7 +809,7 @@ describe("ParseResultFormatter", () => {
         message: () => ({ message: "custom message", override: true })
       })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -824,7 +824,7 @@ describe("ParseResultFormatter", () => {
     it("custom message (kind=Predicate, override=false)", async () => {
       const schema = S.String.pipe(S.minLength(1)).annotations({ message: () => "custom message" })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -841,7 +841,7 @@ describe("ParseResultFormatter", () => {
         message: () => ({ message: "custom message", override: true })
       })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -857,7 +857,7 @@ describe("ParseResultFormatter", () => {
       const schema = S.String.pipe(S.minLength(1, { message: () => "inner custom message" }), S.maxLength(2))
         .annotations({ message: () => "custom message" })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "inner custom message"
@@ -873,7 +873,7 @@ describe("ParseResultFormatter", () => {
       const schema = S.String.pipe(S.minLength(1, { message: () => "inner custom message" }), S.maxLength(2))
         .annotations({ message: () => ({ message: "custom message", override: true }) })
       const input = ""
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -893,12 +893,12 @@ describe("ParseResultFormatter", () => {
         () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
       )
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected readonly [number, <suspended schema> | null], actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, undefined],
         `readonly [number, <suspended schema> | null]
@@ -916,12 +916,12 @@ describe("ParseResultFormatter", () => {
         S.Union(S.suspend(() => schema), S.Literal(null))
       )
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected readonly [number, <suspended schema> | null], actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, undefined],
         `readonly [number, <suspended schema> | null]
@@ -937,7 +937,7 @@ describe("ParseResultFormatter", () => {
     it("default message", async () => {
       const schema = S.Union(S.String, S.Number)
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `string | number
@@ -958,7 +958,7 @@ describe("ParseResultFormatter", () => {
     it("default message with identifier", async () => {
       const schema = S.Union(S.String, S.Number).annotations({ identifier: "identifier" })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `identifier
@@ -981,7 +981,7 @@ describe("ParseResultFormatter", () => {
         message: () => "custom message"
       })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         `string | number
@@ -1004,7 +1004,7 @@ describe("ParseResultFormatter", () => {
         message: () => ({ message: "custom message", override: true })
       })
       const input = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input,
         "custom message"
@@ -1021,7 +1021,7 @@ describe("ParseResultFormatter", () => {
     it("parent custom message with override=false", async () => {
       const schema = S.Tuple(S.String).annotations({ message: () => "custom message" })
       const input1 = [1]
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input1,
         `readonly [string]
@@ -1038,7 +1038,7 @@ describe("ParseResultFormatter", () => {
     it("parent custom message with override=true", async () => {
       const schema = S.Tuple(S.String).annotations({ message: () => ({ message: "custom message", override: true }) })
       const input1 = [1]
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input1,
         "custom message"
@@ -1068,7 +1068,7 @@ describe("ParseResultFormatter", () => {
         ).annotations({ identifier: "B" })
       }).annotations({ identifier: "A", message: () => "custom message" })
       const input1 = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input1,
         "custom message"
@@ -1080,7 +1080,7 @@ describe("ParseResultFormatter", () => {
       }])
 
       const input2 = { as: [] }
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input2,
         `A
@@ -1094,7 +1094,7 @@ describe("ParseResultFormatter", () => {
       }])
 
       const input3 = { as: [{ b: null }] }
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input3,
         `A
@@ -1114,7 +1114,7 @@ describe("ParseResultFormatter", () => {
       }])
 
       const input4 = { as: [{ b: "" }] }
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input4,
         `A
@@ -1134,7 +1134,7 @@ describe("ParseResultFormatter", () => {
       }])
 
       const input5 = { as: [{ b: "---" }] }
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input5,
         `A
@@ -1170,7 +1170,7 @@ describe("ParseResultFormatter", () => {
         ).annotations({ identifier: "B" })
       }).annotations({ identifier: "A", message: () => ({ message: "custom message", override: true }) })
       const input1 = null
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input1,
         "custom message"
@@ -1181,7 +1181,7 @@ describe("ParseResultFormatter", () => {
         message: "custom message"
       }])
       const input2 = { as: [] }
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         input2,
         "custom message"
@@ -1202,7 +1202,7 @@ describe("handle identifiers", () => {
       b: S.String.annotations({ identifier: "MyString2" })
     }).annotations({ identifier: "MySchema" })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: 1, b: 2 },
       `MySchema
@@ -1210,7 +1210,7 @@ describe("handle identifiers", () => {
 │  └─ Expected MyString1, actual 1
 └─ ["b"]
    └─ Expected MyString2, actual 2`,
-      Util.allErrors
+      { parseOptions: Util.ErrorsAll }
     )
   })
 
@@ -1221,12 +1221,12 @@ describe("handle identifiers", () => {
         () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
       ).annotations({ identifier: "A" })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected A, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, undefined],
         `A
@@ -1244,12 +1244,12 @@ describe("handle identifiers", () => {
         S.Union(S.suspend((): S.Schema<A> => schema), S.Literal(null))
       ).annotations({ identifier: "A" })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected A, actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, undefined],
         `A
@@ -1267,12 +1267,12 @@ describe("handle identifiers", () => {
         S.Union(S.suspend((): S.Schema<A> => schema).annotations({ identifier: "A" }), S.Literal(null))
       )
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         null,
         `Expected readonly [number, A | null], actual null`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [1, undefined],
         `readonly [number, A | null]

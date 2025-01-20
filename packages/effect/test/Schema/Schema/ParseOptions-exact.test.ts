@@ -6,18 +6,18 @@ describe("`exact` option", () => {
   describe("decoding", () => {
     it("false (default)", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      await Util.expectDecodeUnknownSuccess(schema, {}, { a: undefined })
+      await Util.assertions.decoding.succeed(schema, {}, { a: undefined })
     })
 
     it("true", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `{ readonly a: unknown }
 └─ ["a"]
    └─ is missing`,
-        { exact: true }
+        { parseOptions: { exact: true } }
       )
     })
   })
@@ -37,7 +37,7 @@ describe("`exact` option", () => {
   describe("asserts", () => {
     it("true (default)", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      Util.expectAssertsFailure(
+      Util.assertions.asserts.fail(
         schema,
         {},
         `{ readonly a: unknown }
@@ -48,7 +48,7 @@ describe("`exact` option", () => {
 
     it("false", async () => {
       const schema = S.Struct({ a: S.Unknown })
-      Util.expectAssertsSuccess(schema, {}, { exact: false })
+      Util.assertions.asserts.succeed(schema, {}, { parseOptions: { exact: false } })
     })
   })
 })

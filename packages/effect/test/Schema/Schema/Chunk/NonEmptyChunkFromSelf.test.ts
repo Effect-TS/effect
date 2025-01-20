@@ -7,24 +7,24 @@ import * as Util from "effect/test/Schema/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("NonEmptyChunkFromSelf", () => {
-  it("property tests", () => {
-    Util.roundtrip(S.NonEmptyChunkFromSelf(S.Number))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.NonEmptyChunkFromSelf(S.Number))
   })
 
   it("decoding", async () => {
     const schema = S.NonEmptyChunkFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       C.make("1", "2", "3"),
       C.make(1, 2, 3)
     )
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Expected NonEmptyChunk<NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       C.empty(),
       `Expected NonEmptyChunk<NumberFromString>, actual {
@@ -32,7 +32,7 @@ describe("NonEmptyChunkFromSelf", () => {
   "values": []
 }`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       C.make("1", "a", "3"),
       `NonEmptyChunk<NumberFromString>
@@ -46,7 +46,7 @@ describe("NonEmptyChunkFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.NonEmptyChunkFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(
+    await Util.assertions.encoding.succeed(
       schema,
       C.make(1, 2, 3),
       C.make("1", "2", "3")

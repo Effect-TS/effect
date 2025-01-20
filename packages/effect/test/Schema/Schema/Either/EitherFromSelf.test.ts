@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("EitherFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.EitherFromSelf({ left: S.String, right: S.Number }))
+    Util.assertions.arbitrary.validateGeneratedValues(S.EitherFromSelf({ left: S.String, right: S.Number }))
   })
 
-  it("property tests", () => {
-    Util.roundtrip(S.EitherFromSelf({ left: S.String, right: S.Number }))
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(S.EitherFromSelf({ left: S.String, right: S.Number }))
   })
 
   it("is", () => {
@@ -28,29 +28,29 @@ describe("EitherFromSelf", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.EitherFromSelf({ left: S.NumberFromString, right: Util.BooleanFromLiteral })
-    await Util.expectDecodeUnknownSuccess(schema, E.left("1"), E.left(1))
-    await Util.expectDecodeUnknownSuccess(schema, E.right("true"), E.right(true))
+    const schema = S.EitherFromSelf({ left: S.NumberFromString, right: S.BooleanFromString })
+    await Util.assertions.decoding.succeed(schema, E.left("1"), E.left(1))
+    await Util.assertions.decoding.succeed(schema, E.right("true"), E.right(true))
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
-      `Expected Either<("true" | "false" <-> boolean), NumberFromString>, actual null`
+      `Expected Either<BooleanFromString, NumberFromString>, actual null`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       E.right(""),
-      `Either<("true" | "false" <-> boolean), NumberFromString>
-└─ ("true" | "false" <-> boolean)
+      `Either<BooleanFromString, NumberFromString>
+└─ BooleanFromString
    └─ Encoded side transformation failure
       └─ "true" | "false"
          ├─ Expected "true", actual ""
          └─ Expected "false", actual ""`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       E.left("a"),
-      `Either<("true" | "false" <-> boolean), NumberFromString>
+      `Either<BooleanFromString, NumberFromString>
 └─ NumberFromString
    └─ Transformation process failure
       └─ Unable to decode "a" into a number`

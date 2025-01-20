@@ -54,7 +54,7 @@ describe("Class", () => {
     const schema = S.suspend(() => string)
     class A extends S.Class<A>("A")({ a: S.optional(schema) }) {}
     const string = S.String
-    await Util.expectDecodeUnknownSuccess(A, new A({ a: "a" }))
+    await Util.assertions.decoding.succeed(A, new A({ a: "a" }))
   })
 
   it("should be a Schema", () => {
@@ -233,8 +233,8 @@ describe("Class", () => {
 
   it("decoding", async () => {
     class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
-    await Util.expectDecodeUnknownSuccess(A, { a: "a" }, new A({ a: "a" }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(A, { a: "a" }, new A({ a: "a" }))
+    await Util.assertions.decoding.fail(
       A,
       { a: "" },
       `(A (Encoded side) <-> A)
@@ -249,9 +249,9 @@ describe("Class", () => {
 
   it("encoding", async () => {
     class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
-    await Util.expectEncodeSuccess(A, new A({ a: "a" }), { a: "a" })
-    await Util.expectEncodeSuccess(A, { a: "a" }, { a: "a" })
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(A, new A({ a: "a" }), { a: "a" })
+    await Util.assertions.encoding.succeed(A, { a: "a" }, { a: "a" })
+    await Util.assertions.encoding.fail(
       A,
       new A({ a: "" }, true),
       `(A (Encoded side) <-> A)
@@ -315,8 +315,8 @@ details: Duplicate key "a"`)
 
   it("S.typeSchema(Class)", async () => {
     const PersonFromSelf = S.typeSchema(Person)
-    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.assertions.decoding.fail(
       PersonFromSelf,
       { id: 1, name: "John" },
       `Expected Person, actual {"id":1,"name":"John"}`
@@ -342,8 +342,8 @@ details: Duplicate key "a"`)
     expect(person.name).toEqual("John")
 
     const PersonFromSelf = S.typeSchema(Person)
-    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.assertions.decoding.fail(
       PersonFromSelf,
       { id: 1, name: "John" },
       `Expected Person, actual {"id":1,"name":"John"}`
@@ -362,8 +362,8 @@ details: Duplicate key "a"`)
       S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(A.fields, fields)
-    await Util.expectDecodeUnknownSuccess(A, new A({ a: 1, b: 1 }))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(A, new A({ a: 1, b: 1 }))
+    await Util.assertions.decoding.fail(
       A,
       { a: 1, b: 2 },
       `(A (Encoded side) <-> A)
@@ -408,7 +408,7 @@ details: Duplicate key "a"`)
       class A extends S.Class<A>("A")({
         n: S.NumberFromString
       }) {}
-      await Util.expectEncodeSuccess(A, { n: 1 }, { n: "1" })
+      await Util.assertions.encoding.succeed(A, { n: 1 }, { n: "1" })
     })
 
     it("struct a class with a getter", async () => {
@@ -419,7 +419,7 @@ details: Duplicate key "a"`)
           return "s"
         }
       }
-      await Util.expectEncodeSuccess(A, { n: 1 } as any, { n: "1" })
+      await Util.assertions.encoding.succeed(A, { n: 1 } as any, { n: "1" })
     })
 
     it("struct nested classes", async () => {
@@ -429,8 +429,8 @@ details: Duplicate key "a"`)
       class B extends S.Class<B>("B")({
         a: A
       }) {}
-      await Util.expectEncodeSuccess(S.Union(B, S.NumberFromString), 1, "1")
-      await Util.expectEncodeSuccess(B, { a: { n: 1 } }, { a: { n: "1" } })
+      await Util.assertions.encoding.succeed(S.Union(B, S.NumberFromString), 1, "1")
+      await Util.assertions.encoding.succeed(B, { a: { n: 1 } }, { a: { n: "1" } })
     })
 
     it("class a class with a getter", async () => {
@@ -446,7 +446,7 @@ details: Duplicate key "a"`)
         s: S.String
       }) {}
 
-      await Util.expectEncodeSuccess(B, new A({ n: 1 }), { n: "1", s: "s" })
+      await Util.assertions.encoding.succeed(B, new A({ n: 1 }), { n: "1", s: "s" })
     })
 
     describe("encode(S.typeSchema(Class))", () => {
@@ -455,8 +455,8 @@ details: Duplicate key "a"`)
           n: S.NumberFromString
         }) {}
         const schema = S.typeSchema(A)
-        await Util.expectEncodeSuccess(schema, new A({ n: 1 }), new A({ n: 1 }))
-        await Util.expectEncodeSuccess(schema, { n: 1 }, new A({ n: 1 }))
+        await Util.assertions.encoding.succeed(schema, new A({ n: 1 }), new A({ n: 1 }))
+        await Util.assertions.encoding.succeed(schema, { n: 1 }, new A({ n: 1 }))
       })
 
       it("should fail on bad values", async () => {
@@ -464,7 +464,7 @@ details: Duplicate key "a"`)
           n: S.NumberFromString
         }) {}
         const schema = S.typeSchema(A)
-        await Util.expectEncodeFailure(
+        await Util.assertions.encoding.fail(
           schema,
           null as any,
           `Expected A (Type side), actual null`
@@ -475,7 +475,7 @@ details: Duplicate key "a"`)
 
   it("arbitrary", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
-    Util.expectArbitrary(A)
+    Util.assertions.arbitrary.validateGeneratedValues(A)
   })
 
   it("should expose a make constructor", () => {
@@ -499,7 +499,7 @@ details: Duplicate key "a"`)
 
       expect(A.ast.to.annotations[AST.TitleAnnotationId]).toEqual("mytitle")
 
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         A,
         { a: "" },
         `(A (Encoded side) <-> A)
@@ -527,7 +527,7 @@ details: Duplicate key "a"`)
       expect(AST.getIdentifierAnnotation(A.ast)).toEqual(Option.some("TransformationID"))
       expect(AST.getIdentifierAnnotation(A.ast.from)).toEqual(Option.some("EncodedID"))
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         A,
         {},
         `TransformationID
@@ -537,7 +537,7 @@ details: Duplicate key "a"`)
          └─ is missing`
       )
 
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         A,
         { a: "" },
         `TransformationID
@@ -551,7 +551,7 @@ details: Duplicate key "a"`)
 
       const ctor = { make: A.make.bind(A) }
 
-      Util.expectConstructorFailure(
+      Util.assertions.make.fail(
         ctor,
         null,
         `TypeID

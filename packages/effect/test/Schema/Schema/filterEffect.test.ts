@@ -22,8 +22,8 @@ describe("filterEffect", () => {
         return Effect.succeed(true)
       })
 
-      await Util.expectDecodeUnknownSuccess(schema, { a: "x", b: "x" })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, { a: "x", b: "x" })
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a", b: "b" },
         `({ readonly a: string; readonly b: string } <-> { readonly a: string; readonly b: string })
@@ -63,7 +63,7 @@ describe("filterEffect", () => {
         }
         return Effect.succeed(true)
       }))
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: " " }, d: ["-", "-"] },
         `(Test <-> Test)
@@ -74,7 +74,7 @@ describe("filterEffect", () => {
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: "c" }, d: ["-", "-"] },
         `(Test <-> Test)
@@ -82,7 +82,7 @@ describe("filterEffect", () => {
    └─ ["a"]["c"]
       └─ Expected "b", actual "c"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
         `(Test <-> Test)
@@ -108,7 +108,7 @@ describe("filterEffect", () => {
         }
         return Effect.succeed(true)
       }))
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: " " }, d: ["-", "-"] },
         `(Test <-> Test)
@@ -119,7 +119,7 @@ describe("filterEffect", () => {
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: "c" }, d: ["-", "-"] },
         `(Test <-> Test)
@@ -127,7 +127,7 @@ describe("filterEffect", () => {
    └─ ["a"]["c"]
       └─ FILTER1`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
         `(Test <-> Test)
@@ -154,7 +154,7 @@ describe("filterEffect", () => {
         }
         return Effect.succeed(issues)
       }))
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: " " }, d: ["-", "-"] },
         `(Test <-> Test)
@@ -165,7 +165,7 @@ describe("filterEffect", () => {
             └─ ["c"]
                └─ ERROR_MIN_LENGTH`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: "c" }, d: ["-", "-"] },
         `(Test <-> Test)
@@ -173,7 +173,7 @@ describe("filterEffect", () => {
    └─ ["a"]["c"]
       └─ FILTER1`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
         `(Test <-> Test)
@@ -181,7 +181,7 @@ describe("filterEffect", () => {
    └─ ["d"][1]
       └─ FILTER2`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: { b: "b", c: "c" }, d: ["item0", "item1"] },
         `(Test <-> Test)

@@ -57,25 +57,25 @@ describe("record", () => {
       }
       const AbcSchema = S.Enums(Abc)
       const schema = S.Record({ key: AbcSchema, value: S.String })
-      await Util.expectDecodeUnknownSuccess(schema, { [Abc.A]: "A", [Abc.B]: "B", [Abc.C]: "C" })
-      await Util.expectDecodeUnknownSuccess(schema, { [1]: "A", b: "B", c: "C" })
-      await Util.expectDecodeUnknownSuccess(schema, { "1": "A", b: "B", c: "C" })
+      await Util.assertions.decoding.succeed(schema, { [Abc.A]: "A", [Abc.B]: "B", [Abc.C]: "C" })
+      await Util.assertions.decoding.succeed(schema, { [1]: "A", b: "B", c: "C" })
+      await Util.assertions.decoding.succeed(schema, { "1": "A", b: "B", c: "C" })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { [Abc.B]: "B", [Abc.C]: "C" },
         `{ readonly 1: string; readonly b: string; readonly c: string }
 └─ [1]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { [Abc.A]: "A", [Abc.B]: "B" },
         `{ readonly 1: string; readonly b: string; readonly c: string }
 └─ ["c"]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { [Abc.A]: null, [Abc.B]: "B", [Abc.C]: "C" },
         `{ readonly 1: string; readonly b: string; readonly c: string }
@@ -86,21 +86,21 @@ describe("record", () => {
 
     it("Record(never, number)", async () => {
       const schema = S.Record({ key: S.Never, value: S.Number })
-      await Util.expectDecodeUnknownSuccess(schema, {})
-      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
+      await Util.assertions.decoding.succeed(schema, {})
+      await Util.assertions.decoding.succeed(schema, { a: 1 })
     })
 
     it("Record(string, number)", async () => {
       const schema = S.Record({ key: S.String, value: S.Number })
-      await Util.expectDecodeUnknownSuccess(schema, {})
-      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
+      await Util.assertions.decoding.succeed(schema, {})
+      await Util.assertions.decoding.succeed(schema, { a: 1 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [],
         "Expected { readonly [x: string]: number }, actual []"
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `{ readonly [x: string]: number }
@@ -108,69 +108,69 @@ describe("record", () => {
    └─ Expected number, actual "a"`
       )
       const b = Symbol.for("effect/Schema/test/b")
-      await Util.expectDecodeUnknownSuccess(schema, { a: 1, [b]: "b" }, { a: 1 })
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.succeed(schema, { a: 1, [b]: "b" }, { a: 1 })
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1, [b]: "b" },
         `{ readonly [x: string]: number }
 └─ [Symbol(effect/Schema/test/b)]
    └─ is unexpected, expected: string`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
     it("Record(symbol, number)", async () => {
       const a = Symbol.for("effect/Schema/test/a")
       const schema = S.Record({ key: S.SymbolFromSelf, value: S.Number })
-      await Util.expectDecodeUnknownSuccess(schema, {})
-      await Util.expectDecodeUnknownSuccess(schema, { [a]: 1 })
+      await Util.assertions.decoding.succeed(schema, {})
+      await Util.assertions.decoding.succeed(schema, { [a]: 1 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         [],
         "Expected { readonly [x: symbol]: number }, actual []"
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { [a]: "a" },
         `{ readonly [x: symbol]: number }
 └─ [Symbol(effect/Schema/test/a)]
    └─ Expected number, actual "a"`
       )
-      await Util.expectDecodeUnknownSuccess(
+      await Util.assertions.decoding.succeed(
         schema,
         { [a]: 1, b: "b" },
         { [a]: 1 }
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { [a]: 1, b: "b" },
         `{ readonly [x: symbol]: number }
 └─ ["b"]
    └─ is unexpected, expected: symbol`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
     it("Record('a' | 'b', number)", async () => {
       const schema = S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.Number })
-      await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
+      await Util.assertions.decoding.succeed(schema, { a: 1, b: 2 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1 },
         `{ readonly a: number; readonly b: number }
 └─ ["b"]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { b: 2 },
         `{ readonly a: number; readonly b: number }
@@ -183,17 +183,17 @@ describe("record", () => {
       const schema = S.Record(
         { key: S.Union(S.Literal("a"), S.TemplateLiteral(S.Literal("prefix-"), S.String)), value: S.Number }
       )
-      await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
-      await Util.expectDecodeUnknownSuccess(schema, { a: 1, "prefix-b": 2 })
+      await Util.assertions.decoding.succeed(schema, { a: 1 })
+      await Util.assertions.decoding.succeed(schema, { a: 1, "prefix-b": 2 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `{ readonly a: number; readonly [x: \`prefix-\${string}\`]: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1, "prefix-b": "b" },
         `{ readonly a: number; readonly [x: \`prefix-\${string}\`]: number }
@@ -204,30 +204,30 @@ describe("record", () => {
 
     it("Record(keyof struct({ a, b }), number)", async () => {
       const schema = S.Record({ key: S.keyof(S.Struct({ a: S.String, b: S.String })), value: S.Number })
-      await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
+      await Util.assertions.decoding.succeed(schema, { a: 1, b: 2 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: 1 },
         `{ readonly a: number; readonly b: number }
 └─ ["b"]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { b: 2 },
         `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { a: "a" },
         `{ readonly a: number; readonly b: number }
@@ -240,23 +240,23 @@ describe("record", () => {
       const a = Symbol.for("effect/Schema/test/a")
       const b = Symbol.for("effect/Schema/test/b")
       const schema = S.Record({ key: S.Union(S.UniqueSymbolFromSelf(a), S.UniqueSymbolFromSelf(b)), value: S.Number })
-      await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
+      await Util.assertions.decoding.succeed(schema, { [a]: 1, [b]: 2 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         {},
         `{ readonly Symbol(effect/Schema/test/a): number; readonly Symbol(effect/Schema/test/b): number }
 └─ [Symbol(effect/Schema/test/a)]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { [a]: 1 },
         `{ readonly Symbol(effect/Schema/test/a): number; readonly Symbol(effect/Schema/test/b): number }
 └─ [Symbol(effect/Schema/test/b)]
    └─ is missing`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { [b]: 2 },
         `{ readonly Symbol(effect/Schema/test/a): number; readonly Symbol(effect/Schema/test/b): number }
@@ -267,37 +267,37 @@ describe("record", () => {
 
     it("Record(${string}-${string}, number)", async () => {
       const schema = S.Record({ key: S.TemplateLiteral(S.String, S.Literal("-"), S.String), value: S.Number })
-      await Util.expectDecodeUnknownSuccess(schema, {})
-      await Util.expectDecodeUnknownSuccess(schema, { "-": 1 })
-      await Util.expectDecodeUnknownSuccess(schema, { "a-": 1 })
-      await Util.expectDecodeUnknownSuccess(schema, { "-b": 1 })
-      await Util.expectDecodeUnknownSuccess(schema, { "a-b": 1 })
-      await Util.expectDecodeUnknownSuccess(schema, { "": 1 }, {})
-      await Util.expectDecodeUnknownSuccess(schema, { "a": 1 }, {})
-      await Util.expectDecodeUnknownSuccess(schema, { "a": "a" }, {})
+      await Util.assertions.decoding.succeed(schema, {})
+      await Util.assertions.decoding.succeed(schema, { "-": 1 })
+      await Util.assertions.decoding.succeed(schema, { "a-": 1 })
+      await Util.assertions.decoding.succeed(schema, { "-b": 1 })
+      await Util.assertions.decoding.succeed(schema, { "a-b": 1 })
+      await Util.assertions.decoding.succeed(schema, { "": 1 }, {})
+      await Util.assertions.decoding.succeed(schema, { "a": 1 }, {})
+      await Util.assertions.decoding.succeed(schema, { "a": "a" }, {})
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "-": "a" },
         `{ readonly [x: \`\${string}-\${string}\`]: number }
 └─ ["-"]
    └─ Expected number, actual "a"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "a-": "a" },
         `{ readonly [x: \`\${string}-\${string}\`]: number }
 └─ ["a-"]
    └─ Expected number, actual "a"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "-b": "b" },
         `{ readonly [x: \`\${string}-\${string}\`]: number }
 └─ ["-b"]
    └─ Expected number, actual "b"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "a-b": "ab" },
         `{ readonly [x: \`\${string}-\${string}\`]: number }
@@ -305,38 +305,38 @@ describe("record", () => {
    └─ Expected number, actual "ab"`
       )
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "a": 1 },
         `{ readonly [x: \`\${string}-\${string}\`]: number }
 └─ ["a"]
    └─ is unexpected, expected: \`\${string}-\${string}\``,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
     it("Record(minLength(2), number)", async () => {
       const schema = S.Record({ key: S.String.pipe(S.minLength(2)), value: S.Number })
-      await Util.expectDecodeUnknownSuccess(schema, {})
-      await Util.expectDecodeUnknownSuccess(schema, { "a": 1 }, {})
-      await Util.expectDecodeUnknownSuccess(schema, { "a": "a" }, {})
-      await Util.expectDecodeUnknownSuccess(schema, { "aa": 1 })
-      await Util.expectDecodeUnknownSuccess(schema, { "aaa": 1 })
+      await Util.assertions.decoding.succeed(schema, {})
+      await Util.assertions.decoding.succeed(schema, { "a": 1 }, {})
+      await Util.assertions.decoding.succeed(schema, { "a": "a" }, {})
+      await Util.assertions.decoding.succeed(schema, { "aa": 1 })
+      await Util.assertions.decoding.succeed(schema, { "aaa": 1 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "aa": "aa" },
         `{ readonly [x: minLength(2)]: number }
 └─ ["aa"]
    └─ Expected number, actual "aa"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "a": 1 },
         `{ readonly [x: minLength(2)]: number }
 └─ ["a"]
    └─ is unexpected, expected: minLength(2)`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
@@ -346,18 +346,18 @@ describe("record", () => {
         S.Record({ key: S.TemplateLiteral(S.String, S.Literal("-"), S.String), value: S.Number }),
         S.Record({ key: S.String, value: S.Union(S.String, S.Number) })
       )
-      await Util.expectDecodeUnknownSuccess(schema, {})
-      await Util.expectDecodeUnknownSuccess(schema, { "a": "a" })
-      await Util.expectDecodeUnknownSuccess(schema, { "a-": 1 })
+      await Util.assertions.decoding.succeed(schema, {})
+      await Util.assertions.decoding.succeed(schema, { "a": "a" })
+      await Util.assertions.decoding.succeed(schema, { "a-": 1 })
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "a-": "a" },
         `{ readonly [x: \`\${string}-\${string}\`]: number; readonly [x: string]: string | number }
 └─ ["a-"]
    └─ Expected number, actual "a"`
       )
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "a": true },
         `{ readonly [x: \`\${string}-\${string}\`]: number; readonly [x: string]: string | number }
@@ -370,18 +370,18 @@ describe("record", () => {
 
     it("should support branded keys", async () => {
       const schema = S.Record({ key: S.NonEmptyString.pipe(S.brand("UserId")), value: S.Number })
-      await Util.expectDecodeUnknownSuccess(schema, {})
-      await Util.expectDecodeUnknownSuccess(schema, { "a": 1 })
-      await Util.expectDecodeUnknownSuccess(schema, { "": 1 }, {})
-      await Util.expectDecodeUnknownSuccess(schema, { "": "" }, {})
+      await Util.assertions.decoding.succeed(schema, {})
+      await Util.assertions.decoding.succeed(schema, { "a": 1 })
+      await Util.assertions.decoding.succeed(schema, { "": 1 }, {})
+      await Util.assertions.decoding.succeed(schema, { "": "" }, {})
 
-      await Util.expectDecodeUnknownFailure(
+      await Util.assertions.decoding.fail(
         schema,
         { "": 1 },
         `{ readonly [x: NonEmptyString]: number }
 └─ [""]
    └─ is unexpected, expected: NonEmptyString`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
   })
@@ -389,19 +389,19 @@ describe("record", () => {
   describe("encoding", () => {
     it("key error", async () => {
       const schema = S.Record({ key: S.Char, value: S.String })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         { aa: "a" },
         `{ readonly [x: Char]: string }
 └─ ["aa"]
    └─ is unexpected, expected: Char`,
-        Util.onExcessPropertyError
+        { parseOptions: Util.onExcessPropertyError }
       )
     })
 
     it("value error", async () => {
       const schema = S.Record({ key: S.String, value: S.Char })
-      await Util.expectEncodeFailure(
+      await Util.assertions.encoding.fail(
         schema,
         { a: "aa" },
         `{ readonly [x: string]: Char }

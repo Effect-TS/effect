@@ -5,13 +5,13 @@ import { describe, it } from "vitest"
 describe("Symbol", () => {
   const schema = S.Symbol
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, "a", Symbol.for("a"))
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, "a", Symbol.for("a"))
+    await Util.assertions.decoding.fail(
       schema,
       null,
       `Symbol
@@ -21,8 +21,8 @@ describe("Symbol", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, Symbol.for("a"), "a")
-    await Util.expectEncodeFailure(
+    await Util.assertions.encoding.succeed(schema, Symbol.for("a"), "a")
+    await Util.assertions.encoding.fail(
       schema,
       Symbol(),
       `Symbol

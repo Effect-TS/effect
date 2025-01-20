@@ -53,13 +53,13 @@ describe("SchemaUserland", () => {
     ) {
       readonly _tag = "A"
     }
-    await Util.expectDecodeUnknownSuccess(A, { a: "a", c: [{ d: "d" }] }, new A({ a: "a", b: [{ d: "d" }] }))
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(A, { a: "a", c: [{ d: "d" }] }, new A({ a: "a", b: [{ d: "d" }] }))
+    await Util.assertions.decoding.succeed(
       A,
       { a: "a", c: [{ d: "d", ignored: null }] },
       new A({ a: "a", b: [{ d: "d" }] })
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       A,
       { a: "a", c: [{ d: "d" }], not_allowed: null },
       `(A (Encoded side) <-> A)

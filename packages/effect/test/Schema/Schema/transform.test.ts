@@ -19,7 +19,7 @@ describe("transform", () => {
       encode: (i, a) => ({ ...i, b: a.a * 2 })
     })
 
-    await Util.expectDecodeUnknownSuccess(AB, { a: "1", b: "2" }, { a: 12 })
-    await Util.expectEncodeSuccess(AB, { a: 2 }, { a: "2", b: "4" })
+    await Util.assertions.decoding.succeed(AB, { a: "1", b: "2" }, { a: 12 })
+    await Util.assertions.encoding.succeed(AB, { a: 2 }, { a: "2", b: "4" })
   })
 })

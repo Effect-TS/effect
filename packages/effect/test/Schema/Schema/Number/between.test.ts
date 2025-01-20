@@ -7,15 +7,15 @@ describe("between", () => {
     title: "[-1, -1] interval"
   })
   it("decoding", async () => {
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -2,
       `[-1, -1] interval
 └─ Predicate refinement failure
    └─ Expected a number between -1 and 1, actual -2`
     )
-    await Util.expectDecodeUnknownSuccess(schema, 0, 0)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, 0, 0)
+    await Util.assertions.decoding.fail(
       schema,
       2,
       `[-1, -1] interval
@@ -25,6 +25,6 @@ describe("between", () => {
   })
 
   it("encoding", async () => {
-    await Util.expectEncodeSuccess(schema, 1, 1)
+    await Util.assertions.encoding.succeed(schema, 1, 1)
   })
 })

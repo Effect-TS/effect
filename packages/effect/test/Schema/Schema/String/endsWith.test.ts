@@ -16,17 +16,17 @@ describe("endsWith", () => {
 
   it("decoding", async () => {
     const schema = S.String.pipe(S.endsWith("a"))
-    await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownSuccess(schema, "ba")
+    await Util.assertions.decoding.succeed(schema, "a")
+    await Util.assertions.decoding.succeed(schema, "ba")
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "",
       `endsWith("a")
 └─ Predicate refinement failure
    └─ Expected a string ending with "a", actual ""`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       "b",
       `endsWith("a")

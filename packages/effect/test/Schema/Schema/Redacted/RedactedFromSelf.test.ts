@@ -7,21 +7,21 @@ import { describe, expect, it } from "vitest"
 describe("RedactedFromSelf", () => {
   const schema = S.RedactedFromSelf(S.String)
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("arbitrary", () => {
-    Util.expectArbitrary(S.RedactedFromSelf(S.Number))
+    Util.assertions.arbitrary.validateGeneratedValues(S.RedactedFromSelf(S.Number))
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(
+    await Util.assertions.decoding.succeed(
       schema,
       Redacted.make("keep me safe"),
       Redacted.make("keep me safe")
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       Redacted.make(123),
       `Redacted(<redacted>)
@@ -29,8 +29,8 @@ describe("RedactedFromSelf", () => {
     )
   })
 
-  it("encoding", () => {
-    Util.expectEncodeSuccess(
+  it("encoding", async () => {
+    await Util.assertions.encoding.succeed(
       schema,
       Redacted.make("keep me safe"),
       Redacted.make("keep me safe")

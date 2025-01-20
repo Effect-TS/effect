@@ -8,21 +8,21 @@ describe("pick", () => {
     const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(
       S.pick(a, "b")
     )
-    await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
+    await Util.assertions.decoding.succeed(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       "Expected { readonly b: NumberFromString; readonly Symbol(effect/Schema/test/a): string }, actual null"
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { [a]: "a" },
       `{ readonly b: NumberFromString; readonly Symbol(effect/Schema/test/a): string }
 └─ ["b"]
    └─ is missing`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { b: "1" },
       `{ readonly b: NumberFromString; readonly Symbol(effect/Schema/test/a): string }
@@ -37,15 +37,15 @@ describe("pick", () => {
       b: S.NumberFromString,
       c: S.Boolean
     }).pipe(S.pick("a", "b"))
-    await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
-    await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { b: 1 })
+    await Util.assertions.decoding.succeed(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
+    await Util.assertions.decoding.succeed(schema, { b: "1" }, { b: 1 })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       null,
       "Expected { readonly a?: string; readonly b: NumberFromString }, actual null"
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: "a" },
       `{ readonly a?: string; readonly b: NumberFromString }
@@ -67,10 +67,10 @@ describe("pick", () => {
         })
     )
     const schema = A.pipe(S.pick("as"))
-    await Util.expectDecodeUnknownSuccess(schema, { as: [] })
-    await Util.expectDecodeUnknownSuccess(schema, { as: [{ a: "a", as: [] }] })
+    await Util.assertions.decoding.succeed(schema, { as: [] })
+    await Util.assertions.decoding.succeed(schema, { as: [{ a: "a", as: [] }] })
 
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { as: [{ as: [] }] },
       `{ readonly as: ReadonlyArray<<suspended schema>> }
@@ -89,21 +89,21 @@ describe("pick", () => {
       b: S.NumberFromString,
       c: S.Boolean
     }).pipe(S.pick("a", "b"))
-    await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
-    await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { a: "", b: 1 })
+    await Util.assertions.decoding.succeed(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
+    await Util.assertions.decoding.succeed(schema, { b: "1" }, { a: "", b: 1 })
   })
 
   it("Record(string, number)", async () => {
     const schema = S.Record({ key: S.String, value: S.Number }).pipe(S.pick("a", "b"))
-    await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, { a: 1, b: 2 })
+    await Util.assertions.decoding.fail(
       schema,
       { a: "a", b: 2 },
       `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ Expected number, actual "a"`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { a: 1, b: "b" },
       `{ readonly a: number; readonly b: number }
@@ -116,15 +116,15 @@ describe("pick", () => {
     const a = Symbol.for("effect/Schema/test/a")
     const b = Symbol.for("effect/Schema/test/b")
     const schema = S.Record({ key: S.SymbolFromSelf, value: S.Number }).pipe(S.pick(a, b))
-    await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, { [a]: 1, [b]: 2 })
+    await Util.assertions.decoding.fail(
       schema,
       { [a]: "a", [b]: 2 },
       `{ readonly Symbol(effect/Schema/test/a): number; readonly Symbol(effect/Schema/test/b): number }
 └─ [Symbol(effect/Schema/test/a)]
    └─ Expected number, actual "a"`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       { [a]: 1, [b]: "b" },
       `{ readonly Symbol(effect/Schema/test/a): number; readonly Symbol(effect/Schema/test/b): number }
@@ -139,7 +139,7 @@ describe("pick", () => {
       S.Record({ key: S.String, value: S.String }),
       S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.Number })
     ).pipe(S.pick("a", "b"))
-    await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: "b" })
+    await Util.assertions.decoding.succeed(schema, { a: 1, b: "b" })
   })
 
   it("typeSchema(Class)", () => {

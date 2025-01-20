@@ -3388,7 +3388,8 @@ export type RefineSchemaId = typeof RefineSchemaId
 export interface refine<A, From extends Schema.Any>
   extends AnnotableClass<refine<A, From>, A, Schema.Encoded<From>, Schema.Context<From>>
 {
-  readonly [RefineSchemaId]: From // required for `type HasFields = ...`
+  /** The following is required for {@link HasFields} to work */
+  readonly [RefineSchemaId]: From
   readonly from: From
   readonly filter: (
     a: Schema.Type<From>,
@@ -5662,8 +5663,8 @@ export class DurationFromSelf extends declare(
     arbitrary: (): LazyArbitrary<duration_.Duration> => (fc) =>
       fc.oneof(
         fc.constant(duration_.infinity),
-        fc.bigUint().map((_) => duration_.nanos(_)),
-        fc.bigUint().map((_) => duration_.micros(_)),
+        fc.bigInt({ min: 0n }).map((_) => duration_.nanos(_)),
+        fc.bigInt({ min: 0n }).map((_) => duration_.micros(_)),
         fc.maxSafeNat().map((_) => duration_.millis(_)),
         fc.maxSafeNat().map((_) => duration_.seconds(_)),
         fc.maxSafeNat().map((_) => duration_.minutes(_)),

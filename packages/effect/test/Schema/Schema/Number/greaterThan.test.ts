@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest"
 describe("greaterThan", () => {
   const schema = S.greaterThan(0)(S.Number)
 
-  it("property tests", () => {
-    Util.roundtrip(schema)
+  it("test roundtrip consistency", () => {
+    Util.assertions.testRoundtripConsistency(schema)
   })
 
   it("is", () => {
@@ -19,15 +19,15 @@ describe("greaterThan", () => {
   })
 
   it("decoding", async () => {
-    await Util.expectDecodeUnknownSuccess(schema, 1)
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.succeed(schema, 1)
+    await Util.assertions.decoding.fail(
       schema,
       0,
       `greaterThan(0)
 └─ Predicate refinement failure
    └─ Expected a positive number, actual 0`
     )
-    await Util.expectDecodeUnknownFailure(
+    await Util.assertions.decoding.fail(
       schema,
       -1,
       `greaterThan(0)

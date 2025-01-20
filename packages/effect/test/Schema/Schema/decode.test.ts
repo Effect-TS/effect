@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
@@ -5,10 +6,10 @@ import { describe, it } from "vitest"
 describe("decode", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
-  it("should return Left on invalid values", async () => {
-    await Util.expectEffectSuccess(S.decode(schema)({ a: "1" }), { a: 1 })
-    await Util.expectEffectFailure(
-      S.decode(schema)({ a: "10" }),
+  it("should return an error on invalid values", async () => {
+    await Util.assertions.effect.succeed(S.decode(schema)({ a: "1" }), { a: 1 })
+    await Util.assertions.effect.fail(
+      S.decode(schema)({ a: "10" }).pipe(Effect.mapError((e) => e.issue)),
       `{ readonly a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
@@ -21,19 +22,19 @@ describe("decode", () => {
 
   it("should respect outer/inner options", async () => {
     const input = { a: "1", b: "b" }
-    await Util.expectEffectFailure(
-      S.decode(schema)(input, { onExcessProperty: "error" }),
+    await Util.assertions.effect.fail(
+      S.decode(schema)(input, { onExcessProperty: "error" }).pipe(Effect.mapError((e) => e.issue)),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    await Util.expectEffectFailure(
-      S.decode(schema, { onExcessProperty: "error" })(input),
+    await Util.assertions.effect.fail(
+      S.decode(schema, { onExcessProperty: "error" })(input).pipe(Effect.mapError((e) => e.issue)),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    await Util.expectEffectSuccess(
+    await Util.assertions.effect.succeed(
       S.decode(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),
       {
         a: 1
