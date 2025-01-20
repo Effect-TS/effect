@@ -1,5 +1,5 @@
 import type { SchemaAST } from "effect"
-import { Arbitrary, Context, Effect, Either, FastCheck, ParseResult, Predicate, Runtime, Schema } from "effect"
+import { Arbitrary, Cause, Context, Effect, Either, FastCheck, ParseResult, Predicate, Runtime, Schema } from "effect"
 
 // Defines parameters for FastCheck that exclude typed properties
 export type UntypedParameters = Omit<FastCheck.Parameters<any>, "examples" | "reporter" | "asyncReporter">
@@ -203,11 +203,13 @@ export const assertions = Effect.gen(function*() {
           const a = await promise
           throw new Error(`Promise didn't reject, got: ${a}`)
         } catch (e: unknown) {
-          if (Runtime.isFiberFailure(e)) {
-            deepStrictEqual((e.toJSON() as any).cause?.failure?.message, message)
-          } else {
-            throw new Error(`Expected a FiberFailure, got: ${e}`)
+          if (Runtime.isFiberFailure(e) && Cause.isCause(e[Runtime.FiberFailureCauseId])) {
+            const cause = e[Runtime.FiberFailureCauseId]
+            if (Cause.isFailType(cause) && Predicate.hasProperty(cause.error, "message")) {
+              return deepStrictEqual(cause.error.message, message)
+            }
           }
+          throw new Error(`Unknown promise rejection: ${e}`)
         }
       }
     },
