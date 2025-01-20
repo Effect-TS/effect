@@ -7885,13 +7885,14 @@ export {
  * original effect succeeds, the success value is wrapped in `Option.some`. If
  * the effect fails, the failure is converted to `Option.none`.
  *
- * This is useful for handling cases where you want to explicitly represent the
- * absence of a value due to a failure, while preventing direct failure of the
- * resulting effect (its error type is `never`). Note that fatal errors, such as
- * defects, are not wrapped and will still result in failure.
+ * This is particularly useful for scenarios where you want to represent the
+ * absence of a value explicitly, without causing the resulting effect to fail.
+ * The resulting effect has an error type of `never`, meaning it cannot fail
+ * directly. However, unrecoverable errors, also referred to as defects, are
+ * not captured and will still result in failure.
  *
  * @see {@link either} for a version that uses `Either` instead.
- * @see {@link exit} for a version that uses `Exit` instead.
+ * @see {@link exit} for a version that encapsulates both recoverable errors and defects in an `Exit`.
  *
  * @example
  * ```ts
@@ -7941,18 +7942,24 @@ export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>
  *
  * This function converts an effect that may fail into an effect that always
  * succeeds, wrapping the outcome in an `Either` type. The result will be
- * `Either.Left` if the effect fails, containing the error, or `Either.Right` if
- * it succeeds, containing the result.
+ * `Either.Left` if the effect fails, containing the recoverable error, or
+ * `Either.Right` if it succeeds, containing the result.
  *
- * Using this function, you can handle errors explicitly without causing the
- * effect to fail. This can be especially useful in scenarios where you want to
- * chain effects and deal with success and failure in the same logical flow.
+ * Using this function, you can handle recoverable errors explicitly without
+ * causing the effect to fail. This is particularly useful in scenarios where
+ * you want to chain effects and manage both success and failure in the same
+ * logical flow.
  *
- * The resulting effect cannot fail directly because failures are represented
- * inside the `Either` type.
+ * It's important to note that unrecoverable errors, often referred to as
+ * "defects," are still thrown and not captured within the `Either` type. Only
+ * failures that are explicitly represented as recoverable errors in the effect
+ * are encapsulated.
+ *
+ * The resulting effect cannot fail directly because all recoverable failures
+ * are represented inside the `Either` type.
  *
  * @see {@link option} for a version that uses `Option` instead.
- * @see {@link exit} for a version that uses `Exit` instead.
+ * @see {@link exit} for a version that encapsulates both recoverable errors and defects in an `Exit`.
  *
  * @example
  * ```ts
@@ -8004,16 +8011,18 @@ export const either: <A, E, R>(self: Effect<A, E, R>) => Effect<Either.Either<A,
  * **Details**
  *
  * This function converts an effect into one that always succeeds, wrapping its
- * outcome in the `Exit` type. The `Exit` type allows explicit handling of both
- * success (`Exit.Success`) and failure (`Exit.Failure`) cases.
+ * outcome in the `Exit` type. The `Exit` type provides explicit handling of
+ * both success (`Exit.Success`) and failure (`Exit.Failure`) cases, including
+ * defects (unrecoverable errors).
  *
- * The failure is no longer propagated directly but encapsulated inside the
- * `Exit.Failure` type. This makes the resulting effect robust and incapable of
- * direct failure (the error type is set to `never`).
+ * Unlike {@link either} or {@link option}, this function also encapsulates
+ * defects, which are typically unrecoverable and would otherwise terminate the
+ * effect. With the `Exit` type, defects are represented in `Exit.Failure`,
+ * allowing for detailed introspection and structured error handling.
  *
- * This function is useful for managing and reasoning about effects with complex
- * outcomes, as it allows for detailed introspection of errors, including
- * defects and unexpected failures.
+ * This makes the resulting effect robust and incapable of direct failure (its
+ * error type is `never`). It is particularly useful for workflows where all
+ * outcomes, including unexpected defects, must be managed and analyzed.
  *
  * @see {@link option} for a version that uses `Option` instead.
  * @see {@link either} for a version that uses `Either` instead.
