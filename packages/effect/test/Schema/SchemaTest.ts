@@ -30,26 +30,6 @@ export const assertions = Effect.gen(function*() {
   const { deepStrictEqual, fail, throws } = yield* Assert
   const config = yield* AssertConfig
 
-  const expectRight = <R, L>(e: Either.Either<R, L>, right: R) => {
-    if (Either.isRight(e)) {
-      deepStrictEqual(e.right, right)
-    } else {
-      // eslint-disable-next-line no-console
-      console.log(e.left)
-      fail(`expected a Right, got a Left: ${e.left}`)
-    }
-  }
-
-  const expectLeft = <R, L>(e: Either.Either<R, L>, left: L) => {
-    if (Either.isLeft(e)) {
-      deepStrictEqual(e.left, left)
-    } else {
-      // eslint-disable-next-line no-console
-      console.log(e.right)
-      fail(`expected a Left, got a Right: ${e.right}`)
-    }
-  }
-
   const out = {
     make: {
       /**
@@ -136,6 +116,11 @@ export const assertions = Effect.gen(function*() {
     },
 
     decoding: {
+      /**
+       * Attempts to decode the given input using the provided schema. If the
+       * decoding is successful, the decoded value is compared to the expected
+       * value. Otherwise the test fails.
+       */
       async succeed<A, I>(
         schema: Schema.Schema<A, I>,
         input: unknown,
@@ -153,6 +138,11 @@ export const assertions = Effect.gen(function*() {
         )
       },
 
+      /**
+       * Attempts to decode the given input using the provided schema. If the
+       * decoding fails, the error message is compared to the expected message.
+       * Otherwise the test fails.
+       */
       async fail<A, I>(
         schema: Schema.Schema<A, I>,
         input: unknown,
@@ -167,6 +157,11 @@ export const assertions = Effect.gen(function*() {
     },
 
     encoding: {
+      /**
+       * Attempts to encode the given input using the provided schema. If the
+       * decoding is successful, the decoded value is compared to the expected
+       * value. Otherwise the test fails.
+       */
       async succeed<A, I>(
         schema: Schema.Schema<A, I>,
         input: A,
@@ -184,6 +179,11 @@ export const assertions = Effect.gen(function*() {
         )
       },
 
+      /**
+       * Attempts to encode the given input using the provided schema. If the
+       * decoding fails, the error message is compared to the expected message.
+       * Otherwise the test fails.
+       */
       async fail<A, I>(
         schema: Schema.Schema<A, I>,
         input: A,
@@ -198,6 +198,11 @@ export const assertions = Effect.gen(function*() {
     },
 
     promise: {
+      /**
+       * Ensures that the given promise rejects with a Fiber Failure containing the expected message.
+       *
+       * Useful to test `decodePromise` and `encodePromise`.
+       */
       async fail<A>(promise: Promise<A>, message: string) {
         try {
           const a = await promise
@@ -215,6 +220,9 @@ export const assertions = Effect.gen(function*() {
     },
 
     effect: {
+      /**
+       * Verifies that the effect succeeds with the expected value.
+       */
       async succeed<E, A>(
         effect: Effect.Effect<A, E>,
         a: A
@@ -222,6 +230,9 @@ export const assertions = Effect.gen(function*() {
         deepStrictEqual(await Effect.runPromise(Effect.either(effect)), Either.right(a))
       },
 
+      /**
+       * Verifies that the effect fails with the expected message.
+       */
       async fail<A>(
         effect: Effect.Effect<A, ParseResult.ParseIssue>,
         message: string
@@ -235,26 +246,51 @@ export const assertions = Effect.gen(function*() {
           return decoded.right
         })
         const result = await Effect.runPromise(Effect.either(effectWithMessage))
-        expectLeft(result, message)
+        return out.either.left(result, message)
       }
     },
 
     either: {
-      succeed<R, L>(either: Either.Either<R, L>, right: R) {
-        expectRight(either, right)
+      /**
+       * Verifies that the either is a `Right` with the expected value.
+       */
+      right<R, L>(either: Either.Either<R, L>, right: R) {
+        if (Either.isRight(either)) {
+          deepStrictEqual(either.right, right)
+        } else {
+          // eslint-disable-next-line no-console
+          console.log(either.left)
+          fail(`expected a Right, got a Left: ${either.left}`)
+        }
       },
 
-      async fail<R>(either: Either.Either<R, ParseResult.ParseError>, message: string) {
+      /**
+       * Verifies that the either is a `Left` with the expected value.
+       */
+      left<R, L>(either: Either.Either<R, L>, left: L) {
+        if (Either.isLeft(either)) {
+          deepStrictEqual(either.left, left)
+        } else {
+          // eslint-disable-next-line no-console
+          console.log(either.right)
+          fail(`expected a Left, got a Right: ${either.right}`)
+        }
+      },
+
+      /**
+       * Verifies that the either is a left with the expected value.
+       */
+      async fail<R>(either: Either.Either<R, ParseResult.ParseIssue>, message: string) {
         const eitherWithMessage = Effect.gen(function*() {
           const encoded = yield* Effect.either(either)
           if (Either.isLeft(encoded)) {
-            const message = yield* ParseResult.TreeFormatter.formatError(encoded.left)
+            const message = yield* ParseResult.TreeFormatter.formatIssue(encoded.left)
             return yield* Effect.fail(message)
           }
           return encoded.right
         })
         const result = await Effect.runPromise(Effect.either(eitherWithMessage))
-        expectLeft(result, message)
+        return out.either.left(result, message)
       }
     }
   }

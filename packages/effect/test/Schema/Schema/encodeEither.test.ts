@@ -1,3 +1,4 @@
+import * as Either from "effect/Either"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
 import { describe, it } from "vitest"
@@ -6,9 +7,9 @@ describe("encodeEither", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return an error on invalid values", async () => {
-    Util.assertions.either.succeed(S.encodeEither(schema)({ a: 1 }), { a: "1" })
+    Util.assertions.either.right(S.encodeEither(schema)({ a: 1 }), { a: "1" })
     await Util.assertions.either.fail(
-      S.encodeEither(schema)({ a: 10 }),
+      S.encodeEither(schema)({ a: 10 }).pipe(Either.mapLeft((e) => e.issue)),
       `{ readonly a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
@@ -21,7 +22,7 @@ describe("encodeEither", () => {
 
   it("should return an error on async", async () => {
     await Util.assertions.either.fail(
-      S.encodeEither(Util.AsyncString)("a"),
+      S.encodeEither(Util.AsyncString)("a").pipe(Either.mapLeft((e) => e.issue)),
       `AsyncString
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
     )
@@ -30,18 +31,18 @@ describe("encodeEither", () => {
   it("should respect outer/inner options", async () => {
     const input = { a: 1, b: "b" }
     await Util.assertions.either.fail(
-      S.encodeEither(schema)(input, { onExcessProperty: "error" }),
+      S.encodeEither(schema)(input, { onExcessProperty: "error" }).pipe(Either.mapLeft((e) => e.issue)),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
     await Util.assertions.either.fail(
-      S.encodeEither(schema, { onExcessProperty: "error" })(input),
+      S.encodeEither(schema, { onExcessProperty: "error" })(input).pipe(Either.mapLeft((e) => e.issue)),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected: "a"`
     )
-    Util.assertions.either.succeed(
+    Util.assertions.either.right(
       S.encodeEither(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),
       { a: "1" }
     )
