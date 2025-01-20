@@ -94,17 +94,17 @@ describe("pluck", () => {
     })
   })
 
-  it.todo("struct with optional key", async () => {
+  it("struct with optional key", async () => {
     const origin = S.Struct({ a: S.optional(S.String) })
     const schema = S.pluck(origin, "a")
     await Util.assertions.encoding.succeed(schema, undefined, { a: undefined })
     await Util.assertions.encoding.succeed(schema, "a", { a: "a" })
   })
 
-  it.todo("struct with exact optional key", async () => {
+  it("struct with exact optional key", async () => {
     const origin = S.Struct({ a: S.optionalWith(S.String, { exact: true }) })
     const schema = S.pluck(origin, "a")
-    await Util.assertions.encoding.succeed(schema, undefined, { a: undefined })
+    await Util.assertions.encoding.succeed(schema, undefined, {})
     await Util.assertions.encoding.succeed(schema, "a", { a: "a" })
   })
 })

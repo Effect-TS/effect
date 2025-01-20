@@ -1821,7 +1821,7 @@ S.propertySignature(S.String).annotations({})
 S.optional(S.String).annotations({})
 
 // ---------------------------------------------
-// Pluck
+// pluck
 // ---------------------------------------------
 
 // @ts-expect-error
@@ -1832,6 +1832,18 @@ S.pluck(S.Struct({ a: S.String, b: S.Number }), "a")
 
 // $ExpectType Schema<string, { readonly a: string; }, never>
 pipe(S.Struct({ a: S.String, b: S.Number }), S.pluck("a"))
+
+// $ExpectType Schema<string | undefined, { readonly a?: string | undefined; }, never>
+S.pluck(S.Struct({ a: S.optional(S.String), b: S.Number }), "a")
+
+// $ExpectType Schema<string | undefined, { readonly a?: string | undefined; }, never>
+pipe(S.Struct({ a: S.optional(S.String), b: S.Number }), S.pluck("a"))
+
+// $ExpectType Schema<string | undefined, { readonly a?: string; }, never>
+S.pluck(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number }), "a")
+
+// $ExpectType Schema<string | undefined, { readonly a?: string; }, never>
+pipe(S.Struct({ a: S.optionalWith(S.String, { exact: true }), b: S.Number }), S.pluck("a"))
 
 // ---------------------------------------------
 // Head

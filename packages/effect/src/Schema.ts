@@ -2919,11 +2919,11 @@ export const omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...key
 export const pluck: {
   <A, I, K extends keyof A & keyof I>(
     key: K
-  ): <R>(schema: Schema<A, I, R>) => Schema<A[K], { readonly [P in K]: I[P] }, R>
+  ): <R>(schema: Schema<A, I, R>) => Schema<A[K], Simplify<Pick<I, K>>, R>
   <A, I, R, K extends keyof A & keyof I>(
     schema: Schema<A, I, R>,
     key: K
-  ): Schema<A[K], { readonly [P in K]: I[P] }, R>
+  ): Schema<A[K], Simplify<Pick<I, K>>, R>
 } = dual(
   2,
   <A, I, R, K extends keyof A & keyof I>(
