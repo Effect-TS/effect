@@ -11,20 +11,20 @@ describe("ExitFromSelf", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.ExitFromSelf({ failure: S.NumberFromString, success: Util.BooleanFromLiteral, defect: S.Unknown })
+    const schema = S.ExitFromSelf({ failure: S.NumberFromString, success: S.BooleanFromString, defect: S.Unknown })
     await Util.assertions.decoding.succeed(schema, Exit.fail("1"), Exit.fail(1))
     await Util.assertions.decoding.succeed(schema, Exit.succeed("true"), Exit.succeed(true))
 
     await Util.assertions.decoding.fail(
       schema,
       null,
-      `Expected Exit<("true" | "false" <-> boolean), NumberFromString>, actual null`
+      `Expected Exit<BooleanFromString, NumberFromString>, actual null`
     )
     await Util.assertions.decoding.fail(
       schema,
       Exit.succeed(""),
-      `Exit<("true" | "false" <-> boolean), NumberFromString>
-└─ ("true" | "false" <-> boolean)
+      `Exit<BooleanFromString, NumberFromString>
+└─ BooleanFromString
    └─ Encoded side transformation failure
       └─ "true" | "false"
          ├─ Expected "true", actual ""
@@ -33,7 +33,7 @@ describe("ExitFromSelf", () => {
     await Util.assertions.decoding.fail(
       schema,
       Exit.fail("a"),
-      `Exit<("true" | "false" <-> boolean), NumberFromString>
+      `Exit<BooleanFromString, NumberFromString>
 └─ Cause<NumberFromString>
    └─ CauseEncoded<NumberFromString>
       └─ { readonly _tag: "Fail"; readonly error: NumberFromString }

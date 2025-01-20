@@ -28,20 +28,20 @@ describe("EitherFromSelf", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.EitherFromSelf({ left: S.NumberFromString, right: Util.BooleanFromLiteral })
+    const schema = S.EitherFromSelf({ left: S.NumberFromString, right: S.BooleanFromString })
     await Util.assertions.decoding.succeed(schema, E.left("1"), E.left(1))
     await Util.assertions.decoding.succeed(schema, E.right("true"), E.right(true))
 
     await Util.assertions.decoding.fail(
       schema,
       null,
-      `Expected Either<("true" | "false" <-> boolean), NumberFromString>, actual null`
+      `Expected Either<BooleanFromString, NumberFromString>, actual null`
     )
     await Util.assertions.decoding.fail(
       schema,
       E.right(""),
-      `Either<("true" | "false" <-> boolean), NumberFromString>
-└─ ("true" | "false" <-> boolean)
+      `Either<BooleanFromString, NumberFromString>
+└─ BooleanFromString
    └─ Encoded side transformation failure
       └─ "true" | "false"
          ├─ Expected "true", actual ""
@@ -50,7 +50,7 @@ describe("EitherFromSelf", () => {
     await Util.assertions.decoding.fail(
       schema,
       E.left("a"),
-      `Either<("true" | "false" <-> boolean), NumberFromString>
+      `Either<BooleanFromString, NumberFromString>
 └─ NumberFromString
    └─ Transformation process failure
       └─ Unable to decode "a" into a number`

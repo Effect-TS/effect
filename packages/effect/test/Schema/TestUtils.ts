@@ -71,13 +71,6 @@ export const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
   expect(ks1).toStrictEqual(ks2)
 }
 
-// TODO: replace with S.BooleanFromString
-export const BooleanFromLiteral = S.transform(S.Literal("true", "false"), S.Boolean, {
-  strict: true,
-  decode: (l) => l === "true",
-  encode: (b) => b ? "true" : "false"
-})
-
 export const Defect = S.transform(S.String, S.Object, {
   strict: true,
   decode: (s) => ({ input: s }),
