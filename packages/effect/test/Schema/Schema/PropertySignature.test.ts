@@ -200,9 +200,9 @@ describe("PropertySignature", () => {
       const ps = S.propertySignature(S.Number).pipe(S.fromKey("b"))
       const transform = S.Struct({ a: ps })
       const schema = S.asSchema(transform)
-      await Util.assertions.decoding.succeed(schema, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
+      await Util.assertions.decoding.succeed(schema, { b: 1 }, { a: 1 }, { parseOptions: Util.onExcessPropertyError })
 
-      await Util.assertions.encoding.succeed(schema, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
+      await Util.assertions.encoding.succeed(schema, { a: 1 }, { b: 1 }, { parseOptions: Util.onExcessPropertyError })
     })
 
     it("symbol key", async () => {
