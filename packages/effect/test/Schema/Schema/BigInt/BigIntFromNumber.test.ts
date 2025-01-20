@@ -5,11 +5,11 @@ import { describe, it } from "vitest"
 describe("BigIntFromNumber", () => {
   const schema = S.BigIntFromNumber
 
-  it.todo("test roundtrip consistency", () => {
+  it("test roundtrip consistency", () => {
     Util.assertions.testRoundtripConsistency(schema)
   })
 
-  it("Decoder", async () => {
+  it("decoding", async () => {
     await Util.assertions.decoding.succeed(schema, 0, 0n)
     await Util.assertions.decoding.succeed(schema, -0, -0n)
     await Util.assertions.decoding.succeed(schema, 1, 1n)
@@ -44,22 +44,26 @@ describe("BigIntFromNumber", () => {
     )
   })
 
-  it("Encoder", async () => {
+  it("encoding", async () => {
     await Util.assertions.encoding.succeed(schema, 1n, 1)
 
     await Util.assertions.encoding.fail(
       schema,
       BigInt(Number.MAX_SAFE_INTEGER) + 1n,
       `BigIntFromNumber
-└─ Transformation process failure
-   └─ Unable to encode 9007199254740992n into a number`
+└─ Type side transformation failure
+   └─ betweenBigInt(-9007199254740991, 9007199254740991)
+      └─ Predicate refinement failure
+         └─ Expected a bigint between -9007199254740991n and 9007199254740991n, actual 9007199254740992n`
     )
     await Util.assertions.encoding.fail(
       schema,
       BigInt(Number.MIN_SAFE_INTEGER) - 1n,
       `BigIntFromNumber
-└─ Transformation process failure
-   └─ Unable to encode -9007199254740992n into a number`
+└─ Type side transformation failure
+   └─ betweenBigInt(-9007199254740991, 9007199254740991)
+      └─ Predicate refinement failure
+         └─ Expected a bigint between -9007199254740991n and 9007199254740991n, actual -9007199254740992n`
     )
   })
 })
