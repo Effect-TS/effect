@@ -5679,7 +5679,7 @@ export class DurationFromSelf extends declare(
  */
 export class DurationFromNanos extends transformOrFail(
   NonNegativeBigIntFromSelf.annotations({ description: "a bigint to be decoded into a Duration" }),
-  DurationFromSelf,
+  DurationFromSelf.pipe(filter((duration) => duration_.isFinite(duration), { description: "a finite duration" })),
   {
     strict: true,
     decode: (nanos) => ParseResult.succeed(duration_.nanos(nanos)),
@@ -5687,7 +5687,7 @@ export class DurationFromNanos extends transformOrFail(
       option_.match(duration_.toNanos(duration), {
         onNone: () =>
           ParseResult.fail(new ParseResult.Type(ast, duration, `Unable to encode ${duration} into a bigint`)),
-        onSome: (val) => ParseResult.succeed(val)
+        onSome: (nanos) => ParseResult.succeed(nanos)
       })
   }
 ).annotations({ identifier: "DurationFromNanos" }) {}

@@ -6,7 +6,7 @@ import { describe, it } from "vitest"
 describe("DurationFromNanos", () => {
   const schema = S.DurationFromNanos
 
-  it.todo("test roundtrip consistency", () => {
+  it("test roundtrip consistency", () => {
     Util.assertions.testRoundtripConsistency(schema)
   })
 
@@ -22,8 +22,10 @@ describe("DurationFromNanos", () => {
       schema,
       Duration.infinity,
       `DurationFromNanos
-└─ Transformation process failure
-   └─ Unable to encode Duration(Infinity) into a bigint`
+└─ Type side transformation failure
+   └─ a finite duration
+      └─ Predicate refinement failure
+         └─ Expected a finite duration, actual Duration(Infinity)`
     )
   })
 })
