@@ -43,11 +43,6 @@ export interface AiToolkit<in out Tools extends Tool.AnySchema>
     f: (
       handlers: Handlers<Tools>
     ) => Handlers<never, R> | Effect.Effect<Handlers<never, R>, EX, RX>
-  ) => Layer.Layer<Tool.ServiceFromTag<Tools["_tag"]> | Registry, EX, R | RX>
-  readonly implementScoped: <R, EX = never, RX = never>(
-    f: (
-      handlers: Handlers<Tools>
-    ) => Handlers<never, R> | Effect.Effect<Handlers<never, R>, EX, RX>
   ) => Layer.Layer<Tool.ServiceFromTag<Tools["_tag"]> | Registry, EX, Exclude<R | RX, Scope>>
 }
 
@@ -188,13 +183,6 @@ class AiToolkitImpl<Tools extends Tool.AnySchema>
     return new AiToolkitImpl(HashMap.union(this.tools, that.tools))
   }
   implement<R, EX = never, RX = never>(
-    f: (
-      handlers: Handlers<Tools>
-    ) => Handlers<never, R> | Effect.Effect<Handlers<never, R>, EX, RX>
-  ): Layer.Layer<Tool.ServiceFromTag<Tools["_tag"]> | Registry, EX, R | RX> {
-    return registerHandlers(this as any, f as any).pipe(Layer.effectDiscard, Layer.provideMerge(Registry.Live))
-  }
-  implementScoped<R, EX = never, RX = never>(
     f: (
       handlers: Handlers<Tools>
     ) => Handlers<never, R> | Effect.Effect<Handlers<never, R>, EX, RX>

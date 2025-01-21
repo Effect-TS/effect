@@ -444,8 +444,11 @@ export const group = <
 ): Layer.Layer<
   HttpApiGroup.ApiGroup<ApiId, Name>,
   Handlers.Error<Return>,
-  | Handlers.Context<Return>
-  | HttpApiGroup.HttpApiGroup.MiddlewareWithName<Groups, Name>
+  Exclude<
+    | Handlers.Context<Return>
+    | HttpApiGroup.HttpApiGroup.MiddlewareWithName<Groups, Name>,
+    Scope
+  >
 > =>
   Router.use((router) =>
     Effect.gen(function*() {
@@ -819,27 +822,27 @@ export const middleware: {
     options?: {
       readonly withContext?: false | undefined
     }
-  ): Layer.Layer<never, EX, RX>
+  ): Layer.Layer<never, EX, Exclude<RX, Scope>>
   <R, EX = never, RX = never>(
     middleware: MiddlewareFn<never, R> | Effect.Effect<MiddlewareFn<never, R>, EX, RX>,
     options: {
       readonly withContext: true
     }
-  ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | RX>
+  ): Layer.Layer<never, EX, Exclude<HttpRouter.HttpRouter.ExcludeProvided<R> | RX, Scope>>
   <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, EX = never, RX = never>(
     api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
     middleware: MiddlewareFn<NoInfer<Error>> | Effect.Effect<MiddlewareFn<NoInfer<Error>>, EX, RX>,
     options?: {
       readonly withContext?: false | undefined
     }
-  ): Layer.Layer<never, EX, RX>
+  ): Layer.Layer<never, EX, Exclude<RX, Scope>>
   <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, R, EX = never, RX = never>(
     api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
     middleware: MiddlewareFn<NoInfer<Error>, R> | Effect.Effect<MiddlewareFn<NoInfer<Error>, R>, EX, RX>,
     options: {
       readonly withContext: true
     }
-  ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | RX>
+  ): Layer.Layer<never, EX, Exclude<HttpRouter.HttpRouter.ExcludeProvided<R> | RX, Scope>>
 } = (
   ...args: [
     middleware: MiddlewareFn<any, any> | Effect.Effect<MiddlewareFn<any, any>, any, any>,
@@ -859,65 +862,8 @@ export const middleware: {
   const add = withContext ? middlewareAdd : middlewareAddNoContext
   const middleware = apiFirst ? args[1] : args[0]
   return (Effect.isEffect(middleware)
-    ? Layer.effectDiscard(Effect.flatMap(middleware as any, add))
-    : Layer.effectDiscard(add(middleware as any))).pipe(Layer.provide(Middleware.layer))
-}
-
-/**
- * Create an `HttpApi` level middleware `Layer`, that has a `Scope` provided to
- * the constructor.
- *
- * @since 1.0.0
- * @category middleware
- */
-export const middlewareScoped: {
-  <EX, RX>(
-    middleware: Effect.Effect<MiddlewareFn<never>, EX, RX>,
-    options?: {
-      readonly withContext?: false | undefined
-    }
-  ): Layer.Layer<never, EX, Exclude<RX, Scope>>
-  <R, EX, RX>(
-    middleware: Effect.Effect<MiddlewareFn<never, R>, EX, RX>,
-    options: {
-      readonly withContext: true
-    }
-  ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | Exclude<RX, Scope>>
-  <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, EX, RX>(
-    api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
-    middleware: Effect.Effect<MiddlewareFn<NoInfer<Error>>, EX, RX>,
-    options?: {
-      readonly withContext?: false | undefined
-    }
-  ): Layer.Layer<never, EX, Exclude<RX, Scope>>
-  <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, R, EX, RX>(
-    api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
-    middleware: Effect.Effect<MiddlewareFn<NoInfer<Error>, R>, EX, RX>,
-    options: {
-      readonly withContext: true
-    }
-  ): Layer.Layer<never, EX, HttpRouter.HttpRouter.ExcludeProvided<R> | Exclude<RX, Scope>>
-} = (
-  ...args: [
-    middleware: MiddlewareFn<any, any> | Effect.Effect<MiddlewareFn<any, any>, any, any>,
-    options?: {
-      readonly withContext?: boolean | undefined
-    } | undefined
-  ] | [
-    api: HttpApi.HttpApi.Any,
-    middleware: MiddlewareFn<any, any> | Effect.Effect<MiddlewareFn<any, any>, any, any>,
-    options?: {
-      readonly withContext?: boolean | undefined
-    } | undefined
-  ]
-): any => {
-  const apiFirst = HttpApi.isHttpApi(args[0])
-  const withContext = apiFirst ? args[2]?.withContext === true : (args as any)[1]?.withContext === true
-  const add = withContext ? middlewareAdd : middlewareAddNoContext
-  const middleware = apiFirst ? args[1] : args[0]
-  return Layer.scopedDiscard(Effect.flatMap(middleware as any, add)).pipe(
-    Layer.provide(Middleware.layer)
-  )
+    ? Layer.scopedDiscard(Effect.flatMap(middleware as any, add))
+    : Layer.scopedDiscard(add(middleware as any))).pipe(Layer.provide(Middleware.layer))
 }
 
 /**

@@ -238,7 +238,7 @@ const makeHandlers = <Events extends Event.Any>(options: {
 export const group = <Events extends Event.Any, Return>(
   group: EventGroup<Events>,
   f: (handlers: Handlers<never, Events>) => Handlers.ValidateReturn<Return>
-): Layer.Layer<Event.ToService<Events>, Handlers.Error<Return>, Handlers.Context<Return>> =>
+): Layer.Layer<Event.ToService<Events>, Handlers.Error<Return>, Exclude<Handlers.Context<Return>, Scope>> =>
   Effect.gen(function*() {
     const context = yield* Effect.context<Handlers.Context<Return>>()
     const result = f(makeHandlers({
@@ -250,7 +250,7 @@ export const group = <Events extends Event.Any, Return>(
     const registry = yield* Registry
     yield* registry.add(handlers)
   }).pipe(
-    Layer.effectDiscard,
+    Layer.scopedDiscard,
     Layer.provide(Registry.layer)
   ) as any
 
@@ -276,67 +276,66 @@ export const groupCompaction = <Events extends Event.Any, R>(
 
     yield* log.registerCompaction({
       events: Object.keys(group.events),
-      effect: ({ entries, write }) =>
-        Effect.gen(function*() {
-          const writePayload = (timestamp: number, tag: string, payload: any) =>
-            Effect.gen(function*() {
-              const event = group.events[tag] as any as Event.AnyWithProps
-              const entry = new Entry({
-                id: makeEntryId({ msecs: timestamp }),
-                event: tag,
-                payload: yield* (Schema.encode(event.payloadMsgPack)(payload).pipe(
-                  Effect.locally(FiberRef.currentContext, context),
-                  Effect.orDie
-                ) as Effect.Effect<Uint8Array>),
-                primaryKey: event.primaryKey(payload)
-              }, { disableValidation: true })
-              yield* write(entry)
-            })
+      effect: Effect.fnUntraced(function*({ entries, write }) {
+        const writePayload = (timestamp: number, tag: string, payload: any) =>
+          Effect.gen(function*() {
+            const event = group.events[tag] as any as Event.AnyWithProps
+            const entry = new Entry({
+              id: makeEntryId({ msecs: timestamp }),
+              event: tag,
+              payload: yield* (Schema.encode(event.payloadMsgPack)(payload).pipe(
+                Effect.locally(FiberRef.currentContext, context),
+                Effect.orDie
+              ) as Effect.Effect<Uint8Array>),
+              primaryKey: event.primaryKey(payload)
+            }, { disableValidation: true })
+            yield* write(entry)
+          })
 
-          const byPrimaryKey = new Map<
-            string,
-            {
-              readonly entries: Array<Entry>
-              readonly taggedPayloads: Array<{
-                readonly _tag: string
-                readonly payload: any
-              }>
-            }
-          >()
-          for (const entry of entries) {
-            const payload =
-              yield* (Schema.decodeUnknown((group.events[entry.event] as any).payloadMsgPack)(entry.payload).pipe(
-                Effect.locally(FiberRef.currentContext, context)
-              ) as Effect.Effect<any>)
-
-            if (byPrimaryKey.has(entry.primaryKey)) {
-              const record = byPrimaryKey.get(entry.primaryKey)!
-              record.entries.push(entry)
-              record.taggedPayloads.push({
-                _tag: entry.event,
-                payload
-              })
-            } else {
-              byPrimaryKey.set(entry.primaryKey, {
-                entries: [entry],
-                taggedPayloads: [{ _tag: entry.event, payload }]
-              })
-            }
+        const byPrimaryKey = new Map<
+          string,
+          {
+            readonly entries: Array<Entry>
+            readonly taggedPayloads: Array<{
+              readonly _tag: string
+              readonly payload: any
+            }>
           }
-
-          for (const [primaryKey, { entries, taggedPayloads }] of byPrimaryKey) {
-            yield* (effect({
-              primaryKey,
-              entries,
-              events: taggedPayloads as any,
-              write(tag, payload) {
-                return writePayload(entries[0].createdAtMillis, tag, payload)
-              }
-            }).pipe(
+        >()
+        for (const entry of entries) {
+          const payload =
+            yield* (Schema.decodeUnknown((group.events[entry.event] as any).payloadMsgPack)(entry.payload).pipe(
               Effect.locally(FiberRef.currentContext, context)
-            ) as Effect.Effect<void>)
+            ) as Effect.Effect<any>)
+
+          if (byPrimaryKey.has(entry.primaryKey)) {
+            const record = byPrimaryKey.get(entry.primaryKey)!
+            record.entries.push(entry)
+            record.taggedPayloads.push({
+              _tag: entry.event,
+              payload
+            })
+          } else {
+            byPrimaryKey.set(entry.primaryKey, {
+              entries: [entry],
+              taggedPayloads: [{ _tag: entry.event, payload }]
+            })
           }
-        })
+        }
+
+        for (const [primaryKey, { entries, taggedPayloads }] of byPrimaryKey) {
+          yield* (effect({
+            primaryKey,
+            entries,
+            events: taggedPayloads as any,
+            write(tag, payload) {
+              return writePayload(entries[0].createdAtMillis, tag, payload)
+            }
+          }).pipe(
+            Effect.locally(FiberRef.currentContext, context)
+          ) as Effect.Effect<void>)
+        }
+      })
     })
   }).pipe(Layer.scopedDiscard)
 

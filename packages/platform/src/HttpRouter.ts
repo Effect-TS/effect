@@ -140,8 +140,7 @@ export declare namespace HttpRouter {
     new(_: never): Context.TagClassShape<Name, Service<E, R>>
     readonly Live: Layer.Layer<Self>
     readonly router: Effect.Effect<HttpRouter<E, R>, never, Self>
-    readonly use: <XA, XE, XR>(f: (router: Service<E, R>) => Effect.Effect<XA, XE, XR>) => Layer.Layer<never, XE, XR>
-    readonly useScoped: <XA, XE, XR>(
+    readonly use: <XA, XE, XR>(
       f: (router: Service<E, R>) => Effect.Effect<XA, XE, XR>
     ) => Layer.Layer<never, XE, Exclude<XR, Scope.Scope>>
     readonly unwrap: <XA, XE, XR>(f: (router: HttpRouter<E, R>) => Layer.Layer<XA, XE, XR>) => Layer.Layer<XA, XE, XR>
