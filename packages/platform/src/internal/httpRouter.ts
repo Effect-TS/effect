@@ -843,10 +843,6 @@ export const Tag =
     TagClass_.Live = Layer.sync(TagClass_, makeService)
     TagClass_.router = Effect.flatMap(TagClass_, (_) => _.router)
     TagClass_.use = (f) =>
-      Layer.effectDiscard(Effect.flatMap(TagClass_, f)).pipe(
-        Layer.provide(TagClass_.Live)
-      )
-    TagClass_.useScoped = (f) =>
       TagClass_.pipe(
         Effect.flatMap(f),
         Layer.scopedDiscard,
