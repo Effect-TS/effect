@@ -406,11 +406,6 @@ describe("Cause", () => {
       expect(err1.message).toEqual("An unknown error occurred")
     })
 
-    it("inherits the message from the provided cause if possible", () => {
-      const err1 = new Cause.UnknownException(new Error("my error"))
-      expect(err1.message).toEqual("my error")
-    })
-
     it("accepts a custom override message", () => {
       const err1 = new Cause.UnknownException(new Error("my error"), "my message")
       expect(err1.message).toEqual("my message")

@@ -919,20 +919,19 @@ export const TimeoutException: new(message?: string | undefined) => TimeoutExcep
  * **Details**
  *
  * This function constructs an `UnknownException` with flexible behavior for
- * managing the error message:
+ * managing the error message and cause.
  *
- * 1. If no `message` is provided, it defaults to `"An unknown error occurred"`.
- * 2. If the `error` (cause) has a `message` property and the value is a string,
- *    the message from the cause is used as the error's message.
- * 3. If a `message` argument is explicitly provided, it takes precedence over
- *    the inherited message or the default.
- *
- * Additionally, the `error` argument is passed as the `cause` to the `super`
+ * The required `error` argument is passed as the `cause` to the global `Error`
  * constructor, ensuring that the original cause is preserved in the error chain
- * for debugging purposes.
+ * for debugging purposes. This ensures that the origin stack trace is
+ * preserved.
  *
  * The `error` argument is always stored in the `error` property of the
  * `UnknownException` instance for reference, regardless of its type.
+ *
+ * Additionally, if you provide a `message` argument, it is used as the error
+ * message. If no `message` is provided, the error message defaults to `"An
+ * unknown error occurred"`.
  *
  * **When to Use**
  *

@@ -103,7 +103,11 @@ export const try_: {
     try {
       return core.succeed(internalCall(evaluate))
     } catch (error) {
-      return core.fail(onFailure ? internalCall(() => onFailure(error)) : new core.UnknownException(error))
+      return core.fail(
+        onFailure
+          ? internalCall(() => onFailure(error))
+          : new core.UnknownException(error, "An unknown error occurred in Effect.try")
+      )
     }
   })
 }
@@ -1644,17 +1648,20 @@ export const tryPromise: {
     evaluate = arg.try as (signal?: AbortSignal) => PromiseLike<A>
     catcher = arg.catch
   }
+  const fail = (e: unknown) =>
+    catcher
+      ? core.failSync(() => catcher(e))
+      : core.fail(new core.UnknownException(e, "An unknown error occurred in Effect.tryPromise"))
 
   if (evaluate.length >= 1) {
     return core.async((resolve, signal) => {
       try {
-        evaluate(signal)
-          .then(
-            (a) => resolve(core.exitSucceed(a)),
-            (e) => resolve(catcher ? core.failSync(() => catcher(e)) : core.fail(new core.UnknownException(e)))
-          )
+        evaluate(signal).then(
+          (a) => resolve(core.exitSucceed(a)),
+          (e) => resolve(fail(e))
+        )
       } catch (e) {
-        resolve(catcher ? core.failSync(() => catcher(e)) : core.fail(new core.UnknownException(e)))
+        resolve(fail(e))
       }
     })
   }
@@ -1664,10 +1671,10 @@ export const tryPromise: {
       evaluate()
         .then(
           (a) => resolve(core.exitSucceed(a)),
-          (e) => resolve(catcher ? core.failSync(() => catcher(e)) : core.fail(new core.UnknownException(e)))
+          (e) => resolve(fail(e))
         )
     } catch (e) {
-      resolve(catcher ? core.failSync(() => catcher(e)) : core.fail(new core.UnknownException(e)))
+      resolve(fail(e))
     }
   })
 }
