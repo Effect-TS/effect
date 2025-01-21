@@ -13013,6 +13013,9 @@ export const Tag: <const Id extends string>(id: Id) => <
     return makeTagProxy(TagClass as any)
   }
 
+/** @internal */
+type MissingSelfGeneric = `Missing \`Self\` generic - use \`class Self extends Effect.Service<Self>()...\``
+
 /**
  * Simplifies the creation and management of services in Effect by defining both
  * a `Tag` and a `Layer`.
@@ -13057,7 +13060,7 @@ export const Tag: <const Id extends string>(id: Id) => <
  * @category Context
  * @experimental might be up for breaking changes
  */
-export const Service: <Self>() => {
+export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGeneric : {
   <
     const Key extends string,
     const Make extends
@@ -13230,7 +13233,7 @@ export const Service: <Self>() => {
 
     return proxy === true ? makeTagProxy(TagClass) : TagClass
   }
-}
+} as any
 
 /**
  * @since 3.9.0
