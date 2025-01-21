@@ -167,8 +167,8 @@ export const layer = (options: {
  */
 export const layerConfig = (
   options: Config.Config.Wrap<{
-    readonly apiKey?: Redacted.Redacted
-    readonly apiUrl?: string
+    readonly apiKey?: Redacted.Redacted | undefined
+    readonly apiUrl?: string | undefined
     readonly organizationId?: Redacted.Redacted | undefined
     readonly projectId?: Redacted.Redacted | undefined
     readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
