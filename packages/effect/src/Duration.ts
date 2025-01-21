@@ -41,9 +41,17 @@ export interface Duration extends Equal.Equal, Pipeable, Inspectable {
  * @category models
  */
 export type DurationValue =
-  | { _tag: "Millis"; millis: number }
-  | { _tag: "Nanos"; nanos: bigint }
-  | { _tag: "Infinity" }
+  | {
+    readonly _tag: "Millis"
+    readonly millis: number
+  }
+  | {
+    readonly _tag: "Nanos"
+    readonly nanos: bigint
+  }
+  | {
+    readonly _tag: "Infinity"
+  }
 
 /**
  * @since 2.0.0
