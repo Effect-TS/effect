@@ -55,7 +55,8 @@ export declare namespace OpenAiClient {
  * @category constructors
  */
 export const make = (options: {
-  readonly apiKey: Redacted.Redacted
+  readonly apiKey?: Redacted.Redacted | undefined
+  readonly apiUrl?: string | undefined
   readonly organizationId?: Redacted.Redacted | undefined
   readonly projectId?: Redacted.Redacted | undefined
   readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
@@ -64,8 +65,8 @@ export const make = (options: {
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
         request.pipe(
-          HttpClientRequest.prependUrl("https://api.openai.com/v1"),
-          HttpClientRequest.bearerToken(options.apiKey),
+          HttpClientRequest.prependUrl(options.apiUrl ?? "https://api.openai.com/v1"),
+          options.apiKey ? HttpClientRequest.bearerToken(options.apiKey) : identity,
           options.organizationId !== undefined
             ? HttpClientRequest.setHeader("OpenAI-Organization", Redacted.value(options.organizationId))
             : identity,
