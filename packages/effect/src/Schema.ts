@@ -5726,6 +5726,11 @@ const FiniteHRTime = Tuple(
 
 const InfiniteHRTime = Tuple(Literal(-1), Literal(0)).annotations({ identifier: "InfiniteHRTime" })
 
+const HRTime: Schema<readonly [seconds: number, nanos: number]> = Union(FiniteHRTime, InfiniteHRTime).annotations({
+  identifier: "HRTime",
+  description: "a tuple of seconds and nanos to be decoded into a Duration"
+})
+
 /**
  * A schema that transforms a `[number, number]` tuple into a `Duration`.
  *
@@ -5735,10 +5740,7 @@ const InfiniteHRTime = Tuple(Literal(-1), Literal(0)).annotations({ identifier: 
  * @since 3.10.0
  */
 export class Duration extends transform(
-  Union(FiniteHRTime, InfiniteHRTime).annotations({
-    identifier: "HRTime",
-    description: "a tuple of seconds and nanos to be decoded into a Duration"
-  }),
+  HRTime,
   DurationFromSelf,
   {
     strict: true,
