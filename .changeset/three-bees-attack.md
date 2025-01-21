@@ -1,5 +1,5 @@
 ---
-"effect": major
+"effect": minor
 ---
 
 Add HashMap.toValues getter
