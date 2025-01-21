@@ -5677,14 +5677,14 @@ export class DurationFromSelf extends declare(
 ) {}
 
 /**
- * A schema that transforms a `bigint` tuple into a `Duration`.
- * Treats the value as the number of nanoseconds.
+ * A schema that transforms a non negative `bigint` into a `Duration`. Treats
+ * the value as the number of nanoseconds.
  *
  * @category Duration transformations
  * @since 3.10.0
  */
 export class DurationFromNanos extends transformOrFail(
-  BigIntFromSelf.annotations({ description: "a bigint to be decoded into a Duration" }),
+  NonNegativeBigIntFromSelf.annotations({ description: "a bigint to be decoded into a Duration" }),
   DurationFromSelf,
   {
     strict: true,
@@ -5699,8 +5699,16 @@ export class DurationFromNanos extends transformOrFail(
 ).annotations({ identifier: "DurationFromNanos" }) {}
 
 /**
- * A schema that transforms a `number` tuple into a `Duration`.
- * Treats the value as the number of milliseconds.
+ * A non-negative integer. +Infinity is excluded.
+ *
+ * @category number constructors
+ * @since 3.11.10
+ */
+export const NonNegativeInt = NonNegative.pipe(int()).annotations({ identifier: "NonNegativeInt" })
+
+/**
+ * A schema that transforms a (possibly Infinite) non negative integer into a
+ * `Duration`. Treats the value as the number of milliseconds.
  *
  * @category Duration transformations
  * @since 3.10.0
@@ -5711,30 +5719,32 @@ export class DurationFromMillis extends transform(
   { strict: true, decode: (ms) => duration_.millis(ms), encode: (n) => duration_.toMillis(n) }
 ).annotations({ identifier: "DurationFromMillis" }) {}
 
-/**
- * @category number constructors
- * @since 3.11.10
- */
-export const NonNegativeInt = NonNegative.pipe(int()).annotations({ identifier: "NonNegativeInt" })
-
-const HRTime: Schema<readonly [seconds: number, nanos: number]> = Tuple(
+const FiniteHRTime = Tuple(
   element(NonNegativeInt).annotations({ title: "seconds" }),
   element(NonNegativeInt).annotations({ title: "nanos" })
-).annotations({ identifier: "HRTime" })
+).annotations({ identifier: "FiniteHRTime" })
+
+const InfiniteHRTime = Tuple(Literal(-1), Literal(0)).annotations({ identifier: "InfiniteHRTime" })
 
 /**
  * A schema that transforms a `[number, number]` tuple into a `Duration`.
+ *
+ * Infinite durations are encoded as `[-1, 0]`.
  *
  * @category Duration transformations
  * @since 3.10.0
  */
 export class Duration extends transform(
-  HRTime.annotations({ description: "a tuple of seconds and nanos to be decoded into a Duration" }),
+  Union(FiniteHRTime, InfiniteHRTime).annotations({
+    identifier: "HRTime",
+    description: "a tuple of seconds and nanos to be decoded into a Duration"
+  }),
   DurationFromSelf,
   {
     strict: true,
-    decode: ([seconds, nanos]) => duration_.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
-    encode: (duration) => duration_.toHrTime(duration)
+    decode: ([seconds, nanos]) =>
+      seconds === -1 ? duration_.infinity : duration_.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
+    encode: (duration) => duration.value._tag === "Infinity" ? [-1, 0] as const : duration_.toHrTime(duration)
   }
 ).annotations({ identifier: "Duration" }) {}
 
