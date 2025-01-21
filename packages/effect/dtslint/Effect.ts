@@ -1350,3 +1350,13 @@ hole<
     }>
   >
 >()
+
+// -------------------------------------------------------------------------------------
+// transposeOption
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<Option<never>, never, never>
+Effect.transposeOption(Option.none())
+
+// $ExpectType Effect<Option<string>, "err-1", "dep-1">
+Effect.transposeOption(Option.some(string))
