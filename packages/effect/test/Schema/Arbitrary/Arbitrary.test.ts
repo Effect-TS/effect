@@ -480,9 +480,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
         left: Expression,
         right: Expression
       })
-      Util.assertions.arbitrary.validateGeneratedValues(Operation, {
-        params: { numRuns: 5 }
-      })
+      Util.assertions.arbitrary.validateGeneratedValues(Operation)
     })
 
     it("RedactedFromSelf", () => {
