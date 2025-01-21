@@ -34,6 +34,7 @@ import * as defaultServices from "./internal/defaultServices.js"
 import * as circular from "./internal/effect/circular.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as layer from "./internal/layer.js"
+import * as option_ from "./internal/option.js"
 import * as query from "./internal/query.js"
 import * as runtime_ from "./internal/runtime.js"
 import * as schedule_ from "./internal/schedule.js"
@@ -12817,7 +12818,7 @@ export const withParentSpan: {
  * ```
  *
  * @since 2.0.0
- * @category Optional Wrapping
+ * @category Optional Wrapping & Unwrapping
  */
 export const fromNullable: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuchElementException> = effect.fromNullable
 
@@ -12872,11 +12873,46 @@ export const fromNullable: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuchE
  * ```
  *
  * @since 2.0.0
- * @category Optional Wrapping
+ * @category Optional Wrapping & Unwrapping
  */
 export const optionFromOptional: <A, E, R>(
   self: Effect<A, E, R>
 ) => Effect<Option.Option<A>, Exclude<E, Cause.NoSuchElementException>, R> = effect.optionFromOptional
+
+/**
+ * Converts an `Option` of an `Effect` into an `Effect` of an `Option`.
+ *
+ * **Details**
+ *
+ * This function transforms an `Option<Effect<A, E, R>>` into an
+ * `Effect<Option<A>, E, R>`. If the `Option` is `None`, the resulting `Effect`
+ * will immediately succeed with a `None` value. If the `Option` is `Some`, the
+ * inner `Effect` will be executed, and its result wrapped in a `Some`.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Option } from "effect"
+ *
+ * //      ┌─── Option<Effect<number, never, never>>
+ * //      ▼
+ * const maybe = Option.some(Effect.succeed(42))
+ *
+ * //      ┌─── Effect<Option<number>, never, never>
+ * //      ▼
+ * const result = Effect.transposeOption(maybe)
+ *
+ * console.log(Effect.runSync(result))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 42 }
+ * ```
+ *
+ * @since 3.13.0
+ * @category Optional Wrapping & Unwrapping
+ */
+export const transposeOption = <A = never, E = never, R = never>(
+  self: Option.Option<Effect<A, E, R>>
+): Effect<Option.Option<A>, E, R> => {
+  return option_.isNone(self) ? succeedNone : map(self.value, option_.some)
+}
 
 /**
  * @since 2.0.0
