@@ -5701,16 +5701,22 @@ export class DurationFromNanos extends transformOrFail(
 export const NonNegativeInt = NonNegative.pipe(int()).annotations({ identifier: "NonNegativeInt" })
 
 /**
- * A schema that transforms a (possibly Infinite) non negative integer into a
+ * A schema that transforms a (possibly Infinite) non negative number into a
  * `Duration`. Treats the value as the number of milliseconds.
  *
  * @category Duration transformations
  * @since 3.10.0
  */
 export class DurationFromMillis extends transform(
-  Number$.annotations({ description: "a number to be decoded into a Duration" }),
+  NonNegative.annotations({
+    description: "a non-negative number to be decoded into a Duration"
+  }),
   DurationFromSelf,
-  { strict: true, decode: (ms) => duration_.millis(ms), encode: (n) => duration_.toMillis(n) }
+  {
+    strict: true,
+    decode: (ms) => duration_.millis(ms),
+    encode: (duration) => duration_.toMillis(duration)
+  }
 ).annotations({ identifier: "DurationFromMillis" }) {}
 
 const FiniteHRTime = Tuple(
