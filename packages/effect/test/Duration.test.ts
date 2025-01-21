@@ -6,10 +6,6 @@ import { deepStrictEqual } from "effect/test/util"
 import { assert, describe, expect, it } from "vitest"
 
 describe("Duration", () => {
-  it("exports", () => {
-    expect(Duration.matchWith).exist
-  })
-
   it("decode", () => {
     const millis100 = Duration.millis(100)
     expect(Duration.decode(millis100) === millis100).toEqual(true)
@@ -468,5 +464,60 @@ describe("Duration", () => {
     expect(match(Duration.decode(Infinity))).toEqual("millis")
 
     expect(match("100 millis")).toEqual("millis")
+  })
+
+  it("isFinite", () => {
+    expect(Duration.isFinite(Duration.millis(100))).toBe(true)
+    expect(Duration.isFinite(Duration.nanos(100n))).toBe(true)
+    expect(Duration.isFinite(Duration.infinity)).toBe(false)
+  })
+
+  it("isZero", () => {
+    expect(Duration.isZero(Duration.zero)).toBe(true)
+    expect(Duration.isZero(Duration.millis(0))).toBe(true)
+    expect(Duration.isZero(Duration.nanos(0n))).toBe(true)
+    expect(Duration.isZero(Duration.infinity)).toBe(false)
+    expect(Duration.isZero(Duration.millis(1))).toBe(false)
+    expect(Duration.isZero(Duration.nanos(1n))).toBe(false)
+  })
+
+  it("toMinutes", () => {
+    expect(Duration.millis(60000).pipe(Duration.toMinutes)).toBe(1)
+    expect(Duration.nanos(60000000000n).pipe(Duration.toMinutes)).toBe(1)
+    expect(Duration.infinity.pipe(Duration.toMinutes)).toBe(Infinity)
+
+    expect(Duration.toMinutes("1 minute")).toBe(1)
+    expect(Duration.toMinutes("2 minutes")).toBe(2)
+    expect(Duration.toMinutes("1 hour")).toBe(60)
+  })
+
+  it("toHours", () => {
+    expect(Duration.millis(3_600_000).pipe(Duration.toHours)).toBe(1)
+    expect(Duration.nanos(3_600_000_000_000n).pipe(Duration.toHours)).toBe(1)
+    expect(Duration.infinity.pipe(Duration.toHours)).toBe(Infinity)
+
+    expect(Duration.toHours("1 hour")).toBe(1)
+    expect(Duration.toHours("2 hours")).toBe(2)
+    expect(Duration.toHours("1 day")).toBe(24)
+  })
+
+  it("toDays", () => {
+    expect(Duration.millis(86_400_000).pipe(Duration.toDays)).toBe(1)
+    expect(Duration.nanos(86_400_000_000_000n).pipe(Duration.toDays)).toBe(1)
+    expect(Duration.infinity.pipe(Duration.toDays)).toBe(Infinity)
+
+    expect(Duration.toDays("1 day")).toBe(1)
+    expect(Duration.toDays("2 days")).toBe(2)
+    expect(Duration.toDays("1 week")).toBe(7)
+  })
+
+  it("toWeeks", () => {
+    expect(Duration.millis(604_800_000).pipe(Duration.toWeeks)).toBe(1)
+    expect(Duration.nanos(604_800_000_000_000n).pipe(Duration.toWeeks)).toBe(1)
+    expect(Duration.infinity.pipe(Duration.toWeeks)).toBe(Infinity)
+
+    expect(Duration.toWeeks("1 week")).toBe(1)
+    expect(Duration.toWeeks("2 weeks")).toBe(2)
+    expect(Duration.toWeeks("14 days")).toBe(2)
   })
 })
