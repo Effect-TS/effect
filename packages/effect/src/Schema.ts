@@ -5664,13 +5664,7 @@ export class DurationFromSelf extends declare(
       fc.oneof(
         fc.constant(duration_.infinity),
         fc.bigInt({ min: 0n }).map((_) => duration_.nanos(_)),
-        fc.bigInt({ min: 0n }).map((_) => duration_.micros(_)),
-        fc.maxSafeNat().map((_) => duration_.millis(_)),
-        fc.maxSafeNat().map((_) => duration_.seconds(_)),
-        fc.maxSafeNat().map((_) => duration_.minutes(_)),
-        fc.maxSafeNat().map((_) => duration_.hours(_)),
-        fc.maxSafeNat().map((_) => duration_.days(_)),
-        fc.maxSafeNat().map((_) => duration_.weeks(_))
+        fc.maxSafeNat().map((_) => duration_.millis(_))
       ),
     equivalence: (): Equivalence.Equivalence<duration_.Duration> => duration_.Equivalence
   }
