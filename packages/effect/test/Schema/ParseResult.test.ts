@@ -331,7 +331,8 @@ describe("ParseIssue.actual", () => {
     it("primitive + primitive", () => {
       expect(P.getSearchTree([S.String.ast, S.Number.ast], true)).toEqual({
         keys: {},
-        otherwise: [S.String.ast, S.Number.ast]
+        otherwise: [S.String.ast, S.Number.ast],
+        candidates: []
       })
     })
 
@@ -344,10 +345,12 @@ describe("ParseIssue.actual", () => {
               buckets: {
                 a: [a.ast]
               },
-              literals: [new AST.Literal("a")]
+              literals: [new AST.Literal("a")],
+              candidates: [a.ast]
             }
           },
-          otherwise: [S.Number.ast]
+          otherwise: [S.Number.ast],
+          candidates: [a.ast]
         }
       )
     })
@@ -362,10 +365,12 @@ describe("ParseIssue.actual", () => {
               a: [a.ast],
               b: [b.ast]
             },
-            literals: [new AST.Literal("a"), new AST.Literal("b")]
+            literals: [new AST.Literal("a"), new AST.Literal("b")],
+            candidates: [a.ast, b.ast]
           }
         },
-        otherwise: []
+        otherwise: [],
+        candidates: [a.ast, b.ast]
       })
     })
 
@@ -380,16 +385,19 @@ describe("ParseIssue.actual", () => {
             buckets: {
               A: [A.ast]
             },
-            literals: [new AST.Literal("A")]
+            literals: [new AST.Literal("A")],
+            candidates: [A.ast]
           },
           b: {
             buckets: {
               B: [B.ast]
             },
-            literals: [new AST.Literal("B")]
+            literals: [new AST.Literal("B")],
+            candidates: [B.ast]
           }
         },
-        otherwise: []
+        otherwise: [],
+        candidates: [A.ast, B.ast]
       })
     })
 
@@ -404,16 +412,19 @@ describe("ParseIssue.actual", () => {
             buckets: {
               A: [A.ast]
             },
-            literals: [new AST.Literal("A")]
+            literals: [new AST.Literal("A")],
+            candidates: [A.ast]
           },
           _tag2: {
             buckets: {
               A2: [B.ast]
             },
-            literals: [new AST.Literal("A2")]
+            literals: [new AST.Literal("A2")],
+            candidates: [B.ast]
           }
         },
-        otherwise: []
+        otherwise: [],
+        candidates: [A.ast, B.ast]
       })
     })
 
@@ -429,10 +440,12 @@ describe("ParseIssue.actual", () => {
               a: [a.ast],
               b: [b.ast]
             },
-            literals: [new AST.Literal("a"), new AST.Literal("b")]
+            literals: [new AST.Literal("a"), new AST.Literal("b")],
+            candidates: [a.ast, b.ast]
           }
         },
-        otherwise: []
+        otherwise: [],
+        candidates: [a.ast, b.ast]
       })
     })
 
@@ -447,16 +460,19 @@ describe("ParseIssue.actual", () => {
             buckets: {
               a: [a.ast]
             },
-            literals: [new AST.Literal("a")]
+            literals: [new AST.Literal("a")],
+            candidates: [a.ast]
           },
           1: {
             buckets: {
               b: [b.ast]
             },
-            literals: [new AST.Literal("b")]
+            literals: [new AST.Literal("b")],
+            candidates: [b.ast]
           }
         },
-        otherwise: []
+        otherwise: [],
+        candidates: [a.ast, b.ast]
       })
     })
 
@@ -471,16 +487,19 @@ describe("ParseIssue.actual", () => {
             buckets: {
               a: [a.ast]
             },
-            literals: [new AST.Literal("a")]
+            literals: [new AST.Literal("a")],
+            candidates: [a.ast]
           },
           1: {
             buckets: {
               c: [b.ast]
             },
-            literals: [new AST.Literal("c")]
+            literals: [new AST.Literal("c")],
+            candidates: [b.ast]
           }
         },
-        otherwise: []
+        otherwise: [],
+        candidates: [a.ast, b.ast]
       })
     })
 
@@ -500,27 +519,34 @@ describe("ParseIssue.actual", () => {
             buckets: {
               catA: [a.ast]
             },
-            literals: [new AST.Literal("catA")]
+            literals: [new AST.Literal("catA")],
+            candidates: [a.ast]
           },
           tag: {
             buckets: {
               b: [b.ast],
               c: [c.ast]
             },
-            literals: [new AST.Literal("b"), new AST.Literal("c")]
+            literals: [new AST.Literal("b"), new AST.Literal("c")],
+            candidates: [b.ast, c.ast]
           }
         },
-        otherwise: []
+        otherwise: [],
+        candidates: [a.ast, b.ast, c.ast]
       })
     })
 
     it("big union", () => {
+      const a = S.Struct({ type: S.Literal("a"), value: S.String })
+      const b = S.Struct({ type: S.Literal("b"), value: S.String })
+      const c = S.Struct({ type: S.Literal("c"), value: S.String })
+      const n = S.Struct({ type: S.Literal(null), value: S.String })
       const schema = S.Union(
-        S.Struct({ type: S.Literal("a"), value: S.String }),
-        S.Struct({ type: S.Literal("b"), value: S.String }),
-        S.Struct({ type: S.Literal("c"), value: S.String }),
+        a,
+        b,
+        c,
         S.Struct({ type: S.String, value: S.String }),
-        S.Struct({ type: S.Literal(null), value: S.String }),
+        n,
         S.Struct({ type: S.Undefined, value: S.String }),
         S.Struct({ type: S.Literal("d", "e"), value: S.String }),
         S.Struct({ type: S.Struct({ nested: S.String }), value: S.String }),
@@ -531,17 +557,18 @@ describe("ParseIssue.actual", () => {
         keys: {
           type: {
             buckets: {
-              a: [S.Struct({ type: S.Literal("a"), value: S.String }).ast],
-              b: [S.Struct({ type: S.Literal("b"), value: S.String }).ast],
-              c: [S.Struct({ type: S.Literal("c"), value: S.String }).ast],
-              null: [S.Struct({ type: S.Literal(null), value: S.String }).ast]
+              a: [a.ast],
+              b: [b.ast],
+              c: [c.ast],
+              null: [n.ast]
             },
             literals: [
               new AST.Literal("a"),
               new AST.Literal("b"),
               new AST.Literal("c"),
               new AST.Literal(null)
-            ]
+            ],
+            candidates: [a.ast, b.ast, c.ast, n.ast]
           }
         },
         otherwise: [
@@ -550,6 +577,12 @@ describe("ParseIssue.actual", () => {
           S.Struct({ type: S.Literal("d", "e"), value: S.String }).ast,
           S.Struct({ type: S.Struct({ nested: S.String }), value: S.String }).ast,
           S.Struct({ type: S.Array(S.Number), value: S.String }).ast
+        ],
+        candidates: [
+          a.ast,
+          b.ast,
+          c.ast,
+          n.ast
         ]
       })
     })
@@ -565,7 +598,8 @@ describe("ParseIssue.actual", () => {
       const types = (schema.ast as AST.Union).types
       expect(P.getSearchTree(types, true)).toEqual({
         keys: {},
-        otherwise: [ab.ast, AB.ast]
+        otherwise: [ab.ast, AB.ast],
+        candidates: []
       })
     })
   })

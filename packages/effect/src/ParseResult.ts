@@ -1371,9 +1371,10 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     case "Union": {
       const searchTree = getSearchTree(ast.types, isDecoding)
       const ownKeys = util_.ownKeys(searchTree.keys)
-      const len = ownKeys.length
+      const ownKeysLen = ownKeys.length
+      const astTypesLen = ast.types.length
       const map = new Map<any, Parser>()
-      for (let i = 0; i < ast.types.length; i++) {
+      for (let i = 0; i < astTypesLen; i++) {
         map.set(ast.types[i], goMemo(ast.types[i], isDecoding))
       }
       const concurrency = getConcurrency(ast) ?? 1
@@ -1382,9 +1383,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         const es: Array<[number, ParseIssue]> = []
         let stepKey = 0
         let candidates: Array<AST.AST> = []
-        if (len > 0) {
+        if (ownKeysLen > 0) {
           if (Predicate.isRecordOrArray(input)) {
-            for (let i = 0; i < len; i++) {
+            for (let i = 0; i < ownKeysLen; i++) {
               const name = ownKeys[i]
               const buckets = searchTree.keys[name].buckets
               // for each property that should contain a literal, check if the input contains that property
@@ -1395,33 +1396,33 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   // retrive the minimal set of candidates for decoding
                   candidates = candidates.concat(buckets[literal])
                 } else {
-                  const literals = AST.Union.make(searchTree.keys[name].literals)
+                  const { candidates, literals } = searchTree.keys[name]
+                  const literalsUnion = AST.Union.make(literals)
+                  const errorAst = candidates.length === astTypesLen
+                    ? new AST.TypeLiteral([new AST.PropertySignature(name, literalsUnion, false, true)], [])
+                    : AST.Union.make(candidates)
                   es.push([
                     stepKey++,
-                    new Composite(
-                      new AST.TypeLiteral([
-                        new AST.PropertySignature(name, literals, false, true)
-                      ], []),
-                      input,
-                      new Pointer(name, input, new Type(literals, input[name]))
-                    )
+                    new Composite(errorAst, input, new Pointer(name, input, new Type(literalsUnion, input[name])))
                   ])
                 }
               } else {
-                const literals = AST.Union.make(searchTree.keys[name].literals)
-                const fakeps = new AST.PropertySignature(name, literals, false, true)
+                const { candidates, literals } = searchTree.keys[name]
+                const fakePropertySignature = new AST.PropertySignature(name, AST.Union.make(literals), false, true)
+                const errorAst = candidates.length === astTypesLen
+                  ? new AST.TypeLiteral([fakePropertySignature], [])
+                  : AST.Union.make(candidates)
                 es.push([
                   stepKey++,
-                  new Composite(
-                    new AST.TypeLiteral([fakeps], []),
-                    input,
-                    new Pointer(name, input, new Missing(fakeps))
-                  )
+                  new Composite(errorAst, input, new Pointer(name, input, new Missing(fakePropertySignature)))
                 ])
               }
             }
           } else {
-            es.push([stepKey++, new Type(ast, input)])
+            const errorAst = searchTree.candidates.length === astTypesLen
+              ? ast
+              : AST.Union.make(searchTree.candidates)
+            es.push([stepKey++, new Type(errorAst, input)])
           }
         }
         if (searchTree.otherwise.length > 0) {
@@ -1560,16 +1561,19 @@ export const getLiterals = (
 }
 
 /**
- * The purpose of the algorithm is to narrow down the pool of possible candidates for decoding as much as possible.
+ * The purpose of the algorithm is to narrow down the pool of possible
+ * candidates for decoding as much as possible.
  *
  * This function separates the schemas into two groups, `keys` and `otherwise`:
  *
  * - `keys`: the schema has at least one property with a literal value
  * - `otherwise`: the schema has no properties with a literal value
  *
- * If a schema has at least one property with a literal value, so it ends up in `keys`, first a namespace is created for
- * the name of the property containing the literal, and then within this namespace a "bucket" is created for the literal
- * value in which to store all the schemas that have the same property and literal value.
+ * If a schema has at least one property with a literal value, so it ends up in
+ * `keys`, first a namespace is created for the name of the property containing
+ * the literal, and then within this namespace a "bucket" is created for the
+ * literal value in which to store all the schemas that have the same property
+ * and literal value.
  *
  * @internal
  */
@@ -1581,25 +1585,30 @@ export const getSearchTree = (
     readonly [key: PropertyKey]: {
       buckets: { [literal: string]: ReadonlyArray<AST.AST> }
       literals: ReadonlyArray<AST.Literal> // this is for error messages
+      candidates: ReadonlyArray<AST.AST>
     }
   }
   otherwise: ReadonlyArray<AST.AST>
+  candidates: ReadonlyArray<AST.AST>
 } => {
   const keys: {
     [key: PropertyKey]: {
       buckets: { [literal: string]: Array<AST.AST> }
       literals: Array<AST.Literal>
+      candidates: Array<AST.AST>
     }
   } = {}
   const otherwise: Array<AST.AST> = []
+  const candidates: Array<AST.AST> = []
   for (let i = 0; i < members.length; i++) {
     const member = members[i]
     const tags = getLiterals(member, isDecoding)
     if (tags.length > 0) {
+      candidates.push(member)
       for (let j = 0; j < tags.length; j++) {
         const [key, literal] = tags[j]
         const hash = String(literal.literal)
-        keys[key] = keys[key] || { buckets: {}, literals: [] }
+        keys[key] = keys[key] || { buckets: {}, literals: [], candidates: [] }
         const buckets = keys[key].buckets
         if (Object.prototype.hasOwnProperty.call(buckets, hash)) {
           if (j < tags.length - 1) {
@@ -1607,9 +1616,11 @@ export const getSearchTree = (
           }
           buckets[hash].push(member)
           keys[key].literals.push(literal)
+          keys[key].candidates.push(member)
         } else {
           buckets[hash] = [member]
           keys[key].literals.push(literal)
+          keys[key].candidates.push(member)
           break
         }
       }
@@ -1617,7 +1628,7 @@ export const getSearchTree = (
       otherwise.push(member)
     }
   }
-  return { keys, otherwise }
+  return { keys, otherwise, candidates }
 }
 
 const dropRightRefinement = (ast: AST.AST): AST.AST => AST.isRefinement(ast) ? dropRightRefinement(ast.from) : ast

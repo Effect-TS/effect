@@ -11,6 +11,7 @@ describe("Duration", () => {
   })
 
   it("decoding", async () => {
+    await Util.assertions.decoding.succeed(schema, [-1, 0], Duration.infinity)
     await Util.assertions.decoding.succeed(schema, [555, 123456789], Duration.nanos(555123456789n))
     await Util.assertions.decoding.fail(
       schema,
@@ -18,12 +19,16 @@ describe("Duration", () => {
       `Duration
 └─ Encoded side transformation failure
    └─ HRTime
-      └─ [0]
-         └─ NonNegativeInt
-            └─ From side refinement failure
-               └─ NonNegative
-                  └─ Predicate refinement failure
-                     └─ Expected a non-negative number, actual -500`
+      ├─ InfiniteHRTime
+      │  └─ ["0"]
+      │     └─ Expected -1, actual -500
+      └─ FiniteHRTime
+         └─ [0]
+            └─ NonNegativeInt
+               └─ From side refinement failure
+                  └─ NonNegative
+                     └─ Predicate refinement failure
+                        └─ Expected a non-negative number, actual -500`
     )
     await Util.assertions.decoding.fail(
       schema,
@@ -31,30 +36,39 @@ describe("Duration", () => {
       `Duration
 └─ Encoded side transformation failure
    └─ HRTime
-      └─ [1]
-         └─ NonNegativeInt
-            └─ From side refinement failure
-               └─ NonNegative
-                  └─ Predicate refinement failure
-                     └─ Expected a non-negative number, actual -123`
+      ├─ InfiniteHRTime
+      │  └─ ["0"]
+      │     └─ Expected -1, actual 0
+      └─ FiniteHRTime
+         └─ [1]
+            └─ NonNegativeInt
+               └─ From side refinement failure
+                  └─ NonNegative
+                     └─ Predicate refinement failure
+                        └─ Expected a non-negative number, actual -123`
     )
     await Util.assertions.decoding.fail(
       schema,
       123,
       `Duration
 └─ Encoded side transformation failure
-   └─ Expected HRTime, actual 123`
+   └─ HRTime
+      ├─ Expected InfiniteHRTime, actual 123
+      └─ Expected FiniteHRTime, actual 123`
     )
     await Util.assertions.decoding.fail(
       schema,
       123n,
       `Duration
 └─ Encoded side transformation failure
-   └─ Expected HRTime, actual 123n`
+   └─ HRTime
+      ├─ Expected InfiniteHRTime, actual 123n
+      └─ Expected FiniteHRTime, actual 123n`
     )
   })
 
   it("encoding", async () => {
+    await Util.assertions.encoding.succeed(schema, Duration.infinity, [-1, 0])
     await Util.assertions.encoding.succeed(schema, Duration.seconds(5), [5, 0])
     await Util.assertions.encoding.succeed(schema, Duration.millis(123456789), [123456, 789000000])
     await Util.assertions.encoding.succeed(schema, Duration.nanos(555123456789n), [555, 123456789])
