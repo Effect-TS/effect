@@ -1763,7 +1763,7 @@ S.BigDecimalFromNumber
 // Duration
 // ---------------------------------------------
 
-// $ExpectType Schema<Duration, DurationEncoded, never>
+// $ExpectType Schema<Duration, DurationEncoded | readonly [seconds: number, nanos: number], never>
 S.asSchema(S.Duration)
 
 // $ExpectType typeof Duration
