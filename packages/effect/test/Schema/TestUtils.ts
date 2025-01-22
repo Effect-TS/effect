@@ -18,11 +18,11 @@ export const assertions = Effect.runSync(
     Effect.provideService(SchemaTest.AssertConfig, {
       arbitrary: {
         validateGeneratedValues: {
-          skip: true
+          skip: false
         }
       },
       testRoundtripConsistency: {
-        skip: true
+        skip: false
       }
     })
   )
