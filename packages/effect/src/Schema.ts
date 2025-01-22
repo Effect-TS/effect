@@ -5726,7 +5726,7 @@ const durationValueInfinity = DurationValueInfinity.make({})
 
 /**
  * @category Duration utils
- * @since 3.12.6
+ * @since 3.12.7
  */
 export type DurationEncoded =
   | {
