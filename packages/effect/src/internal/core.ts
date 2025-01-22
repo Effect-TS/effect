@@ -797,7 +797,8 @@ export const andThen: {
       return b
     } else if (isPromiseLike(b)) {
       return unsafeAsync<any, Cause.UnknownException>((resume) => {
-        b.then((a) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
+        b.then((a) => resume(succeed(a)), (e) =>
+          resume(fail(new UnknownException(e, "An unknown error occurred in Effect.andThen"))))
       })
     }
     return succeed(b)
@@ -1281,7 +1282,8 @@ export const tap = dual<
         return as(b, a)
       } else if (isPromiseLike(b)) {
         return unsafeAsync<any, Cause.UnknownException>((resume) => {
-          b.then((_) => resume(succeed(a)), (e) => resume(fail(new UnknownException(e))))
+          b.then((_) => resume(succeed(a)), (e) =>
+            resume(fail(new UnknownException(e, "An unknown error occurred in Effect.tap"))))
         })
       }
       return succeed(a)
@@ -2208,7 +2210,10 @@ export const YieldableError: new(message?: string, options?: ErrorOptions) => Ca
       return fail(this)
     }
     toJSON() {
-      return { ...this }
+      const obj = { ...this }
+      if (this.message) obj.message = this.message
+      if (this.cause) obj.cause = this.cause
+      return obj
     }
     [NodeInspectSymbol]() {
       if (this.toString !== globalThis.Error.prototype.toString) {
@@ -2345,7 +2350,7 @@ export const UnknownException: new(cause: unknown, message?: string | undefined)
     class UnknownException extends YieldableError {
       readonly _tag = "UnknownException"
       readonly error: unknown
-      constructor(readonly cause: unknown, message?: string) {
+      constructor(cause: unknown, message?: string) {
         super(message ?? "An unknown error occurred", { cause })
         this.error = cause
       }

@@ -10,7 +10,22 @@ import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/ut
 import { assert, describe, expect, it } from "vitest"
 
 describe("Cause", () => {
-  it("[internal] prettyErrorMessage", () => {
+  describe("InterruptedException", () => {
+    it("correctly implements toString() and the NodeInspectSymbol", () => {
+      // Referenced line to be included in the string output
+      const ex = new Cause.InterruptedException("my message")
+      expect(ex.toString()).include("InterruptedException: my message")
+
+      // In Node.js environments, ensure the 'inspect' method includes line information
+      if (typeof window === "undefined") {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { inspect } = require("node:util")
+        expect(inspect(ex)).include("Cause.test.ts:16") // <= reference to the line above
+      }
+    })
+  })
+
+  it("[internal] prettyErrorMessage converts errors into readable JSON-like strings", () => {
     class Error1 {
       readonly _tag = "WithTag"
     }
@@ -47,6 +62,10 @@ describe("Cause", () => {
   })
 
   describe("pretty", () => {
+    it("handles array-based errors without throwing", () => {
+      assert.strictEqual(Cause.pretty(Cause.fail([{ toString: "" }])), `Error: [{"toString":""}]`)
+    })
+
     it("Empty", () => {
       expect(Cause.pretty(Cause.empty)).toEqual("All fibers interrupted without errors.")
     })
@@ -207,10 +226,12 @@ describe("Cause", () => {
 
     it("Fail", () => {
       expect(String(Cause.fail("my failure"))).toEqual(`Error: my failure`)
+      expect(String(Cause.fail(new Error("my failure")))).includes(`Error: my failure`)
     })
 
     it("Die", () => {
       expect(String(Cause.die("die message"))).toEqual(`Error: die message`)
+      expect(String(Cause.die(new Error("die message")))).includes(`Error: die message`)
     })
 
     it("Interrupt", () => {
@@ -225,38 +246,58 @@ describe("Cause", () => {
       expect(String(Cause.sequential(Cause.fail("failure 1"), Cause.fail("failure 2")))).toEqual(
         `Error: failure 1\nError: failure 2`
       )
+      const actual = String(Cause.sequential(Cause.fail(new Error("failure 1")), Cause.fail(new Error("failure 2"))))
+      expect(actual).includes("Error: failure 1")
+      expect(actual).includes("Error: failure 2")
     })
 
     it("Parallel", () => {
       expect(String(Cause.parallel(Cause.fail("failure 1"), Cause.fail("failure 2")))).toEqual(
         `Error: failure 1\nError: failure 2`
       )
+      const actual = String(
+        String(Cause.parallel(Cause.fail(new Error("failure 1")), Cause.fail(new Error("failure 2"))))
+      )
+      expect(actual).includes("Error: failure 1")
+      expect(actual).includes("Error: failure 2")
     })
   })
 
-  it("should be compared for equality by value", () => {
-    assert.isTrue(Equal.equals(Cause.fail(0), Cause.fail(0)))
-    assert.isTrue(Equal.equals(Cause.die(0), Cause.die(0)))
-    assert.isFalse(Equal.equals(Cause.fail(0), Cause.fail(1)))
-    assert.isFalse(Equal.equals(Cause.die(0), Cause.die(1)))
+  describe("Equal.symbol implementation", () => {
+    it("compares causes by value", () => {
+      assert.isTrue(Equal.equals(Cause.fail(0), Cause.fail(0)))
+      assert.isTrue(Equal.equals(Cause.die(0), Cause.die(0)))
+      assert.isFalse(Equal.equals(Cause.fail(0), Cause.fail(1)))
+      assert.isFalse(Equal.equals(Cause.die(0), Cause.die(1)))
+    })
+
+    it("is symmetric", () => {
+      fc.assert(fc.property(causes, causes, (causeA, causeB) => {
+        assert.strictEqual(
+          Equal.equals(causeA, causeB),
+          Equal.equals(causeB, causeA)
+        )
+      }))
+    })
+
+    it("generates identical hashes for equal causes", () => {
+      fc.assert(fc.property(equalCauses, ([causeA, causeB]) => {
+        assert.strictEqual(Hash.hash(causeA), Hash.hash(causeB))
+      }))
+    })
+
+    it("distinguishes different failure types", () => {
+      expect(Equal.equals(Cause.die(0), Cause.fail(0))).toBe(false)
+      expect(
+        Equal.equals(
+          Cause.parallel(Cause.fail("fail1"), Cause.die("fail2")),
+          Cause.parallel(Cause.fail("fail2"), Cause.die("fail1"))
+        )
+      ).toBe(false)
+    })
   })
 
-  it("`Cause.equals` is symmetric", () => {
-    fc.assert(fc.property(causes, causes, (causeA, causeB) => {
-      assert.strictEqual(
-        Equal.equals(causeA, causeB),
-        Equal.equals(causeB, causeA)
-      )
-    }))
-  })
-
-  it("`Cause.equals` and `Cause.hashCode` satisfy the contract", () => {
-    fc.assert(fc.property(equalCauses, ([causeA, causeB]) => {
-      assert.strictEqual(Hash.hash(causeA), Hash.hash(causeB))
-    }))
-  })
-
-  it("`Cause.isDie` and `Cause.keepDefects` are consistent", () => {
+  it("ensures isDie and keepDefects are consistent", () => {
     fc.assert(fc.property(causes, (cause) => {
       const result = Cause.keepDefects(cause)
       if (Cause.isDie(cause)) {
@@ -267,7 +308,7 @@ describe("Cause", () => {
     }))
   })
 
-  it("`Cause.failures is stack safe", () => {
+  it("fails safely for large parallel cause constructions", () => {
     const n = 10_000
     const cause = Array.from({ length: n - 1 }, () => Cause.fail("fail")).reduce(Cause.parallel, Cause.fail("fail"))
     const result = Cause.failures(cause)
@@ -275,7 +316,7 @@ describe("Cause", () => {
   })
 
   describe("flatMap", () => {
-    it("left identity", () => {
+    it("obeys left identity", () => {
       fc.assert(fc.property(causes, (cause) => {
         const left = cause.pipe(Cause.flatMap(Cause.fail))
         const right = cause
@@ -283,7 +324,7 @@ describe("Cause", () => {
       }))
     })
 
-    it("right identity", () => {
+    it("obeys right identity", () => {
       fc.assert(fc.property(errors, errorCauseFunctions, (error, f) => {
         const left = Cause.fail(error).pipe(Cause.flatMap(f))
         const right = f(error)
@@ -291,7 +332,7 @@ describe("Cause", () => {
       }))
     })
 
-    it("associativity", () => {
+    it("is associative", () => {
       fc.assert(fc.property(causes, errorCauseFunctions, errorCauseFunctions, (cause, f, g) => {
         const left = cause.pipe(Cause.flatMap(f), Cause.flatMap(g))
         const right = cause.pipe(Cause.flatMap((error) => f(error).pipe(Cause.flatMap(g))))
@@ -300,7 +341,7 @@ describe("Cause", () => {
     })
   })
 
-  it("andThen", () => {
+  it("andThen returns the second cause if the first one is failing", () => {
     const err1 = Cause.fail("err1")
     const err2 = Cause.fail("err2")
     expect(err1.pipe(Cause.andThen(() => err2))).toStrictEqual(err2)
@@ -310,7 +351,7 @@ describe("Cause", () => {
   })
 
   describe("stripSomeDefects", () => {
-    it("returns `Some` with remaining causes", () => {
+    it("removes matching defects and returns the remainder if any exist", () => {
       const cause1 = Cause.die({
         _tag: "NumberFormatException",
         msg: "can't parse to int"
@@ -330,7 +371,7 @@ describe("Cause", () => {
       assert.isTrue(Equal.equals(stripped, Option.some(cause2)))
     })
 
-    it("returns `None` if there are no remaining causes", () => {
+    it("returns None if all defects match and are thus removed", () => {
       const cause = Cause.die({ _tag: "NumberFormatException", msg: "can't parse to int" })
       const stripped = cause.pipe(
         Cause.stripSomeDefects((defect) =>
@@ -343,31 +384,31 @@ describe("Cause", () => {
     })
   })
 
-  describe("InterruptedException", () => {
-    it("renders as string", () => {
-      const ex = new Cause.InterruptedException("my message")
-      expect(ex.toString()).include("InterruptedException: my message")
-      if (typeof window === "undefined") {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { inspect } = require("node:util")
-        expect(inspect(ex)).include("Cause.test.ts:348")
-      }
+  describe("UnknownException", () => {
+    it("exposes its `error` property", () => {
+      const err1 = new Cause.UnknownException("my message")
+      expect(err1.error).toEqual("my message")
+      const err2 = new Cause.UnknownException(new Error("my error"))
+      expect(err2.error).toBeInstanceOf(Error)
+      expect((err2.error as Error).message).toEqual("my error")
     })
-  })
 
-  describe("Pretty", () => {
-    it("doesn't blow up on array errors", () => {
-      assert.strictEqual(Cause.pretty(Cause.fail([{ toString: "" }])), `Error: [{"toString":""}]`)
+    it("exposes its `cause` property", () => {
+      const err1 = new Cause.UnknownException("my message")
+      expect(err1.cause).toEqual("my message")
+      const err2 = new Cause.UnknownException(new Error("my error"))
+      expect(err2.cause).toBeInstanceOf(Error)
+      expect((err2.cause as Error).message).toEqual("my error")
     })
-  })
 
-  it("equals keep account for the failure type", () => {
-    expect(Equal.equals(Cause.die(0), Cause.fail(0))).toBe(false)
-    expect(
-      Equal.equals(
-        Cause.parallel(Cause.fail("fail1"), Cause.die("fail2")),
-        Cause.parallel(Cause.fail("fail2"), Cause.die("fail1"))
-      )
-    ).toBe(false)
+    it("uses a default message when none is provided", () => {
+      const err1 = new Cause.UnknownException("my message")
+      expect(err1.message).toEqual("An unknown error occurred")
+    })
+
+    it("accepts a custom override message", () => {
+      const err1 = new Cause.UnknownException(new Error("my error"), "my message")
+      expect(err1.message).toEqual("my message")
+    })
   })
 })
