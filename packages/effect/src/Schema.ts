@@ -5719,34 +5719,68 @@ export class DurationFromMillis extends transform(
   }
 ).annotations({ identifier: "DurationFromMillis" }) {}
 
-const FiniteHRTime = Tuple(
-  element(NonNegativeInt).annotations({ title: "seconds" }),
-  element(NonNegativeInt).annotations({ title: "nanos" })
-).annotations({ identifier: "FiniteHRTime" })
+const DurationValueMillis = TaggedStruct("Millis", { millis: NonNegativeInt })
+const DurationValueNanos = TaggedStruct("Nanos", { nanos: BigInt$ })
+const DurationValueInfinity = TaggedStruct("Infinity", {})
+const durationValueInfinity = DurationValueInfinity.make({})
 
-const InfiniteHRTime = Tuple(Literal(-1), Literal(0)).annotations({ identifier: "InfiniteHRTime" })
+/**
+ * @category Duration utils
+ * @since 3.12.8
+ */
+export type DurationEncoded =
+  | {
+    readonly _tag: "Millis"
+    readonly millis: number
+  }
+  | {
+    readonly _tag: "Nanos"
+    readonly nanos: string
+  }
+  | {
+    readonly _tag: "Infinity"
+  }
 
-const HRTime: Schema<readonly [seconds: number, nanos: number]> = Union(FiniteHRTime, InfiniteHRTime).annotations({
-  identifier: "HRTime",
-  description: "a tuple of seconds and nanos to be decoded into a Duration"
+const DurationValue: Schema<duration_.DurationValue, DurationEncoded> = Union(
+  DurationValueMillis,
+  DurationValueNanos,
+  DurationValueInfinity
+).annotations({
+  identifier: "DurationValue",
+  description: "an JSON-compatible tagged union to be decoded into a Duration"
 })
 
 /**
- * A schema that transforms a `[number, number]` tuple into a `Duration`.
- *
- * Infinite durations are encoded as `[-1, 0]`.
+ * A schema that converts a JSON-compatible tagged union into a `Duration`.
  *
  * @category Duration transformations
  * @since 3.10.0
  */
 export class Duration extends transform(
-  HRTime,
+  DurationValue,
   DurationFromSelf,
   {
     strict: true,
-    decode: ([seconds, nanos]) =>
-      seconds === -1 ? duration_.infinity : duration_.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
-    encode: (duration) => duration.value._tag === "Infinity" ? [-1, 0] as const : duration_.toHrTime(duration)
+    decode: (input) => {
+      switch (input._tag) {
+        case "Millis":
+          return duration_.millis(input.millis)
+        case "Nanos":
+          return duration_.nanos(input.nanos)
+        case "Infinity":
+          return duration_.infinity
+      }
+    },
+    encode: (duration) => {
+      switch (duration.value._tag) {
+        case "Millis":
+          return DurationValueMillis.make({ millis: duration.value.millis })
+        case "Nanos":
+          return DurationValueNanos.make({ nanos: duration.value.nanos })
+        case "Infinity":
+          return durationValueInfinity
+      }
+    }
   }
 ).annotations({ identifier: "Duration" }) {}
 
@@ -8513,8 +8547,9 @@ type MakeOptions = boolean | {
   readonly disableValidation?: boolean
 }
 
-const getDisableValidationMakeOption = (options: MakeOptions | undefined): boolean =>
-  Predicate.isBoolean(options) ? options : options?.disableValidation ?? false
+function getDisableValidationMakeOption(options: MakeOptions | undefined): boolean {
+  return Predicate.isBoolean(options) ? options : options?.disableValidation ?? false
+}
 
 const astCache = globalValue("effect/Schema/astCache", () => new WeakMap<any, AST.AST>())
 

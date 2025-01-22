@@ -1763,11 +1763,15 @@ S.BigDecimalFromNumber
 // Duration
 // ---------------------------------------------
 
-// $ExpectType Schema<Duration, readonly [seconds: number, nanos: number], never>
+// $ExpectType Schema<Duration, DurationEncoded, never>
 S.asSchema(S.Duration)
 
 // $ExpectType typeof Duration
 S.Duration
+
+// ---------------------------------------------
+// DurationFromSelf
+// ---------------------------------------------
 
 // $ExpectType Schema<Duration, Duration, never>
 S.asSchema(S.DurationFromSelf)
@@ -1775,11 +1779,19 @@ S.asSchema(S.DurationFromSelf)
 // $ExpectType typeof DurationFromSelf
 S.DurationFromSelf
 
+// ---------------------------------------------
+// DurationFromMillis
+// ---------------------------------------------
+
 // $ExpectType Schema<Duration, number, never>
 S.asSchema(S.DurationFromMillis)
 
 // $ExpectType typeof DurationFromMillis
 S.DurationFromMillis
+
+// ---------------------------------------------
+// DurationFromNanos
+// ---------------------------------------------
 
 // $ExpectType Schema<Duration, bigint, never>
 S.asSchema(S.DurationFromNanos)
