@@ -11418,6 +11418,7 @@ export interface Semaphore {
   /**
    * Acquires the specified number of permits and returns the resulting
    * available permits, suspending the task if they are not yet available.
+   * Concurrent pending `take` calls are processed in a first-in, first-out manner.
    */
   take(permits: number): Effect<number>
 
