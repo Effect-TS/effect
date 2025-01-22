@@ -1,5 +1,11 @@
 # effect
 
+## 3.12.7
+
+### Patch Changes
+
+- [#4320](https://github.com/Effect-TS/effect/pull/4320) [`8dff1d1`](https://github.com/Effect-TS/effect/commit/8dff1d1bff76cdba643cad7f0bf864300f08bc61) Thanks @KhraksMamtsov! - Fix: Cannot find name 'MissingSelfGeneric'.
+
 ## 3.12.6
 
 ### Patch Changes
