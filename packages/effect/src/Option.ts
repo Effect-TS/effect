@@ -1429,40 +1429,17 @@ const adapter = Gen.adapter<OptionTypeLambda>()
  * @since 2.0.0
  */
 export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (...args) => {
-  let f: any
-  if (args.length === 1) {
-    f = args[0]
-  } else {
-    f = args[1].bind(args[0])
-  }
+  const f = args.length === 1 ? args[0] : args[1].bind(args[0])
   const iterator = f(adapter)
-  let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
-  if (state.done) {
-    return some(state.value)
-  } else {
-    let current = state.value
-    if (Gen.isGenKind(current)) {
-      current = current.value
-    } else {
-      current = Gen.yieldWrapGet(current)
-    }
+  let state: IteratorResult<any> = iterator.next()
+  while (!state.done) {
+    const current = Gen.isGenKind(state.value)
+      ? state.value.value
+      : Gen.yieldWrapGet(state.value)
     if (isNone(current)) {
       return current
     }
-    while (!state.done) {
-      state = iterator.next(current.value as never)
-      if (!state.done) {
-        current = state.value
-        if (Gen.isGenKind(current)) {
-          current = current.value
-        } else {
-          current = Gen.yieldWrapGet(current)
-        }
-        if (isNone(current)) {
-          return current
-        }
-      }
-    }
-    return some(state.value)
+    state = iterator.next(current.value as never)
   }
+  return some(state.value)
 }

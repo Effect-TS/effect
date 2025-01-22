@@ -26,30 +26,35 @@ describe("Option", () => {
       const y = yield* Option.some(2)
       return x + y
     })
-
     const b = Option.gen(function*() {
       return 10
     })
-    const c = Option.gen(function*($) {
-      yield* $(Option.some(1))
-      yield* $(Option.some(2))
+    const c = Option.gen(function*() {
+      yield* Option.some(1)
+      yield* Option.some(2)
     })
-    const d = Option.gen(function*($) {
-      yield* $(Option.some(1))
-      return yield* $(Option.some(2))
+    const d = Option.gen(function*() {
+      yield* Option.some(1)
+      return yield* Option.some(2)
     })
-    const e = Option.gen(function*($) {
-      yield* $(Option.some(1))
-      yield* $(Option.none())
-      return yield* $(Option.some(2))
+    const e = Option.gen(function*() {
+      yield* Option.some(1)
+      yield* Option.none()
+      return yield* Option.some(2)
     })
-    const f = Option.gen(function*($) {
-      yield* $(Option.none())
+    const f = Option.gen(function*() {
+      yield* Option.none()
     })
-
     const g = Option.gen({ ctx: "testContext" as const }, function*() {
       return yield* Option.some(this.ctx)
     })
+    // test adapter
+    const h = Option.gen(function*($) {
+      const x = yield* $(Option.some(1))
+      const y = yield* $(Option.some(2))
+      return x + y
+    })
+
     expect(a).toEqual(Option.some(3))
     expect(b).toEqual(Option.some(10))
     expect(c).toEqual(Option.some(undefined))
@@ -57,6 +62,7 @@ describe("Option", () => {
     expect(e).toEqual(Option.none())
     expect(f).toEqual(Option.none())
     expect(g).toEqual(Option.some("testContext"))
+    expect(h).toEqual(Option.some(3))
   })
 
   it("toString", () => {
