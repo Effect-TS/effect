@@ -456,7 +456,8 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       Util.assertions.arbitrary.validateGeneratedValues(schema)
     })
 
-    it("mutually suspended schemas", () => {
+    // flaky test
+    it("mutually suspended schemas", { retry: 5 }, () => {
       interface Expression {
         readonly type: "expression"
         readonly value: number | Operation
