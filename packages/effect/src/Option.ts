@@ -107,7 +107,7 @@ export interface OptionTypeLambda extends TypeLambda {
  * @category constructors
  * @since 2.0.0
  */
-export const none => option.none <A = never>(): None<A>
+export const none = option.none as <A = never>() => None<A>
 
 /**
  * Creates a new `Option` that wraps the given value.
