@@ -2210,7 +2210,10 @@ export const YieldableError: new(message?: string, options?: ErrorOptions) => Ca
       return fail(this)
     }
     toJSON() {
-      return { ...this }
+      const obj = { ...this }
+      if (this.message) obj.message = this.message
+      if (this.cause) obj.cause = this.cause
+      return obj
     }
     [NodeInspectSymbol]() {
       if (this.toString !== globalThis.Error.prototype.toString) {
@@ -2347,7 +2350,7 @@ export const UnknownException: new(cause: unknown, message?: string | undefined)
     class UnknownException extends YieldableError {
       readonly _tag = "UnknownException"
       readonly error: unknown
-      constructor(readonly cause: unknown, message?: string) {
+      constructor(cause: unknown, message?: string) {
         super(message ?? "An unknown error occurred", { cause })
         this.error = cause
       }
