@@ -1,5 +1,208 @@
 # effect
 
+## 3.12.6
+
+### Patch Changes
+
+- [#4307](https://github.com/Effect-TS/effect/pull/4307) [`289c13b`](https://github.com/Effect-TS/effect/commit/289c13b38e8e35b214d46d385d05dead176c87cd) Thanks @gcanti! - Schema: Enhance error messages for discriminated unions.
+
+  **Before**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema = Schema.Union(
+    Schema.Tuple(Schema.Literal(-1), Schema.Literal(0)).annotations({
+      identifier: "A"
+    }),
+    Schema.Tuple(Schema.NonNegativeInt, Schema.NonNegativeInt).annotations({
+      identifier: "B"
+    })
+  ).annotations({ identifier: "AB" })
+
+  Schema.decodeUnknownSync(schema)([-500, 0])
+  /*
+  throws:
+  ParseError: AB
+  ├─ { readonly 0: -1 }
+  │  └─ ["0"]
+  │     └─ Expected -1, actual -500
+  └─ B
+     └─ [0]
+        └─ NonNegativeInt
+           └─ From side refinement failure
+              └─ NonNegative
+                 └─ Predicate refinement failure
+                    └─ Expected a non-negative number, actual -500
+  */
+  ```
+
+  **After**
+
+  ```diff
+  import { Schema } from "effect"
+
+  const schema = Schema.Union(
+    Schema.Tuple(Schema.Literal(-1), Schema.Literal(0)).annotations({
+      identifier: "A"
+    }),
+    Schema.Tuple(Schema.NonNegativeInt, Schema.NonNegativeInt).annotations({
+      identifier: "B"
+    })
+  ).annotations({ identifier: "AB" })
+
+  Schema.decodeUnknownSync(schema)([-500, 0])
+  /*
+  throws:
+  ParseError: AB
+  -├─ { readonly 0: -1 }
+  +├─ A
+  │  └─ ["0"]
+  │     └─ Expected -1, actual -500
+  └─ B
+     └─ [0]
+        └─ NonNegativeInt
+           └─ From side refinement failure
+              └─ NonNegative
+                 └─ Predicate refinement failure
+                    └─ Expected a non-negative number, actual -500
+  */
+  ```
+
+- [#4298](https://github.com/Effect-TS/effect/pull/4298) [`8b4e75d`](https://github.com/Effect-TS/effect/commit/8b4e75d35daea807c447ca760948a717aa66bb52) Thanks @KhraksMamtsov! - Added type-level validation for the `Effect.Service` function to ensure the `Self` generic parameter is provided. If the generic is missing, the `MissingSelfGeneric` type will be returned, indicating that the generic parameter must be specified. This improves type safety and prevents misuse of the `Effect.Service` function.
+
+  ```ts
+  type MissingSelfGeneric =
+    `Missing \`Self\` generic - use \`class Self extends Service<Self>()...\``
+  ```
+
+- [#4292](https://github.com/Effect-TS/effect/pull/4292) [`fc5e0f0`](https://github.com/Effect-TS/effect/commit/fc5e0f0d357a0051cfa01c1ede83ffdd3cb41ab1) Thanks @gcanti! - Improve `UnknownException` error messages
+
+  `UnknownException` error messages now include the name of the Effect api that
+  created the error.
+
+  ```ts
+  import { Effect } from "effect"
+
+  Effect.tryPromise(() =>
+    Promise.reject(new Error("The operation failed"))
+  ).pipe(Effect.catchAllCause(Effect.logError), Effect.runFork)
+
+  // timestamp=2025-01-21T00:41:03.403Z level=ERROR fiber=#0 cause="UnknownException: An unknown error occurred in Effect.tryPromise
+  //     at fail (.../effect/packages/effect/src/internal/core-effect.ts:1654:19)
+  //     at <anonymous> (.../effect/packages/effect/src/internal/core-effect.ts:1674:26) {
+  //   [cause]: Error: The operation failed
+  //       at <anonymous> (.../effect/scratchpad/error.ts:4:24)
+  //       at .../effect/packages/effect/src/internal/core-effect.ts:1671:7
+  // }"
+  ```
+
+- [#4309](https://github.com/Effect-TS/effect/pull/4309) [`004fd2b`](https://github.com/Effect-TS/effect/commit/004fd2bbd1459e64fb1b57f02eeb791ca5ea1ea5) Thanks @gcanti! - Schema: Enforce Finite Durations in `DurationFromNanos`.
+
+  This update ensures that `DurationFromNanos` only accepts finite durations. Previously, the schema did not explicitly enforce this constraint.
+
+  A filter has been added to validate that the duration is finite.
+
+  ```diff
+  DurationFromSelf
+  +.pipe(
+  +  filter((duration) => duration_.isFinite(duration), {
+  +    description: "a finite duration"
+  +  })
+  )
+  ```
+
+- [#4314](https://github.com/Effect-TS/effect/pull/4314) [`b2a31be`](https://github.com/Effect-TS/effect/commit/b2a31be85c35d891351ce4f9a2cc93ece0c257f6) Thanks @gcanti! - Duration: make `DurationValue` properties readonly.
+
+- [#4287](https://github.com/Effect-TS/effect/pull/4287) [`5514d05`](https://github.com/Effect-TS/effect/commit/5514d05b5cd586ff5868b8bd41c959e95e6c33cd) Thanks @gcanti! - Array: Fix `Either` import and correct `partition` example.
+
+- [#4301](https://github.com/Effect-TS/effect/pull/4301) [`bf5f0ae`](https://github.com/Effect-TS/effect/commit/bf5f0ae9daa0170471678e22585e8ec14ce667bb) Thanks @gcanti! - Schema: Fix `BigIntFromNumber` to enforce upper and lower bounds.
+
+  This update ensures the `BigIntFromNumber` schema adheres to safe integer limits by applying the following bounds:
+
+  ```diff
+  BigIntFromSelf
+  +  .pipe(
+  +    betweenBigInt(
+  +      BigInt(Number.MIN_SAFE_INTEGER),
+  +      BigInt(Number.MAX_SAFE_INTEGER)
+  +    )
+  +  )
+  ```
+
+- [#4228](https://github.com/Effect-TS/effect/pull/4228) [`3b19bcf`](https://github.com/Effect-TS/effect/commit/3b19bcfd3aaadb6c9253428622df524537c8e626) Thanks @fubhy! - Fixed conflicting `ParseError` tags between `Cron` and `Schema`
+
+- [#4294](https://github.com/Effect-TS/effect/pull/4294) [`b064b3b`](https://github.com/Effect-TS/effect/commit/b064b3b293615fd268cc5a5647d0981eb67750b8) Thanks @tim-smart! - ensure cause is rendered in FiberFailure
+
+- [#4307](https://github.com/Effect-TS/effect/pull/4307) [`289c13b`](https://github.com/Effect-TS/effect/commit/289c13b38e8e35b214d46d385d05dead176c87cd) Thanks @gcanti! - Schema: Add Support for Infinity in `Duration`.
+
+  This update adds support for encoding `Duration.infinity` in `Schema.Duration`.
+
+  **Before**
+
+  Attempting to encode `Duration.infinity` resulted in a `ParseError` due to the lack of support for `Infinity` in `Schema.Duration`:
+
+  ```ts
+  import { Duration, Schema } from "effect"
+
+  console.log(Schema.encodeUnknownSync(Schema.Duration)(Duration.infinity))
+  /*
+  throws:
+  ParseError: Duration
+  └─ Encoded side transformation failure
+     └─ HRTime
+        └─ [0]
+           └─ NonNegativeInt
+              └─ Predicate refinement failure
+                 └─ Expected an integer, actual Infinity
+  */
+  ```
+
+  **After**
+
+  The updated behavior successfully encodes `Duration.infinity` as `[ -1, 0 ]`:
+
+  ```ts
+  import { Duration, Schema } from "effect"
+
+  console.log(Schema.encodeUnknownSync(Schema.Duration)(Duration.infinity))
+  // Output: [ -1, 0 ]
+  ```
+
+- [#4300](https://github.com/Effect-TS/effect/pull/4300) [`f474678`](https://github.com/Effect-TS/effect/commit/f474678bf10b8f1c80e3dc096ddc7ecf20b2b23e) Thanks @gcanti! - Schema: update `pluck` type signature to respect optional fields.
+
+  **Before**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema1 = Schema.Struct({ a: Schema.optional(Schema.String) })
+
+  /*
+  const schema2: Schema.Schema<string | undefined, {
+      readonly a: string | undefined;
+  }, never>
+  */
+  const schema2 = Schema.pluck(schema1, "a")
+  ```
+
+  **After**
+
+  ```ts
+  import { Schema } from "effect"
+
+  const schema1 = Schema.Struct({ a: Schema.optional(Schema.String) })
+
+  /*
+  const schema2: Schema.Schema<string | undefined, {
+      readonly a?: string | undefined;
+  }, never>
+  */
+  const schema2 = Schema.pluck(schema1, "a")
+  ```
+
+- [#4296](https://github.com/Effect-TS/effect/pull/4296) [`ee187d0`](https://github.com/Effect-TS/effect/commit/ee187d098007a402844c94d04f0cd8f07695377a) Thanks @gcanti! - fix: update `Cause.isCause` type from 'never' to 'unknown'
+
 ## 3.12.5
 
 ### Patch Changes
