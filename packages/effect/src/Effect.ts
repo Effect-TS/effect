@@ -13013,8 +13013,7 @@ export const Tag: <const Id extends string>(id: Id) => <
     return makeTagProxy(TagClass as any)
   }
 
-/** @internal */
-type MissingSelfGeneric = `Missing \`Self\` generic - use \`class Self extends Effect.Service<Self>()...\``
+type MissingSelfGeneric = `Missing \`Self\` generic - use \`class Self extends Service<Self>()...\``
 
 /**
  * Simplifies the creation and management of services in Effect by defining both
