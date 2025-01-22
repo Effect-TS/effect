@@ -20,7 +20,11 @@ describe("Duration", () => {
       null,
       `Duration
 └─ Encoded side transformation failure
-   └─ Expected DurationValue, actual null`
+   └─ DurationValue | HRTime
+      ├─ Expected DurationValue, actual null
+      └─ HRTime
+         ├─ Expected InfiniteHRTime, actual null
+         └─ Expected FiniteHRTime, actual null`
     )
 
     await Util.assertions.decoding.fail(
@@ -28,10 +32,16 @@ describe("Duration", () => {
       {},
       `Duration
 └─ Encoded side transformation failure
-   └─ DurationValue
-      └─ { readonly _tag: "Millis" | "Nanos" | "Infinity" }
-         └─ ["_tag"]
-            └─ is missing`
+   └─ DurationValue | HRTime
+      ├─ DurationValue
+      │  └─ { readonly _tag: "Millis" | "Nanos" | "Infinity" }
+      │     └─ ["_tag"]
+      │        └─ is missing
+      └─ HRTime
+         ├─ InfiniteHRTime
+         │  └─ ["0"]
+         │     └─ is missing
+         └─ Expected FiniteHRTime, actual {}`
     )
 
     await Util.assertions.decoding.fail(
@@ -39,14 +49,20 @@ describe("Duration", () => {
       { _tag: "Millis", millis: -1 },
       `Duration
 └─ Encoded side transformation failure
-   └─ DurationValue
-      └─ { readonly _tag: "Millis"; readonly millis: NonNegativeInt }
-         └─ ["millis"]
-            └─ NonNegativeInt
-               └─ From side refinement failure
-                  └─ NonNegative
-                     └─ Predicate refinement failure
-                        └─ Expected a non-negative number, actual -1`
+   └─ DurationValue | HRTime
+      ├─ DurationValue
+      │  └─ { readonly _tag: "Millis"; readonly millis: NonNegativeInt }
+      │     └─ ["millis"]
+      │        └─ NonNegativeInt
+      │           └─ From side refinement failure
+      │              └─ NonNegative
+      │                 └─ Predicate refinement failure
+      │                    └─ Expected a non-negative number, actual -1
+      └─ HRTime
+         ├─ InfiniteHRTime
+         │  └─ ["0"]
+         │     └─ is missing
+         └─ Expected FiniteHRTime, actual {"_tag":"Millis","millis":-1}`
     )
 
     await Util.assertions.decoding.fail(
@@ -54,12 +70,89 @@ describe("Duration", () => {
       { _tag: "Nanos", nanos: null },
       `Duration
 └─ Encoded side transformation failure
-   └─ DurationValue
-      └─ { readonly _tag: "Nanos"; readonly nanos: BigInt }
-         └─ ["nanos"]
-            └─ BigInt
-               └─ Encoded side transformation failure
-                  └─ Expected string, actual null`
+   └─ DurationValue | HRTime
+      ├─ DurationValue
+      │  └─ { readonly _tag: "Nanos"; readonly nanos: BigInt }
+      │     └─ ["nanos"]
+      │        └─ BigInt
+      │           └─ Encoded side transformation failure
+      │              └─ Expected string, actual null
+      └─ HRTime
+         ├─ InfiniteHRTime
+         │  └─ ["0"]
+         │     └─ is missing
+         └─ Expected FiniteHRTime, actual {"_tag":"Nanos","nanos":null}`
+    )
+  })
+
+  it("HRTime backward compatible encoding", async () => {
+    await Util.assertions.decoding.succeed(schema, [-1, 0], Duration.infinity)
+    await Util.assertions.decoding.succeed(schema, [555, 123456789], Duration.nanos(555123456789n))
+    await Util.assertions.decoding.fail(
+      schema,
+      [-500, 0],
+      `Duration
+└─ Encoded side transformation failure
+   └─ DurationValue | HRTime
+      ├─ DurationValue
+      │  └─ { readonly _tag: "Millis" | "Nanos" | "Infinity" }
+      │     └─ ["_tag"]
+      │        └─ is missing
+      └─ HRTime
+         ├─ InfiniteHRTime
+         │  └─ ["0"]
+         │     └─ Expected -1, actual -500
+         └─ FiniteHRTime
+            └─ [0]
+               └─ NonNegativeInt
+                  └─ From side refinement failure
+                     └─ NonNegative
+                        └─ Predicate refinement failure
+                           └─ Expected a non-negative number, actual -500`
+    )
+    await Util.assertions.decoding.fail(
+      schema,
+      [0, -123],
+      `Duration
+└─ Encoded side transformation failure
+   └─ DurationValue | HRTime
+      ├─ DurationValue
+      │  └─ { readonly _tag: "Millis" | "Nanos" | "Infinity" }
+      │     └─ ["_tag"]
+      │        └─ is missing
+      └─ HRTime
+         ├─ InfiniteHRTime
+         │  └─ ["0"]
+         │     └─ Expected -1, actual 0
+         └─ FiniteHRTime
+            └─ [1]
+               └─ NonNegativeInt
+                  └─ From side refinement failure
+                     └─ NonNegative
+                        └─ Predicate refinement failure
+                           └─ Expected a non-negative number, actual -123`
+    )
+    await Util.assertions.decoding.fail(
+      schema,
+      123,
+      `Duration
+└─ Encoded side transformation failure
+   └─ DurationValue | HRTime
+      ├─ Expected DurationValue, actual 123
+      └─ HRTime
+         ├─ Expected InfiniteHRTime, actual 123
+         └─ Expected FiniteHRTime, actual 123`
+    )
+    await Util.assertions.decoding.fail(
+      schema,
+      123n,
+      `Duration
+└─ Encoded side transformation failure
+   └─ DurationValue | HRTime
+      ├─ Expected DurationValue, actual 123n
+      └─ HRTime
+         ├─ Expected InfiniteHRTime, actual 123n
+         └─ Expected FiniteHRTime, actual 123n`
     )
   })
 

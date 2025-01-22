@@ -5750,6 +5750,21 @@ const DurationValue: Schema<duration_.DurationValue, DurationEncoded> = Union(
   description: "an JSON-compatible tagged union to be decoded into a Duration"
 })
 
+const FiniteHRTime = Tuple(
+  element(NonNegativeInt).annotations({ title: "seconds" }),
+  element(NonNegativeInt).annotations({ title: "nanos" })
+).annotations({ identifier: "FiniteHRTime" })
+
+const InfiniteHRTime = Tuple(Literal(-1), Literal(0)).annotations({ identifier: "InfiniteHRTime" })
+
+const HRTime: Schema<readonly [seconds: number, nanos: number]> = Union(FiniteHRTime, InfiniteHRTime).annotations({
+  identifier: "HRTime",
+  description: "a tuple of seconds and nanos to be decoded into a Duration"
+})
+
+const isDurationValue = (u: duration_.DurationValue | typeof HRTime.Type): u is duration_.DurationValue =>
+  typeof u === "object"
+
 /**
  * A schema that converts a JSON-compatible tagged union into a `Duration`.
  *
@@ -5757,19 +5772,24 @@ const DurationValue: Schema<duration_.DurationValue, DurationEncoded> = Union(
  * @since 3.10.0
  */
 export class Duration extends transform(
-  DurationValue,
+  // TODO: remove HRTime in next major version
+  Union(DurationValue, HRTime),
   DurationFromSelf,
   {
     strict: true,
     decode: (input) => {
-      switch (input._tag) {
-        case "Millis":
-          return duration_.millis(input.millis)
-        case "Nanos":
-          return duration_.nanos(input.nanos)
-        case "Infinity":
-          return duration_.infinity
+      if (isDurationValue(input)) {
+        switch (input._tag) {
+          case "Millis":
+            return duration_.millis(input.millis)
+          case "Nanos":
+            return duration_.nanos(input.nanos)
+          case "Infinity":
+            return duration_.infinity
+        }
       }
+      const [seconds, nanos] = input
+      return seconds === -1 ? duration_.infinity : duration_.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos))
     },
     encode: (duration) => {
       switch (duration.value._tag) {
