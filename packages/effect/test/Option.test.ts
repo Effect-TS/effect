@@ -543,4 +543,17 @@ describe("Option", () => {
       )
     })
   })
+
+  it("as", () => {
+    expectNone(Option.none().pipe(Option.as("a")))
+    expectSome(Option.some(1).pipe(Option.as("a")), "a")
+
+    expectNone(Option.as(Option.none(), "a"))
+    expectSome(Option.as(Option.some(1), "a"), "a")
+  })
+
+  it("asVoid", () => {
+    expectNone(Option.none().pipe(Option.asVoid))
+    expectSome(Option.some(1).pipe(Option.asVoid), undefined)
+  })
 })

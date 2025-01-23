@@ -652,6 +652,7 @@ export const map: {
  */
 export const as: {
   <B>(b: B): <X>(self: Option<X>) => Option<B>
+  <X, B>(self: Option<X>, b: B): Option<B>
 } = dual(2, <X, B>(self: Option<X>, b: B): Option<B> => map(self, () => b))
 
 /**
