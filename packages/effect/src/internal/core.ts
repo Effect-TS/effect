@@ -3042,6 +3042,68 @@ export const mapInputContext = dual<
 ) => contextWithEffect((context: Context.Context<R2>) => provideContext(self, f(context))))
 
 // -----------------------------------------------------------------------------
+// Filtering
+// -----------------------------------------------------------------------------
+
+/** @internal */
+export const filterEffectOrElse: {
+  <A, E2, R2, A2, E3, R3>(
+    options: {
+      readonly predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+      readonly orElse: (a: NoInfer<A>) => Effect.Effect<A2, E3, R3>
+    }
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | A2, E | E2 | E3, R | R2 | R3>
+  <A, E, R, E2, R2, A2, E3, R3>(
+    self: Effect.Effect<A, E, R>,
+    options: {
+      readonly predicate: (a: A) => Effect.Effect<boolean, E2, R2>
+      readonly orElse: (a: A) => Effect.Effect<A2, E3, R3>
+    }
+  ): Effect.Effect<A | A2, E | E2 | E3, R | R2 | R3>
+} = dual(2, <A, E, R, E2, R2, A2, E3, R3>(
+  self: Effect.Effect<A, E, R>,
+  options: {
+    readonly predicate: (a: A) => Effect.Effect<boolean, E2, R2>
+    readonly orElse: (a: A) => Effect.Effect<A2, E3, R3>
+  }
+): Effect.Effect<A | A2, E | E2 | E3, R | R2 | R3> =>
+  flatMap(
+    self,
+    (a) =>
+      flatMap(
+        options.predicate(a),
+        (pass): Effect.Effect<A | A2, E3, R3> => pass ? succeed(a) : options.orElse(a)
+      )
+  ))
+
+/** @internal */
+export const filterEffectOrFail: {
+  <A, E2, R2, E3>(
+    options: {
+      readonly predicate: (a: NoInfer<A>) => Effect.Effect<boolean, E2, R2>
+      readonly orFailWith: (a: NoInfer<A>) => E3
+    }
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2 | E3, R | R2>
+  <A, E, R, E2, R2, E3>(
+    self: Effect.Effect<A, E, R>,
+    options: {
+      readonly predicate: (a: A) => Effect.Effect<boolean, E2, R2>
+      readonly orFailWith: (a: A) => E3
+    }
+  ): Effect.Effect<A, E | E2 | E3, R | R2>
+} = dual(2, <A, E, R, E2, R2, E3>(
+  self: Effect.Effect<A, E, R>,
+  options: {
+    readonly predicate: (a: A) => Effect.Effect<boolean, E2, R2>
+    readonly orFailWith: (a: A) => E3
+  }
+): Effect.Effect<A, E | E2 | E3, R | R2> =>
+  filterEffectOrElse(self, {
+    predicate: options.predicate,
+    orElse: (a) => fail(options.orFailWith(a))
+  }))
+
+// -----------------------------------------------------------------------------
 // Tracing
 // -----------------------------------------------------------------------------
 

@@ -189,6 +189,7 @@ describe("Effect", () => {
       assert.deepStrictEqual(goodCase, Either.right(0 as const))
       assert.deepStrictEqual(badCase, Either.left(Either.left("predicate failed, got 1!")))
     }))
+
   it.effect("filterOrFail - without orFailWith", () =>
     Effect.gen(function*($) {
       const goodCase = yield* $(
@@ -207,4 +208,31 @@ describe("Effect", () => {
       assert.deepStrictEqual(goodCaseDataFirst, 0)
       assert.deepStrictEqual(badCase, new Cause.NoSuchElementException())
     }))
+
+  describe("filterEffectOrElse", () => {
+    it.effect("executes fallback", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.succeed(1).pipe(
+          Effect.filterEffectOrElse({
+            predicate: (n) => Effect.succeed(n === 0),
+            orElse: () => Effect.succeed(0)
+          })
+        )
+        assert.strictEqual(result, 0)
+      }))
+  })
+
+  describe("filterEffectOrFails", () => {
+    it.effect("executes orFailWith", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.succeed(1).pipe(
+          Effect.filterEffectOrElse({
+            predicate: (n) => Effect.succeed(n === 0),
+            orElse: () => Effect.fail("boom")
+          }),
+          Effect.flip
+        )
+        assert.strictEqual(result, "boom")
+      }))
+  })
 })
