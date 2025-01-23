@@ -98,6 +98,14 @@ describe("Cause", () => {
   })
 
   describe("encoding", () => {
+    it("handles array-based defects without throwing", async () => {
+      const schema = S.Cause({ error: S.String, defect: S.Defect })
+      await Util.assertions.encoding.succeed(schema, Cause.die([{ toString: "" }]), {
+        _tag: "Die",
+        defect: "[{\"toString\":\"\"}]"
+      })
+    })
+
     it("should raise an error when a non-encodable Cause is passed", async () => {
       const schema = S.Cause({ error: S.String, defect: Util.Defect })
       await Util.assertions.encoding.fail(
