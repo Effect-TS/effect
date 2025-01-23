@@ -2,6 +2,7 @@
  * @since 3.10.0
  */
 
+import * as internalCause_ from "effect/internal/cause"
 import type { ArbitraryAnnotation, ArbitraryGenerationContext, LazyArbitrary } from "./Arbitrary.js"
 import * as array_ from "./Array.js"
 import * as bigDecimal_ from "./BigDecimal.js"
@@ -9199,7 +9200,7 @@ export const Defect: Defect = transform(
           // no stack because of security reasons
         }
       }
-      return String(defect)
+      return internalCause_.prettyErrorMessage(defect)
     }
   }
 ).annotations({ identifier: "Defect" })
