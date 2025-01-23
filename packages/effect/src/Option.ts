@@ -20,25 +20,39 @@ import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
 /**
- * @category models
+ * The `Option` data type represents optional values. An `Option<A>` can either
+ * be `Some<A>`, containing a value of type `A`, or `None`, representing the
+ * absence of a value.
+ *
+ * **When to Use**
+ *
+ * You can use `Option` in scenarios like:
+ *
+ * - Using it for initial values
+ * - Returning values from functions that are not defined for all possible
+ *   inputs (referred to as “partial functions”)
+ * - Managing optional fields in data structures
+ * - Handling optional function arguments
+ *
+ * @category Models
  * @since 2.0.0
  */
 export type Option<A> = None<A> | Some<A>
 
 /**
- * @category symbols
+ * @category Symbols
  * @since 2.0.0
  */
 export const TypeId: unique symbol = Symbol.for("effect/Option")
 
 /**
- * @category symbols
+ * @category Symbols
  * @since 2.0.0
  */
 export type TypeId = typeof TypeId
 
 /**
- * @category models
+ * @category Models
  * @since 2.0.0
  */
 export interface None<out A> extends Pipeable, Inspectable {
@@ -53,7 +67,7 @@ export interface None<out A> extends Pipeable, Inspectable {
 }
 
 /**
- * @category models
+ * @category Models
  * @since 2.0.0
  */
 export interface Some<out A> extends Pipeable, Inspectable {
@@ -69,7 +83,7 @@ export interface Some<out A> extends Pipeable, Inspectable {
 }
 
 /**
- * @category models
+ * @category Models
  * @since 2.0.0
  */
 export interface OptionUnify<A extends { [Unify.typeSymbol]?: any }> {
@@ -81,20 +95,37 @@ export interface OptionUnify<A extends { [Unify.typeSymbol]?: any }> {
  */
 export declare namespace Option {
   /**
+   * Extracts the type of the value contained in an `Option`.
+   *
+   * @example
+   * ```ts
+   * // Title: Getting the Value Type of an Option
+   * import { Option } from "effect"
+   *
+   * // Declare an Option holding a string
+   * declare const myOption: Option.Option<string>
+   *
+   * // Extract the type of the value within the Option
+   * //
+   * //      ┌─── string
+   * //      ▼
+   * type MyType = Option.Option.Value<typeof myOption>
+   * ```
+   *
    * @since 2.0.0
-   * @category type-level
+   * @category Type-level Utils
    */
   export type Value<T extends Option<any>> = [T] extends [Option<infer _A>] ? _A : never
 }
 
 /**
- * @category models
+ * @category Models
  * @since 2.0.0
  */
 export interface OptionUnifyIgnore {}
 
 /**
- * @category type lambdas
+ * @category Type Lambdas
  * @since 2.0.0
  */
 export interface OptionTypeLambda extends TypeLambda {
@@ -102,102 +133,167 @@ export interface OptionTypeLambda extends TypeLambda {
 }
 
 /**
- * Creates a new `Option` that represents the absence of a value.
+ * Represents the absence of a value by creating an empty `Option`.
  *
- * @category constructors
+ * `Option.none` returns an `Option<never>`, which is a subtype of `Option<A>`.
+ * This means you can use it in place of any `Option<A>` regardless of the type
+ * `A`.
+ *
+ * @see {@link some} for the opposite operation.
+ *
+ * @example
+ * ```ts
+ * // Title: Creating an Option with No Value
+ * import { Option } from "effect"
+ *
+ * // An Option holding no value
+ * //
+ * //      ┌─── Option<never>
+ * //      ▼
+ * const noValue = Option.none()
+ *
+ * console.log(noValue)
+ * // Output: { _id: 'Option', _tag: 'None' }
+ * ```
+ *
+ * @category Constructors
  * @since 2.0.0
  */
 export const none = <A = never>(): Option<A> => option.none
 
 /**
- * Creates a new `Option` that wraps the given value.
+ * Wraps the given value into an `Option` to represent its presence.
  *
- * @param value - The value to wrap.
+ * @see {@link none} for the opposite operation.
  *
- * @category constructors
+ * @example
+ * ```ts
+ * // Title: Creating an Option with a Value
+ * import { Option } from "effect"
+ *
+ * // An Option holding the number 1
+ * //
+ * //      ┌─── Option<number>
+ * //      ▼
+ * const value = Option.some(1)
+ *
+ * console.log(value)
+ * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
+ * ```
+ *
+ * @category Constructors
  * @since 2.0.0
  */
 export const some: <A>(value: A) => Option<A> = option.some
 
 /**
- * Checks if a given value is an `Option` value.
+ * Determines whether the given value is an `Option`.
  *
- * @param input - The value to check.
+ * **Details**
+ *
+ * This function checks if a value is an instance of `Option`. It returns `true`
+ * if the value is either `Option.some` or `Option.none`, and `false` otherwise.
+ * This is particularly useful when working with unknown values or when you need
+ * to ensure type safety in your code.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.isOption(Option.some(1)), true)
- * assert.deepStrictEqual(Option.isOption(Option.none()), true)
- * assert.deepStrictEqual(Option.isOption({}), false)
+ * console.log(Option.isOption(Option.some(1)))
+ * // Output: true
+ *
+ * console.log(Option.isOption(Option.none()))
+ * // Output: true
+ *
+ * console.log(Option.isOption({}))
+ * // Output: false
  * ```
  *
- * @category guards
+ * @category Guards
  * @since 2.0.0
  */
 export const isOption: (input: unknown) => input is Option<unknown> = option.isOption
 
 /**
- * Determine if a `Option` is a `None`.
+ * Checks whether an `Option` represents the absence of a value (`None`).
  *
- * @param self - The `Option` to check.
+ * @see {@link isSome} for the opposite check.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.isNone(Option.some(1)), false)
- * assert.deepStrictEqual(Option.isNone(Option.none()), true)
+ * console.log(Option.isNone(Option.some(1)))
+ * // Output: false
+ *
+ * console.log(Option.isNone(Option.none()))
+ * // Output: true
  * ```
  *
- * @category guards
+ * @category Guards
  * @since 2.0.0
  */
 export const isNone: <A>(self: Option<A>) => self is None<A> = option.isNone
 
 /**
- * Determine if a `Option` is a `Some`.
+ * Checks whether an `Option` contains a value (`Some`).
  *
- * @param self - The `Option` to check.
+ * @see {@link isNone} for the opposite check.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.isSome(Option.some(1)), true)
- * assert.deepStrictEqual(Option.isSome(Option.none()), false)
+ * console.log(Option.isSome(Option.some(1)))
+ * // Output: true
+ *
+ * console.log(Option.isSome(Option.none()))
+ * // Output: false
  * ```
  *
- * @category guards
+ * @category Guards
  * @since 2.0.0
  */
 export const isSome: <A>(self: Option<A>) => self is Some<A> = option.isSome
 
 /**
- * Matches the given `Option` and returns either the provided `onNone` value or the result of the provided `onSome`
- * function when passed the `Option`'s value.
+ * Performs pattern matching on an `Option` to handle both `Some` and `None`
+ * cases.
  *
- * @param self - The `Option` to match
- * @param onNone - The value to be returned if the `Option` is `None`
- * @param onSome - The function to be called if the `Option` is `Some`, it will be passed the `Option`'s value and its result will be returned
+ * **Details**
+ *
+ * This function allows you to match against an `Option` and handle both
+ * scenarios: when the `Option` is `None` (i.e., contains no value), and when
+ * the `Option` is `Some` (i.e., contains a value). It executes one of the
+ * provided functions based on the case:
+ *
+ * - If the `Option` is `None`, the `onNone` function is executed and its result
+ *   is returned.
+ * - If the `Option` is `Some`, the `onSome` function is executed with the
+ *   contained value, and its result is returned.
+ *
+ * This function provides a concise and functional way to handle optional values
+ * without resorting to `if` or manual checks, making your code more declarative
+ * and readable.
  *
  * @example
  * ```ts
- * import { pipe, Option } from "effect"
+ * // Title: Pattern Matching with Option
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(
- *   pipe(Option.some(1), Option.match({ onNone: () => 'a none', onSome: (a) => `a some containing ${a}` })),
- *   'a some containing 1'
- * )
+ * const foo = Option.some(1)
  *
- * assert.deepStrictEqual(
- *   pipe(Option.none(), Option.match({ onNone: () => 'a none', onSome: (a) => `a some containing ${a}` })),
- *   'a none'
- * )
+ * const message = Option.match(foo, {
+ *   onNone: () => "Option is empty",
+ *   onSome: (value) => `Option has a value: ${value}`
+ * })
+ *
+ * console.log(message)
+ * // Output: "Option has a value: 1"
  * ```
  *
- * @category pattern matching
+ * @category Pattern matching
  * @since 2.0.0
  */
 export const match: {
@@ -218,42 +314,77 @@ export const match: {
 )
 
 /**
- * Returns a type guard from a `Option` returning function.
- * This function ensures that a type guard definition is type-safe.
+ * Converts an `Option`-returning function into a type guard.
+ *
+ * **Details**
+ *
+ * This function transforms a function that returns an `Option` into a type
+ * guard, ensuring type safety when validating or narrowing types. The returned
+ * type guard function checks whether the input satisfies the condition defined
+ * in the original `Option`-returning function.
+ *
+ * If the original function returns `Option.some`, the type guard evaluates to
+ * `true`, confirming the input is of the desired type. If the function returns
+ * `Option.none`, the type guard evaluates to `false`.
+ *
+ * This utility is especially useful for validating types in union types,
+ * filtering arrays, or ensuring safe handling of specific subtypes.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * const parsePositive = (n: number): Option.Option<number> =>
- *   n > 0 ? Option.some(n) : Option.none()
+ * type MyData = string | number
  *
- * const isPositive = Option.toRefinement(parsePositive)
+ * const parseString = (data: MyData): Option.Option<string> =>
+ *   typeof data === "string" ? Option.some(data) : Option.none()
  *
- * assert.deepStrictEqual(isPositive(1), true)
- * assert.deepStrictEqual(isPositive(-1), false)
+ * //      ┌─── (a: MyData) => a is string
+ * //      ▼
+ * const isString = Option.toRefinement(parseString)
+ *
+ * console.log(isString("a"))
+ * // Output: true
+ *
+ * console.log(isString(1))
+ * // Output: false
  * ```
  *
- * @category conversions
+ * @category Conversions
  * @since 2.0.0
  */
 export const toRefinement = <A, B extends A>(f: (a: A) => Option<B>): (a: A) => a is B => (a: A): a is B => isSome(f(a))
 
 /**
- * Converts an `Iterable` of values into an `Option`. Returns the first value of the `Iterable` wrapped in a `Some`
- * if the `Iterable` is not empty, otherwise returns `None`.
+ * Converts an `Iterable` into an `Option`, wrapping the first element if it
+ * exists.
  *
- * @param collection - The `Iterable` to be converted to an `Option`.
+ * **Details**
+ *
+ * This function takes an `Iterable` (e.g., an array, a generator, or any object
+ * implementing the `Iterable` interface) and returns an `Option` based on its
+ * content:
+ *
+ * - If the `Iterable` contains at least one element, the first element is
+ *   wrapped in a `Some` and returned.
+ * - If the `Iterable` is empty, `None` is returned, representing the absence of
+ *   a value.
+ *
+ * This utility is useful for safely handling collections that might be empty,
+ * ensuring you explicitly handle both cases where a value exists or doesn't.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.fromIterable([1, 2, 3]), Option.some(1))
- * assert.deepStrictEqual(Option.fromIterable([]), Option.none())
+ * console.log(Option.fromIterable([1, 2, 3]))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
+ *
+ * console.log(Option.fromIterable([]))
+ * // Output: { _id: 'Option', _tag: 'None' }
  * ```
  *
- * @category constructors
+ * @category Constructors
  * @since 2.0.0
  */
 export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
@@ -264,52 +395,106 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
 }
 
 /**
- * Converts a `Either` to an `Option` discarding the error.
+ * Converts an `Either` into an `Option` by discarding the error and extracting
+ * the right value.
+ *
+ * **Details**
+ *
+ * This function takes an `Either` and returns an `Option` based on its value:
+ *
+ * - If the `Either` is a `Right`, its value is wrapped in a `Some` and
+ *   returned.
+ * - If the `Either` is a `Left`, the error is discarded, and `None` is
+ *   returned.
+ *
+ * This is particularly useful when you only care about the success case
+ * (`Right`) of an `Either` and want to handle the result using `Option`. By
+ * using this function, you can convert `Either` into a simpler structure for
+ * cases where error handling is not required.
+ *
+ * @see {@link getLeft} for the opposite operation.
  *
  * @example
  * ```ts
- * import { Option, Either } from "effect"
+ * import { Either, Option } from "effect"
  *
- * assert.deepStrictEqual(Option.getRight(Either.right('ok')), Option.some('ok'))
- * assert.deepStrictEqual(Option.getRight(Either.left('err')), Option.none())
+ * console.log(Option.getRight(Either.right("ok")))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'ok' }
+ *
+ * console.log(Option.getRight(Either.left("err")))
+ * // Output: { _id: 'Option', _tag: 'None' }
  * ```
  *
- * @category conversions
+ * @category Conversions
  * @since 2.0.0
  */
 export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
 
 /**
- * Converts a `Either` to an `Option` discarding the value.
+ * Converts an `Either` into an `Option` by discarding the right value and
+ * extracting the left value.
+ *
+ * **Details**
+ *
+ * This function transforms an `Either` into an `Option` as follows:
+ *
+ * - If the `Either` is a `Left`, its value is wrapped in a `Some` and returned.
+ * - If the `Either` is a `Right`, the value is discarded, and `None` is
+ *   returned.
+ *
+ * This utility is useful when you only care about the error case (`Left`) of an
+ * `Either` and want to handle it as an `Option`. By discarding the right value,
+ * it simplifies error-focused workflows.
+ *
+ * @see {@link getRight} for the opposite operation.
  *
  * @example
  * ```ts
- * import { Option, Either } from "effect"
+ * import { Either, Option } from "effect"
  *
- * assert.deepStrictEqual(Option.getLeft(Either.right("ok")), Option.none())
- * assert.deepStrictEqual(Option.getLeft(Either.left("a")), Option.some("a"))
+ * console.log(Option.getLeft(Either.right("ok")))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ *
+ * console.log(Option.getLeft(Either.left("err")))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'err' }
  * ```
  *
- * @category conversions
+ * @category Conversions
  * @since 2.0.0
  */
 export const getLeft: <R, L>(self: Either<R, L>) => Option<L> = either.getLeft
 
 /**
- * Returns the value of the `Option` if it is `Some`, otherwise returns `onNone`
+ * Returns the value contained in the `Option` if it is `Some`, otherwise
+ * evaluates and returns the result of `onNone`.
  *
- * @param self - The `Option` to get the value of.
- * @param onNone - Function that returns the default value to return if the `Option` is `None`.
+ * **Details**
+ *
+ * This function allows you to provide a fallback value or computation for when
+ * an `Option` is `None`. If the `Option` contains a value (`Some`), that value
+ * is returned. If it is empty (`None`), the `onNone` function is executed, and
+ * its result is returned instead.
+ *
+ * This utility is helpful for safely handling `Option` values by ensuring you
+ * always receive a meaningful result, whether or not the `Option` contains a
+ * value. It is particularly useful for providing default values or alternative
+ * logic when working with optional values.
+ *
+ * @see {@link getOrNull} for a version that returns `null` instead of executing a function.
+ * @see {@link getOrUndefined} for a version that returns `undefined` instead of executing a function.
  *
  * @example
  * ```ts
- * import { pipe, Option } from "effect"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(pipe(Option.some(1), Option.getOrElse(() => 0)), 1)
- * assert.deepStrictEqual(pipe(Option.none(), Option.getOrElse(() => 0)), 0)
+ * console.log(Option.some(1).pipe(Option.getOrElse(() => 0)))
+ * // Output: 1
+ *
+ * console.log(Option.none().pipe(Option.getOrElse(() => 0)))
+ * // Output: 0
  * ```
  *
- * @category getters
+ * @category Getters
  * @since 2.0.0
  */
 export const getOrElse: {
@@ -321,46 +506,39 @@ export const getOrElse: {
 )
 
 /**
- * Returns the provided `Option` `that` if `self` is `None`, otherwise returns `self`.
+ * Returns the provided `Option` `that` if the current `Option` (`self`) is
+ * `None`; otherwise, it returns `self`.
  *
- * @param self - The first `Option` to be checked.
- * @param that - The `Option` to return if `self` is `None`.
+ * **Details**
+ *
+ * This function provides a fallback mechanism for `Option` values. If the
+ * current `Option` is `None` (i.e., it contains no value), the `that` function
+ * is evaluated, and its resulting `Option` is returned. If the current `Option`
+ * is `Some` (i.e., it contains a value), the original `Option` is returned
+ * unchanged.
+ *
+ * This is particularly useful for chaining fallback values or computations,
+ * allowing you to provide alternative `Option` values when the first one is
+ * empty.
  *
  * @example
  * ```ts
- * import { pipe, Option } from "effect"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(
- *   pipe(
- *     Option.none(),
- *     Option.orElse(() => Option.none())
- *   ),
- *   Option.none()
- * )
- * assert.deepStrictEqual(
- *   pipe(
- *     Option.some('a'),
- *     Option.orElse(() => Option.none())
- *   ),
- *   Option.some('a')
- * )
- * assert.deepStrictEqual(
- *   pipe(
- *     Option.none(),
- *     Option.orElse(() => Option.some('b'))
- *   ),
- *   Option.some('b')
- * )
- * assert.deepStrictEqual(
- *   pipe(
- *     Option.some('a'),
- *     Option.orElse(() => Option.some('b'))
- *   ),
- *   Option.some('a')
- * )
+ * console.log(Option.none().pipe(Option.orElse(() => Option.none())))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ *
+ * console.log(Option.some("a").pipe(Option.orElse(() => Option.none())))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'a' }
+ *
+ * console.log(Option.none().pipe(Option.orElse(() => Option.some("b"))))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'b' }
+ *
+ * console.log(Option.some("a").pipe(Option.orElse(() => Option.some("b"))))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'a' }
  * ```
  *
- * @category error handling
+ * @category Error handling
  * @since 2.0.0
  */
 export const orElse: {
@@ -372,32 +550,32 @@ export const orElse: {
 )
 
 /**
- * Returns the provided default value as `Some` if `self` is `None`, otherwise returns `self`.
+ * Returns the provided default value wrapped in `Some` if the current `Option`
+ * (`self`) is `None`; otherwise, returns `self`.
  *
- * @param self - The first `Option` to be checked.
- * @param onNone - Function that returns the default value to return if the `Option` is `None`.
+ * **Details**
+ *
+ * This function provides a way to supply a default value for cases where an
+ * `Option` is `None`. If the current `Option` is empty (`None`), the `onNone`
+ * function is executed to compute the default value, which is then wrapped in a
+ * `Some`. If the current `Option` contains a value (`Some`), it is returned as
+ * is.
+ *
+ * This is particularly useful for handling optional values where a fallback
+ * default needs to be provided explicitly in case of absence.
  *
  * @example
  * ```ts
- * import { pipe, Option } from "effect"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(
- *   pipe(
- *     Option.none(),
- *     Option.orElseSome(() => 'b')
- *   ),
- *   Option.some('b')
- * )
- * assert.deepStrictEqual(
- *   pipe(
- *     Option.some('a'),
- *     Option.orElseSome(() => 'b')
- *   ),
- *   Option.some('a')
- * )
+ * console.log(Option.none().pipe(Option.orElseSome(() => "b")))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'b' }
+ *
+ * console.log(Option.some("a").pipe(Option.orElseSome(() => "b")))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'a' }
  * ```
  *
- * @category error handling
+ * @category Error handling
  * @since 2.0.0
  */
 export const orElseSome: {
@@ -409,15 +587,26 @@ export const orElseSome: {
 )
 
 /**
- * Similar to `orElse`, but instead of returning a simple union, it returns an `Either` object,
- * which contains information about which of the two `Option`s has been chosen.
+ * Similar to {@link orElse}, but returns an `Either` wrapped in an `Option` to
+ * indicate the source of the value.
  *
- * This is useful when it's important to know whether the value was retrieved from the first `Option` or the second option.
+ * **Details**
  *
- * @param self - The first `Option` to be checked.
- * @param that - The second `Option` to be considered if the first `Option` is `None`.
+ * This function allows you to provide a fallback `Option` in case the current
+ * `Option` (`self`) is `None`. However, unlike `orElse`, it returns the value
+ * wrapped in an `Either` object, providing additional information about where
+ * the value came from:
  *
- * @category error handling
+ * - If the value is from the fallback `Option` (`that`), it is wrapped in an
+ *   `Either.right`.
+ * - If the value is from the original `Option` (`self`), it is wrapped in an
+ *   `Either.left`.
+ *
+ * This is especially useful when you need to differentiate between values
+ * originating from the primary `Option` and those coming from the fallback,
+ * while still maintaining the `Option`-style handling.
+ *
+ * @category Error handling
  * @since 2.0.0
  */
 export const orElseEither: {
@@ -430,18 +619,33 @@ export const orElseEither: {
 )
 
 /**
- * Given an `Iterable` collection of `Option`s, returns the first `Some` found in the collection.
+ * Returns the first `Some` value found in an `Iterable` collection of
+ * `Option`s, or `None` if no `Some` is found.
  *
- * @param collection - An iterable collection of `Option` to be searched.
+ * **Details**
+ *
+ * This function iterates over a collection of `Option` values and returns the
+ * first `Some` it encounters. If the collection contains only `None` values,
+ * the result will also be `None`. This utility is useful for efficiently
+ * finding the first valid value in a sequence of potentially empty or invalid
+ * options.
+ *
+ * The iteration stops as soon as a `Some` is found, making this function
+ * efficient for large collections.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.firstSomeOf([Option.none(), Option.some(1), Option.some(2)]), Option.some(1))
+ * console.log(Option.firstSomeOf([
+ *   Option.none(),
+ *   Option.some(1),
+ *   Option.some(2)
+ * ]))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
  * ```
  *
- * @category error handling
+ * @category Error handling
  * @since 2.0.0
  */
 export const firstSomeOf = <T, C extends Iterable<Option<T>> = Iterable<Option<T>>>(
@@ -457,31 +661,41 @@ export const firstSomeOf = <T, C extends Iterable<Option<T>> = Iterable<Option<T
 }
 
 /**
- * Constructs a new `Option` from a nullable type. If the value is `null` or `undefined`, returns `None`, otherwise
- * returns the value wrapped in a `Some`.
- *
- * @param nullableValue - The nullable value to be converted to an `Option`.
+ * Converts a nullable value into an `Option`. Returns `None` if the value is
+ * `null` or `undefined`, otherwise wraps the value in a `Some`.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.fromNullable(undefined), Option.none())
- * assert.deepStrictEqual(Option.fromNullable(null), Option.none())
- * assert.deepStrictEqual(Option.fromNullable(1), Option.some(1))
+ * console.log(Option.fromNullable(undefined))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ *
+ * console.log(Option.fromNullable(null))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ *
+ * console.log(Option.fromNullable(1))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
  * ```
  *
- * @category conversions
+ * @category Conversions
  * @since 2.0.0
  */
 export const fromNullable = <A>(
   nullableValue: A
-): Option<
-  NonNullable<A>
-> => (nullableValue == null ? none() : some(nullableValue as NonNullable<A>))
+): Option<NonNullable<A>> => (nullableValue == null ? none() : some(nullableValue as NonNullable<A>))
 
 /**
- * This API is useful for lifting a function that returns `null` or `undefined` into the `Option` context.
+ * Lifts a function that returns `null` or `undefined` into the `Option`
+ * context.
+ *
+ * **Details**
+ *
+ * This function takes a function `f` that might return `null` or `undefined`
+ * and transforms it into a function that returns an `Option`. The resulting
+ * function will return:
+ * - `Some` if the original function produces a non-null, non-undefined value.
+ * - `None` if the original function produces `null` or `undefined`.
  *
  * @example
  * ```ts
@@ -494,11 +708,14 @@ export const fromNullable = <A>(
  *
  * const parseOption = Option.liftNullable(parse)
  *
- * assert.deepStrictEqual(parseOption('1'), Option.some(1))
- * assert.deepStrictEqual(parseOption('not a number'), Option.none())
+ * console.log(parseOption("1"))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
+ *
+ * console.log(parseOption("not a number"))
+ * // Output: { _id: 'Option', _tag: 'None' }
  * ```
  *
- * @category conversions
+ * @category Conversions
  * @since 2.0.0
  */
 export const liftNullable = <A extends ReadonlyArray<unknown>, B>(
@@ -507,48 +724,74 @@ export const liftNullable = <A extends ReadonlyArray<unknown>, B>(
 (...a) => fromNullable(f(...a))
 
 /**
- * Returns the value of the `Option` if it is a `Some`, otherwise returns `null`.
+ * Returns the value contained in the `Option` if it is `Some`; otherwise,
+ * returns `null`.
  *
- * @param self - The `Option` to extract the value from.
+ * **Details**
+ *
+ * This function provides a way to extract the value of an `Option` while
+ * falling back to `null` if the `Option` is `None`.
+ *
+ * It is particularly useful in scenarios where `null` is an acceptable
+ * placeholder for the absence of a value, such as when interacting with APIs or
+ * systems that use `null` as a default for missing values.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.getOrNull(Option.some(1)), 1)
- * assert.deepStrictEqual(Option.getOrNull(Option.none()), null)
+ * console.log(Option.getOrNull(Option.some(1)))
+ * // Output: 1
+ *
+ * console.log(Option.getOrNull(Option.none()))
+ * // Output: null
  * ```
  *
- * @category getters
+ * @category Getters
  * @since 2.0.0
  */
 export const getOrNull: <A>(self: Option<A>) => A | null = getOrElse(constNull)
 
 /**
- * Returns the value of the `Option` if it is a `Some`, otherwise returns `undefined`.
+ * Returns the value contained in the `Option` if it is `Some`; otherwise,
+ * returns `undefined`.
  *
- * @param self - The `Option` to extract the value from.
+ * **Details**
+ *
+ * This function provides a way to extract the value of an `Option` while
+ * falling back to `undefined` if the `Option` is `None`.
+ *
+ * It is particularly useful in scenarios where `undefined` is an acceptable
+ * placeholder for the absence of a value, such as when interacting with APIs or
+ * systems that use `undefined` as a default for missing values.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.getOrUndefined(Option.some(1)), 1)
- * assert.deepStrictEqual(Option.getOrUndefined(Option.none()), undefined)
+ * console.log(Option.getOrUndefined(Option.some(1)))
+ * // Output: 1
+ *
+ * console.log(Option.getOrUndefined(Option.none()))
+ * // Output: undefined
  * ```
  *
- * @category getters
+ * @category Getters
  * @since 2.0.0
  */
 export const getOrUndefined: <A>(self: Option<A>) => A | undefined = getOrElse(constUndefined)
 
 /**
- * A utility function that lifts a function that throws exceptions into a function that returns an `Option`.
+ * Lifts a function that throws exceptions into a function that returns an
+ * `Option`.
  *
- * This function is useful for any function that might throw an exception, allowing the developer to handle
- * the exception in a more functional way.
+ * **Details**
  *
- * @param f - the function that can throw exceptions.
+ * This utility function takes a function `f` that might throw an exception and
+ * transforms it into a safer function that returns an `Option`. If the original
+ * function executes successfully, the result is wrapped in a `Some`. If an
+ * exception is thrown, the result is `None`, allowing the developer to handle
+ * errors in a functional, type-safe way.
  *
  * @example
  * ```ts
@@ -556,11 +799,14 @@ export const getOrUndefined: <A>(self: Option<A>) => A | undefined = getOrElse(c
  *
  * const parse = Option.liftThrowable(JSON.parse)
  *
- * assert.deepStrictEqual(parse("1"), Option.some(1))
- * assert.deepStrictEqual(parse(""), Option.none())
+ * console.log(parse("1"))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
+ *
+ * console.log(parse(""))
+ * // Output: { _id: 'Option', _tag: 'None' }
  * ```
  *
- * @category conversions
+ * @category Conversions
  * @since 2.0.0
  */
 export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
@@ -575,12 +821,18 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
 }
 
 /**
- * Extracts the value of an `Option` or throws if the `Option` is `None`.
+ * Extracts the value of an `Option` or throws an error if the `Option` is
+ * `None`, using a custom error factory.
  *
- * If a default error is sufficient for your use case and you don't need to configure the thrown error, see {@link getOrThrow}.
+ * **Details**
  *
- * @param self - The `Option` to extract the value from.
- * @param onNone - A function that will be called if the `Option` is `None`. It returns the error to be thrown.
+ * This function allows you to extract the value of an `Option` when it is
+ * `Some`. If the `Option` is `None`, it throws an error generated by the
+ * provided `onNone` function. This utility is particularly useful when you need
+ * a fail-fast behavior for empty `Option` values and want to provide a custom
+ * error message or object.
+ *
+ * @see {@link getOrThrow} for a version that throws a default error.
  *
  * @example
  * ```ts
@@ -593,7 +845,7 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
  * assert.throws(() => Option.getOrThrowWith(Option.none(), () => new Error('Unexpected None')))
  * ```
  *
- * @category conversions
+ * @category Conversions
  * @since 2.0.0
  */
 export const getOrThrowWith: {
@@ -607,12 +859,17 @@ export const getOrThrowWith: {
 })
 
 /**
- * Extracts the value of an `Option` or throws if the `Option` is `None`.
+ * Extracts the value of an `Option` or throws a default error if the `Option`
+ * is `None`.
  *
- * The thrown error is a default error. To configure the error thrown, see  {@link getOrThrowWith}.
+ * **Details**
  *
- * @param self - The `Option` to extract the value from.
- * @throws `Error("getOrThrow called on a None")`
+ * This function extracts the value from an `Option` if it is `Some`. If the
+ * `Option` is `None`, it throws a default error. It is useful for fail-fast
+ * scenarios where the absence of a value is treated as an exceptional case and
+ * a default error is sufficient.
+ *
+ * @see {@link getOrThrowWith} for a version that allows you to provide a custom error.
  *
  * @example
  * ```ts
@@ -622,18 +879,43 @@ export const getOrThrowWith: {
  * assert.throws(() => Option.getOrThrow(Option.none()))
  * ```
  *
- * @category conversions
+ * @category Conversions
  * @since 2.0.0
  */
 export const getOrThrow: <A>(self: Option<A>) => A = getOrThrowWith(() => new Error("getOrThrow called on a None"))
 
 /**
- * Maps the `Some` side of an `Option` value to a new `Option` value.
+ * Transforms the value inside a `Some` to a new value using the provided
+ * function, while leaving `None` unchanged.
  *
- * @param self - An `Option` to map
- * @param f - The function to map over the value of the `Option`
+ * **Details**
  *
- * @category mapping
+ * This function applies a mapping function `f` to the value inside an `Option`
+ * if it is a `Some`. If the `Option` is `None`, it remains unchanged. The
+ * result is a new `Option` with the transformed value (if it was a `Some`) or
+ * still `None`.
+ *
+ * This utility is particularly useful for chaining transformations in a
+ * functional way without needing to manually handle `None` cases.
+ *
+ * @example
+ * ```ts
+ * import { Option } from "effect"
+ *
+ * // Mapping over a `Some`
+ * const someValue = Option.some(2)
+ *
+ * console.log(Option.map(someValue, (n) => n * 2))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 4 }
+ *
+ * // Mapping over a `None`
+ * const noneValue = Option.none<number>()
+ *
+ * console.log(Option.map(noneValue, (n) => n * 2))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ * ```
+ *
+ * @category Mapping
  * @since 2.0.0
  */
 export const map: {
@@ -645,9 +927,36 @@ export const map: {
 )
 
 /**
- * Maps the `Some` value of this `Option` to the specified constant value.
+ * Replaces the value inside a `Some` with the specified constant value, leaving
+ * `None` unchanged.
  *
- * @category mapping
+ * **Details**
+ *
+ * This function transforms an `Option` by replacing the value inside a `Some`
+ * with the given constant value `b`. If the `Option` is `None`, it remains
+ * unchanged.
+ *
+ * This is useful when you want to preserve the presence of a value (`Some`) but
+ * replace its content with a fixed value.
+ *
+ * @example
+ * ```ts
+ * import { Option } from "effect"
+ *
+ * // Replacing the value of a `Some`
+ * const someValue = Option.some(42)
+ *
+ * console.log(Option.as(someValue, "new value"))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'new value' }
+ *
+ * // Replacing a `None` (no effect)
+ * const noneValue = Option.none<number>()
+ *
+ * console.log(Option.as(noneValue, "new value"))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ * ```
+ *
+ * @category Mapping
  * @since 2.0.0
  */
 export const as: {
@@ -656,11 +965,18 @@ export const as: {
 } = dual(2, <X, B>(self: Option<X>, b: B): Option<B> => map(self, () => b))
 
 /**
- * Maps the `Some` value of this `Option` to the `void` constant value.
+ * Replaces the value inside a `Some` with the constant value `void`, leaving
+ * `None` unchanged.
  *
- * This is useful when the value of the `Option` is not needed, but the presence or absence of the value is important.
+ * **Details**
  *
- * @category mapping
+ * This function transforms an `Option` by replacing the value inside a `Some`
+ * with `void`. If the `Option` is `None`, it remains unchanged.
+ *
+ * This is particularly useful in scenarios where the presence or absence of a
+ * value is significant, but the actual content of the value is irrelevant.
+ *
+ * @category Mapping
  * @since 2.0.0
  */
 export const asVoid: <_>(self: Option<_>) => Option<void> = as(undefined)
@@ -674,9 +990,56 @@ export {
 }
 
 /**
- * Applies a function to the value of an `Option` and flattens the result, if the input is `Some`.
+ * Applies a function to the value of a `Some` and flattens the resulting
+ * `Option`. If the input is `None`, it remains `None`.
  *
- * @category sequencing
+ * **Details**
+ *
+ * This function allows you to chain computations that return `Option` values.
+ * If the input `Option` is `Some`, the provided function `f` is applied to the
+ * contained value, and the resulting `Option` is returned. If the input is
+ * `None`, the function is not applied, and the result remains `None`.
+ *
+ * This utility is particularly useful for sequencing operations that may fail
+ * or produce optional results, enabling clean and concise workflows for
+ * handling such cases.
+ *
+ * @example
+ * ```ts
+ * import { Option } from "effect"
+ *
+ * interface Address {
+ *   readonly city: string
+ *   readonly street: Option.Option<string>
+ * }
+ *
+ * interface User {
+ *   readonly id: number
+ *   readonly username: string
+ *   readonly email: Option.Option<string>
+ *   readonly address: Option.Option<Address>
+ * }
+ *
+ * const user: User = {
+ *   id: 1,
+ *   username: "john_doe",
+ *   email: Option.some("john.doe@example.com"),
+ *   address: Option.some({
+ *     city: "New York",
+ *     street: Option.some("123 Main St")
+ *   })
+ * }
+ *
+ * // Use flatMap to extract the street value
+ * const street = user.address.pipe(
+ *   Option.flatMap((address) => address.street)
+ * )
+ *
+ * console.log(street)
+ * // Output: { _id: 'Option', _tag: 'Some', value: '123 Main St' }
+ * ```
+ *
+ * @category Sequencing
  * @since 2.0.0
  */
 export const flatMap: {
@@ -688,9 +1051,23 @@ export const flatMap: {
 )
 
 /**
- * Executes a sequence of two `Option`s. The second `Option` can be dependent on the result of the first `Option`.
+ * Chains two `Option`s together. The second `Option` can either be a static
+ * value or depend on the result of the first `Option`.
  *
- * @category sequencing
+ * **Details**
+ *
+ * This function enables sequencing of two `Option` computations. If the first
+ * `Option` is `Some`, the second `Option` is evaluated. The second `Option` can
+ * either:
+ *
+ * - Be a static `Option` value.
+ * - Be a function that produces an `Option`, optionally based on the value of
+ *   the first `Option`.
+ *
+ * If the first `Option` is `None`, the function skips the evaluation of the
+ * second `Option` and directly returns `None`.
+ *
+ * @category Sequencing
  * @since 2.0.0
  */
 export const andThen: {
@@ -712,11 +1089,24 @@ export const andThen: {
 )
 
 /**
- * This is `flatMap` + `fromNullable`, useful when working with optional values.
+ * Combines `flatMap` and `fromNullable`, transforming the value inside a `Some`
+ * using a function that may return `null` or `undefined`.
+ *
+ * **Details**
+ *
+ * This function applies a transformation function `f` to the value inside a
+ * `Some`. The function `f` may return a value, `null`, or `undefined`. If `f`
+ * returns a value, it is wrapped in a `Some`. If `f` returns `null` or
+ * `undefined`, the result is `None`. If the input `Option` is `None`, the
+ * function is not applied, and `None` is returned.
+ *
+ * This utility is particularly useful when working with deeply nested optional
+ * values or chaining computations that may result in `null` or `undefined` at
+ * some point.
  *
  * @example
  * ```ts
- * import { pipe, Option } from "effect"
+ * import { Option } from "effect"
  *
  * interface Employee {
  *   company?: {
@@ -728,28 +1118,26 @@ export const andThen: {
  *   }
  * }
  *
- * const employee1: Employee = { company: { address: { street: { name: 'high street' } } } }
+ * const employee1: Employee = { company: { address: { street: { name: "high street" } } } }
  *
- * assert.deepStrictEqual(
- *   pipe(
- *     Option.some(employee1),
- *     Option.flatMapNullable(employee => employee.company?.address?.street?.name),
- *   ),
- *   Option.some('high street')
+ * // Extracting a deeply nested property
+ * console.log(
+ *   Option.some(employee1)
+ *     .pipe(Option.flatMapNullable((employee) => employee.company?.address?.street?.name))
  * )
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'high street' }
  *
  * const employee2: Employee = { company: { address: { street: {} } } }
  *
- * assert.deepStrictEqual(
- *   pipe(
- *     Option.some(employee2),
- *     Option.flatMapNullable(employee => employee.company?.address?.street?.name),
- *   ),
- *   Option.none()
+ * // Property does not exist
+ * console.log(
+ *   Option.some(employee2)
+ *     .pipe(Option.flatMapNullable((employee) => employee.company?.address?.street?.name))
  * )
+ * // Output: { _id: 'Option', _tag: 'None' }
  * ```
  *
- * @category sequencing
+ * @category Sequencing
  * @since 2.0.0
  */
 export const flatMapNullable: {
@@ -762,13 +1150,39 @@ export const flatMapNullable: {
 )
 
 /**
- * @category sequencing
+ * Flattens an `Option` of `Option` into a single `Option`.
+ *
+ * **Details**
+ *
+ * This function takes an `Option` that wraps another `Option` and flattens it
+ * into a single `Option`. If the outer `Option` is `Some`, the function
+ * extracts the inner `Option`. If the outer `Option` is `None`, the result
+ * remains `None`.
+ *
+ * This is useful for simplifying nested `Option` structures that may arise
+ * during functional operations.
+ *
+ * @category Sequencing
  * @since 2.0.0
  */
 export const flatten: <A>(self: Option<Option<A>>) => Option<A> = flatMap(identity)
 
 /**
- * @category zipping
+ * Combines two `Option`s, keeping the value from the second `Option` if both
+ * are `Some`.
+ *
+ * **Details**
+ *
+ * This function takes two `Option`s and returns the second one if the first is
+ * `Some`. If the first `Option` is `None`, the result will also be `None`,
+ * regardless of the second `Option`. It effectively "zips" the two `Option`s
+ * while discarding the value from the first `Option`.
+ *
+ * This is particularly useful when sequencing computations where the result of
+ * the first computation is not needed, and you only care about the result of
+ * the second computation.
+ *
+ * @category Zipping
  * @since 2.0.0
  */
 export const zipRight: {
@@ -777,23 +1191,21 @@ export const zipRight: {
 } = dual(2, <X, B>(self: Option<X>, that: Option<B>): Option<B> => flatMap(self, () => that))
 
 /**
- * @category sequencing
- * @since 2.0.0
- */
-export const composeK: {
-  <B, C>(bfc: (b: B) => Option<C>): <A>(afb: (a: A) => Option<B>) => (a: A) => Option<C>
-  <A, B, C>(afb: (a: A) => Option<B>, bfc: (b: B) => Option<C>): (a: A) => Option<C>
-} = dual(2, <A, B, C>(afb: (a: A) => Option<B>, bfc: (b: B) => Option<C>) => (a: A): Option<C> => flatMap(afb(a), bfc))
-
-/**
- * Sequences the specified `that` `Option` but ignores its value.
+ * Combines two `Option`s, keeping the value from the first `Option` if both are
+ * `Some`.
  *
- * It is useful when we want to chain multiple operations, but only care about the result of `self`.
+ * **Details**
  *
- * @param that - The `Option` that will be ignored in the chain and discarded
- * @param self - The `Option` we care about
+ * This function takes two `Option`s and returns the first one if it is `Some`.
+ * If either the first `Option` or the second `Option` is `None`, the result
+ * will be `None`. This operation "zips" the two `Option`s while discarding the
+ * value from the second `Option`.
  *
- * @category zipping
+ * This is useful when sequencing computations where the second `Option`
+ * represents a dependency or condition that must hold, but its value is
+ * irrelevant.
+ *
+ * @category Zipping
  * @since 2.0.0
  */
 export const zipLeft: {
@@ -802,13 +1214,58 @@ export const zipLeft: {
 } = dual(2, <A, X>(self: Option<A>, that: Option<X>): Option<A> => tap(self, () => that))
 
 /**
- * Applies the provided function `f` to the value of the `Option` if it is `Some` and returns the original `Option`
- * unless `f` returns `None`, in which case it returns `None`.
+ * Composes two functions that return `Option` values, creating a new function
+ * that chains them together.
  *
- * This function is useful for performing additional computations on the value of the input `Option` without affecting its value.
+ * **Details**
  *
- * @param f - Function to apply to the value of the `Option` if it is `Some`
- * @param self - The `Option` to apply the function to
+ * This function allows you to compose two computations, each represented by a
+ * function that returns an `Option`. The result of the first function is passed
+ * to the second function if it is `Some`. If the first function returns `None`,
+ * the composed function short-circuits and returns `None` without invoking the
+ * second function.
+ *
+ * @example
+ * ```ts
+ * import { Option } from "effect"
+ *
+ * const parse = (s: string): Option.Option<number> => isNaN(Number(s)) ? Option.none() : Option.some(Number(s))
+ *
+ * const double = (n: number): Option.Option<number> => n > 0 ? Option.some(n * 2) : Option.none()
+ *
+ * const parseAndDouble = Option.composeK(parse, double)
+ *
+ * console.log(parseAndDouble("42"))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 84 }
+ *
+ * console.log(parseAndDouble("not a number"))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ * ```
+ *
+ * @category Sequencing
+ * @since 2.0.0
+ */
+export const composeK: {
+  <B, C>(bfc: (b: B) => Option<C>): <A>(afb: (a: A) => Option<B>) => (a: A) => Option<C>
+  <A, B, C>(afb: (a: A) => Option<B>, bfc: (b: B) => Option<C>): (a: A) => Option<C>
+} = dual(2, <A, B, C>(afb: (a: A) => Option<B>, bfc: (b: B) => Option<C>) => (a: A): Option<C> => flatMap(afb(a), bfc))
+
+/**
+ * Applies the provided function `f` to the value of the `Option` if it is
+ * `Some` and returns the original `Option`, unless `f` returns `None`, in which
+ * case it returns `None`.
+ *
+ * **Details**
+ *
+ * This function allows you to perform additional computations on the value of
+ * an `Option` without modifying its original value. If the `Option` is `Some`,
+ * the provided function `f` is executed with the value, and its result
+ * determines whether the original `Option` is returned (`Some`) or the result
+ * is `None` if `f` returns `None`. If the input `Option` is `None`, the
+ * function is not executed, and `None` is returned.
+ *
+ * This is particularly useful for applying side conditions or performing
+ * validation checks while retaining the original `Option`'s value.
  *
  * @example
  * ```ts
@@ -816,12 +1273,17 @@ export const zipLeft: {
  *
  * const getInteger = (n: number) => Number.isInteger(n) ? Option.some(n) : Option.none()
  *
- * assert.deepStrictEqual(Option.tap(Option.none(), getInteger), Option.none())
- * assert.deepStrictEqual(Option.tap(Option.some(1), getInteger), Option.some(1))
- * assert.deepStrictEqual(Option.tap(Option.some(1.14), getInteger), Option.none())
+ * console.log(Option.tap(Option.none(), getInteger))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ *
+ * console.log(Option.tap(Option.some(1), getInteger))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
+ *
+ * console.log(Option.tap(Option.some(1.14), getInteger))
+ * // Output: { _id: 'Option', _tag: 'None' }
  * ```
  *
- * @category sequencing
+ * @category Sequencing
  * @since 2.0.0
  */
 export const tap: {
@@ -830,14 +1292,34 @@ export const tap: {
 } = dual(2, <A, X>(self: Option<A>, f: (a: A) => Option<X>): Option<A> => flatMap(self, (a) => map(f(a), () => a)))
 
 /**
- * @category combining
+ * Combines two `Option` values into a single `Option` containing a tuple of
+ * their values if both are `Some`.
+ *
+ * **Details**
+ *
+ * This function takes two `Option`s and combines their values into a tuple `[A,
+ * B]` if both are `Some`. If either of the `Option`s is `None`, the result is
+ * `None`. This is particularly useful for combining multiple `Option` values
+ * into a single one, ensuring both contain valid values.
+ *
+ * @category Combining
  * @since 2.0.0
  */
 export const product = <A, B>(self: Option<A>, that: Option<B>): Option<[A, B]> =>
   isSome(self) && isSome(that) ? some([self.value, that.value]) : none()
 
 /**
- * @category combining
+ * Combines an `Option` with a collection of `Option`s into a single `Option`
+ * containing a tuple of their values if all are `Some`.
+ *
+ * **Details**
+ *
+ * This function takes a primary `Option` and a collection of `Option`s and
+ * combines their values into a tuple `[A, ...Array<A>]` if all are `Some`. If
+ * the primary `Option` or any `Option` in the collection is `None`, the result
+ * is `None`.
+ *
+ * @category Combining
  * @since 2.0.0
  */
 export const productMany = <A>(
@@ -858,24 +1340,47 @@ export const productMany = <A>(
 }
 
 /**
- * Takes a structure of `Option`s and returns an `Option` of values with the same structure.
+ * Combines a structure of `Option`s into a single `Option` containing the
+ * values with the same structure.
  *
- * - If a tuple is supplied, then the returned `Option` will contain a tuple with the same length.
- * - If a struct is supplied, then the returned `Option` will contain a struct with the same keys.
- * - If an iterable is supplied, then the returned `Option` will contain an array.
+ * **Details**
  *
- * @param fields - the struct of `Option`s to be sequenced.
+ * This function takes a structure of `Option`s (a tuple, struct, or iterable)
+ * and produces a single `Option` that contains the values from the input
+ * structure if all `Option`s are `Some`. If any `Option` in the input is
+ * `None`, the result is `None`. The structure of the input is preserved in the
+ * output.
+ *
+ * - If the input is a tuple (e.g., an array), the result will be an `Option`
+ *   containing a tuple with the same length.
+ * - If the input is a struct (e.g., an object), the result will be an `Option`
+ *   containing a struct with the same keys.
+ * - If the input is an iterable, the result will be an `Option` containing an
+ *   array.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.all([Option.some(1), Option.some(2)]), Option.some([1, 2]))
- * assert.deepStrictEqual(Option.all({ a: Option.some(1), b: Option.some("hello") }), Option.some({ a: 1, b: "hello" }))
- * assert.deepStrictEqual(Option.all({ a: Option.some(1), b: Option.none() }), Option.none())
+ * const maybeName: Option.Option<string> = Option.some("John")
+ * const maybeAge: Option.Option<number> = Option.some(25)
+ *
+ * //      ┌─── Option<[string, number]>
+ * //      ▼
+ * const tuple = Option.all([maybeName, maybeAge])
+ * console.log(tuple)
+ * // Output:
+ * // { _id: 'Option', _tag: 'Some', value: [ 'John', 25 ] }
+ *
+ * //      ┌─── Option<{ name: string; age: number; }>
+ * //      ▼
+ * const struct = Option.all({ name: maybeName, age: maybeAge })
+ * console.log(struct)
+ * // Output:
+ * // { _id: 'Option', _tag: 'Some', value: { name: 'John', age: 25 } }
  * ```
  *
- * @category combining
+ * @category Combining
  * @since 2.0.0
  */
 // @ts-expect-error
@@ -911,29 +1416,38 @@ export const all: <const I extends Iterable<Option<any>> | Record<string, Option
   }
 
 /**
- * Zips two `Option` values together using a provided function, returning a new `Option` of the result.
+ * Combines two `Option` values into a new `Option` by applying a provided
+ * function to their values.
  *
- * @param self - The left-hand side of the zip operation
- * @param that - The right-hand side of the zip operation
- * @param f - The function used to combine the values of the two `Option`s
+ * **Details**
+ *
+ * This function takes two `Option` values (`self` and `that`) and a combining
+ * function `f`. If both `Option` values are `Some`, the function `f` is applied
+ * to their values, and the result is wrapped in a new `Some`. If either
+ * `Option` is `None`, the result is `None`.
+ *
+ * This utility is useful for combining two optional computations into a single
+ * result while maintaining type safety and avoiding explicit checks for `None`.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * type Complex = [real: number, imaginary: number]
+ * const maybeName: Option.Option<string> = Option.some("John")
+ * const maybeAge: Option.Option<number> = Option.some(25)
  *
- * const complex = (real: number, imaginary: number): Complex => [real, imaginary]
+ * // Combine the name and age into a person object
+ * const person = Option.zipWith(maybeName, maybeAge, (name, age) => ({
+ *   name: name.toUpperCase(),
+ *   age
+ * }))
  *
- * assert.deepStrictEqual(Option.zipWith(Option.none(), Option.none(), complex), Option.none())
- * assert.deepStrictEqual(Option.zipWith(Option.some(1), Option.none(), complex), Option.none())
- * assert.deepStrictEqual(Option.zipWith(Option.none(), Option.some(1), complex), Option.none())
- * assert.deepStrictEqual(Option.zipWith(Option.some(1), Option.some(2), complex), Option.some([1, 2]))
- *
- * assert.deepStrictEqual(Option.zipWith(Option.some(1), complex)(Option.some(2)), Option.some([2, 1]))
+ * console.log(person)
+ * // Output:
+ * // { _id: 'Option', _tag: 'Some', value: { name: 'JOHN', age: 25 } }
  * ```
  *
- * @category zipping
+ * @category Zipping
  * @since 2.0.0
  */
 export const zipWith: {
@@ -946,7 +1460,17 @@ export const zipWith: {
 )
 
 /**
- * @category combining
+ * Applies a function inside a `Some` to a value inside another `Some`,
+ * combining them into a new `Option`.
+ *
+ * **Details**
+ *
+ * This function allows you to apply a function wrapped in an `Option` (`self`)
+ * to a value wrapped in another `Option` (`that`). If both `Option`s are
+ * `Some`, the function is applied to the value, and the result is wrapped in a
+ * new `Some`. If either `Option` is `None`, the result is `None`.
+ *
+ * @category Combining
  * @since 2.0.0
  */
 export const ap: {
@@ -955,21 +1479,30 @@ export const ap: {
 } = dual(2, <A, B>(self: Option<(a: A) => B>, that: Option<A>): Option<B> => zipWith(self, that, (f, a) => f(a)))
 
 /**
- * Reduces an `Iterable` of `Option<A>` to a single value of type `B`, elements that are `None` are ignored.
+ * Reduces an `Iterable` of `Option<A>` to a single value of type `B`, ignoring
+ * elements that are `None`.
  *
- * @param self - The Iterable of `Option<A>` to be reduced.
- * @param b - The initial value of the accumulator.
- * @param f - The reducing function that takes the current accumulator value and the unwrapped value of an `Option<A>`.
+ * **Details**
+ *
+ * This function takes an initial value of type `B` and a reducing function `f`
+ * that combines the accumulator with values of type `A`. It processes an
+ * iterable of `Option<A>`, applying `f` only to the `Some` values while
+ * ignoring the `None` values. The result is a single value of type `B`.
+ *
+ * This utility is particularly useful for aggregating values from an iterable
+ * of `Option`s while skipping the absent (`None`) values.
  *
  * @example
  * ```ts
- * import { pipe, Option } from "effect"
+ * import { Option, pipe } from "effect"
  *
  * const iterable = [Option.some(1), Option.none(), Option.some(2), Option.none()]
- * assert.deepStrictEqual(pipe(iterable, Option.reduceCompact(0, (b, a) => b + a)), 3)
+ *
+ * console.log(pipe(iterable, Option.reduceCompact(0, (b, a) => b + a)))
+ * // Output: 3
  * ```
  *
- * @category folding
+ * @category Reducing
  * @since 2.0.0
  */
 export const reduceCompact: {
@@ -989,27 +1522,46 @@ export const reduceCompact: {
 )
 
 /**
- * Transforms an `Option` into an `Array`.
+ * Converts an `Option` into an `Array`.
  * If the input is `None`, an empty array is returned.
- * If the input is `Some`, the value is wrapped in an array.
- *
- * @param self - The `Option` to convert to an array.
+ * If the input is `Some`, its value is wrapped in a single-element array.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(Option.toArray(Option.some(1)), [1])
- * assert.deepStrictEqual(Option.toArray(Option.none()), [])
+ * console.log(Option.toArray(Option.some(1)))
+ * // Output: [1]
+ *
+ * console.log(Option.toArray(Option.none()))
+ * // Output: []
  * ```
  *
- * @category conversions
+ * @category Conversions
  * @since 2.0.0
  */
 export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [self.value]
 
 /**
- * @category filtering
+ * Splits an `Option` into two `Option`s based on the result of a mapping
+ * function that produces an `Either`.
+ *
+ * **Details**
+ *
+ * This function takes an `Option` and a mapping function `f` that converts its
+ * value into an `Either`. It returns a tuple of two `Option`s:
+ *
+ * - The first `Option` (`left`) contains the value from the `Left` side of the
+ *   `Either` if it exists, otherwise `None`.
+ * - The second `Option` (`right`) contains the value from the `Right` side of
+ *   the `Either` if it exists, otherwise `None`.
+ *
+ * If the input `Option` is `None`, both returned `Option`s are `None`.
+ *
+ * This utility is useful for filtering and categorizing the contents of an
+ * `Option` based on a bifurcating computation.
+ *
+ * @category Filtering
  * @since 2.0.0
  */
 export const partitionMap: {
@@ -1027,25 +1579,40 @@ export const partitionMap: {
 })
 
 /**
- * Maps over the value of an `Option` and filters out `None`s.
+ * Maps over the value of an `Option` with a function that may return `None`,
+ * effectively filtering and transforming the value.
  *
- * Useful when in addition to filtering you also want to change the type of the `Option`.
+ * **Details**
  *
- * @param self - The `Option` to map over.
- * @param f - A function to apply to the value of the `Option`.
+ * This function allows you to both transform the value of a `Some` and filter
+ * it at the same time. The mapping function `f` can either return a new
+ * `Option` (to transform the value) or return `None` to filter it out. If the
+ * input `Option` is `None`, the function is not applied, and the result remains
+ * `None`.
+ *
+ * This utility is particularly useful when you want to apply a transformation
+ * to the value of an `Option` while conditionally removing invalid or unwanted
+ * results.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * const evenNumber = (n: number) => n % 2 === 0 ? Option.some(n) : Option.none()
+ * // Transform and filter numbers
+ * const transformEven = (n: Option.Option<number>): Option.Option<string> =>
+ *   Option.flatMap(n, (n) => (n % 2 === 0 ? Option.some(`Even: ${n}`) : Option.none()))
  *
- * assert.deepStrictEqual(Option.filterMap(Option.none(), evenNumber), Option.none())
- * assert.deepStrictEqual(Option.filterMap(Option.some(3), evenNumber), Option.none())
- * assert.deepStrictEqual(Option.filterMap(Option.some(2), evenNumber), Option.some(2))
+ * console.log(transformEven(Option.none()))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ *
+ * console.log(transformEven(Option.some(1)))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ *
+ * console.log(transformEven(Option.some(2)))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'Even: 2' }
  * ```
  *
- * @category filtering
+ * @category Filtering
  * @since 2.0.0
  */
 export const filterMap: {
@@ -1061,29 +1628,24 @@ export const filterMap: {
  *
  * If you need to change the type of the `Option` in addition to filtering, see `filterMap`.
  *
- * @param predicate - A predicate function to apply to the `Option` value.
- * @param fb - The `Option` to filter.
- *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * // predicate
- * const isEven = (n: number) => n % 2 === 0
+ * const removeEmptyString = (input: Option.Option<string>) =>
+ *   Option.filter(input, (value) => value !== "")
  *
- * assert.deepStrictEqual(Option.filter(Option.none(), isEven), Option.none())
- * assert.deepStrictEqual(Option.filter(Option.some(3), isEven), Option.none())
- * assert.deepStrictEqual(Option.filter(Option.some(2), isEven), Option.some(2))
+ * console.log(removeEmptyString(Option.none()))
+ * // Output: { _id: 'Option', _tag: 'None' }
  *
- * // refinement
- * const isNumber = (v: unknown): v is number => typeof v === "number"
+ * console.log(removeEmptyString(Option.some("")))
+ * // Output: { _id: 'Option', _tag: 'None' }
  *
- * assert.deepStrictEqual(Option.filter(Option.none(), isNumber), Option.none())
- * assert.deepStrictEqual(Option.filter(Option.some('hello'), isNumber), Option.none())
- * assert.deepStrictEqual(Option.filter(Option.some(2), isNumber), Option.some(2))
+ * console.log(removeEmptyString(Option.some("a")))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 'a' }
  * ```
  *
- * @category filtering
+ * @category Filtering
  * @since 2.0.0
  */
 export const filter: {
@@ -1098,55 +1660,122 @@ export const filter: {
 )
 
 /**
+ * Creates an `Equivalence` instance for comparing `Option` values, using a
+ * provided `Equivalence` for the inner type.
+ *
+ * **Details**
+ *
+ * This function takes an `Equivalence` instance for a specific type `A` and
+ * produces an `Equivalence` instance for `Option<A>`. The resulting
+ * `Equivalence` determines whether two `Option` values are equivalent:
+ *
+ * - Two `None`s are considered equivalent.
+ * - A `Some` and a `None` are not equivalent.
+ * - Two `Some` values are equivalent if their inner values are equivalent
+ *   according to the provided `Equivalence`.
+ *
  * @example
  * ```ts
- * import { Option, Number } from "effect"
+ * // Title: Comparing Optional Numbers for Equivalence
+ * import { Number, Option } from "effect"
  *
  * const isEquivalent = Option.getEquivalence(Number.Equivalence)
- * assert.deepStrictEqual(isEquivalent(Option.none(), Option.none()), true)
- * assert.deepStrictEqual(isEquivalent(Option.none(), Option.some(1)), false)
- * assert.deepStrictEqual(isEquivalent(Option.some(1), Option.none()), false)
- * assert.deepStrictEqual(isEquivalent(Option.some(1), Option.some(2)), false)
- * assert.deepStrictEqual(isEquivalent(Option.some(1), Option.some(1)), true)
+ *
+ * console.log(isEquivalent(Option.none(), Option.none()))
+ * // Output: true
+ *
+ * console.log(isEquivalent(Option.none(), Option.some(1)))
+ * // Output: false
+ *
+ * console.log(isEquivalent(Option.some(1), Option.none()))
+ * // Output: false
+ *
+ * console.log(isEquivalent(Option.some(1), Option.some(2)))
+ * // Output: false
+ *
+ * console.log(isEquivalent(Option.some(1), Option.some(1)))
+ * // Output: true
  * ```
  *
- * @category equivalence
+ * @category Equivalence
  * @since 2.0.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<Option<A>> =>
   Equivalence.make((x, y) => isNone(x) ? isNone(y) : isNone(y) ? false : isEquivalent(x.value, y.value))
 
 /**
- * The `Order` instance allows `Option` values to be compared with
- * `compare`, whenever there is an `Order` instance for
- * the type the `Option` contains.
+ * Creates an `Order` instance for comparing `Option` values, using a provided
+ * `Order` for the inner type.
  *
- * `None` is considered to be less than any `Some` value.
+ * **Details**
+ *
+ * This function produces an `Order` instance for `Option<A>`, allowing `Option`
+ * values to be compared:
+ *
+ * - `None` is always considered less than any `Some` value.
+ * - If both are `Some`, their inner values are compared using the provided
+ *   `Order` instance.
  *
  * @example
  * ```ts
- * import { pipe, Option, Number } from "effect"
+ * import { Number, Option } from "effect"
  *
- * const O = Option.getOrder(Number.Order)
- * assert.deepStrictEqual(O(Option.none(), Option.none()), 0)
- * assert.deepStrictEqual(O(Option.none(), Option.some(1)), -1)
- * assert.deepStrictEqual(O(Option.some(1), Option.none()), 1)
- * assert.deepStrictEqual(O(Option.some(1), Option.some(2)), -1)
- * assert.deepStrictEqual(O(Option.some(1), Option.some(1)), 0)
+ * const order = Option.getOrder(Number.Order)
+ *
+ * console.log(order(Option.none(), Option.none()))
+ * // Output: 0
+ *
+ * console.log(order(Option.none(), Option.some(1)))
+ * // Output: -1
+ *
+ * console.log(order(Option.some(1), Option.none()))
+ * // Output: 1
+ *
+ * console.log(order(Option.some(1), Option.some(2)))
+ * // Output: -1
+ *
+ * console.log(order(Option.some(1), Option.some(1)))
+ * // Output: 0
  * ```
  *
- * @category sorting
+ * @category Sorting
  * @since 2.0.0
  */
 export const getOrder = <A>(O: Order<A>): Order<Option<A>> =>
   order.make((self, that) => isSome(self) ? (isSome(that) ? O(self.value, that.value) : 1) : -1)
 
 /**
- * Lifts a binary function into `Option`.
+ * Lifts a binary function to work with `Option` values, allowing the function
+ * to operate on two `Option`s.
  *
- * @param f - The function to lift.
+ * **Details**
  *
- * @category lifting
+ * This function takes a binary function `f` and returns a new function that
+ * applies `f` to the values of two `Option`s (`self` and `that`). If both
+ * `Option`s are `Some`, the binary function `f` is applied to their values, and
+ * the result is wrapped in a new `Some`. If either `Option` is `None`, the
+ * result is `None`.
+ *
+ * @example
+ * ```ts
+ * import { Option } from "effect"
+ *
+ * // A binary function to add two numbers
+ * const add = (a: number, b: number): number => a + b
+ *
+ * // Lift the `add` function to work with `Option` values
+ * const addOptions = Option.lift2(add)
+ *
+ * // Both `Option`s are `Some`
+ * console.log(addOptions(Option.some(2), Option.some(3)))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 5 }
+ *
+ * // One `Option` is `None`
+ * console.log(addOptions(Option.some(2), Option.none()))
+ * // Output: { _id: 'Option', _tag: 'None' }
+ * ```
+ *
+ * @category Lifting
  * @since 2.0.0
  */
 export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
@@ -1155,22 +1784,35 @@ export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
 } => dual(2, (self: Option<A>, that: Option<B>): Option<C> => zipWith(self, that, f))
 
 /**
- * Transforms a `Predicate` function into a `Some` of the input value if the predicate returns `true` or `None`
- * if the predicate returns `false`.
+ * Lifts a `Predicate` or `Refinement` into the `Option` context, returning a
+ * `Some` of the input value if the predicate is satisfied, or `None` otherwise.
  *
- * @param predicate - A `Predicate` function that takes in a value of type `A` and returns a boolean.
+ * **Details**
+ *
+ * This function transforms a `Predicate` (or a more specific `Refinement`) into
+ * a function that produces an `Option`. If the predicate evaluates to `true`,
+ * the input value is wrapped in a `Some`. If the predicate evaluates to
+ * `false`, the result is `None`.
  *
  * @example
  * ```ts
  * import { Option } from "effect"
  *
- * const getOption = Option.liftPredicate((n: number) => n >= 0)
+ * // Check if a number is positive
+ * const isPositive = (n: number) => n > 0
  *
- * assert.deepStrictEqual(getOption(-1), Option.none())
- * assert.deepStrictEqual(getOption(1), Option.some(1))
+ * //      ┌─── (b: number) => Option<number>
+ * //      ▼
+ * const parsePositive = Option.liftPredicate(isPositive)
+ *
+ * console.log(parsePositive(1))
+ * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
+ *
+ * console.log(parsePositive(-1))
+ * // OUtput: { _id: 'Option', _tag: 'None' }
  * ```
  *
- * @category lifting
+ * @category Lifting
  * @since 2.0.0
  */
 export const liftPredicate: { // Note: I intentionally avoid using the NoInfer pattern here.
@@ -1190,22 +1832,36 @@ export const liftPredicate: { // Note: I intentionally avoid using the NoInfer p
 )
 
 /**
- * Returns a function that checks if a `Option` contains a given value using a provided `isEquivalent` function.
+ * Returns a function that checks if an `Option` contains a specified value,
+ * using a provided equivalence function.
  *
- * @param equivalent - An `Equivalence` instance to compare values of the `Option`.
- * @param self - The `Option` to apply the comparison to.
- * @param a - The value to compare against the `Option`.
+ * **Details**
+ *
+ * This function allows you to check whether an `Option` contains a specific
+ * value. It uses an equivalence function `isEquivalent` to compare the value
+ * inside the `Option` to the provided value. If the `Option` is `Some` and the
+ * equivalence function returns `true`, the result is `true`. If the `Option` is
+ * `None` or the values are not equivalent, the result is `false`.
+ *
+ * @see {@link contains} for a version that uses the default `Equivalence`.
  *
  * @example
  * ```ts
- * import { pipe, Option, Number } from "effect"
+ * import { Number, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe(Option.some(2), Option.containsWith(Number.Equivalence)(2)), true)
- * assert.deepStrictEqual(pipe(Option.some(1), Option.containsWith(Number.Equivalence)(2)), false)
- * assert.deepStrictEqual(pipe(Option.none(), Option.containsWith(Number.Equivalence)(2)), false)
+ * const contains = Option.containsWith(Number.Equivalence)
+ *
+ * console.log(Option.some(2).pipe(contains(2)))
+ * // Output: true
+ *
+ * console.log(Option.some(1).pipe(contains(2)))
+ * // Output: false
+ *
+ * console.log(Option.none().pipe(contains(2)))
+ * // Output: false
  * ```
  *
- * @category elements
+ * @category Elements
  * @since 2.0.0
  */
 export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
@@ -1216,9 +1872,34 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
 const _equivalence = Equal.equivalence()
 
 /**
- * Returns a function that checks if an `Option` contains a given value using the default `Equivalence`.
+ * Returns a function that checks if an `Option` contains a specified value
+ * using the default `Equivalence`.
  *
- * @category elements
+ * **Details**
+ *
+ * This function allows you to check whether an `Option` contains a specific
+ * value. It uses the default `Equivalence` for equality comparison. If the
+ * `Option` is `Some` and its value is equivalent to the provided value, the
+ * result is `true`. If the `Option` is `None` or the values are not equivalent,
+ * the result is `false`.
+ *
+ * @see {@link containsWith} for a version that allows you to specify a custom equivalence function.
+ *
+ * @example
+ * ```ts
+ * import { Option } from "effect"
+ *
+ * console.log(Option.some(2).pipe(Option.contains(2)))
+ * // Output: true
+ *
+ * console.log(Option.some(1).pipe(Option.contains(2)))
+ * // Output: false
+ *
+ * console.log(Option.none().pipe(Option.contains(2)))
+ * // Output: false
+ * ```
+ *
+ * @category Elements
  * @since 2.0.0
  */
 export const contains: {
@@ -1227,22 +1908,35 @@ export const contains: {
 } = containsWith(_equivalence)
 
 /**
- * Check if a value in an `Option` type meets a certain predicate.
+ * Checks if a value in an `Option` satisfies a given predicate or refinement.
  *
- * @param self - The `Option` to check.
- * @param predicate - The condition to check.
+ * **Details**
+ *
+ * This function allows you to check if a value inside a `Some` meets a
+ * specified condition. If the `Option` is `None`, the result is `false`. If the
+ * `Option` is `Some`, the provided predicate or refinement is applied to the
+ * value:
+ *
+ * - If the condition is met, the result is `true`.
+ * - If the condition is not met, the result is `false`.
  *
  * @example
  * ```ts
- * import { pipe, Option } from "effect"
+ * import { Option } from "effect"
  *
  * const isEven = (n: number) => n % 2 === 0
  *
- * assert.deepStrictEqual(pipe(Option.some(2), Option.exists(isEven)), true)
- * assert.deepStrictEqual(pipe(Option.some(1), Option.exists(isEven)), false)
- * assert.deepStrictEqual(pipe(Option.none(), Option.exists(isEven)), false)
+ * console.log(Option.some(2).pipe(Option.exists(isEven)))
+ * // Output: true
+ *
+ * console.log(Option.some(1).pipe(Option.exists(isEven)))
+ * // Output: false
+ *
+ * console.log(Option.none().pipe(Option.exists(isEven)))
+ * // Output: false
  * ```
  *
+ * @category Elements
  * @since 2.0.0
  */
 export const exists: {
@@ -1289,7 +1983,7 @@ export const exists: {
  * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
  * ```
  *
- * @category do notation
+ * @category Do notation
  * @since 2.0.0
  */
 export const bindTo: {
@@ -1339,7 +2033,7 @@ export {
    * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
    *
    * ```
-   * @category do notation
+   * @category Do notation
    * @since 2.0.0
    */
   let_ as let
@@ -1374,7 +2068,7 @@ export {
  * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
  * ```
  *
- * @category do notation
+ * @category Do notation
  * @since 2.0.0
  */
 export const bind: {
@@ -1418,7 +2112,7 @@ export const bind: {
  * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
  * ```
  *
- * @category do notation
+ * @category Do notation
  * @since 2.0.0
  */
 export const Do: Option<{}> = some({})
@@ -1426,7 +2120,31 @@ export const Do: Option<{}> = some({})
 const adapter = Gen.adapter<OptionTypeLambda>()
 
 /**
- * @category generators
+ * Similar to `Effect.gen`, `Option.gen` provides a more readable,
+ * generator-based syntax for working with `Option` values, making code that
+ * involves `Option` easier to write and understand. This approach is similar to
+ * using `async/await` but tailored for `Option`.
+ *
+ * @example
+ * ```ts
+ * // Title: Using Option.gen to Create a Combined Value
+ * import { Option } from "effect"
+ *
+ * const maybeName: Option.Option<string> = Option.some("John")
+ * const maybeAge: Option.Option<number> = Option.some(25)
+ *
+ * const person = Option.gen(function* () {
+ *   const name = (yield* maybeName).toUpperCase()
+ *   const age = yield* maybeAge
+ *   return { name, age }
+ * })
+ *
+ * console.log(person)
+ * // Output:
+ * // { _id: 'Option', _tag: 'Some', value: { name: 'JOHN', age: 25 } }
+ * ```
+ *
+ * @category Generators
  * @since 2.0.0
  */
 export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (...args) => {
