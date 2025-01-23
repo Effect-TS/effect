@@ -5,7 +5,7 @@ import * as Equal from "effect/Equal"
 import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 const parse = (input: string, tz?: DateTime.TimeZone | string) => Either.getOrThrowWith(Cron.parse(input, tz), identity)
 const match = (input: Cron.Cron | string, date: DateTime.DateTime.Input) =>
@@ -48,6 +48,11 @@ describe("Cron", () => {
         weekdays: []
       }))
     )
+  })
+
+  it("unsafeParse", () => {
+    expect(() => Cron.unsafeParse("")).toThrow(new Error("Invalid number of segments in cron expression"))
+    expect(() => Cron.unsafeParse("0 0 4 8-14 * *", "")).toThrow(new Error("Invalid time zone in cron expression"))
   })
 
   it("match", () => {
