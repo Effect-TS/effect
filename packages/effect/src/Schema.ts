@@ -6249,9 +6249,9 @@ export const itemsCount = <A extends ReadonlyArray<any>>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
   const itemsCount = Math.floor(n)
-  if (itemsCount < 1) {
+  if (itemsCount < 0) {
     throw new Error(
-      errors_.getInvalidArgumentErrorMessage(`Expected an integer greater than or equal to 1, actual ${n}`)
+      errors_.getInvalidArgumentErrorMessage(`Expected an integer greater than or equal to 0, actual ${n}`)
     )
   }
   return self.pipe(

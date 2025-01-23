@@ -6,7 +6,19 @@ describe("itemsCount", () => {
   it("should throw for invalid argument", () => {
     expect(() => S.Array(S.Number).pipe(S.itemsCount(-1))).toThrowError(
       new Error(`Invalid Argument
-details: Expected an integer greater than or equal to 1, actual -1`)
+details: Expected an integer greater than or equal to 0, actual -1`)
+    )
+  })
+
+  it("should allow 0 as a valid argument", async () => {
+    const schema = S.Array(S.Number).pipe(S.itemsCount(0))
+    await Util.assertions.decoding.succeed(schema, [])
+    await Util.assertions.decoding.fail(
+      schema,
+      [1],
+      `itemsCount(0)
+└─ Predicate refinement failure
+   └─ Expected an array of exactly 0 item(s), actual [1]`
     )
   })
 
