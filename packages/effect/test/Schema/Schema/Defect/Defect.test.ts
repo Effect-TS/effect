@@ -45,7 +45,7 @@ describe("Defect", () => {
       await Util.assertions.encoding.succeed(
         S.Defect,
         { a: 1 },
-        "[object Object]"
+        "{\"a\":1}"
       )
     })
 
