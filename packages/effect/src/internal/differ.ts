@@ -7,6 +7,7 @@ import * as Dual from "../Function.js"
 import { constant, identity } from "../Function.js"
 import type { HashMap } from "../HashMap.js"
 import type { HashSet } from "../HashSet.js"
+import { pipeArguments } from "../Pipeable.js"
 import * as ChunkPatch from "./differ/chunkPatch.js"
 import * as ContextPatch from "./differ/contextPatch.js"
 import * as HashMapPatch from "./differ/hashMapPatch.js"
@@ -22,6 +23,9 @@ export const DifferProto = {
   [DifferTypeId]: {
     _P: identity,
     _V: identity
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
   }
 }
 
