@@ -1,5 +1,5 @@
-import { describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, FiberHandle, pipe, Ref } from "effect"
+import { assert, describe, it } from "@effect/vitest"
+import { Deferred, Effect, Exit, Fiber, FiberHandle, pipe, Ref, TestClock } from "effect"
 import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 
 describe("FiberHandle", () => {
@@ -98,5 +98,17 @@ describe("FiberHandle", () => {
           Effect.exit
         )
       ))
+    }))
+
+  it.scoped("awaitEmpty", () =>
+    Effect.gen(function*() {
+      const handle = yield* FiberHandle.make()
+      yield* FiberHandle.run(handle, Effect.sleep(1000))
+
+      const fiber = yield* Effect.fork(FiberHandle.awaitEmpty(handle))
+      yield* TestClock.adjust(500)
+      assert.isNull(fiber.unsafePoll())
+      yield* TestClock.adjust(500)
+      assert.isDefined(fiber.unsafePoll())
     }))
 })
