@@ -15,6 +15,7 @@ import * as HashMapPatch from "./internal/differ/hashMapPatch.js"
 import * as HashSetPatch from "./internal/differ/hashSetPatch.js"
 import * as OrPatch from "./internal/differ/orPatch.js"
 import * as ReadonlyArrayPatch from "./internal/differ/readonlyArrayPatch.js"
+import type { Pipeable } from "./Pipeable.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -48,7 +49,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Differ<in out Value, in out Patch> {
+export interface Differ<in out Value, in out Patch> extends Pipeable {
   readonly [TypeId]: {
     readonly _V: Types.Invariant<Value>
     readonly _P: Types.Invariant<Patch>
