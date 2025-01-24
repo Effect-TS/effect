@@ -1,5 +1,5 @@
-import { describe, it } from "@effect/vitest"
-import { Array, Deferred, Effect, Exit, Fiber, FiberMap, pipe, Ref, Scope } from "effect"
+import { assert, describe, it } from "@effect/vitest"
+import { Array, Deferred, Effect, Exit, Fiber, FiberMap, pipe, Ref, Scope, TestClock } from "effect"
 import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 
 describe("FiberMap", () => {
@@ -120,5 +120,20 @@ describe("FiberMap", () => {
           Effect.exit
         )
       ))
+    }))
+
+  it.scoped("awaitEmpty", () =>
+    Effect.gen(function*() {
+      const map = yield* FiberMap.make<string>()
+      yield* FiberMap.run(map, "a", Effect.sleep(1000))
+      yield* FiberMap.run(map, "b", Effect.sleep(1000))
+      yield* FiberMap.run(map, "c", Effect.sleep(1000))
+      yield* FiberMap.run(map, "d", Effect.sleep(1000))
+
+      const fiber = yield* Effect.fork(FiberMap.awaitEmpty(map))
+      yield* TestClock.adjust(500)
+      assert.isNull(fiber.unsafePoll())
+      yield* TestClock.adjust(500)
+      assert.isDefined(fiber.unsafePoll())
     }))
 })
