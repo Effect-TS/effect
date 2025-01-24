@@ -34,7 +34,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Trie<in out Value> extends Iterable<[string, Value]>, Equal, Pipeable, Inspectable {
+export interface Trie<out Value> extends Iterable<[string, Value]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _Value: Covariant<Value>
   }
