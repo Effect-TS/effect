@@ -996,7 +996,8 @@ const renderErrorCause = (cause: PrettyError, prefix: string) => {
   return stack
 }
 
-class PrettyError extends globalThis.Error implements Cause.PrettyError {
+/** @internal */
+export class PrettyError extends globalThis.Error implements Cause.PrettyError {
   span: undefined | Span = undefined
   constructor(originalError: unknown) {
     const originalErrorIsObject = typeof originalError === "object" && originalError !== null
