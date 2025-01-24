@@ -169,25 +169,25 @@ Let's now move to the client-side code and embrace the power of end-to-end types
 ```ts
 // client.ts
 import { HttpClient, HttpClientRequest } from "@effect/platform"
-import { Resolver } from "@effect/rpc"
-import { HttpResolver } from "@effect/rpc-http"
+import { RpcResolver } from "@effect/rpc"
+import { HttpRpcResolver } from "@effect/rpc-http"
 import { Effect } from "effect"
 import { UserCreate, UserList } from "./request.js"
 import type { AppRouter } from "./router.js"
 
-// Create the client
-const client = Resolver.toClient(
-  HttpResolver.make<AppRouter>(
-    HttpClient.fetchOk.pipe(
-      HttpClient.mapRequest(
-        HttpClientRequest.prependUrl("http://localhost:3000/rpc")
-      )
-    )
+// Define an effect which creates the client
+const makeClient = Effect.gen(function*() {
+  const baseClient = yield* HttpClient.HttpClient
+  const client = baseClient.pipe(
+    HttpClient.filterStatusOk,
+    HttpClient.mapRequest(HttpClientRequest.prependUrl("http://localhost:3000/rpc"))
   )
-)
+  return RpcResolver.toClient(HttpRpcResolver.make<AppRouter>(client))
+})
 
 // Use the client
 const program = Effect.gen(function* () {
+  const client = yield* makeClient
   let users = yield* client(new UserList())
   if (!users.find((user) => user.id === "3")) {
     console.log(`Creating user "Charlie"`)
@@ -199,7 +199,10 @@ const program = Effect.gen(function* () {
   return users
 })
 
-Effect.runPromise(program).then(console.log)
+program.pipe(
+  Effect.provide(FetchHttpClient.layer),
+  Effect.runPromise
+).then(console.log)
 ```
 
 # Stream
@@ -265,23 +268,23 @@ NodeRuntime.runMain(Layer.launch(HttpLive))
 ```ts filename="client.ts"
 // client.ts
 import { HttpClient, HttpClientRequest } from "@effect/platform"
-import { Resolver } from "@effect/rpc"
-import { HttpResolver } from "@effect/rpc-http"
+import { RpcResolver } from "@effect/rpc"
+import { HttpRpcResolver } from "@effect/rpc-http"
 import { Effect, Stream } from "effect"
 import { Counts } from "./request.js"
 import type { AppRouter } from "./router.js"
 
-const client = Resolver.toClient(
-  HttpResolver.make<AppRouter>(
-    HttpClient.fetchOk.pipe(
-      HttpClient.mapRequest(
-        HttpClientRequest.prependUrl("http://localhost:3000/rpc")
-      )
-    )
+const makeClient = Effect.gen(function*() {
+  const baseClient = yield* HttpClient.HttpClient
+  const client = baseClient.pipe(
+    HttpClient.filterStatusOk,
+    HttpClient.mapRequest(HttpClientRequest.prependUrl("http://localhost:3000/rpc"))
   )
-)
+  return RpcResolver.toClient(HttpRpcResolver.make<AppRouter>(client))
+})
 
 const program = Effect.gen(function* () {
+  const client = yield* makeClient
   yield* Effect.log("Running the client")
   const stream = client(new Counts())
   return yield* stream.pipe(
@@ -290,7 +293,10 @@ const program = Effect.gen(function* () {
   )
 })
 
-Effect.runPromise(program)
+program.pipe(
+  Effect.provide(FetchHttpClient.layer),
+  Effect.runPromise
+)
 /*
 timestamp=...:50.395Z level=INFO fiber=#0 message="Running the client"
 timestamp=...:52.438Z level=INFO fiber=#1 message=1
