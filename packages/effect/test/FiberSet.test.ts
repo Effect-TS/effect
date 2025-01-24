@@ -1,5 +1,5 @@
-import { describe, it } from "@effect/vitest"
-import { Array, Deferred, Effect, Exit, Fiber, FiberSet, pipe, Ref, Scope } from "effect"
+import { assert, describe, it } from "@effect/vitest"
+import { Array, Deferred, Effect, Exit, Fiber, FiberSet, pipe, Ref, Scope, TestClock } from "effect"
 import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 
 describe("FiberSet", () => {
@@ -92,5 +92,20 @@ describe("FiberSet", () => {
           Effect.exit
         )
       ))
+    }))
+
+  it.scoped("awaitEmpty", () =>
+    Effect.gen(function*() {
+      const set = yield* FiberSet.make()
+      yield* FiberSet.run(set, Effect.sleep(1000))
+      yield* FiberSet.run(set, Effect.sleep(1000))
+      yield* FiberSet.run(set, Effect.sleep(1000))
+      yield* FiberSet.run(set, Effect.sleep(1000))
+
+      const fiber = yield* Effect.fork(FiberSet.awaitEmpty(set))
+      yield* TestClock.adjust(500)
+      assert.isNull(fiber.unsafePoll())
+      yield* TestClock.adjust(500)
+      assert.isDefined(fiber.unsafePoll())
     }))
 })
