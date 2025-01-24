@@ -7,7 +7,7 @@ import * as Effect from "./Effect.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberId from "./FiberId.js"
-import { constFalse, dual } from "./Function.js"
+import { constFalse, constVoid, dual } from "./Function.js"
 import * as HashSet from "./HashSet.js"
 import * as Inspectable from "./Inspectable.js"
 import * as Iterable from "./Iterable.js"
@@ -291,34 +291,32 @@ export const run: {
 } = function() {
   const self = arguments[0] as FiberSet<any, any>
   if (!Effect.isEffect(arguments[1])) {
-    const options = arguments[1] as { readonly propagateInterruption?: boolean | undefined } | undefined
-    return (effect: Effect.Effect<any, any, any>) =>
-      Effect.suspend(() => {
-        if (self.state._tag === "Closed") {
-          return Effect.interrupt
-        }
-        return Effect.uninterruptibleMask((restore) =>
-          Effect.tap(
-            restore(Effect.forkDaemon(effect)),
-            (fiber) => add(self, fiber, options)
-          )
-        )
-      })
+    const options = arguments[1]
+    return (effect: Effect.Effect<any, any, any>) => runImpl(self, effect, options)
   }
-  const effect = arguments[1]
-  const options = arguments[2] as { readonly propagateInterruption?: boolean | undefined } | undefined
-  return Effect.suspend(() => {
+  return runImpl(self, arguments[1], arguments[2]) as any
+}
+
+const runImpl = <A, E, R, XE extends E, XA extends A>(
+  self: FiberSet<A, E>,
+  effect: Effect.Effect<XA, XE, R>,
+  options?: {
+    readonly propagateInterruption?: boolean | undefined
+  }
+): Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R> =>
+  Effect.fiberIdWith((fiberId) => {
     if (self.state._tag === "Closed") {
       return Effect.interrupt
     }
-    return Effect.uninterruptibleMask((restore) =>
-      Effect.tap(
-        restore(Effect.forkDaemon(effect)),
-        (fiber) => add(self, fiber, options)
-      )
+    return Effect.tap(
+      Effect.forkDaemon(effect),
+      (fiber) =>
+        unsafeAdd(self, fiber, {
+          ...options,
+          interruptAs: fiberId
+        })
     )
-  }) as any
-}
+  })
 
 /**
  * Capture a Runtime and use it to fork Effect's, adding the forked fibers to the FiberSet.
@@ -405,3 +403,16 @@ export const size = <A, E>(self: FiberSet<A, E>): Effect.Effect<number> =>
  */
 export const join = <A, E>(self: FiberSet<A, E>): Effect.Effect<void, E> =>
   Deferred.await(self.deferred as Deferred.Deferred<void, E>)
+
+/**
+ * Wait until the fiber set is empty.
+ *
+ * @since 3.13.0
+ * @categories combinators
+ */
+export const awaitEmpty = <A, E>(self: FiberSet<A, E>): Effect.Effect<void> =>
+  Effect.whileLoop({
+    while: () => self.state._tag === "Open" && self.state.backing.size > 0,
+    body: () => Fiber.await(Iterable.unsafeHead(self)),
+    step: constVoid
+  })
