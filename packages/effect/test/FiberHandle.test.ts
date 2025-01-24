@@ -1,4 +1,4 @@
-import { Deferred, Effect, Exit, Fiber, Ref } from "effect"
+import { Deferred, Effect, Exit, Fiber, Ref, TestClock } from "effect"
 import * as FiberHandle from "effect/FiberHandle"
 import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
@@ -99,5 +99,17 @@ describe("FiberHandle", () => {
           Effect.exit
         )
       ))
+    }))
+
+  it.scoped("awaitEmpty", () =>
+    Effect.gen(function*() {
+      const handle = yield* FiberHandle.make()
+      yield* FiberHandle.run(handle, Effect.sleep(1000))
+
+      const fiber = yield* Effect.fork(FiberHandle.awaitEmpty(handle))
+      yield* TestClock.adjust(500)
+      assert.isNull(fiber.unsafePoll())
+      yield* TestClock.adjust(500)
+      assert.isDefined(fiber.unsafePoll())
     }))
 })
