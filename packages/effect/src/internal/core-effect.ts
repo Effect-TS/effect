@@ -953,14 +953,14 @@ export const whenLogLevel = dual<
   (level: LogLevel.LogLevel) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<Option.Option<A>, E, R>,
   <A, E, R>(effect: Effect.Effect<A, E, R>, level: LogLevel.LogLevel) => Effect.Effect<Option.Option<A>, E, R>
 >(2, (effect, level) => {
-   return core.withFiberRuntime((fiberState) => {
-     const currentLogLevel = FiberRef.currentMinimumLogLevel.pipe(fiberState.getFiberRef);
+  return core.withFiberRuntime((fiberState) => {
+    const currentLogLevel = FiberRef.currentMinimumLogLevel.pipe(fiberState.getFiberRef)
 
-     const levelEnabled = LogLevel.lessThanEqual(currentLogLevel, level);
+    const levelEnabled = LogLevel.lessThanEqual(currentLogLevel, level)
 
-     return levelEnabled ? core.map(effect, Option.some) : core.succeed(Option.none());
-   })
-});
+    return levelEnabled ? core.map(effect, Option.some) : core.succeed(Option.none())
+  })
+})
 
 /* @internal */
 export const loop: {

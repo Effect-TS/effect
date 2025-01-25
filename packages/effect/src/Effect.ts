@@ -10904,7 +10904,7 @@ export const withUnhandledErrorLogLevel: {
 export const whenLogLevel: {
   (level: LogLevel): <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, E, R>
   <A, E, R>(self: Effect<A, E, R>, level: LogLevel): Effect<Option.Option<A>, E, R>
-} = effect.whenLogLevel;
+} = effect.whenLogLevel
 
 /**
  * Converts an effect's failure into a fiber termination, removing the error
