@@ -3,7 +3,7 @@
  */
 import * as Duration from "effect/Duration"
 import * as Either from "effect/Either"
-import { dual } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
@@ -368,7 +368,7 @@ export const unsafeMakeCookie = (
   name: string,
   value: string,
   options?: Cookie["options"] | undefined
-): Cookie => Either.getOrThrow(makeCookie(name, value, options))
+): Cookie => Either.getOrThrowWith(makeCookie(name, value, options), identity)
 
 /**
  * Add a cookie to a Cookies object
@@ -579,7 +579,7 @@ export const unsafeSetAll: {
   (
     self: Cookies,
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
-  ): Cookies => Either.getOrThrow(setAll(self, cookies))
+  ): Cookies => Either.getOrThrowWith(setAll(self, cookies), identity)
 )
 
 /**
