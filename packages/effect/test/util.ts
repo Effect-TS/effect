@@ -1,4 +1,4 @@
-import * as Equal from "effect/Equal"
+import { Equal, Option } from "effect"
 import * as assert from "node:assert"
 import { expect } from "vitest"
 
@@ -35,4 +35,12 @@ interface Constructable {
 
 export const throws = (thunk: () => void, error?: string | Constructable | RegExp | Error) => {
   expect(thunk).toThrow(error)
+}
+
+export const assertNone = <A>(actual: Option.Option<A>) => {
+  deepStrictEqual(actual, Option.none())
+}
+
+export const assertSome = <A>(actual: Option.Option<A>, expected: A) => {
+  deepStrictEqual(actual, Option.some(expected))
 }
