@@ -40,124 +40,215 @@ import type { Span } from "./Tracer.js"
 import type { Covariant, NoInfer } from "./Types.js"
 
 /**
+ * A unique symbol identifying the `Cause` type.
+ *
+ * **Details**
+ *
+ * This provides a symbol that helps identify instances of the `Cause` data
+ * type. This can be used for advanced operations such as refining types or
+ * building internal utilities that check whether an unknown value is a `Cause`.
+ *
+ * @see {@link isCause} Check if a value is a `Cause`
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export const CauseTypeId: unique symbol = internal.CauseTypeId
 
 /**
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export type CauseTypeId = typeof CauseTypeId
 
 /**
+ * A unique symbol identifying the `RuntimeException` type.
+ *
+ * **Details**
+ *
+ * This provides a symbol that identifies a `RuntimeException`. This is
+ * typically used internally by the library to recognize checked exceptions that
+ * occur during runtime.
+ *
+ * @see {@link RuntimeException} Create or work with a `RuntimeException`
+ *
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export const RuntimeExceptionTypeId: unique symbol = core.RuntimeExceptionTypeId
 
 /**
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export type RuntimeExceptionTypeId = typeof RuntimeExceptionTypeId
 
 /**
+ * A unique symbol identifying the `InterruptedException` type.
+ *
+ * **Details**
+ *
+ * This provides a symbol that identifies an `InterruptedException`. This is
+ * typically used internally to recognize when a fiber has been interrupted,
+ * helping the framework handle interruption logic correctly.
+ *
+ * @see {@link InterruptedException} Create or work with an `InterruptedException`
+ *
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export const InterruptedExceptionTypeId: unique symbol = core.InterruptedExceptionTypeId
 
 /**
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export type InterruptedExceptionTypeId = typeof InterruptedExceptionTypeId
 
 /**
+ * A unique symbol identifying the `IllegalArgumentException` type.
+ *
+ * **Details**
+ *
+ * This provides a symbol that identifies an `IllegalArgumentException`. This is
+ * often used in scenarios where invalid arguments are supplied to methods that
+ * expect specific input.
+ *
+ * @see {@link IllegalArgumentException} Create or work with an `IllegalArgumentException`
+ *
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export const IllegalArgumentExceptionTypeId: unique symbol = core.IllegalArgumentExceptionTypeId
 
 /**
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export type IllegalArgumentExceptionTypeId = typeof IllegalArgumentExceptionTypeId
 
 /**
+ * A unique symbol identifying the `NoSuchElementException` type.
+ *
+ * **Details**
+ *
+ * This provides a symbol that identifies a `NoSuchElementException`. It helps
+ * differentiate cases where a required element is missing within a data
+ * structure.
+ *
+ * @see {@link NoSuchElementException} Create or work with a `NoSuchElementException`
+ *
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export const NoSuchElementExceptionTypeId: unique symbol = core.NoSuchElementExceptionTypeId
 
 /**
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export type NoSuchElementExceptionTypeId = typeof NoSuchElementExceptionTypeId
 
 /**
+ * A unique symbol identifying the `InvalidPubSubCapacityException` type.
+ *
+ * **Details**
+ *
+ * This provides a symbol that identifies an `InvalidPubSubCapacityException`.
+ * It indicates an error related to an invalid capacity passed to a `PubSub`
+ * structure.
+ *
+ * @see {@link InvalidPubSubCapacityException} Create or work with an `InvalidPubSubCapacityException`
+ *
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export const InvalidPubSubCapacityExceptionTypeId: unique symbol = core.InvalidPubSubCapacityExceptionTypeId
 
 /**
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 
 /**
+ * A unique symbol identifying the `ExceededCapacityException` type.
+ *
+ * **Details**
+ *
+ * This provides a symbol that identifies an `ExceededCapacityException`. It
+ * denotes situations where a resource has exceeded its configured capacity
+ * limit.
+ *
+ * @see {@link ExceededCapacityException} Create or work with an `ExceededCapacityException`
+ *
  * @since 3.5.0
- * @category symbols
+ * @category Symbols
  */
 export const ExceededCapacityExceptionTypeId: unique symbol = core.ExceededCapacityExceptionTypeId
 
 /**
  * @since 3.5.0
- * @category symbols
+ * @category Symbols
  */
 export type ExceededCapacityExceptionTypeId = typeof ExceededCapacityExceptionTypeId
 
 /**
+ * A unique symbol identifying the `TimeoutException` type.
+ *
+ * **Details**
+ *
+ * This provides a symbol that identifies a `TimeoutException`. It helps the
+ * framework recognize errors related to operations that fail to complete within
+ * a given timeframe.
+ *
+ * @see {@link TimeoutException} Create or work with a `TimeoutException`
+ *
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export const TimeoutExceptionTypeId: unique symbol = core.TimeoutExceptionTypeId
 
 /**
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export type TimeoutExceptionTypeId = typeof TimeoutExceptionTypeId
 
 /**
+ * A unique symbol identifying the `UnknownException` type.
+ *
+ * **Details**
+ *
+ * This provides a symbol that identifies an `UnknownException`. It is typically
+ * used for generic or unexpected errors that do not fit other specific
+ * exception categories.
+ *
+ * @see {@link UnknownException} Create or work with an `UnknownException`
+ *
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export const UnknownExceptionTypeId: unique symbol = core.UnknownExceptionTypeId
 
 /**
  * @since 2.0.0
- * @category symbols
+ * @category Symbols
  */
 export type UnknownExceptionTypeId = typeof UnknownExceptionTypeId
 
 /**
- * A `Cause` represents the full history of a failure resulting from running an
- * `Effect` workflow.
+ * Represents the full history of a failure within an `Effect`.
  *
- * Effect-TS uses a data structure from functional programming called a semiring
- * to represent the `Cause` data type. This allows us to take a base type `E`
- * (which represents the error type of an `Effect`) and capture the sequential
- * and parallel composition of errors in a fully lossless fashion.
+ * **Details**
+ *
+ * This type is a data structure that captures all information about why and how
+ * an effect has failed, including parallel errors, sequential errors, defects,
+ * and interruptions. It enables a "lossless" error model: no error-related
+ * information is discarded, which helps in debugging and understanding the root
+ * cause of failures.
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export type Cause<E> =
   | Empty
@@ -172,8 +263,10 @@ export type Cause<E> =
  */
 export declare namespace Cause {
   /**
+   * This interface is used internally to manage the type variance of `Cause`.
+   *
    * @since 2.0.0
-   * @category models
+   * @category Models
    */
   export interface Variance<out E> {
     readonly [CauseTypeId]: {
@@ -183,11 +276,21 @@ export declare namespace Cause {
 }
 
 /**
- * Represents a set of methods that can be used to reduce a `Cause<E>` to a
- * specified value of type `Z` with access to a context of type `C`.
+ * Describes methods for reducing a `Cause<E>` into a value of type `Z` with
+ * access to contextual information.
+ *
+ * **Details**
+ *
+ * This interface is meant for advanced transformations of `Cause`. By
+ * implementing each method, you can define how different parts of the `Cause`
+ * structure (like `Fail`, `Die`, or `Interrupt`) should be transformed into a
+ * final type `Z`. The `context` parameter carries additional data needed during
+ * this reduction.
+ *
+ * @see {@link reduceWithContext} Apply a `CauseReducer` to transform a `Cause`
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface CauseReducer<in C, in E, in out Z> {
   emptyCase(context: C): Z
@@ -199,8 +302,10 @@ export interface CauseReducer<in C, in E, in out Z> {
 }
 
 /**
+ * Represents an error object that can be yielded in `Effect.gen`.
+ *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
   readonly [Effect.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
@@ -211,18 +316,24 @@ export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
 }
 
 /**
- * Represents a generic checked exception which occurs at runtime.
+ * Creates an error that occurs at runtime, extendable for other exception
+ * types.
  *
  * @since 2.0.0
- * @category errors
+ * @category Errors
  */
 export const YieldableError: new(message?: string | undefined) => YieldableError = core.YieldableError
 
 /**
- * Represents a generic checked exception which occurs at runtime.
+ * An error representing a runtime error.
+ *
+ * **Details**
+ *
+ * This interface is used for errors that occur at runtime but are still
+ * considered recoverable or typed.
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface RuntimeException extends YieldableError {
   readonly _tag: "RuntimeException"
@@ -230,10 +341,17 @@ export interface RuntimeException extends YieldableError {
 }
 
 /**
- * Represents a checked exception which occurs when a `Fiber` is interrupted.
+ * An error representing fiber interruption.
+ *
+ * **Details**
+ *
+ * This interface represents errors that occur when a fiber is forcefully
+ * interrupted. Interruption can happen for various reasons, including
+ * cancellations or system directives to halt operations. Code that deals with
+ * concurrency might need to catch or handle these to ensure proper cleanup.
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface InterruptedException extends YieldableError {
   readonly _tag: "InterruptedException"
@@ -241,11 +359,15 @@ export interface InterruptedException extends YieldableError {
 }
 
 /**
- * Represents a checked exception which occurs when an invalid argument is
- * provided to a method.
+ * An error representing an invalid argument passed to a method.
+ *
+ * **Details**
+ *
+ * This interface is used for signaling that a function or method received an
+ * argument that does not meet its preconditions.
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface IllegalArgumentException extends YieldableError {
   readonly _tag: "IllegalArgumentException"
@@ -253,11 +375,16 @@ export interface IllegalArgumentException extends YieldableError {
 }
 
 /**
- * Represents a checked exception which occurs when an expected element was
- * unable to be found.
+ * An error that occurs when an expected element is missing.
+ *
+ * **Details**
+ *
+ * This interface indicates scenarios like looking up an item in a collection
+ * or searching for data that should be present but isn't. It helps your code
+ * signal a more specific issue rather than a general error.
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface NoSuchElementException extends YieldableError {
   readonly _tag: "NoSuchElementException"
@@ -265,11 +392,10 @@ export interface NoSuchElementException extends YieldableError {
 }
 
 /**
- * Represents a checked exception which occurs when attempting to construct a
- * `PubSub` with an invalid capacity.
+ * An error indicating invalid capacity for a `PubSub`.
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface InvalidPubSubCapacityException extends YieldableError {
   readonly _tag: "InvalidPubSubCapacityException"
@@ -277,11 +403,10 @@ export interface InvalidPubSubCapacityException extends YieldableError {
 }
 
 /**
- * Represents a checked exception which occurs when a resources capacity has
- * been exceeded.
+ * An error that occurs when resource capacity is exceeded.
  *
  * @since 3.5.0
- * @category models
+ * @category Models
  */
 export interface ExceededCapacityException extends YieldableError {
   readonly _tag: "ExceededCapacityException"
@@ -289,11 +414,10 @@ export interface ExceededCapacityException extends YieldableError {
 }
 
 /**
- * Represents a checked exception which occurs when a computation doesn't
- * finish on schedule.
+ * An error representing a computation that timed out.
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface TimeoutException extends YieldableError {
   readonly _tag: "TimeoutException"
@@ -301,11 +425,16 @@ export interface TimeoutException extends YieldableError {
 }
 
 /**
- * Represents a checked exception which occurs when an unknown error is thrown, such as
- * from a rejected promise.
+ * A checked exception for handling unknown or unexpected errors.
+ *
+ * **Details**
+ *
+ * This interface captures errors that don't fall under known categories. It is
+ * especially helpful for wrapping low-level or third-party library errors that
+ * might provide little or no context, such as from a rejected promise.
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface UnknownException extends YieldableError {
   readonly _tag: "UnknownException"
@@ -314,21 +443,32 @@ export interface UnknownException extends YieldableError {
 }
 
 /**
- * The `Empty` cause represents a lack of errors.
+ * Represents a lack of errors within a `Cause`.
+ *
+ * @see {@link empty} Construct a new `Empty` cause
+ * @see {@link isEmptyType} Check if a `Cause` is an `Empty` type
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface Empty extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Empty"
 }
 
 /**
- * The `Fail` cause represents a `Cause` which failed with an expected error of
- * type `E`.
+ * Represents an expected error within a `Cause`.
+ *
+ * **Details**
+ *
+ * This interface models a `Cause` that carries an expected or known error of
+ * type `E`. For example, if you validate user input and find it invalid, you
+ * might store that error within a `Fail`.
+ *
+ * @see {@link fail} Construct a `Fail` cause
+ * @see {@link isFailType} Check if a `Cause` is a `Fail`
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface Fail<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Fail"
@@ -336,12 +476,19 @@ export interface Fail<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, I
 }
 
 /**
- * The `Die` cause represents a `Cause` which failed as a result of a defect, or
- * in other words, an unexpected error.
+ * Represents an unexpected defect within a `Cause`.
  *
- * type `E`.
+ * **Details**
+ *
+ * This interface models a `Cause` for errors that are typically unrecoverable or
+ * unanticipated—like runtime exceptions or bugs. When code "dies," it indicates a
+ * severe failure that wasn't accounted for.
+ *
+ * @see {@link die} Construct a `Die` cause
+ * @see {@link isDieType} Check if a `Cause` is a `Die`
+ *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface Die extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Die"
@@ -349,11 +496,20 @@ export interface Die extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspe
 }
 
 /**
- * The `Interrupt` cause represents failure due to `Fiber` interruption, which
- * contains the `FiberId` of the interrupted `Fiber`.
+ * Represents fiber interruption within a `Cause`.
+ *
+ * **Details**
+ *
+ * This interface models a scenario where an effect was halted by an external
+ * signal, carrying a `FiberId` that identifies which fiber was interrupted.
+ * Interruption is a normal part of concurrency, used for cancellation or
+ * resource cleanup.
+ *
+ * @see {@link interrupt} Construct an `Interrupt` cause
+ * @see {@link isInterruptType} Check if a `Cause` is an `Interrupt`
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Interrupt"
@@ -361,17 +517,19 @@ export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable,
 }
 
 /**
- * The `Parallel` cause represents the composition of two causes which occurred
- * in parallel.
+ * Represents parallel composition of two `Cause`s.
  *
- * In Effect-TS programs, it is possible that two operations may be performed in
- * parallel. In these cases, the `Effect` workflow can fail for more than one
- * reason. If both computations fail, then there are actually two errors which
- * occurred in parallel. In these cases, the errors can be represented by the
- * `Parallel` cause.
+ * **Details**
+ *
+ * This interface captures failures that happen simultaneously. In scenarios
+ * with concurrency, more than one operation can fail in parallel. Instead of
+ * losing information, this structure stores both errors together.
+ *
+ * @see {@link parallel} Combine two `Cause`s in parallel
+ * @see {@link isParallelType} Check if a `Cause` is a `Parallel`
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface Parallel<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Parallel"
@@ -380,16 +538,19 @@ export interface Parallel<out E> extends Cause.Variance<E>, Equal.Equal, Pipeabl
 }
 
 /**
- * The `Sequential` cause represents the composition of two causes which occurred
- * sequentially.
+ * Represents sequential composition of two `Cause`s.
  *
- * For example, if we perform Effect-TS's analog of `try-finally` (i.e.
- * `Effect.ensuring`), and both the `try` and `finally` blocks fail, we have two
- * errors which occurred sequentially. In these cases, the errors can be
- * represented by the `Sequential` cause.
+ * **Details**
+ *
+ * This interface models the scenario where one error follows another in
+ * sequence, such as when a main effect fails and then a finalizer also fails.
+ * It ensures both errors are retained in the final `Cause`.
+ *
+ * @see {@link sequential} Combine two `Cause`s sequentially
+ * @see {@link isSequentialType} Check if a `Cause` is a `Sequential`
  *
  * @since 2.0.0
- * @category models
+ * @category Models
  */
 export interface Sequential<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Sequential"
@@ -398,274 +559,421 @@ export interface Sequential<out E> extends Cause.Variance<E>, Equal.Equal, Pipea
 }
 
 /**
- * Constructs a new `Empty` cause.
+ * Creates an `Empty` cause.
+ *
+ * **Details**
+ *
+ * This function returns a cause that signifies "no error." It's commonly used
+ * to represent an absence of failure conditions.
+ *
+ * @see {@link isEmpty} Check if a `Cause` is empty
  *
  * @since 2.0.0
- * @category constructors
+ * @category Constructors
  */
 export const empty: Cause<never> = internal.empty
 
 /**
- * Constructs a new `Fail` cause from the specified `error`.
+ * Creates a `Fail` cause from an expected error.
+ *
+ * **Details**
+ *
+ * This function constructs a `Cause` carrying an error of type `E`. It's used
+ * when you want to represent a known or anticipated failure in your effectful
+ * computations.
+ *
+ * @see {@link isFailure} Check if a `Cause` contains a failure
  *
  * @since 2.0.0
- * @category constructors
+ * @category Constructors
  */
 export const fail: <E>(error: E) => Cause<E> = internal.fail
 
 /**
- * Constructs a new `Die` cause from the specified `defect`.
+ * Creates a `Die` cause from an unexpected error.
+ *
+ * **Details**
+ *
+ * This function wraps an unhandled or unknown defect (like a runtime crash)
+ * into a `Cause`. It's useful for capturing unforeseen issues in a structured
+ * way.
+ *
+ * @see {@link isDie} Check if a `Cause` contains a defect
  *
  * @since 2.0.0
- * @category constructors
+ * @category Constructors
  */
 export const die: (defect: unknown) => Cause<never> = internal.die
 
 /**
- * Constructs a new `Interrupt` cause from the specified `fiberId`.
+ * Creates an `Interrupt` cause from a `FiberId`.
+ *
+ * **Details**
+ *
+ * This function represents a fiber that has been interrupted. It stores the
+ * identifier of the interrupted fiber, enabling precise tracking of concurrent
+ * cancellations.
+ *
+ * @see {@link isInterrupted} Check if a `Cause` contains an interruption
  *
  * @since 2.0.0
- * @category constructors
+ * @category Constructors
  */
 export const interrupt: (fiberId: FiberId.FiberId) => Cause<never> = internal.interrupt
 
 /**
- * Constructs a new `Parallel` cause from the specified `left` and `right`
- * causes.
+ * Combines two `Cause`s in parallel.
+ *
+ * **Details**
+ *
+ * This function merges two errors that occurred simultaneously. Instead of
+ * discarding one error, both are retained, allowing for richer error reporting
+ * and debugging.
+ *
+ * @see {@link isParallelType} Check if a `Cause` is a `Parallel`
  *
  * @since 2.0.0
- * @category constructors
+ * @category Constructors
  */
 export const parallel: <E, E2>(left: Cause<E>, right: Cause<E2>) => Cause<E | E2> = internal.parallel
 
 /**
- * Constructs a new `Sequential` cause from the specified pecified `left` and
- * `right` causes.
+ * Combines two `Cause`s sequentially.
+ *
+ * **Details**
+ *
+ * This function merges two errors that occurred in sequence, such as a main
+ * error followed by a finalization error. It preserves both errors for complete
+ * failure information.
+ *
+ * @see {@link isSequentialType} Check if a `Cause` is a `Sequential`
  *
  * @since 2.0.0
- * @category constructors
+ * @category Constructors
  */
 export const sequential: <E, E2>(left: Cause<E>, right: Cause<E2>) => Cause<E | E2> = internal.sequential
 
 /**
- * Returns `true` if the specified value is a `Cause`, `false` otherwise.
+ * Checks if a value is a `Cause`.
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isCause: (u: unknown) => u is Cause<unknown> = internal.isCause
 
 /**
- * Returns `true` if the specified `Cause` is an `Empty` type, `false`
- * otherwise.
+ * Checks if a `Cause` is an `Empty` type.
+ *
+ * @see {@link empty} Create a new `Empty` cause
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isEmptyType: <E>(self: Cause<E>) => self is Empty = internal.isEmptyType
 
 /**
- * Returns `true` if the specified `Cause` is a `Fail` type, `false`
- * otherwise.
+ * Checks if a `Cause` is a `Fail` type.
+ *
+ * @see {@link fail} Create a new `Fail` cause
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isFailType: <E>(self: Cause<E>) => self is Fail<E> = internal.isFailType
 
 /**
- * Returns `true` if the specified `Cause` is a `Die` type, `false`
- * otherwise.
+ * Checks if a `Cause` is a `Die` type.
+ *
+ * @see {@link die} Create a new `Die` cause
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isDieType: <E>(self: Cause<E>) => self is Die = internal.isDieType
 
 /**
- * Returns `true` if the specified `Cause` is an `Interrupt` type, `false`
- * otherwise.
+ * Checks if a `Cause` is an `Interrupt` type.
+ *
+ * @see {@link interrupt} Create an `Interrupt` cause
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isInterruptType: <E>(self: Cause<E>) => self is Interrupt = internal.isInterruptType
 
 /**
- * Returns `true` if the specified `Cause` is a `Sequential` type, `false`
- * otherwise.
+ * Checks if a `Cause` is a `Sequential` type.
+ *
+ * @see {@link sequential} Combine two `Cause`s sequentially
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isSequentialType: <E>(self: Cause<E>) => self is Sequential<E> = internal.isSequentialType
 
 /**
- * Returns `true` if the specified `Cause` is a `Parallel` type, `false`
- * otherwise.
+ * Checks if a `Cause` is a `Parallel` type.
+ *
+ * @see {@link parallel} Combine two `Cause`s in parallel
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isParallelType: <E>(self: Cause<E>) => self is Parallel<E> = internal.isParallelType
 
 /**
- * Returns the size of the cause, calculated as the number of individual `Cause`
- * nodes found in the `Cause` semiring structure.
+ * Calculates the size of a `Cause`.
+ *
+ * **Details**
+ *
+ * This function returns the total number of `Cause` nodes in the semiring
+ * structure, reflecting how many individual error elements are recorded.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const size: <E>(self: Cause<E>) => number = internal.size
 
 /**
- * Returns `true` if the specified cause is empty, `false` otherwise.
+ * Checks if a `Cause` is entirely empty.
+ *
+ * **Details**
+ *
+ * This function returns `true` if the `Cause` contains no errors, defects, or
+ * interruptions. It's helpful for verifying if a computation truly had no
+ * failures.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const isEmpty: <E>(self: Cause<E>) => boolean = internal.isEmpty
 
 /**
- * Returns `true` if the specified cause contains a failure, `false` otherwise.
+ * Checks if a `Cause` contains a failure.
+ *
+ * **Details**
+ *
+ * This function returns `true` if the `Cause` includes any `Fail` error. It's
+ * commonly used to confirm whether a workflow encountered an anticipated error
+ * versus just defects or interruptions.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const isFailure: <E>(self: Cause<E>) => boolean = internal.isFailure
 
 /**
- * Returns `true` if the specified cause contains a defect, `false` otherwise.
+ * Checks if a `Cause` contains a defect.
+ *
+ * **Details**
+ *
+ * This function returns `true` if the `Cause` includes any unexpected or
+ * unhandled errors (`Die`). It's useful for differentiating known failures from
+ * unexpected ones.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const isDie: <E>(self: Cause<E>) => boolean = internal.isDie
 
 /**
- * Returns `true` if the specified cause contains an interruption, `false`
- * otherwise.
+ * Checks if a `Cause` contains an interruption.
+ *
+ * **Details**
+ *
+ * This function returns `true` if the `Cause` includes any fiber interruptions.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const isInterrupted: <E>(self: Cause<E>) => boolean = internal.isInterrupted
 
 /**
- * Returns `true` if the specified cause contains only interruptions (without
- * any `Die` or `Fail` causes), `false` otherwise.
+ * Checks if a `Cause` contains only interruptions.
+ *
+ * **Details**
+ *
+ * This function returns `true` if the `Cause` has been interrupted but does not
+ * contain any other failures, such as `Fail` or `Die`. It's helpful for
+ * verifying purely "cancellation" scenarios.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const isInterruptedOnly: <E>(self: Cause<E>) => boolean = internal.isInterruptedOnly
 
 /**
- * Returns a `List` of all recoverable errors of type `E` in the specified
- * cause.
+ * Extracts all recoverable errors of type `E` from a `Cause`.
+ *
+ * **Details**
+ *
+ * This function returns a chunk of errors, providing a list of all `Fail`
+ * values found in the cause. It's useful for collecting all known failures for
+ * logging or combined error handling.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const failures: <E>(self: Cause<E>) => Chunk.Chunk<E> = internal.failures
 
 /**
- * Returns a `List` of all unrecoverable defects in the specified cause.
+ * Extracts all unrecoverable defects from a `Cause`.
+ *
+ * **Details**
+ *
+ * This function returns a chunk of values representing unexpected errors
+ * (`Die`). It's handy for capturing or logging unanticipated failures that
+ * might need special handling, such as bug reports.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const defects: <E>(self: Cause<E>) => Chunk.Chunk<unknown> = internal.defects
 
 /**
- * Returns a `HashSet` of `FiberId`s for all fibers that interrupted the fiber
- * described by the specified cause.
+ * Collects all `FiberId`s responsible for interrupting a fiber.
+ *
+ * **Details**
+ *
+ * This function returns a set of IDs indicating which fibers caused
+ * interruptions within this `Cause`. It's useful for debugging concurrency
+ * issues or tracing cancellations.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const interruptors: <E>(self: Cause<E>) => HashSet.HashSet<FiberId.FiberId> = internal.interruptors
 
 /**
- * Returns the `E` associated with the first `Fail` in this `Cause`, if one
- * exists.
+ * Retrieves the first `Fail` error in a `Cause`, if present.
+ *
+ * **Details**
+ *
+ * This function returns an `Option` containing the first recoverable error
+ * (`E`) from the cause. It's often used to quickly check if there's a primary
+ * error to handle or display.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const failureOption: <E>(self: Cause<E>) => Option.Option<E> = internal.failureOption
 
 /**
- * Returns the first checked error on the `Left` if available, if there are
- * no checked errors return the rest of the `Cause` that is known to contain
- * only `Die` or `Interrupt` causes.
+ * Splits a `Cause` into either its first `Fail` error or the rest of the cause
+ * (which might only contain `Die` or `Interrupt`).
+ *
+ * **Details**
+ *
+ * This function either returns the checked error (`E`) or the remaining
+ * `Cause<never>` with defects/interruptions. It helps you decide if there's a
+ * recoverable path or if only unhandled issues remain.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const failureOrCause: <E>(self: Cause<E>) => Either.Either<Cause<never>, E> = internal.failureOrCause
 
 /**
- * Converts the specified `Cause<Option<E>>` to an `Option<Cause<E>>` by
- * recursively stripping out any failures with the error `None`.
+ * Strips out failures with an error of `None` from a `Cause<Option<E>>`.
+ *
+ * **Details**
+ *
+ * This function turns a `Cause<Option<E>>` into an `Option<Cause<E>>`. If the
+ * cause only contains failures of `None`, it becomes `None`; otherwise, it
+ * returns a `Cause` of the remaining errors. It's helpful when working with
+ * optional errors and filtering out certain error paths.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const flipCauseOption: <E>(self: Cause<Option.Option<E>>) => Option.Option<Cause<E>> = internal.flipCauseOption
 
 /**
- * Returns the defect associated with the first `Die` in this `Cause`, if one
- * exists.
+ * Retrieves the first `Die` defect in a `Cause`, if present.
+ *
+ * **Details**
+ *
+ * This function returns an `Option` containing the first unexpected failure
+ * (`Die`) discovered. It's helpful for diagnosing the primary defect in a chain
+ * of errors.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const dieOption: <E>(self: Cause<E>) => Option.Option<unknown> = internal.dieOption
 
 /**
- * Returns the `FiberId` associated with the first `Interrupt` in the specified
- * cause, if one exists.
+ * Retrieves the first `Interrupt` in a `Cause`, if present.
+ *
+ * **Details**
+ *
+ * This function returns an `Option` with the first fiber interruption
+ * discovered. This is particularly useful for concurrency analysis or debugging
+ * cancellations.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const interruptOption: <E>(self: Cause<E>) => Option.Option<FiberId.FiberId> = internal.interruptOption
 
 /**
- * Remove all `Fail` and `Interrupt` nodes from the specified cause, and return
- * a cause containing only `Die` cause/finalizer defects.
+ * Removes all `Fail` and `Interrupt` nodes, keeping only defects (`Die`) in a
+ * `Cause`.
+ *
+ * **Details**
+ *
+ * This function strips a cause of recoverable errors and interruptions, leaving
+ * only unexpected failures. If no defects remain, it returns `None`. It's
+ * valuable for focusing only on unanticipated problems when both known errors
+ * and defects could occur.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const keepDefects: <E>(self: Cause<E>) => Option.Option<Cause<never>> = internal.keepDefects
 
 /**
- * Linearizes the specified cause into a `HashSet` of parallel causes where each
- * parallel cause contains a linear sequence of failures.
+ * Linearizes a `Cause` into a set of parallel causes, each containing a
+ * sequential chain of failures.
+ *
+ * **Details**
+ *
+ * This function reorganizes the cause structure so that you can analyze each
+ * parallel branch separately, even if they have multiple sequential errors.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const linearize: <E>(self: Cause<E>) => HashSet.HashSet<Cause<E>> = internal.linearize
 
 /**
- * Remove all `Fail` and `Interrupt` nodes from the specified cause, and return
- * a cause containing only `Die` cause/finalizer defects.
+ * Removes `Fail` and `Interrupt` nodes from a `Cause`, keeping only defects
+ * (`Die`).
+ *
+ * **Details**
+ *
+ * This function is similar to `keepDefects` but returns a `Cause<never>`
+ * directly, which can still store `Die` or finalizer-related defects. It's
+ * helpful for analyzing only the irrecoverable portion of the error.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const stripFailures: <E>(self: Cause<E>) => Cause<never> = internal.stripFailures
 
 /**
- * Remove all `Die` causes that the specified partial function is defined at,
- * returning `Some` with the remaining causes or `None` if there are no
- * remaining causes.
+ * Removes matching defects from a `Cause` using a partial function, returning
+ * the remainder.
+ *
+ * **Details**
+ *
+ * This function applies a user-defined extraction function to each defect
+ * (`Die`). If the function matches the defect, that defect is removed. If all
+ * defects match, the result is `None`. Otherwise, you get a `Cause` with the
+ * unmatched defects.
  *
  * @since 2.0.0
- * @category getters
+ * @category Getters
  */
 export const stripSomeDefects: {
   (pf: (defect: unknown) => Option.Option<unknown>): <E>(self: Cause<E>) => Option.Option<Cause<E>>
@@ -673,8 +981,18 @@ export const stripSomeDefects: {
 } = internal.stripSomeDefects
 
 /**
+ * Replaces any errors in a `Cause` with a provided constant error.
+ *
+ * **Details**
+ *
+ * This function transforms all `Fail` errors into the specified error value,
+ * preserving the structure of the `Cause`. It's useful when you no longer need
+ * the original error details but still want to keep the cause shape.
+ *
+ * @see {@link map} Apply a custom transformation to `Fail` errors
+ *
  * @since 2.0.0
- * @category mapping
+ * @category Mapping
  */
 export const as: {
   <E2>(error: E2): <E>(self: Cause<E>) => Cause<E2>
@@ -682,8 +1000,18 @@ export const as: {
 } = internal.as
 
 /**
+ * Transforms the errors in a `Cause` using a user-provided function.
+ *
+ * **Details**
+ *
+ * This function applies `f` to each `Fail` error while leaving defects (`Die`)
+ * and interruptions untouched. It's useful for changing or simplifying error
+ * types in your effectful workflows.
+ *
+ * @see {@link as} Replace errors with a single constant
+ *
  * @since 2.0.0
- * @category mapping
+ * @category Mapping
  */
 export const map: {
   <E, E2>(f: (e: E) => E2): (self: Cause<E>) => Cause<E2>
@@ -691,8 +1019,18 @@ export const map: {
 } = internal.map
 
 /**
+ * Transforms errors in a `Cause` into new causes.
+ *
+ * **Details**
+ *
+ * This function applies a function `f` to each `Fail` error, converting it into
+ * a new `Cause`. This is especially powerful for merging or restructuring error
+ * types while preserving or combining cause information.
+ *
+ * @see {@link map} Apply a simpler transformation to errors
+ *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const flatMap: {
   <E, E2>(f: (e: E) => Cause<E2>): (self: Cause<E>) => Cause<E2>
@@ -700,10 +1038,11 @@ export const flatMap: {
 } = internal.flatMap
 
 /**
- * Executes a sequence of two `Cause`s. The second `Cause` can be dependent on the result of the first `Cause`.
+ * Sequences two `Cause`s. The second `Cause` can be dependent on the result of
+ * the first `Cause`.
  *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const andThen: {
   <E, E2>(f: (e: E) => Cause<E2>): (self: Cause<E>) => Cause<E2>
@@ -713,17 +1052,32 @@ export const andThen: {
 } = internal.andThen
 
 /**
+ * Flattens a nested `Cause` structure.
+ *
+ * **Details**
+ *
+ * This function takes a `Cause<Cause<E>>` and merges the layers into a single
+ * `Cause<E>`. It's useful for eliminating additional nesting created by
+ * repeated transformations or compositions.
+ *
+ * @see {@link flatMap} Compose nested causes
+ *
  * @since 2.0.0
- * @category sequencing
+ * @category Sequencing
  */
 export const flatten: <E>(self: Cause<Cause<E>>) => Cause<E> = internal.flatten
 
 /**
- * Returns `true` if the `self` cause contains or is equal to `that` cause,
- * `false` otherwise.
+ * Checks if the current `Cause` contains or is equal to another `Cause`.
+ *
+ * **Details**
+ *
+ * This function returns `true` if `that` cause is part of or the same as
+ * the current `Cause`. It's useful when you need to check for specific
+ * error patterns or deduplicate repeated failures.
  *
  * @since 2.0.0
- * @category elements
+ * @category Elements
  */
 export const contains: {
   <E2>(that: Cause<E2>): <E>(self: Cause<E>) => boolean
@@ -731,21 +1085,61 @@ export const contains: {
 } = internal.contains
 
 /**
- * Squashes a `Cause` down to a single defect, chosen to be the "most important"
- * defect.
+ * Extracts the most "important" defect from a `Cause`.
+ *
+ * **Details**
+ *
+ * This function reduces a `Cause` to a single, prioritized defect. It evaluates
+ * the `Cause` in the following order of priority:
+ *
+ * 1. If the `Cause` contains a failure (e.g., from `Effect.fail`), it returns
+ *    the raw error value.
+ * 2. If there is no failure, it looks for the first defect (e.g., from
+ *    `Effect.die`).
+ * 3. If neither of the above is present, and the `Cause` stems from an
+ *    interruption, it creates and returns an `InterruptedException`.
+ *
+ * This function ensures you can always extract a meaningful representation of
+ * the primary issue from a potentially complex `Cause` structure.
+ *
+ * **When to Use**
+ *
+ * Use this function when you need to extract the most relevant error or defect
+ * from a `Cause`, especially in scenarios where multiple errors or defects may
+ * be present. It's particularly useful for simplifying error reporting or
+ * logging.
+ *
+ * @see {@link squashWith} Allows transforming failures into defects when squashing.
  *
  * @since 2.0.0
- * @category destructors
+ * @category Destructors
  */
 export const squash: <E>(self: Cause<E>) => unknown = core.causeSquash
 
 /**
- * Squashes a `Cause` down to a single defect, chosen to be the "most important"
- * defect. If a recoverable error is found, the provided function will be used
- * to map the error a defect, and the resulting value will be returned.
+ * Extracts the most "important" defect from a `Cause`, transforming failures
+ * into defects using a provided function.
+ *
+ * **Details**
+ *
+ * This function reduces a `Cause` to a single, prioritized defect, while
+ * allowing you to transform recoverable failures into defects through a custom
+ * function. It processes the `Cause` in the following order:
+ *
+ * 1. If the `Cause` contains a failure (e.g., from `Effect.fail`), it applies
+ *    the provided function `f` to the error to transform it into a defect.
+ * 2. If there is no failure, it looks for the first defect (e.g., from
+ *    `Effect.die`) and returns it.
+ * 3. If neither is present and the `Cause` stems from an interruption, it
+ *    returns an `InterruptedException`.
+ *
+ * This function is particularly useful when you need custom handling or
+ * transformation of errors while processing a `Cause`.
+ *
+ * @see {@link squash} Extracts the most "important" defect without transforming failures.
  *
  * @since 2.0.0
- * @category destructors
+ * @category Destructors
  */
 export const squashWith: {
   <E>(f: (error: E) => unknown): (self: Cause<E>) => unknown
@@ -753,11 +1147,25 @@ export const squashWith: {
 } = core.causeSquashWith
 
 /**
- * Uses the provided partial function to search the specified cause and attempt
- * to extract information from it.
+ * Searches a `Cause` using a partial function to extract information.
+ *
+ * **Details**
+ *
+ * This function allows you to search through a `Cause` using a custom partial
+ * function. The partial function is applied to the `Cause`, and if it matches,
+ * the result is returned wrapped in a `Some`. If no match is found, the result
+ * is `None`.
+ *
+ * This is particularly useful when you are only interested in specific types of
+ * errors, defects, or interruption causes within a potentially complex `Cause`
+ * structure. By leveraging a partial function, you can focus on extracting only
+ * the relevant information you care about.
+ *
+ * The partial function should return an `Option` indicating whether it matched
+ * and the value it extracted.
  *
  * @since 2.0.0
- * @category elements
+ * @category Elements
  */
 export const find: {
   <E, Z>(pf: (cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Option.Option<Z>
@@ -765,10 +1173,25 @@ export const find: {
 } = internal.find
 
 /**
- * Filters causes which match the provided predicate out of the specified cause.
+ * Preserves parts of a `Cause` that match a given predicate.
+ *
+ * **Details**
+ *
+ * This function allows you to retain only the parts of a `Cause` structure that
+ * match a specified predicate or refinement. Any parts of the `Cause` that do
+ * not match the provided condition are excluded from the result.
+ *
+ * You can use this function in two ways:
+ * - With a `Predicate`: A function that evaluates whether a `Cause` should be
+ *   retained based on its value.
+ * - With a `Refinement`: A more specific predicate that can refine the type of
+ *   the `Cause`.
+ *
+ * This is useful when you need to extract specific types of errors, defects, or
+ * interruptions from a `Cause` while discarding unrelated parts.
  *
  * @since 2.0.0
- * @category filtering
+ * @category Filtering
  */
 export const filter: {
   <E, EB extends E>(refinement: Refinement<Cause<NoInfer<E>>, Cause<EB>>): (self: Cause<E>) => Cause<EB>
@@ -778,10 +1201,31 @@ export const filter: {
 } = internal.filter
 
 /**
- * Folds the specified cause into a value of type `Z`.
+ * Transforms a `Cause` into a single value using custom handlers for each
+ * possible case.
+ *
+ * **Details**
+ *
+ * This function processes a `Cause` by applying a set of custom handlers to
+ * each possible type of cause: `Empty`, `Fail`, `Die`, `Interrupt`,
+ * `Sequential`, and `Parallel`. The result of this function is a single value
+ * of type `Z`. This function allows you to define exactly how to handle each
+ * part of a `Cause`, whether it's a failure, defect, interruption, or a
+ * combination of these.
+ *
+ * The options parameter provides handlers for:
+ * - `onEmpty`: Handles the case where the cause is `Empty`, meaning no errors
+ *   occurred.
+ * - `onFail`: Processes a failure with an error of type `E`.
+ * - `onDie`: Processes a defect (unexpected error).
+ * - `onInterrupt`: Handles a fiber interruption, providing the `FiberId` of the
+ *   interruption.
+ * - `onSequential`: Combines two sequential causes into a single value of type
+ *   `Z`.
+ * - `onParallel`: Combines two parallel causes into a single value of type `Z`.
  *
  * @since 2.0.0
- * @category folding
+ * @category Matching
  */
 export const match: {
   <Z, E>(
@@ -808,11 +1252,29 @@ export const match: {
 } = internal.match
 
 /**
- * Reduces the specified cause into a value of type `Z`, beginning with the
- * provided `zero` value.
+ * Combines all parts of a `Cause` into a single value by starting with an
+ * initial value.
+ *
+ * **Details**
+ *
+ * This function processes a `Cause` by starting with an initial value (`zero`)
+ * and applying a custom function (`pf`) to combine all elements of the `Cause`
+ * into a single result of type `Z`. The custom function determines how each
+ * part of the `Cause` contributes to the final result. The function can return
+ * an `Option` to either continue combining values or skip specific parts of the
+ * `Cause`.
+ *
+ * This function is useful for tasks such as:
+ * - Aggregating error messages from a `Cause` into a single string.
+ * - Summarizing the structure of a `Cause` into a simplified result.
+ * - Filtering or processing only specific parts of a `Cause`.
+ *
+ * The reduction proceeds in a top-down manner, visiting all nodes in the
+ * `Cause` structure. This gives you complete control over how each part of the
+ * `Cause` contributes to the final result.
  *
  * @since 2.0.0
- * @category folding
+ * @category Reducing
  */
 export const reduce: {
   <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Z
@@ -820,11 +1282,27 @@ export const reduce: {
 } = internal.reduce
 
 /**
- * Reduces the specified cause into a value of type `Z` using a `Cause.Reducer`.
- * Also allows for accessing the provided context during reduction.
+ * Combines all parts of a `Cause` into a single value using a custom reducer
+ * and a context.
+ *
+ * **Details**
+ *
+ * This function allows you to reduce a `Cause` into a single value of type `Z`
+ * using a custom `CauseReducer`. A `CauseReducer` provides methods to handle
+ * specific parts of the `Cause`, such as failures, defects, or interruptions.
+ * Additionally, this function provides access to a `context` value, which can
+ * be used to carry information or maintain state during the reduction process.
+ *
+ * This is particularly useful when the reduction process needs additional
+ * context or configuration, such as:
+ * - Aggregating error details with dynamic formatting.
+ * - Collecting logs or statistics about the `Cause`.
+ * - Performing stateful transformations based on the `context`.
+ *
+ * @see {@link reduce} To reduce a `Cause` without additional context.
  *
  * @since 2.0.0
- * @category folding
+ * @category Reducing
  */
 export const reduceWithContext: {
   <C, E, Z>(context: C, reducer: CauseReducer<C, E, Z>): (self: Cause<E>) => Z
@@ -832,83 +1310,108 @@ export const reduceWithContext: {
 } = internal.reduceWithContext
 
 /**
- * Represents a checked exception which occurs when a `Fiber` is interrupted.
+ * Creates an error that indicates a `Fiber` was interrupted.
+ *
+ * **Details**
+ *
+ * This function constructs an `InterruptedException` recognized by the Effect
+ * runtime. It is usually thrown or returned when a fiber's execution is
+ * interrupted by external events or by another fiber. This is particularly
+ * helpful in concurrent programs where fibers may halt each other before
+ * completion.
  *
  * @since 2.0.0
- * @category errors
+ * @category Errors
  */
 export const InterruptedException: new(message?: string | undefined) => InterruptedException = core.InterruptedException
 
 /**
- * Returns `true` if the specified value is an `InterruptedException`, `false`
- * otherwise.
+ * Checks if a given unknown value is an `InterruptedException`.
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isInterruptedException: (u: unknown) => u is InterruptedException = core.isInterruptedException
 
 /**
- * Represents a checked exception which occurs when an invalid argument is
- * provided to a method.
+ * Creates an error indicating an invalid method argument.
+ *
+ * **Details**
+ *
+ * This function constructs an `IllegalArgumentException`. It is typically
+ * thrown or returned when an operation receives improper inputs, such as
+ * out-of-range values or invalid object states.
  *
  * @since 2.0.0
- * @category errors
+ * @category Errors
  */
 export const IllegalArgumentException: new(message?: string | undefined) => IllegalArgumentException =
   core.IllegalArgumentException
 
 /**
- * Returns `true` if the specified value is an `IllegalArgumentException`, `false`
- * otherwise.
+ * Checks if a given unknown value is an `IllegalArgumentException`.
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isIllegalArgumentException: (u: unknown) => u is IllegalArgumentException = core.isIllegalArgumentException
 
 /**
- * Represents a checked exception which occurs when an expected element was
- * unable to be found.
+ * Creates an error indicating a missing element.
+ *
+ * **Details**
+ *
+ * This function constructs a `NoSuchElementException`. It helps you clearly
+ * communicate that a required element is unavailable.
  *
  * @since 2.0.0
- * @category errors
+ * @category Errors
  */
 export const NoSuchElementException: new(message?: string | undefined) => NoSuchElementException =
   core.NoSuchElementException
 
 /**
- * Returns `true` if the specified value is an `NoSuchElementException`, `false`
- * otherwise.
+ * Checks if a given unknown value is a `NoSuchElementException`.
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isNoSuchElementException: (u: unknown) => u is NoSuchElementException = core.isNoSuchElementException
 
 /**
- * Represents a generic checked exception which occurs at runtime.
+ * Creates an error for general runtime errors.
+ *
+ * **Details**
+ *
+ * This function constructs a `RuntimeException`, for errors that occur at
+ * runtime but are not specifically typed or categorized as interruptions,
+ * missing elements, or invalid arguments. It helps unify a wide range of
+ * unexpected conditions under a single, recognizable error type.
  *
  * @since 2.0.0
- * @category errors
+ * @category Errors
  */
 export const RuntimeException: new(message?: string | undefined) => RuntimeException = core.RuntimeException
 
 /**
- * Returns `true` if the specified value is an `RuntimeException`, `false`
- * otherwise.
+ * Checks if a given unknown value is a `RuntimeException`.
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isRuntimeException: (u: unknown) => u is RuntimeException = core.isRuntimeException
 
 /**
- * Represents a checked exception which occurs when a computation doesn't
- * finish on schedule.
+ * Creates an error for operations that exceed their expected time.
+ *
+ * **Details**
+ *
+ * This function constructs a `TimeoutException`. It is typically used to signal
+ * that an operation or fiber did not complete within a designated time limit,
+ * allowing you to handle slow or hanging processes.
  *
  * @since 2.0.0
- * @category errors
+ * @category Errors
  */
 export const TimeoutException: new(message?: string | undefined) => TimeoutException = core.TimeoutException
 
@@ -941,70 +1444,102 @@ export const TimeoutException: new(message?: string | undefined) => TimeoutExcep
  * promises or external APIs.
  *
  * @since 2.0.0
- * @category errors
+ * @category Errors
  */
 export const UnknownException: new(error: unknown, message?: string | undefined) => UnknownException =
   core.UnknownException
 
 /**
- * Returns `true` if the specified value is an `UnknownException`, `false`
- * otherwise.
+ * Checks if a given unknown value is an `UnknownException`.
  *
  * @since 2.0.0
- * @category refinements
+ * @category Guards
  */
 export const isUnknownException: (u: unknown) => u is UnknownException = core.isUnknownException
 
 /**
- * Represents a checked exception which occurs when a resources capacity has
- * been exceeded.
+ * Creates an error indicating resource capacity has been exceeded.
+ *
+ * **Details**
+ *
+ * This function constructs an `ExceededCapacityException`, signifying that an
+ * operation or resource usage surpassed established limits. This can be
+ * essential for concurrency or resource management situations, ensuring your
+ * application doesn't go beyond acceptable thresholds.
  *
  * @since 3.5.0
- * @category errors
+ * @category Errors
  */
 export const ExceededCapacityException: new(message?: string | undefined) => ExceededCapacityException =
   core.ExceededCapacityException
 
 /**
- * Returns `true` if the specified value is an `ExceededCapacityException`, `false`
- * otherwise.
+ * Checks if a given unknown value is an `ExceededCapacityException`.
  *
  * @since 3.5.0
- * @category refinements
+ * @category Guards
  */
 export const isExceededCapacityException: (u: unknown) => u is ExceededCapacityException =
   core.isExceededCapacityException
 
 /**
- * Returns the specified `Cause` as a pretty-printed string.
+ * Converts a `Cause` into a human-readable string.
+ *
+ * **Details**
+ *
+ * This function pretty-prints the entire `Cause`, including any failures,
+ * defects, and interruptions. It can be especially helpful for logging,
+ * debugging, or displaying structured errors to users.
+ *
+ * You can optionally pass `options` to configure how the error cause is
+ * rendered. By default, it includes essential details of all errors in the
+ * `Cause`.
+ *
+ * @see {@link prettyErrors} Get a list of `PrettyError` objects instead of a single string.
  *
  * @since 2.0.0
- * @category rendering
+ * @category Formatting
  */
 export const pretty: <E>(cause: Cause<E>, options?: {
   readonly renderErrorCause?: boolean | undefined
 }) => string = internal.pretty
 
 /**
+ * A shape for prettified errors, optionally including a source span.
+ *
  * @since 3.2.0
- * @category models
+ * @category Models
  */
 export interface PrettyError extends Error {
   readonly span: Span | undefined
 }
 
 /**
- * Returns the specified `Cause` as a pretty-printed string.
+ * Returns a list of prettified errors (`PrettyError`) from a `Cause`.
+ *
+ * **Details**
+ *
+ * This function inspects the entire `Cause` and produces an array of
+ * `PrettyError` objects. Each object may include additional metadata, such as a
+ * `Span`, to provide deeper insights into where and how the error occurred.
  *
  * @since 3.2.0
- * @category rendering
+ * @category Formatting
  */
 export const prettyErrors: <E>(cause: Cause<E>) => Array<PrettyError> = internal.prettyErrors
 
 /**
- * Returns the original, unproxied, instance of a thrown error
+ * Retrieves the original, unproxied error instance from an error object.
+ *
+ * **Details**
+ *
+ * This function returns the underlying error object without any
+ * library-specific wrapping or proxying that might occur during error handling.
+ * This can be essential if you need direct access to the error's native
+ * properties, such as stack traces or custom data fields, for detailed
+ * debugging or integration with external systems.
  *
  * @since 2.0.0
- * @category errors
+ * @category Errors
  */
 export const originalError: <E>(obj: E) => E = core.originalInstance

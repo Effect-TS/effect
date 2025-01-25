@@ -5,7 +5,7 @@ const config: UserConfigExport = {
   // test: {
   //   coverage: {
   //     reporter: ["html"],
-  //     include: ["src/Duration.ts"]
+  //     include: ["src/Cause.ts", "src/internal/cause.ts"]
   //   }
   // }
 }
