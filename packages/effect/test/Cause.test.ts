@@ -1,5 +1,5 @@
 import * as assert from "assert"
-import { Cause, Either, Equal, FiberId, Hash, Option, Predicate } from "effect"
+import { Array as Arr, Cause, Effect, Either, Equal, FiberId, Hash, Option, Predicate } from "effect"
 import * as fc from "effect/FastCheck"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as internal from "effect/internal/cause"
@@ -912,71 +912,161 @@ describe("Cause", () => {
   })
 
   describe("Formatting", () => {
-    it("[internal] prettyErrors", () => {
+    it("prettyErrors", () => {
       assert.deepStrictEqual(Cause.prettyErrors(empty), [])
       assert.deepStrictEqual(Cause.prettyErrors(failure), [new internal.PrettyError("error")])
+      assert.deepStrictEqual(Cause.prettyErrors(defect), [new internal.PrettyError("defect")])
       assert.deepStrictEqual(Cause.prettyErrors(interruption), [])
+      assert.deepStrictEqual(Cause.prettyErrors(sequential), [
+        new internal.PrettyError("error"),
+        new internal.PrettyError("defect")
+      ])
+      assert.deepStrictEqual(Cause.prettyErrors(parallel), [
+        new internal.PrettyError("error"),
+        new internal.PrettyError("defect")
+      ])
     })
 
     describe("pretty", () => {
-      it("handles array-based errors without throwing", () => {
-        assert.strictEqual(Cause.pretty(Cause.fail([{ toString: "" }])), `Error: [{"toString":""}]`)
-      })
-
-      it("Empty", () => {
-        expect(Cause.pretty(Cause.empty)).toBe("All fibers interrupted without errors.")
-      })
-
-      it("Fail", () => {
-        class Error1 {
-          readonly _tag = "WithTag"
-        }
-        expect(Cause.pretty(Cause.fail(new Error1()))).toBe(`Error: {"_tag":"WithTag"}`)
-        class Error2 {
-          readonly _tag = "WithMessage"
-          readonly message = "my message"
-        }
-        expect(Cause.pretty(Cause.fail(new Error2()))).toBe(
-          `Error: {"_tag":"WithMessage","message":"my message"}`
-        )
-        class Error3 {
-          readonly _tag = "WithName"
-          readonly name = "my name"
-        }
-        expect(Cause.pretty(Cause.fail(new Error3()))).toBe(`Error: {"_tag":"WithName","name":"my name"}`)
-        class Error4 {
-          readonly _tag = "WithName"
-          readonly name = "my name"
-          readonly message = "my message"
-        }
-        expect(Cause.pretty(Cause.fail(new Error4()))).toBe(
-          `Error: {"_tag":"WithName","name":"my name","message":"my message"}`
-        )
-        class Error5 {
-          readonly _tag = "WithToString"
-          toString() {
-            return "my string"
+      const simplifyStackTrace = (s: string): Array<string> => {
+        return Arr.filterMap(s.split("\n"), (s) => {
+          const t = s.trimStart()
+          if (t === "}") {
+            return Option.none()
           }
-        }
-        expect(Cause.pretty(Cause.fail(new Error5()))).toBe(`Error: my string`)
+          if (t.startsWith("at [")) {
+            return Option.some(t.substring(0, t.indexOf("] ") + 1))
+          }
+          if (t.startsWith("at ")) {
+            return Option.none()
+          }
+          return Option.some(t)
+        })
+      }
 
-        const err1 = new Error("message", { cause: "my cause" })
-        const pretty1 = Cause.pretty(Cause.fail(err1))
-        expect(pretty1).toBe(err1.stack)
-        const pretty2 = Cause.pretty(Cause.fail(err1), { renderErrorCause: false })
-        expect(pretty2).toBe(err1.stack)
-        const pretty3 = Cause.pretty(Cause.fail(err1), { renderErrorCause: true })
-        expect(pretty3).contain("[cause]: Error: my cause")
+      describe("renderErrorCause: false", () => {
+        const expectPretty = <E>(cause: Cause.Cause<E>, expected: string | undefined) => {
+          assert.deepStrictEqual(Cause.pretty(cause), expected)
+          assert.deepStrictEqual(Cause.pretty(cause, { renderErrorCause: false }), expected)
+        }
+
+        it("handles array-based errors without throwing", () => {
+          expectPretty(Cause.fail([{ toString: "" }]), `Error: [{"toString":""}]`)
+        })
+
+        it("Empty", () => {
+          expectPretty(empty, "All fibers interrupted without errors.")
+        })
+
+        it("Fail", () => {
+          class Error1 {
+            readonly _tag = "WithTag"
+          }
+          expectPretty(Cause.fail(new Error1()), `Error: {"_tag":"WithTag"}`)
+          class Error2 {
+            readonly _tag = "WithMessage"
+            readonly message = "my message"
+          }
+          expectPretty(Cause.fail(new Error2()), `Error: {"_tag":"WithMessage","message":"my message"}`)
+          class Error3 {
+            readonly _tag = "WithName"
+            readonly name = "my name"
+          }
+          expectPretty(Cause.fail(new Error3()), `Error: {"_tag":"WithName","name":"my name"}`)
+          class Error4 {
+            readonly _tag = "WithName"
+            readonly name = "my name"
+            readonly message = "my message"
+          }
+          expectPretty(Cause.fail(new Error4()), `Error: {"_tag":"WithName","name":"my name","message":"my message"}`)
+          class Error5 {
+            readonly _tag = "WithToString"
+            toString() {
+              return "my string"
+            }
+          }
+          expectPretty(Cause.fail(new Error5()), `Error: my string`)
+
+          const err1 = new Error("message", { cause: "my cause" })
+          expectPretty(Cause.fail(err1), err1.stack)
+        })
+
+        it("Interrupt", () => {
+          expect(Cause.pretty(Cause.interrupt(FiberId.none))).toBe("All fibers interrupted without errors.")
+          expect(Cause.pretty(Cause.interrupt(FiberId.runtime(1, 0)))).toBe(
+            "All fibers interrupted without errors."
+          )
+          expect(Cause.pretty(Cause.interrupt(FiberId.composite(FiberId.none, FiberId.runtime(1, 0))))).toBe(
+            "All fibers interrupted without errors."
+          )
+        })
+
+        describe("Die", () => {
+          it("with span", () => {
+            const exit: any = Effect.die(new Error("my message")).pipe(
+              Effect.withSpan("[myspan]"),
+              Effect.exit,
+              Effect.runSync
+            )
+            const cause = exit.cause
+            const pretty = Cause.pretty(cause)
+            assert.deepStrictEqual(simplifyStackTrace(pretty), [`Error: my message`, "at [myspan]"])
+          })
+        })
       })
 
-      it("Interrupt", () => {
-        expect(Cause.pretty(Cause.interrupt(FiberId.none))).toBe("All fibers interrupted without errors.")
-        expect(Cause.pretty(Cause.interrupt(FiberId.runtime(1, 0)))).toBe(
-          "All fibers interrupted without errors."
-        )
-        expect(Cause.pretty(Cause.interrupt(FiberId.composite(FiberId.none, FiberId.runtime(1, 0))))).toBe(
-          "All fibers interrupted without errors."
-        )
+      describe("renderErrorCause: true", () => {
+        describe("Fail", () => {
+          it("no cause", () => {
+            const pretty = Cause.pretty(Cause.fail(new Error("my message")), { renderErrorCause: true })
+            assert.deepStrictEqual(simplifyStackTrace(pretty), ["Error: my message"])
+          })
+
+          it("string cause", () => {
+            const pretty = Cause.pretty(Cause.fail(new Error("my message", { cause: "my cause" })), {
+              renderErrorCause: true
+            })
+            assert.deepStrictEqual(simplifyStackTrace(pretty), ["Error: my message", "[cause]: Error: my cause"])
+          })
+
+          it("error cause", () => {
+            const pretty = Cause.pretty(Cause.fail(new Error("my message", { cause: new Error("my cause") })), {
+              renderErrorCause: true
+            })
+            assert.deepStrictEqual(simplifyStackTrace(pretty), ["Error: my message", "[cause]: Error: my cause"])
+          })
+
+          it("error cause with nested cause", () => {
+            const pretty = Cause.pretty(
+              Cause.fail(new Error("my message", { cause: new Error("my cause", { cause: "nested cause" }) })),
+              {
+                renderErrorCause: true
+              }
+            )
+            assert.deepStrictEqual(simplifyStackTrace(pretty), [
+              "Error: my message",
+              "[cause]: Error: my cause",
+              "[cause]: Error: nested cause"
+            ])
+          })
+        })
+
+        describe("Die", () => {
+          it("with span", () => {
+            const exit: any = Effect.die(new Error("my message", { cause: "my cause" })).pipe(
+              Effect.withSpan("[myspan]"),
+              Effect.exit,
+              Effect.runSync
+            )
+            const cause = exit.cause
+            const pretty = Cause.pretty(cause, { renderErrorCause: true })
+            assert.deepStrictEqual(simplifyStackTrace(pretty), [
+              `Error: my message`,
+              "at [myspan]",
+              "[cause]: Error: my cause"
+            ])
+          })
+        })
       })
     })
   })
