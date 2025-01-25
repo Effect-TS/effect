@@ -230,9 +230,8 @@ export const empty: <A = never>() => Chunk<A> = () => _empty
  * @category constructors
  * @since 2.0.0
  */
-export const make = <As extends readonly [any, ...ReadonlyArray<any>]>(
-  ...as: As
-): NonEmptyChunk<As[number]> => as.length === 1 ? of(as[0]) : unsafeFromNonEmptyArray(as)
+export const make = <As extends readonly [any, ...ReadonlyArray<any>]>(...as: As): NonEmptyChunk<As[number]> =>
+  unsafeFromNonEmptyArray(as)
 
 /**
  * Builds a `NonEmptyChunk` from a single element.
@@ -249,7 +248,7 @@ export const of = <A>(a: A): NonEmptyChunk<A> => makeChunk({ _tag: "ISingleton",
  * @since 2.0.0
  */
 export const fromIterable = <A>(self: Iterable<A>): Chunk<A> =>
-  isChunk(self) ? self : makeChunk({ _tag: "IArray", array: RA.fromIterable(self) })
+  isChunk(self) ? self : unsafeFromArray(RA.fromIterable(self))
 
 const copyToArray = <A>(self: Chunk<A>, array: Array<any>, initial: number): void => {
   switch (self.backing._tag) {
@@ -384,7 +383,8 @@ export const get: {
  * @since 2.0.0
  * @category unsafe
  */
-export const unsafeFromArray = <A>(self: ReadonlyArray<A>): Chunk<A> => makeChunk({ _tag: "IArray", array: self })
+export const unsafeFromArray = <A>(self: ReadonlyArray<A>): Chunk<A> =>
+  self.length === 0 ? empty() : self.length === 1 ? of(self[0]) : makeChunk({ _tag: "IArray", array: self })
 
 /**
  * Wraps an array into a chunk without copying, unsafe on mutable arrays
@@ -1216,8 +1216,7 @@ export const zip: {
 )
 
 /**
- * Delete the element at the specified index, creating a new `Chunk`,
- * or returning the input if the index is out of bounds.
+ * Delete the element at the specified index, creating a new `Chunk`.
  *
  * @since 2.0.0
  */

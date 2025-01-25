@@ -1,4 +1,6 @@
+import * as Equal from "effect/Equal"
 import * as assert from "node:assert"
+import { expect } from "vitest"
 
 export const assertTrue = (self: boolean) => {
   assert.strictEqual(self, true)
@@ -14,4 +16,23 @@ export const deepStrictEqual = <A>(actual: A, expected: A) => {
 
 export const strictEqual = <A>(actual: A, expected: A) => {
   assert.strictEqual(actual, expected)
+}
+
+export const equals = <A>(actual: A, expected: A) => {
+  if (!Equal.equals(actual, expected)) {
+    deepStrictEqual(actual, expected)
+    assert.fail("should be equal")
+  }
+}
+
+export const notThrows = (thunk: () => void) => {
+  expect(thunk).not.toThrow()
+}
+
+interface Constructable {
+  new(...args: Array<any>): any
+}
+
+export const throws = (thunk: () => void, error?: string | Constructable | RegExp | Error) => {
+  expect(thunk).toThrow(error)
 }
