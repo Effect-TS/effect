@@ -1,4 +1,4 @@
-import { assert } from "vitest"
+import * as assert from "node:assert"
 
 export const assertTrue = (self: boolean) => {
   assert.strictEqual(self, true)
@@ -15,8 +15,3 @@ export const deepStrictEqual = <A>(actual: A, expected: A) => {
 export const strictEqual = <A>(actual: A, expected: A) => {
   assert.strictEqual(actual, expected)
 }
-
-export const double = (n: number): number => n * 2
-
-export const ownKeys = (o: object): ReadonlyArray<PropertyKey> =>
-  (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))

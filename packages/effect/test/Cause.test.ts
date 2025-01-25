@@ -1,8 +1,8 @@
-import * as assert from "assert"
 import { Array as Arr, Cause, Effect, Either, Equal, FiberId, Hash, Option, Predicate } from "effect"
 import * as fc from "effect/FastCheck"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as internal from "effect/internal/cause"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/utils/cause"
 import { describe, expect, it } from "vitest"
 
@@ -96,8 +96,8 @@ describe("Cause", () => {
   describe("Cause prototype", () => {
     describe("toJSON / [NodeInspectSymbol]", () => {
       const expectJSON = (cause: Cause.Cause<unknown>, expected: unknown) => {
-        assert.deepStrictEqual(cause.toJSON(), expected)
-        assert.deepStrictEqual(cause[NodeInspectSymbol](), expected)
+        deepStrictEqual(cause.toJSON(), expected)
+        deepStrictEqual(cause[NodeInspectSymbol](), expected)
       }
 
       it("Empty", () => {
@@ -251,15 +251,15 @@ describe("Cause", () => {
 
     describe("Equal.symbol implementation", () => {
       it("compares causes by value", () => {
-        assert.ok(Equal.equals(Cause.fail(0), Cause.fail(0)))
-        assert.ok(Equal.equals(Cause.die(0), Cause.die(0)))
-        assert.ok(!Equal.equals(Cause.fail(0), Cause.fail(1)))
-        assert.ok(!Equal.equals(Cause.die(0), Cause.die(1)))
+        assertTrue(Equal.equals(Cause.fail(0), Cause.fail(0)))
+        assertTrue(Equal.equals(Cause.die(0), Cause.die(0)))
+        assertFalse(Equal.equals(Cause.fail(0), Cause.fail(1)))
+        assertFalse(Equal.equals(Cause.die(0), Cause.die(1)))
       })
 
       it("is symmetric", () => {
         fc.assert(fc.property(causes, causes, (causeA, causeB) => {
-          assert.strictEqual(
+          strictEqual(
             Equal.equals(causeA, causeB),
             Equal.equals(causeB, causeA)
           )
@@ -268,7 +268,7 @@ describe("Cause", () => {
 
       it("generates identical hashes for equal causes", () => {
         fc.assert(fc.property(equalCauses, ([causeA, causeB]) => {
-          assert.strictEqual(Hash.hash(causeA), Hash.hash(causeB))
+          strictEqual(Hash.hash(causeA), Hash.hash(causeB))
         }))
       })
 
@@ -425,7 +425,7 @@ describe("Cause", () => {
     describe("failures", () => {
       it("should return a Chunk of all recoverable errors", () => {
         const expectFailures = <E>(cause: Cause.Cause<E>, expected: Array<E>) => {
-          assert.deepStrictEqual([...Cause.failures(cause)], expected)
+          deepStrictEqual([...Cause.failures(cause)], expected)
         }
         expectFailures(empty, [])
         expectFailures(failure, ["error"])
@@ -440,13 +440,13 @@ describe("Cause", () => {
         const n = 10_000
         const cause = Array.from({ length: n - 1 }, () => Cause.fail("fail")).reduce(Cause.parallel, Cause.fail("fail"))
         const result = Cause.failures(cause)
-        assert.strictEqual(Array.from(result).length, n)
+        strictEqual(Array.from(result).length, n)
       })
     })
 
     it("defects", () => {
       const expectDefects = <E>(cause: Cause.Cause<E>, expected: Array<unknown>) => {
-        assert.deepStrictEqual([...Cause.defects(cause)], expected)
+        deepStrictEqual([...Cause.defects(cause)], expected)
       }
       expectDefects(empty, [])
       expectDefects(defect, ["defect"])
@@ -459,7 +459,7 @@ describe("Cause", () => {
 
     it("interruptors", () => {
       const expectInterruptors = <E>(cause: Cause.Cause<E>, expected: Array<FiberId.FiberId>) => {
-        assert.deepStrictEqual([...Cause.interruptors(cause)], expected)
+        deepStrictEqual([...Cause.interruptors(cause)], expected)
       }
       expectInterruptors(empty, [])
       expectInterruptors(interruption, [FiberId.runtime(1, 0)])
@@ -486,7 +486,7 @@ describe("Cause", () => {
 
     it("failureOption", () => {
       const expectFailureOption = <E>(cause: Cause.Cause<E>, expected: Option.Option<E>) => {
-        assert.deepStrictEqual(Cause.failureOption(cause), expected)
+        deepStrictEqual(Cause.failureOption(cause), expected)
       }
       expectFailureOption(empty, Option.none())
       expectFailureOption(failure, Option.some("error"))
@@ -499,10 +499,10 @@ describe("Cause", () => {
 
     it("failureOrCause", () => {
       const expectLeft = <E>(cause: Cause.Cause<E>, expected: E) => {
-        assert.deepStrictEqual(Cause.failureOrCause(cause), Either.left(expected))
+        deepStrictEqual(Cause.failureOrCause(cause), Either.left(expected))
       }
       const expectRight = (cause: Cause.Cause<never>) => {
-        assert.deepStrictEqual(Cause.failureOrCause(cause), Either.right(cause))
+        deepStrictEqual(Cause.failureOrCause(cause), Either.right(cause))
       }
 
       expectLeft(failure, "error")
@@ -517,42 +517,42 @@ describe("Cause", () => {
     })
 
     it("flipCauseOption", () => {
-      assert.deepStrictEqual(Cause.flipCauseOption(empty), Option.some(empty))
-      assert.deepStrictEqual(Cause.flipCauseOption(defect), Option.some(defect))
-      assert.deepStrictEqual(Cause.flipCauseOption(interruption), Option.some(interruption))
-      assert.deepStrictEqual(Cause.flipCauseOption(Cause.fail(Option.none())), Option.none())
-      assert.deepStrictEqual(Cause.flipCauseOption(Cause.fail(Option.some("error"))), Option.some(Cause.fail("error")))
+      deepStrictEqual(Cause.flipCauseOption(empty), Option.some(empty))
+      deepStrictEqual(Cause.flipCauseOption(defect), Option.some(defect))
+      deepStrictEqual(Cause.flipCauseOption(interruption), Option.some(interruption))
+      deepStrictEqual(Cause.flipCauseOption(Cause.fail(Option.none())), Option.none())
+      deepStrictEqual(Cause.flipCauseOption(Cause.fail(Option.some("error"))), Option.some(Cause.fail("error")))
       // sequential
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.flipCauseOption(Cause.sequential(Cause.fail(Option.some("error1")), Cause.fail(Option.some("error2")))),
         Option.some(Cause.sequential(Cause.fail("error1"), Cause.fail("error2")))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.flipCauseOption(Cause.sequential(Cause.fail(Option.some("error1")), Cause.fail(Option.none()))),
         Option.some(Cause.fail("error1"))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.flipCauseOption(Cause.sequential(Cause.fail(Option.none()), Cause.fail(Option.some("error2")))),
         Option.some(Cause.fail("error2"))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.flipCauseOption(Cause.sequential(Cause.fail(Option.none()), Cause.fail(Option.none()))),
         Option.none()
       )
       // parallel
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.flipCauseOption(Cause.parallel(Cause.fail(Option.some("error1")), Cause.fail(Option.some("error2")))),
         Option.some(Cause.parallel(Cause.fail("error1"), Cause.fail("error2")))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.flipCauseOption(Cause.parallel(Cause.fail(Option.some("error1")), Cause.fail(Option.none()))),
         Option.some(Cause.fail("error1"))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.flipCauseOption(Cause.parallel(Cause.fail(Option.none()), Cause.fail(Option.some("error2")))),
         Option.some(Cause.fail("error2"))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.flipCauseOption(Cause.parallel(Cause.fail(Option.none()), Cause.fail(Option.none()))),
         Option.none()
       )
@@ -560,7 +560,7 @@ describe("Cause", () => {
 
     it("dieOption", () => {
       const expectDieOption = <E>(cause: Cause.Cause<E>, expected: Option.Option<unknown>) => {
-        assert.deepStrictEqual(Cause.dieOption(cause), expected)
+        deepStrictEqual(Cause.dieOption(cause), expected)
       }
       expectDieOption(empty, Option.none())
       expectDieOption(defect, Option.some("defect"))
@@ -573,7 +573,7 @@ describe("Cause", () => {
 
     it("interruptOption", () => {
       const expectInterruptOption = <E>(cause: Cause.Cause<E>, expected: Option.Option<FiberId.FiberId>) => {
-        assert.deepStrictEqual(Cause.interruptOption(cause), expected)
+        deepStrictEqual(Cause.interruptOption(cause), expected)
       }
       expectInterruptOption(empty, Option.none())
       expectInterruptOption(interruption, Option.some(FiberId.runtime(1, 0)))
@@ -587,28 +587,28 @@ describe("Cause", () => {
     })
 
     it("keepDefects", () => {
-      assert.deepStrictEqual(Cause.keepDefects(empty), Option.none())
-      assert.deepStrictEqual(Cause.keepDefects(failure), Option.none())
-      assert.deepStrictEqual(Cause.keepDefects(defect), Option.some(defect))
-      assert.deepStrictEqual(
+      deepStrictEqual(Cause.keepDefects(empty), Option.none())
+      deepStrictEqual(Cause.keepDefects(failure), Option.none())
+      deepStrictEqual(Cause.keepDefects(defect), Option.some(defect))
+      deepStrictEqual(
         Cause.keepDefects(Cause.sequential(Cause.die("defect1"), Cause.die("defect2"))),
         Option.some(Cause.sequential(Cause.die("defect1"), Cause.die("defect2")))
       )
-      assert.deepStrictEqual(Cause.keepDefects(Cause.sequential(empty, empty)), Option.none())
-      assert.deepStrictEqual(Cause.keepDefects(Cause.sequential(defect, failure)), Option.some(defect))
-      assert.deepStrictEqual(Cause.keepDefects(Cause.parallel(empty, empty)), Option.none())
-      assert.deepStrictEqual(Cause.keepDefects(Cause.parallel(defect, failure)), Option.some(defect))
-      assert.deepStrictEqual(
+      deepStrictEqual(Cause.keepDefects(Cause.sequential(empty, empty)), Option.none())
+      deepStrictEqual(Cause.keepDefects(Cause.sequential(defect, failure)), Option.some(defect))
+      deepStrictEqual(Cause.keepDefects(Cause.parallel(empty, empty)), Option.none())
+      deepStrictEqual(Cause.keepDefects(Cause.parallel(defect, failure)), Option.some(defect))
+      deepStrictEqual(
         Cause.keepDefects(Cause.parallel(Cause.die("defect1"), Cause.die("defect2"))),
         Option.some(Cause.parallel(Cause.die("defect1"), Cause.die("defect2")))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.keepDefects(
           Cause.sequential(failure, Cause.parallel(Cause.die("defect1"), Cause.die("defect2")))
         ),
         Option.some(Cause.parallel(Cause.die("defect1"), Cause.die("defect2")))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Cause.keepDefects(
           Cause.sequential(Cause.die("defect1"), Cause.parallel(failure, Cause.die("defect2")))
         ),
@@ -630,7 +630,7 @@ describe("Cause", () => {
     // TODO: what's the point of this API?
     it("linearize", () => {
       const expectLinearize = <E>(cause: Cause.Cause<E>, expected: Array<Cause.Cause<E>>) => {
-        assert.deepStrictEqual([...Cause.linearize(cause)], expected)
+        deepStrictEqual([...Cause.linearize(cause)], expected)
       }
       expectLinearize(empty, [])
       expectLinearize(failure, [failure])
@@ -672,7 +672,7 @@ describe("Cause", () => {
 
     it("stripFailures", () => {
       const expectStripFailures = <E>(cause: Cause.Cause<E>, expected: Cause.Cause<never>) => {
-        assert.deepStrictEqual(Cause.stripFailures(cause), expected)
+        deepStrictEqual(Cause.stripFailures(cause), expected)
       }
       expectStripFailures(empty, empty)
       expectStripFailures(failure, empty)
@@ -697,21 +697,21 @@ describe("Cause", () => {
           ? Option.some(defect) :
           Option.none()
       )
-      assert.deepStrictEqual(stripNumberFormatException(empty), Option.some(empty))
-      assert.deepStrictEqual(stripNumberFormatException(failure), Option.some(failure))
-      assert.deepStrictEqual(stripNumberFormatException(interruption), Option.some(interruption))
-      assert.deepStrictEqual(stripNumberFormatException(cause1), Option.none())
-      assert.deepStrictEqual(stripNumberFormatException(Cause.sequential(cause1, cause1)), Option.none())
-      assert.deepStrictEqual(stripNumberFormatException(Cause.sequential(cause1, cause2)), Option.some(cause2))
-      assert.deepStrictEqual(stripNumberFormatException(Cause.sequential(cause2, cause1)), Option.some(cause2))
-      assert.deepStrictEqual(
+      deepStrictEqual(stripNumberFormatException(empty), Option.some(empty))
+      deepStrictEqual(stripNumberFormatException(failure), Option.some(failure))
+      deepStrictEqual(stripNumberFormatException(interruption), Option.some(interruption))
+      deepStrictEqual(stripNumberFormatException(cause1), Option.none())
+      deepStrictEqual(stripNumberFormatException(Cause.sequential(cause1, cause1)), Option.none())
+      deepStrictEqual(stripNumberFormatException(Cause.sequential(cause1, cause2)), Option.some(cause2))
+      deepStrictEqual(stripNumberFormatException(Cause.sequential(cause2, cause1)), Option.some(cause2))
+      deepStrictEqual(
         stripNumberFormatException(Cause.sequential(cause2, cause2)),
         Option.some(Cause.sequential(cause2, cause2))
       )
-      assert.deepStrictEqual(stripNumberFormatException(Cause.parallel(cause1, cause1)), Option.none())
-      assert.deepStrictEqual(stripNumberFormatException(Cause.parallel(cause1, cause2)), Option.some(cause2))
-      assert.deepStrictEqual(stripNumberFormatException(Cause.parallel(cause2, cause1)), Option.some(cause2))
-      assert.deepStrictEqual(
+      deepStrictEqual(stripNumberFormatException(Cause.parallel(cause1, cause1)), Option.none())
+      deepStrictEqual(stripNumberFormatException(Cause.parallel(cause1, cause2)), Option.some(cause2))
+      deepStrictEqual(stripNumberFormatException(Cause.parallel(cause2, cause1)), Option.some(cause2))
+      deepStrictEqual(
         stripNumberFormatException(Cause.parallel(cause2, cause2)),
         Option.some(Cause.parallel(cause2, cause2))
       )
@@ -720,8 +720,8 @@ describe("Cause", () => {
 
   describe("Mapping", () => {
     it("as", () => {
-      const expectAs = <E, A>(cause: Cause.Cause<E>, expected: Cause.Cause<A>) => {
-        assert.deepStrictEqual(Cause.as(cause, 2), expected)
+      const expectAs = <E>(cause: Cause.Cause<E>, expected: Cause.Cause<number>) => {
+        deepStrictEqual(Cause.as(cause, 2), expected)
       }
       expectAs(empty, empty)
       expectAs(failure, Cause.fail(2))
@@ -732,8 +732,8 @@ describe("Cause", () => {
     })
 
     it("map", () => {
-      const expectMap = <E, A>(cause: Cause.Cause<E>, expected: Cause.Cause<A>) => {
-        assert.deepStrictEqual(Cause.map(cause, () => 2), expected)
+      const expectMap = <E>(cause: Cause.Cause<E>, expected: Cause.Cause<number>) => {
+        deepStrictEqual(Cause.map(cause, () => 2), expected)
       }
       expectMap(empty, empty)
       expectMap(failure, Cause.fail(2))
@@ -750,7 +750,7 @@ describe("Cause", () => {
         fc.assert(fc.property(causes, (cause) => {
           const left = cause.pipe(Cause.flatMap(Cause.fail))
           const right = cause
-          assert.ok(Equal.equals(left, right))
+          assertTrue(Equal.equals(left, right))
         }))
       })
 
@@ -758,7 +758,7 @@ describe("Cause", () => {
         fc.assert(fc.property(errors, errorCauseFunctions, (error, f) => {
           const left = Cause.fail(error).pipe(Cause.flatMap(f))
           const right = f(error)
-          assert.ok(Equal.equals(left, right))
+          assertTrue(Equal.equals(left, right))
         }))
       })
 
@@ -766,7 +766,7 @@ describe("Cause", () => {
         fc.assert(fc.property(causes, errorCauseFunctions, errorCauseFunctions, (cause, f, g) => {
           const left = cause.pipe(Cause.flatMap(f), Cause.flatMap(g))
           const right = cause.pipe(Cause.flatMap((error) => f(error).pipe(Cause.flatMap(g))))
-          assert.ok(Equal.equals(left, right))
+          assertTrue(Equal.equals(left, right))
         }))
       })
     })
@@ -774,15 +774,15 @@ describe("Cause", () => {
     it("andThen returns the second cause if the first one is failing", () => {
       const err1 = Cause.fail("err1")
       const err2 = Cause.fail("err2")
-      assert.deepStrictEqual(err1.pipe(Cause.andThen(() => err2)), err2)
-      assert.deepStrictEqual(err1.pipe(Cause.andThen(err2)), err2)
-      assert.deepStrictEqual(Cause.andThen(err1, () => err2), err2)
-      assert.deepStrictEqual(Cause.andThen(err1, err2), err2)
+      deepStrictEqual(err1.pipe(Cause.andThen(() => err2)), err2)
+      deepStrictEqual(err1.pipe(Cause.andThen(err2)), err2)
+      deepStrictEqual(Cause.andThen(err1, () => err2), err2)
+      deepStrictEqual(Cause.andThen(err1, err2), err2)
     })
 
     it("flatten", () => {
       const expectFlatten = <E>(cause: Cause.Cause<Cause.Cause<E>>, expected: Cause.Cause<E>) => {
-        assert.deepStrictEqual(Cause.flatten(cause), expected)
+        deepStrictEqual(Cause.flatten(cause), expected)
       }
       expectFlatten(Cause.fail(empty), empty)
       expectFlatten(Cause.fail(failure), failure)
@@ -796,7 +796,7 @@ describe("Cause", () => {
   describe("Elements", () => {
     it("contains", () => {
       const expectContains = <E, E2>(cause: Cause.Cause<E>, expected: Cause.Cause<E2>) => {
-        assert.ok(Cause.contains(cause, expected))
+        assertTrue(Cause.contains(cause, expected))
       }
 
       expectContains(empty, empty)
@@ -813,7 +813,7 @@ describe("Cause", () => {
 
     it("find", () => {
       const expectFind = <E>(cause: Cause.Cause<E>, expected: Option.Option<string>) => {
-        assert.deepStrictEqual(
+        deepStrictEqual(
           Cause.find(
             cause,
             (cause) =>
@@ -835,7 +835,7 @@ describe("Cause", () => {
   describe("Destructors", () => {
     it("squash", () => {
       const expectSquash = <E>(cause: Cause.Cause<E>, expected: unknown) => {
-        assert.deepStrictEqual(Cause.squash(cause), expected)
+        deepStrictEqual(Cause.squash(cause), expected)
       }
 
       expectSquash(empty, new Cause.InterruptedException("Interrupted by fibers: "))
@@ -855,7 +855,7 @@ describe("Cause", () => {
   describe("Filtering", () => {
     it("filter", () => {
       const expectFilter = <E>(cause: Cause.Cause<E>, expected: Cause.Cause<E>) => {
-        assert.deepStrictEqual(
+        deepStrictEqual(
           Cause.filter(
             cause,
             (cause) => Cause.isFailType(cause) && Predicate.isString(cause.error) && cause.error === "error"
@@ -882,7 +882,7 @@ describe("Cause", () => {
   describe("Matching", () => {
     it("match", () => {
       const expectMatch = <E>(cause: Cause.Cause<E>, expected: string) => {
-        assert.strictEqual(
+        strictEqual(
           Cause.match(cause, {
             onEmpty: "Empty",
             onFail: () => "Fail",
@@ -913,15 +913,15 @@ describe("Cause", () => {
 
   describe("Formatting", () => {
     it("prettyErrors", () => {
-      assert.deepStrictEqual(Cause.prettyErrors(empty), [])
-      assert.deepStrictEqual(Cause.prettyErrors(failure), [new internal.PrettyError("error")])
-      assert.deepStrictEqual(Cause.prettyErrors(defect), [new internal.PrettyError("defect")])
-      assert.deepStrictEqual(Cause.prettyErrors(interruption), [])
-      assert.deepStrictEqual(Cause.prettyErrors(sequential), [
+      deepStrictEqual(Cause.prettyErrors(empty), [])
+      deepStrictEqual(Cause.prettyErrors(failure), [new internal.PrettyError("error")])
+      deepStrictEqual(Cause.prettyErrors(defect), [new internal.PrettyError("defect")])
+      deepStrictEqual(Cause.prettyErrors(interruption), [])
+      deepStrictEqual(Cause.prettyErrors(sequential), [
         new internal.PrettyError("error"),
         new internal.PrettyError("defect")
       ])
-      assert.deepStrictEqual(Cause.prettyErrors(parallel), [
+      deepStrictEqual(Cause.prettyErrors(parallel), [
         new internal.PrettyError("error"),
         new internal.PrettyError("defect")
       ])
@@ -946,8 +946,8 @@ describe("Cause", () => {
 
       describe("renderErrorCause: false", () => {
         const expectPretty = <E>(cause: Cause.Cause<E>, expected: string | undefined) => {
-          assert.deepStrictEqual(Cause.pretty(cause), expected)
-          assert.deepStrictEqual(Cause.pretty(cause, { renderErrorCause: false }), expected)
+          deepStrictEqual(Cause.pretty(cause), expected)
+          deepStrictEqual(Cause.pretty(cause, { renderErrorCause: false }), expected)
         }
 
         it("handles array-based errors without throwing", () => {
@@ -1010,7 +1010,7 @@ describe("Cause", () => {
             )
             const cause = exit.cause
             const pretty = Cause.pretty(cause)
-            assert.deepStrictEqual(simplifyStackTrace(pretty), [`Error: my message`, "at [myspan]"])
+            deepStrictEqual(simplifyStackTrace(pretty), [`Error: my message`, "at [myspan]"])
           })
         })
       })
@@ -1019,21 +1019,21 @@ describe("Cause", () => {
         describe("Fail", () => {
           it("no cause", () => {
             const pretty = Cause.pretty(Cause.fail(new Error("my message")), { renderErrorCause: true })
-            assert.deepStrictEqual(simplifyStackTrace(pretty), ["Error: my message"])
+            deepStrictEqual(simplifyStackTrace(pretty), ["Error: my message"])
           })
 
           it("string cause", () => {
             const pretty = Cause.pretty(Cause.fail(new Error("my message", { cause: "my cause" })), {
               renderErrorCause: true
             })
-            assert.deepStrictEqual(simplifyStackTrace(pretty), ["Error: my message", "[cause]: Error: my cause"])
+            deepStrictEqual(simplifyStackTrace(pretty), ["Error: my message", "[cause]: Error: my cause"])
           })
 
           it("error cause", () => {
             const pretty = Cause.pretty(Cause.fail(new Error("my message", { cause: new Error("my cause") })), {
               renderErrorCause: true
             })
-            assert.deepStrictEqual(simplifyStackTrace(pretty), ["Error: my message", "[cause]: Error: my cause"])
+            deepStrictEqual(simplifyStackTrace(pretty), ["Error: my message", "[cause]: Error: my cause"])
           })
 
           it("error cause with nested cause", () => {
@@ -1043,7 +1043,7 @@ describe("Cause", () => {
                 renderErrorCause: true
               }
             )
-            assert.deepStrictEqual(simplifyStackTrace(pretty), [
+            deepStrictEqual(simplifyStackTrace(pretty), [
               "Error: my message",
               "[cause]: Error: my cause",
               "[cause]: Error: nested cause"
@@ -1060,7 +1060,7 @@ describe("Cause", () => {
             )
             const cause = exit.cause
             const pretty = Cause.pretty(cause, { renderErrorCause: true })
-            assert.deepStrictEqual(simplifyStackTrace(pretty), [
+            deepStrictEqual(simplifyStackTrace(pretty), [
               `Error: my message`,
               "at [myspan]",
               "[cause]: Error: my cause"

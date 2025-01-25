@@ -1,10 +1,10 @@
 import * as Function from "effect/Function"
 import * as String from "effect/String"
-import { deepStrictEqual, double } from "effect/test/util"
+import { deepStrictEqual } from "effect/test/util"
 import { assert, describe, expect, it } from "vitest"
 
 const f = (n: number): number => n + 1
-const g = double
+const g = (n: number) => n * 2
 
 describe("Function", () => {
   it("apply", () => {
@@ -12,8 +12,8 @@ describe("Function", () => {
   })
 
   it("compose", () => {
-    deepStrictEqual(Function.pipe(String.length, Function.compose(double))("aaa"), 6)
-    deepStrictEqual(Function.compose(String.length, double)("aaa"), 6)
+    deepStrictEqual(Function.pipe(String.length, Function.compose((n) => n * 2))("aaa"), 6)
+    deepStrictEqual(Function.compose(String.length, (n) => n * 2)("aaa"), 6)
   })
 
   it("flip", () => {

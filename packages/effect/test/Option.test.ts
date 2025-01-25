@@ -220,8 +220,8 @@ describe("Option", () => {
   })
 
   it("map", () => {
-    Util.deepStrictEqual(pipe(Option.some(2), Option.map(Util.double)), Option.some(4))
-    Util.deepStrictEqual(pipe(Option.none(), Option.map(Util.double)), Option.none())
+    Util.deepStrictEqual(pipe(Option.some(2), Option.map((n) => n * 2)), Option.some(4))
+    Util.deepStrictEqual(pipe(Option.none(), Option.map((n) => n * 2)), Option.none())
   })
 
   it("flatMap", () => {

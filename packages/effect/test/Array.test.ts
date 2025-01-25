@@ -7,7 +7,7 @@ import * as O from "effect/Option"
 import * as Order from "effect/Order"
 import type { Predicate } from "effect/Predicate"
 import * as String from "effect/String"
-import { deepStrictEqual, double, strictEqual } from "effect/test/util"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as Util from "effect/test/util"
 import { assert, describe, expect, it } from "vitest"
 
@@ -15,7 +15,9 @@ const symA = Symbol.for("a")
 const symB = Symbol.for("b")
 const symC = Symbol.for("c")
 
-describe("ReadonlyArray", () => {
+const double = (n: number) => n * 2
+
+describe("Array", () => {
   it("exports", () => {
     expect(RA.fromRecord).exist
     expect(RA.getEquivalence).exist
@@ -986,11 +988,11 @@ describe("ReadonlyArray", () => {
         "6": ["foobar"]
       }
     )
-    expect(RA.groupBy(["a", "b"], (s) => s === "a" ? symA : s === "b" ? symB : symC)).toStrictEqual({
+    deepStrictEqual(RA.groupBy(["a", "b"], (s) => s === "a" ? symA : s === "b" ? symB : symC), {
       [symA]: ["a"],
       [symB]: ["b"]
     })
-    expect(RA.groupBy(["a", "b", "c", "d"], (s) => s === "a" ? symA : s === "b" ? symB : symC)).toStrictEqual({
+    deepStrictEqual(RA.groupBy(["a", "b", "c", "d"], (s) => s === "a" ? symA : s === "b" ? symB : symC), {
       [symA]: ["a"],
       [symB]: ["b"],
       [symC]: ["c", "d"]

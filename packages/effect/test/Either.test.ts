@@ -152,7 +152,7 @@ describe("Either", () => {
   })
 
   it("mapLeft", () => {
-    const f = Either.mapLeft(Util.double)
+    const f = Either.mapLeft((n: number) => n * 2)
     Util.deepStrictEqual(pipe(Either.right("a"), f), Either.right("a"))
     Util.deepStrictEqual(pipe(Either.left(1), f), Either.left(2))
   })
