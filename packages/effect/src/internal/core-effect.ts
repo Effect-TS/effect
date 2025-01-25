@@ -8,7 +8,7 @@ import type * as Effect from "../Effect.js"
 import type { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import type * as FiberId from "../FiberId.js"
-import type * as FiberRef from "../FiberRef.js"
+import * as FiberRef from "../FiberRef.js"
 import * as FiberRefs from "../FiberRefs.js"
 import type * as FiberRefsPatch from "../FiberRefsPatch.js"
 import type { LazyArg } from "../Function.js"
@@ -947,6 +947,20 @@ export const logAnnotations: Effect.Effect<HashMap.HashMap<string, unknown>> = c
   .fiberRefGet(
     core.currentLogAnnotations
   )
+
+/** @internal */
+export const whenLogLevel = dual<
+  (level: LogLevel.LogLevel) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<Option.Option<A>, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, level: LogLevel.LogLevel) => Effect.Effect<Option.Option<A>, E, R>
+>(2, (effect, level) => {
+   return core.withFiberRuntime((fiberState) => {
+     const currentLogLevel = FiberRef.currentMinimumLogLevel.pipe(fiberState.getFiberRef);
+
+     const levelEnabled = LogLevel.lessThanEqual(currentLogLevel, level);
+
+     return levelEnabled ? core.map(effect, Option.some) : core.succeed(Option.none());
+   })
+});
 
 /* @internal */
 export const loop: {

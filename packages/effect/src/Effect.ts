@@ -10871,6 +10871,42 @@ export const withUnhandledErrorLogLevel: {
 } = core.withUnhandledErrorLogLevel
 
 /**
+ * Conditionally executes an effect based on the specified log level and currently enabled log level.
+ *
+ * **Details**
+ *
+ * This function runs the provided effect only if the specified log level is
+ * enabled. If the log level is enabled, the effect is executed and its result
+ * is wrapped in `Some`. If the log level is not enabled, the effect is not
+ * executed and `None` is returned.
+ *
+ * This function is useful for conditionally executing logging-related effects
+ * or other operations that depend on the current log level configuration.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Logger, LogLevel } from "effect"
+ *
+ * const program = Effect.gen(function* () {
+ *   yield* Effect.whenLogLevel(Effect.logTrace("message1"), LogLevel.Trace); // returns `None`
+ *   yield* Effect.whenLogLevel(Effect.logDebug("message2"), LogLevel.Debug); // returns `Some`
+ * }).pipe(Logger.withMinimumLogLevel(LogLevel.Debug));
+ *
+ * // Effect.runFork(program)
+ * // timestamp=... level=DEBUG fiber=#0 message=message2
+ * ```
+ *
+ * @see {@link FiberRef.minimumLogLevel} to retrieve the current minimum log level.
+ *
+ * @since 3.13.0
+ * @category Logging
+ */
+export const whenLogLevel: {
+  (level: LogLevel): <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, E, R>
+  <A, E, R>(self: Effect<A, E, R>, level: LogLevel): Effect<Option.Option<A>, E, R>
+} = effect.whenLogLevel;
+
+/**
  * Converts an effect's failure into a fiber termination, removing the error
  * from the effect's type.
  *
