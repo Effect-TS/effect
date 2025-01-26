@@ -20,7 +20,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         return yield* new WorkerError({ reason: "spawn", cause: new Error("not in a Worker context") })
       }
       const port = self
-      const run = <A, E, R>(handler: (portId: number, message: I) => Effect.Effect<A, E, R>) =>
+      const run = <A, E, R>(handler: (portId: number, message: I) => Effect.Effect<A, E, R> | void) =>
         Effect.uninterruptibleMask((restore) =>
           Effect.gen(function*() {
             const scope = yield* Effect.scope
@@ -33,7 +33,10 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             function onMessage(event: MessageEvent) {
               const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
               if (message[0] === 0) {
-                FiberSet.unsafeAdd(fiberSet, runFork(restore(handler(0, message[1]))))
+                const result = handler(0, message[1])
+                if (Effect.isEffect(result)) {
+                  FiberSet.unsafeAdd(fiberSet, runFork(restore(result)))
+                }
               } else {
                 port.close()
                 Deferred.unsafeDone(fiberSet.deferred, Exit.interrupt(FiberId.none))
