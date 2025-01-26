@@ -520,4 +520,42 @@ describe("Duration", () => {
     strictEqual(Duration.toWeeks("2 weeks"), 2)
     strictEqual(Duration.toWeeks("14 days"), 2)
   })
+
+  it("unsafeFormatIso", () => {
+    expect(Duration.unsafeFormatIso(Duration.zero)).toBe("PT0S")
+    expect(Duration.unsafeFormatIso(Duration.seconds(2))).toBe("PT2S")
+    expect(Duration.unsafeFormatIso(Duration.minutes(5))).toBe("PT5M")
+    expect(Duration.unsafeFormatIso(Duration.hours(3))).toBe("PT3H")
+    expect(Duration.unsafeFormatIso(Duration.days(1))).toBe("P1D")
+
+    expect(Duration.unsafeFormatIso(Duration.minutes(90))).toBe("PT1H30M")
+    expect(Duration.unsafeFormatIso(Duration.hours(25))).toBe("P1DT1H")
+    expect(Duration.unsafeFormatIso(Duration.days(7))).toBe("P1W")
+    expect(Duration.unsafeFormatIso(Duration.days(10))).toBe("P1W3D")
+
+    expect(Duration.unsafeFormatIso(Duration.millis(1500))).toBe("PT1.5S")
+    expect(Duration.unsafeFormatIso(Duration.micros(1500n))).toBe("PT0.0015S")
+    expect(Duration.unsafeFormatIso(Duration.nanos(1500n))).toBe("PT0.0000015S")
+
+    expect(Duration.unsafeFormatIso(
+      Duration.days(1).pipe(
+        Duration.sum(Duration.hours(2)),
+        Duration.sum(Duration.minutes(30))
+      )
+    )).toBe("P1DT2H30M")
+
+    expect(Duration.unsafeFormatIso(
+      Duration.hours(2).pipe(
+        Duration.sum(Duration.minutes(30)),
+        Duration.sum(Duration.millis(1500))
+      )
+    )).toBe("PT2H30M1.5S")
+
+    expect(Duration.unsafeFormatIso("1 day")).toBe("P1D")
+    expect(Duration.unsafeFormatIso("90 minutes")).toBe("PT1H30M")
+    expect(Duration.unsafeFormatIso("1.5 seconds")).toBe("PT1.5S")
+
+    expect(() => Duration.unsafeFormatIso(Duration.infinity))
+      .toThrow(new RangeError("Cannot format infinite duration"))
+  })
 })

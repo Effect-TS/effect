@@ -850,3 +850,74 @@ export const format = (self: DurationInput): string => {
 
   return pieces.join(" ")
 }
+
+/**
+ * Formats a Duration into an ISO8601 duration string.
+ *
+ * The ISO8601 duration format is generally specified as P[n]Y[n]M[n]DT[n]H[n]M[n]S. However, since
+ * the `Duration` type does not support years or months, this function will only output the days, hours,
+ * minutes and seconds. Thus, the effective format is P[n]DT[n]H[n]M[n]S.
+ *
+ * Milliseconds and nanoseconds are expressed as fractional seconds.
+ *
+ * @throws `RangeError` If the duration is not finite.
+ *
+ * @example
+ * ```ts
+ * import { Duration } from "effect"
+ *
+ * Duration.unsafeFormatIso(Duration.days(1)) // => "P1D"
+ * Duration.unsafeFormatIso(Duration.minutes(90)) // => "PT1H30M"
+ * Duration.unsafeFormatIso(Duration.millis(1500)) // => "PT1.5S"
+ * ```
+ *
+ * @since 3.13.0
+ * @category conversions
+ */
+export const unsafeFormatIso = (self: DurationInput): string => {
+  const duration = decode(self)
+  if (!isFinite(duration)) {
+    throw new RangeError("Cannot format infinite duration")
+  }
+
+  const fragments = []
+  const {
+    days,
+    hours,
+    millis,
+    minutes,
+    nanos,
+    seconds
+  } = parts(duration)
+
+  if (days >= 7) {
+    const rest = days % 7
+    const weeks = (days - rest) / 7
+    fragments.push(`${weeks}W`)
+    if (rest !== 0) {
+      fragments.push(`${rest}D`)
+    }
+  } else if (days !== 0) {
+    fragments.push(`${days}D`)
+  }
+
+  if (hours !== 0 || minutes !== 0 || seconds !== 0 || millis !== 0 || nanos !== 0) {
+    fragments.push("T")
+
+    if (hours !== 0) {
+      fragments.push(`${hours}H`)
+    }
+
+    if (minutes !== 0) {
+      fragments.push(`${minutes}M`)
+    }
+
+    if (seconds !== 0 || millis !== 0 || nanos !== 0) {
+      const total = BigInt(seconds) * bigint1e9 + BigInt(millis) * bigint1e6 + BigInt(nanos)
+      const str = (Number(total) / 1e9).toFixed(9).replace(/\.?0+$/, "")
+      fragments.push(`${str}S`)
+    }
+  }
+
+  return `P${fragments.join("") || "T0S"}`
+}
