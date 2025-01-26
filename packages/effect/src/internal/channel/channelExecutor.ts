@@ -7,7 +7,9 @@ import * as Effect from "../../Effect.js"
 import * as ExecutionStrategy from "../../ExecutionStrategy.js"
 import * as Exit from "../../Exit.js"
 import * as Fiber from "../../Fiber.js"
+import * as FiberId from "../../FiberId.js"
 import { dual, identity, pipe } from "../../Function.js"
+import * as HashSet from "../../HashSet.js"
 import * as Option from "../../Option.js"
 import * as Scope from "../../Scope.js"
 import type * as UpstreamPullStrategy from "../../UpstreamPullStrategy.js"
@@ -1143,8 +1145,9 @@ export const runIn = dual<
       restore(run(channelDeferred, scopeDeferred, child)).pipe(
         Effect.forkIn(scope),
         Effect.flatMap((fiber) =>
-          scope.addFinalizer(() =>
-            Deferred.isDone(channelDeferred).pipe(
+          scope.addFinalizer((exit) => {
+            const interruptors = Exit.isFailure(exit) ? Cause.interruptors(exit.cause) : undefined
+            return Deferred.isDone(channelDeferred).pipe(
               Effect.flatMap((isDone) =>
                 isDone
                   ? Deferred.succeed(scopeDeferred, void 0).pipe(
@@ -1152,12 +1155,16 @@ export const runIn = dual<
                     Effect.zipRight(Fiber.inheritAll(fiber))
                   )
                   : Deferred.succeed(scopeDeferred, void 0).pipe(
-                    Effect.zipRight(Fiber.interrupt(fiber)),
+                    Effect.zipRight(
+                      interruptors && HashSet.size(interruptors) > 0
+                        ? Fiber.interruptAs(fiber, FiberId.combineAll(interruptors))
+                        : Fiber.interrupt(fiber)
+                    ),
                     Effect.zipRight(Fiber.inheritAll(fiber))
                   )
               )
             )
-          ).pipe(Effect.zipRight(restore(Deferred.await(channelDeferred))))
+          }).pipe(Effect.zipRight(restore(Deferred.await(channelDeferred))))
         )
       )
     ))
