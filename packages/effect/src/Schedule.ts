@@ -146,7 +146,7 @@ export const makeWithState: <S, In, Out, R = never>(
  * @since 2.0.0
  * @category guards
  */
-export const isSchedule: (u: unknown) => u is Schedule<unknown, unknown, unknown> = internal.isSchedule
+export const isSchedule: (u: unknown) => u is Schedule<unknown, never, unknown> = internal.isSchedule
 
 /**
  * Returns a new schedule with the given delay added to every interval defined
