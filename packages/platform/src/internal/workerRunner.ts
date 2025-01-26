@@ -211,7 +211,7 @@ export const layerSerialized = <
 /** @internal */
 export const launch = <A, E, R>(layer: Layer.Layer<A, E, R>): Effect.Effect<void, E | WorkerError, R> =>
   Effect.scopedWith(Effect.fnUntraced(function*(scope) {
-    const context = yield* Layer.buildWithScope(Layer.merge(layer, layerCloseLatch), scope)
+    const context = yield* Layer.buildWithScope(Layer.provideMerge(layer, layerCloseLatch), scope)
     const closeLatch = Context.get(context, CloseLatch)
     return yield* Effect.never.pipe(
       Effect.raceFirst(Deferred.await(closeLatch))
