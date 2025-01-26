@@ -34,7 +34,8 @@ export const ScheduleTypeId: Schedule.ScheduleTypeId = Symbol.for(
 ) as Schedule.ScheduleTypeId
 
 /** @internal */
-export const isSchedule = (u: unknown): u is Schedule.Schedule<any, any, any> => hasProperty(u, ScheduleTypeId)
+export const isSchedule = (u: unknown): u is Schedule.Schedule<unknown, unknown, unknown> =>
+  hasProperty(u, ScheduleTypeId)
 
 /** @internal */
 const ScheduleDriverSymbolKey = "effect/ScheduleDriver"
