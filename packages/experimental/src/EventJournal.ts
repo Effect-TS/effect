@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as MsgPack from "@effect/platform/MsgPack"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
@@ -10,7 +11,6 @@ import type * as Queue from "effect/Queue"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import * as Uuid from "uuid"
-import * as MsgPack from "./MsgPack.js"
 
 /**
  * @since 1.0.0
