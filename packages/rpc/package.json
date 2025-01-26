@@ -40,7 +40,8 @@
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "happy-dom": "^14.12.3"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",

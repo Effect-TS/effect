@@ -64,3 +64,7 @@ export const layer = (spawn: (id: number) => WorkerThreads.Worker) =>
     layerManager,
     Worker.layerSpawner(spawn)
   )
+
+/** @internal */
+export const layerPlatform = (spawn: (id: number) => WorkerThreads.Worker) =>
+  Layer.merge(layerWorker, Worker.layerSpawner(spawn))
