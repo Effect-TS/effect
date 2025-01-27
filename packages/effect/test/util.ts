@@ -32,13 +32,17 @@ export const doesNotThrow = (thunk: () => void) => {
   assert.doesNotThrow(thunk)
 }
 
-export const throws = (thunk: () => void, error?: object) => {
+export const throws = (thunk: () => void, error?: object | ((e: unknown) => boolean)) => {
   try {
     thunk()
     assert.fail("expected to throw an error")
   } catch (e) {
     if (error !== undefined) {
-      deepStrictEqual(e, error)
+      if (typeof error === "function") {
+        assertTrue(error(e))
+      } else {
+        deepStrictEqual(e, error)
+      }
     }
   }
 }
