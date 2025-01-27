@@ -1,18 +1,22 @@
-import * as Chunk from "effect/Chunk"
-import * as Config from "effect/Config"
-import * as ConfigError from "effect/ConfigError"
-import * as ConfigProvider from "effect/ConfigProvider"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
-import * as Exit from "effect/Exit"
-import { pipe } from "effect/Function"
-import * as HashSet from "effect/HashSet"
-import * as LogLevel from "effect/LogLevel"
-import * as Option from "effect/Option"
-import * as Redacted from "effect/Redacted"
-import * as Secret from "effect/Secret"
-import { assert, describe, expect, it } from "vitest"
+import {
+  Cause,
+  Chunk,
+  Config,
+  ConfigError,
+  ConfigProvider,
+  Duration,
+  Effect,
+  Equal,
+  Exit,
+  HashSet,
+  LogLevel,
+  Option,
+  pipe,
+  Redacted,
+  Secret
+} from "effect"
+import { assertRefinement, assertTrue, deepEqual, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const assertFailure = <A>(
   config: Config.Config<A>,
@@ -21,7 +25,8 @@ const assertFailure = <A>(
 ) => {
   const configProvider = ConfigProvider.fromMap(new Map(map))
   const result = Effect.runSync(Effect.exit(configProvider.load(config)))
-  expect(result).toStrictEqual(Exit.fail(error))
+  assertRefinement(result, Exit.isFailure)
+  deepStrictEqual(result.cause, Cause.fail(error))
 }
 
 const assertSuccess = <A>(
@@ -31,17 +36,8 @@ const assertSuccess = <A>(
 ) => {
   const configProvider = ConfigProvider.fromMap(new Map(map))
   const result = Effect.runSync(Effect.exit(configProvider.load(config)))
-  expect(result).toStrictEqual(Exit.succeed(a))
-}
-
-const assertEqualSuccess = <A>(
-  config: Config.Config<A>,
-  map: ReadonlyArray<readonly [string, string]>,
-  a: A
-) => {
-  const configProvider = ConfigProvider.fromMap(new Map(map))
-  const result = Effect.runSync(Effect.exit(configProvider.load(config)))
-  expect(Equal.equals(Exit.succeed(a), result)).toBe(true)
+  assertRefinement(result, Exit.isSuccess)
+  deepEqual(result.value, a)
 }
 
 describe("Config", () => {
@@ -544,12 +540,12 @@ describe("Config", () => {
 
     it("name != undefined", () => {
       const config = Config.redacted("SECRET")
-      assertEqualSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
+      assertSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
     })
 
     it("can wrap generic Config", () => {
       const config = Config.redacted(Config.integer("NUM"))
-      assertEqualSuccess(config, [["NUM", "2"]], Redacted.make(2))
+      assertSuccess(config, [["NUM", "2"]], Redacted.make(2))
     })
   })
 
@@ -562,35 +558,35 @@ describe("Config", () => {
 
       it("name != undefined", () => {
         const config = Config.secret("SECRET")
-        assertEqualSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
+        assertSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
       })
     })
 
     it("chunk constructor", () => {
       const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
-      assert.isTrue(Equal.equals(secret, Secret.fromString("secret")))
+      assertTrue(Equal.equals(secret, Secret.fromString("secret")))
     })
 
     it("value", () => {
       const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
       const value = Secret.value(secret)
-      assert.strictEqual(value, "secret")
+      strictEqual(value, "secret")
     })
 
     it("toString", () => {
       const secret = Secret.fromString("secret")
-      assert.strictEqual(`${secret}`, "Secret(<redacted>)")
+      strictEqual(`${secret}`, "Secret(<redacted>)")
     })
 
     it("toJSON", () => {
       const secret = Secret.fromString("secret")
-      assert.strictEqual(JSON.stringify(secret), "\"<redacted>\"")
+      strictEqual(JSON.stringify(secret), "\"<redacted>\"")
     })
 
     it("wipe", () => {
       const secret = Secret.fromString("secret")
       Secret.unsafeWipe(secret)
-      assert.isTrue(
+      assertTrue(
         Equal.equals(
           Secret.value(secret),
           Array.from({ length: "secret".length }, () => String.fromCharCode(0)).join("")
@@ -601,7 +597,7 @@ describe("Config", () => {
 
   it("withDescription", () => {
     const config = Config.number("NUMBER").pipe(Config.withDescription("my description"))
-    expect("description" in config).toBe(true)
+    assertTrue("description" in config)
   })
 
   describe("hashSet", () => {
@@ -621,7 +617,7 @@ describe("Config", () => {
       Config.string("STRING"),
       ConfigProvider.fromMap(new Map([["STRING", "value"]]))
     ))
-    assert.strictEqual(result, "value")
+    strictEqual(result, "value")
   })
 
   it("array nested", () => {
@@ -633,6 +629,6 @@ describe("Config", () => {
       ),
       Effect.runSync
     )
-    assert.deepStrictEqual(result, [1, 2, 3])
+    deepStrictEqual(result, [1, 2, 3])
   })
 })
