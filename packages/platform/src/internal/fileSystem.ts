@@ -173,6 +173,9 @@ export const makeNoop = (
     symlink(fromPath) {
       return Effect.fail(notFound("symlink", fromPath))
     },
+    sync(fd) {
+      return Effect.fail(notFound("sync", fd.toString()))
+    },
     truncate(path) {
       return Effect.fail(notFound("truncate", path))
     },

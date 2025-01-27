@@ -210,6 +210,12 @@ const makeFile = (() => {
     handleBadArgument("truncate")
   )
 
+  const nodeSync = effectify(
+    NFS.fsync,
+    handleErrnoException("FileSystem", "sync"),
+    handleBadArgument("sync")
+  )
+
   const nodeWriteFactory = (method: string) =>
     effectify(
       NFS.write,
@@ -234,6 +240,10 @@ const makeFile = (() => {
 
     get stat() {
       return Effect.map(nodeStat(this.fd), makeFileInfo)
+    }
+
+    get sync() {
+      return nodeSync(this.fd)
     }
 
     seek(offset: FileSystem.SizeInput, from: FileSystem.SeekMode) {
@@ -498,6 +508,17 @@ const symlink = (() => {
   return (target: string, path: string) => nodeSymlink(target, path)
 })()
 
+// == sync
+
+const sync = (() => {
+  const nodeSync = effectify(
+    NFS.fsync,
+    handleErrnoException("FileSystem", "sync"),
+    handleBadArgument("sync")
+  )
+  return (fd: FileSystem.File.Descriptor) => nodeSync(fd)
+})()
+
 // == truncate
 
 const truncate = (() => {
@@ -615,6 +636,7 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     rename,
     stat,
     symlink,
+    sync,
     truncate,
     utimes,
     watch(path) {
