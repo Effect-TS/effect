@@ -1,10 +1,7 @@
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Option from "effect/Option"
-import * as Ref from "effect/Ref"
+import { Deferred, Effect, Exit, Option, Ref } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Deferred", () => {
   it.effect("complete a deferred using succeed", () =>
@@ -12,8 +9,8 @@ describe("Deferred", () => {
       const deferred = yield* $(Deferred.make<number>())
       const success = yield* $(Deferred.succeed(deferred, 32))
       const result = yield* $(Deferred.await(deferred))
-      assert.isTrue(success)
-      assert.strictEqual(result, 32)
+      assertTrue(success)
+      strictEqual(result, 32)
     }))
   it.effect("complete a deferred using complete", () =>
     Effect.gen(function*($) {
@@ -22,8 +19,8 @@ describe("Deferred", () => {
       yield* $(Deferred.complete(deferred, Ref.updateAndGet(ref, (n) => n + 1)))
       const result1 = yield* $(Deferred.await(deferred))
       const result2 = yield* $(Deferred.await(deferred))
-      assert.strictEqual(result1, 14)
-      assert.strictEqual(result2, 14)
+      strictEqual(result1, 14)
+      strictEqual(result2, 14)
     }))
   it.effect("complete a deferred using completeWith", () =>
     Effect.gen(function*($) {
@@ -32,8 +29,8 @@ describe("Deferred", () => {
       yield* $(Deferred.completeWith(deferred, Ref.updateAndGet(ref, (n) => n + 1)))
       const result1 = yield* $(Deferred.await(deferred))
       const result2 = yield* $(Deferred.await(deferred))
-      assert.strictEqual(result1, 14)
-      assert.strictEqual(result2, 15)
+      strictEqual(result1, 14)
+      strictEqual(result2, 15)
     }))
   it.effect("complete a deferred twice", () =>
     Effect.gen(function*($) {
@@ -41,16 +38,16 @@ describe("Deferred", () => {
       yield* $(Deferred.succeed(deferred, 1))
       const success = yield* $(Deferred.complete(deferred, Effect.succeed(9)))
       const result = yield* $(Deferred.await(deferred))
-      assert.isFalse(success)
-      assert.strictEqual(result, 1)
+      assertFalse(success)
+      strictEqual(result, 1)
     }))
   it.effect("fail a deferred using fail", () =>
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<number, string>())
       const success = yield* $(Deferred.fail(deferred, "error with fail"))
       const result = yield* $(deferred, Deferred.await, Effect.exit)
-      assert.isTrue(success)
-      assert.isTrue(Exit.isFailure(result))
+      assertTrue(success)
+      assertTrue(Exit.isFailure(result))
     }))
   it.effect("fail a deferred using complete", () =>
     Effect.gen(function*($) {
@@ -61,9 +58,9 @@ describe("Deferred", () => {
       )
       const result1 = yield* $(deferred, Deferred.await, Effect.exit)
       const result2 = yield* $(deferred, Deferred.await, Effect.exit)
-      assert.isTrue(success)
-      assert.isTrue(Exit.isFailure(result1))
-      assert.isTrue(Exit.isFailure(result2))
+      assertTrue(success)
+      assertTrue(Exit.isFailure(result1))
+      assertTrue(Exit.isFailure(result2))
     }))
   it.effect("fail a deferred using completeWith", () =>
     Effect.gen(function*($) {
@@ -79,35 +76,35 @@ describe("Deferred", () => {
       )
       const result1 = yield* $(deferred, Deferred.await, Effect.exit)
       const result2 = yield* $(deferred, Deferred.await, Effect.exit)
-      assert.isTrue(success)
-      assert.isTrue(Exit.isFailure(result1))
-      assert.isTrue(Exit.isFailure(result2))
+      assertTrue(success)
+      assertTrue(Exit.isFailure(result1))
+      assertTrue(Exit.isFailure(result2))
     }))
   it.effect("is done when a deferred is completed", () =>
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<number, string>())
       yield* $(Deferred.succeed(deferred, 0))
       const result = yield* $(Deferred.isDone(deferred))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("is done when a deferred is failed", () =>
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<number, string>())
       yield* $(Deferred.fail(deferred, "failure"))
       const result = yield* $(Deferred.isDone(deferred))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("should interrupt a deferred", () =>
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<number, string>())
       const result = yield* $(Deferred.interrupt(deferred))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("poll a deferred that is not completed yet", () =>
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<number, string>())
       const result = yield* $(Deferred.poll(deferred))
-      assert.isTrue(Option.isNone(result))
+      assertTrue(Option.isNone(result))
     }))
   it.effect("poll a deferred that is completed", () =>
     Effect.gen(function*($) {
@@ -123,7 +120,7 @@ describe("Deferred", () => {
           Effect.exit
         )
       )
-      assert.deepStrictEqual(result, Exit.succeed(12))
+      deepStrictEqual(result, Exit.succeed(12))
     }))
   it.effect("poll a deferred that is failed", () =>
     Effect.gen(function*($) {
@@ -139,7 +136,7 @@ describe("Deferred", () => {
           Effect.exit
         )
       )
-      assert.isTrue(Exit.isFailure(result))
+      assertTrue(Exit.isFailure(result))
     }))
   it.effect("poll a deferred that is interrupted", () =>
     Effect.gen(function*($) {
@@ -155,7 +152,7 @@ describe("Deferred", () => {
           Effect.exit
         )
       )
-      assert.isTrue(Exit.isInterrupted(result))
+      assertTrue(Exit.isInterrupted(result))
     }))
   it.effect("is subtype of Effect", () =>
     Effect.gen(function*() {
@@ -164,7 +161,7 @@ describe("Deferred", () => {
       yield* Deferred.complete(deferred, Ref.updateAndGet(ref, (n) => n + 1))
       const result1 = yield* deferred
       const result2 = yield* deferred
-      assert.strictEqual(result1, 14)
-      assert.strictEqual(result2, 14)
+      strictEqual(result1, 14)
+      strictEqual(result2, 14)
     }))
 })
