@@ -1,11 +1,6 @@
-import * as RA from "effect/Array"
-import * as Chunk from "effect/Chunk"
-import * as Differ from "effect/Differ"
-import * as Equal from "effect/Equal"
-import { pipe } from "effect/Function"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
-import { assert, describe, it as it_ } from "vitest"
+import { Array as Arr, Chunk, Differ, Equal, HashMap, HashSet, pipe } from "effect"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
+import { describe, it as it_ } from "vitest"
 
 function diffLaws<Value, Patch>(
   differ: Differ.Differ<Value, Patch>,
@@ -30,7 +25,7 @@ function diffLaws<Value, Patch>(
       const patch3 = differ.diff(value3, value4)
       const left = differ.combine(differ.combine(patch1, patch2), patch3)
       const right = differ.combine(patch1, differ.combine(patch2, patch3))
-      assert.isTrue(equal(differ.patch(left, value1), differ.patch(right, value1)))
+      assertTrue(equal(differ.patch(left, value1), differ.patch(right, value1)))
     })
 
     it("combining a patch with an empty patch is an identity", () => {
@@ -39,25 +34,25 @@ function diffLaws<Value, Patch>(
       const patch = differ.diff(oldValue, newValue)
       const left = differ.combine(patch, differ.empty)
       const right = differ.combine(differ.empty, patch)
-      assert.isTrue(equal(differ.patch(left, oldValue), newValue))
-      assert.isTrue(equal(differ.patch(right, oldValue), newValue))
+      assertTrue(equal(differ.patch(left, oldValue), newValue))
+      assertTrue(equal(differ.patch(right, oldValue), newValue))
     })
 
     it("diffing a value with itself returns an empty patch", () => {
       const value = gen()
-      assert.deepStrictEqual(differ.diff(value, value), differ.empty)
+      deepStrictEqual(differ.diff(value, value), differ.empty)
     })
 
     it("diffing and then patching is an identity", () => {
       const oldValue = gen()
       const newValue = gen()
       const patch = differ.diff(oldValue, newValue)
-      assert.isTrue(equal(differ.patch(patch, oldValue), newValue))
+      assertTrue(equal(differ.patch(patch, oldValue), newValue))
     })
 
     it("patching with an empty patch is an identity", () => {
       const value = gen()
-      assert.isTrue(equal(differ.patch(differ.empty, value), value))
+      assertTrue(equal(differ.patch(differ.empty, value), value))
     })
   })
 }
@@ -75,8 +70,8 @@ function randomChunk(): Chunk.Chunk<number> {
 
 function randomHashMap(): HashMap.HashMap<number, number> {
   return pipe(
-    RA.fromIterable(Array.from({ length: 2 }, smallInt)),
-    RA.cartesian(RA.fromIterable(Array.from({ length: 2 }, smallInt))),
+    Arr.fromIterable(Array.from({ length: 2 }, smallInt)),
+    Arr.cartesian(Arr.fromIterable(Array.from({ length: 2 }, smallInt))),
     HashMap.fromIterable
   )
 }
@@ -122,7 +117,7 @@ describe("Differ", () => {
     diffLaws(
       Differ.readonlyArray<number, (n: number) => number>(Differ.update()),
       randomReadonlyArray,
-      RA.getEquivalence(Equal.equals)
+      Arr.getEquivalence(Equal.equals)
     )
   })
 
