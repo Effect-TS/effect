@@ -3,8 +3,8 @@ import * as Iter from "effect/Iterable"
 import * as Number from "effect/Number"
 import * as O from "effect/Option"
 import type { Predicate } from "effect/Predicate"
-import { deepStrictEqual, strictEqual } from "effect/test/util"
-import { assert, describe, expect, it } from "vitest"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")
@@ -19,7 +19,7 @@ const toArray = <A>(i: Iterable<A>) => {
 
 describe("Iterable", () => {
   it("of", () => {
-    expect(Array.from(Iter.of(1))).toEqual([1])
+    deepStrictEqual(Array.from(Iter.of(1)), [1])
   })
 
   describe("iterable inputs", () => {
@@ -65,17 +65,17 @@ describe("Iterable", () => {
     })
 
     it("take", () => {
-      expect(pipe([1, 2, 3, 4], Iter.take(2), toArray)).toEqual([1, 2])
-      expect(pipe([1, 2, 3, 4], Iter.take(0), toArray)).toEqual([])
+      deepStrictEqual(pipe([1, 2, 3, 4], Iter.take(2), toArray), [1, 2])
+      deepStrictEqual(pipe([1, 2, 3, 4], Iter.take(0), toArray), [])
       // out of bounds
-      expect(pipe([1, 2, 3, 4], Iter.take(-10), toArray)).toEqual([])
-      expect(pipe([1, 2, 3, 4], Iter.take(10), toArray)).toEqual([1, 2, 3, 4])
+      deepStrictEqual(pipe([1, 2, 3, 4], Iter.take(-10), toArray), [])
+      deepStrictEqual(pipe([1, 2, 3, 4], Iter.take(10), toArray), [1, 2, 3, 4])
 
-      expect(pipe(new Set([1, 2, 3, 4]), Iter.take(2), toArray)).toEqual([1, 2])
-      expect(pipe(new Set([1, 2, 3, 4]), Iter.take(0), toArray)).toEqual([])
+      deepStrictEqual(pipe(new Set([1, 2, 3, 4]), Iter.take(2), toArray), [1, 2])
+      deepStrictEqual(pipe(new Set([1, 2, 3, 4]), Iter.take(0), toArray), [])
       // out of bounds
-      expect(pipe(new Set([1, 2, 3, 4]), Iter.take(-10), toArray)).toEqual([])
-      expect(pipe(new Set([1, 2, 3, 4]), Iter.take(10), toArray)).toEqual([1, 2, 3, 4])
+      deepStrictEqual(pipe(new Set([1, 2, 3, 4]), Iter.take(-10), toArray), [])
+      deepStrictEqual(pipe(new Set([1, 2, 3, 4]), Iter.take(10), toArray), [1, 2, 3, 4])
     })
 
     it("takeWhile", () => {
@@ -255,9 +255,9 @@ describe("Iterable", () => {
 
     it("dedupeAdjacentWith", () => {
       const dedupeAdjacent = Iter.dedupeAdjacentWith(Number.Equivalence)
-      expect(toArray(dedupeAdjacent([]))).toEqual([])
-      expect(toArray(dedupeAdjacent([1, 2, 3]))).toEqual([1, 2, 3])
-      expect(toArray(dedupeAdjacent([1, 2, 2, 3, 3]))).toEqual([1, 2, 3])
+      deepStrictEqual(toArray(dedupeAdjacent([])), [])
+      deepStrictEqual(toArray(dedupeAdjacent([1, 2, 3])), [1, 2, 3])
+      deepStrictEqual(toArray(dedupeAdjacent([1, 2, 2, 3, 3])), [1, 2, 3])
     })
   })
 
@@ -295,13 +295,13 @@ describe("Iterable", () => {
   })
 
   it("getSomes", () => {
-    assert.deepStrictEqual(toArray(Iter.getSomes([])), [])
-    assert.deepStrictEqual(toArray(Iter.getSomes([O.some(1), O.some(2), O.some(3)])), [
+    deepStrictEqual(toArray(Iter.getSomes([])), [])
+    deepStrictEqual(toArray(Iter.getSomes([O.some(1), O.some(2), O.some(3)])), [
       1,
       2,
       3
     ])
-    assert.deepStrictEqual(toArray(Iter.getSomes([O.some(1), O.none(), O.some(3)])), [
+    deepStrictEqual(toArray(Iter.getSomes([O.some(1), O.none(), O.some(3)])), [
       1,
       3
     ])
@@ -370,7 +370,7 @@ describe("Iterable", () => {
   })
 
   it("flatten", () => {
-    expect(toArray(Iter.flatten([[1], [2], [3]]))).toEqual([1, 2, 3])
+    deepStrictEqual(toArray(Iter.flatten([[1], [2], [3]])), [1, 2, 3])
   })
 
   it("groupWith", () => {
@@ -389,11 +389,11 @@ describe("Iterable", () => {
         "6": ["foobar"]
       }
     )
-    expect(Iter.groupBy(["a", "b"], (s) => s === "a" ? symA : s === "b" ? symB : symC)).toStrictEqual({
+    deepStrictEqual(Iter.groupBy(["a", "b"], (s) => s === "a" ? symA : s === "b" ? symB : symC), {
       [symA]: ["a"],
       [symB]: ["b"]
     })
-    expect(Iter.groupBy(["a", "b", "c", "d"], (s) => s === "a" ? symA : s === "b" ? symB : symC)).toStrictEqual({
+    deepStrictEqual(Iter.groupBy(["a", "b", "c", "d"], (s) => s === "a" ? symA : s === "b" ? symB : symC), {
       [symA]: ["a"],
       [symB]: ["b"],
       [symC]: ["c", "d"]
@@ -421,15 +421,15 @@ describe("Iterable", () => {
   })
 
   it("range", () => {
-    expect(toArray(Iter.range(0, 0))).toEqual([0])
-    expect(toArray(Iter.range(0, 1))).toEqual([0, 1])
-    expect(toArray(Iter.range(1, 5))).toEqual([1, 2, 3, 4, 5])
-    expect(toArray(Iter.range(10, 15))).toEqual([10, 11, 12, 13, 14, 15])
-    expect(toArray(Iter.range(-1, 0))).toEqual([-1, 0])
-    expect(toArray(Iter.range(-5, -1))).toEqual([-5, -4, -3, -2, -1])
+    deepStrictEqual(toArray(Iter.range(0, 0)), [0])
+    deepStrictEqual(toArray(Iter.range(0, 1)), [0, 1])
+    deepStrictEqual(toArray(Iter.range(1, 5)), [1, 2, 3, 4, 5])
+    deepStrictEqual(toArray(Iter.range(10, 15)), [10, 11, 12, 13, 14, 15])
+    deepStrictEqual(toArray(Iter.range(-1, 0)), [-1, 0])
+    deepStrictEqual(toArray(Iter.range(-5, -1)), [-5, -4, -3, -2, -1])
     // out of bound
-    expect(Array.from(Iter.range(2, 1))).toEqual([2])
-    expect(Array.from(Iter.range(-1, -2))).toEqual([-1])
+    deepStrictEqual(Array.from(Iter.range(2, 1)), [2])
+    deepStrictEqual(Array.from(Iter.range(-1, -2)), [-1])
   })
 
   it("empty", () => {
@@ -438,8 +438,8 @@ describe("Iterable", () => {
 
   it("some", () => {
     const isPositive: Predicate<number> = (n) => n > 0
-    expect(Iter.some([-1, -2, 3], isPositive)).toEqual(true)
-    expect(Iter.some([-1, -2, -3], isPositive)).toEqual(false)
+    assertTrue(Iter.some([-1, -2, 3], isPositive))
+    assertFalse(Iter.some([-1, -2, -3], isPositive))
   })
 
   it("size", () => {
@@ -451,6 +451,6 @@ describe("Iterable", () => {
   it("forEach", () => {
     const log: Array<string> = []
     Iter.forEach(["a", "b", "c"], (a, i) => log.push(`${a}-${i}`))
-    expect(log).toEqual(["a-0", "b-1", "c-2"])
+    deepStrictEqual(log, ["a-0", "b-1", "c-2"])
   })
 })
