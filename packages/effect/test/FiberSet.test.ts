@@ -1,7 +1,7 @@
-import { Array, Deferred, Effect, Exit, Fiber, Ref, Scope } from "effect"
-import * as FiberSet from "effect/FiberSet"
+import { Array, Deferred, Effect, Exit, Fiber, FiberSet, Ref, Scope } from "effect"
+import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("FiberSet", () => {
   it.effect("interrupts fibers", () =>
@@ -22,7 +22,7 @@ describe("FiberSet", () => {
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 10)
+      strictEqual(yield* _(Ref.get(ref)), 10)
     }))
 
   it.effect("runtime", () =>
@@ -45,7 +45,7 @@ describe("FiberSet", () => {
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 10)
+      strictEqual(yield* _(Ref.get(ref)), 10)
     }))
 
   it.scoped("join", () =>
@@ -55,7 +55,7 @@ describe("FiberSet", () => {
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.void))
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.fail("fail")))
       const result = yield* _(FiberSet.join(set), Effect.flip)
-      assert.strictEqual(result, "fail")
+      strictEqual(result, "fail")
     }))
 
   it.effect("size", () =>
@@ -64,9 +64,9 @@ describe("FiberSet", () => {
       const set = yield* _(FiberSet.make(), Scope.extend(scope))
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.never))
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.never))
-      assert.strictEqual(yield* _(FiberSet.size(set)), 2)
+      strictEqual(yield* _(FiberSet.size(set)), 2)
       yield* _(Scope.close(scope, Exit.void))
-      assert.strictEqual(yield* _(FiberSet.size(set)), 0)
+      strictEqual(yield* _(FiberSet.size(set)), 0)
     }))
 
   it.scoped("propagateInterruption false", () =>
@@ -77,7 +77,7 @@ describe("FiberSet", () => {
       })
       yield* Effect.yieldNow()
       yield* Fiber.interrupt(fiber)
-      assert.isFalse(yield* Deferred.isDone(set.deferred))
+      assertFalse(yield* Deferred.isDone(set.deferred))
     }))
 
   it.scoped("propagateInterruption true", () =>
@@ -88,7 +88,7 @@ describe("FiberSet", () => {
       })
       yield* Effect.yieldNow()
       yield* Fiber.interrupt(fiber)
-      assert.isTrue(Exit.isInterrupted(
+      assertTrue(Exit.isInterrupted(
         yield* FiberSet.join(set).pipe(
           Effect.exit
         )

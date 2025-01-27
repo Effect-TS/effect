@@ -1,5 +1,4 @@
-import { Array, Deferred, Effect, Exit, Fiber, Ref, Scope } from "effect"
-import * as FiberMap from "effect/FiberMap"
+import { Array, Deferred, Effect, Exit, Fiber, FiberMap, Ref, Scope } from "effect"
 import { assertFalse, assertTrue, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
