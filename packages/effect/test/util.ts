@@ -47,7 +47,7 @@ export const throws = (thunk: () => void, error?: object | ((e: unknown) => bool
   }
 }
 
-export const assertNone = <A>(actual: Option.Option<A>) => {
+export const assertNone = <A>(actual: Option.Option<A>, ..._: Array<never>) => {
   deepStrictEqual(actual, Option.none())
 }
 
