@@ -1,4 +1,4 @@
-import { Equal, Option } from "effect"
+import { Either, Equal, Option } from "effect"
 import * as assert from "node:assert"
 import { expect } from "vitest"
 
@@ -43,4 +43,12 @@ export const assertNone = <A>(actual: Option.Option<A>) => {
 
 export const assertSome = <A>(actual: Option.Option<A>, expected: A) => {
   deepStrictEqual(actual, Option.some(expected))
+}
+
+export const assertRight = <R, L>(e: Either.Either<R, L>, expected: R) => {
+  deepStrictEqual(e, Either.right(expected))
+}
+
+export const assertLeft = <R, L>(e: Either.Either<R, L>, expected: L) => {
+  deepStrictEqual(e, Either.left(expected))
 }
