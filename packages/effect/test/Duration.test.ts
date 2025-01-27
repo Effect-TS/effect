@@ -33,6 +33,9 @@ describe("Duration", () => {
 
     deepStrictEqual(Duration.decode([500, 123456789]), Duration.nanos(500123456789n))
     deepStrictEqual(Duration.decode([-500, 123456789]), Duration.zero)
+    deepStrictEqual(Duration.decode([Infinity, 0]), Duration.infinity)
+    deepStrictEqual(Duration.decode([-Infinity, 0]), Duration.zero)
+    deepStrictEqual(Duration.decode([NaN, 0]), Duration.zero)
 
     throws(() => Duration.decode("1.5 secs" as any), new Error("Invalid DurationInput"))
     throws(() => Duration.decode(true as any), new Error("Invalid DurationInput"))
@@ -69,6 +72,9 @@ describe("Duration", () => {
 
     assertSome(Duration.decodeUnknown([500, 123456789]), Duration.nanos(500123456789n))
     assertSome(Duration.decodeUnknown([-500, 123456789]), Duration.zero)
+    assertSome(Duration.decodeUnknown([Infinity, 0]), Duration.infinity)
+    assertSome(Duration.decodeUnknown([-Infinity, 0]), Duration.zero)
+    assertSome(Duration.decodeUnknown([NaN, 0]), Duration.zero)
 
     assertNone(Duration.decodeUnknown("1.5 secs"))
     assertNone(Duration.decodeUnknown(true))

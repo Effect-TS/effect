@@ -83,7 +83,7 @@ export type DurationInput =
   | Duration
   | number // millis
   | bigint // nanos
-  | [seconds: number, nanos: number]
+  | readonly [seconds: number, nanos: number]
   | `${number} ${Unit}`
 
 const DURATION_REGEX = /^(-?\d+(?:\.\d+)?)\s+(nanos?|micros?|millis?|seconds?|minutes?|hours?|days?|weeks?)$/
@@ -98,10 +98,16 @@ export const decode = (input: DurationInput): Duration => {
     return millis(input)
   } else if (isBigInt(input)) {
     return nanos(input)
-  } else if (Array.isArray(input)) {
-    if (input.length === 2 && isNumber(input[0]) && isNumber(input[1])) {
-      return nanos(BigInt(input[0]) * bigint1e9 + BigInt(input[1]))
+  } else if (Array.isArray(input) && input.length === 2 && input.every(isNumber)) {
+    if (input[0] === -Infinity || input[1] === -Infinity || Number.isNaN(input[0]) || Number.isNaN(input[1])) {
+      return zero
     }
+
+    if (input[0] === Infinity || input[1] === Infinity) {
+      return infinity
+    }
+
+    return nanos(BigInt(Math.round(input[0] * 1_000_000_000)) + BigInt(Math.round(input[1])))
   } else if (isString(input)) {
     const match = DURATION_REGEX.exec(input)
     if (match) {
