@@ -11,9 +11,10 @@ import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import { withLatch } from "effect/test/utils/latch"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 const initial = "initial"
 const update = "update"
@@ -33,7 +34,7 @@ describe("Fiber", () => {
         ),
         Effect.eventually
       )
-      assert.deepStrictEqual(blockingOn, Fiber.id(fiber1))
+      deepStrictEqual(blockingOn, Fiber.id(fiber1))
     }))
   it.effect("should track blockingOn in race", () =>
     Effect.gen(function*($) {
@@ -45,7 +46,7 @@ describe("Fiber", () => {
         ),
         Effect.eventually
       )
-      assert.strictEqual(HashSet.size(FiberId.toSet(blockingOn)), 2)
+      strictEqual(HashSet.size(FiberId.toSet(blockingOn)), 2)
     }))
   it.scoped("inheritLocals works for Fiber created using map", () =>
     Effect.gen(function*($) {
@@ -55,7 +56,7 @@ describe("Fiber", () => {
       )
       yield* $(child, Fiber.map(constVoid), Fiber.inheritAll)
       const result = yield* $(FiberRef.get(fiberRef))
-      assert.strictEqual(result, update)
+      strictEqual(result, update)
     }))
   it.scoped("inheritLocals works for Fiber created using orElse", () =>
     Effect.gen(function*($) {
@@ -75,7 +76,7 @@ describe("Fiber", () => {
       yield* $(Deferred.await(latch1), Effect.zipRight(Deferred.await(latch2)))
       yield* $(child1, Fiber.orElse(child2), Fiber.inheritAll)
       const result = yield* $(FiberRef.get(fiberRef))
-      assert.strictEqual(result, "child1")
+      strictEqual(result, "child1")
     }))
   it.scoped("inheritLocals works for Fiber created using zip", () =>
     Effect.gen(function*($) {
@@ -95,13 +96,13 @@ describe("Fiber", () => {
       yield* $(Deferred.await(latch1), Effect.zipRight(Deferred.await(latch2)))
       yield* $(child1, Fiber.zip(child2), Fiber.inheritAll)
       const result = yield* $(FiberRef.get(fiberRef))
-      assert.strictEqual(result, "child1")
+      strictEqual(result, "child1")
     }))
   it.effect("join on interrupted Fiber is an inner interruption", () =>
     Effect.gen(function*($) {
       const fiberId = FiberId.make(0, 123)
       const result = yield* $(Fiber.interrupted(fiberId), Fiber.join, Effect.exit)
-      assert.deepStrictEqual(result, Exit.interrupt(fiberId))
+      deepStrictEqual(result, Exit.interrupt(fiberId))
     }))
   it.effect("scoped should create a new Fiber and scope it", () =>
     Effect.gen(function*($) {
@@ -118,7 +119,7 @@ describe("Fiber", () => {
       yield* $(Effect.scoped(Fiber.scoped(fiber)))
       yield* $(Fiber.await(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.effect("shard example", () =>
     Effect.gen(function*($) {
@@ -148,7 +149,7 @@ describe("Fiber", () => {
       yield* $(Queue.offerAll(queue, Array.range(1, 100)))
       const result = yield* $(Effect.exit(shard(queue, 4, worker)))
       yield* $(Queue.shutdown(queue))
-      assert.isTrue(Exit.isFailure(result))
+      assertTrue(Exit.isFailure(result))
     }))
   it.effect("child becoming interruptible is interrupted due to auto-supervision of uninterruptible parent", () =>
     Effect.gen(function*($) {
@@ -160,7 +161,7 @@ describe("Fiber", () => {
       )
       yield* $(Effect.uninterruptible(Effect.fork(child)))
       const result = yield* $(Deferred.await(latch))
-      assert.isUndefined(result)
+      assertTrue(result === undefined)
     }))
   it.effect("dual roots", () =>
     Effect.gen(function*($) {
@@ -175,7 +176,7 @@ describe("Fiber", () => {
         Effect.repeat({ until: (_) => _ })
       )
       const result = yield* $(Fiber.interrupt(fiber1), Effect.zipRight(Fiber.interrupt(fiber2)))
-      assert.isTrue(Exit.isInterrupted(result))
+      assertTrue(Exit.isInterrupted(result))
     }))
   it.effect("interruptAll interrupts fibers in parallel", () =>
     Effect.gen(function*($) {
@@ -196,7 +197,7 @@ describe("Fiber", () => {
       yield* $(Deferred.await(deferred2))
       yield* $(Fiber.interruptAll([fiber2, fiber1]))
       const result = yield* $(Fiber.await(fiber2))
-      assert.isTrue(Exit.isInterrupted(result))
+      assertTrue(Exit.isInterrupted(result))
     }))
   it.effect("await does not return until all fibers have completed execution", () =>
     Effect.gen(function*($) {
@@ -205,31 +206,31 @@ describe("Fiber", () => {
       yield* $(Fiber.interrupt(fiber))
       yield* $(Ref.set(ref, -1))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, -1)
+      strictEqual(result, -1)
     }))
   it.effect("awaitAll - stack safety", () =>
     Effect.gen(function*($) {
       const result = yield* $(Fiber.awaitAll(fibers))
-      assert.isArray(result)
-      assert(result.length === fibers.length)
-      result.forEach((_) => assert.isTrue(Exit.isSuccess(_) && _.value === undefined))
+      assertTrue(Array.isArray(result))
+      assertTrue(result.length === fibers.length)
+      result.forEach((_) => assertTrue(Exit.isSuccess(_) && _.value === undefined))
     }), 10000)
   it.effect("joinAll - stack safety", () =>
     Effect.gen(function*($) {
       const result = yield* $(Fiber.joinAll(fibers))
-      assert.isArray(result)
-      assert(result.length === fibers.length)
-      result.forEach((_) => assert.isUndefined(_))
+      assertTrue(Array.isArray(result))
+      assertTrue(result.length === fibers.length)
+      result.forEach((x) => assertTrue(x === undefined))
     }), 10000)
   it.effect("all - stack safety", () =>
     Effect.gen(function*($) {
       const result = yield* $(Fiber.join(Fiber.all(fibers)), Effect.asVoid)
-      assert.isUndefined(result)
+      assertTrue(result === undefined)
     }), 10000)
   it.effect("is subtype of Effect", () =>
     Effect.gen(function*() {
       const fiber = yield* Effect.fork(Effect.succeed(1))
       const fiberResult = yield* fiber
-      assert(1 === fiberResult)
+      assertTrue(1 === fiberResult)
     }))
 })
