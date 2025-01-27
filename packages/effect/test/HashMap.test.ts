@@ -3,8 +3,8 @@ import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HM from "effect/HashMap"
 import * as Option from "effect/Option"
-import { deepStrictEqual } from "effect/test/util"
-import { assert, describe, expect, it } from "vitest"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 class Key implements Equal.Equal {
   constructor(readonly n: number) {}
@@ -41,14 +41,16 @@ describe("HashMap", () => {
 
   it("option", () => {
     const map = HM.make([Option.some(1), 0], [Option.none(), 1])
-    expect(pipe(map, HM.has(Option.none()))).toBe(true)
-    expect(pipe(map, HM.has(Option.some(1)))).toBe(true)
-    expect(pipe(map, HM.has(Option.some(2)))).toBe(false)
+    assertTrue(pipe(map, HM.has(Option.none())))
+    assertTrue(pipe(map, HM.has(Option.some(1))))
+    assertFalse(pipe(map, HM.has(Option.some(2))))
   })
 
   it("toString", () => {
     const map = HM.make([0, "a"])
-    expect(String(map)).toEqual(`{
+    strictEqual(
+      String(map),
+      `{
   "_id": "HashMap",
   "values": [
     [
@@ -56,12 +58,13 @@ describe("HashMap", () => {
       "a"
     ]
   ]
-}`)
+}`
+    )
   })
 
   it("toJSON", () => {
     const map = HM.make([0, "a"])
-    expect(map.toJSON()).toEqual({ _id: "HashMap", values: [[0, "a"]] })
+    deepStrictEqual(map.toJSON(), { _id: "HashMap", values: [[0, "a"]] })
   })
 
   it("inspect", () => {
@@ -69,51 +72,52 @@ describe("HashMap", () => {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { inspect } = require("node:util")
       const map = HM.make([0, "a"])
-      expect(inspect(map)).toEqual(inspect({ _id: "HashMap", values: [[0, "a"]] }))
+      deepStrictEqual(inspect(map), inspect({ _id: "HashMap", values: [[0, "a"]] }))
     }
   })
 
   it("has", () => {
     const map = HM.make([key(0), value("a")])
 
-    assert.isTrue(HM.has(key(0))(map))
-    assert.isFalse(HM.has(key(1))(map))
+    assertTrue(HM.has(key(0))(map))
+    assertFalse(HM.has(key(1))(map))
   })
 
   it("hasHash", () => {
     const map = HM.make([key(0), value("a")])
 
-    assert.isTrue(HM.hasHash(key(0), Hash.hash(key(0)))(map))
-    assert.isFalse(HM.hasHash(key(1), Hash.hash(key(0)))(map))
+    assertTrue(HM.hasHash(key(0), Hash.hash(key(0)))(map))
+    assertFalse(HM.hasHash(key(1), Hash.hash(key(0)))(map))
   })
 
   it("get", () => {
     const map = HM.make([key(0), value("a")])
 
-    deepStrictEqual(HM.get(key(0))(map), Option.some(value("a")))
-    deepStrictEqual(HM.get(key(1))(map), Option.none())
+    assertSome(HM.get(key(0))(map), value("a"))
+    assertNone(HM.get(key(1))(map))
   })
 
   it("getHash", () => {
     const map = HM.make([key(0), value("a")])
 
-    deepStrictEqual(HM.getHash(key(0), Hash.hash(0))(map), Option.some(value("a")))
-    deepStrictEqual(HM.getHash(key(1), Hash.hash(0))(map), Option.none())
+    assertSome(HM.getHash(key(0), Hash.hash(0))(map), value("a"))
+    assertNone(HM.getHash(key(1), Hash.hash(0))(map))
   })
 
   it("set", () => {
     const map = pipe(HM.empty<Key, Value>(), HM.set(key(0), value("a")))
 
-    deepStrictEqual(HM.get(key(0))(map), Option.some(value("a")))
+    assertSome(HM.get(key(0))(map), value("a"))
   })
 
   it("mutation", () => {
-    let map = HM.empty()
-    assert.propertyVal(map, "_editable", false)
+    let map: any = HM.empty()
+
+    assertFalse(map._editable)
     map = HM.beginMutation(map)
-    assert.propertyVal(map, "_editable", true)
+    assertTrue(map._editable)
     map = HM.endMutation(map)
-    assert.propertyVal(map, "_editable", false)
+    assertFalse(map._editable)
   })
 
   it("mutate", () => {
@@ -125,8 +129,8 @@ describe("HashMap", () => {
       })
     )
 
-    deepStrictEqual(HM.get(0)(result), Option.some("a"))
-    deepStrictEqual(HM.get(1)(result), Option.none())
+    assertSome(HM.get(0)(result), "a")
+    assertNone(HM.get(1)(result))
   })
 
   it("flatMap", () => {
@@ -140,9 +144,9 @@ describe("HashMap", () => {
       })
     )
 
-    deepStrictEqual(HM.get(key(1))(result1), Option.some(value("a")))
-    deepStrictEqual(HM.get(key(2))(result1), Option.some(value("bb")))
-    deepStrictEqual(HM.get(key(3))(result1), Option.none())
+    assertSome(HM.get(key(1))(result1), value("a"))
+    assertSome(HM.get(key(2))(result1), value("bb"))
+    assertNone(HM.get(key(3))(result1))
 
     const map2 = HM.make([key(1), value("a")], [key(2), value("bb")])
     const result2 = pipe(
@@ -154,9 +158,9 @@ describe("HashMap", () => {
       })
     )
 
-    deepStrictEqual(HM.get(key(2))(result2), Option.some(value("a")))
-    deepStrictEqual(HM.get(key(4))(result2), Option.some(value("bb")))
-    deepStrictEqual(HM.get(key(6))(result2), Option.none())
+    assertSome(HM.get(key(2))(result2), value("a"))
+    assertSome(HM.get(key(4))(result2), value("bb"))
+    assertNone(HM.get(key(6))(result2))
   })
 
   it("filterMap", () => {
@@ -166,8 +170,8 @@ describe("HashMap", () => {
       HM.filterMap(({ s }) => s.length > 1 ? Option.some(value(s)) : Option.none())
     )
 
-    deepStrictEqual(HM.get(key(0))(result1), Option.none())
-    deepStrictEqual(HM.get(key(1))(result1), Option.some(value("bb")))
+    assertNone(HM.get(key(0))(result1))
+    assertSome(HM.get(key(1))(result1), value("bb"))
 
     const map2 = HM.make([key(0), value("a")], [key(1), value("bb")])
     const result2 = pipe(
@@ -175,30 +179,30 @@ describe("HashMap", () => {
       HM.filterMap((v, { n }) => n > 0 ? Option.some(v) : Option.none())
     )
 
-    deepStrictEqual(HM.get(key(0))(result2), Option.none())
-    deepStrictEqual(HM.get(key(1))(result2), Option.some(value("bb")))
+    assertNone(HM.get(key(0))(result2))
+    assertSome(HM.get(key(1))(result2), value("bb"))
   })
 
   it("compact", () => {
     const map = HM.make([0, Option.some("a")], [1, Option.none()])
     const result = HM.compact(map)
 
-    assert.strictEqual(HM.unsafeGet(0)(result), "a")
-    assert.throws(() => HM.unsafeGet(1)(result))
+    strictEqual(HM.unsafeGet(0)(result), "a")
+    throws(() => HM.unsafeGet(1)(result))
   })
 
   it("filter", () => {
     const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
     const result1 = pipe(map1, HM.filter(({ s }) => s.length > 1))
 
-    deepStrictEqual(HM.get(key(0))(result1), Option.none())
-    deepStrictEqual(HM.get(key(1))(result1), Option.some(value("bb")))
+    assertNone(HM.get(key(0))(result1))
+    assertSome(HM.get(key(1))(result1), value("bb"))
 
     const map2 = HM.make([key(0), value("a")], [key(1), value("bb")])
     const result2 = pipe(map2, HM.filter(({ s }, { n }) => n > 0 && s.length > 0))
 
-    deepStrictEqual(HM.get(key(0))(result2), Option.none())
-    deepStrictEqual(HM.get(key(1))(result2), Option.some(value("bb")))
+    assertNone(HM.get(key(0))(result2))
+    assertSome(HM.get(key(1))(result2), value("bb"))
   })
 
   it("forEach", () => {
@@ -226,24 +230,24 @@ describe("HashMap", () => {
   })
 
   it("isEmpty", () => {
-    assert.isTrue(HM.isEmpty(HM.make()))
-    assert.isFalse(HM.isEmpty(HM.make([key(0), value("a")])))
+    assertTrue(HM.isEmpty(HM.make()))
+    assertFalse(HM.isEmpty(HM.make([key(0), value("a")])))
   })
 
   it("map", () => {
     const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
     const result1 = pipe(map1, HM.map(({ s }) => s.length))
 
-    deepStrictEqual(HM.get(key(0))(result1), Option.some(1))
-    deepStrictEqual(HM.get(key(1))(result1), Option.some(2))
-    deepStrictEqual(HM.get(key(2))(result1), Option.none())
+    assertSome(HM.get(key(0))(result1), 1)
+    assertSome(HM.get(key(1))(result1), 2)
+    assertNone(HM.get(key(2))(result1))
 
     const map2 = HM.make([key(0), value("a")], [key(1), value("bb")])
     const result2 = pipe(map2, HM.map(({ s }, { n }) => n + s.length))
 
-    deepStrictEqual(HM.get(key(0))(result2), Option.some(1))
-    deepStrictEqual(HM.get(key(1))(result2), Option.some(3))
-    deepStrictEqual(HM.get(key(2))(result2), Option.none())
+    assertSome(HM.get(key(0))(result2), 1)
+    assertSome(HM.get(key(1))(result2), 3)
+    assertNone(HM.get(key(2))(result2))
   })
 
   it("modifyAt", () => {
@@ -256,16 +260,15 @@ describe("HashMap", () => {
           Option.none())
     )
 
-    deepStrictEqual(HM.get(key(0))(result), Option.some(value("test")))
-    deepStrictEqual(HM.get(key(1))(result), Option.some(value("b")))
-    deepStrictEqual(HM.get(key(2))(result), Option.none())
+    assertSome(HM.get(key(0))(result), value("test"))
+    assertSome(HM.get(key(1))(result), value("b"))
+    assertNone(HM.get(key(2))(result))
 
-    deepStrictEqual(
+    assertNone(
       HM.get(key(0))(pipe(
         map,
         HM.modifyAt(key(0), (): Option.Option<Value> => Option.none())
-      )),
-      Option.none()
+      ))
     )
   })
 
@@ -279,16 +282,16 @@ describe("HashMap", () => {
           Option.none())
     )
 
-    deepStrictEqual(HM.get(key(0))(result), Option.some(value("test")))
-    deepStrictEqual(HM.get(key(1))(result), Option.some(value("b")))
-    deepStrictEqual(HM.get(key(2))(result), Option.none())
+    assertSome(HM.get(key(0))(result), value("test"))
+    assertSome(HM.get(key(1))(result), value("b"))
+    assertNone(HM.get(key(2))(result))
   })
 
   it("reduce", () => {
     const map1 = HM.make([key(0), value("a")], [key(1), value("b")])
     const result1 = pipe(map1, HM.reduce("", (acc, { s }) => acc.length > 0 ? `${acc},${s}` : s))
 
-    assert.strictEqual(result1, "a,b")
+    strictEqual(result1, "a,b")
 
     const map2 = HM.make([key(0), value("a")], [key(1), value("b")])
     const result2 = pipe(
@@ -299,15 +302,15 @@ describe("HashMap", () => {
       )
     )
 
-    assert.strictEqual(result2, "0:a,1:b")
+    strictEqual(result2, "0:a,1:b")
   })
 
   it("remove", () => {
     const map = HM.make([key(0), value("a")], [key(1), value("b")])
     const result = pipe(map, HM.remove(key(0)))
 
-    deepStrictEqual(HM.get(key(0))(result), Option.none())
-    deepStrictEqual(HM.get(key(1))(result), Option.some(value("b")))
+    assertNone(HM.get(key(0))(result))
+    assertSome(HM.get(key(1))(result), value("b"))
   })
 
   it("remove non existing key doesn't change the array", () => {
@@ -321,15 +324,15 @@ describe("HashMap", () => {
     const map = HM.make([key(0), value("a")], [key(1), value("b")])
     const result = pipe(map, HM.removeMany([key(0), key(1)]))
 
-    assert.isFalse(HM.isEmpty(map))
-    assert.isTrue(HM.isEmpty(result))
+    assertFalse(HM.isEmpty(map))
+    assertTrue(HM.isEmpty(result))
   })
 
   it("size", () => {
     const map = HM.make([key(0), value("a")], [key(1), value("b")])
     const result = HM.size(map)
 
-    assert.strictEqual(result, 2)
+    strictEqual(result, 2)
   })
 
   it("union", () => {
@@ -337,35 +340,22 @@ describe("HashMap", () => {
     const map2 = HM.make(["foo", true], ["bar", false])
     const result = HM.union(map2)(map1)
 
-    deepStrictEqual(
-      pipe(result, HM.get(0)),
-      Option.some("a")
-    )
-    deepStrictEqual(
-      pipe(result, HM.get(1)),
-      Option.some("b")
-    )
-    deepStrictEqual(
-      pipe(result, HM.get("foo")),
-      Option.some(true)
-    )
-    deepStrictEqual(
-      pipe(result, HM.get("bar")),
-      Option.some(false)
-    )
+    assertSome(pipe(result, HM.get(0)), "a")
+    assertSome(pipe(result, HM.get(1)), "b")
+    assertSome(pipe(result, HM.get("foo")), true)
+    assertSome(pipe(result, HM.get("bar")), false)
   })
 
   it("modify", () => {
     const map = HM.make([key(0), value("a")], [key(1), value("b")])
     const result = pipe(map, HM.modify(key(0), ({ s }) => value(`${s}-${s}`)))
 
-    deepStrictEqual(HM.get(key(0))(result), Option.some(value("a-a")))
-    deepStrictEqual(HM.get(key(1))(result), Option.some(value("b")))
-    deepStrictEqual(HM.get(key(2))(result), Option.none())
+    assertSome(HM.get(key(0))(result), value("a-a"))
+    assertSome(HM.get(key(1))(result), value("b"))
+    assertNone(HM.get(key(2))(result))
 
-    deepStrictEqual(
-      HM.get(key(2))(pipe(map, HM.modify(key(2), ({ s }) => value(`${s}-${s}`)))),
-      Option.none()
+    assertNone(
+      HM.get(key(2))(pipe(map, HM.modify(key(2), ({ s }) => value(`${s}-${s}`))))
     )
   })
 
@@ -385,7 +375,7 @@ describe("HashMap", () => {
 
     const result = HM.keySet(hashMap)
 
-    assert.deepEqual([...result], [key(0), key(1)])
+    deepStrictEqual([...result], [key(0), key(1)])
   })
 
   it("values", () => {
@@ -410,19 +400,19 @@ describe("HashMap", () => {
   })
 
   it("pipe()", () => {
-    expect(HM.empty<string, string>().pipe(HM.set("key", "value"))).toEqual(HM.make(["key", "value"]))
+    strictEqual(HM.empty().pipe(HM.set("key", "value")).pipe(HM.size), HM.make(["key", "value"]).pipe(HM.size))
   })
 
   it("isHashMap", () => {
-    expect(HM.isHashMap(HM.empty())).toBe(true)
-    expect(HM.isHashMap(null)).toBe(false)
-    expect(HM.isHashMap({})).toBe(false)
+    assertTrue(HM.isHashMap(HM.empty()))
+    assertFalse(HM.isHashMap(null))
+    assertFalse(HM.isHashMap({}))
   })
 
   it("findFirst", () => {
     const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    expect(HM.findFirst(map1, (_v, k) => k.n === 0)).toStrictEqual(Option.some([key(0), value("a")]))
-    expect(HM.findFirst(map1, (v, _k) => v.s === "bb")).toStrictEqual(Option.some([key(1), value("bb")]))
-    expect(HM.findFirst(map1, (v, k) => k.n === 0 && v.s === "bb")).toStrictEqual(Option.none())
+    assertSome(HM.findFirst(map1, (_v, k) => k.n === 0), [key(0), value("a")])
+    assertSome(HM.findFirst(map1, (v, _k) => v.s === "bb"), [key(1), value("bb")])
+    assertNone(HM.findFirst(map1, (v, k) => k.n === 0 && v.s === "bb"))
   })
 })
