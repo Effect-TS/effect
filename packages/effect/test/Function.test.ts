@@ -1,7 +1,6 @@
-import * as Function from "effect/Function"
-import * as String from "effect/String"
-import { deepStrictEqual } from "effect/test/util"
-import { assert, describe, expect, it } from "vitest"
+import { Function, String } from "effect"
+import { deepStrictEqual, strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const f = (n: number): number => n + 1
 const g = (n: number) => n * 2
@@ -59,15 +58,15 @@ describe("Function", () => {
   })
 
   it("absurd", () => {
-    assert.throws(() => Function.absurd<string>(null as any as never))
+    throws(() => Function.absurd<string>(null as any as never))
   })
 
   it("hole", () => {
-    assert.throws(() => Function.hole<string>())
+    throws(() => Function.hole<string>())
   })
 
   it("SK", () => {
-    expect(Function.SK(1, 2)).toEqual(2)
+    strictEqual(Function.SK(1, 2), 2)
   })
 
   it("tupled", () => {
@@ -144,21 +143,19 @@ describe("Function", () => {
     })
 
     it("arity: 0", () => {
-      expect(() =>
+      throws(() =>
         Function.dual<
           () => () => number,
           () => number
-        >(0, (): number => 2)
-      ).toThrow(new RangeError("Invalid arity 0"))
+        >(0, (): number => 2), new RangeError("Invalid arity 0"))
     })
 
     it("arity: 1", () => {
-      expect(() =>
+      throws(() =>
         Function.dual<
           () => (self: number) => number,
           (self: number) => number
-        >(1, (self: number): number => self * 2)
-      ).toThrow(new RangeError("Invalid arity 1"))
+        >(1, (self: number): number => self * 2), new RangeError("Invalid arity 1"))
     })
 
     it("arity: 2", () => {
