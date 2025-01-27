@@ -1,5 +1,4 @@
-import { Array as Arr, Cause, Effect, Either, Equal, FiberId, Hash, Option, Predicate } from "effect"
-import * as fc from "effect/FastCheck"
+import { Array as Arr, Cause, Effect, Either, Equal, FastCheck as fc, FiberId, Hash, Option, Predicate } from "effect"
 import { NodeInspectSymbol } from "effect/Inspectable"
 import * as internal from "effect/internal/cause"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
@@ -24,36 +23,32 @@ describe("Cause", () => {
       if (typeof window === "undefined") {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { inspect } = require("node:util")
-        expect(inspect(ex)).include("Cause.test.ts:20") // <= reference to the line above
+        expect(inspect(ex)).include("Cause.test.ts:19") // <= reference to the line above
       }
     })
   })
 
   describe("UnknownException", () => {
     it("exposes its `error` property", () => {
-      const err1 = new Cause.UnknownException("my message")
-      expect(err1.error).toBe("my message")
-      const err2 = new Cause.UnknownException(new Error("my error"))
-      expect(err2.error).toBeInstanceOf(Error)
-      expect((err2.error as Error).message).toBe("my error")
+      strictEqual(new Cause.UnknownException("my message").error, "my message")
+      const { error } = new Cause.UnknownException(new Error("my error"))
+      expect(error).toBeInstanceOf(Error)
+      expect((error as Error).message).toBe("my error")
     })
 
     it("exposes its `cause` property", () => {
-      const err1 = new Cause.UnknownException("my message")
-      expect(err1.cause).toBe("my message")
+      strictEqual(new Cause.UnknownException("my message").cause, "my message")
       const err2 = new Cause.UnknownException(new Error("my error"))
       expect(err2.cause).toBeInstanceOf(Error)
       expect((err2.cause as Error).message).toBe("my error")
     })
 
     it("uses a default message when none is provided", () => {
-      const err1 = new Cause.UnknownException("my message")
-      expect(err1.message).toBe("An unknown error occurred")
+      strictEqual(new Cause.UnknownException("my message").message, "An unknown error occurred")
     })
 
     it("accepts a custom override message", () => {
-      const err1 = new Cause.UnknownException(new Error("my error"), "my message")
-      expect(err1.message).toBe("my message")
+      strictEqual(new Cause.UnknownException(new Error("my error"), "my message").message, "my message")
     })
   })
 
