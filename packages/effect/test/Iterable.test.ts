@@ -3,7 +3,7 @@ import * as Iter from "effect/Iterable"
 import * as Number from "effect/Number"
 import * as O from "effect/Option"
 import type { Predicate } from "effect/Predicate"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
 const symA = Symbol.for("a")
@@ -115,74 +115,72 @@ describe("Iterable", () => {
 
     describe("findFirst", () => {
       it("boolean-returning overloads", () => {
-        deepStrictEqual(pipe([], Iter.findFirst((n) => n % 2 === 0)), O.none())
-        deepStrictEqual(pipe([1, 2, 3], Iter.findFirst((n) => n % 2 === 0)), O.some(2))
-        deepStrictEqual(pipe([1, 2, 3, 4], Iter.findFirst((n) => n % 2 === 0)), O.some(2))
+        assertNone(pipe([], Iter.findFirst((n) => n % 2 === 0)))
+        assertSome(pipe([1, 2, 3], Iter.findFirst((n) => n % 2 === 0)), 2)
+        assertSome(pipe([1, 2, 3, 4], Iter.findFirst((n) => n % 2 === 0)), 2)
 
-        deepStrictEqual(pipe(new Set<number>(), Iter.findFirst((n) => n % 2 === 0)), O.none())
-        deepStrictEqual(pipe(new Set([1, 2, 3]), Iter.findFirst((n) => n % 2 === 0)), O.some(2))
-        deepStrictEqual(pipe(new Set([1, 2, 3, 4]), Iter.findFirst((n) => n % 2 === 0)), O.some(2))
+        assertNone(pipe(new Set<number>(), Iter.findFirst((n) => n % 2 === 0)))
+        assertSome(pipe(new Set([1, 2, 3]), Iter.findFirst((n) => n % 2 === 0)), 2)
+        assertSome(pipe(new Set([1, 2, 3, 4]), Iter.findFirst((n) => n % 2 === 0)), 2)
       })
 
       it("Option-returning overloads", () => {
-        deepStrictEqual(pipe([], Iter.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())), O.none())
-        deepStrictEqual(
+        assertNone(pipe([], Iter.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())))
+        assertSome(
           pipe([1, 2, 3], Iter.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.some([2, 1])
+          [2, 1]
         )
-        deepStrictEqual(
+        assertSome(
           pipe([1, 2, 3, 4], Iter.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.some([2, 1])
+          [2, 1]
         )
 
-        deepStrictEqual(
-          pipe(new Set<number>(), Iter.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.none()
+        assertNone(
+          pipe(new Set<number>(), Iter.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none()))
         )
-        deepStrictEqual(
+        assertSome(
           pipe(new Set([1, 2, 3]), Iter.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.some([2, 1])
+          [2, 1]
         )
-        deepStrictEqual(
+        assertSome(
           pipe(new Set([1, 2, 3, 4]), Iter.findFirst((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.some([2, 1])
+          [2, 1]
         )
       })
     })
 
     describe("findLast", () => {
       it("boolean-returning overloads", () => {
-        deepStrictEqual(pipe([], Iter.findLast((n) => n % 2 === 0)), O.none())
-        deepStrictEqual(pipe([1, 2, 3], Iter.findLast((n) => n % 2 === 0)), O.some(2))
-        deepStrictEqual(pipe([1, 2, 3, 4], Iter.findLast((n) => n % 2 === 0)), O.some(4))
+        assertNone(pipe([], Iter.findLast((n) => n % 2 === 0)))
+        assertSome(pipe([1, 2, 3], Iter.findLast((n) => n % 2 === 0)), 2)
+        assertSome(pipe([1, 2, 3, 4], Iter.findLast((n) => n % 2 === 0)), 4)
 
-        deepStrictEqual(pipe(new Set<number>(), Iter.findLast((n) => n % 2 === 0)), O.none())
-        deepStrictEqual(pipe(new Set([1, 2, 3]), Iter.findLast((n) => n % 2 === 0)), O.some(2))
-        deepStrictEqual(pipe(new Set([1, 2, 3, 4]), Iter.findLast((n) => n % 2 === 0)), O.some(4))
+        assertNone(pipe(new Set<number>(), Iter.findLast((n) => n % 2 === 0)))
+        assertSome(pipe(new Set([1, 2, 3]), Iter.findLast((n) => n % 2 === 0)), 2)
+        assertSome(pipe(new Set([1, 2, 3, 4]), Iter.findLast((n) => n % 2 === 0)), 4)
       })
 
       it("Option-returning overloads", () => {
-        deepStrictEqual(pipe([], Iter.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())), O.none())
-        deepStrictEqual(
+        assertNone(pipe([], Iter.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())))
+        assertSome(
           pipe([1, 2, 3], Iter.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.some([2, 1])
+          [2, 1]
         )
-        deepStrictEqual(
+        assertSome(
           pipe([1, 2, 3, 4], Iter.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.some([4, 3])
+          [4, 3]
         )
 
-        deepStrictEqual(
-          pipe(new Set<number>(), Iter.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.none()
+        assertNone(
+          pipe(new Set<number>(), Iter.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none()))
         )
-        deepStrictEqual(
+        assertSome(
           pipe(new Set([1, 2, 3]), Iter.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.some([2, 1])
+          [2, 1]
         )
-        deepStrictEqual(
+        assertSome(
           pipe(new Set([1, 2, 3, 4]), Iter.findLast((n, i) => n % 2 === 0 ? O.some([n, i]) : O.none())),
-          O.some([4, 3])
+          [4, 3]
         )
       })
     })
@@ -237,20 +235,20 @@ describe("Iterable", () => {
 
     it("containsWith", () => {
       const contains = Iter.containsWith(Number.Equivalence)
-      deepStrictEqual(pipe([1, 2, 3], contains(2)), true)
-      deepStrictEqual(pipe([1, 2, 3], contains(0)), false)
+      assertTrue(pipe([1, 2, 3], contains(2)))
+      assertFalse(pipe([1, 2, 3], contains(0)))
 
-      deepStrictEqual(pipe(new Set([1, 2, 3]), contains(2)), true)
-      deepStrictEqual(pipe(new Set([1, 2, 3]), contains(0)), false)
+      assertTrue(pipe(new Set([1, 2, 3]), contains(2)))
+      assertFalse(pipe(new Set([1, 2, 3]), contains(0)))
     })
 
     it("contains", () => {
       const contains = Iter.contains
-      deepStrictEqual(pipe([1, 2, 3], contains(2)), true)
-      deepStrictEqual(pipe([1, 2, 3], contains(0)), false)
+      assertTrue(pipe([1, 2, 3], contains(2)))
+      assertFalse(pipe([1, 2, 3], contains(0)))
 
-      deepStrictEqual(pipe(new Set([1, 2, 3]), contains(2)), true)
-      deepStrictEqual(pipe(new Set([1, 2, 3]), contains(0)), false)
+      assertTrue(pipe(new Set([1, 2, 3]), contains(2)))
+      assertFalse(pipe(new Set([1, 2, 3]), contains(0)))
     })
 
     it("dedupeAdjacentWith", () => {
@@ -328,14 +326,14 @@ describe("Iterable", () => {
   })
 
   it("isEmpty", () => {
-    deepStrictEqual(Iter.isEmpty([1, 2, 3]), false)
-    deepStrictEqual(Iter.isEmpty([]), true)
+    assertFalse(Iter.isEmpty([1, 2, 3]))
+    assertTrue(Iter.isEmpty([]))
   })
 
   it("head", () => {
     const as: ReadonlyArray<number> = [1, 2, 3]
-    deepStrictEqual(Iter.head(as), O.some(1))
-    deepStrictEqual(Iter.head([]), O.none())
+    assertSome(Iter.head(as), 1)
+    assertNone(Iter.head([]))
   })
 
   it("chunksOf", () => {
@@ -443,9 +441,9 @@ describe("Iterable", () => {
   })
 
   it("size", () => {
-    deepStrictEqual(Iter.size(Iter.empty()), 0)
-    deepStrictEqual(Iter.size([]), 0)
-    deepStrictEqual(Iter.size(["a"]), 1)
+    strictEqual(Iter.size(Iter.empty()), 0)
+    strictEqual(Iter.size([]), 0)
+    strictEqual(Iter.size(["a"]), 1)
   })
 
   it("forEach", () => {
