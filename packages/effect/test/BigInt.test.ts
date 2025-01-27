@@ -136,7 +136,7 @@ describe("BigInt", () => {
   })
 
   it("sqrt", () => {
-    throws(() => BigInt_.unsafeSqrt(-1n), new Error("Cannot take the square root of a negative number"))
+    throws(() => BigInt_.unsafeSqrt(-1n), new RangeError("Cannot take the square root of a negative number"))
   })
 
   it("toNumber", () => {

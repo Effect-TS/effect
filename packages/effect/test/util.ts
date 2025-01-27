@@ -1,6 +1,5 @@
 import { Either, Equal, Option } from "effect"
 import * as assert from "node:assert"
-import { expect } from "vitest"
 
 export const assertTrue = (self: boolean) => {
   assert.strictEqual(self, true)
@@ -25,16 +24,19 @@ export const equals = <A>(actual: A, expected: A) => {
   }
 }
 
-export const notThrows = (thunk: () => void) => {
-  expect(thunk).not.toThrow()
+export const doesNotThrow = (thunk: () => void) => {
+  assert.doesNotThrow(thunk)
 }
 
-interface Constructable {
-  new(...args: Array<any>): any
-}
-
-export const throws = (thunk: () => void, error?: string | Constructable | RegExp | Error) => {
-  expect(thunk).toThrow(error)
+export const throws = (thunk: () => void, error?: object) => {
+  try {
+    thunk()
+    assert.fail("expected to throw an error")
+  } catch (e) {
+    if (error !== undefined) {
+      deepStrictEqual(e, error)
+    }
+  }
 }
 
 export const assertNone = <A>(actual: Option.Option<A>) => {

@@ -128,7 +128,7 @@ describe("BigDecimal", () => {
     }
 
     assertTrue(Option.isNone(BigDecimal.divide($("5"), $("0"))))
-    throws(() => BigDecimal.unsafeDivide($("5"), $("0")), "Division by zero")
+    throws(() => BigDecimal.unsafeDivide($("5"), $("0")), new RangeError("Division by zero"))
   })
 
   it("Equivalence", () => {
@@ -233,7 +233,7 @@ describe("BigDecimal", () => {
     equals(BigDecimal.unsafeRemainder($("5"), $("2")), $("1"))
     equals(BigDecimal.unsafeRemainder($("4"), $("2")), $("0"))
     equals(BigDecimal.unsafeRemainder($("123.456"), $("0.2")), $("0.056"))
-    throws(() => BigDecimal.unsafeRemainder($("5"), $("0")), "Division by zero")
+    throws(() => BigDecimal.unsafeRemainder($("5"), $("0")), new RangeError("Division by zero"))
   })
 
   it("normalize", () => {

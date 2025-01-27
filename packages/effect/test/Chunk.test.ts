@@ -11,7 +11,7 @@ import {
   pipe,
   type Predicate
 } from "effect"
-import { assertFalse, assertTrue, deepStrictEqual, equals, notThrows, strictEqual, throws } from "effect/test/util"
+import { assertFalse, assertTrue, deepStrictEqual, doesNotThrow, equals, strictEqual, throws } from "effect/test/util"
 import { describe, it } from "vitest"
 
 const assertTuple = <A, B>(
@@ -170,7 +170,7 @@ describe("Chunk", () => {
       for (let i = 0; i < len; i++) chunk = Chunk.appendAll(Chunk.of(i), chunk)
 
       it("gives back a readonly array", () => {
-        notThrows(() => Chunk.toReadonlyArray(chunk))
+        doesNotThrow(() => Chunk.toReadonlyArray(chunk))
         deepStrictEqual(Chunk.toReadonlyArray(chunk), RA.reverse(RA.range(0, len - 1)))
       })
     })
