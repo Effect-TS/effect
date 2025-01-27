@@ -161,7 +161,7 @@ describe("Fiber", () => {
       )
       yield* $(Effect.uninterruptible(Effect.fork(child)))
       const result = yield* $(Deferred.await(latch))
-      assertTrue(result === undefined)
+      strictEqual(result, undefined)
     }))
   it.effect("dual roots", () =>
     Effect.gen(function*($) {
@@ -220,12 +220,12 @@ describe("Fiber", () => {
       const result = yield* $(Fiber.joinAll(fibers))
       assertTrue(Array.isArray(result))
       assertTrue(result.length === fibers.length)
-      result.forEach((x) => assertTrue(x === undefined))
+      result.forEach((x) => strictEqual(x, undefined))
     }), 10000)
   it.effect("all - stack safety", () =>
     Effect.gen(function*($) {
       const result = yield* $(Fiber.join(Fiber.all(fibers)), Effect.asVoid)
-      assertTrue(result === undefined)
+      strictEqual(result, undefined)
     }), 10000)
   it.effect("is subtype of Effect", () =>
     Effect.gen(function*() {
