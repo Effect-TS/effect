@@ -1,7 +1,7 @@
 import { Either, Equal, Option } from "effect"
 import * as assert from "node:assert"
 
-export const assertTrue = (self: boolean) => {
+export function assertTrue(self: boolean): asserts self {
   assert.strictEqual(self, true)
 }
 

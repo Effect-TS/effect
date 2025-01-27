@@ -1,59 +1,58 @@
-import * as Data from "effect/Data"
-import * as Equal from "effect/Equal"
-import { pipe } from "effect/Function"
-import { assert, describe, expect, it } from "vitest"
+import { Data, Equal, pipe } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 describe("Data", () => {
   it("struct", () => {
     const x = Data.struct({ a: 0, b: 1, c: 2 })
     const y = Data.struct({ a: 0, b: 1, c: 2 })
     const { a, b, c } = x
-    expect(a).toBe(0)
-    expect(b).toBe(1)
-    expect(c).toBe(2)
-    expect(Equal.equals(x, y)).toBe(true)
-    expect(Equal.equals(x, Data.struct({ a: 0 }))).toBe(false)
+    strictEqual(a, 0)
+    strictEqual(b, 1)
+    strictEqual(c, 2)
+    assertTrue(Equal.equals(x, y))
+    assertFalse(Equal.equals(x, Data.struct({ a: 0 })))
 
     // different keys length
-    expect(Equal.equals(Data.struct({ a: 0, b: 1 }), Data.struct({ a: 0 }))).toBe(false)
+    assertFalse(Equal.equals(Data.struct({ a: 0, b: 1 }), Data.struct({ a: 0 })))
     // same length but different keys
-    expect(Equal.equals(Data.struct({ a: 0 }), Data.struct({ b: 1 }))).toBe(false)
+    assertFalse(Equal.equals(Data.struct({ a: 0 }), Data.struct({ b: 1 })))
   })
 
   it("unsafeStruct", () => {
     const x = Data.unsafeStruct({ a: 0, b: 1, c: 2 })
     const y = Data.unsafeStruct({ a: 0, b: 1, c: 2 })
     const { a, b, c } = x
-    expect(a).toBe(0)
-    expect(b).toBe(1)
-    expect(c).toBe(2)
-    expect(Equal.equals(x, y)).toBe(true)
+    strictEqual(a, 0)
+    strictEqual(b, 1)
+    strictEqual(c, 2)
+    assertTrue(Equal.equals(x, y))
   })
 
   it("tuple", () => {
     const x = Data.tuple(0, 1, 2)
     const y = Data.tuple(0, 1, 2)
     const [a, b, c] = x
-    expect(a).toBe(0)
-    expect(b).toBe(1)
-    expect(c).toBe(2)
-    expect(Equal.equals(x, y)).toBe(true)
-    expect(Equal.equals(x, Data.tuple(0, 1))).toBe(false)
+    strictEqual(a, 0)
+    strictEqual(b, 1)
+    strictEqual(c, 2)
+    assertTrue(Equal.equals(x, y))
+    assertFalse(Equal.equals(x, Data.tuple(0, 1)))
   })
 
   it("array", () => {
     const x = Data.array([0, 1, 2])
     const y = Data.array([0, 1, 2])
     const [a, b, c] = x
-    expect(a).toBe(0)
-    expect(b).toBe(1)
-    expect(c).toBe(2)
-    expect(Equal.equals(x, y)).toBe(true)
-    expect(Equal.equals(x, Data.tuple(0, 1, 2))).toBe(true)
-    expect(Equal.equals(x, Data.array([0, 1]))).toBe(false)
+    strictEqual(a, 0)
+    strictEqual(b, 1)
+    strictEqual(c, 2)
+    assertTrue(Equal.equals(x, y))
+    assertTrue(Equal.equals(x, Data.tuple(0, 1, 2)))
+    assertFalse(Equal.equals(x, Data.array([0, 1])))
 
     // different length
-    expect(Equal.equals(Data.array([0, 1, 2]), Data.array([0, 1]))).toBe(false)
+    assertFalse(Equal.equals(Data.array([0, 1, 2]), Data.array([0, 1])))
   })
 
   it("case", () => {
@@ -67,14 +66,14 @@ describe("Data", () => {
     const b = Person({ name: "Mike" })
     const c = Person({ name: "Foo" })
 
-    expect(a.name).toBe("Mike")
-    expect(b.name).toBe("Mike")
-    expect(c.name).toBe("Foo")
-    expect(Equal.equals(a, b)).toBe(true)
-    expect(Equal.equals(a, c)).toBe(false)
+    strictEqual(a.name, "Mike")
+    strictEqual(b.name, "Mike")
+    strictEqual(c.name, "Foo")
+    assertTrue(Equal.equals(a, b))
+    assertFalse(Equal.equals(a, c))
 
     const Empty = Data.case()
-    expect(Equal.equals(Empty(), Empty())).toBe(true)
+    assertTrue(Equal.equals(Empty(), Empty()))
   })
 
   it("tagged", () => {
@@ -89,12 +88,12 @@ describe("Data", () => {
     const b = Person({ name: "Mike" })
     const c = Person({ name: "Foo" })
 
-    expect(a._tag).toBe("Person")
-    expect(a.name).toBe("Mike")
-    expect(b.name).toBe("Mike")
-    expect(c.name).toBe("Foo")
-    expect(Equal.equals(a, b)).toBe(true)
-    expect(Equal.equals(a, c)).toBe(false)
+    strictEqual(a._tag, "Person")
+    strictEqual(a.name, "Mike")
+    strictEqual(b.name, "Mike")
+    strictEqual(c.name, "Foo")
+    assertTrue(Equal.equals(a, b))
+    assertFalse(Equal.equals(a, c))
   })
 
   it("case class", () => {
@@ -103,20 +102,20 @@ describe("Data", () => {
     const b = new Person({ name: "Mike" })
     const c = new Person({ name: "Foo" })
 
-    expect(a.name).toBe("Mike")
-    expect(b.name).toBe("Mike")
-    expect(c.name).toBe("Foo")
-    expect(Equal.equals(a, b)).toBe(true)
-    expect(Equal.equals(a, c)).toBe(false)
+    strictEqual(a.name, "Mike")
+    strictEqual(b.name, "Mike")
+    strictEqual(c.name, "Foo")
+    assertTrue(Equal.equals(a, b))
+    assertFalse(Equal.equals(a, c))
 
     // different keys length
     class D extends Data.Class<{ d: string; e: string }> {}
     const d = new D({ d: "d", e: "e" })
-    expect(Equal.equals(a, d)).toBe(false)
+    assertFalse(Equal.equals(a, d))
     // same length but different keys
     class E extends Data.Class<{ e: string }> {}
     const e = new E({ e: "e" })
-    expect(Equal.equals(a, e)).toBe(false)
+    assertFalse(Equal.equals(a, e))
   })
 
   it("date compares by value", () => {
@@ -124,7 +123,7 @@ describe("Data", () => {
     const a = Data.struct({ date: new Date(date.toISOString()) })
     const b = Data.struct({ date: new Date(date.toISOString()) })
 
-    expect(Equal.equals(a, b)).toBe(true)
+    assertTrue(Equal.equals(a, b))
   })
 
   it("tagged class", () => {
@@ -133,12 +132,12 @@ describe("Data", () => {
     const b = new Person({ name: "Mike" })
     const c = new Person({ name: "Foo" })
 
-    expect(a._tag).toBe("Person")
-    expect(a.name).toBe("Mike")
-    expect(b.name).toBe("Mike")
-    expect(c.name).toBe("Foo")
-    expect(Equal.equals(a, b)).toBe(true)
-    expect(Equal.equals(a, c)).toBe(false)
+    strictEqual(a._tag, "Person")
+    strictEqual(a.name, "Mike")
+    strictEqual(b.name, "Mike")
+    strictEqual(c.name, "Foo")
+    assertTrue(Equal.equals(a, b))
+    assertFalse(Equal.equals(a, c))
   })
 
   it("tagged - empty", () => {
@@ -151,7 +150,7 @@ describe("Data", () => {
     const a = Person()
     const b = Person()
 
-    expect(Equal.equals(a, b)).toBe(true)
+    assertTrue(Equal.equals(a, b))
   })
 
   it("TaggedClass - empty", () => {
@@ -160,7 +159,7 @@ describe("Data", () => {
     const a = new Person()
     const b = new Person()
 
-    expect(Equal.equals(a, b)).toBe(true)
+    assertTrue(Equal.equals(a, b))
   })
 
   it("tagged - don't override tag", () => {
@@ -178,7 +177,7 @@ describe("Data", () => {
     const foo = Foo({ value: "test" })
     const bar = Bar({ ...foo, value: 10 })
 
-    expect(bar._tag).toStrictEqual("Bar")
+    strictEqual(bar._tag, "Bar")
   })
 
   it("taggedEnum", () => {
@@ -197,23 +196,23 @@ describe("Data", () => {
     const b = InternalServerError({ reason: "test" })
     const c = InternalServerError({ reason: "test" })
 
-    expect(a._tag).toBe("NotFound")
-    expect(b._tag).toBe("InternalServerError")
+    strictEqual(a._tag, "NotFound")
+    strictEqual(b._tag, "InternalServerError")
 
-    expect(b.reason).toBe("test")
-    expect(c.reason).toBe("test")
+    strictEqual(b.reason, "test")
+    strictEqual(c.reason, "test")
 
-    expect(Equal.equals(a, b)).toBe(false)
-    expect(Equal.equals(b, c)).toBe(true)
+    assertFalse(Equal.equals(a, b))
+    assertTrue(Equal.equals(b, c))
 
-    expect($is("NotFound")(a)).toBe(true)
-    expect($is("InternalServerError")(a)).toBe(false)
+    assertTrue($is("NotFound")(a))
+    assertFalse($is("InternalServerError")(a))
     const matcher = $match({
       NotFound: () => 0,
       InternalServerError: () => 1
     })
-    expect(matcher(a)).toEqual(0)
-    expect(matcher(b)).toEqual(1)
+    strictEqual(matcher(a), 0)
+    strictEqual(matcher(b), 1)
   })
 
   it("taggedEnum - generics", () => {
@@ -233,20 +232,20 @@ describe("Data", () => {
     const b = Failure({ error: "test" }) satisfies Result<string, unknown>
     const c = Success({ value: 1 }) satisfies Result<string, number>
 
-    expect(a._tag).toBe("Success")
-    expect(b._tag).toBe("Failure")
-    expect(c._tag).toBe("Success")
+    strictEqual(a._tag, "Success")
+    strictEqual(b._tag, "Failure")
+    strictEqual(c._tag, "Success")
 
-    expect(a.value).toBe(1)
-    expect(b.error).toBe("test")
+    strictEqual(a.value, 1)
+    strictEqual(b.error, "test")
 
-    expect(Equal.equals(a, b)).toBe(false)
-    expect(Equal.equals(a, c)).toBe(true)
+    assertFalse(Equal.equals(a, b))
+    assertTrue(Equal.equals(a, c))
 
     const aResult = Success({ value: 1 }) as Result<unknown, number>
     const bResult = Failure({ error: "boom" }) as Result<string, number>
 
-    assert.strictEqual(
+    strictEqual(
       $match(aResult, {
         Success: (_) => 1,
         Failure: (_) => 2
@@ -261,29 +260,29 @@ describe("Data", () => {
       })
     )
     result satisfies string | number
-    assert.strictEqual(result, "boom")
+    strictEqual(result, "boom")
 
-    assert($is("Success")(aResult))
+    assertTrue($is("Success")(aResult))
     aResult satisfies { readonly _tag: "Success"; readonly value: number }
-    assert.strictEqual(aResult.value, 1)
+    strictEqual(aResult.value, 1)
 
-    assert($is("Failure")(bResult))
+    assertTrue($is("Failure")(bResult))
     bResult satisfies { readonly _tag: "Failure"; readonly error: string }
-    assert.strictEqual(bResult.error, "boom")
+    strictEqual(bResult.error, "boom")
   })
 
   describe("Error", () => {
     it("should support a message field", () => {
       class MyError extends Data.Error<{ message: string; a: number }> {}
       const e = new MyError({ message: "Oh no!", a: 1 })
-      expect(e.message).toStrictEqual("Oh no!")
-      expect(e.a).toStrictEqual(1)
+      strictEqual(e.message, "Oh no!")
+      strictEqual(e.a, 1)
     })
 
     it("toJSON includes all args", () => {
       class MyError extends Data.Error<{ message: string; a: number; cause: string }> {}
       const e = new MyError({ message: "Oh no!", a: 1, cause: "Boom" })
-      assert.deepStrictEqual(e.toJSON(), { message: "Oh no!", a: 1, cause: "Boom" })
+      deepStrictEqual(e.toJSON(), { message: "Oh no!", a: 1, cause: "Boom" })
     })
   })
 
@@ -291,7 +290,7 @@ describe("Data", () => {
     it("toJSON includes all args", () => {
       class MyError extends Data.TaggedError("MyError")<{ message: string; a: number; cause: string }> {}
       const e = new MyError({ message: "Oh no!", a: 1, cause: "Boom" })
-      assert.deepStrictEqual(e.toJSON(), {
+      deepStrictEqual(e.toJSON(), {
         _tag: "MyError",
         message: "Oh no!",
         a: 1,
