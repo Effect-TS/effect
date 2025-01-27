@@ -874,7 +874,7 @@ export const scopedContext = <A, E, R>(
 }
 
 /** @internal */
-export const scope: Layer.Layer<Scope.Scope.Closeable> = scopedContext(
+export const scope: Layer.Layer<Scope.Scope> = scopedContext(
   core.map(
     fiberRuntime.acquireRelease(
       fiberRuntime.scopeMake(),

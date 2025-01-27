@@ -648,7 +648,7 @@ export const retry: {
  * @since 2.0.0
  * @category constructors
  */
-export const scope: Layer<Scope.CloseableScope> = internal.scope
+export const scope: Layer<Scope.Scope> = internal.scope
 
 /**
  * Constructs a layer from the specified scoped effect.
