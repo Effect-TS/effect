@@ -54,3 +54,7 @@ export const assertRight = <R, L>(e: Either.Either<R, L>, expected: R) => {
 export const assertLeft = <R, L>(e: Either.Either<R, L>, expected: L) => {
   deepStrictEqual(e, Either.left(expected))
 }
+
+export function assertRefinement<A, B extends A>(actual: A, refinement: (a: A) => a is B): asserts actual is B {
+  assertTrue(refinement(actual))
+}
