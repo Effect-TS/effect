@@ -9,8 +9,9 @@ import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe, expect } from "vitest"
+import { describe, expect } from "vitest"
 
 describe("FiberRefs", () => {
   it.scoped("propagate FiberRef values across fiber boundaries", () =>
@@ -30,7 +31,7 @@ describe("FiberRefs", () => {
       )
       yield* $(Fiber.join(producer))
       const result = yield* $(Fiber.join(consumer))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
   it.it("interruptedCause", () => {
     const parent = FiberId.make(1, Date.now()) as FiberId.Runtime
@@ -42,7 +43,7 @@ describe("FiberRefs", () => {
       value: Cause.interrupt(parent)
     })
     const newParentFiberRefs = FiberRefs.joinAs(parentFiberRefs, parent, childFiberRefs)
-    assert.deepStrictEqual(FiberRefs.get(newParentFiberRefs, FiberRef.interruptedCause), Option.some(Cause.empty))
+    deepStrictEqual(FiberRefs.get(newParentFiberRefs, FiberRef.interruptedCause), Option.some(Cause.empty))
   })
 
   describe("currentLogAnnotations", () => {
@@ -54,13 +55,13 @@ describe("FiberRefs", () => {
     it.effect("annotateLogsScoped", () =>
       Effect.gen(function*() {
         const scope = yield* Scope.make()
-        assert.strictEqual(HashMap.size(yield* FiberRef.get(FiberRef.currentLogAnnotations)), 0)
+        strictEqual(HashMap.size(yield* FiberRef.get(FiberRef.currentLogAnnotations)), 0)
         yield* Effect.annotateLogsScoped({
           test: 123
         }).pipe(Scope.extend(scope))
-        assert.strictEqual(HashMap.size(yield* FiberRef.get(FiberRef.currentLogAnnotations)), 1)
+        strictEqual(HashMap.size(yield* FiberRef.get(FiberRef.currentLogAnnotations)), 1)
         yield* Scope.close(scope, Exit.void)
-        assert.strictEqual(HashMap.size(yield* FiberRef.get(FiberRef.currentLogAnnotations)), 0)
+        strictEqual(HashMap.size(yield* FiberRef.get(FiberRef.currentLogAnnotations)), 0)
       }))
   })
 })
