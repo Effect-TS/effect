@@ -221,7 +221,7 @@ S.String.pipe(S.maxLength(5))
 S.String.pipe(S.minLength(5))
 S.String.pipe(S.length(5))
 // S.string().email() // No equivalent
-// S.string().url() // No equivalent
+S.URL
 // S.string().emoji() // No equivalent
 S.UUID
 // S.string().nanoid() // No equivalent
