@@ -89,6 +89,155 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
    * any duplicates.
    */
   annotations(annotations: Annotations.GenericSchema<A>): Schema<A, I, R>
+  /**
+   * Returns a standard schema as per https://standardschema.dev/
+   */
+  standard<I, A>(this: Schema<I, A>): StandardSchemaV1<I, A>
+}
+
+/**
+ * The Standard Schema interface.
+ * @category model
+ * @since 3.13.0
+ */
+export interface StandardSchemaV1<in out Input = unknown, in out Output = Input> {
+  /**
+   * The Standard Schema properties.
+   * @since 3.13.0
+   */
+  readonly "~standard": StandardSchemaV1.Props<Input, Output>
+}
+
+/**
+ * @category model
+ * @since 3.13.0
+ */
+export declare namespace StandardSchemaV1 {
+  /**
+   * The Standard Schema properties interface.
+   * @since 3.13.0
+   */
+  export interface Props<Input = unknown, Output = Input> {
+    /**
+     * The version number of the standard.
+     * @since 3.13.0
+     */
+    readonly version: 1
+    /**
+     * The vendor name of the schema library.
+     * @since 3.13.0
+     */
+    readonly vendor: string
+    /**
+     * Validates unknown input values.
+     * @since 3.13.0
+     */
+    readonly validate: (
+      value: unknown
+    ) => Result<Output> | Promise<Result<Output>>
+    /**
+     * Inferred types associated with the schema.
+     * @since 3.13.0
+     */
+    readonly types?: Types<Input, Output> | undefined
+  }
+
+  /**
+   * The result interface of the validate function.
+   * @since 3.13.0
+   */
+  export type Result<Output> = SuccessResult<Output> | FailureResult
+
+  /**
+   * The result interface if validation succeeds.
+   * @since 3.13.0
+   */
+  export interface SuccessResult<Output> {
+    /**
+     * The typed output value.
+     * @since 3.13.0
+     */
+    readonly value: Output
+    /**
+     * The non-existent issues.
+     * @since 3.13.0
+     */
+    readonly issues?: undefined
+  }
+
+  /**
+   * The result interface if validation fails.
+   * @since 3.13.0
+   */
+  export interface FailureResult {
+    /**
+     * The issues of failed validation.
+     * @since 3.13.0
+     */
+    readonly issues: ReadonlyArray<Issue>
+  }
+
+  /**
+   * The issue interface of the failure output.
+   * @since 3.13.0
+   */
+  export interface Issue {
+    /**
+     * The error message of the issue.
+     * @since 3.13.0
+     */
+    readonly message: string
+    /**
+     * The path of the issue, if any.
+     * @since 3.13.0
+     */
+    readonly path?: ReadonlyArray<PropertyKey | PathSegment> | undefined
+  }
+
+  /**
+   * The path segment interface of the issue.
+   * @since 3.13.0
+   */
+  export interface PathSegment {
+    /**
+     * The key representing a path segment.
+     * @since 3.13.0
+     */
+    readonly key: PropertyKey
+  }
+
+  /**
+   * The Standard Schema types interface.
+   * @since 3.13.0
+   */
+  export interface Types<Input = unknown, Output = Input> {
+    /**
+     * The input type of the schema.
+     * @since 3.13.0
+     */
+    readonly input: Input
+    /**
+     * The output type of the schema.
+     * @since 3.13.0
+     */
+    readonly output: Output
+  }
+
+  /**
+   * Infers the input type of a Standard Schema.
+   * @since 3.13.0
+   */
+  export type InferInput<Schema extends StandardSchemaV1> = NonNullable<
+    Schema["~standard"]["types"]
+  >["input"]
+
+  /**
+   * Infers the output type of a Standard Schema.
+   * @since 3.13.0
+   */
+  export type InferOutput<Schema extends StandardSchemaV1> = NonNullable<
+    Schema["~standard"]["types"]
+  >["output"]
 }
 
 /**
@@ -117,6 +266,8 @@ export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
   static Encoded: I
   static Context: R
   static [TypeId] = variance
+  // TODO: Implement
+  static standard(): any {}
 })
 
 const variance = {
