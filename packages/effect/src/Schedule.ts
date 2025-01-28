@@ -141,6 +141,14 @@ export const makeWithState: <S, In, Out, R = never>(
 ) => Schedule<Out, In, R> = internal.makeWithState
 
 /**
+ * Returns `true` if the specified value is a `Schedule`, `false` otherwise.
+ *
+ * @since 2.0.0
+ * @category guards
+ */
+export const isSchedule: (u: unknown) => u is Schedule<unknown, never, unknown> = internal.isSchedule
+
+/**
  * Returns a new schedule with the given delay added to every interval defined
  * by this schedule.
  *
