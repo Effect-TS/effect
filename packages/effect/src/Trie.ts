@@ -122,8 +122,8 @@ export const make: <Entries extends Array<readonly [string, any]>>(
  * @category mutations
  */
 export const insert: {
-  <V>(key: string, value: V): (self: Trie<V>) => Trie<V>
-  <V>(self: Trie<V>, key: string, value: V): Trie<V>
+  <V1>(key: string, value: V1): <V>(self: Trie<V>) => Trie<V | V1>
+  <V1, V>(self: Trie<V>, key: string, value: V1): Trie<V | V1>
 } = TR.insert
 
 /**
@@ -746,8 +746,8 @@ export const forEach: {
  * @category mutations
  */
 export const modify: {
-  <V>(key: string, f: (v: V) => V): (self: Trie<V>) => Trie<V>
-  <V>(self: Trie<V>, key: string, f: (v: V) => V): Trie<V>
+  <V1, V>(key: string, f: (v: V) => V1): (self: Trie<V>) => Trie<V1 | V>
+  <V1, V>(self: Trie<V>, key: string, f: (v: V) => V1): Trie<V | V1>
 } = TR.modify
 
 /**
@@ -807,6 +807,6 @@ export const removeMany: {
  * @category mutations
  */
 export const insertMany: {
-  <V>(iter: Iterable<[string, V]>): (self: Trie<V>) => Trie<V>
-  <V>(self: Trie<V>, iter: Iterable<[string, V]>): Trie<V>
+  <V1>(iter: Iterable<[string, V1]>): <V>(self: Trie<V>) => Trie<V | V1>
+  <V1, V>(self: Trie<V>, iter: Iterable<[string, V1]>): Trie<V | V1>
 } = TR.insertMany
