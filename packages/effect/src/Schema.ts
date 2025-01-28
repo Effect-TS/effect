@@ -2,6 +2,7 @@
  * @since 3.10.0
  */
 
+import type { StandardSchemaV1 } from "@standard-schema/spec"
 import type { ArbitraryAnnotation, ArbitraryGenerationContext, LazyArbitrary } from "./Arbitrary.js"
 import * as array_ from "./Array.js"
 import * as bigDecimal_ from "./BigDecimal.js"
@@ -44,6 +45,7 @@ import type * as pretty_ from "./Pretty.js"
 import * as record_ from "./Record.js"
 import * as redacted_ from "./Redacted.js"
 import * as Request from "./Request.js"
+import * as Runtime from "./Runtime.js"
 import type { ParseOptions } from "./SchemaAST.js"
 import * as AST from "./SchemaAST.js"
 import * as sortedSet_ from "./SortedSet.js"
@@ -126,6 +128,85 @@ const variance = {
   _I: (_: any) => _,
   /* c8 ignore next */
   _R: (_: never) => _
+}
+
+const makeStandardFailureResult = (message: string): StandardSchemaV1.FailureResult => ({
+  issues: [{ message }]
+})
+
+/**
+ * Returns a "Standard Schema" object conforming to the [Standard Schema
+ * v1](https://standardschema.dev/) specification.
+ *
+ * This function creates a schema whose `validate` method attempts to decode and
+ * validate the provided input synchronously. If the underlying `Schema`
+ * includes any asynchronous components (e.g., asynchronous message resolutions
+ * or checks), then validation will necessarily return a `Promise` instead.
+ *
+ * Any detected defects will be reported via a single issue containing no
+ * `path`.
+ *
+ * @example
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.Struct({
+ *   name: Schema.String
+ * })
+ *
+ * //      ┌─── StandardSchemaV1<{ readonly name: string; }>
+ * //      ▼
+ * const standardSchema = Schema.standardSchemaV1(schema)
+ * ```
+ *
+ * @category Standard Schema
+ * @since 3.13.0
+ */
+export const standardSchemaV1 = <A, I>(schema: Schema<A, I, never>): StandardSchemaV1<I, A> => {
+  const decodeUnknown = ParseResult.decodeUnknown(schema)
+  return {
+    "~standard": {
+      version: 1,
+      vendor: "effect",
+      validate: (value) => {
+        const validation: Effect.Effect<StandardSchemaV1.Result<A>> = decodeUnknown(value).pipe(
+          Effect.matchEffect({
+            onFailure: (issue) =>
+              Effect.map(ParseResult.ArrayFormatter.formatIssue(issue), (issues) => ({
+                issues: issues.map((issue) => ({
+                  path: issue.path,
+                  message: issue.message
+                }))
+              })),
+            onSuccess: (value) => Effect.succeed({ value })
+          }),
+          Effect.catchAllCause((cause) => Effect.succeed(makeStandardFailureResult(cause_.pretty(cause))))
+        )
+        try {
+          return Effect.runSync(validation)
+        } catch (e) {
+          if (Runtime.isFiberFailure(e)) {
+            const cause = e[Runtime.FiberFailureCauseId]
+            if (cause_.isDieType(cause) && Runtime.isAsyncFiberException(cause.defect)) {
+              // The error is caused by using runSync on an effect that performs async work.
+              // We can wait for the fiber to complete and return a promise
+              const fiber = cause.defect.fiber
+              return new Promise((resolve, reject) => {
+                fiber.addObserver((exit) => {
+                  if (exit_.isFailure(exit)) {
+                    reject(makeStandardFailureResult(cause_.pretty(exit.cause)))
+                  } else {
+                    resolve(exit.value as any)
+                  }
+                })
+              })
+            }
+          }
+          return makeStandardFailureResult(`Unknown error: ${e}`)
+        }
+      }
+    }
+  }
 }
 
 interface AllAnnotations<A, TypeParameters extends ReadonlyArray<any>>
