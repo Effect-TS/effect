@@ -332,8 +332,8 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
 
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.RequestError> | undefined
   get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.RequestError> {
-    if (this.arrayBuffer) {
-      return this.arrayBuffer
+    if (this.arrayBufferEffect) {
+      return this.arrayBufferEffect
     }
     this.arrayBufferEffect = Effect.runSync(Effect.cached(
       Effect.tryPromise({
