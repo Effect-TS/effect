@@ -746,8 +746,8 @@ export const forEach: {
  * @category mutations
  */
 export const modify: {
-  <V1, V>(key: string, f: (v: V) => V1): (self: Trie<V>) => Trie<V1 | V>
-  <V1, V>(self: Trie<V>, key: string, f: (v: V) => V1): Trie<V | V1>
+  <V1, V>(key: string, f: (v: V) => V1): (self: Trie<V>) => Trie<V1>
+  <V1, V>(self: Trie<V>, key: string, f: (v: V) => V1): Trie<V1>
 } = TR.modify
 
 /**
