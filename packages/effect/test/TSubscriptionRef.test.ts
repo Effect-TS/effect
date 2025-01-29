@@ -1,8 +1,9 @@
 import { Chunk, Deferred, Effect, Equal, Exit, Fiber, pipe, Random, STM, Stream } from "effect"
 import * as Number from "effect/Number"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TSubscriptionRef from "effect/TSubscriptionRef"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe.concurrent("TSubscriptionRef", () => {
   it.effect("only emits comitted values", () =>
@@ -26,7 +27,7 @@ describe.concurrent("TSubscriptionRef", () => {
       yield* $(Effect.yieldNow())
       const result = yield* $(Fiber.join(subscriber))
 
-      assert.deepStrictEqual(Array.from(result), [2])
+      deepStrictEqual(Array.from(result), [2])
     }))
 
   it.effect("emits every comitted value", () =>
@@ -52,7 +53,7 @@ describe.concurrent("TSubscriptionRef", () => {
       yield* $(transaction)
       const result = yield* $(Fiber.join(subscriber))
 
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("multiple subscribers can receive committed values", () =>
@@ -80,8 +81,8 @@ describe.concurrent("TSubscriptionRef", () => {
       yield* $(TSubscriptionRef.update(subscriptionRef, (n) => n + 1))
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.deepStrictEqual(Array.from(result1), [0, 1, 2])
-      assert.deepStrictEqual(Array.from(result2), [1, 2])
+      deepStrictEqual(Array.from(result1), [0, 1, 2])
+      deepStrictEqual(Array.from(result2), [1, 2])
     }))
 
   it.effect("subscriptions are interruptible", () =>
@@ -109,8 +110,8 @@ describe.concurrent("TSubscriptionRef", () => {
       yield* $(TSubscriptionRef.update(ref, (n) => n + 1))
       const result1 = yield* $(Fiber.interrupt(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
-      assert.isTrue(Exit.isInterrupted(result1))
-      assert.deepStrictEqual(Array.from(result2), [1, 2])
+      assertTrue(Exit.isInterrupted(result1))
+      deepStrictEqual(Array.from(result2), [1, 2])
     }))
 
   it.effect("concurrent subscribes and unsubscribes are handled correctly", () =>
@@ -143,6 +144,6 @@ describe.concurrent("TSubscriptionRef", () => {
       )
       yield* $(Fiber.interrupt(fiber))
       const isSorted = Chunk.every(result, (chunk) => Equal.equals(chunk, Chunk.sort(chunk, Number.Order)))
-      assert.isTrue(isSorted)
+      assertTrue(isSorted)
     }))
 })
