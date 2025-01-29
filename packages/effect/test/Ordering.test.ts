@@ -1,39 +1,39 @@
-import * as _ from "effect/Ordering"
-import { deepStrictEqual } from "effect/test/util"
+import { Ordering } from "effect"
+import { strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
 describe("Ordering", () => {
   it("match", () => {
-    const f = _.match({
+    const f = Ordering.match({
       onLessThan: () => "lt",
       onEqual: () => "eq",
       onGreaterThan: () => "gt"
     })
-    deepStrictEqual(f(-1), "lt")
-    deepStrictEqual(f(0), "eq")
-    deepStrictEqual(f(1), "gt")
+    strictEqual(f(-1), "lt")
+    strictEqual(f(0), "eq")
+    strictEqual(f(1), "gt")
   })
 
   it("reverse", () => {
-    deepStrictEqual(_.reverse(-1), 1)
-    deepStrictEqual(_.reverse(0), 0)
-    deepStrictEqual(_.reverse(1), -1)
+    strictEqual(Ordering.reverse(-1), 1)
+    strictEqual(Ordering.reverse(0), 0)
+    strictEqual(Ordering.reverse(1), -1)
   })
 
   it("combine", () => {
-    deepStrictEqual(_.combine(0, 0), 0)
-    deepStrictEqual(_.combine(0, 1), 1)
-    deepStrictEqual(_.combine(1, -1), 1)
-    deepStrictEqual(_.combine(-1, 1), -1)
+    strictEqual(Ordering.combine(0, 0), 0)
+    strictEqual(Ordering.combine(0, 1), 1)
+    strictEqual(Ordering.combine(1, -1), 1)
+    strictEqual(Ordering.combine(-1, 1), -1)
   })
 
   it("combineMany", () => {
-    deepStrictEqual(_.combineMany(0, []), 0)
-    deepStrictEqual(_.combineMany(1, []), 1)
-    deepStrictEqual(_.combineMany(-1, []), -1)
-    deepStrictEqual(_.combineMany(0, [0, 0, 0]), 0)
-    deepStrictEqual(_.combineMany(0, [0, 0, 1]), 1)
-    deepStrictEqual(_.combineMany(1, [0, 0, -1]), 1)
-    deepStrictEqual(_.combineMany(-1, [0, 0, 1]), -1)
+    strictEqual(Ordering.combineMany(0, []), 0)
+    strictEqual(Ordering.combineMany(1, []), 1)
+    strictEqual(Ordering.combineMany(-1, []), -1)
+    strictEqual(Ordering.combineMany(0, [0, 0, 0]), 0)
+    strictEqual(Ordering.combineMany(0, [0, 0, 1]), 1)
+    strictEqual(Ordering.combineMany(1, [0, 0, -1]), 1)
+    strictEqual(Ordering.combineMany(-1, [0, 0, 1]), -1)
   })
 })
