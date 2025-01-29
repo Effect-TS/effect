@@ -25,6 +25,11 @@ describe("Logger", () => {
     assertFalse(Logger.isLogger(null))
     assertFalse(Logger.isLogger(undefined))
   })
+
+  it(".pipe", () => {
+    strictEqual(Logger.stringLogger.pipe(identity), Logger.stringLogger)
+    strictEqual(logLevelInfo.pipe(identity), logLevelInfo)
+  })
 })
 
 describe("withLeveledConsole", () => {
@@ -167,7 +172,8 @@ with line breaks" good_key3="I_have=a"`
   })
 })
 
-describe("logfmtLogger", () => {
+// Adding sequential to the describe block because otherwise the "batched" test fails locally
+describe.sequential("logfmtLogger", () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -230,11 +236,6 @@ describe("logfmtLogger", () => {
       result,
       `timestamp=${date.toJSON()} level=INFO fiber= message="My\\nmessage" imma_span__=7ms I_am_also_a_bad_key_name="{\\"return\\":\\"cool\\\\nvalue\\"}" good_key="{\\"returnWithSpace\\":\\"cool\\\\nvalue or not\\"}" good_bool=true good_number=123 good_key2="I am a good value\\nwith line breaks" good_key3="I_have=a"`
     )
-  })
-
-  it(".pipe", () => {
-    strictEqual(Logger.stringLogger.pipe(identity), Logger.stringLogger)
-    strictEqual(logLevelInfo.pipe(identity), logLevelInfo)
   })
 
   it("objects", () => {
