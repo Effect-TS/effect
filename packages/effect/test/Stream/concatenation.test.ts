@@ -3,8 +3,9 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("concat - simple example", () =>
@@ -26,7 +27,7 @@ describe("Stream", () => {
           Stream.runCollect
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("concat - finalizer ordering", () =>
@@ -38,6 +39,6 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), ["Second", "First"])
+      deepStrictEqual(Array.from(result), ["Second", "First"])
     }))
 })

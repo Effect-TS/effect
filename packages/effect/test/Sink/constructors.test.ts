@@ -14,8 +14,9 @@ import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("drain - fails if upstream fails", () =>
@@ -25,14 +26,14 @@ describe("Sink", () => {
         Stream.mapEffect(() => Effect.fail("boom!"))
       )
       const result = yield* $(stream, Stream.run(Sink.drain), Effect.exit)
-      assert.deepStrictEqual(result, Exit.fail("boom!"))
+      deepStrictEqual(result, Exit.fail("boom!"))
     }))
 
   it.effect("fromEffect", () =>
     Effect.gen(function*($) {
       const sink = Sink.fromEffect(Effect.succeed("ok"))
       const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink))
-      assert.deepStrictEqual(result, "ok")
+      deepStrictEqual(result, "ok")
     }))
 
   it.effect("fromQueue - should enqueue all elements", () =>
@@ -40,7 +41,7 @@ describe("Sink", () => {
       const queue = yield* $(Queue.unbounded<number>())
       yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromQueue(queue)))
       const result = yield* $(Queue.takeAll(queue))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("fromQueueWithShutdown - should enqueue all elements and shutdown the queue", () =>
@@ -49,8 +50,8 @@ describe("Sink", () => {
       yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromQueue(queue, { shutdown: true })))
       const enqueuedValues = yield* $(Queue.takeAll(queue))
       const isShutdown = yield* $(Queue.isShutdown(queue))
-      assert.deepStrictEqual(Array.from(enqueuedValues), [1, 2, 3])
-      assert.isTrue(isShutdown)
+      deepStrictEqual(Array.from(enqueuedValues), [1, 2, 3])
+      assertTrue(isShutdown)
     }))
 
   it.effect("fromPubSub - should publish all elements", () =>
@@ -74,7 +75,7 @@ describe("Sink", () => {
       yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromPubSub(pubsub)))
       yield* $(Deferred.succeed(deferred2, void 0))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("fromPubSub(_, { shutdown: true }) - should shutdown the pubsub", () =>
@@ -82,7 +83,7 @@ describe("Sink", () => {
       const pubsub = yield* $(PubSub.unbounded<number>())
       yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromPubSub(pubsub, { shutdown: true })))
       const isShutdown = yield* $(PubSub.isShutdown(pubsub))
-      assert.isTrue(isShutdown)
+      assertTrue(isShutdown)
     }))
 })
 

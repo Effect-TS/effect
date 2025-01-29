@@ -5,8 +5,9 @@ import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("as", () =>
@@ -15,7 +16,7 @@ describe("Sink", () => {
         Stream.range(1, 9),
         Stream.run(pipe(Sink.succeed(1), Sink.as("as")))
       )
-      assert.strictEqual(result, "as")
+      strictEqual(result, "as")
     }))
 
   it.effect("mapInput - happy path", () =>
@@ -25,7 +26,7 @@ describe("Sink", () => {
         Sink.mapInput((input: string) => Number.parseInt(input))
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("mapInput - error", () =>
@@ -35,7 +36,7 @@ describe("Sink", () => {
         Sink.mapInput((input: string) => Number.parseInt(input))
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink), Effect.either)
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 
   it.effect("mapInputChunks - happy path", () =>
@@ -45,7 +46,7 @@ describe("Sink", () => {
         Sink.mapInputChunks<string, number>(Chunk.map((_) => Number.parseInt(_)))
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("mapInputChunks - error", () =>
@@ -55,7 +56,7 @@ describe("Sink", () => {
         Sink.mapInputChunks<string, number>(Chunk.map(Number.parseInt))
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink), Effect.either)
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 
   it.effect("mapInputEffect - happy path", () =>
@@ -65,7 +66,7 @@ describe("Sink", () => {
         Sink.mapInputEffect((s: string) => Effect.try(() => Number.parseInt(s)))
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("mapInputEffect - error", () =>
@@ -75,7 +76,7 @@ describe("Sink", () => {
         Sink.mapInputEffect((s: string) => Effect.try(() => Number.parseInt(s)))
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink), Effect.either)
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 
   it.effect("mapInputEffect - error in transformation", () =>
@@ -93,7 +94,7 @@ describe("Sink", () => {
         )
       )
       const result = yield* $(Stream.make("1", "a"), Stream.run(sink), Effect.flip)
-      assert.deepStrictEqual(result.error, new Cause.RuntimeException("Cannot parse \"a\" to an integer"))
+      deepStrictEqual(result.error, new Cause.RuntimeException("Cannot parse \"a\" to an integer"))
     }))
 
   it.effect("mapInputChunksEffect - happy path", () =>
@@ -109,7 +110,7 @@ describe("Sink", () => {
         )
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("mapInputChunksEffect - error", () =>
@@ -125,7 +126,7 @@ describe("Sink", () => {
         )
       )
       const result = yield* $(Stream.make("1", "2", "3"), Stream.run(sink), Effect.either)
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 
   it.effect("mapInputChunksEffect - error in transformation", () =>
@@ -149,7 +150,7 @@ describe("Sink", () => {
         )
       )
       const result = yield* $(Stream.make("1", "a"), Stream.run(sink), Effect.flip)
-      assert.deepStrictEqual(result.error, new Cause.RuntimeException("Cannot parse \"a\" to an integer"))
+      deepStrictEqual(result.error, new Cause.RuntimeException("Cannot parse \"a\" to an integer"))
     }))
 
   it.effect("map", () =>
@@ -158,7 +159,7 @@ describe("Sink", () => {
         Stream.range(1, 9),
         Stream.run(pipe(Sink.succeed(1), Sink.map((n) => `${n}`)))
       )
-      assert.strictEqual(result, "1")
+      strictEqual(result, "1")
     }))
 
   it.effect("mapEffect - happy path", () =>
@@ -167,7 +168,7 @@ describe("Sink", () => {
         Stream.range(1, 9),
         Stream.run(pipe(Sink.succeed(1), Sink.mapEffect((n) => Effect.succeed(n + 1))))
       )
-      assert.strictEqual(result, 2)
+      strictEqual(result, 2)
     }))
 
   it.effect("mapEffect - error", () =>
@@ -177,7 +178,7 @@ describe("Sink", () => {
         Stream.run(pipe(Sink.succeed(1), Sink.mapEffect(() => Effect.fail("fail")))),
         Effect.flip
       )
-      assert.strictEqual(result, "fail")
+      strictEqual(result, "fail")
     }))
 
   it.effect("mapError", () =>
@@ -187,6 +188,6 @@ describe("Sink", () => {
         Stream.run(pipe(Sink.fail("fail"), Sink.mapError((s) => s + "!"))),
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("fail!"))
+      deepStrictEqual(result, Either.left("fail!"))
     }))
 })

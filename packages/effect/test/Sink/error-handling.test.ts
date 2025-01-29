@@ -3,8 +3,9 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("propagates errors", () =>
@@ -24,6 +25,6 @@ describe("Sink", () => {
         ),
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(ErrorMapped))
+      deepStrictEqual(result, Exit.fail(ErrorMapped))
     }))
 })

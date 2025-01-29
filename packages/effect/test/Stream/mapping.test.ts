@@ -10,9 +10,10 @@ import { identity, pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("map", () =>
@@ -23,7 +24,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.map(f), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.map(f)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("mapAccum", () =>
@@ -33,7 +34,7 @@ describe("Stream", () => {
         Stream.mapAccum(0, (acc, curr) => [acc + curr, acc + curr]),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("mapAccumEffect - happy path", () =>
@@ -43,7 +44,7 @@ describe("Stream", () => {
         Stream.mapAccumEffect(0, (acc, curr) => Effect.succeed([acc + curr, acc + curr])),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("mapAccumEffect - error", () =>
@@ -54,7 +55,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 
   it.effect("mapAccumEffect - laziness on chunks", () =>
@@ -68,7 +69,7 @@ describe("Stream", () => {
         Stream.either,
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         [Either.right(1), Either.right(2), Either.left("boom")]
       )
@@ -82,7 +83,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.mapConcat(f), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.flatMap((n) => f(n))))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("mapConcatChunk", () =>
@@ -93,7 +94,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.mapConcatChunk(f), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.flatMap((n) => f(n))))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("mapConcatChunkEffect - happy path", () =>
@@ -104,7 +105,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.mapConcatChunkEffect((n) => Effect.succeed(f(n))), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.flatMap((n) => f(n))))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("mapConcatChunkEffect - error", () =>
@@ -115,7 +116,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 
   it.effect("mapConcatEffect - happy path", () =>
@@ -126,7 +127,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.mapConcatEffect((n) => Effect.succeed(f(n))), Stream.runCollect),
         result2: pipe(Stream.runCollect(stream), Effect.map(Chunk.flatMap((n) => f(n))))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("mapConcatEffect - error", () =>
@@ -137,7 +138,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 
   it.effect("mapError", () =>
@@ -148,7 +149,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left(123))
+      deepStrictEqual(result, Either.left(123))
     }))
 
   it.effect("mapErrorCause", () =>
@@ -159,7 +160,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left(123))
+      deepStrictEqual(result, Either.left(123))
     }))
 
   it.effect("mapEffect - Effect.forEach equivalence", () =>
@@ -171,7 +172,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.mapEffect(f), Stream.runCollect),
         result2: pipe(chunk, Effect.forEach(f))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("mapEffect - laziness on chunks", () =>
@@ -186,7 +187,7 @@ describe("Stream", () => {
         Stream.either,
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         [Either.right(1), Either.right(2), Either.left("boom")]
       )
@@ -202,7 +203,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.mapEffect(f, { concurrency }), Stream.runCollect),
         result2: Effect.forEach(chunk, f, { concurrency })
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("mapEffectPar - ordering when parallelism is 1", () =>
@@ -214,7 +215,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Queue.takeAll(queue))
-      assert.deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4, 5, 6, 7, 8])
+      deepStrictEqual(Array.from(result), [0, 1, 2, 3, 4, 5, 6, 7, 8])
     }))
 
   it.effect("mapEffectPar - interruption propagation", () =>
@@ -235,7 +236,7 @@ describe("Stream", () => {
       yield* $(Deferred.await(latch))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("mapEffectPar - guarantees ordering", () =>
@@ -247,7 +248,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.mapEffect(Effect.succeed), Stream.runCollect),
         result2: pipe(stream, Stream.mapEffect(Effect.succeed, { concurrency: n }), Stream.runCollect)
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("mapEffectPar - awaits child fibers properly", () =>
@@ -259,7 +260,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.isFalse(Exit.isInterrupted(result))
+      assertFalse(Exit.isInterrupted(result))
     }))
 
   it.effect("mapEffectPar - interrupts pending tasks when one of the tasks fails", () =>
@@ -294,8 +295,8 @@ describe("Stream", () => {
         Effect.exit
       )
       const count = yield* $(Ref.get(ref))
-      assert.strictEqual(count, 2)
-      assert.deepStrictEqual(result, Exit.fail("boom"))
+      strictEqual(count, 2)
+      deepStrictEqual(result, Exit.fail("boom"))
     }))
 
   it.effect("mapEffectPar - propagates the correct error with subsequent calls to mapEffectPar (ZIO #4514)", () =>
@@ -307,7 +308,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("boom"))
+      deepStrictEqual(result, Either.left("boom"))
     }))
 
   it.effect("mapEffectPar - propagates the error of the original stream", () =>
@@ -321,7 +322,7 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.seconds(5)))
       const exit = yield* $(Fiber.await(fiber))
-      assert.deepStrictEqual(exit, Exit.fail(new Cause.RuntimeException("boom")))
+      deepStrictEqual(exit, Exit.fail(new Cause.RuntimeException("boom")))
     }))
 
   it.effect("mapEffectParUnordered - mapping with failure is failure", () =>
@@ -332,7 +333,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("fail"))
+      deepStrictEqual(result, Exit.fail("fail"))
     }))
 
   it.effect("mapEffect with key", () =>
@@ -345,8 +346,8 @@ describe("Stream", () => {
       )
       yield* _(TestClock.adjust(40))
       const exit = fiber.unsafePoll()
-      assert(Exit.isExit(exit))
-      assert(Exit.isSuccess(exit))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(exit.value), [10, 20, 30, 40])
+      assertTrue(Exit.isExit(exit))
+      assertTrue(Exit.isSuccess(exit))
+      deepStrictEqual(Chunk.toReadonlyArray(exit.value), [10, 20, 30, 40])
     }))
 })

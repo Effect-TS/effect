@@ -1,7 +1,8 @@
 import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("onStart", () =>
@@ -12,8 +13,8 @@ describe("Stream", () => {
         Stream.onStart(Effect.sync(() => counter++)),
         Stream.runCollect
       )
-      assert.strictEqual(counter, 1)
-      assert.deepStrictEqual(Array.from(result), [1, 1])
+      strictEqual(counter, 1)
+      deepStrictEqual(Array.from(result), [1, 1])
     }))
 
   it.effect("onEnd", () =>
@@ -24,7 +25,7 @@ describe("Stream", () => {
         Stream.onEnd(Effect.sync(() => counter++)),
         Stream.runCollect
       )
-      assert.strictEqual(counter, 1)
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      strictEqual(counter, 1)
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 })

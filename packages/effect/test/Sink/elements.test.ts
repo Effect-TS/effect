@@ -4,8 +4,9 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("every", () =>
@@ -16,7 +17,7 @@ describe("Sink", () => {
         Stream.fromChunk(chunk),
         Stream.run(Sink.every(predicate))
       )
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("head", () =>
@@ -25,7 +26,7 @@ describe("Sink", () => {
         Stream.fromChunks(Chunk.range(1, 10), Chunk.range(1, 3), Chunk.range(2, 5)),
         Stream.run(Sink.head())
       )
-      assert.deepStrictEqual(result, Option.some(1))
+      deepStrictEqual(result, Option.some(1))
     }))
 
   it.effect("last", () =>
@@ -34,7 +35,7 @@ describe("Sink", () => {
         Stream.fromChunks(Chunk.range(1, 10), Chunk.range(1, 3), Chunk.range(2, 5)),
         Stream.run(Sink.last())
       )
-      assert.deepStrictEqual(result, Option.some(5))
+      deepStrictEqual(result, Option.some(5))
     }))
 
   it.effect("take - repeats until the source is exhausted", () =>
@@ -49,7 +50,7 @@ describe("Sink", () => {
         ),
         Stream.run(Sink.collectAllFrom(Sink.take<number>(3)))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2, 3], [4, 5, 6], [7, 8, 9], []]
       )
@@ -63,7 +64,7 @@ describe("Sink", () => {
         Stream.fromChunk(chunk),
         Stream.run(Sink.some(predicate))
       )
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("sum", () =>
@@ -81,7 +82,7 @@ describe("Sink", () => {
           Sink.map(Chunk.reduce(0, (x, y) => x + y))
         ))
       )
-      assert.strictEqual(result, 45)
+      strictEqual(result, 45)
     }))
 
   it.effect("take", () =>
@@ -105,11 +106,11 @@ describe("Sink", () => {
         ),
         Effect.scoped
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(chunk),
         Array.from(pipe(Chunk.flatten(chunks), Chunk.take(n)))
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(leftover),
         Array.from(pipe(Chunk.flatten(chunks), Chunk.drop(n)))
       )

@@ -6,9 +6,10 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import type * as Tracer from "effect/Tracer"
-import { assert, describe, expect } from "vitest"
+import { describe, expect } from "vitest"
 
 interface StringService {
   readonly string: string
@@ -29,7 +30,7 @@ describe("Stream", () => {
         Stream.provideContext(context),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [{ string: "test" }])
+      deepStrictEqual(Chunk.toReadonlyArray(result), [{ string: "test" }])
     }))
 
   it.effect("contextWith", () =>
@@ -45,7 +46,7 @@ describe("Stream", () => {
         Stream.runHead,
         Effect.flatten
       )
-      assert.deepStrictEqual(result, { string: "test" })
+      deepStrictEqual(result, { string: "test" })
     }))
 
   it.effect("contextWithEffect - success", () =>
@@ -63,7 +64,7 @@ describe("Stream", () => {
         Stream.runHead,
         Effect.flatten
       )
-      assert.deepStrictEqual(result, { string: "test" })
+      deepStrictEqual(result, { string: "test" })
     }))
 
   it.effect("contextWithEffect - fails", () =>
@@ -79,7 +80,7 @@ describe("Stream", () => {
         Stream.runHead,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("boom"))
+      deepStrictEqual(result, Exit.fail("boom"))
     }))
 
   it.effect("contextWithStream - success", () =>
@@ -97,7 +98,7 @@ describe("Stream", () => {
         Stream.runHead,
         Effect.flatten
       )
-      assert.deepStrictEqual(result, { string: "test" })
+      deepStrictEqual(result, { string: "test" })
     }))
 
   it.effect("contextWithStream - fails", () =>
@@ -113,7 +114,7 @@ describe("Stream", () => {
         Stream.runHead,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("boom"))
+      deepStrictEqual(result, Exit.fail("boom"))
     }))
 
   it.effect("provide", () =>
@@ -126,7 +127,7 @@ describe("Stream", () => {
         Stream.map((s) => s.string),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
+      deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("provideServiceStream", () =>
@@ -139,7 +140,7 @@ describe("Stream", () => {
         Stream.map((s) => s.string),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
+      deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("serviceWith", () =>
@@ -149,7 +150,7 @@ describe("Stream", () => {
         Stream.provideLayer(Layer.succeed(StringService, { string: "test" })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
+      deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("serviceWithEffect", () =>
@@ -159,7 +160,7 @@ describe("Stream", () => {
         Stream.provideLayer(Layer.succeed(StringService, { string: "test" })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
+      deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("serviceWithStream", () =>
@@ -169,7 +170,7 @@ describe("Stream", () => {
         Stream.provideLayer(Layer.succeed(StringService, { string: "test" })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
+      deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("deep provide", () =>
@@ -189,7 +190,7 @@ describe("Stream", () => {
         Stream.provideSomeLayer(L0)
       )
       yield* $(Stream.runDrain(stream))
-      assert.deepStrictEqual(messages, ["test1", "test1", "test2", "test2"])
+      deepStrictEqual(messages, ["test1", "test1", "test2", "test2"])
     }))
 
   it.effect("withSpan", () =>

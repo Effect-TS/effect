@@ -10,10 +10,11 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as TestEnvironment from "effect/TestContext"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("forever", () =>
@@ -25,7 +26,7 @@ describe("Stream", () => {
         Stream.runForEachWhile(() => Ref.modify(ref, (sum) => [sum >= 9 ? false : true, sum + 1] as const))
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
 
   it.effect("repeat", () =>
@@ -35,7 +36,7 @@ describe("Stream", () => {
         Stream.repeat(Schedule.recurs(4)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 1, 1, 1, 1])
+      deepStrictEqual(Array.from(result), [1, 1, 1, 1, 1])
     }))
 
   it.effect("tick", () =>
@@ -48,7 +49,7 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.millis(50)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [undefined, undefined])
+      deepStrictEqual(Array.from(result), [undefined, undefined])
     }))
 
   it.effect("repeat - short circuits", () =>
@@ -64,7 +65,7 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.millis(50)))
       yield* $(Fiber.join(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [1, 1])
+      deepStrictEqual(Array.from(result), [1, 1])
     }))
 
   it.effect("repeat - does not swallow errors on a repetition", () =>
@@ -79,7 +80,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("boom"))
+      deepStrictEqual(result, Exit.fail("boom"))
     }))
 
   it.effect("repeatEither", () =>
@@ -89,7 +90,7 @@ describe("Stream", () => {
         Stream.repeatEither(Schedule.recurs(4)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         Either.right(1),
         Either.right(1),
         Either.left(0),
@@ -109,7 +110,7 @@ describe("Stream", () => {
         Stream.take(2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 1])
+      deepStrictEqual(Array.from(result), [1, 1])
     }))
 
   it.effect("repeatEffectOption - emit elements until pull fails with None", () =>
@@ -129,7 +130,7 @@ describe("Stream", () => {
         Stream.take(10),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4])
     }))
 
   it.effect("repeatEffectOption - stops evaluating the effect once it fails with None", () =>
@@ -150,7 +151,7 @@ describe("Stream", () => {
         Effect.scoped
       )
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 1)
+      strictEqual(result, 1)
     }))
 
   it.effect("repeatEffectWithSchedule", () =>
@@ -168,7 +169,7 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.millis(50)))
       yield* $(Fiber.join(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [1, 1])
+      deepStrictEqual(Array.from(result), [1, 1])
     }), 10000)
 
   it.it("repeatEffectWithSchedule - allow schedule to rely on effect value", () =>
@@ -193,7 +194,7 @@ describe("Stream", () => {
         )
       })
       const result = await Effect.runPromise(effect)
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, length)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, length)))
     })))
 
   it.effect("repeatEffectWithSchedule - should perform repetitions in addition to the first execution (one repetition)", () =>
@@ -202,7 +203,7 @@ describe("Stream", () => {
         Stream.repeatEffectWithSchedule(Effect.succeed(1), Schedule.once),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 1])
+      deepStrictEqual(Array.from(result), [1, 1])
     }))
 
   it.effect("repeatEffectWithSchedule - should perform repetitions in addition to the first execution (zero repetitions)", () =>
@@ -211,7 +212,7 @@ describe("Stream", () => {
         Stream.repeatEffectWithSchedule(Effect.succeed(1), Schedule.stop),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("repeatEffectWithSchedule - emits before delaying according to the schedule", () =>
@@ -229,8 +230,8 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.seconds(1)))
       const result2 = yield* $(Ref.get(ref))
       yield* $(Fiber.interrupt(fiber))
-      assert.strictEqual(result1, 1)
-      assert.strictEqual(result2, 2)
+      strictEqual(result1, 1)
+      strictEqual(result2, 2)
     }))
 
   it.effect("repeatEither - short circuits", () =>
@@ -246,7 +247,7 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.millis(50)))
       yield* $(Fiber.join(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), [1, 1])
+      deepStrictEqual(Array.from(result), [1, 1])
     }))
 
   it.effect("repeatElements - simple", () =>
@@ -256,7 +257,7 @@ describe("Stream", () => {
         Stream.repeatElements(Schedule.once),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["A", "A", "B", "B", "C", "C"])
+      deepStrictEqual(Array.from(result), ["A", "A", "B", "B", "C", "C"])
     }))
 
   it.effect("repeatElements - short circuits in a schedule", () =>
@@ -267,7 +268,7 @@ describe("Stream", () => {
         Stream.take(4),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["A", "A", "B", "B"])
+      deepStrictEqual(Array.from(result), ["A", "A", "B", "B"])
     }))
 
   it.effect("repeatElements - short circuits after schedule", () =>
@@ -278,7 +279,7 @@ describe("Stream", () => {
         Stream.take(3),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["A", "A", "B"])
+      deepStrictEqual(Array.from(result), ["A", "A", "B"])
     }))
 
   it.effect("repeatElementsWith", () =>
@@ -292,6 +293,6 @@ describe("Stream", () => {
         Stream.repeatElementsWith(schedule, { onElement: identity, onSchedule: String }),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["A", "123", "B", "123", "C", "123"])
+      deepStrictEqual(Array.from(result), ["A", "123", "B", "123", "C", "123"])
     }))
 })

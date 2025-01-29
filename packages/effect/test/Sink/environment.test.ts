@@ -3,8 +3,9 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("contextWithSink", () =>
@@ -15,6 +16,6 @@ describe("Sink", () => {
         Sink.provideContext(pipe(Context.empty(), Context.add(tag, "use this")))
       )
       const result = yield* $(Stream.make("ignore this"), Stream.run(sink))
-      assert.strictEqual(result, "use this")
+      strictEqual(result, "use this")
     }))
 })

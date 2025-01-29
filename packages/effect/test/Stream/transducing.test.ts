@@ -4,8 +4,9 @@ import * as Either from "effect/Either"
 import { constTrue, pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("transduce - simple example", () =>
@@ -21,7 +22,7 @@ describe("Stream", () => {
         Stream.map(Chunk.join("")),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["12", "34"])
+      deepStrictEqual(Array.from(result), ["12", "34"])
     }))
 
   it.effect("transduce - no remainder", () =>
@@ -31,7 +32,7 @@ describe("Stream", () => {
         Stream.transduce(Sink.fold(100, (n) => n % 2 === 0, (acc, n) => acc + n)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [101, 105, 104])
+      deepStrictEqual(Array.from(result), [101, 105, 104])
     }))
 
   it.effect("transduce - with a sink that always signals more", () =>
@@ -41,7 +42,7 @@ describe("Stream", () => {
         Stream.transduce(Sink.fold(0, constTrue, (acc, n) => acc + n)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [6])
+      deepStrictEqual(Array.from(result), [6])
     }))
 
   it.effect("transduce - propagates scope error", () =>
@@ -52,6 +53,6 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Woops"))
+      deepStrictEqual(result, Either.left("Woops"))
     }))
 })

@@ -8,10 +8,11 @@ import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as TestServices from "effect/TestServices"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("merge - slower stream", () =>
@@ -25,7 +26,7 @@ describe("Stream", () => {
         Stream.merge(stream1, stream2),
         Stream.runCollect
       )
-      assert.deepStrictEqual([...result], [1, 2, 3, 4, 5, 6, 7, 8])
+      deepStrictEqual([...result], [1, 2, 3, 4, 5, 6, 7, 8])
     }))
 
   it.effect("mergeAll - short circuiting", () =>
@@ -35,7 +36,7 @@ describe("Stream", () => {
         Stream.take(1),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("mergeWithTag", (ctx) =>
@@ -69,7 +70,7 @@ describe("Stream", () => {
       yield* $(Queue.shutdown(queue1), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
       yield* $(Queue.offer(queue2, 3))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("mergeHaltEither - interrupts pulling on finish", () =>
@@ -81,7 +82,7 @@ describe("Stream", () => {
         Stream.merge(stream2, { haltStrategy: "left" }),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("mergeHaltRight - terminates as soon as the second stream terminates", () =>
@@ -101,7 +102,7 @@ describe("Stream", () => {
       yield* $(Queue.shutdown(queue2), Effect.zipRight(TestClock.adjust(Duration.seconds(1))))
       yield* $(Queue.offer(queue1, 3))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("mergeHaltEither - terminates as soon as either stream terminates", () =>
@@ -120,7 +121,7 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.seconds(1)))
       yield* $(Queue.offer(queue2, 1))
       const result = yield* $(Fiber.join(fiber))
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
 
   it.effect("merge - equivalence with set union", () =>
@@ -143,7 +144,7 @@ describe("Stream", () => {
           Effect.map(HashSet.fromIterable)
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("merge - fails as soon as one stream fails", () =>
@@ -154,7 +155,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.isTrue(Exit.isFailure(result))
+      assertTrue(Exit.isFailure(result))
     }))
 
   it.effect("mergeWith - prioritizes failures", () =>
@@ -167,6 +168,6 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 })

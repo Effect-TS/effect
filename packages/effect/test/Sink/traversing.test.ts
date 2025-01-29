@@ -5,8 +5,9 @@ import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("findEffect - with head sink", () =>
@@ -29,7 +30,7 @@ describe("Sink", () => {
           )
         )
       )
-      assert.isTrue(result.every(identity))
+      assertTrue(result.every(identity))
     }))
 
   it.effect("findEffect - take sink across multiple chunks", () =>
@@ -44,7 +45,7 @@ describe("Sink", () => {
         Stream.run(sink),
         Effect.map(Option.getOrElse(() => Chunk.empty<number>()))
       )
-      assert.deepStrictEqual(Array.from(result), [5, 6, 7, 8])
+      deepStrictEqual(Array.from(result), [5, 6, 7, 8])
     }))
 
   it.effect("findEffect - empty stream terminates with none", () =>
@@ -57,7 +58,7 @@ describe("Sink", () => {
         Stream.fromIterable([]),
         Stream.run(sink)
       )
-      assert.deepStrictEqual(result, Option.none())
+      deepStrictEqual(result, Option.none())
     }))
 
   it.effect("findEffect - unsatisfied condition terminates with none", () =>
@@ -73,7 +74,7 @@ describe("Sink", () => {
         Stream.fromIterable([1, 2]),
         Stream.run(sink)
       )
-      assert.deepStrictEqual(result, Option.none())
+      deepStrictEqual(result, Option.none())
     }))
 
   it.effect("forEachWhile - handles leftovers", () =>
@@ -85,8 +86,8 @@ describe("Sink", () => {
           Sink.collectLeftover
         ))
       )
-      assert.isUndefined(result)
-      assert.deepStrictEqual(Array.from(value), [4])
+      strictEqual(result, undefined)
+      deepStrictEqual(Array.from(value), [4])
     }))
 
   it.effect("splitWhere - should split a stream on a predicate and run each part into the sink", () =>
@@ -97,7 +98,7 @@ describe("Sink", () => {
         Stream.transduce(pipe(Sink.collectAll<number>(), Sink.splitWhere((n) => n % 2 === 0))),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1], [2, 3], [4, 5], [6, 7], [8]]
       )
@@ -111,7 +112,7 @@ describe("Sink", () => {
         Stream.transduce(pipe(Sink.collectAll<number>(), Sink.splitWhere((n) => n % 2 === 0))),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1], [2, 3], [4, 5], [6, 7], [8]]
       )
@@ -125,7 +126,7 @@ describe("Sink", () => {
         Stream.transduce(pipe(Sink.collectAll<number>(), Sink.splitWhere((n) => n % 2 !== 0))),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2], [3, 4], [5, 6], [7, 8]]
       )

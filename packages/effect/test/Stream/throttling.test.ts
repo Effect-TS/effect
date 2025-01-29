@@ -10,10 +10,11 @@ import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
+import { assertTrue, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("throttleEnforce - free elements", () =>
@@ -23,7 +24,7 @@ describe("Stream", () => {
         Stream.throttle({ cost: () => 0, units: 0, duration: Duration.infinity, strategy: "enforce" }),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4])
     }))
 
   it.effect("throttleEnforce - no bandwidth", () =>
@@ -33,7 +34,7 @@ describe("Stream", () => {
         Stream.throttle({ cost: () => 1, units: 0, duration: Duration.infinity, strategy: "enforce" }),
         Stream.runCollect
       )
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
 
   it.effect("throttleEnforce - refill bucket tokens", () =>
@@ -47,7 +48,7 @@ describe("Stream", () => {
       )
       yield* _(TestClock.adjust(Duration.seconds(1)))
       const result = yield* _(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [0, 2, 4, 6, 8])
+      deepStrictEqual(Array.from(result), [0, 2, 4, 6, 8])
     }))
 
   it.effect("throttleShape", () =>
@@ -79,7 +80,7 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.seconds(8)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(result, [[1], [2], [3]])
+      deepStrictEqual(result, [[1], [2], [3]])
     }))
 
   it.effect("throttleShape - infinite bandwidth", () =>
@@ -106,7 +107,7 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      assert.deepStrictEqual(result, [[1], [2], 0])
+      deepStrictEqual(result, [[1], [2], 0])
     }))
 
   it.effect("throttleShape - with burst", () =>
@@ -139,7 +140,7 @@ describe("Stream", () => {
         Effect.fork
       )
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(result, [[1], [2], [3]])
+      deepStrictEqual(result, [[1], [2], [3]])
     }))
 
   it.effect("throttleShape - free elements", () =>
@@ -154,7 +155,7 @@ describe("Stream", () => {
         }),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4])
     }))
 
   it.effect("debounce - should drop earlier chunks within waitTime", () =>
@@ -193,7 +194,7 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.millis(3500)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[3, 4], [6, 7]]
       )
@@ -220,7 +221,7 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.seconds(1)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[5, 6]]
       )
@@ -247,7 +248,7 @@ describe("Stream", () => {
       ], { concurrency: 3, discard: true }))
       yield* $(TestClock.adjust(Duration.seconds(1)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[3]]
       )
@@ -264,7 +265,7 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.seconds(3)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [3])
+      deepStrictEqual(Array.from(result), [3])
     }))
 
   it.effect("debounce - should fail immediately", () =>
@@ -275,7 +276,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(Option.none()))
+      deepStrictEqual(result, Exit.fail(Option.none()))
     }))
 
   it.effect("debounce - should work with empty streams", () =>
@@ -285,7 +286,7 @@ describe("Stream", () => {
         Stream.debounce(Duration.seconds(5)),
         Stream.runCollect
       )
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
 
   it.effect("debounce - should pick last element from every chunk", () =>
@@ -298,7 +299,7 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.seconds(1)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [3])
+      deepStrictEqual(Array.from(result), [3])
     }))
 
   it.effect("debounce - should interrupt fibers properly", () =>
@@ -328,7 +329,7 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.millis(100)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [3])
+      deepStrictEqual(Array.from(result), [3])
     }))
 
   it.effect("debounce - should interrupt children fiber on stream interruption", () =>
@@ -347,6 +348,6 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.minutes(1)))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 })

@@ -4,8 +4,9 @@ import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("find", () =>
@@ -24,7 +25,7 @@ describe("Stream", () => {
           }))
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("findEffect - simple example", () =>
@@ -46,7 +47,7 @@ describe("Stream", () => {
           )
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("findEffect - throws correct error", () =>
@@ -61,7 +62,7 @@ describe("Stream", () => {
         Stream.either,
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         [Either.left("boom")]
       )

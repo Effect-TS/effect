@@ -6,8 +6,9 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("buffer - maintains elements and ordering", () =>
@@ -22,7 +23,7 @@ describe("Stream", () => {
         Stream.buffer({ capacity: 2 }),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.flatten(chunks)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.flatten(chunks)))
     }))
 
   it.effect("buffer - buffers a stream with a failure", () =>
@@ -35,7 +36,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("buffer - fast producer progresses independently", () =>
@@ -58,8 +59,8 @@ describe("Stream", () => {
       const result1 = yield* $(stream, Stream.take(2), Stream.runCollect)
       yield* $(Deferred.await(latch))
       const result2 = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result1), [1, 2])
-      assert.deepStrictEqual(Array.from(result2), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result1), [1, 2])
+      deepStrictEqual(Array.from(result2), [1, 2, 3, 4])
     }))
 
   it.effect("bufferChunks - maintains elements and ordering", () =>
@@ -74,7 +75,7 @@ describe("Stream", () => {
         Stream.bufferChunks({ capacity: 2 }),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.flatten(chunks)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.flatten(chunks)))
     }))
 
   it.effect("bufferChunks - buffers a stream with a failure", () =>
@@ -87,7 +88,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("bufferChunks - fast producer progresses independently", () =>
@@ -110,8 +111,8 @@ describe("Stream", () => {
       const result1 = yield* $(stream, Stream.take(2), Stream.runCollect)
       yield* $(Deferred.await(latch))
       const result2 = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result1), [1, 2])
-      assert.deepStrictEqual(Array.from(result2), [1, 2, 3, 4])
+      deepStrictEqual(Array.from(result1), [1, 2])
+      deepStrictEqual(Array.from(result2), [1, 2, 3, 4])
     }))
 
   it.effect("bufferChunksDropping - buffers a stream with a failure", () =>
@@ -125,7 +126,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("bufferChunksDropping - fast producer progress independently", () =>
@@ -200,9 +201,9 @@ describe("Stream", () => {
       const expected1 = [0]
       const expected2 = [1, 2, 3, 4, 5, 6, 7, 8]
       const expected3 = [1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 21, 22, 23, 24]
-      assert.deepStrictEqual(Array.from(result1), expected1)
-      assert.deepStrictEqual(Array.from(result2), expected2)
-      assert.deepStrictEqual(Array.from(result3), expected3)
+      deepStrictEqual(Array.from(result1), expected1)
+      deepStrictEqual(Array.from(result2), expected2)
+      deepStrictEqual(Array.from(result3), expected3)
     }))
 
   it.effect("bufferChunksSliding - buffers a stream with a failure", () =>
@@ -216,7 +217,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("bufferChunksSliding - fast producer progress independently", () =>
@@ -291,9 +292,9 @@ describe("Stream", () => {
       const expected1 = [0]
       const expected2 = [9, 10, 11, 12, 13, 14, 15, 16]
       const expected3 = [9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25]
-      assert.deepStrictEqual(Array.from(result1), expected1)
-      assert.deepStrictEqual(Array.from(result2), expected2)
-      assert.deepStrictEqual(Array.from(result3), expected3)
+      deepStrictEqual(Array.from(result1), expected1)
+      deepStrictEqual(Array.from(result2), expected2)
+      deepStrictEqual(Array.from(result3), expected3)
     }))
 
   it.effect("bufferDropping - buffers a stream with a failure", () =>
@@ -307,7 +308,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("bufferDropping - fast producer progress independently", () =>
@@ -382,9 +383,9 @@ describe("Stream", () => {
       const expected1 = [0]
       const expected2 = [1, 2, 3, 4, 5, 6, 7, 8]
       const expected3 = [1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 21, 22, 23, 24]
-      assert.deepStrictEqual(Array.from(result1), expected1)
-      assert.deepStrictEqual(Array.from(result2), expected2)
-      assert.deepStrictEqual(Array.from(result3), expected3)
+      deepStrictEqual(Array.from(result1), expected1)
+      deepStrictEqual(Array.from(result2), expected2)
+      deepStrictEqual(Array.from(result3), expected3)
     }))
 
   it.effect("bufferSliding - buffers a stream with a failure", () =>
@@ -398,7 +399,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("bufferSliding - fast producer progress independently", () =>
@@ -469,9 +470,9 @@ describe("Stream", () => {
       const expected1 = [0]
       const expected2 = [9, 10, 11, 12, 13, 14, 15, 16]
       const expected3 = [9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24, -1]
-      assert.deepStrictEqual(Array.from(result1), expected1)
-      assert.deepStrictEqual(Array.from(result2), expected2)
-      assert.deepStrictEqual(Array.from(result3), expected3)
+      deepStrictEqual(Array.from(result1), expected1)
+      deepStrictEqual(Array.from(result2), expected2)
+      deepStrictEqual(Array.from(result3), expected3)
     }))
 
   it.effect("bufferSliding - propagates defects", () =>
@@ -482,7 +483,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(new Cause.RuntimeException("boom")))
+      deepStrictEqual(result, Exit.die(new Cause.RuntimeException("boom")))
     }))
 
   it.effect("bufferUnbounded - buffers the stream", () =>
@@ -493,7 +494,7 @@ describe("Stream", () => {
         Stream.buffer({ capacity: "unbounded" }),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(chunk))
+      deepStrictEqual(Array.from(result), Array.from(chunk))
     }))
 
   it.effect("bufferUnbounded -  buffers a stream with a failure", () =>
@@ -506,7 +507,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("bufferUnbounded - fast producer progress independently", () =>
@@ -527,7 +528,7 @@ describe("Stream", () => {
       const result1 = yield* $(stream, Stream.take(2), Stream.runCollect)
       yield* $(Deferred.await(latch))
       const result2 = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result1), [1, 2])
-      assert.deepStrictEqual(Array.from(result2), Array.from(Chunk.range(1, 999)))
+      deepStrictEqual(Array.from(result1), [1, 2])
+      deepStrictEqual(Array.from(result2), Array.from(Chunk.range(1, 999)))
     }))
 })

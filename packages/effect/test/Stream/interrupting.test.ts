@@ -11,10 +11,11 @@ import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("interruptWhen - preserves the scope of inner fibers", () =>
@@ -35,7 +36,7 @@ describe("Stream", () => {
         Stream.take(3)
       )
       const result = yield* $(Stream.runDrain(stream))
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
 
   it.effect("interruptWhen - interrupts the current element", () =>
@@ -60,7 +61,7 @@ describe("Stream", () => {
       )
       yield* $(Fiber.await(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("interruptWhen - propagates errors", () =>
@@ -73,7 +74,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("fail"))
+      deepStrictEqual(result, Either.left("fail"))
     }))
 
   it.effect("interruptWhenDeferred - interrupts the current element", () =>
@@ -98,7 +99,7 @@ describe("Stream", () => {
       )
       yield* $(Fiber.await(fiber))
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("interruptWhenDeferred - propagates errors", () =>
@@ -111,7 +112,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("fail"))
+      deepStrictEqual(result, Either.left("fail"))
     }))
 
   it.effect("interruptAfter - halts after the given duration", () =>
@@ -145,7 +146,7 @@ describe("Stream", () => {
       )
       yield* $(coordination.offer)
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1], [2]]
       )
@@ -163,7 +164,7 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.seconds(6)))
       yield* $(Queue.offer(queue, 1))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("interruptWhen - interrupts the effect", () =>
@@ -186,7 +187,7 @@ describe("Stream", () => {
       yield* TestClock.adjust("1 seconds")
       yield* fiber.await
 
-      assert.strictEqual(interrupted, true)
+      assertTrue(interrupted)
     }))
 
   it.effect("forked children are not interrupted early by interruptWhen", () =>
@@ -209,6 +210,6 @@ describe("Stream", () => {
       const result = yield* Ref.get(ref).pipe(
         Effect.repeat({ until: (n) => n >= 10 })
       )
-      assert.strictEqual(result, 10)
+      assertTrue(result)
     }))
 })

@@ -3,8 +3,9 @@ import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import { assertTrue } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Sink", () => {
   it.effect("ensuring - happy path", () =>
@@ -15,7 +16,7 @@ describe("Sink", () => {
         Stream.run(pipe(Sink.drain, Sink.ensuring(Ref.set(ref, true))))
       )
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("ensuring - error", () =>
@@ -27,6 +28,6 @@ describe("Sink", () => {
         Effect.ignore
       )
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 })

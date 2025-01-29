@@ -8,9 +8,10 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("retry - retries a failing stream", () =>
@@ -26,7 +27,7 @@ describe("Stream", () => {
         Stream.take(2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [0, 1])
+      deepStrictEqual(Array.from(result), [0, 1])
     }))
 
   it.effect("retry - cleans up resources before restarting the stream", () =>
@@ -48,7 +49,7 @@ describe("Stream", () => {
         Stream.take(2),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [0, 1])
+      deepStrictEqual(Array.from(result), [0, 1])
     }))
 
   it.effect("retry - retries a failing stream according to a schedule", () =>
@@ -74,7 +75,7 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.seconds(2)))
       yield* $(Fiber.interrupt(fiber))
       const result = yield* $(Ref.get(ref), Effect.map(Chunk.map((n) => new Date(n).getSeconds())))
-      assert.deepStrictEqual(Array.from(result), [3, 1, 0])
+      deepStrictEqual(Array.from(result), [3, 1, 0])
     }))
 
   it.effect("retry - reset the schedule after a successful pull", () =>
@@ -111,6 +112,6 @@ describe("Stream", () => {
       yield* $(TestClock.adjust(Duration.seconds(1)))
       yield* $(Fiber.join(fiber))
       const result = yield* $(Ref.get(times))
-      assert.deepStrictEqual(Array.from(result), [4, 3, 3, 1, 0])
+      deepStrictEqual(Array.from(result), [4, 3, 3, 1, 0])
     }))
 })

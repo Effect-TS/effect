@@ -3,8 +3,9 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("filter", () =>
@@ -15,7 +16,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.filter(f), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.map(Chunk.filter(f)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("filterEffect - simple example", () =>
@@ -26,7 +27,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.filterEffect(f), Stream.runCollect),
         result2: pipe(stream, Stream.runCollect, Effect.flatMap(Effect.filter(f)))
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("filterEffect - laziness on chunks", () =>
@@ -41,7 +42,7 @@ describe("Stream", () => {
         Stream.either,
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         [Either.right(1), Either.right(2), Either.left("boom")]
       )

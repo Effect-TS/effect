@@ -5,9 +5,10 @@ import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("schedule", () =>
@@ -27,7 +28,7 @@ describe("Stream", () => {
       )
       yield* $(TestClock.adjust(Duration.millis(800)))
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         [1, 100],
         [2, 200],
         [3, 300],
@@ -50,6 +51,6 @@ describe("Stream", () => {
         Stream.scheduleWith(schedule, { onElement: (s) => s.toLowerCase(), onSchedule: identity }),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["a", "b", "c", "Done", "a", "b", "c", "Done"])
+      deepStrictEqual(Array.from(result), ["a", "b", "c", "Done", "a", "b", "c", "Done"])
     }))
 })

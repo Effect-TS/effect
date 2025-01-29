@@ -4,8 +4,9 @@ import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("sliding - returns a sliding window", () =>
@@ -61,11 +62,11 @@ describe("Stream", () => {
         Stream.runCollect
       )
       const expected = [[1, 2], [2, 3], [3, 4], [4, 5]]
-      assert.deepStrictEqual(Array.from(result1).map((chunk) => Array.from(chunk)), expected)
-      assert.deepStrictEqual(Array.from(result2).map((chunk) => Array.from(chunk)), expected)
-      assert.deepStrictEqual(Array.from(result3).map((chunk) => Array.from(chunk)), expected)
-      assert.deepStrictEqual(Array.from(result4).map((chunk) => Array.from(chunk)), expected)
-      assert.deepStrictEqual(Array.from(result5).map((chunk) => Array.from(chunk)), expected)
+      deepStrictEqual(Array.from(result1).map((chunk) => Array.from(chunk)), expected)
+      deepStrictEqual(Array.from(result2).map((chunk) => Array.from(chunk)), expected)
+      deepStrictEqual(Array.from(result3).map((chunk) => Array.from(chunk)), expected)
+      deepStrictEqual(Array.from(result4).map((chunk) => Array.from(chunk)), expected)
+      deepStrictEqual(Array.from(result5).map((chunk) => Array.from(chunk)), expected)
     }))
 
   it.effect("sliding - returns all elements if chunkSize is greater than the size of the stream", () =>
@@ -75,7 +76,7 @@ describe("Stream", () => {
         Stream.sliding(6),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result).map((chunk) => Array.from(chunk)), [[1, 2, 3, 4, 5]])
+      deepStrictEqual(Array.from(result).map((chunk) => Array.from(chunk)), [[1, 2, 3, 4, 5]])
     }))
 
   it.effect("sliding - is mostly equivalent to ZStream#grouped when stepSize and chunkSize are equal", () =>
@@ -85,7 +86,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.slidingSize(3, 3), Stream.runCollect),
         result2: pipe(stream, Stream.grouped(3), Stream.runCollect)
       }))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result1).map((chunk) => Array.from(chunk)),
         Array.from(result2).map((chunk) => Array.from(chunk))
       )
@@ -101,13 +102,13 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("Ouch"))
+      deepStrictEqual(result, Either.left("Ouch"))
     }))
 
   it.effect("sliding - should return an empty chunk when the stream is empty", () =>
     Effect.gen(function*($) {
       const result = yield* $(Stream.empty, Stream.sliding(2), Stream.runCollect)
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("sliding - emits elements properly when a failure occurs", () =>
@@ -130,8 +131,8 @@ describe("Stream", () => {
         Effect.either
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(either, Either.left("Ouch"))
-      assert.deepStrictEqual(
+      deepStrictEqual(either, Either.left("Ouch"))
+      deepStrictEqual(
         Array.from(result).map((chunk) => Array.from(chunk)),
         [[1, 2, 3], [4, 5, 6], [7, 8]]
       )

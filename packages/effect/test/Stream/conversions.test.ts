@@ -6,8 +6,9 @@ import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("toQueue", () =>
@@ -34,7 +35,7 @@ describe("Stream", () => {
         Chunk.map(Take.of),
         Chunk.append(Take.end)
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(expected))
+      deepStrictEqual(Array.from(result), Array.from(expected))
     }))
 
   it.effect("toQueueUnbounded", () =>
@@ -60,7 +61,7 @@ describe("Stream", () => {
         Chunk.map(Take.of),
         Chunk.append(Take.end)
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(expected))
+      deepStrictEqual(Array.from(result), Array.from(expected))
     }))
 
   it.effect("toQueueOfElements - propagates defects", () =>
@@ -71,6 +72,6 @@ describe("Stream", () => {
         Effect.flatMap(Queue.take),
         Effect.scoped
       )
-      assert.deepStrictEqual(queue, Exit.die(new Cause.RuntimeException("die")))
+      deepStrictEqual(queue, Exit.die(new Cause.RuntimeException("die")))
     }))
 })

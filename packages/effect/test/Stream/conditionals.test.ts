@@ -1,14 +1,12 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as Stream from "effect/Stream"
-import * as it from "effect/test/utils/extend"
-// import * as Chunk from "effect/Chunk"
-// import * as Either from "effect/Either"
 import { constFalse, constTrue, constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-// import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
+import * as it from "effect/test/utils/extend"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("when - returns the stream if the condition is satisfied", () =>
@@ -18,7 +16,7 @@ describe("Stream", () => {
         result1: pipe(stream, Stream.when(constTrue), Stream.runCollect),
         result2: Stream.runCollect(stream)
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      deepStrictEqual(Array.from(result1), Array.from(result2))
     }))
 
   it.effect("when - returns an empty stream if the condition is not satisfied", () =>
@@ -28,7 +26,7 @@ describe("Stream", () => {
         Stream.when(constFalse),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("when - dies if the condition throws an exception", () =>
@@ -42,7 +40,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("whenCase - returns the resulting stream if the given partial function is defined for the given value", () =>
@@ -57,7 +55,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("whenCase - returns an empty stream if the given partial function is not defined for the given value", () =>
@@ -72,7 +70,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("whenCase - dies if evaluating the given value throws an exception", () =>
@@ -88,7 +86,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("whenCase - dies if the partial function throws an exception", () =>
@@ -104,7 +102,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("whenCaseEffect - returns the resulting stream if the given partial function is defined for the given effectful value", () =>
@@ -119,7 +117,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("whenCaseEffect - returns an empty stream if the given partial function is not defined for the given effectful value", () =>
@@ -134,7 +132,7 @@ describe("Stream", () => {
         ),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("whenCaseEffect - fails if the effectful value is a failure", () =>
@@ -146,7 +144,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 
   it.effect("whenCaseEffect - dies if the given partial function throws an exception", () =>
@@ -160,7 +158,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 
   it.effect("whenEffect - returns the stream if the effectful condition is satisfied", () =>
@@ -170,7 +168,7 @@ describe("Stream", () => {
         Stream.whenEffect(Effect.succeed(true)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
+      deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
     }))
 
   it.effect("whenEffect - returns an empty stream if the effectful condition is not satisfied", () =>
@@ -180,7 +178,7 @@ describe("Stream", () => {
         Stream.whenEffect(Effect.succeed(false)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("whenEffect - fails if the effectful condition fails", () =>
@@ -192,6 +190,6 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail(error))
+      deepStrictEqual(result, Exit.fail(error))
     }))
 })

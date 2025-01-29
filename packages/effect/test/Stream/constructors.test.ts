@@ -10,11 +10,12 @@ import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
+import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
 import { chunkCoordination } from "effect/test/utils/coordination"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as fc from "fast-check"
-import { assert, describe, expect } from "vitest"
+import { describe } from "vitest"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,
@@ -39,7 +40,7 @@ describe("Stream", () => {
       )
       const actual = await Effect.runPromise(Stream.runCollect(stream))
       const expected = Chunk.flatten(Chunk.fromIterable(chunks))
-      assert.deepStrictEqual(Array.from(actual), Array.from(expected))
+      deepStrictEqual(Array.from(actual), Array.from(expected))
     })))
 
   it.effect("finalizer - happy path", () =>
@@ -55,7 +56,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), ["Acquire", "Use", "Release", "Ensuring"])
+      deepStrictEqual(Array.from(result), ["Acquire", "Use", "Release", "Ensuring"])
     }))
 
   it.effect("finalizer - finalizer is not run if stream is not pulled", () =>
@@ -67,21 +68,21 @@ describe("Stream", () => {
         Effect.scoped
       )
       const result = yield* $(Ref.get(ref))
-      assert.isFalse(result)
+      assertFalse(result)
     }))
 
   it.it("fromChunk", () =>
     fc.assert(fc.asyncProperty(chunkArb(fc.integer()), async (chunk) => {
       const stream = Stream.fromChunk(chunk)
       const result = await Effect.runPromise(Stream.runCollect(stream))
-      assert.deepStrictEqual(Array.from(result), Array.from(chunk))
+      deepStrictEqual(Array.from(result), Array.from(chunk))
     })))
 
   it.it("fromChunks", () =>
     fc.assert(fc.asyncProperty(fc.array(chunkArb(fc.integer())), async (chunks) => {
       const stream = Stream.fromChunks(...chunks)
       const result = await Effect.runPromise(Stream.runCollect(stream))
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         Array.from(Chunk.flatten(Chunk.fromIterable(chunks)))
       )
@@ -101,7 +102,7 @@ describe("Stream", () => {
         ),
         Effect.scoped
       )
-      assert.deepStrictEqual(Array.from(result), [
+      deepStrictEqual(Array.from(result), [
         Either.right([1]),
         Either.right([1]),
         Either.left(Option.none())
@@ -115,7 +116,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left("error"))
+      deepStrictEqual(result, Either.left("error"))
     }))
 
   it.effect("fromEffectOption - emit one element with success", () =>
@@ -124,7 +125,7 @@ describe("Stream", () => {
         Stream.fromEffectOption(Effect.succeed(5)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [5])
+      deepStrictEqual(Array.from(result), [5])
     }))
 
   it.effect("fromEffectOption - emit one element with failure", () =>
@@ -134,7 +135,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.either
       )
-      assert.deepStrictEqual(result, Either.left(5))
+      deepStrictEqual(result, Either.left(5))
     }))
 
   it.effect("fromEffectOption - do not emit any element", () =>
@@ -143,7 +144,7 @@ describe("Stream", () => {
         Stream.fromEffectOption(Effect.fail(Option.none())),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("fromSchedule", () =>
@@ -166,7 +167,7 @@ describe("Stream", () => {
         Duration.seconds(8),
         Duration.seconds(16)
       ]
-      assert.deepStrictEqual(Array.from(result), expected)
+      deepStrictEqual(Array.from(result), expected)
     }))
 
   it.effect("fromQueue - emits queued elements", () =>
@@ -185,7 +186,7 @@ describe("Stream", () => {
       )
       yield* $(coordination.offer)
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("fromQueue - chunks up to the max chunk size", () =>
@@ -198,7 +199,7 @@ describe("Stream", () => {
         Stream.take(3),
         Stream.runCollect
       )
-      assert.isTrue(Array.from(result).every((array) => array.length <= 2))
+      assertTrue(Array.from(result).every((array) => array.length <= 2))
     }))
 
   it.effect("fromAsyncIterable", () =>
@@ -211,7 +212,7 @@ describe("Stream", () => {
 
       const stream = Stream.fromAsyncIterable(asyncIterable(), identity)
       const result = yield* $(Stream.runCollect(stream))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
   it.effect("fromReadableStream", () =>
@@ -237,7 +238,7 @@ describe("Stream", () => {
         Stream.runCollect
       )
 
-      expect(Array.from(result)).toEqual(Array.from({ length: 10 }, (_, i) => i))
+      deepStrictEqual(Array.from(result), Array.from({ length: 10 }, (_, i) => i))
     }))
 
   it.effect("iterate", () =>
@@ -247,13 +248,13 @@ describe("Stream", () => {
         Stream.take(10),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.range(1, 10)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.range(1, 10)))
     }))
 
   it.effect("range - includes both endpoints", () =>
     Effect.gen(function*($) {
       const result = yield* $(Stream.runCollect(Stream.range(1, 2)))
-      assert.deepStrictEqual(Array.from(result), [1, 2])
+      deepStrictEqual(Array.from(result), [1, 2])
     }))
 
   it.effect("range - two large ranges can be concatenated", () =>
@@ -263,7 +264,7 @@ describe("Stream", () => {
         Stream.concat(Stream.range(1_001, 2_000)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.range(1, 2000)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.range(1, 2000)))
     }))
 
   it.effect("range - two small ranges can be concatenated", () =>
@@ -273,7 +274,7 @@ describe("Stream", () => {
         Stream.concat(Stream.range(11, 20)),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.range(1, 20)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.range(1, 20)))
     }))
 
   it.effect("range - emits no values when start > end", () =>
@@ -282,7 +283,7 @@ describe("Stream", () => {
         Stream.range(2, 1),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [])
+      deepStrictEqual(Array.from(result), [])
     }))
 
   it.effect("range - emits 1 value when start === end", () =>
@@ -291,7 +292,7 @@ describe("Stream", () => {
         Stream.range(1, 1),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      deepStrictEqual(Array.from(result), [1])
     }))
 
   it.effect("range - emits values in chunks of chunkSize", () =>
@@ -301,7 +302,7 @@ describe("Stream", () => {
         Stream.mapChunks((chunk) => Chunk.make(pipe(chunk, Chunk.reduce(0, (x, y) => x + y)))),
         Stream.runCollect
       )
-      assert.deepStrictEqual(
+      deepStrictEqual(
         Array.from(result),
         [1 + 2, 3 + 4, 5 + 6, 7 + 8, 9]
       )
@@ -317,7 +318,7 @@ describe("Stream", () => {
         )
         const actual = await Effect.runPromise(Stream.runCollect(stream))
         const expected = chunks.map((chunk) => Array.from(chunk)).flat()
-        assert.deepStrictEqual(
+        deepStrictEqual(
           Array.from(actual).map((chunk) => Array.from(chunk)),
           grouped(expected, n)
         )
@@ -333,7 +334,7 @@ describe("Stream", () => {
             Option.none()),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
     }))
 
   it.effect("unfoldChunk", () =>
@@ -345,7 +346,7 @@ describe("Stream", () => {
             Option.none()),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
     }))
 
   it.effect("unfoldChunkEffect", () =>
@@ -357,7 +358,7 @@ describe("Stream", () => {
             Effect.succeed(Option.none())),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
     }))
 
   it.effect("unfoldEffect", () =>
@@ -369,6 +370,6 @@ describe("Stream", () => {
             Effect.succeed(Option.none())),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
     }))
 })

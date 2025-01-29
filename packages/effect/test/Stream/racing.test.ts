@@ -3,9 +3,10 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
+import { deepStrictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("raceAll sync", () =>
@@ -19,7 +20,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.map(Chunk.toReadonlyArray)
       )
-      assert.deepStrictEqual(result, [0, 1, 2, 3])
+      deepStrictEqual(result, [0, 1, 2, 3])
     }))
 
   it.effect("raceAll async", () =>
@@ -36,7 +37,7 @@ describe("Stream", () => {
       )
       yield* TestClock.adjust("5 second")
       const result = yield* Fiber.join(fiber)
-      assert.deepStrictEqual(result, [0, 1, 2, 3, 4])
+      deepStrictEqual(result, [0, 1, 2, 3, 4])
     }))
 
   it.effect("raceAll combined async + sync", () =>
@@ -49,7 +50,7 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.map(Chunk.toReadonlyArray)
       )
-      assert.deepStrictEqual(result, [0, 1, 2, 3])
+      deepStrictEqual(result, [0, 1, 2, 3])
     }))
 
   it.effect("raceAll combined sync + async", () =>
@@ -62,6 +63,6 @@ describe("Stream", () => {
         Stream.runCollect,
         Effect.map(Chunk.toReadonlyArray)
       )
-      assert.deepStrictEqual(result, [0, 1, 2, 3])
+      deepStrictEqual(result, [0, 1, 2, 3])
     }))
 })

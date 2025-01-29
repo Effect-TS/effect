@@ -7,8 +7,9 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Stream", () => {
   it.effect("drain - simple example", () =>
@@ -21,7 +22,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
+      deepStrictEqual(Array.from(result), Array.from(Chunk.range(0, 9)))
     }))
 
   it.effect("drain - is not too eager", () =>
@@ -35,8 +36,8 @@ describe("Stream", () => {
         Effect.either
       )
       const result2 = yield* $(Ref.get(ref))
-      assert.deepStrictEqual(result1, Either.left("fail"))
-      assert.strictEqual(result2, 1)
+      deepStrictEqual(result1, Either.left("fail"))
+      strictEqual(result2, 1)
     }))
 
   it.effect("drainFork - runs the other stream in the background", () =>
@@ -47,7 +48,7 @@ describe("Stream", () => {
         Stream.drainFork(Stream.fromEffect(Deferred.succeed(latch, void 0))),
         Stream.runDrain
       )
-      assert.isUndefined(result)
+      strictEqual(result, undefined)
     }))
 
   it.effect("drainFork - interrupts the background stream when the foreground exits", () =>
@@ -68,7 +69,7 @@ describe("Stream", () => {
         Stream.runDrain
       )
       const result = yield* $(Ref.get(ref))
-      assert.isTrue(result)
+      assertTrue(result)
     }))
 
   it.effect("drainFork - fails the foreground stream if the background fails with a typed error", () =>
@@ -79,7 +80,7 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.fail("boom"))
+      deepStrictEqual(result, Exit.fail("boom"))
     }))
 
   it.effect("drainFork - fails the foreground stream if the background fails with a defect", () =>
@@ -91,6 +92,6 @@ describe("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(error))
+      deepStrictEqual(result, Exit.die(error))
     }))
 })
