@@ -90,13 +90,13 @@ importers:
         version: 2.1.4(@types/node@22.9.3)(playwright@1.46.0)(typescript@5.7.2)(vite@5.4.0(@types/node@22.9.3)(terser@5.36.0))(vitest@2.1.4)
       '@vitest/coverage-v8':
         specifier: ^2.1.4
-        version: 2.1.4(@vitest/browser@2.1.4(@types/node@22.9.3)(playwright@1.46.0)(typescript@5.7.2)(vite@5.4.0(@types/node@22.9.3)(terser@5.36.0))(vitest@2.1.4))(vitest@2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))
+        version: 2.1.4(@vitest/browser@2.1.4)(vitest@2.1.4)
       '@vitest/expect':
         specifier: ^2.1.4
         version: 2.1.4
       '@vitest/web-worker':
         specifier: ^2.1.4
-        version: 2.1.4(vitest@2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))
+        version: 2.1.4(vitest@2.1.4)
       ast-types:
         specifier: ^0.14.2
         version: 0.14.2
@@ -299,6 +299,9 @@ importers:
 
   packages/effect:
     dependencies:
+      '@standard-schema/spec':
+        specifier: ^1.0.0
+        version: 1.0.0
       fast-check:
         specifier: ^3.23.1
         version: 3.23.1
@@ -314,7 +317,7 @@ importers:
         version: 0.14.2
       jscodeshift:
         specifier: ^0.16.1
-        version: 0.16.1(@babel/preset-env@7.26.0(@babel/core@7.26.0))
+        version: 0.16.1(@babel/preset-env@7.26.0(@babel/core@7.25.2))
       tinybench:
         specifier: ^2.9.0
         version: 2.9.0
@@ -355,7 +358,7 @@ importers:
         version: 3.0.13
       vitest-websocket-mock:
         specifier: ^0.4.0
-        version: 0.4.0(vitest@2.1.4(@edge-runtime/vm@4.0.3)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))
+        version: 0.4.0(vitest@2.1.4)
       ws:
         specifier: ^8.18.0
         version: 8.18.0
@@ -3197,6 +3200,9 @@ packages:
   '@sinonjs/fake-timers@10.3.0':
     resolution: {integrity: sha512-V4BG07kuYSUkTCSBHG8G8TNhM+F19jXFWnQtzj+we8DrkpSBCee9Z3Ms8yiGer/dlmhe35/Xdgyo3/0rQKg7YA==}
 
+  '@standard-schema/spec@1.0.0':
+    resolution: {integrity: sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA==}
+
   '@testcontainers/mssqlserver@10.11.0':
     resolution: {integrity: sha512-/Rh/MEwCrsVbIQ/IJm1ScCY4dZ6wS3nOpG/xqdBTxAnQMN0pVpCIoQ1KzksKmoofP3XHDtveHrKp2cahfxsgeQ==}
 
@@ -5530,6 +5536,7 @@ packages:
 
   libsql@0.4.5:
     resolution: {integrity: sha512-sorTJV6PNt94Wap27Sai5gtVLIea4Otb2LUiAUyr3p6BPOScGMKGt5F1b5X/XgkNtcsDKeX5qfeBDj+PdShclQ==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   libsql@0.4.6:
@@ -10792,6 +10799,8 @@ snapshots:
     dependencies:
       '@sinonjs/commons': 3.0.1
 
+  '@standard-schema/spec@1.0.0': {}
+
   '@testcontainers/mssqlserver@10.11.0':
     dependencies:
       testcontainers: 10.11.0
@@ -11162,7 +11171,7 @@ snapshots:
       - vite
     optional: true
 
-  '@vitest/coverage-v8@2.1.4(@vitest/browser@2.1.4(@types/node@22.9.3)(playwright@1.46.0)(typescript@5.7.2)(vite@5.4.0(@types/node@22.9.3)(terser@5.36.0))(vitest@2.1.4))(vitest@2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))':
+  '@vitest/coverage-v8@2.1.4(@vitest/browser@2.1.4)(vitest@2.1.4)':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -11233,7 +11242,7 @@ snapshots:
       loupe: 3.1.2
       tinyrainbow: 1.2.0
 
-  '@vitest/web-worker@2.1.4(vitest@2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0))':
+  '@vitest/web-worker@2.1.4(vitest@2.1.4)':
     dependencies:
       debug: 4.3.7
       vitest: 2.1.4(@edge-runtime/vm@4.0.1)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0)
@@ -12360,7 +12369,7 @@ snapshots:
       debug: 4.3.6
       enhanced-resolve: 5.17.1
       eslint: 9.9.1
-      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-plugin-import@2.30.0)(eslint@9.9.1))(eslint@9.9.1)
+      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.9.1)
       fast-glob: 3.3.2
       get-tsconfig: 4.8.0
       is-bun-module: 1.1.0
@@ -12373,7 +12382,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-module-utils@2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-plugin-import@2.30.0)(eslint@9.9.1))(eslint@9.9.1):
+  eslint-module-utils@2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.9.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -12423,7 +12432,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.9.1
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-plugin-import@2.30.0)(eslint@9.9.1))(eslint@9.9.1)
+      eslint-module-utils: 2.9.0(@typescript-eslint/parser@7.16.1(eslint@9.9.1)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.9.1)
       hasown: 2.0.2
       is-core-module: 2.15.1
       is-glob: 4.0.3
@@ -13407,32 +13416,6 @@ snapshots:
       write-file-atomic: 5.0.1
     optionalDependencies:
       '@babel/preset-env': 7.26.0(@babel/core@7.25.2)
-    transitivePeerDependencies:
-      - supports-color
-
-  jscodeshift@0.16.1(@babel/preset-env@7.26.0(@babel/core@7.26.0)):
-    dependencies:
-      '@babel/core': 7.25.2
-      '@babel/parser': 7.24.8
-      '@babel/plugin-transform-class-properties': 7.24.7(@babel/core@7.25.2)
-      '@babel/plugin-transform-modules-commonjs': 7.24.8(@babel/core@7.25.2)
-      '@babel/plugin-transform-nullish-coalescing-operator': 7.24.7(@babel/core@7.25.2)
-      '@babel/plugin-transform-optional-chaining': 7.24.8(@babel/core@7.25.2)
-      '@babel/plugin-transform-private-methods': 7.24.7(@babel/core@7.25.2)
-      '@babel/preset-flow': 7.24.7(@babel/core@7.25.2)
-      '@babel/preset-typescript': 7.24.7(@babel/core@7.25.2)
-      '@babel/register': 7.24.6(@babel/core@7.25.2)
-      chalk: 4.1.2
-      flow-parser: 0.239.1
-      graceful-fs: 4.2.11
-      micromatch: 4.0.7
-      neo-async: 2.6.2
-      node-dir: 0.1.17
-      recast: 0.23.9
-      temp: 0.9.4
-      write-file-atomic: 5.0.1
-    optionalDependencies:
-      '@babel/preset-env': 7.26.0(@babel/core@7.26.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -15648,7 +15631,7 @@ snapshots:
       terser: 5.36.0
     optional: true
 
-  vitest-websocket-mock@0.4.0(vitest@2.1.4(@edge-runtime/vm@4.0.3)(@types/node@22.9.3)(@vitest/browser@2.1.4)(happy-dom@15.7.4)(msw@2.5.2(@types/node@22.9.3)(typescript@5.7.2))(terser@5.36.0)):
+  vitest-websocket-mock@0.4.0(vitest@2.1.4):
     dependencies:
       '@vitest/utils': 2.1.4
       mock-socket: 9.3.1
