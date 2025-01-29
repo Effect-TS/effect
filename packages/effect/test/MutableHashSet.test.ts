@@ -1,6 +1,4 @@
-import * as Equal from "effect/Equal"
-import * as Hash from "effect/Hash"
-import * as MutableHashSet from "effect/MutableHashSet"
+import { Equal, Hash, MutableHashSet } from "effect"
 import { deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, it } from "vitest"
 
