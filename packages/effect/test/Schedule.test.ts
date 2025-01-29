@@ -1,42 +1,45 @@
-import * as Array from "effect/Array"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Clock from "effect/Clock"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import {
+  Array,
+  Cause,
+  Chunk,
+  Clock,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Option,
+  Ref,
+  Schedule,
+  ScheduleDecision,
+  ScheduleIntervals
+} from "effect"
 import { constVoid } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as ScheduleDecision from "effect/ScheduleDecision"
-import * as Intervals from "effect/ScheduleIntervals"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
-import { assert, describe } from "vitest"
+import { describe } from "vitest"
 
 describe("Schedule", () => {
   it.effect("collect all inputs into a list as long as the condition f holds", () =>
     Effect.gen(function*($) {
       const result = yield* $(repeat(Schedule.collectWhile((n) => n < 10)))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 9))
+      deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 9))
     }))
   it.effect("collect all inputs into a list as long as the effectful condition f holds", () =>
     Effect.gen(function*($) {
       const result = yield* $(repeat(Schedule.collectWhileEffect((n) => Effect.succeed(n > 10))))
-      assert.isTrue(Chunk.isEmpty(result))
+      assertTrue(Chunk.isEmpty(result))
     }))
   it.effect("collect all inputs into a list until the effectful condition f fails", () =>
     Effect.gen(function*($) {
       const result = yield* $(repeat(Schedule.collectUntil((n) => n < 10 && n > 1)))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1])
+      deepStrictEqual(Chunk.toReadonlyArray(result), [1])
     }))
   it.effect("collect all inputs into a list until the effectful condition f fails", () =>
     Effect.gen(function*($) {
       const result = yield* $(repeat(Schedule.collectUntilEffect((n) => Effect.succeed(n > 10))))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 10))
+      deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 10))
     }))
   it.effect("union composes", () =>
     Effect.gen(function*($) {
@@ -50,7 +53,7 @@ describe("Schedule", () => {
       const input = Array.range(1, 5)
       const actual = yield* $(alsoWednesday, Schedule.delays, Schedule.run(now, input))
       const expected = yield* $(wednesday, Schedule.delays, Schedule.run(now, input))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(actual), Chunk.toReadonlyArray(expected))
+      deepStrictEqual(Chunk.toReadonlyArray(actual), Chunk.toReadonlyArray(expected))
     }))
   it.effect("either should not wait if neither schedule wants to continue", () =>
     Effect.gen(function*($) {
@@ -60,7 +63,7 @@ describe("Schedule", () => {
       )
       const input = Array.makeBy(4, constVoid)
       const result = yield* $(runCollect(schedule, input))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [Duration.zero])
+      deepStrictEqual(Chunk.toReadonlyArray(result), [Duration.zero])
     }))
   it.effect("perform log for each recurrence of effect", () =>
     Effect.gen(function*($) {
@@ -70,7 +73,7 @@ describe("Schedule", () => {
       const ref = yield* $(Ref.make(0))
       yield* $(Ref.getAndUpdate(ref, (n) => n + 1), Effect.repeat(schedule(ref)))
       const result = yield* $(Ref.get(ref))
-      assert.strictEqual(result, 8)
+      strictEqual(result, 8)
     }))
   it.effect("reset after some inactivity", () =>
     Effect.gen(function*($) {
@@ -99,7 +102,7 @@ describe("Schedule", () => {
       yield* $(TestClock.adjust("10 seconds"))
       yield* $(Fiber.join(fiber))
       const retries = yield* $(Ref.get(retriesCounter))
-      assert.strictEqual(retries, 10)
+      strictEqual(retries, 10)
     }))
   it.effect("union of two schedules should continue as long as either wants to continue", () =>
     Effect.gen(function*($) {
@@ -107,7 +110,7 @@ describe("Schedule", () => {
       const input = Chunk.make(true, false, false, false, false)
       const result = yield* $(runCollect(schedule.pipe(Schedule.compose(Schedule.elapsed)), input))
       const expected = [0, 0, 1, 2, 3].map(Duration.seconds)
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+      deepStrictEqual(Chunk.toReadonlyArray(result), expected)
     }))
   it.effect("Schedule.fixed should compute delays correctly", () =>
     Effect.gen(function*($) {
@@ -116,7 +119,7 @@ describe("Schedule", () => {
         runManually(Schedule.fixed("5 seconds"), inputs),
         Effect.map((output) => output[0].pipe(Chunk.map((tuple) => tuple[0])))
       )
-      assert.deepStrictEqual(result, Chunk.make(5000, 10000))
+      deepStrictEqual(result, Chunk.make(5000, 10000))
     }))
   it.effect("intersection of schedules recurring in bounded intervals", () =>
     Effect.gen(function*($) {
@@ -127,8 +130,8 @@ describe("Schedule", () => {
       const actual = Chunk.toReadonlyArray(scanLeft(delays, now, (now, delay) => now + Duration.toMillis(delay))).slice(
         1
       )
-      assert.isTrue(actual.map((n) => new Date(n).getHours()).every((n) => n === 4))
-      assert.isTrue(actual.map((n) => new Date(n).getMinutes()).every((n) => n === 20))
+      assertTrue(actual.map((n) => new Date(n).getHours()).every((n) => n === 4))
+      assertTrue(actual.map((n) => new Date(n).getMinutes()).every((n) => n === 20))
     }))
   it.effect("passthrough", () =>
     Effect.gen(function*($) {
@@ -136,7 +139,7 @@ describe("Schedule", () => {
       const result = yield* $(
         Ref.getAndUpdate(ref, (n) => n + 1).pipe(Effect.repeat(Schedule.recurs(10).pipe(Schedule.passthrough)))
       )
-      assert.strictEqual(result, 10)
+      strictEqual(result, 10)
     }))
   describe("simulate a schedule", () => {
     it.effect("without timing out", () =>
@@ -146,7 +149,7 @@ describe("Schedule", () => {
           Clock.currentTimeMillis,
           Effect.flatMap((now) => schedule.pipe(Schedule.run(now, Array.makeBy(5, constVoid))))
         )
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), [
+        deepStrictEqual(Chunk.toReadonlyArray(result), [
           Duration.minutes(1),
           Duration.minutes(2),
           Duration.minutes(4),
@@ -162,7 +165,7 @@ describe("Schedule", () => {
             Effect.flatMap((now) => schedule.pipe(Schedule.run(now, Array.range(1, 10))))
           )
         )
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), [
+        deepStrictEqual(Chunk.toReadonlyArray(result), [
           [0, Duration.minutes(1)],
           [1, Duration.minutes(2)],
           [2, Duration.minutes(4)]
@@ -176,7 +179,7 @@ describe("Schedule", () => {
             Effect.flatMap((now) => schedule.pipe(Schedule.run(now, Array.range(1, 10))))
           )
         )
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), [0, 1, 2, 3, 4, 5])
+        deepStrictEqual(Chunk.toReadonlyArray(result), [0, 1, 2, 3, 4, 5])
       }))
   })
   describe("repeat an action a single time", () => {
@@ -184,7 +187,7 @@ describe("Schedule", () => {
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(0))
         const result = yield* $(Effect.flip(alwaysFail(ref)))
-        assert.strictEqual(result, "Error: 1")
+        strictEqual(result, "Error: 1")
       }))
     it.effect("repeat a scheduled repeat repeats the whole number", () =>
       Effect.gen(function*($) {
@@ -193,7 +196,7 @@ describe("Schedule", () => {
         const effect = ref.pipe(Ref.update((n) => n + 1), Effect.repeat(Schedule.recurs(n)))
         yield* $(effect, Effect.repeat(Schedule.recurs(1)))
         const result = yield* $(Ref.get(ref))
-        assert.strictEqual(result, (n + 1) * 2)
+        strictEqual(result, (n + 1) * 2)
       }))
   })
   describe("repeat an action two times and call ensuring should", () => {
@@ -208,8 +211,8 @@ describe("Schedule", () => {
         )
         const value = yield* $(Ref.get(ref))
         const finalizerValue = yield* $(Deferred.poll(deferred))
-        assert.strictEqual(value, 6)
-        assert.isTrue(Option.isSome(finalizerValue))
+        strictEqual(value, 6)
+        assertTrue(Option.isSome(finalizerValue))
       }))
   })
   describe("repeat on success according to a provided strategy", () => {
@@ -217,72 +220,72 @@ describe("Schedule", () => {
       Effect.gen(function*($) {
         // A repeat with a negative number of times should not repeat the action at all
         const result = yield* $(repeat(Schedule.recurs(-5)))
-        assert.strictEqual(result, 0)
+        strictEqual(result, 0)
       }))
     it.effect("for 'recurs(0)' does repeat 0 additional time", () =>
       Effect.gen(function*($) {
         // A repeat with 0 number of times should not repeat the action at all
         const result = yield* $(repeat(Schedule.recurs(0)))
-        assert.strictEqual(result, 0)
+        strictEqual(result, 0)
       }))
     it.effect("for 'recurs(1)' does repeat 1 additional time", () =>
       Effect.gen(function*($) {
         const result = yield* $(repeat(Schedule.recurs(1)))
-        assert.strictEqual(result, 1)
+        strictEqual(result, 1)
       }))
     it.effect("for 'once' will repeat 1 additional time", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(0))
         yield* $(Ref.update(ref, (n) => n + 1), Effect.repeat(Schedule.once))
         const result = yield* $(Ref.get(ref))
-        assert.strictEqual(result, 2)
+        strictEqual(result, 2)
       }))
     it.effect("for 'recurs(a positive given number)' repeats that additional number of time", () =>
       Effect.gen(function*($) {
         const result = yield* $(repeat(Schedule.recurs(42)))
-        assert.strictEqual(result, 42)
+        strictEqual(result, 42)
       }))
     it.effect("for 'recurWhile(cond)' repeats while the cond still holds", () =>
       Effect.gen(function*($) {
         const result = yield* $(repeat(Schedule.recurWhile((n) => n < 10)))
-        assert.strictEqual(result, 10)
+        strictEqual(result, 10)
       }))
     it.effect("for 'recurWhileEffect(cond)' repeats while the effectful cond still holds", () =>
       Effect.gen(function*($) {
         const result = yield* $(repeat(Schedule.recurWhileEffect((n) => Effect.succeed(n > 10))))
-        assert.strictEqual(result, 1)
+        strictEqual(result, 1)
       }))
     it.effect("for 'recurUntil(cond)' repeats until the cond is satisfied", () =>
       Effect.gen(function*($) {
         const result = yield* $(repeat(Schedule.recurUntil((n) => n < 10)))
-        assert.strictEqual(result, 1)
+        strictEqual(result, 1)
       }))
     it.effect("for 'recurUntilEffect(cond)' repeats until the effectful cond is satisfied", () =>
       Effect.gen(function*($) {
         const result = yield* $(repeat(Schedule.recurUntilEffect((n) => Effect.succeed(n > 10))))
-        assert.strictEqual(result, 11)
+        strictEqual(result, 11)
       }))
   })
   describe("delays", () => {
     it.effect("duration", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkDelays(Schedule.duration("1 seconds")))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("exponential", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkDelays(Schedule.exponential("1 seconds")))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("fibonacci", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkDelays(Schedule.fibonacci("1 seconds")))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("fromDelay", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkDelays(Schedule.fromDelay("1 seconds")))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("fromDelays", () =>
       Effect.gen(function*($) {
@@ -291,74 +294,74 @@ describe("Schedule", () => {
             Schedule.fromDelays("1 seconds", "2 seconds", "3 seconds", "4 seconds")
           )
         )
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("linear", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkDelays(Schedule.linear("1 seconds")))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
   })
   describe("repetitions", () => {
     it.effect("forever", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.repeatForever))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("count", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.count))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("dayOfMonth", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.dayOfMonth(1)))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("dayOfWeek", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.dayOfWeek(1)))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("hourOfDay", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.hourOfDay(1)))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("minuteOfHour", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.minuteOfHour(1)))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("secondOfMinute", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.secondOfMinute(1)))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("fixed", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.fixed("1 seconds")))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("repeatForever", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.repeatForever))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("recurs", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.recurs(2)))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("spaced", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.spaced("1 seconds")))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
     it.effect("windowed", () =>
       Effect.gen(function*($) {
         const [actual, expected] = yield* $(checkRepetitions(Schedule.windowed("1 seconds")))
-        assert.deepStrictEqual(actual, expected)
+        deepStrictEqual(actual, expected)
       }))
   })
   describe("retries", () => {
@@ -372,19 +375,19 @@ describe("Schedule", () => {
           Effect.flatMap(() => i < 5 ? Effect.fail("KeepTryingError") : Effect.succeed(i))
         )
         const result = yield* $(io, Effect.retry(strategy))
-        assert.strictEqual(result, 5)
+        strictEqual(result, 5)
       }))
     it.effect("retry exactly one time for `once` when second time succeeds - retryOrElse", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(0))
         const result = yield* $(failOn0(ref), Effect.retryOrElse(Schedule.once, ioFail))
-        assert.strictEqual(result, 2)
+        strictEqual(result, 2)
       }))
     it.effect("if fallback succeeded - retryOrElse", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(0))
         const result = yield* $(alwaysFail(ref), Effect.retryOrElse(Schedule.once, ioSucceed))
-        assert.strictEqual(result, "OrElse")
+        strictEqual(result, "OrElse")
       }))
     it.effect("if fallback failed - retryOrElse", () =>
       Effect.gen(function*($) {
@@ -395,14 +398,14 @@ describe("Schedule", () => {
             Effect.flip
           )
         )
-        assert.strictEqual(result, "OrElseFailed")
+        strictEqual(result, "OrElseFailed")
       }))
     it.effect("retry 0 time for `once` when first time succeeds", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(0))
         yield* $(Ref.update(ref, (n) => n + 1), Effect.retry(Schedule.once))
         const result = yield* $(Ref.get(ref))
-        assert.strictEqual(result, 1)
+        strictEqual(result, 1)
       }))
     it.effect("retry 0 time for `recurs(0)`", () =>
       Effect.gen(function*($) {
@@ -413,7 +416,7 @@ describe("Schedule", () => {
             Effect.flip
           )
         )
-        assert.strictEqual(result, "Error: 1")
+        strictEqual(result, "Error: 1")
       }))
     it.effect("retry exactly one time for `once` when second time succeeds", () =>
       Effect.gen(function*($) {
@@ -422,7 +425,7 @@ describe("Schedule", () => {
         // One retry on failure
         yield* $(failOn0(ref), Effect.retry(Schedule.once))
         const result = yield* $(Ref.get(ref))
-        assert.strictEqual(result, 2)
+        strictEqual(result, 2)
       }))
     it.effect("retry exactly one time for `once` even if still in error", () =>
       Effect.gen(function*($) {
@@ -435,13 +438,13 @@ describe("Schedule", () => {
             Effect.flip
           )
         )
-        assert.strictEqual(result, "Error: 2")
+        strictEqual(result, "Error: 2")
       }))
     it.effect("retry exactly 'n' times after failure", () =>
       Effect.gen(function*($) {
         const ref = yield* $(Ref.make(0))
         const result = yield* $(alwaysFail(ref), Effect.retry({ times: 3 }), Effect.flip)
-        assert.strictEqual(result, "Error: 4")
+        strictEqual(result, "Error: 4")
       }))
     // TODO(Max): after TestRandom
     // it.skip("for a given number of times with random jitter in (0, 1)")
@@ -449,7 +452,7 @@ describe("Schedule", () => {
     // const schedule = Schedule.spaced((500).millis).jittered(0, 1)
     // const result = $(runCollect(schedule.compose(Schedule.elapsed), Chunk.fill(5, constVoid)))
     // const expected = Chunk((0).millis, (250).millis, (500).millis, (750).millis, (1000).millis)
-    // assert.isTrue()
+    // assertTrue()
     // }).unsafeRunPromise()
     // TODO(Max): after TestRandom
     // it.skip("for a given number of times with random jitter in custom interval")
@@ -457,7 +460,7 @@ describe("Schedule", () => {
     // const schedule = Schedule.spaced((500).millis).jittered(2, 4)
     // const result = $(runCollect(schedule.compose(Schedule.elapsed), Chunk.fill(5, constVoid)))
     // const expected = Chunk((0).millis, (1500).millis, (3000).millis, (5000).millis, (7000).millis)
-    // assert.isTrue()
+    // assertTrue()
     // }).unsafeRunPromise()
     it.effect("fixed delay with error predicate", () =>
       Effect.gen(function*($) {
@@ -475,49 +478,49 @@ describe("Schedule", () => {
             TestClock.currentTimeMillis.pipe(Effect.map((now) => [Duration.millis(now), s, n] as const)))
         )
         const result = yield* $(run(program))
-        assert.deepStrictEqual(result, [Duration.millis(800), "GiveUpError", 4] as const)
+        deepStrictEqual(result, [Duration.millis(800), "GiveUpError", 4] as const)
       }))
     it.effect("fibonacci delay", () =>
       Effect.gen(function*($) {
         const schedule = Schedule.fibonacci("100 millis").pipe(Schedule.compose(Schedule.elapsed))
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = [0, 100, 200, 400, 700].map(Duration.millis)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("linear delay", () =>
       Effect.gen(function*($) {
         const schedule = Schedule.linear("100 millis").pipe(Schedule.compose(Schedule.elapsed))
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = [0, 100, 300, 600, 1000].map(Duration.millis)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("spaced delay", () =>
       Effect.gen(function*($) {
         const schedule = Schedule.spaced("100 millis").pipe(Schedule.compose(Schedule.elapsed))
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = [0, 100, 200, 300, 400].map(Duration.millis)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("fixed delay", () =>
       Effect.gen(function*($) {
         const schedule = Schedule.fixed("100 millis").pipe(Schedule.compose(Schedule.elapsed))
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = [0, 100, 200, 300, 400].map(Duration.millis)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("fixed delay with zero delay", () =>
       Effect.gen(function*($) {
         const schedule = Schedule.fixed(Duration.zero).pipe(Schedule.compose(Schedule.elapsed))
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = Array.makeBy(5, () => Duration.zero)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("windowed", () =>
       Effect.gen(function*($) {
         const schedule = Schedule.windowed("100 millis").pipe(Schedule.compose(Schedule.elapsed))
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = [0, 100, 200, 300, 400].map(Duration.millis)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("modified linear delay", () =>
       Effect.gen(function*($) {
@@ -527,21 +530,21 @@ describe("Schedule", () => {
         )
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = [0, 200, 600, 1200, 2000].map(Duration.millis)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("exponential delay with default factor", () =>
       Effect.gen(function*($) {
         const schedule = Schedule.exponential("100 millis").pipe(Schedule.compose(Schedule.elapsed))
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = [0, 100, 300, 700, 1500].map(Duration.millis)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("exponential delay with other factor", () =>
       Effect.gen(function*($) {
         const schedule = Schedule.exponential("100 millis", 3).pipe(Schedule.compose(Schedule.elapsed))
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = [0, 100, 400, 1300, 4000].map(Duration.millis)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("fromDelays", () =>
       Effect.gen(function*($) {
@@ -554,7 +557,7 @@ describe("Schedule", () => {
         const schedule = delays.pipe(Schedule.compose(Schedule.elapsed))
         const result = yield* $(runCollect(schedule, Array.makeBy(5, constVoid)))
         const expected = [0, 4, 11, 23, 42].map(Duration.seconds)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(result), expected)
+        deepStrictEqual(Chunk.toReadonlyArray(result), expected)
       }))
     it.effect("retry a failed action 2 times and call `ensuring` should run the specified finalizer as soon as the schedule is complete", () =>
       Effect.gen(function*($) {
@@ -567,8 +570,8 @@ describe("Schedule", () => {
           )
         )
         const finalizerValue = yield* $(Deferred.poll(deferred))
-        assert.isTrue(Option.isNone(value))
-        assert.isTrue(Option.isSome(finalizerValue))
+        assertTrue(Option.isNone(value))
+        assertTrue(Option.isSome(finalizerValue))
       }))
   })
   describe("cron-like scheduling - repeats at point of time (minute of hour, day of week, ...)", () => {
@@ -592,7 +595,7 @@ describe("Schedule", () => {
           "Mon Jan 01 2024 00:06:00",
           "Mon Jan 01 2024 00:08:00"
         ]
-        assert.deepStrictEqual(result, expected)
+        deepStrictEqual(result, expected)
       }))
     it.effect("recur at time matching cron expression", () =>
       Effect.gen(function*($) {
@@ -617,7 +620,7 @@ describe("Schedule", () => {
           "Wed Jan 17 2024 04:30:00",
           "Wed Jan 24 2024 04:30:00"
         ]
-        assert.deepStrictEqual(result, expected)
+        deepStrictEqual(result, expected)
       }))
     it.effect("recur at time matching cron expression (second granularity)", () =>
       Effect.gen(function*($) {
@@ -645,7 +648,7 @@ describe("Schedule", () => {
           "Mon Jan 01 2024 00:00:27",
           "Mon Jan 01 2024 00:00:30"
         ]
-        assert.deepStrictEqual(result, expected)
+        deepStrictEqual(result, expected)
       }))
     it.effect("recur at 01 second of each minute", () =>
       Effect.gen(function*($) {
@@ -665,7 +668,7 @@ describe("Schedule", () => {
         const expected = expectedDate.getTime()
         const afterTimeExpected = new Date(expectedDate).setMinutes(expectedDate.getMinutes() + 1)
         const expectedOutput = Chunk.make(expected, afterTimeExpected, expected, afterTimeExpected)
-        assert.deepStrictEqual(result, expectedOutput)
+        deepStrictEqual(result, expectedOutput)
       }))
     it.effect("recur at 01 minute of each hour", () =>
       Effect.gen(function*($) {
@@ -684,7 +687,7 @@ describe("Schedule", () => {
         const expected = new Date(new Date(originOffset).setMinutes(1))
         const afterTimeExpected = new Date(expected).setHours(expected.getHours() + 1)
         const expectedOutput = Chunk.make(expected.getTime(), afterTimeExpected, expected.getTime(), afterTimeExpected)
-        assert.deepStrictEqual(result, expectedOutput)
+        deepStrictEqual(result, expectedOutput)
       }))
     it.effect("recur at 01 hour of each day", () =>
       Effect.gen(function*($) {
@@ -704,7 +707,7 @@ describe("Schedule", () => {
         const expected = expectedDate.getTime()
         const afterTimeExpected = new Date(expectedDate).setDate(expectedDate.getDate() + 1)
         const expectedOutput = Chunk.make(expected, afterTimeExpected, expected, afterTimeExpected)
-        assert.deepStrictEqual(result, expectedOutput)
+        deepStrictEqual(result, expectedOutput)
       }))
     it.effect("recur at Tuesday of each week", () =>
       Effect.gen(function*($) {
@@ -732,7 +735,7 @@ describe("Schedule", () => {
           expectedTuesday.getTime(),
           nextTuesday
         )
-        assert.deepStrictEqual(result, expectedOutput)
+        deepStrictEqual(result, expectedOutput)
       }))
     it.effect("recur in the 2nd day of each month", () =>
       Effect.gen(function*($) {
@@ -753,7 +756,7 @@ describe("Schedule", () => {
           new Date(expectedBefore).getMonth() + 1
         )
         const expected = Chunk.make(expectedFirstInTime.getTime(), expectedSecondInTime, expectedBefore, expectedAfter)
-        assert.deepStrictEqual(result, expected)
+        deepStrictEqual(result, expected)
       }))
     it.effect("recur only in months containing valid number of days", () =>
       Effect.gen(function*($) {
@@ -764,7 +767,7 @@ describe("Schedule", () => {
           Effect.map((output) => output[0].pipe(Chunk.map((tuple) => tuple[0])))
         )
         const expected = Chunk.make(new Date(originOffset).setMonth(2, 30))
-        assert.deepStrictEqual(result, expected)
+        deepStrictEqual(result, expected)
       }))
     it.effect("union with cron like schedules", () =>
       Effect.gen(function*($) {
@@ -780,7 +783,7 @@ describe("Schedule", () => {
         yield* $(TestClock.adjust("2 minutes"))
         const result = yield* $(Ref.get(ref))
         const expected = [5, 25, 30, 50, 70, 90, 110]
-        assert.deepStrictEqual(result, expected)
+        deepStrictEqual(result, expected)
       }))
     it.effect("throw IllegalArgumentException on invalid `second` argument of `secondOfMinute`", () =>
       Effect.gen(function*($) {
@@ -789,7 +792,7 @@ describe("Schedule", () => {
         const exception = new Cause.IllegalArgumentException(
           "Invalid argument in: secondOfMinute(60). Must be in range 0...59"
         )
-        assert.deepStrictEqual(exit, Exit.die(exception))
+        deepStrictEqual(exit, Exit.die(exception))
       }))
     it.effect("throw IllegalArgumentException on invalid `minute` argument of `minuteOfHour`", () =>
       Effect.gen(function*($) {
@@ -798,7 +801,7 @@ describe("Schedule", () => {
         const exception = new Cause.IllegalArgumentException(
           "Invalid argument in: minuteOfHour(60). Must be in range 0...59"
         )
-        assert.deepStrictEqual(exit, Exit.die(exception))
+        deepStrictEqual(exit, Exit.die(exception))
       }))
     it.effect("throw IllegalArgumentException on invalid `hour` argument of `hourOfDay`", () =>
       Effect.gen(function*($) {
@@ -807,7 +810,7 @@ describe("Schedule", () => {
         const exception = new Cause.IllegalArgumentException(
           "Invalid argument in: hourOfDay(24). Must be in range 0...23"
         )
-        assert.deepStrictEqual(exit, Exit.die(exception))
+        deepStrictEqual(exit, Exit.die(exception))
       }))
     it.effect("throw IllegalArgumentException on invalid `day` argument of `dayOfWeek`", () =>
       Effect.gen(function*($) {
@@ -816,7 +819,7 @@ describe("Schedule", () => {
         const exception = new Cause.IllegalArgumentException(
           "Invalid argument in: dayOfWeek(8). Must be in range 1 (Monday)...7 (Sunday)"
         )
-        assert.deepStrictEqual(exit, Exit.die(exception))
+        deepStrictEqual(exit, Exit.die(exception))
       }))
     it.effect("throw IllegalArgumentException on invalid `day` argument of `dayOfMonth`", () =>
       Effect.gen(function*($) {
@@ -825,7 +828,7 @@ describe("Schedule", () => {
         const exception = new Cause.IllegalArgumentException(
           "Invalid argument in: dayOfMonth(32). Must be in range 1...31"
         )
-        assert.deepStrictEqual(exit, Exit.die(exception))
+        deepStrictEqual(exit, Exit.die(exception))
       }))
   })
 })
@@ -999,7 +1002,7 @@ const runManuallyLoop = <Env, In, Out>(
         schedule,
         state,
         rest,
-        acc.pipe(Chunk.prepend([Intervals.start(decision.intervals), out] as const))
+        acc.pipe(Chunk.prepend([ScheduleIntervals.start(decision.intervals), out] as const))
       )
     })
   )
