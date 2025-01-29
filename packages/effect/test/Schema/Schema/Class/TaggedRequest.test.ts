@@ -4,7 +4,8 @@ import * as ParseResult from "effect/ParseResult"
 import * as Request from "effect/Request"
 import * as S from "effect/Schema"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assert, describe, expect, it } from "vitest"
+import { assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const Name = Context.GenericTag<"Name", string>("Name")
 const NameString = S.String.pipe(
@@ -54,9 +55,9 @@ describe("TaggedRequest", () => {
       _tag: S.getClassTag("TRA"),
       id: S.Number
     })
-    expect(TRA._tag).toBe("TRA")
-    expect(TRA.success).toBe(S.Number)
-    expect(TRA.failure).toBe(S.String)
+    strictEqual(TRA._tag, "TRA")
+    strictEqual(TRA.success, S.Number)
+    strictEqual(TRA.failure, S.String)
   })
 
   it("should expose the identifier", () => {
@@ -67,7 +68,7 @@ describe("TaggedRequest", () => {
         id: S.Number
       }
     }) {}
-    expect(TRA.identifier).toEqual("TRA")
+    strictEqual(TRA.identifier, "TRA")
     class TRB extends S.TaggedRequest<TRB>("id")("TRB", {
       failure: S.String,
       success: S.Number,
@@ -75,7 +76,7 @@ describe("TaggedRequest", () => {
         id: S.Number
       }
     }) {}
-    expect(TRB.identifier).toEqual("id")
+    strictEqual(TRB.identifier, "id")
   })
 
   it("baseline", () => {
@@ -89,15 +90,15 @@ describe("TaggedRequest", () => {
 
     let req = new MyRequest({ id: 1 })
 
-    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
-    expect(req._tag).toEqual("MyRequest")
-    expect(req.id).toEqual(1)
-    expect(Request.isRequest(req)).toEqual(true)
+    strictEqual(String(req), `MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+    strictEqual(req._tag, "MyRequest")
+    strictEqual(req.id, 1)
+    assertTrue(Request.isRequest(req))
 
     req = S.decodeSync(MyRequest)({ _tag: "MyRequest", id: 1 })
-    expect(req._tag).toEqual("MyRequest")
-    expect(req.id).toEqual(1)
-    expect(Request.isRequest(req)).toEqual(true)
+    strictEqual(req._tag, "MyRequest")
+    strictEqual(req.id, 1)
+    assertTrue(Request.isRequest(req))
   })
 
   it("TaggedRequest extends SerializableWithExit", () => {
@@ -110,28 +111,28 @@ describe("TaggedRequest", () => {
     }) {}
 
     const req = new MyRequest({ id: 1 })
-    assert.deepStrictEqual(
+    deepStrictEqual(
       S.serialize(req).pipe(Effect.runSync),
       { _tag: "MyRequest", id: 1 }
     )
-    assert(Equal.equals(
+    assertTrue(Equal.equals(
       S.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(Effect.runSync),
       req
     ))
-    assert.deepStrictEqual(
+    deepStrictEqual(
       S.serializeExit(req, Exit.fail("fail")).pipe(Effect.runSync),
       { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
     )
-    assert.deepStrictEqual(
+    deepStrictEqual(
       S.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
         .pipe(Effect.runSync),
       Exit.fail("fail")
     )
-    assert.deepStrictEqual(
+    deepStrictEqual(
       S.serializeExit(req, Exit.succeed(123)).pipe(Effect.runSync),
       { _tag: "Success", value: "123" }
     )
-    assert.deepStrictEqual(
+    deepStrictEqual(
       S.deserializeExit(req, { _tag: "Success", value: "123" }).pipe(Effect.runSync),
       Exit.succeed(123)
     )
@@ -147,36 +148,36 @@ describe("TaggedRequest", () => {
     }) {}
 
     let req = new MyRequest({ id: 1 }, true)
-    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+    strictEqual(String(req), `MyRequest({ "_tag": "MyRequest", "id": 1 })`)
 
     req = S.decode(MyRequest)({ _tag: "MyRequest", id: 1 }).pipe(
       Effect.provideService(Id, 1),
       Effect.runSync
     )
-    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+    strictEqual(String(req), `MyRequest({ "_tag": "MyRequest", "id": 1 })`)
 
-    assert.deepStrictEqual(
+    deepStrictEqual(
       S.serialize(req).pipe(
         Effect.provideService(Id, 1),
         Effect.runSync
       ),
       { _tag: "MyRequest", id: 1 }
     )
-    assert.deepStrictEqual(
+    deepStrictEqual(
       S.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(
         Effect.provideService(Id, 1),
         Effect.runSync
       ),
       req
     )
-    assert.deepStrictEqual(
+    deepStrictEqual(
       S.serializeExit(req, Exit.fail("fail")).pipe(
         Effect.provideService(Name, "fail"),
         Effect.runSync
       ),
       { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
     )
-    assert.deepStrictEqual(
+    deepStrictEqual(
       S.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
         .pipe(
           Effect.provideService(Name, "fail"),
@@ -199,8 +200,8 @@ describe("TaggedRequest", () => {
       }
     }
     const tra = TRA.make({ n: 1 })
-    expect(tra instanceof TRA).toEqual(true)
-    expect(tra._tag).toEqual("TRA")
-    expect(tra.a()).toEqual("1a")
+    assertTrue(tra instanceof TRA)
+    strictEqual(tra._tag, "TRA")
+    strictEqual(tra.a(), "1a")
   })
 })

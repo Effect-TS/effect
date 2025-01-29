@@ -1,10 +1,7 @@
-import { Schema as S, SchemaAST as AST } from "effect"
-import * as Arbitrary from "effect/Arbitrary"
-import * as fc from "effect/FastCheck"
-import * as Order from "effect/Order"
-import { isUnknown } from "effect/Predicate"
+import { Arbitrary, FastCheck as fc, Order, Predicate, Schema as S, SchemaAST as AST } from "effect"
 import * as Util from "effect/test/Schema/TestUtils"
-import { assert, describe, expect, it } from "vitest"
+import { assertTrue, deepStrictEqual, fail, strictEqual, throws } from "effect/test/util"
+import { describe, it } from "vitest"
 
 const expectConstraints = <A, I>(
   schema: S.Schema<A, I, never>,
@@ -25,28 +22,29 @@ const expectConstraints = <A, I>(
           case "NumberConstraints":
           case "BigIntConstraints":
           case "DateConstraints":
-            return expect(op.config).toEqual(constraints)
+            return deepStrictEqual(op.config, constraints)
           case "ArrayConstraints": {
             const { ast: _ast, ...rest } = op.config
-            return expect(rest).toEqual(constraints)
+            return deepStrictEqual(rest, constraints)
           }
         }
       }
       case "Succeed":
         // eslint-disable-next-line no-console
         console.log(op)
-        assert.fail(`expected a Deferred, got a Succeed`)
+        fail(`expected a Deferred, got a Succeed`)
     }
   } else {
-    assert.fail(`expected a Refinement, got ${ast._tag}`)
+    fail(`expected a Refinement, got ${ast._tag}`)
   }
 }
 
 describe("Arbitrary", () => {
   describe("Unsupported schemas", () => {
     it("should throw on declarations without annotations", () => {
-      const schema = S.declare(isUnknown)
-      expect(() => Arbitrary.makeLazy(schema)).toThrow(
+      const schema = S.declare(Predicate.isUnknown)
+      throws(
+        () => Arbitrary.makeLazy(schema),
         new Error(`Missing annotation
 details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
 schema (Declaration): <declaration schema>`)
@@ -54,13 +52,15 @@ schema (Declaration): <declaration schema>`)
     })
 
     it("the errors should disply a path", () => {
-      expect(() => Arbitrary.makeLazy(S.Tuple(S.declare(isUnknown)))).toThrow(
+      throws(
+        () => Arbitrary.makeLazy(S.Tuple(S.declare(Predicate.isUnknown))),
         new Error(`Missing annotation
 at path: [0]
 details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
 schema (Declaration): <declaration schema>`)
       )
-      expect(() => Arbitrary.makeLazy(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
+      throws(
+        () => Arbitrary.makeLazy(S.Struct({ a: S.declare(Predicate.isUnknown) })),
         new Error(`Missing annotation
 at path: ["a"]
 details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
@@ -69,7 +69,8 @@ schema (Declaration): <declaration schema>`)
     })
 
     it("Never", () => {
-      expect(() => Arbitrary.makeLazy(S.Never)).toThrow(
+      throws(
+        () => Arbitrary.makeLazy(S.Never),
         new Error(`Missing annotation
 details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
 schema (NeverKeyword): never`)
@@ -211,7 +212,8 @@ schema (NeverKeyword): never`)
     it("empty enums should throw", () => {
       enum Fruits {}
       const schema = S.Enums(Fruits)
-      expect(() => Arbitrary.makeLazy(schema)(fc)).toThrow(
+      throws(
+        () => Arbitrary.makeLazy(schema)(fc),
         new Error(`Empty Enums schema
 details: Generating an Arbitrary for this schema requires at least one enum`)
       )
@@ -833,7 +835,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
     const expectHook = <A, I>(source: S.Schema<A, I>) => {
       const schema = source.annotations({ arbitrary: () => (fc) => fc.constant("custom arbitrary") as any })
       const arb = Arbitrary.make(schema)
-      expect(fc.sample(arb, 1)[0]).toEqual("custom arbitrary")
+      strictEqual(fc.sample(arb, 1)[0], "custom arbitrary" as any)
     }
 
     it("Void", () => {
@@ -932,8 +934,8 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       it("should provide the `from` Arbitrary", () => {
         const schema = S.String.pipe(S.filter((s) => s.length > 2, {
           arbitrary: (from, ctx) => (fc) => {
-            assert.isFunction(from)
-            assert.isObject(ctx)
+            assertTrue(Predicate.isFunction(from))
+            assertTrue(Predicate.isObject(ctx))
             return from(fc).filter((s) => s.length > 2)
           }
         }))

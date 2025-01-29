@@ -22,7 +22,7 @@ export class AssertConfig extends Context.Tag("AssertConfig")<AssertConfig, {
 export class Assert extends Context.Tag("Assert")<Assert, {
   readonly deepStrictEqual: (actual: unknown, expected: unknown) => void
   readonly throws: (fn: () => unknown, message: string) => void
-  readonly fail: (fmessage: string) => void
+  readonly fail: (message: string) => void
 }>() {}
 
 // Provides various assertions for Schema testing

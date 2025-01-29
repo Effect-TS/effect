@@ -97,7 +97,7 @@ describe("pluck", () => {
   it("struct with optional key", async () => {
     const origin = S.Struct({ a: S.optional(S.String) })
     const schema = S.pluck(origin, "a")
-    await Util.assertions.encoding.succeed(schema, undefined, { a: undefined })
+    await Util.assertions.encoding.succeed(schema, undefined, {})
     await Util.assertions.encoding.succeed(schema, "a", { a: "a" })
   })
 

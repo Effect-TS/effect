@@ -1,6 +1,8 @@
 import { Cause, Either, Equal, Exit, Option, Predicate } from "effect"
 import * as assert from "node:assert"
 
+export const fail = assert.fail
+
 export function assertTrue(self: unknown, ..._: Array<never>): asserts self {
   assert.strictEqual(self, true)
 }

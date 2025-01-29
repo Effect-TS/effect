@@ -5,15 +5,15 @@ import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
 import type { ParseOptions } from "effect/SchemaAST"
 import * as AST from "effect/SchemaAST"
-import { assert, expect } from "vitest"
+import { deepStrictEqual, fail, throws } from "effect/test/util"
 import * as SchemaTest from "./SchemaTest.js"
 
 export const assertions = Effect.runSync(
   SchemaTest.assertions.pipe(
     Effect.provideService(SchemaTest.Assert, {
-      deepStrictEqual: (actual, expected) => expect(actual).toStrictEqual(expected),
-      throws: (fn, message) => expect(fn).toThrow(new Error(message)),
-      fail: (message) => assert.fail(message)
+      deepStrictEqual,
+      throws: (fn, message) => throws(fn, (e) => e instanceof Error && e.message === message),
+      fail
     }),
     Effect.provideService(SchemaTest.AssertConfig, {
       arbitrary: {
@@ -68,7 +68,7 @@ export const DependencyString = S.transformOrFail(
 export const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
   const ks1 = Reflect.ownKeys(f1).sort().map((k) => [k, f1[k].ast.toString()])
   const ks2 = Reflect.ownKeys(f2).sort().map((k) => [k, f2[k].ast.toString()])
-  expect(ks1).toStrictEqual(ks2)
+  deepStrictEqual(ks1, ks2)
 }
 
 export const Defect = S.transform(S.String, S.Object, {
