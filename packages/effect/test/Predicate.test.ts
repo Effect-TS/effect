@@ -1,7 +1,7 @@
 import { constFalse, constTrue, pipe } from "effect/Function"
 import * as _ from "effect/Predicate"
 import { assertFalse, assertTrue } from "effect/test/util"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 const isPositive: _.Predicate<number> = (n) => n > 0
 const isNegative: _.Predicate<number> = (n) => n < 0
@@ -105,7 +105,7 @@ describe("Predicate", () => {
     assertFalse(pipe(constTrue, _.xor(constTrue))(null)) // true xor true = false
     assertTrue(pipe(constTrue, _.xor(constFalse))(null)) // true xor false = true
     assertTrue(pipe(constFalse, _.xor(constTrue))(null)) // false xor true = true
-    expect(pipe(constFalse, _.xor(constFalse))(null)) // false xor false = false
+    assertFalse(pipe(constFalse, _.xor(constFalse))(null)) // false xor false = false
   })
 
   it("eqv", () => {
